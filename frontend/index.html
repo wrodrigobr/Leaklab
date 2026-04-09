@@ -316,6 +316,35 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .btn-t-sum:hover{background:var(--gold);color:var(--ink);}
 .btn-t-sum:disabled{opacity:.4;cursor:not-allowed;}
 
+
+/* AUTH OVERLAY */
+.auth-overlay{position:fixed;inset:0;background:var(--felt);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-overlay.hidden{display:none;}
+.auth-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:32px;width:min(420px,100%);position:relative;}
+.auth-logo{font-family:var(--body);font-size:1.6rem;font-weight:700;color:var(--gold);text-align:center;margin-bottom:4px;letter-spacing:-.02em;}
+.auth-tagline{font-family:var(--mono);font-size:.6rem;color:var(--dim);text-align:center;letter-spacing:.18em;text-transform:uppercase;margin-bottom:28px;}
+.auth-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:24px;}
+.auth-tab{flex:1;text-align:center;padding:9px;font-family:var(--mono);font-size:.7rem;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;letter-spacing:.06em;text-transform:uppercase;}
+.auth-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.auth-field{margin-bottom:14px;}
+.auth-label{font-family:var(--mono);font-size:.62rem;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:5px;}
+.auth-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px 13px;font-family:var(--body);font-size:.85rem;color:var(--text);outline:none;transition:border-color .15s;box-sizing:border-box;}
+.auth-input:focus{border-color:var(--gold);}
+.auth-input::placeholder{color:var(--dim);}
+.auth-error{font-family:var(--mono);font-size:.65rem;color:var(--clear);margin-top:10px;min-height:16px;text-align:center;}
+.auth-footer{font-family:var(--mono);font-size:.6rem;color:var(--dim);text-align:center;margin-top:14px;}
+.topbar-user{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.65rem;color:var(--muted);}
+.topbar-user .username{color:var(--text);}
+.btn-logout{font-family:var(--mono);font-size:.6rem;padding:4px 9px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;transition:all .15s;}
+.btn-logout:hover{border-color:var(--clear);color:var(--clear);}
+
+/* IMPORT STATES */
+.import-progress{padding:14px;text-align:center;}
+.import-step{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:8px;justify-content:center;}
+.import-step.done{color:var(--standard);}
+.import-step.active{color:var(--gold);}
+.import-step .step-icon{font-size:.8rem;}
+
 /* RESPONSIVE */
 @media(max-width:1024px){
   .sidebar{transform:translateX(-100%);}
@@ -397,6 +426,57 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   </div>
 </div>
 
+
+<!-- AUTH OVERLAY -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo">LeakLab</div>
+    <div class="auth-tagline">MTT Coach · Análise de Decisões</div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Entrar</div>
+      <div class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Criar Conta</div>
+    </div>
+
+    <!-- Login -->
+    <div id="form-login">
+      <div class="auth-field">
+        <label class="auth-label">Email</label>
+        <input class="auth-input" type="email" id="login-email" placeholder="seu@email.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Senha</label>
+        <input class="auth-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="auth-error" id="login-error"></div>
+      <button class="btn-prim" onclick="doLogin()">Entrar</button>
+      <div class="auth-footer">Novo por aqui? <span style="color:var(--gold);cursor:pointer" onclick="switchAuthTab('register')">Crie uma conta</span></div>
+    </div>
+
+    <!-- Cadastro -->
+    <div id="form-register" style="display:none">
+      <div class="auth-field">
+        <label class="auth-label">Nome de usuário</label>
+        <input class="auth-input" type="text" id="reg-username" placeholder="phpro" autocomplete="username">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Email</label>
+        <input class="auth-input" type="email" id="reg-email" placeholder="seu@email.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Senha</label>
+        <input class="auth-input" type="password" id="reg-pass" placeholder="mínimo 6 caracteres" autocomplete="new-password">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Chave de convite do coach <span style="color:var(--dim)">(opcional)</span></label>
+        <input class="auth-input" type="text" id="reg-invite" placeholder="COACH-XXXXX" style="text-transform:uppercase">
+      </div>
+      <div class="auth-error" id="reg-error"></div>
+      <button class="btn-prim" onclick="doRegister()">Criar Conta</button>
+      <div class="auth-footer">Já tem conta? <span style="color:var(--gold);cursor:pointer" onclick="switchAuthTab('login')">Entrar</span></div>
+    </div>
+  </div>
+</div>
+
 <div class="main-wrap">
   <div class="topbar">
     <div class="topbar-left">
@@ -411,6 +491,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         <div class="ptab" onclick="setPeriod(this)">Tudo</div>
       </div>
       <div class="btn-upload" onclick="openModal()">⊕ <span class="upload-text">Importar</span></div>
+      <div class="topbar-user" id="topbar-user" style="display:none">
+        <span class="username" id="topbar-username"></span>
+        <button class="btn-logout" onclick="doLogout()">Sair</button>
+      </div>
     </div>
   </div>
   <div class="mobile-period" id="mobile-period">
@@ -939,12 +1023,247 @@ function renderStudy(){
 // ── Tournament Summary ──────────────────────────────────────────────────
 let selectedTournamentFile = null;
 
-function openModal(){document.getElementById('modal').classList.add('on');}
-function closeModal(){document.getElementById('modal').classList.remove('on');}
-function onFile(i){if(i.files[0]){document.getElementById('fconf').textContent=`✓ ${i.files[0].name}`;document.getElementById('btn-imp').disabled=false;}}
-function importFile(){closeModal();alert('Em produção: enviar para o backend e atualizar o dashboard.');}
+function openModal(){
+  if(!localStorage.getItem('ll_token')){
+    showAuth();
+    return;
+  }
+  document.getElementById('modal').classList.add('on');
+}
+function closeModal(){
+  document.getElementById('modal').classList.remove('on');
+  document.getElementById('fconf').textContent='';
+  document.getElementById('btn-imp').disabled=true;
+  document.getElementById('btn-imp').textContent='Analisar & Importar';
+  document.getElementById('btn-imp').disabled=false;
+  _importFile = null;
+}
+let _importFile = null;
+function onFile(i){
+  if(i.files[0]){
+    _importFile = i.files[0];
+    document.getElementById('fconf').textContent=`✓ ${i.files[0].name}`;
+    document.getElementById('btn-imp').disabled=false;
+  }
+}
 
-document.getElementById('mobile-period').style.display='flex';
+async function importFile(){
+  if(!_importFile) return;
+  const btn = document.getElementById('btn-imp');
+  const fconf = document.getElementById('fconf');
+
+  // Mostrar progresso
+  btn.disabled = true;
+  btn.textContent = 'Analisando...';
+  fconf.innerHTML = `<div class="import-step active"><span class="step-icon">⟳</span> Enviando arquivo...</div>`;
+
+  try {
+    const content = await _importFile.text();
+    const token = localStorage.getItem('ll_token');
+
+    const res = await fetch(API_URL + '/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+      },
+      body: JSON.stringify({content}),
+    });
+
+    if(res.status === 401){
+      doLogout();
+      return;
+    }
+
+    fconf.innerHTML = `<div class="import-step active"><span class="step-icon">⟳</span> Processando decisões...</div>`;
+
+    const data = await res.json();
+
+    if(!res.ok){
+      fconf.innerHTML = `<div class="import-step" style="color:var(--clear)">✕ ${data.error || 'Erro ao analisar'}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Tentar Novamente';
+      return;
+    }
+
+    fconf.innerHTML = `<div class="import-step done">✓ ${data.total_hands} mãos · ${data.metrics?.total_decisions || 0} decisões analisadas</div>`;
+    btn.textContent = '✓ Importado!';
+
+    // Atualizar dashboard com dados reais
+    setTimeout(()=>{
+      closeModal();
+      _applyRealData(data);
+    }, 1200);
+
+  } catch(err) {
+    fconf.innerHTML = `<div class="import-step" style="color:var(--clear)">✕ Erro de conexão com o servidor</div>`;
+    btn.disabled = false;
+    btn.textContent = 'Tentar Novamente';
+  }
+}
+
+function _applyRealData(data){
+  // Navegar para torneios e mostrar o torneio importado
+  nav('tournaments', null, false);
+  const tl = document.getElementById('tourn-list');
+  if(!tl) return;
+  tl.dataset.rendered = '';
+  // Construir objeto de torneio no formato esperado pelo renderTournaments
+  const t = {
+    id: data.tournament_id || 'novo',
+    date: new Date().toLocaleDateString('pt-BR'),
+    site: 'pokerstars',
+    result: null,
+    place: null,
+    hands: data.total_hands,
+    dec: data.metrics?.total_decisions || 0,
+    score: data.metrics?.avg_mistake_score || 0,
+    data: Object.values(data.hands || {}).map(h => ({
+      id: h.decisions?.[0]?.handId || '0',
+      cards: h.cards || '',
+      board: h.decisions?.[0]?.board || [],
+      street: h.decisions?.[0]?.street || 'preflop',
+      took: h.decisions?.[0]?.actionTaken || '',
+      exp: h.decisions?.[0]?.bestAction || '',
+      gap: _scoreToGap(h.decisions?.[0]?.evaluation?.mistakeScore || 0),
+      score: h.decisions?.[0]?.evaluation?.mistakeScore || 0,
+      decs: h.decisions || [],
+    })),
+  };
+  tourns.unshift(t);
+  _renderTournamentList(tourns);
+}
+
+function _scoreToGap(s){
+  if(s < 0.10) return 'none';
+  if(s < 0.20) return 'marginal';
+  if(s < 0.36) return 'small';
+  return 'clear';
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+function showAuth(){
+  document.getElementById('auth-overlay').classList.remove('hidden');
+}
+
+function hideAuth(){
+  document.getElementById('auth-overlay').classList.add('hidden');
+}
+
+function switchAuthTab(tab){
+  document.getElementById('form-login').style.display = tab==='login'?'block':'none';
+  document.getElementById('form-register').style.display = tab==='register'?'block':'none';
+  document.getElementById('tab-login').classList.toggle('active', tab==='login');
+  document.getElementById('tab-register').classList.toggle('active', tab==='register');
+}
+
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const err   = document.getElementById('login-error');
+  err.textContent = '';
+
+  if(!email || !pass){ err.textContent='Preencha email e senha.'; return; }
+
+  try {
+    const r = await fetch(API_URL + '/auth/login', {
+      method: 'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass}),
+    });
+    const d = await r.json();
+    if(!r.ok){ err.textContent = d.error || 'Credenciais inválidas'; return; }
+    _saveSession(d);
+    hideAuth();
+  } catch(e) {
+    err.textContent = 'Erro de conexão com o servidor.';
+  }
+}
+
+async function doRegister(){
+  const username = document.getElementById('reg-username').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const pass     = document.getElementById('reg-pass').value;
+  const invite   = document.getElementById('reg-invite').value.trim().toUpperCase();
+  const err      = document.getElementById('reg-error');
+  err.textContent = '';
+
+  if(!username || !email || !pass){ err.textContent='Preencha todos os campos.'; return; }
+  if(pass.length < 6){ err.textContent='Senha deve ter pelo menos 6 caracteres.'; return; }
+
+  try {
+    const body = {username, email, password: pass};
+    if(invite) body.invite_key = invite;
+
+    const r = await fetch(API_URL + '/auth/register', {
+      method: 'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if(!r.ok){ err.textContent = d.error || 'Erro ao criar conta'; return; }
+
+    // Se veio com chave de convite, vincular ao coach
+    if(invite && d.token){
+      await fetch(API_URL + '/student/link-coach', {
+        method: 'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+d.token},
+        body: JSON.stringify({invite_key: invite}),
+      });
+    }
+
+    _saveSession(d);
+    hideAuth();
+  } catch(e) {
+    err.textContent = 'Erro de conexão com o servidor.';
+  }
+}
+
+function _saveSession(data){
+  localStorage.setItem('ll_token', data.token);
+  localStorage.setItem('ll_username', data.username || '');
+  localStorage.setItem('ll_role', data.role || 'player');
+  _updateUserUI(data.username || '');
+}
+
+function _updateUserUI(username){
+  const tu = document.getElementById('topbar-user');
+  const un = document.getElementById('topbar-username');
+  const bu = document.getElementById('btn-upload');
+  if(tu && username){
+    tu.style.display = 'flex';
+    un.textContent = username;
+    if(bu) bu.style.display = 'flex';
+  }
+}
+
+function doLogout(){
+  localStorage.removeItem('ll_token');
+  localStorage.removeItem('ll_username');
+  localStorage.removeItem('ll_role');
+  document.getElementById('topbar-user').style.display = 'none';
+  showAuth();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(function init(){
+  document.getElementById('mobile-period').style.display='flex';
+  const token    = localStorage.getItem('ll_token');
+  const username = localStorage.getItem('ll_username');
+  if(token && username){
+    // Já logado — esconder overlay e mostrar usuário
+    hideAuth();
+    _updateUserUI(username);
+  } else {
+    // Mostrar tela de login
+    showAuth();
+  }
+  // Enter nos campos de login
+  document.getElementById('login-pass').addEventListener('keydown', e=>{if(e.key==='Enter') doLogin();});
+  document.getElementById('login-email').addEventListener('keydown', e=>{if(e.key==='Enter') doLogin();});
+  document.getElementById('reg-pass').addEventListener('keydown', e=>{if(e.key==='Enter') doRegister();});
+})();
 </script>
 </body>
 </html>
