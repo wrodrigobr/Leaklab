@@ -536,6 +536,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 </div>
 
 <script>
+// ── URL do backend ────────────────────────────────────────────────────────────
+const API_URL = (() => {
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000';
+  }
+  return 'https://leaklab-api.onrender.com'; // ← substituir pela URL real do Render
+})();
+
 const sessions=[{d:'08/07',s:71,sc:.094},{d:'12/07',s:74,sc:.087},{d:'18/07',s:76,sc:.081},{d:'22/07',s:78,sc:.078},{d:'25/07',s:80,sc:.072},{d:'28/07',s:81,sc:.068},{d:'01/08',s:79,sc:.075}];
 
 const tourns=[
