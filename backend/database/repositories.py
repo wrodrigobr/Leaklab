@@ -142,8 +142,8 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
     conn = get_conn()
     lp = metrics.get('label_pct', {})
     try:
-        # Upsert — se já existe, atualiza métricas
-        cur = _fetchall(conn, """
+        # Upsert — INSERT ou UPDATE se já existe
+        conn.execute("""
             INSERT INTO tournaments
               (user_id, tournament_id, site, hero, played_at, imported_at,
                hands_count, decisions_count, avg_score,
@@ -169,7 +169,7 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
             result, place,
         ))
         conn.commit()
-        # Buscar o ID (seja novo ou existente)
+        # Buscar o ID (seja novo ou existente) — SELECT separado
         row = conn.execute(
             "SELECT id FROM tournaments WHERE user_id=? AND tournament_id=?",
             (user_id, tournament_id)
