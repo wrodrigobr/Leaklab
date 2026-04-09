@@ -35,42 +35,36 @@ def _adapt(sql: str) -> str:
 
 
 def _execute(conn, sql: str, params=None):
-    """Executa query e retorna cursor (Postgres) ou resultado (SQLite)."""
-    sql = _adapt(sql)
-    if USE_POSTGRES:
-        cur = conn.cursor()
-        cur.execute(sql, params or ())
-        return cur
-    else:
-        return conn.execute(sql, params or ())
+    """Executa query usando o _AdaptedConn wrapper."""
+    # conn.execute() já adapta SQL e gerencia cursor internamente
+    return conn.execute(sql, params or ())
 
 
 def _fetchall(conn, sql: str, params=None) -> list:
     """Executa query SELECT e retorna lista de dicts."""
-    cur = _execute(conn, sql, params)
-    rows = cur.fetchall()
+    result = conn.execute(sql, params or ())
+    rows = result.fetchall()
     return [dict(r) for r in rows]
 
 
 def _fetchone(conn, sql: str, params=None) -> Optional[dict]:
     """Executa query SELECT e retorna um dict ou None."""
-    cur = _execute(conn, sql, params)
-    row = cur.fetchone()
+    result = conn.execute(sql, params or ())
+    row = result.fetchone()
     return dict(row) if row else None
 
 
 def _insert(conn, sql: str, params=None) -> int:
     """Executa INSERT e retorna o ID gerado."""
     if USE_POSTGRES:
-        # Adicionar RETURNING id se não tiver
         if 'RETURNING' not in sql.upper():
             sql = sql.rstrip().rstrip(';') + ' RETURNING id'
-        cur = _execute(conn, sql, params)
-        row = cur.fetchone()
-        return dict(row)['id']
+        result = conn.execute(sql, params or ())
+        row = result.fetchone()
+        return dict(row)['id'] if row else None
     else:
-        cur = _execute(conn, sql, params)
-        return cur.lastrowid
+        result = conn.execute(sql, params or ())
+        return result.lastrowid
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
