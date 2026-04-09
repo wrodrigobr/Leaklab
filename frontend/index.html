@@ -89,9 +89,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 /* TOOLTIP */
 .tt{position:relative;display:inline-flex;cursor:help;}
 .tt-i{width:13px;height:13px;border-radius:50%;background:var(--border2);color:var(--muted);font-size:.58rem;display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);}
-.tt-b{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--ink);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;width:190px;font-family:var(--body);font-size:.73rem;color:var(--text);line-height:1.5;pointer-events:none;opacity:0;transition:opacity .15s;z-index:500;white-space:normal;font-weight:300;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.tt-b{position:fixed;background:var(--ink);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;width:190px;font-family:var(--body);font-size:.73rem;color:var(--text);line-height:1.5;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999;white-space:normal;font-weight:300;box-shadow:0 8px 24px rgba(0,0,0,.4);}
 .tt-b::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
 .tt:hover .tt-b,.tt:focus-within .tt-b{opacity:1;}
+.tt-b{left:0;top:0;}
 
 /* SECTION */
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
@@ -886,7 +887,7 @@ function initTournBody(row, tid){
           <tbody>${t.data.map(h=>`
             <tr>
               <td style="font-family:var(--mono);font-size:.63rem;color:var(--dim)">#${h.id.slice(-6)}</td>
-              <td><div class="cds">${pcs([h.cards.slice(0,2),h.cards.slice(2)])}</div></td>
+              <td><div class="cds">${h.cards && h.cards.length>=4 ? pcs([h.cards.slice(0,2),h.cards.slice(2)]) : '<span style="color:var(--dim)">—</span>'}</div></td>
               <td><div class="cds">${h.board.length?pcs(h.board,true):'<span style="color:var(--dim);font-size:.65rem">—</span>'}</div></td>
               <td style="font-family:var(--mono);font-size:.67rem;color:var(--muted)">${h.street}</td>
               <td style="font-family:var(--mono);font-size:.7rem">${h.took}</td>
@@ -895,8 +896,8 @@ function initTournBody(row, tid){
               <td style="font-family:var(--mono);font-size:.7rem;color:var(--muted)">${h.score.toFixed(3)}</td>
               <td>
                 <div style="display:flex;gap:4px;">
-                  <button class="bxs" onclick='openDetail(${JSON.stringify(h)})'>Detalhes</button>
-                  <button class="bxs llm" onclick='openLLM(${JSON.stringify(h)})'>✦ Coach</button>
+                  <button class="bxs" data-hid="${h.id||h.handId||''}" onclick="_openDetailById(this.dataset.hid, '${t.id}')">Detalhes</button>
+                  <button class="bxs llm" data-hid="${h.id||h.handId||''}" onclick="_openLLMById(this.dataset.hid, '${t.id}')">✦ Coach</button>
                 </div>
               </td>
             </tr>`).join('')}
@@ -1003,15 +1004,107 @@ function updateFilterSummary(shown, total){
     : `Mostrando <span>${shown}</span> de <span>${total}</span> torneios`;
 }
 
+// Armazena mãos por ID para evitar JSON.stringify no onclick
+const _handStore = new Map();
+
+function _openDetailById(hid, tid){
+  // Buscar do _handStore ou do array tourns
+  let h = _handStore.get(String(hid));
+  if(!h){
+    const t = tourns.find(t=>t.id===tid);
+    if(t) h = (t.data||[]).find(x=>String(x.id||x.handId)===String(hid));
+  }
+  if(h) openDetail(h);
+}
+function _openLLMById(hid, tid){
+  let h = _handStore.get(String(hid));
+  if(!h){
+    const t = tourns.find(t=>t.id===tid);
+    if(t) h = (t.data||[]).find(x=>String(x.id||x.handId)===String(hid));
+  }
+  if(h) openLLM(h);
+}
+
+function _normHand(h){
+  const decs = (h.decs || h.decisions || []).map(d => ({
+    s:   d.s   || d.street                                           || '',
+    l:   d.l   || d.label || (d.evaluation && d.evaluation.label)   || 'standard',
+    t:   d.t   || d.actionTaken   || d.action_taken                 || '',
+    e:   d.e   || d.bestAction    || d.best_action                  || '',
+    sc:  d.sc  != null ? d.sc : (d.evaluation && d.evaluation.mistakeScore != null ? d.evaluation.mistakeScore : (d.score || 0)),
+    eq:  d.eq  != null ? d.eq : (d.context && d.context.estimatedEquity  != null ? d.context.estimatedEquity  : null),
+    po:  d.po  != null ? d.po : (d.math    && d.math.potOddsEquity        != null ? d.math.potOddsEquity        : null),
+    m:   d.m   != null ? d.m  : (d.context && d.context.mRatio            != null ? d.context.mRatio            : null),
+    icm: d.icm || (d.context && d.context.icmPressure) || 'low',
+  }));
+  return {...h, _decs: decs};
+}
+
 function openDetail(h){
-  document.getElementById('ptitle').textContent=`Mão #${h.id.slice(-6)}`;
-  const ws=Math.max(...h.decs.map(d=>d.sc));const wc=ws>=.36?'var(--clear)':ws>=.18?'var(--small)':'var(--standard)';
-  document.getElementById('pbody').innerHTML=`<div class="psec" style="text-align:center;padding:6px 0 14px"><div style="font-family:var(--serif);font-size:1.8rem;font-weight:700;color:${wc}">${ws.toFixed(3)}</div><div style="font-family:var(--mono);font-size:.57rem;color:var(--muted);margin-top:2px">SCORE MÁXIMO</div><div class="cds" style="justify-content:center;gap:3px;margin-top:10px">${pcs([h.cards.slice(0,2),h.cards.slice(2)])}${h.board.length?'<div style="width:6px;height:1px;background:var(--border);flex-shrink:0"></div>'+pcs(h.board,true):''}</div></div><div class="psec"><div class="pst">Decisões</div>${h.decs.map(d=>`<div class="di"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:var(--mono);font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">${d.s}</span><span class="badge" style="color:${lC(d.l)};border-color:${lC(d.l)}30;background:${lC(d.l)}10">${d.l.replace('_',' ')}</span></div><div style="font-family:var(--mono);font-size:.74rem;display:flex;align-items:center;gap:7px"><span>${d.t}</span><span style="color:var(--dim)">→</span><span style="color:${d.t!==d.e?'var(--clear)':'var(--standard)'}">${d.e}</span><span style="margin-left:auto;color:var(--muted);font-size:.65rem">${d.sc.toFixed(3)}</span></div><div style="display:flex;gap:8px;margin-top:5px;font-family:var(--mono);font-size:.6rem;color:var(--dim);flex-wrap:wrap">${d.eq!=null?`<span>eq ${(d.eq*100).toFixed(0)}%</span>`:''} ${d.po!=null?`<span>pot odds ${(d.po*100).toFixed(0)}%</span>`:''}<span>M=${d.m}</span><span style="color:${d.icm==='high'?'var(--clear)':d.icm==='medium'?'var(--marginal)':'var(--dim)'}">ICM ${d.icm}</span></div></div>`).join('')}</div><div class="psec" id="llm-sec"><div class="pst">Coach IA</div><div class="llm-box" id="llm-box">Clique em <b style="color:var(--gold)">✦ Coach IA</b> para análise personalizada desta mão.</div><button class="btn-llm" onclick='triggerLLM(${JSON.stringify(h)})'>✦ Analisar com Coach IA</button></div>`;
+  if(!h) return;
+  const hn  = _normHand(h);
+  const hid = String(hn.id || hn.handId || Date.now());
+  _handStore.set(hid, hn);
+
+  const scores = hn._decs.map(d => d.sc).filter(s => s != null);
+  const ws = scores.length ? Math.max(...scores) : (hn.score || 0);
+  const wc = ws>=.36 ? 'var(--clear)' : ws>=.18 ? 'var(--small)' : 'var(--standard)';
+  const cards  = hn.cards || hn.hero_cards || '';
+  const board  = hn.board || [];
+  const dispId = String(hn.id || hn.handId || '').slice(-6) || '------';
+
+  document.getElementById('ptitle').textContent = 'Mão #' + dispId;
+
+  let decsHtml = '';
+  if(hn._decs.length){
+    hn._decs.forEach(d => {
+      const lbl   = (d.l || 'standard').replace(/_/g,' ');
+      const color = lC(d.l || 'standard');
+      const wrongAction = d.t !== d.e;
+      decsHtml += '<div class="di">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+        + '<span style="font-family:var(--mono);font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">' + (d.s||'') + '</span>'
+        + '<span class="badge" style="color:' + color + ';border-color:' + color + '30;background:' + color + '10">' + lbl + '</span>'
+        + '</div>'
+        + '<div style="font-family:var(--mono);font-size:.74rem;display:flex;align-items:center;gap:7px">'
+        + '<span>' + (d.t||'—') + '</span><span style="color:var(--dim)">→</span>'
+        + '<span style="color:' + (wrongAction?'var(--clear)':'var(--standard)') + '">' + (d.e||'—') + '</span>'
+        + '<span style="margin-left:auto;color:var(--muted);font-size:.65rem">' + (+(d.sc||0)).toFixed(3) + '</span>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px;margin-top:5px;font-family:var(--mono);font-size:.6rem;color:var(--dim);flex-wrap:wrap">'
+        + (d.eq!=null ? '<span>eq ' + (d.eq*100).toFixed(0) + '%</span>' : '')
+        + (d.po!=null ? '<span>pot odds ' + (d.po*100).toFixed(0) + '%</span>' : '')
+        + (d.m !=null ? '<span>M=' + (+d.m).toFixed(1) + '</span>' : '')
+        + '<span style="color:' + (d.icm==='high'?'var(--clear)':d.icm==='medium'?'var(--marginal)':'var(--dim)') + '">ICM ' + (d.icm||'') + '</span>'
+        + '</div></div>';
+    });
+  } else {
+    decsHtml = '<div style="font-family:var(--mono);font-size:.72rem;color:var(--dim);padding:8px 0">Sem decisões registradas.</div>';
+  }
+
+  let cardsHtml = '';
+  if(cards.length >= 4) cardsHtml += pcs([cards.slice(0,2), cards.slice(2)]);
+  if(board.length) cardsHtml += '<div style="width:6px;height:1px;background:var(--border);flex-shrink:0"></div>' + pcs(board, true);
+
+  document.getElementById('pbody').innerHTML =
+    '<div class="psec" style="text-align:center;padding:6px 0 14px">'
+    + '<div style="font-family:var(--serif);font-size:1.8rem;font-weight:700;color:' + wc + '">' + ws.toFixed(3) + '</div>'
+    + '<div style="font-family:var(--mono);font-size:.57rem;color:var(--muted);margin-top:2px">SCORE MÁXIMO</div>'
+    + '<div class="cds" style="justify-content:center;gap:3px;margin-top:10px">' + cardsHtml + '</div>'
+    + '</div>'
+    + '<div class="psec"><div class="pst">Decisões</div>' + decsHtml + '</div>'
+    + '<div class="psec" id="llm-sec"><div class="pst">Coach IA</div>'
+    + '<div class="llm-box" id="llm-box">Clique em <b style="color:var(--gold)">✦ Coach IA</b> para análise personalizada desta mão.</div>'
+    + '<button class="btn-llm" data-hid="' + hid + '" onclick="triggerLLMById(this.dataset.hid)">✦ Analisar com Coach IA</button>'
+    + '</div>';
+
   document.getElementById('ov').classList.add('on');
   document.getElementById('dpanel').classList.add('open');
 }
-function closePanel(){document.getElementById('ov').classList.remove('on');document.getElementById('dpanel').classList.remove('open');}
-function openLLM(h){openDetail(h);setTimeout(()=>triggerLLM(h),80);}
+function closePanel(){ document.getElementById('ov').classList.remove('on'); document.getElementById('dpanel').classList.remove('open'); }
+function openLLM(h){ openDetail(h); setTimeout(()=>{ const hid=String(h.id||h.handId||''); triggerLLMById(hid); }, 200); }
+function triggerLLMById(hid){ const h=_handStore.get(hid); if(h) triggerLLM(h); }
+
 const llmT={
   '257048692293':'Com 4s6d fora do range de call, você entrou num pote difícil de vencer. No flop, call com 29% de equity contra barrel de 40% pot era matematicamente incorreto — precisava de 36% para quebrar mesmo. O padrão de chamar OOP com mãos especulativas é seu leak mais custoso no momento.',
   '257046607770':'Stack de 4.7M exigia decisão binária: fold ou push. Call passivo com A4o em ICM high é erro de concepção — a mão não tem equity suficiente e a posição OOP agrava. Com M tão baixo, qualquer call precisa de no mínimo 40-45% de equity.',
@@ -1154,17 +1247,29 @@ function _applyRealData(data){
     hands: data.total_hands,
     dec: data.metrics?.total_decisions || 0,
     score: data.metrics?.avg_mistake_score || 0,
-    data: Object.values(data.hands || {}).map(h => ({
-      id: h.decisions?.[0]?.handId || '0',
-      cards: h.cards || '',
-      board: h.decisions?.[0]?.board || [],
-      street: h.decisions?.[0]?.street || 'preflop',
-      took: h.decisions?.[0]?.actionTaken || '',
-      exp: h.decisions?.[0]?.bestAction || '',
-      gap: _scoreToGap(h.decisions?.[0]?.evaluation?.mistakeScore || 0),
-      score: h.decisions?.[0]?.evaluation?.mistakeScore || 0,
-      decs: h.decisions || [],
-    })),
+    data: Object.entries(data.hands || {}).map(([handKey, h]) => {
+      // Usar chave do objeto como ID real da mão
+      // O backend retorna { "257045919085": { cards, decisions, mtt } }
+      const decs = h.decisions || [];
+      const worstDec = decs.reduce((w,d) => {
+        const s = d.evaluation?.mistakeScore || 0;
+        return s > (w.evaluation?.mistakeScore||0) ? d : w;
+      }, decs[0] || {});
+      const maxScore = decs.reduce((m,d) => Math.max(m, d.evaluation?.mistakeScore||0), 0);
+      // board: pegar o maior board disponível entre as decisões
+      const board = decs.reduce((b,d) => (d.board||[]).length > b.length ? (d.board||[]) : b, []);
+      return {
+        id:     handKey,
+        cards:  h.cards || h.hero_cards || '',
+        board:  board,
+        street: (worstDec.street || 'preflop'),
+        took:   (worstDec.actionTaken || worstDec.action_taken || ''),
+        exp:    (worstDec.bestAction  || worstDec.best_action  || ''),
+        gap:    _scoreToGap(maxScore),
+        score:  maxScore,
+        decs:   decs,
+      };
+    }),
   };
   tourns.unshift(t);
   _renderTournamentList(tourns);
@@ -1285,6 +1390,17 @@ function doLogout(){
 // ── Init ──────────────────────────────────────────────────────────────────────
 (function init(){
   document.getElementById('mobile-period').style.display='flex';
+
+// ── Tooltip position fix ───────────────────────────────────────────────────
+document.addEventListener('mouseover', function(e){
+  const tt = e.target.closest('.tt');
+  if(!tt) return;
+  const box = tt.querySelector('.tt-b');
+  if(!box) return;
+  const rect = tt.getBoundingClientRect();
+  box.style.left = Math.max(8, Math.min(rect.left + rect.width/2 - 95, window.innerWidth - 206)) + 'px';
+  box.style.top  = Math.max(8, rect.top - box.offsetHeight - 8) + 'px';
+});
   const token    = localStorage.getItem('ll_token');
   const username = localStorage.getItem('ll_username');
   if(token && username){
