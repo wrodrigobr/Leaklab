@@ -7,7 +7,70 @@ from __future__ import annotations
 import json
 import hashlib
 from typing import Optional, List, Dict
-from .schema import get_conn
+from .schema import get_conn, USE_POSTGRES, now_sql, interval_sql
+
+
+# ── Query adapter ─────────────────────────────────────────────────────────────
+
+def _adapt(sql: str) -> str:
+    """
+    Adapta uma query SQLite para PostgreSQL se necessário.
+    Converte ? → %s e datetime() → NOW().
+    """
+    if not USE_POSTGRES:
+        return sql
+    import re
+    # Substituir placeholders ? por %s
+    sql = re.sub(r'(?<!\w)\?(?!\w)', '%s', sql)
+    # Substituir datetime('now')
+    sql = sql.replace("datetime('now')", 'NOW()')
+    # Substituir datetime('now', '-N days')
+    sql = re.sub(
+        r"datetime\('now',\s*'(-?\d+)\s*days?'\)",
+        lambda m: f"NOW() + INTERVAL '{m.group(1)} days'",
+        sql
+    )
+    # Substituir || (concat) — igual nos dois
+    return sql
+
+
+def _execute(conn, sql: str, params=None):
+    """Executa query e retorna cursor (Postgres) ou resultado (SQLite)."""
+    sql = _adapt(sql)
+    if USE_POSTGRES:
+        cur = conn.cursor()
+        cur.execute(sql, params or ())
+        return cur
+    else:
+        return conn.execute(sql, params or ())
+
+
+def _fetchall(conn, sql: str, params=None) -> list:
+    """Executa query SELECT e retorna lista de dicts."""
+    cur = _execute(conn, sql, params)
+    rows = cur.fetchall()
+    return [dict(r) for r in rows]
+
+
+def _fetchone(conn, sql: str, params=None) -> Optional[dict]:
+    """Executa query SELECT e retorna um dict ou None."""
+    cur = _execute(conn, sql, params)
+    row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def _insert(conn, sql: str, params=None) -> int:
+    """Executa INSERT e retorna o ID gerado."""
+    if USE_POSTGRES:
+        # Adicionar RETURNING id se não tiver
+        if 'RETURNING' not in sql.upper():
+            sql = sql.rstrip().rstrip(';') + ' RETURNING id'
+        cur = _execute(conn, sql, params)
+        row = cur.fetchone()
+        return dict(row)['id']
+    else:
+        cur = _execute(conn, sql, params)
+        return cur.lastrowid
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
@@ -86,7 +149,7 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
     lp = metrics.get('label_pct', {})
     try:
         # Upsert — se já existe, atualiza métricas
-        cur = conn.execute("""
+        cur = _fetchall(conn, """
             INSERT INTO tournaments
               (user_id, tournament_id, site, hero, played_at, imported_at,
                hands_count, decisions_count, avg_score,
@@ -494,7 +557,7 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
               AND t.imported_at >= datetime('now', ? || ' days')
             WHERE u.id IN ({placeholders})
             GROUP BY u.id
-        """, [f'-{days}'] + student_ids).fetchall()
+        """, [f'-{days}'] + student_ids)
 
         # Comparar com período anterior (dobro do período)
         prev_period = conn.execute(f"""
