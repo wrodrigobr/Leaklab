@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Banco de dados local
+*.db
+data/
+
+# Node
+node_modules/
+.vercel/
+
+# OS
+.DS_Store
+*.swp

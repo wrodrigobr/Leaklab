@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: leaklab-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn api.app:app --bind 0.0.0.0:$PORT --workers 2
+    envVars:
+      - key: GAPHUNTER_SECRET
+        generateValue: true
+      - key: GAPHUNTER_DB
+        value: /data/leaklab.db
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    disk:
+      name: leaklab-data
+      mountPath: /data
+      sizeGB: 1

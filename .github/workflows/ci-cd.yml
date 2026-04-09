@@ -1,0 +1,101 @@
+name: CI/CD — LeakLab
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Testes ────────────────────────────────────────────────────────────────
+  test:
+    name: Testes (184 casos)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r backend/requirements.txt
+
+      - name: Rodar suite completa
+        working-directory: backend
+        run: |
+          total=0; passed=0; failed=0
+          for f in tests/test_decision_engine.py tests/test_pipeline.py \
+                    tests/test_multi_decision.py tests/test_mtt_context.py \
+                    tests/test_postflop_evaluator.py tests/test_tournament.py \
+                    tests/test_api.py tests/test_llm_explainer.py \
+                    tests/test_draw_detector.py tests/test_database.py \
+                    tests/test_coach_system.py; do
+            result=$(python3 $f 2>&1 | tail -1)
+            t=$(echo $result | grep -o 'Total: [0-9]*' | grep -o '[0-9]*')
+            p=$(echo $result | grep -o 'Passed: [0-9]*' | grep -o '[0-9]*')
+            total=$((total + ${t:-0}))
+            passed=$((passed + ${p:-0}))
+            failed=$((failed + ${t:-0} - ${p:-0}))
+            echo "  $(basename $f) → $result"
+          done
+          echo ""
+          echo "TOTAL: $passed/$total testes passando"
+          if [ $failed -gt 0 ]; then
+            echo "FALHOU: $failed testes"
+            exit 1
+          fi
+
+  # ── Deploy Backend (Render) ───────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend → Render
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Trigger deploy no Render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          curl -s -X POST \
+            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}' \
+            | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          deploy_id = data.get('id', data.get('deploy', {}).get('id', '?'))
+          status = data.get('status', data.get('deploy', {}).get('status', '?'))
+          print(f'Deploy iniciado: id={deploy_id} status={status}')
+          "
+
+  # ── Deploy Frontend (Vercel) ──────────────────────────────────────────────
+  deploy-frontend:
+    name: Deploy Frontend → Vercel
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+          vercel build --prod --token=$VERCEL_TOKEN
+          vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN

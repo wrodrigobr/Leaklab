@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#09090b">
+<title>GapHunter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ink:#09090b;--felt:#0e1014;--surface:#13161c;--card:#191d25;
+  --border:#252a35;--border2:#2e3545;
+  --text:#e8e6df;--muted:#7a7870;--dim:#4a4840;
+  --gold:#c9a84c;--gold2:#e8c97a;--gold-dim:#c9a84c22;
+  --standard:#4caf7d;--marginal:#d4a843;--small:#d4763a;--clear:#c94040;
+  --serif:'Ubuntu',sans-serif;
+  --mono:'Ubuntu Mono',monospace;
+  --body:'Ubuntu',sans-serif;
+  --sidebar-w:210px;--topbar-h:52px;--bnav-h:60px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+html{scroll-behavior:smooth;-webkit-tap-highlight-color:transparent;}
+body{background:var(--felt);color:var(--text);font-family:var(--body);font-weight:300;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--ink);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:200;transition:transform .28s cubic-bezier(.22,1,.36,1);}
+.sidebar-logo{padding:22px 20px 18px;border-bottom:1px solid var(--border);}
+.logo-mark{font-family:var(--serif);font-size:1.5rem;font-weight:700;color:var(--gold);}
+.logo-sub{font-family:var(--mono);font-size:.55rem;color:var(--dim);letter-spacing:.22em;text-transform:uppercase;margin-top:3px;}
+.nav-section{padding:16px 0 6px;border-bottom:1px solid var(--border);}
+.nav-label{font-family:var(--mono);font-size:.55rem;color:var(--dim);letter-spacing:.18em;text-transform:uppercase;padding:0 18px 6px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 18px;font-size:.82rem;color:var(--muted);cursor:pointer;transition:color .15s,background .15s;border-left:2px solid transparent;user-select:none;}
+.nav-item:hover{color:var(--text);background:rgba(201,168,76,.04);}
+.nav-item.active{color:var(--gold);border-left-color:var(--gold);background:rgba(201,168,76,.06);}
+.nav-icon{font-size:.85rem;width:15px;text-align:center;flex-shrink:0;}
+.sidebar-player{margin-top:auto;padding:14px 18px;border-top:1px solid var(--border);}
+.player-name{font-family:var(--mono);font-size:.7rem;color:var(--text);}
+.player-since{font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-top:2px;}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:190;}
+
+/* BOTTOM NAV */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:calc(var(--bnav-h) + var(--safe-b));background:var(--ink);border-top:1px solid var(--border);z-index:200;padding-bottom:var(--safe-b);}
+.bnav-inner{display:flex;height:var(--bnav-h);}
+.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--dim);transition:color .15s;font-size:.57rem;font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;user-select:none;-webkit-tap-highlight-color:transparent;}
+.bnav-item.active{color:var(--gold);}
+.bnav-icon{font-size:1.05rem;line-height:1;}
+
+/* MAIN */
+.main-wrap{margin-left:var(--sidebar-w);min-height:100vh;position:relative;z-index:1;}
+
+/* TOPBAR */
+.topbar{height:var(--topbar-h);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:rgba(9,9,11,.85);backdrop-filter:blur(10px);position:sticky;top:0;z-index:100;gap:10px;}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.hamburger{display:none;flex-direction:column;gap:4px;cursor:pointer;padding:6px;border-radius:6px;}
+.hamburger span{width:18px;height:1.5px;background:var(--muted);border-radius:2px;transition:background .2s;}
+.hamburger:hover span{background:var(--gold);}
+.topbar-title{font-family:var(--serif);font-size:1.05rem;font-weight:600;font-weight:500;color:var(--text);white-space:nowrap;}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.period-tabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px;}
+.ptab{font-family:var(--mono);font-size:.62rem;padding:4px 9px;border-radius:4px;cursor:pointer;color:var(--muted);letter-spacing:.04em;transition:all .15s;white-space:nowrap;user-select:none;}
+.ptab.active{background:var(--gold);color:var(--ink);font-weight:500;}
+.btn-upload{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.65rem;padding:6px 12px;background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn-upload:hover{background:var(--gold);color:var(--ink);}
+
+/* MOBILE PERIOD */
+.mobile-period{display:none;gap:2px;padding:10px 14px 0;border-bottom:1px solid var(--border);background:var(--felt);}
+.mobile-period .ptab{font-size:.6rem;padding:5px 11px;}
+
+/* PAGES */
+.page{display:none;padding:20px 24px 32px;}
+.page.active{display:block;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s;}
+.kpi-card:hover{border-color:var(--border2);}
+.kpi-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0;transition:opacity .3s;}
+.kpi-card:hover::after{opacity:.45;}
+.kpi-label{font-family:var(--mono);font-size:.58rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:5px;margin-bottom:8px;}
+.kpi-val{font-family:var(--serif);font-size:1.75rem;font-weight:700;line-height:1;color:var(--text);}
+.kpi-val.g{color:var(--gold);}.kpi-val.gr{color:var(--standard);}.kpi-val.r{color:var(--clear);}
+.kpi-delta{font-family:var(--mono);font-size:.62rem;margin-top:5px;}
+.delta-up{color:var(--standard);}.delta-dn{color:var(--clear);}
+
+/* TOOLTIP */
+.tt{position:relative;display:inline-flex;cursor:help;}
+.tt-i{width:13px;height:13px;border-radius:50%;background:var(--border2);color:var(--muted);font-size:.58rem;display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);}
+.tt-b{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--ink);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;width:190px;font-family:var(--body);font-size:.73rem;color:var(--text);line-height:1.5;pointer-events:none;opacity:0;transition:opacity .15s;z-index:500;white-space:normal;font-weight:300;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.tt-b::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
+.tt:hover .tt-b,.tt:focus-within .tt-b{opacity:1;}
+
+/* SECTION */
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
+.sec-title{font-family:var(--serif);font-size:1.1rem;font-weight:500;color:var(--text);}
+.sec-sub{font-family:var(--mono);font-size:.6rem;color:var(--dim);}
+
+/* CHARTS */
+.evo-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.chart-title{font-family:var(--mono);font-size:.62rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:70px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bar-fill{width:100%;border-radius:3px 3px 0 0;min-height:2px;}
+.bar-lbl{font-family:var(--mono);font-size:.5rem;color:var(--dim);}
+
+/* ICM */
+.icm-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;}
+.icm-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.icm-label{font-family:var(--mono);font-size:.58rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:5px;}
+.icm-m{height:5px;background:var(--border2);border-radius:3px;overflow:hidden;margin-bottom:5px;}
+.icm-f{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.22,1,.36,1);}
+.icm-st{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.62rem;color:var(--dim);}
+
+/* TABLES */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;border:1px solid var(--border);}
+.dtbl{width:100%;border-collapse:collapse;min-width:560px;}
+.dtbl th{font-family:var(--mono);font-size:.58rem;color:var(--dim);font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:9px 12px;text-align:left;background:var(--surface);border-bottom:1px solid var(--border);white-space:nowrap;}
+.dtbl td{padding:8px 12px;border-bottom:1px solid rgba(37,42,53,.45);font-size:.77rem;vertical-align:middle;}
+.dtbl tr:last-child td{border-bottom:none;}
+.dtbl tr:hover td{background:rgba(201,168,76,.02);}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;font-family:var(--mono);font-size:.6rem;padding:2px 7px;border-radius:3px;border:1px solid;white-space:nowrap;}
+.sev-critical{color:var(--clear);border-color:#c9404035;background:#c9404010;}
+.sev-high{color:var(--small);border-color:#d4763a35;background:#d4763a10;}
+.sev-medium{color:var(--marginal);border-color:#d4a84335;background:#d4a84310;}
+.sev-low{color:var(--standard);border-color:#4caf7d35;background:#4caf7d10;}
+.gap-none{color:var(--standard);border-color:#4caf7d25;background:#4caf7d08;}
+.gap-marginal{color:var(--marginal);border-color:#d4a84325;background:#d4a84308;}
+.gap-small{color:var(--small);border-color:#d4763a25;background:#d4763a08;}
+.gap-clear{color:var(--clear);border-color:#c9404025;background:#c9404008;}
+
+/* TOURNAMENTS */
+.tbl-ctrl{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.srch{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:var(--mono);font-size:.72rem;color:var(--text);outline:none;transition:border-color .15s;min-width:0;flex:1;}
+.srch:focus{border-color:var(--gold);}
+.srch::placeholder{color:var(--dim);}
+.fsel{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:.68rem;color:var(--muted);outline:none;cursor:pointer;flex-shrink:0;}
+.tourn-list{display:flex;flex-direction:column;gap:8px;}
+.tourn-row{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s;}
+.tourn-row:hover{border-color:var(--border2);}
+.tourn-hdr{display:flex;align-items:center;padding:12px 16px;gap:12px;cursor:pointer;user-select:none;}
+.tourn-hdr:hover{background:rgba(201,168,76,.03);}
+.tourn-info{flex:1;min-width:0;}
+.tourn-name{font-family:var(--body);font-size:.88rem;font-weight:500;color:var(--text);}
+.tourn-date{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin-top:1px;}
+.tourn-pills{display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0;}
+.tpill{font-family:var(--mono);font-size:.6rem;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 7px;white-space:nowrap;}
+.tchev{color:var(--dim);font-size:.6rem;transition:transform .2s;flex-shrink:0;margin-left:4px;}
+.tourn-row.expanded .tchev{transform:rotate(90deg);}
+.hand-wrap{display:none;border-top:1px solid var(--border);}
+.tourn-row.expanded .hand-wrap{display:block;}
+.hand-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.htbl{width:100%;border-collapse:collapse;min-width:680px;}
+.htbl th{font-family:var(--mono);font-size:.56rem;color:var(--dim);font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:8px 13px;text-align:left;background:var(--surface);border-bottom:1px solid var(--border);white-space:nowrap;}
+.htbl td{padding:8px 13px;border-bottom:1px solid rgba(37,42,53,.4);font-size:.75rem;vertical-align:middle;}
+.htbl tr:last-child td{border-bottom:none;}
+.htbl tr:hover td{background:rgba(201,168,76,.02);}
+
+/* CARDS */
+.cds{display:flex;gap:2px;align-items:center;}
+.pc{
+  width:28px;height:38px;border-radius:4px;background:#f8f6f0;
+  border:1px solid rgba(0,0,0,.12);
+  display:inline-flex;flex-direction:column;
+  align-items:flex-start;justify-content:flex-start;
+  padding:2px 3px;
+  font-family:var(--mono);font-weight:700;flex-shrink:0;
+  position:relative;box-shadow:0 1px 3px rgba(0,0,0,.25);
+}
+.pc .rank{font-size:.62rem;line-height:1;display:block;}
+.pc .suit{font-size:.72rem;line-height:1;position:absolute;bottom:2px;right:3px;display:block;}
+.pc.board{background:#f0ede6;border-color:rgba(0,0,0,.18);}
+.pc.s,.pc.c{color:#1a1a2e;}.pc.h,.pc.d{color:#c0392b;}
+
+
+/* BUTTONS */
+.bxs{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:.58rem;padding:3px 8px;border-radius:4px;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:none;transition:all .15s;white-space:nowrap;}
+.bxs:hover{border-color:var(--gold);color:var(--gold);}
+.bxs.llm{border-color:rgba(201,168,76,.35);color:var(--gold);}
+.bxs.llm:hover{background:var(--gold);color:var(--ink);}
+
+/* DETAIL PANEL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:290;opacity:0;pointer-events:none;transition:opacity .25s;}
+.ov.on{opacity:1;pointer-events:all;}
+.dpanel{position:fixed;right:0;top:0;bottom:0;width:min(420px,100vw);background:var(--ink);border-left:1px solid var(--border);z-index:300;transform:translateX(100%);transition:transform .28s cubic-bezier(.22,1,.36,1);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.dpanel.open{transform:translateX(0);}
+.ph{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--ink);z-index:10;}
+.pt{font-family:var(--serif);font-size:1rem;font-weight:500;color:var(--text);}
+.pc-close{font-size:1rem;color:var(--muted);cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;}
+.pc-close:hover{background:var(--border);color:var(--text);}
+.pb{padding:18px 20px;}
+.psec{margin-bottom:16px;}
+.pst{font-family:var(--mono);font-size:.58rem;color:var(--gold);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--gold-dim);}
+.di{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:6px;}
+.llm-box{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:12px;font-size:.76rem;color:var(--muted);line-height:1.6;}
+.llm-ld{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:.68rem;color:var(--gold);}
+.dots span{animation:blink 1.2s infinite;display:inline-block;}
+.dots span:nth-child(2){animation-delay:.2s;}.dots span:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+.btn-llm{width:100%;margin-top:10px;padding:9px;background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);font-family:var(--mono);font-size:.68rem;border-radius:6px;cursor:pointer;transition:all .2s;letter-spacing:.05em;}
+.btn-llm:hover{background:var(--gold);color:var(--ink);}
+
+/* STUDY */
+.study-list{display:flex;flex-direction:column;gap:10px;}
+.study-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;position:relative;overflow:hidden;}
+.study-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+.study-card.p1::before{background:var(--clear);}.study-card.p2::before{background:var(--small);}.study-card.p3::before{background:var(--marginal);}
+.study-icon{font-size:1.2rem;flex-shrink:0;margin-top:1px;}
+.sb{flex:1;min-width:0;}
+.stitle{font-family:var(--body);font-size:.88rem;font-weight:500;color:var(--text);margin-bottom:3px;}
+.sdesc{font-size:.75rem;color:var(--muted);line-height:1.5;}
+.stag{font-family:var(--mono);font-size:.57rem;padding:2px 6px;border-radius:3px;background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold);margin-top:7px;display:inline-block;}
+.ssess{font-family:var(--mono);font-size:.6rem;color:var(--dim);margin-top:3px;}
+.prog-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.prog-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:15px;}
+
+/* MODAL */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-ov.on{display:flex;}
+.modal-box{background:var(--ink);border:1px solid var(--border);border-radius:14px;padding:26px;width:min(450px,100%);position:relative;}
+.modal-title{font-family:var(--serif);font-size:1.3rem;font-weight:500;color:var(--text);margin-bottom:4px;}
+.modal-sub{font-family:var(--mono);font-size:.64rem;color:var(--dim);margin-bottom:20px;}
+.drop-zone{border:1.5px dashed var(--border2);border-radius:10px;padding:30px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.drop-zone:hover,.drop-zone.over{border-color:var(--gold);background:var(--gold-dim);}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dsuit{font-size:1.8rem;color:var(--gold);margin-bottom:8px;}
+.drop-zone h3{font-family:var(--body);font-size:.88rem;font-weight:500;color:var(--text);margin-bottom:3px;}
+.drop-zone p{font-family:var(--mono);font-size:.63rem;color:var(--dim);}
+.fconf{font-family:var(--mono);font-size:.67rem;color:var(--standard);margin-top:8px;min-height:16px;}
+.btn-prim{width:100%;margin-top:14px;padding:12px;background:var(--gold);color:var(--ink);font-family:var(--body);font-weight:600;font-size:.85rem;border:none;border-radius:7px;cursor:pointer;transition:opacity .2s;}
+.btn-prim:disabled{opacity:.3;cursor:not-allowed;}
+.mcl{position:absolute;top:14px;right:14px;color:var(--muted);cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:.95rem;transition:all .15s;}
+.mcl:hover{background:var(--border);color:var(--text);}
+
+/* TOURNAMENT SUMMARY CARD */
+.summary-card{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:20px;overflow:hidden;}
+.summary-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none;transition:background .15s;}
+.summary-header:hover{background:rgba(201,168,76,.04);}
+.summary-header-left{display:flex;align-items:center;gap:10px;}
+.summary-icon{width:28px;height:28px;border-radius:6px;background:var(--gold-dim);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--gold);flex-shrink:0;}
+.summary-label{font-size:.82rem;font-weight:500;color:var(--text);}
+.summary-sublabel{font-family:var(--mono);font-size:.6rem;color:var(--dim);margin-top:1px;}
+.summary-chevron{color:var(--muted);font-size:.6rem;transition:transform .2s;font-family:var(--mono);}
+.summary-card.open .summary-chevron{transform:rotate(90deg);}
+.summary-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border);}
+.summary-card.open .summary-body{display:block;}
+.summary-text{font-size:.82rem;color:var(--muted);line-height:1.7;padding-top:14px;}
+.summary-text.loaded{color:var(--text);}
+.summary-footer{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+.summary-meta{font-family:var(--mono);font-size:.6rem;color:var(--dim);}
+.btn-summary-llm{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:.62rem;padding:5px 11px;background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);border-radius:5px;cursor:pointer;transition:all .15s;}
+.btn-summary-llm:hover{background:var(--gold);color:var(--ink);}
+.btn-summary-llm:disabled{opacity:.4;cursor:not-allowed;}
+
+/* FILTERS */
+.tourn-filters{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;}
+.filter-row{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;}
+.filter-group{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.filter-label{font-family:var(--mono);font-size:.58rem;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;}
+.filter-summary{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin-top:8px;}
+.filter-summary span{color:var(--gold);}
+.btn-clear-filters{font-family:var(--mono);font-size:.62rem;padding:6px 10px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;cursor:pointer;transition:all .15s;white-space:nowrap;align-self:flex-end;}
+.btn-clear-filters:hover{border-color:var(--clear);color:var(--clear);}
+
+/* TOURNAMENT CARD REDESIGN */
+.tourn-row{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s;margin-bottom:8px;}
+.tourn-row:hover{border-color:var(--border2);}
+.tourn-row.expanded{border-color:rgba(201,168,76,.35);}
+.tourn-hdr{display:flex;align-items:center;padding:14px 16px;gap:12px;cursor:pointer;user-select:none;}
+.tourn-hdr:hover{background:rgba(201,168,76,.03);}
+.tourn-info{flex:1;min-width:0;}
+.tourn-name{font-size:.88rem;font-weight:500;color:var(--text);}
+.tourn-date{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin-top:2px;}
+.tourn-site-badge{font-family:var(--mono);font-size:.58rem;padding:1px 6px;border-radius:3px;background:var(--surface);border:1px solid var(--border2);color:var(--muted);margin-left:6px;}
+.tourn-kpis{display:flex;gap:8px;flex-shrink:0;align-items:center;flex-wrap:wrap;}
+.tkpi{display:flex;flex-direction:column;align-items:flex-end;gap:1px;}
+.tkpi-val{font-family:var(--mono);font-size:.75rem;font-weight:500;color:var(--text);}
+.tkpi-lbl{font-family:var(--mono);font-size:.55rem;color:var(--dim);letter-spacing:.05em;}
+.tourn-result{font-family:var(--mono);font-size:.62rem;padding:2px 8px;border-radius:3px;border:1px solid;flex-shrink:0;}
+.result-itm{color:var(--standard);border-color:#4caf7d30;background:#4caf7d0a;}
+.result-elim{color:var(--muted);border-color:var(--border2);background:none;}
+.tchev{color:var(--muted);font-size:.6rem;transition:transform .2s;margin-left:4px;flex-shrink:0;}
+.tourn-row.expanded .tchev{transform:rotate(90deg);}
+
+/* TOURNAMENT BODY — tabs */
+.tourn-body{display:none;border-top:1px solid var(--border);}
+.tourn-row.expanded .tourn-body{display:block;}
+.tourn-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);}
+.ttab{font-family:var(--mono);font-size:.65rem;padding:9px 16px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;user-select:none;white-space:nowrap;}
+.ttab:hover{color:var(--text);}
+.ttab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.ttab-panel{display:none;padding:16px;}
+.ttab-panel.active{display:block;}
+
+/* TOURNAMENT SUMMARY ACCORDION (inside torneio) */
+.t-summary-acc{border:1px solid var(--border2);border-radius:8px;margin-bottom:12px;overflow:hidden;}
+.t-summary-hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;transition:background .15s;user-select:none;}
+.t-summary-hdr:hover{background:rgba(201,168,76,.04);}
+.t-sum-icon{color:var(--gold);font-size:.85rem;flex-shrink:0;}
+.t-sum-title{font-size:.82rem;font-weight:500;color:var(--text);flex:1;}
+.t-sum-status{font-family:var(--mono);font-size:.6rem;color:var(--dim);}
+.t-sum-chev{color:var(--dim);font-size:.6rem;transition:transform .2s;flex-shrink:0;}
+.t-summary-acc.open .t-sum-chev{transform:rotate(90deg);}
+.t-summary-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border2);}
+.t-summary-acc.open .t-summary-body{display:block;}
+.t-sum-text{font-size:.8rem;color:var(--muted);line-height:1.7;padding-top:12px;}
+.t-sum-text.loaded{color:var(--text);}
+.t-sum-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid var(--border2);}
+.t-sum-meta{font-family:var(--mono);font-size:.6rem;color:var(--dim);}
+.btn-t-sum{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:.62rem;padding:5px 11px;background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);border-radius:5px;cursor:pointer;transition:all .15s;}
+.btn-t-sum:hover{background:var(--gold);color:var(--ink);}
+.btn-t-sum:disabled{opacity:.4;cursor:not-allowed;}
+
+/* RESPONSIVE */
+@media(max-width:1024px){
+  .sidebar{transform:translateX(-100%);}
+  .sidebar.open{transform:translateX(0);}
+  .sidebar-overlay.on{display:block;}
+  .hamburger{display:flex;}
+  .main-wrap{margin-left:0;}
+  .topbar{padding:0 16px;}
+  .page{padding:16px 16px 28px;}
+  .kpi-row{grid-template-columns:repeat(3,1fr);}
+  .evo-grid{grid-template-columns:1fr;}
+}
+@media(max-width:768px){
+  .filter-row{gap:8px;}
+  .filter-group{flex:1;min-width:calc(50% - 4px);}
+  .btn-clear-filters{width:100%;}
+  .tourn-kpis{display:none;}
+  .tourn-tabs .ttab{font-size:.6rem;padding:8px 12px;}
+}
+@media(max-width:640px){
+  .sidebar,.sidebar-overlay{display:none!important;}
+  .hamburger{display:none!important;}
+  .bottom-nav{display:block;}
+  .main-wrap{margin-left:0;padding-bottom:calc(var(--bnav-h) + var(--safe-b));}
+  .topbar{padding:0 13px;}
+  .topbar-title{font-size:.9rem;}
+  .period-tabs{display:none!important;}
+  .btn-upload .upload-text{display:none;}
+  .btn-upload{padding:6px 9px;}
+  .page{padding:13px 13px 18px;}
+  .kpi-row{grid-template-columns:1fr 1fr;}
+  .kpi-val{font-size:1.55rem;}
+  .kpi-delta{font-size:.58rem;}
+  .evo-grid{grid-template-columns:1fr;}
+  .icm-row{grid-template-columns:1fr;}
+  .prog-grid{grid-template-columns:1fr;}
+  .dpanel{width:100%;border-left:none;}
+  #street-dist{grid-template-columns:1fr 1fr!important;}
+  .tourn-pills{display:none;}
+  .filter-group{min-width:calc(50% - 4px);flex:1;}
+  .tourn-kpis .tkpi:nth-child(n+3){display:none;}
+  .mobile-period{display:flex!important;}
+  .hide-mobile{display:none!important;}
+}
+@media(max-width:380px){
+  .kpi-row{grid-template-columns:1fr 1fr;}
+  .kpi-val{font-size:1.35rem;}
+}
+
+.s1{animation:fadeIn .4s .04s both;}.s2{animation:fadeIn .4s .09s both;}.s3{animation:fadeIn .4s .14s both;}.s4{animation:fadeIn .4s .19s both;}.s5{animation:fadeIn .4s .24s both;}
+::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:var(--ink);}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><div class="logo-mark">GapHunter</div><div class="logo-sub">MTT Coach · v1.1</div></div>
+  <div class="nav-section">
+    <div class="nav-label">Análise</div>
+    <div class="nav-item active" onclick="nav('evolution',this)"><span class="nav-icon">◈</span>Evolução</div>
+    <div class="nav-item" onclick="nav('leaks',this)"><span class="nav-icon">⬡</span>Leaks</div>
+    <div class="nav-item" onclick="nav('tournaments',this)"><span class="nav-icon">◉</span>Torneios</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Coaching</div>
+    <div class="nav-item" onclick="nav('study',this)"><span class="nav-icon">◎</span>Plano de Estudo</div>
+  </div>
+  <div class="sidebar-player"><div class="player-name">phpro</div><div class="player-since">desde julho 2025</div></div>
+</nav>
+
+<div class="bottom-nav">
+  <div class="bnav-inner">
+    <div class="bnav-item active" id="bn-evolution" onclick="nav('evolution',null,true)"><div class="bnav-icon">◈</div>Evolução</div>
+    <div class="bnav-item" id="bn-leaks" onclick="nav('leaks',null,true)"><div class="bnav-icon">⬡</div>Leaks</div>
+    <div class="bnav-item" id="bn-tournaments" onclick="nav('tournaments',null,true)"><div class="bnav-icon">◉</div>Torneios</div>
+    <div class="bnav-item" id="bn-study" onclick="nav('study',null,true)"><div class="bnav-icon">◎</div>Estudo</div>
+  </div>
+</div>
+
+<div class="main-wrap">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
+      <div class="topbar-title" id="topbar-title">Evolução</div>
+    </div>
+    <div class="topbar-right">
+      <div class="period-tabs" id="period-tabs">
+        <div class="ptab" onclick="setPeriod(this)">7d</div>
+        <div class="ptab active" onclick="setPeriod(this)">30d</div>
+        <div class="ptab" onclick="setPeriod(this)">90d</div>
+        <div class="ptab" onclick="setPeriod(this)">Tudo</div>
+      </div>
+      <div class="btn-upload" onclick="openModal()">⊕ <span class="upload-text">Importar</span></div>
+    </div>
+  </div>
+  <div class="mobile-period" id="mobile-period">
+    <div class="ptab" onclick="setPeriod(this)">7d</div>
+    <div class="ptab active" onclick="setPeriod(this)">30d</div>
+    <div class="ptab" onclick="setPeriod(this)">90d</div>
+    <div class="ptab" onclick="setPeriod(this)">Tudo</div>
+  </div>
+
+  <!-- EVOLUÇÃO -->
+  <div class="page active" id="page-evolution">
+    <div class="kpi-row">
+      <div class="kpi-card s1"><div class="kpi-label">Score Médio<div class="tt"><span class="tt-i">?</span><div class="tt-b">Média do erro por decisão. Abaixo de 0.10 é saudável. Quanto menor, melhor.</div></div></div><div class="kpi-val g">0.072</div><div class="kpi-delta delta-up">↓ 22% vs mês anterior</div></div>
+      <div class="kpi-card s2"><div class="kpi-label">Taxa Standard<div class="tt"><span class="tt-i">?</span><div class="tt-b">% de decisões corretas. Meta: acima de 75%. Avançados ficam acima de 85%.</div></div></div><div class="kpi-val gr">79.8%</div><div class="kpi-delta delta-up">↑ 10pp vs mês anterior</div></div>
+      <div class="kpi-card s3"><div class="kpi-label">Clear Mistakes<div class="tt"><span class="tt-i">?</span><div class="tt-b">Erros com score acima de 0.36. Os mais custosos. Meta: abaixo de 5%.</div></div></div><div class="kpi-val r">8.5%</div><div class="kpi-delta delta-dn">↑ 1.2pp — em alta</div></div>
+      <div class="kpi-card s4"><div class="kpi-label">M Ratio Médio<div class="tt"><span class="tt-i">?</span><div class="tt-b">Stack ÷ órbita. Acima de 20 = confortável. 10–20 = atenção. Abaixo de 6 = crítico.</div></div></div><div class="kpi-val">7.3</div><div class="kpi-delta delta-dn">↓ zona de pressão</div></div>
+      <div class="kpi-card s5"><div class="kpi-label">Leak Persistente<div class="tt"><span class="tt-i">?</span><div class="tt-b">Spot com erro recorrente nas últimas 3+ sessões. Leak estrutural — estudo prioritário.</div></div></div><div class="kpi-val" style="font-size:.88rem;padding-top:6px;font-weight:600;color:var(--small)">turn/call</div><div class="kpi-delta delta-dn">3 sessões seguidas</div></div>
+    </div>
+
+    <div class="sec-head"><div class="sec-title">Qualidade por Sessão</div><div class="sec-sub">Últimas 7 sessões</div></div>
+    <div class="evo-grid">
+      <div class="chart-card s1">
+        <div class="chart-title">% Standard<div class="tt"><span class="tt-i">?</span><div class="tt-b">Cada barra = uma sessão. Barras mais altas = mais decisões corretas.</div></div></div>
+        <div class="bar-chart" id="bar-standard"></div>
+      </div>
+      <div class="chart-card s2">
+        <div class="chart-title">Evolução do score<div class="tt"><span class="tt-i">?</span><div class="tt-b">Linha descendente é o objetivo: erros diminuindo ao longo do tempo.</div></div></div>
+        <div style="display:flex;align-items:flex-end;height:70px;padding:4px 0;" id="score-trend"></div>
+      </div>
+    </div>
+
+    <div class="sec-head"><div class="sec-title">Performance por Pressão ICM</div></div>
+    <div class="icm-row s1">
+      <div class="icm-card"><div class="icm-label">ICM Low<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">M &gt; 10. Jogue seu melhor jogo base, sem distorções de ICM.</div></div></div><div style="font-family:var(--body);font-size:1.4rem;font-weight:700;color:var(--standard);margin-bottom:7px">82.1%</div><div class="icm-m"><div class="icm-f" style="width:82%;background:var(--standard)"></div></div><div class="icm-st"><span>95 mãos</span><span>0.058</span></div></div>
+      <div class="icm-card"><div class="icm-label">ICM Medium<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">M entre 6–10. Erros aqui custam equity de torneio, não só chips.</div></div></div><div style="font-family:var(--body);font-size:1.4rem;font-weight:700;color:var(--marginal);margin-bottom:7px">76.4%</div><div class="icm-m"><div class="icm-f" style="width:76%;background:var(--marginal)"></div></div><div class="icm-st"><span>138 mãos</span><span>0.091</span></div></div>
+      <div class="icm-card"><div class="icm-label">ICM High<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">M ≤ 6 ou final table. Cada decisão define seu resultado no torneio.</div></div></div><div style="font-family:var(--body);font-size:1.4rem;font-weight:700;color:var(--clear);margin-bottom:7px">68.9%</div><div class="icm-m"><div class="icm-f" style="width:69%;background:var(--clear)"></div></div><div class="icm-st"><span>167 mãos</span><span>0.118</span></div></div>
+    </div>
+
+    <div class="sec-head"><div class="sec-title">Comparativo de Períodos</div><div class="sec-sub">Esta semana vs anterior</div></div>
+    <div class="tbl-wrap" style="margin-bottom:20px;"><table class="dtbl"><thead><tr><th>Métrica</th><th>Esta semana</th><th class="hide-mobile">Anterior</th><th>Δ</th></tr></thead><tbody id="comp-body"></tbody></table></div>
+  </div>
+
+  <!-- LEAKS -->
+  <div class="page" id="page-leaks">
+    <div class="sec-head"><div class="sec-title">Mapa de Leaks</div></div>
+    <div class="tbl-wrap" style="margin-bottom:20px;"><table class="dtbl"><thead><tr><th>Spot</th><th>Peso<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">Média de erro neste spot. Acima de 0.40 é crítico e exige estudo prioritário.</div></div></th><th>N</th><th>Tend.</th><th>Severidade</th><th class="hide-mobile">Descrição</th></tr></thead><tbody id="leaks-body"></tbody></table></div>
+    <div class="sec-head"><div class="sec-title">Erro por Street</div></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;" id="street-dist"></div>
+  </div>
+
+  <!-- TORNEIOS -->
+  <div class="page" id="page-tournaments">
+
+    <!-- Filtros -->
+    <div class="tourn-filters" id="tourn-filters">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label class="filter-label">Buscar</label>
+          <input class="srch" placeholder="ID ou data..." id="search-t" oninput="filterTournaments()">
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Site</label>
+          <select class="fsel" id="filter-site" onchange="filterTournaments()">
+            <option value="">Todos</option>
+            <option value="pokerstars">PokerStars</option>
+            <option value="ggpoker">GGPoker</option>
+            <option value="888poker">888poker</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Resultado</label>
+          <select class="fsel" id="filter-result" onchange="filterTournaments()">
+            <option value="">Todos</option>
+            <option value="itm">ITM (no dinheiro)</option>
+            <option value="elim">Eliminado</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Score</label>
+          <select class="fsel" id="filter-score" onchange="filterTournaments()">
+            <option value="">Qualquer</option>
+            <option value="good">Bom (≤ 0.07)</option>
+            <option value="avg">Médio (0.07–0.12)</option>
+            <option value="bad">Crítico (> 0.12)</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Leaks</label>
+          <select class="fsel" id="filter-leaks" onchange="filterTournaments()">
+            <option value="">Todos</option>
+            <option value="clear">Com clear mistakes</option>
+            <option value="clean">Sem erros críticos</option>
+          </select>
+        </div>
+        <button class="btn-clear-filters" onclick="clearFilters()">✕ Limpar</button>
+      </div>
+      <div class="filter-summary" id="filter-summary"></div>
+    </div>
+
+    <div class="tourn-list" id="tourn-list"></div>
+  </div>
+
+  <!-- ESTUDO -->
+  <div class="page" id="page-study">
+    <div class="sec-head"><div class="sec-title">Plano de Estudo</div><div class="sec-sub">Baseado nos seus leaks</div></div>
+    <div class="study-list" id="study-list"></div>
+    <div style="margin-top:22px;"><div class="sec-head"><div class="sec-title">Progresso por Categoria</div></div><div class="prog-grid" id="prog-grid"></div></div>
+  </div>
+</div>
+
+<div class="ov" id="ov" onclick="closePanel()"></div>
+<div class="dpanel" id="dpanel"><div class="ph"><div class="pt" id="ptitle">Detalhes</div><div class="pc-close" onclick="closePanel()">✕</div></div><div class="pb" id="pbody"></div></div>
+
+<div class="modal-ov" id="modal">
+  <div class="modal-box">
+    <div class="mcl" onclick="closeModal()">✕</div>
+    <div class="modal-title">Importar Hand History</div>
+    <div class="modal-sub">// arquivo .txt exportado do PokerStars</div>
+    <div class="drop-zone"><input type="file" accept=".txt" onchange="onFile(this)"><div class="dsuit">♠</div><h3>Arraste o arquivo</h3><p>ou toque para selecionar</p></div>
+    <div class="fconf" id="fconf"></div>
+    <button class="btn-prim" id="btn-imp" disabled onclick="importFile()">Analisar & Importar</button>
+  </div>
+</div>
+
+<script>
+const sessions=[{d:'08/07',s:71,sc:.094},{d:'12/07',s:74,sc:.087},{d:'18/07',s:76,sc:.081},{d:'22/07',s:78,sc:.078},{d:'25/07',s:80,sc:.072},{d:'28/07',s:81,sc:.068},{d:'01/08',s:79,sc:.075}];
+
+const tourns=[
+  {id:'3910307458',date:'22/07/2025',site:'pokerstars',result:'itm',place:18,hands:400,dec:485,score:.072,
+   data:[
+    {id:'257045919085',cards:'8s8h',board:['Ac','Jc','5c','4h'],street:'preflop',took:'call',exp:'raise',gap:'small',score:.256,decs:[
+      {s:'preflop',t:'call',e:'raise',l:'small_mistake',sc:.256,eq:.57,po:.50,m:10.8,icm:'low'},
+      {s:'flop',t:'bet',e:'bet',l:'standard',sc:.01,eq:.58,m:10.8,icm:'low'},
+      {s:'turn',t:'check',e:'bet',l:'marginal',sc:.162,eq:.58,m:10.8,icm:'low'},
+      {s:'river',t:'check',e:'bet',l:'small_mistake',sc:.190,eq:.58,m:10.8,icm:'low'},
+    ]},
+    {id:'257048692293',cards:'4s6d',board:['7h','2c','Ah','Qd','Ks'],street:'flop',took:'call',exp:'fold',gap:'clear',score:.630,decs:[
+      {s:'preflop',t:'check',e:'fold',l:'small_mistake',sc:.294,eq:.33,m:9.5,icm:'medium'},
+      {s:'flop',t:'call',e:'fold',l:'clear_mistake',sc:.630,eq:.29,po:.40,m:9.5,icm:'medium'},
+      {s:'turn',t:'call',e:'fold',l:'clear_mistake',sc:.421,eq:.29,po:.27,m:9.5,icm:'medium'},
+      {s:'river',t:'fold',e:'fold',l:'standard',sc:.011,eq:.29,m:9.5,icm:'medium'},
+    ]},
+    {id:'257046607770',cards:'4sAd',board:['5c','8h','Kd'],street:'preflop',took:'call',exp:'fold',gap:'clear',score:.608,decs:[
+      {s:'preflop',t:'call',e:'fold',l:'clear_mistake',sc:.608,eq:.33,po:.50,m:4.7,icm:'high'},
+      {s:'flop',t:'bet',e:'fold',l:'small_mistake',sc:.310,eq:.29,m:4.7,icm:'high'},
+    ]},
+    {id:'257047282699',cards:'Td6c',board:['Jh','5s','2c','9d'],street:'preflop',took:'call',exp:'fold',gap:'clear',score:.599,decs:[
+      {s:'preflop',t:'call',e:'fold',l:'clear_mistake',sc:.599,eq:.33,po:.50,m:11.4,icm:'low'},
+      {s:'flop',t:'check',e:'fold',l:'small_mistake',sc:.310,eq:.29,m:11.4,icm:'low'},
+      {s:'turn',t:'fold',e:'fold',l:'standard',sc:.011,eq:.29,m:11.4,icm:'low'},
+    ]},
+    {id:'257046289430',cards:'KhKd',board:['Ac','7s','2d'],street:'preflop',took:'raise',exp:'raise',gap:'none',score:.011,decs:[
+      {s:'preflop',t:'raise',e:'raise',l:'standard',sc:.011,eq:.72,m:12.1,icm:'low'},
+      {s:'flop',t:'bet',e:'bet',l:'standard',sc:.008,eq:.65,m:12.1,icm:'low'},
+    ]},
+    {id:'257046008859',cards:'2h5d',board:[],street:'preflop',took:'raise',exp:'fold',gap:'clear',score:.466,decs:[
+      {s:'preflop',t:'raise',e:'fold',l:'clear_mistake',sc:.466,eq:.33,m:.9,icm:'high'},
+    ]},
+  ]},
+  {id:'3921884712',date:'19/07/2025',site:'pokerstars',result:'elim',place:null,hands:280,dec:341,score:.091,
+   data:[
+    {id:'257031100001',cards:'AhKd',board:['Qc','Js','Td'],street:'preflop',took:'raise',exp:'raise',gap:'none',score:.008,decs:[
+      {s:'preflop',t:'raise',e:'raise',l:'standard',sc:.008,eq:.72,m:14.2,icm:'low'},
+      {s:'flop',t:'bet',e:'bet',l:'standard',sc:.012,eq:.68,m:14.2,icm:'low'},
+    ]},
+    {id:'257031100002',cards:'7h8h',board:['9d','Tc','2h'],street:'flop',took:'call',exp:'raise',gap:'marginal',score:.182,decs:[
+      {s:'preflop',t:'call',e:'call',l:'standard',sc:.018,eq:.45,po:.33,m:9.1,icm:'medium'},
+      {s:'flop',t:'call',e:'raise',l:'marginal',sc:.182,eq:.52,m:9.1,icm:'medium'},
+    ]},
+    {id:'257031100003',cards:'Ks5s',board:['As','2s','8c','Jd'],street:'turn',took:'fold',exp:'call',gap:'clear',score:.544,decs:[
+      {s:'preflop',t:'call',e:'call',l:'standard',sc:.022,eq:.41,po:.28,m:6.3,icm:'high'},
+      {s:'flop',t:'check',e:'check',l:'standard',sc:.005,eq:.38,m:6.3,icm:'high'},
+      {s:'turn',t:'fold',e:'call',l:'clear_mistake',sc:.544,eq:.55,po:.31,m:6.3,icm:'high'},
+    ]},
+  ]},
+  {id:'3908112433',date:'15/07/2025',site:'ggpoker',result:'itm',place:5,hands:520,dec:632,score:.068,
+   data:[
+    {id:'257020000001',cards:'JcJd',board:['2h','5c','Kd','9s'],street:'preflop',took:'raise',exp:'raise',gap:'none',score:.011,decs:[
+      {s:'preflop',t:'raise',e:'raise',l:'standard',sc:.011,eq:.70,m:12.8,icm:'low'},
+      {s:'turn',t:'bet',e:'bet',l:'standard',sc:.009,eq:.62,m:12.8,icm:'low'},
+    ]},
+    {id:'257020000002',cards:'Ah2h',board:['4h','7h','Kc'],street:'flop',took:'check',exp:'bet',gap:'marginal',score:.165,decs:[
+      {s:'flop',t:'check',e:'bet',l:'marginal',sc:.165,eq:.48,m:8.5,icm:'medium'},
+    ]},
+  ]},
+];
+const leaksD=[
+  {spot:'turn/call',avg:.678,n:9,tr:'↑',sev:'critical',desc:'Calls no turn com equity insuficiente.'},
+  {spot:'preflop/call',avg:.283,n:41,tr:'→',sev:'high',desc:'Calls fora do range, especialmente OOP.'},
+  {spot:'flop/call',avg:.233,n:12,tr:'↓',sev:'medium',desc:'Calls no flop sem pot odds adequada.'},
+  {spot:'river/raise',avg:.550,n:4,tr:'→',sev:'high',desc:'Raises no river em spots incorretos.'},
+  {spot:'turn/fold',avg:.420,n:5,tr:'↓',sev:'high',desc:'Folds com equity suficiente.'},
+  {spot:'flop/fold',avg:.333,n:8,tr:'↓',sev:'medium',desc:'Folds com draws ativos.'},
+  {spot:'preflop/raise',avg:.145,n:123,tr:'↓',sev:'medium',desc:'Raises fora do spot ideal.'},
+  {spot:'preflop/fold',avg:.088,n:245,tr:'↓',sev:'low',desc:'Folds geralmente corretos.'},
+];
+const comp=[{m:'Score médio',c:.072,p:.091,lb:true},{m:'Taxa Standard',c:79.8,p:73.2,u:'%',lb:false},{m:'Clear Mistakes',c:8.5,p:9.8,u:'%',lb:true},{m:'turn/call avg',c:.678,p:.541,lb:true},{m:'preflop/call avg',c:.283,p:.301,lb:true}];
+
+const studyD=[
+  {p:'p1',i:'♦',title:'Pot Odds no Turn',desc:'Seu principal leak (avg 0.678, 9 ocorrências). Calls no turn com equity insuficiente. Estude pot odds ajustado por implied odds e identifique spots de barrel.',tag:'turn/call · CRÍTICO',sess:'3 sessões consecutivas'},
+  {p:'p2',i:'♠',title:'Range de Call Pré-flop OOP',desc:'Calls fora do range em posição OOP. Sem a vantagem posicional, o breakeven de equity sobe. Revise defesa de BB e calls de SB vs open.',tag:'preflop/call · ALTA',sess:'41 ocorrências no período'},
+  {p:'p3',i:'♣',title:'Equity de Draw no Flop',desc:'Folds no flop com flush draw ou straight draw ativo. Com draws, a equity efetiva sobe 8–17%. Pratique cálculo de pot odds com outs.',tag:'flop/fold · MÉDIA',sess:'8 ocorrências'},
+  {p:'p3',i:'♥',title:'Push/Fold com ICM High',desc:'Com M ≤ 6, cada call precisa de equity mínima mais alta por ICM. Estude bubble play e push/fold charts.',tag:'ICM · CONTEXTUAL',sess:'35% das mãos'},
+];
+
+// Helpers
+const S={s:'♠',h:'♥',d:'♦',c:'♣'};
+function pc(code,b=false){
+  if(!code||code.length<2)return'';
+  const r=code.slice(0,-1),s=code.slice(-1).toLowerCase();
+  return`<div class="pc ${s} ${b?'board':''}"><span class="rank">${r}</span><span class="suit">${S[s]||s}</span></div>`;
+}
+function pcs(a,b=false){return(a||[]).map(c=>pc(c,b)).join('');}
+function gC(g){return{none:'gap-none',marginal:'gap-marginal',small:'gap-small',clear:'gap-clear'}[g]||'gap-none';}
+function gL(g){return{none:'✓ OK',marginal:'Marginal',small:'Small Mistake',clear:'Clear Mistake'}[g]||g;}
+function lC(l){return{standard:'var(--standard)',marginal:'var(--marginal)',small_mistake:'var(--small)',clear_mistake:'var(--clear)'}[l]||'var(--muted)';}
+
+const pgTitles={evolution:'Evolução',leaks:'Leaks',tournaments:'Torneios',study:'Plano de Estudo'};
+function nav(id,el,mob=false){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.getElementById('topbar-title').textContent=pgTitles[id];
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.bnav-item').forEach(n=>n.classList.remove('active'));
+  if(mob){const bn=document.getElementById('bn-'+id);if(bn)bn.classList.add('active');}
+  else if(el)el.classList.add('active');
+  const sp=id==='evolution'||id==='leaks';
+  document.getElementById('period-tabs').style.display=sp?'flex':'none';
+  document.getElementById('mobile-period').style.display=sp?'flex':'none';
+  if(id==='tournaments')renderTournaments();
+  if(id==='study')renderStudy();
+  if(id==='leaks')renderLeaks();
+  closeSidebar();
+}
+function setPeriod(el){const txt=el.textContent;document.querySelectorAll('.ptab').forEach(t=>t.classList.toggle('active',t.textContent===txt));}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('on');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('on');}
+
+// Evolution
+(function(){
+  const bc=document.getElementById('bar-standard');
+  const mx=Math.max(...sessions.map(s=>s.s));
+  sessions.forEach(s=>{const c=document.createElement('div');c.className='bar-col';const f=document.createElement('div');f.className='bar-fill';f.style.cssText=`height:${s.s/mx*63}px;background:var(--standard);opacity:${.45+s.s/mx*.55}`;const l=document.createElement('div');l.className='bar-lbl';l.textContent=s.d;c.appendChild(f);c.appendChild(l);bc.appendChild(c);});
+  const st=document.getElementById('score-trend');
+  const smx=Math.max(...sessions.map(s=>s.sc)),smn=Math.min(...sessions.map(s=>s.sc));
+  sessions.forEach((s,i)=>{const pct=(s.sc-smn)/(smx-smn);const w=document.createElement('div');w.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;';const d=document.createElement('div');d.style.cssText=`width:7px;height:7px;border-radius:50%;background:var(--gold);border:2px solid var(--felt);margin-bottom:${Math.round((1-pct)*54)}px;flex-shrink:0;cursor:pointer;`;d.title=`${s.d}: ${s.sc}`;const l=document.createElement('div');l.style.cssText='font-family:var(--mono);font-size:.5rem;color:var(--dim);';l.textContent=s.d;w.appendChild(d);w.appendChild(l);st.appendChild(w);if(i<sessions.length-1){const ln=document.createElement('div');ln.style.cssText='width:2px;background:var(--border2);flex-shrink:0;margin-bottom:10px;';st.appendChild(ln);}});
+  const cb=document.getElementById('comp-body');
+  comp.forEach(c=>{const b=c.lb?c.c<c.p:c.c>c.p;const d=(c.c-c.p);const sg=d>0?'+':'';const u=c.u||'';cb.innerHTML+=`<tr><td style="color:var(--text)">${c.m}</td><td style="font-family:var(--mono);font-size:.73rem">${c.c}${u}</td><td class="hide-mobile" style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${c.p}${u}</td><td style="font-family:var(--mono);font-size:.72rem;color:${b?'var(--standard)':'var(--clear)'}">${sg}${d.toFixed(u?1:3)}${u}</td></tr>`;});
+})();
+
+function renderLeaks(){
+  const tb=document.getElementById('leaks-body');if(tb.innerHTML)return;
+  leaksD.forEach(l=>{const w=l.avg*75;const c=l.avg>=.55?'var(--clear)':l.avg>=.35?'var(--small)':l.avg>=.15?'var(--marginal)':'var(--standard)';const tc=l.tr==='↑'?'var(--clear)':l.tr==='↓'?'var(--standard)':'var(--muted)';tb.innerHTML+=`<tr><td style="font-family:var(--mono);font-size:.74rem;color:var(--text)">${l.spot}</td><td><div style="display:flex;align-items:center;gap:6px;"><div style="width:${w}px;height:3px;border-radius:2px;background:${c};display:inline-block"></div><span style="font-family:var(--mono);font-size:.7rem;color:${c}">${l.avg.toFixed(3)}</span></div></td><td style="font-family:var(--mono);font-size:.7rem;color:var(--muted)">${l.n}</td><td style="font-family:var(--mono);color:${tc}">${l.tr}</td><td><span class="badge sev-${l.sev}">${l.sev}</span></td><td class="hide-mobile" style="font-size:.73rem;color:var(--muted)">${l.desc}</td></tr>`;});
+  const sd=document.getElementById('street-dist');if(sd.innerHTML)return;
+  [{s:'preflop',pct:20},{s:'flop',pct:16},{s:'turn',pct:38},{s:'river',pct:29}].forEach(({s,pct})=>{const c=pct>=40?'var(--clear)':pct>=25?'var(--small)':pct>=15?'var(--marginal)':'var(--standard)';sd.innerHTML+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px;"><div style="font-family:var(--mono);font-size:.57rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px">${s}</div><div style="font-family:var(--body);font-size:1.55rem;font-weight:700;color:${c}">${pct}%</div><div style="font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-top:3px">taxa de erro</div></div>`;});
+}
+
+function renderTournaments(){
+  const tl=document.getElementById('tourn-list');
+  if(tl.dataset.rendered)return;
+  tl.dataset.rendered='1';
+  _renderTournamentList(tourns);
+  updateFilterSummary(tourns.length, tourns.length);
+}
+
+function _renderTournamentList(list){
+  const tl=document.getElementById('tourn-list');
+  tl.innerHTML='';
+  if(!list.length){
+    tl.innerHTML='<div style="text-align:center;padding:32px;font-family:var(--mono);font-size:.75rem;color:var(--dim)">Nenhum torneio encontrado com estes filtros.</div>';
+    return;
+  }
+  list.forEach((t,ti)=>{
+    const clears=t.data.filter(h=>h.gap==='clear').length;
+    const sc=t.score;
+    const scoreColor=sc<=.07?'var(--standard)':sc<=.12?'var(--marginal)':'var(--clear)';
+    const siteName={pokerstars:'PokerStars',ggpoker:'GGPoker','888poker':'888poker'}[t.site]||t.site||'—';
+    const resultHtml=t.result==='itm'
+      ? `<span class="tourn-result result-itm">ITM${t.place?` · ${t.place}º`:''}</span>`
+      : `<span class="tourn-result result-elim">Eliminado</span>`;
+
+    const div=document.createElement('div');
+    div.className='tourn-row';
+    div.dataset.id=t.id;
+    div.dataset.site=t.site||'';
+    div.dataset.result=t.result||'';
+    div.dataset.score=t.score;
+    div.dataset.clears=clears;
+
+    div.innerHTML=`
+      <div class="tourn-hdr" onclick="this.closest('.tourn-row').classList.toggle('expanded');initTournBody(this.closest('.tourn-row'),'${t.id}')">
+        <div class="tourn-info">
+          <div class="tourn-name">
+            Torneio #${t.id.slice(-7)}
+            <span class="tourn-site-badge">${siteName}</span>
+          </div>
+          <div class="tourn-date">${t.date}</div>
+        </div>
+        <div class="tourn-kpis">
+          <div class="tkpi"><div class="tkpi-val">${t.hands}</div><div class="tkpi-lbl">mãos</div></div>
+          <div class="tkpi"><div class="tkpi-val" style="color:${scoreColor}">${t.score.toFixed(3)}</div><div class="tkpi-lbl">score</div></div>
+          <div class="tkpi"><div class="tkpi-val" style="color:${clears>0?'var(--clear)':'var(--standard)'}">${clears}</div><div class="tkpi-lbl">críticos</div></div>
+        </div>
+        ${resultHtml}
+        <span class="tchev">▶</span>
+      </div>
+      <div class="tourn-body" id="tbody-${t.id}">
+        <!-- Preenchido por initTournBody quando expandido -->
+      </div>`;
+    tl.appendChild(div);
+  });
+}
+
+function initTournBody(row, tid){
+  const body=document.getElementById('tbody-'+tid);
+  if(body.dataset.init)return;
+  body.dataset.init='1';
+
+  const t=tourns.find(x=>x.id===tid);
+  if(!t)return;
+
+  body.innerHTML=`
+    <div class="tourn-tabs">
+      <div class="ttab active" onclick="switchTab(this,'tab-summary-${tid}','${tid}')">✦ Coach IA</div>
+      <div class="ttab" onclick="switchTab(this,'tab-hands-${tid}','${tid}')">Mãos (${t.data.length})</div>
+    </div>
+
+    <!-- Tab: Resumo do Coach IA -->
+    <div class="ttab-panel active" id="tab-summary-${tid}">
+      <div class="t-summary-acc" id="tacc-${tid}">
+        <div class="t-summary-hdr" onclick="toggleTSummary('${tid}')">
+          <span class="t-sum-icon">✦</span>
+          <span class="t-sum-title">Resumo do Coach IA</span>
+          <span class="t-sum-status" id="tsum-status-${tid}">Clique para gerar</span>
+          <span class="t-sum-chev">▶</span>
+        </div>
+        <div class="t-summary-body">
+          <div class="t-sum-text" id="tsum-text-${tid}">
+            Análise personalizada do seu desempenho neste torneio, baseada nas ${t.dec} decisões registradas.
+          </div>
+          <div class="t-sum-footer">
+            <div class="t-sum-meta" id="tsum-meta-${tid}">${t.hands} mãos · ${t.dec} decisões</div>
+            <button class="btn-t-sum" id="btn-tsum-${tid}" onclick="generateTSummary('${tid}')">✦ Gerar Resumo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs rápidos do torneio -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:11px 13px;">
+          <div style="font-family:var(--mono);font-size:.57rem;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Decisões</div>
+          <div style="font-size:1.3rem;font-weight:600;color:var(--text)">${t.dec}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:11px 13px;">
+          <div style="font-family:var(--mono);font-size:.57rem;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Score Médio</div>
+          <div style="font-size:1.3rem;font-weight:600;color:${t.score<=.07?'var(--standard)':t.score<=.12?'var(--marginal)':'var(--clear)'}">${t.score.toFixed(3)}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:11px 13px;">
+          <div style="font-family:var(--mono);font-size:.57rem;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Clear Mistakes</div>
+          <div style="font-size:1.3rem;font-weight:600;color:${t.data.filter(h=>h.gap==='clear').length>0?'var(--clear)':'var(--standard)'}">${t.data.filter(h=>h.gap==='clear').length}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Mãos -->
+    <div class="ttab-panel" id="tab-hands-${tid}">
+      <div class="hand-scroll">
+        <table class="htbl">
+          <thead><tr>
+            <th>Mão</th><th>Cartas</th><th>Board</th>
+            <th>Street</th><th>Tomou</th><th>Esperado</th>
+            <th>Gap</th><th>Score</th><th>Ações</th>
+          </tr></thead>
+          <tbody>${t.data.map(h=>`
+            <tr>
+              <td style="font-family:var(--mono);font-size:.63rem;color:var(--dim)">#${h.id.slice(-6)}</td>
+              <td><div class="cds">${pcs([h.cards.slice(0,2),h.cards.slice(2)])}</div></td>
+              <td><div class="cds">${h.board.length?pcs(h.board,true):'<span style="color:var(--dim);font-size:.65rem">—</span>'}</div></td>
+              <td style="font-family:var(--mono);font-size:.67rem;color:var(--muted)">${h.street}</td>
+              <td style="font-family:var(--mono);font-size:.7rem">${h.took}</td>
+              <td style="font-family:var(--mono);font-size:.7rem;color:var(--standard)">${h.exp}</td>
+              <td><span class="badge ${gC(h.gap)}">${gL(h.gap)}</span></td>
+              <td style="font-family:var(--mono);font-size:.7rem;color:var(--muted)">${h.score.toFixed(3)}</td>
+              <td>
+                <div style="display:flex;gap:4px;">
+                  <button class="bxs" onclick='openDetail(${JSON.stringify(h)})'>Detalhes</button>
+                  <button class="bxs llm" onclick='openLLM(${JSON.stringify(h)})'>✦ Coach</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function switchTab(el, panelId, tid){
+  const body=document.getElementById('tbody-'+tid);
+  body.querySelectorAll('.ttab').forEach(t=>t.classList.remove('active'));
+  body.querySelectorAll('.ttab-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+
+// ── Tournament summary per torneio ──────────────────────────────────────
+const tSummaryLoaded={};
+
+function toggleTSummary(tid){
+  const acc=document.getElementById('tacc-'+tid);
+  acc.classList.toggle('open');
+}
+
+function generateTSummary(tid){
+  if(tSummaryLoaded[tid])return;
+  const acc    = document.getElementById('tacc-'+tid);
+  const txt    = document.getElementById('tsum-text-'+tid);
+  const btn    = document.getElementById('btn-tsum-'+tid);
+  const status = document.getElementById('tsum-status-'+tid);
+  const meta   = document.getElementById('tsum-meta-'+tid);
+
+  acc.classList.add('open');
+  txt.className='t-sum-text';
+  txt.innerHTML='<div class="llm-ld">✦ Analisando torneio<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>';
+  btn.disabled=true;
+  status.textContent='Gerando...';
+
+  // Simular LLM (em produção: chamar API com o HH do torneio)
+  const summaries={
+    '3910307458':'phpro apresentou desempenho consistente neste torneio, com 79.8% das decisões dentro do esperado e score médio de 0.072. O pré-flop foi a street mais sólida, mas o turn revelou o principal gap: calls com equity insuficiente em spots de barrel onde o pot odds exigia acima de 40% e a mão oferecia apenas 29%.\n\nSob pressão de ICM elevado, que correspondeu a 38% das decisões, o score médio subiu para 0.083. A tendência de chamar em vez de foldar com M abaixo de 6 foi o padrão que mais custou equity de torneio.\n\nPara a próxima sessão, o foco deve ser pot odds no turn com draws ativos e o ajuste do range de call pré-flop fora de posição.',
+    '3921884712':'O torneio apresentou decisões medianas, com 65% de acertos e score de 0.091. O principal problema foi um fold no turn com flush draw ativo — a mão tinha 55% de equity mas a pressão do stack curto (M=6.3) levou a uma decisão conservadora demais.\n\nCom ICM high em mais de 30% das mãos, o jogo sob pressão precisa de atenção. Estude call/fold thresholds quando há draw forte com stack curto.',
+    '3908112433':'Excelente desempenho com score de 0.068. O ITM em 5º lugar confirma a consistência. O único ajuste identificado foi no flop com flush draw: check quando bet seria a jogada de maior valor esperado.',
+  };
+
+  setTimeout(()=>{
+    const text=summaries[tid]||'Análise do torneio concluída. Desempenho dentro da média esperada com oportunidades de melhoria identificadas nos spots de turn e no gerenciamento de stack curto.';
+    txt.className='t-sum-text loaded';
+    // Quebrar em parágrafos
+    txt.innerHTML=text.split('\n\n').map(p=>`<p style="margin-bottom:10px">${p}</p>`).join('');
+    status.textContent='Gerado';
+    btn.style.display='none';
+    meta.textContent=document.getElementById('tsum-meta-'+tid).textContent;
+    tSummaryLoaded[tid]=true;
+  }, 1800);
+}
+
+// ── Filtros ────────────────────────────────────────────────────────────
+function filterTournaments(){
+  const q      = document.getElementById('search-t').value.toLowerCase();
+  const site   = document.getElementById('filter-site').value;
+  const result = document.getElementById('filter-result').value;
+  const score  = document.getElementById('filter-score').value;
+  const leaks  = document.getElementById('filter-leaks').value;
+
+  const filtered = tourns.filter(t=>{
+    if(q && !t.id.toLowerCase().includes(q) && !t.date.includes(q)) return false;
+    if(site   && t.site   !== site)   return false;
+    if(result && t.result !== result) return false;
+    if(score){
+      if(score==='good' && t.score > .07)  return false;
+      if(score==='avg'  && (t.score <= .07 || t.score > .12)) return false;
+      if(score==='bad'  && t.score <= .12) return false;
+    }
+    if(leaks){
+      const clears=t.data.filter(h=>h.gap==='clear').length;
+      if(leaks==='clear' && clears===0) return false;
+      if(leaks==='clean' && clears>0)   return false;
+    }
+    return true;
+  });
+
+  document.getElementById('tourn-list').dataset.rendered='';
+  _renderTournamentList(filtered);
+  updateFilterSummary(filtered.length, tourns.length);
+}
+
+function clearFilters(){
+  document.getElementById('search-t').value='';
+  document.getElementById('filter-site').value='';
+  document.getElementById('filter-result').value='';
+  document.getElementById('filter-score').value='';
+  document.getElementById('filter-leaks').value='';
+  filterTournaments();
+}
+
+function updateFilterSummary(shown, total){
+  const el=document.getElementById('filter-summary');
+  if(!el)return;
+  el.innerHTML = shown===total
+    ? `<span>${total}</span> torneios`
+    : `Mostrando <span>${shown}</span> de <span>${total}</span> torneios`;
+}
+
+function openDetail(h){
+  document.getElementById('ptitle').textContent=`Mão #${h.id.slice(-6)}`;
+  const ws=Math.max(...h.decs.map(d=>d.sc));const wc=ws>=.36?'var(--clear)':ws>=.18?'var(--small)':'var(--standard)';
+  document.getElementById('pbody').innerHTML=`<div class="psec" style="text-align:center;padding:6px 0 14px"><div style="font-family:var(--serif);font-size:1.8rem;font-weight:700;color:${wc}">${ws.toFixed(3)}</div><div style="font-family:var(--mono);font-size:.57rem;color:var(--muted);margin-top:2px">SCORE MÁXIMO</div><div class="cds" style="justify-content:center;gap:3px;margin-top:10px">${pcs([h.cards.slice(0,2),h.cards.slice(2)])}${h.board.length?'<div style="width:6px;height:1px;background:var(--border);flex-shrink:0"></div>'+pcs(h.board,true):''}</div></div><div class="psec"><div class="pst">Decisões</div>${h.decs.map(d=>`<div class="di"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:var(--mono);font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">${d.s}</span><span class="badge" style="color:${lC(d.l)};border-color:${lC(d.l)}30;background:${lC(d.l)}10">${d.l.replace('_',' ')}</span></div><div style="font-family:var(--mono);font-size:.74rem;display:flex;align-items:center;gap:7px"><span>${d.t}</span><span style="color:var(--dim)">→</span><span style="color:${d.t!==d.e?'var(--clear)':'var(--standard)'}">${d.e}</span><span style="margin-left:auto;color:var(--muted);font-size:.65rem">${d.sc.toFixed(3)}</span></div><div style="display:flex;gap:8px;margin-top:5px;font-family:var(--mono);font-size:.6rem;color:var(--dim);flex-wrap:wrap">${d.eq!=null?`<span>eq ${(d.eq*100).toFixed(0)}%</span>`:''} ${d.po!=null?`<span>pot odds ${(d.po*100).toFixed(0)}%</span>`:''}<span>M=${d.m}</span><span style="color:${d.icm==='high'?'var(--clear)':d.icm==='medium'?'var(--marginal)':'var(--dim)'}">ICM ${d.icm}</span></div></div>`).join('')}</div><div class="psec" id="llm-sec"><div class="pst">Coach IA</div><div class="llm-box" id="llm-box">Clique em <b style="color:var(--gold)">✦ Coach IA</b> para análise personalizada desta mão.</div><button class="btn-llm" onclick='triggerLLM(${JSON.stringify(h)})'>✦ Analisar com Coach IA</button></div>`;
+  document.getElementById('ov').classList.add('on');
+  document.getElementById('dpanel').classList.add('open');
+}
+function closePanel(){document.getElementById('ov').classList.remove('on');document.getElementById('dpanel').classList.remove('open');}
+function openLLM(h){openDetail(h);setTimeout(()=>triggerLLM(h),80);}
+const llmT={
+  '257048692293':'Com 4s6d fora do range de call, você entrou num pote difícil de vencer. No flop, call com 29% de equity contra barrel de 40% pot era matematicamente incorreto — precisava de 36% para quebrar mesmo. O padrão de chamar OOP com mãos especulativas é seu leak mais custoso no momento.',
+  '257046607770':'Stack de 4.7M exigia decisão binária: fold ou push. Call passivo com A4o em ICM high é erro de concepção — a mão não tem equity suficiente e a posição OOP agrava. Com M tão baixo, qualquer call precisa de no mínimo 40-45% de equity.',
+  '257045919085':'Com 88 no flop Ac-Jc-5c você apostou corretamente, mas slowplayed turn e river. Com flush draw no board, apostar turn protege sua mão e extrai de draws adversários. Check-check turn/river deixou valor significativo no campo.',
+  '257046289430':'KK jogado com consistência — raise pré, bet flop, check turn de controle. Decisões dentro do esperado para overpair com board conectado.',
+};
+function triggerLLM(h){const b=document.getElementById('llm-box'),btn=document.querySelector('#llm-sec .btn-llm');if(!b)return;b.innerHTML=`<div class="llm-ld">✦ Consultando Coach IA<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>`;if(btn)btn.style.display='none';setTimeout(()=>{b.innerHTML=`<div style="line-height:1.65;color:var(--text);font-size:.76rem">${llmT[h.id]||'Nesta mão a decisão divergiu do esperado. O contexto de M ratio e ICM pode ter influenciado. Revisitar pot odds no turn com draws ativos pode corrigir este padrão.'}</div>`;},1800);}
+
+function renderStudy(){
+  const sl=document.getElementById('study-list');if(sl.innerHTML)return;
+  studyD.forEach(s=>{sl.innerHTML+=`<div class="study-card ${s.p}"><div class="study-icon">${s.i}</div><div class="sb"><div class="stitle">${s.title}</div><div class="sdesc">${s.desc}</div><div class="stag">${s.tag}</div><div class="ssess">${s.sess}</div></div></div>`;});
+  const pg=document.getElementById('prog-grid');
+  [{cat:'Pré-flop',pct:72,d:'+8%',c:'var(--standard)'},{cat:'Postflop',pct:58,d:'+14%',c:'var(--marginal)'},{cat:'ICM / Stack Curto',pct:44,d:'+6%',c:'var(--small)'},{cat:'Pot Odds',pct:61,d:'+11%',c:'var(--marginal)'}].forEach(p=>{pg.innerHTML+=`<div class="prog-card"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px"><span style="font-size:.8rem;color:var(--text)">${p.cat}</span><span style="font-family:var(--mono);font-size:.6rem;color:var(--standard)">${p.d}</span></div><div style="height:5px;background:var(--border2);border-radius:3px;overflow:hidden;margin-bottom:5px"><div style="width:${p.pct}%;height:100%;background:${p.c};border-radius:3px"></div></div><div style="font-family:var(--body);font-size:1.1rem;font-weight:700;color:${p.c}">${p.pct}%</div></div>`;});
+}
+
+// ── Tournament Summary ──────────────────────────────────────────────────
+let selectedTournamentFile = null;
+
+function openModal(){document.getElementById('modal').classList.add('on');}
+function closeModal(){document.getElementById('modal').classList.remove('on');}
+function onFile(i){if(i.files[0]){document.getElementById('fconf').textContent=`✓ ${i.files[0].name}`;document.getElementById('btn-imp').disabled=false;}}
+function importFile(){closeModal();alert('Em produção: enviar para o backend e atualizar o dashboard.');}
+
+document.getElementById('mobile-period').style.display='flex';
+</script>
+</body>
+</html>

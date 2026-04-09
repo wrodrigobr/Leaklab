@@ -1,0 +1,612 @@
+"""
+repositories.py — Camada de acesso ao banco de dados.
+Funções puras: recebem dados, persistem, retornam.
+Sem lógica de negócio aqui.
+"""
+from __future__ import annotations
+import json
+import hashlib
+from typing import Optional, List, Dict
+from .schema import get_conn
+
+
+# ── Users ─────────────────────────────────────────────────────────────────────
+
+def create_user(username: str, email: str, password: str,
+                role: str = 'player', coach_id: int | None = None) -> int:
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    conn = get_conn()
+    try:
+        cur = conn.execute(
+            "INSERT INTO users (username, email, password_hash, role, coach_id) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (username, email, pw_hash, role, coach_id)
+        )
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def get_user_by_email(email: str) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM users WHERE email = ?", (email,)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_user_by_id(user_id: int) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def verify_password(email: str, password: str) -> Optional[dict]:
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM users WHERE email = ? AND password_hash = ?",
+            (email, pw_hash)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_students(coach_id: int) -> List[dict]:
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT id, username, email, created_at, last_login "
+            "FROM users WHERE coach_id = ?", (coach_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+# ── Tournaments ───────────────────────────────────────────────────────────────
+
+def save_tournament(user_id: int, tournament_id: str, hero: str,
+                    metrics: dict, site: str = 'pokerstars',
+                    played_at: str | None = None,
+                    result: str | None = None,
+                    place: int | None = None) -> int:
+    conn = get_conn()
+    lp = metrics.get('label_pct', {})
+    try:
+        # Upsert — se já existe, atualiza métricas
+        cur = conn.execute("""
+            INSERT INTO tournaments
+              (user_id, tournament_id, site, hero, played_at, imported_at,
+               hands_count, decisions_count, avg_score,
+               standard_pct, marginal_pct, small_pct, clear_pct,
+               result, place)
+            VALUES (?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(user_id, tournament_id) DO UPDATE SET
+              imported_at    = datetime('now'),
+              hands_count    = excluded.hands_count,
+              decisions_count= excluded.decisions_count,
+              avg_score      = excluded.avg_score,
+              standard_pct   = excluded.standard_pct,
+              marginal_pct   = excluded.marginal_pct,
+              small_pct      = excluded.small_pct,
+              clear_pct      = excluded.clear_pct
+        """, (
+            user_id, tournament_id, site, hero, played_at,
+            metrics.get('total_hands', 0),
+            metrics.get('total_decisions', 0),
+            metrics.get('avg_mistake_score'),
+            lp.get('standard'), lp.get('marginal'),
+            lp.get('small_mistake'), lp.get('clear_mistake'),
+            result, place,
+        ))
+        conn.commit()
+        # Buscar o ID (seja novo ou existente)
+        row = conn.execute(
+            "SELECT id FROM tournaments WHERE user_id=? AND tournament_id=?",
+            (user_id, tournament_id)
+        ).fetchone()
+        return row['id']
+    finally:
+        conn.close()
+
+
+def save_decisions(tournament_db_id: int, results: List[dict]):
+    """Salva todas as decisões de uma análise. Limpa as antigas primeiro."""
+    conn = get_conn()
+    try:
+        conn.execute("DELETE FROM decisions WHERE tournament_id = ?",
+                     (tournament_db_id,))
+        rows = []
+        for r in results:
+            bd  = r.get('evaluation', {}).get('scoreBreakdown', {})
+            ctx = r.get('context', {})
+            rows.append((
+                tournament_db_id,
+                r.get('handId', ''),
+                r.get('street', ''),
+                r.get('hero_cards', ''),
+                json.dumps(r.get('board', [])),
+                r.get('actionTaken', r.get('action_taken', '')),
+                r.get('bestAction',  r.get('best_action',  '')),
+                r.get('evaluation', {}).get('label', ''),
+                r.get('evaluation', {}).get('mistakeScore', 0),
+                bd.get('mathPenalty', 0),
+                bd.get('rangePenalty', 0),
+                ctx.get('mRatio'),
+                ctx.get('icmPressure'),
+                ctx.get('heroStackBb'),
+                r.get('draw_profile', ctx.get('drawProfile', '')),
+            ))
+        conn.executemany("""
+            INSERT INTO decisions
+              (tournament_id, hand_id, street, hero_cards, board,
+               action_taken, best_action, label, score,
+               math_penalty, range_penalty, m_ratio, icm_pressure,
+               stack_bb, draw_profile)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, rows)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
+    conn = get_conn()
+    try:
+        rows = conn.execute("""
+            SELECT id, tournament_id, site, hero, played_at, imported_at,
+                   hands_count, decisions_count, avg_score,
+                   standard_pct, clear_pct, result, place, llm_summary
+            FROM tournaments
+            WHERE user_id = ?
+            ORDER BY imported_at DESC
+            LIMIT ?
+        """, (user_id, limit)).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_tournament(user_id: int, tournament_id: str) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM tournaments WHERE user_id=? AND tournament_id=?",
+            (user_id, tournament_id)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def update_llm_summary(tournament_db_id: int, summary: str):
+    conn = get_conn()
+    try:
+        conn.execute(
+            "UPDATE tournaments SET llm_summary=? WHERE id=?",
+            (summary, tournament_db_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_decisions(tournament_db_id: int) -> List[dict]:
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM decisions WHERE tournament_id=? ORDER BY id",
+            (tournament_db_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+# ── Evolution metrics (queries para o dashboard) ──────────────────────────────
+
+def get_evolution_metrics(user_id: int, days: int = 30) -> List[dict]:
+    """Retorna métricas por torneio para o gráfico de evolução."""
+    conn = get_conn()
+    try:
+        rows = conn.execute("""
+            SELECT tournament_id, site, played_at, imported_at,
+                   hands_count, decisions_count, avg_score,
+                   standard_pct, clear_pct
+            FROM tournaments
+            WHERE user_id = ?
+              AND imported_at >= datetime('now', ? || ' days')
+            ORDER BY imported_at ASC
+        """, (user_id, f'-{days}')).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_leak_summary(user_id: int, days: int = 30) -> List[dict]:
+    """Agrega leaks por street/ação no período."""
+    conn = get_conn()
+    try:
+        rows = conn.execute("""
+            SELECT
+                d.street || '/' || d.best_action AS spot,
+                COUNT(*)                          AS n,
+                AVG(d.score)                      AS avg_score,
+                SUM(d.score)                      AS total_score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND t.imported_at >= datetime('now', ? || ' days')
+              AND d.label IN ('small_mistake','clear_mistake')
+            GROUP BY spot
+            HAVING COUNT(*) >= 2
+            ORDER BY avg_score DESC
+            LIMIT 10
+        """, (user_id, f'-{days}')).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_icm_performance(user_id: int, days: int = 30) -> dict:
+    """Performance separada por nível de ICM pressure."""
+    conn = get_conn()
+    try:
+        rows = conn.execute("""
+            SELECT
+                d.icm_pressure,
+                COUNT(*)          AS n,
+                AVG(d.score)      AS avg_score,
+                AVG(CASE WHEN d.label='standard' THEN 1.0 ELSE 0.0 END) AS standard_rate
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND t.imported_at >= datetime('now', ? || ' days')
+            GROUP BY d.icm_pressure
+        """, (user_id, f'-{days}')).fetchall()
+        return {r['icm_pressure']: dict(r) for r in rows if r['icm_pressure']}
+    finally:
+        conn.close()
+
+
+# ── Coach system ──────────────────────────────────────────────────────────────
+
+import secrets
+import json as _json
+
+
+def generate_invite_key() -> str:
+    """Gera chave única no formato COACH-XXXXX."""
+    token = secrets.token_hex(3).upper()
+    return f"COACH-{token}"
+
+
+def assign_invite_key(user_id: int) -> str:
+    """Atribui chave de convite a um coach. Idempotente."""
+    conn = get_conn()
+    try:
+        # Verificar se já tem chave
+        row = conn.execute(
+            "SELECT invite_key FROM users WHERE id=?", (user_id,)
+        ).fetchone()
+        if row and row['invite_key']:
+            return row['invite_key']
+        # Gerar nova chave única
+        while True:
+            key = generate_invite_key()
+            exists = conn.execute(
+                "SELECT 1 FROM users WHERE invite_key=?", (key,)
+            ).fetchone()
+            if not exists:
+                break
+        conn.execute(
+            "UPDATE users SET invite_key=? WHERE id=?", (key, user_id)
+        )
+        conn.commit()
+        return key
+    finally:
+        conn.close()
+
+
+def get_coach_by_invite_key(key: str) -> Optional[dict]:
+    """Busca coach pela chave de convite."""
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT id, username, email, role FROM users WHERE invite_key=?",
+            (key,)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def link_student_to_coach(student_id: int, invite_key: str) -> dict:
+    """
+    Vincula aluno ao coach via chave de convite.
+    Retorna {'ok': True, 'coach': {...}} ou {'ok': False, 'error': '...'}
+    """
+    coach = get_coach_by_invite_key(invite_key)
+    if not coach:
+        return {'ok': False, 'error': 'Chave de convite inválida'}
+    if coach['id'] == student_id:
+        return {'ok': False, 'error': 'Você não pode se vincular a si mesmo'}
+
+    conn = get_conn()
+    try:
+        # Verificar limite de alunos do coach
+        profile = conn.execute(
+            "SELECT max_students FROM coach_profiles WHERE user_id=?",
+            (coach['id'],)
+        ).fetchone()
+        max_s = profile['max_students'] if profile else 5
+        current = conn.execute(
+            "SELECT COUNT(*) as n FROM users WHERE coach_id=?",
+            (coach['id'],)
+        ).fetchone()['n']
+        if current >= max_s:
+            return {'ok': False, 'error': f'Coach atingiu o limite de {max_s} alunos no plano atual'}
+
+        conn.execute(
+            "UPDATE users SET coach_id=?, invited_by_key=? WHERE id=?",
+            (coach['id'], invite_key, student_id)
+        )
+        conn.commit()
+        return {'ok': True, 'coach': coach}
+    finally:
+        conn.close()
+
+
+# ── Coach profile ──────────────────────────────────────────────────────────────
+
+def upsert_coach_profile(user_id: int, display_name: str = '',
+                          bio: str = '', specialties: list | None = None,
+                          contact_email: str | None = None,
+                          contact_link: str | None = None,
+                          is_public: bool = True,
+                          max_students: int = 5) -> dict:
+    """Cria ou atualiza perfil público do coach."""
+    specs_json = _json.dumps(specialties or [])
+    conn = get_conn()
+    try:
+        conn.execute("""
+            INSERT INTO coach_profiles
+              (user_id, display_name, bio, specialties, contact_email,
+               contact_link, is_public, max_students, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,datetime('now'))
+            ON CONFLICT(user_id) DO UPDATE SET
+              display_name  = excluded.display_name,
+              bio           = excluded.bio,
+              specialties   = excluded.specialties,
+              contact_email = excluded.contact_email,
+              contact_link  = excluded.contact_link,
+              is_public     = excluded.is_public,
+              max_students  = excluded.max_students,
+              updated_at    = datetime('now')
+        """, (user_id, display_name, bio, specs_json,
+              contact_email, contact_link, int(is_public), max_students))
+        conn.commit()
+        return get_coach_profile(user_id)
+    finally:
+        conn.close()
+
+
+def get_coach_profile(user_id: int) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        row = conn.execute("""
+            SELECT cp.*, u.username, u.email, u.invite_key, u.plan,
+                   (SELECT COUNT(*) FROM users WHERE coach_id = u.id) as student_count
+            FROM coach_profiles cp
+            JOIN users u ON u.id = cp.user_id
+            WHERE cp.user_id = ?
+        """, (user_id,)).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d['specialties'] = _json.loads(d.get('specialties') or '[]')
+        return d
+    finally:
+        conn.close()
+
+
+def get_public_coaches(specialty: str | None = None,
+                        limit: int = 20) -> List[dict]:
+    """Lista coaches públicos, opcionalmente filtrados por especialidade."""
+    conn = get_conn()
+    try:
+        rows = conn.execute("""
+            SELECT cp.user_id, cp.display_name, cp.bio, cp.specialties,
+                   cp.contact_email, cp.contact_link, cp.plan,
+                   u.username, u.invite_key,
+                   (SELECT COUNT(*) FROM users WHERE coach_id = u.id) as student_count,
+                   (SELECT AVG(t.avg_score)
+                    FROM tournaments t
+                    JOIN users s ON s.id = t.user_id
+                    WHERE s.coach_id = u.id
+                      AND t.imported_at >= datetime('now', '-30 days')
+                   ) as students_avg_score
+            FROM coach_profiles cp
+            JOIN users u ON u.id = cp.user_id
+            WHERE cp.is_public = 1
+            ORDER BY student_count DESC, cp.updated_at DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d['specialties'] = _json.loads(d.get('specialties') or '[]')
+            # Filtrar por especialidade se solicitado
+            if specialty and specialty.lower() not in [s.lower() for s in d['specialties']]:
+                continue
+            result.append(d)
+        return result
+    finally:
+        conn.close()
+
+
+# ── Coach impact metrics ───────────────────────────────────────────────────────
+
+def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
+    """
+    Métricas de impacto do coach sobre seus alunos:
+    - Evolução do score médio dos alunos
+    - Comparação antes/depois do vínculo
+    - Leaks mais melhorados
+    - Aluno com maior evolução
+    """
+    conn = get_conn()
+    try:
+        students = conn.execute(
+            "SELECT id, username FROM users WHERE coach_id=?",
+            (coach_id,)
+        ).fetchall()
+        if not students:
+            return {'students': [], 'summary': {}}
+
+        student_ids = [s['id'] for s in students]
+        placeholders = ','.join('?' * len(student_ids))
+
+        # Evolução por aluno: média do score nos últimos N dias
+        evolution = conn.execute(f"""
+            SELECT
+                u.id as student_id,
+                u.username,
+                COUNT(t.id)         as tournament_count,
+                AVG(t.avg_score)    as avg_score,
+                MIN(t.avg_score)    as best_score,
+                AVG(t.standard_pct) as standard_pct,
+                MAX(t.imported_at)  as last_activity
+            FROM users u
+            LEFT JOIN tournaments t ON t.user_id = u.id
+              AND t.imported_at >= datetime('now', ? || ' days')
+            WHERE u.id IN ({placeholders})
+            GROUP BY u.id
+        """, [f'-{days}'] + student_ids).fetchall()
+
+        # Comparar com período anterior (dobro do período)
+        prev_period = conn.execute(f"""
+            SELECT
+                u.id as student_id,
+                AVG(t.avg_score) as prev_avg_score
+            FROM users u
+            LEFT JOIN tournaments t ON t.user_id = u.id
+              AND t.imported_at < datetime('now', ? || ' days')
+              AND t.imported_at >= datetime('now', ? || ' days')
+            WHERE u.id IN ({placeholders})
+            GROUP BY u.id
+        """, [f'-{days}', f'-{days*2}'] + student_ids).fetchall()
+        prev_map = {r['student_id']: r['prev_avg_score'] for r in prev_period}
+
+        # Top leaks dos alunos (para o coach saber o que focar)
+        top_leaks = conn.execute(f"""
+            SELECT
+                d.street || '/' || d.best_action AS spot,
+                COUNT(*)                          AS n,
+                AVG(d.score)                      AS avg_score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id IN ({placeholders})
+              AND t.imported_at >= datetime('now', ? || ' days')
+              AND d.label IN ('small_mistake','clear_mistake')
+            GROUP BY spot
+            HAVING COUNT(*) >= 2
+            ORDER BY avg_score DESC
+            LIMIT 5
+        """, student_ids + [f'-{days}']).fetchall()
+
+        # Montar resultado por aluno
+        students_data = []
+        total_improvement = 0
+        improved_count = 0
+        for row in evolution:
+            d = dict(row)
+            prev = prev_map.get(d['student_id'])
+            improvement = None
+            if prev and d['avg_score']:
+                improvement = round((prev - d['avg_score']) / prev * 100, 1)
+                total_improvement += improvement
+                improved_count += 1
+            d['prev_avg_score'] = prev
+            d['improvement_pct'] = improvement
+            students_data.append(d)
+
+        # Ordenar: maior melhora primeiro
+        students_data.sort(key=lambda x: x['improvement_pct'] or 0, reverse=True)
+
+        return {
+            'students': students_data,
+            'top_leaks': [dict(r) for r in top_leaks],
+            'summary': {
+                'total_students': len(students),
+                'active_students': sum(1 for s in students_data if s['tournament_count'] and s['tournament_count'] > 0),
+                'avg_improvement_pct': round(total_improvement / improved_count, 1) if improved_count else None,
+                'best_student': students_data[0]['username'] if students_data else None,
+            }
+        }
+    finally:
+        conn.close()
+
+
+def recommend_coaches_for_leaks(user_id: int, limit: int = 3) -> List[dict]:
+    """
+    Recomenda coaches da base baseado nos leaks do aluno.
+    Cruza os leaks do aluno com as especialidades dos coaches.
+    """
+    conn = get_conn()
+    try:
+        # Pegar top leaks do aluno
+        leaks = conn.execute("""
+            SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) as avg_score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND d.label IN ('small_mistake','clear_mistake')
+              AND t.imported_at >= datetime('now', '-60 days')
+            GROUP BY spot
+            ORDER BY avg_score DESC
+            LIMIT 3
+        """, (user_id,)).fetchall()
+
+        if not leaks:
+            return get_public_coaches(limit=limit)
+
+        # Extrair streets/ações dos leaks para matching
+        leak_streets = list(set(l['spot'].split('/')[0] for l in leaks))
+
+        # Buscar coaches com especialidades relevantes
+        coaches = get_public_coaches(limit=20)
+        scored = []
+        for coach in coaches:
+            if coach['user_id'] == user_id:
+                continue
+            specs = [s.lower() for s in coach['specialties']]
+            # Score de relevância: quantos leaks do aluno o coach cobre
+            match_score = sum(
+                1 for street in leak_streets
+                if any(street in spec or spec in street for spec in specs)
+            )
+            coach['relevance_score'] = match_score
+            coach['matching_leaks'] = [
+                l['spot'] for l in leaks
+                if any(l['spot'].split('/')[0] in spec or spec in l['spot'] for spec in specs)
+            ]
+            scored.append(coach)
+
+        # Ordenar por relevância, depois por popularidade
+        scored.sort(key=lambda x: (x['relevance_score'], x['student_count']), reverse=True)
+        return scored[:limit]
+    finally:
+        conn.close()

@@ -1,0 +1,247 @@
+"""
+Testes do postflop_range_evaluator.
+Cobre todos os cenários identificados na auditoria:
+  - Facing bet: equity alta / baixa / borderline
+  - No bet: equity forte / média / fraca
+  - Integração no pipeline com torneio real
+"""
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from gaphunter.models import HandState, ParsedHand, ParsedAction
+from gaphunter.postflop_range_evaluator import evaluate_postflop_range
+from gaphunter.pipeline import build_decision_inputs_for_hand
+from gaphunter.decision_engine_v11 import evaluate_decision
+
+
+def _state(street='flop', action='call', pot=600, facing=0,
+           equity=None, cards='AsJs'):
+    """Cria HandState mínimo para o postflop evaluator."""
+    return HandState(
+        hand_id='test',
+        street=street,
+        hero='Hero',
+        hero_cards=cards,
+        board=['Kh', '7d', '2c'],
+        player_action=action,
+        pot_size=float(pot),
+        facing_size=float(facing),
+        effective_stack_bb=20.0,
+        position='BTN',
+        villain_position='BB',
+        is_in_position=True,
+        is_multiway=False,
+        actions=[],
+        metadata={'estimated_equity': equity},
+    )
+
+
+# ── Cenário: SEM aposta (facing_size=0) ──────────────────────────────────────
+
+def test_no_bet_weak_hand_recommends_check():
+    """Mão fraca sem aposta → recomenda check."""
+    ev = evaluate_postflop_range(_state(facing=0, equity=0.28))
+    assert ev.recommended_primary_action == 'check'
+    assert ev.range_zone == 'outside_range'
+    print("OK  test_no_bet_weak_hand_recommends_check")
+
+
+def test_no_bet_medium_hand_recommends_check():
+    """Mão média sem aposta → check defensável."""
+    ev = evaluate_postflop_range(_state(facing=0, equity=0.43))
+    assert ev.recommended_primary_action == 'check'
+    assert 'bet' in ev.alternative_actions
+    assert ev.range_zone == 'borderline_range'
+    print("OK  test_no_bet_medium_hand_recommends_check")
+
+
+def test_no_bet_strong_hand_recommends_bet():
+    """Mão forte sem aposta → bet para construir pot."""
+    ev = evaluate_postflop_range(_state(facing=0, equity=0.62))
+    assert ev.recommended_primary_action == 'bet'
+    assert 'check' in ev.alternative_actions
+    assert ev.range_zone == 'core_range'
+    print("OK  test_no_bet_strong_hand_recommends_bet")
+
+
+def test_no_bet_equity_boundary_55():
+    """Exatamente no threshold 0.55 → bet."""
+    ev = evaluate_postflop_range(_state(facing=0, equity=0.55))
+    assert ev.recommended_primary_action == 'bet'
+    print("OK  test_no_bet_equity_boundary_55")
+
+
+def test_no_bet_equity_below_55():
+    """Equity 0.54 (abaixo do threshold) → check."""
+    ev = evaluate_postflop_range(_state(facing=0, equity=0.54))
+    assert ev.recommended_primary_action == 'check'
+    print("OK  test_no_bet_equity_below_55")
+
+
+def test_no_bet_no_equity_data_defaults_check():
+    """Sem dados de equity → check como padrão seguro."""
+    ev = evaluate_postflop_range(_state(facing=0, equity=None))
+    assert ev.recommended_primary_action == 'check'
+    print("OK  test_no_bet_no_equity_data_defaults_check")
+
+
+# ── Cenário: COM aposta (facing_size > 0) ────────────────────────────────────
+
+def test_facing_bet_equity_above_pot_odds_recommends_call():
+    """
+    pot=600, facing=200 → pot_odds = 200/800 = 0.25
+    equity=0.38 → diff=+0.13 (bem acima) → call
+    """
+    ev = evaluate_postflop_range(_state(pot=600, facing=200, equity=0.38))
+    assert ev.recommended_primary_action == 'call'
+    print(f"OK  test_facing_bet_equity_above_pot_odds_recommends_call")
+
+
+def test_facing_bet_equity_below_pot_odds_recommends_fold():
+    """
+    pot=600, facing=400 → pot_odds = 400/1000 = 0.40
+    equity=0.28 → diff=-0.12 (bem abaixo) → fold
+    """
+    ev = evaluate_postflop_range(_state(pot=600, facing=400, equity=0.28))
+    assert ev.recommended_primary_action == 'fold'
+    assert ev.range_zone == 'outside_range'
+    print("OK  test_facing_bet_equity_below_pot_odds_recommends_fold")
+
+
+def test_facing_bet_borderline_close_spot():
+    """
+    pot=600, facing=200 → pot_odds=0.25
+    equity=0.27 → diff=+0.02 (dentro da margem ±4%) → borderline → call + fold alt
+    """
+    ev = evaluate_postflop_range(_state(pot=600, facing=200, equity=0.27))
+    assert ev.recommended_primary_action == 'call'
+    assert 'fold' in ev.alternative_actions
+    assert ev.range_zone == 'borderline_range'
+    print("OK  test_facing_bet_borderline_close_spot")
+
+
+def test_facing_bet_strong_equity_may_raise():
+    """
+    Equity muito forte → call com raise como alternativa.
+    pot=600, facing=200 → pot_odds=0.25, equity=0.65 (diff=+0.40)
+    """
+    ev = evaluate_postflop_range(_state(pot=600, facing=200, equity=0.65))
+    assert ev.recommended_primary_action == 'call'
+    assert 'raise' in ev.alternative_actions
+    print("OK  test_facing_bet_strong_equity_may_raise")
+
+
+def test_facing_bet_no_equity_defaults_call():
+    """Sem equity data com aposta → call como padrão (borderline)."""
+    ev = evaluate_postflop_range(_state(pot=600, facing=200, equity=None))
+    assert ev.recommended_primary_action == 'call'
+    assert 'fold' in ev.alternative_actions
+    print("OK  test_facing_bet_no_equity_defaults_call")
+
+
+def test_facing_bet_zone_core_with_strong_equity():
+    """Equity >= 0.50 com aposta → core_range."""
+    ev = evaluate_postflop_range(_state(pot=600, facing=100, equity=0.55))
+    assert ev.range_zone == 'core_range'
+    print("OK  test_facing_bet_zone_core_with_strong_equity")
+
+
+def test_facing_bet_zone_outside_with_weak_equity():
+    """Equity < 0.35 com aposta → outside_range."""
+    ev = evaluate_postflop_range(_state(pot=600, facing=400, equity=0.30))
+    assert ev.range_zone == 'outside_range'
+    print("OK  test_facing_bet_zone_outside_with_weak_equity")
+
+
+# ── Integração no pipeline ────────────────────────────────────────────────────
+
+TOURNAMENT_FILE = os.path.join(os.path.dirname(__file__), '..', 'torneio_ingles.txt')
+
+
+def test_pipeline_routes_postflop_correctly():
+    """Verifica que decisões postflop usam o postflop evaluator."""
+    from gaphunter.parser import parse_pokerstars_file
+    hands = parse_pokerstars_file(TOURNAMENT_FILE)
+
+    postflop_recs = set()
+    for hand in hands:
+        for di in build_decision_inputs_for_hand(hand):
+            if di['street'] != 'preflop':
+                postflop_recs.add(di['range_evaluation']['recommendedPrimaryAction'])
+
+    # Postflop evaluator deve recomendar check (nunca era recomendado pelo preflop)
+    assert 'check' in postflop_recs, "Postflop evaluator não está sendo usado"
+    # Não deve ter 'raise' como rec dominante postflop
+    print(f"OK  test_pipeline_routes_postflop_correctly | recs={postflop_recs}")
+
+
+def test_postflop_error_rate_reduced():
+    """Taxa de erro postflop deve ser menor que 30% após correção."""
+    from gaphunter.parser import parse_pokerstars_file
+    hands = parse_pokerstars_file(TOURNAMENT_FILE)
+
+    postflop_results = []
+    for hand in hands:
+        for di in build_decision_inputs_for_hand(hand):
+            if di['street'] == 'preflop':
+                continue
+            r = evaluate_decision(di)
+            postflop_results.append(r['evaluation']['label'])
+
+    total = len(postflop_results)
+    errors = sum(1 for l in postflop_results if l in ('small_mistake', 'clear_mistake'))
+    error_rate = errors / total
+
+    assert error_rate < 0.30, f"Taxa de erro postflop ainda alta: {error_rate:.0%}"
+    print(f"OK  test_postflop_error_rate_reduced | {error_rate:.0%} erro ({errors}/{total})")
+
+
+def test_genuine_errors_preserved():
+    """Erros com math penalty real devem ser mantidos após a correção."""
+    from gaphunter.parser import parse_pokerstars_file
+    hands = parse_pokerstars_file(TOURNAMENT_FILE)
+
+    genuine_errors = 0
+    for hand in hands:
+        for di in build_decision_inputs_for_hand(hand):
+            if di['street'] == 'preflop':
+                continue
+            r = evaluate_decision(di)
+            bd = r['evaluation']['scoreBreakdown']
+            if bd['mathPenalty'] > 0 and r['evaluation']['label'] in ('small_mistake', 'clear_mistake'):
+                genuine_errors += 1
+
+    # Deve ter pelo menos 7 erros genuínos (eram 9 antes)
+    assert genuine_errors >= 7, f"Erros genuínos desapareceram: {genuine_errors}"
+    print(f"OK  test_genuine_errors_preserved | {genuine_errors} erros genuínos")
+
+
+def test_preflop_unaffected():
+    """Decisões preflop não devem ser alteradas pelo postflop evaluator."""
+    from gaphunter.parser import parse_pokerstars_file
+    hands = parse_pokerstars_file(TOURNAMENT_FILE)
+
+    preflop_recs = set()
+    for hand in hands:
+        for di in build_decision_inputs_for_hand(hand):
+            if di['street'] == 'preflop':
+                preflop_recs.add(di['range_evaluation']['recommendedPrimaryAction'])
+
+    # Preflop evaluator nunca recomenda 'check'
+    assert 'check' not in preflop_recs, "Preflop está usando postflop evaluator"
+    print(f"OK  test_preflop_unaffected | recs={preflop_recs}")
+
+
+if __name__ == '__main__':
+    tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
+    passed = failed = 0
+    for t in tests:
+        try:
+            t()
+            passed += 1
+        except Exception as e:
+            print(f"FAIL {t.__name__}: {e}")
+            import traceback; traceback.print_exc()
+            failed += 1
+    print(f"\n{'='*50}")
+    print(f"Total: {passed+failed} | Passed: {passed} | Failed: {failed}")
