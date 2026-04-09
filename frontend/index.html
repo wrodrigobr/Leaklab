@@ -1105,13 +1105,80 @@ function closePanel(){ document.getElementById('ov').classList.remove('on'); doc
 function openLLM(h){ openDetail(h); setTimeout(()=>{ const hid=String(h.id||h.handId||''); triggerLLMById(hid); }, 200); }
 function triggerLLMById(hid){ const h=_handStore.get(hid); if(h) triggerLLM(h); }
 
-const llmT={
-  '257048692293':'Com 4s6d fora do range de call, você entrou num pote difícil de vencer. No flop, call com 29% de equity contra barrel de 40% pot era matematicamente incorreto — precisava de 36% para quebrar mesmo. O padrão de chamar OOP com mãos especulativas é seu leak mais custoso no momento.',
-  '257046607770':'Stack de 4.7M exigia decisão binária: fold ou push. Call passivo com A4o em ICM high é erro de concepção — a mão não tem equity suficiente e a posição OOP agrava. Com M tão baixo, qualquer call precisa de no mínimo 40-45% de equity.',
-  '257045919085':'Com 88 no flop Ac-Jc-5c você apostou corretamente, mas slowplayed turn e river. Com flush draw no board, apostar turn protege sua mão e extrai de draws adversários. Check-check turn/river deixou valor significativo no campo.',
-  '257046289430':'KK jogado com consistência — raise pré, bet flop, check turn de controle. Decisões dentro do esperado para overpair com board conectado.',
-};
-function triggerLLM(h){const b=document.getElementById('llm-box'),btn=document.querySelector('#llm-sec .btn-llm');if(!b)return;b.innerHTML=`<div class="llm-ld">✦ Consultando Coach IA<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>`;if(btn)btn.style.display='none';setTimeout(()=>{b.innerHTML=`<div style="line-height:1.65;color:var(--text);font-size:.76rem">${llmT[h.id]||'Nesta mão a decisão divergiu do esperado. O contexto de M ratio e ICM pode ter influenciado. Revisitar pot odds no turn com draws ativos pode corrigir este padrão.'}</div>`;},1800);}
+async function triggerLLM(h){
+  const b   = document.getElementById('llm-box');
+  const btn = document.querySelector('#llm-sec .btn-llm');
+  if(!b) return;
+
+  b.innerHTML = '<div class="llm-ld">✦ Consultando Coach IA<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>';
+  if(btn) btn.style.display = 'none';
+
+  const token = localStorage.getItem('ll_token');
+
+  // Chamar o backend real
+  try {
+    const res = await fetch(API_URL + '/analyze/hand-coach', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': 'Bearer ' + token,
+      },
+      body: JSON.stringify({ hand: h }),
+    });
+
+    if(!res.ok){ throw new Error('HTTP ' + res.status); }
+    const data = await res.json();
+    const analyses = data.analyses || [];
+
+    if(!analyses.length){
+      b.innerHTML = '<div style="font-family:var(--mono);font-size:.72rem;color:var(--dim)">Sem análise disponível para esta mão.</div>';
+      return;
+    }
+
+    // Renderizar análises em seções visuais
+    b.innerHTML = analyses.map((text, i) => {
+      const decs = (h._decs || h.decs || h.decisions || []);
+      const dec  = decs[i] || {};
+      const street = dec.s || dec.street || '';
+      const label  = (dec.l || dec.label || '').replace(/_/g,' ');
+      const color  = {
+        clear_mistake:'var(--clear)', small_mistake:'var(--small)',
+        marginal:'var(--marginal)', standard:'var(--standard)'
+      }[dec.l || dec.label] || 'var(--muted)';
+
+      // Quebrar em parágrafos — cada seção numerada vira bloco visual
+      const paragraphs = text
+        .split('\n')
+        .filter(p => p.trim())
+        .map(p => {
+          // Destacar números, percentuais e termos técnicos
+          const html = p
+            .replace(/(\d+\.?\d*%)/g, '<b style="color:var(--gold)">$1</b>')
+            .replace(/(\d+\.\d{3})/g, '<b style="color:var(--gold)">$1</b>')
+            .replace(/(fold|call|raise|check|bet|push|all-in)/gi,
+              '<span style="font-family:var(--mono);font-size:.9em;color:var(--text)">$1</span>');
+          return '<p style="margin-bottom:8px;line-height:1.7">' + html + '</p>';
+        }).join('');
+
+      return '<div style="border:1px solid var(--border2);border-radius:8px;padding:12px 14px;margin-bottom:10px;">'
+        + (street ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border2)">'
+            + '<span style="font-family:var(--mono);font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">' + street + '</span>'
+            + (label ? '<span class="badge" style="color:' + color + ';border-color:' + color + '30;background:' + color + '10">' + label + '</span>' : '')
+            + '</div>' : '')
+        + '<div style="font-size:.8rem;color:var(--text)">' + paragraphs + '</div>'
+        + '</div>';
+    }).join('');
+
+  } catch(err) {
+    // Fallback offline
+    b.innerHTML = '<div style="border:1px solid var(--border2);border-radius:8px;padding:12px 14px;">'
+      + '<div style="font-family:var(--mono);font-size:.65rem;color:var(--marginal);margin-bottom:8px">⚠ Coach IA offline — análise básica</div>'
+      + '<div style="font-size:.8rem;color:var(--muted);line-height:1.7">'
+      + 'Não foi possível conectar ao Coach IA. Verifique sua conexão e tente novamente.'
+      + '</div></div>';
+    if(btn){ btn.style.display = ''; btn.textContent = '✦ Tentar novamente'; }
+  }
+}
 
 function renderStudy(){
   const sl=document.getElementById('study-list');if(sl.innerHTML)return;

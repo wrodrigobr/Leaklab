@@ -1,5 +1,5 @@
 """
-GapHunter API v2 — com persistência SQLite e autenticação JWT.
+LeakLab API v2 — com persistência SQLite e autenticação JWT.
 """
 from __future__ import annotations
 import sys, os
@@ -8,13 +8,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 
-from gaphunter.parser import parse_pokerstars_file_from_text
-from gaphunter.pipeline import build_decision_inputs_for_hand
-from gaphunter.decision_engine_v11 import evaluate_decision
-from gaphunter.mtt_context import build_mtt_context
-from gaphunter.session_metrics import build_session_metrics
-from gaphunter.leak_correlator import correlate_leaks
-from gaphunter.llm_explainer import explain_decisions, generate_tournament_summary
+from leaklab.parser import parse_pokerstars_file_from_text
+from leaklab.pipeline import build_decision_inputs_for_hand
+from leaklab.decision_engine_v11 import evaluate_decision
+from leaklab.mtt_context import build_mtt_context
+from leaklab.session_metrics import build_session_metrics
+from leaklab.leak_correlator import correlate_leaks
+from leaklab.llm_explainer import explain_decisions, generate_tournament_summary
 
 from database.schema import init_db
 from database.repositories import (
@@ -136,7 +136,7 @@ def analyze():
     if request.args.get('explain', '').lower() == 'true':
         all_decisions = [d for h in hand_results.values() for d in h['decisions']]
         explanations  = explain_decisions(all_decisions)
-        from gaphunter.llm_explainer import _key
+        from leaklab.llm_explainer import _key
         for hand in hand_results.values():
             for d in hand['decisions']:
                 d['explanation'] = explanations.get(_key(d), '')
@@ -481,6 +481,95 @@ def public_coach_profile(coach_user_id):
 @require_coach
 def coach_students_legacy():
     return coach_students_v2()
+
+
+@app.route('/analyze/hand-coach', methods=['POST'])
+@require_auth
+def hand_coach():
+    """
+    Análise profunda de uma mão específica pelo Coach IA.
+    Recebe os dados completos da mão e retorna análise detalhada com:
+    - Matemática (equity, pot odds, EV estimado)
+    - Teoria (conceitos violados)
+    - Ação correta com justificativa
+    - Dica prática aplicável
+    """
+    data = request.get_json(silent=True) or {}
+    hand_data = data.get('hand')
+    if not hand_data:
+        return jsonify({'error': 'Dados da mão ausentes'}), 400
+
+    try:
+        from leaklab.llm_explainer import _build_payload, _call_llm_api
+        import json as _json
+
+        # Filtrar só decisões com erro para análise
+        decisions = hand_data.get('decisions', hand_data.get('decs', []))
+        # Normalizar formato
+        norm_decs = []
+        for d in decisions:
+            label = d.get('l') or d.get('label') or                     (d.get('evaluation') or {}).get('label', 'standard')
+            score = d.get('sc') or d.get('score') or                     (d.get('evaluation') or {}).get('mistakeScore', 0)
+            norm_decs.append({
+                'hero_cards':  hand_data.get('cards') or hand_data.get('hero_cards', ''),
+                'board':       hand_data.get('board', []),
+                'street':      d.get('s') or d.get('street', ''),
+                'actionTaken': d.get('t') or d.get('actionTaken', ''),
+                'bestAction':  d.get('e') or d.get('bestAction', ''),
+                'evaluation': {
+                    'label':         label,
+                    'mistakeScore':  score,
+                    'scoreBreakdown': d.get('evaluation', {}).get('scoreBreakdown', {}),
+                },
+                'math':    d.get('math', {}),
+                'context': {
+                    'mRatio':       d.get('m') or (d.get('context') or {}).get('mRatio'),
+                    'icmPressure':  d.get('icm') or (d.get('context') or {}).get('icmPressure', 'low'),
+                    'heroStackBb':  (d.get('context') or {}).get('heroStackBb'),
+                    'tournamentStage': (d.get('context') or {}).get('tournamentStage', 'unknown'),
+                    'activePlayers':   (d.get('context') or {}).get('activePlayers'),
+                },
+                'thresholds':    d.get('thresholds', {}),
+                'interpretation':d.get('interpretation', {}),
+            })
+
+        if not norm_decs:
+            return jsonify({'analysis': 'Nenhuma decisão encontrada para analisar.', 'decisions': []}), 200
+
+        payload = _build_payload(norm_decs)
+        raw     = _call_llm_api(payload)
+
+        from leaklab.llm_explainer import _parse_llm_response
+        analyses = _parse_llm_response(raw, len(norm_decs))
+
+        return jsonify({
+            'hand_id':   hand_data.get('id', ''),
+            'decisions': len(norm_decs),
+            'analyses':  analyses,
+        })
+
+    except Exception as e:
+        # Fallback template se LLM falhar
+        return jsonify({
+            'hand_id':  hand_data.get('id', ''),
+            'analyses': [_template_hand_analysis(d) for d in decisions[:1]],
+            'note':     'Análise gerada via template (LLM indisponível)',
+        })
+
+
+def _template_hand_analysis(d) -> str:
+    label = d.get('l') or d.get('label') or 'standard'
+    street = d.get('s') or d.get('street', 'preflop')
+    action = d.get('t') or d.get('actionTaken', '')
+    best   = d.get('e') or d.get('bestAction', '')
+    score  = d.get('sc') or d.get('score') or              (d.get('evaluation') or {}).get('mistakeScore', 0)
+    if label == 'standard':
+        return f'Decisão correta no {street}. {action} foi a jogada adequada para este spot.'
+    return (
+        f'No {street}, a ação {action} foi inferior ao esperado ({best}), '
+        f'com score de erro {score:.3f}. '
+        f'Revise os fundamentos de pot odds e equity para este tipo de spot.'
+    )
 
 @app.errorhandler(413)
 def too_large(_): return jsonify({'error': 'Arquivo muito grande (limite: 5MB)'}), 413
