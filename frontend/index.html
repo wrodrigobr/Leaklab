@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#09090b">
-<title>GapHunter</title>
+<title>LeakLab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -403,7 +403,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
 <nav class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><div class="logo-mark">GapHunter</div><div class="logo-sub">MTT Coach · v1.1</div></div>
+  <div class="sidebar-logo"><div class="logo-mark">LeakLab</div><div class="logo-sub">MTT Coach · v1.1</div></div>
   <div class="nav-section">
     <div class="nav-label">Análise</div>
     <div class="nav-item active" onclick="nav('evolution',this)"><span class="nav-icon">◈</span>Evolução</div>
@@ -507,10 +507,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   <!-- EVOLUÇÃO -->
   <div class="page active" id="page-evolution">
     <div class="kpi-row">
-      <div class="kpi-card s1"><div class="kpi-label">Score Médio<div class="tt"><span class="tt-i">?</span><div class="tt-b">Média do erro por decisão. Abaixo de 0.10 é saudável. Quanto menor, melhor.</div></div></div><div class="kpi-val g">0.072</div><div class="kpi-delta delta-up">↓ 22% vs mês anterior</div></div>
-      <div class="kpi-card s2"><div class="kpi-label">Taxa Standard<div class="tt"><span class="tt-i">?</span><div class="tt-b">% de decisões corretas. Meta: acima de 75%. Avançados ficam acima de 85%.</div></div></div><div class="kpi-val gr">79.8%</div><div class="kpi-delta delta-up">↑ 10pp vs mês anterior</div></div>
-      <div class="kpi-card s3"><div class="kpi-label">Clear Mistakes<div class="tt"><span class="tt-i">?</span><div class="tt-b">Erros com score acima de 0.36. Os mais custosos. Meta: abaixo de 5%.</div></div></div><div class="kpi-val r">8.5%</div><div class="kpi-delta delta-dn">↑ 1.2pp — em alta</div></div>
-      <div class="kpi-card s4"><div class="kpi-label">M Ratio Médio<div class="tt"><span class="tt-i">?</span><div class="tt-b">Stack ÷ órbita. Acima de 20 = confortável. 10–20 = atenção. Abaixo de 6 = crítico.</div></div></div><div class="kpi-val">7.3</div><div class="kpi-delta delta-dn">↓ zona de pressão</div></div>
+      <div class="kpi-card s1"><div class="kpi-label">Score Médio<div class="tt"><span class="tt-i">?</span><div class="tt-b">Média do erro por decisão. Abaixo de 0.10 é saudável. Quanto menor, melhor.</div></div></div><div class="kpi-val g" id="kpi-score">—</div><div class="kpi-delta" id="kpi-score-delta"></div></div>
+      <div class="kpi-card s2"><div class="kpi-label">Taxa Standard<div class="tt"><span class="tt-i">?</span><div class="tt-b">% de decisões corretas. Meta: acima de 75%. Avançados ficam acima de 85%.</div></div></div><div class="kpi-val gr" id="kpi-standard">—</div><div class="kpi-delta" id="kpi-std-delta"></div></div>
+      <div class="kpi-card s3"><div class="kpi-label">Clear Mistakes<div class="tt"><span class="tt-i">?</span><div class="tt-b">Erros com score acima de 0.36. Os mais custosos. Meta: abaixo de 5%.</div></div></div><div class="kpi-val r" id="kpi-clear">—</div><div class="kpi-delta" id="kpi-clear-delta"></div></div>
+      <div class="kpi-card s4"><div class="kpi-label">M Ratio Médio<div class="tt"><span class="tt-i">?</span><div class="tt-b">Stack ÷ órbita. Acima de 20 = confortável. 10–20 = atenção. Abaixo de 6 = crítico.</div></div></div><div class="kpi-val" id="kpi-mrat">—</div><div class="kpi-delta" id="kpi-mrat-delta"></div></div>
       <div class="kpi-card s5"><div class="kpi-label">Leak Persistente<div class="tt"><span class="tt-i">?</span><div class="tt-b">Spot com erro recorrente nas últimas 3+ sessões. Leak estrutural — estudo prioritário.</div></div></div><div class="kpi-val" style="font-size:.88rem;padding-top:6px;font-weight:600;color:var(--small)">turn/call</div><div class="kpi-delta delta-dn">3 sessões seguidas</div></div>
     </div>
 
@@ -528,9 +528,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
     <div class="sec-head"><div class="sec-title">Performance por Pressão ICM</div></div>
     <div class="icm-row s1">
-      <div class="icm-card"><div class="icm-label">ICM Low<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">M &gt; 10. Jogue seu melhor jogo base, sem distorções de ICM.</div></div></div><div style="font-family:var(--body);font-size:1.4rem;font-weight:700;color:var(--standard);margin-bottom:7px">82.1%</div><div class="icm-m"><div class="icm-f" style="width:82%;background:var(--standard)"></div></div><div class="icm-st"><span>95 mãos</span><span>0.058</span></div></div>
-      <div class="icm-card"><div class="icm-label">ICM Medium<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">M entre 6–10. Erros aqui custam equity de torneio, não só chips.</div></div></div><div style="font-family:var(--body);font-size:1.4rem;font-weight:700;color:var(--marginal);margin-bottom:7px">76.4%</div><div class="icm-m"><div class="icm-f" style="width:76%;background:var(--marginal)"></div></div><div class="icm-st"><span>138 mãos</span><span>0.091</span></div></div>
-      <div class="icm-card"><div class="icm-label">ICM High<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">M ≤ 6 ou final table. Cada decisão define seu resultado no torneio.</div></div></div><div style="font-family:var(--body);font-size:1.4rem;font-weight:700;color:var(--clear);margin-bottom:7px">68.9%</div><div class="icm-m"><div class="icm-f" style="width:69%;background:var(--clear)"></div></div><div class="icm-st"><span>167 mãos</span><span>0.118</span></div></div>
+      <div class="icm-card"><div class="icm-label">ICM Low<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">M &gt; 10. Jogue seu melhor jogo base, sem distorções de ICM.</div></div></div><div style="font-family:var(--body);font-size:1.4rem;font-weight:700;color:var(--standard);margin-bottom:7px" id="icm-low-pct">—</div><div class="icm-m"><div class="icm-f" style="width:82%;background:var(--standard)"></div></div><div class="icm-st"><span id="icm-low-n">—</span><span id="icm-low-sc">—</span></div></div>
+      <div class="icm-card"><div class="icm-label">ICM Medium<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">M entre 6–10. Erros aqui custam equity de torneio, não só chips.</div></div></div><div style="font-family:var(--body);font-size:1.4rem;font-weight:700;color:var(--marginal);margin-bottom:7px" id="icm-med-pct">—</div><div class="icm-m"><div class="icm-f" style="width:76%;background:var(--marginal)"></div></div><div class="icm-st"><span id="icm-med-n">—</span><span id="icm-med-sc">—</span></div></div>
+      <div class="icm-card"><div class="icm-label">ICM High<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">M ≤ 6 ou final table. Cada decisão define seu resultado no torneio.</div></div></div><div style="font-family:var(--body);font-size:1.4rem;font-weight:700;color:var(--clear);margin-bottom:7px" id="icm-high-pct">—</div><div class="icm-m"><div class="icm-f" style="width:69%;background:var(--clear)"></div></div><div class="icm-st"><span id="icm-high-n">—</span><span id="icm-high-sc">—</span></div></div>
     </div>
 
     <div class="sec-head"><div class="sec-title">Comparativo de Períodos</div><div class="sec-sub">Esta semana vs anterior</div></div>
@@ -628,7 +628,7 @@ const API_URL = (() => {
   return 'https://leaklab-api.onrender.com'; // ← substituir pela URL real do Render
 })();
 
-const sessions=[{d:'08/07',s:71,sc:.094},{d:'12/07',s:74,sc:.087},{d:'18/07',s:76,sc:.081},{d:'22/07',s:78,sc:.078},{d:'25/07',s:80,sc:.072},{d:'28/07',s:81,sc:.068},{d:'01/08',s:79,sc:.075}];
+const sessions=[];  // preenchido após importação real
 
 const tourns=[
   {id:'3910307458',date:'22/07/2025',site:'pokerstars',result:'itm',place:18,hands:400,dec:485,score:.072,
@@ -689,19 +689,11 @@ const tourns=[
     ]},
   ]},
 ];
-const leaksD=[
-  {spot:'turn/call',avg:.678,n:9,tr:'↑',sev:'critical',desc:'Calls no turn com equity insuficiente.'},
-  {spot:'preflop/call',avg:.283,n:41,tr:'→',sev:'high',desc:'Calls fora do range, especialmente OOP.'},
-  {spot:'flop/call',avg:.233,n:12,tr:'↓',sev:'medium',desc:'Calls no flop sem pot odds adequada.'},
-  {spot:'river/raise',avg:.550,n:4,tr:'→',sev:'high',desc:'Raises no river em spots incorretos.'},
-  {spot:'turn/fold',avg:.420,n:5,tr:'↓',sev:'high',desc:'Folds com equity suficiente.'},
-  {spot:'flop/fold',avg:.333,n:8,tr:'↓',sev:'medium',desc:'Folds com draws ativos.'},
-  {spot:'preflop/raise',avg:.145,n:123,tr:'↓',sev:'medium',desc:'Raises fora do spot ideal.'},
-  {spot:'preflop/fold',avg:.088,n:245,tr:'↓',sev:'low',desc:'Folds geralmente corretos.'},
-];
-const comp=[{m:'Score médio',c:.072,p:.091,lb:true},{m:'Taxa Standard',c:79.8,p:73.2,u:'%',lb:false},{m:'Clear Mistakes',c:8.5,p:9.8,u:'%',lb:true},{m:'turn/call avg',c:.678,p:.541,lb:true},{m:'preflop/call avg',c:.283,p:.301,lb:true}];
+const leaksD=[];  // preenchido após importação
+const comp=[];  // preenchido após importação
 
-const studyD=[
+const studyD=[];  // preenchido após importação
+const _studyDataDemo=[
   {p:'p1',i:'♦',title:'Pot Odds no Turn',desc:'Seu principal leak (avg 0.678, 9 ocorrências). Calls no turn com equity insuficiente. Estude pot odds ajustado por implied odds e identifique spots de barrel.',tag:'turn/call · CRÍTICO',sess:'3 sessões consecutivas'},
   {p:'p2',i:'♠',title:'Range de Call Pré-flop OOP',desc:'Calls fora do range em posição OOP. Sem a vantagem posicional, o breakeven de equity sobe. Revise defesa de BB e calls de SB vs open.',tag:'preflop/call · ALTA',sess:'41 ocorrências no período'},
   {p:'p3',i:'♣',title:'Equity de Draw no Flop',desc:'Folds no flop com flush draw ou straight draw ativo. Com draws, a equity efetiva sobe 8–17%. Pratique cálculo de pot odds com outs.',tag:'flop/fold · MÉDIA',sess:'8 ocorrências'},
@@ -744,6 +736,12 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 // Evolution
 (function(){
   const bc=document.getElementById('bar-standard');
+  if(!sessions.length){
+    bc.innerHTML='<div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);margin:auto">Sem dados ainda</div>';
+    document.getElementById('score-trend').innerHTML='<div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);margin:auto">Sem dados ainda</div>';
+    document.getElementById('comp-body').innerHTML='<tr><td colspan="4" style="text-align:center;padding:20px;font-family:var(--mono);font-size:.72rem;color:var(--dim)">Sem dados para comparar.</td></tr>';
+    return;
+  }
   const mx=Math.max(...sessions.map(s=>s.s));
   sessions.forEach(s=>{const c=document.createElement('div');c.className='bar-col';const f=document.createElement('div');f.className='bar-fill';f.style.cssText=`height:${s.s/mx*63}px;background:var(--standard);opacity:${.45+s.s/mx*.55}`;const l=document.createElement('div');l.className='bar-lbl';l.textContent=s.d;c.appendChild(f);c.appendChild(l);bc.appendChild(c);});
   const st=document.getElementById('score-trend');
@@ -755,6 +753,10 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 
 function renderLeaks(){
   const tb=document.getElementById('leaks-body');if(tb.innerHTML)return;
+  if(!leaksD.length){
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:28px;font-family:var(--mono);font-size:.75rem;color:var(--dim)">Importe um torneio para ver seus leaks.</td></tr>';
+    return;
+  }
   leaksD.forEach(l=>{const w=l.avg*75;const c=l.avg>=.55?'var(--clear)':l.avg>=.35?'var(--small)':l.avg>=.15?'var(--marginal)':'var(--standard)';const tc=l.tr==='↑'?'var(--clear)':l.tr==='↓'?'var(--standard)':'var(--muted)';tb.innerHTML+=`<tr><td style="font-family:var(--mono);font-size:.74rem;color:var(--text)">${l.spot}</td><td><div style="display:flex;align-items:center;gap:6px;"><div style="width:${w}px;height:3px;border-radius:2px;background:${c};display:inline-block"></div><span style="font-family:var(--mono);font-size:.7rem;color:${c}">${l.avg.toFixed(3)}</span></div></td><td style="font-family:var(--mono);font-size:.7rem;color:var(--muted)">${l.n}</td><td style="font-family:var(--mono);color:${tc}">${l.tr}</td><td><span class="badge sev-${l.sev}">${l.sev}</span></td><td class="hide-mobile" style="font-size:.73rem;color:var(--muted)">${l.desc}</td></tr>`;});
   const sd=document.getElementById('street-dist');if(sd.innerHTML)return;
   [{s:'preflop',pct:20},{s:'flop',pct:16},{s:'turn',pct:38},{s:'river',pct:29}].forEach(({s,pct})=>{const c=pct>=40?'var(--clear)':pct>=25?'var(--small)':pct>=15?'var(--marginal)':'var(--standard)';sd.innerHTML+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px;"><div style="font-family:var(--mono);font-size:.57rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px">${s}</div><div style="font-family:var(--body);font-size:1.55rem;font-weight:700;color:${c}">${pct}%</div><div style="font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-top:3px">taxa de erro</div></div>`;});
@@ -764,6 +766,11 @@ function renderTournaments(){
   const tl=document.getElementById('tourn-list');
   if(tl.dataset.rendered)return;
   tl.dataset.rendered='1';
+  if(!tourns.length){
+    tl.innerHTML='<div style="text-align:center;padding:40px 20px;"><div style="font-family:var(--mono);font-size:.75rem;color:var(--dim);margin-bottom:12px">Nenhum torneio importado ainda.</div><button class=\"btn-upload\" onclick=\"openModal()\" style=\"margin:0 auto\">⊕ Importar primeiro torneio</button></div>';
+    document.getElementById('filter-summary').textContent='';
+    return;
+  }
   _renderTournamentList(tourns);
   updateFilterSummary(tourns.length, tourns.length);
 }
@@ -1015,6 +1022,10 @@ function triggerLLM(h){const b=document.getElementById('llm-box'),btn=document.q
 
 function renderStudy(){
   const sl=document.getElementById('study-list');if(sl.innerHTML)return;
+  if(!studyD.length){
+    sl.innerHTML='<div style="text-align:center;padding:32px 20px;font-family:var(--mono);font-size:.75rem;color:var(--dim)">Importe torneios para gerar seu plano de estudo personalizado.</div>';
+    return;
+  }
   studyD.forEach(s=>{sl.innerHTML+=`<div class="study-card ${s.p}"><div class="study-icon">${s.i}</div><div class="sb"><div class="stitle">${s.title}</div><div class="sdesc">${s.desc}</div><div class="stag">${s.tag}</div><div class="ssess">${s.sess}</div></div></div>`;});
   const pg=document.getElementById('prog-grid');
   [{cat:'Pré-flop',pct:72,d:'+8%',c:'var(--standard)'},{cat:'Postflop',pct:58,d:'+14%',c:'var(--marginal)'},{cat:'ICM / Stack Curto',pct:44,d:'+6%',c:'var(--small)'},{cat:'Pot Odds',pct:61,d:'+11%',c:'var(--marginal)'}].forEach(p=>{pg.innerHTML+=`<div class="prog-card"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px"><span style="font-size:.8rem;color:var(--text)">${p.cat}</span><span style="font-family:var(--mono);font-size:.6rem;color:var(--standard)">${p.d}</span></div><div style="height:5px;background:var(--border2);border-radius:3px;overflow:hidden;margin-bottom:5px"><div style="width:${p.pct}%;height:100%;background:${p.c};border-radius:3px"></div></div><div style="font-family:var(--body);font-size:1.1rem;font-weight:700;color:${p.c}">${p.pct}%</div></div>`;});
@@ -1071,7 +1082,11 @@ async function importFile(){
     });
 
     if(res.status === 401){
-      doLogout();
+      // Token expirado — avisar antes de deslogar
+      fconf.innerHTML = '<div class="import-step" style="color:var(--marginal)">⚠ Sessão expirada. Fazendo login novamente...</div>';
+      btn.disabled = false;
+      btn.textContent = 'Analisar & Importar';
+      setTimeout(()=>{ doLogout(); }, 1500);
       return;
     }
 
@@ -1103,6 +1118,27 @@ async function importFile(){
 }
 
 function _applyRealData(data){
+  const m = data.metrics || {};
+  const lp = m.label_pct || {};
+
+  // Atualizar KPIs de evolução
+  const setEl = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  setEl('kpi-score',    m.avg_mistake_score ? m.avg_mistake_score.toFixed(3) : '—');
+  setEl('kpi-standard', lp.standard         ? lp.standard.toFixed(1) + '%'  : '—');
+  setEl('kpi-clear',    lp.clear_mistake     ? lp.clear_mistake.toFixed(1) + '%' : '—');
+
+  // Atualizar ICM se disponível
+  if(data.leaks && data.leaks.icm_breakdown){
+    const icm = data.leaks.icm_breakdown;
+    ['low','medium','high'].forEach((lvl,i)=>{
+      const k = ['low','med','high'][i];
+      const d = icm[lvl] || {};
+      setEl('icm-'+k+'-pct', d.standard_rate ? (d.standard_rate*100).toFixed(1)+'%' : '—');
+      setEl('icm-'+k+'-n',   d.n ? d.n+' mãos' : '—');
+      setEl('icm-'+k+'-sc',  d.avg_score ? d.avg_score.toFixed(3) : '—');
+    });
+  }
+
   // Navegar para torneios e mostrar o torneio importado
   nav('tournaments', null, false);
   const tl = document.getElementById('tourn-list');
