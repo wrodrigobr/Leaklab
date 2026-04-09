@@ -6,6 +6,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from flask import Flask, request, jsonify, g
+from flask_cors import CORS
 
 from gaphunter.parser import parse_pokerstars_file_from_text
 from gaphunter.pipeline import build_decision_inputs_for_hand
@@ -31,6 +32,7 @@ from database.auth import generate_token, require_auth, require_coach
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+CORS(app)
 
 # Inicializar banco ao subir
 init_db()
