@@ -115,89 +115,132 @@ def _call_llm_batch(decisions: List[dict]) -> List[str]:
 
 def _build_payload(decisions: List[dict]) -> dict:
     system_prompt = """Você é um coach profissional de poker MTT com mais de 20 anos de experiência.
-Analise cada decisão e retorne APENAS um JSON array com uma explicação profunda por decisão.
+Analise cada decisão abaixo e retorne APENAS um JSON array com uma análise profunda por decisão.
 
-Para cada decisão, sua análise DEVE incluir obrigatoriamente:
+IMPORTANTE: A decisão ocorreu na street indicada. O "board_na_decisão" mostra apenas as cartas comunitárias DISPONÍVEIS naquele momento (vazio no preflop, 3 cartas no flop, 4 no turn, 5 no river).
 
-1. DIAGNÓSTICO: O que exatamente foi feito de errado e por quê é um erro no contexto específico.
+Para cada decisão, estruture sua análise com estas seções:
 
-2. MATEMÁTICA: Calcule e explique claramente:
-   - Equity estimada da mão vs. equity mínima necessária (pot odds exigida)
-   - Se há draw, qual a probabilidade de completar (outs × regra 2/4)
-   - Comparação: equity real vs. equity ajustada pelo ICM/pressão de stack
-   - Se houver math_penalty alto, explique o que isso significa numericamente
+**1. O ERRO**
+Explique o que foi feito de errado e por que é errado neste contexto específico.
+Se a ação foi fold quando devia call: explique que estava com equity suficiente e pot odds favoráveis.
+Se a ação foi call quando devia fold: explique que estava sem equity suficiente para o preço pago.
+Se a ação foi call quando devia raise: explique a perda de valor e proteção.
+Seja específico com os números.
 
-3. TEORIA: Qual o conceito teórico violado:
-   - Range advantage, pot odds, implied odds, ICM pressure
-   - Posição (IP/OOP) e como afeta a decisão
-   - M ratio e o que significa para a estratégia neste stack
+**2. A MATEMÁTICA**
+- Equity estimada da mão: {equity_estimada} ({equity_estimada*100:.0f}%)
+- Pot odds exigidas: {pot_odds} ({pot_odds*100:.0f}%) — o que você precisa para breakeven
+- Equity mínima ajustada pelo contexto: {equity_minima_req} ({equity_minima_req*100:.0f}%)
+- Veredicto matemático: equity {acima/abaixo} do necessário em {diferença} pontos percentuais
+- Se houver draw: calcule outs × 2 (turn) ou × 4 (flop) para probabilidade de completar
+- EV estimado: compare EV da ação tomada vs ação correta
 
-4. AÇÃO CORRETA: Explique detalhadamente por que a ação recomendada era superior,
-   incluindo estimativas de EV (valor esperado) quando possível.
+**3. O CONTEXTO**
+- M ratio {m_ratio}: explique o que significa para a estratégia (M<6=push/fold, M6-12=pressão, M>12=jogo normal)
+- Stack em BBs ({stack_bb} BB): explique as implicações
+- ICM pressure {icm}: se high/medium, explique como afeta os thresholds de call
+- Posição ({position}): como afeta a equity realizada e a decisão
 
-5. DICA PRÁTICA: Uma lição concreta e memorável que o aluno pode aplicar em situações similares.
+**4. A AÇÃO CORRETA**
+Explique passo a passo por que {best_action} era a jogada superior, com raciocínio completo.
+Inclua: qual o EV esperado, por que o range se beneficia desta linha, qual o objetivo estratégico.
 
-Tom: professor experiente e direto, sem julgamentos pessoais. Use termos técnicos mas explique-os.
-Idioma: português do Brasil.
-Formato de saída: ["análise completa decisão 1", "análise completa decisão 2", ...]
-Retorne SOMENTE o JSON array, sem texto adicional."""
+**5. A LIÇÃO**
+Uma regra memorável que o aluno pode aplicar em situações similares.
+Exemplo: "Com M<6 e stack<15BB, sua decisão deve ser push/fold. Call passivo desperdiça equity de fold."
+
+Tom: direto, técnico, educativo. Use os números concretos fornecidos.
+Formato: ["análise decisão 1", "análise decisão 2", ...]
+Retorne SOMENTE o JSON array, sem texto adicional, sem markdown."""
+
+    def _board_for_street(street: str, board: list) -> list:
+        """Retorna apenas as cartas do board disponíveis na street."""
+        if street == 'preflop': return []
+        if street == 'flop':    return board[:3]
+        if street == 'turn':    return board[:4]
+        return board  # river ou unknown
 
     decisions_data = []
     for i, d in enumerate(decisions):
-        ev  = d.get('evaluation', {})
-        bd  = ev.get('scoreBreakdown', {})
-        ctx = d.get('context', {})
-        mt  = d.get('math', {})
-        th  = d.get('thresholds', {})
+        ev   = d.get('evaluation', {})
+        bd   = ev.get('scoreBreakdown', {})
+        ctx  = d.get('context', {})
+        mt   = d.get('math', {})
+        th   = d.get('thresholds', {})
+        spot = d.get('spot', {})
+        hp   = d.get('hand_profile', {})
+        rng  = d.get('range_evaluation', {})
         interp = d.get('interpretation', {})
+
+        street    = d.get('street', 'preflop')
+        full_board = d.get('board', [])
+        board_now  = _board_for_street(street, full_board)
+
+        equity_est = mt.get('estimatedHandEquity') or mt.get('equity') or 0
+        pot_odds   = mt.get('potOddsEquity') or mt.get('pot_odds') or 0
+        eq_min     = th.get('adjustedRequiredEquity') or pot_odds
+        action     = d.get('actionTaken', d.get('action_taken', '?'))
+        best       = d.get('bestAction',  d.get('best_action',  '?'))
+        m_ratio    = ctx.get('mRatio') or ctx.get('m_ratio')
+        stack_bb   = ctx.get('heroStackBb') or ctx.get('stack_bb')
+        icm        = ctx.get('icmPressure', ctx.get('icm_pressure', 'low'))
+        position   = spot.get('position') or ctx.get('position', 'unknown')
+
         decisions_data.append({
-            'index':       i,
-            'cards':       d.get('hero_cards', '??'),
-            'board':       d.get('board', []),
-            'street':      d.get('street', '?'),
-            'action_taken':d.get('actionTaken', d.get('action_taken', '?')),
-            'best_action': d.get('bestAction',  d.get('best_action',  '?')),
-            'label':       ev.get('label', '?'),
-            'mistake_score': round(ev.get('mistakeScore', 0), 3),
-            'score_breakdown': {
-                'base_gap':       round(bd.get('baseActionGap', 0), 3),
-                'math_penalty':   round(bd.get('mathPenalty', 0), 3),
-                'range_penalty':  round(bd.get('rangePenalty', 0), 3),
-                'context_penalty':round(bd.get('contextPenalty', 0), 3),
+            'índice':              i,
+            'hero_cards':          d.get('hero_cards', '??'),
+            'board_na_decisão':    board_now,
+            'street':              street,
+            'ação_tomada':         action,
+            'ação_correta':        best,
+            'classificação':       ev.get('label', '?'),
+            'score_erro':          round(ev.get('mistakeScore', 0), 3),
+            'matemática': {
+                'equity_estimada_pct':     round(equity_est * 100, 1),
+                'pot_odds_pct':            round(pot_odds  * 100, 1),
+                'equity_minima_exigida_pct':round(eq_min   * 100, 1),
+                'deficit_equity_pct':      round((eq_min - equity_est) * 100, 1),
+                'draw_profile':            mt.get('drawProfile', 'none'),
+                'equity_adjustment':       mt.get('equityAdjustment', 0),
+                'implied_odds_factor':     mt.get('impliedOddsFactor', 0),
+                'rev_implied_odds':        mt.get('reverseImpliedOddsFactor', 0),
             },
-            'math': {
-                'equity_estimada':    mt.get('estimatedHandEquity') or mt.get('equity'),
-                'pot_odds_equity':    mt.get('potOddsEquity') or mt.get('pot_odds'),
-                'equity_minima_req':  th.get('adjustedRequiredEquity'),
-                'draw_profile':       mt.get('drawProfile', 'none'),
-                'equity_adjustment':  mt.get('equityAdjustment', 0),
-                'implied_odds_factor':mt.get('impliedOddsFactor', 0),
-                'rev_implied_odds':   mt.get('reverseImpliedOddsFactor', 0),
-                'pressure_score':     mt.get('pressureScore', 0),
+            'contexto': {
+                'm_ratio':            m_ratio,
+                'stack_bb':           stack_bb,
+                'icm_pressure':       icm,
+                'posição':            position,
+                'estágio_torneio':    ctx.get('tournamentStage', ctx.get('stage', '?')),
+                'jogadores_na_mesa':  ctx.get('activePlayers', ctx.get('players')),
+                'pot_size':           spot.get('potSize'),
+                'facing_bet_bb':      spot.get('facingSize'),
             },
-            'context': {
-                'm_ratio':      ctx.get('mRatio'),
-                'stack_bb':     ctx.get('heroStackBb') or ctx.get('stackBb'),
-                'icm_pressure': ctx.get('icmPressure', 'low'),
-                'stage':        ctx.get('tournamentStage', 'unknown'),
-                'players':      ctx.get('activePlayers'),
-                'position':     ctx.get('position', 'unknown'),
+            'avaliação_range': {
+                'zona_do_range':      rng.get('rangeZone', hp.get('handClass', '?')),
+                'ação_recomendada':   rng.get('recommendedPrimaryAction', best),
+                'confiança':          rng.get('confidence'),
+                'hand_class':         hp.get('handClass'),
+                'showdown_value':     hp.get('showdownValueTier'),
+                'draw_tier':          hp.get('drawTier'),
             },
-            'interpretation': {
-                'summary':     interp.get('summary', ''),
-                'math_explanation':     interp.get('mathExplanation', ''),
-                'strategic_explanation':interp.get('strategicExplanation', ''),
+            'penalidades_do_score': {
+                'gap_base':           round(bd.get('baseActionGap', 0), 3),
+                'penalidade_math':    round(bd.get('mathPenalty', 0), 3),
+                'penalidade_range':   round(bd.get('rangePenalty', 0), 3),
+                'penalidade_contexto':round(bd.get('contextPenalty', 0), 3),
             },
+            'resumo_engine': interp.get('summary', ''),
         })
 
     user_message = (
-        f"Analise estas {len(decisions)} decisões com erro:\n\n"
+        "Analise " + str(len(decisions)) + " decisão(ões) com erro no poker MTT:\n\n"
         + json.dumps(decisions_data, ensure_ascii=False, indent=2)
     )
 
     return {
         'model':      'claude-haiku-4-5-20251001',
-        'max_tokens': max(600 * len(decisions), 1500),
+        'max_tokens': max(800 * len(decisions), 2000),
         'system':     system_prompt,
         'messages':   [{'role': 'user', 'content': user_message}],
     }
