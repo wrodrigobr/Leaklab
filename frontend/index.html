@@ -744,13 +744,17 @@ function _renderTournamentList(list){
     return;
   }
   list.forEach((t,ti)=>{
-    const clears=t.data.filter(h=>h.gap==='clear').length;
+    const clears = (t.clears != null) ? t.clears : t.data.filter(h=>h.gap==='clear').length;
     const sc=t.score;
     const scoreColor=sc<=.07?'var(--standard)':sc<=.12?'var(--marginal)':'var(--clear)';
     const siteName={pokerstars:'PokerStars',ggpoker:'GGPoker','888poker':'888poker'}[t.site]||t.site||'—';
-    const resultHtml=t.result==='itm'
-      ? `<span class="tourn-result result-itm">ITM${t.place?` · ${t.place}º`:''}</span>`
-      : `<span class="tourn-result result-elim">Eliminado</span>`;
+    const profitStr = t.profit != null
+      ? (t.profit >= 0 ? '+$' : '-$') + Math.abs(t.profit).toFixed(2)
+      : '';
+    const profitColor = t.profit > 0 ? 'var(--standard)' : t.profit < 0 ? 'var(--clear)' : 'var(--muted)';
+    const resultHtml = t.result==='itm'
+      ? `<span class="tourn-result result-itm">ITM${t.place ? ` · ${t.place}º` : ''}${profitStr ? ` · <span style="color:${profitColor}">${profitStr}</span>` : ''}</span>`
+      : `<span class="tourn-result result-elim">Eliminado${profitStr ? ` · <span style="color:${profitColor}">${profitStr}</span>` : ''}</span>`;
 
     const div=document.createElement('div');
     div.className='tourn-row';
@@ -993,7 +997,7 @@ function filterTournaments(){
       if(score==='bad'  && t.score <= .12) return false;
     }
     if(leaks){
-      const clears=t.data.filter(h=>h.gap==='clear').length;
+      const clears = (t.clears != null) ? t.clears : t.data.filter(h=>h.gap==='clear').length;
       if(leaks==='clear' && clears===0) return false;
       if(leaks==='clean' && clears>0)   return false;
     }
@@ -1426,6 +1430,11 @@ async function _applyRealData(data){
     hands: data.total_hands,
     dec: data.metrics?.total_decisions || 0,
     score: data.metrics?.avg_mistake_score || 0,
+    clears:  Object.values(data.hands || {}).reduce((n,h) =>
+               n + (h.decisions||[]).filter(d => d.evaluation?.label==='clear_mistake').length, 0),
+    buy_in:  data.financials?.buy_in  || null,
+    prize:   data.financials?.prize   || null,
+    profit:  data.financials?.profit  || null,
     data: Object.entries(data.hands || {}).map(([handKey, h]) => {
       // Usar chave do objeto como ID real da mão
       // O backend retorna { "257045919085": { cards, decisions, mtt } }
@@ -1565,17 +1574,22 @@ async function _loadTournamentsFromBackend(){
       const exists = tourns.find(x => x.id === t.tournament_id);
       if(!exists){
         tourns.push({
-          id:     t.tournament_id,
-          dbId:   t.id,
-          date:   _fmtDate(t.played_at || t.imported_at),
-          site:   t.site || 'pokerstars',
-          result: t.result || null,
-          place:  t.place  || null,
-          hands:  t.hands_count  || 0,
-          dec:    t.decisions_count || 0,
-          score:  t.avg_score || 0,
-          summary:t.llm_summary || null,
-          data:   [],  // carregado sob demanda ao expandir
+          id:      t.tournament_id,
+          dbId:    t.id,
+          date:    _fmtDate(t.played_at || t.imported_at),
+          site:    t.site || 'pokerstars',
+          result:  t.result || null,
+          place:   t.place  || null,
+          hands:   t.hands_count   || 0,
+          dec:     t.decisions_count || 0,
+          score:   t.avg_score     || 0,
+          summary: t.llm_summary   || null,
+          clears:  t.clear_count   || 0,
+          smalls:  t.small_count   || 0,
+          buy_in:  t.buy_in        || null,
+          prize:   t.prize         || null,
+          profit:  t.profit        || null,
+          data:    [],
           _loaded: false,
         });
       }

@@ -124,7 +124,9 @@ def analyze():
     hero          = hands[0].hero or 'Hero'
     tournament_id = hands[0].tournament_id or ''
     site          = _detect_site(hands[0].raw_text if hasattr(hands[0],'raw_text') else '')
-    played_at     = _extract_date(hands[0].raw_text if hasattr(hands[0],'raw_text') else '')
+    played_at  = _extract_date(hands[0].raw_text if hasattr(hands[0],'raw_text') else '')
+    raw_full   = '\n'.join(h.raw_text for h in hands if hasattr(h,'raw_text'))
+    financials = _extract_financials(raw_full, hero)
 
     # Persistir
     t_db_id = save_tournament(
@@ -134,6 +136,11 @@ def analyze():
         metrics=metrics,
         site=site,
         played_at=played_at,
+        result='itm' if financials.get('prize') else None,
+        place=financials.get('place'),
+        buy_in=financials.get('buy_in'),
+        prize=financials.get('prize'),
+        profit=financials.get('profit'),
     )
     save_decisions(t_db_id, results)
 
@@ -152,7 +159,8 @@ def analyze():
         'tournament_db_id': t_db_id,
         'hero':             hero,
         'tournament_id':    tournament_id,
-        'played_at':        played_at,          # data real do jogo
+        'played_at':        played_at,
+        'financials':       financials,
         'total_hands':      len(hands),
         'parse_errors':     len(errors),
         'metrics':          metrics,
@@ -353,6 +361,45 @@ def _detect_site(raw: str) -> str:
     if 'GGPoker'   in raw: return 'ggpoker'
     if '888'       in raw: return '888poker'
     return 'unknown'
+
+
+def _extract_financials(raw: str, hero: str) -> dict:
+    """
+    Extrai buy-in e prêmio do hero do hand history.
+    Retorna dict com buy_in, prize, profit, place.
+    """
+    import re
+    result = {'buy_in': None, 'prize': None, 'profit': None, 'place': None}
+
+    # Buy-in: '$0.98+$0.12' ou '$10+$1' etc.
+    m = re.search(r'\$(\d+\.?\d*)\+\$(\d+\.?\d*)', raw)
+    if m:
+        result['buy_in'] = round(float(m.group(1)) + float(m.group(2)), 2)
+
+    # Resultado do hero: "phpro finished the tournament in 3rd place and received $23.29"
+    if hero:
+        # Com prêmio
+        m = re.search(
+            re.escape(hero) + r'.*?finished.*?(\d+)[a-z]{2} place.*?received \$(\d+\.?\d*)',
+            raw, re.IGNORECASE
+        )
+        if m:
+            result['place'] = int(m.group(1))
+            result['prize'] = float(m.group(2))
+        else:
+            # Sem prêmio (eliminado antes do dinheiro)
+            m = re.search(
+                re.escape(hero) + r'.*?finished.*?(\d+)[a-z]{2} place',
+                raw, re.IGNORECASE
+            )
+            if m:
+                result['place'] = int(m.group(1))
+                result['prize'] = 0.0
+
+    if result['buy_in'] and result['prize'] is not None:
+        result['profit'] = round(result['prize'] - result['buy_in'], 2)
+
+    return result
 
 
 def _extract_date(raw: str) -> str | None:

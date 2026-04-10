@@ -138,7 +138,10 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
                     metrics: dict, site: str = 'pokerstars',
                     played_at: str | None = None,
                     result: str | None = None,
-                    place: int | None = None) -> int:
+                    place: int | None = None,
+                    buy_in: float | None = None,
+                    prize: float | None = None,
+                    profit: float | None = None) -> int:
     conn = get_conn()
     lp = metrics.get('label_pct', {})
     try:
@@ -148,8 +151,8 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
               (user_id, tournament_id, site, hero, played_at, imported_at,
                hands_count, decisions_count, avg_score,
                standard_pct, marginal_pct, small_pct, clear_pct,
-               result, place)
-            VALUES (?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?)
+               result, place, buy_in, prize, profit)
+            VALUES (?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(user_id, tournament_id) DO UPDATE SET
               imported_at    = datetime('now'),
               hands_count    = excluded.hands_count,
@@ -158,7 +161,12 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
               standard_pct   = excluded.standard_pct,
               marginal_pct   = excluded.marginal_pct,
               small_pct      = excluded.small_pct,
-              clear_pct      = excluded.clear_pct
+              clear_pct      = excluded.clear_pct,
+              result         = excluded.result,
+              place          = excluded.place,
+              buy_in         = excluded.buy_in,
+              prize          = excluded.prize,
+              profit         = excluded.profit
         """, (
             user_id, tournament_id, site, hero, played_at,
             metrics.get('total_hands', 0),
@@ -166,7 +174,7 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
             metrics.get('avg_mistake_score'),
             lp.get('standard'), lp.get('marginal'),
             lp.get('small_mistake'), lp.get('clear_mistake'),
-            result, place,
+            result, place, buy_in, prize, profit,
         ))
         conn.commit()
         # Buscar o ID (seja novo ou existente) — SELECT separado
@@ -223,12 +231,17 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
     conn = get_conn()
     try:
         rows = conn.execute("""
-            SELECT id, tournament_id, site, hero, played_at, imported_at,
-                   hands_count, decisions_count, avg_score,
-                   standard_pct, clear_pct, result, place, llm_summary
-            FROM tournaments
-            WHERE user_id = ?
-            ORDER BY imported_at DESC
+            SELECT t.id, t.tournament_id, t.site, t.hero, t.played_at, t.imported_at,
+                   t.hands_count, t.decisions_count, t.avg_score,
+                   t.standard_pct, t.clear_pct, t.result, t.place, t.llm_summary,
+                   t.buy_in, t.prize, t.profit,
+                   COUNT(CASE WHEN d.label = 'clear_mistake' THEN 1 END) AS clear_count,
+                   COUNT(CASE WHEN d.label = 'small_mistake' THEN 1 END) AS small_count
+            FROM tournaments t
+            LEFT JOIN decisions d ON d.tournament_id = t.id
+            WHERE t.user_id = ?
+            GROUP BY t.id
+            ORDER BY t.imported_at DESC
             LIMIT ?
         """, (user_id, limit)).fetchall()
         return [dict(r) for r in rows]

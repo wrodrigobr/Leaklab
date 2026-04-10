@@ -110,6 +110,9 @@ def _init_postgres(conn):
             clear_pct       REAL,
             result          TEXT,
             place           INTEGER,
+            buy_in          REAL,
+            prize           REAL,
+            profit          REAL,
             llm_summary     TEXT,
             UNIQUE(user_id, tournament_id)
         );
@@ -197,6 +200,9 @@ def _init_sqlite(conn):
             clear_pct       REAL,
             result          TEXT,
             place           INTEGER,
+            buy_in          REAL,
+            prize           REAL,
+            profit          REAL,
             llm_summary     TEXT,
             UNIQUE(user_id, tournament_id)
         );
@@ -258,6 +264,9 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_key     TEXT UNIQUE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS plan           TEXT NOT NULL DEFAULT 'free'",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by_key TEXT",
+            "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS buy_in REAL",
+            "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS prize  REAL",
+            "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS profit REAL",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -267,6 +276,9 @@ def _run_migrations(conn):
             ("invite_key",     "ALTER TABLE users ADD COLUMN invite_key     TEXT UNIQUE"),
             ("plan",           "ALTER TABLE users ADD COLUMN plan           TEXT NOT NULL DEFAULT 'free'"),
             ("invited_by_key", "ALTER TABLE users ADD COLUMN invited_by_key TEXT"),
+            ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
+            ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
+            ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),
         ]:
             if col not in existing:
                 try: conn.execute(sql)
