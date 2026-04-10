@@ -880,14 +880,31 @@ function _renderFinanceChart(evoList){
 }
 
 function renderLeaks(){
-  const tb=document.getElementById('leaks-body');if(tb.innerHTML)return;
+  const tb=document.getElementById('leaks-body');if(!tb)return;
   if(!leaksD.length){
     tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:28px;font-family:var(--mono);font-size:.75rem;color:var(--dim)">Importe um torneio para ver seus leaks.</td></tr>';
     return;
   }
   leaksD.forEach(l=>{const w=l.avg*75;const c=l.avg>=.55?'var(--clear)':l.avg>=.35?'var(--small)':l.avg>=.15?'var(--marginal)':'var(--standard)';const tc=l.tr==='↑'?'var(--clear)':l.tr==='↓'?'var(--standard)':'var(--muted)';tb.innerHTML+=`<tr><td style="font-family:var(--mono);font-size:.74rem;color:var(--text)">${l.spot}</td><td><div style="display:flex;align-items:center;gap:6px;"><div style="width:${w}px;height:3px;border-radius:2px;background:${c};display:inline-block"></div><span style="font-family:var(--mono);font-size:.7rem;color:${c}">${l.avg.toFixed(3)}</span></div></td><td style="font-family:var(--mono);font-size:.7rem;color:var(--muted)">${l.n}</td><td style="font-family:var(--mono);color:${tc}">${l.tr}</td><td><span class="badge sev-${l.sev}">${l.sev}</span></td><td class="hide-mobile" style="font-size:.73rem;color:var(--muted)">${l.desc}</td></tr>`;});
-  const sd=document.getElementById('street-dist');if(sd.innerHTML)return;
-  [{s:'preflop',pct:20},{s:'flop',pct:16},{s:'turn',pct:38},{s:'river',pct:29}].forEach(({s,pct})=>{const c=pct>=40?'var(--clear)':pct>=25?'var(--small)':pct>=15?'var(--marginal)':'var(--standard)';sd.innerHTML+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px;"><div style="font-family:var(--mono);font-size:.57rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px">${s}</div><div style="font-family:var(--body);font-size:1.55rem;font-weight:700;color:${c}">${pct}%</div><div style="font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-top:3px">taxa de erro</div></div>`;});
+  const sd=document.getElementById('street-dist');
+  if(!sd) return;
+  sd.innerHTML='';
+  // Calcular distribuição de erros por street a partir do leaksD
+  const streetTotals={preflop:0,flop:0,turn:0,river:0};
+  const streetCounts={preflop:0,flop:0,turn:0,river:0};
+  leaksD.forEach(l=>{
+    const street=(l.spot||'').split('/')[0];
+    if(streetTotals[street]!==undefined){
+      streetTotals[street]+=l.avg*l.n;
+      streetCounts[street]+=l.n;
+    }
+  });
+  const totalN=Object.values(streetCounts).reduce((a,b)=>a+b,0)||1;
+  ['preflop','flop','turn','river'].forEach(s=>{
+    const pct=Math.round(streetCounts[s]/totalN*100)||0;
+    const c=pct>=40?'var(--clear)':pct>=25?'var(--small)':pct>=15?'var(--marginal)':'var(--standard)';
+    sd.innerHTML+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px;"><div style="font-family:var(--mono);font-size:.57rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px">${s}</div><div style="font-family:var(--body);font-size:1.55rem;font-weight:700;color:${c}">${pct}%</div><div style="font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-top:3px">taxa de erro</div></div>`;
+  });
 }
 
 function renderTournaments(){
@@ -1777,6 +1794,7 @@ async function _loadTournamentsFromBackend(){
       });
       if(evoRes.ok){
         const evo = await evoRes.json();
+        // Sessions para gráfico de evolução
         sessions.length = 0;
         (evo.evolution || []).slice(-10).forEach((t,i)=>{
           const d = t.played_at || t.imported_at || '';
@@ -1784,6 +1802,35 @@ async function _loadTournamentsFromBackend(){
         });
         _renderEvolution();
         _renderFinanceChart(evo.evolution || []);
+
+        // Leaks
+        const leakList = evo.leaks || [];
+        leaksD.length = 0;
+        leakList.forEach(l => {
+          const avg = l.avg_score || 0;
+          leaksD.push({
+            spot: l.spot || '?',
+            avg:  avg,
+            n:    l.n || 0,
+            tr:   '→',
+            sev:  avg >= .36 ? 'critical' : avg >= .20 ? 'high' : avg >= .10 ? 'medium' : 'low',
+            desc: l.n + ' ocorrências — score médio ' + avg.toFixed(3),
+          });
+        });
+        const lkTb = document.getElementById('leaks-body');
+        if(lkTb){ lkTb.innerHTML = ''; }
+        renderLeaks();
+
+        // ICM
+        const icm = evo.icm || {};
+        ['low','medium','high'].forEach(lvl => {
+          const k = lvl === 'medium' ? 'med' : lvl;
+          const d = icm[lvl] || {};
+          const setEl2 = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+          setEl2('icm-'+k+'-pct', d.standard_rate ? (d.standard_rate*100).toFixed(1)+'%' : '—');
+          setEl2('icm-'+k+'-n',   d.n ? d.n+' mãos' : '—');
+          setEl2('icm-'+k+'-sc',  d.avg_score ? d.avg_score.toFixed(3) : '—');
+        });
       }
     } catch(e){ /* silencioso */ }
   } catch(e){ console.error('Erro ao carregar torneios:', e); }
