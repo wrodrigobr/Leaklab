@@ -881,6 +881,7 @@ function _renderFinanceChart(evoList){
 
 function renderLeaks(){
   const tb=document.getElementById('leaks-body');if(!tb)return;
+  tb.innerHTML='';  // sempre limpar antes de renderizar
   if(!leaksD.length){
     tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:28px;font-family:var(--mono);font-size:.75rem;color:var(--dim)">Importe um torneio para ver seus leaks.</td></tr>';
     return;
@@ -1810,6 +1811,21 @@ async function _loadTournamentsFromBackend(){
         });
         _renderEvolution();
         _renderFinanceChart(evo.evolution || []);
+
+        // KPIs — usar médias agregadas de todos os torneios do período
+        const evList = evo.evolution || [];
+        if(evList.length){
+          const setKpi = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+          // Médias ponderadas por decisões
+          const totDec = evList.reduce((s,t) => s+(t.decisions_count||0), 0) || 1;
+          const avgScore = evList.reduce((s,t) => s+(t.avg_score||0)*(t.decisions_count||0), 0) / totDec;
+          const avgStd   = evList.reduce((s,t) => s+(t.standard_pct||0)*(t.decisions_count||0), 0) / totDec;
+          const avgClear = evList.reduce((s,t) => s+(t.clear_pct||0)*(t.decisions_count||0), 0) / totDec;
+          setKpi('kpi-score',    avgScore.toFixed(3));
+          setKpi('kpi-standard', avgStd.toFixed(1)+'%');
+          setKpi('kpi-clear',    avgClear.toFixed(1)+'%');
+          // M ratio vem do contexto — não temos no evolution, deixar como —
+        }
 
         // Leaks
         const leakList = evo.leaks || [];
