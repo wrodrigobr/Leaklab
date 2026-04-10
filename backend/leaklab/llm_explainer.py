@@ -11,7 +11,19 @@ Estratégia:
 from __future__ import annotations
 import json
 import hashlib
+import os
 from typing import Dict, List
+
+
+def _api_key() -> str:
+    """Retorna a chave da API Anthropic da variável de ambiente."""
+    key = os.environ.get('ANTHROPIC_API_KEY', '')
+    if not key:
+        raise RuntimeError(
+            'ANTHROPIC_API_KEY não configurada. '
+            'Adicione esta variável de ambiente no Render.'
+        )
+    return key
 
 # Cache em memória (por sessão)
 _cache: Dict[str, str] = {}
@@ -71,7 +83,11 @@ def _call_llm_api(payload: dict) -> str:
     req = urllib.request.Request(
         'https://api.anthropic.com/v1/messages',
         data=_json.dumps(payload).encode('utf-8'),
-        headers={'Content-Type': 'application/json', 'anthropic-version': '2023-06-01'},
+        headers={
+            'Content-Type':      'application/json',
+            'anthropic-version': '2023-06-01',
+            'x-api-key':         _api_key(),
+        },
         method='POST',
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
@@ -98,6 +114,7 @@ def _call_llm_batch(decisions: List[dict]) -> List[str]:
         headers={
             'Content-Type':      'application/json',
             'anthropic-version': '2023-06-01',
+            'x-api-key':         _api_key(),
         },
         method='POST',
     )
@@ -420,7 +437,11 @@ def _call_llm_summary(ctx: dict, hero: str) -> str:
     req = urllib.request.Request(
         'https://api.anthropic.com/v1/messages',
         data=_json.dumps(payload).encode('utf-8'),
-        headers={'Content-Type': 'application/json', 'anthropic-version': '2023-06-01'},
+        headers={
+            'Content-Type':      'application/json',
+            'anthropic-version': '2023-06-01',
+            'x-api-key':         _api_key(),
+        },
         method='POST',
     )
 
