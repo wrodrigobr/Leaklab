@@ -220,6 +220,12 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
 
 
 def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
         rows = conn.execute("""
@@ -274,8 +280,10 @@ def get_decisions(tournament_db_id: int) -> List[dict]:
 
 # ── Evolution metrics (queries para o dashboard) ──────────────────────────────
 
-def get_evolution_metrics(user_id: int, days: int = 30) -> List[dict]:
+def get_evolution_metrics(user_id: int, days: int = 90) -> List[dict]:
     """Retorna métricas por torneio para o gráfico de evolução."""
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
         rows = conn.execute("""
@@ -284,16 +292,17 @@ def get_evolution_metrics(user_id: int, days: int = 30) -> List[dict]:
                    standard_pct, clear_pct
             FROM tournaments
             WHERE user_id = ?
-              AND imported_at >= datetime('now', ? || ' days')
+              AND imported_at >= ?
             ORDER BY imported_at ASC
-        """, (user_id, f'-{days}')).fetchall()
+        """, (user_id, since)).fetchall()
         return [dict(r) for r in rows]
     finally:
         conn.close()
 
-
-def get_leak_summary(user_id: int, days: int = 30) -> List[dict]:
+def get_leak_summary(user_id: int, days: int = 90) -> List[dict]:
     """Agrega leaks por street/ação no período."""
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
         rows = conn.execute("""
@@ -305,20 +314,21 @@ def get_leak_summary(user_id: int, days: int = 30) -> List[dict]:
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ?
-              AND t.imported_at >= datetime('now', ? || ' days')
+              AND t.imported_at >= ?
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
             HAVING COUNT(*) >= 2
             ORDER BY avg_score DESC
             LIMIT 10
-        """, (user_id, f'-{days}')).fetchall()
+        """, (user_id, since)).fetchall()
         return [dict(r) for r in rows]
     finally:
         conn.close()
 
-
-def get_icm_performance(user_id: int, days: int = 30) -> dict:
+def get_icm_performance(user_id: int, days: int = 90) -> dict:
     """Performance separada por nível de ICM pressure."""
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
         rows = conn.execute("""
@@ -330,16 +340,12 @@ def get_icm_performance(user_id: int, days: int = 30) -> dict:
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ?
-              AND t.imported_at >= datetime('now', ? || ' days')
+              AND t.imported_at >= ?
             GROUP BY d.icm_pressure
-        """, (user_id, f'-{days}')).fetchall()
+        """, (user_id, since)).fetchall()
         return {r['icm_pressure']: dict(r) for r in rows if r['icm_pressure']}
     finally:
         conn.close()
-
-
-
-# ── LLM Cache ─────────────────────────────────────────────────────────────────
 
 def get_llm_cache(user_id: int, cache_key: str) -> Optional[str]:
     """Retorna análise cacheada ou None se não existir."""
@@ -530,7 +536,7 @@ def get_public_coaches(specialty: str | None = None,
                     FROM tournaments t
                     JOIN users s ON s.id = t.user_id
                     WHERE s.coach_id = u.id
-                      AND t.imported_at >= datetime('now', '-30 days')
+                      AND t.imported_at >= (CURRENT_TIMESTAMP - INTERVAL '30 days')
                    ) as students_avg_score
             FROM coach_profiles cp
             JOIN users u ON u.id = cp.user_id
@@ -561,6 +567,9 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
     - Leaks mais melhorados
     - Aluno com maior evolução
     """
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    since2 = (datetime.utcnow() - timedelta(days=days*2)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
         students = conn.execute(
@@ -585,10 +594,10 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
                 MAX(t.imported_at)  as last_activity
             FROM users u
             LEFT JOIN tournaments t ON t.user_id = u.id
-              AND t.imported_at >= datetime('now', ? || ' days')
+              AND t.imported_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
             WHERE u.id IN ({placeholders})
             GROUP BY u.id
-        """, [f'-{days}'] + student_ids)
+        """, [since] + student_ids)
 
         # Comparar com período anterior (dobro do período)
         prev_period = conn.execute(f"""
@@ -597,11 +606,11 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
                 AVG(t.avg_score) as prev_avg_score
             FROM users u
             LEFT JOIN tournaments t ON t.user_id = u.id
-              AND t.imported_at < datetime('now', ? || ' days')
-              AND t.imported_at >= datetime('now', ? || ' days')
+              AND t.imported_at < ?
+              AND t.imported_at >= ?
             WHERE u.id IN ({placeholders})
             GROUP BY u.id
-        """, [f'-{days}', f'-{days*2}'] + student_ids).fetchall()
+        """, [since, since2] + student_ids).fetchall()
         prev_map = {r['student_id']: r['prev_avg_score'] for r in prev_period}
 
         # Top leaks dos alunos (para o coach saber o que focar)
@@ -613,7 +622,7 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id IN ({placeholders})
-              AND t.imported_at >= datetime('now', ? || ' days')
+              AND t.imported_at >= ?
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
             HAVING COUNT(*) >= 2
@@ -668,7 +677,7 @@ def recommend_coaches_for_leaks(user_id: int, limit: int = 3) -> List[dict]:
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ?
               AND d.label IN ('small_mistake','clear_mistake')
-              AND t.imported_at >= datetime('now', '-60 days')
+              AND t.imported_at >= ?
             GROUP BY spot
             ORDER BY avg_score DESC
             LIMIT 3

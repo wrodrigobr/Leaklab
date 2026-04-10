@@ -495,6 +495,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <div class="topbar-user" id="topbar-user" style="display:none">
         <span class="username" id="topbar-username"></span>
         <button class="btn-logout" onclick="doLogout()">Sair</button>
+        <button class="btn-logout" onclick="resetMyData()" style="border-color:var(--clear);color:var(--clear)" title="Apagar todos os dados">⚠ Reset</button>
       </div>
     </div>
   </div>
@@ -1344,7 +1345,7 @@ async function _applyRealData(data){
   // ── 2. Buscar dados de evolução e leaks do backend (já salvos no BD) ──
   const token = localStorage.getItem('ll_token');
   try {
-    const res = await fetch(API_URL + '/history/evolution', {
+    const res = await fetch(API_URL + '/history/evolution?days=90', {
       headers: {'Authorization': 'Bearer ' + token}
     });
     if(res.ok){
@@ -1592,8 +1593,41 @@ function doLogout(){
   localStorage.removeItem('ll_token');
   localStorage.removeItem('ll_username');
   localStorage.removeItem('ll_role');
+  // Limpar cache local
+  tourns.length = 0;
+  sessions.length = 0;
+  leaksD.length = 0;
+  _llmLocalCache.clear();
   document.getElementById('topbar-user').style.display = 'none';
   showAuth();
+}
+
+async function resetMyData(){
+  if(!confirm('Isso vai deletar TODOS os seus torneios e análises. Confirma?')) return;
+  const token = localStorage.getItem('ll_token');
+  try {
+    const res = await fetch(API_URL + '/admin/reset-my-data', {
+      method: 'POST',
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+    const d = await res.json();
+    if(d.ok){
+      tourns.length = 0;
+      sessions.length = 0;
+      leaksD.length = 0;
+      _llmLocalCache.clear();
+      // Limpar UI
+      const tl = document.getElementById('tourn-list');
+      if(tl){ tl.dataset.rendered=''; tl.innerHTML=''; }
+      const tb = document.getElementById('leaks-body');
+      if(tb) tb.innerHTML = '';
+      _renderEvolution();
+      nav('tournaments', null, false);
+      alert('Dados resetados com sucesso!');
+    } else {
+      alert('Erro: ' + (d.error || 'desconhecido'));
+    }
+  } catch(e){ alert('Erro de conexão.'); }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

@@ -606,6 +606,36 @@ def _template_hand_analysis(d) -> str:
         f'Revise os fundamentos de pot odds e equity para este tipo de spot.'
     )
 
+
+@app.route('/admin/reset-my-data', methods=['POST'])
+@require_auth
+def reset_my_data():
+    """
+    Deleta TODOS os dados do usuário logado (torneios, decisões, cache LLM).
+    Útil para testes. NÃO deleta o usuário em si.
+    """
+    from database.schema import get_conn
+    conn = get_conn()
+    try:
+        # Deletar em ordem para respeitar foreign keys
+        conn.execute("""
+            DELETE FROM llm_cache WHERE user_id = ?
+        """, (g.user_id,))
+        conn.execute("""
+            DELETE FROM decisions WHERE tournament_id IN (
+                SELECT id FROM tournaments WHERE user_id = ?
+            )
+        """, (g.user_id,))
+        conn.execute("""
+            DELETE FROM tournaments WHERE user_id = ?
+        """, (g.user_id,))
+        conn.commit()
+        return jsonify({'ok': True, 'message': 'Dados resetados com sucesso'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
 @app.errorhandler(413)
 def too_large(_): return jsonify({'error': 'Arquivo muito grande (limite: 5MB)'}), 413
 
