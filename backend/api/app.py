@@ -349,9 +349,21 @@ def _detect_site(raw: str) -> str:
 
 
 def _extract_date(raw: str) -> str | None:
+    """
+    Extrai a data do jogo do hand history.
+    PokerStars: '2025/07/22 10:10:49 ET' → '2025-07-22'
+    Usa a primeira mão do arquivo (mais antiga) para representar quando o torneio começou.
+    """
     import re
-    m = re.search(r'(\d{4}/\d{2}/\d{2})', raw)
-    return m.group(1).replace('/', '-') if m else None
+    # Data + hora completa: 2025/07/22 10:10:49
+    m = re.search(r'(\d{4})/(\d{2})/(\d{2})\s+\d{2}:\d{2}:\d{2}', raw)
+    if m:
+        return f'{m.group(1)}-{m.group(2)}-{m.group(3)}'
+    # Fallback: só data
+    m = re.search(r'(\d{4})/(\d{2})/(\d{2})', raw)
+    if m:
+        return f'{m.group(1)}-{m.group(2)}-{m.group(3)}'
+    return None
 
 
 # ── Error handlers ────────────────────────────────────────────────────────────
