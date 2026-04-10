@@ -87,11 +87,11 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .delta-up{color:var(--standard);}.delta-dn{color:var(--clear);}
 
 /* TOOLTIP */
-.tt{position:relative;display:inline-flex;cursor:help;}
+.tt{display:inline-flex;cursor:help;align-items:center;}
 .tt-i{width:13px;height:13px;border-radius:50%;background:var(--border2);color:var(--muted);font-size:.58rem;display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);}
-.tt-b{position:fixed;background:var(--ink);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;width:190px;font-family:var(--body);font-size:.73rem;color:var(--text);line-height:1.5;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999;white-space:normal;font-weight:300;box-shadow:0 8px 24px rgba(0,0,0,.4);}
-.tt-b::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
-.tt:hover .tt-b,.tt:focus-within .tt-b{opacity:1;}
+.tt-b{display:none;}
+#tt-global{position:fixed;background:var(--ink);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;width:200px;font-family:var(--body);font-size:.73rem;color:var(--text);line-height:1.5;pointer-events:none;opacity:0;transition:opacity .15s;z-index:99999;white-space:normal;font-weight:300;display:none;}
+#tt-global.visible{display:block;opacity:1;}
 
 /* SECTION */
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
@@ -648,6 +648,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 <div class="ov" id="ov" onclick="closePanel()"></div>
 <div class="dpanel" id="dpanel"><div class="ph"><div class="pt" id="ptitle">Detalhes</div><div class="pc-close" onclick="closePanel()">✕</div></div><div class="pb" id="pbody"></div></div>
 
+<div id="tt-global"></div>
 <div class="modal-ov" id="modal">
   <div class="modal-box">
     <div class="mcl" onclick="closeModal()">✕</div>
@@ -1899,25 +1900,43 @@ async function resetMyData(){
 (function init(){
   document.getElementById('mobile-period').style.display='flex';
 
-// ── Tooltip positioning ────────────────────────────────────────────────────
-document.addEventListener('mouseover', function(e){
-  const tt = e.target.closest('.tt');
-  if(!tt) return;
-  const box = tt.querySelector('.tt-b');
-  if(!box) return;
-  const rect = tt.getBoundingClientRect();
-  // Usar altura estimada de 100px quando box ainda não tem layout (opacity:0)
-  const bh = box.getBoundingClientRect().height || 100;
-  const bw = 190;
-  const cx = rect.left + rect.width / 2;
-  let left = cx - bw / 2;
-  let top  = rect.top - bh - 10;
-  // Não sair da tela
-  left = Math.max(8, Math.min(left, window.innerWidth - bw - 8));
-  if(top < 8) top = rect.bottom + 8;  // abrir abaixo se não couber acima
-  box.style.left = left + 'px';
-  box.style.top  = top  + 'px';
-});
+// ── Tooltip global (portal no body para evitar problema de stacking context) ──
+(function(){
+  const ttEl = document.getElementById('tt-global');
+  let ttTimer = null;
+
+  document.addEventListener('mouseover', function(e){
+    const ttTrigger = e.target.closest('.tt');
+    if(!ttTrigger){ return; }
+    const box = ttTrigger.querySelector('.tt-b');
+    if(!box) return;
+    const text = box.textContent.trim();
+    if(!text) return;
+
+    clearTimeout(ttTimer);
+    ttEl.textContent = text;
+
+    const rect = ttTrigger.getBoundingClientRect();
+    const bw = 200;
+    const bh = 80;  // estimativa
+    const cx = rect.left + rect.width / 2;
+    let left = cx - bw / 2;
+    let top  = rect.top - bh - 10;
+    left = Math.max(8, Math.min(left, window.innerWidth - bw - 8));
+    if(top < 8) top = rect.bottom + 8;
+    ttEl.style.left = left + 'px';
+    ttEl.style.top  = top  + 'px';
+    ttEl.classList.add('visible');
+  });
+
+  document.addEventListener('mouseout', function(e){
+    const ttTrigger = e.target.closest('.tt');
+    if(!ttTrigger) return;
+    const related = e.relatedTarget;
+    if(related && ttTrigger.contains(related)) return;
+    ttTimer = setTimeout(()=>{ ttEl.classList.remove('visible'); }, 80);
+  });
+})();
   const token    = localStorage.getItem('ll_token');
   const username = localStorage.getItem('ll_username');
   if(token && username){
