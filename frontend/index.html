@@ -1114,70 +1114,98 @@ async function triggerLLM(h){
   if(btn) btn.style.display = 'none';
 
   const token = localStorage.getItem('ll_token');
-
-  // Chamar o backend real
   try {
     const res = await fetch(API_URL + '/analyze/hand-coach', {
       method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': 'Bearer ' + token,
-      },
-      body: JSON.stringify({ hand: h }),
+      headers: {'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body: JSON.stringify({hand: h}),
     });
-
-    if(!res.ok){ throw new Error('HTTP ' + res.status); }
+    if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const analyses = data.analyses || [];
-
     if(!analyses.length){
-      b.innerHTML = '<div style="font-family:var(--mono);font-size:.72rem;color:var(--dim)">Sem análise disponível para esta mão.</div>';
+      b.innerHTML = '<p style="color:var(--dim);font-size:.8rem">Sem análise disponível.</p>';
       return;
     }
-
-    // Renderizar análises em seções visuais
-    b.innerHTML = analyses.map((text, i) => {
-      const decs = (h._decs || h.decs || h.decisions || []);
-      const dec  = decs[i] || {};
-      const street = dec.s || dec.street || '';
-      const label  = (dec.l || dec.label || '').replace(/_/g,' ');
-      const color  = {
-        clear_mistake:'var(--clear)', small_mistake:'var(--small)',
-        marginal:'var(--marginal)', standard:'var(--standard)'
-      }[dec.l || dec.label] || 'var(--muted)';
-
-      // Quebrar em parágrafos — cada seção numerada vira bloco visual
-      const paragraphs = text
-        .split('\n')
-        .filter(p => p.trim())
-        .map(p => {
-          // Destacar números, percentuais e termos técnicos
-          const html = p
-            .replace(/(\d+\.?\d*%)/g, '<b style="color:var(--gold)">$1</b>')
-            .replace(/(\d+\.\d{3})/g, '<b style="color:var(--gold)">$1</b>')
-            .replace(/(fold|call|raise|check|bet|push|all-in)/gi,
-              '<span style="font-family:var(--mono);font-size:.9em;color:var(--text)">$1</span>');
-          return '<p style="margin-bottom:8px;line-height:1.7">' + html + '</p>';
-        }).join('');
-
-      return '<div style="border:1px solid var(--border2);border-radius:8px;padding:12px 14px;margin-bottom:10px;">'
-        + (street ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border2)">'
-            + '<span style="font-family:var(--mono);font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">' + street + '</span>'
-            + (label ? '<span class="badge" style="color:' + color + ';border-color:' + color + '30;background:' + color + '10">' + label + '</span>' : '')
-            + '</div>' : '')
-        + '<div style="font-size:.8rem;color:var(--text)">' + paragraphs + '</div>'
-        + '</div>';
-    }).join('');
-
+    b.innerHTML = analyses.map(md => _mdToHtml(md)).join('');
   } catch(err) {
-    // Fallback offline
-    b.innerHTML = '<div style="border:1px solid var(--border2);border-radius:8px;padding:12px 14px;">'
-      + '<div style="font-family:var(--mono);font-size:.65rem;color:var(--marginal);margin-bottom:8px">⚠ Coach IA offline — análise básica</div>'
-      + '<div style="font-size:.8rem;color:var(--muted);line-height:1.7">'
-      + 'Não foi possível conectar ao Coach IA. Verifique sua conexão e tente novamente.'
-      + '</div></div>';
-    if(btn){ btn.style.display = ''; btn.textContent = '✦ Tentar novamente'; }
+    b.innerHTML = '<div style="color:var(--marginal);font-size:.78rem;padding:8px">⚠ Coach IA indisponível. Tente novamente.</div>';
+    if(btn){ btn.style.display=''; btn.textContent='✦ Tentar novamente'; }
   }
+}
+
+function _mdToHtml(md){
+  if(!md) return '';
+
+  // Detectar se ainda é JSON acidental e extrair texto
+  if(md.trim().startsWith('{') || md.trim().startsWith('[')){
+    try {
+      const obj = JSON.parse(md);
+      // Reconstruir como texto a partir dos campos do JSON
+      const parts = [];
+      if(obj.título)           parts.push('## ' + obj.título);
+      if(obj.o_erro)           parts.push('### ❌ O Erro\n' + obj.o_erro);
+      if(obj.a_matemática){
+        const m = obj.a_matemática;
+        let mLines = '### 📐 A Matemática\n';
+        if(m.equity_estimada)       mLines += '- **Equity estimada:** '       + m.equity_estimada + '\n';
+        if(m.pot_odds_exigidas)     mLines += '- **Pot odds exigidas:** '      + m.pot_odds_exigidas + '\n';
+        if(m.equity_minima_ajustada)mLines += '- **Equity mínima ajustada:** ' + m.equity_minima_ajustada + '\n';
+        if(m.veredicto)             mLines += '- **Veredicto:** '              + m.veredicto + '\n';
+        if(m.análise_detalhada)     mLines += '\n' + m.análise_detalhada + '\n';
+        if(m.ev_comparação)         mLines += '\n' + m.ev_comparação;
+        if(m.ev_fold_vs_call)       mLines += '\n' + m.ev_fold_vs_call;
+        parts.push(mLines);
+      }
+      if(obj.o_contexto){
+        const c = obj.o_contexto;
+        let cLines = '### 🧭 O Contexto\n';
+        Object.entries(c).forEach(([k,v]) => { cLines += '- **' + k.replace(/_/g,' ') + ':** ' + v + '\n'; });
+        parts.push(cLines);
+      }
+      if(obj.a_ação_correta){
+        const a = obj.a_ação_correta;
+        let aText = '### ✅ A Ação Correta\n**' + (a.ação||'') + '** — ';
+        aText += (a.raciocínio_completo||a.raciocinio_completo||'');
+        if(a.ev_esperado) aText += '\n\n' + a.ev_esperado;
+        parts.push(aText);
+      }
+      if(obj.a_lição || obj['a_lição'])
+        parts.push('### 💡 A Lição\n' + (obj.a_lição || obj['a_lição']));
+      md = parts.join('\n\n');
+    } catch(e){ /* não era JSON válido, usar como texto */ }
+  }
+
+  // Converter Markdown para HTML
+  let html = md
+    // Separadores --- viram divisores visuais
+    .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid var(--border2);margin:16px 0">')
+    // H2: título da decisão
+    .replace(/^## (.+)$/gm, '<h2 style="font-size:.95rem;font-weight:600;color:var(--text);margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border2)">$1</h2>')
+    // H3: seções (com emoji)
+    .replace(/^### (❌.+)$/gm, '<h3 style="font-size:.78rem;font-weight:600;color:var(--clear);margin:14px 0 6px;letter-spacing:.02em">$1</h3>')
+    .replace(/^### (📐.+)$/gm, '<h3 style="font-size:.78rem;font-weight:600;color:var(--gold);margin:14px 0 6px;letter-spacing:.02em">$1</h3>')
+    .replace(/^### (🧭.+)$/gm, '<h3 style="font-size:.78rem;font-weight:600;color:var(--standard);margin:14px 0 6px;letter-spacing:.02em">$1</h3>')
+    .replace(/^### (✅.+)$/gm, '<h3 style="font-size:.78rem;font-weight:600;color:var(--standard);margin:14px 0 6px;letter-spacing:.02em">$1</h3>')
+    .replace(/^### (💡.+)$/gm, '<h3 style="font-size:.78rem;font-weight:600;color:var(--marginal);margin:14px 0 6px;letter-spacing:.02em">$1</h3>')
+    .replace(/^### (.+)$/gm, '<h3 style="font-size:.78rem;font-weight:600;color:var(--muted);margin:14px 0 6px">$1</h3>')
+    // Listas
+    .replace(/^- \*\*(.+?)\*\*: (.+)$/gm, '<div style="display:flex;gap:6px;margin-bottom:5px"><span style="font-family:var(--mono);font-size:.68rem;color:var(--muted);min-width:160px;flex-shrink:0">$1</span><span style="font-size:.78rem;color:var(--text)">$2</span></div>')
+    .replace(/^- \*\*(.+?)\*\*: (.+)$/gm, '<div style="display:flex;gap:6px;margin-bottom:5px"><span style="font-family:var(--mono);font-size:.68rem;color:var(--muted);min-width:160px;flex-shrink:0">$1</span><span style="font-size:.78rem;color:var(--text)">$2</span></div>')
+    .replace(/^- (.+)$/gm, '<div style="display:flex;gap:8px;margin-bottom:4px;font-size:.78rem;color:var(--text)"><span style="color:var(--dim)">•</span><span>$1</span></div>')
+    // Bold inline
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>')
+    // Números em destaque
+    .replace(/(\d+\.?\d*%)/g, '<span style="font-family:var(--mono);color:var(--gold);font-size:.9em">$1</span>')
+    .replace(/([+-]\d+\.?\d* BB)/g, '<span style="font-family:var(--mono);color:var(--standard);font-size:.9em">$1</span>')
+    // Parágrafos
+    .replace(/\n{2,}/g, '</p><p style="font-size:.8rem;color:var(--text);line-height:1.75;margin-bottom:10px">')
+    .replace(/\n/g, '<br>');
+
+  return '<div style="background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:16px 18px;margin-bottom:12px">'
+    + '<p style="font-size:.8rem;color:var(--text);line-height:1.75;margin-bottom:10px">'
+    + html
+    + '</p></div>';
 }
 
 function renderStudy(){
