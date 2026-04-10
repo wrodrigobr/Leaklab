@@ -325,7 +325,7 @@ def get_leak_summary(user_id: int, days: int = 90) -> List[dict]:
               AND t.imported_at >= ?
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
-            HAVING COUNT(*) >= 2
+            HAVING COUNT(*) >= 1
             ORDER BY avg_score DESC
             LIMIT 10
         """, (user_id, since)).fetchall()
@@ -633,7 +633,7 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
               AND t.imported_at >= ?
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
-            HAVING COUNT(*) >= 2
+            HAVING COUNT(*) >= 1
             ORDER BY avg_score DESC
             LIMIT 5
         """, student_ids + [f'-{days}']).fetchall()

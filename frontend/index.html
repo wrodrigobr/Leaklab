@@ -92,7 +92,6 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .tt-b{position:fixed;background:var(--ink);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;width:190px;font-family:var(--body);font-size:.73rem;color:var(--text);line-height:1.5;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999;white-space:normal;font-weight:300;box-shadow:0 8px 24px rgba(0,0,0,.4);}
 .tt-b::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
 .tt:hover .tt-b,.tt:focus-within .tt-b{opacity:1;}
-.tt-b{left:0;top:0;}
 
 /* SECTION */
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
@@ -885,7 +884,15 @@ function renderLeaks(){
     tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:28px;font-family:var(--mono);font-size:.75rem;color:var(--dim)">Importe um torneio para ver seus leaks.</td></tr>';
     return;
   }
-  leaksD.forEach(l=>{const w=l.avg*75;const c=l.avg>=.55?'var(--clear)':l.avg>=.35?'var(--small)':l.avg>=.15?'var(--marginal)':'var(--standard)';const tc=l.tr==='↑'?'var(--clear)':l.tr==='↓'?'var(--standard)':'var(--muted)';tb.innerHTML+=`<tr><td style="font-family:var(--mono);font-size:.74rem;color:var(--text)">${l.spot}</td><td><div style="display:flex;align-items:center;gap:6px;"><div style="width:${w}px;height:3px;border-radius:2px;background:${c};display:inline-block"></div><span style="font-family:var(--mono);font-size:.7rem;color:${c}">${l.avg.toFixed(3)}</span></div></td><td style="font-family:var(--mono);font-size:.7rem;color:var(--muted)">${l.n}</td><td style="font-family:var(--mono);color:${tc}">${l.tr}</td><td><span class="badge sev-${l.sev}">${l.sev}</span></td><td class="hide-mobile" style="font-size:.73rem;color:var(--muted)">${l.desc}</td></tr>`;});
+  leaksD.forEach(l=>{
+    const w=Math.min(l.avg*75,75);
+    const c=l.avg>=.55?'var(--clear)':l.avg>=.35?'var(--small)':l.avg>=.15?'var(--marginal)':'var(--standard)';
+    const tc=l.tr==='↑'?'var(--clear)':l.tr==='↓'?'var(--standard)':'var(--muted)';
+    const nDisplay = l.n===1
+      ? `<span style="color:var(--dim)" title="Amostra pequena — baseado em 1 ocorrência">1 *</span>`
+      : l.n;
+    tb.innerHTML+=`<tr><td style="font-family:var(--mono);font-size:.74rem;color:var(--text)">${l.spot}</td><td><div style="display:flex;align-items:center;gap:6px;"><div style="width:${w}px;height:3px;border-radius:2px;background:${c};display:inline-block"></div><span style="font-family:var(--mono);font-size:.7rem;color:${c}">${l.avg.toFixed(3)}</span></div></td><td style="font-family:var(--mono);font-size:.7rem;color:var(--muted)">${nDisplay}</td><td style="font-family:var(--mono);color:${tc}">${l.tr}</td><td><span class="badge sev-${l.sev}">${l.sev}</span></td><td class="hide-mobile" style="font-size:.73rem;color:var(--muted)">${l.desc}</td></tr>`;
+  });
   const sd=document.getElementById('street-dist');
   if(!sd) return;
   sd.innerHTML='';
@@ -1892,15 +1899,24 @@ async function resetMyData(){
 (function init(){
   document.getElementById('mobile-period').style.display='flex';
 
-// ── Tooltip position fix ───────────────────────────────────────────────────
+// ── Tooltip positioning ────────────────────────────────────────────────────
 document.addEventListener('mouseover', function(e){
   const tt = e.target.closest('.tt');
   if(!tt) return;
   const box = tt.querySelector('.tt-b');
   if(!box) return;
   const rect = tt.getBoundingClientRect();
-  box.style.left = Math.max(8, Math.min(rect.left + rect.width/2 - 95, window.innerWidth - 206)) + 'px';
-  box.style.top  = Math.max(8, rect.top - box.offsetHeight - 8) + 'px';
+  // Usar altura estimada de 100px quando box ainda não tem layout (opacity:0)
+  const bh = box.getBoundingClientRect().height || 100;
+  const bw = 190;
+  const cx = rect.left + rect.width / 2;
+  let left = cx - bw / 2;
+  let top  = rect.top - bh - 10;
+  // Não sair da tela
+  left = Math.max(8, Math.min(left, window.innerWidth - bw - 8));
+  if(top < 8) top = rect.bottom + 8;  // abrir abaixo se não couber acima
+  box.style.left = left + 'px';
+  box.style.top  = top  + 'px';
 });
   const token    = localStorage.getItem('ll_token');
   const username = localStorage.getItem('ll_username');
