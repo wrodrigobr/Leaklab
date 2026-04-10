@@ -398,6 +398,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .s1{animation:fadeIn .4s .04s both;}.s2{animation:fadeIn .4s .09s both;}.s3{animation:fadeIn .4s .14s both;}.s4{animation:fadeIn .4s .19s both;}.s5{animation:fadeIn .4s .24s both;}
 ::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:var(--ink);}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
 </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body>
 
@@ -528,21 +529,43 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       </div>
     </div>
 
+
     <div class="sec-head" style="margin-top:4px">
       <div class="sec-title">Resultado Financeiro
         <div class="tt"><span class="tt-i">?</span>
-          <div class="tt-b">Lucro/prejuízo por torneio. Verde = ITM, vermelho = eliminado sem prêmio.</div>
+          <div class="tt-b">Barras = resultado por torneio. Linha dourada = acumulado. Verde = ITM, vermelho = eliminado.</div>
         </div>
       </div>
     </div>
-    <div class="chart-card" style="padding:16px 16px 10px">
-      <div id="finance-chart" style="display:flex;align-items:flex-end;gap:5px;height:72px;overflow-x:auto"></div>
-      <div style="display:flex;justify-content:space-between;margin-top:10px;font-family:var(--mono);font-size:.65rem;color:var(--muted)">
-        <span>Acumulado: <b id="finance-total" style="color:var(--text)">—</b></span>
-        <span>ROI: <b id="finance-roi" style="color:var(--text)">—</b></span>
-        <span>ITM rate: <b id="finance-itm" style="color:var(--text)">—</b></span>
+    <div class="chart-card" style="padding:14px 16px 12px">
+      <div style="display:flex;gap:14px;margin-bottom:10px;font-family:var(--mono);font-size:.6rem;color:var(--muted)">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:2px;background:var(--standard);display:inline-block"></span>ITM</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:2px;background:var(--clear);display:inline-block"></span>Eliminado</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:2px;background:var(--gold);display:inline-block;border-radius:1px"></span>Acumulado</span>
+      </div>
+      <div style="position:relative;width:100%;height:140px">
+        <canvas id="finance-canvas" role="img" aria-label="Resultado financeiro por torneio com linha de acumulado">Resultado financeiro por torneio.</canvas>
+      </div>
+      <div style="display:flex;margin-top:12px;border-top:1px solid var(--border2);padding-top:10px">
+        <div style="flex:1;text-align:center">
+          <div style="font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-bottom:3px">Acumulado</div>
+          <div style="font-family:var(--body);font-size:.95rem;font-weight:700" id="finance-total">—</div>
+        </div>
+        <div style="flex:1;text-align:center;border-left:1px solid var(--border2)">
+          <div style="font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-bottom:3px">ROI</div>
+          <div style="font-family:var(--body);font-size:.95rem;font-weight:700" id="finance-roi">—</div>
+        </div>
+        <div style="flex:1;text-align:center;border-left:1px solid var(--border2)">
+          <div style="font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-bottom:3px">ITM rate</div>
+          <div style="font-family:var(--body);font-size:.95rem;font-weight:700" id="finance-itm">—</div>
+        </div>
+        <div style="flex:1;text-align:center;border-left:1px solid var(--border2)">
+          <div style="font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-bottom:3px">Torneios</div>
+          <div style="font-family:var(--body);font-size:.95rem;font-weight:700" id="finance-n">—</div>
+        </div>
       </div>
     </div>
+
 
     <div class="sec-head"><div class="sec-title">Performance por Pressão ICM</div></div>
     <div class="icm-row s1">
@@ -729,80 +752,131 @@ function _renderEvolution(){
 _renderEvolution();  // Executar no carregamento
 
 function _renderFinanceChart(evoList){
-  const fc  = document.getElementById('finance-chart');
   const tot = document.getElementById('finance-total');
   const roi = document.getElementById('finance-roi');
   const itm = document.getElementById('finance-itm');
-  if(!fc) return;
+  const nEl = document.getElementById('finance-n');
+  const canvas = document.getElementById('finance-canvas');
+  if(!canvas) return;
 
-  fc.innerHTML = '';
+  const withFin = (evoList||[]).filter(t => t.profit != null || t.buy_in != null);
 
-  if(!evoList || !evoList.length){
-    fc.innerHTML = '<div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);margin:auto">Sem dados ainda</div>';
-    if(tot) tot.textContent = '—';
-    if(roi) roi.textContent = '—';
-    if(itm) itm.textContent = '—';
-    return;
-  }
-
-  // Filtrar só torneios com dados financeiros
-  const withFin = evoList.filter(t => t.profit != null || t.buy_in != null);
   if(!withFin.length){
-    fc.innerHTML = '<div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);margin:auto">Importe torneios para ver resultado financeiro</div>';
+    // Mostrar estado vazio
+    if(tot) tot.textContent='—';
+    if(roi) roi.textContent='—';
+    if(itm) itm.textContent='—';
+    if(nEl) nEl.textContent='—';
+    // Destruir chart anterior se existir
+    if(window._finChart){ window._finChart.destroy(); window._finChart=null; }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = 'rgba(128,128,128,0.3)';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Sem dados financeiros ainda', canvas.offsetWidth/2, 60);
     return;
   }
 
-  // Calcular escala
-  const profits = withFin.map(t => t.profit || -(t.buy_in || 0));
-  const maxAbs  = Math.max(...profits.map(Math.abs), 0.01);
-  const maxH    = 64;  // altura máxima da barra em px
+  const labels    = withFin.map(t => _fmtDate(t.played_at||t.imported_at).slice(0,5));
+  const profits   = withFin.map(t => +(t.profit != null ? t.profit : -(t.buy_in||0)).toFixed(2));
+  const barColors = withFin.map(t => (t.profit > 0 || t.result==='itm') ? '#4caf7d' : '#c94040');
 
-  let accumulated = 0;
-  let totalBuyIn  = 0;
-  let itmCount    = 0;
-
-  withFin.forEach(t => {
-    const profit  = t.profit != null ? t.profit : -(t.buy_in || 0);
-    const buyIn   = t.buy_in || 0;
-    const isItm   = profit > 0 || t.result === 'itm';
-    const barH    = Math.max(3, Math.abs(profit) / maxAbs * maxH);
-    const color   = profit > 0 ? 'var(--standard)' : profit < 0 ? 'var(--clear)' : 'var(--muted)';
-    const dateStr = t.played_at ? _fmtDate(t.played_at) : _fmtDate(t.imported_at);
-
-    accumulated += profit;
-    totalBuyIn  += buyIn;
-    if(isItm) itmCount++;
-
-    const col = document.createElement('div');
-    col.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:22px;flex:1;max-width:40px;gap:2px;cursor:pointer';
-    col.title = `${dateStr}\n${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}`;
-
-    const bar = document.createElement('div');
-    bar.style.cssText = `width:100%;height:${barH}px;background:${color};border-radius:2px;opacity:0.85;transition:opacity .15s`;
-    bar.onmouseenter = () => bar.style.opacity = '1';
-    bar.onmouseleave = () => bar.style.opacity = '0.85';
-
-    const lbl = document.createElement('div');
-    lbl.style.cssText = 'font-family:var(--mono);font-size:.48rem;color:var(--dim);text-align:center;white-space:nowrap';
-    lbl.textContent = dateStr.slice(0,5);  // dd/mm
-
-    col.appendChild(bar);
-    col.appendChild(lbl);
-    fc.appendChild(col);
-  });
-
-  // Linha zero
-  const zeroline = document.createElement('div');
-  zeroline.style.cssText = 'position:absolute;left:0;right:0;height:1px;background:var(--border2);pointer-events:none';
+  let acc = 0;
+  const accData = profits.map(p => { acc += p; return +acc.toFixed(2); });
 
   // Stats
-  const roiPct = totalBuyIn > 0 ? ((accumulated / totalBuyIn) * 100).toFixed(0) : '—';
-  const itmRate = ((itmCount / withFin.length) * 100).toFixed(0);
-  const accColor = accumulated >= 0 ? 'var(--standard)' : 'var(--clear)';
+  const totalProfit = profits.reduce((s,p)=>s+p, 0);
+  const totalBuyIn  = withFin.reduce((s,t)=>s+(t.buy_in||0), 0);
+  const itmCount    = withFin.filter(t=>t.profit>0||t.result==='itm').length;
+  const roiPct      = totalBuyIn>0 ? ((totalProfit/totalBuyIn)*100).toFixed(0) : null;
+  const itmRate     = ((itmCount/withFin.length)*100).toFixed(0);
+  const accColor    = totalProfit>=0 ? '#4caf7d' : '#c94040';
 
-  if(tot) { tot.textContent = (accumulated >= 0 ? '+$' : '-$') + Math.abs(accumulated).toFixed(2); tot.style.color = accColor; }
-  if(roi) { roi.textContent = (roiPct !== '—' ? (roiPct >= 0 ? '+' : '') + roiPct + '%' : '—'); roi.style.color = accColor; }
-  if(itm) itm.textContent = itmRate + '%';
+  if(tot){ tot.textContent=(totalProfit>=0?'+$':'-$')+Math.abs(totalProfit).toFixed(2); tot.style.color=accColor; }
+  if(roi){ roi.textContent=roiPct!=null?(roiPct>=0?'+':'')+roiPct+'%':'—'; roi.style.color=accColor; }
+  if(itm) itm.textContent=itmRate+'%';
+  if(nEl) nEl.textContent=withFin.length;
+
+  // Destruir chart anterior
+  if(window._finChart){ window._finChart.destroy(); window._finChart=null; }
+
+  window._finChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Resultado',
+          data: profits,
+          backgroundColor: barColors,
+          borderColor: barColors.map(c=>c==='#4caf7d'?'#3a9e6c':'#b03030'),
+          borderWidth: 0.5,
+          borderRadius: 2,
+          order: 2,
+        },
+        {
+          type: 'line',
+          label: 'Acumulado',
+          data: accData,
+          borderColor: '#c9a84c',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: withFin.length > 15 ? 0 : 3,
+          pointBackgroundColor: '#c9a84c',
+          tension: 0.3,
+          yAxisID: 'yAcc',
+          order: 1,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          backgroundColor: '#1a1f2e',
+          titleColor: '#9ca3af',
+          bodyColor: '#e8e6df',
+          borderColor: '#2d3349',
+          borderWidth: 1,
+          padding: 8,
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              const sign = v>=0?'+':'';
+              return ' '+ctx.dataset.label+': '+sign+'$'+Math.abs(v).toFixed(2);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid:   { color:'rgba(255,255,255,0.04)' },
+          ticks:  { font:{size:9}, color:'#6b7280', maxRotation:0,
+                    autoSkip: withFin.length>12, maxTicksLimit:10 },
+          border: { color:'rgba(255,255,255,0.08)' }
+        },
+        y: {
+          position: 'left',
+          grid:   { color:'rgba(255,255,255,0.04)' },
+          ticks:  { font:{size:9}, color:'#6b7280',
+                    callback: v => (v>=0?'+':'')+v.toFixed(0) },
+          border: { color:'rgba(255,255,255,0.08)' }
+        },
+        yAcc: {
+          position: 'right',
+          grid:   { drawOnChartArea:false },
+          ticks:  { font:{size:9}, color:'#c9a84c',
+                    callback: v => '$'+v.toFixed(0) },
+          border: { color:'rgba(201,168,76,0.15)' }
+        }
+      }
+    }
+  });
 }
 
 function renderLeaks(){
