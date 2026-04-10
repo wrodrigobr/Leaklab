@@ -677,22 +677,27 @@ function toggleSidebar(){document.getElementById('sidebar').classList.toggle('op
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('on');}
 
 // Evolution
-(function(){
+function _renderEvolution(){
   const bc=document.getElementById('bar-standard');
+  if(!bc) return;
+  bc.innerHTML='';
+  const st=document.getElementById('score-trend');
+  if(st) st.innerHTML='';
   if(!sessions.length){
     bc.innerHTML='<div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);margin:auto">Sem dados ainda</div>';
-    document.getElementById('score-trend').innerHTML='<div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);margin:auto">Sem dados ainda</div>';
+    if(st) st.innerHTML='<div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);margin:auto">Sem dados ainda</div>';
     document.getElementById('comp-body').innerHTML='<tr><td colspan="4" style="text-align:center;padding:20px;font-family:var(--mono);font-size:.72rem;color:var(--dim)">Sem dados para comparar.</td></tr>';
     return;
   }
   const mx=Math.max(...sessions.map(s=>s.s));
   sessions.forEach(s=>{const c=document.createElement('div');c.className='bar-col';const f=document.createElement('div');f.className='bar-fill';f.style.cssText=`height:${s.s/mx*63}px;background:var(--standard);opacity:${.45+s.s/mx*.55}`;const l=document.createElement('div');l.className='bar-lbl';l.textContent=s.d;c.appendChild(f);c.appendChild(l);bc.appendChild(c);});
-  const st=document.getElementById('score-trend');
   const smx=Math.max(...sessions.map(s=>s.sc)),smn=Math.min(...sessions.map(s=>s.sc));
   sessions.forEach((s,i)=>{const pct=(s.sc-smn)/(smx-smn);const w=document.createElement('div');w.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;';const d=document.createElement('div');d.style.cssText=`width:7px;height:7px;border-radius:50%;background:var(--gold);border:2px solid var(--felt);margin-bottom:${Math.round((1-pct)*54)}px;flex-shrink:0;cursor:pointer;`;d.title=`${s.d}: ${s.sc}`;const l=document.createElement('div');l.style.cssText='font-family:var(--mono);font-size:.5rem;color:var(--dim);';l.textContent=s.d;w.appendChild(d);w.appendChild(l);st.appendChild(w);if(i<sessions.length-1){const ln=document.createElement('div');ln.style.cssText='width:2px;background:var(--border2);flex-shrink:0;margin-bottom:10px;';st.appendChild(ln);}});
   const cb=document.getElementById('comp-body');
-  comp.forEach(c=>{const b=c.lb?c.c<c.p:c.c>c.p;const d=(c.c-c.p);const sg=d>0?'+':'';const u=c.u||'';cb.innerHTML+=`<tr><td style="color:var(--text)">${c.m}</td><td style="font-family:var(--mono);font-size:.73rem">${c.c}${u}</td><td class="hide-mobile" style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${c.p}${u}</td><td style="font-family:var(--mono);font-size:.72rem;color:${b?'var(--standard)':'var(--clear)'}">${sg}${d.toFixed(u?1:3)}${u}</td></tr>`;});
-})();
+  if(cb) cb.innerHTML='';
+  comp.forEach(c=>{const b=c.lb?c.c<c.p:c.c>c.p;const d=(c.c-c.p);const sg=d>0?'+':'';const u=c.u||'';if(cb) cb.innerHTML+=`<tr><td style="color:var(--text)">${c.m}</td><td style="font-family:var(--mono);font-size:.73rem">${c.c}${u}</td><td class="hide-mobile" style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${c.p}${u}</td><td style="font-family:var(--mono);font-size:.72rem;color:${b?'var(--standard)':'var(--clear)'}">${sg}${d.toFixed(u?1:3)}${u}</td></tr>`;});
+}
+_renderEvolution();  // Executar no carregamento
 
 function renderLeaks(){
   const tb=document.getElementById('leaks-body');if(tb.innerHTML)return;
@@ -1326,27 +1331,72 @@ async function importFile(){
   }
 }
 
-function _applyRealData(data){
-  const m = data.metrics || {};
-  const lp = m.label_pct || {};
+async function _applyRealData(data){
+  const m  = data.metrics || {};
+  const lp = m.label_pct  || {};
 
-  // Atualizar KPIs de evolução
+  // ── 1. KPIs ──────────────────────────────────────────────────────────
   const setEl = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
   setEl('kpi-score',    m.avg_mistake_score ? m.avg_mistake_score.toFixed(3) : '—');
   setEl('kpi-standard', lp.standard         ? lp.standard.toFixed(1) + '%'  : '—');
   setEl('kpi-clear',    lp.clear_mistake     ? lp.clear_mistake.toFixed(1) + '%' : '—');
 
-  // Atualizar ICM se disponível
-  if(data.leaks && data.leaks.icm_breakdown){
-    const icm = data.leaks.icm_breakdown;
-    ['low','medium','high'].forEach((lvl,i)=>{
-      const k = ['low','med','high'][i];
-      const d = icm[lvl] || {};
-      setEl('icm-'+k+'-pct', d.standard_rate ? (d.standard_rate*100).toFixed(1)+'%' : '—');
-      setEl('icm-'+k+'-n',   d.n ? d.n+' mãos' : '—');
-      setEl('icm-'+k+'-sc',  d.avg_score ? d.avg_score.toFixed(3) : '—');
+  // ── 2. Buscar dados de evolução e leaks do backend (já salvos no BD) ──
+  const token = localStorage.getItem('ll_token');
+  try {
+    const res = await fetch(API_URL + '/history/evolution', {
+      headers: {'Authorization': 'Bearer ' + token}
     });
-  }
+    if(res.ok){
+      const evo = await res.json();
+
+      // Popular sessions[] para o gráfico de evolução
+      const evList = evo.evolution || [];
+      sessions.length = 0;
+      evList.slice(-10).forEach((t, i) => {
+        const d = t.played_at || t.imported_at || '';
+        const dateStr = d ? new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}).replace('/','/')  : `T${i+1}`;
+        sessions.push({
+          d: dateStr,
+          s: Math.round((1 - (t.standard_pct||79)/100) * 100),  // taxa de erro
+          sc: t.avg_score || 0,
+        });
+      });
+
+      // Popular leaksD[] para a tabela de leaks
+      const leakList = evo.leaks || [];
+      leaksD.length = 0;
+      leakList.forEach(l => {
+        const avg = l.avg_score || 0;
+        leaksD.push({
+          spot: l.spot || '?',
+          avg:  avg,
+          n:    l.n || 0,
+          tr:   '→',
+          sev:  avg >= .36 ? 'critical' : avg >= .20 ? 'high' : avg >= .10 ? 'medium' : 'low',
+          desc: `${l.n} ocorrências — score médio ${avg.toFixed(3)}`,
+        });
+      });
+
+      // ICM breakdown
+      const icm = evo.icm || {};
+      ['low','medium','high'].forEach(lvl => {
+        const k = lvl === 'medium' ? 'med' : lvl;
+        const d = icm[lvl] || {};
+        setEl('icm-'+k+'-pct', d.standard_rate ? (d.standard_rate*100).toFixed(1)+'%' : '—');
+        setEl('icm-'+k+'-n',   d.n ? d.n+' mãos' : '—');
+        setEl('icm-'+k+'-sc',  d.avg_score ? d.avg_score.toFixed(3) : '—');
+      });
+
+      // Re-renderizar evolução
+      _renderEvolution();
+
+      // Re-renderizar leaks (resetar guard primeiro)
+      const tb = document.getElementById('leaks-body');
+      if(tb){ tb.innerHTML = ''; }
+      renderLeaks();
+    }
+  } catch(e){ console.error('Erro ao carregar evolução:', e); }
 
   // Navegar para torneios e mostrar o torneio importado
   nav('tournaments', null, false);
