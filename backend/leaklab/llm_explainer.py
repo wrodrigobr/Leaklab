@@ -264,28 +264,56 @@ Retorne SOMENTE o JSON array, sem texto adicional, sem markdown."""
 
 
 def _parse_llm_response(raw: str, expected: int) -> List[str]:
-    """Extrai o JSON array da resposta do LLM."""
-    # Limpar possíveis markdown fences
-    clean = raw.strip()
-    if clean.startswith('```'):
-        lines = clean.splitlines()
-        clean = '\n'.join(lines[1:-1] if lines[-1] == '```' else lines[1:])
+    """Extrai o JSON array da resposta do LLM com parsing robusto."""
+    import re as _re
 
+    clean = raw.strip()
+
+    # Remover markdown fences em qualquer formato:
+    # ```json ... ```, ``` ... ```, ou só o conteúdo
+    clean = _re.sub(r'^```[a-z]*\s*', '', clean, flags=_re.IGNORECASE)
+    clean = _re.sub(r'\s*```$', '', clean)
+    clean = clean.strip()
+
+    # Tentar parse direto
     try:
         result = json.loads(clean)
-        if isinstance(result, list):
-            # Garantir que temos o número correto de explicações
+        if isinstance(result, list) and all(isinstance(x, str) for x in result):
             while len(result) < expected:
-                result.append('Decisão analisada pelo engine.')
-            return result[:expected]
-    except json.JSONDecodeError:
+                result.append('Análise indisponível.')
+            return [x for x in result[:expected]]
+    except (json.JSONDecodeError, ValueError):
         pass
 
-    # Fallback: retornar texto bruto dividido por quebras
-    parts = [p.strip() for p in raw.split('\n') if p.strip()]
-    while len(parts) < expected:
-        parts.append('Decisão analisada pelo engine.')
-    return parts[:expected]
+    # Tentar encontrar array JSON embutido no texto
+    match = _re.search(r'\[\s*"[\s\S]*?"\s*(?:,\s*"[\s\S]*?"\s*)*\]', clean)
+    if match:
+        try:
+            result = json.loads(match.group())
+            if isinstance(result, list):
+                while len(result) < expected:
+                    result.append('Análise indisponível.')
+                return result[:expected]
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    # Fallback final: limpar e retornar como texto puro
+    text = raw.strip()
+    # Remover fences e artefatos JSON
+    text = _re.sub(r'^```[a-z]*\n?', '', text, flags=_re.IGNORECASE)
+    text = _re.sub(r'\n?```$', '', text)
+    # Remover colchetes e aspas soltas do início/fim se o JSON estava incompleto
+    text = _re.sub(r'^[\[\]"\s]+', '', text)
+    text = _re.sub(r'[\[\]"\s]+$', '', text)
+    text = text.strip()
+
+    if len(text) > 20:  # texto com conteúdo real
+        result = [text]
+        while len(result) < expected:
+            result.append('Análise indisponível para esta decisão.')
+        return result[:expected]
+
+    return ['O Coach IA não retornou uma análise válida. Tente novamente.'] * expected
 
 
 # ── Templates locais (sem custo) ──────────────────────────────────────────────
