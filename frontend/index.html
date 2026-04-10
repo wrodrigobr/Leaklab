@@ -1446,15 +1446,69 @@ function _mdToHtml(md){
     + '</p></div>';
 }
 
+// Mapeamento de spot → conteúdo de estudo
+const _spotStudy = {
+  'preflop/fold':  {t:'Pot Odds no Pré-flop',     i:'♠', d:'Você está foldando mãos com equity suficiente. Estude pot odds pré-flop e defesa de BB vs diferentes sizings.'},
+  'preflop/call':  {t:'Range de Call Pré-flop',    i:'♦', d:'Calls fora do range ideal. Revise hand selection e quais mãos justificam call vs raise vs fold por posição.'},
+  'preflop/raise': {t:'Sizing e Seleção de Raise', i:'♣', d:'Raises em spots incorretos. Estude hand selection e quando aplicar pressão — 3-bet ou fold em vez de call.'},
+  'flop/call':     {t:'Pot Odds e Outs no Flop',   i:'♥', d:'Calls no flop sem equity suficiente. Pratique cálculo de outs e pot odds considerando board texture.'},
+  'flop/fold':     {t:'Equity de Draw no Flop',    i:'♠', d:'Folds com draws ativos. Com flush/straight draw, equity sobe 8–17%. Calcule outs × regra do 2 e do 4.'},
+  'flop/bet':      {t:'Value Bet no Flop',          i:'♦', d:'Bets em spots incorretos no flop. Estude board texture e quando apostar ou verificar com sua faixa.'},
+  'turn/call':     {t:'Pot Odds no Turn',           i:'♣', d:'Calls no turn com equity insuficiente. Barrel no turn aumenta polarização — reavalie pot odds ajustadas pelo ICM.'},
+  'turn/fold':     {t:'Equity Realizada no Turn',  i:'♥', d:'Folds prematuros no turn com equity positiva. Esse fold é -EV direto. Estude call/fold thresholds por M ratio.'},
+  'turn/bet':      {t:'Value Bet no Turn',          i:'♠', d:'Bets subótimos no turn. Estude pot control vs value bet com mãos medianas e board de dois turnos.'},
+  'river/call':    {t:'Decisões de Call no River', i:'♦', d:'Calls no river com equity abaixo do necessário. River é decisão binária — calcule pot odds exatas e range do oponente.'},
+  'river/fold':    {t:'Hero Call no River',         i:'♣', d:'Folds no river com equity positiva. Estude bluff-catch frequency e construção de range no river.'},
+  'river/bet':     {t:'Value Bet no River',         i:'♥', d:'Sizing de bet no river subótimo. Estude polarização e como extrair valor máximo na última street.'},
+};
+
+function _buildStudyPlan(){
+  // Gerar plano de estudo a partir dos leaks reais
+  if(!leaksD.length) return [];
+  return leaksD.slice(0,6).map((l,i) => {
+    const meta = _spotStudy[l.spot] || {
+      t: l.spot.replace('/',' — '),
+      i: '◆',
+      d: l.n + ' ocorrências com score médio ' + l.avg.toFixed(3) + '. Revise as decisões deste spot nos torneios recentes.'
+    };
+    const priority = i===0?'p1':i<=1?'p2':'p3';
+    const sessoes  = l.n>=10?'5+ sessões recomendadas':l.n>=4?'3 sessões recomendadas':'2 sessões recomendadas';
+    return {p:priority, i:meta.i, title:meta.t, desc:meta.d,
+            tag:l.spot+' · '+l.sev.toUpperCase(), sess:sessoes};
+  });
+}
+
 function renderStudy(){
-  const sl=document.getElementById('study-list');if(sl.innerHTML)return;
-  if(!studyD.length){
+  const sl=document.getElementById('study-list');
+  if(!sl) return;
+  sl.innerHTML='';  // sempre limpar
+  const plan = _buildStudyPlan();
+  if(!plan.length){
     sl.innerHTML='<div style="text-align:center;padding:32px 20px;font-family:var(--mono);font-size:.75rem;color:var(--dim)">Importe torneios para gerar seu plano de estudo personalizado.</div>';
     return;
   }
-  studyD.forEach(s=>{sl.innerHTML+=`<div class="study-card ${s.p}"><div class="study-icon">${s.i}</div><div class="sb"><div class="stitle">${s.title}</div><div class="sdesc">${s.desc}</div><div class="stag">${s.tag}</div><div class="ssess">${s.sess}</div></div></div>`;});
+  plan.forEach(s=>{sl.innerHTML+=`<div class="study-card ${s.p}"><div class="study-icon">${s.i}</div><div class="sb"><div class="stitle">${s.title}</div><div class="sdesc">${s.desc}</div><div class="stag">${s.tag}</div><div class="ssess">${s.sess}</div></div></div>`;});
   const pg=document.getElementById('prog-grid');
-  [{cat:'Pré-flop',pct:72,d:'+8%',c:'var(--standard)'},{cat:'Postflop',pct:58,d:'+14%',c:'var(--marginal)'},{cat:'ICM / Stack Curto',pct:44,d:'+6%',c:'var(--small)'},{cat:'Pot Odds',pct:61,d:'+11%',c:'var(--marginal)'}].forEach(p=>{pg.innerHTML+=`<div class="prog-card"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px"><span style="font-size:.8rem;color:var(--text)">${p.cat}</span><span style="font-family:var(--mono);font-size:.6rem;color:var(--standard)">${p.d}</span></div><div style="height:5px;background:var(--border2);border-radius:3px;overflow:hidden;margin-bottom:5px"><div style="width:${p.pct}%;height:100%;background:${p.c};border-radius:3px"></div></div><div style="font-family:var(--body);font-size:1.1rem;font-weight:700;color:${p.c}">${p.pct}%</div></div>`;});
+  if(!pg) return;
+  pg.innerHTML='';
+  // Calcular progresso real por categoria a partir dos leaks
+  const cats = [
+    {cat:'Pré-flop',    spots:['preflop/fold','preflop/call','preflop/raise']},
+    {cat:'Flop',        spots:['flop/call','flop/fold','flop/bet']},
+    {cat:'Turn / River',spots:['turn/call','turn/fold','turn/bet','river/call','river/fold','river/bet']},
+    {cat:'ICM / Stack', spots:[]},  // sem leak = bom
+  ];
+  cats.forEach(cat => {
+    const catLeaks = leaksD.filter(l => cat.spots.includes(l.spot));
+    const avgErr   = catLeaks.length
+      ? catLeaks.reduce((s,l)=>s+l.avg,0)/catLeaks.length
+      : 0;
+    // pct de acerto estimado: 100 - (avgErr * 200) capped 0-100
+    const pct = Math.max(0, Math.min(100, Math.round(100 - avgErr * 200)));
+    const c   = pct>=80?'var(--standard)':pct>=60?'var(--marginal)':'var(--small)';
+    const trend = catLeaks.length ? (avgErr>=.35?'↑ atenção':'→ ok') : '✓ sem erros';
+    pg.innerHTML+=`<div class="prog-card"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px"><span style="font-size:.8rem;color:var(--text)">${cat.cat}</span><span style="font-family:var(--mono);font-size:.6rem;color:${c}">${trend}</span></div><div style="height:5px;background:var(--border2);border-radius:3px;overflow:hidden;margin-bottom:5px"><div style="width:${pct}%;height:100%;background:${c};border-radius:3px"></div></div><div style="font-family:var(--body);font-size:1.1rem;font-weight:700;color:${c}">${pct}%</div></div>`;
+  });
 }
 
 // ── Tournament Summary ──────────────────────────────────────────────────
@@ -1844,6 +1898,9 @@ async function _loadTournamentsFromBackend(){
         const lkTb = document.getElementById('leaks-body');
         if(lkTb){ lkTb.innerHTML = ''; }
         renderLeaks();
+        // Regerar plano de estudos se já estava aberto
+        const sl = document.getElementById('study-list');
+        if(sl){ sl.innerHTML=''; renderStudy(); }
 
         // ICM
         const icm = evo.icm || {};
