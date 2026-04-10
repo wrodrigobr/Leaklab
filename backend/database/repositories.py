@@ -338,6 +338,43 @@ def get_icm_performance(user_id: int, days: int = 30) -> dict:
         conn.close()
 
 
+
+# ── LLM Cache ─────────────────────────────────────────────────────────────────
+
+def get_llm_cache(user_id: int, cache_key: str) -> Optional[str]:
+    """Retorna análise cacheada ou None se não existir."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn,
+            "SELECT analysis FROM llm_cache WHERE user_id=? AND cache_key=?",
+            (user_id, cache_key))
+        return row['analysis'] if row else None
+    finally:
+        conn.close()
+
+
+def set_llm_cache(user_id: int, cache_key: str, analysis: str) -> None:
+    """Salva ou atualiza análise no cache."""
+    conn = get_conn()
+    try:
+        if USE_POSTGRES:
+            conn.execute("""
+                INSERT INTO llm_cache (user_id, cache_key, analysis)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id, cache_key) DO UPDATE SET
+                    analysis   = excluded.analysis,
+                    created_at = NOW()
+            """, (user_id, cache_key, analysis))
+        else:
+            conn.execute("""
+                INSERT OR REPLACE INTO llm_cache (user_id, cache_key, analysis)
+                VALUES (?, ?, ?)
+            """, (user_id, cache_key, analysis))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 # ── Coach system ──────────────────────────────────────────────────────────────
 
 import secrets

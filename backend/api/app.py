@@ -21,6 +21,7 @@ from database.repositories import (
     create_user, verify_password, get_user_by_email,
     save_tournament, save_decisions, get_tournaments,
     get_tournament, get_decisions, update_llm_summary,
+    get_llm_cache, set_llm_cache,
     get_evolution_metrics, get_leak_summary, get_icm_performance,
     get_students,
     # Coach system
@@ -491,17 +492,29 @@ def coach_students_legacy():
 @require_auth
 def hand_coach():
     """
-    Análise profunda de uma mão específica pelo Coach IA.
-    Recebe os dados completos da mão e retorna análise detalhada com:
-    - Matemática (equity, pot odds, EV estimado)
-    - Teoria (conceitos violados)
-    - Ação correta com justificativa
-    - Dica prática aplicável
+    Análise profunda de uma mão pelo Coach IA com cache persistente.
+    Verifica cache no PostgreSQL antes de chamar o LLM.
     """
     data = request.get_json(silent=True) or {}
     hand_data = data.get('hand')
     if not hand_data:
         return jsonify({'error': 'Dados da mão ausentes'}), 400
+
+    # Chave de cache: user_id + hand_id + decisões relevantes
+    hand_id    = str(hand_data.get('id', hand_data.get('handId', '')))
+    cache_key  = f"hand:{hand_id}"
+    force_new  = data.get('force_new', False)
+
+    # Verificar cache
+    if not force_new and hand_id:
+        cached = get_llm_cache(g.user_id, cache_key)
+        if cached:
+            import json as _json
+            try:
+                analyses = _json.loads(cached)
+                return jsonify({'hand_id': hand_id, 'analyses': analyses, 'cached': True})
+            except Exception:
+                pass
 
     try:
         from leaklab.llm_explainer import _build_payload, _call_llm_api
@@ -512,8 +525,9 @@ def hand_coach():
         # Normalizar formato
         norm_decs = []
         for d in decisions:
-            label = d.get('l') or d.get('label') or                     (d.get('evaluation') or {}).get('label', 'standard')
-            score = d.get('sc') or d.get('score') or                     (d.get('evaluation') or {}).get('mistakeScore', 0)
+            ev    = d.get('evaluation') or {}
+            label = d.get('l') or d.get('label') or ev.get('label', 'standard')
+            score = d.get('sc') or d.get('score') or ev.get('mistakeScore', 0)
             norm_decs.append({
                 'hero_cards':  hand_data.get('cards') or hand_data.get('hero_cards', ''),
                 'board':       hand_data.get('board', []),
@@ -546,19 +560,36 @@ def hand_coach():
         from leaklab.llm_explainer import _parse_llm_response
         analyses = _parse_llm_response(raw, len(norm_decs))
 
+        # Salvar no cache
+        if hand_id and analyses:
+            import json as _json
+            try:
+                set_llm_cache(g.user_id, cache_key, _json.dumps(analyses))
+            except Exception:
+                pass
+
         return jsonify({
-            'hand_id':   hand_data.get('id', ''),
+            'hand_id':   hand_id or hand_data.get('id', ''),
             'decisions': len(norm_decs),
             'analyses':  analyses,
+            'cached':    False,
         })
 
     except Exception as e:
-        # Fallback template se LLM falhar
+        import traceback, logging
+        logging.error(f"hand-coach error: {traceback.format_exc()}")
+        # Retornar erro detalhado em vez de 500 silencioso
+        decisions_safe = locals().get('decisions', [])
+        try:
+            fallback = [_template_hand_analysis(d) for d in decisions_safe[:1]]
+        except Exception:
+            fallback = [f'Erro ao analisar: {str(e)}']
         return jsonify({
-            'hand_id':  hand_data.get('id', ''),
-            'analyses': [_template_hand_analysis(d) for d in decisions[:1]],
+            'hand_id':  hand_data.get('id', '') if hand_data else '',
+            'analyses': fallback,
+            'error':    str(e),
             'note':     'Análise gerada via template (LLM indisponível)',
-        })
+        }), 200  # 200 para o frontend conseguir ler a mensagem
 
 
 def _template_hand_analysis(d) -> str:

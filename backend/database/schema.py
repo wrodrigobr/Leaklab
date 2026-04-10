@@ -20,7 +20,7 @@ USE_POSTGRES = bool(DATABASE_URL)
 
 # SQLite para desenvolvimento local
 _LOCAL_DB = os.path.join(os.path.dirname(__file__), '..', 'data', 'leaklab.db')
-SQLITE_PATH = os.environ.get('GAPHUNTER_DB', _LOCAL_DB)
+SQLITE_PATH = os.environ.get('LEAKLAB_DB', _LOCAL_DB)
 
 # ── Conexão ───────────────────────────────────────────────────────────────────
 
@@ -152,6 +152,16 @@ def _init_postgres(conn):
         CREATE INDEX IF NOT EXISTS idx_tournaments_user     ON tournaments(user_id);
         CREATE INDEX IF NOT EXISTS idx_tournaments_played   ON tournaments(played_at);
         CREATE INDEX IF NOT EXISTS idx_coach_profiles_public ON coach_profiles(is_public);
+
+        CREATE TABLE IF NOT EXISTS llm_cache (
+            id           SERIAL PRIMARY KEY,
+            user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            cache_key    TEXT NOT NULL,
+            analysis     TEXT NOT NULL,
+            created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+            UNIQUE(user_id, cache_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_llm_cache_key ON llm_cache(user_id, cache_key);
     """)
 
 
@@ -229,6 +239,16 @@ def _init_sqlite(conn):
         CREATE INDEX IF NOT EXISTS idx_tournaments_user     ON tournaments(user_id);
         CREATE INDEX IF NOT EXISTS idx_tournaments_played   ON tournaments(played_at);
         CREATE INDEX IF NOT EXISTS idx_coach_profiles_public ON coach_profiles(is_public);
+
+        CREATE TABLE IF NOT EXISTS llm_cache (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            cache_key    TEXT NOT NULL,
+            analysis     TEXT NOT NULL,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(user_id, cache_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_llm_cache_key ON llm_cache(user_id, cache_key);
     """)
 
 

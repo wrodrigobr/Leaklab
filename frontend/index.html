@@ -631,65 +631,7 @@ const API_URL = (() => {
 
 const sessions=[];  // preenchido após importação real
 
-const tourns=[
-  {id:'3910307458',date:'22/07/2025',site:'pokerstars',result:'itm',place:18,hands:400,dec:485,score:.072,
-   data:[
-    {id:'257045919085',cards:'8s8h',board:['Ac','Jc','5c','4h'],street:'preflop',took:'call',exp:'raise',gap:'small',score:.256,decs:[
-      {s:'preflop',t:'call',e:'raise',l:'small_mistake',sc:.256,eq:.57,po:.50,m:10.8,icm:'low'},
-      {s:'flop',t:'bet',e:'bet',l:'standard',sc:.01,eq:.58,m:10.8,icm:'low'},
-      {s:'turn',t:'check',e:'bet',l:'marginal',sc:.162,eq:.58,m:10.8,icm:'low'},
-      {s:'river',t:'check',e:'bet',l:'small_mistake',sc:.190,eq:.58,m:10.8,icm:'low'},
-    ]},
-    {id:'257048692293',cards:'4s6d',board:['7h','2c','Ah','Qd','Ks'],street:'flop',took:'call',exp:'fold',gap:'clear',score:.630,decs:[
-      {s:'preflop',t:'check',e:'fold',l:'small_mistake',sc:.294,eq:.33,m:9.5,icm:'medium'},
-      {s:'flop',t:'call',e:'fold',l:'clear_mistake',sc:.630,eq:.29,po:.40,m:9.5,icm:'medium'},
-      {s:'turn',t:'call',e:'fold',l:'clear_mistake',sc:.421,eq:.29,po:.27,m:9.5,icm:'medium'},
-      {s:'river',t:'fold',e:'fold',l:'standard',sc:.011,eq:.29,m:9.5,icm:'medium'},
-    ]},
-    {id:'257046607770',cards:'4sAd',board:['5c','8h','Kd'],street:'preflop',took:'call',exp:'fold',gap:'clear',score:.608,decs:[
-      {s:'preflop',t:'call',e:'fold',l:'clear_mistake',sc:.608,eq:.33,po:.50,m:4.7,icm:'high'},
-      {s:'flop',t:'bet',e:'fold',l:'small_mistake',sc:.310,eq:.29,m:4.7,icm:'high'},
-    ]},
-    {id:'257047282699',cards:'Td6c',board:['Jh','5s','2c','9d'],street:'preflop',took:'call',exp:'fold',gap:'clear',score:.599,decs:[
-      {s:'preflop',t:'call',e:'fold',l:'clear_mistake',sc:.599,eq:.33,po:.50,m:11.4,icm:'low'},
-      {s:'flop',t:'check',e:'fold',l:'small_mistake',sc:.310,eq:.29,m:11.4,icm:'low'},
-      {s:'turn',t:'fold',e:'fold',l:'standard',sc:.011,eq:.29,m:11.4,icm:'low'},
-    ]},
-    {id:'257046289430',cards:'KhKd',board:['Ac','7s','2d'],street:'preflop',took:'raise',exp:'raise',gap:'none',score:.011,decs:[
-      {s:'preflop',t:'raise',e:'raise',l:'standard',sc:.011,eq:.72,m:12.1,icm:'low'},
-      {s:'flop',t:'bet',e:'bet',l:'standard',sc:.008,eq:.65,m:12.1,icm:'low'},
-    ]},
-    {id:'257046008859',cards:'2h5d',board:[],street:'preflop',took:'raise',exp:'fold',gap:'clear',score:.466,decs:[
-      {s:'preflop',t:'raise',e:'fold',l:'clear_mistake',sc:.466,eq:.33,m:.9,icm:'high'},
-    ]},
-  ]},
-  {id:'3921884712',date:'19/07/2025',site:'pokerstars',result:'elim',place:null,hands:280,dec:341,score:.091,
-   data:[
-    {id:'257031100001',cards:'AhKd',board:['Qc','Js','Td'],street:'preflop',took:'raise',exp:'raise',gap:'none',score:.008,decs:[
-      {s:'preflop',t:'raise',e:'raise',l:'standard',sc:.008,eq:.72,m:14.2,icm:'low'},
-      {s:'flop',t:'bet',e:'bet',l:'standard',sc:.012,eq:.68,m:14.2,icm:'low'},
-    ]},
-    {id:'257031100002',cards:'7h8h',board:['9d','Tc','2h'],street:'flop',took:'call',exp:'raise',gap:'marginal',score:.182,decs:[
-      {s:'preflop',t:'call',e:'call',l:'standard',sc:.018,eq:.45,po:.33,m:9.1,icm:'medium'},
-      {s:'flop',t:'call',e:'raise',l:'marginal',sc:.182,eq:.52,m:9.1,icm:'medium'},
-    ]},
-    {id:'257031100003',cards:'Ks5s',board:['As','2s','8c','Jd'],street:'turn',took:'fold',exp:'call',gap:'clear',score:.544,decs:[
-      {s:'preflop',t:'call',e:'call',l:'standard',sc:.022,eq:.41,po:.28,m:6.3,icm:'high'},
-      {s:'flop',t:'check',e:'check',l:'standard',sc:.005,eq:.38,m:6.3,icm:'high'},
-      {s:'turn',t:'fold',e:'call',l:'clear_mistake',sc:.544,eq:.55,po:.31,m:6.3,icm:'high'},
-    ]},
-  ]},
-  {id:'3908112433',date:'15/07/2025',site:'ggpoker',result:'itm',place:5,hands:520,dec:632,score:.068,
-   data:[
-    {id:'257020000001',cards:'JcJd',board:['2h','5c','Kd','9s'],street:'preflop',took:'raise',exp:'raise',gap:'none',score:.011,decs:[
-      {s:'preflop',t:'raise',e:'raise',l:'standard',sc:.011,eq:.70,m:12.8,icm:'low'},
-      {s:'turn',t:'bet',e:'bet',l:'standard',sc:.009,eq:.62,m:12.8,icm:'low'},
-    ]},
-    {id:'257020000002',cards:'Ah2h',board:['4h','7h','Kc'],street:'flop',took:'check',exp:'bet',gap:'marginal',score:.165,decs:[
-      {s:'flop',t:'check',e:'bet',l:'marginal',sc:.165,eq:.48,m:8.5,icm:'medium'},
-    ]},
-  ]},
-];
+const tourns=[];  // preenchido do backend após login
 const leaksD=[];  // preenchido após importação
 const comp=[];  // preenchido após importação
 
@@ -824,13 +766,52 @@ function _renderTournamentList(list){
   });
 }
 
-function initTournBody(row, tid){
+async function initTournBody(row, tid){
   const body=document.getElementById('tbody-'+tid);
   if(body.dataset.init)return;
   body.dataset.init='1';
 
   const t=tourns.find(x=>x.id===tid);
   if(!t)return;
+
+  // Carregar decisões do backend se veio do histórico e ainda não foi carregado
+  if(!t._loaded && t.dbId && (!t.data || !t.data.length)){
+    body.innerHTML='<div style="padding:16px;font-family:var(--mono);font-size:.7rem;color:var(--dim)">Carregando decisões...</div>';
+    const token = localStorage.getItem('ll_token');
+    try {
+      const res = await fetch(API_URL + '/history/tournament/' + t.id, {
+        headers: {'Authorization': 'Bearer ' + token}
+      });
+      if(res.ok){
+        const d = await res.json();
+        const decs = d.decisions || [];
+        const byHand = {};
+        decs.forEach(dec => {
+          if(!byHand[dec.hand_id]) byHand[dec.hand_id] = [];
+          byHand[dec.hand_id].push(dec);
+        });
+        t.data = Object.entries(byHand).map(([hid, hdecs]) => {
+          const maxScore = Math.max(...hdecs.map(d => d.score||0));
+          const worst = hdecs.find(d => d.score===maxScore) || hdecs[0];
+          let board = [];
+          try { board = JSON.parse(worst.board||'[]'); } catch(e){}
+          return {
+            id: hid, cards: worst.hero_cards||'',
+            board: board, street: worst.street||'preflop',
+            took: worst.action_taken||'', exp: worst.best_action||'',
+            gap: _scoreToGap(maxScore), score: maxScore,
+            decs: hdecs.map(d => ({
+              s:d.street, t:d.action_taken, e:d.best_action,
+              l:d.label, sc:d.score, m:d.m_ratio, icm:d.icm_pressure,
+            })),
+          };
+        });
+        t._loaded = true;
+      }
+    } catch(e){ console.error('Erro ao carregar decisões:', e); }
+    body.dataset.init='';  // permitir re-render
+    body.innerHTML='';
+  }
 
   body.innerHTML=`
     <div class="tourn-tabs">
@@ -1105,10 +1086,21 @@ function closePanel(){ document.getElementById('ov').classList.remove('on'); doc
 function openLLM(h){ openDetail(h); setTimeout(()=>{ const hid=String(h.id||h.handId||''); triggerLLMById(hid); }, 200); }
 function triggerLLMById(hid){ const h=_handStore.get(hid); if(h) triggerLLM(h); }
 
+const _llmLocalCache = new Map();  // cache em memória para a sessão
+
 async function triggerLLM(h){
   const b   = document.getElementById('llm-box');
   const btn = document.querySelector('#llm-sec .btn-llm');
   if(!b) return;
+
+  const hid = String(h.id || h.handId || '');
+
+  // Verificar cache local da sessão primeiro (instantâneo)
+  if(_llmLocalCache.has(hid)){
+    b.innerHTML = _llmLocalCache.get(hid);
+    if(btn) btn.style.display = 'none';
+    return;
+  }
 
   b.innerHTML = '<div class="llm-ld">✦ Consultando Coach IA<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>';
   if(btn) btn.style.display = 'none';
@@ -1127,7 +1119,17 @@ async function triggerLLM(h){
       b.innerHTML = '<p style="color:var(--dim);font-size:.8rem">Sem análise disponível.</p>';
       return;
     }
-    b.innerHTML = analyses.map(md => _mdToHtml(md)).join('');
+    const rendered = analyses.map(md => _mdToHtml(md)).join('');
+    b.innerHTML = rendered;
+    // Salvar no cache local de sessão
+    if(hid && rendered) _llmLocalCache.set(hid, rendered);
+    // Indicar se veio do cache do servidor
+    if(data.cached){
+      const tag = document.createElement('div');
+      tag.style.cssText = 'font-family:var(--mono);font-size:.6rem;color:var(--dim);text-align:right;margin-top:4px';
+      tag.textContent = '✓ análise anterior carregada';
+      b.appendChild(tag);
+    }
   } catch(err) {
     b.innerHTML = '<div style="color:var(--marginal);font-size:.78rem;padding:8px">⚠ Coach IA indisponível. Tente novamente.</div>';
     if(btn){ btn.style.display=''; btn.textContent='✦ Tentar novamente'; }
@@ -1461,6 +1463,49 @@ function _saveSession(data){
   localStorage.setItem('ll_username', data.username || '');
   localStorage.setItem('ll_role', data.role || 'player');
   _updateUserUI(data.username || '');
+  _loadTournamentsFromBackend();
+}
+
+async function _loadTournamentsFromBackend(){
+  const token = localStorage.getItem('ll_token');
+  if(!token) return;
+  try {
+    const res = await fetch(API_URL + '/history/tournaments', {
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+    if(!res.ok) return;
+    const data = await res.json();
+    const list = data.tournaments || [];
+    if(!list.length) return;
+
+    // Converter formato do backend para formato do frontend
+    list.forEach(t => {
+      const exists = tourns.find(x => x.id === t.tournament_id);
+      if(!exists){
+        tourns.push({
+          id:     t.tournament_id,
+          dbId:   t.id,
+          date:   t.played_at
+                  ? new Date(t.played_at).toLocaleDateString('pt-BR')
+                  : new Date(t.imported_at).toLocaleDateString('pt-BR'),
+          site:   t.site || 'pokerstars',
+          result: t.result || null,
+          place:  t.place  || null,
+          hands:  t.hands_count  || 0,
+          dec:    t.decisions_count || 0,
+          score:  t.avg_score || 0,
+          summary:t.llm_summary || null,
+          data:   [],  // carregado sob demanda ao expandir
+          _loaded: false,
+        });
+      }
+    });
+
+    // Re-renderizar lista de torneios
+    const tl = document.getElementById('tourn-list');
+    if(tl){ tl.dataset.rendered=''; tl.innerHTML=''; }
+    nav('tournaments', null, false);
+  } catch(e){ console.error('Erro ao carregar torneios:', e); }
 }
 
 function _updateUserUI(username){
