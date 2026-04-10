@@ -79,19 +79,19 @@ def explain_decisions(decisions: List[dict]) -> Dict[str, str]:
 
 def _call_llm_api(payload: dict) -> str:
     """Chama a API do Claude com um payload já construído. Retorna texto bruto."""
-    import urllib.request, json as _json
-    req = urllib.request.Request(
+    import requests as _req
+    resp = _req.post(
         'https://api.anthropic.com/v1/messages',
-        data=_json.dumps(payload).encode('utf-8'),
+        json=payload,
         headers={
             'Content-Type':      'application/json',
             'anthropic-version': '2023-06-01',
             'x-api-key':         _api_key(),
         },
-        method='POST',
+        timeout=90,
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        data = _json.loads(resp.read())
+    resp.raise_for_status()
+    data = resp.json()
     return ''.join(
         block['text'] for block in data.get('content', [])
         if block.get('type') == 'text'
@@ -103,30 +103,24 @@ def _call_llm_batch(decisions: List[dict]) -> List[str]:
     Faz uma única chamada ao Haiku com todas as decisões com erro.
     Retorna lista de explicações na mesma ordem.
     """
-    import urllib.request
-
+    import requests as _req
     payload = _build_payload(decisions)
-    body    = json.dumps(payload).encode('utf-8')
-
-    req = urllib.request.Request(
+    resp = _req.post(
         'https://api.anthropic.com/v1/messages',
-        data=body,
+        json=payload,
         headers={
             'Content-Type':      'application/json',
             'anthropic-version': '2023-06-01',
             'x-api-key':         _api_key(),
         },
-        method='POST',
+        timeout=90,
     )
-
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        data = json.loads(resp.read())
-
+    resp.raise_for_status()
+    data = resp.json()
     raw_text = ''.join(
         block['text'] for block in data.get('content', [])
         if block.get('type') == 'text'
     )
-
     return _parse_llm_response(raw_text, len(decisions))
 
 
@@ -440,7 +434,6 @@ def _build_tournament_context(results: list, total_hands: int) -> dict:
 
 def _call_llm_summary(ctx: dict, hero: str) -> str:
     """Chama o Haiku para gerar o resumo do torneio."""
-    import urllib.request, json as _json
 
     system_prompt = (
         "Você é um coach de poker MTT. "
@@ -462,20 +455,19 @@ def _call_llm_summary(ctx: dict, hero: str) -> str:
         'messages':   [{'role': 'user', 'content': user_msg}],
     }
 
-    req = urllib.request.Request(
+    import requests as _req
+    resp = _req.post(
         'https://api.anthropic.com/v1/messages',
-        data=_json.dumps(payload).encode('utf-8'),
+        json=payload,
         headers={
             'Content-Type':      'application/json',
             'anthropic-version': '2023-06-01',
             'x-api-key':         _api_key(),
         },
-        method='POST',
+        timeout=60,
     )
-
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        data = _json.loads(resp.read())
-
+    resp.raise_for_status()
+    data = resp.json()
     return ''.join(
         block['text'] for block in data.get('content', [])
         if block.get('type') == 'text'
