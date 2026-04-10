@@ -220,12 +220,6 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
 
 
 def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
-    from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-    from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-    from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
         rows = conn.execute("""

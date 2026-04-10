@@ -201,6 +201,12 @@ def tournament_summary():
 def history_tournaments():
     limit = int(request.args.get('limit', 50))
     tournaments = get_tournaments(g.user_id, limit)
+    # Garantir que datas sejam strings ISO (Postgres retorna datetime.date)
+    for t in tournaments:
+        for field in ('played_at', 'imported_at'):
+            val = t.get(field)
+            if val is not None and not isinstance(val, str):
+                t[field] = str(val)[:10]  # YYYY-MM-DD
     return jsonify({'tournaments': tournaments})
 
 
@@ -618,6 +624,31 @@ def _template_hand_analysis(d) -> str:
         f'Revise os fundamentos de pot odds e equity para este tipo de spot.'
     )
 
+
+
+@app.route('/debug/tournaments', methods=['GET'])
+@require_auth
+def debug_tournaments():
+    """Endpoint temporário para diagnóstico de datas."""
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        rows = conn.execute(
+            "SELECT tournament_id, played_at, imported_at FROM tournaments WHERE user_id=? LIMIT 5",
+            (g.user_id,)
+        ).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            result.append({
+                'tournament_id': d['tournament_id'],
+                'played_at_raw':   str(d['played_at']),
+                'played_at_type':  type(d['played_at']).__name__,
+                'imported_at_raw': str(d['imported_at'])[:19],
+            })
+        return jsonify(result)
+    finally:
+        conn.close()
 
 @app.route('/admin/reset-my-data', methods=['POST'])
 @require_auth

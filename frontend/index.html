@@ -646,14 +646,15 @@ const _studyDataDemo=[
 
 // Helpers
 function _fmtDate(raw){
-  // Aceita '2025-07-22', '2025-07-22T10:10:49', '2025/07/22' etc.
-  if(!raw) return '—';
-  const s = String(raw).trim().replace(/\//g, '-');
-  // Parsear manualmente para evitar problema de timezone UTC vs local
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if(!m) return raw;
-  const [, y, mo, d] = m;
-  return d + '/' + mo + '/' + y.slice(2);  // dd/mm/aa
+  if(!raw || raw === 'null' || raw === 'undefined') return '—';
+  const s = String(raw).trim();
+  // Tentar parsear YYYY-MM-DD ou YYYY/MM/DD
+  let m = s.match(/^(\d{4})[\/-](\d{2})[\/-](\d{2})/);
+  if(m) return m[3] + '/' + m[2] + '/' + m[1].slice(2);
+  // Tentar DD/MM/YYYY (já formatado)
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{2,4})$/);
+  if(m) return s;
+  return '—';
 }
 
 const S={s:'♠',h:'♥',d:'♦',c:'♣'};
