@@ -148,15 +148,16 @@ def analyze():
 
     import uuid
     return jsonify({
-        'session_id':    str(uuid.uuid4()),
+        'session_id':       str(uuid.uuid4()),
         'tournament_db_id': t_db_id,
-        'hero':          hero,
-        'tournament_id': tournament_id,
-        'total_hands':   len(hands),
-        'parse_errors':  len(errors),
-        'metrics':       metrics,
-        'leaks':         leaks,
-        'hands':         hand_results,
+        'hero':             hero,
+        'tournament_id':    tournament_id,
+        'played_at':        played_at,          # data real do jogo
+        'total_hands':      len(hands),
+        'parse_errors':     len(errors),
+        'metrics':          metrics,
+        'leaks':            leaks,
+        'hands':            hand_results,
     })
 
 
