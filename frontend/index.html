@@ -645,6 +645,17 @@ const _studyDataDemo=[
 ];
 
 // Helpers
+function _fmtDate(raw){
+  // Aceita '2025-07-22', '2025-07-22T10:10:49', '2025/07/22' etc.
+  if(!raw) return '—';
+  const s = String(raw).trim().replace(/\//g, '-');
+  // Parsear manualmente para evitar problema de timezone UTC vs local
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return raw;
+  const [, y, mo, d] = m;
+  return d + '/' + mo + '/' + y.slice(2);  // dd/mm/aa
+}
+
 const S={s:'♠',h:'♥',d:'♦',c:'♣'};
 function pc(code,b=false){
   if(!code||code.length<2)return'';
@@ -1407,7 +1418,7 @@ async function _applyRealData(data){
   // Construir objeto de torneio no formato esperado pelo renderTournaments
   const t = {
     id: data.tournament_id || 'novo',
-    date: new Date().toLocaleDateString('pt-BR'),
+    date: _fmtDate(data.played_at) || new Date().toLocaleDateString('pt-BR'),
     site: 'pokerstars',
     result: null,
     place: null,
@@ -1555,9 +1566,7 @@ async function _loadTournamentsFromBackend(){
         tourns.push({
           id:     t.tournament_id,
           dbId:   t.id,
-          date:   t.played_at
-                  ? new Date(t.played_at).toLocaleDateString('pt-BR')
-                  : new Date(t.imported_at).toLocaleDateString('pt-BR'),
+          date:   _fmtDate(t.played_at || t.imported_at),
           site:   t.site || 'pokerstars',
           result: t.result || null,
           place:  t.place  || null,
@@ -1647,9 +1656,9 @@ document.addEventListener('mouseover', function(e){
   const token    = localStorage.getItem('ll_token');
   const username = localStorage.getItem('ll_username');
   if(token && username){
-    // Já logado — esconder overlay e mostrar usuário
     hideAuth();
     _updateUserUI(username);
+    _loadTournamentsFromBackend();   // carregar torneios salvos no banco
   } else {
     // Mostrar tela de login
     showAuth();
