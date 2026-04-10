@@ -296,7 +296,8 @@ def get_evolution_metrics(user_id: int, days: int = 90) -> List[dict]:
         rows = conn.execute("""
             SELECT tournament_id, site, played_at, imported_at,
                    hands_count, decisions_count, avg_score,
-                   standard_pct, clear_pct
+                   standard_pct, clear_pct,
+                   buy_in, prize, profit, place, result
             FROM tournaments
             WHERE user_id = ?
               AND imported_at >= ?

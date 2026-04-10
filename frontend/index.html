@@ -528,6 +528,22 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       </div>
     </div>
 
+    <div class="sec-head" style="margin-top:4px">
+      <div class="sec-title">Resultado Financeiro
+        <div class="tt"><span class="tt-i">?</span>
+          <div class="tt-b">Lucro/prejuízo por torneio. Verde = ITM, vermelho = eliminado sem prêmio.</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-card" style="padding:16px 16px 10px">
+      <div id="finance-chart" style="display:flex;align-items:flex-end;gap:5px;height:72px;overflow-x:auto"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;font-family:var(--mono);font-size:.65rem;color:var(--muted)">
+        <span>Acumulado: <b id="finance-total" style="color:var(--text)">—</b></span>
+        <span>ROI: <b id="finance-roi" style="color:var(--text)">—</b></span>
+        <span>ITM rate: <b id="finance-itm" style="color:var(--text)">—</b></span>
+      </div>
+    </div>
+
     <div class="sec-head"><div class="sec-title">Performance por Pressão ICM</div></div>
     <div class="icm-row s1">
       <div class="icm-card"><div class="icm-label">ICM Low<div class="tt" style="display:inline-flex"><span class="tt-i">?</span><div class="tt-b">M &gt; 10. Jogue seu melhor jogo base, sem distorções de ICM.</div></div></div><div style="font-family:var(--body);font-size:1.4rem;font-weight:700;color:var(--standard);margin-bottom:7px" id="icm-low-pct">—</div><div class="icm-m"><div class="icm-f" style="width:82%;background:var(--standard)"></div></div><div class="icm-st"><span id="icm-low-n">—</span><span id="icm-low-sc">—</span></div></div>
@@ -712,6 +728,83 @@ function _renderEvolution(){
 }
 _renderEvolution();  // Executar no carregamento
 
+function _renderFinanceChart(evoList){
+  const fc  = document.getElementById('finance-chart');
+  const tot = document.getElementById('finance-total');
+  const roi = document.getElementById('finance-roi');
+  const itm = document.getElementById('finance-itm');
+  if(!fc) return;
+
+  fc.innerHTML = '';
+
+  if(!evoList || !evoList.length){
+    fc.innerHTML = '<div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);margin:auto">Sem dados ainda</div>';
+    if(tot) tot.textContent = '—';
+    if(roi) roi.textContent = '—';
+    if(itm) itm.textContent = '—';
+    return;
+  }
+
+  // Filtrar só torneios com dados financeiros
+  const withFin = evoList.filter(t => t.profit != null || t.buy_in != null);
+  if(!withFin.length){
+    fc.innerHTML = '<div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);margin:auto">Importe torneios para ver resultado financeiro</div>';
+    return;
+  }
+
+  // Calcular escala
+  const profits = withFin.map(t => t.profit || -(t.buy_in || 0));
+  const maxAbs  = Math.max(...profits.map(Math.abs), 0.01);
+  const maxH    = 64;  // altura máxima da barra em px
+
+  let accumulated = 0;
+  let totalBuyIn  = 0;
+  let itmCount    = 0;
+
+  withFin.forEach(t => {
+    const profit  = t.profit != null ? t.profit : -(t.buy_in || 0);
+    const buyIn   = t.buy_in || 0;
+    const isItm   = profit > 0 || t.result === 'itm';
+    const barH    = Math.max(3, Math.abs(profit) / maxAbs * maxH);
+    const color   = profit > 0 ? 'var(--standard)' : profit < 0 ? 'var(--clear)' : 'var(--muted)';
+    const dateStr = t.played_at ? _fmtDate(t.played_at) : _fmtDate(t.imported_at);
+
+    accumulated += profit;
+    totalBuyIn  += buyIn;
+    if(isItm) itmCount++;
+
+    const col = document.createElement('div');
+    col.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:22px;flex:1;max-width:40px;gap:2px;cursor:pointer';
+    col.title = `${dateStr}\n${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}`;
+
+    const bar = document.createElement('div');
+    bar.style.cssText = `width:100%;height:${barH}px;background:${color};border-radius:2px;opacity:0.85;transition:opacity .15s`;
+    bar.onmouseenter = () => bar.style.opacity = '1';
+    bar.onmouseleave = () => bar.style.opacity = '0.85';
+
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'font-family:var(--mono);font-size:.48rem;color:var(--dim);text-align:center;white-space:nowrap';
+    lbl.textContent = dateStr.slice(0,5);  // dd/mm
+
+    col.appendChild(bar);
+    col.appendChild(lbl);
+    fc.appendChild(col);
+  });
+
+  // Linha zero
+  const zeroline = document.createElement('div');
+  zeroline.style.cssText = 'position:absolute;left:0;right:0;height:1px;background:var(--border2);pointer-events:none';
+
+  // Stats
+  const roiPct = totalBuyIn > 0 ? ((accumulated / totalBuyIn) * 100).toFixed(0) : '—';
+  const itmRate = ((itmCount / withFin.length) * 100).toFixed(0);
+  const accColor = accumulated >= 0 ? 'var(--standard)' : 'var(--clear)';
+
+  if(tot) { tot.textContent = (accumulated >= 0 ? '+$' : '-$') + Math.abs(accumulated).toFixed(2); tot.style.color = accColor; }
+  if(roi) { roi.textContent = (roiPct !== '—' ? (roiPct >= 0 ? '+' : '') + roiPct + '%' : '—'); roi.style.color = accColor; }
+  if(itm) itm.textContent = itmRate + '%';
+}
+
 function renderLeaks(){
   const tb=document.getElementById('leaks-body');if(tb.innerHTML)return;
   if(!leaksD.length){
@@ -752,7 +845,9 @@ function _renderTournamentList(list){
       ? (t.profit >= 0 ? '+$' : '-$') + Math.abs(t.profit).toFixed(2)
       : '';
     const profitColor = t.profit > 0 ? 'var(--standard)' : t.profit < 0 ? 'var(--clear)' : 'var(--muted)';
-    const resultHtml = t.result==='itm'
+    // ITM = result='itm' OU prize > 0 (caso de torneios importados antes da correção)
+    const isItm = t.result === 'itm' || (t.prize != null && t.prize > 0);
+    const resultHtml = isItm
       ? `<span class="tourn-result result-itm">ITM${t.place ? ` · ${t.place}º` : ''}${profitStr ? ` · <span style="color:${profitColor}">${profitStr}</span>` : ''}</span>`
       : `<span class="tourn-result result-elim">Eliminado${profitStr ? ` · <span style="color:${profitColor}">${profitStr}</span>` : ''}</span>`;
 
@@ -1407,6 +1502,7 @@ async function _applyRealData(data){
 
       // Re-renderizar evolução
       _renderEvolution();
+      _renderFinanceChart(evo.evolution || []);
 
       // Re-renderizar leaks (resetar guard primeiro)
       const tb = document.getElementById('leaks-body');
@@ -1599,6 +1695,23 @@ async function _loadTournamentsFromBackend(){
     const tl = document.getElementById('tourn-list');
     if(tl){ tl.dataset.rendered=''; tl.innerHTML=''; }
     nav('tournaments', null, false);
+
+    // Carregar dados de evolução e financeiros para o dashboard
+    try {
+      const evoRes = await fetch(API_URL + '/history/evolution?days=90', {
+        headers: {'Authorization': 'Bearer ' + token}
+      });
+      if(evoRes.ok){
+        const evo = await evoRes.json();
+        sessions.length = 0;
+        (evo.evolution || []).slice(-10).forEach((t,i)=>{
+          const d = t.played_at || t.imported_at || '';
+          sessions.push({d: _fmtDate(d) || 'T'+(i+1), s: Math.round((1-(t.standard_pct||79)/100)*100), sc: t.avg_score||0});
+        });
+        _renderEvolution();
+        _renderFinanceChart(evo.evolution || []);
+      }
+    } catch(e){ /* silencioso */ }
   } catch(e){ console.error('Erro ao carregar torneios:', e); }
 }
 
