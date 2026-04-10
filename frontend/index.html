@@ -905,7 +905,7 @@ function toggleTSummary(tid){
   acc.classList.toggle('open');
 }
 
-function generateTSummary(tid){
+async function generateTSummary(tid){
   if(tSummaryLoaded[tid])return;
   const acc    = document.getElementById('tacc-'+tid);
   const txt    = document.getElementById('tsum-text-'+tid);
@@ -919,24 +919,43 @@ function generateTSummary(tid){
   btn.disabled=true;
   status.textContent='Gerando...';
 
-  // Simular LLM (em produção: chamar API com o HH do torneio)
-  const summaries={
-    '3910307458':'phpro apresentou desempenho consistente neste torneio, com 79.8% das decisões dentro do esperado e score médio de 0.072. O pré-flop foi a street mais sólida, mas o turn revelou o principal gap: calls com equity insuficiente em spots de barrel onde o pot odds exigia acima de 40% e a mão oferecia apenas 29%.\n\nSob pressão de ICM elevado, que correspondeu a 38% das decisões, o score médio subiu para 0.083. A tendência de chamar em vez de foldar com M abaixo de 6 foi o padrão que mais custou equity de torneio.\n\nPara a próxima sessão, o foco deve ser pot odds no turn com draws ativos e o ajuste do range de call pré-flop fora de posição.',
-    '3921884712':'O torneio apresentou decisões medianas, com 65% de acertos e score de 0.091. O principal problema foi um fold no turn com flush draw ativo — a mão tinha 55% de equity mas a pressão do stack curto (M=6.3) levou a uma decisão conservadora demais.\n\nCom ICM high em mais de 30% das mãos, o jogo sob pressão precisa de atenção. Estude call/fold thresholds quando há draw forte com stack curto.',
-    '3908112433':'Excelente desempenho com score de 0.068. O ITM em 5º lugar confirma a consistência. O único ajuste identificado foi no flop com flush draw: check quando bet seria a jogada de maior valor esperado.',
-  };
 
-  setTimeout(()=>{
-    const text=summaries[tid]||'Análise do torneio concluída. Desempenho dentro da média esperada com oportunidades de melhoria identificadas nos spots de turn e no gerenciamento de stack curto.';
+  // Verificar se o torneio já tem summary salvo no objeto
+  const t = tourns.find(x => x.id === tid);
+  if(t && t.summary){
     txt.className='t-sum-text loaded';
-    // Quebrar em parágrafos
-    txt.innerHTML=text.split('\n\n').map(p=>`<p style="margin-bottom:10px">${p}</p>`).join('');
+    txt.innerHTML = t.summary.split('\n\n').map(p=>`<p style="margin-bottom:10px">${p}</p>`).join('');
+    status.textContent='Carregado';
+    btn.style.display='none';
+    tSummaryLoaded[tid]=true;
+    return;
+  }
+
+  // Chamar backend real
+  const token = localStorage.getItem('ll_token');
+  try {
+    const res = await fetch(API_URL + '/analyze/tournament-summary', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body: JSON.stringify({tournament_id: tid}),
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const text = data.summary || 'Resumo indisponível.';
+    txt.className='t-sum-text loaded';
+    txt.innerHTML = text.split('\n\n').map(p=>`<p style="margin-bottom:10px">${p}</p>`).join('');
     status.textContent='Gerado';
     btn.style.display='none';
-    meta.textContent=document.getElementById('tsum-meta-'+tid).textContent;
     tSummaryLoaded[tid]=true;
-  }, 1800);
+    if(t) t.summary = text;
+  } catch(e){
+    txt.className='t-sum-text loaded';
+    txt.innerHTML = '<p style="color:var(--marginal)">⚠ Erro ao gerar resumo. Tente novamente.</p>';
+    status.textContent='Erro';
+    btn.disabled=false;
+  }
 }
+
 
 // ── Filtros ────────────────────────────────────────────────────────────
 function filterTournaments(){
