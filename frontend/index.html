@@ -2311,74 +2311,118 @@ function rpRender(step){
         +'ação correta: <b style="color:#70c870">'+bestLabel+'</b>';
     }
 
-    // Métricas e explicação clara
+    // Métricas e explicação contextual
     const mathEl=document.getElementById('rp-err-math');
     if(mathEl){
-      const eq   = ev.hand_equity!=null   ? (ev.hand_equity*100).toFixed(0)+'%'     : null;
-      const po   = ev.pot_odds_equity!=null ? (ev.pot_odds_equity*100).toFixed(0)+'%' : null;
-      const mr   = ev.m_ratio!=null        ? ev.m_ratio.toFixed(1)+'BB'              : null;
-      const icm  = ev.icm_pressure         ? ({low:'Baixa',medium:'Média',high:'Alta'}[ev.icm_pressure]||ev.icm_pressure) : null;
-      const sc   = ev.error_score!=null    ? ev.error_score.toFixed(3)               : null;
+      const eq  = ev.hand_equity!=null     ? (ev.hand_equity*100).toFixed(0)    : null;
+      const po  = ev.pot_odds_equity!=null ? (ev.pot_odds_equity*100).toFixed(0) : null;
+      const mr  = ev.m_ratio!=null         ? ev.m_ratio.toFixed(1)+'BB'         : null;
+      const icm = ev.icm_pressure
+        ? ({low:'Baixa',medium:'Média',high:'Alta'}[ev.icm_pressure]||ev.icm_pressure) : null;
+      const sc  = ev.error_score!=null     ? ev.error_score.toFixed(3)          : null;
 
       const scoreColor = ev.error_label==='clear_mistake'?'#e87070':
                          ev.error_label==='small_mistake'?'#e8c070':'#d4a0a0';
 
-      // Linha de equity vs pot odds (a comparação mais importante)
-      let eqLine = '';
-      if(eq && po){
-        const eqNum = ev.hand_equity*100;
-        const poNum = ev.pot_odds_equity*100;
-        const ok    = eqNum >= poNum;
-        const arrow = ok ? '✓ Equity acima do necessário' : '✗ Equity abaixo do necessário';
-        const col   = ok ? '#70c870' : '#e87070';
-        eqLine = `<div style="display:flex;justify-content:space-between;align-items:center;
-                    margin-bottom:6px;padding:5px 7px;background:#1a1010;border-radius:4px">
-          <span style="font-size:.65rem;color:#9a8080">Sua equity <b style="color:#c8b8a8">${eq}</b>
-            vs pot odds <b style="color:#c8b8a8">${po}</b></span>
-          <span style="font-size:.6rem;color:${col};font-weight:700">${arrow}</span>
-        </div>`;
+      // Linha de contexto — só mostra equity vs pot odds quando a decisão é call/fold
+      // Para raise/bet, o raciocínio é diferente (value, fold equity, pressão)
+      const took = (ev.action||'').replace(/s$/,'');
+      const best = (ev.best_action||'').replace(/s$/,'');
+      const eq_n = ev.hand_equity     != null ? ev.hand_equity*100     : null;
+      const po_n = ev.pot_odds_equity != null ? ev.pot_odds_equity*100 : null;
+      const eq_s = eq_n != null ? eq_n.toFixed(0)+'%' : null;
+      const po_s = po_n != null ? po_n.toFixed(0)+'%' : null;
+
+      // Gerar mensagem contextual correta para cada combinação de ação
+      let ctxMsg = '', ctxColor = '#9a8888';
+
+      if(took==='fold' && best==='call'){
+        // Foldou com equity suficiente para chamar
+        if(eq_n!=null && po_n!=null && eq_n>=po_n)
+          ctxMsg = 'Você tinha equity de '+eq_s+' — os pot odds de '+po_s+' justificavam chamar. Fold desperdiçou equity positiva.';
+        else if(eq_s)
+          ctxMsg = 'Com '+eq_s+' de equity, um call ainda seria lucrativo a longo prazo nesta situação.';
+        ctxColor='#e87070';
+
+      } else if(took==='call' && best==='fold'){
+        // Chamou sem equity suficiente
+        if(eq_n!=null && po_n!=null)
+          ctxMsg = 'Você pagou com equity de '+eq_s+', mas precisava de '+po_s+' para justificar o call. Fold seria mais lucrativo.';
+        else if(eq_s)
+          ctxMsg = 'Equity insuficiente para justificar o call neste spot.';
+        ctxColor='#e87070';
+
+      } else if(took==='call' && best==='raise'){
+        // Call quando deveria ter raised — dois sub-casos
+        if(eq_n!=null && po_n!=null && eq_n < po_n)
+          ctxMsg = 'Sua equity ('+eq_s+') não justificava um call passivo. Um raise aqui usaria fold equity do oponente — semi-bluff mais lucrativo que simplesmente pagar.';
+        else if(eq_n!=null && po_n!=null && eq_n >= po_n)
+          ctxMsg = 'Você está à frente ('+eq_s+' vs '+po_s+' necessários). Um raise extrai mais valor do que um call passivo.';
+        else
+          ctxMsg = 'Um raise aqui seria mais lucrativo — aplicaria pressão e extrairia mais valor.';
+        ctxColor='#e8a060';
+
+      } else if((took==='check'||took==='call') && (best==='bet'||best==='raise')){
+        // Passivo quando deveria atacar
+        ctxMsg = eq_s
+          ? 'Com '+eq_s+' de equity, um '+best.toUpperCase()+' extrairia mais valor e forçaria decisões difíceis no oponente.'
+          : 'Spot de '+best.toUpperCase()+' — você perdeu valor ao jogar passivamente aqui.';
+        ctxColor='#e8a060';
+
+      } else if((took==='bet'||took==='raise') && best==='fold'){
+        // Apostou/relançou sem equity
+        ctxMsg = eq_n!=null && po_n!=null
+          ? 'Você apostou com apenas '+eq_s+' de equity frente a pot odds implícitos de '+po_s+'. Sem fold equity suficiente para justificar.'
+          : 'Apostou em spot desfavorável — fold seria mais lucrativo aqui.';
+        ctxColor='#e87070';
+
+      } else if(eq_s){
+        // Caso genérico — mostrar equity apenas
+        ctxMsg = 'Equity estimada: '+eq_s+(po_s?' (pot odds necessários: '+po_s+')':'');
       }
 
-      // Grid compacto de contexto
-      const ctx = [];
-      if(mr)  ctx.push({v:mr,  l:'Stack',  tip:'Força relativa de seu stack'});
-      if(icm) ctx.push({v:icm, l:'ICM',    tip:'Pressão do torneio'});
-      if(sc)  ctx.push({v:sc,  l:'Erro',   tip:'Score total — maior = pior'});
+      let ctxLine = '';
+      if(ctxMsg)
+        ctxLine = `<div style="padding:6px 8px;background:#180e0e;border-radius:4px;
+          font-size:.67rem;color:${ctxColor};line-height:1.5;margin-bottom:6px">${ctxMsg}</div>`;
 
-      const ctxGrid = ctx.map(s =>
+      // Grid de contexto (Stack, ICM, Score)
+      const ctx = [];
+      if(mr)  ctx.push({v:mr,  l:'Stack', tip:'Stack em big blinds'});
+      if(icm) ctx.push({v:icm, l:'ICM',   tip:'Pressão do torneio neste momento'});
+      if(sc)  ctx.push({v:sc,  l:'Erro',  tip:'Score total do erro — maior = pior'});
+
+      mathEl.style.gridTemplateColumns = ctx.length===2?'1fr 1fr':'1fr 1fr 1fr';
+      mathEl.style.display = 'grid';
+      mathEl.innerHTML = ctx.map(s=>
         `<div class="rp-err-stat" title="${s.tip}">
           <div class="rp-err-stat-val" style="color:${s.l==='Erro'?scoreColor:'#b8a898'}">${s.v}</div>
           <div class="rp-err-stat-lbl">${s.l}</div>
         </div>`
       ).join('');
 
-      mathEl.style.gridTemplateColumns = '1fr 1fr 1fr';
-      mathEl.style.display = 'grid';
-      mathEl.innerHTML = ctxGrid;
-
-      // Inserir linha de equity antes do grid
-      const eqEl = mathEl.previousElementSibling;
+      // Inserir linha de contexto antes do grid
       let eqContainer = mathEl.parentElement.querySelector('#rp-eq-line');
       if(!eqContainer){
         eqContainer = document.createElement('div');
         eqContainer.id='rp-eq-line';
         mathEl.parentElement.insertBefore(eqContainer, mathEl);
       }
-      eqContainer.innerHTML = eqLine;
+      eqContainer.innerHTML = ctxLine;
     }
 
-    // Explicação das penalidades — traduzida para linguagem humana
+    // Explicação das penalidades em linguagem direta
     const bestEl=document.getElementById('rp-err-best');
     if(bestEl){
       const parts=[];
       if(ev.math_penalty>0.05)
-        parts.push('decisão contrária às probabilidades (+'+(ev.math_penalty*100).toFixed(0)+'pts)');
+        parts.push('contrário às probabilidades (+'+(ev.math_penalty*100).toFixed(0)+'pts)');
       if(ev.range_penalty>0.02)
-        parts.push('fora do range ideal para esta posição (+'+(ev.range_penalty*100).toFixed(0)+'pts)');
+        parts.push('fora do range ideal (+'+(ev.range_penalty*100).toFixed(0)+'pts)');
       if(ev.context_penalty>0.01)
-        parts.push('agravado pelo contexto ICM/stack (+'+(ev.context_penalty*100).toFixed(0)+'pts)');
+        parts.push('contexto ICM/stack agrava (+'+(ev.context_penalty*100).toFixed(0)+'pts)');
       bestEl.innerHTML = parts.length
-        ? '<b style="color:#9a8080">Por quê é erro:</b> '+parts.join('; ')+'.'
+        ? '<span style="color:#6a5050">Penalidades:</span> '+parts.join(' + ')+'.'
         : '';
     }
 
