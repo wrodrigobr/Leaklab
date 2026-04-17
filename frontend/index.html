@@ -2462,10 +2462,12 @@ function initReplayer(data){
   REPLAY=data; rpStep=0; _rpLayout=null;
   _playerMap={}; _playerCount=0;
 
-  document.getElementById('rp-hand-id').textContent='Mão #'+String(data.hand_id).slice(-8);
+  const handEl=document.getElementById('rp-hand-id');
+  if(handEl) handEl.textContent='Mão #'+String(data.hand_id).slice(-8);
 
   // Dots na timeline
   const dotsEl=document.getElementById('rp-dots');
+  if(!dotsEl) return;
   dotsEl.innerHTML='';
   data.timeline.forEach((ev,i)=>{
     const pct=data.timeline.length>1?(i/(data.timeline.length-1))*100:0;
@@ -2482,7 +2484,10 @@ function initReplayer(data){
 function initReplayerInModal(data){
   REPLAY=data; rpStep=0; _rpLayout=null;
   _playerMap={}; _playerCount=0;
-  document.getElementById('rp-hand-id').textContent='Mão #'+String(data.hand_id).slice(-8);
+  // rp-hand-id existe no standalone; no modal usa replay-modal-title
+  const handIdEl = document.getElementById('rp-hand-id') ||
+                   document.getElementById('replay-modal-title');
+  if(handIdEl) handIdEl.textContent = '▷ LEAKLAB REPLAYER — Mão #'+String(data.hand_id).slice(-8);
   const dotsEl=document.getElementById('rp-dots');
   if(dotsEl){
     dotsEl.innerHTML='';
