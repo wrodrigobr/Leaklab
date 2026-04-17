@@ -829,9 +829,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     }
 
     # Mapear erros por (street, action_taken) — inclui dados matemáticos do engine
+    # Normalizar: banco usa 'fold','call','raise'; parser usa 'folds','calls','raises'
+    def _norm(a): return a.rstrip('s') if a and a.endswith('s') else (a or '')
+
     error_map = {}
     for d in decisions_db:
-        key = (d.get('street', ''), d.get('action_taken', ''))
+        key = (d.get('street', ''), _norm(d.get('action_taken', '')))
         error_map[key] = d
 
     # Re-rodar o engine para pegar contexto completo (pot odds, equity, ICM)
@@ -841,7 +844,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         engine_inputs = build_decision_inputs_for_hand(hand)
         for di in engine_inputs:
             r   = evaluate_decision(di)
-            key = (di['street'], r.get('actionTaken', ''))
+            key = (di['street'], _norm(r.get('actionTaken', '')))
             if key in error_map:
                 ctx  = di.get('context', {})
                 math = di.get('math', {})
@@ -957,7 +960,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         if action.action == 'folds' and action.player not in folded:
             folded.append(action.player)
 
-        err_key  = (action.street, action.action)
+        err_key  = (action.street, _norm(action.action))
         decision = error_map.get(err_key) if action.player == hero else None
 
         # Dados extras do erro para o popup do replayer
