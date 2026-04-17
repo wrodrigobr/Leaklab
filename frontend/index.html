@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#09090b">
 <title>LeakLab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -422,28 +423,26 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 ::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:var(--ink);}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
 
 /* ── Replayer styles ── */
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
-
-  :root {
-    --felt:    #1a4a2e;
-    --felt2:   #1f5535;
-    --rail:    #3d1f0a;
-    --rail2:   #5a2e0e;
+.replay-modal {
+    --rp-felt:    #1a4a2e;
+    --rp-felt2:   #1f5535;
+    --rp-rail:    #3d1f0a;
+    --rp-rail2:   #5a2e0e;
     --gold:    #c9a84c;
-    --gold2:   #e8c96a;
+    --rp-gold2:   #e8c96a;
     --red:     #c94040;
     --green:   #4caf7d;
-    --ink:     #0d1117;
+    --rp-ink:     #0d1117;
     --text:    #e8e6df;
-    --muted:   #8a8680;
-    --dim:     #5a5652;
+    --rp-muted:   #8a8680;
+    --rp-dim:     #5a5652;
     --chip-r:  #c94040;
     --chip-b:  #3a7ec9;
     --chip-g:  #4caf7d;
     --chip-k:  #2a2a2a;
   }
 .replay-modal /* ── Header ── */
-  .hdr{
+  .replay-modal .hdr{
     width: 100%;
     max-width: 900px;
     display: flex;
@@ -452,12 +451,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     margin-bottom: 16px;
   }
 .replay-modal .hdr-logo{ font-size: 1.1rem; font-weight: 700; color: var(--gold); letter-spacing: .08em; }
-.replay-modal .hdr-hand{ font-family: 'Share Tech Mono', monospace; font-size: .7rem; color: var(--muted); }
-.replay-modal .hdr-close{ background: none; border: 1px solid var(--dim); color: var(--muted); padding: 4px 12px;
+.replay-modal .hdr-hand{ font-family: 'Share Tech Mono', monospace; font-size: .7rem; color: var(--rp-muted, var(--muted)); }
+.replay-modal .hdr-close{ background: none; border: 1px solid var(--rp-dim, var(--dim)); color: var(--rp-muted, var(--muted)); padding: 4px 12px;
                border-radius: 4px; cursor: pointer; font-size: .75rem; font-family: 'Share Tech Mono', monospace; }
 .replay-modal .hdr-close:hover{ border-color: var(--gold); color: var(--gold); }
 .replay-modal /* ── Table ── */
-  .table-wrap{
+  .replay-modal .table-wrap{
     width: 100%;
     max-width: 900px;
     position: relative;
@@ -505,7 +504,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--muted);
+    background: var(--rp-muted, var(--muted));
     transform: translate(-50%, -50%);
     top: 50%;
     transition: background .2s;
@@ -539,7 +538,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .replay-modal .speed-sel{
     background: #1e252e;
     border: 1px solid #2d333b;
-    color: var(--muted);
+    color: var(--rp-muted, var(--muted));
     padding: 6px 10px;
     border-radius: 6px;
     font-family: 'Share Tech Mono', monospace;
@@ -550,7 +549,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     margin-left: auto;
     font-family: 'Share Tech Mono', monospace;
     font-size: .72rem;
-    color: var(--muted);
+    color: var(--rp-muted, var(--muted));
     text-align: right;
     min-width: 200px;
   }
@@ -564,7 +563,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .replay-modal .action-log .al-action{ color: var(--text); }
 .replay-modal .action-log .al-error{ color: var(--red); font-weight: 600; }
 .replay-modal /* ── Error popup ── */
-  .error-popup{
+  .replay-modal .error-popup{
     position: absolute;
     bottom: calc(100% + 8px);
     left: 50%;
@@ -588,7 +587,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .replay-modal }
 
   /* ── Street badge ── */
-  .street-badge{
+  .replay-modal .street-badge{
     position: absolute;
     top: 8px;
     left: 50%;
@@ -609,7 +608,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     from { opacity:0; transform: translateX(-50%) translateY(-6px); }
 .replay-modal to{ opacity:1; transform: translateX(-50%) translateY(0); }
 </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
 
@@ -1021,6 +1020,11 @@ function _renderFinanceChart(evoList){
 
   // Destruir chart anterior
   if(window._finChart){ window._finChart.destroy(); window._finChart=null; }
+
+  if(typeof Chart === 'undefined'){
+    canvas.parentElement.innerHTML = '<div style="font-family:var(--mono);font-size:.68rem;color:var(--dim);padding:8px;text-align:center">Gráfico indisponível (Chart.js bloqueado pelo navegador)</div>';
+    return;
+  }
 
   window._finChart = new Chart(canvas, {
     type: 'bar',
