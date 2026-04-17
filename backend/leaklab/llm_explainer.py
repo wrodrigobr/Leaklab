@@ -623,3 +623,109 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
             'error': str(e),
         }
 
+
+def coach_replay_decision(street, action_taken, best_action,
+                           hero_cards=None, board=None,
+                           hand_equity=None, pot_odds=None,
+                           m_ratio=None, icm_pressure='low',
+                           error_score=None, error_label='',
+                           math_penalty=0, range_penalty=0) -> str:
+    """
+    Gera explicação do Coach IA para um erro específico identificado no replayer.
+    Retorna texto em português, direto, sem markdown excessivo.
+    """
+    import hashlib, json, os, requests
+
+    # Cache em memória
+    cache_input = json.dumps({
+        'street': street, 'action': action_taken, 'best': best_action,
+        'eq': round(hand_equity or 0, 2), 'po': round(pot_odds or 0, 2),
+        'mr': round(m_ratio or 0, 1)
+    }, sort_keys=True)
+    ckey = 'rc:' + hashlib.md5(cache_input.encode()).hexdigest()
+    if ckey in _cache:
+        return _cache[ckey]
+
+    # Formatar cartas
+    def fmt_cards(cards):
+        if not cards: return '?? ??'
+        if isinstance(cards, list) and len(cards) == 2:
+            suits = {'s':'♠','h':'♥','d':'♦','c':'♣'}
+            result = []
+            for c in cards:
+                if c and len(c) >= 2:
+                    rank = c[:-1].upper()
+                    suit = suits.get(c[-1].lower(), c[-1])
+                    result.append(rank+suit)
+                else:
+                    result.append(str(c))
+            return ' '.join(result)
+        return str(cards)
+
+    hero_str  = fmt_cards(hero_cards)
+    board_str = ' '.join([fmt_cards([c]) for c in (board or [])]) or '(sem board)'
+
+    # Mapear label para texto
+    label_map = {
+        'clear_mistake': 'erro grave',
+        'small_mistake': 'erro',
+        'marginal':      'decisão marginal',
+    }
+    label_str = label_map.get(error_label, 'erro')
+
+    # Contexto matemático
+    eq_str  = f'{hand_equity*100:.0f}%' if hand_equity is not None else None
+    po_str  = f'{pot_odds*100:.0f}%'    if pot_odds   is not None else None
+    mr_str  = f'{m_ratio:.1f}BB'        if m_ratio    is not None else None
+    icm_map = {'low':'baixa','medium':'média','high':'alta'}
+    icm_str = icm_map.get(icm_pressure, icm_pressure)
+
+    # Contexto de situação
+    math_ctx = ''
+    if eq_str and po_str:
+        math_ctx = f'Equity estimada: {eq_str}. Pot odds necessários: {po_str}. '
+    elif eq_str:
+        math_ctx = f'Equity estimada: {eq_str}. '
+    if mr_str:
+        math_ctx += f'Stack: {mr_str}. '
+    math_ctx += f'Pressão ICM: {icm_str}.'
+
+    prompt = f"""Você é um coach profissional de poker MTT. Analise este {label_str} e explique de forma clara e direta.
+
+Situação:
+- Street: {street.upper()}
+- Cartas do herói: {hero_str}
+- Board: {board_str}
+- Ação tomada: {action_taken.upper()}
+- Ação correta: {best_action.upper()}
+- {math_ctx}
+
+Escreva uma explicação em 3-5 linhas em português brasileiro:
+1. Por que {action_taken.upper()} foi o erro nesta situação específica
+2. Por que {best_action.upper()} seria melhor (seja concreto com os números disponíveis)
+3. O que observar em situações similares no futuro
+
+Seja direto, use linguagem de coach (não acadêmica). Não use markdown, apenas texto corrido."""
+
+    try:
+        resp = requests.post(
+            'https://api.anthropic.com/v1/messages',
+            headers={
+                'x-api-key':         _api_key(),
+                'anthropic-version': '2023-06-01',
+                'content-type':      'application/json',
+            },
+            json={
+                'model':      'claude-haiku-4-5-20251001',
+                'max_tokens': 400,
+                'messages':   [{'role': 'user', 'content': prompt}],
+            },
+            timeout=25,
+        )
+        resp.raise_for_status()
+        result = resp.json()['content'][0]['text'].strip()
+        _cache[ckey] = result
+        return result
+    except Exception as e:
+        return f'Erro ao conectar ao Coach IA: {str(e)}'
+

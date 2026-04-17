@@ -713,6 +713,50 @@ def study_plan():
     return jsonify(plan)
 
 
+@app.route('/analyze/replay-coach', methods=['POST'])
+@require_auth
+def replay_coach():
+    """
+    Análise Coach IA diretamente do replayer.
+    Recebe os dados do erro já processados, sem precisar do formato antigo.
+    """
+    from leaklab.llm_explainer import coach_replay_decision
+    d = request.get_json(silent=True) or {}
+
+    # Validar mínimo necessário
+    action_taken = d.get('action_taken','')
+    best_action  = d.get('best_action','')
+    street       = d.get('street','preflop')
+    if not action_taken:
+        return jsonify({'error': 'action_taken obrigatório'}), 400
+
+    cache_key = f"replay:{d.get('hand_id','')}:{street}:{action_taken}"
+    cached = get_llm_cache(g.user_id, cache_key)
+    if cached:
+        return jsonify({'analysis': cached, 'cached': True})
+
+    analysis = coach_replay_decision(
+        street       = street,
+        action_taken = action_taken,
+        best_action  = best_action,
+        hero_cards   = d.get('hero_cards', []),
+        board        = d.get('board', []),
+        hand_equity  = d.get('hand_equity'),
+        pot_odds     = d.get('pot_odds'),
+        m_ratio      = d.get('m_ratio'),
+        icm_pressure = d.get('icm_pressure','low'),
+        error_score  = d.get('error_score'),
+        error_label  = d.get('error_label',''),
+        math_penalty = d.get('math_penalty',0),
+        range_penalty= d.get('range_penalty',0),
+    )
+
+    if analysis and not analysis.startswith('Erro'):
+        set_llm_cache(g.user_id, cache_key, analysis)
+
+    return jsonify({'analysis': analysis, 'cached': False})
+
+
 @app.route('/debug/tournaments', methods=['GET'])
 @require_auth
 def debug_tournaments():

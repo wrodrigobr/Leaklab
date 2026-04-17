@@ -2460,41 +2460,45 @@ async function rpCallCoach(){
   }
 
   try{
-    const res = await fetch(API_URL+'/analyze/hand-coach',{
+    const res = await fetch(API_URL+'/analyze/replay-coach',{
       method:'POST',
       headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
       body: JSON.stringify({
-        hand_id:     handId,
+        hand_id:      handId,
         tournament_id: tournId,
-        action_taken: rpCurrentError.action,
-        best_action:  rpCurrentError.best_action,
-        street:       rpCurrentError.street,
-        hero_cards:   REPLAY.hero_cards||[],
-        board:        rpCurrentError.board||[],
-        pot_odds:     rpCurrentError.pot_odds_equity,
-        hand_equity:  rpCurrentError.hand_equity,
-        m_ratio:      rpCurrentError.m_ratio,
-        icm_pressure: rpCurrentError.icm_pressure,
-        error_score:  rpCurrentError.error_score,
-        error_label:  rpCurrentError.error_label,
+        action_taken:  rpCurrentError.action,
+        best_action:   rpCurrentError.best_action,
+        street:        rpCurrentError.street,
+        hero_cards:    REPLAY.hero_cards||[],
+        board:         rpCurrentError.board||[],
+        pot_odds:      rpCurrentError.pot_odds_equity,
+        hand_equity:   rpCurrentError.hand_equity,
+        m_ratio:       rpCurrentError.m_ratio,
+        icm_pressure:  rpCurrentError.icm_pressure,
+        error_score:   rpCurrentError.error_score,
+        error_label:   rpCurrentError.error_label,
+        math_penalty:  rpCurrentError.math_penalty,
+        range_penalty: rpCurrentError.range_penalty,
       })
     });
     const data = await res.json();
     if(data.analysis){
-      // Exibir análise no popup expandido
-      const body=document.getElementById('rp-err-body');
-      if(body){
-        const mdDiv=document.createElement('div');
-        mdDiv.style.cssText='margin-top:10px;padding:8px;background:#0d1a0d;border-radius:6px;'+
-          'border:1px solid #1e4a1e;font-size:.68rem;color:#a8c8a8;line-height:1.7;'+
-          'max-height:180px;overflow-y:auto;white-space:pre-wrap;font-family:var(--font-mono,monospace)';
-        mdDiv.textContent=data.analysis;
-        body.appendChild(mdDiv);
+      // Exibir análise no popup — substituir o botão pelo texto
+      if(btn){
+        btn.style.cssText='display:block;width:100%;padding:10px 12px;'+
+          'background:#0d1a0d;border:1px solid #1e4a1e;border-top:1px solid #2d333b;'+
+          'border-radius:0 0 12px 12px;color:#a8c8a8;font-size:.67rem;line-height:1.7;'+
+          'text-align:left;cursor:default;white-space:pre-wrap;font-family:inherit';
+        btn.textContent=data.analysis;
+        btn.disabled=true;
+        btn.onclick=null;
       }
+    } else if(data.error){
+      if(btn){ btn.textContent='⚠ '+data.error; btn.disabled=false; }
     }
-  }catch(e){ /* silencioso */ }
-
-  if(btn){ btn.textContent='✦ Coach IA'; btn.disabled=false; }
+  }catch(e){
+    if(btn){ btn.textContent='⚠ Erro de conexão — tente novamente'; btn.disabled=false; }
+  }
 }
 
 function rpRenderBoard(cards, step){
