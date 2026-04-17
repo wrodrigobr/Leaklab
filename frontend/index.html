@@ -2223,9 +2223,12 @@ function rpRender(step){
 
   // Pot
   const pot=ev.pot||0;
-  const potStr = rpShowBB
-    ? (pot/bb).toFixed(1)+'BB'
-    : (pot>=1000?(pot/1000).toFixed(1)+'k':Math.round(pot)||'0');
+  const fmtBB = (v, bb) => {
+    const bbs = v / bb;
+    return (bbs < 1 ? bbs.toFixed(1) : Math.round(bbs)) + 'BB';
+  };
+  const fmtChips = (v) => v>=1000 ? (v/1000).toFixed(1)+'k' : Math.round(v)+'';
+  const potStr = rpShowBB ? fmtBB(pot, bb) : fmtChips(pot);
   document.getElementById('rp-pot-val').textContent = pot>0 ? potStr : '';
 
   // Board
@@ -2350,8 +2353,12 @@ function rpRenderSeats(ev, bb){
     // Stack: BB ou chips (toggle)
     const stackVal = (ev.stacks&&ev.stacks[sn]!=null) ? ev.stacks[sn] : d.stack;
     let stackStr;
-    if(rpShowBB) stackStr = (stackVal/bb).toFixed(0)+'BB';
-    else         stackStr = stackVal>=1000 ? (stackVal/1000).toFixed(1)+'k' : Math.round(stackVal)+'';
+    if(rpShowBB){
+      const sbb = stackVal/bb;
+      stackStr = (sbb < 1 ? sbb.toFixed(1) : Math.round(sbb)) + 'BB';
+    } else {
+      stackStr = stackVal>=1000 ? (stackVal/1000).toFixed(1)+'k' : Math.round(stackVal)+'';
+    }
     html+=`<text x="${pos.x}" y="${by+38}" text-anchor="middle"
                  fill="${isHero?'#4caf7d88':'#6a6660'}"
                  font-family="Share Tech Mono,monospace" font-size="9">${stackStr}</text>`;
@@ -2367,8 +2374,11 @@ function rpRenderSeats(ev, bb){
     if(isActive && ev.action){
       const ac={folds:'#c94040',calls:'#4caf7d',raises:'#c9a84c',
                 bets:'#c9a84c',checks:'#6a6660','all-in':'#ff7777'}[ev.action]||'#6a6660';
+      const amtBBs = ev.amount/bb;
       const amtStr = ev.amount>0
-        ? (rpShowBB ? (ev.amount/bb).toFixed(1)+'BB' : Math.round(ev.amount)+'')
+        ? (rpShowBB
+            ? (amtBBs < 1 ? amtBBs.toFixed(1) : Math.round(amtBBs)) + 'BB'
+            : Math.round(ev.amount)+'')
         : '';
       const actLabel = ev.action.toUpperCase()+(amtStr?' '+amtStr:'');
       html+=`<rect x="${pos.x-30}" y="${by+bh+3}" width="60" height="15" rx="3"
@@ -2385,8 +2395,9 @@ function rpRenderSeats(ev, bb){
     if(bet>0){
       const cx2=pos.x+(CX-pos.x)*0.42;
       const cy2=pos.y+(CY-pos.y)*0.42;
+      const bbs = bet/bb;
       const betStr = rpShowBB
-        ? (bet/bb).toFixed(0)+'BB'
+        ? (bbs < 1 ? bbs.toFixed(1) : Math.round(bbs)) + 'BB'
         : bet>=1000?(bet/1000).toFixed(1)+'k':Math.round(bet)+'';
       chipsG.innerHTML+=`<circle cx="${cx2}" cy="${cy2}" r="15"
         fill="${bet>=bb*10?'#c9a84c':bet>=bb*3?'#c94040':'#3a7ec9'}"
@@ -2549,11 +2560,11 @@ async function _openReplay(handId, tournId){
                 font-family="Share Tech Mono,monospace" font-size="9" letter-spacing=".12em">COMMUNITY CARDS</text>
           <g id="rp-board"></g>
           <g id="rp-pot">
-            <rect x="388" y="189" width="124" height="24" rx="12" fill="#00000050" stroke="#c9a84c44" stroke-width="1"/>
-            <text x="418" y="205" text-anchor="middle" fill="#c9a84c88"
-                  font-family="Share Tech Mono,monospace" font-size="8" letter-spacing=".1em">POT</text>
-            <text id="rp-pot-val" x="464" y="205" text-anchor="middle" fill="#c9a84c"
-                  font-family="Share Tech Mono,monospace" font-size="13" font-weight="bold"></text>
+            <rect x="376" y="163" width="148" height="26" rx="13" fill="#00000055" stroke="#c9a84c44" stroke-width="1"/>
+            <text x="410" y="180" text-anchor="middle" fill="#c9a84c77"
+                  font-family="Share Tech Mono,monospace" font-size="8.5" letter-spacing=".1em">POT</text>
+            <text id="rp-pot-val" x="460" y="180" text-anchor="middle" fill="#c9a84c"
+                  font-family="Share Tech Mono,monospace" font-size="14" font-weight="bold"></text>
           </g>
           <g id="rp-seats"></g>
           <g id="rp-chips"></g>
