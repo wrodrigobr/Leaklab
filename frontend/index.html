@@ -2311,46 +2311,75 @@ function rpRender(step){
         +'ação correta: <b style="color:#70c870">'+bestLabel+'</b>';
     }
 
-    // Métricas matemáticas
+    // Métricas e explicação clara
     const mathEl=document.getElementById('rp-err-math');
     if(mathEl){
-      const stats=[];
-      if(ev.hand_equity!=null)
-        stats.push({v:(ev.hand_equity*100).toFixed(0)+'%',l:'Equity'});
-      if(ev.pot_odds_equity!=null)
-        stats.push({v:(ev.pot_odds_equity*100).toFixed(0)+'%',l:'Pot Odds'});
-      if(ev.m_ratio!=null)
-        stats.push({v:ev.m_ratio.toFixed(1),l:'M Ratio'});
-      if(ev.icm_pressure)
-        stats.push({v:ev.icm_pressure,l:'ICM'});
-      if(ev.error_score!=null)
-        stats.push({v:ev.error_score.toFixed(3),l:'Score'});
-      if(ev.math_penalty>0)
-        stats.push({v:'-'+ev.math_penalty.toFixed(2),l:'Math Err'});
+      const eq   = ev.hand_equity!=null   ? (ev.hand_equity*100).toFixed(0)+'%'     : null;
+      const po   = ev.pot_odds_equity!=null ? (ev.pot_odds_equity*100).toFixed(0)+'%' : null;
+      const mr   = ev.m_ratio!=null        ? ev.m_ratio.toFixed(1)+'BB'              : null;
+      const icm  = ev.icm_pressure         ? ({low:'Baixa',medium:'Média',high:'Alta'}[ev.icm_pressure]||ev.icm_pressure) : null;
+      const sc   = ev.error_score!=null    ? ev.error_score.toFixed(3)               : null;
 
-      const cols=stats.length<=4?'1fr 1fr':'1fr 1fr 1fr';
-      mathEl.style.gridTemplateColumns=cols;
+      const scoreColor = ev.error_label==='clear_mistake'?'#e87070':
+                         ev.error_label==='small_mistake'?'#e8c070':'#d4a0a0';
 
-      const scoreColor=ev.error_label==='clear_mistake'?'#e87070':
-                       ev.error_label==='small_mistake'?'#e8c070':'#d4a0a0';
-      mathEl.innerHTML=stats.map(s=>
-        `<div class="rp-err-stat">
-          <div class="rp-err-stat-val" style="color:${s.l==='Score'?scoreColor:'#c8b8a8'}">${s.v}</div>
+      // Linha de equity vs pot odds (a comparação mais importante)
+      let eqLine = '';
+      if(eq && po){
+        const eqNum = ev.hand_equity*100;
+        const poNum = ev.pot_odds_equity*100;
+        const ok    = eqNum >= poNum;
+        const arrow = ok ? '✓ Equity acima do necessário' : '✗ Equity abaixo do necessário';
+        const col   = ok ? '#70c870' : '#e87070';
+        eqLine = `<div style="display:flex;justify-content:space-between;align-items:center;
+                    margin-bottom:6px;padding:5px 7px;background:#1a1010;border-radius:4px">
+          <span style="font-size:.65rem;color:#9a8080">Sua equity <b style="color:#c8b8a8">${eq}</b>
+            vs pot odds <b style="color:#c8b8a8">${po}</b></span>
+          <span style="font-size:.6rem;color:${col};font-weight:700">${arrow}</span>
+        </div>`;
+      }
+
+      // Grid compacto de contexto
+      const ctx = [];
+      if(mr)  ctx.push({v:mr,  l:'Stack',  tip:'Força relativa de seu stack'});
+      if(icm) ctx.push({v:icm, l:'ICM',    tip:'Pressão do torneio'});
+      if(sc)  ctx.push({v:sc,  l:'Erro',   tip:'Score total — maior = pior'});
+
+      const ctxGrid = ctx.map(s =>
+        `<div class="rp-err-stat" title="${s.tip}">
+          <div class="rp-err-stat-val" style="color:${s.l==='Erro'?scoreColor:'#b8a898'}">${s.v}</div>
           <div class="rp-err-stat-lbl">${s.l}</div>
         </div>`
       ).join('');
-      if(!stats.length) mathEl.style.display='none';
-      else mathEl.style.display='grid';
+
+      mathEl.style.gridTemplateColumns = '1fr 1fr 1fr';
+      mathEl.style.display = 'grid';
+      mathEl.innerHTML = ctxGrid;
+
+      // Inserir linha de equity antes do grid
+      const eqEl = mathEl.previousElementSibling;
+      let eqContainer = mathEl.parentElement.querySelector('#rp-eq-line');
+      if(!eqContainer){
+        eqContainer = document.createElement('div');
+        eqContainer.id='rp-eq-line';
+        mathEl.parentElement.insertBefore(eqContainer, mathEl);
+      }
+      eqContainer.innerHTML = eqLine;
     }
 
-    // Melhor ação
+    // Explicação das penalidades — traduzida para linguagem humana
     const bestEl=document.getElementById('rp-err-best');
     if(bestEl){
-      const bd=[];
-      if(ev.math_penalty>0)   bd.push('math +'+ev.math_penalty.toFixed(2));
-      if(ev.range_penalty>0)  bd.push('range +'+ev.range_penalty.toFixed(2));
-      if(ev.context_penalty>0) bd.push('ICM +'+ev.context_penalty.toFixed(2));
-      bestEl.textContent='Penalidades: '+(bd.length?bd.join(' · '):'—');
+      const parts=[];
+      if(ev.math_penalty>0.05)
+        parts.push('decisão contrária às probabilidades (+'+(ev.math_penalty*100).toFixed(0)+'pts)');
+      if(ev.range_penalty>0.02)
+        parts.push('fora do range ideal para esta posição (+'+(ev.range_penalty*100).toFixed(0)+'pts)');
+      if(ev.context_penalty>0.01)
+        parts.push('agravado pelo contexto ICM/stack (+'+(ev.context_penalty*100).toFixed(0)+'pts)');
+      bestEl.innerHTML = parts.length
+        ? '<b style="color:#9a8080">Por quê é erro:</b> '+parts.join('; ')+'.'
+        : '';
     }
 
     // Guardar contexto para o Coach IA
