@@ -828,11 +828,28 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         for i, s in enumerate(seat_nums)
     }
 
-    # Mapear erros por (street, action_taken)
+    # Mapear erros por (street, action_taken) — inclui dados matemáticos do engine
     error_map = {}
     for d in decisions_db:
         key = (d.get('street', ''), d.get('action_taken', ''))
         error_map[key] = d
+
+    # Re-rodar o engine para pegar contexto completo (pot odds, equity, ICM)
+    try:
+        from leaklab.pipeline import build_decision_inputs_for_hand
+        from leaklab.decision_engine_v11 import evaluate_decision
+        engine_inputs = build_decision_inputs_for_hand(hand)
+        for di in engine_inputs:
+            r   = evaluate_decision(di)
+            key = (di['street'], r.get('actionTaken', ''))
+            if key in error_map:
+                ctx  = di.get('context', {})
+                math = di.get('math', {})
+                error_map[key]['context'] = ctx
+                error_map[key]['math']    = math
+                error_map[key]['breakdown'] = r['evaluation'].get('scoreBreakdown', {})
+    except Exception:
+        pass  # fallback gracioso — continua sem dados extras
 
     bb     = hand.bb or 100
     stacks = {s: seats[s]['stack'] for s in seats}
@@ -929,6 +946,24 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         err_key  = (action.street, action.action)
         decision = error_map.get(err_key) if action.player == hero else None
 
+        # Dados extras do erro para o popup do replayer
+        err_extra = {}
+        if decision:
+            ctx   = decision.get('context', {})
+            math  = decision.get('math', {})
+            bd    = decision.get('breakdown', {})
+            err_extra = {
+                'pot_odds_equity': math.get('potOddsEquity'),
+                'hand_equity':     math.get('estimatedHandEquity'),
+                'draw_profile':    math.get('drawProfile', 'none'),
+                'm_ratio':         ctx.get('mRatio'),
+                'icm_pressure':    ctx.get('icmPressure'),
+                'hero_stack_bb':   ctx.get('heroStackBb'),
+                'math_penalty':    bd.get('mathPenalty', 0),
+                'range_penalty':   bd.get('rangePenalty', 0),
+                'context_penalty': bd.get('contextPenalty', 0),
+            }
+
         timeline.append(snap({
             'type':         'action',
             'player':       action.player,
@@ -942,19 +977,23 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'best_action':  decision.get('best_action')  if decision else None,
             'desc':         f"{action.player}: {action.action}"
                               + (f' {int(amt)}' if amt else ''),
+            **err_extra,
         }))
 
     return {
-        'hand_id':    str(hand.hand_id),
-        'hero':       hero,
-        'board':      hand.board,
-        'button':     hand.button_seat,
-        'sb':         hand.sb,
-        'bb':         hand.bb,
-        'seats':      {s: {'player': seats[s]['player'],
-                          'stack':  seats[s]['stack'],
-                          'pos':    positions[s]} for s in seats},
-        'timeline':   timeline,
+        'hand_id':       str(hand.hand_id),
+        'tournament_id': str(hand.tournament_id or ''),
+        'hero':          hero,
+        'hero_cards':    [hand.hero_cards[:2], hand.hero_cards[2:]]
+                          if len(hand.hero_cards or '') >= 4 else [],
+        'board':         hand.board,
+        'button':        hand.button_seat,
+        'sb':            hand.sb,
+        'bb':            bb,
+        'seats':         {s: {'player': seats[s]['player'],
+                              'stack':  seats[s]['stack'],
+                              'pos':    positions[s]} for s in seats},
+        'timeline':      timeline,
     }
 
 

@@ -480,14 +480,40 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   padding:2px 14px;font-family:'Share Tech Mono',monospace;font-size:.6rem;
   color:var(--rp-gold);letter-spacing:.14em;pointer-events:none;opacity:0;transition:.3s;}
 .replay-modal .rp-badge.show{opacity:1;}
-.replay-modal .rp-err-pop{position:absolute;bottom:calc(100% + 6px);left:50%;
-  transform:translateX(-50%);background:#1a0808;border:1px solid var(--rp-red);
-  border-radius:8px;padding:10px 14px;width:230px;z-index:20;
-  display:none;font-size:.72rem;}
-.replay-modal .rp-err-pop.show{display:block;animation:rpPop .2s ease;}
-.replay-modal .rp-err-title{color:var(--rp-red);font-weight:700;font-size:.78rem;margin-bottom:4px;}
-.replay-modal .rp-err-body{color:#d4a0a0;line-height:1.5;}
-.replay-modal .rp-err-best{margin-top:6px;color:var(--rp-green);font-weight:600;}
+.replay-modal .rp-err-pop{position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);background:#130a0a;
+  border:1px solid var(--rp-red);border-radius:12px;
+  padding:0;width:320px;z-index:30;display:none;
+  box-shadow:0 16px 48px rgba(0,0,0,.7);}
+.replay-modal .rp-err-pop.show{display:block;animation:rpPop .25s ease;}
+.replay-modal .rp-err-hdr{background:#1e0c0c;border-bottom:1px solid #3a1515;
+  padding:10px 14px;border-radius:12px 12px 0 0;
+  display:flex;align-items:center;justify-content:space-between;}
+.replay-modal .rp-err-title{color:var(--rp-red);font-weight:700;font-size:.82rem;
+  font-family:'Share Tech Mono',monospace;letter-spacing:.06em;}
+.replay-modal .rp-err-close{background:none;border:none;color:#6a3030;
+  cursor:pointer;font-size:1rem;padding:0;line-height:1;}
+.replay-modal .rp-err-close:hover{color:var(--rp-red);}
+.replay-modal .rp-err-body{padding:12px 14px;color:#d4a0a0;
+  font-size:.72rem;line-height:1.6;}
+.replay-modal .rp-err-math{display:grid;grid-template-columns:1fr 1fr;
+  gap:6px;margin:8px 0;padding:8px;
+  background:#1a0f0f;border-radius:6px;border:1px solid #2a1515;}
+.replay-modal .rp-err-stat{text-align:center;}
+.replay-modal .rp-err-stat-val{font-family:'Share Tech Mono',monospace;
+  font-size:.78rem;font-weight:700;margin-bottom:1px;}
+.replay-modal .rp-err-stat-lbl{font-size:.58rem;color:#6a5050;
+  text-transform:uppercase;letter-spacing:.08em;}
+.replay-modal .rp-err-best{margin-top:8px;padding:7px 10px;
+  background:#0a1a0a;border:1px solid #1e4a1e;border-radius:6px;
+  color:var(--rp-green);font-weight:700;font-size:.74rem;}
+.replay-modal .rp-err-coach-btn{display:block;width:100%;padding:9px;
+  background:linear-gradient(135deg,#1a0c0c,#200e0e);
+  border:1px solid #3a1515;border-top:1px solid #2a1515;
+  border-radius:0 0 12px 12px;color:var(--rp-gold);
+  font-family:'Share Tech Mono',monospace;font-size:.7rem;
+  cursor:pointer;text-align:center;letter-spacing:.06em;transition:.15s;}
+.replay-modal .rp-err-coach-btn:hover{background:#2a1010;color:#e8c96a;}
 @keyframes rpPop{from{opacity:0;transform:translateX(-50%) scale(.9)}
   to{opacity:1;transform:translateX(-50%) scale(1)}}
 </style>
@@ -2237,21 +2263,140 @@ function rpRender(step){
   // Seats
   rpRenderSeats(ev, bb);
 
-  // Error popup
+  // Error popup — pausa e exibe análise detalhada
   const popup=document.getElementById('rp-err-pop');
   if(ev.is_error && ev.is_hero){
-    const labels={clear_mistake:'ERRO GRAVE',small_mistake:'Erro',marginal:'Marginal'};
-    document.getElementById('rp-err-body').textContent=
-      'Você fez '+ev.action+' — penalidade: '+ev.error_score;
-    document.getElementById('rp-err-best').textContent=
-      '✓ Ação correta: '+ev.best_action;
-    popup.querySelector('.rp-err-title').textContent=
-      '⚠ '+(labels[ev.error_label]||'Atenção');
+    // Pausa o replay automaticamente
+    if(rpPlaying){ rpPlaying=false; clearTimeout(rpTimer);
+      document.getElementById('rp-play').textContent='▶'; }
+
+    const labels={clear_mistake:'⚠ ERRO GRAVE',small_mistake:'⚡ Erro',marginal:'△ Marginal'};
+    const titleEl=document.getElementById('rp-err-title');
+    if(titleEl) titleEl.textContent=labels[ev.error_label]||'⚠ Atenção';
+
+    // Descrição da ação
+    const descEl=document.getElementById('rp-err-desc');
+    if(descEl){
+      const actionLabel={fold:'Fold',call:'Call',check:'Check',
+                         bet:'Bet',raise:'Raise'}[ev.action]||ev.action;
+      const bestLabel  ={fold:'Fold',call:'Call',check:'Check',
+                         bet:'Bet',raise:'Raise'}[ev.best_action]||ev.best_action||'—';
+      descEl.innerHTML=
+        'Você fez <b style="color:#e87070">'+actionLabel+'</b> — '
+        +'ação correta: <b style="color:#70c870">'+bestLabel+'</b>';
+    }
+
+    // Métricas matemáticas
+    const mathEl=document.getElementById('rp-err-math');
+    if(mathEl){
+      const stats=[];
+      if(ev.hand_equity!=null)
+        stats.push({v:(ev.hand_equity*100).toFixed(0)+'%',l:'Equity'});
+      if(ev.pot_odds_equity!=null)
+        stats.push({v:(ev.pot_odds_equity*100).toFixed(0)+'%',l:'Pot Odds'});
+      if(ev.m_ratio!=null)
+        stats.push({v:ev.m_ratio.toFixed(1),l:'M Ratio'});
+      if(ev.icm_pressure)
+        stats.push({v:ev.icm_pressure,l:'ICM'});
+      if(ev.error_score!=null)
+        stats.push({v:ev.error_score.toFixed(3),l:'Score'});
+      if(ev.math_penalty>0)
+        stats.push({v:'-'+ev.math_penalty.toFixed(2),l:'Math Err'});
+
+      const cols=stats.length<=4?'1fr 1fr':'1fr 1fr 1fr';
+      mathEl.style.gridTemplateColumns=cols;
+
+      const scoreColor=ev.error_label==='clear_mistake'?'#e87070':
+                       ev.error_label==='small_mistake'?'#e8c070':'#d4a0a0';
+      mathEl.innerHTML=stats.map(s=>
+        `<div class="rp-err-stat">
+          <div class="rp-err-stat-val" style="color:${s.l==='Score'?scoreColor:'#c8b8a8'}">${s.v}</div>
+          <div class="rp-err-stat-lbl">${s.l}</div>
+        </div>`
+      ).join('');
+      if(!stats.length) mathEl.style.display='none';
+      else mathEl.style.display='grid';
+    }
+
+    // Melhor ação
+    const bestEl=document.getElementById('rp-err-best');
+    if(bestEl){
+      const bd=[];
+      if(ev.math_penalty>0)   bd.push('math +'+ev.math_penalty.toFixed(2));
+      if(ev.range_penalty>0)  bd.push('range +'+ev.range_penalty.toFixed(2));
+      if(ev.context_penalty>0) bd.push('ICM +'+ev.context_penalty.toFixed(2));
+      bestEl.textContent='Penalidades: '+(bd.length?bd.join(' · '):'—');
+    }
+
+    // Guardar contexto para o Coach IA
+    rpCurrentError = ev;
+
     popup.classList.add('show');
-    setTimeout(()=>popup.classList.remove('show'), 4500);
   } else {
     popup.classList.remove('show');
   }
+}
+
+// ── Controles do popup de erro ────────────────────────────────────────────────
+let rpCurrentError = null;
+
+function rpDismissError(){
+  const popup=document.getElementById('rp-err-pop');
+  if(popup) popup.classList.remove('show');
+}
+
+async function rpCallCoach(){
+  if(!rpCurrentError || !REPLAY) return;
+  const btn=document.getElementById('rp-err-coach-btn');
+  if(btn){ btn.textContent='✦ Analisando...'; btn.disabled=true; }
+
+  const token = localStorage.getItem('ll_token');
+  // Tentar encontrar o torneio/mão correspondente
+  // O REPLAY.hand_id deve corresponder a uma mão no banco
+  const tournId = REPLAY.tournament_id || '';
+  const handId  = REPLAY.hand_id || '';
+
+  if(!tournId || !token){
+    if(btn){ btn.textContent='✦ Analisar com Coach IA'; btn.disabled=false; }
+    return;
+  }
+
+  try{
+    const res = await fetch(API_URL+'/analyze/hand-coach',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body: JSON.stringify({
+        hand_id:     handId,
+        tournament_id: tournId,
+        action_taken: rpCurrentError.action,
+        best_action:  rpCurrentError.best_action,
+        street:       rpCurrentError.street,
+        hero_cards:   REPLAY.hero_cards||[],
+        board:        rpCurrentError.board||[],
+        pot_odds:     rpCurrentError.pot_odds_equity,
+        hand_equity:  rpCurrentError.hand_equity,
+        m_ratio:      rpCurrentError.m_ratio,
+        icm_pressure: rpCurrentError.icm_pressure,
+        error_score:  rpCurrentError.error_score,
+        error_label:  rpCurrentError.error_label,
+      })
+    });
+    const data = await res.json();
+    if(data.analysis){
+      // Exibir análise no popup expandido
+      const body=document.getElementById('rp-err-body');
+      if(body){
+        const mdDiv=document.createElement('div');
+        mdDiv.style.cssText='margin-top:10px;padding:8px;background:#0d1a0d;border-radius:6px;'+
+          'border:1px solid #1e4a1e;font-size:.68rem;color:#a8c8a8;line-height:1.7;'+
+          'max-height:180px;overflow-y:auto;white-space:pre-wrap;font-family:var(--font-mono,monospace)';
+        mdDiv.textContent=data.analysis;
+        body.appendChild(mdDiv);
+      }
+    }
+  }catch(e){ /* silencioso */ }
+
+  if(btn){ btn.textContent='✦ Coach IA'; btn.disabled=false; }
 }
 
 function rpRenderBoard(cards, step){
@@ -2526,9 +2671,18 @@ async function _openReplay(handId, tournId){
       <div style="position:relative;flex:1;min-height:0">
         <div class="rp-badge" id="rp-badge"></div>
         <div class="rp-err-pop" id="rp-err-pop">
-          <div class="rp-err-title">⚠ Erro detectado</div>
-          <div class="rp-err-body" id="rp-err-body"></div>
-          <div class="rp-err-best" id="rp-err-best"></div>
+          <div class="rp-err-hdr">
+            <span class="rp-err-title" id="rp-err-title">⚠ ERRO DETECTADO</span>
+            <button class="rp-err-close" onclick="rpDismissError()">✕</button>
+          </div>
+          <div class="rp-err-body">
+            <div id="rp-err-desc" style="margin-bottom:6px"></div>
+            <div class="rp-err-math" id="rp-err-math"></div>
+            <div class="rp-err-best" id="rp-err-best"></div>
+          </div>
+          <button class="rp-err-coach-btn" id="rp-err-coach-btn" onclick="rpCallCoach()">
+            ✦ Analisar com Coach IA
+          </button>
         </div>
         <svg id="rp-svg" viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block">
           <defs>
