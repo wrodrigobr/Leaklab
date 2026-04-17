@@ -141,8 +141,22 @@ def analyze():
         buy_in=financials.get('buy_in'),
         prize=financials.get('prize'),
         profit=financials.get('profit'),
+        raw_text=raw_full,           # salvar para replay futuro
     )
     save_decisions(t_db_id, results)
+
+    # Invalidar cache do plano de estudos (dados mudaram)
+    try:
+        from database.schema import get_conn as _gc
+        conn = _gc()
+        conn.execute(
+            "DELETE FROM llm_cache WHERE user_id=? AND cache_key LIKE 'study_plan:%'",
+            (g.user_id,)
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
     # Explicações LLM se solicitado
     if request.args.get('explain', '').lower() == 'true':
@@ -674,6 +688,31 @@ def _template_hand_analysis(d) -> str:
 
 
 
+@app.route('/study/plan', methods=['GET'])
+@require_auth
+def study_plan():
+    """Gera plano de estudos personalizado via LLM baseado nos leaks reais."""
+    from leaklab.llm_explainer import generate_study_plan
+
+    days = int(request.args.get('days', 90))
+
+    # Buscar dados do banco
+    leaks    = get_leak_summary(g.user_id, days)
+    evolution = get_evolution_metrics(g.user_id, days)
+    icm      = get_icm_performance(g.user_id, days)
+
+    if not leaks and not evolution:
+        return jsonify({'error': 'Sem dados suficientes — importe torneios primeiro'}), 400
+
+    # Buscar nome do hero
+    from database.repositories import get_tournaments
+    tourns = get_tournaments(g.user_id, limit=1)
+    hero   = tourns[0]['hero'] if tourns else 'Jogador'
+
+    plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id)
+    return jsonify(plan)
+
+
 @app.route('/debug/tournaments', methods=['GET'])
 @require_auth
 def debug_tournaments():
@@ -726,6 +765,158 @@ def reset_my_data():
         return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
+
+
+@app.route('/replay/<tournament_id>/<hand_id>', methods=['GET'])
+@require_auth
+def get_replay(tournament_id, hand_id):
+    """Constrói dados de replay para uma mão específica."""
+    import re as _re
+
+    t = get_tournament(g.user_id, tournament_id)
+    if not t:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+
+    raw_text = t.get('raw_text')
+    if not raw_text:
+        return jsonify({'error': 'Hand history não disponível — reimporte o torneio'}), 404
+
+    # Re-parsear o hand history
+    try:
+        hands = parse_pokerstars_file_from_text(raw_text)
+    except Exception as e:
+        return jsonify({'error': f'Erro ao parsear: {str(e)}'}), 422
+
+    # Encontrar a mão específica
+    target = next((h for h in hands if str(h.hand_id) == str(hand_id)), None)
+    if not target:
+        return jsonify({'error': f'Mão {hand_id} não encontrada no torneio'}), 404
+
+    # Buscar decisões desta mão do banco para marcar erros
+    decisions_db = get_decisions(t['id'])
+    hand_decisions = [d for d in decisions_db if str(d.get('hand_id')) == str(hand_id)]
+
+    # Construir replay data
+    replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
+    return jsonify(replay)
+
+
+def _build_replay_data(hand, decisions_db, hero_override=None):
+    """Constrói a timeline completa de replay a partir de uma ParsedHand."""
+    import re as _re
+
+    hero = hero_override or hand.hero
+
+    # Extrair seats e stacks do raw_text
+    seats = {}
+    for line in hand.raw_text.split('\n'):
+        m = _re.match(r'Seat (\d+): (.+) \((\d+) in chips\)', line)
+        if m:
+            seats[int(m.group(1))] = {
+                'player': m.group(2).strip(),
+                'stack':  int(m.group(3))
+            }
+    if not seats:
+        return {'error': 'Seats não encontrados'}
+
+    seat_nums = sorted(seats.keys())
+    n         = len(seat_nums)
+    btn_idx   = seat_nums.index(hand.button_seat) if hand.button_seat in seat_nums else 0
+    pos_names = ['BTN','SB','BB','UTG','UTG+1','UTG+2','MP','HJ','CO']
+    positions = {
+        s: pos_names[(i - btn_idx) % n] if (i - btn_idx) % n < len(pos_names) else f'P{(i-btn_idx)%n}'
+        for i, s in enumerate(seat_nums)
+    }
+
+    # Mapear erros por (street, action_taken)
+    error_map = {}
+    for d in decisions_db:
+        key = (d.get('street', ''), d.get('action_taken', ''))
+        error_map[key] = d
+
+    stacks  = {s: seats[s]['stack'] for s in seats}
+    pot     = 0
+    bets_r  = {s: 0 for s in seats}
+    board   = []
+    street  = 'preflop'
+    folded  = []
+
+    def snap(extra=None):
+        base = {
+            'seats':      {s: {'player': seats[s]['player'], 'stack': stacks[s], 'pos': positions[s]}
+                           for s in seats},
+            'button':     hand.button_seat,
+            'hero':       hero,
+            'hero_cards': [hand.hero_cards[:2], hand.hero_cards[2:]]
+                            if len(hand.hero_cards or '') >= 4 else [],
+            'board':      board[:],
+            'pot':        pot,
+            'bets':       dict(bets_r),
+            'street':     street,
+            'folded':     folded[:],
+        }
+        if extra:
+            base.update(extra)
+        return base
+
+    timeline = [snap({'type': 'deal', 'desc': 'Início da mão'})]
+
+    for action in hand.actions:
+        if action.street != street:
+            street = action.street
+            bets_r = {s: 0 for s in seats}
+            if street == 'flop':   board = hand.board[:3]
+            elif street == 'turn':  board = hand.board[:4]
+            elif street == 'river': board = hand.board[:]
+            timeline.append(snap({'type': 'street', 'desc': street.upper()}))
+
+        pseat = next((s for s, d in seats.items() if d['player'] == action.player), None)
+        amt   = action.amount or 0
+
+        if action.action in ('calls', 'bets', 'raises') and amt:
+            pot += amt
+            if pseat:
+                stacks[pseat]  = max(0, stacks[pseat] - amt)
+                bets_r[pseat]  = bets_r.get(pseat, 0) + amt
+        elif action.action == 'posts' and amt:
+            pot += amt
+            if pseat:
+                stacks[pseat] = max(0, stacks[pseat] - amt)
+
+        if action.action == 'folds' and action.player not in folded:
+            folded.append(action.player)
+
+        err_key  = (action.street, action.action)
+        decision = error_map.get(err_key) if action.player == hero else None
+
+        timeline.append(snap({
+            'type':         'action',
+            'player':       action.player,
+            'seat':         pseat,
+            'action':       action.action,
+            'amount':       amt,
+            'is_hero':      action.player == hero,
+            'is_error':     decision is not None,
+            'error_label':  decision.get('label')       if decision else None,
+            'error_score':  round(float(decision.get('score', 0)), 3) if decision else None,
+            'best_action':  decision.get('best_action')  if decision else None,
+            'desc':         f"{action.player}: {action.action}"
+                              + (f' {int(amt)}' if amt else ''),
+        }))
+
+    return {
+        'hand_id':    str(hand.hand_id),
+        'hero':       hero,
+        'board':      hand.board,
+        'button':     hand.button_seat,
+        'sb':         hand.sb,
+        'bb':         hand.bb,
+        'seats':      {s: {'player': seats[s]['player'],
+                          'stack':  seats[s]['stack'],
+                          'pos':    positions[s]} for s in seats},
+        'timeline':   timeline,
+    }
+
 
 @app.errorhandler(413)
 def too_large(_): return jsonify({'error': 'Arquivo muito grande (limite: 5MB)'}), 413

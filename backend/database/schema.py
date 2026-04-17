@@ -267,6 +267,7 @@ def _run_migrations(conn):
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS buy_in REAL",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS prize  REAL",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS profit REAL",
+            "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS raw_text TEXT",
         ]:
             try: conn.execute(sql)
             except Exception: pass

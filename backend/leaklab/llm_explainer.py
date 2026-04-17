@@ -483,3 +483,143 @@ def _tournament_cache_key(ctx: dict) -> str:
         'leaks': ctx.get('top_leaks', [])[:2],
     }, sort_keys=True)
     return 'summary_' + hashlib.md5(raw.encode()).hexdigest()[:10]
+
+
+def generate_study_plan(leaks: list, evolution: list, icm: dict,
+                        hero: str = 'Jogador',
+                        user_id: int | None = None) -> dict:
+    """
+    Gera plano de estudos personalizado baseado nos leaks reais do jogador.
+    Retorna dict com cards[], resumo, e nível identificado.
+    Cache persistente no banco PostgreSQL via llm_cache.
+    """
+    import hashlib, json, os, requests
+
+    # --- Construir fingerprint para cache ---
+    cache_key = 'study_plan:' + hashlib.md5(
+        json.dumps({'leaks': leaks, 'evo_len': len(evolution)},
+                   sort_keys=True).encode()
+    ).hexdigest()
+
+    # Cache em memória (sessão)
+    if cache_key in _cache:
+        return json.loads(_cache[cache_key])
+
+    # Cache persistente no banco
+    if user_id is not None:
+        try:
+            from database.repositories import get_llm_cache
+            cached = get_llm_cache(user_id, cache_key)
+            if cached:
+                _cache[cache_key] = cached
+                return json.loads(cached)
+        except Exception:
+            pass
+
+    # --- Calcular métricas gerais ---
+    total_dec  = sum(e.get('decisions_count', 0) for e in evolution) or 1
+    avg_score  = sum(e.get('avg_score', 0) * e.get('decisions_count', 0)
+                     for e in evolution) / total_dec
+    avg_std    = sum(e.get('standard_pct', 0) * e.get('decisions_count', 0)
+                     for e in evolution) / total_dec
+    avg_clear  = sum(e.get('clear_pct', 0) * e.get('decisions_count', 0)
+                     for e in evolution) / total_dec
+    n_torneioa = len(evolution)
+
+    # ICM fraco = onde mais erra
+    icm_weak = max(icm.items(),
+                   key=lambda x: 1 - x[1].get('standard_rate', 1),
+                   default=('—', {}))[0] if icm else '—'
+
+    # --- Montar prompt ---
+    leaks_txt = '\n'.join(
+        f"  - {l['spot']}: {l['n']} ocorrências, score médio {l['avg_score']:.3f} "
+        f"({'crítico' if l['avg_score'] >= .36 else 'moderado' if l['avg_score'] >= .20 else 'leve'})"
+        for l in leaks[:8]
+    )
+
+    prompt = f"""Você é um coach profissional de poker MTT (multi-table tournament).
+Analise os dados de performance abaixo e gere um plano de estudos PERSONALIZADO para o jogador.
+
+## Dados do Jogador ({hero})
+
+**Métricas gerais ({n_torneioa} torneios analisados):**
+- Score médio de erro: {avg_score:.4f} (meta: abaixo de 0.08)
+- Taxa de decisões corretas (standard): {avg_std:.1f}% (meta: acima de 80%)
+- Taxa de erros graves (clear mistakes): {avg_clear:.1f}% (meta: abaixo de 5%)
+- Pior fase ICM: pressão {icm_weak}
+
+**Leaks identificados (por frequência de erro):**
+{leaks_txt}
+
+## Instrução
+
+Gere um plano de estudos com exatamente 6 itens. Cada item deve:
+1. Focar em UM leak específico dos dados acima
+2. Ter título curto e direto (máx 5 palavras)
+3. Ter descrição de 2-3 linhas explicando O QUE estudar e COMO aplicar
+4. Sugerir exercício prático concreto (não genérico)
+5. Indicar prioridade: P1 (urgente), P2 (importante), P3 (melhoria)
+
+Responda APENAS com JSON válido, sem texto adicional, no formato:
+{{
+  "nivel": "iniciante|intermediario|avancado",
+  "resumo": "2 frases descrevendo o perfil de erros deste jogador",
+  "cards": [
+    {{
+      "prioridade": "p1",
+      "icone": "♠|♥|♦|♣",
+      "titulo": "título do tópico",
+      "descricao": "descrição detalhada do que estudar",
+      "exercicio": "exercício prático específico",
+      "spot": "street/action do leak principal"
+    }}
+  ]
+}}"""
+
+    try:
+        resp = requests.post(
+            'https://api.anthropic.com/v1/messages',
+            headers={
+                'x-api-key':         _api_key(),
+                'anthropic-version': '2023-06-01',
+                'content-type':      'application/json',
+            },
+            json={
+                'model':      'claude-haiku-4-5-20251001',
+                'max_tokens': 2000,
+                'messages':   [{'role': 'user', 'content': prompt}],
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        raw = resp.json()['content'][0]['text'].strip()
+
+        # Limpar possível markdown
+        if raw.startswith('```'):
+            raw = raw.split('```')[1]
+            if raw.startswith('json'):
+                raw = raw[4:]
+        raw = raw.strip()
+
+        result = json.loads(raw)
+        result_str = json.dumps(result, ensure_ascii=False)
+        _cache[cache_key] = result_str
+        # Persistir no banco
+        if user_id is not None:
+            try:
+                from database.repositories import set_llm_cache
+                set_llm_cache(user_id, cache_key, result_str)
+            except Exception:
+                pass
+        return result
+
+    except Exception as e:
+        # Fallback: retornar estrutura vazia com erro
+        return {
+            'nivel': 'intermediario',
+            'resumo': 'Análise indisponível no momento.',
+            'cards': [],
+            'error': str(e),
+        }
+

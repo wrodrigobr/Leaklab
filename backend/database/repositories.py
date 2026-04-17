@@ -141,7 +141,8 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
                     place: int | None = None,
                     buy_in: float | None = None,
                     prize: float | None = None,
-                    profit: float | None = None) -> int:
+                    profit: float | None = None,
+                    raw_text: str | None = None) -> int:
     conn = get_conn()
     lp = metrics.get('label_pct', {})
     try:
@@ -151,8 +152,8 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
               (user_id, tournament_id, site, hero, played_at, imported_at,
                hands_count, decisions_count, avg_score,
                standard_pct, marginal_pct, small_pct, clear_pct,
-               result, place, buy_in, prize, profit)
-            VALUES (?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?,?,?,?)
+               result, place, buy_in, prize, profit, raw_text)
+            VALUES (?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(user_id, tournament_id) DO UPDATE SET
               imported_at    = datetime('now'),
               hands_count    = excluded.hands_count,
@@ -166,7 +167,8 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
               place          = excluded.place,
               buy_in         = excluded.buy_in,
               prize          = excluded.prize,
-              profit         = excluded.profit
+              profit         = excluded.profit,
+              raw_text       = excluded.raw_text
         """, (
             user_id, tournament_id, site, hero, played_at,
             metrics.get('total_hands', 0),
@@ -174,7 +176,7 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
             metrics.get('avg_mistake_score'),
             lp.get('standard'), lp.get('marginal'),
             lp.get('small_mistake'), lp.get('clear_mistake'),
-            result, place, buy_in, prize, profit,
+            result, place, buy_in, prize, profit, raw_text,
         ))
         conn.commit()
         # Buscar o ID (seja novo ou existente) — SELECT separado
