@@ -907,7 +907,21 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         if extra: base.update(extra)
         return base
 
-    timeline = [snap({'type': 'deal', 'desc': 'Início da mão'})]
+    # Resumo dos antes para exibição
+    antes_total = sum(a['amount'] for a in antes)
+    antes_desc  = ''
+    if antes:
+        n_antes = len(antes)
+        val     = antes[0]['amount']
+        antes_desc = f'{n_antes}×{val} ante = {antes_total}'
+
+    timeline = [snap({
+        'type':       'deal',
+        'desc':       'Início da mão',
+        'antes_total': antes_total,
+        'antes_desc':  antes_desc,
+        'blinds_total': sum(b['amount'] for b in blinds),
+    })]
 
     for action in hand.actions:
         if action.street != street:

@@ -2255,7 +2255,32 @@ function rpRender(step){
   };
   const fmtChips = (v) => v>=1000 ? (v/1000).toFixed(1)+'k' : Math.round(v)+'';
   const potStr = rpShowBB ? fmtBB(pot, bb) : fmtChips(pot);
-  document.getElementById('rp-pot-val').textContent = pot>0 ? potStr : '';
+  const potEl  = document.getElementById('rp-pot-val');
+  if(potEl) potEl.textContent = pot>0 ? potStr : '';
+
+  // Tooltip do pot: mostrar breakdown quando há antes
+  const potGroup = document.getElementById('rp-pot');
+  if(potGroup && ev.antes_total > 0 && ev.type === 'deal'){
+    const antesStr = rpShowBB ? fmtBB(ev.antes_total, bb) : fmtChips(ev.antes_total);
+    const blStr    = rpShowBB ? fmtBB(ev.blinds_total||0, bb) : fmtChips(ev.blinds_total||0);
+    // Adicionar texto de breakdown abaixo do pot
+    let breakdown = potGroup.querySelector('#rp-pot-breakdown');
+    if(!breakdown){
+      breakdown = document.createElementNS('http://www.w3.org/2000/svg','text');
+      breakdown.setAttribute('id','rp-pot-breakdown');
+      breakdown.setAttribute('x','450');
+      breakdown.setAttribute('y','196');
+      breakdown.setAttribute('text-anchor','middle');
+      breakdown.setAttribute('fill','#c9a84c55');
+      breakdown.setAttribute('font-family','Share Tech Mono,monospace');
+      breakdown.setAttribute('font-size','7.5');
+      potGroup.appendChild(breakdown);
+    }
+    breakdown.textContent = ev.antes_desc ? '('+antesStr+' antes + '+blStr+' blinds)' : '';
+  } else {
+    const b = document.getElementById('rp-pot-breakdown');
+    if(b) b.textContent = '';
+  }
 
   // Board
   rpRenderBoard(ev.board||[], step);
