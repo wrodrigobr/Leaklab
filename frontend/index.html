@@ -2482,11 +2482,9 @@ function rpRenderSeats(ev, bb){
     const cw=26,ch=36,cg=3;
     const showHeroCards = isHero && ev.hero_cards && ev.hero_cards.length===2;
     if(showHeroCards){
-      let cx1,cy1,cx2,cy2;
-      if(dir==='top')        {cx1=pos.x-cw-cg/2; cy1=by-ch-5;  cx2=pos.x+cg/2;    cy2=by-ch-5;}
-      else if(dir==='bottom'){cx1=pos.x-cw-cg/2; cy1=by+bh+5;  cx2=pos.x+cg/2;    cy2=by+bh+5;}
-      else if(dir==='left')  {cx1=Math.max(4,bx-cw*2-cg-5); cy1=pos.y-ch/2-cg/2-2; cx2=Math.max(cx1+cw+cg,bx-cw-3); cy2=pos.y+cg/2+2;}
-      else                   {cx1=bx+bw+5;        cy1=pos.y-ch; cx2=bx+bw+cw+cg+5; cy2=pos.y+2;}
+      // Cartas sempre acima do seat box, lado a lado, centradas no seat
+      const cx1=pos.x-cw-cg/2, cy1=by-ch-5;
+      const cx2=pos.x+cg/2,    cy2=by-ch-5;
       html+=cardSVG(ev.hero_cards[0],cx1,cy1,cw,ch);
       html+=cardSVG(ev.hero_cards[1],cx2,cy2,cw,ch);
     } else if(!isHero && !isFolded){
