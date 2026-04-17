@@ -2269,14 +2269,14 @@ function rpRender(step){
       breakdown = document.createElementNS('http://www.w3.org/2000/svg','text');
       breakdown.setAttribute('id','rp-pot-breakdown');
       breakdown.setAttribute('x','450');
-      breakdown.setAttribute('y','196');
+      breakdown.setAttribute('y','198');
       breakdown.setAttribute('text-anchor','middle');
-      breakdown.setAttribute('fill','#c9a84c55');
+      breakdown.setAttribute('fill','#c9a84c99');
       breakdown.setAttribute('font-family','Share Tech Mono,monospace');
-      breakdown.setAttribute('font-size','7.5');
+      breakdown.setAttribute('font-size','9.5');
       potGroup.appendChild(breakdown);
     }
-    breakdown.textContent = ev.antes_desc ? '('+antesStr+' antes + '+blStr+' blinds)' : '';
+    breakdown.textContent = ev.antes_desc ? antesStr+' antes + '+blStr+' blinds' : '';
   } else {
     const b = document.getElementById('rp-pot-breakdown');
     if(b) b.textContent = '';
@@ -2485,7 +2485,7 @@ function rpRenderSeats(ev, bb){
       let cx1,cy1,cx2,cy2;
       if(dir==='top')        {cx1=pos.x-cw-cg/2; cy1=by-ch-5;  cx2=pos.x+cg/2;    cy2=by-ch-5;}
       else if(dir==='bottom'){cx1=pos.x-cw-cg/2; cy1=by+bh+5;  cx2=pos.x+cg/2;    cy2=by+bh+5;}
-      else if(dir==='left')  {cx1=bx-cw*2-cg-5;  cy1=pos.y-ch; cx2=bx-cw-3;       cy2=pos.y+2;}
+      else if(dir==='left')  {cx1=Math.max(4,bx-cw*2-cg-5); cy1=pos.y-ch/2-cg/2-2; cx2=Math.max(cx1+cw+cg,bx-cw-3); cy2=pos.y+cg/2+2;}
       else                   {cx1=bx+bw+5;        cy1=pos.y-ch; cx2=bx+bw+cw+cg+5; cy2=pos.y+2;}
       html+=cardSVG(ev.hero_cards[0],cx1,cy1,cw,ch);
       html+=cardSVG(ev.hero_cards[1],cx2,cy2,cw,ch);
@@ -2494,7 +2494,7 @@ function rpRenderSeats(ev, bb){
       let cx1,cy1,cx2,cy2;
       if(dir==='top')        {cx1=pos.x-sw-2; cy1=by-sh-4;  cx2=pos.x+2;      cy2=by-sh-4;}
       else if(dir==='bottom'){cx1=pos.x-sw-2; cy1=by+bh+4;  cx2=pos.x+2;      cy2=by+bh+4;}
-      else if(dir==='left')  {cx1=bx-sw*2-4;  cy1=pos.y-sh; cx2=bx-sw-2;      cy2=pos.y+2;}
+      else if(dir==='left')  {cx1=Math.max(4,bx-sw*2-4); cy1=pos.y-sh/2-1; cx2=Math.max(cx1+sw+2,bx-sw-2); cy2=pos.y+1;}
       else                   {cx1=bx+bw+4;    cy1=pos.y-sh; cx2=bx+bw+sw+5;   cy2=pos.y+2;}
       html+=cardSVG(null,cx1,cy1,sw,sh,true);
       html+=cardSVG(null,cx2,cy2,sw,sh,true);
