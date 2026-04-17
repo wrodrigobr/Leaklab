@@ -422,191 +422,71 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .s1{animation:fadeIn .4s .04s both;}.s2{animation:fadeIn .4s .09s both;}.s3{animation:fadeIn .4s .14s both;}.s4{animation:fadeIn .4s .19s both;}.s5{animation:fadeIn .4s .24s both;}
 ::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:var(--ink);}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
 
-/* ── Replayer styles ── */
-.replay-modal {
-    --rp-felt:    #1a4a2e;
-    --rp-felt2:   #1f5535;
-    --rp-rail:    #3d1f0a;
-    --rp-rail2:   #5a2e0e;
-    --gold:    #c9a84c;
-    --rp-gold2:   #e8c96a;
-    --red:     #c94040;
-    --green:   #4caf7d;
-    --rp-ink:     #0d1117;
-    --text:    #e8e6df;
-    --rp-muted:   #8a8680;
-    --rp-dim:     #5a5652;
-    --chip-r:  #c94040;
-    --chip-b:  #3a7ec9;
-    --chip-g:  #4caf7d;
-    --chip-k:  #2a2a2a;
-  }
-.replay-modal /* ── Header ── */
-  .replay-modal .hdr{
-    width: 100%;
-    max-width: 900px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-.replay-modal .hdr-logo{ font-size: 1.1rem; font-weight: 700; color: var(--gold); letter-spacing: .08em; }
-.replay-modal .hdr-hand{ font-family: 'Share Tech Mono', monospace; font-size: .7rem; color: var(--rp-muted, var(--muted)); }
-.replay-modal .hdr-close{ background: none; border: 1px solid var(--rp-dim, var(--dim)); color: var(--rp-muted, var(--muted)); padding: 4px 12px;
-               border-radius: 4px; cursor: pointer; font-size: .75rem; font-family: 'Share Tech Mono', monospace; }
-.replay-modal .hdr-close:hover{ border-color: var(--gold); color: var(--gold); }
-.replay-modal /* ── Table ── */
-  .replay-modal .table-wrap{
-    width: 100%;
-    max-width: 900px;
-    position: relative;
-  }
-.replay-modal .table-svg-wrap{
-    width: 100%;
-    aspect-ratio: 16/9;
-    position: relative;
-  }
-.replay-modal /* ── Controls ── */
-  .controls{
-    width: 100%;
-    max-width: 900px;
-    margin-top: 14px;
-    background: #161b22;
-    border: 1px solid #2d333b;
-    border-radius: 10px;
-    padding: 14px 16px;
-  }
-.replay-modal .timeline-bar{
-    width: 100%;
-    height: 4px;
-    background: #2d333b;
-    border-radius: 2px;
-    margin-bottom: 12px;
-    position: relative;
-    cursor: pointer;
-  }
-.replay-modal .timeline-progress{
-    height: 100%;
-    background: var(--gold);
-    border-radius: 2px;
-    transition: width .2s;
-  }
-.replay-modal .timeline-dots{
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 100%;
-    display: flex;
-    pointer-events: none;
-  }
-.replay-modal .timeline-dot{
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--rp-muted, var(--muted));
-    transform: translate(-50%, -50%);
-    top: 50%;
-    transition: background .2s;
-  }
-.replay-modal .timeline-dot.error{ background: var(--red); width: 10px; height: 10px; }
-.replay-modal .timeline-dot.hero{ background: var(--gold); }
-.replay-modal .timeline-dot.done{ background: var(--green); }
-.replay-modal .ctrl-row{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-.replay-modal .ctrl-btn{
-    background: #1e252e;
-    border: 1px solid #2d333b;
-    color: var(--text);
-    width: 36px;
-    height: 36px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: .9rem;
-    transition: all .15s;
-    flex-shrink: 0;
-  }
-.replay-modal .ctrl-btn:hover{ border-color: var(--gold); color: var(--gold); }
-.replay-modal .ctrl-btn.play{ width: 44px; height: 44px; font-size: 1.1rem; border-color: var(--gold); color: var(--gold); }
-.replay-modal .ctrl-btn.play:hover{ background: var(--gold); color: #000; }
-.replay-modal .speed-sel{
-    background: #1e252e;
-    border: 1px solid #2d333b;
-    color: var(--rp-muted, var(--muted));
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: .7rem;
-    cursor: pointer;
-  }
-.replay-modal .action-log{
-    margin-left: auto;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: .72rem;
-    color: var(--rp-muted, var(--muted));
-    text-align: right;
-    min-width: 200px;
-  }
-.replay-modal .action-log .al-street{
-    color: var(--gold);
-    font-size: .65rem;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-  }
-.replay-modal .action-log .al-action{ color: var(--text); }
-.replay-modal .action-log .al-error{ color: var(--red); font-weight: 600; }
-.replay-modal /* ── Error popup ── */
-  .replay-modal .error-popup{
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1a0808;
-    border: 1px solid var(--red);
-    border-radius: 8px;
-    padding: 10px 14px;
-    width: 240px;
-    z-index: 100;
-    display: none;
-    font-size: .75rem;
-  }
-.replay-modal .error-popup.show{ display: block; animation: popIn .2s ease; }
-.replay-modal .ep-title{ color: var(--red); font-weight: 700; font-size: .8rem; margin-bottom: 4px; }
-.replay-modal .ep-body{ color: #d4a0a0; line-height: 1.5; }
-.replay-modal .ep-best{ margin-top: 6px; color: var(--green); font-weight: 600; }
-@keyframes popIn {
-    from { opacity:0; transform: translateX(-50%) scale(.9); }
-.replay-modal to{ opacity:1; transform: translateX(-50%) scale(1); }
-.replay-modal }
 
-  /* ── Street badge ── */
-  .replay-modal .street-badge{
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,.6);
-    border: 1px solid var(--gold);
-    border-radius: 20px;
-    padding: 3px 16px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: .65rem;
-    color: var(--gold);
-    letter-spacing: .15em;
-    pointer-events: none;
-    display: none;
-  }
-.replay-modal .street-badge.show{ display: block; animation: fadeStreet .4s ease; }
-@keyframes fadeStreet {
-    from { opacity:0; transform: translateX(-50%) translateY(-6px); }
-.replay-modal to{ opacity:1; transform: translateX(-50%) translateY(0); }
+/* ── Replayer v3 styles ── */
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+/* ── Layout ── */
+.rp-wrap{display:flex;flex-direction:column;height:100vh;padding:10px 14px 10px}
+.rp-hdr{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-shrink:0}
+.rp-logo{font-size:.72rem;font-weight:700;color:var(--rp-gold);letter-spacing:.14em;
+  font-family:'Share Tech Mono',monospace}
+.rp-hand{font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--rp-dim)}
+.rp-close{margin-left:auto;background:none;border:1px solid var(--rp-brd);
+  color:var(--rp-muted);padding:3px 12px;border-radius:4px;cursor:pointer;
+  font-size:.65rem;font-family:'Share Tech Mono',monospace;transition:.15s}
+.rp-close:hover{border-color:var(--rp-gold);color:var(--rp-gold)}
+
+/* ── Table ── */
+.rp-table{flex:1;min-height:0;position:relative}
+.rp-table svg{width:100%;height:100%;display:block}
+
+/* ── Controls ── */
+.rp-ctrl{flex-shrink:0;background:var(--rp-card);border:1px solid var(--rp-brd);
+  border-radius:8px;padding:10px 14px;margin-top:8px}
+.rp-timeline{width:100%;height:4px;background:var(--rp-brd);border-radius:2px;
+  margin-bottom:10px;position:relative;cursor:pointer}
+.rp-progress{height:100%;background:var(--rp-gold);border-radius:2px;transition:width .15s}
+.rp-dots{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.rp-dot{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--rp-dim);
+  transform:translate(-50%,-50%);top:50%;cursor:pointer;pointer-events:all}
+.rp-dot.err{background:var(--rp-red);width:9px;height:9px}
+.rp-dot.hero{background:var(--rp-gold)}
+
+.rp-btns{display:flex;align-items:center;gap:8px}
+.rp-btn{background:var(--rp-card);border:1px solid var(--rp-brd);color:var(--rp-text);
+  width:34px;height:34px;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;font-size:.85rem;transition:.15s;flex-shrink:0}
+.rp-btn:hover{border-color:var(--rp-gold);color:var(--rp-gold)}
+.rp-btn.play{width:42px;height:42px;font-size:1rem;border-color:var(--rp-gold);color:var(--rp-gold)}
+.rp-btn.play:hover{background:var(--rp-gold);color:#000}
+.rp-speed{background:var(--rp-card);border:1px solid var(--rp-brd);color:var(--rp-muted);
+  padding:5px 8px;border-radius:6px;font-family:'Share Tech Mono',monospace;
+  font-size:.65rem;cursor:pointer}
+.rp-log{margin-left:auto;text-align:right;font-family:'Share Tech Mono',monospace;font-size:.65rem}
+.rp-log-street{color:var(--rp-gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.rp-log-action{color:var(--rp-text)}
+.rp-log-action.err{color:var(--rp-red);font-weight:700}
+
+/* ── Street badge ── */
+.rp-badge{position:absolute;top:6px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.55);border:1px solid var(--rp-gold);border-radius:20px;
+  padding:2px 14px;font-family:'Share Tech Mono',monospace;font-size:.6rem;
+  color:var(--rp-gold);letter-spacing:.14em;pointer-events:none;opacity:0;transition:.3s}
+.rp-badge.show{opacity:1}
+
+/* ── Error popup ── */
+.rp-err-pop{position:absolute;bottom:calc(100% + 6px);left:50%;
+  transform:translateX(-50%);background:#1a0808;
+  border:1px solid var(--rp-red);border-radius:8px;padding:10px 14px;
+  width:230px;z-index:20;display:none;font-size:.72rem}
+.rp-err-pop.show{display:block;animation:rpPop .2s ease}
+.rp-err-title{color:var(--rp-red);font-weight:700;font-size:.78rem;margin-bottom:4px}
+.rp-err-body{color:#d4a0a0;line-height:1.5}
+.rp-err-best{margin-top:6px;color:var(--rp-green);font-weight:600}
+@keyframes rpPop{from{opacity:0;transform:translateX(-50%) scale(.9)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
@@ -2242,519 +2122,490 @@ async function resetMyData(){
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════════════
-// POKER REPLAYER — Motor embutido
+// POKER REPLAYER v3 — motor embutido
 // ══════════════════════════════════════════════════════
-// ── Seat positions — layout dinâmico ─────────────────────────────────────
-// Elipse do felt: cx=450, cy=285, rx=370, ry=196
-const FELT_CX = 450, FELT_CY = 285, FELT_RX = 370, FELT_RY = 196;
+// ── Helpers de carta ──────────────────────────────────────────────────────────
+const SUIT_SYM   = {s:'♠',h:'♥',d:'♦',c:'♣'};
+const SUIT_COLOR = {s:'#1a1a1a',h:'#cc2222',d:'#cc2222',c:'#1a1a1a'};
 
-// Para 9 ou 10 jogadores: distribuição uniforme.
-// Para outros (mesa menor): calcular da mesma forma.
-// O layout é definido no início e congelado durante toda a mão.
-
-function buildSeatLayout(seatNums) {
-  const n = seatNums.length;
-  const layout = {};
-
-  seatNums.forEach((seatNum, i) => {
-    const angleDeg = -90 + (360 / n) * i;
-    const angleRad = angleDeg * Math.PI / 180;
-    const x = Math.round(FELT_CX + FELT_RX * Math.cos(angleRad));
-    const y = Math.round(FELT_CY + FELT_RY * Math.sin(angleRad));
-
-    // Direção das cartas: sempre para fora da mesa
-    let cardDir;
-    const a = ((angleDeg % 360) + 360) % 360;
-    if (a >= 315 || a < 45)   cardDir = 'top';
-    else if (a < 135)          cardDir = 'bottom';
-    else if (a < 225)          cardDir = 'left';
-    else                       cardDir = 'top';
-
-    // Box do seat: centralizado no ponto da elipse
-    // Para top/bottom: box horizontal; para left/right: box horizontal também
-    layout[seatNum] = { x, y, cardDir, angleDeg };
-  });
-
-  return layout;
-}
-
-// Cache do layout — gerado uma vez no início da mão e reutilizado
-let _seatLayout = null;
-function getSeatLayout(seatNums) {
-  if (!_seatLayout) _seatLayout = buildSeatLayout(seatNums);
-  return _seatLayout;
-}
-
-// ── Card rendering ──────────────────────────────────────────────────────────
-const SUITS = {s:'♠',h:'♥',d:'♦',c:'♣'};
-const SUIT_COLOR = {s:'#e8e6df',h:'#e84040',d:'#e84040',c:'#e8e6df'};
-
-function cardSVG(code, x, y, w=38, h=52, faceDown=false) {
-  if (!code || faceDown) {
+function cardSVG(code, x, y, w=38, h=52, faceDown=false){
+  if(!code || faceDown){
     return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4"
-              fill="#1a2a3a" stroke="#3a5a7a" stroke-width="1"/>
+                  fill="#1c2d3d" stroke="#2a4a6a" stroke-width=".8"/>
             <text x="${x+w/2}" y="${y+h/2+5}" text-anchor="middle"
-                  fill="#2a4a6a" font-size="18" font-family="Rajdhani">?</text>`;
+                  fill="#2a4a6a" font-size="16" font-family="Rajdhani,sans-serif">?</text>`;
   }
   const rank = code.slice(0,-1).toUpperCase();
   const suit = code.slice(-1).toLowerCase();
-  const col  = SUIT_COLOR[suit] || '#e8e6df';
-  const sym  = SUITS[suit] || suit;
+  const col  = SUIT_COLOR[suit] || '#1a1a1a';
+  const sym  = SUIT_SYM[suit]   || suit;
   return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4"
-            fill="#f5f0e8" stroke="#cccccc" stroke-width=".5"/>
+                fill="#f4efe6" stroke="#d0c8b8" stroke-width=".5"/>
           <text x="${x+4}" y="${y+13}" fill="${col}"
-                font-family="Rajdhani" font-size="13" font-weight="700">${rank}</text>
+                font-family="Rajdhani,sans-serif" font-size="13" font-weight="700">${rank}</text>
           <text x="${x+4}" y="${y+24}" fill="${col}"
-                font-family="Rajdhani" font-size="11">${sym}</text>
+                font-family="Rajdhani,sans-serif" font-size="11">${sym}</text>
           <text x="${x+w/2}" y="${y+h/2+10}" text-anchor="middle" fill="${col}"
-                font-family="Rajdhani" font-size="20" opacity=".25">${sym}</text>
-          <text x="${x+w-4}" y="${y+h-5}" fill="${col}" text-anchor="end"
-                font-family="Rajdhani" font-size="13" font-weight="700">${rank}</text>`;
+                font-family="Rajdhani,sans-serif" font-size="20" opacity=".18">${sym}</text>
+          <text x="${x+w-4}" y="${y+h-5}" text-anchor="end" fill="${col}"
+                font-family="Rajdhani,sans-serif" font-size="13" font-weight="700">${rank}</text>`;
 }
 
-function chipSVG(x, y, amount) {
-  const col = amount >= 10000 ? '#c9a84c' : amount >= 1000 ? '#c94040' : '#3a7ec9';
-  const r = 14;
+function chipSVG(x, y, amount, bb){
+  const bb_val = bb || 100;
+  const col = amount >= bb_val*20 ? '#c9a84c' : amount >= bb_val*5 ? '#c94040' : '#3a7ec9';
+  const r   = 13;
   const fmt = amount >= 1000 ? (amount/1000).toFixed(1)+'k' : String(Math.round(amount));
-  return `<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" stroke="#ffffff30" stroke-width="1.5"/>
-          <circle cx="${x}" cy="${y}" r="${r-4}" fill="none" stroke="#ffffff20" stroke-width="1" stroke-dasharray="4 3"/>
+  return `<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" stroke="#ffffff28" stroke-width="1.5"/>
+          <circle cx="${x}" cy="${y}" r="${r-3}" fill="none" stroke="#ffffff18" stroke-width="1" stroke-dasharray="3 3"/>
           <text x="${x}" y="${y+4}" text-anchor="middle" fill="#fff"
-                font-family="Share Tech Mono" font-size="9" font-weight="bold">${fmt}</text>`;
+                font-family="Share Tech Mono,monospace" font-size="8.5" font-weight="bold">${fmt}</text>`;
 }
 
-// ── State ───────────────────────────────────────────────────────────────────
-let REPLAY = null;
-let curStep = 0;
-let playing = false;
-let playTimer = null;
-let speed = 1200;
+// ── Layout de seats (dinâmico, congelado) ─────────────────────────────────────
+const CX=450, CY=252, RX=365, RY=189;
+let _rpLayout = null;
 
-// ── Render step ─────────────────────────────────────────────────────────────
-function renderStep(step) {
-  if (!REPLAY || step < 0 || step >= REPLAY.timeline.length) return;
+function rpBuildLayout(seatNums){
+  if(_rpLayout) return _rpLayout;
+  const n = seatNums.length;
+  _rpLayout = {};
+  seatNums.forEach((s, i) => {
+    const ang = (-90 + (360/n)*i) * Math.PI/180;
+    const x   = Math.round(CX + RX*Math.cos(ang));
+    const y   = Math.round(CY + RY*Math.sin(ang));
+    const a   = ((-90 + (360/n)*i) % 360 + 360) % 360;
+    let dir;
+    if(a>=315 || a<45)  dir='top';
+    else if(a<135)       dir='bottom';
+    else if(a<225)       dir='left';
+    else                 dir='top';
+    _rpLayout[s] = {x, y, dir};
+  });
+  return _rpLayout;
+}
+
+// ── Estado do replayer ─────────────────────────────────────────────────────────
+let REPLAY=null, rpStep=0, rpPlaying=false, rpTimer=null, rpSpeed=1300;
+let rpShowBB=true;  // toggle chips: true=BB, false=fichas
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function rpRender(step){
+  if(!REPLAY || step<0 || step>=REPLAY.timeline.length) return;
   const ev = REPLAY.timeline[step];
-  
-  // Progress bar
-  const pct = REPLAY.timeline.length > 1 ? (step/(REPLAY.timeline.length-1))*100 : 0;
-  document.getElementById('timeline-progress').style.width = pct + '%';
+  const bb = REPLAY.bb || 100;
+
+  // Progress
+  const pct = REPLAY.timeline.length>1 ? (step/(REPLAY.timeline.length-1))*100 : 0;
+  document.getElementById('rp-prog').style.width = pct+'%';
 
   // Street badge
-  const badge = document.getElementById('street-badge');
-  if (ev.type === 'street') {
-    badge.textContent = ev.street.toUpperCase();
-    badge.className = 'street-badge show';
-    setTimeout(() => badge.className = 'street-badge', 1500);
+  if(ev.type==='street'){
+    const badge=document.getElementById('rp-badge');
+    badge.textContent=ev.street.toUpperCase();
+    badge.className='rp-badge show';
+    setTimeout(()=>badge.className='rp-badge',1600);
   }
 
   // Log
-  document.getElementById('log-street').textContent = (ev.street||'preflop').toUpperCase();
-  if (ev.is_error) {
-    document.getElementById('log-action').innerHTML =
-      `<span style="color:var(--red)">⚠ ${ev.desc}</span>`;
+  document.getElementById('rp-log-st').textContent=(ev.street||'preflop').toUpperCase();
+  const logAc=document.getElementById('rp-log-ac');
+  if(ev.is_error){
+    logAc.textContent='⚠ '+ev.desc;
+    logAc.className='rp-log-action err';
   } else {
-    document.getElementById('log-action').textContent = ev.desc || '—';
+    logAc.textContent=ev.desc||'—';
+    logAc.className='rp-log-action';
   }
 
   // Pot
-  const pot = ev.pot || 0;
-  document.getElementById('pot-amount').textContent =
-    pot >= 1000 ? (pot/1000).toFixed(1)+'k' : Math.round(pot)||'';
+  const pot=ev.pot||0;
+  const potStr = rpShowBB
+    ? (pot/bb).toFixed(1)+'BB'
+    : (pot>=1000?(pot/1000).toFixed(1)+'k':Math.round(pot)||'0');
+  document.getElementById('rp-pot-val').textContent = pot>0 ? potStr : '';
 
   // Board
-  renderBoard(ev.board || []);
+  rpRenderBoard(ev.board||[], step);
 
   // Seats
-  renderSeats(ev);
+  rpRenderSeats(ev, bb);
 
   // Error popup
-  const popup = document.getElementById('error-popup');
-  if (ev.is_error && ev.is_hero) {
-    const labels = {clear_mistake:'ERRO GRAVE',small_mistake:'Erro',marginal:'Marginal'};
-    document.getElementById('ep-body').textContent =
-      `Você fez ${ev.action} — score de erro: ${ev.error_score}`;
-    document.getElementById('ep-best').textContent =
-      `✓ Ação correta: ${ev.best_action}`;
-    popup.querySelector('.ep-title').textContent =
-      `⚠ ${labels[ev.error_label] || 'Atenção'}`;
+  const popup=document.getElementById('rp-err-pop');
+  if(ev.is_error && ev.is_hero){
+    const labels={clear_mistake:'ERRO GRAVE',small_mistake:'Erro',marginal:'Marginal'};
+    document.getElementById('rp-err-body').textContent=
+      'Você fez '+ev.action+' — penalidade: '+ev.error_score;
+    document.getElementById('rp-err-best').textContent=
+      '✓ Ação correta: '+ev.best_action;
+    popup.querySelector('.rp-err-title').textContent=
+      '⚠ '+(labels[ev.error_label]||'Atenção');
     popup.classList.add('show');
-    setTimeout(() => popup.classList.remove('show'), 4000);
+    setTimeout(()=>popup.classList.remove('show'), 4500);
   } else {
     popup.classList.remove('show');
   }
 }
 
-function renderBoard(cards) {
-  const g = document.getElementById('board-cards');
-  g.innerHTML = '';
-  const startX = 299;
-  const y = 251;
-  const W = 42, H = 56, GAP = 6;
-  cards.forEach((card, i) => {
-    const x = startX + i * (W + GAP);
-    g.innerHTML += cardSVG(card, x, y, W, H);
-  });
-  // Empty slots
-  for (let i = cards.length; i < 5; i++) {
-    const x = startX + i * (W + GAP);
-    g.innerHTML += `<rect x="${x}" y="${y}" width="${W}" height="${H}" rx="4"
-                       fill="#00000030" stroke="#1e5530" stroke-width="1" stroke-dasharray="4 3"/>`;
+function rpRenderBoard(cards, step){
+  const g = document.getElementById('rp-board');
+  g.innerHTML='';
+  const sx=292, y=222, W=42, H=56, GAP=6;
+  for(let i=0;i<5;i++){
+    const x=sx+i*(W+GAP);
+    if(i<cards.length) g.innerHTML+=cardSVG(cards[i],x,y,W,H);
+    else g.innerHTML+=`<rect x="${x}" y="${y}" width="${W}" height="${H}" rx="4"
+      fill="#00000028" stroke="#1e5530" stroke-width="1" stroke-dasharray="4 3"/>`;
   }
 }
 
-function renderSeats(ev) {
-  const seatsG = document.getElementById('seats');
-  const chipsG = document.getElementById('action-chips');
-  seatsG.innerHTML = '';
-  chipsG.innerHTML = '';
+// Contador de players para anonimização (mantém mapeamento estável)
+let _playerMap = {};
+let _playerCount = 0;
+function playerLabel(name, hero){
+  if(name===hero) return hero;
+  if(!_playerMap[name]){
+    _playerCount++;
+    _playerMap[name] = 'Player '+_playerCount;
+  }
+  return _playerMap[name];
+}
+
+function rpRenderSeats(ev, bb){
+  const seatsG=document.getElementById('rp-seats');
+  const chipsG=document.getElementById('rp-chips');
+  seatsG.innerHTML='';
+  chipsG.innerHTML='';
 
   const seatNums = Object.keys(ev.seats).map(Number).sort((a,b)=>a-b);
-  const posMap   = getSeatLayout(seatNums);
+  const layout   = rpBuildLayout(seatNums);
+  const bw=96, bh=48;
 
-  seatNums.forEach(seatNum => {
-    const data  = ev.seats[seatNum];
-    const pos   = posMap[seatNum] || {x:450,y:253};
-    const isFolded = (ev.folded || []).includes(data.player);
-    const isHero   = data.player === ev.hero;
-    const isBtn    = seatNum === ev.button;
-    const isActive = ev.seat === seatNum && ev.type === 'action';
-    const opacity  = isFolded ? 0.35 : 1;
-    const bw = 100, bh = 50;
-    const bx = pos.x - bw/2, by = pos.y - bh/2;
+  seatNums.forEach(sn=>{
+    const d      = ev.seats[sn];
+    const pos    = layout[sn];
+    if(!pos) return;
+    const isHero   = d.player===ev.hero;
+    const isBtn    = sn===ev.button;
+    const isFolded = (ev.folded||[]).includes(d.player);
+    const isActive = ev.type==='action' && ev.seat===sn;
+    const opacity  = isFolded ? 0.32 : 1;
+    const bx=pos.x-bw/2, by=pos.y-bh/2;
+    const dir=pos.dir;
 
-    // Background
-    let bgColor  = '#161b22';
-    let bdColor  = '#2d333b';
-    let bdWidth  = 1;
-    if (isHero)   { bgColor = '#0d2818'; bdColor = '#4caf7d'; bdWidth = 1.5; }
-    if (isActive) { bgColor = '#1a2000'; bdColor = '#c9a84c'; bdWidth = 2; }
-    if (ev.is_error && isActive && ev.is_hero) { bgColor = '#2a0808'; bdColor = '#c94040'; bdWidth = 2; }
+    // Cores do seat
+    let bg='#161b22', bd='#2d333b', bdW=1;
+    if(isHero)   {bg='#0d2818';bd='#4caf7d';bdW=1.5;}
+    if(isActive) {bg='#1c1e08';bd='#c9a84c';bdW=2;}
+    if(isActive && ev.is_error && ev.is_hero){bg='#2a0808';bd='#c94040';bdW=2;}
 
-    let html = `<g opacity="${opacity}">
-      <rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="6"
-            fill="${bgColor}" stroke="${bdColor}" stroke-width="${bdWidth}"/>`;
+    let html=`<g opacity="${opacity}">`;
 
-    // Cartas — posicionadas na direção cardDir (para fora da mesa)
-    const cw = 28, ch = 38, cgap = 4;
-    const cardDir = posMap[seatNum]?.cardDir || 'top';
-
-    if (isHero && ev.hero_cards && ev.hero_cards.length === 2) {
-      let cx1, cy1, cx2, cy2;
-      if (cardDir === 'top') {
-        cx1 = pos.x - cw - cgap/2; cy1 = by - ch - 6;
-        cx2 = pos.x + cgap/2;       cy2 = by - ch - 6;
-      } else if (cardDir === 'bottom') {
-        cx1 = pos.x - cw - cgap/2; cy1 = by + bh + 6;
-        cx2 = pos.x + cgap/2;       cy2 = by + bh + 6;
-      } else if (cardDir === 'left') {
-        cx1 = bx - cw*2 - cgap - 6; cy1 = pos.y - ch/2 - cgap/2 - 4;
-        cx2 = bx - cw - 6;           cy2 = pos.y + cgap/2 - 4;
-      } else { // right
-        cx1 = bx + bw + 6;           cy1 = pos.y - ch/2 - cgap/2 - 4;
-        cx2 = bx + bw + cw + cgap + 6; cy2 = pos.y + cgap/2 - 4;
-      }
-      html += cardSVG(ev.hero_cards[0], cx1, cy1, cw, ch);
-      html += cardSVG(ev.hero_cards[1], cx2, cy2, cw, ch);
-
-    } else if (!isHero && !isFolded) {
-      const sw = 20, sh = 28;
-      let cx1, cy1, cx2, cy2;
-      if (cardDir === 'top') {
-        cx1 = pos.x - sw - 2; cy1 = by - sh - 5;
-        cx2 = pos.x + 2;       cy2 = by - sh - 5;
-      } else if (cardDir === 'bottom') {
-        cx1 = pos.x - sw - 2; cy1 = by + bh + 5;
-        cx2 = pos.x + 2;       cy2 = by + bh + 5;
-      } else if (cardDir === 'left') {
-        cx1 = bx - sw*2 - 4; cy1 = pos.y - sh - 2;
-        cx2 = bx - sw - 2;   cy2 = pos.y + 2;
-      } else {
-        cx1 = bx + bw + 4;       cy1 = pos.y - sh - 2;
-        cx2 = bx + bw + sw + 6;  cy2 = pos.y + 2;
-      }
-      html += cardSVG(null, cx1, cy1, sw, sh, true);
-      html += cardSVG(null, cx2, cy2, sw, sh, true);
+    // Cartas — apontam para fora da mesa conforme dir
+    const cw=26,ch=36,cg=3;
+    const showHeroCards = isHero && ev.hero_cards && ev.hero_cards.length===2;
+    if(showHeroCards){
+      let cx1,cy1,cx2,cy2;
+      if(dir==='top')        {cx1=pos.x-cw-cg/2; cy1=by-ch-5;  cx2=pos.x+cg/2;    cy2=by-ch-5;}
+      else if(dir==='bottom'){cx1=pos.x-cw-cg/2; cy1=by+bh+5;  cx2=pos.x+cg/2;    cy2=by+bh+5;}
+      else if(dir==='left')  {cx1=bx-cw*2-cg-5;  cy1=pos.y-ch; cx2=bx-cw-3;       cy2=pos.y+2;}
+      else                   {cx1=bx+bw+5;        cy1=pos.y-ch; cx2=bx+bw+cw+cg+5; cy2=pos.y+2;}
+      html+=cardSVG(ev.hero_cards[0],cx1,cy1,cw,ch);
+      html+=cardSVG(ev.hero_cards[1],cx2,cy2,cw,ch);
+    } else if(!isHero && !isFolded){
+      const sw=18,sh=26;
+      let cx1,cy1,cx2,cy2;
+      if(dir==='top')        {cx1=pos.x-sw-2; cy1=by-sh-4;  cx2=pos.x+2;      cy2=by-sh-4;}
+      else if(dir==='bottom'){cx1=pos.x-sw-2; cy1=by+bh+4;  cx2=pos.x+2;      cy2=by+bh+4;}
+      else if(dir==='left')  {cx1=bx-sw*2-4;  cy1=pos.y-sh; cx2=bx-sw-2;      cy2=pos.y+2;}
+      else                   {cx1=bx+bw+4;    cy1=pos.y-sh; cx2=bx+bw+sw+5;   cy2=pos.y+2;}
+      html+=cardSVG(null,cx1,cy1,sw,sh,true);
+      html+=cardSVG(null,cx2,cy2,sw,sh,true);
     }
 
-    // Position badge
-    if (data.pos) {
-      const posColor = data.pos==='BTN'?'#c9a84c': data.pos==='BB'?'#c94040': data.pos==='SB'?'#d4763a':'#4a7a9b';
-      html += `<rect x="${bx+2}" y="${by+2}" width="28" height="14" rx="3" fill="${posColor}22" stroke="${posColor}55" stroke-width=".5"/>
-               <text x="${bx+16}" y="${by+12}" text-anchor="middle" fill="${posColor}"
-                     font-family="Share Tech Mono" font-size="8">${data.pos}</text>`;
+    // Seat box
+    html+=`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="6"
+                 fill="${bg}" stroke="${bd}" stroke-width="${bdW}"/>`;
+
+    // Badge de posição
+    if(d.pos){
+      const pc={BTN:'#c9a84c',BB:'#c94040',SB:'#d4763a'}[d.pos]||'#3a5a7a';
+      html+=`<rect x="${bx+2}" y="${by+2}" width="26" height="13" rx="3"
+                   fill="${pc}22" stroke="${pc}55" stroke-width=".5"/>
+             <text x="${bx+15}" y="${by+11}" text-anchor="middle" fill="${pc}"
+                   font-family="Share Tech Mono,monospace" font-size="7.5">${d.pos}</text>`;
     }
 
-    // Player name
-    const name = data.player.length > 10 ? data.player.slice(0,9)+'…' : data.player;
-    html += `<text x="${pos.x}" y="${by+26}" text-anchor="middle"
-                   fill="${isHero?'#4caf7d':'#e8e6df'}" font-family="Rajdhani"
-                   font-size="12" font-weight="${isHero?700:500}">${name}</text>`;
+    // Nome: hero=nickname real, outros=Player N
+    const label = playerLabel(d.player, ev.hero);
+    html+=`<text x="${pos.x}" y="${by+24}" text-anchor="middle"
+                 fill="${isHero?'#4caf7d':'#d8d4cc'}"
+                 font-family="Rajdhani,sans-serif" font-size="12"
+                 font-weight="${isHero?700:500}">${label}</text>`;
 
-    // Stack
-    const stack = (ev.stacks && ev.stacks[seatNum] != null) ? ev.stacks[seatNum] : data.stack;
-    const stackFmt = stack >= 1000 ? (stack/1000).toFixed(1)+'k' : Math.round(stack);
-    html += `<text x="${pos.x}" y="${by+40}" text-anchor="middle"
-                   fill="#8a8680" font-family="Share Tech Mono" font-size="9">${stackFmt}</text>`;
+    // Stack: BB ou chips (toggle)
+    const stackVal = (ev.stacks&&ev.stacks[sn]!=null) ? ev.stacks[sn] : d.stack;
+    let stackStr;
+    if(rpShowBB) stackStr = (stackVal/bb).toFixed(0)+'BB';
+    else         stackStr = stackVal>=1000 ? (stackVal/1000).toFixed(1)+'k' : Math.round(stackVal)+'';
+    html+=`<text x="${pos.x}" y="${by+38}" text-anchor="middle"
+                 fill="${isHero?'#4caf7d88':'#6a6660'}"
+                 font-family="Share Tech Mono,monospace" font-size="9">${stackStr}</text>`;
 
     // Dealer button
-    if (isBtn) {
-      html += `<circle cx="${bx+bw-6}" cy="${by+6}" r="8" fill="#c9a84c"/>
-               <text x="${bx+bw-6}" y="${by+10}" text-anchor="middle"
-                     fill="#000" font-family="Rajdhani" font-size="8" font-weight="700">D</text>`;
+    if(isBtn){
+      html+=`<circle cx="${bx+bw-5}" cy="${by+5}" r="8" fill="#c9a84c"/>
+             <text x="${bx+bw-5}" y="${by+9}" text-anchor="middle"
+                   fill="#000" font-family="Rajdhani,sans-serif" font-size="7.5" font-weight="700">D</text>`;
     }
 
-    // Action label on active player
-    if (isActive && ev.action) {
-      const aColor = {
-        folds:'#c94040', calls:'#4caf7d', raises:'#c9a84c',
-        bets:'#c9a84c', checks:'#8a8680', 'all-in':'#ff6666'
-      }[ev.action] || '#8a8680';
-      html += `<rect x="${pos.x-24}" y="${by+bh+4}" width="48" height="16" rx="3" fill="${aColor}22" stroke="${aColor}66" stroke-width=".5"/>
-               <text x="${pos.x}" y="${by+bh+15}" text-anchor="middle"
-                     fill="${aColor}" font-family="Share Tech Mono" font-size="9">${ev.action.toUpperCase()}</text>`;
+    // Label de ação
+    if(isActive && ev.action){
+      const ac={folds:'#c94040',calls:'#4caf7d',raises:'#c9a84c',
+                bets:'#c9a84c',checks:'#6a6660','all-in':'#ff7777'}[ev.action]||'#6a6660';
+      const amtStr = ev.amount>0
+        ? (rpShowBB ? (ev.amount/bb).toFixed(1)+'BB' : Math.round(ev.amount)+'')
+        : '';
+      const actLabel = ev.action.toUpperCase()+(amtStr?' '+amtStr:'');
+      html+=`<rect x="${pos.x-30}" y="${by+bh+3}" width="60" height="15" rx="3"
+                   fill="${ac}22" stroke="${ac}66" stroke-width=".5"/>
+             <text x="${pos.x}" y="${by+bh+13}" text-anchor="middle"
+                   fill="${ac}" font-family="Share Tech Mono,monospace" font-size="8">${actLabel}</text>`;
     }
 
-    html += '</g>';
-    seatsG.innerHTML += html;
+    html+='</g>';
+    seatsG.innerHTML+=html;
 
-    // Bet chips
-    if (ev.bets && ev.bets[seatNum] > 0) {
-      // Position chips between player and center
-      const cx2 = pos.x + (450-pos.x) * 0.45;
-      const cy2 = pos.y + (253-pos.y) * 0.45;
-      chipsG.innerHTML += chipSVG(cx2, cy2, ev.bets[seatNum]);
+    // Ficha de aposta
+    const bet = ev.bets&&ev.bets[sn]>0 ? ev.bets[sn] : 0;
+    if(bet>0){
+      const cx2=pos.x+(CX-pos.x)*0.42;
+      const cy2=pos.y+(CY-pos.y)*0.42;
+      const betStr = rpShowBB
+        ? (bet/bb).toFixed(0)+'BB'
+        : bet>=1000?(bet/1000).toFixed(1)+'k':Math.round(bet)+'';
+      chipsG.innerHTML+=`<circle cx="${cx2}" cy="${cy2}" r="15"
+        fill="${bet>=bb*10?'#c9a84c':bet>=bb*3?'#c94040':'#3a7ec9'}"
+        stroke="#ffffff28" stroke-width="1.5"/>
+        <circle cx="${cx2}" cy="${cy2}" r="10" fill="none"
+          stroke="#ffffff18" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="${cx2}" y="${cy2+4}" text-anchor="middle" fill="#fff"
+          font-family="Share Tech Mono,monospace" font-size="8" font-weight="bold">${betStr}</text>`;
     }
   });
 }
 
-// ── Controls ─────────────────────────────────────────────────────────────────
-function togglePlay() {
-  playing = !playing;
-  document.getElementById('play-btn').textContent = playing ? '⏸' : '▶';
-  if (playing) playNext();
-  else clearTimeout(playTimer);
+// ── Controles ─────────────────────────────────────────────────────────────────
+function rpToggle(){
+  rpPlaying=!rpPlaying;
+  document.getElementById('rp-play').textContent=rpPlaying?'⏸':'▶';
+  if(rpPlaying) rpPlayNext(); else clearTimeout(rpTimer);
 }
-
-function playNext() {
-  if (!playing) return;
-  if (curStep >= REPLAY.timeline.length - 1) {
-    playing = false;
-    document.getElementById('play-btn').textContent = '▶';
+function rpPlayNext(){
+  if(!rpPlaying) return;
+  if(rpStep>=REPLAY.timeline.length-1){
+    rpPlaying=false;
+    document.getElementById('rp-play').textContent='▶';
     return;
   }
-  curStep++;
-  renderStep(curStep);
-  // Pause longer on errors
-  const ev = REPLAY.timeline[curStep];
-  const delay = ev.is_error ? speed * 2.5 : speed;
-  playTimer = setTimeout(playNext, delay);
+  rpStep++;
+  rpRender(rpStep);
+  const ev=REPLAY.timeline[rpStep];
+  const delay=ev.is_error?rpSpeed*2.5:rpSpeed;
+  rpTimer=setTimeout(rpPlayNext,delay);
+}
+function rpFwd(){
+  clearTimeout(rpTimer);rpPlaying=false;
+  document.getElementById('rp-play').textContent='▶';
+  if(rpStep<REPLAY.timeline.length-1){rpStep++;rpRender(rpStep);}
+}
+function rpBack(){
+  clearTimeout(rpTimer);rpPlaying=false;
+  document.getElementById('rp-play').textContent='▶';
+  if(rpStep>0){rpStep--;rpRender(rpStep);}
+}
+function rpSeekTo(s){
+  clearTimeout(rpTimer);rpPlaying=false;
+  document.getElementById('rp-play').textContent='▶';
+  rpStep=s;rpRender(s);
+}
+function rpSeekClick(e){
+  const bar=document.getElementById('rp-tl');
+  const rect=bar.getBoundingClientRect();
+  const pct=(e.clientX-rect.left)/rect.width;
+  rpSeekTo(Math.round(pct*(REPLAY.timeline.length-1)));
 }
 
-function stepForward() {
-  clearTimeout(playTimer);
-  playing = false;
-  document.getElementById('play-btn').textContent = '▶';
-  if (curStep < REPLAY.timeline.length - 1) {
-    curStep++;
-    renderStep(curStep);
+// Toggle BB ↔ chips ao clicar no pot ou nos stacks
+document.addEventListener('click', e=>{
+  const svg=document.getElementById('rp-svg');
+  if(svg&&svg.contains(e.target)){
+    rpShowBB=!rpShowBB;
+    rpRender(rpStep);
   }
-}
-
-function stepBack() {
-  clearTimeout(playTimer);
-  playing = false;
-  document.getElementById('play-btn').textContent = '▶';
-  if (curStep > 0) {
-    curStep--;
-    renderStep(curStep);
-  }
-}
-
-function setSpeed(val) { speed = parseInt(val); }
-
-function seekTimeline(e) {
-  const bar  = document.getElementById('timeline-bar');
-  const rect = bar.getBoundingClientRect();
-  const pct  = (e.clientX - rect.left) / rect.width;
-  const step = Math.round(pct * (REPLAY.timeline.length - 1));
-  curStep = Math.max(0, Math.min(step, REPLAY.timeline.length - 1));
-  clearTimeout(playTimer);
-  playing = false;
-  document.getElementById('play-btn').textContent = '▶';
-  renderStep(curStep);
-}
-
-// ── Initialize ───────────────────────────────────────────────────────────────
-function initReplayer(replayData) {
-  REPLAY       = replayData;
-  curStep      = 0;
-  _seatLayout  = null;  // resetar layout para nova mão
-
-  document.getElementById('hdr-hand').textContent = 'Mão #' + String(REPLAY.hand_id).slice(-8);
-
-  // Build timeline dots
-  const dotsEl = document.getElementById('timeline-dots');
-  dotsEl.innerHTML = '';
-  REPLAY.timeline.forEach((ev, i) => {
-    const pct = REPLAY.timeline.length > 1 ? (i/(REPLAY.timeline.length-1))*100 : 0;
-    let cls = 'timeline-dot';
-    if (ev.is_error)    cls += ' error';
-    else if (ev.is_hero) cls += ' hero';
-    dotsEl.innerHTML += `<div class="${cls}" style="left:${pct}%"
-                               title="${ev.desc||''}" onclick="seekTo(${i})"></div>`;
-  });
-
-  renderStep(0);
-}
-
-function seekTo(step) {
-  curStep = step;
-  clearTimeout(playTimer);
-  playing = false;
-  document.getElementById('play-btn').textContent = '▶';
-  renderStep(step);
-}
-
-// ── Keyboard controls ─────────────────────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') stepForward();
-  if (e.key === 'ArrowLeft')  stepBack();
-  if (e.key === ' ')          { e.preventDefault(); togglePlay(); }
 });
 
-// Sobrescrever initReplayer para usar o modal do LeakLab
-function initReplayerInModal(replayData) {
-  _seatLayout = null;
-  REPLAY  = replayData;
-  curStep = 0;
-  // Rebuild timeline dots
-  const dotsEl = document.getElementById('replay-timeline-dots');
-  if(dotsEl) {
-    dotsEl.innerHTML = '';
-    REPLAY.timeline.forEach((ev, i) => {
-      const pct = REPLAY.timeline.length > 1 ? (i/(REPLAY.timeline.length-1))*100 : 0;
-      let cls = 'timeline-dot';
-      if(ev.is_error) cls += ' error';
-      else if(ev.is_hero) cls += ' hero';
-      dotsEl.innerHTML += `<div class="${cls}" style="left:${pct}%" title="${ev.desc||''}" onclick="seekTo(${i})"></div>`;
-    });
-  }
-  renderStep(0);
+// Teclado
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight') rpFwd();
+  if(e.key==='ArrowLeft')  rpBack();
+  if(e.key===' '){e.preventDefault();rpToggle();}
+  if(e.key==='b') {rpShowBB=!rpShowBB;rpRender(rpStep);}
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function initReplayer(data){
+  REPLAY=data; rpStep=0; _rpLayout=null;
+  _playerMap={}; _playerCount=0;
+
+  document.getElementById('rp-hand-id').textContent='Mão #'+String(data.hand_id).slice(-8);
+
+  // Dots na timeline
+  const dotsEl=document.getElementById('rp-dots');
+  dotsEl.innerHTML='';
+  data.timeline.forEach((ev,i)=>{
+    const pct=data.timeline.length>1?(i/(data.timeline.length-1))*100:0;
+    let cls='rp-dot';
+    if(ev.is_error)    cls+=' err';
+    else if(ev.is_hero) cls+=' hero';
+    dotsEl.innerHTML+=`<div class="${cls}" style="left:${pct}%" title="${ev.desc||''}" onclick="rpSeekTo(${i})"></div>`;
+  });
+
+  rpRender(0);
 }
 
-async function _openReplay(handId, tournId) {
-  const modal = document.getElementById('replay-modal');
-  const body  = document.getElementById('replay-modal-body');
-  const title = document.getElementById('replay-modal-title');
-  const token = localStorage.getItem('ll_token');
+// Override initReplayer para o modal do LeakLab
+function initReplayerInModal(data){
+  REPLAY=data; rpStep=0; _rpLayout=null;
+  _playerMap={}; _playerCount=0;
+  document.getElementById('rp-hand-id').textContent='Mão #'+String(data.hand_id).slice(-8);
+  const dotsEl=document.getElementById('rp-dots');
+  if(dotsEl){
+    dotsEl.innerHTML='';
+    data.timeline.forEach((ev,i)=>{
+      const pct=data.timeline.length>1?(i/(data.timeline.length-1))*100:0;
+      let cls='rp-dot';
+      if(ev.is_error) cls+=' err'; else if(ev.is_hero) cls+=' hero';
+      dotsEl.innerHTML+=`<div class="${cls}" style="left:${pct}%" title="${ev.desc||''}" onclick="rpSeekTo(${i})"></div>`;
+    });
+  }
+  rpRender(0);
+}
 
+async function _openReplay(handId, tournId){
+  const modal=document.getElementById('replay-modal');
+  const body =document.getElementById('replay-modal-body');
+  const title=document.getElementById('replay-modal-title');
+  const token=localStorage.getItem('ll_token');
+  rpPlaying=false; clearTimeout(rpTimer);
   modal.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  title.textContent = '▷ LEAKLAB REPLAYER — Mão #' + String(handId).slice(-8);
-
-  body.innerHTML = `
-    <div style="width:100%;max-width:900px;display:flex;flex-direction:column;gap:12px">
-      <div style="position:relative">
-        <div class="street-badge" id="street-badge"></div>
-        <svg id="table-svg" viewBox="0 0 900 506" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:12px">
+  document.body.style.overflow='hidden';
+  title.textContent='▷ LEAKLAB REPLAYER — Mão #'+String(handId).slice(-8);
+  body.innerHTML=`
+    <div style="width:100%;max-width:900px;display:flex;flex-direction:column;gap:10px;height:100%">
+      <div style="position:relative;flex:1;min-height:0">
+        <div class="rp-badge" id="rp-badge"></div>
+        <div class="rp-err-pop" id="rp-err-pop">
+          <div class="rp-err-title">⚠ Erro detectado</div>
+          <div class="rp-err-body" id="rp-err-body"></div>
+          <div class="rp-err-best" id="rp-err-best"></div>
+        </div>
+        <svg id="rp-svg" viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block">
           <defs>
-            <radialGradient id="feltGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#245c38"/>
+            <radialGradient id="rp-felt-g" cx="50%" cy="42%" r="54%">
+              <stop offset="0%" stop-color="#27663e"/>
               <stop offset="100%" stop-color="#1a4a2e"/>
             </radialGradient>
-            <radialGradient id="railGrad" cx="50%" cy="30%" r="60%">
-              <stop offset="0%" stop-color="#5a2e0e"/>
-              <stop offset="100%" stop-color="#2a1005"/>
+            <radialGradient id="rp-rail-g" cx="50%" cy="28%" r="62%">
+              <stop offset="0%" stop-color="#5c3010"/>
+              <stop offset="100%" stop-color="#271508"/>
             </radialGradient>
-            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity=".5"/>
+            <filter id="rp-shadow">
+              <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#000" flood-opacity=".7"/>
             </filter>
           </defs>
-          <ellipse cx="450" cy="253" rx="430" ry="228" fill="url(#railGrad)" filter="url(#shadow)"/>
-          <ellipse cx="450" cy="253" rx="430" ry="228" fill="none" stroke="#7a3f15" stroke-width="1.5"/>
-          <ellipse cx="450" cy="253" rx="390" ry="200" fill="url(#feltGrad)"/>
-          <ellipse cx="450" cy="253" rx="390" ry="200" fill="none" stroke="#2a6b42" stroke-width="1"/>
-          <ellipse cx="450" cy="253" rx="390" ry="200" fill="none" stroke="#1e5530" stroke-width="8"/>
-          <text x="450" y="258" text-anchor="middle" fill="#ffffff06" font-family="Rajdhani" font-size="52" font-weight="700" letter-spacing="8">LEAKLAB</text>
-          <rect id="board-area" x="290" y="215" width="320" height="70" rx="8" fill="#00000025" stroke="#2a6b42" stroke-width="1"/>
-          <g id="board-cards"></g>
-          <g id="pot-display">
-            <rect x="390" y="190" width="120" height="26" rx="13" fill="#00000045" stroke="#c9a84c44" stroke-width="1"/>
-            <text id="pot-label" x="420" y="207" text-anchor="middle" fill="#c9a84c88" font-family="Share Tech Mono" font-size="9" letter-spacing=".1em">POT</text>
-            <text id="pot-amount" x="465" y="207" text-anchor="middle" fill="#c9a84c" font-family="Share Tech Mono" font-size="13" font-weight="bold">0</text>
+          <ellipse cx="450" cy="262" rx="422" ry="233" fill="#00000060" filter="url(#rp-shadow)"/>
+          <ellipse cx="450" cy="252" rx="420" ry="230" fill="url(#rp-rail-g)"/>
+          <ellipse cx="450" cy="252" rx="420" ry="230" fill="none" stroke="#7a4018" stroke-width="1.5"/>
+          <ellipse cx="450" cy="252" rx="420" ry="230" fill="none" stroke="#2a1005" stroke-width="7"/>
+          <ellipse cx="450" cy="252" rx="368" ry="192" fill="none" stroke="#6a3515" stroke-width="1"/>
+          <ellipse cx="450" cy="252" rx="368" ry="192" fill="none" stroke="#2a1005" stroke-width="4"/>
+          <ellipse cx="450" cy="252" rx="365" ry="189" fill="url(#rp-felt-g)"/>
+          <ellipse cx="450" cy="252" rx="365" ry="189" fill="none" stroke="#1e5530" stroke-width="8"/>
+          <ellipse cx="450" cy="252" rx="353" ry="177" fill="none" stroke="#2a6b3e" stroke-width=".8"/>
+          <text x="450" y="258" text-anchor="middle" fill="#ffffff04"
+                font-family="Rajdhani,sans-serif" font-size="50" font-weight="700" letter-spacing="10">LEAKLAB</text>
+          <rect x="284" y="217" width="332" height="66" rx="8" fill="#00000028" stroke="#2a6b3e" stroke-width="1"/>
+          <text x="450" y="210" text-anchor="middle" fill="#c9a84c44"
+                font-family="Share Tech Mono,monospace" font-size="9" letter-spacing=".12em">COMMUNITY CARDS</text>
+          <g id="rp-board"></g>
+          <g id="rp-pot">
+            <rect x="388" y="189" width="124" height="24" rx="12" fill="#00000050" stroke="#c9a84c44" stroke-width="1"/>
+            <text x="418" y="205" text-anchor="middle" fill="#c9a84c88"
+                  font-family="Share Tech Mono,monospace" font-size="8" letter-spacing=".1em">POT</text>
+            <text id="rp-pot-val" x="464" y="205" text-anchor="middle" fill="#c9a84c"
+                  font-family="Share Tech Mono,monospace" font-size="13" font-weight="bold"></text>
           </g>
-          <g id="seats"></g>
-          <g id="action-chips"></g>
+          <g id="rp-seats"></g>
+          <g id="rp-chips"></g>
         </svg>
-        <div class="error-popup" id="error-popup">
-          <div class="ep-title">⚠ Erro detectado</div>
-          <div class="ep-body" id="ep-body"></div>
-          <div class="ep-best" id="ep-best"></div>
-        </div>
       </div>
-      <div style="background:#161b22;border:1px solid #2d333b;border-radius:10px;padding:14px 16px">
-        <div class="timeline-bar" id="timeline-bar" onclick="seekTimeline(event)">
-          <div class="timeline-progress" id="timeline-progress" style="width:0%"></div>
-          <div class="timeline-dots" id="replay-timeline-dots"></div>
+      <div style="background:#161b22;border:1px solid #2d333b;border-radius:8px;padding:10px 14px">
+        <div class="rp-timeline" id="rp-tl" onclick="rpSeekClick(event)">
+          <div class="rp-progress" id="rp-prog" style="width:0%"></div>
+          <div class="rp-dots" id="rp-dots"></div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <button class="ctrl-btn" onclick="stepBack()">◀◀</button>
-          <button class="ctrl-btn play" id="play-btn" onclick="togglePlay()">▶</button>
-          <button class="ctrl-btn" onclick="stepForward()">▶▶</button>
-          <select class="speed-sel" id="speed-sel" onchange="setSpeed(this.value)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="rp-btn" onclick="rpBack()">◀◀</button>
+          <button class="rp-btn play" id="rp-play" onclick="rpToggle()">▶</button>
+          <button class="rp-btn" onclick="rpFwd()">▶▶</button>
+          <select class="rp-speed" id="rp-spd" onchange="rpSpeed=+this.value">
             <option value="2000">0.5×</option>
-            <option value="1200" selected>1×</option>
-            <option value="700">1.5×</option>
-            <option value="400">2×</option>
-            <option value="150">3×</option>
+            <option value="1300" selected>1×</option>
+            <option value="750">1.5×</option>
+            <option value="420">2×</option>
+            <option value="160">3×</option>
           </select>
-          <div style="margin-left:auto;font-family:var(--mono);font-size:.7rem;color:var(--muted);text-align:right">
-            <div style="color:var(--gold);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase" id="log-street">PREFLOP</div>
-            <div id="log-action">Início</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--muted);margin-left:8px">
+            clique na mesa: BB ↔ fichas
+          </div>
+          <div style="margin-left:auto;text-align:right;font-family:'Share Tech Mono',monospace;font-size:.65rem">
+            <div style="color:var(--gold);letter-spacing:.1em;text-transform:uppercase;font-size:.6rem" id="rp-log-st">PREFLOP</div>
+            <div id="rp-log-ac">Início</div>
           </div>
         </div>
       </div>
-    </div>
-  `;
-
-  // Buscar dados do replay no backend
-  try {
-    const res = await fetch(API_URL + '/replay/' + tournId + '/' + handId, {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if(!res.ok) {
-      const err = await res.json();
-      body.innerHTML = '<div style="color:var(--clear);font-family:var(--mono);font-size:.8rem;padding:20px">'
-        + '⚠ ' + (err.error || 'Erro ao carregar replay') + '<br><br>'
-        + '<span style="color:var(--dim);font-size:.7rem">Reimporte o torneio para habilitar o replay.</span></div>';
+    </div>`;
+  try{
+    const res=await fetch(API_URL+'/replay/'+tournId+'/'+handId,{
+      headers:{'Authorization':'Bearer '+token}});
+    if(!res.ok){
+      const err=await res.json();
+      body.innerHTML='<div style="color:var(--clear);font-family:var(--mono);font-size:.8rem;padding:24px;text-align:center">'
+        +'⚠ '+(err.error||'Erro ao carregar replay')+'<br><br>'
+        +'<span style="color:var(--dim);font-size:.7rem">Reimporte o torneio para habilitar o replay.</span></div>';
       return;
     }
-    const data = await res.json();
+    const data=await res.json();
     initReplayerInModal(data);
-  } catch(e) {
-    body.innerHTML = '<div style="color:var(--clear);font-family:var(--mono);font-size:.75rem;padding:20px">Erro de conexão: ' + e.message + '</div>';
+  }catch(e){
+    body.innerHTML='<div style="color:var(--clear);font-family:var(--mono);font-size:.75rem;padding:24px;text-align:center">Erro de conexão: '+e.message+'</div>';
   }
 }
 
-function closeReplay() {
-  clearTimeout(playTimer);
-  playing = false;
-  const modal = document.getElementById('replay-modal');
+function closeReplay(){
+  clearTimeout(rpTimer); rpPlaying=false;
+  const modal=document.getElementById('replay-modal');
   modal.classList.remove('open');
-  document.body.style.overflow = '';
-  REPLAY = null;
+  document.body.style.overflow='';
+  REPLAY=null;
 }
-
-// Fechar replay com ESC
-document.addEventListener('keydown', function(e) {
-  if(e.key === 'Escape') {
-    const modal = document.getElementById('replay-modal');
-    if(modal && modal.classList.contains('open')) closeReplay();
-  }
+document.addEventListener('keydown',function(e){
+  const m=document.getElementById('replay-modal');
+  if(e.key==='Escape'&&m&&m.classList.contains('open')) closeReplay();
 });
 
-
-(function init(){
-  document.getElementById('mobile-period').style.display='flex';
 
 // ── Tooltip global (portal no body para evitar problema de stacking context) ──
 (function(){
@@ -2793,6 +2644,8 @@ document.addEventListener('keydown', function(e) {
     ttTimer = setTimeout(()=>{ ttEl.classList.remove('visible'); }, 80);
   });
 })();
+
+(function init(){
   const token    = localStorage.getItem('ll_token');
   const username = localStorage.getItem('ll_username');
   if(token && username){

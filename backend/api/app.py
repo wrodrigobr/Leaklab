@@ -834,29 +834,60 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         key = (d.get('street', ''), d.get('action_taken', ''))
         error_map[key] = d
 
-    stacks  = {s: seats[s]['stack'] for s in seats}
-    pot     = 0
-    bets_r  = {s: 0 for s in seats}
-    board   = []
-    street  = 'preflop'
-    folded  = []
+    bb     = hand.bb or 100
+    stacks = {s: seats[s]['stack'] for s in seats}
+    pot    = 0
+    bets_r = {s: 0 for s in seats}   # apostas visíveis como fichas na rodada
+    board  = []
+    street = 'preflop'
+    folded = []
+
+    # Extrair antes e blinds do raw_text (parser não os captura em hand.actions)
+    antes   = []
+    blinds  = []
+    for line in hand.raw_text.split('\n'):
+        m_ante  = _re.match(r'(.+): posts the ante (\d+)', line)
+        m_blind = _re.match(r'(.+): posts (small|big) blind (\d+)', line)
+        if m_ante:
+            antes.append({'player': m_ante.group(1).strip(), 'amount': int(m_ante.group(2))})
+        elif m_blind:
+            blinds.append({'player': m_blind.group(1).strip(),
+                           'type':   m_blind.group(2),
+                           'amount': int(m_blind.group(3))})
+
+    # Aplicar antes ao pot (sem ficha individual)
+    for a in antes:
+        pot += a['amount']
+        pseat = next((s for s,d in seats.items() if d['player']==a['player']), None)
+        if pseat:
+            stacks[pseat] = max(0, stacks[pseat] - a['amount'])
+
+    # Aplicar blinds ao pot E às fichas visíveis
+    for b in blinds:
+        pot += b['amount']
+        pseat = next((s for s,d in seats.items() if d['player']==b['player']), None)
+        if pseat:
+            stacks[pseat]  = max(0, stacks[pseat] - b['amount'])
+            bets_r[pseat]  = bets_r.get(pseat, 0) + b['amount']
 
     def snap(extra=None):
         base = {
-            'seats':      {s: {'player': seats[s]['player'], 'stack': stacks[s], 'pos': positions[s]}
-                           for s in seats},
+            'seats':  {s: {'player': seats[s]['player'], 'stack': stacks[s],
+                           'stack_bb': round(stacks[s] / bb, 1), 'pos': positions[s]}
+                       for s in seats},
             'button':     hand.button_seat,
             'hero':       hero,
             'hero_cards': [hand.hero_cards[:2], hand.hero_cards[2:]]
-                            if len(hand.hero_cards or '') >= 4 else [],
-            'board':      board[:],
-            'pot':        pot,
-            'bets':       dict(bets_r),
-            'street':     street,
-            'folded':     folded[:],
+                           if len(hand.hero_cards or '') >= 4 else [],
+            'board':  board[:],
+            'pot':    pot,
+            'pot_bb': round(pot / bb, 1),
+            'bets':   dict(bets_r),
+            'street': street,
+            'folded': folded[:],
+            'bb':     bb,
         }
-        if extra:
-            base.update(extra)
+        if extra: base.update(extra)
         return base
 
     timeline = [snap({'type': 'deal', 'desc': 'Início da mão'})]
@@ -876,12 +907,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         if action.action in ('calls', 'bets', 'raises') and amt:
             pot += amt
             if pseat:
-                stacks[pseat]  = max(0, stacks[pseat] - amt)
-                bets_r[pseat]  = bets_r.get(pseat, 0) + amt
-        elif action.action == 'posts' and amt:
-            pot += amt
-            if pseat:
                 stacks[pseat] = max(0, stacks[pseat] - amt)
+                bets_r[pseat] = bets_r.get(pseat, 0) + amt
+
 
         if action.action == 'folds' and action.player not in folded:
             folded.append(action.player)
