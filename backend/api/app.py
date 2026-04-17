@@ -905,10 +905,22 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         amt   = action.amount or 0
 
         if action.action in ('calls', 'bets', 'raises') and amt:
-            pot += amt
-            if pseat:
-                stacks[pseat] = max(0, stacks[pseat] - amt)
-                bets_r[pseat] = bets_r.get(pseat, 0) + amt
+            # Para raises: "raises X to Y" — X é o incremento, Y é o total colocado
+            # O total que entra no pot é Y (não X), menos o que o jogador já tinha apostado
+            if action.action == 'raises':
+                m_to = _re.search(r'raises \d+ to (\d+)', action.raw or '')
+                total_placed = int(m_to.group(1)) if m_to else amt
+                already_in   = bets_r.get(pseat, 0)
+                real_addition = total_placed - already_in
+                pot += real_addition
+                if pseat:
+                    stacks[pseat]  = max(0, stacks[pseat] - real_addition)
+                    bets_r[pseat]  = total_placed
+            else:
+                pot += amt
+                if pseat:
+                    stacks[pseat] = max(0, stacks[pseat] - amt)
+                    bets_r[pseat] = bets_r.get(pseat, 0) + amt
 
 
         if action.action == 'folds' and action.player not in folded:
