@@ -133,7 +133,10 @@ def classify_mistake_score(score: float) -> str:
     return "clear_mistake"
 
 
-def apply_anti_rules(player_action: str, estimated_hand_equity: float | None, adjusted_required_equity: float | None, provisional_label: str) -> str:
+def apply_anti_rules(player_action: str, estimated_hand_equity: float | None, adjusted_required_equity: float | None, provisional_label: str, best_action: str | None = None) -> str:
+    # Se o jogador fez exatamente a ação recomendada, não há anti-rule a aplicar
+    if best_action is not None and player_action == best_action:
+        return provisional_label
     if estimated_hand_equity is None or adjusted_required_equity is None:
         return provisional_label
     diff = round4(estimated_hand_equity - adjusted_required_equity)
@@ -180,11 +183,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         range_eval.get("recommendedPrimaryAction"),
         range_eval.get("alternativeActions") or [],
     )
+    # Math penalty só se aplica quando a ação diverge da recomendada
+    # Se o jogador fez exatamente o bestAction, não há penalidade matemática
+    _best_action = range_eval.get("recommendedPrimaryAction")
     math_penalty = calc_math_penalty(
         input_data["player_action"],
         math.get("estimatedHandEquity"),
         threshold_pack["adjustedRequiredEquity"],
-    )
+    ) if input_data["player_action"] != _best_action else 0.0
     range_penalty = calc_range_penalty(
         range_eval.get("rangeZone"),
         input_data["player_action"],
@@ -215,6 +221,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         math.get("estimatedHandEquity"),
         threshold_pack["adjustedRequiredEquity"],
         label,
+        best_action=_best_action,
     )
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
     return {
