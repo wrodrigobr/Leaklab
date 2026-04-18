@@ -900,8 +900,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
     error_map = {}
     for d in decisions_db:
-        key = (d.get('street', ''), _norm(d.get('action_taken', '')))
-        error_map[key] = d
+        # Só marcar como erro se realmente é um erro — ignorar 'standard'
+        if d.get('label', 'standard') in ('clear_mistake', 'small_mistake', 'marginal'):
+            key = (d.get('street', ''), _norm(d.get('action_taken', '')))
+            error_map[key] = d
 
     # Re-rodar o engine para pegar contexto completo (pot odds, equity, ICM)
     try:
@@ -1054,7 +1056,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'action':       _normalize_action(action.action),
             'amount':       amt,
             'is_hero':      action.player == hero,
-            'is_error':     decision is not None,
+            'is_error':     decision is not None and decision.get('label','standard') in ('clear_mistake','small_mistake','marginal'),
             'error_label':  decision.get('label')       if decision else None,
             'error_score':  round(float(decision.get('score', 0)), 3) if decision else None,
             'best_action':  decision.get('best_action')  if decision else None,
