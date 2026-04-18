@@ -836,9 +836,30 @@ def get_replay(tournament_id, hand_id):
     if not target:
         return jsonify({'error': f'Mão {hand_id} não encontrada no torneio'}), 404
 
-    # Buscar decisões desta mão do banco para marcar erros
-    decisions_db = get_decisions(t['id'])
-    hand_decisions = [d for d in decisions_db if str(d.get('hand_id')) == str(hand_id)]
+    # Re-executar o engine ao vivo para garantir scores/labels atualizados
+    # O banco pode ter dados de versões antigas do engine com bugs corrigidos
+    try:
+        from leaklab.pipeline import build_decision_inputs_for_hand
+        from leaklab.decision_engine_v11 import evaluate_decision as _eval
+        live_decisions = []
+        for di in build_decision_inputs_for_hand(target):
+            r = _eval(di)
+            live_decisions.append({
+                'hand_id':      str(target.hand_id),
+                'street':       di['street'],
+                'action_taken': r.get('actionTaken', ''),
+                'best_action':  r.get('bestAction', ''),
+                'label':        r['evaluation']['label'],
+                'score':        r['evaluation']['mistakeScore'],
+                'context':      di.get('context', {}),
+                'math':         di.get('math', {}),
+                'breakdown':    r['evaluation'].get('scoreBreakdown', {}),
+            })
+        hand_decisions = live_decisions
+    except Exception:
+        # Fallback para dados do banco se engine falhar
+        decisions_db   = get_decisions(t['id'])
+        hand_decisions = [d for d in decisions_db if str(d.get('hand_id')) == str(hand_id)]
 
     # Construir replay data
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
