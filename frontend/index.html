@@ -2317,7 +2317,12 @@ function rpRender(step){
     if(mathEl){
       const eq  = ev.hand_equity!=null     ? (ev.hand_equity*100).toFixed(0)    : null;
       const po  = ev.pot_odds_equity!=null ? (ev.pot_odds_equity*100).toFixed(0) : null;
-      const mr  = ev.m_ratio!=null         ? ev.m_ratio.toFixed(1)+'BB'         : null;
+      // Stack em BB (heroStackBb) é o mais intuitivo para o jogador
+      // mRatio (M de Harrington) é diferente: stack / (BB+SB+antes da órbita)
+      const stackBb = ev.hero_stack_bb!=null ? ev.hero_stack_bb.toFixed(1)+'BB'
+                    : ev.m_ratio!=null        ? (ev.m_ratio*2.5).toFixed(1)+'BB'  // estimativa
+                    : null;
+      const mr = ev.m_ratio!=null ? ev.m_ratio.toFixed(1) : null;  // para tooltip
       const icm = ev.icm_pressure
         ? ({low:'Baixa',medium:'Média',high:'Alta'}[ev.icm_pressure]||ev.icm_pressure) : null;
       const sc  = ev.error_score!=null     ? ev.error_score.toFixed(3)          : null;
@@ -2389,11 +2394,13 @@ function rpRender(step){
 
       // Grid de contexto (Stack, ICM, Score)
       const ctx = [];
-      if(mr)  ctx.push({v:mr,  l:'Stack', tip:'Stack em big blinds'});
-      if(icm) ctx.push({v:icm, l:'ICM',   tip:'Pressão do torneio neste momento'});
-      if(sc)  ctx.push({v:sc,  l:'Erro',  tip:'Score total do erro — maior = pior'});
+      if(stackBb) ctx.push({v:stackBb, l:'Stack',  tip:'Stack em big blinds neste momento'});
+      if(mr)      ctx.push({v:mr+'M',  l:'M-Ratio',tip:'M de Harrington: tempo de sobrevivência (stack/custo de órbita)'});
+      if(icm)     ctx.push({v:icm,     l:'ICM',     tip:'Pressão ICM do torneio neste momento'});
+      if(sc)      ctx.push({v:sc,      l:'Erro',    tip:'Score total do erro — maior = pior'});
 
-      mathEl.style.gridTemplateColumns = ctx.length===2?'1fr 1fr':'1fr 1fr 1fr';
+      const colMap = {1:'1fr',2:'1fr 1fr',3:'1fr 1fr 1fr',4:'1fr 1fr 1fr 1fr'};
+      mathEl.style.gridTemplateColumns = colMap[ctx.length]||'1fr 1fr 1fr';
       mathEl.style.display = 'grid';
       mathEl.innerHTML = ctx.map(s=>
         `<div class="rp-err-stat" title="${s.tip}">
