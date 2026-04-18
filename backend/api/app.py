@@ -848,6 +848,7 @@ def get_replay(tournament_id, hand_id):
 def _build_replay_data(hand, decisions_db, hero_override=None):
     """Constrói a timeline completa de replay a partir de uma ParsedHand."""
     import re as _re
+    from leaklab.hand_state_builder import _normalize_action
 
     hero = hero_override or hand.hero
 
@@ -1029,14 +1030,14 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'type':         'action',
             'player':       action.player,
             'seat':         pseat,
-            'action':       action.action.rstrip('s') if action.action else '',
+            'action':       _normalize_action(action.action),
             'amount':       amt,
             'is_hero':      action.player == hero,
             'is_error':     decision is not None,
             'error_label':  decision.get('label')       if decision else None,
             'error_score':  round(float(decision.get('score', 0)), 3) if decision else None,
             'best_action':  decision.get('best_action')  if decision else None,
-            'desc':         f"{action.player}: {action.action}"
+            'desc':         f"{action.player}: {_normalize_action(action.action)}"
                               + (f' {int(amt)}' if amt else ''),
             **err_extra,
         }))
