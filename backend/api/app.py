@@ -871,6 +871,35 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     import re as _re
     from leaklab.hand_state_builder import _normalize_action
 
+    def _parse_summary(raw):
+        """Extrai resultado, vencedores e cartas reveladas do SUMMARY."""
+        start = raw.find('*** SUMMARY ***')
+        if start < 0: return {}
+        s = raw[start:]
+        result = {'winners':[], 'seats':[], 'board':[], 'total_pot':None}
+        m = _re.search(r'Total pot (\d+)', s)
+        if m: result['total_pot'] = int(m.group(1))
+        m = _re.search(r'Board \[([^\]]+)\]', s)
+        if m: result['board'] = m.group(1).split()
+        for line in s.split('\n'):
+            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?showed \[([^\]]+)\] and won \((\d+)\) with (.+)', line)
+            if m:
+                result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
+                    'cards':m.group(3).split(),'won':int(m.group(4)),
+                    'hand_desc':m.group(5).strip(),'outcome':'won'}); continue
+            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?mucked \[([^\]]+)\]', line)
+            if m:
+                result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
+                    'cards':m.group(3).split(),'won':0,
+                    'hand_desc':'mucked','outcome':'lost'}); continue
+            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?collected \((\d+)\)', line)
+            if m:
+                result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
+                    'cards':[],'won':int(m.group(3)),
+                    'hand_desc':'collected','outcome':'won'})
+        result['winners'] = [s for s in result['seats'] if s['outcome']=='won']
+        return result
+
     hero = hero_override or hand.hero
 
     # Extrair seats e stacks do raw_text
@@ -1063,6 +1092,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'desc':         f"{action.player}: {_normalize_action(action.action)}"
                               + (f' {int(amt)}' if amt else ''),
             **err_extra,
+        }))
+
+    # Adicionar frame de conclusão com resultado da mão
+    summary = _parse_summary(hand.raw_text or '')
+    if summary.get('winners') or summary.get('seats'):
+        timeline.append(snap({
+            'type':        'showdown',
+            'desc':        'Conclusão da mão',
+            'summary':      summary,
         }))
 
     return {

@@ -2236,6 +2236,14 @@ function rpRender(step){
     setTimeout(()=>badge.className='rp-badge',1600);
   }
 
+  // Frame de conclusão — exibir resultado da mão
+  if(ev.type==='showdown'){
+    const badge=document.getElementById('rp-badge');
+    if(badge){ badge.textContent='RESULTADO'; badge.className='rp-badge show'; }
+    rpRenderShowdown(ev.summary||{}, ev.bb||bb);
+    return;
+  }
+
   // Log
   document.getElementById('rp-log-st').textContent=(ev.street||'preflop').toUpperCase();
   const logAc=document.getElementById('rp-log-ac');
