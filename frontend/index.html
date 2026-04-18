@@ -2296,19 +2296,20 @@ function rpRender(step){
       document.getElementById('rp-play').textContent='▶'; }
 
     const labels={clear_mistake:'⚠ ERRO GRAVE',small_mistake:'⚡ Erro',marginal:'△ Marginal'};
+    const _n = a => (a||'').replace(/s$/,'');  // normaliza folds→fold, calls→call
+    const _label = {'fold':'Fold','call':'Call','check':'Check','bet':'Bet','raise':'Raise','allin':'All-in'};
     const titleEl=document.getElementById('rp-err-title');
     if(titleEl) titleEl.textContent=labels[ev.error_label]||'⚠ Atenção';
 
     // Descrição da ação
     const descEl=document.getElementById('rp-err-desc');
     if(descEl){
-      const actionLabel={fold:'Fold',call:'Call',check:'Check',
-                         bet:'Bet',raise:'Raise'}[ev.action]||ev.action;
-      const bestLabel  ={fold:'Fold',call:'Call',check:'Check',
-                         bet:'Bet',raise:'Raise'}[ev.best_action]||ev.best_action||'—';
-      descEl.innerHTML=
-        'Você fez <b style="color:#e87070">'+actionLabel+'</b> — '
-        +'ação correta: <b style="color:#70c870">'+bestLabel+'</b>';
+      const actionLabel = _label[_n(ev.action)]      || _n(ev.action)      || '—';
+      const bestLabel   = _label[_n(ev.best_action)] || _n(ev.best_action) || '—';
+      const sameAction  = _n(ev.action) === _n(ev.best_action);
+      descEl.innerHTML = sameAction
+        ? 'Você fez <b style="color:#e87070">'+actionLabel+'</b> — correto, mas a execução teve problemas de range ou contexto.'
+        : 'Você fez <b style="color:#e87070">'+actionLabel+'</b> — ação correta: <b style="color:#70c870">'+bestLabel+'</b>';
     }
 
     // Métricas e explicação contextual
@@ -2326,8 +2327,8 @@ function rpRender(step){
 
       // Linha de contexto — só mostra equity vs pot odds quando a decisão é call/fold
       // Para raise/bet, o raciocínio é diferente (value, fold equity, pressão)
-      const took = (ev.action||'').replace(/s$/,'');
-      const best = (ev.best_action||'').replace(/s$/,'');
+      const took = _n(ev.action);
+      const best = _n(ev.best_action);
       const eq_n = ev.hand_equity     != null ? ev.hand_equity*100     : null;
       const po_n = ev.pot_odds_equity != null ? ev.pot_odds_equity*100 : null;
       const eq_s = eq_n != null ? eq_n.toFixed(0)+'%' : null;

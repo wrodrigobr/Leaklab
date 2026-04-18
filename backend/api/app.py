@@ -1029,7 +1029,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'type':         'action',
             'player':       action.player,
             'seat':         pseat,
-            'action':       action.action,
+            'action':       action.action.rstrip('s') if action.action else '',
             'amount':       amt,
             'is_hero':      action.player == hero,
             'is_error':     decision is not None,
