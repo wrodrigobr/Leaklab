@@ -2703,21 +2703,20 @@ function rpRenderShowdown(summary, bb){
   const svg    = document.getElementById('rp-svg');
   if(!svg) return;
 
-  if(chipsG) chipsG.innerHTML='';
-
-  if(potEl && summary.total_pot){
-    potEl.textContent = rpShowBB ? fmtBB(summary.total_pot, bb) : fmtChips(summary.total_pot);
-  }
-
+  if(chipsG) chipsG.innerHTML = '';
   svg.querySelectorAll('.showdown-overlay').forEach(el => el.remove());
+
+  // Pot final
+  if(potEl && summary.total_pot)
+    potEl.textContent = rpShowBB ? fmtBB(summary.total_pot, bb) : fmtChips(summary.total_pot);
 
   // Board completo
   if(summary.board && summary.board.length){
     const boardG = document.getElementById('rp-board');
     if(boardG){
-      boardG.innerHTML='';
+      boardG.innerHTML = '';
       const sx=421, y=275, W=46, H=62, GAP=7;
-      summary.board.forEach((card,i)=>{ boardG.innerHTML += cardSVG(card, sx+i*(W+GAP), y, W, H); });
+      summary.board.forEach((card,i) => { boardG.innerHTML += cardSVG(card, sx+i*(W+GAP), y, W, H); });
     }
   }
 
@@ -2726,93 +2725,93 @@ function rpRenderShowdown(summary, bb){
 
   const seatNums = Object.keys(REPLAY.seats).map(Number).sort((a,b)=>a-b);
   const layout   = rpBuildLayout(seatNums);
-  const bw=96, bh=48, cw=30, ch=42, cg=4;
+  const bw=96, bh=48;
+  const winners  = summary.seats.filter(s => s.outcome === 'won');
 
-  // Renderizar PERDEDORES primeiro (ficam atrás)
-  const losers  = summary.seats.filter(s => s.outcome !== 'won' && s.cards && s.cards.length >= 2);
-  const winners = summary.seats.filter(s => s.outcome === 'won');
-
-  [...losers, ...winners].forEach(seat => {
+  // ── 1. Destacar seat dos vencedores com glow pulsante ──────────────────
+  winners.forEach(seat => {
     const entry = Object.entries(REPLAY.seats).find(([,d]) => d.player === seat.player);
     if(!entry) return;
     const pos = layout[parseInt(entry[0])];
     if(!pos) return;
 
-    const isWinner = seat.outcome === 'won';
-    const by  = pos.y - bh/2;
-    const cx1 = pos.x - cw - cg/2;
-    const cx2 = pos.x + cg/2;
-    const cy  = by - ch - 6;
+    const by = pos.y - bh/2;
+    const label = playerLabel(seat.player, REPLAY.hero);
+    const amtStr = rpShowBB ? '+'+fmtBB(seat.won, bb) : '+'+fmtChips(seat.won);
 
     const g = document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('class','showdown-overlay');
 
-    if(isWinner){
-      // Glow dourado animado ao redor do seat box
-      g.innerHTML += `
-        <rect x="${pos.x-bw/2-6}" y="${by-6}" width="${bw+12}" height="${bh+12}" rx="10"
-              fill="#22c55e22" stroke="#22c55e" stroke-width="2.5">
-          <animate attributeName="opacity" values="1;0.4;1" dur="1.2s" repeatCount="indefinite"/>
-        </rect>`;
+    // Glow externo pulsante
+    g.innerHTML = `
+      <rect x="${pos.x-bw/2-8}" y="${by-8}" width="${bw+16}" height="${bh+16}" rx="12"
+            fill="#22c55e18" stroke="#7CFF6B" stroke-width="2">
+        <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="${pos.x-bw/2-8}" y="${by-8}" width="${bw+16}" height="${bh+16}" rx="12"
+            fill="none" stroke="#22c55e" stroke-width="1" opacity="0.4">
+        <animate attributeName="stroke-width" values="1;3;1" dur="1.2s" repeatCount="indefinite"/>
+      </rect>`;
 
-      // Troféu acima das cartas
-      g.innerHTML += `
-        <text x="${pos.x}" y="${cy-22}" text-anchor="middle"
-              font-size="18" font-family="serif">🏆</text>`;
-
-      // Cartas do vencedor — tamanho maior
-      if(seat.cards && seat.cards.length >= 2){
-        g.innerHTML += cardSVG(seat.cards[0], cx1-2, cy-2, cw+4, ch+4);
-        g.innerHTML += cardSVG(seat.cards[1], cx2+2, cy-2, cw+4, ch+4);
-      }
-
-      // Badge dourado com a combinação
-      const lbl = seat.hand_desc && !['collected','mucked'].includes(seat.hand_desc)
-        ? (seat.hand_desc.length > 24 ? seat.hand_desc.slice(0,22)+'…' : seat.hand_desc)
-        : '+'+Math.round(seat.won);
-      const bW = Math.max(70, lbl.length*5.5+16);
-      g.innerHTML += `
-        <rect x="${pos.x-bW/2}" y="${cy-20}" width="${bW}" height="16" rx="5"
-              fill="#22c55e" stroke="#7CFF6B" stroke-width="1"/>
-        <text x="${pos.x}" y="${cy-9}" text-anchor="middle" fill="#1a1200"
-              font-family="Share Tech Mono,monospace" font-size="8" font-weight="bold">${lbl}</text>`;
-
-      // Nome do vencedor destacado no seat box
-      const label = playerLabel(seat.player, REPLAY.hero);
-      g.innerHTML += `
-        <rect x="${pos.x-bw/2}" y="${by}" width="${bw}" height="${bh}" rx="6"
-              fill="#0f1a12" stroke="#22c55e" stroke-width="2.5"/>
-        <text x="${pos.x}" y="${by+20}" text-anchor="middle" fill="#22c55e"
-              font-family="Rajdhani,sans-serif" font-size="13" font-weight="700">${label}</text>
-        <text x="${pos.x}" y="${by+34}" text-anchor="middle" fill="#22c55e88"
-              font-family="Share Tech Mono,monospace" font-size="9">+${Math.round(seat.won)}</text>`;
-
-    } else if(seat.cards && seat.cards.length >= 2){
-      // Perdedor — cartas com opacidade reduzida e X vermelho
-      g.innerHTML += `<g opacity="0.55">`;
-      g.innerHTML += cardSVG(seat.cards[0], cx1, cy, cw, ch);
-      g.innerHTML += cardSVG(seat.cards[1], cx2, cy, cw, ch);
-      g.innerHTML += `</g>
-        <rect x="${pos.x-bw/2}" y="${by}" width="${bw}" height="${bh}" rx="6"
-              fill="#1a0000" stroke="#c94040" stroke-width="1.5" opacity=".6"/>
-        <text x="${pos.x}" y="${by+28}" text-anchor="middle" fill="#c9404088"
-              font-family="Share Tech Mono,monospace" font-size="18">✗</text>`;
-    }
+    // Seat box reestilizado — verde
+    g.innerHTML += `
+      <rect x="${pos.x-bw/2}" y="${by}" width="${bw}" height="${bh}" rx="6"
+            fill="#0a1f10" stroke="#22c55e" stroke-width="2"/>
+      <text x="${pos.x}" y="${by+18}" text-anchor="middle" fill="#7CFF6B"
+            font-family="Rajdhani,sans-serif" font-size="12" font-weight="700">${label}</text>
+      <text x="${pos.x}" y="${by+32}" text-anchor="middle" fill="#22c55e"
+            font-family="Share Tech Mono,monospace" font-size="10" font-weight="bold">${amtStr}</text>`;
 
     svg.appendChild(g);
   });
 
-  // Log
+  // ── 2. Animação: fichas saindo do centro em direção ao vencedor ─────────
+  // Usamos <circle> com animateMotion para cada ficha
+  const CX_=550, CY_=290;
+  winners.forEach(seat => {
+    const entry = Object.entries(REPLAY.seats).find(([,d]) => d.player === seat.player);
+    if(!entry) return;
+    const pos = layout[parseInt(entry[0])];
+    if(!pos) return;
+
+    // Número de fichas proporcional ao pote (máx 8)
+    const nChips = Math.min(8, Math.max(3, Math.round(seat.won / (bb*10))));
+    const colors = ['#22c55e','#7CFF6B','#15803d','#22c55e','#4ade80','#7CFF6B','#22c55e','#15803d'];
+
+    for(let i=0; i<nChips; i++){
+      // Offset angular para espalhar as fichas
+      const angle = (i/nChips) * Math.PI * 0.6 - 0.3;
+      const startX = CX_ + Math.cos(angle)*20;
+      const startY = CY_ + Math.sin(angle)*10;
+      const endX   = pos.x + (Math.random()-0.5)*20;
+      const endY   = pos.y + (Math.random()-0.5)*10;
+      const delay  = (i * 0.08).toFixed(2);
+      const dur    = (0.5 + i*0.04).toFixed(2);
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+      g.setAttribute('class','showdown-overlay');
+      g.innerHTML = `
+        <circle r="8" fill="${colors[i%colors.length]}" stroke="#ffffff30" stroke-width="1" opacity="0">
+          <animateMotion dur="${dur}s" begin="${delay}s" fill="freeze"
+            path="M${startX},${startY} Q${(startX+endX)/2},${(startY+endY)/2-30} ${endX},${endY}"/>
+          <animate attributeName="opacity" values="0;1;1;0.8" dur="${dur}s" begin="${delay}s" fill="freeze"/>
+        </circle>`;
+      svg.appendChild(g);
+    }
+  });
+
+  // ── 3. Log ──────────────────────────────────────────────────────────────
   const logSt = document.getElementById('rp-log-st');
   const logAc = document.getElementById('rp-log-ac');
   if(logSt) logSt.textContent = 'RESULTADO';
   if(logAc){
-    const winnerNames = winners.map(w => playerLabel(w.player, REPLAY.hero)).join(' e ');
-    const handDesc = winners[0] && winners[0].hand_desc && !['collected','mucked'].includes(winners[0].hand_desc)
-      ? ' — ' + winners[0].hand_desc : '';
-    logAc.textContent = winnerNames ? '🏆 ' + winnerNames + handDesc : 'Conclusão da mão';
+    const winNames = winners.map(w => playerLabel(w.player, REPLAY.hero)).join(' + ');
+    const desc = winners[0]&&winners[0].hand_desc&&!['collected','mucked'].includes(winners[0].hand_desc)
+      ? ' — '+winners[0].hand_desc : '';
+    logAc.textContent = winNames ? '🏆 '+winNames+desc : 'Conclusão da mão';
   }
 }
+
 
 // ── Controles ─────────────────────────────────────────────────────────────────
 function rpToggle(){
