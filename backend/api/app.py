@@ -20,7 +20,7 @@ from database.schema import init_db
 from database.repositories import (
     create_user, verify_password, get_user_by_email,
     save_tournament, save_decisions, get_tournaments,
-    get_tournament, get_decisions, update_llm_summary,
+    get_tournament, get_tournament_by_db_id, get_decisions, update_llm_summary,
     get_llm_cache, set_llm_cache,
     get_evolution_metrics, get_leak_summary, get_icm_performance,
     get_students,
@@ -33,24 +33,18 @@ from database.auth import generate_token, require_auth, require_coach
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
-CORS(app, resources={r"/*": {
-    "origins": "*",
-    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    "allow_headers": ["Content-Type", "Authorization"],
-}})
+CORS(app,
+     resources={r"/*": {"origins": "*"}},
+     supports_credentials=False,
+     automatic_options=True)
 
-# Garantir headers CORS em TODAS as respostas, incluindo erros 500
+# Forçar CORS em TODA resposta incluindo erros não capturados
 @app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin']  = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+def _cors_every_response(response):
+    response.headers.setdefault('Access-Control-Allow-Origin',  '*')
+    response.headers.setdefault('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.setdefault('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     return response
-
-@app.errorhandler(500)
-def handle_500(e):
-    import traceback
-    return jsonify({'error': 'Erro interno do servidor', 'detail': str(e)}), 500
 
 # Inicializar banco ao subir
 init_db()
@@ -199,35 +193,63 @@ def analyze():
 @app.route('/analyze/tournament-summary', methods=['POST'])
 @require_auth
 def tournament_summary():
-    content = _extract_content(request)
-    if not content:
-        return jsonify({'error': 'Conteúdo ausente'}), 400
-
     try:
-        hands = parse_pokerstars_file_from_text(content)
+        body = request.get_json(silent=True) or {}
+        t_db_id = body.get('tournament_id')  # ID interno do banco (int)
+
+        if t_db_id:
+            # Buscar decisões já salvas no banco — não precisa do arquivo
+            from database.repositories import get_tournament_by_db_id
+            t = get_tournament_by_db_id(g.user_id, int(t_db_id))
+            if not t:
+                return jsonify({'error': 'Torneio não encontrado'}), 404
+
+            decisions = get_decisions(int(t_db_id))
+            if not decisions:
+                return jsonify({'error': 'Nenhuma decisão encontrada para este torneio'}), 400
+
+            hero = t.get('hero', 'Hero') or 'Hero'
+            n_hands = t.get('hand_count', len(decisions))
+
+            # Converter decisões do banco para o formato esperado
+            results = [{
+                'action_taken': d.get('action_taken',''),
+                'best_action':  d.get('best_action',''),
+                'label':        d.get('label','standard'),
+                'score':        float(d.get('score', 0)),
+                'street':       d.get('street','preflop'),
+                'hand_id':      d.get('hand_id',''),
+            } for d in decisions]
+
+        else:
+            # Fallback: aceitar conteúdo bruto (compatibilidade)
+            raw = _extract_content(request)
+            if not raw:
+                return jsonify({'error': 'Envie tournament_id ou o conteúdo do arquivo'}), 400
+            hands = parse_pokerstars_file_from_text(raw)
+            results, _, _ = _analyze_hands(hands)
+            if not results:
+                return jsonify({'error': 'Nenhuma decisão encontrada'}), 400
+            hero = hands[0].hero or 'Hero'
+            n_hands = len(hands)
+            t_db_id = None
+
+        summary = generate_tournament_summary(results, n_hands, hero)
+
+        # Persistir
+        if t_db_id:
+            update_llm_summary(int(t_db_id), summary)
+
+        return jsonify({
+            'hero':            hero,
+            'summary':         summary,
+            'total_decisions': len(results),
+        })
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 422
-
-    results, _, _ = _analyze_hands(hands)
-    if not results:
-        return jsonify({'error': 'Nenhuma decisão encontrada'}), 422
-
-    hero = hands[0].hero or 'Hero'
-    summary = generate_tournament_summary(results, len(hands), hero)
-
-    # Persistir no torneio se existir
-    t_id = hands[0].tournament_id if hands else None
-    if t_id:
-        t = get_tournament(g.user_id, t_id)
-        if t:
-            update_llm_summary(t['id'], summary)
-
-    return jsonify({
-        'hero':            hero,
-        'summary':         summary,
-        'total_hands':     len(hands),
-        'total_decisions': len(results),
-    })
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 
 # ── Histórico e evolução ──────────────────────────────────────────────────────

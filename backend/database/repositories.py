@@ -263,6 +263,19 @@ def get_tournament(user_id: int, tournament_id: str) -> Optional[dict]:
         conn.close()
 
 
+def get_tournament_by_db_id(user_id: int, db_id: int) -> Optional[dict]:
+    """Busca torneio pelo ID interno do banco (int), verificando ownership."""
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM tournaments WHERE id=? AND user_id=?",
+            (db_id, user_id)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
 def update_llm_summary(tournament_db_id: int, summary: str):
     conn = get_conn()
     try:
