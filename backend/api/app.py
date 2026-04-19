@@ -1,5 +1,5 @@
 """
-LeakLab API v2 — com persistência SQLite e autenticação JWT.
+PokerLeakLab API v2 — com persistência SQLite e autenticação JWT.
 """
 from __future__ import annotations
 import sys, os
