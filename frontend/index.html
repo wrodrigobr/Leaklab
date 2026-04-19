@@ -2303,8 +2303,8 @@ function rpRender(step){
     if(!breakdown){
       breakdown = document.createElementNS('http://www.w3.org/2000/svg','text');
       breakdown.setAttribute('id','rp-pot-breakdown');
-      breakdown.setAttribute('x','450');
-      breakdown.setAttribute('y','198');
+      breakdown.setAttribute('x','550');
+      breakdown.setAttribute('y','254');
       breakdown.setAttribute('text-anchor','middle');
       breakdown.setAttribute('fill','#22c55e99');
       breakdown.setAttribute('font-family','Share Tech Mono,monospace');
@@ -2679,8 +2679,8 @@ function rpRenderSeats(ev, bb){
     // Ficha de aposta
     const bet = ev.bets&&ev.bets[sn]>0 ? ev.bets[sn] : 0;
     if(bet>0){
-      const cx2=pos.x+(CX-pos.x)*0.42;
-      const cy2=pos.y+(CY-pos.y)*0.42;
+      const cx2=pos.x+(CX-pos.x)*0.30;
+      const cy2=pos.y+(CY-pos.y)*0.30;
       const bbs = bet/bb;
       const betStr = rpShowBB
         ? (bbs < 1 ? bbs.toFixed(1) : Math.round(bbs)) + 'BB'
@@ -2973,11 +2973,11 @@ async function _openReplay(handId, tournId){
                 font-family="Share Tech Mono,monospace" font-size="9" letter-spacing=".12em">COMMUNITY CARDS</text>
           <g id="rp-board"></g>
           <g id="rp-pot">
-            <rect x="476" y="198" width="148" height="26" rx="13" fill="#00000055" stroke="#22c55e44" stroke-width="1"/>
-            <text x="550" y="214" text-anchor="middle" fill="#22c55e77"
-                  font-family="Share Tech Mono,monospace" font-size="8.5" letter-spacing=".1em">POT</text>
-            <text id="rp-pot-val" x="550" y="236" text-anchor="middle" fill="#22c55e"
-                  font-family="Share Tech Mono,monospace" font-size="14" font-weight="bold"></text>
+            <rect x="470" y="188" width="160" height="52" rx="14" fill="#00000060" stroke="#22c55e44" stroke-width="1"/>
+            <text x="550" y="202" text-anchor="middle" fill="#22c55e77"
+                  font-family="Share Tech Mono,monospace" font-size="8" letter-spacing=".15em">POT</text>
+            <text id="rp-pot-val" x="550" y="228" text-anchor="middle" fill="#22c55e"
+                  font-family="Share Tech Mono,monospace" font-size="17" font-weight="bold"></text>
           </g>
           <g id="rp-seats"></g>
           <g id="rp-chips"></g>
