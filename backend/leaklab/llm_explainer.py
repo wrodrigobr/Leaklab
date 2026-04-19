@@ -568,27 +568,27 @@ Cada item deve ser um módulo de estudo completo com:
 6. Métrica de progresso: como saber que melhorou (ex: "Taxa de erro neste spot abaixo de 15% em 50 mãos")
 
 Responda APENAS com JSON válido, sem texto adicional, no formato:
-{{{{
+{{
   "nivel": "iniciante|intermediario|avancado",
   "resumo": "2-3 frases descrevendo o perfil de erros, os padrões principais e o caminho de evolução deste jogador",
   "cards": [
-    {{{{
+    {{
       "prioridade": "p1",
       "icone": "♠|♥|♦|♣",
       "titulo": "título do tópico",
       "diagnostico": "explicação da raiz do problema e impacto em EV",
       "conceitos": ["conceito 1", "conceito 2", "conceito 3"],
-      "recursos": {{{{
+      "recursos": {{
         "livros": ["livro/capítulo específico 1", "livro/capítulo específico 2"],
         "videos": ["tipo de vídeo/canal 1", "tipo de vídeo/canal 2"],
         "curso": "nome do curso ou treinamento (null se não aplicável)"
-      }}}},
+      }},
       "exercicio": "rotina prática concreta e mensurável",
       "metrica": "como medir o progresso neste leak",
       "spot": "street/action do leak principal"
-    }}}}
+    }}
   ]
-}}}}"""
+}}"""
 
     try:
         resp = requests.post(
