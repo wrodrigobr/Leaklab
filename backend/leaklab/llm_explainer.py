@@ -496,7 +496,7 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
     import hashlib, json, os, requests
 
     # --- Construir fingerprint para cache ---
-    cache_key = 'study_plan:' + hashlib.md5(
+    cache_key = 'study_plan_v2:' + hashlib.md5(
         json.dumps({'leaks': leaks, 'evo_len': len(evolution)},
                    sort_keys=True).encode()
     ).hexdigest()
@@ -538,44 +538,57 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
         for l in leaks[:8]
     )
 
-    prompt = f"""Você é um coach profissional de poker MTT (multi-table tournament).
-Analise os dados de performance abaixo e gere um plano de estudos PERSONALIZADO para o jogador.
+    prompt = f"""Você é um coach profissional de poker MTT com mais de 15 anos de experiência, especialista em identificar e corrigir leaks em torneios.
+Analise os dados de performance abaixo e gere um plano de estudos DETALHADO e PERSONALIZADO.
 
 ## Dados do Jogador ({hero})
 
 **Métricas gerais ({n_torneioa} torneios analisados):**
-- Score médio de erro: {avg_score:.4f} (meta: abaixo de 0.08)
-- Taxa de decisões corretas (standard): {avg_std:.1f}% (meta: acima de 80%)
-- Taxa de erros graves (clear mistakes): {avg_clear:.1f}% (meta: abaixo de 5%)
-- Pior fase ICM: pressão {icm_weak}
+- Score médio de erro: {{avg_score:.4f}} (meta: abaixo de 0.08)
+- Taxa de decisões corretas (standard): {{avg_std:.1f}}% (meta: acima de 80%)
+- Taxa de erros graves (clear mistakes): {{avg_clear:.1f}}% (meta: abaixo de 5%)
+- Pior fase ICM: pressão {{icm_weak}}
 
 **Leaks identificados (por frequência de erro):**
-{leaks_txt}
+{{leaks_txt}}
 
-## Instrução
+## Instrução de Coach
 
-Gere um plano de estudos com exatamente 6 itens. Cada item deve:
-1. Focar em UM leak específico dos dados acima
-2. Ter título curto e direto (máx 5 palavras)
-3. Ter descrição de 2-3 linhas explicando O QUE estudar e COMO aplicar
-4. Sugerir exercício prático concreto (não genérico)
-5. Indicar prioridade: P1 (urgente), P2 (importante), P3 (melhoria)
+Gere um plano de estudos com exatamente 6 itens, do leak mais crítico ao menos crítico.
+Cada item deve ser um módulo de estudo completo com:
+
+1. Título direto e específico ao leak (máx 6 palavras)
+2. Diagnóstico: 2-3 frases explicando a RAIZ do problema e seu impacto real em EV/fichas
+3. Conceitos-chave: lista de 2-4 conceitos teóricos que o jogador PRECISA dominar para corrigir este leak
+4. Recursos de estudo:
+   - 1-2 livros ou capítulos específicos (ex: "The Mental Game of Poker cap. 3", "Applications of No-Limit Hold'em cap. 7")
+   - 1-2 tipos de vídeos/canais (ex: "solver study sessions no GTO Wizard", "hand history reviews de spots de 3bet")
+   - 1 curso ou treinamento específico se relevante
+5. Exercício prático: uma rotina CONCRETA e mensurável que o jogador pode fazer HOJE (ex: "Revisar 20 mãos de fold no BB contra 3bet, marcar as que tinham +EV call e calcular os pot odds")
+6. Métrica de progresso: como saber que melhorou (ex: "Taxa de erro neste spot abaixo de 15% em 50 mãos")
 
 Responda APENAS com JSON válido, sem texto adicional, no formato:
-{{
+{{{{
   "nivel": "iniciante|intermediario|avancado",
-  "resumo": "2 frases descrevendo o perfil de erros deste jogador",
+  "resumo": "2-3 frases descrevendo o perfil de erros, os padrões principais e o caminho de evolução deste jogador",
   "cards": [
-    {{
+    {{{{
       "prioridade": "p1",
       "icone": "♠|♥|♦|♣",
       "titulo": "título do tópico",
-      "descricao": "descrição detalhada do que estudar",
-      "exercicio": "exercício prático específico",
+      "diagnostico": "explicação da raiz do problema e impacto em EV",
+      "conceitos": ["conceito 1", "conceito 2", "conceito 3"],
+      "recursos": {{{{
+        "livros": ["livro/capítulo específico 1", "livro/capítulo específico 2"],
+        "videos": ["tipo de vídeo/canal 1", "tipo de vídeo/canal 2"],
+        "curso": "nome do curso ou treinamento (null se não aplicável)"
+      }}}},
+      "exercicio": "rotina prática concreta e mensurável",
+      "metrica": "como medir o progresso neste leak",
       "spot": "street/action do leak principal"
-    }}
+    }}}}
   ]
-}}"""
+}}}}"""
 
     try:
         resp = requests.post(
@@ -587,7 +600,7 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
             },
             json={
                 'model':      'claude-haiku-4-5-20251001',
-                'max_tokens': 2000,
+                'max_tokens': 3500,
                 'messages':   [{'role': 'user', 'content': prompt}],
             },
             timeout=30,

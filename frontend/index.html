@@ -239,7 +239,13 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
 /* STUDY */
 .study-list{display:flex;flex-direction:column;gap:10px;}
-.study-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;position:relative;overflow:hidden;}
+.study-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;display:flex;align-items:flex-start;gap:14px;position:relative;overflow:hidden;}
+.study-section{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.study-section-lbl{font-family:var(--mono);font-size:.55rem;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px;}
+.study-pill{display:inline-block;font-family:var(--mono);font-size:.62rem;background:var(--border);color:var(--muted);padding:2px 8px;border-radius:10px;margin:2px 2px 2px 0;}
+.study-resource{font-size:.72rem;color:var(--muted);line-height:1.7;padding-left:10px;}
+.study-resource li{list-style:none;padding-left:12px;position:relative;}
+.study-resource li::before{content:"›";position:absolute;left:0;color:var(--gold);}
 .study-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
 .study-card.p1::before{background:var(--clear);}.study-card.p2::before{background:var(--small);}.study-card.p3::before{background:var(--marginal);}
 .study-icon{font-size:1.2rem;flex-shrink:0;margin-top:1px;}
@@ -1669,14 +1675,48 @@ function _renderStudyCards(plan){
     const pLabels={p1:'Prioridade 1',p2:'Prioridade 2',p3:'Prioridade 3'};
     plan.cards.forEach(card=>{
       const pc=pColors[card.prioridade||'p3']||'var(--muted)';
+      const r = card.recursos||{};
+
+      // Conceitos-chave
+      const conceitosHtml = (card.conceitos&&card.conceitos.length)
+        ? `<div class="study-section">
+            <div class="study-section-lbl">Conceitos-chave</div>
+            <div>${card.conceitos.map(c=>`<span class="study-pill">${c}</span>`).join('')}</div>
+           </div>` : '';
+
+      // Recursos
+      const livros  = (r.livros||[]).map(l=>`<li>📖 ${l}</li>`).join('');
+      const videos  = (r.videos||[]).map(v=>`<li>▶ ${v}</li>`).join('');
+      const cursoLi = r.curso&&r.curso!=='null'&&r.curso!==null
+        ? `<li>🎓 ${r.curso}</li>` : '';
+      const recursosHtml = (livros||videos||cursoLi)
+        ? `<div class="study-section">
+            <div class="study-section-lbl">Recursos de Estudo</div>
+            <ul class="study-resource">${livros}${videos}${cursoLi}</ul>
+           </div>` : '';
+
+      // Exercício
+      const exercHtml = card.exercicio
+        ? `<div class="study-section">
+            <div class="study-section-lbl">Exercício Prático</div>
+            <div style="font-size:.74rem;color:var(--gold);font-family:var(--mono);line-height:1.6">▸ ${card.exercicio}</div>
+           </div>` : '';
+
+      // Métrica
+      const metricaHtml = card.metrica
+        ? `<div style="margin-top:8px;font-size:.68rem;color:var(--standard);font-family:var(--mono)">✓ ${card.metrica}</div>` : '';
+
       sl.innerHTML+=`<div class="study-card ${card.prioridade||'p3'}">
         <div class="study-icon">${card.icone||'◆'}</div>
-        <div class="sb">
+        <div class="sb" style="flex:1;min-width:0">
           <div class="stitle">${card.titulo}</div>
-          <div class="sdesc">${card.descricao}</div>
-          ${card.exercicio?`<div style="margin-top:6px;font-size:.72rem;color:var(--gold);font-family:var(--mono)">▸ ${card.exercicio}</div>`:''}
-          <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
-            <span class="stag">${card.spot||''}</span>
+          <div class="sdesc">${card.diagnostico||card.descricao||''}</div>
+          ${conceitosHtml}
+          ${recursosHtml}
+          ${exercHtml}
+          ${metricaHtml}
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+            ${card.spot?`<span class="stag">${card.spot}</span>`:''}
             <span style="font-family:var(--mono);font-size:.58rem;color:${pc};border:1px solid ${pc}44;padding:1px 7px;border-radius:8px">${pLabels[card.prioridade||'p3']||''}</span>
           </div>
         </div>
