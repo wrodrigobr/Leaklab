@@ -274,7 +274,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   font-family:var(--mono);
 }
 .replay-modal-close:hover{border-color:var(--gold);color:var(--gold);}
-.replay-modal-body{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:16px;}
+.replay-modal-body{flex:1;overflow:hidden;display:flex;align-items:stretch;justify-content:stretch;padding:8px 12px;}
 .replay-loading{font-family:var(--mono);font-size:.75rem;color:var(--dim);text-align:center;}
 .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;display:none;align-items:center;justify-content:center;padding:20px;}
 .modal-ov.on{display:flex;}
@@ -459,8 +459,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .replay-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--rp-bg);
   z-index:10000;display:none;flex-direction:column;}
 .replay-modal.open{display:flex;}
-.replay-modal .rp-wrap{display:flex;flex-direction:column;height:100vh;padding:10px 14px;}
-.replay-modal .rp-hdr{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-shrink:0;}
+.replay-modal .rp-wrap{display:flex;flex-direction:column;height:100vh;padding:8px 12px;}
+.replay-modal .rp-hdr{display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-shrink:0;}
 .replay-modal .rp-logo{font-size:.72rem;font-weight:700;color:var(--rp-gold);
   letter-spacing:.14em;font-family:'Share Tech Mono',monospace;}
 .replay-modal .rp-hand{font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--rp-dim);}
@@ -471,7 +471,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .replay-modal .rp-table{flex:1;min-height:0;position:relative;}
 .replay-modal .rp-table svg{width:100%;height:100%;display:block;}
 .replay-modal .rp-ctrl{flex-shrink:0;background:var(--rp-card);border:1px solid var(--rp-brd);
-  border-radius:8px;padding:10px 14px;margin-top:8px;}
+  border-radius:8px;padding:8px 14px;margin-top:6px;}
 .replay-modal .rp-timeline{width:100%;height:4px;background:var(--rp-brd);border-radius:2px;
   margin-bottom:10px;position:relative;cursor:pointer;}
 .replay-modal .rp-progress{height:100%;background:var(--rp-gold);border-radius:2px;transition:width .15s;}
@@ -507,7 +507,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .replay-modal .rp-err-pop{position:absolute;top:50%;left:50%;
   transform:translate(-50%,-50%);background:#130a0a;
   border:1px solid var(--rp-red);border-radius:12px;
-  padding:0;width:320px;z-index:30;display:none;
+  padding:0;width:360px;z-index:30;display:none;
   box-shadow:0 16px 48px rgba(0,0,0,.7);}
 .replay-modal .rp-err-pop.show{display:block;animation:rpPop .25s ease;}
 .replay-modal .rp-err-hdr{background:#1e0c0c;border-bottom:1px solid #3a1515;
@@ -2220,7 +2220,7 @@ function chipSVG(x, y, amount, bb){
 }
 
 // ── Layout de seats (dinâmico, congelado) ─────────────────────────────────────
-const CX=450, CY=252, RX=365, RY=189;
+const CX=550, CY=295, RX=430, RY=215;
 let _rpLayout = null;
 
 function rpBuildLayout(seatNums){
@@ -2547,7 +2547,7 @@ async function rpCallCoach(){
 function rpRenderBoard(cards, step){
   const g = document.getElementById('rp-board');
   g.innerHTML='';
-  const sx=292, y=222, W=42, H=56, GAP=6;
+  const sx=354, y=258, W=46, H=62, GAP=7;
   for(let i=0;i<5;i++){
     const x=sx+i*(W+GAP);
     if(i<cards.length) g.innerHTML+=cardSVG(cards[i],x,y,W,H);
@@ -2716,7 +2716,7 @@ function rpRenderShowdown(summary, bb){
     const boardG = document.getElementById('rp-board');
     if(boardG){
       boardG.innerHTML='';
-      const sx=292, y=222, W=42, H=56, GAP=6;
+      const sx=354, y=258, W=46, H=62, GAP=7;
       summary.board.forEach((card,i)=>{ boardG.innerHTML += cardSVG(card, sx+i*(W+GAP), y, W, H); });
     }
   }
@@ -2926,7 +2926,7 @@ async function _openReplay(handId, tournId){
   document.body.style.overflow='hidden';
   title.textContent='▷ PokerLeakLab Replayer — Mão #'+String(handId).slice(-8);
   body.innerHTML=`
-    <div style="width:100%;max-width:900px;display:flex;flex-direction:column;gap:10px;height:100%">
+    <div style="width:100%;display:flex;flex-direction:column;gap:10px;height:100%">
       <div style="position:relative;flex:1;min-height:0">
         <div class="rp-badge" id="rp-badge"></div>
         <div class="rp-err-pop" id="rp-err-pop">
@@ -2943,7 +2943,7 @@ async function _openReplay(handId, tournId){
             ✦ Analisar com Coach IA
           </button>
         </div>
-        <svg id="rp-svg" viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block">
+        <svg id="rp-svg" viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block">
           <defs>
             <radialGradient id="rp-felt-g" cx="50%" cy="42%" r="54%">
               <stop offset="0%" stop-color="#27663e"/>
@@ -2957,7 +2957,7 @@ async function _openReplay(handId, tournId){
               <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#000" flood-opacity=".7"/>
             </filter>
           </defs>
-          <ellipse cx="450" cy="262" rx="422" ry="233" fill="#00000060" filter="url(#rp-shadow)"/>
+          <ellipse cx="550" cy="300" rx="510" ry="265" fill="#00000060" filter="url(#rp-shadow)"/>
           <ellipse cx="450" cy="252" rx="420" ry="230" fill="url(#rp-rail-g)"/>
           <ellipse cx="450" cy="252" rx="420" ry="230" fill="none" stroke="#7a4018" stroke-width="1.5"/>
           <ellipse cx="450" cy="252" rx="420" ry="230" fill="none" stroke="#2a1005" stroke-width="7"/>
@@ -2967,7 +2967,7 @@ async function _openReplay(handId, tournId){
           <ellipse cx="450" cy="252" rx="365" ry="189" fill="none" stroke="#1e5530" stroke-width="8"/>
           <ellipse cx="450" cy="252" rx="353" ry="177" fill="none" stroke="#2a6b3e" stroke-width=".8"/>
           <text x="450" y="258" text-anchor="middle" fill="#ffffff04"
-                font-family="Rajdhani,sans-serif" font-size="50" font-weight="700" letter-spacing="10">PokerLeakLab</text>
+                font-family="Rajdhani,sans-serif" font-size="56" font-weight="700" letter-spacing="12">PokerLeakLab</text>
           <rect x="284" y="217" width="332" height="66" rx="8" fill="#00000028" stroke="#2a6b3e" stroke-width="1"/>
           <text x="450" y="210" text-anchor="middle" fill="#22c55e44"
                 font-family="Share Tech Mono,monospace" font-size="9" letter-spacing=".12em">COMMUNITY CARDS</text>
@@ -2976,7 +2976,7 @@ async function _openReplay(handId, tournId){
             <rect x="376" y="163" width="148" height="26" rx="13" fill="#00000055" stroke="#22c55e44" stroke-width="1"/>
             <text x="410" y="180" text-anchor="middle" fill="#22c55e77"
                   font-family="Share Tech Mono,monospace" font-size="8.5" letter-spacing=".1em">POT</text>
-            <text id="rp-pot-val" x="460" y="180" text-anchor="middle" fill="#22c55e"
+            <text id="rp-pot-val" x="560" y="210" text-anchor="middle" fill="#22c55e"
                   font-family="Share Tech Mono,monospace" font-size="14" font-weight="bold"></text>
           </g>
           <g id="rp-seats"></g>
