@@ -2220,7 +2220,7 @@ function chipSVG(x, y, amount, bb){
 }
 
 // ── Layout de seats (dinâmico, congelado) ─────────────────────────────────────
-const CX=550, CY=295, RX=430, RY=215;
+const CX=550, CY=290, RX=430, RY=205;
 let _rpLayout = null;
 
 function rpBuildLayout(seatNums){
@@ -2547,7 +2547,7 @@ async function rpCallCoach(){
 function rpRenderBoard(cards, step){
   const g = document.getElementById('rp-board');
   g.innerHTML='';
-  const sx=354, y=258, W=46, H=62, GAP=7;
+  const sx=421, y=275, W=46, H=62, GAP=7;
   for(let i=0;i<5;i++){
     const x=sx+i*(W+GAP);
     if(i<cards.length) g.innerHTML+=cardSVG(cards[i],x,y,W,H);
@@ -2716,7 +2716,7 @@ function rpRenderShowdown(summary, bb){
     const boardG = document.getElementById('rp-board');
     if(boardG){
       boardG.innerHTML='';
-      const sx=354, y=258, W=46, H=62, GAP=7;
+      const sx=421, y=275, W=46, H=62, GAP=7;
       summary.board.forEach((card,i)=>{ boardG.innerHTML += cardSVG(card, sx+i*(W+GAP), y, W, H); });
     }
   }
@@ -2957,26 +2957,26 @@ async function _openReplay(handId, tournId){
               <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#000" flood-opacity=".7"/>
             </filter>
           </defs>
-          <ellipse cx="550" cy="300" rx="510" ry="265" fill="#00000060" filter="url(#rp-shadow)"/>
-          <ellipse cx="450" cy="252" rx="420" ry="230" fill="url(#rp-rail-g)"/>
-          <ellipse cx="450" cy="252" rx="420" ry="230" fill="none" stroke="#7a4018" stroke-width="1.5"/>
-          <ellipse cx="450" cy="252" rx="420" ry="230" fill="none" stroke="#2a1005" stroke-width="7"/>
-          <ellipse cx="450" cy="252" rx="368" ry="192" fill="none" stroke="#6a3515" stroke-width="1"/>
-          <ellipse cx="450" cy="252" rx="368" ry="192" fill="none" stroke="#2a1005" stroke-width="4"/>
-          <ellipse cx="450" cy="252" rx="365" ry="189" fill="url(#rp-felt-g)"/>
-          <ellipse cx="450" cy="252" rx="365" ry="189" fill="none" stroke="#1e5530" stroke-width="8"/>
-          <ellipse cx="450" cy="252" rx="353" ry="177" fill="none" stroke="#2a6b3e" stroke-width=".8"/>
-          <text x="450" y="258" text-anchor="middle" fill="#ffffff04"
+          <ellipse cx="550" cy="290" rx="514" ry="267" fill="#00000060" filter="url(#rp-shadow)"/>
+          <ellipse cx="550" cy="290" rx="514" ry="267" fill="url(#rp-rail-g)"/>
+          <ellipse cx="550" cy="290" rx="514" ry="267" fill="none" stroke="#7a4018" stroke-width="1.5"/>
+          <ellipse cx="550" cy="290" rx="514" ry="267" fill="none" stroke="#2a1005" stroke-width="7"/>
+          <ellipse cx="550" cy="290" rx="450" ry="222" fill="none" stroke="#6a3515" stroke-width="1"/>
+          <ellipse cx="550" cy="290" rx="450" ry="222" fill="none" stroke="#2a1005" stroke-width="4"/>
+          <ellipse cx="550" cy="290" rx="446" ry="219" fill="url(#rp-felt-g)"/>
+          <ellipse cx="550" cy="290" rx="446" ry="219" fill="none" stroke="#1e5530" stroke-width="8"/>
+          <ellipse cx="550" cy="290" rx="434" ry="207" fill="none" stroke="#2a6b3e" stroke-width=".8"/>
+          <text x="550" y="220" text-anchor="middle" fill="#ffffff04"
                 font-family="Rajdhani,sans-serif" font-size="56" font-weight="700" letter-spacing="12">PokerLeakLab</text>
           <rect x="284" y="217" width="332" height="66" rx="8" fill="#00000028" stroke="#2a6b3e" stroke-width="1"/>
           <text x="450" y="210" text-anchor="middle" fill="#22c55e44"
                 font-family="Share Tech Mono,monospace" font-size="9" letter-spacing=".12em">COMMUNITY CARDS</text>
           <g id="rp-board"></g>
           <g id="rp-pot">
-            <rect x="376" y="163" width="148" height="26" rx="13" fill="#00000055" stroke="#22c55e44" stroke-width="1"/>
-            <text x="410" y="180" text-anchor="middle" fill="#22c55e77"
+            <rect x="476" y="198" width="148" height="26" rx="13" fill="#00000055" stroke="#22c55e44" stroke-width="1"/>
+            <text x="550" y="214" text-anchor="middle" fill="#22c55e77"
                   font-family="Share Tech Mono,monospace" font-size="8.5" letter-spacing=".1em">POT</text>
-            <text id="rp-pot-val" x="560" y="210" text-anchor="middle" fill="#22c55e"
+            <text id="rp-pot-val" x="550" y="236" text-anchor="middle" fill="#22c55e"
                   font-family="Share Tech Mono,monospace" font-size="14" font-weight="bold"></text>
           </g>
           <g id="rp-seats"></g>
