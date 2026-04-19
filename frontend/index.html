@@ -2706,7 +2706,6 @@ function rpRenderShowdown(summary, bb){
   if(chipsG) chipsG.innerHTML = '';
   svg.querySelectorAll('.showdown-overlay').forEach(el => el.remove());
 
-  // Pot final
   if(potEl && summary.total_pot)
     potEl.textContent = rpShowBB ? fmtBB(summary.total_pot, bb) : fmtChips(summary.total_pot);
 
@@ -2728,79 +2727,47 @@ function rpRenderShowdown(summary, bb){
   const bw=96, bh=48;
   const winners  = summary.seats.filter(s => s.outcome === 'won');
 
-  // ── 1. Destacar seat dos vencedores com glow pulsante ──────────────────
   winners.forEach(seat => {
     const entry = Object.entries(REPLAY.seats).find(([,d]) => d.player === seat.player);
     if(!entry) return;
     const pos = layout[parseInt(entry[0])];
     if(!pos) return;
 
-    const by = pos.y - bh/2;
+    const by    = pos.y - bh/2;
     const label = playerLabel(seat.player, REPLAY.hero);
     const amtStr = rpShowBB ? '+'+fmtBB(seat.won, bb) : '+'+fmtChips(seat.won);
+    const ac = '#22c55e';
 
     const g = document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('class','showdown-overlay');
 
-    // Glow externo pulsante
+    // Glow pulsante
     g.innerHTML = `
       <rect x="${pos.x-bw/2-8}" y="${by-8}" width="${bw+16}" height="${bh+16}" rx="12"
             fill="#22c55e18" stroke="#7CFF6B" stroke-width="2">
         <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>
-      </rect>
-      <rect x="${pos.x-bw/2-8}" y="${by-8}" width="${bw+16}" height="${bh+16}" rx="12"
-            fill="none" stroke="#22c55e" stroke-width="1" opacity="0.4">
-        <animate attributeName="stroke-width" values="1;3;1" dur="1.2s" repeatCount="indefinite"/>
       </rect>`;
 
-    // Seat box reestilizado — verde
+    // Seat box verde
     g.innerHTML += `
       <rect x="${pos.x-bw/2}" y="${by}" width="${bw}" height="${bh}" rx="6"
-            fill="#0a1f10" stroke="#22c55e" stroke-width="2"/>
+            fill="#0a1f10" stroke="${ac}" stroke-width="2"/>
       <text x="${pos.x}" y="${by+18}" text-anchor="middle" fill="#7CFF6B"
             font-family="Rajdhani,sans-serif" font-size="12" font-weight="700">${label}</text>
-      <text x="${pos.x}" y="${by+32}" text-anchor="middle" fill="#22c55e"
-            font-family="Share Tech Mono,monospace" font-size="10" font-weight="bold">${amtStr}</text>`;
+      <text x="${pos.x}" y="${by+32}" text-anchor="middle" fill="${ac}"
+            font-family="Share Tech Mono,monospace" font-size="9">${amtStr}</text>`;
+
+    // Badge WINNER — mesmo estilo do badge de ação (CALL, FOLD, etc.)
+    g.innerHTML += `
+      <rect x="${pos.x-30}" y="${by+bh+3}" width="60" height="15" rx="3"
+            fill="${ac}22" stroke="${ac}66" stroke-width=".5"/>
+      <text x="${pos.x}" y="${by+bh+13}" text-anchor="middle"
+            fill="${ac}" font-family="Share Tech Mono,monospace" font-size="8">WINNER</text>`;
 
     svg.appendChild(g);
   });
 
-  // ── 2. Animação: fichas saindo do centro em direção ao vencedor ─────────
-  // Usamos <circle> com animateMotion para cada ficha
-  const CX_=550, CY_=290;
-  winners.forEach(seat => {
-    const entry = Object.entries(REPLAY.seats).find(([,d]) => d.player === seat.player);
-    if(!entry) return;
-    const pos = layout[parseInt(entry[0])];
-    if(!pos) return;
-
-    // Número de fichas proporcional ao pote (máx 8)
-    const nChips = Math.min(8, Math.max(3, Math.round(seat.won / (bb*10))));
-    const colors = ['#22c55e','#7CFF6B','#15803d','#22c55e','#4ade80','#7CFF6B','#22c55e','#15803d'];
-
-    for(let i=0; i<nChips; i++){
-      // Offset angular para espalhar as fichas
-      const angle = (i/nChips) * Math.PI * 0.6 - 0.3;
-      const startX = CX_ + Math.cos(angle)*20;
-      const startY = CY_ + Math.sin(angle)*10;
-      const endX   = pos.x + (Math.random()-0.5)*20;
-      const endY   = pos.y + (Math.random()-0.5)*10;
-      const delay  = (i * 0.08).toFixed(2);
-      const dur    = (0.5 + i*0.04).toFixed(2);
-
-      const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-      g.setAttribute('class','showdown-overlay');
-      g.innerHTML = `
-        <circle r="8" fill="${colors[i%colors.length]}" stroke="#ffffff30" stroke-width="1" opacity="0">
-          <animateMotion dur="${dur}s" begin="${delay}s" fill="freeze"
-            path="M${startX},${startY} Q${(startX+endX)/2},${(startY+endY)/2-30} ${endX},${endY}"/>
-          <animate attributeName="opacity" values="0;1;1;0.8" dur="${dur}s" begin="${delay}s" fill="freeze"/>
-        </circle>`;
-      svg.appendChild(g);
-    }
-  });
-
-  // ── 3. Log ──────────────────────────────────────────────────────────────
+  // Log
   const logSt = document.getElementById('rp-log-st');
   const logAc = document.getElementById('rp-log-ac');
   if(logSt) logSt.textContent = 'RESULTADO';
