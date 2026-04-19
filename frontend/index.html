@@ -2601,19 +2601,21 @@ function rpRenderSeats(ev, bb){
     // Cartas — apontam para fora da mesa conforme dir
     const cw=26,ch=36,cg=3;
     const showHeroCards = isHero && ev.hero_cards && ev.hero_cards.length===2;
+    // Cartas ficam do lado oposto ao centro: seats no topo → abaixo; demais → acima
+    const cardBelow = dir==='top';
     if(showHeroCards){
-      // Cartas sempre acima do seat box, lado a lado, centradas no seat
-      const cx1=pos.x-cw-cg/2, cy1=by-ch-5;
-      const cx2=pos.x+cg/2,    cy2=by-ch-5;
+      const cx1=pos.x-cw-cg/2;
+      const cx2=pos.x+cg/2;
+      const cy1 = cardBelow ? by+bh+4 : by-ch-5;
       html+=cardSVG(ev.hero_cards[0],cx1,cy1,cw,ch);
-      html+=cardSVG(ev.hero_cards[1],cx2,cy2,cw,ch);
+      html+=cardSVG(ev.hero_cards[1],cx2,cy1,cw,ch);
     } else if(!isHero && !isFolded){
       const sw=18,sh=26;
-      // Sempre acima do seat box, centradas
-      const cx1=pos.x-sw-2, cy1=by-sh-4;
-      const cx2=pos.x+2,    cy2=by-sh-4;
+      const cx1=pos.x-sw-2;
+      const cx2=pos.x+2;
+      const cy1 = cardBelow ? by+bh+4 : by-sh-4;
       html+=cardSVG(null,cx1,cy1,sw,sh,true);
-      html+=cardSVG(null,cx2,cy2,sw,sh,true);
+      html+=cardSVG(null,cx2,cy1,sw,sh,true);
     }
 
     // Seat box
@@ -2667,9 +2669,12 @@ function rpRenderSeats(ev, bb){
             : Math.round(ev.amount)+'')
         : '';
       const actLabel = ev.action.toUpperCase()+(amtStr?' '+amtStr:'');
-      html+=`<rect x="${pos.x-30}" y="${by+bh+3}" width="60" height="15" rx="3"
+      // Badge no lado oposto às cartas
+      const badgeY = cardBelow ? by-18 : by+bh+3;
+      const badgeTY = cardBelow ? by-8 : by+bh+13;
+      html+=`<rect x="${pos.x-30}" y="${badgeY}" width="60" height="15" rx="3"
                    fill="${ac}22" stroke="${ac}66" stroke-width=".5"/>
-             <text x="${pos.x}" y="${by+bh+13}" text-anchor="middle"
+             <text x="${pos.x}" y="${badgeTY}" text-anchor="middle"
                    fill="${ac}" font-family="Share Tech Mono,monospace" font-size="8">${actLabel}</text>`;
     }
 
@@ -2748,6 +2753,18 @@ function rpRenderShowdown(summary, bb){
         <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>
       </rect>`;
 
+    // Cartas reveladas do vencedor (acima/abaixo conforme dir)
+    const sDir    = layout[parseInt(entry[0])].dir;
+    const sBelow  = sDir === 'top';
+    const cw2=26, ch2=36, cg2=3;
+    if(seat.cards && seat.cards.length >= 2){
+      const cx1 = pos.x - cw2 - cg2/2;
+      const cx2 = pos.x + cg2/2;
+      const cy2 = sBelow ? by + bh + 22 : by - ch2 - 5;
+      g.innerHTML += cardSVG(seat.cards[0], cx1, cy2, cw2, ch2);
+      g.innerHTML += cardSVG(seat.cards[1], cx2, cy2, cw2, ch2);
+    }
+
     // Seat box verde
     g.innerHTML += `
       <rect x="${pos.x-bw/2}" y="${by}" width="${bw}" height="${bh}" rx="6"
@@ -2757,11 +2774,15 @@ function rpRenderShowdown(summary, bb){
       <text x="${pos.x}" y="${by+32}" text-anchor="middle" fill="${ac}"
             font-family="Share Tech Mono,monospace" font-size="9">${amtStr}</text>`;
 
-    // Badge WINNER — mesmo estilo do badge de ação (CALL, FOLD, etc.)
+    // Badge WINNER — lado oposto às cartas
+    const wDir   = layout[parseInt(entry[0])].dir;
+    const wBelow = wDir === 'top';
+    const wBadgeY  = wBelow ? by - 18 : by + bh + 3;
+    const wBadgeTY = wBelow ? by - 8  : by + bh + 13;
     g.innerHTML += `
-      <rect x="${pos.x-30}" y="${by+bh+3}" width="60" height="15" rx="3"
+      <rect x="${pos.x-30}" y="${wBadgeY}" width="60" height="15" rx="3"
             fill="${ac}22" stroke="${ac}66" stroke-width=".5"/>
-      <text x="${pos.x}" y="${by+bh+13}" text-anchor="middle"
+      <text x="${pos.x}" y="${wBadgeTY}" text-anchor="middle"
             fill="${ac}" font-family="Share Tech Mono,monospace" font-size="8">WINNER</text>`;
 
     svg.appendChild(g);
