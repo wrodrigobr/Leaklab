@@ -39,6 +39,19 @@ CORS(app, resources={r"/*": {
     "allow_headers": ["Content-Type", "Authorization"],
 }})
 
+# Garantir headers CORS em TODAS as respostas, incluindo erros 500
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin']  = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    return response
+
+@app.errorhandler(500)
+def handle_500(e):
+    import traceback
+    return jsonify({'error': 'Erro interno do servidor', 'detail': str(e)}), 500
+
 # Inicializar banco ao subir
 init_db()
 
@@ -150,7 +163,7 @@ def analyze():
         from database.schema import get_conn as _gc
         conn = _gc()
         conn.execute(
-            "DELETE FROM llm_cache WHERE user_id=? AND cache_key LIKE 'study_plan:%'",
+            "DELETE FROM llm_cache WHERE user_id=? AND cache_key LIKE 'study_plan%'",
             (g.user_id,)
         )
         conn.commit()
@@ -692,25 +705,34 @@ def _template_hand_analysis(d) -> str:
 @require_auth
 def study_plan():
     """Gera plano de estudos personalizado via LLM baseado nos leaks reais."""
-    from leaklab.llm_explainer import generate_study_plan
+    try:
+        from leaklab.llm_explainer import generate_study_plan
 
-    days = int(request.args.get('days', 90))
+        days = int(request.args.get('days', 90))
 
-    # Buscar dados do banco
-    leaks    = get_leak_summary(g.user_id, days)
-    evolution = get_evolution_metrics(g.user_id, days)
-    icm      = get_icm_performance(g.user_id, days)
+        leaks     = get_leak_summary(g.user_id, days)     or []
+        evolution = get_evolution_metrics(g.user_id, days) or []
+        icm       = get_icm_performance(g.user_id, days)   or {}
 
-    if not leaks and not evolution:
-        return jsonify({'error': 'Sem dados suficientes — importe torneios primeiro'}), 400
+        if not leaks and not evolution:
+            return jsonify({'error': 'Sem dados suficientes — importe torneios primeiro'}), 400
 
-    # Buscar nome do hero
-    from database.repositories import get_tournaments
-    tourns = get_tournaments(g.user_id, limit=1)
-    hero   = tourns[0]['hero'] if tourns else 'Jogador'
+        from database.repositories import get_tournaments
+        tourns = get_tournaments(g.user_id, limit=1)
+        hero   = tourns[0]['hero'] if tourns else 'Jogador'
 
-    plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id)
-    return jsonify(plan)
+        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id)
+        return jsonify(plan)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'nivel': 'intermediario',
+            'resumo': 'Erro ao gerar plano. Tente regerar.',
+            'cards': [],
+            'error': str(e)
+        }), 200  # 200 para o CORS não ser bloqueado
 
 
 @app.route('/analyze/replay-coach', methods=['POST'])
