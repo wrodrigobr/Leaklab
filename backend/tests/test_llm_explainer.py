@@ -5,7 +5,7 @@ Testa templates locais, parsing de resposta e fallback — sem chamar a API real
 import sys, os, json, traceback
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from gaphunter.llm_explainer import (
+from leaklab.llm_explainer import (
     explain_decisions, _template_standard, _template_error,
     _parse_llm_response, _key, _cache
 )
@@ -71,44 +71,50 @@ def test_template_street_translation():
 
 # ── Parse de resposta LLM ─────────────────────────────────────────────────────
 
-def test_parse_valid_json_array():
-    raw = '["Explicação 1.", "Explicação 2.", "Explicação 3."]'
-    result = _parse_llm_response(raw, 3)
-    assert result == ["Explicação 1.", "Explicação 2.", "Explicação 3."]
-    print("OK  test_parse_valid_json_array")
-
-
-def test_parse_json_with_markdown_fences():
-    raw = '```json\n["Texto A.", "Texto B."]\n```'
+def test_parse_markdown_sections_by_separator():
+    """_parse_llm_response divide por --- (formato Markdown atual)."""
+    raw = """## 1. Decisão A\n\nAnálise longa da decisão A com detalhes suficientes para passar o filtro de 50 chars.\n\n---\n\n## 2. Decisão B\n\nAnálise longa da decisão B com detalhes suficientes para passar o filtro de 50 chars."""
     result = _parse_llm_response(raw, 2)
     assert len(result) == 2
-    assert result[0] == "Texto A."
-    print("OK  test_parse_json_with_markdown_fences")
+    assert 'Decisão A' in result[0]
+    assert 'Decisão B' in result[1]
+    print("OK  test_parse_markdown_sections_by_separator")
 
 
-def test_parse_pads_short_response():
-    """Se LLM retornar menos itens que o esperado, preenche com fallback."""
-    raw = '["Só uma explicação."]'
+def test_parse_markdown_numbered_headings():
+    """Divide por ## N. quando não há separadores ---."""
+    raw = """## 1. Análise da primeira decisão\n\nConteúdo da primeira análise com informação suficiente para os filtros funcionarem bem aqui.\n\n## 2. Análise da segunda decisão\n\nConteúdo da segunda análise com informação suficiente para os filtros funcionarem bem aqui."""
+    result = _parse_llm_response(raw, 2)
+    assert len(result) >= 1
+    assert all(isinstance(r, str) for r in result)
+    print(f"OK  test_parse_markdown_numbered_headings | {len(result)} seções")
+
+
+def test_parse_returns_expected_count_always():
+    """Sempre retorna exatamente expected itens."""
+    raw = "Um texto curto."
     result = _parse_llm_response(raw, 3)
     assert len(result) == 3
-    assert result[0] == "Só uma explicação."
-    assert result[1] == 'Decisão analisada pelo engine.'
-    print("OK  test_parse_pads_short_response")
+    assert all(isinstance(r, str) for r in result)
+    print(f"OK  test_parse_returns_expected_count_always | {len(result)} itens")
 
 
-def test_parse_truncates_extra_items():
-    raw = '["A.", "B.", "C.", "D."]'
+def test_parse_strips_markdown_fences():
+    """Remove ``` do início e fim."""
+    raw = """```markdown\n## 1. Análise\n\nConteúdo suficientemente longo para passar o filtro de 50 caracteres sem problemas.\n```"""
+    result = _parse_llm_response(raw, 1)
+    assert len(result) == 1
+    assert '```' not in result[0]
+    print("OK  test_parse_strips_markdown_fences")
+
+
+def test_parse_fallback_text_is_string():
+    """Fallback sempre retorna strings não vazias."""
+    raw = 'Análise breve.'
     result = _parse_llm_response(raw, 2)
     assert len(result) == 2
-    print("OK  test_parse_truncates_extra_items")
-
-
-def test_parse_fallback_on_invalid_json():
-    raw = 'Não consegui gerar o JSON.\nExplicação 1.\nExplicação 2.'
-    result = _parse_llm_response(raw, 2)
-    assert len(result) == 2
-    assert isinstance(result[0], str)
-    print("OK  test_parse_fallback_on_invalid_json")
+    assert all(isinstance(r, str) and len(r) > 3 for r in result)
+    print(f"OK  test_parse_fallback_text_is_string")
 
 
 # ── explain_decisions — sem LLM ───────────────────────────────────────────────
@@ -207,7 +213,7 @@ def _make_results(n=20):
 
 
 def test_summary_fallback_returns_string():
-    from gaphunter.llm_explainer import generate_tournament_summary
+    from leaklab.llm_explainer import generate_tournament_summary
     results = _make_results(20)
     s = generate_tournament_summary(results, 15, 'TestPlayer')
     assert isinstance(s, str) and len(s) > 50
@@ -215,7 +221,7 @@ def test_summary_fallback_returns_string():
 
 
 def test_summary_contains_player_name():
-    from gaphunter.llm_explainer import generate_tournament_summary
+    from leaklab.llm_explainer import generate_tournament_summary
     results = _make_results(20)
     s = generate_tournament_summary(results, 15, 'Villanacci')
     assert 'Villanacci' in s
@@ -223,7 +229,7 @@ def test_summary_contains_player_name():
 
 
 def test_summary_context_builds_correctly():
-    from gaphunter.llm_explainer import _build_tournament_context
+    from leaklab.llm_explainer import _build_tournament_context
     results = _make_results(40)
     ctx = _build_tournament_context(results, 30)
     assert 'total_hands' in ctx
@@ -237,7 +243,7 @@ def test_summary_context_builds_correctly():
 
 
 def test_summary_cache_works():
-    from gaphunter.llm_explainer import generate_tournament_summary, _cache
+    from leaklab.llm_explainer import generate_tournament_summary, _cache
     results = _make_results(20)
     s1 = generate_tournament_summary(results, 15, 'CacheTest')
     s2 = generate_tournament_summary(results, 15, 'CacheTest')
@@ -246,7 +252,7 @@ def test_summary_cache_works():
 
 
 def test_summary_icm_comment_when_high_pressure():
-    from gaphunter.llm_explainer import _build_tournament_context, _template_tournament_summary
+    from leaklab.llm_explainer import _build_tournament_context, _template_tournament_summary
     # Criar resultados com performance muito pior no ICM high
     results = []
     for _ in range(10):

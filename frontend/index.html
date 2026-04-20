@@ -1792,7 +1792,16 @@ async function importFile(){
 
   try {
     const content = await _importFile.text();
+    if(!content || content.trim().length < 50){
+      fconf.innerHTML = '<div class="import-step" style="color:var(--clear)">⚠ Arquivo vazio ou inválido.</div>';
+      btn.disabled = false; btn.textContent = 'Analisar & Importar'; return;
+    }
     const token = localStorage.getItem('ll_token');
+    if(!token){
+      fconf.innerHTML = '<div class="import-step" style="color:var(--marginal)">⚠ Sessão expirada. Faça login novamente.</div>';
+      btn.disabled = false; btn.textContent = 'Analisar & Importar';
+      setTimeout(()=>{ showAuth(); }, 1500); return;
+    }
 
     const res = await fetch(API_URL + '/analyze', {
       method: 'POST',
@@ -2060,6 +2069,12 @@ async function _loadTournamentsFromBackend(){
     const res = await fetch(API_URL + '/history/tournaments', {
       headers: {'Authorization': 'Bearer ' + token}
     });
+    if(res.status === 401){
+      // Token expirado ou inválido — limpar sessão e pedir novo login
+      console.warn('Sessão expirada — limpando localStorage');
+      doLogout();
+      return;
+    }
     if(!res.ok) return;
     const data = await res.json();
     const list = data.tournaments || [];
