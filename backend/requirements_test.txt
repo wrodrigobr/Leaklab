@@ -1,0 +1,11 @@
+# requirements_test.txt — dependências para rodar testes localmente
+# Instalar com: pip install -r requirements_test.txt
+
+# Core
+flask==3.0.3
+PyJWT==2.7.0
+flask-cors==4.0.1
+requests==2.31.0
+
+# Nota: psycopg2 NÃO é necessário para testes locais (usam SQLite)
+# gunicorn NÃO é necessário localmente (só no servidor)

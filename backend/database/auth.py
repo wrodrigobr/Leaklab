@@ -4,13 +4,19 @@ Tokens com expiração de 7 dias.
 """
 from __future__ import annotations
 import os
-import jwt
+try:
+    import jwt
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "Módulo 'jwt' não encontrado. Instale com: pip install PyJWT\n"
+        "Se já tem 'jwt' instalado, remova-o primeiro: pip uninstall jwt && pip install PyJWT"
+    )
 import datetime
 from functools import wraps
 from flask import request, jsonify, g
 from .repositories import get_user_by_id
 
-SECRET_KEY = os.environ.get('GAPHUNTER_SECRET', 'dev-secret-change-in-production')
+SECRET_KEY = os.environ.get('LEAKLAB_SECRET', 'dev-secret-change-in-production')
 TOKEN_DAYS  = int(os.environ.get('TOKEN_DAYS', 7))
 
 
