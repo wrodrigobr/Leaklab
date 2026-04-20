@@ -340,7 +340,7 @@ def get_leak_summary(user_id: int, days: int = 90) -> List[dict]:
               AND t.imported_at >= ?
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
-            HAVING COUNT(*) >= 1
+            HAVING COUNT(*) >= 2
             ORDER BY avg_score DESC
             LIMIT 10
         """, (user_id, since)).fetchall()
@@ -559,7 +559,7 @@ def get_public_coaches(specialty: str | None = None,
                     FROM tournaments t
                     JOIN users s ON s.id = t.user_id
                     WHERE s.coach_id = u.id
-                      AND t.imported_at >= (CURRENT_TIMESTAMP - INTERVAL '30 days')
+                      AND t.imported_at >= datetime('now', '-30 days')
                    ) as students_avg_score
             FROM coach_profiles cp
             JOIN users u ON u.id = cp.user_id
@@ -617,10 +617,10 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
                 MAX(t.imported_at)  as last_activity
             FROM users u
             LEFT JOIN tournaments t ON t.user_id = u.id
-              AND t.imported_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+              AND t.imported_at >= datetime('now', '-30 days')
             WHERE u.id IN ({placeholders})
             GROUP BY u.id
-        """, [since] + student_ids)
+        """, student_ids)
 
         # Comparar com período anterior (dobro do período)
         prev_period = conn.execute(f"""
@@ -651,7 +651,7 @@ def get_coach_impact_metrics(coach_id: int, days: int = 30) -> dict:
             HAVING COUNT(*) >= 1
             ORDER BY avg_score DESC
             LIMIT 5
-        """, student_ids + [f'-{days}']).fetchall()
+        """, student_ids + [since]).fetchall()
 
         # Montar resultado por aluno
         students_data = []
@@ -700,7 +700,7 @@ def recommend_coaches_for_leaks(user_id: int, limit: int = 3) -> List[dict]:
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ?
               AND d.label IN ('small_mistake','clear_mistake')
-              AND t.imported_at >= ?
+              AND t.imported_at >= datetime('now', '-90 days')
             GROUP BY spot
             ORDER BY avg_score DESC
             LIMIT 3

@@ -211,14 +211,20 @@ def tournament_summary():
             hero = t.get('hero', 'Hero') or 'Hero'
             n_hands = t.get('hand_count', len(decisions))
 
-            # Converter decisões do banco para o formato esperado
+            # Converter decisões do banco para o formato esperado pelo generate_tournament_summary
             results = [{
+                'evaluation': {
+                    'label':        d.get('label','standard'),
+                    'mistakeScore': float(d.get('score', 0)),
+                },
                 'action_taken': d.get('action_taken',''),
                 'best_action':  d.get('best_action',''),
-                'label':        d.get('label','standard'),
-                'score':        float(d.get('score', 0)),
                 'street':       d.get('street','preflop'),
                 'hand_id':      d.get('hand_id',''),
+                'context': {
+                    'icmPressure': d.get('icm_pressure','low'),
+                    'mRatio':      float(d.get('m_ratio', 10) or 10),
+                },
             } for d in decisions]
 
         else:
