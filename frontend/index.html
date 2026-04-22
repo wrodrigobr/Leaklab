@@ -1319,11 +1319,19 @@ async function generateTSummary(tid){
 
   // Chamar backend real
   const token = localStorage.getItem('ll_token');
+  // tid é o tournament_id do PokerStars — precisamos do dbId interno do banco
+  const tObj  = tourns.find(x => x.id === tid);
+  const dbId  = tObj && tObj.dbId ? tObj.dbId : null;
+  if(!dbId){
+    txt.className='t-sum-text loaded';
+    txt.innerHTML='<p style="color:var(--marginal)">⚠ Torneio não encontrado no banco. Re-importe o arquivo.</p>';
+    status.textContent='Erro'; btn.disabled=false; return;
+  }
   try {
     const res = await fetch(API_URL + '/analyze/tournament-summary', {
       method: 'POST',
       headers: {'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body: JSON.stringify({tournament_id: tid}),
+      body: JSON.stringify({tournament_id: dbId}),
     });
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
