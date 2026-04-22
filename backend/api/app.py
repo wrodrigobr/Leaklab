@@ -335,7 +335,10 @@ def coach_student_history(student_id):
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok', 'version': '2.0', 'db': 'sqlite'})
+    import os
+    db_url = os.environ.get('DATABASE_URL', '')
+    db_type = 'postgres' if db_url else 'sqlite'
+    return jsonify({'status': 'ok', 'version': '2.0', 'db': db_type, 'db_url_set': bool(db_url)})
 
 
 @app.route('/analyze/guest', methods=['POST'])
