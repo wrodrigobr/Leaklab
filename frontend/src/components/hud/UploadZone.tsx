@@ -1,23 +1,70 @@
 import { useCallback, useRef, useState } from "react";
-import { FileUp, Loader2, UploadCloud } from "lucide-react";
+import { CheckCircle2, FileUp, Loader2, UploadCloud, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { tournaments } from "@/lib/api";
+
+interface AnalyzeResult {
+  tournament_id: string;
+  tournament_db_id: number;
+  hero: string;
+  total_hands: number;
+}
+
+interface Props {
+  onResult?: (result: AnalyzeResult) => void;
+}
 
 const SUPPORTED = ["PokerStars", "GGPoker", "ACR", "Winamax", "888"];
 
-export function UploadZone() {
+export function UploadZone({ onResult }: Props) {
   const [isDragging, setIsDragging] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [message, setMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const dropped = Array.from(e.dataTransfer.files);
-    if (dropped.length) setFiles(dropped);
-  }, []);
+  const processFile = useCallback(
+    async (file: File) => {
+      setStatus("loading");
+      setMessage("");
+      try {
+        const content = await file.text();
+        const result = await tournaments.analyze(content);
+        setStatus("ok");
+        setMessage(
+          `${result.hero} • ${result.total_hands} mãos importadas`
+        );
+        onResult?.({
+          tournament_id: result.tournament_id,
+          tournament_db_id: result.tournament_db_id,
+          hero: result.hero,
+          total_hands: result.total_hands,
+        });
+      } catch (err: unknown) {
+        setStatus("error");
+        setMessage(err instanceof Error ? err.message : "Erro ao analisar arquivo");
+      }
+    },
+    [onResult]
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(file);
+    },
+    [processFile]
+  );
 
   const handleFiles = (selected: FileList | null) => {
-    if (selected?.length) setFiles(Array.from(selected));
+    if (selected?.[0]) processFile(selected[0]);
+  };
+
+  const reset = () => {
+    setStatus("idle");
+    setMessage("");
+    if (inputRef.current) inputRef.current.value = "";
   };
 
   return (
@@ -35,43 +82,58 @@ export function UploadZone() {
       <div
         className={cn(
           "relative flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed bg-hud-surface p-10 text-center transition-all",
-          isDragging ? "border-primary bg-primary/5 scale-[1.01]" : "border-border hover:border-primary/50"
+          isDragging ? "border-primary bg-primary/5 scale-[1.01]" : "border-border hover:border-primary/50",
+          status === "ok" && "border-primary/50 bg-primary/5",
+          status === "error" && "border-destructive/50 bg-destructive/5"
         )}
       >
         <div className="flex size-16 items-center justify-center rounded-full bg-background ring-1 ring-border">
-          {files.length ? (
-            <Loader2 className="size-7 text-primary animate-spin" aria-hidden />
-          ) : (
-            <UploadCloud className="size-7 text-primary" aria-hidden />
-          )}
+          {status === "loading" && <Loader2 className="size-7 text-primary animate-spin" aria-hidden />}
+          {status === "ok" && <CheckCircle2 className="size-7 text-primary" aria-hidden />}
+          {status === "error" && <XCircle className="size-7 text-destructive" aria-hidden />}
+          {status === "idle" && <UploadCloud className="size-7 text-primary" aria-hidden />}
         </div>
 
         <div className="space-y-1">
           <h3 className="text-base font-medium text-foreground">
-            {files.length ? `Processando ${files.length} arquivo(s)…` : "Analisar nova sessão"}
+            {status === "loading" && "Analisando torneio…"}
+            {status === "ok" && "Torneio importado!"}
+            {status === "error" && "Erro ao importar"}
+            {status === "idle" && "Analisar nova sessão"}
           </h3>
           <p className="max-w-sm text-xs text-muted-foreground">
-            Arraste logs de torneios (.txt, .zip) ou clique para iniciar a varredura tática.
+            {message ||
+              "Arraste logs de torneios (.txt) ou clique para iniciar a varredura tática."}
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          <FileUp className="size-3.5" aria-hidden />
-          Iniciar upload
-        </button>
+        {status === "idle" || status === "error" ? (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={status === "loading"}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50"
+          >
+            <FileUp className="size-3.5" aria-hidden />
+            Iniciar upload
+          </button>
+        ) : status === "ok" ? (
+          <button
+            type="button"
+            onClick={reset}
+            className="inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-5 py-2 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary transition-all hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Importar outro
+          </button>
+        ) : null}
 
         <input
           ref={inputRef}
           type="file"
-          multiple
-          accept=".txt,.zip,.log"
+          accept=".txt,.log"
           className="sr-only"
           onChange={(e) => handleFiles(e.target.files)}
-          aria-label="Selecionar arquivos de log"
+          aria-label="Selecionar arquivo de log"
         />
 
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2">

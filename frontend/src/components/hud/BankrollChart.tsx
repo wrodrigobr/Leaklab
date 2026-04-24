@@ -1,33 +1,60 @@
 import { useMemo } from "react";
 
-const POINTS = [120, 95, 140, 110, 180, 165, 220, 250, 240, 310, 330, 380, 420, 460, 510, 540, 600, 640, 690, 720, 760, 820, 880, 940];
+interface EvolutionPoint {
+  profit: number | null;
+  imported_at: string;
+}
 
-export function BankrollChart() {
-  const { path, area, max, min } = useMemo(() => {
-    const w = 100;
-    const h = 100;
-    const max = Math.max(...POINTS);
-    const min = Math.min(...POINTS);
-    const range = max - min || 1;
-    const stepX = w / (POINTS.length - 1);
-    const points = POINTS.map((p, i) => {
-      const x = i * stepX;
-      const y = h - ((p - min) / range) * h * 0.85 - 5;
-      return [x, y] as const;
-    });
-    const path = points.map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`).join(" ");
-    const area = `${path} L ${w} ${h} L 0 ${h} Z`;
-    return { path, area, max, min };
-  }, []);
+interface Props {
+  evolution?: EvolutionPoint[];
+}
+
+const DEMO_POINTS = [120, 95, 140, 110, 180, 165, 220, 250, 240, 310, 330, 380, 420, 460, 510, 540, 600, 640, 690, 720, 760, 820, 880, 940];
+
+function buildPath(points: number[]) {
+  const w = 100;
+  const h = 100;
+  const max = Math.max(...points);
+  const min = Math.min(...points);
+  const range = max - min || 1;
+  const stepX = w / (points.length - 1);
+  const pts = points.map((p, i) => {
+    const x = i * stepX;
+    const y = h - ((p - min) / range) * h * 0.85 - 5;
+    return [x, y] as const;
+  });
+  const path = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`).join(" ");
+  const area = `${path} L ${w} ${h} L 0 ${h} Z`;
+  return { path, area, max, min };
+}
+
+export function BankrollChart({ evolution }: Props) {
+  const { path, area, max, min, isDemo } = useMemo(() => {
+    if (evolution && evolution.length >= 2) {
+      // Build cumulative profit series
+      let running = 0;
+      const pts = evolution.map((e) => {
+        running += e.profit ?? 0;
+        return running;
+      });
+      return { ...buildPath(pts), isDemo: false };
+    }
+    return { ...buildPath(DEMO_POINTS), isDemo: true };
+  }, [evolution]);
 
   return (
-    <section aria-labelledby="bankroll-heading" className="rounded-xl border border-border bg-hud-surface overflow-hidden">
+    <section
+      aria-labelledby="bankroll-heading"
+      className="rounded-xl border border-border bg-hud-surface overflow-hidden"
+    >
       <header className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
           <h2 id="bankroll-heading" className="text-sm font-semibold text-foreground">
             Evolução do bankroll
           </h2>
-          <p className="font-mono text-[11px] text-muted-foreground">Últimos 90 dias • todas as plataformas</p>
+          <p className="font-mono text-[11px] text-muted-foreground">
+            {isDemo ? "Demo • importe torneios para ver seus dados" : `Últimos ${evolution!.length} torneios`}
+          </p>
         </div>
         <div className="flex gap-1">
           {["1M", "3M", "1A", "Tudo"].map((label, i) => (
@@ -47,13 +74,19 @@ export function BankrollChart() {
 
       <div className="relative px-5 pb-5 pt-6">
         <div className="absolute left-5 top-6 font-mono text-[10px] text-muted-foreground">
-          ${max.toLocaleString()}
+          {max >= 0 ? "+" : ""}${Math.round(max).toLocaleString()}
         </div>
         <div className="absolute bottom-5 left-5 font-mono text-[10px] text-muted-foreground">
-          ${min.toLocaleString()}
+          {min >= 0 ? "+" : ""}${Math.round(min).toLocaleString()}
         </div>
 
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-56 w-full" role="img" aria-label="Gráfico de evolução de bankroll">
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          className="h-56 w-full"
+          role="img"
+          aria-label="Gráfico de evolução de bankroll"
+        >
           <defs>
             <linearGradient id="bankrollFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.4" />
@@ -65,7 +98,13 @@ export function BankrollChart() {
           </defs>
           <rect width="100" height="100" fill="url(#hudGrid)" />
           <path d={area} fill="url(#bankrollFill)" />
-          <path d={path} fill="none" stroke="hsl(var(--primary))" strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
+          <path
+            d={path}
+            fill="none"
+            stroke="hsl(var(--primary))"
+            strokeWidth="0.6"
+            vectorEffect="non-scaling-stroke"
+          />
         </svg>
       </div>
     </section>

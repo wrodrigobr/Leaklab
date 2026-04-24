@@ -20,7 +20,7 @@ from leaklab.decision_engine_v11 import evaluate_decision
 from leaklab.mtt_context import build_mtt_context
 from leaklab.session_metrics import build_session_metrics
 from leaklab.leak_correlator import correlate_leaks
-from leaklab.llm_explainer import explain_decisions, generate_tournament_summary
+from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, coach_chat_reply
 
 from database.schema import init_db
 from database.repositories import (
@@ -298,6 +298,53 @@ def history_evolution():
         'evolution': get_evolution_metrics(g.user_id, days),
         'leaks':     get_leak_summary(g.user_id, days),
         'icm':       get_icm_performance(g.user_id, days),
+    })
+
+
+# ── AI Coach conversacional ──────────────────────────────────────────────────
+
+@app.route('/coach/chat', methods=['POST'])
+@require_auth
+def coach_chat():
+    data    = request.get_json(silent=True) or {}
+    message = data.get('message', '').strip()
+    if not message:
+        return jsonify({'error': 'Mensagem obrigatória'}), 400
+
+    days     = 90
+    leaks    = get_leak_summary(g.user_id, days) or []
+    evolution = get_evolution_metrics(g.user_id, days) or []
+    hero     = g.user.get('username', 'Jogador')
+
+    try:
+        reply = coach_chat_reply(message, leaks, evolution, hero=hero)
+        return jsonify({'reply': reply})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/coach/context', methods=['GET'])
+@require_auth
+def coach_context():
+    days      = 90
+    leaks     = get_leak_summary(g.user_id, days) or []
+    evolution = get_evolution_metrics(g.user_id, days) or []
+    tourns    = get_tournaments(g.user_id, limit=200)
+
+    total_hands = sum(t.get('hands_count', 0) for t in tourns)
+
+    avg_scores = [e['avg_score'] for e in evolution if e.get('avg_score') is not None]
+    avg_score  = round(sum(avg_scores) / len(avg_scores), 4) if avg_scores else None
+
+    std_pcts    = [e['standard_pct'] for e in evolution if e.get('standard_pct') is not None]
+    standard_pct = round(sum(std_pcts) / len(std_pcts), 4) if std_pcts else None
+
+    return jsonify({
+        'hands_analyzed':       total_hands,
+        'tournaments_analyzed': len(tourns),
+        'top_leaks':            [{'spot': l['spot'], 'avg_score': l['avg_score'], 'n': l['n']} for l in leaks[:5]],
+        'avg_score':            avg_score,
+        'standard_pct':         standard_pct,
     })
 
 

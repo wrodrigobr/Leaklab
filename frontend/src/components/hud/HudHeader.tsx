@@ -1,5 +1,6 @@
-import { Activity, BarChart3, Bot, LayoutDashboard, PlayCircle, Trophy } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Activity, BarChart3, Bot, LayoutDashboard, LogOut, PlayCircle, Trophy } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "@/lib/auth";
 
 const navItems = [
   { label: "Dashboard", to: "/", icon: LayoutDashboard },
@@ -9,6 +10,14 @@ const navItems = [
 ];
 
 export function HudHeader() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-8">
@@ -55,7 +64,7 @@ export function HudHeader() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 rounded-full bg-card px-3 py-1.5 ring-1 ring-border">
             <span className="relative flex size-1.5">
               <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
@@ -66,12 +75,31 @@ export function HudHeader() {
             </span>
           </div>
 
-          <button
-            className="size-9 rounded-full bg-card ring-2 ring-border hover:ring-primary/40 transition-all flex items-center justify-center text-xs font-semibold text-foreground"
-            aria-label="Open profile menu"
-          >
-            <Activity className="size-4 text-primary" aria-hidden />
-          </button>
+          {user && (
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:block font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                {user.username}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="size-9 rounded-full bg-card ring-2 ring-border hover:ring-primary/40 transition-all flex items-center justify-center text-xs font-semibold text-foreground"
+                aria-label="Sair"
+                title="Sair"
+              >
+                <LogOut className="size-4 text-muted-foreground hover:text-destructive transition-colors" aria-hidden />
+              </button>
+            </div>
+          )}
+
+          {!user && (
+            <button
+              onClick={() => navigate("/login")}
+              className="size-9 rounded-full bg-card ring-2 ring-border hover:ring-primary/40 transition-all flex items-center justify-center"
+              aria-label="Entrar"
+            >
+              <Activity className="size-4 text-primary" aria-hidden />
+            </button>
+          )}
         </div>
       </div>
     </header>

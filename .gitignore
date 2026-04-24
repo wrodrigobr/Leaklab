@@ -27,3 +27,4 @@ backend/torneio_ingles.txt
 # Frontend build artifacts
 frontend/node_modules/
 frontend/dist/
+!frontend/.env

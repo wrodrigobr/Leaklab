@@ -1,68 +1,46 @@
 import { CheckCircle2, Clock, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { Tournament } from "@/lib/api";
 
-interface TournamentRow {
-  id: string;
-  date: string;
-  name: string;
-  buyIn: string;
-  finish: string;
-  result: string;
-  status: "analyzed" | "queued";
-  positive: boolean;
+interface Props {
+  tournaments?: Tournament[];
 }
 
-const ROWS: TournamentRow[] = [
-  {
-    id: "GG-T_29384",
-    date: "24 Nov • 21:04",
-    name: "GGMasters Bounty $108",
-    buyIn: "$108.00",
-    finish: "1ª / 2.482",
-    result: "+$1.842,50",
-    status: "analyzed",
-    positive: true,
-  },
-  {
-    id: "PS-K_11029",
-    date: "24 Nov • 19:42",
-    name: "Sunday Million PKO",
-    buyIn: "$215.00",
-    finish: "412 / 12.104",
-    result: "-$215,00",
-    status: "analyzed",
-    positive: false,
-  },
-  {
-    id: "WPN-V_9921",
-    date: "24 Nov • 18:15",
-    name: "Venom PKO Satellite",
-    buyIn: "$55.00",
-    finish: "ITM • 12º",
-    result: "+$340,00",
-    status: "analyzed",
-    positive: true,
-  },
-  {
-    id: "WX-M_4421",
-    date: "24 Nov • 17:00",
-    name: "Winamax Main Event D1C",
-    buyIn: "€125.00",
-    finish: "Em jogo",
-    result: "Pendente",
-    status: "queued",
-    positive: true,
-  },
+function formatDate(iso: string | null): string {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) + " • " +
+      d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
+const DEMO_ROWS: Tournament[] = [
+  { id: 1, tournament_id: "GG-T_29384", site: "GGPoker", hero: "Hero", played_at: "2024-11-24T21:04:00", imported_at: "2024-11-24", hands_count: 120, decisions_count: 240, avg_score: 0.07, standard_pct: 0.82, clear_pct: 0.05, result: "itm", place: 1, buy_in: 108, prize: 1950, profit: 1842, llm_summary: null },
+  { id: 2, tournament_id: "PS-K_11029", site: "PokerStars", hero: "Hero", played_at: "2024-11-24T19:42:00", imported_at: "2024-11-24", hands_count: 80, decisions_count: 160, avg_score: 0.14, standard_pct: 0.71, clear_pct: 0.12, result: null, place: 412, buy_in: 215, prize: 0, profit: -215, llm_summary: null },
 ];
 
-export function RecentTournamentsTable() {
+export function RecentTournamentsTable({ tournaments }: Props) {
+  const navigate = useNavigate();
+  const rows = tournaments && tournaments.length > 0 ? tournaments.slice(0, 5) : DEMO_ROWS;
+  const isDemo = !tournaments || tournaments.length === 0;
+
   return (
     <section aria-labelledby="recent-tournaments" className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 id="recent-tournaments" className="text-sm font-bold uppercase tracking-widest-2 text-foreground">
-          Torneios recentes
+        <h2
+          id="recent-tournaments"
+          className="text-sm font-bold uppercase tracking-widest-2 text-foreground"
+        >
+          Torneios recentes{isDemo && <span className="ml-2 font-mono text-[10px] text-muted-foreground normal-case tracking-normal">(demo)</span>}
         </h2>
-        <button className="font-mono text-[11px] text-primary hover:text-primary-glow transition-colors">
+        <button
+          onClick={() => navigate("/tournaments")}
+          className="font-mono text-[11px] text-primary hover:text-primary-glow transition-colors"
+        >
           Ver todos →
         </button>
       </div>
@@ -84,46 +62,67 @@ export function RecentTournamentsTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {ROWS.map((row) => (
-                <tr key={row.id} className="group transition-colors hover:bg-primary/5">
-                  <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-muted-foreground">{row.date}</td>
-                  <td className="px-4 py-3.5">
-                    <div className="text-sm font-medium text-foreground">{row.name}</div>
-                    <div className="font-mono text-[10px] text-muted-foreground">{row.id}</div>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-foreground">{row.buyIn}</td>
-                  <td className="whitespace-nowrap px-4 py-3.5 text-xs text-foreground">{row.finish}</td>
-                  <td
-                    className={cn(
-                      "whitespace-nowrap px-4 py-3.5 font-mono text-xs font-medium",
-                      row.positive ? "text-primary" : "text-destructive"
-                    )}
-                  >
-                    {row.result}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3.5">
-                    {row.status === "analyzed" ? (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
-                        <CheckCircle2 className="size-3" aria-hidden />
-                        Analisado
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20">
-                        <Clock className="size-3 animate-pulse" aria-hidden />
-                        Em fila
-                      </span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3.5 text-right">
-                    <button
-                      className="inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:bg-secondary hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      aria-label={`Abrir ${row.name}`}
+              {rows.map((row) => {
+                const profit = row.profit ?? null;
+                const positive = profit !== null && profit > 0;
+                const analyzed = !!row.avg_score;
+                return (
+                  <tr key={row.id} className="group transition-colors hover:bg-primary/5">
+                    <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                      {formatDate(row.played_at || row.imported_at)}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="text-sm font-medium text-foreground">
+                        {row.site} • {row.hero}
+                      </div>
+                      <div className="font-mono text-[10px] text-muted-foreground">
+                        {row.tournament_id}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-foreground">
+                      {row.buy_in != null ? `$${row.buy_in}` : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-xs text-foreground">
+                      {row.place != null ? `${row.place}º` : "—"}
+                    </td>
+                    <td
+                      className={cn(
+                        "whitespace-nowrap px-4 py-3.5 font-mono text-xs font-medium",
+                        profit === null
+                          ? "text-muted-foreground"
+                          : positive
+                          ? "text-primary"
+                          : "text-destructive"
+                      )}
                     >
-                      <Eye className="size-3.5" aria-hidden />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      {profit === null
+                        ? "—"
+                        : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5">
+                      {analyzed ? (
+                        <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
+                          <CheckCircle2 className="size-3" aria-hidden />
+                          Analisado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20">
+                          <Clock className="size-3 animate-pulse" aria-hidden />
+                          Em fila
+                        </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                      <button
+                        className="inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:bg-secondary hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label={`Abrir ${row.tournament_id}`}
+                      >
+                        <Eye className="size-3.5" aria-hidden />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

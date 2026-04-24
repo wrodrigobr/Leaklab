@@ -742,3 +742,53 @@ Seja direto, use linguagem de coach (não acadêmica). Não use markdown, apenas
     except Exception as e:
         return f'Erro ao conectar ao Coach IA: {str(e)}'
 
+
+# ── AI Coach conversacional ────────────────────────────────────────────────────
+
+def coach_chat_reply(message: str, leaks: list, evolution: list,
+                     hero: str = 'Jogador') -> str:
+    """Responde pergunta do usuário com contexto real de desempenho."""
+    import requests as _req
+
+    ctx_parts: list[str] = []
+
+    if leaks:
+        leaks_txt = '\n'.join(
+            f"  - {l['spot']}: {l['n']} ocorrências, score médio {l['avg_score']:.3f} "
+            f"({'crítico' if l['avg_score'] >= .36 else 'moderado' if l['avg_score'] >= .20 else 'leve'})"
+            for l in leaks[:5]
+        )
+        ctx_parts.append(f"Top leaks detectados:\n{leaks_txt}")
+
+    if evolution:
+        recent = evolution[-5:]
+        ev_txt = '\n'.join(
+            f"  - {e.get('tournament_id','?')}: "
+            f"avg_score={e.get('avg_score',0):.3f}, "
+            f"standard={e.get('standard_pct',0)*100:.0f}%"
+            for e in recent
+        )
+        ctx_parts.append(f"Últimos {len(recent)} torneios:\n{ev_txt}")
+
+    context = '\n\n'.join(ctx_parts) if ctx_parts else 'Nenhum dado de desempenho disponível ainda.'
+
+    system = (
+        f"Você é o Coach IA do PokerLeaks, assistente tático de poker MTT de elite. "
+        f"Seu aluno é {hero}.\n\n"
+        f"Dados reais de desempenho atual:\n{context}\n\n"
+        "Use esses dados para personalizar cada resposta. Seja direto e técnico. "
+        "Português do Brasil. Máximo 300 palavras."
+    )
+
+    payload = {
+        'model':      'claude-haiku-4-5-20251001',
+        'max_tokens': 600,
+        'system':     system,
+        'messages':   [{'role': 'user', 'content': message}],
+    }
+
+    try:
+        return _call_llm_api(payload)
+    except Exception as e:
+        return f'Coach temporariamente indisponível. Erro: {str(e)}'
+
