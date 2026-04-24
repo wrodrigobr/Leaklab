@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ function formatDate(iso: string | null): string {
 }
 
 const Tournaments = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -188,6 +190,7 @@ const Tournaments = () => {
                       <tr
                         key={t.id}
                         className="group transition-colors hover:bg-primary/5 cursor-pointer"
+                        onClick={() => navigate(`/tournaments/${t.tournament_id}`)}
                       >
                         <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-muted-foreground">
                           {formatDate(t.played_at)}

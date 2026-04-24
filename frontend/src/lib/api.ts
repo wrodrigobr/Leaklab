@@ -80,11 +80,30 @@ export interface TournamentsResponse {
   tournaments: Tournament[];
 }
 
+export interface TournamentDecision {
+  id: number;
+  tournament_id: number;
+  hand_id: string;
+  street: string;
+  hero_cards: string;
+  board: string;
+  action_taken: string;
+  best_action: string;
+  label: "standard" | "small_mistake" | "clear_mistake" | "marginal";
+  score: number;
+  math_penalty: number;
+  range_penalty: number;
+  m_ratio: number | null;
+  icm_pressure: string | null;
+  stack_bb: number | null;
+  draw_profile: string;
+}
+
 export const tournaments = {
   list: () => request<TournamentsResponse>("/history/tournaments"),
 
   get: (tournamentId: string) =>
-    request<{ tournament: Tournament; decisions: unknown[] }>(
+    request<{ tournament: Tournament; decisions: TournamentDecision[] }>(
       `/history/tournament/${tournamentId}`
     ),
 

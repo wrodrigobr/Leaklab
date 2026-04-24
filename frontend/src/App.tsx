@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Tournaments from "./pages/Tournaments.tsx";
+import TournamentDetail from "./pages/TournamentDetail.tsx";
 import Replayer from "./pages/Replayer.tsx";
 import AICoach from "./pages/AICoach.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -51,6 +52,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Tournaments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tournaments/:id"
+              element={
+                <ProtectedRoute>
+                  <TournamentDetail />
                 </ProtectedRoute>
               }
             />

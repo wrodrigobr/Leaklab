@@ -1,11 +1,10 @@
-import { Activity, BarChart3, Bot, LayoutDashboard, LogOut, PlayCircle, Trophy } from "lucide-react";
+import { Activity, BarChart3, Bot, LayoutDashboard, LogOut, Trophy } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 
 const navItems = [
   { label: "Dashboard", to: "/", icon: LayoutDashboard },
   { label: "Tournaments", to: "/tournaments", icon: Trophy },
-  { label: "Replayer", to: "/replayer", icon: PlayCircle },
   { label: "AI Coach", to: "/coach", icon: Bot, badge: "ALPHA" },
 ];
 
@@ -22,12 +21,12 @@ export function HudHeader() {
     <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-8">
         <div className="flex items-center gap-10">
-          <a href="/" className="flex items-center gap-2.5 group" aria-label="PokerLeaks home">
+          <a href="/" className="flex items-center gap-2.5 group" aria-label="LeakLabs home">
             <span className="relative flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-glow">
               <BarChart3 className="size-4" aria-hidden />
             </span>
             <span className="text-lg font-semibold tracking-tight uppercase">
-              PokerLeaks<span className="text-primary italic font-light">.os</span>
+              LeakLabs<span className="text-primary italic font-light">.ai</span>
             </span>
           </a>
 

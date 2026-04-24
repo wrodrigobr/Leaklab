@@ -6,6 +6,7 @@ import { UploadZone } from "@/components/hud/UploadZone";
 import { LeaksPanel } from "@/components/hud/LeaksPanel";
 import { BankrollChart } from "@/components/hud/BankrollChart";
 import { RecentTournamentsTable } from "@/components/hud/RecentTournamentsTable";
+import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { metrics, tournaments, EvolutionResponse, Tournament } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -13,11 +14,15 @@ const Index = () => {
   const { user } = useAuth();
   const [evo, setEvo] = useState<EvolutionResponse | null>(null);
   const [tourns, setTourns] = useState<Tournament[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    metrics.evolution(90).then(setEvo).catch(() => null);
-    tournaments.list().then((r) => setTourns(r.tournaments)).catch(() => null);
+    setLoading(true);
+    Promise.all([
+      metrics.evolution(90).then(setEvo).catch(() => null),
+      tournaments.list().then((r) => setTourns(r.tournaments)).catch(() => null),
+    ]).finally(() => setLoading(false));
   }, [refreshKey]);
 
   const handleUploadResult = () => setRefreshKey((k) => k + 1);
@@ -97,46 +102,50 @@ const Index = () => {
           />
         </section>
 
-        <section className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
-          <div className="space-y-8 lg:col-span-8">
-            <UploadZone onResult={handleUploadResult} />
-            <BankrollChart evolution={evo?.evolution} />
-            <RecentTournamentsTable tournaments={tourns} />
-          </div>
-
-          <aside className="space-y-8 lg:col-span-4">
-            <LeaksPanel leaks={evo?.leaks} />
-
-            <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                  Confiança da IA
-                </span>
-                <span className="font-mono text-[10px] text-primary">
-                  {hasData ? "ativo" : "sem dados"}
-                </span>
-              </div>
-              <div className="flex gap-1">
-                {Array.from({ length: 12 }).map((_, i) => {
-                  const filled = hasData
-                    ? Math.min(12, Math.round((totalEvents / 10) * 12))
-                    : 0;
-                  return (
-                    <span
-                      key={i}
-                      className={`h-1.5 flex-1 rounded-sm ${i < filled ? "bg-primary" : "bg-border"}`}
-                    />
-                  );
-                })}
-              </div>
-              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                {hasData
-                  ? `${totalEvents} torneios analisados. Volume suficiente para sugerir ajustes confiáveis.`
-                  : "Importe torneios para ativar a análise de confiança da IA."}
-              </p>
+        {!loading && !hasData ? (
+          <EmptyDashboard onComplete={handleUploadResult} />
+        ) : (
+          <section className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
+            <div className="space-y-8 lg:col-span-8">
+              <UploadZone onResult={handleUploadResult} />
+              <BankrollChart evolution={evo?.evolution} />
+              <RecentTournamentsTable tournaments={tourns} />
             </div>
-          </aside>
-        </section>
+
+            <aside className="space-y-8 lg:col-span-4">
+              <LeaksPanel leaks={evo?.leaks} />
+
+              <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                    Confiança da IA
+                  </span>
+                  <span className="font-mono text-[10px] text-primary">
+                    {hasData ? "ativo" : "sem dados"}
+                  </span>
+                </div>
+                <div className="flex gap-1">
+                  {Array.from({ length: 12 }).map((_, i) => {
+                    const filled = hasData
+                      ? Math.min(12, Math.round((totalEvents / 10) * 12))
+                      : 0;
+                    return (
+                      <span
+                        key={i}
+                        className={`h-1.5 flex-1 rounded-sm ${i < filled ? "bg-primary" : "bg-border"}`}
+                      />
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  {hasData
+                    ? `${totalEvents} torneios analisados. Volume suficiente para sugerir ajustes confiáveis.`
+                    : "Importe torneios para ativar a análise de confiança da IA."}
+                </p>
+              </div>
+            </aside>
+          </section>
+        )}
       </main>
 
       <footer className="mx-auto mt-8 flex max-w-[1440px] items-center justify-between border-t border-border/60 px-6 py-6 md:px-8">
