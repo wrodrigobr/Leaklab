@@ -1936,7 +1936,8 @@ async function _applyRealData(data){
   tl.dataset.rendered = '';
   // Construir objeto de torneio no formato esperado pelo renderTournaments
   const t = {
-    id: data.tournament_id || 'novo',
+    id:   data.tournament_id || 'novo',
+    dbId: data.tournament_db_id || null,
     date: _fmtDate(data.played_at) || new Date().toLocaleDateString('pt-BR'),
     site: 'pokerstars',
     result: null,
