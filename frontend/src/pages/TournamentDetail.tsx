@@ -13,6 +13,8 @@ import {
   Filter,
   Flame,
   Loader2,
+  Brain,
+  RefreshCw,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
@@ -25,6 +27,7 @@ type Street = "Pré-flop" | "Flop" | "Turn" | "River" | "Outros";
 
 interface Hand {
   id: string;
+  decisionId: number;
   number: number;
   position: string;
   holeCards: [CardData, CardData] | null;
@@ -127,6 +130,7 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
 
     hands.push({
       id: handId,
+      decisionId: worst.id,
       number: num,
       position: worst.position || "—",
       holeCards,
@@ -178,6 +182,25 @@ const TournamentDetail = () => {
   const [query, setQuery] = useState("");
   const [severity, setSeverity] = useState<Severity | "all">("all");
   const [street, setStreet] = useState<Street | "all">("all");
+  const [analyses, setAnalyses] = useState<Record<number, string>>({});
+  const [analysisLoading, setAnalysisLoading] = useState<Record<number, boolean>>({});
+
+  const requestAnalysis = async (decisionId: number, force = false) => {
+    if (analysisLoading[decisionId]) return;
+    setAnalysisLoading((p) => ({ ...p, [decisionId]: true }));
+    try {
+      const res = await tournaments.analyzeDecision(decisionId);
+      setAnalyses((p) => ({ ...p, [decisionId]: res.analysis }));
+    } catch (err: unknown) {
+      setAnalyses((p) => ({
+        ...p,
+        [decisionId]: err instanceof Error ? err.message : "Erro ao gerar análise",
+      }));
+    } finally {
+      setAnalysisLoading((p) => ({ ...p, [decisionId]: false }));
+    }
+    void force;
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -415,14 +438,51 @@ const TournamentDetail = () => {
                     </div>
                   </div>
 
-                  <div className="col-span-full flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-end">
-                    <Link
-                      to={`/coach?hand=${h.id}`}
-                      className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--primary)/0.5)] transition-colors hover:bg-primary/90"
-                    >
-                      <Sparkles className="size-3.5" aria-hidden />
-                      Pedir análise da IA
-                    </Link>
+                  <div className="col-span-full border-t border-border pt-3 space-y-3">
+                    {analyses[h.decisionId] ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Brain className="size-3.5 text-primary" aria-hidden />
+                            <span className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
+                              Análise do Coach IA
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => requestAnalysis(h.decisionId, true)}
+                            disabled={analysisLoading[h.decisionId]}
+                            className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                            title="Gerar nova análise"
+                          >
+                            <RefreshCw className={cn("size-3", analysisLoading[h.decisionId] && "animate-spin")} />
+                            Regenerar
+                          </button>
+                        </div>
+                        <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                          {analyses[h.decisionId]}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end">
+                        <button
+                          onClick={() => requestAnalysis(h.decisionId)}
+                          disabled={analysisLoading[h.decisionId]}
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary shadow-[0_0_20px_-6px_hsl(var(--primary)/0.4)] transition-all hover:bg-primary/15 hover:border-primary/50 disabled:opacity-60"
+                        >
+                          {analysisLoading[h.decisionId] ? (
+                            <>
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                              Analisando…
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="size-3.5" aria-hidden />
+                              Pedir análise da IA
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </article>
               );

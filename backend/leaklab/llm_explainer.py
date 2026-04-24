@@ -792,3 +792,95 @@ def coach_chat_reply(message: str, leaks: list, evolution: list,
     except Exception as e:
         return f'Coach temporariamente indisponível. Erro: {str(e)}'
 
+
+def analyze_single_decision(decision: dict) -> str:
+    """Análise focada de uma única decisão de mão pelo Coach IA.
+
+    decision é um dict com os campos da tabela decisions:
+    street, hero_cards, board, action_taken, best_action, label, score,
+    m_ratio, icm_pressure, stack_bb, draw_profile, position, num_players,
+    level_sb, level_bb, level_num, note.
+    """
+    street      = decision.get('street', 'preflop')
+    hero_cards  = decision.get('hero_cards', '')
+    board_raw   = decision.get('board', '[]')
+    action      = decision.get('action_taken', '')
+    best        = decision.get('best_action', '')
+    label       = decision.get('label', 'standard')
+    score       = decision.get('score', 0)
+    m_ratio     = decision.get('m_ratio')
+    icm         = decision.get('icm_pressure', 'low')
+    stack_bb    = decision.get('stack_bb')
+    draw        = decision.get('draw_profile', 'none')
+    position    = decision.get('position', '')
+    num_players = decision.get('num_players')
+    level_sb    = decision.get('level_sb')
+    level_bb    = decision.get('level_bb')
+    level_num   = decision.get('level_num')
+    note        = decision.get('note', '')
+
+    try:
+        import json as _json
+        board_list = _json.loads(board_raw) if isinstance(board_raw, str) else board_raw
+        board_str  = ' '.join(board_list) if board_list else '—'
+    except Exception:
+        board_str = '—'
+
+    level_info = ''
+    if level_num:
+        level_info = f'Nível {level_num}'
+        if level_sb and level_bb:
+            level_info += f' ({int(level_sb)}/{int(level_bb)})'
+    elif level_sb and level_bb:
+        level_info = f'Blinds {int(level_sb)}/{int(level_bb)}'
+
+    vs_info = f'vs {num_players - 1}' if num_players and num_players > 1 else ''
+
+    label_pt = {
+        'standard':     'Linha sólida',
+        'marginal':     'Decisão marginal',
+        'small_mistake':'Pequeno erro',
+        'clear_mistake':'Erro claro',
+    }.get(label, label)
+
+    hand_desc = (
+        f"Street: {street.upper()}\n"
+        f"Cartas do hero: {hero_cards or '—'}\n"
+        f"Board: {board_str}\n"
+        f"Posição: {position or '—'}  {vs_info}\n"
+        f"{level_info}\n"
+        f"Stack: {f'{stack_bb:.0f} BB' if stack_bb else '—'}  |  M ratio: {m_ratio or '—'}  |  ICM: {icm}\n"
+        f"Draw profile: {draw}\n"
+        f"Ação tomada: {action}\n"
+        f"Ação recomendada: {best}\n"
+        f"Avaliação: {label_pt} (score {score:.3f})\n"
+    )
+    if note:
+        hand_desc += f"Nota do engine: {note}\n"
+
+    system = (
+        "Você é um coach de poker MTT de elite. Analise a decisão abaixo e forneça:\n"
+        "1. Por que a ação tomada foi correta ou incorreta (2-3 frases)\n"
+        "2. O que o jogador deveria ter considerado (2-3 frases)\n"
+        "3. Uma dica prática para evitar este erro no futuro (1-2 frases)\n\n"
+        "Seja direto, técnico e use termos de poker padrão. Português do Brasil. "
+        "Máximo 250 palavras. Não use listas numeradas — escreva em parágrafos."
+    )
+
+    payload = {
+        'model':      'claude-haiku-4-5-20251001',
+        'max_tokens': 500,
+        'system':     system,
+        'messages':   [{'role': 'user', 'content': hand_desc}],
+    }
+
+    try:
+        return _call_llm_api(payload)
+    except Exception as e:
+        if label == 'standard':
+            return f'Ação correta no {street}. {action} é a linha adequada para este spot com as condições apresentadas.'
+        return (
+            f'No {street}, {action} ficou abaixo de {best} '
+            f'(score {score:.3f}). Revise pot odds e equity para este tipo de spot.'
+        )
+

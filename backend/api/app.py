@@ -681,6 +681,48 @@ def coach_students_legacy():
     return coach_students_v2()
 
 
+@app.route('/analyze/decision', methods=['POST'])
+@require_auth
+def analyze_decision():
+    """Análise IA de uma decisão específica identificada pelo ID do banco."""
+    data = request.get_json(silent=True) or {}
+    decision_id = data.get('decision_id')
+    if not decision_id:
+        return jsonify({'error': 'decision_id obrigatório'}), 400
+
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        row = conn.execute(
+            """SELECT d.*, t.user_id FROM decisions d
+               JOIN tournaments t ON t.id = d.tournament_id
+               WHERE d.id = ?""",
+            (decision_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if not row or dict(row).get('user_id') != g.user_id:
+        return jsonify({'error': 'Decisão não encontrada'}), 404
+
+    decision = dict(row)
+
+    cache_key = f"decision:{decision_id}"
+    cached = get_llm_cache(g.user_id, cache_key)
+    if cached and not data.get('force_new'):
+        return jsonify({'analysis': cached, 'cached': True})
+
+    from leaklab.llm_explainer import analyze_single_decision
+    analysis = analyze_single_decision(decision)
+
+    try:
+        set_llm_cache(g.user_id, cache_key, analysis)
+    except Exception:
+        pass
+
+    return jsonify({'analysis': analysis, 'cached': False})
+
+
 @app.route('/analyze/hand-coach', methods=['POST'])
 @require_auth
 def hand_coach():

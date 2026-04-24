@@ -133,6 +133,12 @@ export const tournaments = {
       body: JSON.stringify({ tournament_id: dbId }),
     }),
 
+  analyzeDecision: (decisionId: number) =>
+    request<{ analysis: string; cached: boolean }>("/analyze/decision", {
+      method: "POST",
+      body: JSON.stringify({ decision_id: decisionId }),
+    }),
+
   deleteOne: (tournamentId: string) =>
     request<{ ok: boolean }>(`/history/tournament/${tournamentId}`, {
       method: "DELETE",
