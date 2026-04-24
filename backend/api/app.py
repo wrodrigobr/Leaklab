@@ -3,10 +3,13 @@ PokerLeakLab API v2 — com persistência SQLite e autenticação JWT.
 """
 from __future__ import annotations
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from pathlib import Path
+
+_BASE = Path(__file__).resolve().parent.parent  # backend/
+sys.path.insert(0, str(_BASE))
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(_BASE / '.env')
 
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS

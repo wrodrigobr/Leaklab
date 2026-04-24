@@ -603,7 +603,7 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
                 'max_tokens': 3500,
                 'messages':   [{'role': 'user', 'content': prompt}],
             },
-            timeout=30,
+            timeout=90,
         )
         resp.raise_for_status()
         raw = resp.json()['content'][0]['text'].strip()
