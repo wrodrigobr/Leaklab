@@ -112,6 +112,15 @@ export interface ReplaySeat {
   pos: string;
 }
 
+export interface ShowdownSeatInfo {
+  seat:      number;
+  player:    string;
+  cards:     string[];
+  won:       number;
+  hand_desc: string;
+  outcome:   "won" | "lost";
+}
+
 export interface ReplayStep {
   type: "deal" | "street" | "action" | "showdown";
   desc: string;
@@ -142,6 +151,14 @@ export interface ReplayStep {
   m_ratio?: number;
   icm_pressure?: string;
   hero_stack_bb?: number;
+  // showdown-specific
+  revealed_cards?: Record<string, string[]>; // seat_num → ["Ah","Kd"]
+  summary?: {
+    total_pot: number | null;
+    board:     string[];
+    seats:     ShowdownSeatInfo[];
+    winners:   ShowdownSeatInfo[];
+  };
 }
 
 export interface ReplayData {

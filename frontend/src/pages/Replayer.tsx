@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, SkipBack, SkipForward } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PokerTable, type Seat } from "@/components/hud/PokerTable";
-import type { CardData } from "@/components/hud/PlayingCard";
+import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, ReplayData, ReplayStep } from "@/lib/api";
 
@@ -23,18 +23,28 @@ function parseCards(arr: string[]): CardData[] {
 // ── Map backend step to PokerTable seats ──────────────────────────────────────
 
 function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[], aliases: Record<string, string>): Seat[] {
+  const isShowdown = step.type === "showdown";
+
   return Object.entries(step.seats).map(([seatNum, sd]) => {
     const seatId      = parseInt(seatNum);
     const isHero      = sd.player === hero;
     const bet         = step.bets?.[seatNum] || undefined;
     const folded      = step.folded?.includes(sd.player) ?? false;
     const displayName = aliases[sd.player] ?? sd.player;
+
+    // No showdown, mostra cartas reveladas dos villains vindas do backend
+    let cards: CardData[] | undefined = isHero ? heroCards : undefined;
+    if (isShowdown && !isHero) {
+      const raw = step.revealed_cards?.[seatNum];
+      if (raw?.length) cards = parseCards(raw);
+    }
+
     return {
       id:      seatId,
       name:    `${displayName} (${sd.pos})`,
       stack:   sd.stack,
       hero:    isHero,
-      cards:   isHero ? heroCards : undefined,
+      cards,
       bet:     bet || undefined,
       active:  step.seat === seatId,
       folded,
@@ -303,7 +313,8 @@ const Replayer = () => {
                 <li key={i} className={cn(
                   "px-4 py-2.5 text-xs transition-colors",
                   i === stepIdx && "bg-primary/5",
-                  s.is_error && "border-l-2 border-destructive"
+                  s.is_error && "border-l-2 border-destructive",
+                  s.type === "showdown" && "border-l-2 border-primary/50"
                 )}>
                   <div className="flex items-center justify-between gap-2">
                     <span className={cn("text-foreground", s.is_hero && "font-semibold text-primary")}>{anonymizeDesc(s.desc, playerAliases)}</span>
@@ -312,6 +323,20 @@ const Replayer = () => {
                   {s.is_error && s.best_action && (
                     <div className="mt-0.5 font-mono text-[10px] text-destructive">
                       correto: {s.best_action} · score {s.error_score?.toFixed(3)}
+                    </div>
+                  )}
+                  {s.type === "showdown" && s.summary?.seats && s.summary.seats.length > 0 && (
+                    <div className="mt-1 space-y-0.5">
+                      {s.summary.seats.map((sd, j) => (
+                        <div key={j} className="font-mono text-[10px] text-muted-foreground">
+                          {playerAliases[sd.player] ?? sd.player}
+                          {sd.cards?.length > 0 && ` [${sd.cards.join(" ")}]`}
+                          {" · "}
+                          <span className={sd.outcome === "won" ? "text-primary" : ""}>
+                            {sd.outcome === "won" ? `ganhou ${sd.won}` : sd.hand_desc}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </li>
@@ -354,6 +379,42 @@ const Replayer = () => {
               ) : (
                 <p className="text-xs text-foreground">Linha sólida para o spot.</p>
               )}
+            </section>
+          )}
+
+          {/* Showdown result panel */}
+          {step.type === "showdown" && step.summary && (
+            <section className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">Resultado da mão</div>
+              {step.summary.total_pot != null && (
+                <div className="text-xs text-muted-foreground">
+                  Pot total: <span className="font-mono font-medium text-foreground">{(step.summary.total_pot / (replayData?.bb ?? 100)).toFixed(1)} BB</span>
+                </div>
+              )}
+              <ul className="space-y-2">
+                {step.summary.seats.map((sd, i) => (
+                  <li key={i} className="text-xs space-y-0.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={cn("font-semibold", sd.outcome === "won" ? "text-primary" : "text-muted-foreground")}>
+                        {playerAliases[sd.player] ?? sd.player}
+                      </span>
+                      {sd.outcome === "won" && (
+                        <span className="font-mono text-[10px] text-primary">+{sd.won}</span>
+                      )}
+                    </div>
+                    {sd.cards?.length > 0 && (
+                      <div className="flex gap-1 mt-1">
+                        {parseCards(sd.cards).map((c, j) => (
+                          <PlayingCard key={j} card={c} size="sm" />
+                        ))}
+                        {sd.hand_desc && sd.hand_desc !== "mucked" && sd.hand_desc !== "collected" && (
+                          <span className="self-center font-mono text-[10px] text-muted-foreground ml-1">{sd.hand_desc}</span>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 

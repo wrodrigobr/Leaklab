@@ -90,16 +90,23 @@ def parse_hand(raw_text: str) -> ParsedHand:
 
 
 def _extract_board(line: str):
-    """Extrai o board acumulado de uma linha de street.
-    TURN/RIVER têm 2 grupos: [board acumulado] [carta nova]
-    Sempre usamos o primeiro grupo (board completo até aqui).
+    """Extrai o board completo de uma linha de street.
+
+    Formato PokerStars:
+      FLOP:  *** FLOP ***   [Ah Kd 3c]
+      TURN:  *** TURN ***   [Ah Kd 3c] [7s]
+      RIVER: *** RIVER ***  [Ah Kd 3c 7s] [9h]
+
+    matches[0] é o board acumulado ATÉ a rua anterior.
+    matches[1] (quando existe) é a carta nova.
+    Precisamos concatenar todos os grupos para ter o board completo.
     """
     matches = BOARD_RE.findall(line)
     if not matches:
         return []
-    # matches[0] = board acumulado (flop ou turn+flop)
-    # matches[-1] = só a carta nova (em TURN/RIVER)
-    cards = matches[0].split()
+    cards = []
+    for group in matches:
+        cards.extend(group.split())
     return cards
 
 

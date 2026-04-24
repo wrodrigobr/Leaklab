@@ -1285,10 +1285,25 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     # Adicionar frame de conclusão com resultado da mão
     summary = _parse_summary(hand.raw_text or '')
     if summary.get('winners') or summary.get('seats'):
+        # Garante que o board do showdown tem as 5 cartas (summary é fonte autoritativa,
+        # cobre casos de dados importados antes da correção do parser)
+        if summary.get('board'):
+            board = summary['board']
+
+        # Mapa seat_number → cartas reveladas (para mostrar cartas dos villains na mesa)
+        revealed = {}
+        for s_info in summary.get('seats', []):
+            if s_info.get('cards'):
+                pseat = next((sn for sn, sd in seats.items()
+                              if sd['player'] == s_info['player']), None)
+                if pseat is not None:
+                    revealed[str(pseat)] = s_info['cards']
+
         timeline.append(snap({
-            'type':        'showdown',
-            'desc':        'Conclusão da mão',
-            'summary':      summary,
+            'type':          'showdown',
+            'desc':          'Conclusão da mão',
+            'summary':        summary,
+            'revealed_cards': revealed,   # {seat_num_str: ["Ah","Kd"]}
         }))
 
     return {
