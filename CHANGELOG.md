@@ -9,6 +9,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2026-04-23i] — Migração frontend para React + TypeScript
+
+### Alterado
+- **Frontend migrado de HTML monolítico para React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui**
+  - Base: projeto gerado pelo Lovable (poker-leak-finder) trazido para `frontend/`
+  - `frontend/index.legacy.html` — backup do frontend vanilla anterior
+  - `frontend/src/` — novo frontend React com arquitetura componentizada
+  - `vercel.json` atualizado para build com `@vercel/static-build`
+  - `.gitignore` atualizado: `frontend/node_modules/`, `frontend/dist/`
+
+### Motivação
+- Segurança: HTML monolítico sem isolamento de escopo, JWT exposto em JS inline, sem CSP
+- Manutenibilidade: arquivo único de ~3000 linhas impossível de auditar e testar
+- Arquitetura componentizada elimina classes de bugs de DOM stale e permite testes unitários
+
+### Próximos passos
+- Conectar API client (`src/lib/api.ts`) ao backend Flask
+- Implementar autenticação (contexto JWT, rotas protegidas)
+- Substituir dados mock por chamadas reais ao backend
+
+---
+
 ## [2026-04-23h]
 
 ### Corrigido
