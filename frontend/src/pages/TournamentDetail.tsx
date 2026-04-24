@@ -46,11 +46,24 @@ interface Hand {
 
 function parseCards(raw: string): CardData[] {
   if (!raw) return [];
+  // Space-separated: "Ah Kd" → ["Ah", "Kd"]
   const parts = raw.trim().split(/\s+/).filter(Boolean);
-  return parts.map((c) => ({
-    rank: c.slice(0, -1) as CardData["rank"],
-    suit: c.slice(-1).toLowerCase() as CardData["suit"],
-  }));
+  if (parts.length >= 2) {
+    return parts.map((c) => ({
+      rank: c.slice(0, -1) as CardData["rank"],
+      suit: c.slice(-1).toLowerCase() as CardData["suit"],
+    }));
+  }
+  // Concatenated (PokerStars parser stores without spaces): "AhKd" → ["Ah", "Kd"]
+  const cards: CardData[] = [];
+  const s = parts[0] ?? "";
+  for (let i = 0; i + 1 < s.length; i += 2) {
+    cards.push({
+      rank: s[i] as CardData["rank"],
+      suit: s[i + 1].toLowerCase() as CardData["suit"],
+    });
+  }
+  return cards;
 }
 
 function parseBoard(json: string): CardData[] {
