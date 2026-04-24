@@ -4,7 +4,7 @@ Testes do draw_detector — Sprint 3 do Ciclo 2.
 import sys, os, traceback
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from gaphunter.draw_detector import detect_draws, adjust_equity_for_draws, DrawProfile
+from leaklab.draw_detector import detect_draws, adjust_equity_for_draws, DrawProfile
 
 
 # ── Flush draws ───────────────────────────────────────────────────────────────

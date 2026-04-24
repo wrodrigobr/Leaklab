@@ -204,6 +204,7 @@ def _init_sqlite(conn):
             prize           REAL,
             profit          REAL,
             llm_summary     TEXT,
+            raw_text        TEXT,
             UNIQUE(user_id, tournament_id)
         );
         CREATE TABLE IF NOT EXISTS decisions (
@@ -280,6 +281,7 @@ def _run_migrations(conn):
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),
+            ("raw_text",        "ALTER TABLE tournaments ADD COLUMN raw_text TEXT"),
         ]:
             if col not in existing:
                 try: conn.execute(sql)

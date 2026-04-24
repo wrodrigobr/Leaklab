@@ -1,7 +1,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from gaphunter.decision_engine_v11 import (
+from leaklab.decision_engine_v11 import (
     classify_mistake_score, apply_anti_rules, calc_math_penalty,
     calc_base_action_gap, calc_range_penalty,
     calc_realization_adjustment, calc_pressure_adjustment,

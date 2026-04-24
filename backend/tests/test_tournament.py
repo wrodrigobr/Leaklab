@@ -5,12 +5,12 @@ Hero: phpro | 400 maos
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from gaphunter.parser import parse_pokerstars_file
-from gaphunter.hand_state_builder import build_hand_state
-from gaphunter.pipeline import build_decision_input
-from gaphunter.decision_engine_v11 import evaluate_decision
-from gaphunter.session_metrics import build_session_metrics
-from gaphunter.leak_correlator import correlate_leaks
+from leaklab.parser import parse_pokerstars_file
+from leaklab.hand_state_builder import build_hand_state
+from leaklab.pipeline import build_decision_input
+from leaklab.decision_engine_v11 import evaluate_decision
+from leaklab.session_metrics import build_session_metrics
+from leaklab.leak_correlator import correlate_leaks
 
 TOURNAMENT_FILE = os.path.join(os.path.dirname(__file__), '..', 'torneio_ingles.txt')
 

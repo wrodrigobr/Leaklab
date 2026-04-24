@@ -17,3 +17,9 @@ node_modules/
 # OS
 .DS_Store
 *.swp
+
+# Fixtures locais (dados pessoais de torneio)
+backend/torneio_ingles.txt
+
+# Claude Code
+.claude/

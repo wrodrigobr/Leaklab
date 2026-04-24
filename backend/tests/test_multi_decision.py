@@ -4,10 +4,10 @@ Testes do Sprint 1: multi-decisão por mão.
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from gaphunter.models import ParsedHand, ParsedAction
-from gaphunter.hand_state_builder import extract_decision_points
-from gaphunter.pipeline import build_decision_inputs_for_hand
-from gaphunter.decision_engine_v11 import evaluate_decision
+from leaklab.models import ParsedHand, ParsedAction
+from leaklab.hand_state_builder import extract_decision_points
+from leaklab.pipeline import build_decision_inputs_for_hand
+from leaklab.decision_engine_v11 import evaluate_decision
 
 
 def _hand(hand_id, hero, cards, actions_spec, bb=100):
@@ -216,7 +216,7 @@ def test_engine_runs_on_all_decisions():
 
 def test_backward_compat_build_hand_state():
     """build_hand_state() ainda deve funcionar retornando a última decisão."""
-    from gaphunter.hand_state_builder import build_hand_state
+    from leaklab.hand_state_builder import build_hand_state
     hand = _hand('14', 'Hero', 'AsJs', [
         ('Villain', 'preflop', 'raises', 300),
         ('Hero',    'preflop', 'calls',  300),

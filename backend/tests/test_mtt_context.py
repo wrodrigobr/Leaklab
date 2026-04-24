@@ -4,10 +4,10 @@ Testes do Sprint 2: contexto MTT real.
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from gaphunter.models import ParsedHand, ParsedAction
-from gaphunter.mtt_context import build_mtt_context, context_to_dict, MTTContext
-from gaphunter.parser import parse_pokerstars_file
-from gaphunter.pipeline import build_decision_inputs_for_hand
+from leaklab.models import ParsedHand, ParsedAction
+from leaklab.mtt_context import build_mtt_context, context_to_dict, MTTContext
+from leaklab.parser import parse_pokerstars_file
+from leaklab.pipeline import build_decision_inputs_for_hand
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -168,7 +168,7 @@ TOURNAMENT_FILE = os.path.join(os.path.dirname(__file__), '..', 'torneio_ingles.
 
 
 def test_mtt_context_on_real_tournament():
-    from gaphunter.parser import parse_pokerstars_file
+    from leaklab.parser import parse_pokerstars_file
     hands = parse_pokerstars_file(TOURNAMENT_FILE)
     errors = []
     contexts = []
@@ -200,7 +200,7 @@ def test_mtt_context_on_real_tournament():
 
 def test_pipeline_uses_mtt_context():
     """Verifica que o pipeline injeta ICM pressure real nos decision inputs."""
-    from gaphunter.parser import parse_pokerstars_file
+    from leaklab.parser import parse_pokerstars_file
     hands = parse_pokerstars_file(TOURNAMENT_FILE)
 
     # Pegar uma mão com stack curto (late game)

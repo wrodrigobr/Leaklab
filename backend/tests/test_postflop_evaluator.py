@@ -8,10 +8,10 @@ Cobre todos os cenários identificados na auditoria:
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from gaphunter.models import HandState, ParsedHand, ParsedAction
-from gaphunter.postflop_range_evaluator import evaluate_postflop_range
-from gaphunter.pipeline import build_decision_inputs_for_hand
-from gaphunter.decision_engine_v11 import evaluate_decision
+from leaklab.models import HandState, ParsedHand, ParsedAction
+from leaklab.postflop_range_evaluator import evaluate_postflop_range
+from leaklab.pipeline import build_decision_inputs_for_hand
+from leaklab.decision_engine_v11 import evaluate_decision
 
 
 def _state(street='flop', action='call', pot=600, facing=0,
@@ -160,7 +160,7 @@ TOURNAMENT_FILE = os.path.join(os.path.dirname(__file__), '..', 'torneio_ingles.
 
 def test_pipeline_routes_postflop_correctly():
     """Verifica que decisões postflop usam o postflop evaluator."""
-    from gaphunter.parser import parse_pokerstars_file
+    from leaklab.parser import parse_pokerstars_file
     hands = parse_pokerstars_file(TOURNAMENT_FILE)
 
     postflop_recs = set()
@@ -177,7 +177,7 @@ def test_pipeline_routes_postflop_correctly():
 
 def test_postflop_error_rate_reduced():
     """Taxa de erro postflop deve ser menor que 30% após correção."""
-    from gaphunter.parser import parse_pokerstars_file
+    from leaklab.parser import parse_pokerstars_file
     hands = parse_pokerstars_file(TOURNAMENT_FILE)
 
     postflop_results = []
@@ -198,7 +198,7 @@ def test_postflop_error_rate_reduced():
 
 def test_genuine_errors_preserved():
     """Erros com math penalty real devem ser mantidos após a correção."""
-    from gaphunter.parser import parse_pokerstars_file
+    from leaklab.parser import parse_pokerstars_file
     hands = parse_pokerstars_file(TOURNAMENT_FILE)
 
     genuine_errors = 0
@@ -218,7 +218,7 @@ def test_genuine_errors_preserved():
 
 def test_preflop_unaffected():
     """Decisões preflop não devem ser alteradas pelo postflop evaluator."""
-    from gaphunter.parser import parse_pokerstars_file
+    from leaklab.parser import parse_pokerstars_file
     hands = parse_pokerstars_file(TOURNAMENT_FILE)
 
     preflop_recs = set()

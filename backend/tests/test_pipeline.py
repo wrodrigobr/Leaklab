@@ -1,13 +1,13 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from gaphunter.models import ParsedHand, ParsedAction
-from gaphunter.hand_state_builder import build_hand_state
-from gaphunter.pipeline import build_decision_input
-from gaphunter.decision_engine_v11 import evaluate_decision
-from gaphunter.recommendation_engine import build_recommendation
-from gaphunter.leak_correlator import correlate_leaks
-from gaphunter.session_metrics import build_session_metrics
+from leaklab.models import ParsedHand, ParsedAction
+from leaklab.hand_state_builder import build_hand_state
+from leaklab.pipeline import build_decision_input
+from leaklab.decision_engine_v11 import evaluate_decision
+from leaklab.recommendation_engine import build_recommendation
+from leaklab.leak_correlator import correlate_leaks
+from leaklab.session_metrics import build_session_metrics
 
 
 def _make_hand(hand_id='1', hero_cards='AsJs', hero='Hero',
