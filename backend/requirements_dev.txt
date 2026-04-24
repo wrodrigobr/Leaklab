@@ -1,0 +1,5 @@
+# Dependências para desenvolvimento local (SQLite — sem psycopg2)
+flask==3.0.3
+PyJWT==2.7.0
+flask-cors==4.0.1
+requests==2.31.0

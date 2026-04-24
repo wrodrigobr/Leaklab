@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2026-04-23b]
+
+### Adicionado
+- **`backend/requirements_dev.txt`**: dependências para desenvolvimento local sem `psycopg2-binary` (incompatível com Python 3.13/Windows); ambiente local usa SQLite.
+
+### Ambiente local
+- Backend: `cd backend && python api/app.py` → `http://localhost:5000`
+- Frontend: abrir `frontend/index.html` no browser (detecta `localhost` automaticamente e aponta para porta 5000)
+
+---
+
 ## [2026-04-23]
 
 ### Corrigido
