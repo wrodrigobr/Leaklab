@@ -235,11 +235,22 @@ export const metrics = {
 
 // ── Study Plan ────────────────────────────────────────────────────────────────
 
+export interface StudyCardResources {
+  livros: string[];
+  videos: string[];
+  curso: string | null;
+}
+
 export interface StudyCard {
+  prioridade: string;
+  icone: string;
   titulo: string;
+  diagnostico: string;
+  conceitos: string[];
+  recursos: StudyCardResources;
+  exercicio: string;
+  metrica: string;
   spot: string;
-  exercicio?: string;
-  metrica?: string;
 }
 
 export interface StudyPlanResponse {

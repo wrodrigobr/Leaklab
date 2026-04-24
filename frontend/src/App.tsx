@@ -11,6 +11,7 @@ import Tournaments from "./pages/Tournaments.tsx";
 import TournamentDetail from "./pages/TournamentDetail.tsx";
 import Replayer from "./pages/Replayer.tsx";
 import AICoach from "./pages/AICoach.tsx";
+import StudyPlan from "./pages/StudyPlan.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Replayer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/study"
+              element={
+                <ProtectedRoute>
+                  <StudyPlan />
                 </ProtectedRoute>
               }
             />

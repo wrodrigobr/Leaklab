@@ -1,11 +1,12 @@
-import { Activity, BarChart3, Bot, LayoutDashboard, LogOut, Trophy } from "lucide-react";
+import { Activity, BarChart3, BookOpen, Bot, LayoutDashboard, LogOut, Trophy } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 
 const navItems = [
-  { label: "Dashboard", to: "/", icon: LayoutDashboard },
-  { label: "Tournaments", to: "/tournaments", icon: Trophy },
-  { label: "AI Coach", to: "/coach", icon: Bot, badge: "ALPHA" },
+  { label: "Dashboard",      to: "/",          icon: LayoutDashboard },
+  { label: "Tournaments",    to: "/tournaments",icon: Trophy },
+  { label: "Plano de Estudos", to: "/study",   icon: BookOpen },
+  { label: "AI Coach",       to: "/coach",     icon: Bot, badge: "ALPHA" },
 ];
 
 export function HudHeader() {
