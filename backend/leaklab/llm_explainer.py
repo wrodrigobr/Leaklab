@@ -417,7 +417,7 @@ def _call_llm_summary(ctx: dict, hero: str) -> str:
         "Retorne APENAS o texto do resumo, sem título ou formatação extra."
     )
 
-    user_msg = "Jogador: " + hero + "\nMetricas:\n" + _json.dumps(ctx, ensure_ascii=False, indent=2)
+    user_msg = "Jogador: " + hero + "\nMetricas:\n" + json.dumps(ctx, ensure_ascii=False, indent=2)
 
     payload = {
         'model':      'claude-haiku-4-5-20251001',
