@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, SkipBack, SkipForward } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PokerTable, type Seat } from "@/components/hud/PokerTable";
 import type { CardData } from "@/components/hud/PlayingCard";
@@ -22,15 +22,16 @@ function parseCards(arr: string[]): CardData[] {
 
 // ── Map backend step to PokerTable seats ──────────────────────────────────────
 
-function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[]): Seat[] {
+function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[], aliases: Record<string, string>): Seat[] {
   return Object.entries(step.seats).map(([seatNum, sd]) => {
-    const seatId = parseInt(seatNum);
-    const isHero = sd.player === hero;
-    const bet    = step.bets?.[seatNum] || undefined;
-    const folded = step.folded?.includes(sd.player) ?? false;
+    const seatId      = parseInt(seatNum);
+    const isHero      = sd.player === hero;
+    const bet         = step.bets?.[seatNum] || undefined;
+    const folded      = step.folded?.includes(sd.player) ?? false;
+    const displayName = aliases[sd.player] ?? sd.player;
     return {
       id:      seatId,
-      name:    `${sd.player} (${sd.pos})`,
+      name:    `${displayName} (${sd.pos})`,
       stack:   sd.stack,
       hero:    isHero,
       cards:   isHero ? heroCards : undefined,
@@ -39,6 +40,18 @@ function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[]): Seat
       folded,
     };
   });
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function anonymizeDesc(desc: string, aliases: Record<string, string>): string {
+  let result = desc;
+  for (const [name, alias] of Object.entries(aliases)) {
+    if (name !== alias) result = result.replace(new RegExp(escapeRegex(name), "g"), alias);
+  }
+  return result;
 }
 
 // ── Replayer ──────────────────────────────────────────────────────────────────
@@ -55,6 +68,7 @@ const Replayer = () => {
   const [stepIdx, setStepIdx]       = useState(0);
   const [playing, setPlaying]       = useState(false);
   const [speed, setSpeed]           = useState(1);
+  const [handList, setHandList]     = useState<string[]>([]);
 
   useEffect(() => {
     if (!tournamentId || !handId) return;
@@ -62,15 +76,47 @@ const Replayer = () => {
     setError("");
     setStepIdx(0);
     setPlaying(false);
-    tournamentsApi
-      .replay(tournamentId, handId)
-      .then(setReplayData)
+    Promise.all([
+      tournamentsApi.replay(tournamentId, handId),
+      tournamentsApi.get(tournamentId).catch(() => null),
+    ])
+      .then(([replay, tournamentData]) => {
+        setReplayData(replay);
+        if (tournamentData) {
+          const seen = new Set<string>();
+          const ids: string[] = [];
+          tournamentData.decisions.forEach((d) => {
+            if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
+          });
+          setHandList(ids);
+        }
+      })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao carregar replay"))
       .finally(() => setLoading(false));
   }, [tournamentId, handId]);
 
   const steps = replayData?.timeline ?? [];
   const step  = steps[stepIdx] as ReplayStep | undefined;
+
+  // Hand navigation
+  const handIdx  = handList.indexOf(handId);
+  const prevHand = handIdx > 0 ? handList[handIdx - 1] : null;
+  const nextHand = handIdx >= 0 && handIdx < handList.length - 1 ? handList[handIdx + 1] : null;
+
+  // Alias map: hero keeps real name, others become "Villain N"
+  const playerAliases = useMemo<Record<string, string>>(() => {
+    if (!replayData) return {};
+    const aliases: Record<string, string> = {};
+    let n = 1;
+    Object.entries(replayData.seats)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b))
+      .forEach(([, seat]) => {
+        if (!(seat.player in aliases)) {
+          aliases[seat.player] = seat.player === replayData.hero ? replayData.hero : `Villain ${n++}`;
+        }
+      });
+    return aliases;
+  }, [replayData]);
 
   // Auto-play
   useEffect(() => {
@@ -145,7 +191,7 @@ const Replayer = () => {
 
   const heroCards = parseCards(replayData.hero_cards);
   const community = parseCards(step.board ?? []);
-  const seats     = buildSeats(step, replayData.hero, heroCards as [CardData, CardData]);
+  const seats     = buildSeats(step, replayData.hero, heroCards as [CardData, CardData], playerAliases);
 
   const isError   = step.is_error ?? false;
   const isCorrect = step.is_hero && !isError && step.type === "action";
@@ -156,13 +202,35 @@ const Replayer = () => {
       title={`${replayData.hero} — ${replayData.seats ? Object.values(replayData.seats).length : "?"} jogadores`}
       description={`Use ← → ou barra de espaço para navegar. Hero: ${replayData.hero} · BB: ${replayData.bb}`}
     >
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center justify-between gap-2 mb-2">
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary"
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </button>
+
+        {handList.length > 1 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => prevHand && navigate(`/replayer?t=${tournamentId}&h=${prevHand}`)}
+              disabled={!prevHand}
+              className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary disabled:opacity-30"
+            >
+              <SkipBack className="size-3.5" /> Mão anterior
+            </button>
+            <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+              {handIdx + 1}/{handList.length}
+            </span>
+            <button
+              onClick={() => nextHand && navigate(`/replayer?t=${tournamentId}&h=${nextHand}`)}
+              disabled={!nextHand}
+              className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary disabled:opacity-30"
+            >
+              Próxima mão <SkipForward className="size-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -238,7 +306,7 @@ const Replayer = () => {
                   s.is_error && "border-l-2 border-destructive"
                 )}>
                   <div className="flex items-center justify-between gap-2">
-                    <span className={cn("text-foreground", s.is_hero && "font-semibold text-primary")}>{s.desc}</span>
+                    <span className={cn("text-foreground", s.is_hero && "font-semibold text-primary")}>{anonymizeDesc(s.desc, playerAliases)}</span>
                     <span className="font-mono text-[10px] text-muted-foreground shrink-0">{s.street?.toUpperCase()}</span>
                   </div>
                   {s.is_error && s.best_action && (
