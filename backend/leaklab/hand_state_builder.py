@@ -37,12 +37,34 @@ def _normalize_action(action: Optional[str]) -> str:
     return mapping.get(action, action or 'fold')
 
 
+def _position_names(n: int) -> dict:
+    """Nomes de posição padrão para mesa de n jogadores.
+    ordered[0]=SB, ordered[1]=BB, ..., ordered[n-1]=BTN.
+    """
+    names: dict = {0: 'SB', 1: 'BB'}
+    if n == 2:
+        return names
+    names[n - 1] = 'BTN'
+    if n >= 4:
+        names[n - 2] = 'CO'
+    if n >= 6:
+        names[n - 3] = 'HJ'
+    # Preenche do UTG para o centro
+    utg_seq = ['UTG', 'UTG+1', 'UTG+2', 'MP1', 'MP2', 'MP3']
+    utg_i = 0
+    for i in range(2, n):
+        if i not in names:
+            names[i] = utg_seq[utg_i] if utg_i < len(utg_seq) else f'MP{utg_i + 1}'
+            utg_i += 1
+    return names
+
+
 def _infer_position(hand: ParsedHand, hero: str) -> str:
     """Infere posição usando assento real + posição do botão."""
     if not hand.players or not hand.button_seat:
         idx = hand.players.index(hero) if hero in hand.players else 0
-        order = ['SB', 'BB', 'UTG', 'MP', 'CO', 'BTN']
-        return order[idx] if idx < len(order) else f'P{idx}'
+        n = len(hand.players)
+        return _position_names(n).get(idx, f'P{idx}')
 
     # Extrair número de assento do hero
     hero_seat = None
@@ -56,8 +78,8 @@ def _infer_position(hand: ParsedHand, hero: str) -> str:
 
     if hero_seat is None:
         idx = hand.players.index(hero) if hero in hand.players else 0
-        order = ['SB', 'BB', 'UTG', 'MP', 'CO', 'BTN']
-        return order[idx] if idx < len(order) else f'P{idx}'
+        n = len(hand.players)
+        return _position_names(n).get(idx, f'P{idx}')
 
     # Coletar assentos ativos em ordem
     active_seats = []
@@ -80,30 +102,21 @@ def _infer_position(hand: ParsedHand, hero: str) -> str:
     try:
         btn_idx = active_seats.index(btn)
     except ValueError:
-        # Botão pode ter saído — pegar o mais próximo
         btn_idx = min(range(n), key=lambda i: (active_seats[i] - btn) % 100)
 
     ordered = active_seats[(btn_idx + 1):] + active_seats[:(btn_idx + 1)]
-
-    # ordered[0]=SB, ordered[1]=BB, ..., ordered[-1]=BTN
-    position_names = {0: 'SB', 1: 'BB'}
-    if n >= 3:
-        position_names[n - 1] = 'BTN'
-    if n >= 4:
-        position_names[n - 2] = 'CO'
-    if n >= 5:
-        position_names[n - 3] = 'MP'
+    # ordered[0]=SB, ordered[1]=BB, ..., ordered[n-1]=BTN
 
     try:
         hero_order_idx = ordered.index(hero_seat)
     except ValueError:
         return 'unknown'
 
-    return position_names.get(hero_order_idx, f'P{hero_order_idx}')
+    return _position_names(n).get(hero_order_idx, f'P{hero_order_idx}')
 
 
 def _is_in_position(position: str) -> bool:
-    return position in {'BTN', 'CO', 'SB'}
+    return position in {'BTN', 'CO', 'HJ'}
 
 
 def _pot_up_to(actions: List[ParsedAction], stop_index: int) -> float:
