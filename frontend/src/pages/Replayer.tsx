@@ -1,148 +1,210 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PokerTable, type Seat } from "@/components/hud/PokerTable";
 import type { CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
+import { tournaments as tournamentsApi, ReplayData, ReplayStep } from "@/lib/api";
 
-interface Step {
-  street: string;
-  community: CardData[];
-  pot: number;
-  activeSeat: number;
-  action: string;
-  bet?: number;
-  ev?: { correct: boolean; note: string };
+// ── Card parsing ──────────────────────────────────────────────────────────────
+
+function parseCard(raw: string): CardData {
+  return {
+    rank: raw.slice(0, -1) as CardData["rank"],
+    suit: raw.slice(-1).toLowerCase() as CardData["suit"],
+  };
 }
 
-const HERO_CARDS: [CardData, CardData] = [
-  { rank: "A", suit: "s" },
-  { rank: "K", suit: "s" },
-];
+function parseCards(arr: string[]): CardData[] {
+  return arr.map(parseCard);
+}
 
-const BASE_SEATS: Seat[] = [
-  { id: 1, name: "Hero", stack: 14500, hero: true, cards: HERO_CARDS },
-  { id: 2, name: "BlitzKing", stack: 22000 },
-  { id: 3, name: "FoldFactory", stack: 8400 },
-  { id: 4, name: "RiverGod", stack: 31200 },
-  { id: 5, name: "icebucket", stack: 17800 },
-  { id: 6, name: "shovemonkey", stack: 9200 },
-];
+// ── Map backend step to PokerTable seats ──────────────────────────────────────
 
-const STEPS: Step[] = [
-  { street: "Pré-flop", community: [], pot: 600, activeSeat: 1, action: "Hero raises 800", bet: 800 },
-  { street: "Pré-flop", community: [], pot: 1400, activeSeat: 4, action: "RiverGod 3-bets 2.400", bet: 2400, ev: { correct: true, note: "Range tight do 3-bet justifica call." } },
-  { street: "Pré-flop", community: [], pot: 4400, activeSeat: 1, action: "Hero calls" },
-  { street: "Flop", community: [{ rank: "K", suit: "h" }, { rank: "9", suit: "s" }, { rank: "2", suit: "d" }], pot: 4400, activeSeat: 4, action: "RiverGod c-bets 2.000", bet: 2000 },
-  { street: "Flop", community: [{ rank: "K", suit: "h" }, { rank: "9", suit: "s" }, { rank: "2", suit: "d" }], pot: 6400, activeSeat: 1, action: "Hero raises para 6.000", bet: 6000, ev: { correct: false, note: "Call seria mais lucrativo: villain pagaria turn com pares fracos." } },
-  { street: "Turn", community: [{ rank: "K", suit: "h" }, { rank: "9", suit: "s" }, { rank: "2", suit: "d" }, { rank: "Q", suit: "c" }], pot: 18400, activeSeat: 4, action: "RiverGod calls" },
-  { street: "River", community: [{ rank: "K", suit: "h" }, { rank: "9", suit: "s" }, { rank: "2", suit: "d" }, { rank: "Q", suit: "c" }, { rank: "5", suit: "h" }], pot: 18400, activeSeat: 1, action: "Hero shoves all-in", bet: 6700, ev: { correct: true, note: "Top pair, top kicker — value bet sólido." } },
-];
+function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[]): Seat[] {
+  return Object.entries(step.seats).map(([seatNum, sd]) => {
+    const seatId = parseInt(seatNum);
+    const isHero = sd.player === hero;
+    const bet    = step.bets?.[seatNum] || undefined;
+    const folded = step.folded?.includes(sd.player) ?? false;
+    return {
+      id:      seatId,
+      name:    `${sd.player} (${sd.pos})`,
+      stack:   sd.stack,
+      hero:    isHero,
+      cards:   isHero ? heroCards : undefined,
+      bet:     bet || undefined,
+      active:  step.seat === seatId,
+      folded,
+    };
+  });
+}
+
+// ── Replayer ──────────────────────────────────────────────────────────────────
 
 const Replayer = () => {
-  const [stepIdx, setStepIdx] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
-  const step = STEPS[stepIdx];
+  const [params]   = useSearchParams();
+  const navigate   = useNavigate();
+  const tournamentId = params.get("t") ?? "";
+  const handId       = params.get("h") ?? "";
+
+  const [replayData, setReplayData] = useState<ReplayData | null>(null);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState("");
+  const [stepIdx, setStepIdx]       = useState(0);
+  const [playing, setPlaying]       = useState(false);
+  const [speed, setSpeed]           = useState(1);
 
   useEffect(() => {
-    if (!playing) return;
+    if (!tournamentId || !handId) return;
+    setLoading(true);
+    setError("");
+    setStepIdx(0);
+    setPlaying(false);
+    tournamentsApi
+      .replay(tournamentId, handId)
+      .then(setReplayData)
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao carregar replay"))
+      .finally(() => setLoading(false));
+  }, [tournamentId, handId]);
+
+  const steps = replayData?.timeline ?? [];
+  const step  = steps[stepIdx] as ReplayStep | undefined;
+
+  // Auto-play
+  useEffect(() => {
+    if (!playing || !step) return;
     const t = setTimeout(() => {
-      setStepIdx((i) => (i < STEPS.length - 1 ? i + 1 : (setPlaying(false), i)));
+      setStepIdx((i) => {
+        if (i < steps.length - 1) return i + 1;
+        setPlaying(false);
+        return i;
+      });
     }, 1600 / speed);
     return () => clearTimeout(t);
-  }, [playing, stepIdx, speed]);
+  }, [playing, stepIdx, speed, steps.length, step]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.code === "Space") {
-        e.preventDefault();
-        setPlaying((p) => !p);
-      }
-      if (e.code === "ArrowRight") setStepIdx((i) => Math.min(STEPS.length - 1, i + 1));
-      if (e.code === "ArrowLeft") setStepIdx((i) => Math.max(0, i - 1));
+      if (e.code === "Space") { e.preventDefault(); setPlaying((p) => !p); }
+      if (e.code === "ArrowRight") setStepIdx((i) => Math.min(steps.length - 1, i + 1));
+      if (e.code === "ArrowLeft")  setStepIdx((i) => Math.max(0, i - 1));
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [steps.length]);
 
-  // Build seats with active highlight + bet
-  const seats = BASE_SEATS.map((s) => ({
-    ...s,
-    active: s.id === step.activeSeat,
-    bet: s.id === step.activeSeat ? step.bet : undefined,
-  }));
+  // ── No params: show placeholder ──────────────────────────────────────────────
+  if (!tournamentId || !handId) {
+    return (
+      <HudLayout eyebrow="Hand Replayer" title="Selecione uma mão" description="Abra uma mão a partir da página de detalhe do torneio.">
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
+          <p className="text-sm">Nenhuma mão selecionada. Volte para o torneio e clique em "Abrir no replayer".</p>
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:underline">
+            <ArrowLeft className="size-3.5" /> Voltar
+          </button>
+        </div>
+      </HudLayout>
+    );
+  }
+
+  if (loading) {
+    return (
+      <HudLayout eyebrow="Hand Replayer" title="Carregando…" description="">
+        <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
+          <Loader2 className="size-5 animate-spin text-primary" />
+          <span className="font-mono text-xs uppercase tracking-wider">Carregando mão…</span>
+        </div>
+      </HudLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <HudLayout eyebrow="Hand Replayer" title="Erro" description="">
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <p className="text-sm text-destructive">{error}</p>
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:underline">
+            <ArrowLeft className="size-3.5" /> Voltar
+          </button>
+        </div>
+      </HudLayout>
+    );
+  }
+
+  if (!replayData || !step) {
+    return (
+      <HudLayout eyebrow="Hand Replayer" title="—" description="">
+        <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">Sem dados.</div>
+      </HudLayout>
+    );
+  }
+
+  const heroCards = parseCards(replayData.hero_cards);
+  const community = parseCards(step.board ?? []);
+  const seats     = buildSeats(step, replayData.hero, heroCards as [CardData, CardData]);
+
+  const isError   = step.is_error ?? false;
+  const isCorrect = step.is_hero && !isError && step.type === "action";
 
   return (
     <HudLayout
-      eyebrow="Hand Replayer"
-      title="Reproduza e analise mãos críticas"
-      description="Use os controles ou as setas do teclado (← →) e barra de espaço para navegar passo a passo. A IA destaca decisões -EV em tempo real."
+      eyebrow={`Replayer · Mão ${replayData.hand_id}`}
+      title={`${replayData.hero} — ${replayData.seats ? Object.values(replayData.seats).length : "?"} jogadores`}
+      description={`Use ← → ou barra de espaço para navegar. Hero: ${replayData.hero} · BB: ${replayData.bb}`}
     >
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary"
+        >
+          <ArrowLeft className="size-3.5" /> Voltar
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="lg:col-span-8 space-y-4">
-          <PokerTable seats={seats} community={step.community} pot={step.pot} street={step.street} />
+          <PokerTable seats={seats} community={community} pot={step.pot} street={step.street} />
 
           {/* Controls */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-border bg-hud-surface p-3">
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setStepIdx(0)}
+              <button onClick={() => setStepIdx(0)}
                 className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Reiniciar"
-              >
-                <Rewind className="size-4" aria-hidden />
-              </button>
-              <button
-                onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
-                disabled={stepIdx === 0}
+                aria-label="Reiniciar"><Rewind className="size-4" /></button>
+              <button onClick={() => setStepIdx((i) => Math.max(0, i - 1))} disabled={stepIdx === 0}
                 className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Passo anterior"
-              >
-                <ChevronLeft className="size-5" aria-hidden />
-              </button>
-              <button
-                onClick={() => setPlaying((p) => !p)}
+                aria-label="Anterior"><ChevronLeft className="size-5" /></button>
+              <button onClick={() => setPlaying((p) => !p)}
                 className="inline-flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={playing ? "Pausar" : "Reproduzir"}
-              >
+                aria-label={playing ? "Pausar" : "Reproduzir"}>
                 {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
               </button>
-              <button
-                onClick={() => setStepIdx((i) => Math.min(STEPS.length - 1, i + 1))}
-                disabled={stepIdx === STEPS.length - 1}
+              <button onClick={() => setStepIdx((i) => Math.min(steps.length - 1, i + 1))} disabled={stepIdx === steps.length - 1}
                 className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Próximo passo"
-              >
-                <ChevronRight className="size-5" aria-hidden />
-              </button>
-              <button
-                onClick={() => setStepIdx(STEPS.length - 1)}
+                aria-label="Próximo"><ChevronRight className="size-5" /></button>
+              <button onClick={() => setStepIdx(steps.length - 1)}
                 className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Final da mão"
-              >
-                <FastForward className="size-4" aria-hidden />
-              </button>
+                aria-label="Final"><FastForward className="size-4" /></button>
             </div>
 
-            {/* Progress */}
             <div className="flex flex-1 items-center gap-3 sm:max-w-md">
               <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-                {stepIdx + 1}/{STEPS.length}
+                {stepIdx + 1}/{steps.length}
               </span>
               <div className="flex-1 flex gap-0.5">
-                {STEPS.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setStepIdx(i)}
+                {steps.map((s, i) => (
+                  <button key={i} onClick={() => setStepIdx(i)}
                     className={cn(
-                      "h-1.5 flex-1 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      i <= stepIdx ? "bg-primary" : "bg-border",
-                      s.ev && !s.ev.correct && i <= stepIdx && "bg-destructive"
+                      "h-1.5 flex-1 rounded-sm transition-colors focus-visible:outline-none",
+                      i <= stepIdx
+                        ? (s.is_error ? "bg-destructive" : "bg-primary")
+                        : "bg-border"
                     )}
-                    aria-label={`Ir para passo ${i + 1}`}
+                    aria-label={`Passo ${i + 1}`}
                   />
                 ))}
               </div>
@@ -150,63 +212,95 @@ const Replayer = () => {
 
             <div className="flex items-center gap-1">
               {[0.5, 1, 2].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSpeed(s)}
+                <button key={s} onClick={() => setSpeed(s)}
                   className={cn(
-                    "rounded-sm px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "rounded-sm px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none",
                     speed === s ? "bg-primary/15 text-primary ring-1 ring-primary/30" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {s}x
-                </button>
+                  )}>{s}x</button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Side panel: action log + AI feedback */}
-        <aside className="lg:col-span-4 space-y-6">
+        {/* Side panel */}
+        <aside className="lg:col-span-4 space-y-4">
+          {/* Action log */}
           <section className="rounded-xl border border-border bg-hud-surface overflow-hidden">
             <header className="flex items-center justify-between border-b border-border px-4 py-3">
               <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground">Action Log</h2>
-              <span className="font-mono text-[10px] text-muted-foreground">{step.street}</span>
+              <span className="font-mono text-[10px] text-muted-foreground">{step.street?.toUpperCase()}</span>
             </header>
-            <ol className="max-h-80 overflow-y-auto divide-y divide-border">
-              {STEPS.slice(0, stepIdx + 1).map((s, i) => (
-                <li key={i} className={cn("px-4 py-2.5 text-xs", i === stepIdx && "bg-primary/5")}>
+            <ol className="max-h-72 overflow-y-auto divide-y divide-border">
+              {steps.slice(0, stepIdx + 1).map((s, i) => (
+                <li key={i} className={cn(
+                  "px-4 py-2.5 text-xs transition-colors",
+                  i === stepIdx && "bg-primary/5",
+                  s.is_error && "border-l-2 border-destructive"
+                )}>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-foreground">{s.action}</span>
-                    <span className="font-mono text-[10px] text-muted-foreground">{s.street}</span>
+                    <span className={cn("text-foreground", s.is_hero && "font-semibold text-primary")}>{s.desc}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground shrink-0">{s.street?.toUpperCase()}</span>
                   </div>
+                  {s.is_error && s.best_action && (
+                    <div className="mt-0.5 font-mono text-[10px] text-destructive">
+                      correto: {s.best_action} · score {s.error_score?.toFixed(3)}
+                    </div>
+                  )}
                 </li>
               ))}
             </ol>
           </section>
 
-          {step.ev && (
-            <section
-              className={cn(
-                "rounded-xl border p-4 space-y-2",
-                step.ev.correct ? "border-primary/30 bg-primary/5" : "border-destructive/40 bg-destructive/5"
-              )}
-            >
+          {/* EV feedback */}
+          {step.type === "action" && step.is_hero && (
+            <section className={cn(
+              "rounded-xl border p-4 space-y-2",
+              isError
+                ? "border-destructive/40 bg-destructive/5"
+                : isCorrect
+                ? "border-primary/30 bg-primary/5"
+                : "border-border bg-hud-surface"
+            )}>
               <div className="flex items-center gap-2">
-                <AlertOctagon className={cn("size-4", step.ev.correct ? "text-primary" : "text-destructive")} aria-hidden />
-                <span className={cn("font-mono text-[10px] font-bold uppercase tracking-widest-2", step.ev.correct ? "text-primary" : "text-destructive")}>
-                  IA Coach • {step.ev.correct ? "+EV" : "-EV"}
+                {isError
+                  ? <AlertOctagon className="size-4 text-destructive" />
+                  : <CheckCircle2 className="size-4 text-primary" />}
+                <span className={cn("font-mono text-[10px] font-bold uppercase tracking-widest-2",
+                  isError ? "text-destructive" : "text-primary")}>
+                  IA Coach · {isError ? (step.error_label?.replace(/_/g," ") ?? "-EV") : "+EV"}
                 </span>
               </div>
-              <p className="text-sm text-foreground leading-relaxed">{step.ev.note}</p>
+              {isError ? (
+                <div className="space-y-1.5 text-xs text-foreground">
+                  <p>Ação: <strong>{step.action}</strong> — Recomendado: <strong>{step.best_action}</strong></p>
+                  {step.hand_equity != null && (
+                    <p className="text-muted-foreground">
+                      Equity: {(step.hand_equity * 100).toFixed(1)}%
+                      {step.pot_odds_equity != null && ` (necessário: ${(step.pot_odds_equity * 100).toFixed(1)}%)`}
+                    </p>
+                  )}
+                  {step.m_ratio != null && (
+                    <p className="text-muted-foreground">M ratio: {step.m_ratio} · ICM: {step.icm_pressure}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-foreground">Linha sólida para o spot.</p>
+              )}
             </section>
           )}
 
-          <div className="rounded-xl border border-border bg-hud-surface p-4">
-            <div className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-3">Atalhos</div>
-            <ul className="space-y-1.5 text-xs text-muted-foreground">
-              <li className="flex items-center justify-between"><span>Play / Pause</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">Space</kbd></li>
-              <li className="flex items-center justify-between"><span>Próximo passo</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">→</kbd></li>
-              <li className="flex items-center justify-between"><span>Passo anterior</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">←</kbd></li>
+          {/* Pot & stack info */}
+          <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-2">
+            <div className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-2">Situação</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div><span className="text-muted-foreground">Pot</span><div className="font-mono font-medium">{step.pot_bb?.toFixed(1)} BB</div></div>
+              <div><span className="text-muted-foreground">Street</span><div className="font-mono font-medium">{step.street?.toUpperCase()}</div></div>
+            </div>
+            <div className="mt-2 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-1">Atalhos</div>
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              <li className="flex items-center justify-between"><span>Play/Pause</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">Space</kbd></li>
+              <li className="flex items-center justify-between"><span>Próximo</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">→</kbd></li>
+              <li className="flex items-center justify-between"><span>Anterior</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">←</kbd></li>
             </ul>
           </div>
         </aside>

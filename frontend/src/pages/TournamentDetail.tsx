@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Search,
@@ -176,6 +176,7 @@ const STREETS: (Street | "all")[] = ["all", "Pré-flop", "Flop", "Turn", "River"
 
 const TournamentDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [hands, setHands] = useState<Hand[]>([]);
@@ -273,9 +274,9 @@ const TournamentDetail = () => {
                 />
               )}
               <button
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--primary)/0.5)] transition-colors hover:bg-primary/90"
-                title="Replay completo da sessão (em breve)"
-                disabled
+                onClick={() => hands[0] && navigate(`/replayer?t=${id}&h=${hands[0].id}`)}
+                disabled={!hands.length}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--primary)/0.5)] transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <PlayCircle className="size-3.5" aria-hidden />
                 Replay completo
@@ -351,8 +352,8 @@ const TournamentDetail = () => {
             {filtered.map((h) => {
               const meta = SEVERITY_META[h.category];
               const Icon = meta.icon;
-              const positive = h.resultBb > 0;
-              const negative = h.resultBb < 0;
+              const positive = (h.evDelta ?? 0) > 0;
+              const negative = (h.evDelta ?? 0) < 0;
               return (
                 <article
                   key={h.id}
@@ -448,22 +449,38 @@ const TournamentDetail = () => {
                               Análise do Coach IA
                             </span>
                           </div>
-                          <button
-                            onClick={() => requestAnalysis(h.decisionId, true)}
-                            disabled={analysisLoading[h.decisionId]}
-                            className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                            title="Gerar nova análise"
-                          >
-                            <RefreshCw className={cn("size-3", analysisLoading[h.decisionId] && "animate-spin")} />
-                            Regenerar
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <Link
+                              to={`/replayer?t=${id}&h=${h.id}`}
+                              className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <PlayCircle className="size-3" aria-hidden />
+                              Replayer
+                            </Link>
+                            <button
+                              onClick={() => requestAnalysis(h.decisionId, true)}
+                              disabled={analysisLoading[h.decisionId]}
+                              className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                              title="Gerar nova análise"
+                            >
+                              <RefreshCw className={cn("size-3", analysisLoading[h.decisionId] && "animate-spin")} />
+                              Regenerar
+                            </button>
+                          </div>
                         </div>
                         <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
                           {analyses[h.decisionId]}
                         </p>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          to={`/replayer?t=${id}&h=${h.id}`}
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-secondary px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground hover:border-primary/30"
+                        >
+                          <PlayCircle className="size-3.5" aria-hidden />
+                          Abrir no replayer
+                        </Link>
                         <button
                           onClick={() => requestAnalysis(h.decisionId)}
                           disabled={analysisLoading[h.decisionId]}

@@ -105,6 +105,58 @@ export interface TournamentDecision {
   note: string | null;
 }
 
+export interface ReplaySeat {
+  player: string;
+  stack: number;
+  stack_bb: number;
+  pos: string;
+}
+
+export interface ReplayStep {
+  type: "deal" | "street" | "action" | "showdown";
+  desc: string;
+  street: string;
+  seats: Record<string, ReplaySeat>;
+  hero: string;
+  hero_cards: string[];
+  board: string[];
+  pot: number;
+  pot_bb: number;
+  bets: Record<string, number>;
+  folded: string[];
+  bb: number;
+  button: number;
+  // action-specific
+  player?: string;
+  seat?: number;
+  action?: string;
+  amount?: number;
+  is_hero?: boolean;
+  is_error?: boolean;
+  error_label?: string;
+  error_score?: number;
+  best_action?: string;
+  // error details
+  pot_odds_equity?: number;
+  hand_equity?: number;
+  m_ratio?: number;
+  icm_pressure?: string;
+  hero_stack_bb?: number;
+}
+
+export interface ReplayData {
+  hand_id: string;
+  tournament_id: string;
+  hero: string;
+  hero_cards: string[];
+  board: string[];
+  button: number;
+  sb: number;
+  bb: number;
+  seats: Record<string, { player: string; stack: number; pos: string }>;
+  timeline: ReplayStep[];
+}
+
 export const tournaments = {
   list: () => request<TournamentsResponse>("/history/tournaments"),
 
@@ -132,6 +184,9 @@ export const tournaments = {
       method: "POST",
       body: JSON.stringify({ tournament_id: dbId }),
     }),
+
+  replay: (tournamentId: string, handId: string) =>
+    request<ReplayData>(`/replay/${tournamentId}/${handId}`),
 
   analyzeDecision: (decisionId: number) =>
     request<{ analysis: string; cached: boolean }>("/analyze/decision", {
