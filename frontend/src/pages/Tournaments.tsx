@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, Tournament } from "@/lib/api";
 
@@ -29,14 +29,20 @@ const Tournaments = () => {
   const [network, setNetwork] = useState<string>("all");
   const [sort, setSort] = useState<SortKey>("played_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
-  useEffect(() => {
+  const reload = () => {
+    setLoading(true);
     tournamentsApi
       .list()
       .then((r) => setData(r.tournaments))
       .catch(() => null)
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { reload(); }, []);
 
   const networks = useMemo(
     () => ["all", ...Array.from(new Set(data.map((t) => t.site).filter(Boolean)))],
@@ -73,6 +79,32 @@ const Tournaments = () => {
     else {
       setSort(key);
       setSortDir("desc");
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, tournamentId: string) => {
+    e.stopPropagation();
+    setDeletingId(tournamentId);
+    try {
+      await tournamentsApi.deleteOne(tournamentId);
+      setData((prev) => prev.filter((t) => t.tournament_id !== tournamentId));
+    } catch {
+      // silently ignore — row stays
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleClearAll = async () => {
+    setClearing(true);
+    try {
+      await tournamentsApi.clearAll();
+      setData([]);
+      setClearConfirm(false);
+    } catch {
+      // silently ignore
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -127,7 +159,7 @@ const Tournaments = () => {
                 aria-label="Buscar torneio"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Filter className="size-3.5 text-muted-foreground" aria-hidden />
               {networks.map((n) => (
                 <button
@@ -143,6 +175,40 @@ const Tournaments = () => {
                   {n === "all" ? "Todas" : n}
                 </button>
               ))}
+
+              {data.length > 0 && (
+                <div className="ml-auto">
+                  {clearConfirm ? (
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] text-destructive uppercase tracking-wider flex items-center gap-1">
+                        <AlertTriangle className="size-3" />
+                        Confirmar?
+                      </span>
+                      <button
+                        onClick={handleClearAll}
+                        disabled={clearing}
+                        className="rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider bg-destructive/10 text-destructive ring-1 ring-destructive/30 hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                      >
+                        {clearing ? "Limpando…" : "Sim, limpar tudo"}
+                      </button>
+                      <button
+                        onClick={() => setClearConfirm(false)}
+                        className="rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setClearConfirm(true)}
+                      className="inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-destructive hover:bg-destructive/10 ring-1 ring-border transition-colors"
+                    >
+                      <Trash2 className="size-3" />
+                      Limpar tudo
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 
@@ -159,6 +225,7 @@ const Tournaments = () => {
                       { k: "place" as SortKey, label: "Posição" },
                       { k: "profit" as SortKey, label: "Lucro" },
                       { k: null, label: "Status" },
+                      { k: null, label: "" },
                     ].map((c, i) => (
                       <th
                         key={i}
@@ -186,10 +253,14 @@ const Tournaments = () => {
                   {rows.map((t) => {
                     const profit = t.profit ?? null;
                     const positive = profit !== null && profit > 0;
+                    const isDeleting = deletingId === t.tournament_id;
                     return (
                       <tr
                         key={t.id}
-                        className="group transition-colors hover:bg-primary/5 cursor-pointer"
+                        className={cn(
+                          "group transition-colors hover:bg-primary/5 cursor-pointer",
+                          isDeleting && "opacity-40 pointer-events-none"
+                        )}
                         onClick={() => navigate(`/tournaments/${t.tournament_id}`)}
                       >
                         <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-muted-foreground">
@@ -235,12 +306,26 @@ const Tournaments = () => {
                             </span>
                           )}
                         </td>
+                        <td className="px-4 py-3.5">
+                          <button
+                            onClick={(e) => handleDelete(e, t.tournament_id)}
+                            disabled={isDeleting}
+                            className="opacity-0 group-hover:opacity-100 inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label="Deletar torneio"
+                            title="Deletar torneio"
+                          >
+                            {isDeleting
+                              ? <Loader2 className="size-3.5 animate-spin" />
+                              : <Trash2 className="size-3.5" />
+                            }
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
                   {rows.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-16 text-center text-sm text-muted-foreground">
+                      <td colSpan={8} className="px-4 py-16 text-center text-sm text-muted-foreground">
                         {data.length === 0
                           ? "Nenhum torneio importado ainda. Use o Dashboard para fazer upload."
                           : "Nenhum torneio encontrado para os filtros atuais."}

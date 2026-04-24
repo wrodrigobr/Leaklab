@@ -141,6 +141,15 @@ def analyze():
     raw_full   = '\n'.join(h.raw_text for h in hands if hasattr(h,'raw_text'))
     financials = _extract_financials(raw_full, hero)
 
+    # Bloquear duplicata
+    existing = get_tournament(g.user_id, tournament_id)
+    if existing:
+        return jsonify({
+            'error': f'Torneio {tournament_id} já foi importado anteriormente.',
+            'duplicate': True,
+            'tournament_id': tournament_id,
+        }), 409
+
     # Persistir
     t_db_id = save_tournament(
         user_id=g.user_id,
@@ -861,6 +870,30 @@ def replay_coach():
         set_llm_cache(g.user_id, cache_key, analysis)
 
     return jsonify({'analysis': analysis, 'cached': False})
+
+
+@app.route('/history/tournament/<tournament_id>', methods=['DELETE'])
+@require_auth
+def delete_tournament(tournament_id):
+    """Deleta um torneio específico do usuário (e suas decisões via CASCADE)."""
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        row = conn.execute(
+            "SELECT id FROM tournaments WHERE user_id=? AND tournament_id=?",
+            (g.user_id, tournament_id)
+        ).fetchone()
+        if not row:
+            return jsonify({'error': 'Torneio não encontrado'}), 404
+        db_id = row['id']
+        conn.execute("DELETE FROM decisions WHERE tournament_id=?", (db_id,))
+        conn.execute("DELETE FROM tournaments WHERE id=?", (db_id,))
+        conn.commit()
+        return jsonify({'ok': True, 'deleted': tournament_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 
 @app.route('/debug/tournaments', methods=['GET'])

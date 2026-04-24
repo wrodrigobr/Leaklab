@@ -49,7 +49,8 @@ export function EmptyDashboard({ onComplete }: Props) {
         onComplete?.();
       } catch (err: unknown) {
         setStatus("error");
-        setErrorMsg(err instanceof Error ? err.message : "Erro ao analisar arquivo");
+        const msg = err instanceof Error ? err.message : "Erro ao analisar arquivo";
+        setErrorMsg(msg.includes("já foi importado") ? msg : msg);
       }
     },
     [onComplete]

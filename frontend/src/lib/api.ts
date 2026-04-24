@@ -126,6 +126,16 @@ export const tournaments = {
       method: "POST",
       body: JSON.stringify({ tournament_id: dbId }),
     }),
+
+  deleteOne: (tournamentId: string) =>
+    request<{ ok: boolean }>(`/history/tournament/${tournamentId}`, {
+      method: "DELETE",
+    }),
+
+  clearAll: () =>
+    request<{ ok: boolean; message: string }>("/admin/reset-my-data", {
+      method: "POST",
+    }),
 };
 
 // ── Evolution / KPIs ──────────────────────────────────────────────────────────
