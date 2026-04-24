@@ -8,10 +8,10 @@ export interface CardData {
 
 const suitGlyph: Record<Suit, string> = { s: "♠", h: "♥", d: "♦", c: "♣" };
 const suitColor: Record<Suit, string> = {
-  s: "text-foreground",
-  c: "text-foreground",
-  h: "text-destructive",
-  d: "text-destructive",
+  s: "text-[hsl(var(--card-suit-dark))]",
+  c: "text-[hsl(var(--card-suit-dark))]",
+  h: "text-[hsl(var(--card-suit-red))]",
+  d: "text-[hsl(var(--card-suit-red))]",
 };
 
 export function PlayingCard({
@@ -43,7 +43,7 @@ export function PlayingCard({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-md border border-border bg-foreground font-bold leading-none shadow-lg",
+        "flex flex-col items-center justify-center rounded-md border border-border bg-[hsl(var(--card-face))] font-bold leading-none shadow-lg",
         sz,
         suitColor[card.suit]
       )}
