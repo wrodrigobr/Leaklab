@@ -40,13 +40,14 @@ function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[], alias
     }
 
     return {
-      id:      seatId,
-      name:    `${displayName} (${sd.pos})`,
-      stack:   sd.stack,
-      hero:    isHero,
+      id:       seatId,
+      name:     `${displayName} (${sd.pos})`,
+      stack:    sd.stack,
+      hero:     isHero,
       cards,
-      bet:     bet || undefined,
-      active:  step.seat === seatId,
+      revealed: isShowdown && !isHero && Array.isArray(cards) && cards.length > 0,
+      bet:      bet || undefined,
+      active:   step.seat === seatId,
       folded,
     };
   });
