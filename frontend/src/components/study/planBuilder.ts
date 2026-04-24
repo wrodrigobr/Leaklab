@@ -162,48 +162,51 @@ function generateWeeks(cards: StudyCard[]): import("./types").StudyWeek[] {
     const primary   = cards[w * 2]     ?? cards[0];
     const secondary = cards[w * 2 + 1] ?? cards[1];
 
+    const primaryConceitos = primary?.conceitos?.join(" · ") ?? "Estudo de range";
+
     const days: import("./types").StudyDay[] = [
       {
         day: 1,
-        title: `Teoria: ${primary?.titulo?.slice(0, 40) ?? "Conceitos"}`,
-        topic: primary?.conceitos?.slice(0, 2).join(" · ") ?? "Estudo de range",
+        title: primary?.titulo ?? "Teoria",
+        topic: primaryConceitos,
         estimatedMinutes: 50,
         objectives: [
-          `Entender a raiz do leak: ${primary?.diagnostico?.slice(0, 60) ?? "—"}`,
-          `Identificar spots de erro em sessão passada`,
+          primary?.diagnostico ?? "Entender a raiz do leak",
+          "Identificar os spots de erro em sessão passada e marcá-los para revisão",
         ],
         leakIds: [primary?.prioridade ?? `p${w * 2 + 1}`],
       },
       {
         day: 2,
         title: "Drill prático",
-        topic: primary?.exercicio?.slice(0, 55) ?? "Hand history review — filtre mãos perdidas",
+        topic: primary?.exercicio ?? "Hand history review — filtre mãos perdidas neste spot",
         estimatedMinutes: 60,
         objectives: [
-          "Resolver ≥20 mãos no solver ou GTO Wizard",
-          `Meta: ${primary?.metrica?.slice(0, 60) ?? "Reduzir erro neste spot em 20%"}`,
+          "Resolver ≥20 mãos no solver ou GTO Wizard focando neste padrão",
+          primary?.metrica ?? "Reduzir frequência de erro neste spot em ≥20%",
         ],
         leakIds: [primary?.prioridade ?? `p${w * 2 + 1}`],
       },
       {
         day: 3,
-        title: `Estudo: ${secondary?.titulo?.slice(0, 40) ?? "Leak secundário"}`,
-        topic: secondary?.diagnostico?.slice(0, 55) ?? "Análise de posição e SPR",
+        title: secondary?.titulo ?? "Leak secundário",
+        topic: secondary?.diagnostico ?? "Análise de posição e SPR",
         estimatedMinutes: 45,
         objectives: [
           secondary?.conceitos?.[0] ?? "Conceitos de range advantage",
-          secondary?.conceitos?.[1] ?? "Pot odds e implied odds",
+          secondary?.conceitos?.[1] ?? "Pot odds e implied odds em pots multi-way",
+          ...(secondary?.conceitos?.slice(2) ?? []),
         ],
         leakIds: [secondary?.prioridade ?? `p${w * 2 + 2}`],
       },
       {
         day: 4,
         title: "Exercício cronometrado",
-        topic: secondary?.exercicio?.slice(0, 55) ?? "Quiz tático — 20 questões",
+        topic: secondary?.exercicio ?? "Quiz tático — resolva 20 questões cronometrado",
         estimatedMinutes: 30,
         objectives: [
           "Acerto ≥80% no quiz da plataforma",
-          `Meta: ${secondary?.metrica?.slice(0, 60) ?? "Menos de 10% de erro neste spot"}`,
+          secondary?.metrica ?? "Reduzir frequência de erro neste spot em ≥10%",
         ],
         leakIds: [secondary?.prioridade ?? `p${w * 2 + 2}`],
       },

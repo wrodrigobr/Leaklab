@@ -178,7 +178,7 @@ const StudyPlanPage = () => {
             <h2 className="text-sm font-semibold text-foreground">
               {plan ? "Plano gerado a partir dos seus leaks reais" : "Carregando plano de estudos…"}
             </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {plan?.diagnosis.summary ?? "Aguarde enquanto o Coach IA analisa seu histórico."}
             </p>
           </div>
@@ -294,7 +294,7 @@ const StudyPlanPage = () => {
                             </span>
                           </div>
                           <p className="text-sm font-semibold text-foreground">{leak.title}</p>
-                          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{leak.rationale}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{leak.rationale}</p>
                         </button>
                       </li>
                     );

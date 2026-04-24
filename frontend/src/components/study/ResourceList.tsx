@@ -42,7 +42,7 @@ export function ResourceList({ resources }: { resources: StudyResource[] }) {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-foreground truncate">{r.title}</p>
+                  <p className="text-xs font-semibold text-foreground">{r.title}</p>
                   <span className="shrink-0 font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
                     {LABELS[r.type]}
                   </span>
