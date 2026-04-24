@@ -452,6 +452,7 @@ def _analyze_hands(hands):
             decisions = []
             for di in inputs:
                 r = evaluate_decision(di)
+                interp = r.get('interpretation', {})
                 enriched = {
                     **r,
                     'street':       di['street'],
@@ -460,6 +461,12 @@ def _analyze_hands(hands):
                     'hero_cards':   hand.hero_cards,
                     'board':        hand.board or [],
                     'draw_profile': di['math'].get('drawProfile', ''),
+                    'position':     di['spot'].get('position', ''),
+                    'num_players':  di['context'].get('activePlayers', 0),
+                    'level_sb':     di['context'].get('levelSb', 0),
+                    'level_bb':     di['context'].get('levelBb', 0),
+                    'level_num':    di['context'].get('levelNum', 0),
+                    'note':         interp.get('strategicExplanation', '') or interp.get('mathExplanation', ''),
                 }
                 results.append(enriched)
                 decisions.append(enriched)

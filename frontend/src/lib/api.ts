@@ -97,6 +97,12 @@ export interface TournamentDecision {
   icm_pressure: string | null;
   stack_bb: number | null;
   draw_profile: string;
+  position: string | null;
+  num_players: number | null;
+  level_sb: number | null;
+  level_bb: number | null;
+  level_num: number | null;
+  note: string | null;
 }
 
 export const tournaments = {

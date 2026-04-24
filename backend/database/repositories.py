@@ -215,14 +215,21 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 ctx.get('icmPressure'),
                 ctx.get('heroStackBb'),
                 r.get('draw_profile', ctx.get('drawProfile', '')),
+                r.get('position', ''),
+                r.get('num_players', 0),
+                r.get('level_sb', 0),
+                r.get('level_bb', 0),
+                r.get('level_num', 0),
+                r.get('note', ''),
             ))
         conn.executemany("""
             INSERT INTO decisions
               (tournament_id, hand_id, street, hero_cards, board,
                action_taken, best_action, label, score,
                math_penalty, range_penalty, m_ratio, icm_pressure,
-               stack_bb, draw_profile)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               stack_bb, draw_profile, position, num_players,
+               level_sb, level_bb, level_num, note)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:

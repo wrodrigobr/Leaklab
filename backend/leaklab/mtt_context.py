@@ -15,7 +15,16 @@ from typing import Optional
 from .models import ParsedHand
 
 # ── Regex ─────────────────────────────────────────────────────────────────────
-_LEVEL_RE  = re.compile(r'Level\s+[IVXLCDM]+\s+\((\d+)/(\d+)\)')
+_LEVEL_RE  = re.compile(r'Level\s+([IVXLCDM]+)\s+\((\d+)/(\d+)\)')
+
+_ROMAN = {'I':1,'V':5,'X':10,'L':50,'C':100,'D':500,'M':1000}
+def _roman_to_int(s: str) -> int:
+    result, prev = 0, 0
+    for ch in reversed(s.upper()):
+        v = _ROMAN.get(ch, 0)
+        result += v if v >= prev else -v
+        prev = v
+    return result
 _ANTE_RE   = re.compile(r'posts the ante (\d+)')
 _SEAT_RE   = re.compile(r'^Seat \d+: .+ \(\d+ in chips\)')
 _STACK_RE  = re.compile(r'Seat \d+: {hero} \((\d+) in chips\)')
@@ -45,8 +54,9 @@ class MTTContext:
     icm_pressure: str              # low / medium / high
 
     # Extras
-    level_sb: float                # SB do nível atual (pode diferir do hand.sb)
-    level_bb: float
+    level_sb:  float               # SB do nível atual (pode diferir do hand.sb)
+    level_bb:  float
+    level_num: int                 # número do nível (ex: XIV → 14)
 
 
 def build_mtt_context(hand: ParsedHand) -> MTTContext:
@@ -56,8 +66,9 @@ def build_mtt_context(hand: ParsedHand) -> MTTContext:
 
     # ── Blinds do nível ──────────────────────────────────────────────────────
     m = _LEVEL_RE.search(raw)
-    level_sb = float(m.group(1)) if m else (hand.sb or 0.0)
-    level_bb = float(m.group(2)) if m else (hand.bb or 1.0)
+    level_num = _roman_to_int(m.group(1)) if m else 0
+    level_sb  = float(m.group(2)) if m else (hand.sb or 0.0)
+    level_bb  = float(m.group(3)) if m else (hand.bb or 1.0)
     bb = level_bb or 1.0
 
     # ── Ante ─────────────────────────────────────────────────────────────────
@@ -109,6 +120,7 @@ def build_mtt_context(hand: ParsedHand) -> MTTContext:
         icm_pressure=icm_pressure,
         level_sb=level_sb,
         level_bb=level_bb,
+        level_num=level_num,
     )
 
 
@@ -165,4 +177,7 @@ def context_to_dict(ctx: MTTContext) -> dict:
         'mRatio':          ctx.m_ratio,
         'heroStackBb':     ctx.hero_stack_bb,
         'activePlayers':   ctx.active_players,
+        'levelSb':         ctx.level_sb,
+        'levelBb':         ctx.level_bb,
+        'levelNum':        ctx.level_num,
     }

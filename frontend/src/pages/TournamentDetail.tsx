@@ -29,8 +29,6 @@ interface Hand {
   position: string;
   holeCards: [CardData, CardData] | null;
   board: CardData[];
-  resultBb: number;
-  potBb: number;
   street: Street;
   action: string;
   category: Severity;
@@ -40,6 +38,10 @@ interface Hand {
   stackBb?: number | null;
   mRatio?: number | null;
   icm?: string | null;
+  numPlayers?: number | null;
+  levelSb?: number | null;
+  levelBb?: number | null;
+  levelNum?: number | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -112,32 +114,36 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
     const board = parseBoard(worst.board);
 
     const category = labelToSeverity(worst.label);
+    const street = streetDisplay(worst.street);
+
     const leakTag =
       category !== "ok"
         ? worst.draw_profile && worst.draw_profile !== "none"
-          ? `${worst.draw_profile} • ${worst.label.replace(/_/g, " ")}`
+          ? `${worst.draw_profile.replace(/_/g, " ")} • ${worst.label.replace(/_/g, " ")}`
           : worst.label.replace(/_/g, " ")
         : undefined;
+
+    const actionLine = `${street}: ${worst.action_taken} — ${worst.best_action}`;
 
     hands.push({
       id: handId,
       number: num,
-      position: worst.stack_bb ? `${worst.stack_bb.toFixed(0)} bb` : "—",
+      position: worst.position || "—",
       holeCards,
       board,
-      resultBb: category === "ok" ? 1 : -Math.round(worst.score * 20),
-      potBb: Math.round((worst.m_ratio ?? 10) * 2),
-      street: streetDisplay(worst.street),
-      action: `${worst.action_taken} → correto: ${worst.best_action}`,
+      street,
+      action: actionLine,
       category,
       leakTag,
       evDelta: category !== "ok" ? -Number(worst.score.toFixed(3)) : undefined,
-      note: worst.icm_pressure && worst.icm_pressure !== "low"
-        ? `ICM ${worst.icm_pressure} • M ratio ${worst.m_ratio?.toFixed(1) ?? "?"}`
-        : undefined,
+      note: worst.note || undefined,
       stackBb: worst.stack_bb,
       mRatio: worst.m_ratio,
       icm: worst.icm_pressure,
+      numPlayers: worst.num_players,
+      levelSb: worst.level_sb,
+      levelBb: worst.level_bb,
+      levelNum: worst.level_num,
     });
   });
   return hands;
@@ -362,13 +368,22 @@ const TournamentDetail = () => {
                           <Icon className="size-3" aria-hidden />
                           {meta.label}
                         </span>
-                        <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-                          {h.street}
-                        </span>
+                        {h.position && h.position !== "—" && (
+                          <span className="rounded-sm bg-secondary px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground">
+                            {h.position}
+                          </span>
+                        )}
                         {h.icm && h.icm !== "low" && (
                           <span className="font-mono text-[10px] text-warning">ICM {h.icm}</span>
                         )}
                       </div>
+                      {(h.levelNum || h.levelSb) && (
+                        <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+                          {h.levelNum ? `Lvl ${h.levelNum} · ` : ""}
+                          {h.levelSb && h.levelBb ? `${h.levelSb}/${h.levelBb}` : ""}
+                          {h.numPlayers ? ` · vs ${h.numPlayers - 1}` : ""}
+                        </div>
+                      )}
                       {h.leakTag && (
                         <div className={cn("font-mono text-[11px] font-semibold uppercase tracking-wider", meta.cls)}>
                           ▸ {h.leakTag}

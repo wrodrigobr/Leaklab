@@ -133,6 +133,12 @@ def _init_postgres(conn):
             icm_pressure    TEXT,
             stack_bb        REAL,
             draw_profile    TEXT,
+            position        TEXT,
+            num_players     INTEGER,
+            level_sb        REAL,
+            level_bb        REAL,
+            level_num       INTEGER,
+            note            TEXT,
             created_at      TIMESTAMP NOT NULL DEFAULT NOW()
         );
         CREATE TABLE IF NOT EXISTS coach_profiles (
@@ -224,6 +230,12 @@ def _init_sqlite(conn):
             icm_pressure    TEXT,
             stack_bb        REAL,
             draw_profile    TEXT,
+            position        TEXT,
+            num_players     INTEGER,
+            level_sb        REAL,
+            level_bb        REAL,
+            level_num       INTEGER,
+            note            TEXT,
             created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS coach_profiles (
@@ -269,6 +281,12 @@ def _run_migrations(conn):
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS prize  REAL",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS profit REAL",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS raw_text TEXT",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS position    TEXT",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS num_players INTEGER",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS level_sb    REAL",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS level_bb    REAL",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS level_num   INTEGER",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS note        TEXT",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -284,6 +302,18 @@ def _run_migrations(conn):
             ("raw_text",        "ALTER TABLE tournaments ADD COLUMN raw_text TEXT"),
         ]:
             if col not in existing:
+                try: conn.execute(sql)
+                except Exception: pass
+        dec_existing = {r[1] for r in conn.execute('PRAGMA table_info(decisions)').fetchall()}
+        for col, sql in [
+            ("position",    "ALTER TABLE decisions ADD COLUMN position    TEXT"),
+            ("num_players", "ALTER TABLE decisions ADD COLUMN num_players INTEGER"),
+            ("level_sb",    "ALTER TABLE decisions ADD COLUMN level_sb    REAL"),
+            ("level_bb",    "ALTER TABLE decisions ADD COLUMN level_bb    REAL"),
+            ("level_num",   "ALTER TABLE decisions ADD COLUMN level_num   INTEGER"),
+            ("note",        "ALTER TABLE decisions ADD COLUMN note        TEXT"),
+        ]:
+            if col not in dec_existing:
                 try: conn.execute(sql)
                 except Exception: pass
 
