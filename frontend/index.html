@@ -1101,6 +1101,7 @@ function renderTournaments(){
 function _renderTournamentList(list){
   const tl=document.getElementById('tourn-list');
   tl.innerHTML='';
+  Object.keys(tSummaryLoaded).forEach(k => delete tSummaryLoaded[k]);
   if(!list.length){
     tl.innerHTML='<div style="text-align:center;padding:32px;font-family:var(--mono);font-size:.75rem;color:var(--dim)">Nenhum torneio encontrado com estes filtros.</div>';
     return;
