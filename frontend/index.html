@@ -826,10 +826,11 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 <script>
 // ── URL do backend ────────────────────────────────────────────────────────────
 const API_URL = (() => {
-  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  const h = location.hostname;
+  if (!h || h === 'localhost' || h === '127.0.0.1') {
     return 'http://localhost:5000';
   }
-  return 'https://leaklab-api.onrender.com'; // ← substituir pela URL real do Render
+  return 'https://leaklab-api.onrender.com';
 })();
 
 const sessions=[];  // preenchido após importação real
