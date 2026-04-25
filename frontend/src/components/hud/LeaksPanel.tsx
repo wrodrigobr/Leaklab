@@ -38,8 +38,37 @@ const severityStyles: Record<
   },
 };
 
+const STREET_LABEL: Record<string, string> = {
+  preflop: "Preflop",
+  flop:    "Flop",
+  turn:    "Turn",
+  river:   "River",
+};
+
+// best_action = o que deveria ser feito; a descrição foca no que o jogador DEVERIA dar
 function spotLabel(spot: string): string {
+  if (spot.includes("/")) {
+    const [street, action] = spot.split("/");
+    const s = STREET_LABEL[street] ?? street;
+    return `${s} — dando ${action} quando não devia`;
+  }
+  // formato legado com underscores
   return spot.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function spotDesc(spot: string, n: number, avgScore: number): string {
+  const base = `${n} decisões com erro médio de ${(avgScore * 100).toFixed(1)} pts.`;
+  if (!spot.includes("/")) return base;
+  const [, action] = spot.split("/");
+  const hint: Record<string, string> = {
+    fold:  "Jogador estava over-playing quando fold era a linha correta.",
+    call:  "Jogador estava folding/raising quando call era o correto.",
+    raise: "Jogador estava sendo passivo quando raise era o correto.",
+    bet:   "Jogador estava checkando quando bet era o correto.",
+    check: "Jogador estava bet/raising quando check era o correto.",
+    jam:   "Jogador estava sub-jamando em spots de all-in correto.",
+  };
+  return hint[action] ? `${hint[action]} ${base}` : base;
 }
 
 function severity(score: number): Severity {
@@ -104,7 +133,7 @@ export function LeaksPanel({ leaks }: Props) {
                 {spotLabel(leak.spot)}
               </h3>
               <p className="text-xs leading-relaxed text-muted-foreground mb-3">
-                {leak.n} decisões com erro médio de {(leak.avg_score * 100).toFixed(1)} pontos.
+                {spotDesc(leak.spot, leak.n, leak.avg_score)}
               </p>
               <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
                 <span className="font-mono text-[11px] text-destructive">
