@@ -310,11 +310,13 @@ const Replayer = () => {
               <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground">Action Log</h2>
               <span className="font-mono text-[10px] text-muted-foreground">{step.street?.toUpperCase()}</span>
             </header>
-            <ol className="max-h-72 overflow-y-auto divide-y divide-border flex flex-col-reverse">
-              {steps.slice(0, stepIdx + 1).map((s, i) => (
-                <li key={i} className={cn(
+            <ol className="max-h-72 overflow-y-auto divide-y divide-border">
+              {steps.slice(0, stepIdx + 1).slice().reverse().map((s, ri) => {
+                const origIdx = stepIdx - ri;
+                return (
+                <li key={origIdx} className={cn(
                   "px-4 py-2.5 text-xs transition-colors",
-                  i === stepIdx && "bg-primary/5",
+                  origIdx === stepIdx && "bg-primary/5",
                   s.is_error && "border-l-2 border-destructive",
                   s.type === "showdown" && "border-l-2 border-primary/50"
                 )}>
@@ -342,7 +344,8 @@ const Replayer = () => {
                     </div>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ol>
           </section>
 
