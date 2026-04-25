@@ -721,6 +721,9 @@ function StudyCardItem({
 }
 
 function StudyTab({ studentId }: { studentId: number }) {
+  const qc = useQueryClient();
+  const [generating, setGenerating] = useState(false);
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["coach-student-study", studentId],
     queryFn: () => coachDashboard.studentStudyPlan(studentId, 90),
@@ -734,6 +737,16 @@ function StudyTab({ studentId }: { studentId: number }) {
   const overridesMap = Object.fromEntries(
     (overridesData?.overrides ?? []).map((o) => [o.card_spot, o])
   );
+
+  const generateNew = async () => {
+    setGenerating(true);
+    try {
+      await coachDashboard.studentStudyPlan(studentId, 90, true);
+      qc.invalidateQueries({ queryKey: ["coach-student-study", studentId] });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   if (isLoading) return <p className="text-sm text-muted-foreground animate-pulse py-8">Gerando plano de estudos do aluno…</p>;
   if (isError || !data) return <p className="text-sm text-destructive py-8">Erro ao carregar plano de estudos.</p>;
@@ -754,10 +767,21 @@ function StudyTab({ studentId }: { studentId: number }) {
           </p>
           <p className="text-sm text-foreground">{data.resumo}</p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          {validated > 0 && <span className="font-mono text-[10px] text-primary">✓ {validated} validado{validated > 1 ? "s" : ""}</span>}
-          {commented > 0 && <span className="font-mono text-[10px] text-amber-400">💬 {commented} comentado{commented > 1 ? "s" : ""}</span>}
-          {replaced  > 0 && <span className="font-mono text-[10px] text-purple-400">✏️ {replaced} substituído{replaced  > 1 ? "s" : ""}</span>}
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="flex items-center gap-3">
+            {validated > 0 && <span className="font-mono text-[10px] text-primary">✓ {validated} validado{validated > 1 ? "s" : ""}</span>}
+            {commented > 0 && <span className="font-mono text-[10px] text-amber-400">💬 {commented} comentado{commented > 1 ? "s" : ""}</span>}
+            {replaced  > 0 && <span className="font-mono text-[10px] text-purple-400">✏️ {replaced} substituído{replaced  > 1 ? "s" : ""}</span>}
+          </div>
+          <button
+            onClick={generateNew}
+            disabled={generating}
+            title="Gera um novo plano com IA e substitui o atual do aluno"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-mono text-[10px] font-bold uppercase tracking-widest-2 hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {generating ? <Loader2 className="size-3 animate-spin" /> : <BookOpen className="size-3" />}
+            {generating ? "Gerando…" : "Gerar novo plano"}
+          </button>
         </div>
       </div>
 

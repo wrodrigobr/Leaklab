@@ -111,7 +111,7 @@ const StudyPlanPage = () => {
     setLoadState("loading");
     setErrorMsg("");
     try {
-      const data = await study.plan(90);
+      const data = await study.plan(90, force);
       if (data.error && !data.cards?.length) {
         setErrorMsg(data.error);
         setLoadState("error");

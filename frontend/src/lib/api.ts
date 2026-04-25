@@ -309,7 +309,8 @@ export interface StudyPlanResponse {
 }
 
 export const study = {
-  plan: (days = 90) => request<StudyPlanResponse>(`/study/plan?days=${days}`),
+  plan: (days = 90, forceNew = false) =>
+    request<StudyPlanResponse>(`/study/plan?days=${days}${forceNew ? "&new=1" : ""}`),
 };
 
 // ── AI Coach ─────────────────────────────────────────────────────────────────
@@ -448,8 +449,8 @@ export const coachDashboard = {
       `/coach/student/${studentId}/worst-decisions?n=${n}`
     ),
 
-  studentStudyPlan: (studentId: number, days = 90) =>
-    request<StudyPlanResponse>(`/coach/student/${studentId}/study-plan?days=${days}`),
+  studentStudyPlan: (studentId: number, days = 90, forceNew = false) =>
+    request<StudyPlanResponse>(`/coach/student/${studentId}/study-plan?days=${days}${forceNew ? "&new=1" : ""}`),
 
   studentReplay: (studentId: number, tournamentId: string, handId: string) =>
     request<ReplayData>(`/coach/student/${studentId}/replay/${tournamentId}/${handId}`),

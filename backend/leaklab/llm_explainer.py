@@ -491,34 +491,37 @@ def _tournament_cache_key(ctx: dict) -> str:
 
 def generate_study_plan(leaks: list, evolution: list, icm: dict,
                         hero: str = 'Jogador',
-                        user_id: int | None = None) -> dict:
+                        user_id: int | None = None,
+                        force_new: bool = False) -> dict:
     """
     Gera plano de estudos personalizado baseado nos leaks reais do jogador.
     Retorna dict com cards[], resumo, e nível identificado.
-    Cache persistente no banco PostgreSQL via llm_cache.
+    Cache persistente no banco via llm_cache com chave estável por aluno.
     """
     import hashlib, json, os, requests
 
-    # --- Construir fingerprint para cache ---
-    cache_key = 'study_plan_v2:' + hashlib.md5(
+    # Chave em memória (por snapshot de dados — evita regerar na mesma sessão)
+    mem_key = 'study_plan_v2:' + hashlib.md5(
         json.dumps({'leaks': leaks, 'evo_len': len(evolution)},
                    sort_keys=True).encode()
     ).hexdigest()
+    # Chave DB estável — plano canônico único por aluno
+    db_key = 'study_plan_current'
 
-    # Cache em memória (sessão)
-    if cache_key in _cache:
-        return json.loads(_cache[cache_key])
-
-    # Cache persistente no banco
-    if user_id is not None:
-        try:
-            from database.repositories import get_llm_cache
-            cached = get_llm_cache(user_id, cache_key)
-            if cached:
-                _cache[cache_key] = cached
-                return json.loads(cached)
-        except Exception:
-            pass
+    if not force_new:
+        # Cache em memória
+        if mem_key in _cache:
+            return json.loads(_cache[mem_key])
+        # Cache persistente no banco
+        if user_id is not None:
+            try:
+                from database.repositories import get_llm_cache
+                cached = get_llm_cache(user_id, db_key)
+                if cached:
+                    _cache[mem_key] = cached
+                    return json.loads(cached)
+            except Exception:
+                pass
 
     # --- Calcular métricas gerais ---
     total_dec  = sum((e.get('decisions_count') or 0) for e in evolution) or 1
@@ -621,12 +624,12 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
 
         result = json.loads(raw)
         result_str = json.dumps(result, ensure_ascii=False)
-        _cache[cache_key] = result_str
-        # Persistir no banco
+        _cache[mem_key] = result_str
+        # Persistir no banco com chave estável (sobrescreve plano anterior)
         if user_id is not None:
             try:
                 from database.repositories import set_llm_cache
-                set_llm_cache(user_id, cache_key, result_str)
+                set_llm_cache(user_id, db_key, result_str)
             except Exception:
                 pass
         return result

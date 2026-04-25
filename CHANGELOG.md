@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.10.2] — 2026-04-25 — Plano de estudos com fonte única (canonical plan)
+
+### Corrigido
+- **Plano de estudos inconsistente entre aluno e coach**: aluno e coach agora compartilham o mesmo plano armazenado por chave estável `study_plan_current` no banco — não mais por hash dos dados, que podia divergir quando os dados mudavam entre as gerações
+- **Botão "Gerar com IA"** agora força de fato uma nova geração (`?new=1`), sobrescrevendo o plano anterior no banco — antes apenas re-buscava o cache sem regenerar
+
+### Adicionado
+- **Coach — botão "Gerar novo plano"** na aba Plano de Estudos: gera um plano novo via IA para o aluno e o torna o plano canônico — o aluno passa a ver exatamente este plano
+- Parâmetro `force_new` em `generate_study_plan()` e nos dois endpoints (`/study/plan?new=1`, `/coach/student/:id/study-plan?new=1`)
+
+---
+
 ## [v0.10.1] — 2026-04-25 — Mãos Críticas com cartas + lock coach_managed
 
 ### Adicionado

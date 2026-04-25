@@ -814,7 +814,8 @@ def coach_student_study_plan(student_id):
             return jsonify({'error': 'Aluno sem dados suficientes'}), 400
         tourns = get_tournaments(student_id, limit=1)
         hero = tourns[0]['hero'] if tourns else 'Aluno'
-        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=student_id)
+        force_new = request.args.get('new') == '1'
+        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=student_id, force_new=force_new)
         return jsonify(plan)
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -1080,7 +1081,8 @@ def study_plan():
         tourns = get_tournaments(g.user_id, limit=1)
         hero   = tourns[0]['hero'] if tourns else 'Jogador'
 
-        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id)
+        force_new = request.args.get('new') == '1'
+        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id, force_new=force_new)
 
         # Verificar se o coach do aluno já fez overrides no plano
         coach_managed = False
