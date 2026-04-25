@@ -12,7 +12,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 ## [v0.10.2] — 2026-04-25 — Plano de estudos com fonte única (canonical plan)
 
 ### Corrigido
-- **Importar torneio não apaga mais o plano** quando o aluno tem coach vinculado — o plano é gerenciado pelo coach e só pode ser substituído por ele (ou pelo aluno sem coach)
+- **Importar torneio nunca apaga o plano** — o plano de estudos só é substituído por ação explícita ("Gerar com IA" pelo aluno ou "Gerar novo plano" pelo coach)
 - **Plano de estudos inconsistente entre aluno e coach**: aluno e coach agora compartilham o mesmo plano armazenado por chave estável `study_plan_current` no banco — não mais por hash dos dados, que podia divergir quando os dados mudavam entre as gerações
 - **Botão "Gerar com IA"** agora força de fato uma nova geração (`?new=1`), sobrescrevendo o plano anterior no banco — antes apenas re-buscava o cache sem regenerar
 
