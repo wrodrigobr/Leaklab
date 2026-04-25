@@ -464,7 +464,7 @@ const TournamentDetail = () => {
                               title="Gerar nova análise"
                             >
                               <RefreshCw className={cn("size-3", analysisLoading[h.decisionId] && "animate-spin")} />
-                              Regenerar
+                              Gerar novamente
                             </button>
                           </div>
                         </div>
