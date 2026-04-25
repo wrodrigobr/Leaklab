@@ -142,7 +142,7 @@ const Login = () => {
         </div>
 
         <p className="text-center font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
-          Análise tática • Powered by Claude AI
+          Análise tática • LeakLabs AI Engine
         </p>
       </div>
     </div>

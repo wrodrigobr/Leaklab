@@ -146,7 +146,7 @@ function SummaryContent({ text }: { text: string }) {
           <p key={i} className="text-sm leading-relaxed text-foreground">{p}</p>
         ))}
         <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground text-center pt-2">
-          LeakLabs AI Coach • Powered by Claude Haiku
+          LeakLabs AI Coach
         </p>
       </div>
     );
@@ -164,7 +164,7 @@ function SummaryContent({ text }: { text: string }) {
         <SummarySection key={i} text={section} />
       ))}
       <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground text-center pt-2">
-        LeakLabs AI Coach • Powered by Claude Haiku
+        LeakLabs AI Coach
       </p>
     </div>
   );
