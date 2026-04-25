@@ -9,8 +9,8 @@ interface PlayerStats {
   flop_bet_pct: number | null;
   fold_to_3bet: number | null;
   wtsd: number | null;
-  three_bet: null;
-  w_at_sd: null;
+  three_bet: number | null;
+  w_at_sd: number | null;
 }
 
 interface Props {
@@ -79,16 +79,14 @@ const ROW2: StatDef[] = [
     label: "3BET",
     unit: "%",
     range: { min: 4, max: 8, label: "4–8%" },
-    tooltip: "% de mãos em que o jogador fez 3-bet pré-flop. MTT ideal: 4–8%. Requer rastreamento da sequência de apostas — disponível em versão futura.",
-    soon: true,
+    tooltip: "3-Bet% — % de mãos em que o hero re-raised pré-flop (quando já havia um raise antes). MTT ideal: 4–8%. Abaixo de 3% = muito passivo; acima de 10% = overaggressive pré-flop.",
   },
   {
     key: "w_at_sd",
     label: "W$SD",
     unit: "%",
     range: { min: 50, max: 60, label: "50–60%" },
-    tooltip: "Won money at ShowDown — % de showdowns vencidos. Meta: > 50% para ser +EV nos confrontos. Requer rastreamento de resultados de showdown — disponível em versão futura.",
-    soon: true,
+    tooltip: "Won money at ShowDown — % de showdowns vencidos. Meta: > 50% para ser +EV nos confrontos. Calculado a partir das mãos que chegaram ao showdown no hand history.",
   },
 ];
 

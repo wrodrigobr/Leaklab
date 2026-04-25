@@ -265,8 +265,8 @@ export interface PlayerStatsResponse {
   flop_bet_pct: number | null;
   fold_to_3bet: number | null;
   wtsd: number | null;
-  three_bet: null;
-  w_at_sd: null;
+  three_bet: number | null;
+  w_at_sd: number | null;
 }
 
 export const metrics = {

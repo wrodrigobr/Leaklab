@@ -221,6 +221,8 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 r.get('level_bb', 0),
                 r.get('level_num', 0),
                 r.get('note', ''),
+                1 if r.get('is_3bet') else 0,
+                r.get('showdown_result'),
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -228,8 +230,8 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                action_taken, best_action, label, score,
                math_penalty, range_penalty, m_ratio, icm_pressure,
                stack_bb, draw_profile, position, num_players,
-               level_sb, level_bb, level_num, note)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               level_sb, level_bb, level_num, note, is_3bet, showdown_result)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:
@@ -492,12 +494,34 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
             WHERE t.user_id = ? AND t.imported_at >= ?
         """, (user_id, since)).fetchone()
 
+        # ── 3BET%: hands where hero 3-bet / total preflop hands ──────────────
+        tbet_row = conn.execute("""
+            SELECT
+                COUNT(DISTINCT CASE WHEN d.is_3bet = 1 THEN d.hand_id END) AS three_bet_n,
+                COUNT(DISTINCT d.hand_id) AS total_n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ? AND d.street = 'preflop'
+        """, (user_id, since)).fetchone()
+
+        # ── W$SD: hands won at showdown / total showdown hands ───────────────
+        wsd_row = conn.execute("""
+            SELECT
+                COUNT(DISTINCT CASE WHEN d.showdown_result = 'won'  THEN d.hand_id END) AS sd_won,
+                COUNT(DISTINCT CASE WHEN d.showdown_result IS NOT NULL THEN d.hand_id END) AS sd_total
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+        """, (user_id, since)).fetchone()
+
         # ── Compute stats ────────────────────────────────────────────────────
-        pf  = dict(preflop)  if preflop  else {}
-        po  = dict(postflop) if postflop else {}
-        fb  = dict(flop_row) if flop_row else {}
-        f3b = dict(f3b_row)  if f3b_row  else {}
-        wt  = dict(wtsd_row) if wtsd_row else {}
+        pf   = dict(preflop)  if preflop  else {}
+        po   = dict(postflop) if postflop else {}
+        fb   = dict(flop_row) if flop_row else {}
+        f3b  = dict(f3b_row)  if f3b_row  else {}
+        wt   = dict(wtsd_row) if wtsd_row else {}
+        tb   = dict(tbet_row) if tbet_row else {}
+        wsd  = dict(wsd_row)  if wsd_row  else {}
 
         total       = pf.get('total_hands', 0) or 0
         vpip_h      = pf.get('vpip_hands', 0) or 0
@@ -510,18 +534,21 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
         faced_3b_n  = f3b.get('faced_3bet_n', 0) or 0
         saw_flop    = wt.get('saw_flop', 0) or 0
         saw_river   = wt.get('saw_river', 0) or 0
+        three_bet_n = tb.get('three_bet_n', 0) or 0
+        pf_total    = tb.get('total_n', 0) or 0
+        sd_won      = wsd.get('sd_won', 0) or 0
+        sd_total    = wsd.get('sd_total', 0) or 0
 
         return {
             'total_hands':  total,
-            'vpip':         round(vpip_h / total * 100, 1)        if total > 0     else None,
-            'pfr':          round(pfr_h  / total * 100, 1)        if total > 0     else None,
-            'af':           round(aggressive / passive, 2)         if passive > 0   else None,
+            'vpip':         round(vpip_h / total * 100, 1)           if total > 0      else None,
+            'pfr':          round(pfr_h  / total * 100, 1)           if total > 0      else None,
+            'af':           round(aggressive / passive, 2)            if passive > 0    else None,
             'flop_bet_pct': round(flop_bets_n / flop_total * 100, 1) if flop_total > 0 else None,
-            'fold_to_3bet': round(f3b_n / faced_3b_n * 100, 1)   if faced_3b_n > 0 else None,
-            'wtsd':         round(saw_river / saw_flop * 100, 1)  if saw_flop > 0  else None,
-            # Not computable from current data
-            'three_bet':    None,
-            'w_at_sd':      None,
+            'fold_to_3bet': round(f3b_n / faced_3b_n * 100, 1)      if faced_3b_n > 0 else None,
+            'wtsd':         round(saw_river / saw_flop * 100, 1)     if saw_flop > 0   else None,
+            'three_bet':    round(three_bet_n / pf_total * 100, 1)   if pf_total > 0   else None,
+            'w_at_sd':      round(sd_won / sd_total * 100, 1)        if sd_total > 0   else None,
         }
     finally:
         conn.close()

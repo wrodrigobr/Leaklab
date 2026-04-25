@@ -139,6 +139,8 @@ def _init_postgres(conn):
             level_bb        REAL,
             level_num       INTEGER,
             note            TEXT,
+            is_3bet         BOOLEAN NOT NULL DEFAULT FALSE,
+            showdown_result TEXT,
             created_at      TIMESTAMP NOT NULL DEFAULT NOW()
         );
         CREATE TABLE IF NOT EXISTS coach_profiles (
@@ -236,6 +238,8 @@ def _init_sqlite(conn):
             level_bb        REAL,
             level_num       INTEGER,
             note            TEXT,
+            is_3bet         INTEGER NOT NULL DEFAULT 0,
+            showdown_result TEXT,
             created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS coach_profiles (
@@ -287,6 +291,8 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS level_bb    REAL",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS level_num   INTEGER",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS note        TEXT",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS is_3bet         BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS showdown_result TEXT",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -311,7 +317,9 @@ def _run_migrations(conn):
             ("level_sb",    "ALTER TABLE decisions ADD COLUMN level_sb    REAL"),
             ("level_bb",    "ALTER TABLE decisions ADD COLUMN level_bb    REAL"),
             ("level_num",   "ALTER TABLE decisions ADD COLUMN level_num   INTEGER"),
-            ("note",        "ALTER TABLE decisions ADD COLUMN note        TEXT"),
+            ("note",            "ALTER TABLE decisions ADD COLUMN note            TEXT"),
+            ("is_3bet",         "ALTER TABLE decisions ADD COLUMN is_3bet         INTEGER NOT NULL DEFAULT 0"),
+            ("showdown_result", "ALTER TABLE decisions ADD COLUMN showdown_result TEXT"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)

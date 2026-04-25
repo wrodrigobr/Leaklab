@@ -2,7 +2,7 @@
 PokerLeakLab API v2 — com persistência SQLite e autenticação JWT.
 """
 from __future__ import annotations
-import sys, os
+import sys, os, re
 from pathlib import Path
 
 _BASE = Path(__file__).resolve().parent.parent  # backend/
@@ -457,30 +457,45 @@ def _extract_content(req) -> str | None:
     return req.form.get('content')
 
 
+_SHOWDOWN_RE = re.compile(r'\*\*\* (?:SHOW DOWN|SHOWDOWN) \*\*\*')
+
+
+def _detect_showdown(raw_text: str, hero: str) -> str | None:
+    """Retorna 'won', 'lost' ou None se a mão não foi a showdown."""
+    if not _SHOWDOWN_RE.search(raw_text):
+        return None
+    pattern = re.compile(r'\b' + re.escape(hero) + r'\s+collected\b')
+    return 'won' if pattern.search(raw_text) else 'lost'
+
+
 def _analyze_hands(hands):
     results, hand_results, errors = [], {}, []
     for hand in hands:
         try:
             mtt    = build_mtt_context(hand)
             inputs = build_decision_inputs_for_hand(hand)
+            hero   = hand.hero or 'Hero'
+            sd_result = _detect_showdown(hand.raw_text or '', hero)
             decisions = []
             for di in inputs:
                 r = evaluate_decision(di)
                 interp = r.get('interpretation', {})
                 enriched = {
                     **r,
-                    'street':       di['street'],
-                    'context':      di['context'],
-                    'math':         di['math'],
-                    'hero_cards':   hand.hero_cards,
-                    'board':        hand.board or [],
-                    'draw_profile': di['math'].get('drawProfile', ''),
-                    'position':     di['spot'].get('position', ''),
-                    'num_players':  di['context'].get('activePlayers', 0),
-                    'level_sb':     di['context'].get('levelSb', 0),
-                    'level_bb':     di['context'].get('levelBb', 0),
-                    'level_num':    di['context'].get('levelNum', 0),
-                    'note':         interp.get('strategicExplanation', '') or interp.get('mathExplanation', ''),
+                    'street':           di['street'],
+                    'context':          di['context'],
+                    'math':             di['math'],
+                    'hero_cards':       hand.hero_cards,
+                    'board':            hand.board or [],
+                    'draw_profile':     di['math'].get('drawProfile', ''),
+                    'position':         di['spot'].get('position', ''),
+                    'num_players':      di['context'].get('activePlayers', 0),
+                    'level_sb':         di['context'].get('levelSb', 0),
+                    'level_bb':         di['context'].get('levelBb', 0),
+                    'level_num':        di['context'].get('levelNum', 0),
+                    'note':             interp.get('strategicExplanation', '') or interp.get('mathExplanation', ''),
+                    'is_3bet':          di.get('is_3bet', False),
+                    'showdown_result':  sd_result,
                 }
                 results.append(enriched)
                 decisions.append(enriched)

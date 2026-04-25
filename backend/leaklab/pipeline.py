@@ -49,10 +49,17 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
         'realizedEquityEstimate': math.estimated_hand_equity,
     }
 
+    is_3bet = (
+        state.street == 'preflop' and
+        state.player_action in ('raises', 'all-in') and
+        state.facing_size > 0
+    )
+
     return {
         'hand_id':       state.hand_id,
         'street':        state.street,
         'player_action': state.player_action,
+        'is_3bet':       is_3bet,
         'spot': {
             'spotType':         spot.spot_type,
             'position':         state.position,
