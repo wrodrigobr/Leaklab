@@ -920,3 +920,62 @@ def recommend_coaches_for_leaks(user_id: int, limit: int = 3) -> List[dict]:
         return scored[:limit]
     finally:
         conn.close()
+
+
+# ── Coach Study Overrides ─────────────────────────────────────────────────────
+
+def get_study_overrides(coach_id: int, student_id: int) -> List[dict]:
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM coach_study_overrides WHERE coach_id=? AND student_id=? ORDER BY created_at",
+            (coach_id, student_id)
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def save_study_override(coach_id: int, student_id: int, card_spot: str,
+                        status: str, note: str | None = None,
+                        custom_card: str | None = None) -> dict:
+    conn = get_conn()
+    try:
+        if USE_POSTGRES:
+            conn.execute("""
+                INSERT INTO coach_study_overrides
+                    (coach_id, student_id, card_spot, status, note, custom_card)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(coach_id, student_id, card_spot) DO UPDATE SET
+                    status      = excluded.status,
+                    note        = excluded.note,
+                    custom_card = excluded.custom_card,
+                    created_at  = NOW()
+            """, (coach_id, student_id, card_spot, status, note, custom_card))
+        else:
+            conn.execute("""
+                INSERT OR REPLACE INTO coach_study_overrides
+                    (coach_id, student_id, card_spot, status, note, custom_card)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (coach_id, student_id, card_spot, status, note, custom_card))
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM coach_study_overrides WHERE coach_id=? AND student_id=? AND card_spot=?",
+            (coach_id, student_id, card_spot)
+        ).fetchone()
+        return dict(row) if row else {}
+    finally:
+        conn.close()
+
+
+def delete_study_override(coach_id: int, student_id: int, card_spot: str) -> bool:
+    conn = get_conn()
+    try:
+        conn.execute(
+            "DELETE FROM coach_study_overrides WHERE coach_id=? AND student_id=? AND card_spot=?",
+            (coach_id, student_id, card_spot)
+        )
+        conn.commit()
+        return True
+    finally:
+        conn.close()

@@ -173,6 +173,18 @@ def _init_postgres(conn):
             UNIQUE(user_id, cache_key)
         );
         CREATE INDEX IF NOT EXISTS idx_llm_cache_key ON llm_cache(user_id, cache_key);
+
+        CREATE TABLE IF NOT EXISTS coach_study_overrides (
+            id          SERIAL PRIMARY KEY,
+            coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            card_spot   TEXT    NOT NULL,
+            status      TEXT    NOT NULL DEFAULT 'validated',
+            note        TEXT,
+            custom_card TEXT,
+            created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+            UNIQUE(coach_id, student_id, card_spot)
+        );
     """)
 
 
@@ -272,6 +284,18 @@ def _init_sqlite(conn):
             UNIQUE(user_id, cache_key)
         );
         CREATE INDEX IF NOT EXISTS idx_llm_cache_key ON llm_cache(user_id, cache_key);
+
+        CREATE TABLE IF NOT EXISTS coach_study_overrides (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            card_spot   TEXT    NOT NULL,
+            status      TEXT    NOT NULL DEFAULT 'validated',
+            note        TEXT,
+            custom_card TEXT,
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(coach_id, student_id, card_spot)
+        );
     """)
 
 
@@ -297,6 +321,20 @@ def _run_migrations(conn):
             try: conn.execute(sql)
             except Exception: pass
     else:
+        # coach_study_overrides (SQLite CREATE IF NOT EXISTS handles it)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coach_study_overrides (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                card_spot   TEXT    NOT NULL,
+                status      TEXT    NOT NULL DEFAULT 'validated',
+                note        TEXT,
+                custom_card TEXT,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(coach_id, student_id, card_spot)
+            )
+        """)
         existing = {r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()}
         for col, sql in [
             ("invite_key",     "ALTER TABLE users ADD COLUMN invite_key     TEXT UNIQUE"),

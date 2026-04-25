@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Trophy, AlertTriangle, BookOpen, LayoutDashboard,
-  ChevronRight, Play, TrendingUp, TrendingDown, Minus
+  ChevronRight, Play, TrendingUp, TrendingDown, Minus,
+  CheckCircle2, MessageSquare, PenLine, Trash2, X, Check, Loader2
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
-import { coachDashboard, StudentWorstDecision } from "@/lib/api";
+import { coachDashboard, StudentWorstDecision, StudyCard, StudyOverride } from "@/lib/api";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar
@@ -85,6 +86,22 @@ function OverviewTab({ studentId }: { studentId: number }) {
       n: v.n,
     }));
 
+  // Comparativo histórico: primeiros 3 vs últimos 3 torneios
+  const evo = history?.evolution ?? [];
+  const slice3 = (arr: typeof evo) => arr.filter((e) => e.avg_score != null);
+  const avg = (arr: typeof evo, key: "avg_score" | "standard_pct") => {
+    const vals = arr.map((e) => e[key]).filter((v): v is number => v != null);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  };
+  const early  = slice3(evo).slice(0, 3);
+  const recent = slice3(evo).slice(-3);
+  const earlyScore  = avg(early,  "avg_score");
+  const recentScore = avg(recent, "avg_score");
+  const earlyStd    = avg(early,  "standard_pct");
+  const recentStd   = avg(recent, "standard_pct");
+  const deltaScore  = earlyScore != null && recentScore != null ? recentScore - earlyScore : null;
+  const deltaStd    = earlyStd   != null && recentStd   != null ? recentStd   - earlyStd   : null;
+
   if (loadingHist || loadingStats || loadingBd) {
     return <p className="text-sm text-muted-foreground animate-pulse py-8">Carregando dados…</p>;
   }
@@ -104,6 +121,48 @@ function OverviewTab({ studentId }: { studentId: number }) {
           <StatPill label="Flop%" value={s.flop_bet_pct != null ? `${s.flop_bet_pct}%` : "—"} sub="Bet flop" />
           <StatPill label="WTSD"  value={s.wtsd   != null ? `${s.wtsd}%`  : "—"} sub="Vai a SD" />
           <StatPill label="W$SD"  value={s.w_at_sd != null ? `${s.w_at_sd}%` : "—"} sub="Ganha SD" />
+        </div>
+      )}
+
+      {/* Comparativo histórico */}
+      {evo.length >= 2 && (
+        <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+            Comparativo — primeiros 3 vs últimos 3 torneios
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: "Score Inicial", value: earlyScore?.toFixed(1), unit: "pts" },
+              { label: "Score Atual",   value: recentScore?.toFixed(1), unit: "pts" },
+              { label: "Standard Inicial", value: earlyStd?.toFixed(1), unit: "%" },
+              { label: "Standard Atual",   value: recentStd?.toFixed(1), unit: "%" },
+            ].map(({ label, value, unit }) => (
+              <div key={label} className="rounded-lg bg-background border border-border px-3 py-2 text-center">
+                <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">{label}</p>
+                <p className="text-xl font-bold text-foreground">{value ?? "—"}{value ? ` ${unit}` : ""}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-6">
+            {deltaScore != null && (
+              <div className={`flex items-center gap-1.5 text-sm font-semibold ${deltaScore > 0 ? "text-destructive" : deltaScore < 0 ? "text-primary" : "text-muted-foreground"}`}>
+                {deltaScore < 0 ? <TrendingDown className="size-4" /> : deltaScore > 0 ? <TrendingUp className="size-4" /> : <Minus className="size-4" />}
+                Score: {deltaScore > 0 ? "+" : ""}{deltaScore.toFixed(1)} pts
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  {deltaScore < 0 ? "(melhorou)" : deltaScore > 0 ? "(piorou)" : "(estável)"}
+                </span>
+              </div>
+            )}
+            {deltaStd != null && (
+              <div className={`flex items-center gap-1.5 text-sm font-semibold ${deltaStd > 0 ? "text-primary" : deltaStd < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                Standard: {deltaStd > 0 ? "+" : ""}{deltaStd.toFixed(1)}%
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  {deltaStd > 0 ? "(melhorou)" : deltaStd < 0 ? "(piorou)" : "(estável)"}
+                </span>
+              </div>
+            )}
+            <span className="font-mono text-[10px] text-muted-foreground ml-auto">{evo.length} torneios no período</span>
+          </div>
         </div>
       )}
 
@@ -403,11 +462,235 @@ const PRIORITY_STYLE: Record<string, string> = {
   baixa: "border-primary/20 bg-primary/5",
 };
 
+type EditMode = "comment" | "replace" | null;
+
+function StudyCardItem({
+  card,
+  override,
+  studentId,
+}: {
+  card: StudyCard;
+  override: StudyOverride | undefined;
+  studentId: number;
+}) {
+  const qc = useQueryClient();
+  const [editMode, setEditMode] = useState<EditMode>(null);
+  const [noteText, setNoteText] = useState(override?.note ?? "");
+  const [customTitle, setCustomTitle] = useState(() => {
+    try { return JSON.parse(override?.custom_card ?? "{}").titulo ?? card.titulo; } catch { return card.titulo; }
+  });
+  const [customDiag, setCustomDiag] = useState(() => {
+    try { return JSON.parse(override?.custom_card ?? "{}").diagnostico ?? card.diagnostico; } catch { return card.diagnostico; }
+  });
+  const [customEx, setCustomEx] = useState(() => {
+    try { return JSON.parse(override?.custom_card ?? "{}").exercicio ?? card.exercicio; } catch { return card.exercicio; }
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["coach-study-overrides", studentId] });
+
+  const saveMut = useMutation({
+    mutationFn: (payload: Parameters<typeof coachDashboard.saveStudyOverride>[1]) =>
+      coachDashboard.saveStudyOverride(studentId, payload),
+    onSuccess: () => { invalidate(); setEditMode(null); },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: () => coachDashboard.deleteStudyOverride(studentId, card.spot),
+    onSuccess: invalidate,
+  });
+
+  const validate = () =>
+    saveMut.mutate({ card_spot: card.spot, status: "validated" });
+
+  const saveComment = () =>
+    saveMut.mutate({ card_spot: card.spot, status: "commented", note: noteText });
+
+  const saveReplace = () =>
+    saveMut.mutate({
+      card_spot: card.spot,
+      status: "replaced",
+      custom_card: { titulo: customTitle, diagnostico: customDiag, exercicio: customEx },
+    });
+
+  const isReplaced = override?.status === "replaced";
+  const displayTitle = isReplaced
+    ? (() => { try { return JSON.parse(override!.custom_card ?? "{}").titulo ?? card.titulo; } catch { return card.titulo; } })()
+    : card.titulo;
+  const displayDiag = isReplaced
+    ? (() => { try { return JSON.parse(override!.custom_card ?? "{}").diagnostico ?? card.diagnostico; } catch { return card.diagnostico; } })()
+    : card.diagnostico;
+  const displayEx = isReplaced
+    ? (() => { try { return JSON.parse(override!.custom_card ?? "{}").exercicio ?? card.exercicio; } catch { return card.exercicio; } })()
+    : card.exercicio;
+
+  return (
+    <div className={`rounded-xl border p-5 space-y-3 ${PRIORITY_STYLE[card.prioridade] ?? "border-border bg-hud-surface"}`}>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-xl shrink-0">{card.icone}</span>
+          <h3 className="font-semibold text-foreground truncate">{displayTitle}</h3>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {override && (
+            <span className={`font-mono text-[9px] font-bold uppercase px-2 py-0.5 rounded ring-1 ${
+              override.status === "validated" ? "text-primary ring-primary/30 bg-primary/10" :
+              override.status === "commented" ? "text-amber-400 ring-amber-400/30 bg-amber-400/10" :
+              "text-purple-400 ring-purple-400/30 bg-purple-400/10"
+            }`}>
+              {override.status === "validated" ? "✓ Validado" : override.status === "commented" ? "💬 Comentado" : "✏️ Substituído"}
+            </span>
+          )}
+          <span className={`font-mono text-[9px] font-bold uppercase px-2 py-0.5 rounded ring-1 ${
+            card.prioridade === "alta"
+              ? "text-destructive ring-destructive/30 bg-destructive/10"
+              : card.prioridade === "media"
+              ? "text-amber-400 ring-amber-400/30 bg-amber-400/10"
+              : "text-primary ring-primary/30 bg-primary/10"
+          }`}>
+            {card.prioridade}
+          </span>
+        </div>
+      </div>
+
+      <p className="text-sm text-muted-foreground">{displayDiag}</p>
+
+      {card.conceitos?.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {card.conceitos.map((c) => (
+            <span key={c} className="font-mono text-[10px] bg-background border border-border rounded px-2 py-0.5 text-muted-foreground">
+              {c}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="grid md:grid-cols-2 gap-3 pt-1">
+        <div>
+          <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-1">Exercício</p>
+          <p className="text-sm text-foreground">{displayEx}</p>
+        </div>
+        <div>
+          <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-1">Métrica</p>
+          <p className="text-sm text-foreground">{card.metrica}</p>
+        </div>
+      </div>
+
+      {/* Coach comment display */}
+      {override?.status === "commented" && override.note && editMode !== "comment" && (
+        <div className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2">
+          <p className="font-mono text-[9px] font-bold uppercase text-amber-400 mb-1">Nota do Coach</p>
+          <p className="text-sm text-foreground">{override.note}</p>
+        </div>
+      )}
+
+      {/* Edit modes */}
+      {editMode === "comment" && (
+        <div className="space-y-2 pt-1">
+          <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground">Sua nota para o aluno</p>
+          <textarea
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            rows={3}
+            placeholder="Explique o que o aluno precisa focar neste ponto…"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+          />
+          <div className="flex gap-2">
+            <button onClick={saveComment} disabled={saveMut.isPending || !noteText.trim()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-mono text-[10px] font-bold uppercase disabled:opacity-50">
+              {saveMut.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />} Salvar
+            </button>
+            <button onClick={() => setEditMode(null)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border font-mono text-[10px] text-muted-foreground hover:text-foreground">
+              <X className="size-3" /> Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editMode === "replace" && (
+        <div className="space-y-3 pt-1 border-t border-border">
+          <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground">Substituir card</p>
+          {[
+            { label: "Título", val: customTitle, set: setCustomTitle },
+            { label: "Diagnóstico", val: customDiag, set: setCustomDiag },
+            { label: "Exercício", val: customEx, set: setCustomEx },
+          ].map(({ label, val, set }) => (
+            <div key={label} className="space-y-1">
+              <label className="font-mono text-[9px] uppercase text-muted-foreground">{label}</label>
+              <textarea value={val} onChange={(e) => set(e.target.value)} rows={2}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none" />
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <button onClick={saveReplace} disabled={saveMut.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-mono text-[10px] font-bold uppercase disabled:opacity-50">
+              {saveMut.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />} Salvar
+            </button>
+            <button onClick={() => setEditMode(null)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border font-mono text-[10px] text-muted-foreground hover:text-foreground">
+              <X className="size-3" /> Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Action bar */}
+      {editMode === null && (
+        <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+          <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mr-2">Coach:</p>
+          <button onClick={validate} disabled={saveMut.isPending || override?.status === "validated"}
+            title="Validar este card"
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[10px] font-bold uppercase transition-colors ${
+              override?.status === "validated"
+                ? "bg-primary/10 text-primary ring-1 ring-primary/30"
+                : "border border-border text-muted-foreground hover:text-primary hover:border-primary/40"
+            }`}>
+            <CheckCircle2 className="size-3" /> Validar
+          </button>
+          <button onClick={() => { setNoteText(override?.note ?? ""); setEditMode("comment"); }}
+            title="Adicionar nota"
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[10px] font-bold uppercase transition-colors ${
+              override?.status === "commented"
+                ? "bg-amber-400/10 text-amber-400 ring-1 ring-amber-400/30"
+                : "border border-border text-muted-foreground hover:text-amber-400 hover:border-amber-400/40"
+            }`}>
+            <MessageSquare className="size-3" /> Comentar
+          </button>
+          <button onClick={() => setEditMode("replace")}
+            title="Substituir card"
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[10px] font-bold uppercase transition-colors ${
+              override?.status === "replaced"
+                ? "bg-purple-400/10 text-purple-400 ring-1 ring-purple-400/30"
+                : "border border-border text-muted-foreground hover:text-purple-400 hover:border-purple-400/40"
+            }`}>
+            <PenLine className="size-3" /> Substituir
+          </button>
+          {override && (
+            <button onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}
+              title="Remover anotação"
+              className="ml-auto flex items-center gap-1 px-2 py-1 rounded-md font-mono text-[10px] text-muted-foreground hover:text-destructive border border-transparent hover:border-destructive/30 transition-colors">
+              {deleteMut.isPending ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StudyTab({ studentId }: { studentId: number }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["coach-student-study", studentId],
     queryFn: () => coachDashboard.studentStudyPlan(studentId, 90),
   });
+
+  const { data: overridesData } = useQuery({
+    queryKey: ["coach-study-overrides", studentId],
+    queryFn: () => coachDashboard.getStudyOverrides(studentId),
+  });
+
+  const overridesMap = Object.fromEntries(
+    (overridesData?.overrides ?? []).map((o) => [o.card_spot, o])
+  );
 
   if (isLoading) return <p className="text-sm text-muted-foreground animate-pulse py-8">Gerando plano de estudos do aluno…</p>;
   if (isError || !data) return <p className="text-sm text-destructive py-8">Erro ao carregar plano de estudos.</p>;
@@ -415,59 +698,33 @@ function StudyTab({ studentId }: { studentId: number }) {
     return <p className="text-sm text-muted-foreground py-8 text-center">Dados insuficientes para gerar plano.</p>;
   }
 
+  const validated = (overridesData?.overrides ?? []).filter((o) => o.status === "validated").length;
+  const commented = (overridesData?.overrides ?? []).filter((o) => o.status === "commented").length;
+  const replaced  = (overridesData?.overrides ?? []).filter((o) => o.status === "replaced").length;
+
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-hud-surface px-4 py-3">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-1">
-          Nível: {data.nivel}
-        </p>
-        <p className="text-sm text-foreground">{data.resumo}</p>
+      <div className="rounded-lg border border-border bg-hud-surface px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-0.5">
+            Nível: {data.nivel}
+          </p>
+          <p className="text-sm text-foreground">{data.resumo}</p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {validated > 0 && <span className="font-mono text-[10px] text-primary">✓ {validated} validado{validated > 1 ? "s" : ""}</span>}
+          {commented > 0 && <span className="font-mono text-[10px] text-amber-400">💬 {commented} comentado{commented > 1 ? "s" : ""}</span>}
+          {replaced  > 0 && <span className="font-mono text-[10px] text-purple-400">✏️ {replaced} substituído{replaced  > 1 ? "s" : ""}</span>}
+        </div>
       </div>
 
       {data.cards.map((card, i) => (
-        <div
-          key={i}
-          className={`rounded-xl border p-5 space-y-3 ${PRIORITY_STYLE[card.prioridade] ?? "border-border bg-hud-surface"}`}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{card.icone}</span>
-              <h3 className="font-semibold text-foreground">{card.titulo}</h3>
-            </div>
-            <span className={`shrink-0 font-mono text-[9px] font-bold uppercase px-2 py-0.5 rounded ring-1 ${
-              card.prioridade === "alta"
-                ? "text-destructive ring-destructive/30 bg-destructive/10"
-                : card.prioridade === "media"
-                ? "text-amber-400 ring-amber-400/30 bg-amber-400/10"
-                : "text-primary ring-primary/30 bg-primary/10"
-            }`}>
-              {card.prioridade}
-            </span>
-          </div>
-
-          <p className="text-sm text-muted-foreground">{card.diagnostico}</p>
-
-          {card.conceitos?.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {card.conceitos.map((c) => (
-                <span key={c} className="font-mono text-[10px] bg-background border border-border rounded px-2 py-0.5 text-muted-foreground">
-                  {c}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="grid md:grid-cols-2 gap-3 pt-1">
-            <div>
-              <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-1">Exercício</p>
-              <p className="text-sm text-foreground">{card.exercicio}</p>
-            </div>
-            <div>
-              <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-1">Métrica</p>
-              <p className="text-sm text-foreground">{card.metrica}</p>
-            </div>
-          </div>
-        </div>
+        <StudyCardItem
+          key={card.spot || i}
+          card={card}
+          override={overridesMap[card.spot]}
+          studentId={studentId}
+        />
       ))}
     </div>
   );

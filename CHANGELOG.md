@@ -9,6 +9,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.10.0] — 2026-04-25 — Sprint 3: Coach Study Plan + Comparativo Histórico
+
+### Adicionado
+- **Coach Study Plan interativo**: cada card do plano IA tem 3 ações do coach:
+  - **Validar** (✓) — marca o card como aprovado (badge verde)
+  - **Comentar** (💬) — abre textarea inline para nota visível ao aluno (badge âmbar)
+  - **Substituir** (✏️) — formulário inline para reescrever título, diagnóstico e exercício (badge roxo)
+  - Botão de remover anotação (ícone lixeira)
+  - Resumo de status no topo: "X validados · Y comentados · Z substituídos"
+- **Comparativo histórico** no OverviewTab:
+  - Score médio e Standard% — primeiros 3 vs últimos 3 torneios
+  - Delta com indicador visual: melhorou / piorou / estável
+  - Total de torneios no período
+- **Backend**: tabela `coach_study_overrides` (SQLite + PostgreSQL) com UNIQUE(coach_id, student_id, card_spot)
+- **3 endpoints**: `GET/POST /coach/student/:id/study-overrides`, `DELETE /coach/student/:id/study-overrides/:spot`
+- **Fixes**: replay link no WorstTab (`?tid=` → `?t=`), nome do aluno no header (era "Aluno #N")
+
+---
+
 ## [v0.9.0] — 2026-04-25 — Sprint 2: Coach Full Student View
 
 ### Adicionado

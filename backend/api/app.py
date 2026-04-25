@@ -34,6 +34,7 @@ from database.repositories import (
     assign_invite_key, get_coach_by_invite_key, link_student_to_coach,
     upsert_coach_profile, get_coach_profile, get_public_coaches,
     get_coach_impact_metrics, recommend_coaches_for_leaks,
+    get_study_overrides, save_study_override, delete_study_override,
 )
 from database.auth import generate_token, require_auth, require_coach
 
@@ -857,6 +858,44 @@ def coach_student_replay(student_id, tournament_id, hand_id):
         hand_decisions = [d for d in decisions_db if str(d.get('hand_id')) == str(hand_id)]
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
     return jsonify(replay)
+
+
+@app.route('/coach/student/<int:student_id>/study-overrides', methods=['GET'])
+@require_coach
+def coach_student_study_overrides_get(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    overrides = get_study_overrides(g.user_id, student_id)
+    return jsonify({'overrides': overrides})
+
+
+@app.route('/coach/student/<int:student_id>/study-overrides', methods=['POST'])
+@require_coach
+def coach_student_study_overrides_save(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    data = request.get_json(silent=True) or {}
+    card_spot = data.get('card_spot', '').strip()
+    status    = data.get('status', 'validated')
+    if not card_spot:
+        return jsonify({'error': 'card_spot obrigatório'}), 400
+    if status not in ('validated', 'commented', 'replaced'):
+        return jsonify({'error': 'status inválido'}), 400
+    import json as _json
+    custom_card = data.get('custom_card')
+    custom_card_str = _json.dumps(custom_card) if custom_card else None
+    result = save_study_override(g.user_id, student_id, card_spot, status,
+                                  note=data.get('note'), custom_card=custom_card_str)
+    return jsonify(result)
+
+
+@app.route('/coach/student/<int:student_id>/study-overrides/<path:card_spot>', methods=['DELETE'])
+@require_coach
+def coach_student_study_overrides_delete(student_id, card_spot):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    delete_study_override(g.user_id, student_id, card_spot)
+    return jsonify({'ok': True})
 
 
 @app.route('/analyze/decision', methods=['POST'])

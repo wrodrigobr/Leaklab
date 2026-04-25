@@ -453,9 +453,39 @@ export const coachDashboard = {
   studentReplay: (studentId: number, tournamentId: string, handId: string) =>
     request<ReplayData>(`/coach/student/${studentId}/replay/${tournamentId}/${handId}`),
 
+  getStudyOverrides: (studentId: number) =>
+    request<{ overrides: StudyOverride[] }>(`/coach/student/${studentId}/study-overrides`),
+
+  saveStudyOverride: (studentId: number, data: {
+    card_spot: string;
+    status: "validated" | "commented" | "replaced";
+    note?: string;
+    custom_card?: Partial<StudyCard>;
+  }) =>
+    request<StudyOverride>(`/coach/student/${studentId}/study-overrides`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteStudyOverride: (studentId: number, cardSpot: string) =>
+    request<{ ok: boolean }>(`/coach/student/${studentId}/study-overrides/${encodeURIComponent(cardSpot)}`, {
+      method: "DELETE",
+    }),
+
   impact: (days = 30) =>
     request<CoachImpactResponse>(`/coach/impact?days=${days}`),
 };
+
+export interface StudyOverride {
+  id: number;
+  coach_id: number;
+  student_id: number;
+  card_spot: string;
+  status: "validated" | "commented" | "replaced";
+  note: string | null;
+  custom_card: string | null;
+  created_at: string;
+}
 
 // ── Student side ─────────────────────────────────────────────────────────────
 
