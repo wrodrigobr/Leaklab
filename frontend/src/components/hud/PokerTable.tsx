@@ -19,6 +19,8 @@ interface Props {
   community: CardData[];
   pot:       number;
   street:    string;
+  bb?:       number;
+  betUnit?:  "chips" | "bb";
 }
 
 // ── Geometry ──────────────────────────────────────────────────────────────────
@@ -44,7 +46,12 @@ function betPosition(sx: number, sy: number, t = 0.42) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function PokerTable({ seats, community, pot, street }: Props) {
+function fmt(amount: number, bb: number, unit: "chips" | "bb") {
+  if (unit === "bb") return `${(amount / bb).toFixed(1)} BB`;
+  return amount.toLocaleString();
+}
+
+export function PokerTable({ seats, community, pot, street, bb = 100, betUnit = "chips" }: Props) {
   const positions = seatPositions(seats.length);
 
   return (
@@ -67,7 +74,7 @@ export function PokerTable({ seats, community, pot, street }: Props) {
         </div>
         <div className="flex items-center gap-2 rounded-full bg-background/80 px-4 py-1.5 ring-1 ring-primary/20 backdrop-blur-sm">
           <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Pot</span>
-          <span className="font-mono text-sm font-bold tabular-nums text-primary">{pot.toLocaleString()}</span>
+          <span className="font-mono text-sm font-bold tabular-nums text-primary">{fmt(pot, bb, betUnit)}</span>
         </div>
       </div>
 
@@ -83,7 +90,7 @@ export function PokerTable({ seats, community, pot, street }: Props) {
             style={{ left: `${bx}%`, top: `${by}%` }}
           >
             <div className="rounded-full bg-primary/15 px-2.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-primary ring-1 ring-primary/30 shadow backdrop-blur-sm whitespace-nowrap">
-              {seat.bet.toLocaleString()}
+              {fmt(seat.bet, bb, betUnit)}
             </div>
           </div>
         );

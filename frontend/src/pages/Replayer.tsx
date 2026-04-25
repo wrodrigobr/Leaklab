@@ -81,6 +81,7 @@ const Replayer = () => {
   const [playing, setPlaying]       = useState(false);
   const [speed, setSpeed]           = useState(1);
   const [handList, setHandList]     = useState<string[]>([]);
+  const [betUnit, setBetUnit]       = useState<"chips" | "bb">("chips");
 
   useEffect(() => {
     if (!tournamentId || !handId) return;
@@ -247,7 +248,7 @@ const Replayer = () => {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="lg:col-span-8 space-y-4">
-          <PokerTable seats={seats} community={community} pot={step.pot} street={step.street} />
+          <PokerTable seats={seats} community={community} pot={step.pot} street={step.street} bb={replayData.bb} betUnit={betUnit} />
 
           {/* Controls */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-border bg-hud-surface p-3">
@@ -290,14 +291,27 @@ const Replayer = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
-              {[0.5, 1, 2].map((s) => (
-                <button key={s} onClick={() => setSpeed(s)}
-                  className={cn(
-                    "rounded-sm px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none",
-                    speed === s ? "bg-primary/15 text-primary ring-1 ring-primary/30" : "text-muted-foreground hover:text-foreground"
-                  )}>{s}x</button>
-              ))}
+            <div className="flex items-center gap-3">
+              {/* Speed */}
+              <div className="flex items-center gap-1">
+                {[0.5, 1, 2].map((s) => (
+                  <button key={s} onClick={() => setSpeed(s)}
+                    className={cn(
+                      "rounded-sm px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none",
+                      speed === s ? "bg-primary/15 text-primary ring-1 ring-primary/30" : "text-muted-foreground hover:text-foreground"
+                    )}>{s}x</button>
+                ))}
+              </div>
+              {/* Bet unit toggle */}
+              <div className="flex items-center rounded-sm ring-1 ring-border overflow-hidden">
+                {(["chips", "bb"] as const).map((u) => (
+                  <button key={u} onClick={() => setBetUnit(u)}
+                    className={cn(
+                      "px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none",
+                      betUnit === u ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                    )}>{u}</button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
