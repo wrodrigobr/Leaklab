@@ -422,6 +422,68 @@ def get_breakdown(user_id: int, days: int = 90) -> dict:
         conn.close()
 
 
+def get_player_stats(user_id: int, days: int = 90) -> dict:
+    """Computes poker HUD stats (VPIP, PFR, AF, Flop Bet%) from stored decisions."""
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    conn = get_conn()
+    try:
+        preflop = conn.execute("""
+            SELECT
+                COUNT(DISTINCT d.hand_id) AS total_hands,
+                COUNT(DISTINCT CASE WHEN d.action_taken IN ('call','raise','jam') THEN d.hand_id END) AS vpip_hands,
+                COUNT(DISTINCT CASE WHEN d.action_taken IN ('raise','jam') THEN d.hand_id END) AS pfr_hands
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ? AND d.street = 'preflop'
+        """, (user_id, since)).fetchone()
+
+        postflop = conn.execute("""
+            SELECT
+                COUNT(CASE WHEN d.action_taken IN ('bet','raise','jam') THEN 1 END) AS aggressive,
+                COUNT(CASE WHEN d.action_taken = 'call' THEN 1 END) AS passive
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ? AND d.street != 'preflop'
+        """, (user_id, since)).fetchone()
+
+        flop_row = conn.execute("""
+            SELECT
+                COUNT(*) AS total_flop,
+                COUNT(CASE WHEN d.action_taken IN ('bet','raise','jam') THEN 1 END) AS flop_bets
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ? AND d.street = 'flop'
+        """, (user_id, since)).fetchone()
+
+        pf = dict(preflop) if preflop else {}
+        po = dict(postflop) if postflop else {}
+        fb = dict(flop_row) if flop_row else {}
+
+        total = pf.get('total_hands', 0) or 0
+        vpip_h = pf.get('vpip_hands', 0) or 0
+        pfr_h = pf.get('pfr_hands', 0) or 0
+        aggressive = po.get('aggressive', 0) or 0
+        passive = po.get('passive', 0) or 0
+        flop_total = fb.get('total_flop', 0) or 0
+        flop_bets_n = fb.get('flop_bets', 0) or 0
+
+        return {
+            'total_hands': total,
+            'vpip':         round(vpip_h / total * 100, 1) if total > 0 else None,
+            'pfr':          round(pfr_h  / total * 100, 1) if total > 0 else None,
+            'af':           round(aggressive / passive, 2) if passive > 0 else None,
+            'flop_bet_pct': round(flop_bets_n / flop_total * 100, 1) if flop_total > 0 else None,
+            # Not computable from current data (require betting-round sequence / showdown outcome)
+            'three_bet':    None,
+            'fold_to_3bet': None,
+            'wtsd':         None,
+            'w_at_sd':      None,
+        }
+    finally:
+        conn.close()
+
+
 def get_llm_cache(user_id: int, cache_key: str) -> Optional[str]:
     """Retorna análise cacheada ou None se não existir."""
     conn = get_conn()

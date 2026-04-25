@@ -12,13 +12,15 @@ import { PositionChart } from "@/components/hud/PositionChart";
 import { RecentForm } from "@/components/hud/RecentForm";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { HudTooltip } from "@/components/hud/HudTooltip";
-import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse } from "@/lib/api";
+import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
+import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
   const { user } = useAuth();
   const [evo, setEvo]           = useState<EvolutionResponse | null>(null);
   const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
+  const [playerStats, setPlayerStats] = useState<PlayerStatsResponse | null>(null);
   const [tourns, setTourns]     = useState<Tournament[]>([]);
   const [loading, setLoading]   = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -28,6 +30,7 @@ const Index = () => {
     Promise.all([
       metrics.evolution(90).then(setEvo).catch(() => null),
       metrics.breakdown(90).then(setBreakdown).catch(() => null),
+      metrics.playerStats(90).then(setPlayerStats).catch(() => null),
       tournaments.list().then((r) => setTourns(r.tournaments)).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
@@ -139,6 +142,7 @@ const Index = () => {
             <aside className="space-y-6 lg:col-span-4">
               <LeaksPanel leaks={evo?.leaks} />
               <IcmBreakdown icm={evo?.icm} />
+              <PlayerStatsCard stats={playerStats} />
 
               {/* Confiança da IA */}
               <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">

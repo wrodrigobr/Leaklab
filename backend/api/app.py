@@ -28,7 +28,7 @@ from database.repositories import (
     save_tournament, save_decisions, get_tournaments,
     get_tournament, get_tournament_by_db_id, get_decisions, update_llm_summary,
     get_llm_cache, set_llm_cache,
-    get_evolution_metrics, get_leak_summary, get_icm_performance, get_breakdown,
+    get_evolution_metrics, get_leak_summary, get_icm_performance, get_breakdown, get_player_stats,
     get_students,
     # Coach system
     assign_invite_key, get_coach_by_invite_key, link_student_to_coach,
@@ -315,6 +315,13 @@ def history_evolution():
 def history_breakdown():
     days = int(request.args.get('days', 90))
     return jsonify(get_breakdown(g.user_id, days))
+
+
+@app.route('/metrics/player-stats', methods=['GET'])
+@require_auth
+def player_stats():
+    days = int(request.args.get('days', 90))
+    return jsonify(get_player_stats(g.user_id, days))
 
 
 # ── AI Coach conversacional ──────────────────────────────────────────────────

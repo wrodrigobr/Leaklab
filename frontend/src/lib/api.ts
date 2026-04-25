@@ -257,12 +257,27 @@ export interface BreakdownResponse {
   by_label:    Record<string, number>;
 }
 
+export interface PlayerStatsResponse {
+  total_hands: number;
+  vpip: number | null;
+  pfr: number | null;
+  af: number | null;
+  flop_bet_pct: number | null;
+  three_bet: null;
+  fold_to_3bet: null;
+  wtsd: null;
+  w_at_sd: null;
+}
+
 export const metrics = {
   evolution: (days = 90) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}`),
 
   breakdown: (days = 90) =>
     request<BreakdownResponse>(`/history/breakdown?days=${days}`),
+
+  playerStats: (days = 90) =>
+    request<PlayerStatsResponse>(`/metrics/player-stats?days=${days}`),
 };
 
 // ── Study Plan ────────────────────────────────────────────────────────────────

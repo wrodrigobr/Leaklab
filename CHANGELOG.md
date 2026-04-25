@@ -9,6 +9,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2026-04-24d] — Player HUD Stats: VPIP, PFR, Aggression Factor, Flop Bet%
+
+### Adicionado
+- **`backend/database/repositories.py`**: nova função `get_player_stats(user_id, days)` que agrega decisões por mão e computa VPIP, PFR, AF (Aggression Factor) e Flop Bet% diretamente das decisões armazenadas
+- **`backend/api/app.py`**: novo endpoint `GET /metrics/player-stats?days=N` que retorna o perfil de jogo calculado
+- **`frontend/src/components/hud/PlayerStatsCard.tsx`**: novo card HUD exibindo as 4 stats computáveis (VPIP, PFR, AF, Flop Bet%) com barra de progresso colorida vs. referência MTT; 4 stats futuras (3BET, Fold to 3BET, WTSD, W$SD) exibidas como "Em breve" com tooltip explicativo
+- **`frontend/src/lib/api.ts`**: interface `PlayerStatsResponse` e método `metrics.playerStats(days)`
+- **`frontend/src/pages/Index.tsx`**: `PlayerStatsCard` adicionado à sidebar do dashboard
+
+### Referências MTT usadas
+| Stat | Ref MTT | Status |
+|------|---------|--------|
+| VPIP | 12–22% | ✅ Calculado |
+| PFR | 9–18% | ✅ Calculado |
+| AF | 2.0–4.0x | ✅ Calculado |
+| Flop Bet | 40–65% | ✅ Calculado |
+| 3BET | 4–8% | 🔜 Em breve |
+| Fold to 3BET | 55–72% | 🔜 Em breve |
+| WTSD | 25–35% | 🔜 Em breve |
+| W$SD | 50–60% | 🔜 Em breve |
+
+---
+
 ## [2026-04-24c] — Cartas do villain reveladas no momento do "shows", não só no showdown final
 
 ### Corrigido
