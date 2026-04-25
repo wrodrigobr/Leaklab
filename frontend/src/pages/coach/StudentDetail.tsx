@@ -619,6 +619,43 @@ function StudyCardItem({
         </div>
       </div>
 
+      {/* Recursos */}
+      {card.recursos && (
+        <div className="rounded-md border border-border bg-background px-3 py-2.5 space-y-2">
+          <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground">Recursos</p>
+          {card.recursos.livros?.length > 0 && (
+            <div>
+              <p className="font-mono text-[9px] text-muted-foreground mb-1">📚 Livros</p>
+              <ul className="space-y-0.5">
+                {card.recursos.livros.map((l, i) => (
+                  <li key={i} className="text-xs text-foreground flex gap-1.5">
+                    <span className="text-muted-foreground shrink-0">·</span>{l}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {card.recursos.videos?.length > 0 && (
+            <div>
+              <p className="font-mono text-[9px] text-muted-foreground mb-1">🎬 Vídeos</p>
+              <ul className="space-y-0.5">
+                {card.recursos.videos.map((v, i) => (
+                  <li key={i} className="text-xs text-foreground flex gap-1.5">
+                    <span className="text-muted-foreground shrink-0">·</span>{v}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {card.recursos.curso && (
+            <div>
+              <p className="font-mono text-[9px] text-muted-foreground mb-1">🎓 Curso</p>
+              <p className="text-xs text-foreground">{card.recursos.curso}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Coach comment display */}
       {override?.status === "commented" && override.note && editMode !== "comment" && (
         <div className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2">
