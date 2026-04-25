@@ -392,13 +392,19 @@ const Replayer = () => {
               )}
               <ul className="space-y-2">
                 {step.summary.seats.map((sd, i) => (
-                  <li key={i} className="text-xs space-y-0.5">
+                  <li key={i} className={cn(
+                    "text-xs space-y-0.5 rounded-lg px-2.5 py-2 -mx-2.5 transition-colors",
+                    sd.outcome === "won"
+                      ? "bg-primary/10 ring-1 ring-primary/30 shadow-[0_0_12px_rgba(var(--primary-rgb,99,179,132)/0.25)]"
+                      : "opacity-60"
+                  )}>
                     <div className="flex items-center justify-between gap-2">
                       <span className={cn("font-semibold", sd.outcome === "won" ? "text-primary" : "text-muted-foreground")}>
+                        {sd.outcome === "won" && <span className="mr-1">🏆</span>}
                         {playerAliases[sd.player] ?? sd.player}
                       </span>
                       {sd.outcome === "won" && (
-                        <span className="font-mono text-[10px] text-primary">+{sd.won}</span>
+                        <span className="font-mono text-[11px] font-bold text-primary">+{sd.won}</span>
                       )}
                     </div>
                     {sd.cards?.length > 0 && (
@@ -417,14 +423,9 @@ const Replayer = () => {
             </section>
           )}
 
-          {/* Pot & stack info */}
-          <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-2">
-            <div className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-2">Situação</div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div><span className="text-muted-foreground">Pot</span><div className="font-mono font-medium">{step.pot_bb?.toFixed(1)} BB</div></div>
-              <div><span className="text-muted-foreground">Street</span><div className="font-mono font-medium">{step.street?.toUpperCase()}</div></div>
-            </div>
-            <div className="mt-2 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-1">Atalhos</div>
+          {/* Keyboard shortcuts */}
+          <div className="rounded-xl border border-border bg-hud-surface px-4 py-3">
+            <div className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-2">Atalhos</div>
             <ul className="space-y-1 text-xs text-muted-foreground">
               <li className="flex items-center justify-between"><span>Play/Pause</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">Space</kbd></li>
               <li className="flex items-center justify-between"><span>Próximo</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">→</kbd></li>
