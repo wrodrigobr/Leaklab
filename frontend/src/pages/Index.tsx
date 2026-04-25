@@ -115,6 +115,10 @@ const Index = () => {
         {!loading && !hasData ? (
           <EmptyDashboard onComplete={handleUpload} />
         ) : (
+          <>
+          {/* Player HUD Stats strip — full width, prominente */}
+          <PlayerStatsCard stats={playerStats} />
+
           <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
 
             {/* Coluna principal */}
@@ -142,7 +146,6 @@ const Index = () => {
             <aside className="space-y-6 lg:col-span-4">
               <LeaksPanel leaks={evo?.leaks} />
               <IcmBreakdown icm={evo?.icm} />
-              <PlayerStatsCard stats={playerStats} />
 
               {/* Confiança da IA */}
               <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
@@ -173,6 +176,7 @@ const Index = () => {
               </div>
             </aside>
           </section>
+          </>
         )}
       </main>
 
