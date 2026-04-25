@@ -141,25 +141,10 @@ function SummaryContent({ text }: { text: string }) {
     .filter(Boolean);
 
   return (
-    <div className="space-y-4 p-5">
-      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Brain className="size-4 text-primary" aria-hidden />
-          <span className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
-            Análise gerada por Claude AI
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Baseada nas decisões reais do torneio. Resultado em português BR, focado em poker MTT.
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        {sections.map((section, i) => (
-          <SummarySection key={i} text={section} />
-        ))}
-      </div>
-
+    <div className="space-y-3 p-5">
+      {sections.map((section, i) => (
+        <SummarySection key={i} text={section} />
+      ))}
       <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground text-center pt-2">
         LeakLabs AI Coach • Powered by Claude Haiku
       </p>
