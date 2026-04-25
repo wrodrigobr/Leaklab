@@ -383,7 +383,7 @@ function WorstTab({ studentId }: { studentId: number }) {
           <div className="flex items-center justify-between">
             <p className="font-mono text-[10px] text-muted-foreground">{d.tournament_id}</p>
             <button
-              onClick={() => navigate(`/replayer?tid=${d.tournament_id}&hid=${d.hand_id}&student=${studentId}`)}
+              onClick={() => navigate(`/replayer?t=${d.tournament_id}&h=${d.hand_id}&student=${studentId}`)}
               className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-primary hover:underline"
             >
               <Play className="size-3" /> Ver Replay
@@ -480,6 +480,13 @@ export default function StudentDetail() {
   const studentId = Number(id);
   const [tab, setTab] = useState<Tab>("overview");
 
+  const { data: studentsData } = useQuery({
+    queryKey: ["coach-students"],
+    queryFn: coachDashboard.students,
+  });
+
+  const studentName = studentsData?.students.find((s) => s.id === studentId)?.username ?? `Aluno #${studentId}`;
+
   const { data: history } = useQuery({
     queryKey: ["coach-student-history", studentId],
     queryFn: () => coachDashboard.studentHistory(studentId, 90),
@@ -520,7 +527,7 @@ export default function StudentDetail() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-foreground">
-                Aluno #{studentId}
+                {studentName}
               </h1>
               <div className="flex items-center gap-3 mt-1">
                 <span className="font-mono text-xs text-muted-foreground">
