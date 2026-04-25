@@ -8,6 +8,7 @@ export interface Seat {
   hero?:    boolean;
   folded?:  boolean;
   active?:  boolean;
+  winner?:  boolean;
   bet?:     number;
   cards?:   CardData[];
   revealed?: boolean; // true on showdown — show villain cards face-up
@@ -124,10 +125,11 @@ function SeatBubble({ seat }: { seat: Seat }) {
       {/* Nameplate */}
       <div className={cn(
         "min-w-[110px] rounded-lg border bg-hud-elevated px-2.5 py-1.5 text-center transition-all",
-        seat.active  && "border-primary ring-2 ring-primary/40 shadow-glow",
-        seat.folded  && !seat.active && "border-border opacity-50",
-        !seat.active && !seat.folded && "border-border",
-        seat.hero    && "border-primary/50",
+        seat.winner  && "border-primary ring-2 ring-primary/50 shadow-[0_0_18px_rgba(99,179,132,0.45)]",
+        seat.active  && !seat.winner && "border-primary ring-2 ring-primary/40 shadow-glow",
+        seat.folded  && !seat.active && !seat.winner && "border-border opacity-50",
+        !seat.active && !seat.folded && !seat.winner && "border-border",
+        seat.hero    && !seat.winner && "border-primary/50",
       )}>
         <div className="flex items-center justify-center gap-1.5">
           {seat.hero && (

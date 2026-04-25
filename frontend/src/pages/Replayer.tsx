@@ -23,6 +23,8 @@ function parseCards(arr: string[]): CardData[] {
 // ── Map backend step to PokerTable seats ──────────────────────────────────────
 
 function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[], aliases: Record<string, string>): Seat[] {
+  const winners = new Set(step.summary?.winners?.map((w) => w.player) ?? []);
+
   return Object.entries(step.seats).map(([seatNum, sd]) => {
     const seatId      = parseInt(seatNum);
     const isHero      = sd.player === hero;
@@ -44,6 +46,7 @@ function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[], alias
       hero:     isHero,
       cards,
       revealed: !isHero && Array.isArray(cards) && cards.length > 0,
+      winner:   winners.has(sd.player),
       bet:      bet || undefined,
       active:   step.seat === seatId,
       folded,
