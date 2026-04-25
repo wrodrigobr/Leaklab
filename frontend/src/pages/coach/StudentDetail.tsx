@@ -528,6 +528,15 @@ function StudyCardItem({
   const [customEx, setCustomEx] = useState(() => {
     try { return JSON.parse(override?.custom_card ?? "{}").exercicio ?? card.exercicio; } catch { return card.exercicio; }
   });
+  const [customLivros, setCustomLivros] = useState(() => {
+    try { return (JSON.parse(override?.custom_card ?? "{}").recursos?.livros ?? card.recursos?.livros ?? []).join("\n"); } catch { return (card.recursos?.livros ?? []).join("\n"); }
+  });
+  const [customVideos, setCustomVideos] = useState(() => {
+    try { return (JSON.parse(override?.custom_card ?? "{}").recursos?.videos ?? card.recursos?.videos ?? []).join("\n"); } catch { return (card.recursos?.videos ?? []).join("\n"); }
+  });
+  const [customCurso, setCustomCurso] = useState(() => {
+    try { return JSON.parse(override?.custom_card ?? "{}").recursos?.curso ?? card.recursos?.curso ?? ""; } catch { return card.recursos?.curso ?? ""; }
+  });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["coach-study-overrides", studentId] });
 
@@ -552,19 +561,24 @@ function StudyCardItem({
     saveMut.mutate({
       card_spot: card.spot,
       status: "replaced",
-      custom_card: { titulo: customTitle, diagnostico: customDiag, exercicio: customEx },
+      custom_card: {
+        titulo: customTitle,
+        diagnostico: customDiag,
+        exercicio: customEx,
+        recursos: {
+          livros: customLivros.split("\n").map((s) => s.trim()).filter(Boolean),
+          videos: customVideos.split("\n").map((s) => s.trim()).filter(Boolean),
+          curso:  customCurso.trim() || null,
+        },
+      },
     });
 
   const isReplaced = override?.status === "replaced";
-  const displayTitle = isReplaced
-    ? (() => { try { return JSON.parse(override!.custom_card ?? "{}").titulo ?? card.titulo; } catch { return card.titulo; } })()
-    : card.titulo;
-  const displayDiag = isReplaced
-    ? (() => { try { return JSON.parse(override!.custom_card ?? "{}").diagnostico ?? card.diagnostico; } catch { return card.diagnostico; } })()
-    : card.diagnostico;
-  const displayEx = isReplaced
-    ? (() => { try { return JSON.parse(override!.custom_card ?? "{}").exercicio ?? card.exercicio; } catch { return card.exercicio; } })()
-    : card.exercicio;
+  const _custom = () => { try { return JSON.parse(override!.custom_card ?? "{}"); } catch { return {}; } };
+  const displayTitle    = isReplaced ? (_custom().titulo      ?? card.titulo)      : card.titulo;
+  const displayDiag     = isReplaced ? (_custom().diagnostico ?? card.diagnostico) : card.diagnostico;
+  const displayEx       = isReplaced ? (_custom().exercicio   ?? card.exercicio)   : card.exercicio;
+  const displayRecursos = isReplaced ? (_custom().recursos    ?? card.recursos)    : card.recursos;
 
   return (
     <div className={`rounded-xl border p-5 space-y-3 ${PRIORITY_STYLE[card.prioridade] ?? "border-border bg-hud-surface"}`}>
@@ -620,14 +634,14 @@ function StudyCardItem({
       </div>
 
       {/* Recursos */}
-      {card.recursos && (
+      {displayRecursos && (
         <div className="rounded-md border border-border bg-background px-3 py-2.5 space-y-2">
           <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground">Recursos</p>
-          {card.recursos.livros?.length > 0 && (
+          {displayRecursos.livros?.length > 0 && (
             <div>
               <p className="font-mono text-[9px] text-muted-foreground mb-1">📚 Livros</p>
               <ul className="space-y-0.5">
-                {card.recursos.livros.map((l, i) => (
+                {displayRecursos.livros.map((l: string, i: number) => (
                   <li key={i} className="text-xs text-foreground flex gap-1.5">
                     <span className="text-muted-foreground shrink-0">·</span>{l}
                   </li>
@@ -635,11 +649,11 @@ function StudyCardItem({
               </ul>
             </div>
           )}
-          {card.recursos.videos?.length > 0 && (
+          {displayRecursos.videos?.length > 0 && (
             <div>
               <p className="font-mono text-[9px] text-muted-foreground mb-1">🎬 Vídeos</p>
               <ul className="space-y-0.5">
-                {card.recursos.videos.map((v, i) => (
+                {displayRecursos.videos.map((v: string, i: number) => (
                   <li key={i} className="text-xs text-foreground flex gap-1.5">
                     <span className="text-muted-foreground shrink-0">·</span>{v}
                   </li>
@@ -647,10 +661,10 @@ function StudyCardItem({
               </ul>
             </div>
           )}
-          {card.recursos.curso && (
+          {displayRecursos.curso && (
             <div>
               <p className="font-mono text-[9px] text-muted-foreground mb-1">🎓 Curso</p>
-              <p className="text-xs text-foreground">{card.recursos.curso}</p>
+              <p className="text-xs text-foreground">{displayRecursos.curso}</p>
             </div>
           )}
         </div>
@@ -690,17 +704,43 @@ function StudyCardItem({
       {editMode === "replace" && (
         <div className="space-y-3 pt-1 border-t border-border">
           <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground">Substituir card</p>
+
+          {/* Conteúdo */}
           {[
-            { label: "Título", val: customTitle, set: setCustomTitle },
-            { label: "Diagnóstico", val: customDiag, set: setCustomDiag },
-            { label: "Exercício", val: customEx, set: setCustomEx },
-          ].map(({ label, val, set }) => (
+            { label: "Título", val: customTitle, set: setCustomTitle, rows: 1 },
+            { label: "Diagnóstico", val: customDiag, set: setCustomDiag, rows: 3 },
+            { label: "Exercício", val: customEx, set: setCustomEx, rows: 2 },
+          ].map(({ label, val, set, rows }) => (
             <div key={label} className="space-y-1">
               <label className="font-mono text-[9px] uppercase text-muted-foreground">{label}</label>
-              <textarea value={val} onChange={(e) => set(e.target.value)} rows={2}
+              <textarea value={val} onChange={(e) => set(e.target.value)} rows={rows}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none" />
             </div>
           ))}
+
+          {/* Recursos */}
+          <div className="rounded-md border border-border/60 bg-background/50 px-3 py-2.5 space-y-2.5">
+            <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground">Recursos</p>
+            <div className="space-y-1">
+              <label className="font-mono text-[9px] uppercase text-muted-foreground">📚 Livros <span className="normal-case">(um por linha)</span></label>
+              <textarea value={customLivros} onChange={(e) => setCustomLivros(e.target.value)} rows={3}
+                placeholder={"Applications of No-Limit Hold'em, cap. 7\nThe Mental Game of Poker, cap. 3"}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none" />
+            </div>
+            <div className="space-y-1">
+              <label className="font-mono text-[9px] uppercase text-muted-foreground">🎬 Vídeos <span className="normal-case">(um por linha)</span></label>
+              <textarea value={customVideos} onChange={(e) => setCustomVideos(e.target.value)} rows={3}
+                placeholder={"Hand history reviews no GTO Wizard\nSolver study sessions — spots de 3bet"}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none" />
+            </div>
+            <div className="space-y-1">
+              <label className="font-mono text-[9px] uppercase text-muted-foreground">🎓 Curso</label>
+              <input value={customCurso} onChange={(e) => setCustomCurso(e.target.value)}
+                placeholder="Nome do curso ou treinamento (opcional)"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40" />
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <button onClick={saveReplace} disabled={saveMut.isPending}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-mono text-[10px] font-bold uppercase disabled:opacity-50">

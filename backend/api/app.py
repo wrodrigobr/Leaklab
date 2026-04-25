@@ -1100,6 +1100,8 @@ def study_plan():
                                 for field in ('titulo', 'diagnostico', 'exercicio'):
                                     if custom.get(field):
                                         card[field] = custom[field]
+                                if custom.get('recursos'):
+                                    card['recursos'] = custom['recursos']
                             except Exception:
                                 pass
                         if ov['status'] == 'commented' and ov.get('note'):

@@ -16,6 +16,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Aluno com coach não pode regerar** — backend bloqueia `?new=1` se o aluno tiver coach vinculado
 - **Overrides do coach aplicados no plano do aluno** — cards substituídos/comentados pelo coach já chegam modificados para o aluno via `/study/plan`, alinhando o conteúdo visto por ambos
 - **Coach — StudyCardItem exibe recursos completos** (livros, vídeos, curso) para equiparar ao nível de detalhe do plano do aluno
+- **Coach — "Substituir" gerencia recursos**: formulário de substituição inclui campos para livros (um por linha), vídeos (um por linha) e curso — coach pode indicar material próprio
+- Recursos substituídos pelo coach são aplicados no plano do aluno via backend
 - **Plano de estudos inconsistente entre aluno e coach**: aluno e coach agora compartilham o mesmo plano armazenado por chave estável `study_plan_current` no banco — não mais por hash dos dados, que podia divergir quando os dados mudavam entre as gerações
 - **Botão "Gerar com IA"** agora força de fato uma nova geração (`?new=1`), sobrescrevendo o plano anterior no banco — antes apenas re-buscava o cache sem regenerar
 
