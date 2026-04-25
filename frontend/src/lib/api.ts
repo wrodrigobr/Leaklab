@@ -394,6 +394,24 @@ export interface StudentHistory {
   tournaments: Tournament[];
 }
 
+export interface StudentWorstDecision {
+  id: number;
+  hand_id: string;
+  street: string;
+  hero_cards: string;
+  board: string;
+  action_taken: string;
+  best_action: string;
+  label: string;
+  score: number;
+  position: string | null;
+  icm_pressure: string | null;
+  m_ratio: number | null;
+  stack_bb: number | null;
+  tournament_id: string;
+  site: string;
+}
+
 export const coachDashboard = {
   inviteKey: () =>
     request<{ invite_key: string }>("/coach/invite-key"),
@@ -412,6 +430,28 @@ export const coachDashboard = {
 
   studentHistory: (studentId: number, days = 30) =>
     request<StudentHistory>(`/coach/student/${studentId}/history?days=${days}`),
+
+  studentStats: (studentId: number, days = 90) =>
+    request<PlayerStatsResponse>(`/coach/student/${studentId}/stats?days=${days}`),
+
+  studentBreakdown: (studentId: number, days = 90) =>
+    request<BreakdownResponse>(`/coach/student/${studentId}/breakdown?days=${days}`),
+
+  studentTournament: (studentId: number, tournamentId: string) =>
+    request<{ tournament: Tournament; decisions: TournamentDecision[] }>(
+      `/coach/student/${studentId}/tournament/${tournamentId}`
+    ),
+
+  studentWorstDecisions: (studentId: number, n = 20) =>
+    request<{ decisions: StudentWorstDecision[] }>(
+      `/coach/student/${studentId}/worst-decisions?n=${n}`
+    ),
+
+  studentStudyPlan: (studentId: number, days = 90) =>
+    request<StudyPlanResponse>(`/coach/student/${studentId}/study-plan?days=${days}`),
+
+  studentReplay: (studentId: number, tournamentId: string, handId: string) =>
+    request<ReplayData>(`/coach/student/${studentId}/replay/${tournamentId}/${handId}`),
 
   impact: (days = 30) =>
     request<CoachImpactResponse>(`/coach/impact?days=${days}`),

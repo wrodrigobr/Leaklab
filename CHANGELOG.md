@@ -9,6 +9,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.9.0] — 2026-04-25 — Sprint 2: Coach Full Student View
+
+### Adicionado
+- **6 novos endpoints backend** para o coach acessar dados completos do aluno:
+  - `GET /coach/student/:id/stats` — HUD stats (VPIP, PFR, AF, 3BET%, W$SD…)
+  - `GET /coach/student/:id/breakdown` — performance por street e posição
+  - `GET /coach/student/:id/tournament/:tid` — detalhe de torneio + decisões
+  - `GET /coach/student/:id/worst-decisions` — piores N decisões do aluno
+  - `GET /coach/student/:id/study-plan` — plano de estudos IA do aluno
+  - `GET /coach/student/:id/replay/:tid/:hid` — replay de mão do aluno
+- **StudentDetail.tsx** totalmente reescrito com 4 abas:
+  - **Visão Geral**: HUD Stats (8 indicadores), gráfico de evolução, leaks, performance por street (bar chart) e por posição
+  - **Torneios**: lista completa clicável → detalhe com tabela de decisões + botão "Ver Replay"
+  - **Mãos Críticas**: fila das 30 piores decisões (score, street, posição, ICM, M-ratio, ação vs. correto) com link direto ao replay
+  - **Plano de Estudos**: plano IA gerado para o aluno, com cards de prioridade alta/média/baixa
+- **Replayer.tsx**: suporte ao parâmetro `?student=<id>` — usa endpoint do coach em vez do endpoint do jogador
+
+---
+
 ## [v0.8.0] — 2026-04-25 — Sprint 1: Sistema Professor/Aluno
 
 ### Adicionado

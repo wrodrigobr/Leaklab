@@ -5,7 +5,7 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import { PokerTable, type Seat } from "@/components/hud/PokerTable";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
-import { tournaments as tournamentsApi, ReplayData, ReplayStep } from "@/lib/api";
+import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep } from "@/lib/api";
 
 // ── Card parsing ──────────────────────────────────────────────────────────────
 
@@ -73,6 +73,7 @@ const Replayer = () => {
   const navigate   = useNavigate();
   const tournamentId = params.get("t") ?? "";
   const handId       = params.get("h") ?? "";
+  const studentId    = params.get("student") ? Number(params.get("student")) : null;
 
   const [replayData, setReplayData] = useState<ReplayData | null>(null);
   const [loading, setLoading]       = useState(false);
@@ -89,10 +90,18 @@ const Replayer = () => {
     setError("");
     setStepIdx(0);
     setPlaying(false);
-    Promise.all([
-      tournamentsApi.replay(tournamentId, handId),
-      tournamentsApi.get(tournamentId).catch(() => null),
-    ])
+
+    const replayFn = studentId
+      ? coachDashboard.studentReplay(studentId, tournamentId, handId)
+      : tournamentsApi.replay(tournamentId, handId);
+
+    const tournamentFn = studentId
+      ? coachDashboard.studentTournament(studentId, tournamentId)
+          .then((r) => ({ decisions: r.decisions }))
+          .catch(() => null)
+      : tournamentsApi.get(tournamentId).catch(() => null);
+
+    Promise.all([replayFn, tournamentFn])
       .then(([replay, tournamentData]) => {
         setReplayData(replay);
         if (tournamentData) {
@@ -106,7 +115,7 @@ const Replayer = () => {
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao carregar replay"))
       .finally(() => setLoading(false));
-  }, [tournamentId, handId]);
+  }, [tournamentId, handId, studentId]);
 
   const steps = replayData?.timeline ?? [];
   const step  = steps[stepIdx] as ReplayStep | undefined;

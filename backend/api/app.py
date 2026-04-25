@@ -734,6 +734,131 @@ def coach_students_legacy():
     return coach_students_v2()
 
 
+# ── Coach: acesso completo aos dados de alunos ────────────────────────────────
+
+def _verify_student(coach_id: int, student_id: int):
+    """Retorna True se student_id pertence a coach_id."""
+    students = get_students(coach_id)
+    return any(s['id'] == student_id for s in students)
+
+
+@app.route('/coach/student/<int:student_id>/stats', methods=['GET'])
+@require_coach
+def coach_student_stats(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    days = int(request.args.get('days', 90))
+    return jsonify(get_player_stats(student_id, days))
+
+
+@app.route('/coach/student/<int:student_id>/breakdown', methods=['GET'])
+@require_coach
+def coach_student_breakdown(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    days = int(request.args.get('days', 90))
+    return jsonify(get_breakdown(student_id, days))
+
+
+@app.route('/coach/student/<int:student_id>/tournament/<tournament_id>', methods=['GET'])
+@require_coach
+def coach_student_tournament(student_id, tournament_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    t = get_tournament(student_id, tournament_id)
+    if not t:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+    decisions = get_decisions(t['id'])
+    return jsonify({'tournament': t, 'decisions': decisions})
+
+
+@app.route('/coach/student/<int:student_id>/worst-decisions', methods=['GET'])
+@require_coach
+def coach_student_worst_decisions(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    limit = int(request.args.get('n', 20))
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        rows = conn.execute("""
+            SELECT d.id, d.hand_id, d.street, d.hero_cards, d.board,
+                   d.action_taken, d.best_action, d.label, d.score,
+                   d.position, d.icm_pressure, d.m_ratio, d.stack_bb,
+                   t.tournament_id, t.site
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND d.label IN ('clear_mistake', 'small_mistake')
+            ORDER BY d.score DESC
+            LIMIT ?
+        """, (student_id, limit)).fetchall()
+    finally:
+        conn.close()
+    return jsonify({'decisions': [dict(r) for r in rows]})
+
+
+@app.route('/coach/student/<int:student_id>/study-plan', methods=['GET'])
+@require_coach
+def coach_student_study_plan(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    try:
+        from leaklab.llm_explainer import generate_study_plan
+        days = int(request.args.get('days', 90))
+        leaks    = get_leak_summary(student_id, days)    or []
+        evolution = get_evolution_metrics(student_id, days) or []
+        icm      = get_icm_performance(student_id, days)  or {}
+        if not leaks and not evolution:
+            return jsonify({'error': 'Aluno sem dados suficientes'}), 400
+        tourns = get_tournaments(student_id, limit=1)
+        hero = tourns[0]['hero'] if tourns else 'Aluno'
+        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=student_id)
+        return jsonify(plan)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/coach/student/<int:student_id>/replay/<tournament_id>/<hand_id>', methods=['GET'])
+@require_coach
+def coach_student_replay(student_id, tournament_id, hand_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    t = get_tournament(student_id, tournament_id)
+    if not t:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+    raw_text = t.get('raw_text')
+    if not raw_text:
+        return jsonify({'error': 'Hand history não disponível'}), 404
+    try:
+        hands = parse_pokerstars_file_from_text(raw_text)
+    except Exception as e:
+        return jsonify({'error': f'Erro ao parsear: {str(e)}'}), 422
+    target = next((h for h in hands if str(h.hand_id) == str(hand_id)), None)
+    if not target:
+        return jsonify({'error': f'Mão {hand_id} não encontrada'}), 404
+    try:
+        from leaklab.pipeline import build_decision_inputs_for_hand
+        from leaklab.decision_engine_v11 import evaluate_decision as _eval
+        live_decisions = []
+        for di in build_decision_inputs_for_hand(target):
+            r = _eval(di)
+            live_decisions.append({
+                'hand_id': str(target.hand_id), 'street': di['street'],
+                'action_taken': r.get('actionTaken', ''), 'best_action': r.get('bestAction', ''),
+                'label': r['evaluation']['label'], 'score': r['evaluation']['mistakeScore'],
+                'context': di.get('context', {}), 'math': di.get('math', {}),
+                'breakdown': r['evaluation'].get('scoreBreakdown', {}),
+            })
+        hand_decisions = live_decisions
+    except Exception:
+        decisions_db = get_decisions(t['id'])
+        hand_decisions = [d for d in decisions_db if str(d.get('hand_id')) == str(hand_id)]
+    replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
+    return jsonify(replay)
+
+
 @app.route('/analyze/decision', methods=['POST'])
 @require_auth
 def analyze_decision():
