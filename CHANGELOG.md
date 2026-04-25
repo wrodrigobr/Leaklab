@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2026-04-25c] — HUD Stats: fix visibilidade células "em breve" (3BET, W$SD)
+
+### Corrigido
+- **`frontend/src/components/hud/PlayerStatsCard.tsx`**: células 3BET e W$SD estavam invisíveis — opacidades do status `na` elevadas de `/25`→`/50` (valor), `/40`→`/60` (label e "em breve"), `/30`→`/50` (ref MTT); células ficam visivelmente "desabilitadas" mas legíveis
+
+---
+
 ## [2026-04-25b] — GGPoker parser: suporte completo + fix hero detection
 
 ### Adicionado

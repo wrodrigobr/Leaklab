@@ -107,7 +107,7 @@ const STATUS_COLORS: Record<Status, string> = {
   ok:     "text-primary",
   warn:   "text-yellow-400",
   danger: "text-destructive",
-  na:     "text-muted-foreground/25",
+  na:     "text-muted-foreground/50",
 };
 
 const BAR_COLORS: Record<Status, string> = {
@@ -142,7 +142,7 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
       <div className="flex items-center gap-1.5">
         <span className={cn(
           "font-mono text-[10px] font-bold uppercase tracking-widest-2",
-          def.soon ? "text-muted-foreground/40" : "text-muted-foreground"
+          def.soon ? "text-muted-foreground/60" : "text-muted-foreground"
         )}>
           {def.label}
         </span>
@@ -158,7 +158,7 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
           {displayValue}
         </span>
         {def.soon && (
-          <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
             em breve
           </span>
         )}
@@ -179,7 +179,7 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
 
       <span className={cn(
         "font-mono text-[9px] uppercase tracking-widest",
-        def.soon ? "text-muted-foreground/30" : "text-muted-foreground/60"
+        def.soon ? "text-muted-foreground/50" : "text-muted-foreground/60"
       )}>
         Ref MTT {def.range.label}
       </span>
