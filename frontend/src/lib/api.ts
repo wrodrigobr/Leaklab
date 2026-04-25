@@ -245,9 +245,24 @@ export interface EvolutionResponse {
   icm: Record<string, { n: number; avg_score: number; standard_rate: number }>;
 }
 
+export interface BreakdownStat {
+  n: number;
+  avg_score: number;
+  standard_rate: number;
+}
+
+export interface BreakdownResponse {
+  by_street:   Record<string, BreakdownStat>;
+  by_position: Record<string, BreakdownStat>;
+  by_label:    Record<string, number>;
+}
+
 export const metrics = {
   evolution: (days = 90) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}`),
+
+  breakdown: (days = 90) =>
+    request<BreakdownResponse>(`/history/breakdown?days=${days}`),
 };
 
 // ── Study Plan ────────────────────────────────────────────────────────────────

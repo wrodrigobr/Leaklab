@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowUpRight, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HudTooltip } from "./HudTooltip";
 
 export interface KpiCardProps {
   index: string;
@@ -10,9 +11,10 @@ export interface KpiCardProps {
   hint?: string;
   icon?: LucideIcon;
   highlight?: boolean;
+  tooltip?: string;
 }
 
-export function KpiCard({ index, label, value, unit, delta, hint, icon: Icon, highlight }: KpiCardProps) {
+export function KpiCard({ index, label, value, unit, delta, hint, icon: Icon, highlight, tooltip }: KpiCardProps) {
   const trendColor =
     delta?.trend === "up"
       ? "text-primary"
@@ -29,9 +31,12 @@ export function KpiCard({ index, label, value, unit, delta, hint, icon: Icon, hi
       )}
     >
       <div className="flex items-start justify-between mb-3">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-widest-2 text-muted-foreground">
-          [{index}] {label}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-widest-2 text-muted-foreground">
+            [{index}] {label}
+          </span>
+          {tooltip && <HudTooltip content={tooltip} />}
+        </div>
         {Icon && <Icon className="size-3.5 text-muted-foreground" aria-hidden />}
       </div>
 

@@ -1,6 +1,12 @@
-import { Activity, BarChart3, Bot, GraduationCap, LayoutDashboard, LogOut, Trophy } from "lucide-react";
+import { Activity, BarChart3, Bot, GraduationCap, LayoutDashboard, LogOut, Trophy, UploadCloud } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useRef } from "react";
 import { useAuth } from "@/lib/auth";
+import { tournaments } from "@/lib/api";
+
+interface HudHeaderProps {
+  onUpload?: () => void;
+}
 
 const navItems = [
   { label: "Dashboard",      to: "/",          icon: LayoutDashboard },
@@ -9,13 +15,24 @@ const navItems = [
   { label: "AI Coach",       to: "/coach",     icon: Bot, badge: "ALPHA" },
 ];
 
-export function HudHeader() {
+export function HudHeader({ onUpload }: HudHeaderProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleFile = async (file: File) => {
+    try {
+      const content = await file.text();
+      await tournaments.analyze(content);
+      onUpload?.();
+    } catch {
+      // silently ignored — errors visible on dashboard
+    }
   };
 
   return (
@@ -65,6 +82,23 @@ export function HudHeader() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Compact upload button */}
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".txt"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+          />
+          <button
+            onClick={() => inputRef.current?.click()}
+            title="Importar torneio"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/30 hover:bg-primary/20 transition-colors focus-visible:outline-none"
+          >
+            <UploadCloud className="size-3.5" />
+            Import
+          </button>
+
           <div className="hidden sm:flex items-center gap-2 rounded-full bg-card px-3 py-1.5 ring-1 ring-border">
             <span className="relative flex size-1.5">
               <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />

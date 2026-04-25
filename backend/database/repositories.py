@@ -377,6 +377,51 @@ def get_icm_performance(user_id: int, days: int = 90) -> dict:
     finally:
         conn.close()
 
+def get_breakdown(user_id: int, days: int = 90) -> dict:
+    """Agrega decisões por street, posição e label para os HUDs do dashboard."""
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    conn = get_conn()
+    try:
+        base = """
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+        """
+        by_street = conn.execute(f"""
+            SELECT d.street,
+                   COUNT(*) AS n,
+                   AVG(d.score) AS avg_score,
+                   AVG(CASE WHEN d.label='standard' THEN 1.0 ELSE 0.0 END) AS standard_rate
+            {base} AND d.street IS NOT NULL
+            GROUP BY d.street
+        """, (user_id, since)).fetchall()
+
+        by_position = conn.execute(f"""
+            SELECT d.position,
+                   COUNT(*) AS n,
+                   AVG(d.score) AS avg_score,
+                   AVG(CASE WHEN d.label='standard' THEN 1.0 ELSE 0.0 END) AS standard_rate
+            {base} AND d.position IS NOT NULL
+            GROUP BY d.position
+            ORDER BY standard_rate DESC
+        """, (user_id, since)).fetchall()
+
+        by_label = conn.execute(f"""
+            SELECT d.label, COUNT(*) AS n
+            {base}
+            GROUP BY d.label
+        """, (user_id, since)).fetchall()
+
+        return {
+            'by_street':   {r['street']:   dict(r) for r in by_street},
+            'by_position': {r['position']: dict(r) for r in by_position if r['position']},
+            'by_label':    {r['label']:    r['n']   for r in by_label   if r['label']},
+        }
+    finally:
+        conn.close()
+
+
 def get_llm_cache(user_id: int, cache_key: str) -> Optional[str]:
     """Retorna análise cacheada ou None se não existir."""
     conn = get_conn()
