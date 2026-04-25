@@ -135,6 +135,24 @@ function ErrorState({ message }: { message: string }) {
 }
 
 function SummaryContent({ text }: { text: string }) {
+  const hasMarkdown = /^#{1,3} /m.test(text);
+
+  if (!hasMarkdown) {
+    // Prosa pura — divide por quebras de parágrafo e renderiza direto
+    const paragraphs = text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+    return (
+      <div className="p-5 space-y-4">
+        {paragraphs.map((p, i) => (
+          <p key={i} className="text-sm leading-relaxed text-foreground">{p}</p>
+        ))}
+        <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground text-center pt-2">
+          LeakLabs AI Coach • Powered by Claude Haiku
+        </p>
+      </div>
+    );
+  }
+
+  // Markdown estruturado — usa seções colapsáveis
   const sections = text
     .split(/\n(?=#{1,3} |\*\*[A-Z])/)
     .map((s) => s.trim())
