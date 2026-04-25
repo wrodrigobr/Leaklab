@@ -521,12 +521,12 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
             pass
 
     # --- Calcular métricas gerais ---
-    total_dec  = sum(e.get('decisions_count', 0) for e in evolution) or 1
-    avg_score  = sum(e.get('avg_score', 0) * e.get('decisions_count', 0)
+    total_dec  = sum((e.get('decisions_count') or 0) for e in evolution) or 1
+    avg_score  = sum((e.get('avg_score') or 0) * (e.get('decisions_count') or 0)
                      for e in evolution) / total_dec
-    avg_std    = sum(e.get('standard_pct', 0) * e.get('decisions_count', 0)
+    avg_std    = sum((e.get('standard_pct') or 0) * (e.get('decisions_count') or 0)
                      for e in evolution) / total_dec
-    avg_clear  = sum(e.get('clear_pct', 0) * e.get('decisions_count', 0)
+    avg_clear  = sum((e.get('clear_pct') or 0) * (e.get('decisions_count') or 0)
                      for e in evolution) / total_dec
     n_torneioa = len(evolution)
 
