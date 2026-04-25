@@ -305,6 +305,7 @@ export interface StudyPlanResponse {
   resumo: string;
   cards: StudyCard[];
   error?: string;
+  coach_managed?: boolean;
 }
 
 export const study = {

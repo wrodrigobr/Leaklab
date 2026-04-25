@@ -7,6 +7,7 @@ import {
   CheckCircle2, MessageSquare, PenLine, Trash2, X, Check, Loader2
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
+import { PlayingCard } from "@/components/hud/PlayingCard";
 import { coachDashboard, StudentWorstDecision, StudyCard, StudyOverride } from "@/lib/api";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -373,6 +374,17 @@ function TournamentsTab({ studentId }: { studentId: number }) {
 
 // ── Worst Decisions tab ───────────────────────────────────────────────────────
 
+function parseHeroCards(s: string): { rank: string; suit: string }[] {
+  const cards = [];
+  for (let i = 0; i + 1 < s.length; i += 2) cards.push({ rank: s[i], suit: s[i + 1] });
+  return cards;
+}
+
+function parseBoardCards(s: string): { rank: string; suit: string }[] {
+  try { return (JSON.parse(s) as string[]).map((c) => ({ rank: c[0], suit: c[1] })); }
+  catch { return []; }
+}
+
 function WorstTab({ studentId }: { studentId: number }) {
   const { data, isLoading } = useQuery({
     queryKey: ["coach-student-worst", studentId],
@@ -394,62 +406,93 @@ function WorstTab({ studentId }: { studentId: number }) {
       <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
         {decisions.length} piores decisões — ordenadas por score (maior erro primeiro)
       </p>
-      {decisions.map((d: StudentWorstDecision) => (
-        <div
-          key={d.id}
-          className="rounded-lg border border-border bg-hud-surface px-4 py-3 space-y-2"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className={`font-mono text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                d.label === "clear_mistake"
-                  ? "bg-destructive/10 text-destructive ring-1 ring-destructive/30"
-                  : "bg-amber-400/10 text-amber-400 ring-1 ring-amber-400/30"
-              }`}>
-                {d.label === "clear_mistake" ? "Erro claro" : "Erro pequeno"}
-              </span>
-              <span className="font-mono text-xs capitalize text-muted-foreground">{d.street}</span>
-              {d.position && (
-                <span className="font-mono text-[10px] text-muted-foreground">{d.position}</span>
+      {decisions.map((d: StudentWorstDecision) => {
+        const heroCards = d.hero_cards ? parseHeroCards(d.hero_cards) : [];
+        const boardCards = d.board ? parseBoardCards(d.board) : [];
+        return (
+          <div
+            key={d.id}
+            className="rounded-lg border border-border bg-hud-surface px-4 py-3 space-y-2"
+          >
+            {/* Hand ID + label + score */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className={`font-mono text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                  d.label === "clear_mistake"
+                    ? "bg-destructive/10 text-destructive ring-1 ring-destructive/30"
+                    : "bg-amber-400/10 text-amber-400 ring-1 ring-amber-400/30"
+                }`}>
+                  {d.label === "clear_mistake" ? "Erro claro" : "Erro pequeno"}
+                </span>
+                <span className="font-mono text-xs capitalize text-muted-foreground">{d.street}</span>
+                {d.position && (
+                  <span className="font-mono text-[10px] text-muted-foreground">{d.position}</span>
+                )}
+              </div>
+              <span className={`font-mono text-xl font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</span>
+            </div>
+
+            {/* Hero cards + board */}
+            {(heroCards.length > 0 || boardCards.length > 0) && (
+              <div className="flex items-center gap-4 py-1">
+                {heroCards.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-mono text-[9px] text-muted-foreground uppercase mr-1">Mão</p>
+                    {heroCards.map((c, i) => (
+                      <PlayingCard key={i} card={{ rank: c.rank, suit: c.suit as "s"|"h"|"d"|"c" }} size="sm" />
+                    ))}
+                  </div>
+                )}
+                {boardCards.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-mono text-[9px] text-muted-foreground uppercase mr-1">Board</p>
+                    {boardCards.map((c, i) => (
+                      <PlayingCard key={i} card={{ rank: c.rank, suit: c.suit as "s"|"h"|"d"|"c" }} size="sm" />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Hand ID */}
+            <p className="font-mono text-[9px] text-muted-foreground">ID: {d.hand_id}</p>
+
+            {/* Action */}
+            <div className="flex items-center gap-6 text-sm">
+              <div>
+                <p className="font-mono text-[9px] text-muted-foreground uppercase">Jogou</p>
+                <p className="font-medium text-destructive">{d.action_taken}</p>
+              </div>
+              <div>
+                <p className="font-mono text-[9px] text-muted-foreground uppercase">Correto</p>
+                <p className="font-medium text-primary">{d.best_action}</p>
+              </div>
+              {d.m_ratio != null && (
+                <div>
+                  <p className="font-mono text-[9px] text-muted-foreground uppercase">M-Ratio</p>
+                  <p className="font-mono text-xs">{d.m_ratio.toFixed(1)}</p>
+                </div>
+              )}
+              {d.icm_pressure && (
+                <div>
+                  <p className="font-mono text-[9px] text-muted-foreground uppercase">ICM</p>
+                  <p className="font-mono text-xs capitalize">{d.icm_pressure}</p>
+                </div>
               )}
             </div>
-            <span className={`font-mono text-xl font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</span>
-          </div>
 
-          <div className="flex items-center gap-6 text-sm">
-            <div>
-              <p className="font-mono text-[9px] text-muted-foreground uppercase">Jogou</p>
-              <p className="font-medium text-destructive">{d.action_taken}</p>
+            <div className="flex items-center justify-between">
+              <p className="font-mono text-[10px] text-muted-foreground">{d.tournament_id}</p>
+              <button
+                onClick={() => navigate(`/replayer?t=${d.tournament_id}&h=${d.hand_id}&student=${studentId}`)}
+                className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-primary hover:underline"
+              >
+                <Play className="size-3" /> Ver Replay
+              </button>
             </div>
-            <div>
-              <p className="font-mono text-[9px] text-muted-foreground uppercase">Correto</p>
-              <p className="font-medium text-primary">{d.best_action}</p>
-            </div>
-            {d.m_ratio != null && (
-              <div>
-                <p className="font-mono text-[9px] text-muted-foreground uppercase">M-Ratio</p>
-                <p className="font-mono text-xs">{d.m_ratio.toFixed(1)}</p>
-              </div>
-            )}
-            {d.icm_pressure && (
-              <div>
-                <p className="font-mono text-[9px] text-muted-foreground uppercase">ICM</p>
-                <p className="font-mono text-xs capitalize">{d.icm_pressure}</p>
-              </div>
-            )}
           </div>
-
-          <div className="flex items-center justify-between">
-            <p className="font-mono text-[10px] text-muted-foreground">{d.tournament_id}</p>
-            <button
-              onClick={() => navigate(`/replayer?t=${d.tournament_id}&h=${d.hand_id}&student=${studentId}`)}
-              className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-primary hover:underline"
-            >
-              <Play className="size-3" /> Ver Replay
-            </button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Library,
   Loader2,
+  Lock,
   Sparkles,
   Target,
   Timer,
@@ -97,6 +98,7 @@ const StudyPlanPage = () => {
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [errorMsg, setErrorMsg]   = useState("");
   const [generating, setGenerating] = useState(false);
+  const [coachManaged, setCoachManaged] = useState(false);
   const [activeLeakId, setActiveLeakId] = useState<string>("");
   const [progress, setProgress]   = useState<Progress>(loadProgress);
 
@@ -115,6 +117,7 @@ const StudyPlanPage = () => {
         setLoadState("error");
         return;
       }
+      setCoachManaged(data.coach_managed ?? false);
       const built = buildStudyPlan(data);
       setPlan(built);
       if (!activeLeakId) {
@@ -189,16 +192,26 @@ const StudyPlanPage = () => {
             </p>
           </div>
         </div>
-        <button
-          onClick={handleGenerate}
-          disabled={generating || loadState === "loading"}
-          className="inline-flex shrink-0 items-center gap-2 rounded-md bg-primary px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow disabled:opacity-60 transition-colors"
-        >
-          {generating || loadState === "loading"
-            ? <Loader2 className="size-3.5 animate-spin" aria-hidden />
-            : <Sparkles className="size-3.5" aria-hidden />}
-          {generating || loadState === "loading" ? "Gerando…" : "Gerar com IA"}
-        </button>
+        {coachManaged ? (
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-muted-foreground" title="Seu coach gerencia este plano">
+            <Lock className="size-3.5 shrink-0" />
+            <div className="text-left">
+              <p className="font-mono text-[11px] font-bold uppercase tracking-widest-2">Gerenciado pelo Coach</p>
+              <p className="font-mono text-[9px] text-muted-foreground/70">Entre em contato para solicitar atualização</p>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={handleGenerate}
+            disabled={generating || loadState === "loading"}
+            className="inline-flex shrink-0 items-center gap-2 rounded-md bg-primary px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow disabled:opacity-60 transition-colors"
+          >
+            {generating || loadState === "loading"
+              ? <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              : <Sparkles className="size-3.5" aria-hidden />}
+            {generating || loadState === "loading" ? "Gerando…" : "Gerar com IA"}
+          </button>
+        )}
       </section>
 
       {/* Loading state */}

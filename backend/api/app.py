@@ -1081,6 +1081,25 @@ def study_plan():
         hero   = tourns[0]['hero'] if tourns else 'Jogador'
 
         plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id)
+
+        # Verificar se o coach do aluno já fez overrides no plano
+        coach_managed = False
+        from database.schema import get_conn as _gc
+        _conn = _gc()
+        try:
+            row = _conn.execute("SELECT coach_id FROM users WHERE id=?", (g.user_id,)).fetchone()
+            if row:
+                coach_id_val = dict(row).get('coach_id')
+                if coach_id_val:
+                    cnt = _conn.execute(
+                        "SELECT COUNT(*) AS n FROM coach_study_overrides WHERE coach_id=? AND student_id=?",
+                        (coach_id_val, g.user_id)
+                    ).fetchone()
+                    coach_managed = (dict(cnt).get('n', 0) or 0) > 0
+        finally:
+            _conn.close()
+
+        plan['coach_managed'] = coach_managed
         return jsonify(plan)
 
     except Exception as e:

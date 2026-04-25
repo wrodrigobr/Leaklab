@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.10.1] — 2026-04-25 — Mãos Críticas com cartas + lock coach_managed
+
+### Adicionado
+- **WorstTab (Mãos Críticas)**: cada decisão agora exibe:
+  - ID da mão (`hand_id`)
+  - Cartas do herói como `PlayingCard` (tamanho sm)
+  - Board cards (quando disponíveis)
+- **Lock "Gerar com IA"** na tela do aluno: quando o coach tem overrides no plano, o botão é substituído por "Gerenciado pelo Coach" com ícone de cadeado
+- **Backend `/study/plan`**: responde `coach_managed: true` quando existem overrides do coach para o aluno
+
+---
+
 ## [v0.10.0] — 2026-04-25 — Sprint 3: Coach Study Plan + Comparativo Histórico
 
 ### Adicionado
