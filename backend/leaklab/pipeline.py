@@ -51,7 +51,7 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
 
     is_3bet = (
         state.street == 'preflop' and
-        state.player_action in ('raises', 'all-in') and
+        state.player_action in ('raise', 'jam') and
         state.facing_size > 0
     )
 

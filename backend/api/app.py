@@ -457,15 +457,15 @@ def _extract_content(req) -> str | None:
     return req.form.get('content')
 
 
-_SHOWDOWN_RE = re.compile(r'\*\*\* (?:SHOW DOWN|SHOWDOWN) \*\*\*')
-
-
 def _detect_showdown(raw_text: str, hero: str) -> str | None:
-    """Retorna 'won', 'lost' ou None se a mão não foi a showdown."""
-    if not _SHOWDOWN_RE.search(raw_text):
+    """Retorna 'won', 'lost' ou None se o hero não chegou ao showdown.
+    Só conta showdown se o hero mostrou cartas (participou efetivamente).
+    """
+    shows_pat = re.compile(r'\b' + re.escape(hero) + r'\s*:\s*shows?\b')
+    if not shows_pat.search(raw_text):
         return None
-    pattern = re.compile(r'\b' + re.escape(hero) + r'\s+collected\b')
-    return 'won' if pattern.search(raw_text) else 'lost'
+    won_pat = re.compile(r'\b' + re.escape(hero) + r'\s+collected\b')
+    return 'won' if won_pat.search(raw_text) else 'lost'
 
 
 def _analyze_hands(hands):
