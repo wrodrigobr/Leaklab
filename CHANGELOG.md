@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.7.0] — 2026-04-25 — HUD Stats completo + GGPoker
+
+### Adicionado
+- **Player HUD Stats** (8 indicadores): VPIP, PFR, AF, Flop Bet%, Fold-to-3BET, WTSD, **3BET%** e **W$SD** — todos computados a partir das decisões armazenadas
+- **3BET%**: detectado quando hero re-raised pré-flop com `facing_size > 0`; coluna `is_3bet` na tabela `decisions`
+- **W$SD**: detectado via `hero: shows` no raw_text (showdown real do hero); coluna `showdown_result` na tabela `decisions`
+- **GGPoker parser**: suporte completo ao formato GGPoker — detecção automática por header, IDs `#SG.../#RC...`, hero sempre `Hero`
+- **Fix hero detection GGPoker**: `HERO_DEALT_RE` usa `[^\[\n]+` para não capturar múltiplas linhas
+
+### Corrigido
+- `_normalize_action()` converte `'raises'` → `'raise'`; verificação `is_3bet` corrigida para os valores normalizados
+- `_detect_showdown()` verifica `"hero: shows"` em vez de `"SHOW DOWN"` — elimina falsos positivos quando hero foldou
+- `llm_explainer.py`: `e.get('field', 0)` retornava `None` quando campo existe com valor `None`; corrigido para `(e.get('field') or 0)` em 4 métricas de evolução
+- Opacidade das células "em breve" no HUD elevada de `/25` para `/50` (visíveis)
+
+---
+
 ## [2026-04-25e] — HUD Stats: fix 3BET e W$SD (normalize action + showdown participation)
 
 ### Corrigido
