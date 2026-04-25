@@ -39,9 +39,9 @@ export function StreetBreakdown({ byStreet }: Props) {
     <div className="rounded-xl border border-border bg-hud-surface p-5">
       <div className="flex items-center gap-1.5 mb-4">
         <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-          Performance por Rua
+          Performance por Street
         </span>
-        <HudTooltip content="Taxa de decisões standard (score ≤ 0.08) em cada rua do jogo. Ruas em laranja ou vermelho indicam onde seus leaks se concentram." />
+        <HudTooltip content="Taxa de decisões standard (score ≤ 0.08) em cada street. Streets em laranja ou vermelho indicam onde seus leaks se concentram." />
       </div>
 
       {!hasData ? (

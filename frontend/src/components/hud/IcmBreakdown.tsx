@@ -49,7 +49,7 @@ export function IcmBreakdown({ icm }: Props) {
         <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
           Pressão ICM
         </span>
-        <HudTooltip content="ICM (Independent Chip Model) mede o valor monetário das fichas em MTT. Sob alta pressão (bolha, FT), erros custam muito mais do que o valor nominal das fichas. Compare sua performance em cada nível para identificar se você joga bem ou mal sob pressão." />
+        <HudTooltip content="ICM (Independent Chip Model) mede o valor monetário dos chips em MTT. Sob alta pressão (bubble, FT), erros custam muito mais do que o valor nominal dos chips. Compare sua performance em cada nível para identificar se você joga bem ou mal sob pressão." />
       </div>
 
       {all.length === 0 ? (

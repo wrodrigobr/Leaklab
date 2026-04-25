@@ -61,9 +61,9 @@ const EXERCISE_BANK: Omit<Exercise, "leakId">[] = [
   },
   {
     id: "ex_icm_01",
-    prompt: "Bolha do MTT (top 9 pagam, 10 restantes). Você tem 20bb no BTN. Short stack de 5bb no SB dá all-in. Você tem 8♠8♦. Ação?",
+    prompt: "Bubble do MTT (top 9 pagam, 10 restantes). Você tem 20bb no BTN. Short stack de 5bb no SB dá all-in. Você tem 8♠8♦. Ação?",
     choices: [
-      { id: "a", label: "Fold — ICM é alto na bolha, evite riscos" },
+      { id: "a", label: "Fold — ICM é alto no bubble, evite riscos" },
       { id: "b", label: "Call — 88 tem 65%+ de equity, risco mínimo de stack" },
       { id: "c", label: "Depende do tamanho dos demais stacks" },
       { id: "d", label: "Apenas call se tiver ≥70% de equity" },
@@ -74,16 +74,16 @@ const EXERCISE_BANK: Omit<Exercise, "leakId">[] = [
   },
   {
     id: "ex_icm_02",
-    prompt: "Você é big stack (80bb) na bolha. Stack de 15bb no SB faz all-in. BB tem 18bb e chama. Você no CO com K♦Q♣. Ação?",
+    prompt: "Você é big stack (80bb) no bubble. Stack de 15bb no SB faz all-in. BB tem 18bb e chama. Você no CO com K♦Q♣. Ação?",
     choices: [
       { id: "a", label: "Call — KQo tem 40%+ de equity 3-way" },
-      { id: "b", label: "Fold — pot 3-way pré-flop na bolha é ICM-incorreto" },
+      { id: "b", label: "Fold — pot 3-way preflop no bubble é ICM-incorreto" },
       { id: "c", label: "Re-raise para isolar o all-in" },
       { id: "d", label: "Call apenas se KQo tiver 50%+ de equity" },
     ],
     correctChoiceId: "b",
     explanation:
-      "Fold correto. Como big stack na bolha, seu valor ICM vem de sobreviver e pressionar short stacks, não de arriscar 15bb em pots 3-way onde você pode estar atrás de AK/AA/KK. ICM penaliza calls amplamente mesmo com equity razoável.",
+      "Fold correto. Como big stack no bubble, seu valor ICM vem de sobreviver e pressionar short stacks, não de arriscar 15bb em pots 3-way onde você pode estar atrás de AK/AA/KK. ICM penaliza calls amplamente mesmo com equity razoável.",
   },
   {
     id: "ex_pos_01",
