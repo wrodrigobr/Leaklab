@@ -310,7 +310,7 @@ const Replayer = () => {
               <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground">Action Log</h2>
               <span className="font-mono text-[10px] text-muted-foreground">{step.street?.toUpperCase()}</span>
             </header>
-            <ol className="max-h-72 overflow-y-auto divide-y divide-border">
+            <ol className="max-h-72 overflow-y-auto divide-y divide-border flex flex-col-reverse">
               {steps.slice(0, stepIdx + 1).map((s, i) => (
                 <li key={i} className={cn(
                   "px-4 py-2.5 text-xs transition-colors",
@@ -426,15 +426,6 @@ const Replayer = () => {
             </section>
           )}
 
-          {/* Keyboard shortcuts */}
-          <div className="rounded-xl border border-border bg-hud-surface px-4 py-3">
-            <div className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-2">Atalhos</div>
-            <ul className="space-y-1 text-xs text-muted-foreground">
-              <li className="flex items-center justify-between"><span>Play/Pause</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">Space</kbd></li>
-              <li className="flex items-center justify-between"><span>Próximo</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">→</kbd></li>
-              <li className="flex items-center justify-between"><span>Anterior</span><kbd className="font-mono text-[10px] rounded bg-secondary px-1.5 py-0.5">←</kbd></li>
-            </ul>
-          </div>
         </aside>
       </div>
     </HudLayout>
