@@ -3,62 +3,103 @@ import re
 from typing import List
 from .models import ParsedHand, ParsedAction
 
-HAND_SPLIT_RE = re.compile(r"(?=PokerStars Hand #)")
-HAND_ID_RE = re.compile(r"PokerStars Hand #(\d+)")
-TOURN_RE = re.compile(r"Tournament #(\d+)")
-BUTTON_RE = re.compile(r"Seat #(\d+) is the button")
-HERO_DEALT_RE = re.compile(r"Dealt to ([^\[]+) \[([^\]]+)\]")
-BOARD_RE = re.compile(r"\[([^\]]+)\]")
-SB_RE = re.compile(r"\((\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)\)")
-ACTION_LINE_RE = re.compile(
-    r"^(?P<player>[^:]+): (?P<action>folds|checks|calls|bets|raises|all-in|shows|mucks)(?: .*?(?P<amount>\d+(?:\.\d+)?))?",
+# ── PokerStars patterns ───────────────────────────────────────────────────────
+PS_SPLIT_RE  = re.compile(r"(?=PokerStars Hand #)")
+PS_ID_RE     = re.compile(r"PokerStars Hand #(\d+)")
+
+# ── GGPoker patterns ──────────────────────────────────────────────────────────
+# Hand IDs: #SG... (Spin & Gold), #RC... (regular), #HD... (Hold'em), etc.
+GG_SPLIT_RE  = re.compile(r"(?=Poker Hand #)")
+GG_ID_RE     = re.compile(r"Poker Hand #(\w+)")
+
+# ── Shared patterns ───────────────────────────────────────────────────────────
+TOURN_RE        = re.compile(r"Tournament #(\d+)")
+BUTTON_RE       = re.compile(r"Seat #(\d+) is the button")
+HERO_DEALT_RE   = re.compile(r"Dealt to ([^\[\n]+) \[([^\]]+)\]")
+BOARD_RE        = re.compile(r"\[([^\]]+)\]")
+SB_RE           = re.compile(r"\((\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)\)")
+ACTION_LINE_RE  = re.compile(
+    r"^(?P<player>[^:]+): (?P<action>folds|checks|calls|bets|raises|all-in|shows|mucks)"
+    r"(?: .*?(?P<amount>\d+(?:\.\d+)?))?",
     re.IGNORECASE,
 )
-SEAT_RE = re.compile(r"^Seat \d+: ([^(]+) \(")
+
+
+def _detect_site(text: str) -> str:
+    """Detecta o site a partir do conteúdo do hand history."""
+    if "PokerStars Hand #" in text:
+        return "pokerstars"
+    if "Poker Hand #" in text:
+        return "ggpoker"
+    return "unknown"
+
+
+def _split_hands(text: str, site: str) -> List[str]:
+    """Divide o texto em chunks de mão individuais."""
+    if site == "ggpoker":
+        prefix = "Poker Hand #"
+        chunks = [c.strip() for c in GG_SPLIT_RE.split(text) if c.strip().startswith(prefix)]
+    else:
+        prefix = "PokerStars Hand #"
+        chunks = [c.strip() for c in PS_SPLIT_RE.split(text) if c.strip().startswith(prefix)]
+    return chunks
 
 
 def parse_pokerstars_file(path: str) -> List[ParsedHand]:
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         content = f.read()
-    chunks = [c.strip() for c in HAND_SPLIT_RE.split(content) if c.strip().startswith("PokerStars Hand #")]
-    return [parse_hand(chunk) for chunk in chunks]
+    return parse_hand_history(content)
 
 
-def parse_hand(raw_text: str) -> ParsedHand:
-    hand_id = _search(HAND_ID_RE, raw_text)
+def parse_hand_history(text: str) -> List[ParsedHand]:
+    """Parseia hand history de qualquer site suportado (PokerStars ou GGPoker)."""
+    site = _detect_site(text)
+    id_re = GG_ID_RE if site == "ggpoker" else PS_ID_RE
+    chunks = _split_hands(text, site)
+    return [parse_hand(chunk, id_re) for chunk in chunks]
+
+
+def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
+    if id_re is None:
+        id_re = PS_ID_RE
+
+    hand_id  = _search(id_re, raw_text)
     tourn_id = _search(TOURN_RE, raw_text)
-    button = _search(BUTTON_RE, raw_text, cast=int)
-    hero_name = None
+    button   = _search(BUTTON_RE, raw_text, cast=int)
+
+    hero_name  = None
     hero_cards = None
     m = HERO_DEALT_RE.search(raw_text)
     if m:
-        hero_name = m.group(1).strip()
+        hero_name  = m.group(1).strip()
         hero_cards = m.group(2).replace(" ", "")
+
     sb = bb = None
     m2 = SB_RE.search(raw_text)
     if m2:
         sb = float(m2.group(1))
         bb = float(m2.group(2))
 
-    players = []
+    players: List[str] = []
     actions: List[ParsedAction] = []
     street = "preflop"
-    board = []
+    board  = []
+
     for line in raw_text.splitlines():
         line = line.strip()
         if not line:
             continue
         if line.startswith("*** FLOP ***"):
             street = "flop"
-            board = _extract_board(line)
+            board  = _extract_board(line)
             continue
         if line.startswith("*** TURN ***"):
             street = "turn"
-            board = _extract_board(line)
+            board  = _extract_board(line)
             continue
         if line.startswith("*** RIVER ***"):
             street = "river"
-            board = _extract_board(line)
+            board  = _extract_board(line)
             continue
         if line.startswith("Seat ") and ":" in line and "(" in line and "in chips" in line:
             name = line.split(":", 1)[1].split("(", 1)[0].strip()
@@ -89,17 +130,13 @@ def parse_hand(raw_text: str) -> ParsedHand:
     )
 
 
-def _extract_board(line: str):
+def _extract_board(line: str) -> List[str]:
     """Extrai o board completo de uma linha de street.
 
-    Formato PokerStars:
+    Formato (PokerStars e GGPoker são idênticos):
       FLOP:  *** FLOP ***   [Ah Kd 3c]
       TURN:  *** TURN ***   [Ah Kd 3c] [7s]
       RIVER: *** RIVER ***  [Ah Kd 3c 7s] [9h]
-
-    matches[0] é o board acumulado ATÉ a rua anterior.
-    matches[1] (quando existe) é a carta nova.
-    Precisamos concatenar todos os grupos para ter o board completo.
     """
     matches = BOARD_RE.findall(line)
     if not matches:
@@ -117,17 +154,6 @@ def _search(regex, text, cast=str):
     return cast(m.group(1))
 
 
-def parse_pokerstars_file_from_text(text: str):
-    """
-    Versão da função de parse que aceita string diretamente.
-    Usada pela API para evitar I/O de arquivo.
-    """
-    import tempfile, os
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt',
-                                     encoding='utf-8', delete=False) as tmp:
-        tmp.write(text)
-        tmp_path = tmp.name
-    try:
-        return parse_pokerstars_file(tmp_path)
-    finally:
-        os.unlink(tmp_path)
+def parse_pokerstars_file_from_text(text: str) -> List[ParsedHand]:
+    """Aceita string diretamente — detecta site automaticamente."""
+    return parse_hand_history(text)

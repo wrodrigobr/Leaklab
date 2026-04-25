@@ -498,28 +498,39 @@ def _analyze_hands(hands):
 
 
 def _detect_site(raw: str) -> str:
-    if 'PokerStars' in raw: return 'pokerstars'
-    if 'GGPoker'   in raw: return 'ggpoker'
-    if '888'       in raw: return '888poker'
+    if 'PokerStars Hand #' in raw: return 'pokerstars'
+    if 'Poker Hand #'      in raw: return 'ggpoker'
+    if '888'               in raw: return '888poker'
     return 'unknown'
 
 
 def _extract_financials(raw: str, hero: str) -> dict:
     """
     Extrai buy-in e prêmio do hero do hand history.
-    Retorna dict com buy_in, prize, profit, place.
+    Suporta PokerStars e GGPoker.
     """
     import re
     result = {'buy_in': None, 'prize': None, 'profit': None, 'place': None}
 
-    # Buy-in: '$0.98+$0.12' ou '$10+$1' etc.
+    # ── PokerStars buy-in: '$0.98+$0.12' ─────────────────────────────────────
     m = re.search(r'\$(\d+\.?\d*)\+\$(\d+\.?\d*)', raw)
     if m:
         result['buy_in'] = round(float(m.group(1)) + float(m.group(2)), 2)
 
-    # Resultado do hero: "phpro finished the tournament in 3rd place and received $23.29"
+    # ── GGPoker buy-in: não está nos hand files, tenta extrair do nome do torneio
+    # Ex: "Spin&Gold #14" → tiers conhecidos; "NL Hold'em $5.25+$0.25" → montante
+    if result['buy_in'] is None:
+        m = re.search(r'\$(\d+\.?\d*)\+\$(\d+\.?\d*)', raw)
+        if not m:
+            # GGPoker MTT: "NLH $X+$Y" ou "NLHE $X"
+            m = re.search(r'NLH[E]?\s+\$(\d+\.?\d*)(?:\+\$(\d+\.?\d*))?', raw, re.IGNORECASE)
+            if m:
+                buyin = float(m.group(1))
+                rake  = float(m.group(2)) if m.group(2) else 0.0
+                result['buy_in'] = round(buyin + rake, 2)
+
+    # ── Resultado hero PokerStars: "phpro finished the tournament in 3rd place and received $23.29"
     if hero:
-        # Com prêmio
         m = re.search(
             re.escape(hero) + r'.*?finished.*?(\d+)[a-z]{2} place.*?received \$(\d+\.?\d*)',
             raw, re.IGNORECASE
@@ -528,7 +539,6 @@ def _extract_financials(raw: str, hero: str) -> dict:
             result['place'] = int(m.group(1))
             result['prize'] = float(m.group(2))
         else:
-            # Sem prêmio (eliminado antes do dinheiro)
             m = re.search(
                 re.escape(hero) + r'.*?finished.*?(\d+)[a-z]{2} place',
                 raw, re.IGNORECASE
@@ -536,6 +546,23 @@ def _extract_financials(raw: str, hero: str) -> dict:
             if m:
                 result['place'] = int(m.group(1))
                 result['prize'] = 0.0
+
+        # ── GGPoker resultado: "Hero finished in 3rd place" / "Hero wins $X"
+        if result['place'] is None:
+            m = re.search(
+                re.escape(hero) + r'[^.]*?finished[^.]*?in (\d+)[a-z]{2}',
+                raw, re.IGNORECASE
+            )
+            if m:
+                result['place'] = int(m.group(1))
+
+        if result['prize'] is None:
+            # GGPoker: hero collected total across hands (approximation)
+            collected = re.findall(
+                re.escape(hero) + r' collected (\d+(?:\.\d+)?) from', raw
+            )
+            if collected:
+                result['prize'] = sum(float(x) for x in collected)
 
     if result['buy_in'] and result['prize'] is not None:
         result['profit'] = round(result['prize'] - result['buy_in'], 2)
@@ -546,15 +573,12 @@ def _extract_financials(raw: str, hero: str) -> dict:
 def _extract_date(raw: str) -> str | None:
     """
     Extrai a data do jogo do hand history.
-    PokerStars: '2025/07/22 10:10:49 ET' → '2025-07-22'
-    Usa a primeira mão do arquivo (mais antiga) para representar quando o torneio começou.
+    Suporta PokerStars (2025/07/22) e GGPoker (2026/04/24).
     """
     import re
-    # Data + hora completa: 2025/07/22 10:10:49
     m = re.search(r'(\d{4})/(\d{2})/(\d{2})\s+\d{2}:\d{2}:\d{2}', raw)
     if m:
         return f'{m.group(1)}-{m.group(2)}-{m.group(3)}'
-    # Fallback: só data
     m = re.search(r'(\d{4})/(\d{2})/(\d{2})', raw)
     if m:
         return f'{m.group(1)}-{m.group(2)}-{m.group(3)}'
