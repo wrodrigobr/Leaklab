@@ -7,9 +7,9 @@ interface PlayerStats {
   pfr: number | null;
   af: number | null;
   flop_bet_pct: number | null;
+  fold_to_3bet: number | null;
+  wtsd: number | null;
   three_bet: null;
-  fold_to_3bet: null;
-  wtsd: null;
   w_at_sd: null;
 }
 
@@ -26,6 +26,7 @@ interface StatDef {
   soon?: true;
 }
 
+// Row 1 — 4 fully computed stats
 const ROW1: StatDef[] = [
   {
     key: "vpip",
@@ -57,29 +58,28 @@ const ROW1: StatDef[] = [
   },
 ];
 
+// Row 2 — 2 derived + 2 upcoming
 const ROW2: StatDef[] = [
-  {
-    key: "three_bet",
-    label: "3BET",
-    unit: "%",
-    range: { min: 4, max: 8, label: "4–8%" },
-    tooltip: "% de mãos em que o jogador fez 3-bet pré-flop. MTT ideal: 4–8%. Requer rastreamento da sequência de apostas dentro da mão — disponível em versão futura.",
-    soon: true,
-  },
   {
     key: "fold_to_3bet",
     label: "Fold to 3BET",
     unit: "%",
     range: { min: 55, max: 72, label: "55–72%" },
-    tooltip: "% de vezes que deu fold após levar um 3-bet. MTT ideal: 55–72%. Requer rastreamento da sequência de apostas — disponível em versão futura.",
-    soon: true,
+    tooltip: "% de vezes que deu fold após abrir e enfrentar um 3-bet pré-flop. MTT ideal: 55–72%. Calculado a partir do padrão raise→fold em decisões pré-flop.",
   },
   {
     key: "wtsd",
     label: "WTSD",
     unit: "%",
     range: { min: 25, max: 35, label: "25–35%" },
-    tooltip: "Went To ShowDown — % das mãos que viram o flop e chegaram ao showdown. MTT ideal: 25–35%. Requer rastreamento de showdowns — disponível em versão futura.",
+    tooltip: "Went to Deep Streets — % de mãos que viram flop e chegaram a ter decisão no river. Aproximação de WTSD (showdown data não disponível). MTT ideal: 25–35%.",
+  },
+  {
+    key: "three_bet",
+    label: "3BET",
+    unit: "%",
+    range: { min: 4, max: 8, label: "4–8%" },
+    tooltip: "% de mãos em que o jogador fez 3-bet pré-flop. MTT ideal: 4–8%. Requer rastreamento da sequência de apostas — disponível em versão futura.",
     soon: true,
   },
   {
@@ -87,7 +87,7 @@ const ROW2: StatDef[] = [
     label: "W$SD",
     unit: "%",
     range: { min: 50, max: 60, label: "50–60%" },
-    tooltip: "Won money at ShowDown — % de showdowns vencidos. Meta: > 50% para ser +EV nos confrontos. Requer rastreamento de showdowns — disponível em versão futura.",
+    tooltip: "Won money at ShowDown — % de showdowns vencidos. Meta: > 50% para ser +EV nos confrontos. Requer rastreamento de resultados de showdown — disponível em versão futura.",
     soon: true,
   },
 ];
@@ -136,7 +136,7 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
 
   return (
     <div className={cn(
-      "flex flex-col gap-2 px-6 border-r border-border/60 last:border-0",
+      "flex flex-col gap-2 px-5 border-r border-border/60 last:border-0",
       compact ? "py-3" : "py-4"
     )}>
       <div className="flex items-center gap-1.5">
@@ -150,7 +150,11 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
       </div>
 
       <div className="flex items-baseline gap-2">
-        <span className={cn("font-mono font-bold tabular-nums leading-none", compact ? "text-lg" : "text-2xl", STATUS_COLORS[status])}>
+        <span className={cn(
+          "font-mono font-bold tabular-nums leading-none",
+          compact ? "text-xl" : "text-2xl",
+          STATUS_COLORS[status]
+        )}>
           {displayValue}
         </span>
         {def.soon && (
@@ -161,12 +165,10 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
       </div>
 
       <div className="relative h-0.5 w-full rounded-full bg-border/40 overflow-hidden">
-        {/* Ideal range zone */}
         <span
           className={cn("absolute top-0 h-full rounded-full", def.soon ? "bg-border/30" : "bg-primary/20")}
           style={{ left: `${minPct}%`, width: `${maxPct - minPct}%` }}
         />
-        {/* Actual fill */}
         {!def.soon && value !== null && (
           <span
             className={cn("absolute top-0 left-0 h-full rounded-full transition-all", BAR_COLORS[status])}
@@ -188,17 +190,16 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
 export function PlayerStatsCard({ stats }: Props) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-hud-surface shadow-elevated">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-6 py-3">
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
             Player HUD Stats
           </span>
-          <HudTooltip content="Indicadores táticos do seu perfil de jogo calculados a partir das decisões registradas. Comparados com referências de jogadores regulares em MTTs." />
+          <HudTooltip content="Indicadores táticos do seu perfil de jogo. Row 1: VPIP, PFR, AF, Flop Bet — calculados diretamente. Row 2: Fold to 3BET e WTSD (aproximados), 3BET e W$SD (em breve)." />
         </div>
         <span className="font-mono text-[10px] text-primary">
-          {stats && stats.total_hands > 0 ? `${stats.total_hands} mãos analisadas` : "sem dados"}
+          {stats && stats.total_hands > 0 ? `${stats.total_hands} mãos` : "sem dados"}
         </span>
       </div>
 
@@ -208,17 +209,17 @@ export function PlayerStatsCard({ stats }: Props) {
         </p>
       ) : (
         <>
-          {/* Row 1 — computed stats */}
+          {/* Row 1 — 4 computed stats */}
           <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-4">
             {ROW1.map((def) => (
               <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} />
             ))}
           </div>
 
-          {/* Row 2 — upcoming stats */}
+          {/* Row 2 — 2 derived + 2 upcoming */}
           <div className="grid grid-cols-2 divide-x divide-border/60 border-t border-border/60 md:grid-cols-4">
             {ROW2.map((def) => (
-              <StatCell key={String(def.key)} def={def} value={null} compact />
+              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} compact />
             ))}
           </div>
         </>

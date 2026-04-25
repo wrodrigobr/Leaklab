@@ -263,9 +263,9 @@ export interface PlayerStatsResponse {
   pfr: number | null;
   af: number | null;
   flop_bet_pct: number | null;
+  fold_to_3bet: number | null;
+  wtsd: number | null;
   three_bet: null;
-  fold_to_3bet: null;
-  wtsd: null;
   w_at_sd: null;
 }
 

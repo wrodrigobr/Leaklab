@@ -423,11 +423,12 @@ def get_breakdown(user_id: int, days: int = 90) -> dict:
 
 
 def get_player_stats(user_id: int, days: int = 90) -> dict:
-    """Computes poker HUD stats (VPIP, PFR, AF, Flop Bet%) from stored decisions."""
+    """Computes poker HUD stats from stored decisions."""
     from datetime import datetime, timedelta
     since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
+        # ── Preflop basics (VPIP, PFR) ───────────────────────────────────────
         preflop = conn.execute("""
             SELECT
                 COUNT(DISTINCT d.hand_id) AS total_hands,
@@ -438,6 +439,7 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
             WHERE t.user_id = ? AND t.imported_at >= ? AND d.street = 'preflop'
         """, (user_id, since)).fetchone()
 
+        # ── Postflop aggression (AF) ─────────────────────────────────────────
         postflop = conn.execute("""
             SELECT
                 COUNT(CASE WHEN d.action_taken IN ('bet','raise','jam') THEN 1 END) AS aggressive,
@@ -447,6 +449,7 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
             WHERE t.user_id = ? AND t.imported_at >= ? AND d.street != 'preflop'
         """, (user_id, since)).fetchone()
 
+        # ── Flop bet frequency ───────────────────────────────────────────────
         flop_row = conn.execute("""
             SELECT
                 COUNT(*) AS total_flop,
@@ -456,28 +459,68 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
             WHERE t.user_id = ? AND t.imported_at >= ? AND d.street = 'flop'
         """, (user_id, since)).fetchone()
 
-        pf = dict(preflop) if preflop else {}
-        po = dict(postflop) if postflop else {}
-        fb = dict(flop_row) if flop_row else {}
+        # ── Fold-to-3BET: hands where hero raised preflop THEN folded ────────
+        # Pattern: 2 preflop decisions — first is raise/jam, second is fold (= faced 3-bet)
+        # faced_3bet_n = hands where hero raised AND had any second preflop action
+        f3b_row = conn.execute("""
+            SELECT
+                SUM(CASE WHEN sub.first_raise_id IS NOT NULL
+                          AND sub.fold_after_raise_id IS NOT NULL
+                          AND sub.fold_after_raise_id > sub.first_raise_id
+                     THEN 1 ELSE 0 END) AS fold_to_3bet_n,
+                COUNT(*) AS faced_3bet_n
+            FROM (
+                SELECT d.hand_id,
+                       MIN(CASE WHEN d.action_taken IN ('raise','jam') THEN d.id END) AS first_raise_id,
+                       MIN(CASE WHEN d.action_taken = 'fold' THEN d.id END)            AS fold_after_raise_id
+                FROM decisions d
+                JOIN tournaments t ON t.id = d.tournament_id
+                WHERE t.user_id = ? AND t.imported_at >= ? AND d.street = 'preflop'
+                GROUP BY d.hand_id
+                HAVING COUNT(*) > 1
+                   AND MIN(CASE WHEN d.action_taken IN ('raise','jam') THEN d.id END) IS NOT NULL
+            ) sub
+        """, (user_id, since)).fetchone()
 
-        total = pf.get('total_hands', 0) or 0
-        vpip_h = pf.get('vpip_hands', 0) or 0
-        pfr_h = pf.get('pfr_hands', 0) or 0
-        aggressive = po.get('aggressive', 0) or 0
-        passive = po.get('passive', 0) or 0
-        flop_total = fb.get('total_flop', 0) or 0
+        # ── WTSD approx: hands reaching river / hands seeing flop ────────────
+        wtsd_row = conn.execute("""
+            SELECT
+                COUNT(DISTINCT CASE WHEN d.street = 'flop'  THEN d.hand_id END) AS saw_flop,
+                COUNT(DISTINCT CASE WHEN d.street = 'river' THEN d.hand_id END) AS saw_river
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+        """, (user_id, since)).fetchone()
+
+        # ── Compute stats ────────────────────────────────────────────────────
+        pf  = dict(preflop)  if preflop  else {}
+        po  = dict(postflop) if postflop else {}
+        fb  = dict(flop_row) if flop_row else {}
+        f3b = dict(f3b_row)  if f3b_row  else {}
+        wt  = dict(wtsd_row) if wtsd_row else {}
+
+        total       = pf.get('total_hands', 0) or 0
+        vpip_h      = pf.get('vpip_hands', 0) or 0
+        pfr_h       = pf.get('pfr_hands', 0) or 0
+        aggressive  = po.get('aggressive', 0) or 0
+        passive     = po.get('passive', 0) or 0
+        flop_total  = fb.get('total_flop', 0) or 0
         flop_bets_n = fb.get('flop_bets', 0) or 0
+        f3b_n       = f3b.get('fold_to_3bet_n', 0) or 0
+        faced_3b_n  = f3b.get('faced_3bet_n', 0) or 0
+        saw_flop    = wt.get('saw_flop', 0) or 0
+        saw_river   = wt.get('saw_river', 0) or 0
 
         return {
-            'total_hands': total,
-            'vpip':         round(vpip_h / total * 100, 1) if total > 0 else None,
-            'pfr':          round(pfr_h  / total * 100, 1) if total > 0 else None,
-            'af':           round(aggressive / passive, 2) if passive > 0 else None,
+            'total_hands':  total,
+            'vpip':         round(vpip_h / total * 100, 1)        if total > 0     else None,
+            'pfr':          round(pfr_h  / total * 100, 1)        if total > 0     else None,
+            'af':           round(aggressive / passive, 2)         if passive > 0   else None,
             'flop_bet_pct': round(flop_bets_n / flop_total * 100, 1) if flop_total > 0 else None,
-            # Not computable from current data (require betting-round sequence / showdown outcome)
+            'fold_to_3bet': round(f3b_n / faced_3b_n * 100, 1)   if faced_3b_n > 0 else None,
+            'wtsd':         round(saw_river / saw_flop * 100, 1)  if saw_flop > 0  else None,
+            # Not computable from current data
             'three_bet':    None,
-            'fold_to_3bet': None,
-            'wtsd':         None,
             'w_at_sd':      None,
         }
     finally:
