@@ -168,15 +168,19 @@ def analyze():
     )
     save_decisions(t_db_id, results)
 
-    # Invalidar cache do plano de estudos (dados mudaram)
+    # Invalidar cache do plano de estudos — apenas se o aluno não tiver coach
+    # (quando tem coach, o plano é gerenciado pelo coach e não deve ser apagado)
     try:
         from database.schema import get_conn as _gc
         conn = _gc()
-        conn.execute(
-            "DELETE FROM llm_cache WHERE user_id=? AND cache_key LIKE 'study_plan%'",
-            (g.user_id,)
-        )
-        conn.commit()
+        row = conn.execute("SELECT coach_id FROM users WHERE id=?", (g.user_id,)).fetchone()
+        has_coach = row and dict(row).get('coach_id') is not None
+        if not has_coach:
+            conn.execute(
+                "DELETE FROM llm_cache WHERE user_id=? AND cache_key LIKE 'study_plan%'",
+                (g.user_id,)
+            )
+            conn.commit()
         conn.close()
     except Exception:
         pass
