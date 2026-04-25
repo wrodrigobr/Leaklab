@@ -43,9 +43,9 @@ const Index = () => {
   const totalEvents   = tourns.length;
   const totalHands    = tourns.reduce((s, t) => s + (t.hands_count ?? 0), 0);
 
-  // Standard % from evolution
-  const stdPcts     = (evo?.evolution ?? []).map((e) => e.standard_pct).filter((v) => v != null) as number[];
-  const avgStdPct   = stdPcts.length > 0 ? (stdPcts.reduce((a, b) => a + b, 0) / stdPcts.length) * 100 : null;
+  // standard_pct já está em escala 0-100 no banco (ex: 84.3 = 84.3%)
+  const stdPcts   = (evo?.evolution ?? []).map((e) => e.standard_pct).filter((v) => v != null) as number[];
+  const avgStdPct = stdPcts.length > 0 ? stdPcts.reduce((a, b) => a + b, 0) / stdPcts.length : null;
 
   const hasData = tourns.length > 0;
 
@@ -86,8 +86,7 @@ const Index = () => {
           <KpiCard
             index="02"
             label="ITM Frequency"
-            value={itmPct != null ? itmPct.toFixed(1) : "—"}
-            unit={itmPct != null ? "%" : undefined}
+            value={itmPct != null ? `${itmPct.toFixed(1)}%` : "—"}
             hint={hasData ? "Field avg ~18.5%" : "Sem dados"}
             icon={Target}
             tooltip="Percentual de torneios em que você terminou no dinheiro (in-the-money). A média do field é ~18%. Acima de 22% sugere jogo sólido ou conservador; abaixo pode indicar bust-out precoce."
@@ -95,8 +94,7 @@ const Index = () => {
           <KpiCard
             index="03"
             label="Standard %"
-            value={avgStdPct != null ? avgStdPct.toFixed(1) : "—"}
-            unit={avgStdPct != null ? "%" : undefined}
+            value={avgStdPct != null ? `${avgStdPct.toFixed(1)}%` : "—"}
             hint={hasData ? "decisões dentro do range" : "Sem dados"}
             icon={Coins}
             tooltip="Percentual médio de decisões classificadas como 'standard' (score ≤ 0.08). Meta: acima de 70%. Abaixo de 60% indica volume significativo de erros que estão custando EV real."
