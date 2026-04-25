@@ -409,10 +409,14 @@ def _call_llm_summary(ctx: dict, hero: str) -> str:
     system_prompt = (
         "Você é um coach de poker MTT. "
         "Analise as métricas do torneio abaixo e escreva um resumo em português "
-        "de 3 a 4 parágrafos curtos. "
+        "de 4 parágrafos completos. "
         "Tom: direto, técnico mas acessível — como um coach falando com o aluno após a sessão. "
-        "Cubra: visão geral da qualidade das decisões, o principal leak identificado, "
-        "como o jogador se comportou sob pressão de ICM, e um conselho de foco para a próxima sessão. "
+        "Cubra obrigatoriamente estes 4 tópicos, um por parágrafo: "
+        "(1) visão geral da qualidade das decisões, "
+        "(2) o principal leak identificado, "
+        "(3) como o jogador se comportou sob pressão de ICM, "
+        "(4) um conselho concreto de foco para a próxima sessão. "
+        "É obrigatório terminar o parágrafo 4 com uma frase de encerramento completa. "
         "NÃO use bullet points. Escreva em prosa fluida. "
         "Retorne APENAS o texto do resumo, sem título ou formatação extra."
     )
@@ -421,7 +425,7 @@ def _call_llm_summary(ctx: dict, hero: str) -> str:
 
     payload = {
         'model':      'claude-haiku-4-5-20251001',
-        'max_tokens': 400,
+        'max_tokens': 900,
         'system':     system_prompt,
         'messages':   [{'role': 'user', 'content': user_msg}],
     }
