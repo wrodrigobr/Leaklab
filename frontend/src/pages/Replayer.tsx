@@ -23,8 +23,6 @@ function parseCards(arr: string[]): CardData[] {
 // ── Map backend step to PokerTable seats ──────────────────────────────────────
 
 function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[], aliases: Record<string, string>): Seat[] {
-  const isShowdown = step.type === "showdown";
-
   return Object.entries(step.seats).map(([seatNum, sd]) => {
     const seatId      = parseInt(seatNum);
     const isHero      = sd.player === hero;
@@ -32,9 +30,9 @@ function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[], alias
     const folded      = step.folded?.includes(sd.player) ?? false;
     const displayName = aliases[sd.player] ?? sd.player;
 
-    // No showdown, mostra cartas reveladas dos villains vindas do backend
+    // Villain cards: revealed as soon as backend marks them (shows mid-hand or showdown)
     let cards: CardData[] | undefined = isHero ? heroCards : undefined;
-    if (isShowdown && !isHero) {
+    if (!isHero) {
       const raw = step.revealed_cards?.[seatNum];
       if (raw?.length) cards = parseCards(raw);
     }
@@ -45,7 +43,7 @@ function buildSeats(step: ReplayStep, hero: string, heroCards: CardData[], alias
       stack:    sd.stack,
       hero:     isHero,
       cards,
-      revealed: isShowdown && !isHero && Array.isArray(cards) && cards.length > 0,
+      revealed: !isHero && Array.isArray(cards) && cards.length > 0,
       bet:      bet || undefined,
       active:   step.seat === seatId,
       folded,

@@ -1147,6 +1147,17 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     street = 'preflop'
     folded = []
 
+    # Pre-scan raw_text for mid-hand "shows [cards]" so we can reveal cards
+    # as soon as the action occurs (e.g. all-in before river runout)
+    SHOWS_RE = _re.compile(r'^(.+): shows \[([^\]]+)\]', _re.MULTILINE)
+    shows_map = {}  # player -> [card, ...]
+    for _m in SHOWS_RE.finditer(hand.raw_text or ''):
+        _player = _m.group(1).strip()
+        if _player not in shows_map:
+            shows_map[_player] = _m.group(2).split()
+
+    current_revealed = {}  # seat_str -> [cards], accumulates as shows happen
+
     # Extrair antes e blinds do raw_text (parser não os captura em hand.actions)
     antes   = []
     blinds  = []
@@ -1218,7 +1229,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             if street == 'flop':   board = hand.board[:3]
             elif street == 'turn':  board = hand.board[:4]
             elif street == 'river': board = hand.board[:]
-            timeline.append(snap({'type': 'street', 'desc': street.upper()}))
+            timeline.append(snap({'type': 'street', 'desc': street.upper(),
+                                  'revealed_cards': dict(current_revealed) if current_revealed else None}))
 
         pseat = next((s for s, d in seats.items() if d['player'] == action.player), None)
         amt   = action.amount or 0
@@ -1245,6 +1257,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         if action.action == 'folds' and action.player not in folded:
             folded.append(action.player)
 
+        # Acumular cartas reveladas de "shows" mid-hand (all-in antes do runout, etc.)
+        if action.action == 'shows' and pseat is not None:
+            if action.player in shows_map:
+                current_revealed[str(pseat)] = shows_map[action.player]
+
         err_key  = (action.street, _norm(action.action))
         decision = error_map.get(err_key) if action.player == hero else None
 
@@ -1267,18 +1284,19 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             }
 
         timeline.append(snap({
-            'type':         'action',
-            'player':       action.player,
-            'seat':         pseat,
-            'action':       _normalize_action(action.action),
-            'amount':       amt,
-            'is_hero':      action.player == hero,
-            'is_error':     decision is not None and decision.get('label','standard') in ('clear_mistake','small_mistake','marginal'),
-            'error_label':  decision.get('label')       if decision else None,
-            'error_score':  round(float(decision.get('score', 0)), 3) if decision else None,
-            'best_action':  decision.get('best_action')  if decision else None,
-            'desc':         f"{action.player}: {_normalize_action(action.action)}"
-                              + (f' {int(amt)}' if amt else ''),
+            'type':           'action',
+            'player':         action.player,
+            'seat':           pseat,
+            'action':         _normalize_action(action.action),
+            'amount':         amt,
+            'is_hero':        action.player == hero,
+            'is_error':       decision is not None and decision.get('label','standard') in ('clear_mistake','small_mistake','marginal'),
+            'error_label':    decision.get('label')       if decision else None,
+            'error_score':    round(float(decision.get('score', 0)), 3) if decision else None,
+            'best_action':    decision.get('best_action')  if decision else None,
+            'desc':           f"{action.player}: {_normalize_action(action.action)}"
+                                + (f' {int(amt)}' if amt else ''),
+            'revealed_cards': dict(current_revealed) if current_revealed else None,
             **err_extra,
         }))
 
