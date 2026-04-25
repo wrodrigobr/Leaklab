@@ -1,4 +1,5 @@
 import { AlertTriangle, ChevronRight, ShieldAlert, TrendingDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 type Severity = "critical" | "moderate" | "minor";
@@ -54,6 +55,7 @@ const FALLBACK: LeakData[] = [
 ];
 
 export function LeaksPanel({ leaks }: Props) {
+  const navigate = useNavigate();
   const data = leaks && leaks.length > 0 ? leaks.slice(0, 5) : FALLBACK;
   const isFallback = !leaks || leaks.length === 0;
 
@@ -108,7 +110,10 @@ export function LeaksPanel({ leaks }: Props) {
                 <span className="font-mono text-[11px] text-destructive">
                   score: {leak.avg_score.toFixed(3)}
                 </span>
-                <button className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/30 hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <button
+                  onClick={() => navigate(`/study?spot=${encodeURIComponent(leak.spot)}`)}
+                  className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/30 hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
                   Estudar
                   <ChevronRight className="size-3" aria-hidden />
                 </button>

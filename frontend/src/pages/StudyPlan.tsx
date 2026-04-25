@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Award,
   BrainCircuit,
@@ -90,6 +91,8 @@ function KpiTile({
 type LoadState = "idle" | "loading" | "error";
 
 const StudyPlanPage = () => {
+  const [searchParams]            = useSearchParams();
+  const spotParam                 = searchParams.get("spot") ?? "";
   const [plan, setPlan]           = useState<StudyPlan | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [errorMsg, setErrorMsg]   = useState("");
@@ -114,8 +117,11 @@ const StudyPlanPage = () => {
       }
       const built = buildStudyPlan(data);
       setPlan(built);
-      if (!activeLeakId && built.diagnosis.leaks[0]) {
-        setActiveLeakId(built.diagnosis.leaks[0].id);
+      if (!activeLeakId) {
+        const target = spotParam
+          ? built.diagnosis.leaks.find((l) => l.id === spotParam || l.spot === spotParam)
+          : null;
+        setActiveLeakId(target?.id ?? built.diagnosis.leaks[0]?.id ?? "");
       }
       setLoadState("idle");
       if (force) toast.success("Plano regenerado com IA.");
