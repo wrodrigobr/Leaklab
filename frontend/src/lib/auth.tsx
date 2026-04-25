@@ -5,7 +5,7 @@ interface AuthState {
   user: UserProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string, role?: "player" | "coach") => Promise<void>;
   logout: () => void;
 }
 
@@ -35,8 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(profile);
   };
 
-  const register = async (username: string, email: string, password: string) => {
-    const res = await auth.register(username, email, password);
+  const register = async (username: string, email: string, password: string, role: "player" | "coach" = "player") => {
+    const res = await auth.register(username, email, password, role);
     sessionStorage.setItem("ll_token", res.token);
     const profile = await auth.me();
     setUser(profile);

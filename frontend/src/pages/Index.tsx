@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Coins, Layers, Percent, Target } from "lucide-react";
+import { Coins, Layers, Percent, Target, GraduationCap } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { KpiCard } from "@/components/hud/KpiCard";
 import { LeaksPanel } from "@/components/hud/LeaksPanel";
@@ -13,11 +13,13 @@ import { RecentForm } from "@/components/hud/RecentForm";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { HudTooltip } from "@/components/hud/HudTooltip";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
+import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
   const { user } = useAuth();
+  const [showLinkCoach, setShowLinkCoach] = useState(false);
   const [evo, setEvo]           = useState<EvolutionResponse | null>(null);
   const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStatsResponse | null>(null);
@@ -56,7 +58,25 @@ const Index = () => {
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader onUpload={handleUpload} />
 
+      {showLinkCoach && <AcceptCoachModal onClose={() => setShowLinkCoach(false)} />}
+
       <main className="mx-auto max-w-[1440px] space-y-8 px-6 py-8 md:px-8 animate-fade-in">
+        {/* Link coach banner for players */}
+        {user?.role === "player" && (
+          <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-foreground">
+              <GraduationCap className="size-4 text-primary" />
+              <span>Tem um professor? Vincule seu perfil para compartilhar seu histórico.</span>
+            </div>
+            <button
+              onClick={() => setShowLinkCoach(true)}
+              className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:underline"
+            >
+              Vincular
+            </button>
+          </div>
+        )}
+
         {/* Hero */}
         <section className="flex flex-col gap-3">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">

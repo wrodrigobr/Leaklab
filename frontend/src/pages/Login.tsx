@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart3, Loader2 } from "lucide-react";
+import { BarChart3, Loader2, GraduationCap, User } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 const Login = () => {
   const [tab, setTab] = useState<"login" | "register">("login");
+  const [role, setRole] = useState<"player" | "coach">("player");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -14,7 +15,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) navigate("/", { replace: true });
+    if (user) navigate(user.role === "coach" ? "/coach-dashboard" : "/", { replace: true });
   }, [user, navigate]);
 
   const submit = async (e: React.FormEvent) => {
@@ -25,9 +26,9 @@ const Login = () => {
       if (tab === "login") {
         await login(email, password);
       } else {
-        await register(username, email, password);
+        await register(username, email, password, role);
       }
-      navigate("/");
+      // redirect handled by useEffect above via user state update
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
@@ -78,19 +79,48 @@ const Login = () => {
 
           <form onSubmit={submit} className="space-y-4">
             {tab === "register" && (
-              <div className="space-y-1.5">
-                <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                  Nickname
-                </label>
-                <input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="phpro"
-                  required
-                  autoComplete="username"
-                  className={inputClass}
-                />
-              </div>
+              <>
+                <div className="space-y-1.5">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                    Nickname
+                  </label>
+                  <input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="phpro"
+                    required
+                    autoComplete="username"
+                    className={inputClass}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                    Tipo de conta
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["player", "coach"] as const).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setRole(r)}
+                        className={`flex items-center justify-center gap-2 h-10 rounded-md border text-xs font-mono font-bold uppercase tracking-widest-2 transition-all ${
+                          role === r
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        }`}
+                      >
+                        {r === "player" ? (
+                          <User className="size-3.5" />
+                        ) : (
+                          <GraduationCap className="size-3.5" />
+                        )}
+                        {r === "player" ? "Jogador" : "Professor"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="space-y-1.5">

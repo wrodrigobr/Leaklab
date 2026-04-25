@@ -13,21 +13,32 @@ import Replayer from "./pages/Replayer.tsx";
 import AICoach from "./pages/AICoach.tsx";
 import StudyPlan from "./pages/StudyPlan.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import CoachDashboard from "./pages/coach/CoachDashboard.tsx";
+import StudentDetail from "./pages/coach/StudentDetail.tsx";
+import CoachProfile from "./pages/coach/CoachProfile.tsx";
 
 const queryClient = new QueryClient();
 
+const LoadingScreen = () => (
+  <div className="min-h-dvh bg-background flex items-center justify-center">
+    <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest-2 animate-pulse">
+      Carregando…
+    </span>
+  </div>
+);
+
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
-  if (isLoading) {
-    return (
-      <div className="min-h-dvh bg-background flex items-center justify-center">
-        <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest-2 animate-pulse">
-          Carregando…
-        </span>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function CoachRoute({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "coach") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -86,6 +97,30 @@ const App = () => (
                 <ProtectedRoute>
                   <AICoach />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coach-dashboard"
+              element={
+                <CoachRoute>
+                  <CoachDashboard />
+                </CoachRoute>
+              }
+            />
+            <Route
+              path="/coach-dashboard/student/:id"
+              element={
+                <CoachRoute>
+                  <StudentDetail />
+                </CoachRoute>
+              }
+            />
+            <Route
+              path="/coach-dashboard/profile"
+              element={
+                <CoachRoute>
+                  <CoachProfile />
+                </CoachRoute>
               }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

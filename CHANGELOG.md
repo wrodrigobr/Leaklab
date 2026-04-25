@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.8.0] — 2026-04-25 — Sprint 1: Sistema Professor/Aluno
+
+### Adicionado
+- **Login/registro com papel**: toggle "Jogador / Professor" na tela de registro; papel enviado ao backend via `role` no body
+- **Rotas por papel**: `CoachRoute` em `App.tsx` — professores são redirecionados para `/coach-dashboard`; jogadores bloqueados de rotas de coach
+- **`/coach-dashboard`**: dashboard do professor com stats (alunos, ativos 30d, melhoria média, melhor aluno), lista de alunos com tendência e link para detalhe
+- **`/coach-dashboard/student/:id`**: histórico do aluno — gráfico de evolução (recharts), tabela de leaks, torneios recentes
+- **`/coach-dashboard/profile`**: formulário para o professor configurar nome, bio, especialidades, e-mail/link de contato
+- **Chave de convite** (`InviteKeyWidget`): exibida no dashboard do professor com botão de cópia
+- **Banner "Vincular Professor"** no dashboard do jogador com `AcceptCoachModal` para inserir a chave de convite
+- **Navegação condicional** no `HudHeader`: professores veem "Dashboard + Perfil"; jogadores veem nav padrão; botão Import oculto para professores
+
+---
+
 ## [v0.7.0] — 2026-04-25 — HUD Stats completo + GGPoker
 
 ### Adicionado

@@ -39,10 +39,10 @@ export interface UserProfile {
 }
 
 export const auth = {
-  register: (username: string, email: string, password: string) =>
+  register: (username: string, email: string, password: string, role: "player" | "coach" = "player") =>
     request<AuthResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, role }),
     }),
 
   login: (email: string, password: string) =>
@@ -335,4 +335,94 @@ export const coach = {
     }),
 
   context: () => request<CoachContext>("/coach/context"),
+};
+
+// ── Coach Dashboard (human coach, not AI) ────────────────────────────────────
+
+export interface CoachProfile {
+  user_id: number;
+  username: string;
+  email: string;
+  display_name: string;
+  bio: string;
+  specialties: string[];
+  contact_email: string | null;
+  contact_link: string | null;
+  is_public: boolean;
+  student_count: number;
+  invite_key: string | null;
+}
+
+export interface StudentSummary {
+  id: number;
+  username: string;
+  email: string;
+  created_at: string;
+  total_tournaments: number;
+  recent_tournament: Tournament | null;
+  trend: "improving" | "worsening" | "stable" | null;
+}
+
+export interface CoachImpactStudent {
+  student_id: number;
+  username: string;
+  tournament_count: number;
+  avg_score: number | null;
+  best_score: number | null;
+  standard_pct: number | null;
+  last_activity: string | null;
+  prev_avg_score: number | null;
+  improvement_pct: number | null;
+}
+
+export interface CoachImpactResponse {
+  students: CoachImpactStudent[];
+  top_leaks: { spot: string; n: number; avg_score: number }[];
+  summary: {
+    total_students: number;
+    active_students: number;
+    avg_improvement_pct: number | null;
+    best_student: string | null;
+  };
+}
+
+export interface StudentHistory {
+  student_id: number;
+  evolution: EvolutionPoint[];
+  leaks: { spot: string; n: number; avg_score: number }[];
+  icm: Record<string, { n: number; avg_score: number; standard_rate: number }>;
+  tournaments: Tournament[];
+}
+
+export const coachDashboard = {
+  inviteKey: () =>
+    request<{ invite_key: string }>("/coach/invite-key"),
+
+  getProfile: () =>
+    request<CoachProfile>("/coach/profile"),
+
+  saveProfile: (data: Partial<CoachProfile>) =>
+    request<CoachProfile>("/coach/profile", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  students: () =>
+    request<{ students: StudentSummary[] }>("/coach/students"),
+
+  studentHistory: (studentId: number, days = 30) =>
+    request<StudentHistory>(`/coach/student/${studentId}/history?days=${days}`),
+
+  impact: (days = 30) =>
+    request<CoachImpactResponse>(`/coach/impact?days=${days}`),
+};
+
+// ── Student side ─────────────────────────────────────────────────────────────
+
+export const student = {
+  linkCoach: (invite_key: string) =>
+    request<{ message: string; coach: { id: number; username: string } }>(
+      "/student/link-coach",
+      { method: "POST", body: JSON.stringify({ invite_key }) }
+    ),
 };

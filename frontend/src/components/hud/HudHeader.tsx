@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bot, GraduationCap, LayoutDashboard, LogOut, Trophy, UploadCloud } from "lucide-react";
+import { Activity, BarChart3, Bot, GraduationCap, LayoutDashboard, LogOut, Trophy, UploadCloud, Users } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import { useAuth } from "@/lib/auth";
@@ -8,17 +8,23 @@ interface HudHeaderProps {
   onUpload?: () => void;
 }
 
-const navItems = [
-  { label: "Dashboard",      to: "/",          icon: LayoutDashboard },
-  { label: "Tournaments",    to: "/tournaments",icon: Trophy },
-  { label: "Plano de Estudos", to: "/study",   icon: GraduationCap, badge: "NEW" },
-  { label: "AI Coach",       to: "/coach",     icon: Bot, badge: "ALPHA" },
+const playerNavItems = [
+  { label: "Dashboard",        to: "/",                icon: LayoutDashboard },
+  { label: "Tournaments",      to: "/tournaments",     icon: Trophy },
+  { label: "Plano de Estudos", to: "/study",           icon: GraduationCap, badge: "NEW" },
+  { label: "AI Coach",         to: "/coach",           icon: Bot, badge: "ALPHA" },
+];
+
+const coachNavItems = [
+  { label: "Dashboard",        to: "/coach-dashboard", icon: Users },
+  { label: "Perfil",           to: "/coach-dashboard/profile", icon: LayoutDashboard },
 ];
 
 export function HudHeader({ onUpload }: HudHeaderProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const navItems = user?.role === "coach" ? coachNavItems : playerNavItems;
 
   const handleLogout = () => {
     logout();
@@ -90,14 +96,16 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
           />
-          <button
-            onClick={() => inputRef.current?.click()}
-            title="Importar torneio"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/30 hover:bg-primary/20 transition-colors focus-visible:outline-none"
-          >
-            <UploadCloud className="size-3.5" />
-            Import
-          </button>
+          {user?.role !== "coach" && (
+            <button
+              onClick={() => inputRef.current?.click()}
+              title="Importar torneio"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/30 hover:bg-primary/20 transition-colors focus-visible:outline-none"
+            >
+              <UploadCloud className="size-3.5" />
+              Import
+            </button>
+          )}
 
           <div className="hidden sm:flex items-center gap-2 rounded-full bg-card px-3 py-1.5 ring-1 ring-border">
             <span className="relative flex size-1.5">
