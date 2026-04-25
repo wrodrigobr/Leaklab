@@ -1069,25 +1069,44 @@ def study_plan():
         tourns = get_tournaments(g.user_id, limit=1)
         hero   = tourns[0]['hero'] if tourns else 'Jogador'
 
-        force_new = request.args.get('new') == '1'
-        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id, force_new=force_new)
-
-        # Verificar se o coach do aluno já fez overrides no plano
-        coach_managed = False
+        # Verificar se o aluno tem coach
         from database.schema import get_conn as _gc
+        import json as _json
         _conn = _gc()
         try:
-            row = _conn.execute("SELECT coach_id FROM users WHERE id=?", (g.user_id,)).fetchone()
-            if row:
-                coach_id_val = dict(row).get('coach_id')
-                if coach_id_val:
-                    cnt = _conn.execute(
-                        "SELECT COUNT(*) AS n FROM coach_study_overrides WHERE coach_id=? AND student_id=?",
-                        (coach_id_val, g.user_id)
-                    ).fetchone()
-                    coach_managed = (dict(cnt).get('n', 0) or 0) > 0
+            _row = _conn.execute("SELECT coach_id FROM users WHERE id=?", (g.user_id,)).fetchone()
+            coach_id_val = dict(_row).get('coach_id') if _row else None
         finally:
             _conn.close()
+
+        # Aluno com coach não pode forçar regerar — plano é gerenciado pelo coach
+        force_new = request.args.get('new') == '1' and not coach_id_val
+
+        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id, force_new=force_new)
+
+        # Aplicar overrides do coach nos cards para que o aluno veja o mesmo conteúdo
+        coach_managed = False
+        if coach_id_val:
+            try:
+                overrides = get_study_overrides(coach_id_val, g.user_id)
+                coach_managed = len(overrides) > 0
+                for ov in overrides:
+                    for card in plan.get('cards', []):
+                        if card.get('spot') != ov['card_spot']:
+                            continue
+                        if ov['status'] == 'replaced' and ov.get('custom_card'):
+                            try:
+                                custom = _json.loads(ov['custom_card'])
+                                for field in ('titulo', 'diagnostico', 'exercicio'):
+                                    if custom.get(field):
+                                        card[field] = custom[field]
+                            except Exception:
+                                pass
+                        if ov['status'] == 'commented' and ov.get('note'):
+                            card['coach_note'] = ov['note']
+                        break
+            except Exception:
+                pass
 
         plan['coach_managed'] = coach_managed
         return jsonify(plan)
