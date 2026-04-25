@@ -1,58 +1,136 @@
 # Backlog — PokerLeakLab
 
 Itens planejados, ainda sem sprint definida.
+Ao iniciar uma sprint, mover para o CHANGELOG com o número da versão.
+
+> **Sprints já entregues:** Sprint 1 (infraestrutura coach), Sprint 2 (Student Full View), Sprint 3 (Coach Study Plan Mode) — ver CHANGELOG.
 
 ---
 
-## [BACK-001] Anotações do Coach no Replayer
+## [BACK-001] Sprint 4 — Anotações em Mãos
 
-**Valor:** Coach comenta ações específicas de uma mão; comentário aparece no replayer do aluno no mesmo estilo visual dos leaks do sistema. Base de dados estruturada para retreinamento futuro do modelo.
+**Valor:** Coach comenta decisões específicas de uma mão. O aluno vê a anotação quando revisa aquela mão. Base estruturada para retreinamento do modelo.
 
 ### Fluxo
-1. Coach abre o replay de uma mão do aluno (via Mãos Críticas ou Torneios)
-2. No replayer, em modo coach, cada ação tem um botão "Comentar"
-3. Coach escreve o comentário, define o modo (**Complementar** ou **Substituir** o leak do sistema) e salva
-4. Quando o aluno abre o replay da mesma mão, o comentário do coach aparece:
-   - **Complementar**: exibe leak do sistema + nota do coach empilhados
-   - **Substituir**: oculta o leak do sistema e exibe apenas a nota do coach
+1. No detalhe de uma decisão (aba Torneios ou Mãos Críticas), coach vê campo "Anotação do Coach"
+2. Coach escreve o comentário e escolhe o modo:
+   - **Complementar** — exibe leak do sistema + nota do coach empilhados
+   - **Substituir** — oculta o leak do sistema, exibe apenas a nota do coach
+3. Aluno vê a anotação com destaque visual diferente do texto da IA
+4. No replayer, ao chegar na ação anotada, o balão do coach aparece no mesmo estilo dos leaks
+5. Coach tem painel "Histórico de Anotações" — todas as suas notas por aluno
 
 ### Modelo de dados
 ```sql
 CREATE TABLE coach_hand_annotations (
-    id              INTEGER PRIMARY KEY,
-    coach_id        INTEGER NOT NULL REFERENCES users(id),
-    student_id      INTEGER NOT NULL REFERENCES users(id),
-    hand_id         TEXT    NOT NULL,
-    decision_id     INTEGER REFERENCES decisions(id),  -- ação específica
-    comment         TEXT    NOT NULL,
-    mode            TEXT    NOT NULL DEFAULT 'complement',  -- 'complement' | 'replace'
-    coach_action    TEXT,   -- o que o coach acha que deveria ser jogado (pode diferir do sistema)
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(coach_id, student_id, hand_id, decision_id)
+    id           INTEGER PRIMARY KEY,
+    coach_id     INTEGER NOT NULL REFERENCES users(id),
+    student_id   INTEGER NOT NULL REFERENCES users(id),
+    decision_id  INTEGER NOT NULL REFERENCES decisions(id),
+    comment      TEXT    NOT NULL,
+    mode         TEXT    NOT NULL DEFAULT 'complement',  -- 'complement' | 'replace'
+    coach_action TEXT,   -- o que o coach acha correto (pode divergir do sistema)
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(coach_id, student_id, decision_id)
 );
 ```
 
 ### Endpoints necessários
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/coach/student/:id/hand-annotations/:hand_id` | Lista anotações do coach para uma mão |
-| `POST` | `/coach/student/:id/hand-annotations` | Salva / atualiza anotação |
+| `GET` | `/coach/student/:id/hand-annotations` | Lista todas as anotações do coach para o aluno |
+| `POST` | `/coach/student/:id/hand-annotations` | Salva / atualiza anotação por decision_id |
 | `DELETE` | `/coach/student/:id/hand-annotations/:decision_id` | Remove anotação |
 
 ### Mudanças no Replayer
-- `/replay/:tid/:hid` e `/coach/student/:id/replay/:tid/:hid` passam a retornar `coach_annotations[]` junto à timeline
+- `/replay/` e `/coach/student/:id/replay/` retornam `coach_annotations[]` junto à timeline
 - Cada `ReplayStep` ganha campo opcional `coach_annotation: { comment, mode, coach_action }`
-- UI: botão "Comentar" visível apenas para coach; balão de anotação renderizado no passo correspondente
-- Aluno vê o balão do coach (sem o botão de edição)
+- UI coach: botão "Comentar" por ação; UI aluno: balão do coach renderizado no passo
 
 ### Base de conhecimento / retreinamento
-- Registros onde `coach_action != decision.best_action` → divergência coach × sistema → ground truth para correção
-- Futuramente: pipeline de fine-tuning ou ajuste de prompt no `decision_engine_v11` usando estas divergências como sinal de erro do modelo
+- Registros onde `coach_action != decision.best_action` → divergência coach × sistema → ground truth para correção futura do `decision_engine`
 
 ### Esforço estimado
 - Backend: ~4h (tabela + 3 endpoints + ajuste no replay endpoint)
-- Frontend coach: ~3h (botão + modal de anotação no replayer)
+- Frontend coach: ~3h (campo de anotação no detalhe de decisão + replayer)
 - Frontend aluno: ~2h (exibição do balão no replayer)
 - **Total: ~1 sprint pequena**
+
+---
+
+## [BACK-002] Sprint 5 — Coach Feed & Progresso
+
+**Valor:** Coach acompanha a evolução dos alunos com contexto temporal — feed de atividade, baseline de coaching e relatório de progresso mensal.
+
+### Funcionalidades
+
+**Feed de atividade por aluno**
+- Timeline cronológica: "importou torneio X", "atingiu 80% standard", "maior sequência de melhoria"
+- Exibido na página do aluno (aba Overview ou painel lateral)
+
+**Baseline de coaching**
+- Coach define uma data de início por aluno (quando o coaching começou de fato)
+- Comparativo automático: métricas antes vs. depois da baseline
+- Armazenado em `coach_baselines (coach_id, student_id, baseline_date)`
+
+**Relatório de progresso mensal**
+- Snapshot automático: métricas no início do mês vs. agora
+- Leaks eliminados (spots que saíram do top-leaks)
+- Disponível como PDF ou view dedicada
+
+### Esforço estimado
+- Feed: ~3h (query + frontend timeline)
+- Baseline: ~2h (tabela + picker de data + query comparativa)
+- Relatório: ~4h (aggregation queries + layout)
+- **Total: ~1 sprint média**
+
+---
+
+## [BACK-003] Fila Compartilhada de Erros (Multi-aluno)
+
+**Valor:** Coach vê as piores decisões de **todos os alunos** numa única fila — identifica quem precisa de atenção urgente sem precisar entrar em cada perfil.
+
+### Funcionalidades
+- Dashboard do coach: seção "Atenção Urgente" com decisões ordenadas por score (pior primeiro), filtradas por aluno
+- Filtros: por aluno, por street, por label (clear_mistake / small_mistake)
+- Click na decisão abre diretamente o detalhe do aluno com a decisão destacada
+
+### Esforço estimado
+- Backend: ~2h (query cross-student com join)
+- Frontend: ~3h (tabela multi-aluno com filtros)
+- **Total: ~1 sprint pequena**
+
+---
+
+## [BACK-004] Leaks em Comum Entre Alunos
+
+**Valor:** Coach identifica spots que afetam múltiplos alunos — indica lacuna de ensino sistêmica, não individual.
+
+### Funcionalidades
+- Dashboard do coach: seção "Leaks Sistêmicos" — spots ordenados por nº de alunos afetados
+- Para cada spot: lista de alunos afetados, score médio, frequência
+- Coach pode criar um card de estudo padrão para o spot e aplicar a múltiplos alunos de uma vez
+
+### Esforço estimado
+- Backend: ~3h (aggregation cross-student)
+- Frontend: ~2h
+- **Total: ~1 sprint pequena**
+
+---
+
+## [BACK-005] Selo "Revisado pelo Coach" + Rastreabilidade
+
+**Valor:** Motivação para o aluno + rastreabilidade do coaching no histórico.
+
+### Funcionalidades
+- Torneios revisados pelo coach ganham badge "✓ Coach" na listagem do aluno
+- Decisões com anotação do coach mostram ícone diferenciado na tabela
+- Timeline do aluno exibe marcos de coaching ("Coach revisou este torneio em DD/MM")
+
+### Dependências
+- Requer BACK-001 (anotações por decisão) para funcionar completamente
+
+### Esforço estimado
+- ~3h (UI somente — dados já existem via BACK-001)
 
 ---
