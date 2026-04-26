@@ -436,8 +436,9 @@ const Replayer = () => {
             </ol>
           </section>
 
-          {/* EV feedback */}
-          {step.type === "action" && step.is_hero && (
+          {/* EV feedback — ocultado para aluno quando coach substituiu a análise */}
+          {step.type === "action" && step.is_hero &&
+           (studentId !== null || coachAnnotation?.mode !== "replace") && (
             <section className={cn(
               "rounded-xl border p-4 space-y-2",
               isError
