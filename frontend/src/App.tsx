@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound.tsx";
 import CoachDashboard from "./pages/coach/CoachDashboard.tsx";
 import StudentDetail from "./pages/coach/StudentDetail.tsx";
 import CoachProfile from "./pages/coach/CoachProfile.tsx";
+import StudentProfile from "./pages/StudentProfile.tsx";
 
 const queryClient = new QueryClient();
 
@@ -121,6 +122,14 @@ const App = () => (
                 <CoachRoute>
                   <CoachProfile />
                 </CoachRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <StudentProfile />
+                </ProtectedRoute>
               }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

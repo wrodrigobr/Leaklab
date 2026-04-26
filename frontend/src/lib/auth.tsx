@@ -7,6 +7,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string, role?: "player" | "coach") => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -47,8 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    const profile = await auth.me();
+    setUser(profile);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

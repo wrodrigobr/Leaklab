@@ -21,6 +21,7 @@ import { buildStudyPlan } from "@/components/study/planBuilder";
 import type { StudyPlan } from "@/components/study/types";
 import { cn } from "@/lib/utils";
 import { study } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 // ── localStorage persistence ──────────────────────────────────────────────────
@@ -92,6 +93,7 @@ function KpiTile({
 type LoadState = "idle" | "loading" | "error";
 
 const StudyPlanPage = () => {
+  const { user } = useAuth();
   const [searchParams]            = useSearchParams();
   const spotParam                 = searchParams.get("spot") ?? "";
   const [plan, setPlan]           = useState<StudyPlan | null>(null);
@@ -99,6 +101,7 @@ const StudyPlanPage = () => {
   const [errorMsg, setErrorMsg]   = useState("");
   const [generating, setGenerating] = useState(false);
   const [coachManaged, setCoachManaged] = useState(false);
+  const hasCoach = !!user?.coach_id;
   const [activeLeakId, setActiveLeakId] = useState<string>("");
   const [progress, setProgress]   = useState<Progress>(loadProgress);
 
@@ -192,11 +195,13 @@ const StudyPlanPage = () => {
             </p>
           </div>
         </div>
-        {coachManaged ? (
+        {hasCoach ? (
           <div className="flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-muted-foreground" title="Seu coach gerencia este plano">
             <Lock className="size-3.5 shrink-0" />
             <div className="text-left">
-              <p className="font-mono text-[11px] font-bold uppercase tracking-widest-2">Gerenciado pelo Coach</p>
+              <p className="font-mono text-[11px] font-bold uppercase tracking-widest-2">
+                Gerenciado por {user?.coach_username ?? "Coach"}
+              </p>
               <p className="font-mono text-[9px] text-muted-foreground/70">Entre em contato para solicitar atualização</p>
             </div>
           </div>

@@ -103,12 +103,61 @@ def login():
 @app.route('/auth/me', methods=['GET'])
 @require_auth
 def me():
+    coach_id  = g.user.get('coach_id')
+    coach_username = None
+    if coach_id:
+        coach_row = get_user_by_id(coach_id)
+        if coach_row:
+            coach_username = coach_row['username']
     return jsonify({
-        'user_id':  g.user['id'],
-        'username': g.user['username'],
-        'email':    g.user['email'],
-        'role':     g.user['role'],
+        'user_id':        g.user['id'],
+        'username':       g.user['username'],
+        'email':          g.user['email'],
+        'role':           g.user['role'],
+        'coach_id':       coach_id,
+        'coach_username': coach_username,
     })
+
+
+@app.route('/auth/update-email', methods=['POST'])
+@require_auth
+def update_email():
+    from database.repositories import update_user_email
+    d = request.get_json(silent=True) or {}
+    new_email = (d.get('email') or '').strip().lower()
+    current_pw = d.get('current_password', '')
+    if not new_email or '@' not in new_email:
+        return jsonify({'error': 'E-mail inválido'}), 400
+    result = update_user_email(g.user_id, new_email, current_pw)
+    if result == 'wrong_password':
+        return jsonify({'error': 'Senha incorreta'}), 403
+    if result == 'email_taken':
+        return jsonify({'error': 'E-mail já cadastrado'}), 409
+    return jsonify({'ok': True, 'email': new_email})
+
+
+@app.route('/auth/change-password', methods=['POST'])
+@require_auth
+def change_password():
+    from database.repositories import change_user_password
+    d = request.get_json(silent=True) or {}
+    current_pw = d.get('current_password', '')
+    new_pw     = d.get('new_password', '')
+    if len(new_pw) < 8:
+        return jsonify({'error': 'A nova senha deve ter pelo menos 8 caracteres'}), 400
+    if not change_user_password(g.user_id, current_pw, new_pw):
+        return jsonify({'error': 'Senha atual incorreta'}), 403
+    return jsonify({'ok': True})
+
+
+@app.route('/student/coach', methods=['DELETE'])
+@require_auth
+def unlink_coach():
+    from database.repositories import unlink_student_coach
+    if g.role == 'coach':
+        return jsonify({'error': 'Coaches não possuem vínculo de aluno'}), 400
+    unlink_student_coach(g.user_id)
+    return jsonify({'ok': True})
 
 
 # ── Análise + persistência ────────────────────────────────────────────────────

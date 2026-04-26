@@ -9,6 +9,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.11.0] — 2026-04-26 — Perfil do aluno + segurança de conta
+
+### Adicionado
+- **Página `/profile`** para alunos: alterar e-mail (com confirmação de senha), trocar senha (verifica atual, mín. 8 chars), gerenciar vínculo de coach (remover com confirmação dupla)
+- **Header**: badge do coach vinculado visível no topo quando aluno tem coach; link "Perfil" no nav do player
+- **Plano de Estudos**: lock exibido sempre que o aluno tem coach vinculado (não só quando há overrides), mostrando o nome do coach
+- **Banner de vínculo** no Dashboard: oculto quando aluno já tem coach vinculado
+
+### Corrigido
+- `/auth/me` agora retorna `coach_id` e `coach_username` — frontend usa para controle de acesso sem chamadas extras
+
+### Backend
+- `POST /auth/update-email` — atualiza e-mail após verificar senha atual
+- `POST /auth/change-password` — verifica senha atual antes de atualizar
+- `DELETE /student/coach` — remove vínculo com coach
+- `repositories.py`: `update_user_email`, `change_user_password`, `unlink_student_coach`
+
+---
+
 ## [v0.10.2] — 2026-04-25 — Plano de estudos com fonte única (canonical plan)
 
 ### Corrigido

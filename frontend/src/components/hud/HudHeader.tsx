@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bot, GraduationCap, LayoutDashboard, LogOut, Trophy, UploadCloud, Users } from "lucide-react";
+import { Activity, BarChart3, Bot, GraduationCap, LayoutDashboard, LogOut, Trophy, UploadCloud, Users, UserCircle } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import { useAuth } from "@/lib/auth";
@@ -13,6 +13,7 @@ const playerNavItems = [
   { label: "Tournaments",      to: "/tournaments",     icon: Trophy },
   { label: "Plano de Estudos", to: "/study",           icon: GraduationCap, badge: "NEW" },
   { label: "AI Coach",         to: "/coach",           icon: Bot, badge: "ALPHA" },
+  { label: "Perfil",           to: "/profile",         icon: UserCircle },
 ];
 
 const coachNavItems = [
@@ -105,6 +106,15 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
               <UploadCloud className="size-3.5" />
               Import
             </button>
+          )}
+
+          {user?.coach_id && user.role !== "coach" && (
+            <div className="hidden sm:flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 ring-1 ring-primary/30">
+              <GraduationCap className="size-3 text-primary" />
+              <span className="font-mono text-[10px] font-medium uppercase tracking-widest-2 text-primary">
+                {user.coach_username}
+              </span>
+            </div>
           )}
 
           <div className="hidden sm:flex items-center gap-2 rounded-full bg-card px-3 py-1.5 ring-1 ring-border">

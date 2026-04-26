@@ -979,3 +979,50 @@ def delete_study_override(coach_id: int, student_id: int, card_spot: str) -> boo
         return True
     finally:
         conn.close()
+
+
+# ── User profile management ───────────────────────────────────────────────────
+
+def update_user_email(user_id: int, new_email: str, current_password: str) -> str | None:
+    """Atualiza email após verificar senha. Retorna 'ok', 'wrong_password' ou 'email_taken'."""
+    pw_hash = hashlib.sha256(current_password.encode()).hexdigest()
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT password_hash FROM users WHERE id=?", (user_id,)).fetchone()
+        if not row or dict(row)['password_hash'] != pw_hash:
+            return 'wrong_password'
+        try:
+            conn.execute("UPDATE users SET email=? WHERE id=?", (new_email, user_id))
+            conn.commit()
+            return 'ok'
+        except Exception:
+            return 'email_taken'
+    finally:
+        conn.close()
+
+
+def change_user_password(user_id: int, current_password: str, new_password: str) -> bool:
+    """Troca senha após verificar a atual. Retorna True se ok."""
+    current_hash = hashlib.sha256(current_password.encode()).hexdigest()
+    new_hash     = hashlib.sha256(new_password.encode()).hexdigest()
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT password_hash FROM users WHERE id=?", (user_id,)).fetchone()
+        if not row or dict(row)['password_hash'] != current_hash:
+            return False
+        conn.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user_id))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def unlink_student_coach(student_id: int) -> bool:
+    """Remove o vínculo coach_id do aluno."""
+    conn = get_conn()
+    try:
+        conn.execute("UPDATE users SET coach_id=NULL WHERE id=?", (student_id,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()

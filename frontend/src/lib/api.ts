@@ -36,6 +36,8 @@ export interface UserProfile {
   username: string;
   email: string;
   role: string;
+  coach_id: number | null;
+  coach_username: string | null;
 }
 
 export const auth = {
@@ -52,6 +54,18 @@ export const auth = {
     }),
 
   me: () => request<UserProfile>("/auth/me"),
+
+  updateEmail: (email: string, current_password: string) =>
+    request<{ ok: boolean; email: string }>("/auth/update-email", {
+      method: "POST",
+      body: JSON.stringify({ email, current_password }),
+    }),
+
+  changePassword: (current_password: string, new_password: string) =>
+    request<{ ok: boolean }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password, new_password }),
+    }),
 };
 
 // ── Tournaments ───────────────────────────────────────────────────────────────
@@ -497,4 +511,7 @@ export const student = {
       "/student/link-coach",
       { method: "POST", body: JSON.stringify({ invite_key }) }
     ),
+
+  unlinkCoach: () =>
+    request<{ ok: boolean }>("/student/coach", { method: "DELETE" }),
 };

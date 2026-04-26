@@ -61,8 +61,8 @@ const Index = () => {
       {showLinkCoach && <AcceptCoachModal onClose={() => setShowLinkCoach(false)} />}
 
       <main className="mx-auto max-w-[1440px] space-y-8 px-6 py-8 md:px-8 animate-fade-in">
-        {/* Link coach banner for players */}
-        {user?.role === "player" && (
+        {/* Link coach banner — só aparece se player SEM coach vinculado */}
+        {user?.role === "player" && !user?.coach_id && (
           <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
             <div className="flex items-center gap-2 text-sm text-foreground">
               <GraduationCap className="size-4 text-primary" />
