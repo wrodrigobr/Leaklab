@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2, Trash2, AlertTriangle, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, Tournament } from "@/lib/api";
 
@@ -294,17 +294,25 @@ const Tournaments = () => {
                             : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5">
-                          {t.avg_score != null ? (
-                            <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
-                              <CheckCircle2 className="size-3" aria-hidden />
-                              Analisado
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20">
-                              <Clock className="size-3" aria-hidden />
-                              Em fila
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {t.avg_score != null ? (
+                              <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
+                                <CheckCircle2 className="size-3" aria-hidden />
+                                Analisado
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20">
+                                <Clock className="size-3" aria-hidden />
+                                Em fila
+                              </span>
+                            )}
+                            {t.coach_reviewed && (
+                              <span className="inline-flex items-center gap-1 rounded-sm bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-violet-400 ring-1 ring-violet-400/30">
+                                <GraduationCap className="size-3" aria-hidden />
+                                Coach
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3.5">
                           <button

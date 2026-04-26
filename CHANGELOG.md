@@ -9,6 +9,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.12.0] — 2026-04-26 — Sprint 4: Anotações de Mãos + Selo Coach (BACK-001 + BACK-005)
+
+### Adicionado
+- **Anotações de mãos pelo coach** — na aba "Mãos Críticas" do perfil do aluno, o coach pode anotar qualquer decisão com dois modos:
+  - **Complementar** — exibe a análise da IA + nota do coach empilhadas
+  - **Substituir IA** — oculta a análise da IA, exibe apenas a nota do coach
+- **Campo "Jogada correta"** — coach pode indicar a ação que considera correta para o spot anotado
+- **Badge "Anotado"** — decisões com anotação exibem indicador visual na listagem
+- **Balão do coach no Replayer** — ao chegar na ação anotada, o painel lateral exibe a nota do coach com destaque visual diferenciado do painel da IA
+- **Selo "✓ Coach"** (BACK-005) — torneios revisados (com ao menos uma anotação) ganham badge roxo "Coach" na lista de torneios do aluno
+
+### Backend
+- Tabela `coach_hand_annotations` (SQLite + PostgreSQL) com migration automática
+- `repositories.py`: `get_annotations`, `get_annotations_for_decisions`, `upsert_annotation`, `delete_annotation`, `get_reviewed_tournament_ids`
+- `GET /coach/student/:id/hand-annotations` — lista anotações do coach para o aluno
+- `POST /coach/student/:id/hand-annotations` — cria ou atualiza anotação por decision_id
+- `DELETE /coach/student/:id/hand-annotations/:decision_id` — remove anotação
+- Replay do coach (`/coach/student/:id/replay/...`) agora inclui `coach_annotations` na resposta
+- `GET /history/tournaments` agora inclui `coach_reviewed: bool` por torneio
+
+---
+
 ## [v0.11.1] — 2026-04-26 — Correções de ambiente local + segurança
 
 ### Corrigido

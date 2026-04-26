@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, SkipBack, SkipForward } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, SkipBack, SkipForward, GraduationCap } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PokerTable, type Seat } from "@/components/hud/PokerTable";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
@@ -218,6 +218,15 @@ const Replayer = () => {
   const isError   = step.is_error ?? false;
   const isCorrect = step.is_hero && !isError && step.type === "action";
 
+  // Coach annotation for current step (matched by street + action)
+  const coachAnnotation = useMemo(() => {
+    const annotations = replayData?.coach_annotations;
+    if (!annotations || !step?.is_error) return null;
+    return Object.values(annotations).find(
+      (a) => a.street === step.street && a.action_taken === step.action
+    ) ?? null;
+  }, [replayData?.coach_annotations, step?.street, step?.action, step?.is_error]);
+
   return (
     <HudLayout
       eyebrow={`Replayer · Mão ${replayData.hand_id}`}
@@ -406,6 +415,29 @@ const Replayer = () => {
                 </div>
               ) : (
                 <p className="text-xs text-foreground">Linha sólida para o spot.</p>
+              )}
+            </section>
+          )}
+
+          {/* Coach annotation balloon */}
+          {coachAnnotation && (
+            <section className={cn(
+              "rounded-xl border p-4 space-y-2",
+              coachAnnotation.mode === "replace"
+                ? "border-primary/50 bg-primary/8"
+                : "border-primary/20 bg-primary/5"
+            )}>
+              <div className="flex items-center gap-2">
+                <GraduationCap className="size-4 text-primary" />
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
+                  Coach · {coachAnnotation.mode === "replace" ? "Análise exclusiva" : "Complemento do coach"}
+                </span>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed">{coachAnnotation.comment}</p>
+              {coachAnnotation.coach_action && (
+                <p className="font-mono text-[11px] text-primary">
+                  → Correto: {coachAnnotation.coach_action}
+                </p>
               )}
             </section>
           )}

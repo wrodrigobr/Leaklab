@@ -185,6 +185,19 @@ def _init_postgres(conn):
             created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
             UNIQUE(coach_id, student_id, card_spot)
         );
+        CREATE TABLE IF NOT EXISTS coach_hand_annotations (
+            id          SERIAL PRIMARY KEY,
+            coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            decision_id INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+            comment     TEXT    NOT NULL,
+            mode        TEXT    NOT NULL DEFAULT 'complement',
+            coach_action TEXT,
+            created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+            UNIQUE(coach_id, student_id, decision_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_annotations_decision ON coach_hand_annotations(decision_id);
+        CREATE INDEX IF NOT EXISTS idx_annotations_student  ON coach_hand_annotations(student_id);
     """)
 
 
@@ -296,6 +309,19 @@ def _init_sqlite(conn):
             created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
             UNIQUE(coach_id, student_id, card_spot)
         );
+        CREATE TABLE IF NOT EXISTS coach_hand_annotations (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            decision_id INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+            comment     TEXT    NOT NULL,
+            mode        TEXT    NOT NULL DEFAULT 'complement',
+            coach_action TEXT,
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(coach_id, student_id, decision_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_annotations_decision ON coach_hand_annotations(decision_id);
+        CREATE INDEX IF NOT EXISTS idx_annotations_student  ON coach_hand_annotations(student_id);
     """)
 
 
@@ -321,6 +347,21 @@ def _run_migrations(conn):
             try: conn.execute(sql)
             except Exception: pass
     else:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coach_hand_annotations (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                decision_id INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+                comment     TEXT    NOT NULL,
+                mode        TEXT    NOT NULL DEFAULT 'complement',
+                coach_action TEXT,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(coach_id, student_id, decision_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_annotations_decision ON coach_hand_annotations(decision_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_annotations_student  ON coach_hand_annotations(student_id)")
         # coach_study_overrides (SQLite CREATE IF NOT EXISTS handles it)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS coach_study_overrides (

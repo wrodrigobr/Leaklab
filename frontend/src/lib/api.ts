@@ -88,6 +88,7 @@ export interface Tournament {
   prize: number | null;
   profit: number | null;
   llm_summary: string | null;
+  coach_reviewed?: boolean;
 }
 
 export interface TournamentsResponse {
@@ -175,6 +176,19 @@ export interface ReplayStep {
   };
 }
 
+export interface CoachAnnotation {
+  id: number;
+  coach_id: number;
+  student_id: number;
+  decision_id: number;
+  comment: string;
+  mode: "complement" | "replace";
+  coach_action: string | null;
+  created_at: string;
+  street?: string;
+  action_taken?: string;
+}
+
 export interface ReplayData {
   hand_id: string;
   tournament_id: string;
@@ -186,6 +200,7 @@ export interface ReplayData {
   bb: number;
   seats: Record<string, { player: string; stack: number; pos: string }>;
   timeline: ReplayStep[];
+  coach_annotations?: Record<string, CoachAnnotation>;
 }
 
 export const tournaments = {
@@ -485,6 +500,25 @@ export const coachDashboard = {
 
   deleteStudyOverride: (studentId: number, cardSpot: string) =>
     request<{ ok: boolean }>(`/coach/student/${studentId}/study-overrides/${encodeURIComponent(cardSpot)}`, {
+      method: "DELETE",
+    }),
+
+  getAnnotations: (studentId: number) =>
+    request<{ annotations: CoachAnnotation[] }>(`/coach/student/${studentId}/hand-annotations`),
+
+  upsertAnnotation: (studentId: number, data: {
+    decision_id: number;
+    comment: string;
+    mode: "complement" | "replace";
+    coach_action?: string;
+  }) =>
+    request<CoachAnnotation>(`/coach/student/${studentId}/hand-annotations`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteAnnotation: (studentId: number, decisionId: number) =>
+    request<{ ok: boolean }>(`/coach/student/${studentId}/hand-annotations/${decisionId}`, {
       method: "DELETE",
     }),
 

@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PlayingCard } from "@/components/hud/PlayingCard";
-import { coachDashboard, StudentWorstDecision, StudyCard, StudyOverride } from "@/lib/api";
+import { coachDashboard, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation } from "@/lib/api";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar
@@ -385,21 +385,123 @@ function parseBoardCards(s: string): { rank: string; suit: string }[] {
   catch { return []; }
 }
 
+function AnnotationForm({
+  studentId, decisionId, existing, onDone,
+}: {
+  studentId: number;
+  decisionId: number;
+  existing: CoachAnnotation | undefined;
+  onDone: () => void;
+}) {
+  const qc = useQueryClient();
+  const [comment, setComment]         = useState(existing?.comment ?? "");
+  const [mode, setMode]               = useState<"complement"|"replace">(existing?.mode ?? "complement");
+  const [coachAction, setCoachAction] = useState(existing?.coach_action ?? "");
+
+  const save = useMutation({
+    mutationFn: () => coachDashboard.upsertAnnotation(studentId, {
+      decision_id: decisionId, comment, mode,
+      coach_action: coachAction || undefined,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["coach-annotations", studentId] }); onDone(); },
+  });
+
+  const remove = useMutation({
+    mutationFn: () => coachDashboard.deleteAnnotation(studentId, decisionId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["coach-annotations", studentId] }); onDone(); },
+  });
+
+  return (
+    <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-3 mt-2">
+      <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
+        Anotação do Coach
+      </p>
+
+      {/* Mode */}
+      <div className="flex gap-2">
+        {(["complement", "replace"] as const).map((m) => (
+          <button key={m} type="button" onClick={() => setMode(m)}
+            className={`flex-1 py-1.5 rounded text-[10px] font-mono font-bold uppercase tracking-widest-2 border transition-colors ${
+              mode === m
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:border-primary/50"
+            }`}
+          >
+            {m === "complement" ? "Complementar" : "Substituir IA"}
+          </button>
+        ))}
+      </div>
+
+      {/* Comment */}
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        rows={3}
+        placeholder="Sua análise desta decisão…"
+        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+      />
+
+      {/* Coach action */}
+      <div className="space-y-1">
+        <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
+          Jogada correta (opcional)
+        </label>
+        <input
+          value={coachAction}
+          onChange={(e) => setCoachAction(e.target.value)}
+          placeholder="ex: fold, call, raise 3bb"
+          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => save.mutate()} disabled={!comment.trim() || save.isPending}
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-mono text-[10px] font-bold uppercase text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        >
+          {save.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+          Salvar
+        </button>
+        <button onClick={onDone}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 font-mono text-[10px] text-muted-foreground hover:text-foreground"
+        >
+          <X className="size-3" /> Cancelar
+        </button>
+        {existing && (
+          <button
+            onClick={() => remove.mutate()} disabled={remove.isPending}
+            className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] text-destructive hover:underline disabled:opacity-50"
+          >
+            <Trash2 className="size-3" /> Remover
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function WorstTab({ studentId }: { studentId: number }) {
   const { data, isLoading } = useQuery({
     queryKey: ["coach-student-worst", studentId],
     queryFn: () => coachDashboard.studentWorstDecisions(studentId, 30),
   });
+  const { data: annData } = useQuery({
+    queryKey: ["coach-annotations", studentId],
+    queryFn: () => coachDashboard.getAnnotations(studentId),
+  });
 
   const navigate = useNavigate();
+  const [editing, setEditing] = useState<number | null>(null);
+
+  const annotationMap = Object.fromEntries(
+    (annData?.annotations ?? []).map((a) => [a.decision_id, a])
+  );
 
   if (isLoading) return <p className="text-sm text-muted-foreground animate-pulse py-8">Carregando…</p>;
 
   const decisions = data?.decisions ?? [];
-
-  if (decisions.length === 0) {
+  if (decisions.length === 0)
     return <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma decisão crítica encontrada.</p>;
-  }
 
   return (
     <div className="space-y-2">
@@ -407,14 +509,14 @@ function WorstTab({ studentId }: { studentId: number }) {
         {decisions.length} piores decisões — ordenadas por score (maior erro primeiro)
       </p>
       {decisions.map((d: StudentWorstDecision) => {
-        const heroCards = d.hero_cards ? parseHeroCards(d.hero_cards) : [];
+        const heroCards  = d.hero_cards ? parseHeroCards(d.hero_cards) : [];
         const boardCards = d.board ? parseBoardCards(d.board) : [];
+        const annotation = annotationMap[d.id];
+        const isEditing  = editing === d.id;
+
         return (
-          <div
-            key={d.id}
-            className="rounded-lg border border-border bg-hud-surface px-4 py-3 space-y-2"
-          >
-            {/* Hand ID + label + score */}
+          <div key={d.id} className="rounded-lg border border-border bg-hud-surface px-4 py-3 space-y-2">
+            {/* Label + street + score */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className={`font-mono text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
@@ -425,14 +527,17 @@ function WorstTab({ studentId }: { studentId: number }) {
                   {d.label === "clear_mistake" ? "Erro claro" : "Erro pequeno"}
                 </span>
                 <span className="font-mono text-xs capitalize text-muted-foreground">{d.street}</span>
-                {d.position && (
-                  <span className="font-mono text-[10px] text-muted-foreground">{d.position}</span>
+                {d.position && <span className="font-mono text-[10px] text-muted-foreground">{d.position}</span>}
+                {annotation && (
+                  <span className="flex items-center gap-1 font-mono text-[9px] text-primary">
+                    <MessageSquare className="size-3" /> Anotado
+                  </span>
                 )}
               </div>
               <span className={`font-mono text-xl font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</span>
             </div>
 
-            {/* Hero cards + board */}
+            {/* Cards */}
             {(heroCards.length > 0 || boardCards.length > 0) && (
               <div className="flex items-center gap-4 py-1">
                 {heroCards.length > 0 && (
@@ -454,10 +559,9 @@ function WorstTab({ studentId }: { studentId: number }) {
               </div>
             )}
 
-            {/* Hand ID */}
             <p className="font-mono text-[9px] text-muted-foreground">ID: {d.hand_id}</p>
 
-            {/* Action */}
+            {/* Actions */}
             <div className="flex items-center gap-6 text-sm">
               <div>
                 <p className="font-mono text-[9px] text-muted-foreground uppercase">Jogou</p>
@@ -481,14 +585,55 @@ function WorstTab({ studentId }: { studentId: number }) {
               )}
             </div>
 
-            <div className="flex items-center justify-between">
+            {/* Existing annotation display */}
+            {annotation && !isEditing && (
+              <div className={`rounded-md px-3 py-2 text-sm space-y-1 ${
+                annotation.mode === "replace"
+                  ? "border border-primary/40 bg-primary/5"
+                  : "border border-border bg-background"
+              }`}>
+                <p className="font-mono text-[9px] uppercase text-primary tracking-widest-2">
+                  {annotation.mode === "replace" ? "Coach (substitui IA)" : "Coach (complementa)"}
+                </p>
+                <p className="text-foreground leading-relaxed">{annotation.comment}</p>
+                {annotation.coach_action && (
+                  <p className="font-mono text-[10px] text-primary">
+                    → Correto: {annotation.coach_action}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Annotation form */}
+            {isEditing && (
+              <AnnotationForm
+                studentId={studentId}
+                decisionId={d.id}
+                existing={annotation}
+                onDone={() => setEditing(null)}
+              />
+            )}
+
+            {/* Footer */}
+            <div className="flex items-center justify-between pt-1">
               <p className="font-mono text-[10px] text-muted-foreground">{d.tournament_id}</p>
-              <button
-                onClick={() => navigate(`/replayer?t=${d.tournament_id}&h=${d.hand_id}&student=${studentId}`)}
-                className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-primary hover:underline"
-              >
-                <Play className="size-3" /> Ver Replay
-              </button>
+              <div className="flex items-center gap-3">
+                {!isEditing && (
+                  <button
+                    onClick={() => setEditing(d.id)}
+                    className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <PenLine className="size-3" />
+                    {annotation ? "Editar nota" : "Anotar"}
+                  </button>
+                )}
+                <button
+                  onClick={() => navigate(`/replayer?t=${d.tournament_id}&h=${d.hand_id}&student=${studentId}`)}
+                  className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-primary hover:underline"
+                >
+                  <Play className="size-3" /> Ver Replay
+                </button>
+              </div>
             </div>
           </div>
         );

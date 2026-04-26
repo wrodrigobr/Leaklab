@@ -1036,3 +1036,93 @@ def unlink_student_coach(student_id: int) -> bool:
         return True
     finally:
         conn.close()
+
+
+# ── Coach hand annotations ────────────────────────────────────────────────────
+
+def get_annotations(coach_id: int, student_id: int) -> list:
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            """SELECT a.*, d.hand_id, d.street, d.action_taken, d.best_action,
+                      d.label, d.score, d.hero_cards, d.board, d.position,
+                      t.tournament_id
+               FROM coach_hand_annotations a
+               JOIN decisions d ON d.id = a.decision_id
+               JOIN tournaments t ON t.id = d.tournament_id
+               WHERE a.coach_id=? AND a.student_id=?
+               ORDER BY a.created_at DESC""",
+            (coach_id, student_id),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_annotations_for_decisions(decision_ids: list) -> list:
+    """Retorna anotações para um conjunto de decision_ids (usado pelo replayer)."""
+    if not decision_ids:
+        return []
+    conn = get_conn()
+    try:
+        placeholders_str = ','.join(['?' for _ in decision_ids])
+        rows = conn.execute(
+            f"SELECT * FROM coach_hand_annotations WHERE decision_id IN ({placeholders_str})",
+            tuple(decision_ids),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def upsert_annotation(coach_id: int, student_id: int, decision_id: int,
+                      comment: str, mode: str = 'complement',
+                      coach_action: Optional[str] = None) -> dict:
+    conn = get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO coach_hand_annotations
+                   (coach_id, student_id, decision_id, comment, mode, coach_action)
+               VALUES (?,?,?,?,?,?)
+               ON CONFLICT(coach_id, student_id, decision_id)
+               DO UPDATE SET comment=excluded.comment, mode=excluded.mode,
+                             coach_action=excluded.coach_action""",
+            (coach_id, student_id, decision_id, comment, mode, coach_action),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM coach_hand_annotations WHERE coach_id=? AND student_id=? AND decision_id=?",
+            (coach_id, student_id, decision_id),
+        ).fetchone()
+        return dict(row) if row else {}
+    finally:
+        conn.close()
+
+
+def delete_annotation(coach_id: int, student_id: int, decision_id: int) -> bool:
+    conn = get_conn()
+    try:
+        conn.execute(
+            "DELETE FROM coach_hand_annotations WHERE coach_id=? AND student_id=? AND decision_id=?",
+            (coach_id, student_id, decision_id),
+        )
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def get_reviewed_tournament_ids(student_id: int) -> set:
+    """IDs de banco dos torneios do aluno que têm pelo menos uma anotação de coach."""
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            """SELECT DISTINCT d.tournament_id
+               FROM coach_hand_annotations a
+               JOIN decisions d ON d.id = a.decision_id
+               WHERE a.student_id=?""",
+            (student_id,),
+        ).fetchall()
+        return {r[0] if not isinstance(r, dict) else r['tournament_id'] for r in rows}
+    finally:
+        conn.close()

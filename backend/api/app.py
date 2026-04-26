@@ -35,6 +35,8 @@ from database.repositories import (
     upsert_coach_profile, get_coach_profile, get_public_coaches,
     get_coach_impact_metrics, recommend_coaches_for_leaks,
     get_study_overrides, save_study_override, delete_study_override,
+    get_annotations, get_annotations_for_decisions, upsert_annotation,
+    delete_annotation, get_reviewed_tournament_ids,
 )
 from database.auth import generate_token, require_auth, require_coach
 
@@ -324,12 +326,13 @@ def tournament_summary():
 def history_tournaments():
     limit = int(request.args.get('limit', 50))
     tournaments = get_tournaments(g.user_id, limit)
-    # Garantir que datas sejam strings ISO (Postgres retorna datetime.date)
+    reviewed_ids = get_reviewed_tournament_ids(g.user_id)
     for t in tournaments:
         for field in ('played_at', 'imported_at'):
             val = t.get(field)
             if val is not None and not isinstance(val, str):
-                t[field] = str(val)[:10]  # YYYY-MM-DD
+                t[field] = str(val)[:10]
+        t['coach_reviewed'] = t['id'] in reviewed_ids
     return jsonify({'tournaments': tournaments})
 
 
@@ -899,6 +902,19 @@ def coach_student_replay(student_id, tournament_id, hand_id):
         decisions_db = get_decisions(t['id'])
         hand_decisions = [d for d in decisions_db if str(d.get('hand_id')) == str(hand_id)]
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
+    # Attach coach annotations for decisions in this hand
+    db_decisions = get_decisions(t['id'])
+    hand_db_decisions = [d for d in db_decisions if str(d.get('hand_id')) == str(hand_id)]
+    if hand_db_decisions:
+        ann_list = get_annotations_for_decisions([d['id'] for d in hand_db_decisions])
+        ann_map = {str(a['decision_id']): a for a in ann_list}
+        replay['coach_annotations'] = {
+            str(d['id']): {**ann_map[str(d['id'])],
+                           'street': d.get('street'), 'action_taken': d.get('action_taken')}
+            for d in hand_db_decisions if str(d['id']) in ann_map
+        }
+    else:
+        replay['coach_annotations'] = {}
     return jsonify(replay)
 
 
@@ -937,6 +953,42 @@ def coach_student_study_overrides_delete(student_id, card_spot):
     if not _verify_student(g.user_id, student_id):
         return jsonify({'error': 'Aluno não encontrado'}), 404
     delete_study_override(g.user_id, student_id, card_spot)
+    return jsonify({'ok': True})
+
+
+@app.route('/coach/student/<int:student_id>/hand-annotations', methods=['GET'])
+@require_coach
+def coach_hand_annotations_list(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    annotations = get_annotations(g.user_id, student_id)
+    return jsonify({'annotations': annotations})
+
+
+@app.route('/coach/student/<int:student_id>/hand-annotations', methods=['POST'])
+@require_coach
+def coach_hand_annotations_upsert(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    d = request.get_json(silent=True) or {}
+    decision_id = d.get('decision_id')
+    comment     = (d.get('comment') or '').strip()
+    mode        = d.get('mode', 'complement')
+    coach_action = d.get('coach_action')
+    if not decision_id or not comment:
+        return jsonify({'error': 'decision_id e comment são obrigatórios'}), 400
+    if mode not in ('complement', 'replace'):
+        return jsonify({'error': 'mode deve ser complement ou replace'}), 400
+    annotation = upsert_annotation(g.user_id, student_id, decision_id, comment, mode, coach_action)
+    return jsonify(annotation)
+
+
+@app.route('/coach/student/<int:student_id>/hand-annotations/<int:decision_id>', methods=['DELETE'])
+@require_coach
+def coach_hand_annotations_delete(student_id, decision_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    delete_annotation(g.user_id, student_id, decision_id)
     return jsonify({'ok': True})
 
 
