@@ -477,7 +477,9 @@ class _AdaptedConn:
         sql = self._adapt(sql)
         if self._pg:
             cur = self._conn.cursor()
-            cur.execute(sql, params or ())
+            # Pass None (not empty tuple) when no params so psycopg2 uses PQexec
+            # which supports multi-statement SQL (used in _init_postgres).
+            cur.execute(sql, params if params else None)
             return _PgResult(cur)
         else:
             return self._conn.execute(sql, params or ())

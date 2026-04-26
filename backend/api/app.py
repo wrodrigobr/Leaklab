@@ -1803,6 +1803,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     }
 
 
+@app.errorhandler(500)
+def internal_error(e): return jsonify({'error': f'Erro interno do servidor: {e}'}), 500
+
 @app.errorhandler(413)
 def too_large(_): return jsonify({'error': 'Arquivo muito grande (limite: 5MB)'}), 413
 

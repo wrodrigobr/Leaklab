@@ -18,8 +18,16 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init.headers,
     },
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+  const text = await res.text();
+  let data: Record<string, unknown> = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(`Erro do servidor (HTTP ${res.status})`);
+    }
+  }
+  if (!res.ok) throw new Error((data.error as string) ?? `HTTP ${res.status}`);
   return data as T;
 }
 
