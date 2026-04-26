@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import {
   Award,
   BrainCircuit,
@@ -13,6 +13,9 @@ import {
   Sparkles,
   Target,
   Timer,
+  Star,
+  Users,
+  ChevronRight,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { ExerciseRunner } from "@/components/study/ExerciseRunner";
@@ -20,9 +23,10 @@ import { ResourceList } from "@/components/study/ResourceList";
 import { buildStudyPlan } from "@/components/study/planBuilder";
 import type { StudyPlan } from "@/components/study/types";
 import { cn } from "@/lib/utils";
-import { study } from "@/lib/api";
+import { study, coaches, PublicCoach } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 // ── localStorage persistence ──────────────────────────────────────────────────
 
@@ -57,6 +61,71 @@ function updateStreak(p: Progress): Progress {
   if (p.lastActivity === today) return p;
   const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
   return { ...p, streak: p.lastActivity === yesterday ? p.streak + 1 : 1, lastActivity: today };
+}
+
+// ── Coach recommendation strip ────────────────────────────────────────────────
+
+function CoachMiniCard({ coach }: { coach: PublicCoach }) {
+  const r = coach.avg_rating ?? 0;
+  return (
+    <Link
+      to={`/coaches/${coach.user_id}`}
+      className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 hover:border-primary/50 transition-colors min-w-[200px] shrink-0"
+    >
+      {coach.photo_url ? (
+        <img src={coach.photo_url} alt={coach.display_name}
+          className="size-9 rounded-full object-cover border border-border shrink-0" />
+      ) : (
+        <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+          <GraduationCap className="size-4 text-primary" />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold text-foreground truncate">{coach.display_name || coach.username}</p>
+        {coach.stakes && (
+          <p className="font-mono text-[9px] text-muted-foreground">{coach.stakes}</p>
+        )}
+        <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex gap-0.5">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Star key={n} className={cn("size-2.5", r >= n ? "fill-amber-400 text-amber-400" : "text-border")} />
+            ))}
+          </div>
+          <span className="font-mono text-[9px] text-muted-foreground flex items-center gap-0.5">
+            <Users className="size-2.5" /> {coach.student_count}
+          </span>
+        </div>
+      </div>
+      <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
+    </Link>
+  );
+}
+
+function CoachRecommendationStrip({ spot }: { spot: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["coaches-for-spot", spot],
+    queryFn: () => coaches.list({ specialty: spot, sort: "rating", limit: 4 }),
+    staleTime: 60_000,
+  });
+
+  const list = data?.coaches ?? [];
+  if (isLoading || list.length === 0) return null;
+
+  return (
+    <div className="mt-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
+          <GraduationCap className="size-3" /> Coaches especializados neste leak
+        </p>
+        <Link to="/coaches" className="font-mono text-[10px] text-primary hover:underline">
+          Ver todos →
+        </Link>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {list.map((c) => <CoachMiniCard key={c.user_id} coach={c} />)}
+      </div>
+    </div>
+  );
 }
 
 // ── KPI tile ─────────────────────────────────────────────────────────────────
@@ -324,6 +393,10 @@ const StudyPlanPage = () => {
                     );
                   })}
                 </ul>
+                {/* BACK-013: coach recommendations for active leak (only when user has no coach) */}
+                {!hasCoach && activeLeak && (
+                  <CoachRecommendationStrip spot={activeLeak.spot} />
+                )}
               </article>
 
               {/* Roteiro semanal */}

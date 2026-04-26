@@ -9,6 +9,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.16.0] — 2026-04-26 — Sprint 8: Diretório Público de Coaches + Integração Contextual (BACK-006 pt.2 + BACK-013)
+
+### Adicionado
+- **Diretório público de coaches** (`/coaches`) — lista com filtros de especialidade, idioma, preço máximo, trial e ordenação; barra de busca por nome; sidebar colapsável; grid responsivo
+- **Perfil público do coach** (`/coaches/:id`) — avatar, bio, especialidades, maiores resultados, distribuição de avaliações, reviews públicos, contato e links sociais; CTA contextual para vincular coach via chave de convite
+- **Coaches no menu principal** — entrada "Coaches" adicionada ao `HudHeader` para jogadores
+- **BACK-013 — Coaches contextuais no Plano de Estudos** — strip de coaches especializados no leak ativo, exibida somente para alunos sem coach; clique direciona ao perfil do coach
+- **BACK-013 — Coaches no Perfil do aluno** — quando sem coach: lista top-3 coaches por rating + formulário de link por chave de convite; substitui botão antigo sem destino útil
+
+### Backend
+- `GET /coaches` aceita `specialty`, `language`, `trial`, `max_price`, `q`, `sort`, `limit` como filtros
+- `GET /coaches/:id` retorna perfil completo + reviews públicos recentes
+- `GET /coaches/:id/reviews` retorna reviews públicos paginados
+- `GET /student/recommended-coaches` — endpoint para recomendação futura (stub)
+
+### Frontend
+- `CoachesDirectory.tsx` — nova página com `StarRow`, `CoachCard`, `FilterPanel`
+- `PublicCoachProfile.tsx` — nova página com distribuição de rating, reviews, formulário de avaliação (alunos vinculados) e CTA de contratação
+- `StudyPlan.tsx` — `CoachRecommendationStrip` + `CoachMiniCard` injetados no card de diagnóstico de leaks
+- `StudentProfile.tsx` — `NoCoachDiscovery` com `CoachDiscoveryCard` e formulário de invite key
+- `HudHeader.tsx` — "Coaches" adicionado ao nav de jogadores
+
+---
+
 ## [v0.15.0] — 2026-04-26 — Sprint 7: Perfil Estendido do Coach + Sistema de Avaliações (BACK-006 pt.1)
 
 ### Adicionado

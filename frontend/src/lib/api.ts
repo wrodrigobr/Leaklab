@@ -704,6 +704,51 @@ export interface StudyOverride {
   created_at: string;
 }
 
+// ── Public coach directory (BACK-006 pt.2) ───────────────────────────────────
+
+export interface PublicCoachReview {
+  username: string;
+  rating: number;
+  review_text: string | null;
+  updated_at: string;
+}
+
+export interface PublicCoach extends CoachProfile {
+  students_avg_score: number | null;
+  reviews?: PublicCoachReview[];
+}
+
+export interface CoachDirectoryFilters {
+  specialty?: string;
+  language?: string;
+  trial?: boolean;
+  max_price?: number;
+  q?: string;
+  sort?: "rating" | "students" | "price";
+  limit?: number;
+}
+
+export const coaches = {
+  list: (filters: CoachDirectoryFilters = {}) => {
+    const q = new URLSearchParams();
+    if (filters.specialty)  q.set("specialty",  filters.specialty);
+    if (filters.language)   q.set("language",   filters.language);
+    if (filters.trial)      q.set("trial",       "1");
+    if (filters.max_price != null) q.set("max_price", String(filters.max_price));
+    if (filters.q)          q.set("q",           filters.q);
+    if (filters.sort)       q.set("sort",        filters.sort);
+    if (filters.limit)      q.set("limit",       String(filters.limit));
+    const qs = q.toString();
+    return request<{ coaches: PublicCoach[] }>(`/coaches${qs ? `?${qs}` : ""}`);
+  },
+
+  get: (coachUserId: number) =>
+    request<PublicCoach>(`/coaches/${coachUserId}`),
+
+  recommended: () =>
+    request<{ coaches: PublicCoach[] }>("/student/recommended-coaches"),
+};
+
 // ── Student side ─────────────────────────────────────────────────────────────
 
 export const student = {

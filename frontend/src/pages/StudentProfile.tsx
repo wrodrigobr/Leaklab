@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { KeyRound, Mail, UserX, Loader2, Check, AlertTriangle, GraduationCap, Star, Trash2 } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { KeyRound, Mail, UserX, Loader2, Check, AlertTriangle, GraduationCap, Star, Trash2, Users, ChevronRight } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { useAuth } from "@/lib/auth";
-import { auth as authApi, student as studentApi, coachDashboard, CoachReview } from "@/lib/api";
+import { auth as authApi, student as studentApi, coachDashboard, coaches, CoachReview, PublicCoach } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hover, setHover] = useState(0);
@@ -119,6 +120,132 @@ function CoachReviewWidget({ coachId }: { coachId: number }) {
     <button onClick={() => startEdit()} className="font-mono text-[10px] text-primary hover:underline">
       + Avaliar meu coach
     </button>
+  );
+}
+
+// ── BACK-013: Coach discovery when no coach is linked ─────────────────────────
+
+function CoachDiscoveryCard({ coach }: { coach: PublicCoach }) {
+  const r = coach.avg_rating ?? 0;
+  return (
+    <Link
+      to={`/coaches/${coach.user_id}`}
+      className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 hover:border-primary/50 transition-colors"
+    >
+      {coach.photo_url ? (
+        <img src={coach.photo_url} alt={coach.display_name}
+          className="size-10 rounded-full object-cover border border-border shrink-0" />
+      ) : (
+        <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+          <GraduationCap className="size-4 text-primary" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-foreground truncate">{coach.display_name || coach.username}</p>
+        {coach.stakes && (
+          <p className="font-mono text-[9px] text-muted-foreground">{coach.stakes}</p>
+        )}
+        <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex gap-0.5">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Star key={n} className={cn("size-2.5", r >= n ? "fill-amber-400 text-amber-400" : "text-border")} />
+            ))}
+          </div>
+          <span className="font-mono text-[9px] text-muted-foreground flex items-center gap-0.5">
+            <Users className="size-2.5" /> {coach.student_count} alunos
+          </span>
+        </div>
+      </div>
+      <ChevronRight className="size-4 text-muted-foreground shrink-0" />
+    </Link>
+  );
+}
+
+function NoCoachDiscovery() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { refreshUser } = useAuth();
+  const [inviteKey, setInviteKey] = useState("");
+  const [showForm, setShowForm] = useState(false);
+
+  const { data } = useQuery({
+    queryKey: ["coaches-top"],
+    queryFn: () => coaches.list({ sort: "rating", limit: 3 }),
+    staleTime: 60_000,
+  });
+
+  const linkMut = useMutation({
+    mutationFn: () => studentApi.linkCoach(inviteKey),
+    onSuccess: async (data) => {
+      toast.success(`Vinculado ao coach ${data.coach.username}!`);
+      await refreshUser();
+      qc.invalidateQueries({ queryKey: ["coaches-top"] });
+      navigate("/profile");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const topCoaches = data?.coaches ?? [];
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Você ainda não tem um coach vinculado. A IA já é seu coach — mas você pode contratar um coach humano para potencializar ainda mais sua evolução.
+      </p>
+
+      {topCoaches.length > 0 && (
+        <div className="space-y-2">
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+            Coaches bem avaliados
+          </p>
+          <div className="space-y-2">
+            {topCoaches.map((c) => <CoachDiscoveryCard key={c.user_id} coach={c} />)}
+          </div>
+          <Link
+            to="/coaches"
+            className="font-mono text-[10px] text-primary hover:underline flex items-center gap-1"
+          >
+            Ver todos os coaches disponíveis →
+          </Link>
+        </div>
+      )}
+
+      {showForm ? (
+        <div className="space-y-2 border-t border-border pt-3">
+          <p className="font-mono text-[10px] text-muted-foreground">Insira a chave de convite recebida do coach:</p>
+          <input
+            type="text"
+            value={inviteKey}
+            onChange={(e) => setInviteKey(e.target.value)}
+            placeholder="Chave de convite…"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => linkMut.mutate()}
+              disabled={!inviteKey || linkMut.isPending}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {linkMut.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+              Vincular
+            </button>
+            <button
+              onClick={() => setShowForm(false)}
+              className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowForm(true)}
+          className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <GraduationCap className="size-3.5" /> Tenho uma chave de convite
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -371,15 +498,7 @@ export default function StudentProfile() {
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">Nenhum coach vinculado.</p>
-              <button
-                onClick={() => navigate("/")}
-                className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <GraduationCap className="size-3.5" /> Vincular um coach
-              </button>
-            </div>
+            <NoCoachDiscovery />
           )}
         </Section>
       </main>

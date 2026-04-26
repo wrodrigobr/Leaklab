@@ -13,6 +13,7 @@ const playerNavItems = [
   { label: "Tournaments",      to: "/tournaments",     icon: Trophy },
   { label: "Plano de Estudos", to: "/study",           icon: GraduationCap, badge: "NEW" },
   { label: "AI Coach",         to: "/coach",           icon: Bot, badge: "ALPHA" },
+  { label: "Coaches",          to: "/coaches",         icon: Users },
   { label: "Perfil",           to: "/profile",         icon: UserCircle },
 ];
 

@@ -853,11 +853,22 @@ def get_my_review(coach_id: int, student_id: int) -> Optional[dict]:
 
 
 def get_public_coaches(specialty: str | None = None,
+                        language: str | None = None,
+                        trial_only: bool = False,
+                        max_price: float | None = None,
+                        search: str | None = None,
+                        sort: str = 'rating',
                         limit: int = 20) -> List[dict]:
-    """Lista coaches públicos, opcionalmente filtrados por especialidade."""
+    """Lista coaches públicos com filtros e ordenação."""
+    sort_clause = {
+        'rating':   'avg_rating DESC NULLS LAST, student_count DESC',
+        'students': 'student_count DESC, avg_rating DESC NULLS LAST',
+        'price':    'cp.price_per_session ASC NULLS LAST',
+    }.get(sort, 'avg_rating DESC NULLS LAST, student_count DESC')
+
     conn = get_conn()
     try:
-        rows = conn.execute("""
+        rows = conn.execute(f"""
             SELECT cp.*, u.username, u.invite_key,
                    (SELECT COUNT(*) FROM users WHERE coach_id = u.id) as student_count,
                    (SELECT ROUND(AVG(CAST(rating AS REAL)),1)
@@ -872,16 +883,48 @@ def get_public_coaches(specialty: str | None = None,
             FROM coach_profiles cp
             JOIN users u ON u.id = cp.user_id
             WHERE cp.is_public = 1
-            ORDER BY avg_rating DESC NULLS LAST, student_count DESC, cp.updated_at DESC
+            ORDER BY {sort_clause}
             LIMIT ?
-        """, (limit,)).fetchall()
+        """, (limit * 3,)).fetchall()   # fetch extra para post-filter em Python
         result = []
         for r in rows:
             d = _parse_profile(dict(r))
             if specialty and specialty.lower() not in [s.lower() for s in d['specialties']]:
                 continue
+            if language and language.lower() not in [l.lower() for l in d.get('languages', [])]:
+                continue
+            if trial_only and not d.get('trial_available'):
+                continue
+            if max_price is not None:
+                price = d.get('price_per_session')
+                if price is not None and price > max_price:
+                    continue
+            if search:
+                needle = search.lower()
+                if needle not in (d.get('display_name') or '').lower() \
+                   and needle not in (d.get('username') or '').lower():
+                    continue
             result.append(d)
+            if len(result) >= limit:
+                break
         return result
+    finally:
+        conn.close()
+
+
+def get_public_coach_reviews(coach_id: int, limit: int = 10) -> list:
+    """Reviews públicas de um coach (sem dados sensíveis do aluno)."""
+    conn = get_conn()
+    try:
+        rows = conn.execute("""
+            SELECT r.rating, r.review_text, r.updated_at, u.username
+            FROM coach_reviews r
+            JOIN users u ON u.id = r.student_id
+            WHERE r.coach_id = ?
+            ORDER BY r.updated_at DESC
+            LIMIT ?
+        """, (coach_id, limit)).fetchall()
+        return [dict(r) for r in rows]
     finally:
         conn.close()
 

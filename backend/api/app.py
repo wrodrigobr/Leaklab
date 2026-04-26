@@ -43,6 +43,8 @@ from database.repositories import (
     get_student_activity_feed, get_baseline_comparison,
     # Sprint 7 — BACK-006
     upsert_review, delete_review, get_reviews, get_my_review,
+    # Sprint 8 — BACK-006 pt.2
+    get_public_coach_reviews,
 )
 from database.auth import generate_token, require_auth, require_coach
 
@@ -773,23 +775,36 @@ def recommended_coaches():
 
 @app.route('/coaches', methods=['GET'])
 def public_coaches():
-    """Lista coaches públicos (sem auth)."""
-    specialty = request.args.get('specialty')
-    limit     = int(request.args.get('limit', 20))
-    coaches   = get_public_coaches(specialty=specialty, limit=limit)
+    """Lista coaches públicos com filtros (sem auth)."""
+    coaches = get_public_coaches(
+        specialty  = request.args.get('specialty'),
+        language   = request.args.get('language'),
+        trial_only = request.args.get('trial') == '1',
+        max_price  = float(request.args['max_price']) if request.args.get('max_price') else None,
+        search     = request.args.get('q'),
+        sort       = request.args.get('sort', 'rating'),
+        limit      = int(request.args.get('limit', 20)),
+    )
     return jsonify({'coaches': coaches})
 
 
 @app.route('/coaches/<int:coach_user_id>', methods=['GET'])
 def public_coach_profile(coach_user_id):
-    """Perfil público de um coach específico."""
+    """Perfil público completo de um coach."""
     profile = get_coach_profile(coach_user_id)
     if not profile or not profile.get('is_public'):
         return jsonify({'error': 'Coach não encontrado'}), 404
-    # Remover dados sensíveis do perfil público
-    safe = {k: v for k, v in profile.items()
-            if k not in ('password_hash', 'email') or k == 'contact_email'}
+    PRIVATE = {'password_hash', 'email'}
+    safe = {k: v for k, v in profile.items() if k not in PRIVATE}
+    safe['reviews'] = get_public_coach_reviews(coach_user_id, limit=10)
     return jsonify(safe)
+
+
+@app.route('/coaches/<int:coach_user_id>/reviews', methods=['GET'])
+def public_coach_reviews(coach_user_id):
+    """Reviews públicas de um coach."""
+    limit = int(request.args.get('limit', 10))
+    return jsonify(get_public_coach_reviews(coach_user_id, limit))
 
 
 # Redirecionar o endpoint antigo de coach/students para o novo
