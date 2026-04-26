@@ -6,6 +6,18 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ---
 
+## Princípio de Produto
+
+> **A plataforma é primariamente um coach IA autônomo para o aluno.**
+> O aluno não precisa — e nunca deve precisar — de um coach humano para extrair valor completo do sistema.
+> Análise de leaks, plano de estudos, replayer, gamificação e evolução de score são o **core** e funcionam de forma independente.
+>
+> O marketplace de coaches humanos (BACK-006, BACK-013) é uma **camada adicional opcional** — um upgrade de valor, não um pré-requisito.
+> Calls-to-action de contratação de coach devem ser **suaves e contextuais**, jamais bloqueantes ou centrais no fluxo principal.
+> Sprints de IA têm prioridade estratégica maior do que sprints de marketplace.
+
+---
+
 ## Roadmap de Sprints
 
 | Sprint | Itens | Tema | Esforço | Valor |
