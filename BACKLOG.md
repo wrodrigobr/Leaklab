@@ -1,13 +1,31 @@
 # Backlog — PokerLeakLab
 
-Itens planejados, ainda sem sprint definida.
-Ao iniciar uma sprint, mover para o CHANGELOG com o número da versão.
+Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
 > **Sprints já entregues:** Sprint 1 (infraestrutura coach), Sprint 2 (Student Full View), Sprint 3 (Coach Study Plan Mode) — ver CHANGELOG.
 
 ---
 
-## [BACK-001] Sprint 4 — Anotações em Mãos
+## Roadmap de Sprints
+
+| Sprint | Itens | Tema | Esforço | Valor |
+|---|---|---|---|---|
+| **Sprint 4** | BACK-001 + BACK-005 | Anotações de mãos + Selo revisado | ~12h | Fecha o loop do coaching — coach comenta decisões, aluno vê no replayer |
+| **Sprint 5** | BACK-003 + BACK-004 | Coach analytics multi-aluno | ~10h | Coach tem visão consolidada de todos os alunos sem precisar abrir um a um |
+| **Sprint 6** | BACK-002 | Feed de progresso + baseline | ~9h | Coach acompanha evolução temporal — argumento de venda do coaching |
+| **Sprint 7** | BACK-006 (parte 1) | Perfil estendido do coach + reviews | ~10h | Prepara os coaches para serem descobertos |
+| **Sprint 8** | BACK-006 (parte 2) | Diretório público + marketplace | ~10h | Alunos descobrem coaches — crescimento orgânico da plataforma |
+
+### Critérios de priorização
+- **Sprint 4 antes de 5/6** — BACK-005 depende de BACK-001; anotações são o core do coaching
+- **Sprint 5+6 antes do marketplace** — coaches precisam de ferramentas sólidas antes de serem expostos publicamente
+- **BACK-006 dividido em duas sprints** — perfil/reviews primeiro (lado da oferta), diretório depois (lado da demanda)
+
+---
+
+---
+
+## [BACK-001] — Sprint 4 — Anotações em Mãos
 
 **Valor:** Coach comenta decisões específicas de uma mão. O aluno vê a anotação quando revisa aquela mão. Base estruturada para retreinamento do modelo.
 
@@ -58,7 +76,7 @@ CREATE TABLE coach_hand_annotations (
 
 ---
 
-## [BACK-002] Sprint 5 — Coach Feed & Progresso
+## [BACK-002] — Sprint 6 — Coach Feed & Progresso
 
 **Valor:** Coach acompanha a evolução dos alunos com contexto temporal — feed de atividade, baseline de coaching e relatório de progresso mensal.
 
@@ -86,7 +104,7 @@ CREATE TABLE coach_hand_annotations (
 
 ---
 
-## [BACK-003] Fila Compartilhada de Erros (Multi-aluno)
+## [BACK-003] — Sprint 5 — Fila Compartilhada de Erros (Multi-aluno)
 
 **Valor:** Coach vê as piores decisões de **todos os alunos** numa única fila — identifica quem precisa de atenção urgente sem precisar entrar em cada perfil.
 
@@ -102,7 +120,7 @@ CREATE TABLE coach_hand_annotations (
 
 ---
 
-## [BACK-004] Leaks em Comum Entre Alunos
+## [BACK-004] — Sprint 5 — Leaks em Comum Entre Alunos
 
 **Valor:** Coach identifica spots que afetam múltiplos alunos — indica lacuna de ensino sistêmica, não individual.
 
@@ -118,7 +136,7 @@ CREATE TABLE coach_hand_annotations (
 
 ---
 
-## [BACK-006] Marketplace de Coaches
+## [BACK-006] — Sprints 7+8 — Marketplace de Coaches
 
 **Valor:** Alunos descobrem, avaliam e escolhem coaches dentro da plataforma. Coaches têm vitrine profissional com dados reais de performance. Cria network-effect: quanto mais alunos melhoram, melhor o coach aparece no ranking.
 
@@ -210,7 +228,7 @@ Página acessível **sem login** (SEO-friendly) e também logada:
 
 ---
 
-## [BACK-005] Selo "Revisado pelo Coach" + Rastreabilidade
+## [BACK-005] — Sprint 4 — Selo "Revisado pelo Coach" + Rastreabilidade
 
 **Valor:** Motivação para o aluno + rastreabilidade do coaching no histórico.
 
