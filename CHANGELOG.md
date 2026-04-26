@@ -9,6 +9,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.15.0] — 2026-04-26 — Sprint 7: Perfil Estendido do Coach + Sistema de Avaliações (BACK-006 pt.1)
+
+### Adicionado
+- **Aba "Perfil Público"** no CoachDashboard — formulário completo com foto, experiência, stakes, método de coaching, idiomas, maiores resultados, preços, disponibilidade e redes sociais; modo visualização / edição inline
+- **Aba "Avaliações"** no CoachDashboard — aggregate de rating com barra de distribuição por estrela + lista de reviews recebidas
+- **Avaliação de coach pelo aluno** — widget na página de perfil do aluno (`StudentProfile`) com StarPicker, comentário opcional, edição e exclusão; aparece somente quando há coach vinculado
+- Tabela `coach_reviews` com constraint `UNIQUE(coach_id, student_id)` — 1 review por par aluno-coach
+
+### Backend
+- `coach_profiles`: 13 novos campos adicionados (`photo_url`, `experience_years`, `stakes`, `coaching_style`, `languages`, `biggest_results`, `price_per_session`, `price_monthly`, `trial_available`, `availability`, `social_youtube`, `social_twitch`, `social_twitter`)
+- `GET /coach/profile` agora retorna `avg_rating` e `review_count` calculados em tempo real
+- `POST /coach/review` — aluno envia/atualiza avaliação (upsert por par coach-aluno)
+- `DELETE /coach/review` — aluno remove sua avaliação
+- `GET /coach/my-review` — aluno consulta sua própria avaliação
+- `GET /coach/reviews` — coach vê todas as avaliações recebidas com stats detalhados
+- Migrations automáticas para SQLite e Postgres
+
+---
+
 ## [v0.14.0] — 2026-04-26 — Sprint 6: Feed de Atividade + Baseline de Coaching (BACK-002)
 
 ### Adicionado

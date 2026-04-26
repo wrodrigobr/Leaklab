@@ -683,31 +683,77 @@ def upsert_coach_profile(user_id: int, display_name: str = '',
                           contact_email: str | None = None,
                           contact_link: str | None = None,
                           is_public: bool = True,
-                          max_students: int = 5) -> dict:
+                          max_students: int = 5,
+                          # Sprint 7 — campos estendidos
+                          photo_url: str | None = None,
+                          experience_years: int | None = None,
+                          stakes: str | None = None,
+                          coaching_style: str | None = None,
+                          languages: list | None = None,
+                          biggest_results: list | None = None,
+                          price_per_session: float | None = None,
+                          price_monthly: float | None = None,
+                          trial_available: bool = False,
+                          availability: str | None = None,
+                          social_youtube: str | None = None,
+                          social_twitch: str | None = None,
+                          social_twitter: str | None = None) -> dict:
     """Cria ou atualiza perfil público do coach."""
     specs_json = _json.dumps(specialties or [])
+    langs_json = _json.dumps(languages or ['pt'])
+    results_json = _json.dumps(biggest_results or [])
     conn = get_conn()
     try:
         conn.execute("""
             INSERT INTO coach_profiles
               (user_id, display_name, bio, specialties, contact_email,
-               contact_link, is_public, max_students, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,datetime('now'))
+               contact_link, is_public, max_students,
+               photo_url, experience_years, stakes, coaching_style,
+               languages, biggest_results, price_per_session, price_monthly,
+               trial_available, availability,
+               social_youtube, social_twitch, social_twitter,
+               updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
             ON CONFLICT(user_id) DO UPDATE SET
-              display_name  = excluded.display_name,
-              bio           = excluded.bio,
-              specialties   = excluded.specialties,
-              contact_email = excluded.contact_email,
-              contact_link  = excluded.contact_link,
-              is_public     = excluded.is_public,
-              max_students  = excluded.max_students,
-              updated_at    = datetime('now')
+              display_name      = excluded.display_name,
+              bio               = excluded.bio,
+              specialties       = excluded.specialties,
+              contact_email     = excluded.contact_email,
+              contact_link      = excluded.contact_link,
+              is_public         = excluded.is_public,
+              max_students      = excluded.max_students,
+              photo_url         = excluded.photo_url,
+              experience_years  = excluded.experience_years,
+              stakes            = excluded.stakes,
+              coaching_style    = excluded.coaching_style,
+              languages         = excluded.languages,
+              biggest_results   = excluded.biggest_results,
+              price_per_session = excluded.price_per_session,
+              price_monthly     = excluded.price_monthly,
+              trial_available   = excluded.trial_available,
+              availability      = excluded.availability,
+              social_youtube    = excluded.social_youtube,
+              social_twitch     = excluded.social_twitch,
+              social_twitter    = excluded.social_twitter,
+              updated_at        = datetime('now')
         """, (user_id, display_name, bio, specs_json,
-              contact_email, contact_link, int(is_public), max_students))
+              contact_email, contact_link, int(is_public), max_students,
+              photo_url, experience_years, stakes, coaching_style,
+              langs_json, results_json, price_per_session, price_monthly,
+              int(trial_available), availability,
+              social_youtube, social_twitch, social_twitter))
         conn.commit()
         return get_coach_profile(user_id)
     finally:
         conn.close()
+
+
+def _parse_profile(d: dict) -> dict:
+    d['specialties']    = _json.loads(d.get('specialties')    or '[]')
+    d['languages']      = _json.loads(d.get('languages')      or '["pt"]')
+    d['biggest_results'] = _json.loads(d.get('biggest_results') or '[]')
+    d['trial_available'] = bool(d.get('trial_available', 0))
+    return d
 
 
 def get_coach_profile(user_id: int) -> Optional[dict]:
@@ -715,16 +761,93 @@ def get_coach_profile(user_id: int) -> Optional[dict]:
     try:
         row = conn.execute("""
             SELECT cp.*, u.username, u.email, u.invite_key, u.plan,
-                   (SELECT COUNT(*) FROM users WHERE coach_id = u.id) as student_count
+                   (SELECT COUNT(*) FROM users WHERE coach_id = u.id) as student_count,
+                   (SELECT ROUND(AVG(CAST(rating AS REAL)),1)
+                    FROM coach_reviews WHERE coach_id = u.id) as avg_rating,
+                   (SELECT COUNT(*) FROM coach_reviews WHERE coach_id = u.id) as review_count
             FROM coach_profiles cp
             JOIN users u ON u.id = cp.user_id
             WHERE cp.user_id = ?
         """, (user_id,)).fetchone()
         if not row:
             return None
-        d = dict(row)
-        d['specialties'] = _json.loads(d.get('specialties') or '[]')
-        return d
+        return _parse_profile(dict(row))
+    finally:
+        conn.close()
+
+
+# ── Coach Reviews (BACK-006) ──────────────────────────────────────────────────
+
+def upsert_review(coach_id: int, student_id: int,
+                  rating: int, review_text: str | None = None) -> dict:
+    conn = get_conn()
+    try:
+        conn.execute("""
+            INSERT INTO coach_reviews (coach_id, student_id, rating, review_text, updated_at)
+            VALUES (?,?,?,?,datetime('now'))
+            ON CONFLICT(coach_id, student_id) DO UPDATE SET
+              rating      = excluded.rating,
+              review_text = excluded.review_text,
+              updated_at  = datetime('now')
+        """, (coach_id, student_id, rating, review_text))
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM coach_reviews WHERE coach_id=? AND student_id=?",
+            (coach_id, student_id),
+        ).fetchone()
+        return dict(row) if row else {}
+    finally:
+        conn.close()
+
+
+def delete_review(coach_id: int, student_id: int) -> None:
+    conn = get_conn()
+    try:
+        conn.execute(
+            "DELETE FROM coach_reviews WHERE coach_id=? AND student_id=?",
+            (coach_id, student_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_reviews(coach_id: int, limit: int = 20) -> dict:
+    """Retorna reviews do coach com stats de rating."""
+    conn = get_conn()
+    try:
+        rows = conn.execute("""
+            SELECT r.*, u.username
+            FROM coach_reviews r
+            JOIN users u ON u.id = r.student_id
+            WHERE r.coach_id = ?
+            ORDER BY r.updated_at DESC
+            LIMIT ?
+        """, (coach_id, limit)).fetchall()
+        items = [dict(r) for r in rows]
+        stats = conn.execute("""
+            SELECT ROUND(AVG(CAST(rating AS REAL)), 1) as avg_rating,
+                   COUNT(*) as total,
+                   SUM(CASE WHEN rating=5 THEN 1 ELSE 0 END) as r5,
+                   SUM(CASE WHEN rating=4 THEN 1 ELSE 0 END) as r4,
+                   SUM(CASE WHEN rating=3 THEN 1 ELSE 0 END) as r3,
+                   SUM(CASE WHEN rating=2 THEN 1 ELSE 0 END) as r2,
+                   SUM(CASE WHEN rating=1 THEN 1 ELSE 0 END) as r1
+            FROM coach_reviews WHERE coach_id=?
+        """, (coach_id,)).fetchone()
+        return {'reviews': items, 'stats': dict(stats) if stats else {}}
+    finally:
+        conn.close()
+
+
+def get_my_review(coach_id: int, student_id: int) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM coach_reviews WHERE coach_id=? AND student_id=?",
+            (coach_id, student_id),
+        ).fetchone()
+        return dict(row) if row else None
     finally:
         conn.close()
 
@@ -735,10 +858,11 @@ def get_public_coaches(specialty: str | None = None,
     conn = get_conn()
     try:
         rows = conn.execute("""
-            SELECT cp.user_id, cp.display_name, cp.bio, cp.specialties,
-                   cp.contact_email, cp.contact_link, cp.plan,
-                   u.username, u.invite_key,
+            SELECT cp.*, u.username, u.invite_key,
                    (SELECT COUNT(*) FROM users WHERE coach_id = u.id) as student_count,
+                   (SELECT ROUND(AVG(CAST(rating AS REAL)),1)
+                    FROM coach_reviews WHERE coach_id = u.id) as avg_rating,
+                   (SELECT COUNT(*) FROM coach_reviews WHERE coach_id = u.id) as review_count,
                    (SELECT AVG(t.avg_score)
                     FROM tournaments t
                     JOIN users s ON s.id = t.user_id
@@ -748,14 +872,12 @@ def get_public_coaches(specialty: str | None = None,
             FROM coach_profiles cp
             JOIN users u ON u.id = cp.user_id
             WHERE cp.is_public = 1
-            ORDER BY student_count DESC, cp.updated_at DESC
+            ORDER BY avg_rating DESC NULLS LAST, student_count DESC, cp.updated_at DESC
             LIMIT ?
         """, (limit,)).fetchall()
         result = []
         for r in rows:
-            d = dict(r)
-            d['specialties'] = _json.loads(d.get('specialties') or '[]')
-            # Filtrar por especialidade se solicitado
+            d = _parse_profile(dict(r))
             if specialty and specialty.lower() not in [s.lower() for s in d['specialties']]:
                 continue
             result.append(d)

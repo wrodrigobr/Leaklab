@@ -41,6 +41,8 @@ from database.repositories import (
     # Sprint 6 — BACK-002
     get_coach_baseline, set_coach_baseline, delete_coach_baseline,
     get_student_activity_feed, get_baseline_comparison,
+    # Sprint 7 — BACK-006
+    upsert_review, delete_review, get_reviews, get_my_review,
 )
 from database.auth import generate_token, require_auth, require_coach
 
@@ -682,6 +684,20 @@ def coach_profile():
         contact_email=data.get('contact_email'),
         contact_link=data.get('contact_link'),
         is_public=data.get('is_public', True),
+        # Sprint 7 — campos estendidos
+        photo_url=data.get('photo_url'),
+        experience_years=data.get('experience_years'),
+        stakes=data.get('stakes'),
+        coaching_style=data.get('coaching_style'),
+        languages=data.get('languages', ['pt']),
+        biggest_results=data.get('biggest_results', []),
+        price_per_session=data.get('price_per_session'),
+        price_monthly=data.get('price_monthly'),
+        trial_available=bool(data.get('trial_available', False)),
+        availability=data.get('availability'),
+        social_youtube=data.get('social_youtube'),
+        social_twitch=data.get('social_twitch'),
+        social_twitter=data.get('social_twitter'),
     )
     # Garantir que tem chave de convite
     key = assign_invite_key(g.user_id)
@@ -1085,6 +1101,60 @@ def coach_student_progress_report(student_id):
     if report is None:
         return jsonify({'error': 'Baseline não definida para este aluno'}), 404
     return jsonify(report)
+
+
+# ── Sprint 7 BACK-006: Reviews ────────────────────────────────────────────────
+
+@app.route('/coach/review', methods=['POST'])
+@require_auth
+def submit_review():
+    """Aluno avalia seu coach (atual ou anterior)."""
+    data = request.get_json(silent=True) or {}
+    rating = data.get('rating')
+    if not rating or not isinstance(rating, int) or not (1 <= rating <= 5):
+        return jsonify({'error': 'rating deve ser inteiro entre 1 e 5'}), 400
+    coach_id = g.user.get('coach_id')
+    if not coach_id:
+        # Permite avaliar um coach anterior via coach_id explícito
+        coach_id = data.get('coach_id')
+    if not coach_id:
+        return jsonify({'error': 'Você não está vinculado a um coach'}), 400
+    review = upsert_review(
+        coach_id=int(coach_id),
+        student_id=g.user_id,
+        rating=rating,
+        review_text=data.get('review_text'),
+    )
+    return jsonify(review)
+
+
+@app.route('/coach/review', methods=['DELETE'])
+@require_auth
+def delete_my_review():
+    coach_id = g.user.get('coach_id') or request.args.get('coach_id')
+    if not coach_id:
+        return jsonify({'error': 'coach_id obrigatório'}), 400
+    delete_review(int(coach_id), g.user_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/coach/my-review', methods=['GET'])
+@require_auth
+def get_my_review_endpoint():
+    """Aluno consulta a própria review do seu coach."""
+    coach_id = g.user.get('coach_id') or request.args.get('coach_id')
+    if not coach_id:
+        return jsonify(None)
+    review = get_my_review(int(coach_id), g.user_id)
+    return jsonify(review)
+
+
+@app.route('/coach/reviews', methods=['GET'])
+@require_coach
+def coach_get_reviews():
+    """Coach vê todas as suas avaliações + stats."""
+    limit = int(request.args.get('limit', 20))
+    return jsonify(get_reviews(g.user_id, limit))
 
 
 @app.route('/analyze/decision', methods=['POST'])

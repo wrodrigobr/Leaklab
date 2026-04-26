@@ -144,19 +144,43 @@ def _init_postgres(conn):
             created_at      TIMESTAMP NOT NULL DEFAULT NOW()
         );
         CREATE TABLE IF NOT EXISTS coach_profiles (
-            id              SERIAL PRIMARY KEY,
-            user_id         INTEGER NOT NULL UNIQUE REFERENCES users(id),
-            display_name    TEXT    NOT NULL DEFAULT '',
-            bio             TEXT    NOT NULL DEFAULT '',
-            specialties     TEXT    NOT NULL DEFAULT '[]',
-            contact_email   TEXT,
-            contact_link    TEXT,
-            is_public       INTEGER NOT NULL DEFAULT 1,
-            plan            TEXT    NOT NULL DEFAULT 'free',
-            max_students    INTEGER NOT NULL DEFAULT 5,
-            created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
-            updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
+            id                  SERIAL PRIMARY KEY,
+            user_id             INTEGER NOT NULL UNIQUE REFERENCES users(id),
+            display_name        TEXT    NOT NULL DEFAULT '',
+            bio                 TEXT    NOT NULL DEFAULT '',
+            specialties         TEXT    NOT NULL DEFAULT '[]',
+            contact_email       TEXT,
+            contact_link        TEXT,
+            is_public           INTEGER NOT NULL DEFAULT 1,
+            plan                TEXT    NOT NULL DEFAULT 'free',
+            max_students        INTEGER NOT NULL DEFAULT 5,
+            photo_url           TEXT,
+            experience_years    INTEGER,
+            stakes              TEXT,
+            coaching_style      TEXT,
+            languages           TEXT    NOT NULL DEFAULT '["pt"]',
+            biggest_results     TEXT    NOT NULL DEFAULT '[]',
+            price_per_session   REAL,
+            price_monthly       REAL,
+            trial_available     INTEGER NOT NULL DEFAULT 0,
+            availability        TEXT,
+            social_youtube      TEXT,
+            social_twitch       TEXT,
+            social_twitter      TEXT,
+            created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
         );
+        CREATE TABLE IF NOT EXISTS coach_reviews (
+            id           SERIAL PRIMARY KEY,
+            coach_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            rating       INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+            review_text  TEXT,
+            created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+            UNIQUE(coach_id, student_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_reviews_coach ON coach_reviews(coach_id);
         CREATE INDEX IF NOT EXISTS idx_decisions_tournament ON decisions(tournament_id);
         CREATE INDEX IF NOT EXISTS idx_decisions_label      ON decisions(label);
         CREATE INDEX IF NOT EXISTS idx_decisions_street     ON decisions(street);
@@ -279,19 +303,43 @@ def _init_sqlite(conn):
             created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS coach_profiles (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id         INTEGER NOT NULL UNIQUE REFERENCES users(id),
-            display_name    TEXT    NOT NULL DEFAULT '',
-            bio             TEXT    NOT NULL DEFAULT '',
-            specialties     TEXT    NOT NULL DEFAULT '[]',
-            contact_email   TEXT,
-            contact_link    TEXT,
-            is_public       INTEGER NOT NULL DEFAULT 1,
-            plan            TEXT    NOT NULL DEFAULT 'free',
-            max_students    INTEGER NOT NULL DEFAULT 5,
-            created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
-            updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id             INTEGER NOT NULL UNIQUE REFERENCES users(id),
+            display_name        TEXT    NOT NULL DEFAULT '',
+            bio                 TEXT    NOT NULL DEFAULT '',
+            specialties         TEXT    NOT NULL DEFAULT '[]',
+            contact_email       TEXT,
+            contact_link        TEXT,
+            is_public           INTEGER NOT NULL DEFAULT 1,
+            plan                TEXT    NOT NULL DEFAULT 'free',
+            max_students        INTEGER NOT NULL DEFAULT 5,
+            photo_url           TEXT,
+            experience_years    INTEGER,
+            stakes              TEXT,
+            coaching_style      TEXT,
+            languages           TEXT    NOT NULL DEFAULT '["pt"]',
+            biggest_results     TEXT    NOT NULL DEFAULT '[]',
+            price_per_session   REAL,
+            price_monthly       REAL,
+            trial_available     INTEGER NOT NULL DEFAULT 0,
+            availability        TEXT,
+            social_youtube      TEXT,
+            social_twitch       TEXT,
+            social_twitter      TEXT,
+            created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+            updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS coach_reviews (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            coach_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            rating       INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+            review_text  TEXT,
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+            updated_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(coach_id, student_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_reviews_coach ON coach_reviews(coach_id);
         CREATE INDEX IF NOT EXISTS idx_decisions_tournament ON decisions(tournament_id);
         CREATE INDEX IF NOT EXISTS idx_decisions_label      ON decisions(label);
         CREATE INDEX IF NOT EXISTS idx_decisions_street     ON decisions(street);
@@ -366,9 +414,39 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS is_3bet         BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS showdown_result TEXT",
             "ALTER TABLE coach_hand_annotations ADD COLUMN IF NOT EXISTS coach_override_label TEXT",
+            # Sprint 7 — BACK-006: perfil estendido + reviews
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS photo_url         TEXT",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS experience_years  INTEGER",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS stakes            TEXT",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS coaching_style    TEXT",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS languages         TEXT NOT NULL DEFAULT '[\"pt\"]'",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS biggest_results   TEXT NOT NULL DEFAULT '[]'",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS price_per_session REAL",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS price_monthly     REAL",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS trial_available   INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS availability      TEXT",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS social_youtube    TEXT",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS social_twitch     TEXT",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS social_twitter    TEXT",
         ]:
             try: conn.execute(sql)
             except Exception: pass
+        # coach_reviews table (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS coach_reviews (
+                    id           SERIAL PRIMARY KEY,
+                    coach_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    student_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    rating       INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                    review_text  TEXT,
+                    created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+                    updated_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+                    UNIQUE(coach_id, student_id)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_coach ON coach_reviews(coach_id)")
+        except Exception: pass
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS coach_baselines (
@@ -443,6 +521,40 @@ def _run_migrations(conn):
             if col not in dec_existing:
                 try: conn.execute(sql)
                 except Exception: pass
+        # Sprint 7 — BACK-006: perfil estendido
+        prof_existing = {r[1] for r in conn.execute('PRAGMA table_info(coach_profiles)').fetchall()}
+        for col, sql in [
+            ("photo_url",         "ALTER TABLE coach_profiles ADD COLUMN photo_url         TEXT"),
+            ("experience_years",  "ALTER TABLE coach_profiles ADD COLUMN experience_years  INTEGER"),
+            ("stakes",            "ALTER TABLE coach_profiles ADD COLUMN stakes            TEXT"),
+            ("coaching_style",    "ALTER TABLE coach_profiles ADD COLUMN coaching_style    TEXT"),
+            ("languages",         "ALTER TABLE coach_profiles ADD COLUMN languages         TEXT NOT NULL DEFAULT '[\"pt\"]'"),
+            ("biggest_results",   "ALTER TABLE coach_profiles ADD COLUMN biggest_results   TEXT NOT NULL DEFAULT '[]'"),
+            ("price_per_session", "ALTER TABLE coach_profiles ADD COLUMN price_per_session REAL"),
+            ("price_monthly",     "ALTER TABLE coach_profiles ADD COLUMN price_monthly     REAL"),
+            ("trial_available",   "ALTER TABLE coach_profiles ADD COLUMN trial_available   INTEGER NOT NULL DEFAULT 0"),
+            ("availability",      "ALTER TABLE coach_profiles ADD COLUMN availability      TEXT"),
+            ("social_youtube",    "ALTER TABLE coach_profiles ADD COLUMN social_youtube    TEXT"),
+            ("social_twitch",     "ALTER TABLE coach_profiles ADD COLUMN social_twitch     TEXT"),
+            ("social_twitter",    "ALTER TABLE coach_profiles ADD COLUMN social_twitter    TEXT"),
+        ]:
+            if col not in prof_existing:
+                try: conn.execute(sql)
+                except Exception: pass
+        # coach_reviews (SQLite)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coach_reviews (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                student_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                rating       INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                review_text  TEXT,
+                created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(coach_id, student_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_coach ON coach_reviews(coach_id)")
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────

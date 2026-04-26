@@ -381,6 +381,12 @@ export const coach = {
 
 // ── Coach Dashboard (human coach, not AI) ────────────────────────────────────
 
+export interface BiggestResult {
+  name: string;
+  prize: string;
+  year: number;
+}
+
 export interface CoachProfile {
   user_id: number;
   username: string;
@@ -393,6 +399,39 @@ export interface CoachProfile {
   is_public: boolean;
   student_count: number;
   invite_key: string | null;
+  avg_rating: number | null;
+  review_count: number;
+  // Sprint 7 — campos estendidos
+  photo_url: string | null;
+  experience_years: number | null;
+  stakes: string | null;
+  coaching_style: string | null;
+  languages: string[];
+  biggest_results: BiggestResult[];
+  price_per_session: number | null;
+  price_monthly: number | null;
+  trial_available: boolean;
+  availability: string | null;
+  social_youtube: string | null;
+  social_twitch: string | null;
+  social_twitter: string | null;
+}
+
+export interface CoachReview {
+  id: number;
+  coach_id: number;
+  student_id: number;
+  username: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewStats {
+  avg_rating: number | null;
+  total: number;
+  r5: number; r4: number; r3: number; r2: number; r1: number;
 }
 
 export interface StudentSummary {
@@ -634,6 +673,24 @@ export const coachDashboard = {
 
   progressReport: (studentId: number) =>
     request<ProgressReport>(`/coach/student/${studentId}/progress-report`),
+
+  // Sprint 7 — BACK-006: reviews
+  getReviews: (limit = 20) =>
+    request<{ reviews: CoachReview[]; stats: ReviewStats }>(`/coach/reviews?limit=${limit}`),
+
+  getMyReview: (coachId?: number) =>
+    request<CoachReview | null>(`/coach/my-review${coachId ? `?coach_id=${coachId}` : ""}`),
+
+  submitReview: (data: { rating: number; review_text?: string; coach_id?: number }) =>
+    request<CoachReview>("/coach/review", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteMyReview: (coachId?: number) =>
+    request<{ ok: boolean }>(`/coach/review${coachId ? `?coach_id=${coachId}` : ""}`, {
+      method: "DELETE",
+    }),
 };
 
 export interface StudyOverride {

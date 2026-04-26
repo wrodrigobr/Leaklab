@@ -1,10 +1,126 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { KeyRound, Mail, UserX, Loader2, Check, AlertTriangle, GraduationCap } from "lucide-react";
+import { KeyRound, Mail, UserX, Loader2, Check, AlertTriangle, GraduationCap, Star, Trash2 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { useAuth } from "@/lib/auth";
-import { auth as authApi, student as studentApi } from "@/lib/api";
+import { auth as authApi, student as studentApi, coachDashboard, CoachReview } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} type="button" onClick={() => onChange(n)}
+          onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)}>
+          <Star className={`size-5 transition-colors ${(hover || value) >= n ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CoachReviewWidget({ coachId }: { coachId: number }) {
+  const qc = useQueryClient();
+  const [rating, setRating] = useState(0);
+  const [text, setText] = useState("");
+  const [editing, setEditing] = useState(false);
+
+  const { data: existing, isLoading } = useQuery({
+    queryKey: ["my-review", coachId],
+    queryFn: () => coachDashboard.getMyReview(coachId),
+  });
+
+  const save = useMutation({
+    mutationFn: () => coachDashboard.submitReview({ rating, review_text: text || undefined, coach_id: coachId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-review", coachId] });
+      setEditing(false);
+      toast.success("Avaliação salva!");
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: () => coachDashboard.deleteMyReview(coachId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-review", coachId] });
+      setRating(0); setText(""); setEditing(false);
+      toast.success("Avaliação removida.");
+    },
+  });
+
+  if (isLoading) return null;
+
+  const startEdit = (r?: CoachReview | null) => {
+    setRating(r?.rating ?? 0);
+    setText(r?.review_text ?? "");
+    setEditing(true);
+  };
+
+  if (existing && !editing) {
+    return (
+      <div className="rounded-lg border border-border bg-background p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Minha avaliação</p>
+            <div className="flex gap-0.5">
+              {[1,2,3,4,5].map(n => <Star key={n} className={`size-3.5 ${existing.rating >= n ? "fill-amber-400 text-amber-400" : "text-border"}`} />)}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => startEdit(existing)} className="font-mono text-[10px] text-muted-foreground hover:text-foreground">Editar</button>
+            <button onClick={() => remove.mutate()} className="font-mono text-[10px] text-destructive hover:text-destructive/80">
+              <Trash2 className="size-3" />
+            </button>
+          </div>
+        </div>
+        {existing.review_text && <p className="text-xs text-muted-foreground">{existing.review_text}</p>}
+      </div>
+    );
+  }
+
+  if (editing || !existing) {
+    return (
+      <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+        <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+          {existing ? "Editar avaliação" : "Avaliar meu coach"}
+        </p>
+        <StarPicker value={rating} onChange={setRating} />
+        <textarea
+          rows={2}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="Comentário opcional…"
+          className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+        />
+        <div className="flex gap-2">
+          <button
+            onClick={() => save.mutate()}
+            disabled={rating === 0 || save.isPending}
+            className="flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 font-mono text-[11px] font-bold text-primary-foreground disabled:opacity-50"
+          >
+            {save.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />} Enviar
+          </button>
+          {(existing || editing) && (
+            <button onClick={() => setEditing(false)} className="rounded border border-border px-3 py-1.5 font-mono text-[11px] text-muted-foreground">
+              Cancelar
+            </button>
+          )}
+        </div>
+        {!existing && !editing && (
+          <button onClick={() => startEdit()} className="font-mono text-[10px] text-primary hover:underline">+ Avaliar coach</button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={() => startEdit()} className="font-mono text-[10px] text-primary hover:underline">
+      + Avaliar meu coach
+    </button>
+  );
+}
 
 function Section({ icon: Icon, title, children }: {
   icon: React.ElementType;
@@ -208,6 +324,7 @@ export default function StudentProfile() {
                   <p className="font-mono text-[10px] text-muted-foreground">Coach vinculado</p>
                 </div>
               </div>
+              <CoachReviewWidget coachId={user.coach_id} />
 
               {!confirmUnlink ? (
                 <button
