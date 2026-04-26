@@ -19,6 +19,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | **Sprint 10** | BACK-009 | Sistema de nível + gamificação | ~8h | Progressão clara — aluno sabe onde está e o que falta; coach usa como referência |
 | **Sprint 11** | BACK-010 | Planos comerciais + monetização | ~12h | Plataforma sustentável — freemium para alunos, revenue share para coaches |
 | **Sprint 12** | BACK-011 | Segurança: anti-injection + moderação de conteúdo | ~8h | Plataforma segura para uso público — proteção contra abuso de IA e conteúdo inapropriado |
+| **Sprint 8+** | BACK-013 | UX: Descoberta de coaches contextual | ~5h | Coach certo no momento certo — Plano de Estudos + Perfil, não menu frio |
 
 ### Critérios de priorização
 - **Sprint 4 antes de 5/6** — BACK-005 depende de BACK-001; anotações são o core do coaching
@@ -264,6 +265,98 @@ Página acessível **sem login** (SEO-friendly) e também logada:
 - Frontend: ~5h (fila + badges + retry logic)
 - Backend: ~1h (opcional: endpoint batch)
 - **Total: ~1 sprint pequena**
+
+---
+
+## [BACK-013] — UX: Descoberta de Coaches — Onde e Como
+
+**Valor:** O lugar certo para mostrar coaches disponíveis determina a taxa de conversão. Mostrar no momento errado é ruído; no momento certo é serviço.
+
+---
+
+### Análise de placement
+
+O aluno passa pelo seguinte fluxo de consciência:
+
+```
+Upload → Viu os leaks → Entendeu o padrão → Quer resolver → Busca ajuda
+```
+
+Cada tela atual cobre uma etapa diferente desse funil:
+
+| Tela | Momento do aluno | Intenção de contratar coach |
+|---|---|---|
+| Dashboard | "Deixa eu ver o que aconteceu nesse torneio" | Baixa — ainda explorando |
+| Tournaments | "Quero ver meu histórico" | Nenhuma |
+| **Plano de Estudos** | **"Já sei onde perco — o que faço agora?"** | **Alta — modo planejamento** |
+| AI Coach (chat) | "Quero tirar uma dúvida pontual" | Média |
+| **Perfil → Meu Coach** | **"Vou gerenciar meu coach"** | **Altíssima — decisão tomada** |
+
+---
+
+### Recomendação: dois pontos de entrada, função diferente
+
+**Ponto 1 — Plano de Estudos (conversão por contexto)**
+
+O Plano de Estudos já organiza os leaks por spot (ex: "Flop BTN — erro em 34% das mãos"). É o momento de maior consciência do problema. Um card de coach aparece naturalmente aqui como solução para o que o aluno acabou de entender.
+
+```
+┌─ FLOP / BTN — 34% de erros ─────────────────────────────┐
+│  [card de estudo do spot]                                 │
+│                                                           │
+│  💡 Coaches especializados neste spot:                   │
+│  [ foto ] NomeCoach · ★ 4.8 · R$ 80/sessão   [Contatar] │
+└───────────────────────────────────────────────────────────┘
+```
+
+- Recomendação personalizada: filtra coaches pela `specialties` que bate com o spot do leak
+- Sem coach vinculado → mostra até 3 cards; com coach vinculado → não exibe (não compete)
+- Clique → abre modal com perfil completo + botão "Vincular via chave de convite"
+
+**Ponto 2 — Perfil → "Meu Coach" (conversão por intenção)**
+
+Quando o aluno vai ao perfil e não tem coach, o espaço "Meu Coach" já é semanticamente o lugar certo. Ao invés de só mostrar "Nenhum coach vinculado + botão Vincular", exibir o diretório inline:
+
+```
+┌─ Meu Coach ──────────────────────────────────────────────┐
+│  Você ainda não tem coach vinculado.                      │
+│                                                           │
+│  Coaches disponíveis:                                     │
+│  [ card ] [ card ] [ card ]   [Ver todos →]              │
+│                                                           │
+│  Já tem uma chave? [Inserir chave de convite]            │
+└───────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Por que NÃO um item de menu dedicado como ponto primário
+
+Um item "Coaches" no nav do aluno seria um diretório frio — o aluno chega lá sem contexto do próprio jogo, sem saber o que procurar. É o equivalente a entrar em um marketplace de médicos sem saber o que tem. A plataforma já tem o diagnóstico (leaks identificados) — usar isso como filtro de busca é o diferencial competitivo real.
+
+O menu pode ter um link "Coaches" como fallback para SEO/descoberta orgânica (Sprint 8 - BACK-006 pt.2), mas não deve ser o ponto primário para alunos autenticados.
+
+---
+
+### O que isso requer tecnicamente
+
+**Plano de Estudos:**
+- `GET /coaches/public?specialty=<spot>` — endpoint já planejado em BACK-006 pt.2
+- No frontend `StudyPlan.tsx`: cards de coaches abaixo de cada seção de leak, visíveis apenas para alunos sem coach vinculado
+- Lógica de matching: `spot` do leak (ex: `flop/bet`) vs `specialties[]` do coach
+
+**Perfil (Meu Coach):**
+- Inline do diretório público quando `user.coach_id === null`
+- Reutiliza o mesmo componente de cards do Plano de Estudos
+- Botão "Ver todos" → `/coaches` (página pública, BACK-006 pt.2)
+
+---
+
+### Esforço estimado
+- Cards de coaches no Plano de Estudos: ~3h
+- Inline no Perfil → Meu Coach: ~2h
+- Endpoint de busca por especialidade (parte de BACK-006 pt.2): ~1h adicional
+- **Total: ~1 sprint pequena (pode ir junto da Sprint 8)**
 
 ---
 
