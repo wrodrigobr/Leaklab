@@ -9,6 +9,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.13.0] — 2026-04-26 — Sprint 5: Atenção Urgente + Leaks Sistêmicos (BACK-003 + BACK-004)
+
+### Adicionado
+- **Aba "Atenção Urgente"** no Dashboard do Coach — tabela com as piores decisões de **todos os alunos** ao mesmo tempo, com filtros por aluno, street e label (erro claro / erro pequeno); botão "Replay" abre diretamente o replay do aluno na mão errada
+- **Aba "Leaks Sistêmicos"** no Dashboard do Coach — lista de spots de erro agrupados por ocorrência, com destaque nos que afetam múltiplos alunos ("Leaks sistêmicos") vs. individuais; cada spot é expandível para ver quais alunos são afetados e quantas vezes
+- **Filtro de período** (30/60/90 dias) na aba de Leaks Sistêmicos
+- Dashboard do Coach reorganizado em **3 abas**: Alunos (existente) · Atenção Urgente · Leaks Sistêmicos
+
+### Backend
+- `repositories.py`: `get_all_students_worst_decisions(coach_id, n, student_id_filter, street_filter, label_filter)` — query cross-student com filtros dinâmicos
+- `repositories.py`: `get_common_leaks(coach_id, days)` — agrupa erros por spot e retorna lista de alunos afetados por spot
+- `GET /coach/all-worst-decisions` — piores decisões multi-aluno com filtros via query string
+- `GET /coach/common-leaks` — leaks com breakdown por aluno
+
+### Fix
+- **Anotações do coach não apareciam no replay do aluno** — endpoint `GET /replay/<tournament_id>/<hand_id>` não incluía `coach_annotations`; agora busca e injeta as anotações do coach igual ao endpoint do coach student replay
+
+---
+
 ## [v0.12.1] — 2026-04-26 — Fix: Replay para coaches + Anotação direto no Replayer (BACK-001 complemento)
 
 ### Corrigido

@@ -443,6 +443,26 @@ export interface StudentWorstDecision {
   site: string;
 }
 
+export interface MultiStudentDecision extends StudentWorstDecision {
+  student_id: number;
+  username: string;
+}
+
+export interface CommonLeakStudent {
+  id: number;
+  username: string;
+  n: number;
+  avg_score: number;
+}
+
+export interface CommonLeak {
+  spot: string;
+  num_students: number;
+  total_n: number;
+  avg_score: number;
+  students: CommonLeakStudent[];
+}
+
 export const coachDashboard = {
   inviteKey: () =>
     request<{ invite_key: string }>("/coach/invite-key"),
@@ -524,6 +544,18 @@ export const coachDashboard = {
 
   impact: (days = 30) =>
     request<CoachImpactResponse>(`/coach/impact?days=${days}`),
+
+  allWorstDecisions: (params?: { n?: number; student_id?: number; street?: string; label?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.n)          q.set("n", String(params.n));
+    if (params?.student_id) q.set("student_id", String(params.student_id));
+    if (params?.street)     q.set("street", params.street);
+    if (params?.label)      q.set("label", params.label);
+    return request<{ decisions: MultiStudentDecision[] }>(`/coach/all-worst-decisions?${q}`);
+  },
+
+  commonLeaks: (days = 30) =>
+    request<{ leaks: CommonLeak[] }>(`/coach/common-leaks?days=${days}`),
 };
 
 export interface StudyOverride {

@@ -1126,3 +1126,104 @@ def get_reviewed_tournament_ids(student_id: int) -> set:
         return {r[0] if not isinstance(r, dict) else r['tournament_id'] for r in rows}
     finally:
         conn.close()
+
+
+def get_all_students_worst_decisions(
+    coach_id: int,
+    n: int = 20,
+    student_id_filter: Optional[int] = None,
+    street_filter: Optional[str] = None,
+    label_filter: Optional[str] = None,
+) -> List[dict]:
+    """Piores decisões de todos os alunos do coach — visão multi-aluno."""
+    students = get_students(coach_id)
+    if not students:
+        return []
+    student_map = {s['id']: s['username'] for s in students}
+    filtered_ids = [s['id'] for s in students]
+    if student_id_filter and student_id_filter in student_map:
+        filtered_ids = [student_id_filter]
+
+    conn = get_conn()
+    try:
+        placeholders = ','.join(['?' for _ in filtered_ids])
+        where = [f"t.user_id IN ({placeholders})", "d.label IN ('clear_mistake','small_mistake')"]
+        params: list = list(filtered_ids)
+        if street_filter:
+            where.append("d.street = ?")
+            params.append(street_filter)
+        if label_filter:
+            where.append("d.label = ?")
+            params.append(label_filter)
+        rows = conn.execute(
+            f"""SELECT d.id, d.hand_id, d.street, d.hero_cards, d.board,
+                       d.action_taken, d.best_action, d.label, d.score,
+                       d.position, d.icm_pressure, d.m_ratio, d.stack_bb,
+                       t.tournament_id, t.site, t.user_id AS student_id
+                FROM decisions d
+                JOIN tournaments t ON t.id = d.tournament_id
+                WHERE {' AND '.join(where)}
+                ORDER BY d.score DESC
+                LIMIT ?""",
+            params + [n],
+        ).fetchall()
+        result = []
+        for row in rows:
+            d = dict(row)
+            d['username'] = student_map.get(d['student_id'], f'Aluno #{d["student_id"]}')
+            result.append(d)
+        return result
+    finally:
+        conn.close()
+
+
+def get_common_leaks(coach_id: int, days: int = 30) -> List[dict]:
+    """Leaks em comum entre alunos — retorna spots com lista de alunos afetados."""
+    students = get_students(coach_id)
+    if not students:
+        return []
+    student_ids = [s['id'] for s in students]
+    student_map = {s['id']: s['username'] for s in students}
+    placeholders = ','.join(['?' for _ in student_ids])
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            f"""SELECT d.street || '/' || d.best_action AS spot,
+                       t.user_id AS student_id,
+                       COUNT(*) AS n,
+                       AVG(d.score) AS avg_score
+                FROM decisions d
+                JOIN tournaments t ON t.id = d.tournament_id
+                WHERE t.user_id IN ({placeholders})
+                  AND t.imported_at >= {interval_sql(days)}
+                  AND d.label IN ('small_mistake','clear_mistake')
+                GROUP BY spot, t.user_id
+                ORDER BY avg_score DESC""",
+            student_ids,
+        ).fetchall()
+        spot_map: Dict[str, dict] = {}
+        for row in rows:
+            spot = row['spot'] if isinstance(row, dict) else row[0]
+            sid  = row['student_id'] if isinstance(row, dict) else row[1]
+            cnt  = row['n'] if isinstance(row, dict) else row[2]
+            sc   = row['avg_score'] if isinstance(row, dict) else row[3]
+            if spot not in spot_map:
+                spot_map[spot] = {'spot': spot, 'students': [], 'total_n': 0, 'scores': []}
+            spot_map[spot]['students'].append({
+                'id': sid,
+                'username': student_map.get(sid, f'Aluno #{sid}'),
+                'n': int(cnt),
+                'avg_score': round(float(sc), 1),
+            })
+            spot_map[spot]['total_n'] += int(cnt)
+            spot_map[spot]['scores'].append(float(sc))
+        result = []
+        for data in spot_map.values():
+            data['avg_score'] = round(sum(data['scores']) / len(data['scores']), 1)
+            data['num_students'] = len(data['students'])
+            del data['scores']
+            result.append(data)
+        result.sort(key=lambda x: (-x['num_students'], x['avg_score']))
+        return result[:15]
+    finally:
+        conn.close()

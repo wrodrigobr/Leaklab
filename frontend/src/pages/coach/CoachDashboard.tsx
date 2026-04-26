@@ -1,9 +1,20 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, TrendingUp, Award, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  Users, TrendingUp, Award, Activity, AlertTriangle,
+  Play, Filter, ChevronDown, ChevronUp, LayoutDashboard,
+} from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
 import { StudentRow } from "@/components/coach/StudentRow";
-import { coachDashboard } from "@/lib/api";
+import { coachDashboard, MultiStudentDecision, CommonLeak } from "@/lib/api";
+import { cn } from "@/lib/utils";
+
+// ── shared ────────────────────────────────────────────────────────────────────
+
+const SCORE_COLOR = (s: number) =>
+  s >= 80 ? "text-primary" : s >= 60 ? "text-amber-400" : "text-destructive";
 
 function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: React.ElementType }) {
   return (
@@ -17,18 +28,325 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string |
   );
 }
 
-export default function CoachDashboard() {
-  const { data: studentsData, isLoading: loadingStudents } = useQuery({
+// ── Tab: Alunos ────────────────────────────────────────────────────────────────
+
+function AlunosTab() {
+  const { data: studentsData, isLoading } = useQuery({
     queryKey: ["coach-students"],
     queryFn: coachDashboard.students,
   });
+  const { data: impact } = useQuery({
+    queryKey: ["coach-impact"],
+    queryFn: () => coachDashboard.impact(30),
+  });
+
+  const students = studentsData?.students ?? [];
+
+  return (
+    <div className="grid md:grid-cols-3 gap-6">
+      <div className="md:col-span-2 space-y-3">
+        {isLoading && <p className="text-sm text-muted-foreground animate-pulse">Carregando…</p>}
+        {!isLoading && students.length === 0 && (
+          <div className="rounded-xl border border-dashed border-border p-8 text-center space-y-2">
+            <p className="text-sm text-muted-foreground">Nenhum aluno vinculado ainda.</p>
+            <p className="text-xs text-muted-foreground">Compartilhe sua chave de convite para que alunos possam se vincular.</p>
+          </div>
+        )}
+        <div className="space-y-2">
+          {students.map((s) => <StudentRow key={s.id} student={s} />)}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <InviteKeyWidget />
+
+        {impact?.top_leaks && impact.top_leaks.length > 0 && (
+          <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+              Leaks em comum
+            </p>
+            <div className="space-y-2">
+              {impact.top_leaks.slice(0, 5).map((leak) => (
+                <div key={leak.spot} className="flex items-center justify-between">
+                  <span className="text-xs text-foreground truncate max-w-[140px]">{leak.spot}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{leak.n}x</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Tab: Atenção Urgente (BACK-003) ───────────────────────────────────────────
+
+const STREETS = ["preflop", "flop", "turn", "river"];
+const LABELS: { value: string; label: string }[] = [
+  { value: "clear_mistake", label: "Erro claro" },
+  { value: "small_mistake", label: "Erro pequeno" },
+];
+
+function UrgentTab() {
+  const navigate = useNavigate();
+  const { data: studentsData } = useQuery({
+    queryKey: ["coach-students"],
+    queryFn: coachDashboard.students,
+  });
+
+  const [studentFilter, setStudentFilter] = useState<number | undefined>();
+  const [streetFilter, setStreetFilter]   = useState<string | undefined>();
+  const [labelFilter, setLabelFilter]     = useState<string | undefined>();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["coach-all-worst", studentFilter, streetFilter, labelFilter],
+    queryFn: () => coachDashboard.allWorstDecisions({
+      n: 30,
+      student_id: studentFilter,
+      street: streetFilter,
+      label: labelFilter,
+    }),
+  });
+
+  const students = studentsData?.students ?? [];
+  const decisions: MultiStudentDecision[] = data?.decisions ?? [];
+
+  const FilterBtn = ({
+    active, onClick, children,
+  }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
+    <button
+      onClick={onClick}
+      className={cn(
+        "rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
+        active
+          ? "bg-primary/10 text-primary ring-1 ring-primary/30"
+          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+      )}
+    >
+      {children}
+    </button>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Filter className="size-3.5 text-muted-foreground shrink-0" />
+
+        {/* Student filter */}
+        <FilterBtn active={!studentFilter} onClick={() => setStudentFilter(undefined)}>Todos</FilterBtn>
+        {students.map((s) => (
+          <FilterBtn key={s.id} active={studentFilter === s.id} onClick={() => setStudentFilter(s.id)}>
+            {s.username}
+          </FilterBtn>
+        ))}
+
+        <span className="text-border mx-1">|</span>
+
+        {/* Street filter */}
+        <FilterBtn active={!streetFilter} onClick={() => setStreetFilter(undefined)}>Todas streets</FilterBtn>
+        {STREETS.map((st) => (
+          <FilterBtn key={st} active={streetFilter === st} onClick={() => setStreetFilter(st)}>
+            {st}
+          </FilterBtn>
+        ))}
+
+        <span className="text-border mx-1">|</span>
+
+        {/* Label filter */}
+        <FilterBtn active={!labelFilter} onClick={() => setLabelFilter(undefined)}>Todos erros</FilterBtn>
+        {LABELS.map((l) => (
+          <FilterBtn key={l.value} active={labelFilter === l.value} onClick={() => setLabelFilter(l.value)}>
+            {l.label}
+          </FilterBtn>
+        ))}
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground animate-pulse py-6">Carregando decisões…</p>}
+
+      {!isLoading && decisions.length === 0 && (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          Nenhuma decisão crítica encontrada com os filtros atuais.
+        </p>
+      )}
+
+      {decisions.length > 0 && (
+        <div className="rounded-xl border border-border bg-hud-surface overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-background/50">
+                {["Aluno", "Street", "Jogou", "Correto", "Score", "Label", ""].map((h, i) => (
+                  <th key={i} className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {decisions.map((d) => (
+                <tr key={d.id} className="border-b border-border/40 last:border-0 hover:bg-primary/5 transition-colors">
+                  <td className="px-4 py-2.5 text-xs font-medium text-foreground">{d.username}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs capitalize text-muted-foreground">{d.street}</td>
+                  <td className="px-4 py-2.5 text-xs text-destructive font-medium">{d.action_taken}</td>
+                  <td className="px-4 py-2.5 text-xs text-primary font-medium">{d.best_action}</td>
+                  <td className={`px-4 py-2.5 font-mono text-xs font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={cn(
+                      "font-mono text-[10px] font-bold px-2 py-0.5 rounded",
+                      d.label === "clear_mistake"
+                        ? "bg-destructive/10 text-destructive ring-1 ring-destructive/30"
+                        : "bg-amber-400/10 text-amber-400 ring-1 ring-amber-400/30"
+                    )}>
+                      {d.label === "clear_mistake" ? "Claro" : "Pequeno"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <button
+                      onClick={() => navigate(`/replayer?t=${d.tournament_id}&h=${d.hand_id}&student=${d.student_id}`)}
+                      className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Play className="size-3" /> Replay
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Tab: Leaks Sistêmicos (BACK-004) ──────────────────────────────────────────
+
+function LeakRow({ leak }: { leak: CommonLeak }) {
+  const [expanded, setExpanded] = useState(false);
+  const multi = leak.num_students > 1;
+
+  return (
+    <div className="rounded-lg border border-border bg-hud-surface overflow-hidden">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-primary/5 transition-colors text-left"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          {multi && (
+            <span className="shrink-0 rounded-sm bg-destructive/10 text-destructive font-mono text-[10px] font-bold px-2 py-0.5 ring-1 ring-destructive/30">
+              {leak.num_students} alunos
+            </span>
+          )}
+          <span className="text-sm font-medium text-foreground truncate">{leak.spot}</span>
+        </div>
+        <div className="flex items-center gap-4 shrink-0 ml-3">
+          <span className="font-mono text-[10px] text-muted-foreground">{leak.total_n}x total</span>
+          <span className={`font-mono text-sm font-bold ${SCORE_COLOR(leak.avg_score)}`}>
+            {leak.avg_score.toFixed(1)} pts
+          </span>
+          {expanded ? <ChevronUp className="size-3.5 text-muted-foreground" /> : <ChevronDown className="size-3.5 text-muted-foreground" />}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border bg-background/50 px-4 py-3 space-y-2">
+          <p className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground mb-2">
+            Alunos afetados
+          </p>
+          {leak.students.map((s) => (
+            <div key={s.id} className="flex items-center justify-between text-xs">
+              <span className="text-foreground font-medium">{s.username}</span>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[10px] text-muted-foreground">{s.n}x</span>
+                <span className={`font-mono text-xs font-bold ${SCORE_COLOR(s.avg_score)}`}>
+                  {s.avg_score} pts
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LeaksTab() {
+  const [days, setDays] = useState(30);
+  const { data, isLoading } = useQuery({
+    queryKey: ["coach-common-leaks", days],
+    queryFn: () => coachDashboard.commonLeaks(days),
+  });
+
+  const leaks = data?.leaks ?? [];
+  const systemic = leaks.filter((l) => l.num_students > 1);
+  const individual = leaks.filter((l) => l.num_students === 1);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Período:</span>
+        {[30, 60, 90].map((d) => (
+          <button
+            key={d}
+            onClick={() => setDays(d)}
+            className={cn(
+              "rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
+              days === d
+                ? "bg-primary/10 text-primary ring-1 ring-primary/30"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            )}
+          >
+            {d}d
+          </button>
+        ))}
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground animate-pulse py-6">Analisando leaks…</p>}
+
+      {!isLoading && leaks.length === 0 && (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          Nenhum leak encontrado no período selecionado.
+        </p>
+      )}
+
+      {systemic.length > 0 && (
+        <div className="space-y-2">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-destructive">
+            Leaks sistêmicos — afetam múltiplos alunos
+          </p>
+          {systemic.map((l) => <LeakRow key={l.spot} leak={l} />)}
+        </div>
+      )}
+
+      {individual.length > 0 && (
+        <div className="space-y-2">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+            Leaks individuais
+          </p>
+          {individual.map((l) => <LeakRow key={l.spot} leak={l} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+type Tab = "alunos" | "urgente" | "leaks";
+
+const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
+  { id: "alunos",  label: "Alunos",           icon: Users },
+  { id: "urgente", label: "Atenção Urgente",   icon: AlertTriangle },
+  { id: "leaks",   label: "Leaks Sistêmicos",  icon: LayoutDashboard },
+];
+
+export default function CoachDashboard() {
+  const [tab, setTab] = useState<Tab>("alunos");
 
   const { data: impact, isLoading: loadingImpact } = useQuery({
     queryKey: ["coach-impact"],
     queryFn: () => coachDashboard.impact(30),
   });
 
-  const students = studentsData?.students ?? [];
   const summary = impact?.summary;
 
   return (
@@ -41,16 +359,8 @@ export default function CoachDashboard() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            label="Alunos"
-            value={loadingImpact ? "…" : (summary?.total_students ?? 0)}
-            icon={Users}
-          />
-          <StatCard
-            label="Ativos (30d)"
-            value={loadingImpact ? "…" : (summary?.active_students ?? 0)}
-            icon={Activity}
-          />
+          <StatCard label="Alunos"        value={loadingImpact ? "…" : (summary?.total_students ?? 0)}  icon={Users} />
+          <StatCard label="Ativos (30d)"  value={loadingImpact ? "…" : (summary?.active_students ?? 0)} icon={Activity} />
           <StatCard
             label="Melhoria Média"
             value={loadingImpact ? "…" : summary?.avg_improvement_pct != null ? `${summary.avg_improvement_pct.toFixed(1)}%` : "—"}
@@ -63,50 +373,28 @@ export default function CoachDashboard() {
           />
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-3">
-            <h2 className="font-mono text-xs font-bold uppercase tracking-widest-2 text-muted-foreground">
-              Alunos
-            </h2>
-            {loadingStudents && (
-              <p className="text-sm text-muted-foreground animate-pulse">Carregando…</p>
-            )}
-            {!loadingStudents && students.length === 0 && (
-              <div className="rounded-xl border border-dashed border-border p-8 text-center space-y-2">
-                <p className="text-sm text-muted-foreground">Nenhum aluno vinculado ainda.</p>
-                <p className="text-xs text-muted-foreground">Compartilhe sua chave de convite para que alunos possam se vincular.</p>
-              </div>
-            )}
-            <div className="space-y-2">
-              {students.map((s) => (
-                <StudentRow key={s.id} student={s} />
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h2 className="font-mono text-xs font-bold uppercase tracking-widest-2 text-muted-foreground">
-              Convite
-            </h2>
-            <InviteKeyWidget />
-
-            {impact?.top_leaks && impact.top_leaks.length > 0 && (
-              <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
-                <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                  Leaks em comum
-                </p>
-                <div className="space-y-2">
-                  {impact.top_leaks.slice(0, 5).map((leak) => (
-                    <div key={leak.spot} className="flex items-center justify-between">
-                      <span className="text-xs text-foreground truncate max-w-[140px]">{leak.spot}</span>
-                      <span className="font-mono text-[10px] text-muted-foreground">{leak.n}x</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+        {/* Tabs */}
+        <div className="flex border-b border-border gap-0">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest-2 transition-colors",
+                tab === t.id
+                  ? "text-primary border-b-2 border-primary -mb-px"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <t.icon className="size-3.5" />
+              {t.label}
+            </button>
+          ))}
         </div>
+
+        {tab === "alunos"  && <AlunosTab />}
+        {tab === "urgente" && <UrgentTab />}
+        {tab === "leaks"   && <LeaksTab />}
       </main>
     </div>
   );

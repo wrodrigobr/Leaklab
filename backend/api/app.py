@@ -37,6 +37,7 @@ from database.repositories import (
     get_study_overrides, save_study_override, delete_study_override,
     get_annotations, get_annotations_for_decisions, upsert_annotation,
     delete_annotation, get_reviewed_tournament_ids,
+    get_all_students_worst_decisions, get_common_leaks,
 )
 from database.auth import generate_token, require_auth, require_coach
 
@@ -843,6 +844,32 @@ def coach_student_worst_decisions(student_id):
     return jsonify({'decisions': [dict(r) for r in rows]})
 
 
+@app.route('/coach/all-worst-decisions', methods=['GET'])
+@require_coach
+def coach_all_worst_decisions():
+    """Piores decisões de todos os alunos — visão multi-aluno (BACK-003)."""
+    n = int(request.args.get('n', 20))
+    student_id_filter = request.args.get('student_id', type=int)
+    street_filter = request.args.get('street') or None
+    label_filter  = request.args.get('label') or None
+    decisions = get_all_students_worst_decisions(
+        g.user_id, n=n,
+        student_id_filter=student_id_filter,
+        street_filter=street_filter,
+        label_filter=label_filter,
+    )
+    return jsonify({'decisions': decisions})
+
+
+@app.route('/coach/common-leaks', methods=['GET'])
+@require_coach
+def coach_common_leaks():
+    """Leaks em comum entre alunos — com lista de alunos afetados por spot (BACK-004)."""
+    days = int(request.args.get('days', 30))
+    leaks = get_common_leaks(g.user_id, days=days)
+    return jsonify({'leaks': leaks})
+
+
 @app.route('/coach/student/<int:student_id>/study-plan', methods=['GET'])
 @require_coach
 def coach_student_study_plan(student_id):
@@ -1403,6 +1430,21 @@ def get_replay(tournament_id, hand_id):
 
     # Construir replay data
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
+
+    # Incluir anotações do coach para o aluno visualizar no replay
+    db_decisions = get_decisions(t['id'])
+    hand_db_decisions = [d for d in db_decisions if str(d.get('hand_id')) == str(hand_id)]
+    if hand_db_decisions:
+        ann_list = get_annotations_for_decisions([d['id'] for d in hand_db_decisions])
+        ann_map = {str(a['decision_id']): a for a in ann_list}
+        replay['coach_annotations'] = {
+            str(d['id']): {**ann_map[str(d['id'])],
+                           'street': d.get('street'), 'action_taken': d.get('action_taken')}
+            for d in hand_db_decisions if str(d['id']) in ann_map
+        }
+    else:
+        replay['coach_annotations'] = {}
+
     return jsonify(replay)
 
 
