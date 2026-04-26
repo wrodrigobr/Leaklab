@@ -172,6 +172,63 @@ const Replayer = () => {
     return () => window.removeEventListener("keydown", handler);
   }, [steps.length]);
 
+  // Reset annotation form when step changes
+  useEffect(() => { setAnnotating(false); }, [stepIdx]);
+
+  // Coach annotation for current step — must be before early returns (Rules of Hooks)
+  const coachAnnotation = useMemo(() => {
+    const annotations = replayData?.coach_annotations;
+    if (!annotations || !step?.is_error) return null;
+    return Object.values(annotations).find(
+      (a) => a.street === step.street && a.action_taken === step.action
+    ) ?? null;
+  }, [replayData?.coach_annotations, step?.is_error, step?.street, step?.action]);
+
+  // decision_id for annotation save/delete (coaches only)
+  const currentDecisionId = useMemo(() => {
+    if (!studentId || !step?.is_error || !step.is_hero) return null;
+    if (coachAnnotation) return coachAnnotation.decision_id;
+    return decisions.find(
+      (d) => d.hand_id === handId && d.street === step.street && d.action_taken === step.action
+    )?.id ?? null;
+  }, [studentId, step?.is_error, step?.is_hero, step?.street, step?.action, coachAnnotation, decisions, handId]);
+
+  const saveAnn = useMutation({
+    mutationFn: () => coachDashboard.upsertAnnotation(studentId!, {
+      decision_id: currentDecisionId!,
+      comment: annComment,
+      mode: annMode,
+      coach_action: annAction || undefined,
+    }),
+    onSuccess: (saved: CoachAnnotation) => {
+      setReplayData((prev) => prev ? {
+        ...prev,
+        coach_annotations: { ...prev.coach_annotations, [String(saved.decision_id)]: saved },
+      } : prev);
+      setAnnotating(false);
+    },
+  });
+
+  const deleteAnn = useMutation({
+    mutationFn: () => coachDashboard.deleteAnnotation(studentId!, currentDecisionId!),
+    onSuccess: () => {
+      setReplayData((prev) => {
+        if (!prev || !currentDecisionId) return prev;
+        const anns = { ...prev.coach_annotations };
+        delete anns[String(currentDecisionId)];
+        return { ...prev, coach_annotations: anns };
+      });
+      setAnnotating(false);
+    },
+  });
+
+  const openAnnotationForm = () => {
+    setAnnComment(coachAnnotation?.comment ?? "");
+    setAnnMode(coachAnnotation?.mode ?? "complement");
+    setAnnAction(coachAnnotation?.coach_action ?? "");
+    setAnnotating(true);
+  };
+
   // ── No params: show placeholder ──────────────────────────────────────────────
   if (!tournamentId || !handId) {
     return (
@@ -224,63 +281,6 @@ const Replayer = () => {
 
   const isError   = step.is_error ?? false;
   const isCorrect = step.is_hero && !isError && step.type === "action";
-
-  // Reset annotation form when step changes
-  useEffect(() => { setAnnotating(false); }, [stepIdx]);
-
-  // Coach annotation for current step (matched by street + action)
-  const coachAnnotation = useMemo(() => {
-    const annotations = replayData?.coach_annotations;
-    if (!annotations || !step?.is_error) return null;
-    return Object.values(annotations).find(
-      (a) => a.street === step.street && a.action_taken === step.action
-    ) ?? null;
-  }, [replayData?.coach_annotations, step?.street, step?.action, step?.is_error]);
-
-  // decision_id for annotation save/delete (coaches only)
-  const currentDecisionId = useMemo(() => {
-    if (!studentId || !step?.is_error || !step.is_hero) return null;
-    if (coachAnnotation) return coachAnnotation.decision_id;
-    return decisions.find(
-      (d) => d.hand_id === handId && d.street === step.street && d.action_taken === step.action
-    )?.id ?? null;
-  }, [studentId, step, coachAnnotation, decisions, handId]);
-
-  const openAnnotationForm = () => {
-    setAnnComment(coachAnnotation?.comment ?? "");
-    setAnnMode(coachAnnotation?.mode ?? "complement");
-    setAnnAction(coachAnnotation?.coach_action ?? "");
-    setAnnotating(true);
-  };
-
-  const saveAnn = useMutation({
-    mutationFn: () => coachDashboard.upsertAnnotation(studentId!, {
-      decision_id: currentDecisionId!,
-      comment: annComment,
-      mode: annMode,
-      coach_action: annAction || undefined,
-    }),
-    onSuccess: (saved: CoachAnnotation) => {
-      setReplayData((prev) => prev ? {
-        ...prev,
-        coach_annotations: { ...prev.coach_annotations, [String(saved.decision_id)]: saved },
-      } : prev);
-      setAnnotating(false);
-    },
-  });
-
-  const deleteAnn = useMutation({
-    mutationFn: () => coachDashboard.deleteAnnotation(studentId!, currentDecisionId!),
-    onSuccess: () => {
-      setReplayData((prev) => {
-        if (!prev || !currentDecisionId) return prev;
-        const anns = { ...prev.coach_annotations };
-        delete anns[String(currentDecisionId)];
-        return { ...prev, coach_annotations: anns };
-      });
-      setAnnotating(false);
-    },
-  });
 
   return (
     <HudLayout
