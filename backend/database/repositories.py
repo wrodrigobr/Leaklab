@@ -1017,6 +1017,16 @@ def change_user_password(user_id: int, current_password: str, new_password: str)
         conn.close()
 
 
+def check_password(user_id: int, password: str) -> bool:
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT id FROM users WHERE id=? AND password_hash=?", (user_id, pw_hash)).fetchone()
+        return row is not None
+    finally:
+        conn.close()
+
+
 def unlink_student_coach(student_id: int) -> bool:
     """Remove o vínculo coach_id do aluno."""
     conn = get_conn()

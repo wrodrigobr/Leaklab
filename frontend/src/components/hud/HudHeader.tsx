@@ -17,7 +17,7 @@ const playerNavItems = [
 ];
 
 const coachNavItems = [
-  { label: "Dashboard",        to: "/coach-dashboard", icon: Users },
+  { label: "Dashboard",        to: "/coach-dashboard",         icon: Users,          end: true },
   { label: "Perfil",           to: "/coach-dashboard/profile", icon: LayoutDashboard },
 ];
 
@@ -60,7 +60,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.to === "/"}
+                end={"end" in item ? item.end : item.to === "/"}
                 className={({ isActive }) =>
                   `relative flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium tracking-wide uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     isActive

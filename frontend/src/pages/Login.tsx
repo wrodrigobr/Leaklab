@@ -30,7 +30,11 @@ const Login = () => {
       }
       // redirect handled by useEffect above via user state update
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido");
+      if (err instanceof TypeError) {
+        setError("Não foi possível conectar ao servidor. Tente novamente.");
+      } else {
+        setError(err instanceof Error ? err.message : "Erro desconhecido");
+      }
     } finally {
       setLoading(false);
     }

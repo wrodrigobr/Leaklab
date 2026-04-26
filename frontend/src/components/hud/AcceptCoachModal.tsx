@@ -2,19 +2,22 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { X, Loader2, GraduationCap } from "lucide-react";
 import { student } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 interface Props {
   onClose: () => void;
 }
 
 export function AcceptCoachModal({ onClose }: Props) {
+  const { refreshUser } = useAuth();
   const [key, setKey] = useState("");
   const [success, setSuccess] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: () => student.linkCoach(key.trim()),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setSuccess(`Vinculado ao professor ${data.coach.username}!`);
+      await refreshUser();
       setTimeout(onClose, 2000);
     },
   });

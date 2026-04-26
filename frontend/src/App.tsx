@@ -32,6 +32,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "coach") return <Navigate to="/coach-dashboard" replace />;
   return <>{children}</>;
 }
 

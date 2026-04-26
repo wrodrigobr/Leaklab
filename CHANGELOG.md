@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.11.1] — 2026-04-26 — Correções de ambiente local + segurança
+
+### Corrigido
+- **CORS local resolvido via Vite proxy** — todos os prefixos de API (`/auth`, `/history`, `/analyze`, `/study`, `/coach`, `/student`, `/tournaments`, `/replay`, `/metrics`, `/admin`, `/health`) são roteados pelo proxy do Vite, eliminando erros de CORS no desenvolvimento
+- **`get_user_by_id` não importado** em `app.py` causava 500 em `/auth/me` — adicionado ao import
+- **Coach redirecionado para `/coach-dashboard`** ao logar — `ProtectedRoute` agora redireciona coaches que tentam acessar rotas de aluno
+- **Menu "Dashboard" do coach ficava ativo em `/coach-dashboard/profile`** — adicionado `end={true}` ao NavLink do dashboard do coach
+- **Banner de vínculo não sumia após vincular coach** — `AcceptCoachModal` agora chama `refreshUser()` após sucesso, atualizando `user.coach_id` imediatamente
+- **`GET /coach/profile` retornava 404** quando perfil não existia, causando loop de retentativas no `useQuery` — endpoint agora retorna `{}` (200)
+- **Mensagens de erro no Login** — `TypeError` (ex: "Failed to fetch") exibe "Não foi possível conectar ao servidor" em vez da mensagem técnica bruta
+
+### Segurança
+- **Remoção de vínculo com coach exige senha atual** — `DELETE /student/coach` agora requer `password` no body; backend verifica hash antes de desvincular
+- `repositories.py`: nova função `check_password(user_id, password)` reutilizável
+
+---
+
 ## [v0.11.0] — 2026-04-26 — Perfil do aluno + segurança de conta
 
 ### Adicionado

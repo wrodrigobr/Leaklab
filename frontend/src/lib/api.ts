@@ -512,6 +512,9 @@ export const student = {
       { method: "POST", body: JSON.stringify({ invite_key }) }
     ),
 
-  unlinkCoach: () =>
-    request<{ ok: boolean }>("/student/coach", { method: "DELETE" }),
+  unlinkCoach: (password: string) =>
+    request<{ ok: boolean }>("/student/coach", {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    }),
 };

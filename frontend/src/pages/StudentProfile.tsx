@@ -85,14 +85,18 @@ export default function StudentProfile() {
   // ── Desvincular coach ─────────────────────────────────────────────────────
   const [unlinkLoading, setUnlinkLoading] = useState(false);
   const [confirmUnlink, setConfirmUnlink] = useState(false);
+  const [unlinkPw, setUnlinkPw] = useState("");
 
-  const handleUnlink = async () => {
+  const handleUnlink = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!confirmUnlink) { setConfirmUnlink(true); return; }
+    if (!unlinkPw) { toast.error("Digite sua senha para confirmar"); return; }
     setUnlinkLoading(true);
     try {
-      await studentApi.unlinkCoach();
+      await studentApi.unlinkCoach(unlinkPw);
       await refreshUser();
       setConfirmUnlink(false);
+      setUnlinkPw("");
       toast.success("Vínculo com coach removido.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro ao remover vínculo");
@@ -213,14 +217,25 @@ export default function StudentProfile() {
                   <UserX className="size-3.5" /> Remover vínculo
                 </button>
               ) : (
-                <div className="space-y-2">
+                <form onSubmit={handleUnlink} className="space-y-3">
                   <p className="font-mono text-[11px] text-destructive flex items-center gap-1.5">
                     <AlertTriangle className="size-3.5" />
                     Confirma remoção do vínculo com <strong>{user.coach_username}</strong>?
                   </p>
+                  <Field label="Digite sua senha para confirmar">
+                    <input
+                      type="password"
+                      value={unlinkPw}
+                      onChange={(e) => setUnlinkPw(e.target.value)}
+                      placeholder="Sua senha atual"
+                      className={inputCls}
+                      autoFocus
+                      required
+                    />
+                  </Field>
                   <div className="flex gap-2">
                     <button
-                      onClick={handleUnlink}
+                      type="submit"
                       disabled={unlinkLoading}
                       className="inline-flex items-center gap-2 rounded-md bg-destructive px-4 py-2 font-mono text-[11px] font-bold uppercase text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
                     >
@@ -228,13 +243,14 @@ export default function StudentProfile() {
                       Confirmar remoção
                     </button>
                     <button
-                      onClick={() => setConfirmUnlink(false)}
+                      type="button"
+                      onClick={() => { setConfirmUnlink(false); setUnlinkPw(""); }}
                       className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Cancelar
                     </button>
                   </div>
-                </div>
+                </form>
               )}
             </div>
           ) : (

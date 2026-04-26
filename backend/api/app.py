@@ -24,7 +24,7 @@ from leaklab.llm_explainer import explain_decisions, generate_tournament_summary
 
 from database.schema import init_db
 from database.repositories import (
-    create_user, verify_password, get_user_by_email,
+    create_user, verify_password, get_user_by_email, get_user_by_id,
     save_tournament, save_decisions, get_tournaments,
     get_tournament, get_tournament_by_db_id, get_decisions, update_llm_summary,
     get_llm_cache, set_llm_cache,
@@ -153,9 +153,15 @@ def change_password():
 @app.route('/student/coach', methods=['DELETE'])
 @require_auth
 def unlink_coach():
-    from database.repositories import unlink_student_coach
+    from database.repositories import unlink_student_coach, check_password
     if g.role == 'coach':
         return jsonify({'error': 'Coaches não possuem vínculo de aluno'}), 400
+    d = request.get_json(silent=True) or {}
+    password = d.get('password', '')
+    if not password:
+        return jsonify({'error': 'Senha obrigatória para remover vínculo'}), 400
+    if not check_password(g.user_id, password):
+        return jsonify({'error': 'Senha incorreta'}), 403
     unlink_student_coach(g.user_id)
     return jsonify({'ok': True})
 
@@ -657,9 +663,7 @@ def coach_profile():
     """GET: busca perfil. POST: cria/atualiza perfil do coach."""
     if request.method == 'GET':
         profile = get_coach_profile(g.user_id)
-        if not profile:
-            return jsonify({'error': 'Perfil não encontrado'}), 404
-        return jsonify(profile)
+        return jsonify(profile or {})
 
     # POST — criar/atualizar
     data = request.get_json(silent=True) or {}
