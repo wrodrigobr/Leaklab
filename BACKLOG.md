@@ -267,6 +267,33 @@ Página acessível **sem login** (SEO-friendly) e também logada:
 
 ---
 
+## [BACK-012] — UX: Perfil do Coach Unificado no Menu Principal
+
+**Valor:** O perfil do coach hoje é uma aba dentro do dashboard (ao lado de "Alunos" e "Leaks Sistêmicos"), o que não faz sentido semântico — configurações de perfil não são uma view de analytics. Mover para o menu principal como item "Perfil" torna a navegação mais intuitiva e alinha com o padrão esperado por qualquer usuário SaaS.
+
+### O que muda
+
+**Antes:**
+- CoachDashboard → aba "Perfil Público" (misturada com Alunos / Urgente / Leaks / Avaliações)
+
+**Depois:**
+- HudHeader: link "Perfil" na navegação do coach (ao lado de "Dashboard", "Alunos", etc.)
+- Rota dedicada `/coach-profile` → página `CoachProfilePage`
+- A aba "Perfil Público" some do CoachDashboard
+- A aba "Avaliações" pode ir junto para `/coach-profile` ou permanecer no dashboard (a definir)
+
+### Mudanças técnicas
+- Nova rota `Route path="/coach-profile"` protegida por `CoachRoute`
+- Mover o componente `ProfileTab` (já existe em `CoachDashboard.tsx`) para `CoachProfilePage.tsx`
+- Adicionar link "Perfil" no `HudHeader` para usuários com `role === "coach"`
+- Remover as abas "Perfil Público" (e opcionalmente "Avaliações") do CoachDashboard
+
+### Esforço estimado
+- ~2h (extração do componente + nova rota + ajuste no header)
+- **Total: tarefa isolada, pode ir junto de outra sprint pequena**
+
+---
+
 ## [BACK-010] — Planos Comerciais + Monetização
 
 **Valor:** Define o modelo de negócio da plataforma — freemium para alunos com limite de uso de IA, plano pago para acesso total, e modelo de receita para coaches baseado em alunos ativos e/ou indicações.
