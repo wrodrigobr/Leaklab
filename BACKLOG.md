@@ -17,6 +17,8 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | **Sprint 8** | BACK-006 (parte 2) | Diretório público + marketplace | ~10h | Alunos descobrem coaches — crescimento orgânico da plataforma |
 | **Sprint 9** | BACK-007 | Importação múltipla com fila | ~6h | UX de upload em escala — usuário importa toda a semana de uma vez |
 | **Sprint 10** | BACK-009 | Sistema de nível + gamificação | ~8h | Progressão clara — aluno sabe onde está e o que falta; coach usa como referência |
+| **Sprint 11** | BACK-010 | Planos comerciais + monetização | ~12h | Plataforma sustentável — freemium para alunos, revenue share para coaches |
+| **Sprint 12** | BACK-011 | Segurança: anti-injection + moderação de conteúdo | ~8h | Plataforma segura para uso público — proteção contra abuso de IA e conteúdo inapropriado |
 
 ### Critérios de priorização
 - **Sprint 4 antes de 5/6** — BACK-005 depende de BACK-001; anotações são o core do coaching
@@ -262,6 +264,172 @@ Página acessível **sem login** (SEO-friendly) e também logada:
 - Frontend: ~5h (fila + badges + retry logic)
 - Backend: ~1h (opcional: endpoint batch)
 - **Total: ~1 sprint pequena**
+
+---
+
+## [BACK-010] — Planos Comerciais + Monetização
+
+**Valor:** Define o modelo de negócio da plataforma — freemium para alunos com limite de uso de IA, plano pago para acesso total, e modelo de receita para coaches baseado em alunos ativos e/ou indicações.
+
+---
+
+### Planos para alunos
+
+| Plano | Preço | Limites | Diferencial |
+|---|---|---|---|
+| **Free** | Gratuito | 3 torneios/mês · 10 análises de IA/mês · sem coach | Análise básica de erros |
+| **Pro** | R$ 29/mês | Ilimitado · coach vinculável · todas as features | Plano de estudos completo + replayer + ranking |
+| **Coach** | R$ 49/mês | Todas as features Pro + painel multi-aluno + perfil público | Vitrine no marketplace |
+
+> Valores ilustrativos — ajustáveis por configuração sem alteração de código.
+
+---
+
+### Modelo de receita para coaches
+
+**Opção A — Revenue share por aluno ativo:**
+- Coach paga R$ 49/mês base
+- Desconto proporcional: cada aluno Pro vinculado = desconto de R$ 5/mês no plano do coach
+- Incentivo: quanto mais alunos engajados, menor o custo do coach
+
+**Opção B — Comissão por indicação:**
+- Coach recebe link de indicação único (`?ref=<invite_key>`)
+- Alunos que assinam Pro via link do coach: plataforma repassa X% no mês seguinte
+- Rastreado por `invited_by_key` já existente na tabela `users`
+
+**Opção C (futuro):** marketplace onde aluno paga a sessão direto na plataforma e a plataforma retém % (requer integração com Stripe/PagSeguro)
+
+---
+
+### Controle de limites de IA
+
+Campos necessários para tracking mensal por usuário:
+
+```sql
+ALTER TABLE users ADD COLUMN ai_calls_this_month INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN ai_calls_reset_at   DATE;
+ALTER TABLE users ADD COLUMN tournaments_this_month INTEGER NOT NULL DEFAULT 0;
+```
+
+Middleware a adicionar em `app.py`:
+- `_check_ai_quota(user_id)` — antes de qualquer chamada ao LLM: verifica se o usuário Free atingiu o limite; retorna 402 com mensagem de upgrade
+- `_check_upload_quota(user_id)` — antes de `POST /analyze`: mesma lógica para torneios
+- Reset automático no 1º de cada mês (via scheduled job ou lazy reset na primeira chamada do mês)
+
+---
+
+### Integração de pagamentos (escopo futuro / opcional nesta sprint)
+
+- **Stripe** (recomendado): `stripe.checkout.Session` → webhook `checkout.session.completed` → atualiza `users.plan`
+- **PagSeguro** — alternativa BR
+- Sprint desta entrega: apenas estrutura de planos + quotas de uso; pagamento manual/externo é aceitável na v1
+
+---
+
+### Endpoints necessários
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/subscription/plans` | Lista planos disponíveis com preços e limites |
+| `GET` | `/subscription/status` | Plano atual do usuário + uso do mês |
+| `POST` | `/subscription/upgrade` | Inicia fluxo de upgrade (redireciona para Stripe ou marca manualmente) |
+| `GET` | `/coach/referrals` | Coach vê seus alunos indicados e comissões acumuladas |
+
+---
+
+### Esforço estimado
+- Backend: ~6h (quotas + middleware + endpoints + reset mensal)
+- Frontend aluno: ~3h (banner de upgrade + indicador de uso do mês)
+- Frontend coach: ~3h (painel de indicações + earnings)
+- **Total: ~1 sprint grande**
+
+---
+
+## [BACK-011] — Segurança: Anti-Prompt Injection + Moderação de Conteúdo
+
+**Valor:** Proteger a plataforma contra abuso da IA (usuários tentando desviar o comportamento dos modelos via input malicioso) e garantir que reviews e anotações de coaches não contenham conteúdo inapropriado antes de serem exibidos publicamente.
+
+---
+
+### Camada 1 — Anti-Prompt Injection
+
+**Riscos atuais:**
+- Usuário envia hand history com texto malicioso nos nomes dos jogadores ou notas
+- Coach insere instruções no campo "bio" ou "comentário de anotação" que alteram o comportamento do LLM
+- Aluno tenta injetar via campo de texto livre enviado ao `/coach/chat`
+
+**Mitigações:**
+
+```python
+# Sanitização antes de qualquer chamada LLM
+def sanitize_llm_input(text: str, max_len: int = 2000) -> str:
+    # Remove sequências típicas de prompt injection
+    PATTERNS = [
+        r"ignore (all |previous |above )?instructions?",
+        r"(you are now|act as|pretend (you are|to be))",
+        r"(system|assistant|user)\s*:",   # role spoofing
+        r"<\|.*?\|>",                     # token markers
+        r"\[INST\]|\[/INST\]",            # Llama-style
+    ]
+    for p in PATTERNS:
+        text = re.sub(p, "[REMOVIDO]", text, flags=re.IGNORECASE)
+    return text[:max_len]
+```
+
+- Aplicar em: `llm_explainer.py` (decisões), `coach_chat_reply` (chat), anotações antes de salvar
+- Log de tentativas detectadas para análise posterior
+
+---
+
+### Camada 2 — Moderação de Conteúdo em Texto Livre
+
+**Campos expostos publicamente que precisam de moderação:**
+- `coach_profiles.bio` — exibido no diretório público
+- `coach_profiles.biggest_results[].name` — exibido no perfil público
+- `coach_reviews.review_text` — exibido no perfil público
+- `coach_hand_annotations.comment` — exibido ao aluno
+
+**Abordagem v1 — Blocklist local (rápida, sem custo):**
+```python
+BLOCKED_TERMS = [...]  # lista de palavras proibidas em pt/en
+def moderate_text(text: str) -> tuple[bool, str]:
+    """Retorna (is_clean, cleaned_text_or_reason)."""
+    lower = text.lower()
+    for term in BLOCKED_TERMS:
+        if term in lower:
+            return False, f"Conteúdo não permitido detectado"
+    return True, text
+```
+
+**Abordagem v2 — API de moderação (mais robusta):**
+- OpenAI Moderation API (gratuita): `POST https://api.openai.com/v1/moderations`
+- Ou Claude Haiku com prompt de classificação (já temos a chave)
+- Retorna categorias: `hate`, `harassment`, `sexual`, `violence`, `self-harm`
+- Chamada assíncrona — não bloqueia o save, mas marca o registro como `pending_review`
+
+**Fluxo sugerido:**
+1. Usuário salva texto → backend chama moderador
+2. Se limpo → salva normalmente
+3. Se suspeito → salva com `moderation_status = 'flagged'` e não exibe publicamente até revisão manual
+
+---
+
+### Campos de banco necessários
+
+```sql
+ALTER TABLE coach_profiles     ADD COLUMN moderation_status TEXT DEFAULT 'approved';
+ALTER TABLE coach_reviews       ADD COLUMN moderation_status TEXT DEFAULT 'approved';
+ALTER TABLE coach_hand_annotations ADD COLUMN moderation_status TEXT DEFAULT 'approved';
+```
+
+---
+
+### Esforço estimado
+- Camada 1 (anti-injection): ~2h (regex + aplicar nos pontos de entrada LLM)
+- Camada 2 v1 (blocklist local): ~2h (lista + middleware + campo no banco)
+- Camada 2 v2 (API externa): ~4h adicionais
+- Painel de revisão manual (admin): ~4h
+- **Total sprint básico (camadas 1 + 2v1): ~1 sprint pequena**
 
 ---
 
