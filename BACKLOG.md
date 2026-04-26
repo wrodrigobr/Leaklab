@@ -118,6 +118,98 @@ CREATE TABLE coach_hand_annotations (
 
 ---
 
+## [BACK-006] Marketplace de Coaches
+
+**Valor:** Alunos descobrem, avaliam e escolhem coaches dentro da plataforma. Coaches têm vitrine profissional com dados reais de performance. Cria network-effect: quanto mais alunos melhoram, melhor o coach aparece no ranking.
+
+---
+
+### Perfil completo do coach (`/coach-dashboard/profile`)
+
+Campos a adicionar no perfil do professor:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `photo_url` | text | URL da foto de perfil |
+| `experience_years` | int | Anos de experiência como jogador |
+| `stakes` | text | Stakes habitualmente jogados (ex: "MTT $5–$50") |
+| `coaching_style` | text | Método de coaching: revisão de HH, sessão ao vivo, análise escrita |
+| `languages` | text (JSON array) | Idiomas falados (ex: `["pt", "en"]`) |
+| `biggest_results` | text (JSON array) | Principais resultados: `[{name, prize, year}]` |
+| `price_per_session` | decimal | Preço por sessão (R$ ou USD) |
+| `price_monthly` | decimal | Pacote mensal (opcional) |
+| `trial_available` | bool | Oferece sessão de avaliação gratuita/reduzida |
+| `availability` | text | Disponibilidade semanal (ex: "seg/qua/sex tarde") |
+| `social_youtube` | text | Link YouTube |
+| `social_twitch` | text | Link Twitch |
+| `social_twitter` | text | Link Twitter/X |
+
+**Dado calculado automaticamente pela plataforma** (não declarado pelo coach):
+- Nº de alunos ativos na plataforma
+- Melhoria média dos alunos: delta de `standard_pct` antes/depois do vínculo
+
+---
+
+### Sistema de avaliações
+
+```sql
+CREATE TABLE coach_reviews (
+    id          INTEGER PRIMARY KEY,
+    coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating      INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    review_text TEXT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(coach_id, student_id)  -- 1 review por aluno por coach
+);
+```
+
+- Só alunos que **já foram vinculados** ao coach podem avaliar
+- Avaliação disponível após desvinculação também (para não criar viés)
+- Rating médio exibido como estrelas (1–5) + nº de avaliações
+- Reviews recentes (últimas 5) exibidas no perfil público
+
+---
+
+### Diretório público de coaches (`/coaches`)
+
+Página acessível **sem login** (SEO-friendly) e também logada:
+
+- Grid de cards de coach: foto, nome, especialidades, rating, preço, idiomas, nº de alunos
+- Filtros: especialidade, faixa de preço, idioma, sessão de avaliação disponível
+- Ordenação: melhor avaliado, mais alunos, menor preço
+- Busca por nome
+- Click no card → perfil completo do coach (`/coaches/:id`)
+
+**Perfil público do coach** (`/coaches/:id`):
+- Foto, bio completa, resultados, método de ensino
+- Rating com breakdown (quantas estrelas de cada tipo)
+- Reviews dos alunos
+- Dado de plataforma: "X alunos melhoraram Y% com este coach"
+- Botão "Vincular com este coach" (abre o modal com chave de convite)
+
+---
+
+### Endpoints necessários
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/coaches` | Lista coaches públicos com filtros e ordenação |
+| `GET` | `/coaches/:id` | Perfil público completo de um coach |
+| `POST` | `/coach/review` | Aluno avalia seu coach (atual ou antigo) |
+| `GET` | `/coach/reviews` | Coach vê suas próprias avaliações |
+| `GET` | `/coach/stats` | Stats calculados: nº alunos, melhoria média |
+
+---
+
+### Esforço estimado
+- Backend: ~6h (extensão do schema + queries de ranking + reviews)
+- Frontend coach (perfil): ~4h (formulário estendido + upload de foto)
+- Frontend aluno (diretório + perfil público): ~6h
+- **Total: ~1 sprint grande**
+
+---
+
 ## [BACK-005] Selo "Revisado pelo Coach" + Rastreabilidade
 
 **Valor:** Motivação para o aluno + rastreabilidade do coaching no histórico.
