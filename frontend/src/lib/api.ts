@@ -466,6 +466,51 @@ export interface CommonLeak {
   students: CommonLeakStudent[];
 }
 
+// Sprint 6 — BACK-002
+export interface CoachBaseline {
+  id: number;
+  coach_id: number;
+  student_id: number;
+  baseline_date: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActivityEvent {
+  type: "tournament";
+  ts: string;
+  tournament_id: string;
+  site: string;
+  avg_score: number;
+  standard_pct: number;
+  hands_count: number;
+  profit: number | null;
+  buy_in: number | null;
+  milestone?: "improvement" | "regression" | "high_standard";
+}
+
+export interface LeakSpot {
+  spot: string;
+  n: number;
+}
+
+export interface PeriodMetrics {
+  n: number;
+  avg_score: number | null;
+  standard_pct: number | null;
+  total_profit: number | null;
+}
+
+export interface ProgressReport {
+  baseline: CoachBaseline;
+  before: PeriodMetrics;
+  after: PeriodMetrics;
+  leaks_before: LeakSpot[];
+  leaks_after: LeakSpot[];
+  fixed_leaks: LeakSpot[];
+}
+
 export const coachDashboard = {
   inviteKey: () =>
     request<{ invite_key: string }>("/coach/invite-key"),
@@ -560,6 +605,27 @@ export const coachDashboard = {
 
   commonLeaks: (days = 30) =>
     request<{ leaks: CommonLeak[] }>(`/coach/common-leaks?days=${days}`),
+
+  // Sprint 6 — BACK-002
+  getBaseline: (studentId: number) =>
+    request<CoachBaseline | Record<string, never>>(`/coach/student/${studentId}/baseline`),
+
+  setBaseline: (studentId: number, baseline_date: string, note?: string) =>
+    request<CoachBaseline>(`/coach/student/${studentId}/baseline`, {
+      method: "POST",
+      body: JSON.stringify({ baseline_date, note }),
+    }),
+
+  deleteBaseline: (studentId: number) =>
+    request<{ ok: boolean }>(`/coach/student/${studentId}/baseline`, {
+      method: "DELETE",
+    }),
+
+  activityFeed: (studentId: number, limit = 30) =>
+    request<ActivityEvent[]>(`/coach/student/${studentId}/activity-feed?limit=${limit}`),
+
+  progressReport: (studentId: number) =>
+    request<ProgressReport>(`/coach/student/${studentId}/progress-report`),
 };
 
 export interface StudyOverride {

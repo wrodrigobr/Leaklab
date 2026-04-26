@@ -38,6 +38,9 @@ from database.repositories import (
     get_annotations, get_annotations_for_decisions, upsert_annotation,
     delete_annotation, get_reviewed_tournament_ids,
     get_all_students_worst_decisions, get_common_leaks,
+    # Sprint 6 — BACK-002
+    get_coach_baseline, set_coach_baseline, delete_coach_baseline,
+    get_student_activity_feed, get_baseline_comparison,
 )
 from database.auth import generate_token, require_auth, require_coach
 
@@ -1027,6 +1030,61 @@ def coach_hand_annotations_delete(student_id, decision_id):
         return jsonify({'error': 'Aluno não encontrado'}), 404
     delete_annotation(g.user_id, student_id, decision_id)
     return jsonify({'ok': True})
+
+
+# ── Sprint 6 BACK-002: Baseline + Feed de Atividade ──────────────────────────
+
+@app.route('/coach/student/<int:student_id>/baseline', methods=['GET'])
+@require_coach
+def coach_baseline_get(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    row = get_coach_baseline(g.user_id, student_id)
+    return jsonify(row or {})
+
+
+@app.route('/coach/student/<int:student_id>/baseline', methods=['POST'])
+@require_coach
+def coach_baseline_set(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    data = request.get_json(silent=True) or {}
+    baseline_date = data.get('baseline_date', '')
+    if not baseline_date:
+        return jsonify({'error': 'baseline_date obrigatório (YYYY-MM-DD)'}), 400
+    note = data.get('note')
+    row = set_coach_baseline(g.user_id, student_id, baseline_date, note)
+    return jsonify(row)
+
+
+@app.route('/coach/student/<int:student_id>/baseline', methods=['DELETE'])
+@require_coach
+def coach_baseline_delete(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    delete_coach_baseline(g.user_id, student_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/coach/student/<int:student_id>/activity-feed', methods=['GET'])
+@require_coach
+def coach_student_activity_feed(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    limit = int(request.args.get('limit', 30))
+    events = get_student_activity_feed(student_id, limit)
+    return jsonify(events)
+
+
+@app.route('/coach/student/<int:student_id>/progress-report', methods=['GET'])
+@require_coach
+def coach_student_progress_report(student_id):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
+    report = get_baseline_comparison(g.user_id, student_id)
+    if report is None:
+        return jsonify({'error': 'Baseline não definida para este aluno'}), 404
+    return jsonify(report)
 
 
 @app.route('/analyze/decision', methods=['POST'])

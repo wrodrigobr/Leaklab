@@ -4,11 +4,12 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Trophy, AlertTriangle, BookOpen, LayoutDashboard,
   ChevronRight, Play, TrendingUp, TrendingDown, Minus,
-  CheckCircle2, MessageSquare, PenLine, Trash2, X, Check, Loader2
+  CheckCircle2, MessageSquare, PenLine, Trash2, X, Check, Loader2,
+  Activity, Flag, Star, BarChart2
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PlayingCard } from "@/components/hud/PlayingCard";
-import { coachDashboard, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
+import { coachDashboard, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation, CoachOverrideLabel, ActivityEvent, ProgressReport } from "@/lib/api";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar
@@ -38,13 +39,14 @@ function StatPill({ label, value, sub }: { label: string; value: string | number
 
 // ── tabs ──────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "tournaments" | "worst" | "study";
+type Tab = "overview" | "tournaments" | "worst" | "study" | "progress";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "overview",    label: "Visão Geral",     icon: LayoutDashboard },
   { id: "tournaments", label: "Torneios",         icon: Trophy },
   { id: "worst",       label: "Mãos Críticas",   icon: AlertTriangle },
   { id: "study",       label: "Plano de Estudos", icon: BookOpen },
+  { id: "progress",   label: "Progresso",         icon: Activity },
 ];
 
 // ── Overview tab ──────────────────────────────────────────────────────────────
@@ -993,6 +995,290 @@ function StudyCardItem({
   );
 }
 
+// ── Progress tab (BACK-002) ───────────────────────────────────────────────────
+
+const MILESTONE_CONFIG = {
+  improvement:   { icon: TrendingUp,   color: "text-primary",     label: "Melhora" },
+  regression:    { icon: TrendingDown, color: "text-destructive",  label: "Regressão" },
+  high_standard: { icon: Star,         color: "text-amber-400",    label: "Alta Qualidade" },
+};
+
+function ActivityTimeline({ events }: { events: ActivityEvent[] }) {
+  if (!events.length) return (
+    <p className="text-center text-muted-foreground py-8 font-mono text-xs">Nenhum torneio registrado ainda.</p>
+  );
+  return (
+    <div className="space-y-2">
+      {events.map((ev, i) => {
+        const ms = ev.milestone ? MILESTONE_CONFIG[ev.milestone] : null;
+        const MsIcon = ms?.icon;
+        return (
+          <div key={i} className="flex gap-3 items-start">
+            <div className="flex flex-col items-center pt-1">
+              <div className={`size-2 rounded-full ${ms ? "bg-primary" : "bg-border"}`} />
+              {i < events.length - 1 && <div className="w-px flex-1 bg-border mt-1" style={{ minHeight: 20 }} />}
+            </div>
+            <div className="flex-1 rounded border border-border bg-card px-3 py-2 mb-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[11px] text-muted-foreground">{ev.ts?.slice(0, 10)}</span>
+                {ms && MsIcon && (
+                  <span className={`flex items-center gap-1 font-mono text-[10px] font-bold ${ms.color}`}>
+                    <MsIcon className="size-3" />{ms.label}
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-4 mt-1">
+                <span className="text-xs text-foreground">{ev.site}</span>
+                <span className={`font-mono text-xs font-bold ${SCORE_COLOR(100 - (ev.avg_score ?? 100))}`}>
+                  score {ev.avg_score?.toFixed(1)}
+                </span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {((ev.standard_pct ?? 0) * 100).toFixed(0)}% std
+                </span>
+                <span className="font-mono text-xs text-muted-foreground">{ev.hands_count}m</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MetricsCompare({ label, before, after }: { label: string; before: number | null; after: number | null }) {
+  if (before == null && after == null) return null;
+  const b = before ?? 0;
+  const a = after ?? 0;
+  const delta = a - b;
+  const better = delta < 0; // lower score = better
+  return (
+    <div className="rounded border border-border bg-card px-4 py-3 space-y-1">
+      <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">{label}</p>
+      <div className="flex items-end gap-3">
+        <span className="font-mono text-sm text-muted-foreground">{b.toFixed(1)}</span>
+        <ChevronRight className="size-3 text-border" />
+        <span className={`font-mono text-xl font-bold ${better ? "text-primary" : delta > 0 ? "text-destructive" : "text-foreground"}`}>
+          {a.toFixed(1)}
+        </span>
+        {delta !== 0 && (
+          <span className={`font-mono text-[11px] ${better ? "text-primary" : "text-destructive"}`}>
+            {better ? "" : "+"}{delta.toFixed(1)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProgressTab({ studentId }: { studentId: number }) {
+  const qc = useQueryClient();
+  const [baselineDate, setBaselineDate] = useState("");
+  const [baselineNote, setBaselineNote] = useState("");
+  const [editingBaseline, setEditingBaseline] = useState(false);
+
+  const { data: baseline, isLoading: loadingBaseline } = useQuery({
+    queryKey: ["coach-baseline", studentId],
+    queryFn: () => coachDashboard.getBaseline(studentId),
+  });
+
+  const { data: feed, isLoading: loadingFeed } = useQuery({
+    queryKey: ["coach-activity-feed", studentId],
+    queryFn: () => coachDashboard.activityFeed(studentId, 30),
+  });
+
+  const { data: report, isLoading: loadingReport } = useQuery({
+    queryKey: ["coach-progress-report", studentId],
+    queryFn: () => coachDashboard.progressReport(studentId),
+    enabled: !!(baseline && "baseline_date" in baseline),
+    retry: false,
+  });
+
+  const setBaselineMut = useMutation({
+    mutationFn: () => coachDashboard.setBaseline(studentId, baselineDate, baselineNote || undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["coach-baseline", studentId] });
+      qc.invalidateQueries({ queryKey: ["coach-progress-report", studentId] });
+      setEditingBaseline(false);
+    },
+  });
+
+  const deleteBaselineMut = useMutation({
+    mutationFn: () => coachDashboard.deleteBaseline(studentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["coach-baseline", studentId] });
+      qc.invalidateQueries({ queryKey: ["coach-progress-report", studentId] });
+    },
+  });
+
+  const hasBaseline = baseline && "baseline_date" in baseline;
+
+  return (
+    <div className="p-6 space-y-6">
+
+      {/* Baseline section */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-mono text-xs font-bold uppercase tracking-widest-2 text-muted-foreground flex items-center gap-2">
+            <Flag className="size-3.5" /> Baseline de Coaching
+          </h3>
+          {hasBaseline && !editingBaseline && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setBaselineDate((baseline as any).baseline_date); setBaselineNote((baseline as any).note ?? ""); setEditingBaseline(true); }}
+                className="font-mono text-[10px] text-muted-foreground hover:text-foreground border border-border px-2 py-1 rounded"
+              >Editar</button>
+              <button
+                onClick={() => deleteBaselineMut.mutate()}
+                className="font-mono text-[10px] text-destructive hover:text-destructive/80 border border-destructive/30 px-2 py-1 rounded"
+              >Remover</button>
+            </div>
+          )}
+        </div>
+
+        {loadingBaseline ? (
+          <div className="flex items-center gap-2 text-muted-foreground text-xs"><Loader2 className="size-3 animate-spin" />Carregando…</div>
+        ) : hasBaseline && !editingBaseline ? (
+          <div className="rounded border border-primary/30 bg-primary/5 px-4 py-3 space-y-1">
+            <p className="font-mono text-sm font-bold text-primary">{(baseline as any).baseline_date}</p>
+            {(baseline as any).note && <p className="text-xs text-muted-foreground">{(baseline as any).note}</p>}
+          </div>
+        ) : (
+          <div className="rounded border border-border bg-card p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              {hasBaseline ? "Alterar data de início do coaching para comparar métricas antes/depois." : "Defina a data de início do coaching para habilitar comparação de métricas."}
+            </p>
+            <div className="flex gap-3 items-end">
+              <div className="space-y-1 flex-1">
+                <label className="font-mono text-[10px] text-muted-foreground uppercase">Data de início</label>
+                <input
+                  type="date"
+                  value={baselineDate}
+                  onChange={e => setBaselineDate(e.target.value)}
+                  className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-1 flex-2">
+                <label className="font-mono text-[10px] text-muted-foreground uppercase">Nota (opcional)</label>
+                <input
+                  type="text"
+                  value={baselineNote}
+                  onChange={e => setBaselineNote(e.target.value)}
+                  placeholder="ex: início das sessões semanais"
+                  className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setBaselineMut.mutate()}
+                  disabled={!baselineDate || setBaselineMut.isPending}
+                  className="flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 font-mono text-[11px] font-bold text-primary-foreground disabled:opacity-50"
+                >
+                  {setBaselineMut.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                  Salvar
+                </button>
+                {editingBaseline && (
+                  <button onClick={() => setEditingBaseline(false)} className="px-2 py-1.5 text-muted-foreground hover:text-foreground">
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Before/After comparison */}
+      {hasBaseline && (
+        <section>
+          <h3 className="font-mono text-xs font-bold uppercase tracking-widest-2 text-muted-foreground mb-3 flex items-center gap-2">
+            <BarChart2 className="size-3.5" /> Antes vs. Depois
+          </h3>
+          {loadingReport ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-xs"><Loader2 className="size-3 animate-spin" />Carregando…</div>
+          ) : report ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <MetricsCompare
+                  label="Score médio (↓ melhor)"
+                  before={report.before.avg_score}
+                  after={report.after.avg_score}
+                />
+                <MetricsCompare
+                  label="% Decisões Standard"
+                  before={report.before.standard_pct != null ? report.before.standard_pct * 100 : null}
+                  after={report.after.standard_pct != null ? report.after.standard_pct * 100 : null}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded border border-border bg-card px-4 py-3">
+                  <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground mb-2">Torneios analisados</p>
+                  <div className="flex gap-4">
+                    <div><p className="font-mono text-[10px] text-muted-foreground">Antes</p><p className="font-bold">{report.before.n}</p></div>
+                    <div><p className="font-mono text-[10px] text-muted-foreground">Depois</p><p className="font-bold text-primary">{report.after.n}</p></div>
+                  </div>
+                </div>
+                <div className="rounded border border-border bg-card px-4 py-3">
+                  <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground mb-2">Leaks resolvidos</p>
+                  <p className={`font-bold text-xl ${report.fixed_leaks.length > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                    {report.fixed_leaks.length}
+                  </p>
+                  {report.fixed_leaks.length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {report.fixed_leaks.map(l => (
+                        <li key={l.spot} className="font-mono text-[10px] text-primary flex items-center gap-1">
+                          <CheckCircle2 className="size-2.5" />{l.spot}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+              {(report.leaks_before.length > 0 || report.leaks_after.length > 0) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { title: "Top leaks antes", items: report.leaks_before },
+                    { title: "Top leaks depois", items: report.leaks_after },
+                  ].map(({ title, items }) => (
+                    <div key={title} className="rounded border border-border bg-card px-4 py-3">
+                      <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground mb-2">{title}</p>
+                      {items.length === 0 ? (
+                        <p className="font-mono text-[10px] text-primary">Nenhum leak!</p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {items.map(l => (
+                            <li key={l.spot} className="flex items-center justify-between">
+                              <span className="font-mono text-[10px] text-foreground">{l.spot}</span>
+                              <span className="font-mono text-[10px] text-muted-foreground">{l.n}×</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Dados insuficientes para comparação.</p>
+          )}
+        </section>
+      )}
+
+      {/* Activity feed */}
+      <section>
+        <h3 className="font-mono text-xs font-bold uppercase tracking-widest-2 text-muted-foreground mb-3 flex items-center gap-2">
+          <Activity className="size-3.5" /> Feed de Atividade
+        </h3>
+        {loadingFeed ? (
+          <div className="flex items-center gap-2 text-muted-foreground text-xs"><Loader2 className="size-3 animate-spin" />Carregando…</div>
+        ) : (
+          <ActivityTimeline events={feed ?? []} />
+        )}
+      </section>
+    </div>
+  );
+}
+
 function StudyTab({ studentId }: { studentId: number }) {
   const qc = useQueryClient();
   const [generating, setGenerating] = useState(false);
@@ -1172,6 +1458,7 @@ export default function StudentDetail() {
         {tab === "tournaments" && <TournamentsTab  studentId={studentId} />}
         {tab === "worst"       && <WorstTab        studentId={studentId} />}
         {tab === "study"       && <StudyTab        studentId={studentId} />}
+        {tab === "progress"    && <ProgressTab     studentId={studentId} />}
       </main>
     </div>
   );

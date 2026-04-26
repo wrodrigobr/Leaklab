@@ -199,6 +199,16 @@ def _init_postgres(conn):
         );
         CREATE INDEX IF NOT EXISTS idx_annotations_decision ON coach_hand_annotations(decision_id);
         CREATE INDEX IF NOT EXISTS idx_annotations_student  ON coach_hand_annotations(student_id);
+        CREATE TABLE IF NOT EXISTS coach_baselines (
+            id            SERIAL PRIMARY KEY,
+            coach_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            baseline_date DATE    NOT NULL,
+            note          TEXT,
+            created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+            UNIQUE(coach_id, student_id)
+        );
     """)
 
 
@@ -324,6 +334,16 @@ def _init_sqlite(conn):
         );
         CREATE INDEX IF NOT EXISTS idx_annotations_decision ON coach_hand_annotations(decision_id);
         CREATE INDEX IF NOT EXISTS idx_annotations_student  ON coach_hand_annotations(student_id);
+        CREATE TABLE IF NOT EXISTS coach_baselines (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            coach_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            baseline_date TEXT    NOT NULL,
+            note          TEXT,
+            created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+            updated_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(coach_id, student_id)
+        );
     """)
 
 
@@ -350,6 +370,18 @@ def _run_migrations(conn):
             try: conn.execute(sql)
             except Exception: pass
     else:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coach_baselines (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                student_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                baseline_date TEXT    NOT NULL,
+                note          TEXT,
+                created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(coach_id, student_id)
+            )
+        """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS coach_hand_annotations (
                 id                   INTEGER PRIMARY KEY AUTOINCREMENT,

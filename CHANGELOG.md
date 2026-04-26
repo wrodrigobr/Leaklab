@@ -9,6 +9,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.14.0] — 2026-04-26 — Sprint 6: Feed de Atividade + Baseline de Coaching (BACK-002)
+
+### Adicionado
+- **Aba "Progresso"** no perfil do aluno (coach) — baseline de coaching com comparação antes/depois + feed de atividade em timeline
+- **Baseline de coaching** — coach define data de início do acompanhamento; armazenado por par `(coach_id, student_id)` com nota opcional; editável/removível
+- **Comparação antes/depois** — métricas de score médio, % decisões standard e n° de torneios separadas pela data baseline; leaks top-5 em cada período; lista de leaks resolvidos
+- **Feed de atividade** — timeline de torneios do aluno com marcos automáticos: "Melhora" (↓5pts score), "Regressão" (↑5pts score), "Alta Qualidade" (≥80% standard)
+- Tabela `coach_baselines` no banco (SQLite e Postgres) com constraint `UNIQUE(coach_id, student_id)`
+
+### Backend
+- `GET/POST/DELETE /coach/student/:id/baseline` — gerenciar baseline de coaching
+- `GET /coach/student/:id/activity-feed` — feed de torneios + marcos de performance (param `limit`)
+- `GET /coach/student/:id/progress-report` — relatório comparativo antes/depois da baseline
+- Novos repositórios: `get_coach_baseline`, `set_coach_baseline`, `delete_coach_baseline`, `get_student_activity_feed`, `get_baseline_comparison`
+
+### Frontend
+- Ícones `Activity, Flag, Star, BarChart2` adicionados
+- Tipos `CoachBaseline, ActivityEvent, LeakSpot, PeriodMetrics, ProgressReport` em `api.ts`
+- API functions `getBaseline`, `setBaseline`, `deleteBaseline`, `activityFeed`, `progressReport` em `coachDashboard`
+- Componentes `ActivityTimeline`, `MetricsCompare`, `ProgressTab` em `StudentDetail.tsx`
+
+---
+
 ## [v0.13.1] — 2026-04-26 — Combos de ação + classificação coach + Opção C de reclassificação
 
 ### Adicionado

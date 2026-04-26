@@ -1231,3 +1231,150 @@ def get_common_leaks(coach_id: int, days: int = 30) -> List[dict]:
         return result[:15]
     finally:
         conn.close()
+
+
+# ── Coach Baselines (BACK-002) ────────────────────────────────────────────────
+
+def get_coach_baseline(coach_id: int, student_id: int) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM coach_baselines WHERE coach_id=? AND student_id=?",
+            (coach_id, student_id),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def set_coach_baseline(coach_id: int, student_id: int,
+                       baseline_date: str, note: Optional[str] = None) -> dict:
+    conn = get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO coach_baselines (coach_id, student_id, baseline_date, note)
+               VALUES (?,?,?,?)
+               ON CONFLICT(coach_id, student_id)
+               DO UPDATE SET baseline_date=excluded.baseline_date,
+                             note=excluded.note,
+                             updated_at=CURRENT_TIMESTAMP""",
+            (coach_id, student_id, baseline_date, note),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM coach_baselines WHERE coach_id=? AND student_id=?",
+            (coach_id, student_id),
+        ).fetchone()
+        return dict(row) if row else {}
+    finally:
+        conn.close()
+
+
+def delete_coach_baseline(coach_id: int, student_id: int) -> None:
+    conn = get_conn()
+    try:
+        conn.execute(
+            "DELETE FROM coach_baselines WHERE coach_id=? AND student_id=?",
+            (coach_id, student_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_student_activity_feed(student_id: int, limit: int = 30) -> List[dict]:
+    """Feed de atividade do aluno: torneios + marcos de performance."""
+    conn = get_conn()
+    try:
+        tours = conn.execute(
+            """SELECT tournament_id, site, avg_score, standard_pct,
+                      hands_count, played_at, imported_at, buy_in, profit
+               FROM tournaments
+               WHERE user_id=? AND avg_score IS NOT NULL
+               ORDER BY COALESCE(played_at, imported_at) DESC
+               LIMIT ?""",
+            (student_id, limit),
+        ).fetchall()
+        events = []
+        prev_score = None
+        for t in tours:
+            d = dict(t)
+            ts = d.get('played_at') or d.get('imported_at') or ''
+            ev = {
+                'type': 'tournament',
+                'ts': ts,
+                'tournament_id': d['tournament_id'],
+                'site': d['site'],
+                'avg_score': d['avg_score'],
+                'standard_pct': d['standard_pct'],
+                'hands_count': d['hands_count'],
+                'profit': d['profit'],
+                'buy_in': d['buy_in'],
+            }
+            # Detect milestones
+            score = d['avg_score'] or 0
+            if prev_score is not None:
+                delta = prev_score - score  # lower = better for score (lower mistake score)
+                if delta >= 5:
+                    ev['milestone'] = 'improvement'
+                elif delta <= -5:
+                    ev['milestone'] = 'regression'
+            std = (d['standard_pct'] or 0) * 100
+            if std >= 80:
+                ev['milestone'] = ev.get('milestone') or 'high_standard'
+            prev_score = score
+            events.append(ev)
+        return events
+    finally:
+        conn.close()
+
+
+def get_baseline_comparison(coach_id: int, student_id: int) -> Optional[dict]:
+    """Compara métricas antes/depois da baseline de coaching."""
+    baseline = get_coach_baseline(coach_id, student_id)
+    if not baseline:
+        return None
+    bdate = baseline['baseline_date']
+    conn = get_conn()
+    try:
+        def _query(op: str):
+            return conn.execute(
+                f"""SELECT COUNT(*) as n,
+                           AVG(avg_score) as avg_score,
+                           AVG(standard_pct) as standard_pct,
+                           SUM(profit) as total_profit
+                    FROM tournaments
+                    WHERE user_id=? AND avg_score IS NOT NULL
+                      AND COALESCE(played_at, imported_at) {op} ?""",
+                (student_id, bdate),
+            ).fetchone()
+
+        before = dict(_query('<'))
+        after  = dict(_query('>='))
+
+        def _leaks(op: str):
+            return conn.execute(
+                f"""SELECT d.street || '/' || d.best_action AS spot, COUNT(*) AS n
+                     FROM decisions d
+                     JOIN tournaments t ON t.id=d.tournament_id
+                     WHERE t.user_id=? AND d.label IN ('clear_mistake','small_mistake')
+                       AND COALESCE(t.played_at, t.imported_at) {op} ?
+                     GROUP BY spot ORDER BY n DESC LIMIT 5""",
+                (student_id, bdate),
+            ).fetchall()
+
+        leaks_before = [dict(r) for r in _leaks('<')]
+        leaks_after  = [dict(r) for r in _leaks('>=')]
+        fixed = [l for l in leaks_before
+                 if not any(a['spot'] == l['spot'] for a in leaks_after)]
+
+        return {
+            'baseline': baseline,
+            'before': before,
+            'after': after,
+            'leaks_before': leaks_before,
+            'leaks_after': leaks_after,
+            'fixed_leaks': fixed,
+        }
+    finally:
+        conn.close()
