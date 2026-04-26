@@ -264,6 +264,49 @@ Página acessível **sem login** (SEO-friendly) e também logada:
 
 ---
 
+## [BACK-008] — Visualizador de Ranges no Replayer
+
+**Valor:** Durante sessão de treinamento, coach e aluno podem consultar ranges de referência (open, call, 3bet, fold-to-3bet, etc.) diretamente no replayer — sem precisar alternar para outra ferramenta como GTO Wizard ou planilha.
+
+### Funcionalidades
+
+**Painel de ranges** (sidebar ou modal no replayer):
+- Abre ao clicar no botão "Range" em qualquer step de ação do herói
+- Pré-seleciona automaticamente o tipo de range sugerido pelo contexto:
+  - Preflop sem raise anterior → **Open**
+  - Preflop com raise anterior + posição IP → **Call / 3bet**
+  - Facing 3bet → **4bet / fold-to-3bet**
+  - Postflop → **C-bet / Check-back / Fold**
+- Seletor manual de tipo: Open · RFI · Call · 3bet · 4bet · Squeeze · Fold-to-3bet
+
+**Visualização da range matrix:**
+- Grid 13×13 (AKs na diagonal, AKo fora da diagonal — padrão Texas Hold'em)
+- Cores por ação: raise (verde), call (azul), fold (fundo escuro/vazio)
+- Percentual da range exibido (ex: "22% das mãos")
+- Destaque visual na célula correspondente às cartas do herói naquela mão
+
+**Fonte dos dados:**
+- Sprint inicial: ranges estáticas em JSON embutidas no frontend (GTO approx. por posição)
+  - Cobertura mínima: 6max MTT — BU, CO, HJ, MP, UTG (open + call + 3bet)
+- Sprint futura: endpoint próprio ou integração com API externa (GTO Wizard, Poker Solver, etc.)
+
+**Integração com coach:**
+- Coach pode salvar override de range por posição/spot no plano de estudo do aluno (extensão de BACK-001 / estudo customizado)
+- Badge "Range do coach" quando há customização ativa
+
+### Contexto técnico
+- Grid pode ser componente React puro — sem dependência de biblioteca
+- JSON de ranges: ~50KB para cobrir posições essenciais de 6max MTT
+- Detectar contexto a partir de `step.street`, `step.action`, posição do herói (já presentes no replay step)
+
+### Esforço estimado
+- Frontend (grid + ranges estáticas): ~6h
+- Integração contextual com replayer: ~2h
+- Sprint futura (ranges dinâmicas / API externa): ~8h adicionais
+- **Total Sprint inicial: ~1 sprint média**
+
+---
+
 ## [BACK-005] — Sprint 4 — Selo "Revisado pelo Coach" + Rastreabilidade
 
 **Valor:** Motivação para o aluno + rastreabilidade do coaching no histórico.
