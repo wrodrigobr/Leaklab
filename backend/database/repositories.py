@@ -1077,17 +1077,21 @@ def get_annotations_for_decisions(decision_ids: list) -> list:
 
 def upsert_annotation(coach_id: int, student_id: int, decision_id: int,
                       comment: str, mode: str = 'complement',
-                      coach_action: Optional[str] = None) -> dict:
+                      coach_action: Optional[str] = None,
+                      coach_override_label: Optional[str] = None) -> dict:
     conn = get_conn()
     try:
         conn.execute(
             """INSERT INTO coach_hand_annotations
-                   (coach_id, student_id, decision_id, comment, mode, coach_action)
-               VALUES (?,?,?,?,?,?)
+                   (coach_id, student_id, decision_id, comment, mode,
+                    coach_action, coach_override_label)
+               VALUES (?,?,?,?,?,?,?)
                ON CONFLICT(coach_id, student_id, decision_id)
                DO UPDATE SET comment=excluded.comment, mode=excluded.mode,
-                             coach_action=excluded.coach_action""",
-            (coach_id, student_id, decision_id, comment, mode, coach_action),
+                             coach_action=excluded.coach_action,
+                             coach_override_label=excluded.coach_override_label""",
+            (coach_id, student_id, decision_id, comment, mode,
+             coach_action, coach_override_label),
         )
         conn.commit()
         row = conn.execute(

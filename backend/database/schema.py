@@ -186,14 +186,15 @@ def _init_postgres(conn):
             UNIQUE(coach_id, student_id, card_spot)
         );
         CREATE TABLE IF NOT EXISTS coach_hand_annotations (
-            id          SERIAL PRIMARY KEY,
-            coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            decision_id INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
-            comment     TEXT    NOT NULL,
-            mode        TEXT    NOT NULL DEFAULT 'complement',
-            coach_action TEXT,
-            created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+            id                   SERIAL PRIMARY KEY,
+            coach_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            decision_id          INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+            comment              TEXT    NOT NULL,
+            mode                 TEXT    NOT NULL DEFAULT 'complement',
+            coach_action         TEXT,
+            coach_override_label TEXT,
+            created_at           TIMESTAMP NOT NULL DEFAULT NOW(),
             UNIQUE(coach_id, student_id, decision_id)
         );
         CREATE INDEX IF NOT EXISTS idx_annotations_decision ON coach_hand_annotations(decision_id);
@@ -310,14 +311,15 @@ def _init_sqlite(conn):
             UNIQUE(coach_id, student_id, card_spot)
         );
         CREATE TABLE IF NOT EXISTS coach_hand_annotations (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            decision_id INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
-            comment     TEXT    NOT NULL,
-            mode        TEXT    NOT NULL DEFAULT 'complement',
-            coach_action TEXT,
-            created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+            id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+            coach_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            decision_id          INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+            comment              TEXT    NOT NULL,
+            mode                 TEXT    NOT NULL DEFAULT 'complement',
+            coach_action         TEXT,
+            coach_override_label TEXT,
+            created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
             UNIQUE(coach_id, student_id, decision_id)
         );
         CREATE INDEX IF NOT EXISTS idx_annotations_decision ON coach_hand_annotations(decision_id);
@@ -343,20 +345,22 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS note        TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS is_3bet         BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS showdown_result TEXT",
+            "ALTER TABLE coach_hand_annotations ADD COLUMN IF NOT EXISTS coach_override_label TEXT",
         ]:
             try: conn.execute(sql)
             except Exception: pass
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS coach_hand_annotations (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                decision_id INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
-                comment     TEXT    NOT NULL,
-                mode        TEXT    NOT NULL DEFAULT 'complement',
-                coach_action TEXT,
-                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                student_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                decision_id          INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+                comment              TEXT    NOT NULL,
+                mode                 TEXT    NOT NULL DEFAULT 'complement',
+                coach_action         TEXT,
+                coach_override_label TEXT,
+                created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
                 UNIQUE(coach_id, student_id, decision_id)
             )
         """)
@@ -389,6 +393,10 @@ def _run_migrations(conn):
             if col not in existing:
                 try: conn.execute(sql)
                 except Exception: pass
+        ann_existing = {r[1] for r in conn.execute('PRAGMA table_info(coach_hand_annotations)').fetchall()}
+        if 'coach_override_label' not in ann_existing:
+            try: conn.execute("ALTER TABLE coach_hand_annotations ADD COLUMN coach_override_label TEXT")
+            except Exception: pass
         dec_existing = {r[1] for r in conn.execute('PRAGMA table_info(decisions)').fetchall()}
         for col, sql in [
             ("position",    "ALTER TABLE decisions ADD COLUMN position    TEXT"),

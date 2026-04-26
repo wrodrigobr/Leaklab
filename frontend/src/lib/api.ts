@@ -176,6 +176,8 @@ export interface ReplayStep {
   };
 }
 
+export type CoachOverrideLabel = "standard" | "marginal" | "small_mistake" | "clear_mistake" | null;
+
 export interface CoachAnnotation {
   id: number;
   coach_id: number;
@@ -184,6 +186,7 @@ export interface CoachAnnotation {
   comment: string;
   mode: "complement" | "replace";
   coach_action: string | null;
+  coach_override_label: CoachOverrideLabel;
   created_at: string;
   street?: string;
   action_taken?: string;
@@ -531,6 +534,7 @@ export const coachDashboard = {
     comment: string;
     mode: "complement" | "replace";
     coach_action?: string;
+    coach_override_label?: CoachOverrideLabel;
   }) =>
     request<CoachAnnotation>(`/coach/student/${studentId}/hand-annotations`, {
       method: "POST",

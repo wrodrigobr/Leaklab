@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PlayingCard } from "@/components/hud/PlayingCard";
-import { coachDashboard, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation } from "@/lib/api";
+import { coachDashboard, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar
@@ -385,6 +385,18 @@ function parseBoardCards(s: string): { rank: string; suit: string }[] {
   catch { return []; }
 }
 
+const POKER_ACTIONS = [
+  "", "fold", "check", "call", "bet", "raise", "re-raise", "all-in",
+];
+
+const OVERRIDE_LABELS: { value: CoachOverrideLabel; label: string; color: string }[] = [
+  { value: null,           label: "— Sem veredito",  color: "text-muted-foreground" },
+  { value: "standard",    label: "✓ Jogada Correta", color: "text-primary" },
+  { value: "marginal",    label: "~ Marginal",        color: "text-yellow-500" },
+  { value: "small_mistake", label: "⚠ Erro Pequeno", color: "text-amber-400" },
+  { value: "clear_mistake", label: "✕ Erro Claro",   color: "text-destructive" },
+];
+
 function AnnotationForm({
   studentId, decisionId, existing, onDone,
 }: {
@@ -397,11 +409,13 @@ function AnnotationForm({
   const [comment, setComment]         = useState(existing?.comment ?? "");
   const [mode, setMode]               = useState<"complement"|"replace">(existing?.mode ?? "complement");
   const [coachAction, setCoachAction] = useState(existing?.coach_action ?? "");
+  const [overrideLabel, setOverrideLabel] = useState<CoachOverrideLabel>(existing?.coach_override_label ?? null);
 
   const save = useMutation({
     mutationFn: () => coachDashboard.upsertAnnotation(studentId, {
       decision_id: decisionId, comment, mode,
       coach_action: coachAction || undefined,
+      coach_override_label: overrideLabel,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["coach-annotations", studentId] }); onDone(); },
   });
@@ -410,6 +424,8 @@ function AnnotationForm({
     mutationFn: () => coachDashboard.deleteAnnotation(studentId, decisionId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["coach-annotations", studentId] }); onDone(); },
   });
+
+  const selectCls = "w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40";
 
   return (
     <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-3 mt-2">
@@ -441,17 +457,34 @@ function AnnotationForm({
         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
       />
 
-      {/* Coach action */}
-      <div className="space-y-1">
-        <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
-          Jogada correta (opcional)
-        </label>
-        <input
-          value={coachAction}
-          onChange={(e) => setCoachAction(e.target.value)}
-          placeholder="ex: fold, call, raise 3bb"
-          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
-        />
+      <div className="grid grid-cols-2 gap-2">
+        {/* Coach action — combo */}
+        <div className="space-y-1">
+          <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
+            Ação correta
+          </label>
+          <select value={coachAction} onChange={(e) => setCoachAction(e.target.value)} className={selectCls}>
+            {POKER_ACTIONS.map((a) => (
+              <option key={a} value={a}>{a || "— Não especificar"}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Override label — combo */}
+        <div className="space-y-1">
+          <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
+            Classificação
+          </label>
+          <select
+            value={overrideLabel ?? ""}
+            onChange={(e) => setOverrideLabel((e.target.value || null) as CoachOverrideLabel)}
+            className={selectCls}
+          >
+            {OVERRIDE_LABELS.map((o) => (
+              <option key={String(o.value)} value={o.value ?? ""}>{o.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -592,13 +625,31 @@ function WorstTab({ studentId }: { studentId: number }) {
                   ? "border border-primary/40 bg-primary/5"
                   : "border border-border bg-background"
               }`}>
-                <p className="font-mono text-[9px] uppercase text-primary tracking-widest-2">
-                  {annotation.mode === "replace" ? "Coach (substitui IA)" : "Coach (complementa)"}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-mono text-[9px] uppercase text-primary tracking-widest-2">
+                    {annotation.mode === "replace" ? "Coach (substitui IA)" : "Coach (complementa)"}
+                  </p>
+                  {annotation.coach_override_label && (
+                    <span className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded ring-1 ${
+                      annotation.coach_override_label === "standard"
+                        ? "text-primary ring-primary/30 bg-primary/10"
+                        : annotation.coach_override_label === "marginal"
+                        ? "text-yellow-500 ring-yellow-500/30 bg-yellow-500/10"
+                        : annotation.coach_override_label === "small_mistake"
+                        ? "text-amber-400 ring-amber-400/30 bg-amber-400/10"
+                        : "text-destructive ring-destructive/30 bg-destructive/10"
+                    }`}>
+                      {annotation.coach_override_label === "standard" ? "✓ Correta"
+                        : annotation.coach_override_label === "marginal" ? "~ Marginal"
+                        : annotation.coach_override_label === "small_mistake" ? "⚠ Erro Pequeno"
+                        : "✕ Erro Claro"}
+                    </span>
+                  )}
+                </div>
                 <p className="text-foreground leading-relaxed">{annotation.comment}</p>
                 {annotation.coach_action && (
                   <p className="font-mono text-[10px] text-primary">
-                    → Correto: {annotation.coach_action}
+                    → Ação: {annotation.coach_action}
                   </p>
                 )}
               </div>

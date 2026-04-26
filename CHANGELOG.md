@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.13.1] — 2026-04-26 — Combos de ação + classificação coach + Opção C de reclassificação
+
+### Adicionado
+- **Combo "Ação Correta"** nas anotações do coach — substituiu o campo livre por select com opções padrão do poker (fold, check, call, bet, raise, re-raise, all-in)
+- **Combo "Classificação"** nas anotações — coach pode atribuir o veredito da decisão: Jogada Correta / Marginal / Erro Pequeno / Erro Claro; campo `coach_override_label` armazenado no banco
+- Badge visual do veredito exibido no balloon de anotação (aluno e coach) e na listagem de "Mãos Críticas"
+- **Opção C implementada** — `coach_override_label` é respeitado nas queries de `worst-decisions` do aluno: decisões marcadas como "Jogada Correta" ou "Marginal" pelo coach saem da lista de mãos críticas; avg_score do torneio **não** é alterado (métricas de performance permanecem do engine)
+
+### Backend
+- `coach_hand_annotations`: nova coluna `coach_override_label TEXT` — migrations automáticas SQLite + Postgres
+- `upsert_annotation` aceita e persiste `coach_override_label`
+- `POST /coach/student/:id/hand-annotations` aceita e valida `coach_override_label`
+- `GET /coach/student/:id/worst-decisions` usa `COALESCE(coach_override_label, label)` para filtrar — decisões requalificadas pelo coach como corretas não aparecem mais na lista de erros
+
+---
+
 ## [v0.13.0] — 2026-04-26 — Sprint 5: Atenção Urgente + Leaks Sistêmicos (BACK-003 + BACK-004)
 
 ### Adicionado

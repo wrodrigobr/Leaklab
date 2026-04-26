@@ -831,11 +831,14 @@ def coach_student_worst_decisions(student_id):
             SELECT d.id, d.hand_id, d.street, d.hero_cards, d.board,
                    d.action_taken, d.best_action, d.label, d.score,
                    d.position, d.icm_pressure, d.m_ratio, d.stack_bb,
-                   t.tournament_id, t.site
+                   t.tournament_id, t.site,
+                   COALESCE(a.coach_override_label, d.label) AS effective_label
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
+            LEFT JOIN coach_hand_annotations a
+                   ON a.decision_id = d.id AND a.student_id = t.user_id
             WHERE t.user_id = ?
-              AND d.label IN ('clear_mistake', 'small_mistake')
+              AND COALESCE(a.coach_override_label, d.label) IN ('clear_mistake', 'small_mistake')
             ORDER BY d.score DESC
             LIMIT ?
         """, (student_id, limit)).fetchall()
@@ -998,15 +1001,22 @@ def coach_hand_annotations_upsert(student_id):
     if not _verify_student(g.user_id, student_id):
         return jsonify({'error': 'Aluno não encontrado'}), 404
     d = request.get_json(silent=True) or {}
-    decision_id = d.get('decision_id')
-    comment     = (d.get('comment') or '').strip()
-    mode        = d.get('mode', 'complement')
-    coach_action = d.get('coach_action')
+    decision_id          = d.get('decision_id')
+    comment              = (d.get('comment') or '').strip()
+    mode                 = d.get('mode', 'complement')
+    coach_action         = d.get('coach_action') or None
+    coach_override_label = d.get('coach_override_label') or None
     if not decision_id or not comment:
         return jsonify({'error': 'decision_id e comment são obrigatórios'}), 400
     if mode not in ('complement', 'replace'):
         return jsonify({'error': 'mode deve ser complement ou replace'}), 400
-    annotation = upsert_annotation(g.user_id, student_id, decision_id, comment, mode, coach_action)
+    valid_labels = ('standard', 'marginal', 'small_mistake', 'clear_mistake', None)
+    if coach_override_label not in valid_labels:
+        return jsonify({'error': 'coach_override_label inválido'}), 400
+    annotation = upsert_annotation(
+        g.user_id, student_id, decision_id, comment, mode,
+        coach_action, coach_override_label,
+    )
     return jsonify(annotation)
 
 

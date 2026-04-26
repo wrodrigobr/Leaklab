@@ -6,7 +6,7 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import { PokerTable, type Seat } from "@/components/hud/PokerTable";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
-import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation } from "@/lib/api";
+import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
 // ── Card parsing ──────────────────────────────────────────────────────────────
 
@@ -85,10 +85,11 @@ const Replayer = () => {
   const [handList, setHandList]     = useState<string[]>([]);
   const [betUnit, setBetUnit]       = useState<"chips" | "bb">("chips");
   const [decisions, setDecisions]   = useState<TournamentDecision[]>([]);
-  const [annotating, setAnnotating] = useState(false);
-  const [annComment, setAnnComment] = useState("");
-  const [annMode, setAnnMode]       = useState<"complement" | "replace">("complement");
-  const [annAction, setAnnAction]   = useState("");
+  const [annotating, setAnnotating]         = useState(false);
+  const [annComment, setAnnComment]         = useState("");
+  const [annMode, setAnnMode]               = useState<"complement" | "replace">("complement");
+  const [annAction, setAnnAction]           = useState("");
+  const [annOverride, setAnnOverride]       = useState<CoachOverrideLabel>(null);
 
   useEffect(() => {
     if (!tournamentId || !handId) return;
@@ -199,6 +200,7 @@ const Replayer = () => {
       comment: annComment,
       mode: annMode,
       coach_action: annAction || undefined,
+      coach_override_label: annOverride,
     }),
     onSuccess: (saved: CoachAnnotation) => {
       setReplayData((prev) => prev ? {
@@ -226,6 +228,7 @@ const Replayer = () => {
     setAnnComment(coachAnnotation?.comment ?? "");
     setAnnMode(coachAnnotation?.mode ?? "complement");
     setAnnAction(coachAnnotation?.coach_action ?? "");
+    setAnnOverride(coachAnnotation?.coach_override_label ?? null);
     setAnnotating(true);
   };
 
@@ -546,12 +549,34 @@ const Replayer = () => {
                     placeholder="Sua análise desta decisão…"
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
                   />
-                  <input
-                    value={annAction}
-                    onChange={(e) => setAnnAction(e.target.value)}
-                    placeholder="Jogada correta (opcional)"
-                    className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">Ação correta</label>
+                      <select
+                        value={annAction}
+                        onChange={(e) => setAnnAction(e.target.value)}
+                        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+                      >
+                        {["", "fold", "check", "call", "bet", "raise", "re-raise", "all-in"].map((a) => (
+                          <option key={a} value={a}>{a || "— Não especificar"}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">Classificação</label>
+                      <select
+                        value={annOverride ?? ""}
+                        onChange={(e) => setAnnOverride((e.target.value || null) as CoachOverrideLabel)}
+                        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+                      >
+                        <option value="">— Sem veredito</option>
+                        <option value="standard">✓ Jogada Correta</option>
+                        <option value="marginal">~ Marginal</option>
+                        <option value="small_mistake">⚠ Erro Pequeno</option>
+                        <option value="clear_mistake">✕ Erro Claro</option>
+                      </select>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => saveAnn.mutate()}
@@ -588,16 +613,33 @@ const Replayer = () => {
                 ? "border-primary/50 bg-primary/8"
                 : "border-primary/20 bg-primary/5"
             )}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <GraduationCap className="size-4 text-primary" />
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
                   Coach · {coachAnnotation.mode === "replace" ? "Análise exclusiva" : "Complemento do coach"}
                 </span>
+                {coachAnnotation.coach_override_label && (
+                  <span className={cn(
+                    "font-mono text-[9px] font-bold px-1.5 py-0.5 rounded ring-1",
+                    coachAnnotation.coach_override_label === "standard"
+                      ? "text-primary ring-primary/30 bg-primary/10"
+                      : coachAnnotation.coach_override_label === "marginal"
+                      ? "text-yellow-500 ring-yellow-500/30 bg-yellow-500/10"
+                      : coachAnnotation.coach_override_label === "small_mistake"
+                      ? "text-amber-400 ring-amber-400/30 bg-amber-400/10"
+                      : "text-destructive ring-destructive/30 bg-destructive/10"
+                  )}>
+                    {coachAnnotation.coach_override_label === "standard" ? "✓ Jogada Correta"
+                      : coachAnnotation.coach_override_label === "marginal" ? "~ Marginal"
+                      : coachAnnotation.coach_override_label === "small_mistake" ? "⚠ Erro Pequeno"
+                      : "✕ Erro Claro"}
+                  </span>
+                )}
               </div>
               <p className="text-sm text-foreground leading-relaxed">{coachAnnotation.comment}</p>
               {coachAnnotation.coach_action && (
                 <p className="font-mono text-[11px] text-primary">
-                  → Correto: {coachAnnotation.coach_action}
+                  → Ação: {coachAnnotation.coach_action}
                 </p>
               )}
             </section>
