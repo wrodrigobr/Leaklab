@@ -16,6 +16,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | **Sprint 7** | BACK-006 (parte 1) | Perfil estendido do coach + reviews | ~10h | Prepara os coaches para serem descobertos |
 | **Sprint 8** | BACK-006 (parte 2) | Diretório público + marketplace | ~10h | Alunos descobrem coaches — crescimento orgânico da plataforma |
 | **Sprint 9** | BACK-007 | Importação múltipla com fila | ~6h | UX de upload em escala — usuário importa toda a semana de uma vez |
+| **Sprint 10** | BACK-009 | Sistema de nível + gamificação | ~8h | Progressão clara — aluno sabe onde está e o que falta; coach usa como referência |
 
 ### Critérios de priorização
 - **Sprint 4 antes de 5/6** — BACK-005 depende de BACK-001; anotações são o core do coaching
@@ -260,6 +261,94 @@ Página acessível **sem login** (SEO-friendly) e também logada:
 ### Esforço estimado
 - Frontend: ~5h (fila + badges + retry logic)
 - Backend: ~1h (opcional: endpoint batch)
+- **Total: ~1 sprint pequena**
+
+---
+
+## [BACK-009] — Sistema de Nível e Gamificação do Aluno
+
+**Valor:** Aluno e coach enxergam imediatamente em qual nível de jogo o aluno está, qual o badge atual, e o que precisa melhorar para avançar. Cria senso de progressão, aumenta retenção e dá ao coach um vocabulário comum com o aluno ("você está no nível Shark, falta 8% de standard para chegar a Reg").
+
+---
+
+### Níveis propostos (baseados em `standard_pct` médio dos últimos 30 torneios)
+
+| Badge | Nome | Standard % | Perfil |
+|---|---|---|---|
+| 🐟 | **Fish** | < 40% | Comete erros claros com frequência; jogo não estruturado |
+| 🎯 | **Calling Station** | 40–54% | Melhorou defesa, mas ainda passivo/sem agressão correta |
+| ♠ | **Rec** | 55–64% | Joga recreacionalmente; leaks pontuais e recorrentes |
+| 📈 | **Grinder** | 65–74% | Jogo consistente; volume sem exploitar bem os spots |
+| 🦈 | **Shark** | 75–84% | Leaks apenas situacionais; jogo forte na maioria dos spots |
+| 🏆 | **Reg** | 85–92% | Quase sem leaks identificáveis; domina range construction |
+| 👑 | **Elite** | > 92% | Nível alto-stakes/profissional; decisões quase ótimas |
+
+> Nomes e thresholds são configuráveis — podem ser ajustados sem quebrar o modelo.
+
+---
+
+### O que exibir por nível
+
+**Card de nível (visível para aluno e para coach no perfil do aluno):**
+- Badge + nome do nível atual com cor temática
+- Barra de progresso dentro do nível (ex: "Shark — 78% / 85% para Reg")
+- Próximo milestone: "Reduza erros em flop/BTN para avançar"
+- Histórico de mudanças de nível com data ("Subiu para Shark em 12/04/2026")
+
+**Para o coach (aba Progresso / Overview do aluno):**
+- Nível atual + data da última mudança
+- Previsão baseada na tendência das últimas 4 semanas: "no ritmo atual, chega a Reg em ~3 semanas"
+- Alerta quando aluno regrediu de nível
+
+**Para o aluno (dashboard próprio):**
+- Card de nível em destaque no topo
+- Lista dos 3 principais leaks que impedem o próximo nível
+- Botão "Ver plano de estudos para avançar" → linka para o plano de estudos focado nos leaks do nível atual
+
+---
+
+### Cálculo
+
+```
+standard_pct_media = AVG(standard_pct) dos últimos N torneios com avg_score NOT NULL
+N = max(5, torneios dos últimos 30 dias)  -- mínimo 5 torneios para ter badge estável
+```
+
+- Badge calculado on-the-fly (sem coluna extra necessária — derivado do histórico existente)
+- "Mudança de nível" detectada quando a média cruza um threshold por 2 torneios consecutivos (evita oscilação)
+
+---
+
+### Modelo de dados (opcional — apenas para histórico de nível)
+
+```sql
+CREATE TABLE student_level_history (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    level       TEXT    NOT NULL,   -- 'fish' | 'calling_station' | 'rec' | 'grinder' | 'shark' | 'reg' | 'elite'
+    standard_pct REAL   NOT NULL,  -- valor no momento da transição
+    recorded_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+- Populado apenas quando o nível muda (evento, não snapshot periódico)
+- Permite timeline "histórico de nível" sem custo de storage
+
+---
+
+### Endpoints necessários
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/metrics/level` | Nível atual do aluno autenticado + progresso + próximos passos |
+| `GET` | `/coach/student/:id/level` | Mesmo dado, acessado pelo coach |
+
+---
+
+### Esforço estimado
+- Backend: ~3h (cálculo de nível + endpoint + detecção de mudança)
+- Frontend aluno: ~3h (card de nível no dashboard + barra de progresso + lista de leaks para avançar)
+- Frontend coach: ~2h (nível no perfil do aluno + alerta de regressão)
 - **Total: ~1 sprint pequena**
 
 ---
