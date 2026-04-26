@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.12.1] — 2026-04-26 — Fix: Replay para coaches + Anotação direto no Replayer (BACK-001 complemento)
+
+### Corrigido
+- **Replay inacessível para coaches** — rota `/replayer` estava envolvida em `ProtectedRoute` que redirecionava coaches para `/coach-dashboard`; criada `AuthRoute` que permite qualquer usuário autenticado acessar o replayer
+- **Parâmetro `student` perdido na navegação de mãos** — botões "Mão anterior" / "Próxima mão" no Replayer não preservavam `?student=N` na URL; coach perdia o contexto e o replay passava a buscar dados do próprio jogador em vez do aluno
+
+### Adicionado
+- **Painel de anotação do coach no Replayer** — quando o coach acessa o replay de um aluno e a etapa atual é um erro do herói, o painel lateral exibe:
+  - Botão "Anotar" (se sem anotação) ou anotação existente com botões "Editar" / "Remover"
+  - Formulário inline com seletor de modo (Complementar / Substituir IA), textarea de comentário e campo de jogada correta
+  - Salvar atualiza o estado local imediatamente sem re-fetch da mão inteira
+- **`decisions` em estado no Replayer** — decisões do torneio são mantidas em memória para resolver `decision_id` de novos spots sem annotation existente (match por `hand_id + street + action_taken`)
+- **BACK-007 adicionado ao backlog** — importação múltipla de torneios com fila + badge de progresso por arquivo
+
+---
+
 ## [v0.12.0] — 2026-04-26 — Sprint 4: Anotações de Mãos + Selo Coach (BACK-001 + BACK-005)
 
 ### Adicionado

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, SkipBack, SkipForward, GraduationCap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, SkipBack, SkipForward, GraduationCap, PenLine, X, Check, Trash2 } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PokerTable, type Seat } from "@/components/hud/PokerTable";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
-import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep } from "@/lib/api";
+import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation } from "@/lib/api";
 
 // ── Card parsing ──────────────────────────────────────────────────────────────
 
@@ -83,6 +84,11 @@ const Replayer = () => {
   const [speed, setSpeed]           = useState(1);
   const [handList, setHandList]     = useState<string[]>([]);
   const [betUnit, setBetUnit]       = useState<"chips" | "bb">("chips");
+  const [decisions, setDecisions]   = useState<TournamentDecision[]>([]);
+  const [annotating, setAnnotating] = useState(false);
+  const [annComment, setAnnComment] = useState("");
+  const [annMode, setAnnMode]       = useState<"complement" | "replace">("complement");
+  const [annAction, setAnnAction]   = useState("");
 
   useEffect(() => {
     if (!tournamentId || !handId) return;
@@ -111,6 +117,7 @@ const Replayer = () => {
             if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
           });
           setHandList(ids);
+          setDecisions(tournamentData.decisions);
         }
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao carregar replay"))
@@ -218,6 +225,9 @@ const Replayer = () => {
   const isError   = step.is_error ?? false;
   const isCorrect = step.is_hero && !isError && step.type === "action";
 
+  // Reset annotation form when step changes
+  useEffect(() => { setAnnotating(false); }, [stepIdx]);
+
   // Coach annotation for current step (matched by street + action)
   const coachAnnotation = useMemo(() => {
     const annotations = replayData?.coach_annotations;
@@ -226,6 +236,51 @@ const Replayer = () => {
       (a) => a.street === step.street && a.action_taken === step.action
     ) ?? null;
   }, [replayData?.coach_annotations, step?.street, step?.action, step?.is_error]);
+
+  // decision_id for annotation save/delete (coaches only)
+  const currentDecisionId = useMemo(() => {
+    if (!studentId || !step?.is_error || !step.is_hero) return null;
+    if (coachAnnotation) return coachAnnotation.decision_id;
+    return decisions.find(
+      (d) => d.hand_id === handId && d.street === step.street && d.action_taken === step.action
+    )?.id ?? null;
+  }, [studentId, step, coachAnnotation, decisions, handId]);
+
+  const openAnnotationForm = () => {
+    setAnnComment(coachAnnotation?.comment ?? "");
+    setAnnMode(coachAnnotation?.mode ?? "complement");
+    setAnnAction(coachAnnotation?.coach_action ?? "");
+    setAnnotating(true);
+  };
+
+  const saveAnn = useMutation({
+    mutationFn: () => coachDashboard.upsertAnnotation(studentId!, {
+      decision_id: currentDecisionId!,
+      comment: annComment,
+      mode: annMode,
+      coach_action: annAction || undefined,
+    }),
+    onSuccess: (saved: CoachAnnotation) => {
+      setReplayData((prev) => prev ? {
+        ...prev,
+        coach_annotations: { ...prev.coach_annotations, [String(saved.decision_id)]: saved },
+      } : prev);
+      setAnnotating(false);
+    },
+  });
+
+  const deleteAnn = useMutation({
+    mutationFn: () => coachDashboard.deleteAnnotation(studentId!, currentDecisionId!),
+    onSuccess: () => {
+      setReplayData((prev) => {
+        if (!prev || !currentDecisionId) return prev;
+        const anns = { ...prev.coach_annotations };
+        delete anns[String(currentDecisionId)];
+        return { ...prev, coach_annotations: anns };
+      });
+      setAnnotating(false);
+    },
+  });
 
   return (
     <HudLayout
@@ -244,7 +299,7 @@ const Replayer = () => {
         {handList.length > 1 && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => prevHand && navigate(`/replayer?t=${tournamentId}&h=${prevHand}`)}
+              onClick={() => prevHand && navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`)}
               disabled={!prevHand}
               className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary disabled:opacity-30"
             >
@@ -254,7 +309,7 @@ const Replayer = () => {
               {handIdx + 1}/{handList.length}
             </span>
             <button
-              onClick={() => nextHand && navigate(`/replayer?t=${tournamentId}&h=${nextHand}`)}
+              onClick={() => nextHand && navigate(`/replayer?t=${tournamentId}&h=${nextHand}${studentId ? `&student=${studentId}` : ""}`)}
               disabled={!nextHand}
               className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary disabled:opacity-30"
             >
@@ -419,8 +474,113 @@ const Replayer = () => {
             </section>
           )}
 
-          {/* Coach annotation balloon */}
-          {coachAnnotation && (
+          {/* Coach annotation panel */}
+          {studentId && step?.is_hero && step?.is_error && currentDecisionId && (
+            <section className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="size-4 text-primary" />
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
+                    Coach · {coachAnnotation ? (coachAnnotation.mode === "replace" ? "Análise exclusiva" : "Complemento") : "Anotação"}
+                  </span>
+                </div>
+                {!annotating && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={openAnnotationForm}
+                      className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <PenLine className="size-3" />
+                      {coachAnnotation ? "Editar" : "Anotar"}
+                    </button>
+                    {coachAnnotation && (
+                      <button
+                        onClick={() => deleteAnn.mutate()}
+                        disabled={deleteAnn.isPending}
+                        className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                      >
+                        {deleteAnn.isPending ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Existing annotation display */}
+              {!annotating && coachAnnotation && (
+                <div className="space-y-1">
+                  <p className="text-sm text-foreground leading-relaxed">{coachAnnotation.comment}</p>
+                  {coachAnnotation.coach_action && (
+                    <p className="font-mono text-[11px] text-primary">→ Correto: {coachAnnotation.coach_action}</p>
+                  )}
+                </div>
+              )}
+
+              {/* No annotation placeholder */}
+              {!annotating && !coachAnnotation && (
+                <p className="text-xs text-muted-foreground">Nenhuma anotação para esta decisão.</p>
+              )}
+
+              {/* Annotation form */}
+              {annotating && (
+                <div className="space-y-3">
+                  {/* Mode toggle */}
+                  <div className="flex gap-2">
+                    {(["complement", "replace"] as const).map((m) => (
+                      <button key={m} type="button" onClick={() => setAnnMode(m)}
+                        className={`flex-1 py-1.5 rounded text-[10px] font-mono font-bold uppercase tracking-widest-2 border transition-colors ${
+                          annMode === m
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/50"
+                        }`}
+                      >
+                        {m === "complement" ? "Complementar" : "Substituir IA"}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={annComment}
+                    onChange={(e) => setAnnComment(e.target.value)}
+                    rows={3}
+                    placeholder="Sua análise desta decisão…"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+                  />
+                  <input
+                    value={annAction}
+                    onChange={(e) => setAnnAction(e.target.value)}
+                    placeholder="Jogada correta (opcional)"
+                    className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => saveAnn.mutate()}
+                      disabled={!annComment.trim() || saveAnn.isPending}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-mono text-[10px] font-bold uppercase text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {saveAnn.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                      Salvar
+                    </button>
+                    <button onClick={() => setAnnotating(false)}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 font-mono text-[10px] text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="size-3" /> Cancelar
+                    </button>
+                    {coachAnnotation && (
+                      <button
+                        onClick={() => deleteAnn.mutate()} disabled={deleteAnn.isPending}
+                        className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] text-destructive hover:underline disabled:opacity-50"
+                      >
+                        <Trash2 className="size-3" /> Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Read-only annotation balloon for students */}
+          {!studentId && coachAnnotation && (
             <section className={cn(
               "rounded-xl border p-4 space-y-2",
               coachAnnotation.mode === "replace"

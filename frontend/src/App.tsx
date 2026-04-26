@@ -44,6 +44,13 @@ function CoachRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function AuthRoute({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -80,9 +87,9 @@ const App = () => (
             <Route
               path="/replayer"
               element={
-                <ProtectedRoute>
+                <AuthRoute>
                   <Replayer />
-                </ProtectedRoute>
+                </AuthRoute>
               }
             />
             <Route

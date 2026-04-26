@@ -15,6 +15,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | **Sprint 6** | BACK-002 | Feed de progresso + baseline | ~9h | Coach acompanha evolução temporal — argumento de venda do coaching |
 | **Sprint 7** | BACK-006 (parte 1) | Perfil estendido do coach + reviews | ~10h | Prepara os coaches para serem descobertos |
 | **Sprint 8** | BACK-006 (parte 2) | Diretório público + marketplace | ~10h | Alunos descobrem coaches — crescimento orgânico da plataforma |
+| **Sprint 9** | BACK-007 | Importação múltipla com fila | ~6h | UX de upload em escala — usuário importa toda a semana de uma vez |
 
 ### Critérios de priorização
 - **Sprint 4 antes de 5/6** — BACK-005 depende de BACK-001; anotações são o core do coaching
@@ -225,6 +226,41 @@ Página acessível **sem login** (SEO-friendly) e também logada:
 - Frontend coach (perfil): ~4h (formulário estendido + upload de foto)
 - Frontend aluno (diretório + perfil público): ~6h
 - **Total: ~1 sprint grande**
+
+---
+
+## [BACK-007] — Importação Múltipla de Torneios (Fila + Badge de Progresso)
+
+**Valor:** Usuário arrasta N arquivos de uma vez → sistema processa em fila → cada torneio recebe badge de status em tempo real. Elimina o ciclo manual de upload-esperar-upload.
+
+### Fluxo
+1. Upload aceita múltiplos arquivos (input `multiple` ou drag-and-drop de vários `.txt`)
+2. Cada arquivo entra numa fila local exibida na UI (tabela com nome, status, progresso)
+3. Processamento sequencial ou paralelo (limite de 2 simultâneos para não saturar o backend)
+4. Badge por arquivo: `Em fila` → `Processando…` → `Analisado ✓` / `Erro ✗`
+5. Ao terminar todos, reload automático da lista de torneios
+
+### Estados do badge
+| Estado | Cor | Ícone |
+|---|---|---|
+| Em fila | muted | Clock |
+| Processando | amber | Loader2 (spin) |
+| Analisado | primary | CheckCircle2 |
+| Erro | destructive | AlertTriangle |
+
+### Mudanças de backend
+- Nenhuma obrigatória — `/analyze` já processa um arquivo por chamada
+- Opcional: endpoint `/analyze/batch` para futura paralelização no servidor
+
+### Mudanças de frontend
+- Componente `UploadQueue` — gerencia fila com `useReducer`
+- `useEffect` que despacha chamadas sequencialmente à `/analyze`
+- Persistência da fila em `sessionStorage` (recarregar página mantém o estado)
+
+### Esforço estimado
+- Frontend: ~5h (fila + badges + retry logic)
+- Backend: ~1h (opcional: endpoint batch)
+- **Total: ~1 sprint pequena**
 
 ---
 
