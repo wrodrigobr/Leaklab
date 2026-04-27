@@ -53,7 +53,7 @@ const Login = () => {
             </span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            PokerLeaks<span className="text-primary italic font-light">.os</span>
+            LeakLabs<span className="text-primary italic font-light">.ai</span>
           </h1>
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest-2">
             Tactical Tournament Intelligence
@@ -135,7 +135,7 @@ const Login = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="coach@pokerleaks.com"
+                placeholder="coach@leaklabs.ai"
                 required
                 autoComplete="email"
                 className={inputClass}

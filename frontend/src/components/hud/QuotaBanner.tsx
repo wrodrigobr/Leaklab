@@ -66,7 +66,7 @@ export function QuotaBanner() {
       </div>
 
       <a
-        href="mailto:rodrigo.phpro@gmail.com?subject=Upgrade%20PokerLeakLab%20Pro"
+        href="mailto:rodrigo.phpro@gmail.com?subject=Upgrade%20LeakLabs%20Pro"
         className="flex items-center gap-1.5 w-full justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
       >
         <Zap className="size-3" />

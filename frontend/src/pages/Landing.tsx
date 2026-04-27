@@ -25,19 +25,19 @@ const PLAN_FREE = {
 
 const PLAN_PRO = {
   name: "Pro",
-  price: "R$ 49",
+  price: "R$ 15",
   period: "/mês",
   highlight: true,
   features: [
-    "Torneios ilimitados",
-    "Análises IA ilimitadas",
+    "30 torneios por mês",
+    "50 análises IA por mês",
     "Plano de estudos personalizado",
     "Histórico completo + evolução",
     "Acesso ao marketplace de coaches",
     "Suporte prioritário",
   ],
   cta: "Assinar Pro",
-  href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20PokerLeakLab%20Pro",
+  href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Pro",
 };
 
 const HOW_IT_WORKS = [
@@ -50,24 +50,24 @@ const HOW_IT_WORKS = [
   {
     step: "02",
     icon: Brain,
-    title: "IA analisa suas decisões",
-    desc: "Cada ação sua — fold, call, raise — é avaliada por equity, posição e contexto MTT. Os leaks são priorizados por impacto.",
+    title: "LeakLabs prioriza seus erros",
+    desc: "Cada decisão é avaliada por equity, posição e contexto MTT/SNG. O motor de detecção cruza frequência com impacto — e te mostra exatamente o que está custando fichas.",
   },
   {
     step: "03",
     icon: TrendingUp,
-    title: "Evolua com um plano real",
-    desc: "Plano de estudos personalizado com base nos seus leaks reais. Acompanhe sua evolução pelo sistema de 7 níveis.",
+    title: "Evolua com foco no que importa",
+    desc: "Plano de estudos construído sobre os seus próprios padrões de erro — não conteúdo genérico. Acompanhe a evolução pelos 7 níveis do sistema.",
   },
 ];
 
 const FEATURES = [
-  { icon: Target,   title: "Detecção precisa de leaks",    desc: "Cada decisão é comparada com a jogada ótima, classificada e ranqueada por frequência e impacto." },
-  { icon: Activity, title: "Evolução temporal",            desc: "Gráfico de evolução semana a semana. Veja onde você melhorou e onde ainda travou." },
-  { icon: BookOpen, title: "Plano de estudos",             desc: "Cards de estudo gerados pela IA com diagnóstico, exercícios e recursos por spot de leak." },
-  { icon: Shield,   title: "7 níveis de gamificação",      desc: "De Iniciante a Elite — progressão clara com ícones personalizados e métricas de avanço." },
-  { icon: Brain,    title: "Coach IA no replayer",         desc: "Revisão mão a mão com explicação em linguagem natural de cada decisão crítica." },
-  { icon: BarChart3,title: "Análise de contexto MTT",      desc: "M-ratio, pressão ICM, estágio do torneio — tudo considerado na avaliação das decisões." },
+  { icon: Target,   title: "Seus dados, não teoria genérica",   desc: "O diagnóstico é construído sobre os seus próprios torneios. Cada leak identificado existe no seu histórico real." },
+  { icon: Activity, title: "Prioridade por impacto financeiro",  desc: "Leaks são ranqueados por frequência × gravidade. Você foca no que realmente está custando fichas, não no que é mais fácil de estudar." },
+  { icon: BookOpen, title: "Plano de estudos por spot",          desc: "Cards de estudo gerados por spot de erro específico — com diagnóstico, exercício e recursos — não conteúdo genérico." },
+  { icon: Shield,   title: "Contexto MTT nativo",               desc: "M-ratio, pressão ICM, estágio do torneio, posição — o motor avalia cada decisão com o contexto certo, não equity isolada." },
+  { icon: Brain,    title: "Replayer com análise de decisão",    desc: "Revisão mão a mão com explicação detalhada de cada ação crítica — entenda o que errou e por quê." },
+  { icon: BarChart3,title: "Progressão mensurável",              desc: "7 níveis de evolução com métricas claras. Você sabe exatamente onde está e o que falta para avançar." },
 ];
 
 const LEVELS = ["Iniciante", "Estudante", "Grinder", "Regular", "Sólido", "Expert", "Elite"] as const;
@@ -83,7 +83,7 @@ function Navbar() {
             <BarChart3 className="size-4" />
           </span>
           <span className="font-semibold text-foreground tracking-tight">
-            PokerLeaks<span className="text-primary italic font-light">.os</span>
+            LeakLabs<span className="text-primary italic font-light">.ai</span>
           </span>
         </Link>
         <nav className="flex items-center gap-3">
@@ -128,12 +128,12 @@ function HeroSection() {
         </div>
 
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">
-          Identifique seus leaks.<br />
-          <span className="text-primary">Evolua seu jogo.</span>
+          Pare de vazar fichas<br />
+          <span className="text-primary">nos mesmos spots.</span>
         </h1>
 
         <p className="text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
-          Faça upload do histórico de mãos dos seus torneios. A IA analisa cada decisão, identifica padrões de erro e gera um plano de estudos personalizado baseado nos seus dados reais.
+          O LeakLabs analisa cada decisão do seu histórico de torneios, identifica os padrões de erro mais caros e entrega um plano de estudo baseado nos <em>seus</em> dados reais — não em teoria genérica que todo mundo já conhece.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
@@ -199,7 +199,7 @@ function HowItWorksSection() {
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-14">
           <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">Como funciona</p>
-          <h2 className="text-2xl font-bold text-foreground">Do arquivo HH à evolução real</h2>
+          <h2 className="text-2xl font-bold text-foreground">Do arquivo HH ao diagnóstico preciso</h2>
         </div>
         <div className="grid sm:grid-cols-3 gap-8">
           {HOW_IT_WORKS.map((item) => (
@@ -226,7 +226,7 @@ function FeaturesSection() {
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-14">
           <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">Funcionalidades</p>
-          <h2 className="text-2xl font-bold text-foreground">Tudo que você precisa para evoluir</h2>
+          <h2 className="text-2xl font-bold text-foreground">Por que o LeakLabs é diferente</h2>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {FEATURES.map((f) => (
@@ -310,10 +310,10 @@ function CtaSection() {
     <section className="py-24 px-6 border-t border-border">
       <div className="mx-auto max-w-xl text-center space-y-6">
         <h2 className="text-2xl font-bold text-foreground">
-          Pronto para parar de vazar fichas?
+          Seus leaks já existem. Você só não sabe quais são.
         </h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Crie sua conta grátis agora e importe seu primeiro torneio em menos de 2 minutos.
+          Importe seu primeiro torneio agora — em minutos você vai saber exatamente onde está perdendo fichas.
         </p>
         <Link
           to="/login"
@@ -335,11 +335,11 @@ function Footer() {
             <BarChart3 className="size-3.5" />
           </span>
           <span className="font-semibold text-sm text-foreground">
-            PokerLeaks<span className="text-primary italic font-light">.os</span>
+            LeakLabs<span className="text-primary italic font-light">.ai</span>
           </span>
         </div>
         <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
-          © 2026 PokerLeakLab · Tactical Tournament Intelligence
+          © 2026 LeakLabs · Tactical Tournament Intelligence
         </p>
         <Link
           to="/login"
