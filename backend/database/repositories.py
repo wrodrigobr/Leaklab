@@ -554,6 +554,95 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
         conn.close()
 
 
+def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> dict:
+    """
+    Calcula o nível de gamificação do jogador baseado na média de standard_pct.
+    Usa os últimos N torneios (min 5, ou dentro dos últimos `days` dias).
+    standard_pct está em escala 0-100 no banco.
+    """
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+
+    LEVELS = [
+        {"name": "Iniciante", "icon": "🎯", "min": 0,    "max": 40},
+        {"name": "Estudante", "icon": "📖", "min": 40,   "max": 55},
+        {"name": "Grinder",   "icon": "⚙️", "min": 55,   "max": 65},
+        {"name": "Regular",   "icon": "📈", "min": 65,   "max": 75},
+        {"name": "Sólido",    "icon": "🔷", "min": 75,   "max": 85},
+        {"name": "Expert",    "icon": "♠",  "min": 85,   "max": 93},
+        {"name": "Elite",     "icon": "👑", "min": 93,   "max": 100},
+    ]
+
+    conn = get_conn()
+    try:
+        # Pega os últimos min_tournaments ou todos do período (o que for maior)
+        rows = conn.execute("""
+            SELECT standard_pct, avg_score, imported_at
+            FROM tournaments
+            WHERE user_id = ? AND standard_pct IS NOT NULL
+            ORDER BY imported_at DESC
+            LIMIT 20
+        """, (user_id,)).fetchall()
+
+        if not rows:
+            return {"level": None, "tournament_count": 0}
+
+        # Garante mínimo de min_tournaments tourneys
+        recent_rows = [r for r in rows
+                       if (r['imported_at'] or '') >= since]
+        use = recent_rows if len(recent_rows) >= min_tournaments else list(rows[:max(min_tournaments, len(rows))])
+
+        std_values = [r['standard_pct'] for r in use if r['standard_pct'] is not None]
+        if not std_values:
+            return {"level": None, "tournament_count": 0}
+
+        avg_std = round(sum(std_values) / len(std_values), 2)
+
+        # Determina nível atual
+        current = LEVELS[0]
+        for lv in LEVELS:
+            if avg_std >= lv["min"]:
+                current = lv
+
+        next_lv = next((lv for lv in LEVELS if lv["min"] > current["min"]), None)
+        span = current["max"] - current["min"]
+        progress = round((avg_std - current["min"]) / span, 3) if span > 0 else 1.0
+        progress = max(0.0, min(1.0, progress))
+
+        # Top leaks que bloqueiam o avanço (spots com mais erros)
+        top_leaks_rows = conn.execute("""
+            SELECT d.street || '/' || d.best_action AS spot,
+                   COUNT(*) AS n,
+                   AVG(d.score) AS avg_score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND d.label IN ('small_mistake', 'clear_mistake')
+              AND t.imported_at >= ?
+            GROUP BY spot
+            HAVING COUNT(*) >= 2
+            ORDER BY n DESC
+            LIMIT 3
+        """, (user_id, since)).fetchall()
+
+        return {
+            "level":            current["name"],
+            "icon":             current["icon"],
+            "standard_pct":     avg_std,
+            "level_min":        current["min"],
+            "level_max":        current["max"],
+            "next_level":       next_lv["name"] if next_lv else None,
+            "next_level_icon":  next_lv["icon"] if next_lv else None,
+            "next_pct":         next_lv["min"] if next_lv else None,
+            "progress":         progress,
+            "tournament_count": len(use),
+            "top_blocking_leaks": [{"spot": r["spot"], "n": r["n"], "avg_score": round(r["avg_score"], 1)}
+                                    for r in top_leaks_rows],
+        }
+    finally:
+        conn.close()
+
+
 def get_llm_cache(user_id: int, cache_key: str) -> Optional[str]:
     """Retorna análise cacheada ou None se não existir."""
     conn = get_conn()

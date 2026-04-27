@@ -9,6 +9,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.18.0] — 2026-04-26 — Sprint 10: Sistema de Nível do Jogador / Gamificação (BACK-009)
+
+### Adicionado
+- **Sistema de nível do jogador** — 7 níveis baseados no `standard_pct` médio dos últimos 20 torneios (ou 30 dias): Iniciante (<40%), Estudante (40-54%), Grinder (55-64%), Regular (65-74%), Sólido (75-84%), Expert (85-92%), Elite (>92%); sem rótulos ofensivos como "Fish"
+- **LevelCard** — componente visual com badge de nível (ícone + nome + cor por nível), barra de progresso para o próximo nível, threshold do próximo nível, leaks que bloqueiam avanço; modo `compact` para uso no dashboard do coach; link para o plano de estudos (opcional)
+- **Dashboard do jogador** — `LevelCard` exibido na sidebar do Index.tsx ao lado dos leaks e ICM
+- **Dashboard do coach** — `LevelCard` em modo compacto na aba "Visão Geral" de cada aluno; query `coach-student-level`
+
+### Backend
+- `get_player_level(user_id, min_tournaments=5, days=30)` — calcula nível, progresso (0-1), próximo nível, leaks bloqueadores, contagem de torneios usados
+- `GET /metrics/level` — retorna nível do próprio jogador
+- `GET /coach/student/:id/level` — retorna nível de um aluno (requer `@require_coach`)
+
+### Frontend
+- `LevelCard.tsx` — criado com cores por nível, barra de progresso, leaks bloqueadores, CTA de plano de estudos
+- `api.ts` — interface `PlayerLevel`; `metrics.level()`; `coachDashboard.studentLevel(studentId)`
+- `Index.tsx` — query `player-level` com React Query; `LevelCard` na sidebar
+- `StudentDetail.tsx` — query `coach-student-level`; `LevelCard` compacto no topo da `OverviewTab`
+
+---
+
 ## [v0.17.0] — 2026-04-26 — Sprint 9: Upload Múltiplo com Fila + Perfil do Coach Unificado (BACK-007 + BACK-012)
 
 ### Adicionado

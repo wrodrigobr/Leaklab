@@ -29,6 +29,7 @@ from database.repositories import (
     get_tournament, get_tournament_by_db_id, get_decisions, update_llm_summary,
     get_llm_cache, set_llm_cache,
     get_evolution_metrics, get_leak_summary, get_icm_performance, get_breakdown, get_player_stats,
+    get_player_level,
     get_students,
     # Coach system
     assign_invite_key, get_coach_by_invite_key, link_student_to_coach,
@@ -377,6 +378,20 @@ def history_breakdown():
 def player_stats():
     days = int(request.args.get('days', 90))
     return jsonify(get_player_stats(g.user_id, days))
+
+
+@app.route('/metrics/level', methods=['GET'])
+@require_auth
+def player_level():
+    return jsonify(get_player_level(g.user_id))
+
+
+# ── Coach: nível do aluno ────────────────────────────────────────────────────
+
+@app.route('/coach/student/<int:student_id>/level', methods=['GET'])
+@require_coach
+def student_level(student_id: int):
+    return jsonify(get_player_level(student_id))
 
 
 # ── AI Coach conversacional ──────────────────────────────────────────────────

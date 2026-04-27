@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Coins, Layers, Percent, Target, GraduationCap } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { KpiCard } from "@/components/hud/KpiCard";
@@ -14,6 +15,7 @@ import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { HudTooltip } from "@/components/hud/HudTooltip";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
+import { LevelCard } from "@/components/hud/LevelCard";
 import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -53,6 +55,12 @@ const Index = () => {
   const avgStdPct = stdPcts.length > 0 ? stdPcts.reduce((a, b) => a + b, 0) / stdPcts.length : null;
 
   const hasData = tourns.length > 0;
+
+  const { data: levelData } = useQuery({
+    queryKey: ["player-level", refreshKey],
+    queryFn: metrics.level,
+    staleTime: 60_000,
+  });
 
   return (
     <div className="min-h-dvh bg-background hud-scanline">
@@ -164,6 +172,7 @@ const Index = () => {
 
             {/* Sidebar */}
             <aside className="space-y-6 lg:col-span-4">
+              {levelData?.level && <LevelCard data={levelData} showStudyLink />}
               <LeaksPanel leaks={evo?.leaks} />
               <IcmBreakdown icm={evo?.icm} />
 

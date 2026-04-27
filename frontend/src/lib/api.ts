@@ -318,7 +318,26 @@ export const metrics = {
 
   playerStats: (days = 90) =>
     request<PlayerStatsResponse>(`/metrics/player-stats?days=${days}`),
+
+  level: () =>
+    request<PlayerLevel>(`/metrics/level`),
 };
+
+// ── Player Level / Gamification (BACK-009) ────────────────────────────────────
+
+export interface PlayerLevel {
+  level: string | null;
+  icon: string;
+  standard_pct: number;
+  level_min: number;
+  level_max: number;
+  next_level: string | null;
+  next_level_icon: string | null;
+  next_pct: number | null;
+  progress: number;
+  tournament_count: number;
+  top_blocking_leaks: { spot: string; n: number; avg_score: number }[];
+}
 
 // ── Study Plan ────────────────────────────────────────────────────────────────
 
@@ -573,6 +592,9 @@ export const coachDashboard = {
 
   students: () =>
     request<{ students: StudentSummary[] }>("/coach/students"),
+
+  studentLevel: (studentId: number) =>
+    request<PlayerLevel>(`/coach/student/${studentId}/level`),
 
   studentHistory: (studentId: number, days = 30) =>
     request<StudentHistory>(`/coach/student/${studentId}/history?days=${days}`),

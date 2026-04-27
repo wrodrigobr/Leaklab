@@ -1,0 +1,122 @@
+import { Link } from "react-router-dom";
+import { TrendingUp, ChevronRight, AlertCircle } from "lucide-react";
+import { PlayerLevel } from "@/lib/api";
+import { cn } from "@/lib/utils";
+
+const LEVEL_COLOR: Record<string, string> = {
+  "Iniciante": "text-muted-foreground border-muted-foreground/30 bg-muted-foreground/5",
+  "Estudante": "text-blue-400 border-blue-400/30 bg-blue-400/5",
+  "Grinder":   "text-amber-400 border-amber-400/30 bg-amber-400/5",
+  "Regular":   "text-emerald-400 border-emerald-400/30 bg-emerald-400/5",
+  "Sólido":    "text-primary border-primary/30 bg-primary/5",
+  "Expert":    "text-violet-400 border-violet-400/30 bg-violet-400/5",
+  "Elite":     "text-amber-300 border-amber-300/30 bg-amber-300/5",
+};
+
+const PROGRESS_COLOR: Record<string, string> = {
+  "Iniciante": "bg-muted-foreground",
+  "Estudante": "bg-blue-400",
+  "Grinder":   "bg-amber-400",
+  "Regular":   "bg-emerald-400",
+  "Sólido":    "bg-primary",
+  "Expert":    "bg-violet-400",
+  "Elite":     "bg-amber-300",
+};
+
+interface Props {
+  data: PlayerLevel;
+  showStudyLink?: boolean;
+  compact?: boolean;
+}
+
+export function LevelCard({ data, showStudyLink = true, compact = false }: Props) {
+  if (!data.level) {
+    return (
+      <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-2">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1.5">
+          <TrendingUp className="size-3" /> Meu Nível
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Importe pelo menos 5 torneios para calcular seu nível.
+        </p>
+      </div>
+    );
+  }
+
+  const colorCls    = LEVEL_COLOR[data.level] ?? "text-primary border-primary/30 bg-primary/5";
+  const progressCls = PROGRESS_COLOR[data.level] ?? "bg-primary";
+  const pct         = Math.round(data.progress * 100);
+
+  return (
+    <div className={cn("rounded-xl border bg-hud-surface", compact ? "p-4" : "p-5", "space-y-4")}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1.5">
+          <TrendingUp className="size-3" /> Meu Nível
+        </p>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {data.tournament_count} torneio{data.tournament_count !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* Badge */}
+      <div className="flex items-center gap-3">
+        <div className={cn("rounded-xl border px-3 py-2 text-center min-w-[72px]", colorCls)}>
+          <p className="text-xl leading-tight">{data.icon}</p>
+          <p className={cn("font-mono text-[10px] font-bold uppercase tracking-wider mt-0.5", colorCls.split(" ")[0])}>
+            {data.level}
+          </p>
+        </div>
+        <div className="flex-1 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-xs font-bold text-foreground">{data.standard_pct.toFixed(1)}%</span>
+            {data.next_level && (
+              <span className="font-mono text-[10px] text-muted-foreground flex items-center gap-0.5">
+                {data.next_level_icon} {data.next_level} em {data.next_pct}%
+              </span>
+            )}
+          </div>
+          <div className="h-2 rounded-full bg-secondary overflow-hidden">
+            <div
+              className={cn("h-full rounded-full transition-all duration-700", progressCls)}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            {data.next_level
+              ? `${pct}% do caminho para ${data.next_level}`
+              : "Nível máximo atingido"}
+          </p>
+        </div>
+      </div>
+
+      {/* Blocking leaks */}
+      {!compact && data.top_blocking_leaks.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1">
+            <AlertCircle className="size-3" /> Leaks que travam o avanço
+          </p>
+          <ul className="space-y-1">
+            {data.top_blocking_leaks.map((lk) => (
+              <li key={lk.spot} className="flex items-center justify-between text-xs">
+                <span className="text-foreground truncate">{lk.spot}</span>
+                <span className="font-mono text-[10px] text-muted-foreground shrink-0 ml-2">{lk.n}x</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* CTA */}
+      {showStudyLink && data.next_level && (
+        <Link
+          to="/study"
+          className="flex items-center justify-between w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+        >
+          <span>Ver plano de estudos para avançar</span>
+          <ChevronRight className="size-3.5 shrink-0" />
+        </Link>
+      )}
+    </div>
+  );
+}

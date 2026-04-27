@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PlayingCard } from "@/components/hud/PlayingCard";
+import { LevelCard } from "@/components/hud/LevelCard";
 import { coachDashboard, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation, CoachOverrideLabel, ActivityEvent, ProgressReport } from "@/lib/api";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -67,6 +68,12 @@ function OverviewTab({ studentId }: { studentId: number }) {
     queryFn: () => coachDashboard.studentBreakdown(studentId, 90),
   });
 
+  const { data: levelData } = useQuery({
+    queryKey: ["coach-student-level", studentId],
+    queryFn: () => coachDashboard.studentLevel(studentId),
+    staleTime: 60_000,
+  });
+
   const chartData = (history?.evolution ?? []).map((p) => ({
     date: p.played_at
       ? new Date(p.played_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
@@ -113,6 +120,9 @@ function OverviewTab({ studentId }: { studentId: number }) {
 
   return (
     <div className="space-y-6">
+      {/* Level card */}
+      {levelData?.level && <LevelCard data={levelData} compact showStudyLink={false} />}
+
       {/* HUD stats */}
       {s && (
         <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
