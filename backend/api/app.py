@@ -595,7 +595,9 @@ def _extract_tournament_name(raw: str, site: str, buy_in: float | None = None) -
     """
     Extrai nome/descrição amigável do torneio para exibição na lista.
     GGPoker: captura nome explícito (ex: "Spin&Gold #14").
-    PokerStars: constrói label do buy-in (ex: "NLH $2.20").
+    PokerStars: detecta formato (SNG vs MTT) pelo número de jogadores únicos;
+                SNGs têm exatamente N jogadores sem reposição, MTTs trazem novos
+                jogadores de mesas quebradas (>9 únicos no arquivo completo).
     """
     import re
     if site == 'ggpoker':
@@ -603,8 +605,13 @@ def _extract_tournament_name(raw: str, site: str, buy_in: float | None = None) -
         if m:
             return m.group(1).strip()
     else:
-        if buy_in is not None and buy_in > 0:
-            return f'NLH ${buy_in:.2f}'.rstrip('0').rstrip('.')
+        if buy_in is None or buy_in <= 0:
+            return None
+        # Contar jogadores únicos listados nos assentos para distinguir SNG de MTT
+        seats = re.findall(r'^Seat \d+: (\S+) \(', raw, re.MULTILINE)
+        unique_players = len(set(seats))
+        fmt = 'SNG' if unique_players <= 9 else 'MTT'
+        return f'{fmt} ${buy_in:.2f}'
     return None
 
 

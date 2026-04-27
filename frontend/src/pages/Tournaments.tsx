@@ -50,11 +50,14 @@ const Tournaments = () => {
   );
 
   const rows = useMemo(() => {
+    const q = query.toLowerCase();
     let list = data.filter(
       (t) =>
         (network === "all" || t.site === network) &&
-        (t.tournament_id.toLowerCase().includes(query.toLowerCase()) ||
-          t.hero.toLowerCase().includes(query.toLowerCase()))
+        (!q ||
+          t.tournament_id.toLowerCase().includes(q) ||
+          (t.tournament_name ?? "").toLowerCase().includes(q) ||
+          t.hero.toLowerCase().includes(q))
     );
     list = [...list].sort((a, b) => {
       const dir = sortDir === "asc" ? 1 : -1;
@@ -267,9 +270,22 @@ const Tournaments = () => {
                           {formatDate(t.played_at)}
                         </td>
                         <td className="px-4 py-3.5">
-                          <div className="text-sm font-medium text-foreground">{t.hero}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-foreground">
+                              {t.tournament_name ?? t.site}
+                            </span>
+                            {(() => {
+                              const name = (t.tournament_name ?? "").toLowerCase();
+                              const badge = name.includes("spin") ? "Spin&Go" : name.startsWith("sng") ? "SNG" : "MTT";
+                              return (
+                                <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                                  {badge}
+                                </span>
+                              );
+                            })()}
+                          </div>
                           <div className="font-mono text-[10px] text-muted-foreground">
-                            {t.tournament_id}
+                            {t.site} • {t.tournament_id}
                           </div>
                         </td>
                         <td className="px-4 py-3.5 text-xs text-muted-foreground">{t.site}</td>

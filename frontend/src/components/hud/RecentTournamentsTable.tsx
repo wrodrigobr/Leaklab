@@ -26,6 +26,7 @@ function formatTournamentLabel(row: Tournament): string {
 function formatBadge(row: Tournament): string {
   const name = (row.tournament_name ?? "").toLowerCase();
   if (name.includes("spin")) return "Spin&Go";
+  if (name.startsWith("sng")) return "SNG";
   return "MTT";
 }
 
