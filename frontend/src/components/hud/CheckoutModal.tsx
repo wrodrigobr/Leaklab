@@ -167,11 +167,10 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-background/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="flex min-h-full items-center justify-center p-4 py-8">
-      <div className="w-full max-w-md rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-5">
+      <div className="w-full max-w-md rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 2rem)" }}>
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -298,7 +297,6 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
             </p>
           </form>
         )}
-      </div>
       </div>
     </div>
   );
