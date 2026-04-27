@@ -38,8 +38,13 @@ const PLAN_INFO = {
   },
 } as const;
 
-const fieldClass =
+// PCI-secured fields: MP renders iframes into these divs
+const iframeContainerClass =
   "h-10 w-full rounded-md border border-border bg-background overflow-hidden";
+
+// Non-PCI fields: real HTML elements styled to match
+const inputClass =
+  "h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40";
 
 function FieldWrap({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -108,12 +113,12 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
         cardNumber:           { id: "mp-card-number",           placeholder: "0000 0000 0000 0000" },
         expirationDate:       { id: "mp-expiration-date",       placeholder: "MM/AA" },
         securityCode:         { id: "mp-security-code",         placeholder: "CVV" },
-        cardholderName:       { id: "mp-cardholder-name",       placeholder: "Nome impresso no cartão" },
-        identificationType:   { id: "mp-identification-type"                                         },
-        identificationNumber: { id: "mp-identification-number", placeholder: "000.000.000-00"        },
-        cardholderEmail:      { id: "mp-cardholder-email",      placeholder: "email@exemplo.com"     },
-        issuer:               { id: "mp-issuer"                                                      },
-        installments:         { id: "mp-installments"                                                },
+        cardholderName:       { id: "mp-cardholder-name"       },
+        identificationType:   { id: "mp-identification-type"   },
+        identificationNumber: { id: "mp-identification-number" },
+        cardholderEmail:      { id: "mp-cardholder-email"      },
+        issuer:               { id: "mp-issuer"                },
+        installments:         { id: "mp-installments"          },
       },
       callbacks: {
         onFormMounted: (err: unknown) => {
@@ -216,46 +221,66 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          /* Checkout form — MP mounts secure iframes inside the divs */
+          {/*
+            Checkout form.
+            PCI-secured fields (cardNumber, expirationDate, securityCode): MP renders
+            iframes into <div> containers.
+            Non-PCI fields: must be real <input>/<select> elements — MP fills or reads them.
+          */}
           <form id="mp-checkout-form" className="space-y-3.5">
 
+            {/* PCI iframe containers */}
             <FieldWrap label="Número do cartão">
-              <div id="mp-card-number" className={fieldClass} />
+              <div id="mp-card-number" className={iframeContainerClass} />
             </FieldWrap>
 
             <div className="grid grid-cols-2 gap-3">
               <FieldWrap label="Validade">
-                <div id="mp-expiration-date" className={fieldClass} />
+                <div id="mp-expiration-date" className={iframeContainerClass} />
               </FieldWrap>
               <FieldWrap label="CVV">
-                <div id="mp-security-code" className={fieldClass} />
+                <div id="mp-security-code" className={iframeContainerClass} />
               </FieldWrap>
             </div>
 
+            {/* Non-PCI: real input elements */}
             <FieldWrap label="Nome no cartão">
-              <div id="mp-cardholder-name" className={fieldClass} />
+              <input
+                id="mp-cardholder-name"
+                placeholder="Nome impresso no cartão"
+                className={inputClass}
+              />
             </FieldWrap>
 
             <div className="grid grid-cols-5 gap-3">
               <div className="col-span-2">
                 <FieldWrap label="Documento">
-                  <div id="mp-identification-type" className={fieldClass} />
+                  <select id="mp-identification-type" className={inputClass} />
                 </FieldWrap>
               </div>
               <div className="col-span-3">
                 <FieldWrap label="Número">
-                  <div id="mp-identification-number" className={fieldClass} />
+                  <input
+                    id="mp-identification-number"
+                    placeholder="000.000.000-00"
+                    className={inputClass}
+                  />
                 </FieldWrap>
               </div>
             </div>
 
             <FieldWrap label="E-mail do pagador">
-              <div id="mp-cardholder-email" className={fieldClass} />
+              <input
+                id="mp-cardholder-email"
+                type="email"
+                placeholder="email@exemplo.com"
+                className={inputClass}
+              />
             </FieldWrap>
 
-            {/* MP requires these in DOM even if hidden */}
-            <div id="mp-issuer" className="hidden" />
-            <div id="mp-installments" className="hidden" />
+            {/* Hidden selects that MP needs in the DOM */}
+            <select id="mp-issuer"        className="hidden" />
+            <select id="mp-installments"  className="hidden" />
 
             {error && (
               <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5">
