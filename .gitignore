@@ -8,7 +8,7 @@ venv/
 
 # Banco de dados local
 *.db
-data/
+backend/data/
 
 # Node
 node_modules/

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, SkipBack, SkipForward, GraduationCap, PenLine, X, Check, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, SkipBack, SkipForward, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PokerTable, type Seat } from "@/components/hud/PokerTable";
+import { RangePanel } from "@/components/replayer/RangePanel";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
@@ -85,6 +86,7 @@ const Replayer = () => {
   const [handList, setHandList]     = useState<string[]>([]);
   const [betUnit, setBetUnit]       = useState<"chips" | "bb">("chips");
   const [decisions, setDecisions]   = useState<TournamentDecision[]>([]);
+  const [showRange, setShowRange]           = useState(false);
   const [annotating, setAnnotating]         = useState(false);
   const [annComment, setAnnComment]         = useState("");
   const [annMode, setAnnMode]               = useState<"complement" | "replace">("complement");
@@ -398,7 +400,20 @@ const Replayer = () => {
           <section className="rounded-xl border border-border bg-hud-surface overflow-hidden">
             <header className="flex items-center justify-between border-b border-border px-4 py-3">
               <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground">Action Log</h2>
-              <span className="font-mono text-[10px] text-muted-foreground">{step.street?.toUpperCase()}</span>
+              <div className="flex items-center gap-3">
+                {step.street === 'preflop' && (
+                  <button
+                    onClick={() => setShowRange(s => !s)}
+                    className={cn(
+                      'flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 transition-colors',
+                      showRange ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    <LayoutGrid className="size-3" /> Range
+                  </button>
+                )}
+                <span className="font-mono text-[10px] text-muted-foreground">{step.street?.toUpperCase()}</span>
+              </div>
             </header>
             <ol className="max-h-72 overflow-y-auto divide-y divide-border">
               {steps.slice(0, stepIdx + 1).slice().reverse().map((s, ri) => {
@@ -438,6 +453,17 @@ const Replayer = () => {
               })}
             </ol>
           </section>
+
+          {/* Range reference panel */}
+          {showRange && step.street === 'preflop' && (
+            <RangePanel
+              key={stepIdx}
+              step={step}
+              hero={replayData.hero}
+              heroCards={replayData.hero_cards}
+              onClose={() => setShowRange(false)}
+            />
+          )}
 
           {/* EV feedback — ocultado para aluno quando coach substituiu a análise */}
           {step.type === "action" && step.is_hero &&

@@ -9,6 +9,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.19.0] — 2026-04-26 — BACK-008: Visualizador de Ranges + BUG-001: Prêmio de Torneio
+
+### Adicionado
+- **Visualizador de Ranges no Replayer** (BACK-008) — botão "Range" aparece durante o preflop; painel lateral 13×13 com ranges GTO-aproximadas para 6 posições (UTG, MP, HJ, CO, BTN, SB, BB); auto-detecta posição do herói e contexto (open vs facing raise); seletor manual de posição e tipo (Open · Call · 3-Bet); mão do herói destacada em amarelo; legenda com % de mãos e contagem de combos
+
+### Corrigido
+- **BUG-001 — Prêmio incorreto em torneios PokerStars** — quando eliminado sem ITM, o arquivo PokerStars contém apenas "hero finished the tournament" sem prêmio; o código caía no fallback GGPoker que somava todos os chips coletados em potes normais do jogo como prêmio; fix: detecta "finished the tournament" antes do fallback e define `prize = 0.0`; torneios afetados devem ser reimportados
+
+### Frontend
+- `frontend/src/data/ranges.ts` — ranges GTO-aproximadas para Open/Call/3-Bet por posição; expansor de notação de range ("AA-77", "AKs-A2s"); utils `cellHand`, `cellLabel`, `heroHand`, `getCellAction`, `rangeStats`
+- `frontend/src/components/replayer/RangeGrid.tsx` — grid 13×13 com aspect-square, cores por ação (verde=raise, azul=call), destaque da mão do herói
+- `frontend/src/components/replayer/RangePanel.tsx` — painel com auto-detecção de posição/contexto, seletores de posição e tipo, rodapé com posição detectada
+- `frontend/src/pages/Replayer.tsx` — botão "Range" no header do Action Log (visível apenas no preflop); importa `RangePanel` e `LayoutGrid`
+
+### Backend
+- `backend/api/app.py` — fix em `_extract_financials()`: PokerStars bust-out sem prêmio define `prize = 0.0` ao invés de somar chips coletados em potes
+
+---
+
 ## [v0.18.0] — 2026-04-26 — Sprint 10: Sistema de Nível do Jogador / Gamificação (BACK-009)
 
 ### Adicionado

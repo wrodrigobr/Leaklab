@@ -6,6 +6,55 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ---
 
+## [UX-001] — Lista de torneios: melhorar informações exibidas
+
+**Reportado:** 2026-04-26
+
+**Problema:** Na tabela de torneios recentes, a coluna de nome exibe `site + nome do hero`, o que é redundante (hero é sempre o próprio usuário). Faltam informações úteis como tipo de torneio (MTT vs Sit-and-Go) e descrição.
+
+**Melhorias desejadas:**
+- Remover o nome do hero da listagem — substituir por informação útil
+- Exibir tipo de torneio: MTT, SNG/Sit-and-Go, Spin&Go (detectável via número de jogadores, structura de níveis ou nome do torneio)
+- Exibir descrição do torneio quando disponível (ex: "$1.96+$0.24 NLH" já está no título do arquivo)
+- Extrair e exibir número de jogadores da mesa inicial como indicativo do formato
+
+**Arquivos a modificar:**
+- `backend/api/app.py` ou `parser.py` — extrair tipo/formato do torneio no parsing
+- `frontend/src/components/hud/RecentTournamentsTable.tsx` — ajustar coluna nome
+- `frontend/src/pages/coach/StudentDetail.tsx` → `TournamentsTab` — idem
+
+---
+
+## [BUG-001] — Prêmio do torneio calculado incorretamente
+
+**Reportado:** 2026-04-26
+**Severidade:** Alta — afeta KPIs financeiros (profit, ROI, ITM) exibidos no dashboard
+
+**Sintoma:** Torneio em que o usuário perdeu aparece com prêmio positivo (>10.000). O `profit` mostrado na tabela de torneios recentes e nos KPIs está errado.
+
+**Causa raiz identificada (2026-04-26) — CORRIGIDO em `app.py`:**
+
+Arquivo: `HH20251212 T3954735475 No Limit Hold'em $1.96 + $0.24.txt` (PokerStars)
+
+Quando o herói é eliminado sem ITM no PokerStars, o arquivo contém apenas `phpro finished the tournament` — sem número de posição nem prêmio. As duas regexes de PokerStars não batiam, e o código caía no fallback de GGPoker que **somava todos os chips coletados em potes normais durante o torneio** (ex: `phpro collected 880 from pot`), interpretando-os incorretamente como prêmio.
+
+**Fix aplicado em `app.py` → `_extract_financials()`:**
+```python
+# Antes do fallback GGPoker, verificar se é PokerStars bust-out sem prêmio:
+if re.search(re.escape(hero) + r'\s+finished the tournament', raw, re.IGNORECASE):
+    result['prize'] = 0.0
+else:
+    # GGPoker: soma chips coletados como aproximação
+    ...
+```
+
+**Resultado esperado após o fix:**
+- Torneio T3954735475: `prize = 0.0`, `profit = -2.20` (buy-in de $1.96+$0.24)
+
+**Status:** CORRIGIDO — reimportar o torneio para atualizar o banco.
+
+---
+
 ## Princípio de Produto
 
 > **A plataforma é primariamente um coach IA autônomo para o aluno.**

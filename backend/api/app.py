@@ -642,12 +642,17 @@ def _extract_financials(raw: str, hero: str) -> dict:
                 result['place'] = int(m.group(1))
 
         if result['prize'] is None:
-            # GGPoker: hero collected total across hands (approximation)
-            collected = re.findall(
-                re.escape(hero) + r' collected (\d+(?:\.\d+)?) from', raw
-            )
-            if collected:
-                result['prize'] = sum(float(x) for x in collected)
+            # PokerStars: hero busted without ITM — "hero finished the tournament" sem lugar/prêmio
+            # Não usar o fallback de chips coletados (esses são potes normais do jogo, não prêmio)
+            if re.search(re.escape(hero) + r'\s+finished the tournament', raw, re.IGNORECASE):
+                result['prize'] = 0.0
+            else:
+                # GGPoker: soma chips coletados em potes como aproximação do prêmio
+                collected = re.findall(
+                    re.escape(hero) + r' collected (\d+(?:\.\d+)?) from', raw
+                )
+                if collected:
+                    result['prize'] = sum(float(x) for x in collected)
 
     if result['buy_in'] and result['prize'] is not None:
         result['profit'] = round(result['prize'] - result['buy_in'], 2)
