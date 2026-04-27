@@ -2,6 +2,7 @@ import { CheckCircle2, Clock, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Tournament } from "@/lib/api";
+import { SiteLogo } from "@/components/hud/SiteLogo";
 
 interface Props {
   tournaments?: Tournament[];
@@ -85,6 +86,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
+                        <SiteLogo site={row.site} size={14} />
                         <span className="text-sm font-medium text-foreground">
                           {formatTournamentLabel(row)}
                         </span>
@@ -93,7 +95,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                         </span>
                       </div>
                       <div className="font-mono text-[10px] text-muted-foreground">
-                        {row.site} • {row.tournament_id}
+                        {row.tournament_id}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-foreground">

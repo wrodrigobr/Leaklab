@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2, Trash2, AlertTriangle, GraduationCap } from "lucide-react";
+import { SiteLogo } from "@/components/hud/SiteLogo";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, Tournament } from "@/lib/api";
 
@@ -291,10 +292,12 @@ const Tournaments = () => {
                             })()}
                           </div>
                           <div className="font-mono text-[10px] text-muted-foreground">
-                            {t.site} • {t.tournament_id}
+                            {t.tournament_id}
                           </div>
                         </td>
-                        <td className="px-4 py-3.5 text-xs text-muted-foreground">{t.site}</td>
+                        <td className="px-4 py-3.5">
+                          <SiteLogo site={t.site} />
+                        </td>
                         <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs">
                           {t.buy_in != null ? `$${t.buy_in}` : "—"}
                         </td>
