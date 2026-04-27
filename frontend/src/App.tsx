@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import Landing from "./pages/Landing.tsx";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Tournaments from "./pages/Tournaments.tsx";
@@ -30,6 +31,14 @@ const LoadingScreen = () => (
   </div>
 );
 
+/** Rota pública: redireciona usuários já logados para o dashboard. */
+function PublicRoute({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (user) return <Navigate to={user.role === "coach" ? "/coach-dashboard" : "/dashboard"} replace />;
+  return <>{children}</>;
+}
+
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <LoadingScreen />;
@@ -42,7 +51,7 @@ function CoachRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "coach") return <Navigate to="/" replace />;
+  if (user.role !== "coach") return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -61,9 +70,10 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route
-              path="/"
+              path="/dashboard"
               element={
                 <ProtectedRoute>
                   <Index />

@@ -39,7 +39,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-8">
         <div className="flex items-center gap-10">
-          <a href="/" className="flex items-center gap-2.5 group" aria-label="LeakLabs home">
+          <a href="/dashboard" className="flex items-center gap-2.5 group" aria-label="LeakLabs home">
             <span className="relative flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-glow">
               <BarChart3 className="size-4" aria-hidden />
             </span>

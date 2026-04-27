@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.23.0] — 2026-04-27 — UX-003: Landing page pública
+
+### Adicionado
+- **Landing page pública em `/`** — apresentação do produto para visitantes não autenticados; seções: Hero com níveis preview, Estatísticas, Como Funciona (3 passos), Funcionalidades (6 cards), Planos (Free vs Pro), CTA final e Footer
+- **Rota `/dashboard`** — dashboard do jogador movido de `/` para `/dashboard`; usuários autenticados são redirecionados automaticamente para o destino correto ao acessar `/` ou `/login`
+- **`PublicRoute`** — guarda de rota público: redireciona usuário já logado para `/dashboard` (jogador) ou `/coach-dashboard` (coach), evitando que veja a landing ou tela de login desnecessariamente
+
+### Alterado
+- `App.tsx` — `/` agora renderiza `Landing` (via `PublicRoute`); `/login` também usa `PublicRoute`; `/dashboard` é a nova rota protegida do jogador; `CoachRoute` redireciona não-coaches para `/dashboard`
+- `Login.tsx` — pós-login redireciona jogador para `/dashboard` em vez de `/`
+- `HudHeader.tsx` — logo aponta para `/dashboard` em vez de `/` (usuário autenticado)
+
+---
+
 ## [v0.22.0] — 2026-04-27 — BACK-010: Freemium + quota + backlog expandido
 
 ### Adicionado

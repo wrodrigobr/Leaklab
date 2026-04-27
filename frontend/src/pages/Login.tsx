@@ -15,7 +15,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) navigate(user.role === "coach" ? "/coach-dashboard" : "/", { replace: true });
+    if (user) navigate(user.role === "coach" ? "/coach-dashboard" : "/dashboard", { replace: true });
   }, [user, navigate]);
 
   const submit = async (e: React.FormEvent) => {
