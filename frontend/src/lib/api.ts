@@ -787,3 +787,30 @@ export const student = {
       body: JSON.stringify({ password }),
     }),
 };
+
+// ── Subscription ──────────────────────────────────────────────────────────────
+
+export interface QuotaStatus {
+  plan: string;
+  tournaments_used: number;
+  ai_calls_used: number;
+  limits: {
+    tournaments: number | null;
+    ai_calls: number | null;
+  };
+}
+
+export const subscription = {
+  status: () => request<QuotaStatus>("/subscription/status"),
+
+  plans: () =>
+    request<{ plans: Array<{ id: string; name: string; price: number; features: string[] }> }>(
+      "/subscription/plans"
+    ),
+
+  upgrade: (plan: string) =>
+    request<{ ok: boolean; plan: string }>("/subscription/upgrade", {
+      method: "POST",
+      body: JSON.stringify({ plan }),
+    }),
+};

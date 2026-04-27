@@ -9,6 +9,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.22.0] — 2026-04-27 — BACK-010: Freemium + quota + backlog expandido
+
+### Adicionado
+- **Planos freemium e controle de quota** — plano Free: 3 torneios/mês + 10 análises IA/mês; plano Pro: ilimitado; quota resetada automaticamente no início de cada mês (lazy reset por usuário)
+- **Endpoints de subscription** — `GET /subscription/plans`, `GET /subscription/status`, `POST /subscription/upgrade`; upgrade manual em v1 (sem gateway de pagamento)
+- **Middleware de quota no backend** — `_check_upload_quota()` antes do `/analyze`; `_check_ai_quota()` antes de `/analyze/decision`, `/analyze/hand-coach` e `/analyze/tournament-summary`; retorna HTTP 402 com `quota_exceeded: true` quando limite atingido
+- **Cache de tournament summary** — `/analyze/tournament-summary` agora retorna o summary já salvo no banco quando disponível, sem chamar o LLM novamente; economiza quota e reduz latência
+- **QuotaBanner no dashboard** — barra de uso de torneios e análises IA exibida na sidebar do dashboard; aparece somente para plano Free e apenas quando ≥ 80% do limite foi atingido; botão de upgrade via email em v1
+- **Busca corrigida em /tournaments** — placeholder atualizado de "herói" para "nome, tipo (MTT/SNG) ou ID"
+- **Backlog expandido** — UX-002 (responsividade mobile/tablet, ~15h) e BACK-014 (revenue share para coaches, ~20h) documentados com escopo, modelo de dados e esforço estimado
+
+### Backend
+- `backend/database/schema.py` — colunas `tournaments_this_month`, `ai_calls_this_month`, `quota_reset_at` na tabela `users`; migrations para SQLite e Postgres
+- `backend/database/repositories.py` — `PLAN_LIMITS`, `get_quota_status()`, `increment_tournament_count()`, `increment_ai_calls()`, `_maybe_reset_quota()` (lazy reset mensal)
+- `backend/api/app.py` — `_check_upload_quota()`, `_check_ai_quota()`; subscription endpoints; quota wiring em analyze + LLM endpoints
+
+### Frontend
+- `frontend/src/lib/api.ts` — interface `QuotaStatus`; namespace `subscription` com `status()`, `plans()`, `upgrade()`
+- `frontend/src/components/hud/QuotaBanner.tsx` — componente novo com barras de progresso e CTA de upgrade
+- `frontend/src/pages/Index.tsx` — `QuotaBanner` inserido no topo da sidebar
+- `frontend/src/pages/Tournaments.tsx` — placeholder da busca corrigido
+
+---
+
 ## [v0.21.0] — 2026-04-26 — UX: Logos de sites, auto-reload pós-import, níveis rebalanceados
 
 ### Adicionado

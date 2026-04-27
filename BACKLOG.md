@@ -80,6 +80,8 @@ else:
 | **Sprint 10** | BACK-009 | Sistema de nível + gamificação | ~8h | Progressão clara — aluno sabe onde está e o que falta; coach usa como referência |
 | **Sprint 11** | BACK-010 | Planos comerciais + monetização | ~12h | Plataforma sustentável — freemium para alunos, revenue share para coaches |
 | **Sprint 12** | BACK-011 | Segurança: anti-injection + moderação de conteúdo | ~8h | Plataforma segura para uso público — proteção contra abuso de IA e conteúdo inapropriado |
+| **Sprint 13** | UX-002 | Responsividade mobile + tablet | ~15h | Plataforma acessível pelo celular — jogadores usam o site durante/após sessões |
+| **Sprint 14** | BACK-014 | Revenue share para coaches | ~20h | Coaches indicam alunos e recebem; admin controla pagamentos — modelo sustentável |
 | **Sprint 8+** | BACK-013 | UX: Descoberta de coaches contextual | ~5h | Coach certo no momento certo — Plano de Estudos + Perfil, não menu frio |
 
 ### Critérios de priorização
@@ -759,5 +761,118 @@ CREATE TABLE student_level_history (
 
 ### Esforço estimado
 - ~3h (UI somente — dados já existem via BACK-001)
+
+---
+
+## [UX-002] — Responsividade: Mobile & Tablet
+
+**Reportado:** 2026-04-27
+**Prioridade:** Alta — bloqueia acesso da maioria dos usuários que jogam no celular
+
+**Problema:** O site foi desenvolvido como desktop-first. Menus, tabelas e cards não se adaptam a telas menores de 768px. Jogadores de poker frequentemente usam celular durante ou após sessões.
+
+### Escopo mínimo (MVP mobile)
+
+**Layout geral:**
+- Sidebar de navegação vira bottom navigation bar em mobile (<768px)
+- HUD header colapsa — botão de import fica fixo no canto inferior direito (FAB)
+- Tipografia e espaçamentos ajustados para toque
+
+**Dashboard (Index.tsx):**
+- Cards de KPI empilham em coluna única
+- Gráfico de evolução ocupa 100% de largura
+- LevelCard exibe em versão compacta (`compact={true}`) em mobile
+- RecentTournamentsTable vira lista vertical de cards (não tabela)
+
+**Torneios (/tournaments):**
+- Tabela vira lista de cards com swipe-to-action ou menu de três pontos
+- Filtros entram em sheet/drawer deslizante
+
+**Replayer:**
+- Controles de replay viram barra bottom fixa
+- Range matrix (quando implementada) abre em modal fullscreen
+
+**Coach area:**
+- Alunos listados em cards em vez de tabela
+- Detalhe do aluno usa tabs horizontais com scroll
+
+### Abordagem técnica
+- Tailwind breakpoints: `sm:` (640px), `md:` (768px), `lg:` (1024px)
+- Testar com DevTools no mínimo: iPhone SE (375px), iPhone 14 Pro (390px), iPad (768px)
+- Componentes críticos primeiro: nav, dashboard, tabela de torneios
+
+### Esforço estimado
+- Layout/navegação: ~4h
+- Dashboard + cards: ~4h
+- Torneios + tabelas: ~3h
+- Replayer mobile: ~4h
+- **Total: ~1 sprint grande (~15h)**
+
+---
+
+## [BACK-014] — Modelo de Revenue Share para Coaches
+
+**Reportado:** 2026-04-27
+**Tipo:** Comercial — modelo de negócio
+
+### Visão do modelo
+
+Coaches que indicam alunos ativos para a plataforma são recompensados com **revenue share mensal**, em vez de pagar mensalidade:
+
+| Alunos ativos | Status do coach | Valor recebido |
+|---|---|---|
+| 0 | Paga plano Pro | —|
+| 1–3 | Mensalidade zerada | R$ 0 |
+| 4–9 | Mensalidade zerada + receita | R$ 15/aluno ativo/mês |
+| 10+ | Elite — receita maior | R$ 20/aluno ativo/mês |
+
+**Aluno ativo** = importou ≥ 1 torneio nos últimos 30 dias + está no plano Pro (paga mensalidade).
+
+### Funcionalidades necessárias
+
+**Painel do Coach — "Minhas Indicações":**
+- Lista de alunos vinculados com status (ativo/inativo)
+- Contador de alunos ativos no mês atual
+- Estimativa de receita do mês
+- Histórico de pagamentos recebidos (referência)
+
+**Painel Administrativo (backoffice):**
+- Lista todos os coaches com:
+  - Qtd de alunos vinculados
+  - Qtd de alunos ativos (30 dias)
+  - Plano atual do coach
+  - Valor a pagar no mês
+  - Status do pagamento (pendente / pago)
+- Filtros: por status, por valor mínimo de repasse
+- Exportação CSV para processamento de pagamentos
+
+**Backend — rastreamento:**
+- Campo `referral_coach_id` no aluno (quem indicou — pode ser diferente do coach atual)
+- Endpoint `GET /admin/revenue-report` — protegido por role `admin`
+- Endpoint `GET /coach/referral-dashboard` — painel do coach
+
+### Modelo de dados adicional
+```sql
+-- Indicação de aluno por coach (pode ser diferente do coach atual do aluno)
+ALTER TABLE users ADD COLUMN referral_coach_id INTEGER REFERENCES users(id);
+
+-- Log de pagamentos mensais (para histórico do admin)
+CREATE TABLE coach_payments (
+    id           SERIAL PRIMARY KEY,
+    coach_id     INTEGER NOT NULL REFERENCES users(id),
+    period       TEXT    NOT NULL,  -- 'YYYY-MM'
+    active_students INTEGER NOT NULL DEFAULT 0,
+    amount_cents INTEGER NOT NULL DEFAULT 0,
+    status       TEXT    NOT NULL DEFAULT 'pending',  -- pending | paid
+    paid_at      TIMESTAMP,
+    created_at   TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+### Esforço estimado
+- Backend (revenue query + endpoints admin + painel coach): ~8h
+- Frontend coach (painel de indicações): ~4h
+- Frontend admin (backoffice): ~8h
+- **Total: ~1 sprint grande (~20h)**
 
 ---

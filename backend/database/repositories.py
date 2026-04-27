@@ -1634,3 +1634,86 @@ def get_baseline_comparison(coach_id: int, student_id: int) -> Optional[dict]:
         }
     finally:
         conn.close()
+
+
+# ── BACK-010: Quota / freemium ─────────────────────────────────────────────────
+
+PLAN_LIMITS: dict = {
+    'free':  {'tournaments': 3,    'ai_calls': 10},
+    'pro':   {'tournaments': None, 'ai_calls': None},
+    'coach': {'tournaments': None, 'ai_calls': None},
+}
+
+
+def get_quota_status(user_id: int) -> dict:
+    """Retorna plano, contadores e limites do usuário."""
+    conn = get_conn()
+    try:
+        row = _fetchone(
+            conn,
+            """SELECT plan, tournaments_this_month, ai_calls_this_month, quota_reset_at
+               FROM users WHERE id = ?""",
+            (user_id,),
+        )
+    finally:
+        conn.close()
+
+    if not row:
+        return {'plan': 'free', 'tournaments_used': 0, 'ai_calls_used': 0, 'limits': PLAN_LIMITS['free']}
+
+    plan   = row.get('plan') or 'free'
+    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS['free'])
+    return {
+        'plan':             plan,
+        'tournaments_used': row.get('tournaments_this_month') or 0,
+        'ai_calls_used':    row.get('ai_calls_this_month')    or 0,
+        'limits':           limits,
+    }
+
+
+def _maybe_reset_quota(conn, user_id: int) -> None:
+    """Se o mês virou, zera os contadores e atualiza quota_reset_at."""
+    from datetime import date
+    today = date.today()
+    current_month = today.strftime('%Y-%m')
+
+    row = _fetchone(conn, "SELECT quota_reset_at FROM users WHERE id = ?", (user_id,))
+    if not row:
+        return
+
+    stored = (row.get('quota_reset_at') or '')[:7]  # 'YYYY-MM'
+    if stored != current_month:
+        conn.execute(
+            """UPDATE users
+               SET tournaments_this_month = 0,
+                   ai_calls_this_month    = 0,
+                   quota_reset_at         = ?
+               WHERE id = ?""",
+            (today.isoformat(), user_id),
+        )
+
+
+def increment_tournament_count(user_id: int) -> None:
+    conn = get_conn()
+    try:
+        _maybe_reset_quota(conn, user_id)
+        conn.execute(
+            "UPDATE users SET tournaments_this_month = tournaments_this_month + 1 WHERE id = ?",
+            (user_id,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def increment_ai_calls(user_id: int) -> None:
+    conn = get_conn()
+    try:
+        _maybe_reset_quota(conn, user_id)
+        conn.execute(
+            "UPDATE users SET ai_calls_this_month = ai_calls_this_month + 1 WHERE id = ?",
+            (user_id,),
+        )
+        conn.commit()
+    finally:
+        conn.close()

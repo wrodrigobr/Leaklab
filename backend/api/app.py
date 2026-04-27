@@ -46,6 +46,8 @@ from database.repositories import (
     upsert_review, delete_review, get_reviews, get_my_review,
     # Sprint 8 — BACK-006 pt.2
     get_public_coach_reviews,
+    # Sprint 9 — BACK-010: quota
+    get_quota_status, increment_tournament_count, increment_ai_calls, PLAN_LIMITS,
 )
 from database.auth import generate_token, require_auth, require_coach
 
@@ -66,6 +68,37 @@ def _cors_every_response(response):
 
 # Inicializar banco ao subir
 init_db()
+
+# ── BACK-010: Quota helpers ────────────────────────────────────────────────────
+
+def _check_upload_quota(user_id: int):
+    """Retorna resposta 402 se usuário Free atingiu o limite mensal de torneios, None caso contrário."""
+    status = get_quota_status(user_id)
+    limit  = status['limits'].get('tournaments')
+    if limit is not None and status['tournaments_used'] >= limit:
+        return jsonify({
+            'error': 'Limite mensal de torneios atingido.',
+            'quota_exceeded': True,
+            'plan': status['plan'],
+            'used': status['tournaments_used'],
+            'limit': limit,
+        }), 402
+    return None
+
+
+def _check_ai_quota(user_id: int):
+    """Retorna resposta 402 se usuário Free atingiu o limite mensal de análises IA, None caso contrário."""
+    status = get_quota_status(user_id)
+    limit  = status['limits'].get('ai_calls')
+    if limit is not None and status['ai_calls_used'] >= limit:
+        return jsonify({
+            'error': 'Limite mensal de análises IA atingido.',
+            'quota_exceeded': True,
+            'plan': status['plan'],
+            'used': status['ai_calls_used'],
+            'limit': limit,
+        }), 402
+    return None
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -182,6 +215,10 @@ def unlink_coach():
 @app.route('/analyze', methods=['POST'])
 @require_auth
 def analyze():
+    quota_err = _check_upload_quota(g.user_id)
+    if quota_err:
+        return quota_err
+
     content = _extract_content(request)
     if not content:
         return jsonify({'error': 'Conteúdo ausente'}), 400
@@ -235,6 +272,10 @@ def analyze():
         tournament_name=t_name,
     )
     save_decisions(t_db_id, results)
+    try:
+        increment_tournament_count(g.user_id)
+    except Exception:
+        pass
 
 
     # Explicações LLM se solicitado
@@ -312,7 +353,26 @@ def tournament_summary():
             n_hands = len(hands)
             t_db_id = None
 
+        # Se já existe summary salvo, retornar sem chamar LLM
+        if t_db_id:
+            existing_summary = t.get('llm_summary')
+            if existing_summary:
+                return jsonify({
+                    'hero':            hero,
+                    'summary':         existing_summary,
+                    'total_decisions': len(results),
+                    'cached':          True,
+                })
+
+        ai_err = _check_ai_quota(g.user_id)
+        if ai_err:
+            return ai_err
+
         summary = generate_tournament_summary(results, n_hands, hero)
+        try:
+            increment_ai_calls(g.user_id)
+        except Exception:
+            pass
 
         # Persistir
         if t_db_id:
@@ -1249,8 +1309,16 @@ def analyze_decision():
     if cached and not data.get('force_new'):
         return jsonify({'analysis': cached, 'cached': True})
 
+    ai_err = _check_ai_quota(g.user_id)
+    if ai_err:
+        return ai_err
+
     from leaklab.llm_explainer import analyze_single_decision
     analysis = analyze_single_decision(decision)
+    try:
+        increment_ai_calls(g.user_id)
+    except Exception:
+        pass
 
     try:
         set_llm_cache(g.user_id, cache_key, analysis)
@@ -1287,6 +1355,10 @@ def hand_coach():
                 return jsonify({'hand_id': hand_id, 'analyses': analyses, 'cached': True})
             except Exception:
                 pass
+
+    ai_err = _check_ai_quota(g.user_id)
+    if ai_err:
+        return ai_err
 
     try:
         from leaklab.llm_explainer import _build_payload, _call_llm_api
@@ -1339,6 +1411,11 @@ def hand_coach():
                 set_llm_cache(g.user_id, cache_key, _json.dumps(analyses))
             except Exception:
                 pass
+
+        try:
+            increment_ai_calls(g.user_id)
+        except Exception:
+            pass
 
         return jsonify({
             'hand_id':   hand_id or hand_data.get('id', ''),
@@ -1932,6 +2009,70 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                               'pos':    positions[s]} for s in seats},
         'timeline':      timeline,
     }
+
+
+# ── BACK-010: Subscription endpoints ─────────────────────────────────────────
+
+@app.route('/subscription/plans', methods=['GET'])
+def subscription_plans():
+    return jsonify({
+        'plans': [
+            {
+                'id':          'free',
+                'name':        'Free',
+                'price':       0,
+                'currency':    'BRL',
+                'tournaments': PLAN_LIMITS['free']['tournaments'],
+                'ai_calls':    PLAN_LIMITS['free']['ai_calls'],
+                'features':    [
+                    f"{PLAN_LIMITS['free']['tournaments']} torneios/mês",
+                    f"{PLAN_LIMITS['free']['ai_calls']} análises IA/mês",
+                    'Análise de decisões e leaks',
+                    'Gamificação de nível',
+                ],
+            },
+            {
+                'id':          'pro',
+                'name':        'Pro',
+                'price':       4900,
+                'currency':    'BRL',
+                'tournaments': None,
+                'ai_calls':    None,
+                'features':    [
+                    'Torneios ilimitados',
+                    'Análises IA ilimitadas',
+                    'Plano de estudos personalizado',
+                    'Histórico completo',
+                    'Suporte prioritário',
+                ],
+            },
+        ]
+    })
+
+
+@app.route('/subscription/status', methods=['GET'])
+@require_auth
+def subscription_status():
+    status = get_quota_status(g.user_id)
+    return jsonify(status)
+
+
+@app.route('/subscription/upgrade', methods=['POST'])
+@require_auth
+def subscription_upgrade():
+    """Upgrade manual — sem gateway de pagamento em v1."""
+    data = request.get_json(silent=True) or {}
+    new_plan = data.get('plan', 'pro')
+    if new_plan not in PLAN_LIMITS:
+        return jsonify({'error': 'Plano inválido'}), 400
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        conn.execute("UPDATE users SET plan = ? WHERE id = ?", (new_plan, g.user_id))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({'ok': True, 'plan': new_plan})
 
 
 @app.errorhandler(500)

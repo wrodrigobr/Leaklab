@@ -81,17 +81,20 @@ def init_db():
 def _init_postgres(conn):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id              SERIAL PRIMARY KEY,
-            username        TEXT    NOT NULL UNIQUE,
-            email           TEXT    NOT NULL UNIQUE,
-            password_hash   TEXT    NOT NULL,
-            role            TEXT    NOT NULL DEFAULT 'player',
-            coach_id        INTEGER REFERENCES users(id),
-            invite_key      TEXT    UNIQUE,
-            plan            TEXT    NOT NULL DEFAULT 'free',
-            invited_by_key  TEXT,
-            created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
-            last_login      TIMESTAMP
+            id                      SERIAL PRIMARY KEY,
+            username                TEXT    NOT NULL UNIQUE,
+            email                   TEXT    NOT NULL UNIQUE,
+            password_hash           TEXT    NOT NULL,
+            role                    TEXT    NOT NULL DEFAULT 'player',
+            coach_id                INTEGER REFERENCES users(id),
+            invite_key              TEXT    UNIQUE,
+            plan                    TEXT    NOT NULL DEFAULT 'free',
+            invited_by_key          TEXT,
+            created_at              TIMESTAMP NOT NULL DEFAULT NOW(),
+            last_login              TIMESTAMP,
+            tournaments_this_month  INTEGER NOT NULL DEFAULT 0,
+            ai_calls_this_month     INTEGER NOT NULL DEFAULT 0,
+            quota_reset_at          DATE
         );
         CREATE TABLE IF NOT EXISTS tournaments (
             id              SERIAL PRIMARY KEY,
@@ -240,17 +243,20 @@ def _init_postgres(conn):
 def _init_sqlite(conn):
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            username        TEXT    NOT NULL UNIQUE,
-            email           TEXT    NOT NULL UNIQUE,
-            password_hash   TEXT    NOT NULL,
-            role            TEXT    NOT NULL DEFAULT 'player',
-            coach_id        INTEGER REFERENCES users(id),
-            invite_key      TEXT    UNIQUE,
-            plan            TEXT    NOT NULL DEFAULT 'free',
-            invited_by_key  TEXT,
-            created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
-            last_login      TEXT
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+            username                TEXT    NOT NULL UNIQUE,
+            email                   TEXT    NOT NULL UNIQUE,
+            password_hash           TEXT    NOT NULL,
+            role                    TEXT    NOT NULL DEFAULT 'player',
+            coach_id                INTEGER REFERENCES users(id),
+            invite_key              TEXT    UNIQUE,
+            plan                    TEXT    NOT NULL DEFAULT 'free',
+            invited_by_key          TEXT,
+            created_at              TEXT    NOT NULL DEFAULT (datetime('now')),
+            last_login              TEXT,
+            tournaments_this_month  INTEGER NOT NULL DEFAULT 0,
+            ai_calls_this_month     INTEGER NOT NULL DEFAULT 0,
+            quota_reset_at          TEXT
         );
         CREATE TABLE IF NOT EXISTS tournaments (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -417,6 +423,10 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS is_3bet         BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS showdown_result TEXT",
             "ALTER TABLE coach_hand_annotations ADD COLUMN IF NOT EXISTS coach_override_label TEXT",
+            # Sprint 9 — BACK-010: quota tracking
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS tournaments_this_month INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_calls_this_month     INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS quota_reset_at          DATE",
             # Sprint 7 — BACK-006: perfil estendido + reviews
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS photo_url         TEXT",
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS experience_years  INTEGER",
@@ -495,9 +505,12 @@ def _run_migrations(conn):
         """)
         existing = {r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()}
         for col, sql in [
-            ("invite_key",     "ALTER TABLE users ADD COLUMN invite_key     TEXT UNIQUE"),
-            ("plan",           "ALTER TABLE users ADD COLUMN plan           TEXT NOT NULL DEFAULT 'free'"),
-            ("invited_by_key", "ALTER TABLE users ADD COLUMN invited_by_key TEXT"),
+            ("invite_key",              "ALTER TABLE users ADD COLUMN invite_key              TEXT UNIQUE"),
+            ("plan",                    "ALTER TABLE users ADD COLUMN plan                    TEXT NOT NULL DEFAULT 'free'"),
+            ("invited_by_key",          "ALTER TABLE users ADD COLUMN invited_by_key          TEXT"),
+            ("tournaments_this_month",  "ALTER TABLE users ADD COLUMN tournaments_this_month  INTEGER NOT NULL DEFAULT 0"),
+            ("ai_calls_this_month",     "ALTER TABLE users ADD COLUMN ai_calls_this_month     INTEGER NOT NULL DEFAULT 0"),
+            ("quota_reset_at",          "ALTER TABLE users ADD COLUMN quota_reset_at          TEXT"),
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),

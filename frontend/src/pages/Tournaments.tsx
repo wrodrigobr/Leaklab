@@ -164,7 +164,7 @@ const Tournaments = () => {
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por ID ou herói…"
+                placeholder="Buscar por nome, tipo (MTT/SNG) ou ID…"
                 className="h-10 w-full rounded-md border border-border bg-hud-surface pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
                 aria-label="Buscar torneio"
               />
