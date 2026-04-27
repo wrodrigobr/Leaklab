@@ -207,6 +207,7 @@ def analyze():
     played_at  = _extract_date(hands[0].raw_text if hasattr(hands[0],'raw_text') else '')
     raw_full   = '\n'.join(h.raw_text for h in hands if hasattr(h,'raw_text'))
     financials = _extract_financials(raw_full, hero)
+    t_name     = _extract_tournament_name(raw_full, site, financials.get('buy_in'))
 
     # Bloquear duplicata
     existing = get_tournament(g.user_id, tournament_id)
@@ -230,7 +231,8 @@ def analyze():
         buy_in=financials.get('buy_in'),
         prize=financials.get('prize'),
         profit=financials.get('profit'),
-        raw_text=raw_full,           # salvar para replay futuro
+        raw_text=raw_full,
+        tournament_name=t_name,
     )
     save_decisions(t_db_id, results)
 
@@ -587,6 +589,23 @@ def _detect_site(raw: str) -> str:
     if 'Poker Hand #'      in raw: return 'ggpoker'
     if '888'               in raw: return '888poker'
     return 'unknown'
+
+
+def _extract_tournament_name(raw: str, site: str, buy_in: float | None = None) -> str | None:
+    """
+    Extrai nome/descrição amigável do torneio para exibição na lista.
+    GGPoker: captura nome explícito (ex: "Spin&Gold #14").
+    PokerStars: constrói label do buy-in (ex: "NLH $2.20").
+    """
+    import re
+    if site == 'ggpoker':
+        m = re.search(r'Tournament\s+#\d+,\s+(.+?)\s+Hold\'?em', raw, re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+    else:
+        if buy_in is not None and buy_in > 0:
+            return f'NLH ${buy_in:.2f}'.rstrip('0').rstrip('.')
+    return None
 
 
 def _extract_financials(raw: str, hero: str) -> dict:

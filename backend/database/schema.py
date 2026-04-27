@@ -98,6 +98,7 @@ def _init_postgres(conn):
             user_id         INTEGER NOT NULL REFERENCES users(id),
             tournament_id   TEXT    NOT NULL,
             site            TEXT    NOT NULL DEFAULT 'pokerstars',
+            tournament_name TEXT,
             hero            TEXT    NOT NULL,
             played_at       DATE,
             imported_at     TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -256,6 +257,7 @@ def _init_sqlite(conn):
             user_id         INTEGER NOT NULL REFERENCES users(id),
             tournament_id   TEXT    NOT NULL,
             site            TEXT    NOT NULL DEFAULT 'pokerstars',
+            tournament_name TEXT,
             hero            TEXT    NOT NULL,
             played_at       TEXT,
             imported_at     TEXT    NOT NULL DEFAULT (datetime('now')),
@@ -405,6 +407,7 @@ def _run_migrations(conn):
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS prize  REAL",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS profit REAL",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS raw_text TEXT",
+            "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS tournament_name TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS position    TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS num_players INTEGER",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS level_sb    REAL",
@@ -499,6 +502,7 @@ def _run_migrations(conn):
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),
             ("raw_text",        "ALTER TABLE tournaments ADD COLUMN raw_text TEXT"),
+            ("tournament_name", "ALTER TABLE tournaments ADD COLUMN tournament_name TEXT"),
         ]:
             if col not in existing:
                 try: conn.execute(sql)

@@ -82,6 +82,7 @@ export interface Tournament {
   id: number;
   tournament_id: string;
   site: string;
+  tournament_name?: string | null;
   hero: string;
   played_at: string | null;
   imported_at: string;

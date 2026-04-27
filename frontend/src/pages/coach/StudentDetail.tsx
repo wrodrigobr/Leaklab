@@ -295,8 +295,8 @@ function TournamentsTab({ studentId }: { studentId: number }) {
         <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-mono text-xs text-muted-foreground">{t.tournament_id}</p>
-              <p className="text-lg font-bold text-foreground">{t.hero} — {t.site}</p>
+              <p className="font-mono text-xs text-muted-foreground">{t.site} • {t.tournament_id}</p>
+              <p className="text-lg font-bold text-foreground">{t.tournament_name ?? t.site}</p>
             </div>
             <div className="text-right">
               <p className={`text-2xl font-bold ${SCORE_COLOR(t.avg_score ?? 0)}`}>
@@ -356,8 +356,8 @@ function TournamentsTab({ studentId }: { studentId: number }) {
           className="w-full flex items-center justify-between rounded-lg border border-border bg-hud-surface px-4 py-3 hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
         >
           <div>
-            <p className="font-mono text-xs text-muted-foreground">{t.tournament_id}</p>
-            <p className="text-sm font-medium text-foreground">{t.site} — {t.hero}</p>
+            <p className="font-mono text-xs text-muted-foreground">{t.site} • {t.tournament_id}</p>
+            <p className="text-sm font-medium text-foreground">{t.tournament_name ?? t.site}</p>
             <p className="font-mono text-[10px] text-muted-foreground">{t.hands_count} mãos · {t.decisions_count} decisões</p>
           </div>
           <div className="flex items-center gap-4">

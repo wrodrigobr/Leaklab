@@ -142,20 +142,22 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
                     buy_in: float | None = None,
                     prize: float | None = None,
                     profit: float | None = None,
-                    raw_text: str | None = None) -> int:
+                    raw_text: str | None = None,
+                    tournament_name: str | None = None) -> int:
     conn = get_conn()
     lp = metrics.get('label_pct', {})
     try:
         # Upsert — INSERT ou UPDATE se já existe
         conn.execute("""
             INSERT INTO tournaments
-              (user_id, tournament_id, site, hero, played_at, imported_at,
+              (user_id, tournament_id, site, tournament_name, hero, played_at, imported_at,
                hands_count, decisions_count, avg_score,
                standard_pct, marginal_pct, small_pct, clear_pct,
                result, place, buy_in, prize, profit, raw_text)
-            VALUES (?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(user_id, tournament_id) DO UPDATE SET
               imported_at    = datetime('now'),
+              tournament_name= excluded.tournament_name,
               hands_count    = excluded.hands_count,
               decisions_count= excluded.decisions_count,
               avg_score      = excluded.avg_score,
@@ -170,7 +172,7 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
               profit         = excluded.profit,
               raw_text       = excluded.raw_text
         """, (
-            user_id, tournament_id, site, hero, played_at,
+            user_id, tournament_id, site, tournament_name, hero, played_at,
             metrics.get('total_hands', 0),
             metrics.get('total_decisions', 0),
             metrics.get('avg_mistake_score'),
@@ -242,7 +244,7 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
     conn = get_conn()
     try:
         rows = conn.execute("""
-            SELECT t.id, t.tournament_id, t.site, t.hero, t.played_at, t.imported_at,
+            SELECT t.id, t.tournament_id, t.site, t.tournament_name, t.hero, t.played_at, t.imported_at,
                    t.hands_count, t.decisions_count, t.avg_score,
                    t.standard_pct, t.clear_pct, t.result, t.place, t.llm_summary,
                    t.buy_in, t.prize, t.profit,

@@ -18,9 +18,20 @@ function formatDate(iso: string | null): string {
   }
 }
 
+function formatTournamentLabel(row: Tournament): string {
+  if (row.tournament_name) return row.tournament_name;
+  return row.site;
+}
+
+function formatBadge(row: Tournament): string {
+  const name = (row.tournament_name ?? "").toLowerCase();
+  if (name.includes("spin")) return "Spin&Go";
+  return "MTT";
+}
+
 const DEMO_ROWS: Tournament[] = [
-  { id: 1, tournament_id: "GG-T_29384", site: "GGPoker", hero: "Hero", played_at: "2024-11-24T21:04:00", imported_at: "2024-11-24", hands_count: 120, decisions_count: 240, avg_score: 0.07, standard_pct: 0.82, clear_pct: 0.05, result: "itm", place: 1, buy_in: 108, prize: 1950, profit: 1842, llm_summary: null },
-  { id: 2, tournament_id: "PS-K_11029", site: "PokerStars", hero: "Hero", played_at: "2024-11-24T19:42:00", imported_at: "2024-11-24", hands_count: 80, decisions_count: 160, avg_score: 0.14, standard_pct: 0.71, clear_pct: 0.12, result: null, place: 412, buy_in: 215, prize: 0, profit: -215, llm_summary: null },
+  { id: 1, tournament_id: "GG-T_29384", site: "GGPoker", tournament_name: "Spin&Gold #14", hero: "Hero", played_at: "2024-11-24T21:04:00", imported_at: "2024-11-24", hands_count: 120, decisions_count: 240, avg_score: 0.07, standard_pct: 0.82, clear_pct: 0.05, result: "itm", place: 1, buy_in: 108, prize: 1950, profit: 1842, llm_summary: null },
+  { id: 2, tournament_id: "PS-K_11029", site: "PokerStars", tournament_name: "NLH $215", hero: "Hero", played_at: "2024-11-24T19:42:00", imported_at: "2024-11-24", hands_count: 80, decisions_count: 160, avg_score: 0.14, standard_pct: 0.71, clear_pct: 0.12, result: null, place: 412, buy_in: 215, prize: 0, profit: -215, llm_summary: null },
 ];
 
 export function RecentTournamentsTable({ tournaments }: Props) {
@@ -72,11 +83,16 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                       {formatDate(row.played_at || row.imported_at)}
                     </td>
                     <td className="px-4 py-3.5">
-                      <div className="text-sm font-medium text-foreground">
-                        {row.site} • {row.hero}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {formatTournamentLabel(row)}
+                        </span>
+                        <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {formatBadge(row)}
+                        </span>
                       </div>
                       <div className="font-mono text-[10px] text-muted-foreground">
-                        {row.tournament_id}
+                        {row.site} • {row.tournament_id}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-foreground">

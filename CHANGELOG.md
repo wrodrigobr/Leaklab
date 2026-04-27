@@ -9,6 +9,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.20.0] — 2026-04-26 — UX-001: Nome e Tipo do Torneio na Lista
+
+### Adicionado
+- **Nome do torneio na lista de torneios** (UX-001) — substituído o par "site • nome do hero" pelo nome descritivo do torneio (ex: "Spin&Gold #14", "NLH $2.20"); badge "MTT" / "Spin&Go" ao lado do nome; subtext exibe site + ID interno para rastreabilidade
+- Coluna `tournament_name TEXT` adicionada à tabela `tournaments` (SQLite + PostgreSQL); migration automática via `_run_migrations`
+
+### Backend
+- `backend/api/app.py` — novo helper `_extract_tournament_name()`: GGPoker extrai nome do header (`Tournament #N, Spin&Gold #14 Hold'em`); PokerStars constrói label do buy-in (`NLH $2.20`); chamado no `/analyze` e persistido com o torneio
+- `backend/database/repositories.py` — `save_tournament()` aceita `tournament_name`; `get_tournaments()` inclui o campo no SELECT
+- `backend/database/schema.py` — coluna `tournament_name TEXT` nas definições CREATE TABLE e nas migrations SQLite/Postgres
+
+### Frontend
+- `frontend/src/lib/api.ts` — `Tournament.tournament_name?: string | null` adicionado à interface
+- `frontend/src/components/hud/RecentTournamentsTable.tsx` — helper `formatTournamentLabel()` e `formatBadge()`; célula "Torneio" exibe nome + badge de formato + subtext com site e ID
+- `frontend/src/pages/coach/StudentDetail.tsx` — `TournamentsTab` usa `tournament_name ?? site` como label principal; subtext inclui site + ID
+
+---
+
 ## [v0.19.0] — 2026-04-26 — BACK-008: Visualizador de Ranges + BUG-001: Prêmio de Torneio
 
 ### Adicionado
