@@ -221,15 +221,9 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          {/*
-            Checkout form.
-            PCI-secured fields (cardNumber, expirationDate, securityCode): MP renders
-            iframes into <div> containers.
-            Non-PCI fields: must be real <input>/<select> elements — MP fills or reads them.
-          */}
           <form id="mp-checkout-form" className="space-y-3.5">
 
-            {/* PCI iframe containers */}
+            {/* PCI-secured: MP renders iframes into these div containers */}
             <FieldWrap label="Número do cartão">
               <div id="mp-card-number" className={iframeContainerClass} />
             </FieldWrap>
