@@ -166,11 +166,17 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
   }, [sdkReady, plan]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="w-full max-w-md rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 2rem)" }}>
+    <>
+      {/* Backdrop — clicável para fechar */}
+      <div
+        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Container de scroll — pointer-events-none para deixar cliques passarem ao backdrop */}
+      <div className="fixed inset-0 z-50 overflow-y-auto pointer-events-none">
+        <div className="flex min-h-full items-center justify-center p-4 py-6">
+          {/* Card — pointer-events-auto reativa interação */}
+          <div className="pointer-events-auto w-full max-w-md rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-4">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -297,7 +303,9 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
             </p>
           </form>
         )}
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
