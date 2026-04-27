@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Loader2, CreditCard, CheckCircle2, AlertCircle, Zap } from "lucide-react";
 import { subscription } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -165,15 +166,15 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
     };
   }, [sdkReady, plan]);
 
-  return (
+  return createPortal(
     <>
-      {/* Backdrop — clicável para fechar */}
+      {/* Backdrop — renderizado no body via portal, fora do stacking context do header */}
       <div
-        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+        className="fixed inset-0 z-[200] bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
-      {/* Container de scroll — pointer-events-none para deixar cliques passarem ao backdrop */}
-      <div className="fixed inset-0 z-50 overflow-y-auto pointer-events-none">
+      {/* Container de scroll — pointer-events-none para cliques passarem ao backdrop */}
+      <div className="fixed inset-0 z-[200] overflow-y-auto pointer-events-none">
         <div className="flex min-h-full items-center justify-center p-4 py-6">
           {/* Card — pointer-events-auto reativa interação */}
           <div className="pointer-events-auto w-full max-w-md rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-4">
@@ -306,6 +307,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
