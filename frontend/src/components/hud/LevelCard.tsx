@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { TrendingUp, ChevronRight, AlertCircle } from "lucide-react";
 import { PlayerLevel } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 
 const LEVEL_COLOR: Record<string, string> = {
   "Iniciante": "text-muted-foreground border-muted-foreground/30 bg-muted-foreground/5",
@@ -61,9 +62,9 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
 
       {/* Badge */}
       <div className="flex items-center gap-3">
-        <div className={cn("rounded-xl border px-3 py-2 text-center min-w-[72px]", colorCls)}>
-          <p className="text-xl leading-tight">{data.icon}</p>
-          <p className={cn("font-mono text-[10px] font-bold uppercase tracking-wider mt-0.5", colorCls.split(" ")[0])}>
+        <div className={cn("rounded-xl border px-3 py-2.5 text-center min-w-[72px] flex flex-col items-center gap-1", colorCls)}>
+          {(() => { const Icon = LEVEL_ICONS[data.level]; return Icon ? <Icon size={22} /> : null; })()}
+          <p className={cn("font-mono text-[10px] font-bold uppercase tracking-wider", colorCls.split(" ")[0])}>
             {data.level}
           </p>
         </div>
@@ -71,8 +72,9 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
           <div className="flex items-center justify-between">
             <span className="font-mono text-xs font-bold text-foreground">{data.standard_pct.toFixed(1)}%</span>
             {data.next_level && (
-              <span className="font-mono text-[10px] text-muted-foreground flex items-center gap-0.5">
-                {data.next_level_icon} {data.next_level} em {data.next_pct}%
+              <span className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
+                {(() => { const Icon = LEVEL_ICONS[data.next_level]; return Icon ? <Icon size={11} /> : null; })()}
+                {data.next_level} em {data.next_pct}%
               </span>
             )}
           </div>
