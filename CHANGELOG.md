@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.17.0] — 2026-04-26 — Sprint 9: Upload Múltiplo com Fila + Perfil do Coach Unificado (BACK-007 + BACK-012)
+
+### Adicionado
+- **Upload múltiplo de torneios** (BACK-007) — botão "Import" aceita múltiplos arquivos `.txt` de uma vez; fila processa sequencialmente com badge de status por arquivo (`Em fila`, `Processando…`, `Analisado ✓`, `Erro`); painel flutuante no canto inferior direito com botão "Fechar" após conclusão
+- **Perfil do coach unificado** (BACK-012) — página `/coach-dashboard/profile` reescrita com todos os campos estendidos do Sprint 7 (foto, experiência, stakes, método, idiomas, maiores resultados, preços, trial, redes sociais) + aba "Avaliações" com distribuição de ratings; abas "Perfil Público" e "Avaliações" removidas do CoachDashboard
+
+### Frontend
+- `UploadQueue.tsx` — hook `useUploadQueue` + `QueuePanel` com `useReducer`; `fileMap` ref para mapear IDs aos `File` objetos sem poluir o estado
+- `HudHeader.tsx` — input de upload agora com `multiple`; usa `useUploadQueue` ao invés de upload manual unitário; retorna `<>header + panel</>` via Fragment
+- `CoachProfile.tsx` — reescrito completamente com `ProfileSection` + `AvaliacoesSection` internos; suprime a versão anterior com campos básicos apenas
+- `CoachDashboard.tsx` — tabs "Perfil Público" e "Avaliações" removidos; imports de lucide e tipos relacionados limpos
+
+---
+
 ## [v0.16.0] — 2026-04-26 — Sprint 8: Diretório Público de Coaches + Integração Contextual (BACK-006 pt.2 + BACK-013)
 
 ### Adicionado

@@ -2,7 +2,7 @@ import { Activity, BarChart3, Bot, GraduationCap, LayoutDashboard, LogOut, Troph
 import { NavLink, useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import { useAuth } from "@/lib/auth";
-import { tournaments } from "@/lib/api";
+import { useUploadQueue } from "@/components/hud/UploadQueue";
 
 interface HudHeaderProps {
   onUpload?: () => void;
@@ -18,8 +18,8 @@ const playerNavItems = [
 ];
 
 const coachNavItems = [
-  { label: "Dashboard",        to: "/coach-dashboard",         icon: Users,          end: true },
-  { label: "Perfil",           to: "/coach-dashboard/profile", icon: LayoutDashboard },
+  { label: "Dashboard", to: "/coach-dashboard",         icon: Users,       end: true },
+  { label: "Perfil",    to: "/coach-dashboard/profile", icon: UserCircle },
 ];
 
 export function HudHeader({ onUpload }: HudHeaderProps) {
@@ -27,23 +27,15 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const navItems = user?.role === "coach" ? coachNavItems : playerNavItems;
+  const { enqueue, panel } = useUploadQueue(onUpload);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  const handleFile = async (file: File) => {
-    try {
-      const content = await file.text();
-      await tournaments.analyze(content);
-      onUpload?.();
-    } catch {
-      // silently ignored — errors visible on dashboard
-    }
-  };
-
   return (
+    <>
     <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-8">
         <div className="flex items-center gap-10">
@@ -95,8 +87,9 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
             ref={inputRef}
             type="file"
             accept=".txt"
+            multiple
             className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+            onChange={(e) => { if (e.target.files?.length) enqueue(e.target.files); e.target.value = ""; }}
           />
           {user?.role !== "coach" && (
             <button
@@ -156,5 +149,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
         </div>
       </div>
     </header>
+    {panel}
+  </>
   );
 }
