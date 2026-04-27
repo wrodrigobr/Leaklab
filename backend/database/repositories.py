@@ -1772,3 +1772,86 @@ def increment_ai_calls(user_id: int) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+# ── BACK-015: Payments ────────────────────────────────────────────────────────
+
+def save_payment(
+    user_id: int,
+    plan: str,
+    amount_cents: int,
+    status: str,
+    gateway_id: str | None = None,
+    gateway_sub_id: str | None = None,
+    period_start: str | None = None,
+    period_end: str | None = None,
+    currency: str = 'BRL',
+    gateway: str = 'mercadopago',
+) -> int:
+    conn = get_conn()
+    try:
+        cur = conn.execute(
+            "INSERT INTO payments (user_id, plan, amount_cents, currency, status, "
+            "gateway, gateway_id, gateway_sub_id, period_start, period_end) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (user_id, plan, amount_cents, currency, status,
+             gateway, gateway_id, gateway_sub_id, period_start, period_end),
+        )
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def get_payments(user_id: int, limit: int = 20) -> List[dict]:
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+            (user_id, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def update_user_plan(user_id: int, plan: str, mp_subscription_id: str | None = None) -> None:
+    conn = get_conn()
+    try:
+        conn.execute(
+            "UPDATE users SET plan = ?, mp_subscription_id = ? WHERE id = ?",
+            (plan, mp_subscription_id, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_user_by_mp_subscription(sub_id: str) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM users WHERE mp_subscription_id = ?", (sub_id,)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_user_by_external_ref(ext_ref: str) -> tuple[Optional[dict], str]:
+    """
+    Extrai user_id e plan_name do external_reference 'user_<id>_<plan>'.
+    Retorna (user_dict, plan_name) ou (None, '').
+    """
+    try:
+        parts   = ext_ref.split('_')
+        user_id = int(parts[1])
+        plan    = parts[2]
+    except (IndexError, ValueError):
+        return None, ''
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        return (dict(row) if row else None), plan
+    finally:
+        conn.close()

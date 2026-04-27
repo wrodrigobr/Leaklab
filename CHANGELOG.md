@@ -9,6 +9,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.28.0] — 2026-04-27 — BACK-015: Mercado Pago Transparent Checkout
+
+### Pagamentos
+- **`mercadopago_gateway.py`** — novo módulo: `get_or_create_plan`, `create_subscription`, `cancel_subscription`, `get_subscription`, `get_payment`, `validate_webhook_signature` (HMAC-SHA256)
+- **`POST /subscription/checkout`** — cria assinatura recorrente MP via card token; rate limit 5/h; atualiza `plan` e `mp_subscription_id` do usuário no banco
+- **`POST /subscription/webhook`** — recebe eventos MP (`subscription_preapproval`, `payment`); valida assinatura HMAC-SHA256; atualiza plano e salva pagamentos
+- **`GET /subscription/invoices`** — retorna histórico de pagamentos do usuário (limit 20)
+- **`POST /subscription/cancel`** — cancela assinatura MP ativa e reverte plano para `free`
+
+### Schema
+- Tabela `payments` (id, user_id, plan, amount_cents, currency, status, gateway, gateway_id, gateway_sub_id, period_start, period_end, created_at)
+- Coluna `mp_subscription_id` adicionada a `users`
+
+### Frontend
+- **`CheckoutModal.tsx`** — modal de checkout transparente: carrega MP JS SDK v2 dinamicamente, inicializa `mp.cardForm()` com iframes seguros para dados do cartão, submete token ao backend, exibe sucesso/erro e chama `refreshUser()`
+- **`AccountMenu.tsx`** — botões "Starter R$19" e "Pro R$39" abrem `CheckoutModal` (substituindo links `mailto:`)
+- **`QuotaBanner.tsx`** — idem: botões de upgrade abrem `CheckoutModal`
+- **`api.ts`** — `subscription.checkout()`, `subscription.invoices()`, `subscription.cancel()`
+
+### Testes
+- 227 testes — 0 regressões
+
+---
+
 ## [v0.27.0] — 2026-04-27 — BACK-011 pt.2: Anti-Prompt Injection + Moderação de Conteúdo
 
 ### Segurança — Camada 1: Anti-Prompt Injection

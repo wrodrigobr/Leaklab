@@ -55,9 +55,16 @@ from database.repositories import (
     get_quota_status, increment_tournament_count, increment_ai_calls, PLAN_LIMITS,
     # Sprint 11 — BACK-011: security
     decision_belongs_to_student,
+    # Sprint 15 — BACK-015: payments
+    save_payment, get_payments, update_user_plan,
+    get_user_by_external_ref,
 )
 from database.auth import generate_token, require_auth, require_coach
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
+from leaklab.mercadopago_gateway import (
+    create_subscription, cancel_subscription, get_subscription, get_payment,
+    validate_webhook_signature, PLAN_AMOUNTS,
+)
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
@@ -2144,19 +2151,121 @@ def subscription_status():
 @app.route('/subscription/upgrade', methods=['POST'])
 @require_auth
 def subscription_upgrade():
-    """Upgrade manual — sem gateway de pagamento em v1."""
+    """Upgrade manual (admin/debug). Produção usa /subscription/checkout."""
     data = request.get_json(silent=True) or {}
     new_plan = data.get('plan', 'pro')
     if new_plan not in PLAN_LIMITS:
         return jsonify({'error': 'Plano inválido'}), 400
-    from database.schema import get_conn as _gc
-    conn = _gc()
-    try:
-        conn.execute("UPDATE users SET plan = ? WHERE id = ?", (new_plan, g.user_id))
-        conn.commit()
-    finally:
-        conn.close()
+    update_user_plan(g.user_id, new_plan)
     return jsonify({'ok': True, 'plan': new_plan})
+
+
+# ── BACK-015: Mercado Pago ────────────────────────────────────────────────────
+
+@app.route('/subscription/checkout', methods=['POST'])
+@require_auth
+@limiter.limit("5 per hour")
+def subscription_checkout():
+    """Cria assinatura recorrente via Mercado Pago Transparent Checkout."""
+    data       = request.get_json(silent=True) or {}
+    plan       = data.get('plan')
+    card_token = data.get('card_token')
+
+    if plan not in ('starter', 'pro'):
+        return jsonify({'error': 'Plano inválido. Use starter ou pro.'}), 400
+    if not card_token:
+        return jsonify({'error': 'card_token obrigatório'}), 400
+
+    payer_email = g.user.get('email', '')
+    try:
+        sub = create_subscription(
+            plan_name=plan,
+            payer_email=payer_email,
+            card_token=card_token,
+            user_id=g.user_id,
+        )
+    except Exception as e:
+        log.exception("MP checkout error for user %s plan %s", g.user_id, plan)
+        return jsonify({'error': 'Erro ao processar pagamento. Verifique os dados do cartão.'}), 502
+
+    sub_id = sub.get('id')
+    update_user_plan(g.user_id, plan, sub_id)
+    save_payment(
+        user_id=g.user_id,
+        plan=plan,
+        amount_cents=int(PLAN_AMOUNTS[plan] * 100),
+        status=sub.get('status', 'authorized'),
+        gateway_id=sub_id,
+        gateway_sub_id=sub_id,
+    )
+    return jsonify({'ok': True, 'plan': plan, 'subscription_id': sub_id})
+
+
+@app.route('/subscription/webhook', methods=['POST'])
+def subscription_webhook():
+    """Recebe notificações do Mercado Pago e atualiza planos/pagamentos."""
+    body     = request.get_data()
+    x_sig    = request.headers.get('x-signature', '')
+    payload  = request.get_json(silent=True) or {}
+    data_id  = (payload.get('data') or {}).get('id') or request.args.get('data.id', '')
+
+    if x_sig and not validate_webhook_signature(body, x_sig, str(data_id)):
+        log.warning("MP webhook invalid signature data_id=%s", data_id)
+        return jsonify({'error': 'Invalid signature'}), 400
+
+    event_type = payload.get('type', '')
+    log.info("MP webhook type=%s data_id=%s", event_type, data_id)
+
+    if event_type == 'subscription_preapproval' and data_id:
+        sub = get_subscription(str(data_id))
+        if sub:
+            ext_ref = sub.get('external_reference', '')
+            status  = sub.get('status', '')
+            user, plan = get_user_by_external_ref(ext_ref)
+            if user:
+                if status == 'authorized':
+                    update_user_plan(user['id'], plan, sub.get('id'))
+                elif status in ('cancelled', 'paused'):
+                    update_user_plan(user['id'], 'free', None)
+
+    elif event_type == 'payment' and data_id:
+        pmt = get_payment(str(data_id))
+        if pmt:
+            ext_ref = pmt.get('external_reference', '')
+            status  = pmt.get('status', '')
+            amount  = float(pmt.get('transaction_amount', 0))
+            user, plan = get_user_by_external_ref(ext_ref)
+            if user:
+                save_payment(
+                    user_id=user['id'],
+                    plan=plan,
+                    amount_cents=int(amount * 100),
+                    status='paid' if status == 'approved' else 'failed',
+                    gateway_id=str(data_id),
+                )
+
+    return jsonify({'ok': True})
+
+
+@app.route('/subscription/invoices', methods=['GET'])
+@require_auth
+def subscription_invoices():
+    """Histórico de pagamentos do usuário autenticado."""
+    payments = get_payments(g.user_id)
+    return jsonify({'invoices': payments})
+
+
+@app.route('/subscription/cancel', methods=['POST'])
+@require_auth
+def subscription_cancel_endpoint():
+    """Cancela a assinatura ativa do usuário."""
+    sub_id = g.user.get('mp_subscription_id')
+    if not sub_id:
+        return jsonify({'error': 'Nenhuma assinatura ativa encontrada'}), 400
+    if cancel_subscription(sub_id):
+        update_user_plan(g.user_id, 'free', None)
+        return jsonify({'ok': True, 'plan': 'free'})
+    return jsonify({'error': 'Erro ao cancelar assinatura no gateway'}), 502
 
 
 @app.errorhandler(500)

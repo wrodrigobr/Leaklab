@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Zap } from "lucide-react";
 import { subscription, QuotaStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { CheckoutModal } from "./CheckoutModal";
 
 function QuotaBar({ used, limit, label }: { used: number; limit: number; label: string }) {
   const pct = Math.min(100, Math.round((used / limit) * 100));
@@ -31,6 +32,7 @@ function QuotaBar({ used, limit, label }: { used: number; limit: number; label: 
 
 export function QuotaBanner() {
   const [status, setStatus] = useState<QuotaStatus | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<"starter" | "pro" | null>(null);
 
   useEffect(() => {
     subscription.status().then(setStatus).catch(() => {});
@@ -66,19 +68,26 @@ export function QuotaBanner() {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <a
-          href="mailto:rodrigo.phpro@gmail.com?subject=Upgrade%20LeakLabs%20Starter"
+        <button
+          onClick={() => setCheckoutPlan("starter")}
           className="flex items-center justify-center gap-1 rounded-md border border-primary/50 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
         >
           Starter R$19
-        </a>
-        <a
-          href="mailto:rodrigo.phpro@gmail.com?subject=Upgrade%20LeakLabs%20Pro"
+        </button>
+        <button
+          onClick={() => setCheckoutPlan("pro")}
           className="flex items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
         >
           <Zap className="size-3" /> Pro R$39
-        </a>
+        </button>
       </div>
+
+      {checkoutPlan && (
+        <CheckoutModal
+          plan={checkoutPlan}
+          onClose={() => setCheckoutPlan(null)}
+        />
+      )}
     </div>
   );
 }

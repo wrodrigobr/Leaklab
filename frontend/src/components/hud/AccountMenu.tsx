@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronDown, LogOut, UserCircle, Zap } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { CheckoutModal } from "./CheckoutModal";
 
 const PLAN_LABEL: Record<string, string> = {
   free:    "Free",
@@ -49,9 +50,10 @@ function UsageBar({ used, limit, label }: { used: number; limit: number | null; 
 }
 
 export function AccountMenu() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<"starter" | "pro" | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -121,27 +123,27 @@ export function AccountMenu() {
               <UsageBar used={user.ai_calls_used ?? 0}   limit={limits.ai_calls}    label="Análises LeakLabs" />
               {plan === "free" && (
                 <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                  <a
-                    href="mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Starter"
+                  <button
+                    onClick={() => { setOpen(false); setCheckoutPlan("starter"); }}
                     className="flex items-center justify-center rounded-md border border-primary/40 py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:bg-primary/10 transition-colors"
                   >
                     Starter R$19
-                  </a>
-                  <a
-                    href="mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Pro"
+                  </button>
+                  <button
+                    onClick={() => { setOpen(false); setCheckoutPlan("pro"); }}
                     className="flex items-center justify-center gap-1 rounded-md bg-primary py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:opacity-90 transition-opacity"
                   >
                     <Zap className="size-3" />Pro R$39
-                  </a>
+                  </button>
                 </div>
               )}
               {plan === "starter" && (
-                <a
-                  href="mailto:rodrigo.phpro@gmail.com?subject=Upgrade%20LeakLabs%20Pro"
+                <button
+                  onClick={() => { setOpen(false); setCheckoutPlan("pro"); }}
                   className="flex items-center justify-center gap-1 w-full rounded-md bg-primary py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:opacity-90 transition-opacity"
                 >
                   <Zap className="size-3" /> Upgrade para Pro R$39
-                </a>
+                </button>
               )}
             </div>
           )}
@@ -162,6 +164,17 @@ export function AccountMenu() {
             </button>
           </div>
         </div>
+      )}
+
+      {checkoutPlan && (
+        <CheckoutModal
+          plan={checkoutPlan}
+          onClose={() => setCheckoutPlan(null)}
+          onSuccess={async () => {
+            setCheckoutPlan(null);
+            await refreshUser();
+          }}
+        />
       )}
     </div>
   );

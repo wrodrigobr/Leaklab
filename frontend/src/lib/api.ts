@@ -804,6 +804,16 @@ export interface QuotaStatus {
   };
 }
 
+export interface Invoice {
+  id: number;
+  plan: string;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  gateway_id: string | null;
+  created_at: string;
+}
+
 export const subscription = {
   status: () => request<QuotaStatus>("/subscription/status"),
 
@@ -817,4 +827,15 @@ export const subscription = {
       method: "POST",
       body: JSON.stringify({ plan }),
     }),
+
+  checkout: (plan: string, card_token: string) =>
+    request<{ ok: boolean; plan: string; subscription_id: string }>("/subscription/checkout", {
+      method: "POST",
+      body: JSON.stringify({ plan, card_token }),
+    }),
+
+  invoices: () => request<{ invoices: Invoice[] }>("/subscription/invoices"),
+
+  cancel: () =>
+    request<{ ok: boolean; plan: string }>("/subscription/cancel", { method: "POST" }),
 };

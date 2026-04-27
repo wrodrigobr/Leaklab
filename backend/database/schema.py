@@ -445,6 +445,8 @@ def _run_migrations(conn):
             "ALTER TABLE coach_profiles          ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'approved'",
             "ALTER TABLE coach_reviews            ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'approved'",
             "ALTER TABLE coach_hand_annotations   ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'approved'",
+            # Sprint 15 — BACK-015: Mercado Pago
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS mp_subscription_id TEXT",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -464,6 +466,26 @@ def _run_migrations(conn):
                 )
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_coach ON coach_reviews(coach_id)")
+        except Exception: pass
+        # payments table (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS payments (
+                    id             SERIAL PRIMARY KEY,
+                    user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    plan           TEXT    NOT NULL,
+                    amount_cents   INTEGER NOT NULL,
+                    currency       TEXT    NOT NULL DEFAULT 'BRL',
+                    status         TEXT    NOT NULL,
+                    gateway        TEXT    NOT NULL DEFAULT 'mercadopago',
+                    gateway_id     TEXT,
+                    gateway_sub_id TEXT,
+                    period_start   DATE,
+                    period_end     DATE,
+                    created_at     TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)")
         except Exception: pass
     else:
         conn.execute("""
@@ -588,6 +610,29 @@ def _run_migrations(conn):
         ann2_existing = {r[1] for r in conn.execute('PRAGMA table_info(coach_hand_annotations)').fetchall()}
         if 'moderation_status' not in ann2_existing:
             try: conn.execute("ALTER TABLE coach_hand_annotations ADD COLUMN moderation_status TEXT NOT NULL DEFAULT 'approved'")
+            except Exception: pass
+        # payments table (SQLite)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS payments (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                plan           TEXT    NOT NULL,
+                amount_cents   INTEGER NOT NULL,
+                currency       TEXT    NOT NULL DEFAULT 'BRL',
+                status         TEXT    NOT NULL,
+                gateway        TEXT    NOT NULL DEFAULT 'mercadopago',
+                gateway_id     TEXT,
+                gateway_sub_id TEXT,
+                period_start   TEXT,
+                period_end     TEXT,
+                created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)")
+        # migrate users: mp_subscription_id
+        usr_existing = {r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()}
+        if 'mp_subscription_id' not in usr_existing:
+            try: conn.execute("ALTER TABLE users ADD COLUMN mp_subscription_id TEXT")
             except Exception: pass
 
 
