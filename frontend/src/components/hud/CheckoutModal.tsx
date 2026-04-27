@@ -94,55 +94,68 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
   useEffect(() => {
     if (!sdkReady) return;
 
+    // Guard against React strict-mode double-invocation: callbacks from a
+    // cleaned-up effect should not update state after unmount.
+    let active = true;
+
     const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: "pt-BR" });
 
-    formRef.current = mp.cardForm({
+    const cardForm = mp.cardForm({
       amount: info.amount,
       autoMount: true,
       form: {
         id: "mp-checkout-form",
-        cardNumber:           { id: "mp-card-number",         placeholder: "0000 0000 0000 0000" },
-        expirationDate:       { id: "mp-expiration-date",     placeholder: "MM/AA" },
-        securityCode:         { id: "mp-security-code",       placeholder: "CVV" },
-        cardholderName:       { id: "mp-cardholder-name",     placeholder: "Nome impresso no cartão" },
-        identificationType:   { id: "mp-identification-type"                                       },
-        identificationNumber: { id: "mp-identification-number", placeholder: "000.000.000-00"      },
-        cardholderEmail:      { id: "mp-cardholder-email",    placeholder: "email@exemplo.com"     },
-        issuer:               { id: "mp-issuer"                                                    },
-        installments:         { id: "mp-installments"                                              },
+        cardNumber:           { id: "mp-card-number",           placeholder: "0000 0000 0000 0000" },
+        expirationDate:       { id: "mp-expiration-date",       placeholder: "MM/AA" },
+        securityCode:         { id: "mp-security-code",         placeholder: "CVV" },
+        cardholderName:       { id: "mp-cardholder-name",       placeholder: "Nome impresso no cartão" },
+        identificationType:   { id: "mp-identification-type"                                         },
+        identificationNumber: { id: "mp-identification-number", placeholder: "000.000.000-00"        },
+        cardholderEmail:      { id: "mp-cardholder-email",      placeholder: "email@exemplo.com"     },
+        issuer:               { id: "mp-issuer"                                                      },
+        installments:         { id: "mp-installments"                                                },
       },
       callbacks: {
         onFormMounted: (err: unknown) => {
-          if (err) setError("Erro ao montar formulário. Recarregue a página.");
+          if (!active) return;
+          // MP passes an array of errors (empty array [] on success, which is truthy — check length)
+          const hasError = Array.isArray(err) ? err.length > 0 : !!err;
+          if (hasError) setError("Erro ao montar formulário. Recarregue a página.");
         },
         onSubmit: async (event: { preventDefault: () => void }) => {
           event.preventDefault();
-          if (!formRef.current) return;
+          if (!active || !formRef.current) return;
           setSubmitting(true);
           setError(null);
           try {
             const { token } = formRef.current.getCardFormData();
             if (!token) throw new Error("Token de cartão não gerado. Verifique os dados e tente novamente.");
             await subscription.checkout(plan, token);
+            if (!active) return;
             setSuccess(true);
             await refreshUser();
             setTimeout(() => { onSuccess?.(plan); onClose(); }, 2500);
           } catch (e: unknown) {
+            if (!active) return;
             const msg = e instanceof Error ? e.message : "Erro ao processar pagamento. Tente novamente.";
             setError(msg);
           } finally {
-            setSubmitting(false);
+            if (active) setSubmitting(false);
           }
         },
         onError: (errors: Array<{ message: string }>) => {
+          if (!active) return;
           const msgs = errors?.map((e) => e.message).filter(Boolean).join(". ");
           if (msgs) setError(msgs);
         },
       },
     });
 
+    formRef.current = cardForm;
+
     return () => {
-      try { formRef.current?.unmount(); } catch { /* ignore */ }
+      active = false;
+      try { cardForm.unmount(); } catch { /* ignore */ }
       formRef.current = null;
     };
   }, [sdkReady, plan]);
