@@ -7,38 +7,59 @@ import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const PLAN_FREE = {
-  name: "Free",
-  price: "R$ 0",
-  period: "/mês",
-  highlight: false,
-  features: [
-    "3 torneios por mês",
-    "10 análises IA por mês",
-    "Análise de decisões e leaks",
-    "Sistema de nível (7 níveis)",
-    "Plano de estudos básico",
-  ],
-  cta: "Começar grátis",
-  href: "/login",
-};
-
-const PLAN_PRO = {
-  name: "Pro",
-  price: "R$ 15",
-  period: "/mês",
-  highlight: true,
-  features: [
-    "30 torneios por mês",
-    "50 análises IA por mês",
-    "Plano de estudos personalizado",
-    "Histórico completo + evolução",
-    "Acesso ao marketplace de coaches",
-    "Suporte prioritário",
-  ],
-  cta: "Assinar Pro",
-  href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Pro",
-};
+const PLANS = [
+  {
+    id: "free",
+    name: "Free",
+    price: "R$ 0",
+    period: "/mês",
+    highlight: false,
+    badge: null,
+    features: [
+      "3 torneios por mês",
+      "10 análises LeakLabs/mês",
+      "Detecção de leaks e score",
+      "Sistema de 7 níveis",
+    ],
+    cta: "Começar grátis",
+    href: "/login",
+  },
+  {
+    id: "starter",
+    name: "Starter",
+    price: "R$ 19",
+    period: "/mês",
+    highlight: false,
+    badge: "Mais popular",
+    features: [
+      "20 torneios por mês",
+      "40 análises LeakLabs/mês",
+      "Plano de estudos personalizado",
+      "Histórico completo + evolução",
+      "Replayer com análise de decisão",
+    ],
+    cta: "Assinar Starter",
+    href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Starter",
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    price: "R$ 39",
+    period: "/mês",
+    highlight: true,
+    badge: "Grinder",
+    features: [
+      "Torneios ilimitados",
+      "150 análises LeakLabs/mês",
+      "Plano de estudos personalizado",
+      "Histórico completo + evolução",
+      "Marketplace de coaches",
+      "Suporte prioritário",
+    ],
+    cta: "Assinar Pro",
+    href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Pro",
+  },
+];
 
 const HOW_IT_WORKS = [
   {
@@ -247,26 +268,28 @@ function FeaturesSection() {
 function PricingSection() {
   return (
     <section id="planos" className="py-24 px-6">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-5xl">
         <div className="text-center mb-14">
           <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">Planos</p>
           <h2 className="text-2xl font-bold text-foreground">Simples e transparente</h2>
-          <p className="text-sm text-muted-foreground mt-2">Comece grátis. Faça upgrade quando precisar de mais.</p>
+          <p className="text-sm text-muted-foreground mt-2">Comece grátis. Faça upgrade conforme sua frequência de jogo.</p>
         </div>
-        <div className="grid sm:grid-cols-2 gap-6">
-          {[PLAN_FREE, PLAN_PRO].map((plan) => (
+        <div className="grid sm:grid-cols-3 gap-5">
+          {PLANS.map((plan) => (
             <div
-              key={plan.name}
-              className={`rounded-xl border p-6 space-y-6 ${
+              key={plan.id}
+              className={`relative rounded-xl border p-6 space-y-5 flex flex-col ${
                 plan.highlight
                   ? "border-primary/60 bg-primary/5 shadow-glow"
                   : "border-border bg-hud-surface"
               }`}
             >
-              {plan.highlight && (
-                <div className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5">
-                  <Zap className="size-3 text-primary" />
-                  <span className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">Recomendado</span>
+              {plan.badge && (
+                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full px-3 py-0.5 ${
+                  plan.highlight ? "bg-primary text-primary-foreground" : "bg-hud-surface border border-border text-muted-foreground"
+                }`}>
+                  {plan.highlight && <Zap className="size-3" />}
+                  <span className="font-mono text-[10px] uppercase tracking-widest-2">{plan.badge}</span>
                 </div>
               )}
               <div>
@@ -276,7 +299,7 @@ function PricingSection() {
                   <span className="font-mono text-xs text-muted-foreground">{plan.period}</span>
                 </div>
               </div>
-              <ul className="space-y-2.5">
+              <ul className="space-y-2.5 flex-1">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
                     <Check className="size-4 text-primary shrink-0 mt-0.5" />
@@ -289,7 +312,9 @@ function PricingSection() {
                 className={`flex items-center justify-center gap-1.5 w-full rounded-md py-2.5 font-mono text-xs font-bold uppercase tracking-widest-2 transition-colors ${
                   plan.highlight
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "border border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+                    : plan.id === "starter"
+                      ? "border border-primary/50 text-primary hover:bg-primary/10"
+                      : "border border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
                 }`}
               >
                 {plan.cta} <ChevronRight className="size-3.5" />
@@ -297,8 +322,8 @@ function PricingSection() {
             </div>
           ))}
         </div>
-        <p className="text-center font-mono text-[10px] text-muted-foreground mt-6">
-          Plano Pro em v1 ativado manualmente via e-mail em até 24h.
+        <p className="text-center font-mono text-[10px] text-muted-foreground mt-8">
+          Planos pagos ativados manualmente via e-mail em até 24h · Sem cartão de crédito obrigatório
         </p>
       </div>
     </section>

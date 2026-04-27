@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.24.0] — 2026-04-27 — Proposta B: 3 planos (Free / Starter / Pro)
+
+### Adicionado
+- **Plano Starter R$19/mês** — 20 torneios + 40 análises/mês; público alvo: jogador casual que ultrapassou o Free mas não precisa de volume de grinder
+- **3 planos no `/subscription/plans`** — Free, Starter (R$19), Pro (R$39)
+
+### Alterado
+- **Plano Pro**: R$15 → **R$39/mês** — torneios ilimitados + 150 análises LeakLabs/mês
+- **PLAN_LIMITS** — `starter: {tournaments: 20, ai_calls: 40}` · `pro: {tournaments: None, ai_calls: 150}`
+- **Landing page** — seção Planos migrada para grid de 3 colunas; badge "Mais popular" no Starter, badge "Grinder" + destaque primário no Pro
+- **QuotaBanner** — botões Starter R$19 + Pro R$39 lado a lado no banner de limite atingido
+
+---
+
 ## [v0.23.0] — 2026-04-27 — UX-003: Landing page pública
 
 ### Adicionado

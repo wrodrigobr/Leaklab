@@ -1639,9 +1639,10 @@ def get_baseline_comparison(coach_id: int, student_id: int) -> Optional[dict]:
 # ── BACK-010: Quota / freemium ─────────────────────────────────────────────────
 
 PLAN_LIMITS: dict = {
-    'free':  {'tournaments': 3,  'ai_calls': 10},
-    'pro':   {'tournaments': 30, 'ai_calls': 50},
-    'coach': {'tournaments': 30, 'ai_calls': 50},
+    'free':    {'tournaments': 3,    'ai_calls': 10},
+    'starter': {'tournaments': 20,   'ai_calls': 40},
+    'pro':     {'tournaments': None, 'ai_calls': 150},
+    'coach':   {'tournaments': None, 'ai_calls': 150},
 }
 
 

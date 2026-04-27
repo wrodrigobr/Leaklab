@@ -65,13 +65,20 @@ export function QuotaBanner() {
         <QuotaBar used={ai_calls_used}   limit={aiLimit} label="Análises IA este mês" />
       </div>
 
-      <a
-        href="mailto:rodrigo.phpro@gmail.com?subject=Upgrade%20LeakLabs%20Pro"
-        className="flex items-center gap-1.5 w-full justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
-      >
-        <Zap className="size-3" />
-        Fazer upgrade para Pro
-      </a>
+      <div className="grid grid-cols-2 gap-2">
+        <a
+          href="mailto:rodrigo.phpro@gmail.com?subject=Upgrade%20LeakLabs%20Starter"
+          className="flex items-center justify-center gap-1 rounded-md border border-primary/50 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+        >
+          Starter R$19
+        </a>
+        <a
+          href="mailto:rodrigo.phpro@gmail.com?subject=Upgrade%20LeakLabs%20Pro"
+          className="flex items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+        >
+          <Zap className="size-3" /> Pro R$39
+        </a>
+      </div>
     </div>
   );
 }
