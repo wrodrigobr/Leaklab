@@ -566,13 +566,13 @@ def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> 
     since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
 
     LEVELS = [
-        {"name": "Iniciante", "icon": "🎯", "min": 0,    "max": 40},
-        {"name": "Estudante", "icon": "📖", "min": 40,   "max": 55},
-        {"name": "Grinder",   "icon": "⚙️", "min": 55,   "max": 65},
-        {"name": "Regular",   "icon": "📈", "min": 65,   "max": 75},
-        {"name": "Sólido",    "icon": "🔷", "min": 75,   "max": 85},
-        {"name": "Expert",    "icon": "♠",  "min": 85,   "max": 93},
-        {"name": "Elite",     "icon": "👑", "min": 93,   "max": 100},
+        {"name": "Iniciante", "icon": "🎯", "min": 0,    "max": 60},
+        {"name": "Estudante", "icon": "📖", "min": 60,   "max": 70},
+        {"name": "Grinder",   "icon": "⚙️", "min": 70,   "max": 77},
+        {"name": "Regular",   "icon": "📈", "min": 77,   "max": 86},
+        {"name": "Sólido",    "icon": "🔷", "min": 86,   "max": 92},
+        {"name": "Expert",    "icon": "♠",  "min": 92,   "max": 96},
+        {"name": "Elite",     "icon": "👑", "min": 96,   "max": 100},
     ]
 
     conn = get_conn()
