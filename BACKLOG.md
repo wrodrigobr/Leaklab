@@ -80,8 +80,10 @@ else:
 | **Sprint 10** | BACK-009 | Sistema de nível + gamificação | ~8h | Progressão clara — aluno sabe onde está e o que falta; coach usa como referência |
 | **Sprint 11** | BACK-010 | Planos comerciais + monetização | ~12h | Plataforma sustentável — freemium para alunos, revenue share para coaches |
 | **Sprint 12** | BACK-011 | Segurança: anti-injection + moderação de conteúdo | ~8h | Plataforma segura para uso público — proteção contra abuso de IA e conteúdo inapropriado |
-| **Sprint 13** | UX-002 | Responsividade mobile + tablet | ~15h | Plataforma acessível pelo celular — jogadores usam o site durante/após sessões |
-| **Sprint 14** | BACK-014 | Revenue share para coaches | ~20h | Coaches indicam alunos e recebem; admin controla pagamentos — modelo sustentável |
+| **Sprint 13** | UX-004 | Menu de conta: plano + uso + perfil unificados | ~5h | Aluno vê plano e consumo sem sair do dashboard — reduz fricção e expõe upgrade |
+| **Sprint 14** | UX-002 | Responsividade mobile + tablet | ~15h | Plataforma acessível pelo celular — jogadores usam o site durante/após sessões |
+| **Sprint 15** | BACK-015 | Gateway de pagamento (PIX, cartão, PayPal) | ~16h | Upgrades automáticos sem intervenção manual — escala o modelo de assinaturas |
+| **Sprint 16** | BACK-014 | Revenue share para coaches | ~20h | Coaches indicam alunos e recebem; admin controla pagamentos — modelo sustentável |
 | **Sprint 8+** | BACK-013 | UX: Descoberta de coaches contextual | ~5h | Coach certo no momento certo — Plano de Estudos + Perfil, não menu frio |
 
 ### Critérios de priorização
@@ -876,3 +878,109 @@ CREATE TABLE coach_payments (
 - **Total: ~1 sprint grande (~20h)**
 
 ---
+
+## [BACK-015] — Gateway de pagamento (PIX, Cartão, PayPal)
+
+**Reportado:** 2026-04-27
+
+**Problema:** Em v1, upgrades são ativados manualmente via e-mail, o que não escala. Para crescer de forma sustentável, o processo precisa ser automático e disponível 24h.
+
+### Plataformas candidatas
+
+| Plataforma | Vantagem | Desvantagem |
+|---|---|---|
+| **Stripe** | Melhor API, webhooks robustos, cartão + link de pagamento | Taxa de câmbio adicional (USD) |
+| **Mercado Pago** | PIX nativo, cartão brasileiro, checkout transparente | API mais verbosa |
+| **PayPal** | Reconhecimento global, assinaturas simples | Menos comum no Brasil para recorrência |
+| **Pagar.me** | Foco Brasil, PIX + cartão + boleto | Menos documentação/comunidade |
+
+**Recomendação:** Mercado Pago para v1 — PIX é o meio de pagamento dominante no Brasil, integração direta com recorrência (assinaturas) e sem necessidade de conta em dólar.
+
+### Funcionalidades necessárias
+
+**Assinatura recorrente:**
+- Webhook de pagamento confirmado → `UPDATE users SET plan = 'starter'/'pro'` automaticamente
+- Webhook de cancelamento/chargeback → rebaixar para `free`
+- Período de gracia de 3 dias após falha de cobrança antes de bloquear
+
+**Histórico de pagamentos:**
+```sql
+CREATE TABLE payments (
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES users(id),
+    plan            TEXT    NOT NULL,
+    amount_cents    INTEGER NOT NULL,
+    currency        TEXT    NOT NULL DEFAULT 'BRL',
+    status          TEXT    NOT NULL,  -- paid | failed | refunded | cancelled
+    gateway         TEXT    NOT NULL,  -- mercadopago | stripe | paypal
+    gateway_id      TEXT,              -- ID da transação no gateway
+    period_start    DATE,
+    period_end      DATE,
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+**Endpoints:**
+- `POST /subscription/checkout` — gera link de pagamento no gateway
+- `POST /subscription/webhook` — recebe eventos do gateway (assinado com secret)
+- `GET /subscription/invoices` — histórico de cobranças do usuário
+
+**Frontend:**
+- Botões "Assinar" abrem checkout do gateway (redirect ou modal)
+- Página `/profile` ou menu de conta mostra histórico de faturas
+- Badge de plano atualiza em tempo real via polling ou WebSocket
+
+### Segurança
+- Webhook validado via HMAC-SHA256 com chave secreta do gateway
+- Nunca confiar no payload sem validar assinatura
+- Idempotência: usar `gateway_id` como chave única para evitar duplicatas
+
+### Esforço estimado
+- Backend (Mercado Pago SDK + webhooks + tabela payments): ~8h
+- Frontend (botões de checkout + histórico de faturas): ~5h
+- Testes de integração com sandbox do gateway: ~3h
+- **Total: ~16h**
+
+---
+
+## [UX-004] — Menu de conta do aluno: plano, uso e perfil em um único lugar
+
+**Reportado:** 2026-04-27
+
+**Problema:** O aluno não consegue ver facilmente em qual plano está nem quanto do limite mensal já consumiu. O menu "Perfil" existe como item de navegação separado, criando uma experiência fragmentada.
+
+**Proposta:** substituir o menu de navegação "Perfil" por um **menu de contexto** acessível ao clicar no nome/avatar do aluno, próximo ao botão Sair, contendo:
+
+- **Nome do usuário + plano atual** (ex: `phpro · Free`) com badge colorido por plano
+- **Uso do mês** — barra de progresso inline de torneios e análises LeakLabs usadas vs. limite
+- **Ver perfil completo** — acessa a página `/profile` (mantida, mas removida do menu lateral)
+- **Upgrade de plano** — link direto para a seção de planos ou e-mail de upgrade
+- **Sair**
+
+### Comportamento esperado
+
+- Clique no nome/avatar → dropdown abre sobre o botão
+- Se plano Free e próximo do limite: barra de uso fica vermelha/âmbar com CTA de upgrade inline
+- Se plano Starter ou Pro: barra verde, sem CTA
+- Fechar ao clicar fora ou pressionar Esc
+
+### Dados necessários (já existem)
+
+- `GET /auth/me` já retorna `plan` — confirmar que inclui `tournaments_this_month`, `ai_calls_this_month`; se não, adicionar ao payload ou usar `GET /subscription/status`
+- `GET /subscription/status` já retorna `{ plan, tournaments_used, ai_calls_used, limits }` — usar este
+
+### Mudanças necessárias
+
+**Backend:**
+- Avaliar se `/auth/me` deve incluir quota atual para evitar um segundo request — adicionar `tournaments_this_month` e `ai_calls_this_month` ao payload de `/auth/me` ou criar hook React que combina os dois
+
+**Frontend:**
+- `HudHeader.tsx` — substituir link "Perfil" no menu por avatar clicável com dropdown
+- Componente `AccountMenu.tsx` — dropdown com nome, badge de plano, barras de uso, links de ação
+- Remover "Perfil" do menu lateral de navegação (`HudLayout.tsx`)
+- Página `/profile` mantida como rota direta (ainda acessível via link interno do dropdown)
+
+### Esforço estimado
+- Backend (ajuste no /auth/me): ~1h
+- Frontend (AccountMenu + wiring): ~4h
+- **Total: ~5h**
