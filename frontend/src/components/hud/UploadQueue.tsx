@@ -152,6 +152,7 @@ export function useUploadQueue(onAllDone?: () => void) {
         const content = await file.text();
         await tournaments.analyze(content);
         dispatch({ type: "SET_STATUS", id: next.id, status: "done" });
+        window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Erro ao processar arquivo";
         dispatch({ type: "SET_STATUS", id: next.id, status: "error", error: msg });

@@ -44,6 +44,12 @@ const Tournaments = () => {
 
   useEffect(() => { reload(); }, []);
 
+  useEffect(() => {
+    const handler = () => reload();
+    window.addEventListener("leaklab:tournament-imported", handler);
+    return () => window.removeEventListener("leaklab:tournament-imported", handler);
+  }, []);
+
   const networks = useMemo(
     () => ["all", ...Array.from(new Set(data.map((t) => t.site).filter(Boolean)))],
     [data]
