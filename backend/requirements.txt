@@ -4,3 +4,5 @@ gunicorn==22.0.0
 psycopg2-binary==2.9.9
 flask-cors==4.0.1
 requests==2.31.0
+bcrypt==4.2.1
+Flask-Limiter==3.8.0

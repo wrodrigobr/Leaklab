@@ -6,7 +6,16 @@ Sem lógica de negócio aqui.
 from __future__ import annotations
 import json
 import hashlib
+import logging
 from typing import Optional, List, Dict
+
+try:
+    import bcrypt as _bcrypt
+    _BCRYPT_AVAILABLE = True
+except ImportError:
+    _BCRYPT_AVAILABLE = False
+
+log = logging.getLogger(__name__)
 from .schema import get_conn, USE_POSTGRES, now_sql, interval_sql
 
 
@@ -69,9 +78,28 @@ def _insert(conn, sql: str, params=None) -> int:
 
 # ── Users ─────────────────────────────────────────────────────────────────────
 
+def _hash_password(password: str) -> str:
+    if _BCRYPT_AVAILABLE:
+        return _bcrypt.hashpw(password.encode(), _bcrypt.gensalt()).decode()
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def _check_password(password: str, stored_hash: str) -> bool:
+    """Verifica senha — suporta hashes bcrypt e SHA-256 legados."""
+    is_legacy = len(stored_hash) == 64 and all(c in '0123456789abcdef' for c in stored_hash)
+    if is_legacy:
+        return hashlib.sha256(password.encode()).hexdigest() == stored_hash
+    if _BCRYPT_AVAILABLE:
+        try:
+            return _bcrypt.checkpw(password.encode(), stored_hash.encode())
+        except Exception:
+            return False
+    return hashlib.sha256(password.encode()).hexdigest() == stored_hash
+
+
 def create_user(username: str, email: str, password: str,
                 role: str = 'player', coach_id: int | None = None) -> int:
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    pw_hash = _hash_password(password)
     conn = get_conn()
     try:
         cur = conn.execute(
@@ -108,14 +136,26 @@ def get_user_by_id(user_id: int) -> Optional[dict]:
 
 
 def verify_password(email: str, password: str) -> Optional[dict]:
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
     conn = get_conn()
     try:
         row = conn.execute(
-            "SELECT * FROM users WHERE email = ? AND password_hash = ?",
-            (email, pw_hash)
+            "SELECT * FROM users WHERE email = ?", (email,)
         ).fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        user = dict(row)
+        stored = user['password_hash']
+        if not _check_password(password, stored):
+            return None
+        # Migrate legacy SHA-256 hash to bcrypt on successful login
+        is_legacy = len(stored) == 64 and all(c in '0123456789abcdef' for c in stored)
+        if is_legacy and _BCRYPT_AVAILABLE:
+            new_hash = _bcrypt.hashpw(password.encode(), _bcrypt.gensalt()).decode()
+            conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                         (new_hash, user['id']))
+            conn.commit()
+            log.info("Migrated user %s from SHA-256 to bcrypt", user['id'])
+        return user
     finally:
         conn.close()
 
@@ -1241,11 +1281,10 @@ def delete_study_override(coach_id: int, student_id: int, card_spot: str) -> boo
 
 def update_user_email(user_id: int, new_email: str, current_password: str) -> str | None:
     """Atualiza email após verificar senha. Retorna 'ok', 'wrong_password' ou 'email_taken'."""
-    pw_hash = hashlib.sha256(current_password.encode()).hexdigest()
     conn = get_conn()
     try:
         row = conn.execute("SELECT password_hash FROM users WHERE id=?", (user_id,)).fetchone()
-        if not row or dict(row)['password_hash'] != pw_hash:
+        if not row or not _check_password(current_password, dict(row)['password_hash']):
             return 'wrong_password'
         try:
             conn.execute("UPDATE users SET email=? WHERE id=?", (new_email, user_id))
@@ -1259,14 +1298,13 @@ def update_user_email(user_id: int, new_email: str, current_password: str) -> st
 
 def change_user_password(user_id: int, current_password: str, new_password: str) -> bool:
     """Troca senha após verificar a atual. Retorna True se ok."""
-    current_hash = hashlib.sha256(current_password.encode()).hexdigest()
-    new_hash     = hashlib.sha256(new_password.encode()).hexdigest()
     conn = get_conn()
     try:
         row = conn.execute("SELECT password_hash FROM users WHERE id=?", (user_id,)).fetchone()
-        if not row or dict(row)['password_hash'] != current_hash:
+        if not row or not _check_password(current_password, dict(row)['password_hash']):
             return False
-        conn.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user_id))
+        conn.execute("UPDATE users SET password_hash=? WHERE id=?",
+                     (_hash_password(new_password), user_id))
         conn.commit()
         return True
     finally:
@@ -1274,11 +1312,12 @@ def change_user_password(user_id: int, current_password: str, new_password: str)
 
 
 def check_password(user_id: int, password: str) -> bool:
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
     conn = get_conn()
     try:
-        row = conn.execute("SELECT id FROM users WHERE id=? AND password_hash=?", (user_id, pw_hash)).fetchone()
-        return row is not None
+        row = conn.execute("SELECT password_hash FROM users WHERE id=?", (user_id,)).fetchone()
+        if not row:
+            return False
+        return _check_password(password, dict(row)['password_hash'])
     finally:
         conn.close()
 
@@ -1368,6 +1407,21 @@ def delete_annotation(coach_id: int, student_id: int, decision_id: int) -> bool:
         )
         conn.commit()
         return True
+    finally:
+        conn.close()
+
+
+def decision_belongs_to_student(decision_id: int, student_id: int) -> bool:
+    """Verifica se decision_id pertence a um torneio do student_id (IDOR guard)."""
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT d.id FROM decisions d "
+            "JOIN tournaments t ON t.id = d.tournament_id "
+            "WHERE d.id = ? AND t.user_id = ?",
+            (decision_id, student_id),
+        ).fetchone()
+        return row is not None
     finally:
         conn.close()
 

@@ -9,6 +9,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.26.0] — 2026-04-27 — BACK-011: Hardening de segurança
+
+### Segurança — Crítico
+- **bcrypt** — senhas agora armazenadas com bcrypt + salt aleatório; migração transparente: hashes SHA-256 legados são re-hasheados no próximo login com sucesso
+- **SECRET_KEY forçado** — inicialização levanta `RuntimeError` em produção se `LEAKLAB_SECRET` não estiver definido ou tiver menos de 32 caracteres; aviso no terminal em desenvolvimento
+
+### Segurança — Alta
+- **`require_coach` usa role do banco** — antes validava o campo `role` do JWT (forjável); agora consulta o banco em cada requisição protegida
+- **Token não aceito via URL** — `_extract_token()` removia fallback `?token=` que expunha tokens nos logs de servidor; aceita apenas `Authorization: Bearer` e cookie
+- **IDOR em anotações de coach corrigido** — endpoint `POST /coach/student/:id/hand-annotations` agora valida que `decision_id` pertence ao aluno antes de salvar
+- **Headers de segurança HTTP** — `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, `Referrer-Policy` adicionados a toda resposta; `Strict-Transport-Security` ativado em produção (`RENDER=true`)
+
+### Segurança — Média
+- **Rate limiting** — Flask-Limiter instalado; limites por IP: `/auth/register` 10/min, `/auth/login` 15/min, `/analyze` 30/h, `/analyze/decision` e `/analyze/hand-coach` 30/h, `/analyze/tournament-summary` 20/h; desativado automaticamente em testes (`app.testing`)
+- **Validação de extensão de arquivo** — upload em `/analyze` rejeita arquivos que não terminem em `.txt`
+- **Mensagens de erro sanitizadas** — exceções internas logadas com `log.exception()` em vez de expostas no corpo da resposta
+- **Senha mínima 8 caracteres** — aumentado de 6 para 8 em `/auth/register`
+- **Role restrito no cadastro** — valores fora de `player/coach` são coercidos para `player` silenciosamente
+
+### Infraestrutura
+- `bcrypt==4.2.1` e `Flask-Limiter==3.8.0` adicionados ao `requirements.txt`
+- `repositories.py`: funções `_hash_password`, `_check_password`, `decision_belongs_to_student` extraídas; `update_user_email`, `change_user_password`, `check_password` migradas para usar bcrypt
+
+### Testes
+- 227 testes — 0 regressões
+
+---
+
 ## [v0.25.0] — 2026-04-27 — UX-004: Menu de conta com plano e uso
 
 ### Adicionado

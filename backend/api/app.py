@@ -11,8 +11,13 @@ sys.path.insert(0, str(_BASE))
 from dotenv import load_dotenv
 load_dotenv(_BASE / '.env')
 
+import logging
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+log = logging.getLogger(__name__)
 
 from leaklab.parser import parse_pokerstars_file_from_text
 from leaklab.pipeline import build_decision_inputs_for_hand
@@ -48,6 +53,8 @@ from database.repositories import (
     get_public_coach_reviews,
     # Sprint 9 — BACK-010: quota
     get_quota_status, increment_tournament_count, increment_ai_calls, PLAN_LIMITS,
+    # Sprint 11 — BACK-011: security
+    decision_belongs_to_student,
 )
 from database.auth import generate_token, require_auth, require_coach
 
@@ -58,12 +65,34 @@ CORS(app,
      supports_credentials=False,
      automatic_options=True)
 
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://",
+)
+
+@limiter.request_filter
+def _exempt_in_testing():
+    return app.testing
+
 # Forçar CORS em TODA resposta incluindo erros não capturados
 @app.after_request
 def _cors_every_response(response):
     response.headers.setdefault('Access-Control-Allow-Origin',  '*')
     response.headers.setdefault('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     response.headers.setdefault('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    return response
+
+
+@app.after_request
+def _security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    if os.environ.get('RENDER') or os.environ.get('LEAKLAB_PROD'):
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
 # Inicializar banco ao subir
@@ -103,6 +132,7 @@ def _check_ai_quota(user_id: int):
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 @app.route('/auth/register', methods=['POST'])
+@limiter.limit("10 per minute")
 def register():
     data = request.get_json(silent=True) or {}
     username = data.get('username', '').strip()
@@ -110,10 +140,13 @@ def register():
     password = data.get('password', '')
     role     = data.get('role', 'player')
 
+    if role not in ('player', 'coach'):
+        role = 'player'
+
     if not all([username, email, password]):
         return jsonify({'error': 'username, email e password são obrigatórios'}), 400
-    if len(password) < 6:
-        return jsonify({'error': 'Senha deve ter pelo menos 6 caracteres'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Senha deve ter pelo menos 8 caracteres'}), 400
     if get_user_by_email(email):
         return jsonify({'error': 'Email já cadastrado'}), 409
 
@@ -122,10 +155,12 @@ def register():
         token   = generate_token(user_id, role)
         return jsonify({'token': token, 'user_id': user_id, 'role': role}), 201
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        log.exception("register error for %s", email)
+        return jsonify({'error': 'Erro interno ao criar conta'}), 500
 
 
 @app.route('/auth/login', methods=['POST'])
+@limiter.limit("15 per minute")
 def login():
     data     = request.get_json(silent=True) or {}
     email    = data.get('email', '').strip().lower()
@@ -219,6 +254,7 @@ def unlink_coach():
 
 @app.route('/analyze', methods=['POST'])
 @require_auth
+@limiter.limit("30 per hour")
 def analyze():
     quota_err = _check_upload_quota(g.user_id)
     if quota_err:
@@ -231,7 +267,8 @@ def analyze():
     try:
         hands = parse_pokerstars_file_from_text(content)
     except Exception as e:
-        return jsonify({'error': f'Erro ao parsear: {str(e)}'}), 422
+        log.exception("parse error in /analyze")
+        return jsonify({'error': 'Arquivo inválido ou formato não suportado'}), 422
 
     if not hands:
         return jsonify({'error': 'Nenhuma mão encontrada'}), 422
@@ -310,6 +347,7 @@ def analyze():
 
 @app.route('/analyze/tournament-summary', methods=['POST'])
 @require_auth
+@limiter.limit("20 per hour")
 def tournament_summary():
     try:
         body = request.get_json(silent=True) or {}
@@ -587,8 +625,12 @@ def _extract_content(req) -> str | None:
     if req.is_json:
         return (req.get_json(silent=True) or {}).get('content')
     if 'file' in req.files:
+        f = req.files['file']
+        filename = (f.filename or '').lower()
+        if not filename.endswith('.txt'):
+            return None
         try:
-            return req.files['file'].read().decode('utf-8', errors='replace')
+            return f.read().decode('utf-8', errors='replace')
         except Exception:
             return None
     return req.form.get('content')
@@ -1158,6 +1200,8 @@ def coach_hand_annotations_upsert(student_id):
     valid_labels = ('standard', 'marginal', 'small_mistake', 'clear_mistake', None)
     if coach_override_label not in valid_labels:
         return jsonify({'error': 'coach_override_label inválido'}), 400
+    if not decision_belongs_to_student(int(decision_id), student_id):
+        return jsonify({'error': 'Decisão não encontrada'}), 404
     annotation = upsert_annotation(
         g.user_id, student_id, decision_id, comment, mode,
         coach_action, coach_override_label,
@@ -1285,6 +1329,7 @@ def coach_get_reviews():
 
 @app.route('/analyze/decision', methods=['POST'])
 @require_auth
+@limiter.limit("30 per hour")
 def analyze_decision():
     """Análise IA de uma decisão específica identificada pelo ID do banco."""
     data = request.get_json(silent=True) or {}
@@ -1335,6 +1380,7 @@ def analyze_decision():
 
 @app.route('/analyze/hand-coach', methods=['POST'])
 @require_auth
+@limiter.limit("30 per hour")
 def hand_coach():
     """
     Análise profunda de uma mão pelo Coach IA com cache persistente.
