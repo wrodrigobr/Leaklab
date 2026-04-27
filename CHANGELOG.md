@@ -9,6 +9,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.21.0] — 2026-04-26 — UX: Logos de sites, auto-reload pós-import, níveis rebalanceados
+
+### Adicionado
+- **Logo dos sites na lista de torneios** — componente `SiteLogo` exibe favicon do site (PokerStars, GGPoker, 888Poker, Winamax, ACR) em container 24×24 com tooltip do nome completo; fallback para sigla em texto se a imagem falhar; visível na `RecentTournamentsTable` (dashboard) e na lista completa `/tournaments`
+
+### Corrigido
+- **Auto-reload pós-importação em qualquer tela** — `UploadQueue` agora dispara evento global `leaklab:tournament-imported` a cada arquivo processado; `Tournaments.tsx` escuta o evento e chama `reload()` automaticamente; antes, importar pelo botão do header na tela `/tournaments` não atualizava a lista
+- **Badge SNG/MTT incorreto** — `_extract_tournament_name()` agora conta jogadores únicos no arquivo HH: ≤ 9 = SNG (sem reposição de mesa), > 9 = MTT (jogadores vindos de mesas quebradas); resolve badge "MTT" incorreto em Sit & Go PokerStars
+- **Thresholds de nível rebalanceados** — escala anterior era leniente demais (Sólido começava em 75%); nova escala: Iniciante < 60%, Estudante 60–69%, Grinder 70–76%, Regular 77–85%, Sólido 86–91%, Expert 92–95%, Elite 96%+; calibrada para que 83–85% std_pct = Regular
+
+### Frontend
+- `frontend/src/components/hud/SiteLogo.tsx` — componente novo com mapa de favicons e fallback de sigla
+- `frontend/src/components/hud/RecentTournamentsTable.tsx` — logo inline, badge corrigido
+- `frontend/src/pages/Tournaments.tsx` — coluna Rede vira logo; listener de reload pós-import
+- `frontend/src/components/hud/UploadQueue.tsx` — dispara `CustomEvent('leaklab:tournament-imported')` após cada upload concluído
+
+### Backend
+- `backend/database/repositories.py` — thresholds de `get_player_level()` atualizados
+- `backend/api/app.py` — `_extract_tournament_name()` usa contagem de jogadores únicos para distinguir SNG de MTT
+
+---
+
 ## [v0.20.0] — 2026-04-26 — UX-001: Nome e Tipo do Torneio na Lista
 
 ### Adicionado
@@ -49,7 +71,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 ## [v0.18.0] — 2026-04-26 — Sprint 10: Sistema de Nível do Jogador / Gamificação (BACK-009)
 
 ### Adicionado
-- **Sistema de nível do jogador** — 7 níveis baseados no `standard_pct` médio dos últimos 20 torneios (ou 30 dias): Iniciante (<40%), Estudante (40-54%), Grinder (55-64%), Regular (65-74%), Sólido (75-84%), Expert (85-92%), Elite (>92%); sem rótulos ofensivos como "Fish"
+- **Sistema de nível do jogador** — 7 níveis baseados no `standard_pct` médio dos últimos 20 torneios (ou 30 dias): Iniciante, Estudante, Grinder, Regular, Sólido, Expert, Elite; sem rótulos ofensivos; thresholds rebalanceados em v0.21.0
 - **LevelCard** — componente visual com badge de nível (ícone + nome + cor por nível), barra de progresso para o próximo nível, threshold do próximo nível, leaks que bloqueiam avanço; modo `compact` para uso no dashboard do coach; link para o plano de estudos (opcional)
 - **Dashboard do jogador** — `LevelCard` exibido na sidebar do Index.tsx ao lado dos leaks e ICM
 - **Dashboard do coach** — `LevelCard` em modo compacto na aba "Visão Geral" de cada aluno; query `coach-student-level`

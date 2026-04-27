@@ -620,19 +620,19 @@ ALTER TABLE coach_hand_annotations ADD COLUMN moderation_status TEXT DEFAULT 'ap
 
 ---
 
-### Níveis propostos (baseados em `standard_pct` médio dos últimos 30 torneios)
+### Níveis implementados (baseados em `standard_pct` médio dos últimos 20 torneios ou 30 dias)
 
-| Badge | Nome | Standard % | Perfil |
+| Ícone | Nome | Standard % | Perfil |
 |---|---|---|---|
-| 🐟 | **Fish** | < 40% | Comete erros claros com frequência; jogo não estruturado |
-| 🎯 | **Calling Station** | 40–54% | Melhorou defesa, mas ainda passivo/sem agressão correta |
-| ♠ | **Rec** | 55–64% | Joga recreacionalmente; leaks pontuais e recorrentes |
-| 📈 | **Grinder** | 65–74% | Jogo consistente; volume sem exploitar bem os spots |
-| 🦈 | **Shark** | 75–84% | Leaks apenas situacionais; jogo forte na maioria dos spots |
-| 🏆 | **Reg** | 85–92% | Quase sem leaks identificáveis; domina range construction |
-| 👑 | **Elite** | > 92% | Nível alto-stakes/profissional; decisões quase ótimas |
+| 🎯 | **Iniciante** | < 60% | Erros claros e frequentes; jogo sem estrutura definida |
+| 📖 | **Estudante** | 60–69% | Aprendendo os fundamentos; leaks sistemáticos ainda presentes |
+| ⚙️ | **Grinder** | 70–76% | Volume consistente; spots recorrentes ainda com erros |
+| 📈 | **Regular** | 77–85% | Jogo sólido na maioria das situações; leaks situacionais |
+| 🔷 | **Sólido** | 86–91% | Poucos erros identificáveis; domina a maior parte dos spots |
+| ♠ | **Expert** | 92–95% | Quase sem leaks; nível de player vencedor a longo prazo |
+| 👑 | **Elite** | 96%+ | Nível profissional; decisões quase ótimas em todos os spots |
 
-> Nomes e thresholds são configuráveis — podem ser ajustados sem quebrar o modelo.
+> Thresholds calibrados para serem realistas: 83–85% = Regular, não Sólido. Ajustáveis em `repositories.py → get_player_level()` sem quebrar o modelo.
 
 ---
 
