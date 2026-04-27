@@ -1,20 +1,20 @@
-import { Activity, BarChart3, Bot, GraduationCap, LayoutDashboard, LogOut, Trophy, UploadCloud, Users, UserCircle } from "lucide-react";
+import { Activity, BarChart3, Bot, GraduationCap, LayoutDashboard, Trophy, UploadCloud, Users, UserCircle } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useUploadQueue } from "@/components/hud/UploadQueue";
+import { AccountMenu } from "@/components/hud/AccountMenu";
 
 interface HudHeaderProps {
   onUpload?: () => void;
 }
 
 const playerNavItems = [
-  { label: "Dashboard",        to: "/",                icon: LayoutDashboard },
+  { label: "Dashboard",        to: "/dashboard",       icon: LayoutDashboard },
   { label: "Tournaments",      to: "/tournaments",     icon: Trophy },
   { label: "Plano de Estudos", to: "/study",           icon: GraduationCap, badge: "NEW" },
   { label: "AI Coach",         to: "/coach",           icon: Bot, badge: "ALPHA" },
   { label: "Coaches",          to: "/coaches",         icon: Users },
-  { label: "Perfil",           to: "/profile",         icon: UserCircle },
 ];
 
 const coachNavItems = [
@@ -23,16 +23,11 @@ const coachNavItems = [
 ];
 
 export function HudHeader({ onUpload }: HudHeaderProps) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const navItems = user?.role === "coach" ? coachNavItems : playerNavItems;
   const { enqueue, panel } = useUploadQueue(onUpload);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
 
   return (
     <>
@@ -121,22 +116,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
             </span>
           </div>
 
-          {user && (
-            <div className="flex items-center gap-2">
-              <span className="hidden sm:block font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-                {user.username}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="size-9 rounded-full bg-card ring-2 ring-border hover:ring-primary/40 transition-all flex items-center justify-center text-xs font-semibold text-foreground"
-                aria-label="Sair"
-                title="Sair"
-              >
-                <LogOut className="size-4 text-muted-foreground hover:text-destructive transition-colors" aria-hidden />
-              </button>
-            </div>
-          )}
-
+          {user  && <AccountMenu />}
           {!user && (
             <button
               onClick={() => navigate("/login")}

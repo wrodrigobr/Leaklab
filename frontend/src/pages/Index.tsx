@@ -16,7 +16,6 @@ import { HudTooltip } from "@/components/hud/HudTooltip";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { LevelCard } from "@/components/hud/LevelCard";
-import { QuotaBanner } from "@/components/hud/QuotaBanner";
 import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -173,7 +172,6 @@ const Index = () => {
 
             {/* Sidebar */}
             <aside className="space-y-6 lg:col-span-4">
-              <QuotaBanner />
               {levelData?.level && <LevelCard data={levelData} showStudyLink />}
               <LeaksPanel leaks={evo?.leaks} />
               <IcmBreakdown icm={evo?.icm} />

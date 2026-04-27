@@ -46,6 +46,10 @@ export interface UserProfile {
   role: string;
   coach_id: number | null;
   coach_username: string | null;
+  plan: string;
+  tournaments_used: number;
+  ai_calls_used: number;
+  plan_limits: { tournaments: number | null; ai_calls: number | null };
 }
 
 export const auth = {

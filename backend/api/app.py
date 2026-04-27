@@ -153,13 +153,18 @@ def me():
         coach_row = get_user_by_id(coach_id)
         if coach_row:
             coach_username = coach_row['username']
+    quota = get_quota_status(g.user['id'])
     return jsonify({
-        'user_id':        g.user['id'],
-        'username':       g.user['username'],
-        'email':          g.user['email'],
-        'role':           g.user['role'],
-        'coach_id':       coach_id,
-        'coach_username': coach_username,
+        'user_id':              g.user['id'],
+        'username':             g.user['username'],
+        'email':                g.user['email'],
+        'role':                 g.user['role'],
+        'coach_id':             coach_id,
+        'coach_username':       coach_username,
+        'plan':                 quota['plan'],
+        'tournaments_used':     quota['tournaments_used'],
+        'ai_calls_used':        quota['ai_calls_used'],
+        'plan_limits':          quota['limits'],
     })
 
 

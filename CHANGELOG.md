@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.25.0] — 2026-04-27 — UX-004: Menu de conta com plano e uso
+
+### Adicionado
+- **`AccountMenu`** — dropdown acessível ao clicar no nome/plano no header; exibe username, badge de plano colorido por tier (Free/Starter/Pro/Coach), barras de uso mensal (torneios + análises LeakLabs), CTAs de upgrade contextuais e links para Perfil e Sair
+- **`/auth/me` inclui quota** — resposta agora inclui `plan`, `tournaments_used`, `ai_calls_used`, `plan_limits`; elimina segundo request separado ao `/subscription/status`
+
+### Alterado
+- **`HudHeader`** — item "Perfil" removido do menu de navegação do jogador; bloco username+logout substituído por `AccountMenu`; Dashboard corrigido para `/dashboard`
+- **`UserProfile`** — interface TypeScript estendida com campos de quota
+- **Dashboard (`Index.tsx`)** — `QuotaBanner` removido da sidebar (redundante com `AccountMenu`)
+
+---
+
 ## [v0.24.0] — 2026-04-27 — Proposta B: 3 planos (Free / Starter / Pro)
 
 ### Adicionado
