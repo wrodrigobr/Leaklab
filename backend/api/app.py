@@ -57,6 +57,7 @@ from database.repositories import (
     decision_belongs_to_student,
 )
 from database.auth import generate_token, require_auth, require_coach
+from leaklab.content_moderation import sanitize_llm_input, moderate_text
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
@@ -509,6 +510,8 @@ def coach_chat():
     if not message:
         return jsonify({'error': 'Mensagem obrigatória'}), 400
 
+    message = sanitize_llm_input(message, max_len=1000)
+
     days     = 90
     leaks    = get_leak_summary(g.user_id, days) or []
     evolution = get_evolution_metrics(g.user_id, days) or []
@@ -518,7 +521,8 @@ def coach_chat():
         reply = coach_chat_reply(message, leaks, evolution, hero=hero)
         return jsonify({'reply': reply})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        log.exception("coach_chat error")
+        return jsonify({'error': 'Coach temporariamente indisponível'}), 500
 
 
 @app.route('/coach/context', methods=['GET'])
@@ -831,10 +835,14 @@ def coach_profile():
 
     # POST — criar/atualizar
     data = request.get_json(silent=True) or {}
+    bio_raw = data.get('bio', '')
+    is_clean, reason = moderate_text(bio_raw)
+    if not is_clean:
+        return jsonify({'error': reason}), 422
     profile = upsert_coach_profile(
         user_id=g.user_id,
         display_name=data.get('display_name', ''),
-        bio=data.get('bio', ''),
+        bio=bio_raw,
         specialties=data.get('specialties', []),
         contact_email=data.get('contact_email'),
         contact_link=data.get('contact_link'),
@@ -1202,6 +1210,10 @@ def coach_hand_annotations_upsert(student_id):
         return jsonify({'error': 'coach_override_label inválido'}), 400
     if not decision_belongs_to_student(int(decision_id), student_id):
         return jsonify({'error': 'Decisão não encontrada'}), 404
+    is_clean, reason = moderate_text(comment)
+    if not is_clean:
+        return jsonify({'error': reason}), 422
+    comment = sanitize_llm_input(comment, max_len=1000)
     annotation = upsert_annotation(
         g.user_id, student_id, decision_id, comment, mode,
         coach_action, coach_override_label,
@@ -1289,11 +1301,16 @@ def submit_review():
         coach_id = data.get('coach_id')
     if not coach_id:
         return jsonify({'error': 'Você não está vinculado a um coach'}), 400
+    review_text = data.get('review_text') or ''
+    if review_text:
+        is_clean, reason = moderate_text(review_text)
+        if not is_clean:
+            return jsonify({'error': reason}), 422
     review = upsert_review(
         coach_id=int(coach_id),
         student_id=g.user_id,
         rating=rating,
-        review_text=data.get('review_text'),
+        review_text=review_text or None,
     )
     return jsonify(review)
 

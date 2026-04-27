@@ -441,6 +441,10 @@ def _run_migrations(conn):
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS social_youtube    TEXT",
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS social_twitch     TEXT",
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS social_twitter    TEXT",
+            # Sprint 12 — BACK-011 pt.2: content moderation
+            "ALTER TABLE coach_profiles          ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'approved'",
+            "ALTER TABLE coach_reviews            ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'approved'",
+            "ALTER TABLE coach_hand_annotations   ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'approved'",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -448,13 +452,14 @@ def _run_migrations(conn):
         try:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS coach_reviews (
-                    id           SERIAL PRIMARY KEY,
-                    coach_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    student_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    rating       INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
-                    review_text  TEXT,
-                    created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
-                    updated_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+                    id                SERIAL PRIMARY KEY,
+                    coach_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    student_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    rating            INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                    review_text       TEXT,
+                    moderation_status TEXT    NOT NULL DEFAULT 'approved',
+                    created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+                    updated_at        TIMESTAMP NOT NULL DEFAULT NOW(),
                     UNIQUE(coach_id, student_id)
                 )
             """)
@@ -554,6 +559,8 @@ def _run_migrations(conn):
             ("social_youtube",    "ALTER TABLE coach_profiles ADD COLUMN social_youtube    TEXT"),
             ("social_twitch",     "ALTER TABLE coach_profiles ADD COLUMN social_twitch     TEXT"),
             ("social_twitter",    "ALTER TABLE coach_profiles ADD COLUMN social_twitter    TEXT"),
+            # Sprint 12 — BACK-011 pt.2: content moderation
+            ("moderation_status", "ALTER TABLE coach_profiles ADD COLUMN moderation_status TEXT NOT NULL DEFAULT 'approved'"),
         ]:
             if col not in prof_existing:
                 try: conn.execute(sql)
@@ -561,17 +568,27 @@ def _run_migrations(conn):
         # coach_reviews (SQLite)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS coach_reviews (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                coach_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                student_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                rating       INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
-                review_text  TEXT,
-                created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
-                updated_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                student_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                rating            INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                review_text       TEXT,
+                moderation_status TEXT    NOT NULL DEFAULT 'approved',
+                created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at        TEXT    NOT NULL DEFAULT (datetime('now')),
                 UNIQUE(coach_id, student_id)
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_coach ON coach_reviews(coach_id)")
+        # migrate existing coach_reviews + coach_hand_annotations
+        rev_existing = {r[1] for r in conn.execute('PRAGMA table_info(coach_reviews)').fetchall()}
+        if 'moderation_status' not in rev_existing:
+            try: conn.execute("ALTER TABLE coach_reviews ADD COLUMN moderation_status TEXT NOT NULL DEFAULT 'approved'")
+            except Exception: pass
+        ann2_existing = {r[1] for r in conn.execute('PRAGMA table_info(coach_hand_annotations)').fetchall()}
+        if 'moderation_status' not in ann2_existing:
+            try: conn.execute("ALTER TABLE coach_hand_annotations ADD COLUMN moderation_status TEXT NOT NULL DEFAULT 'approved'")
+            except Exception: pass
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────

@@ -9,6 +9,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.27.0] — 2026-04-27 — BACK-011 pt.2: Anti-Prompt Injection + Moderação de Conteúdo
+
+### Segurança — Camada 1: Anti-Prompt Injection
+- **`content_moderation.py`** — novo módulo com `sanitize_llm_input(text, max_len)`: remove 14 padrões de injection (EN + PT-BR) via regex antes de qualquer chamada ao LLM; tenta de role spoofing (`system:`, `assistant:`), token markers (`<|...|>`, `[INST]`), comandos de esquecimento e personas alternativas
+- **`coach_chat_reply`** — mensagem do usuário sanitizada antes de entrar no payload do Claude
+- **`analyze_single_decision`** — campo `note` (texto livre do hand history) sanitizado antes de ir ao LLM
+- **`/coach/chat`** — sanitização no endpoint antes de repassar ao `coach_chat_reply`; erro interno não mais exposto na resposta
+- **Anotações de coach** — `comment` sanitizado via `sanitize_llm_input` antes de salvar no banco
+- Todas as tentativas detectadas são logadas com `log.warning` para análise posterior
+
+### Segurança — Camada 2: Moderação de Conteúdo (blocklist local v1)
+- **`moderate_text(text)`** — verifica texto livre contra blocklist PT-BR + EN cobrindo: discurso de ódio, ataques, spam/scam, links de redes sociais suspeitos, conteúdo adulto explícito; retorna `(is_clean, reason)` e loga flags
+- **`/coach-profile` (POST)** — campo `bio` verificado antes de salvar; retorna 422 se flaggeado
+- **`/coach/review` (POST)** — `review_text` verificado antes de salvar; retorna 422 se flaggeado
+- **`/coach/student/:id/hand-annotations` (POST)** — `comment` verificado + sanitizado antes de salvar
+
+### Schema
+- Coluna `moderation_status TEXT DEFAULT 'approved'` adicionada a `coach_profiles`, `coach_reviews`, `coach_hand_annotations` (PostgreSQL: `ALTER TABLE IF NOT EXISTS`; SQLite: migration lazy)
+
+### Testes
+- 227 testes — 0 regressões
+
+---
+
 ## [v0.26.0] — 2026-04-27 — BACK-011: Hardening de segurança
 
 ### Segurança — Crítico

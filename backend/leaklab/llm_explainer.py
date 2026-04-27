@@ -13,6 +13,7 @@ import json
 import hashlib
 import os
 from typing import Dict, List
+from leaklab.content_moderation import sanitize_llm_input
 
 
 def _api_key() -> str:
@@ -787,11 +788,12 @@ def coach_chat_reply(message: str, leaks: list, evolution: list,
         "Português do Brasil. Máximo 300 palavras."
     )
 
+    safe_message = sanitize_llm_input(message, max_len=1000)
     payload = {
         'model':      'claude-haiku-4-5-20251001',
         'max_tokens': 600,
         'system':     system,
-        'messages':   [{'role': 'user', 'content': message}],
+        'messages':   [{'role': 'user', 'content': safe_message}],
     }
 
     try:
@@ -824,7 +826,7 @@ def analyze_single_decision(decision: dict) -> str:
     level_sb    = decision.get('level_sb')
     level_bb    = decision.get('level_bb')
     level_num   = decision.get('level_num')
-    note        = decision.get('note', '')
+    note        = sanitize_llm_input(decision.get('note', '') or '', max_len=500)
 
     try:
         import json as _json
