@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => ({
       "/history":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/replay":      { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/metrics":     { target: "http://127.0.0.1:5000", changeOrigin: true },
+      "/subscription": { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/admin":       { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/health":      { target: "http://127.0.0.1:5000", changeOrigin: true },
     },
