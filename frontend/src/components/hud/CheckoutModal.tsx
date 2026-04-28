@@ -109,6 +109,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
 
     const cardForm = mp.cardForm({
       amount: info.amount,
+      iframe: true,
       autoMount: true,
       form: {
         id: "mp-checkout-form",
