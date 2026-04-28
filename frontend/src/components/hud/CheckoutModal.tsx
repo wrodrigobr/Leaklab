@@ -107,15 +107,23 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
 
     const mp = new window.MercadoPago(MP_PUBLIC_KEY, { locale: "pt-BR" });
 
+    // Estilo para iframes PCI — deve combinar com o tema escuro
+    const iframeStyle = {
+      color: "#e2e8f0",
+      fontSize: "14px",
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+      placeholderColor: "#6b7a8d",
+    };
+
     const cardForm = mp.cardForm({
       amount: info.amount,
       iframe: true,
       autoMount: true,
       form: {
         id: "mp-checkout-form",
-        cardNumber:           { id: "mp-card-number",           placeholder: "0000 0000 0000 0000" },
-        expirationDate:       { id: "mp-expiration-date",       placeholder: "MM/AA" },
-        securityCode:         { id: "mp-security-code",         placeholder: "CVV" },
+        cardNumber:           { id: "mp-card-number",           placeholder: "0000 0000 0000 0000", style: iframeStyle },
+        expirationDate:       { id: "mp-expiration-date",       placeholder: "MM/AA",               style: iframeStyle },
+        securityCode:         { id: "mp-security-code",         placeholder: "CVV",                 style: iframeStyle },
         cardholderName:       { id: "mp-cardholder-name"       },
         identificationType:   { id: "mp-identification-type"   },
         identificationNumber: { id: "mp-identification-number" },
