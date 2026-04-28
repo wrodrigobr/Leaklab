@@ -1,6 +1,7 @@
 """
-mercadopago_gateway.py — Wrapper para Mercado Pago Subscriptions API (preapproval).
+mercadopago_gateway.py — Wrapper para Mercado Pago Payments API (Checkout Transparente).
 Usa requests diretamente, sem SDK oficial.
+Cobrança via /v1/payments (one-time); renovação mensal é responsabilidade do backend.
 """
 from __future__ import annotations
 import os
@@ -21,61 +22,12 @@ PLAN_AMOUNTS: dict[str, float] = {
     "pro":     39.00,
 }
 
-# Cache em memória para preapproval_plan IDs (criados uma vez por processo)
-_plan_id_cache: dict[str, str] = {}
-
-
 def _headers() -> dict:
     return {
         "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
         "Content-Type":  "application/json",
     }
 
-
-def get_or_create_plan(plan_name: str) -> str:
-    """Retorna o ID do preapproval_plan MP, criando se ainda não existir."""
-    if plan_name in _plan_id_cache:
-        return _plan_id_cache[plan_name]
-
-    # Verificar se já existe via search
-    resp = _req.get(
-        f"{MP_BASE}/preapproval_plan/search",
-        params={"status": "active", "limit": 50},
-        headers=_headers(),
-        timeout=30,
-    )
-    if resp.ok:
-        reason_label = f"LeakLabs {plan_name.title()}"
-        for plan in resp.json().get("results", []):
-            if plan.get("reason") == reason_label:
-                _plan_id_cache[plan_name] = plan["id"]
-                log.info("Found existing MP plan %s for %s", plan["id"], plan_name)
-                return plan["id"]
-
-    # Criar novo plano
-    amount = PLAN_AMOUNTS[plan_name]
-    resp = _req.post(
-        f"{MP_BASE}/preapproval_plan",
-        json={
-            "reason":   f"LeakLabs {plan_name.title()}",
-            "back_url": MP_BACK_URL,
-            "auto_recurring": {
-                "frequency":                1,
-                "frequency_type":           "months",
-                "transaction_amount":       amount,
-                "currency_id":              "BRL",
-                "billing_day":              10,
-                "billing_day_proportional": True,
-            },
-        },
-        headers=_headers(),
-        timeout=30,
-    )
-    resp.raise_for_status()
-    plan_id = resp.json()["id"]
-    _plan_id_cache[plan_name] = plan_id
-    log.info("Created MP preapproval_plan %s for plan=%s", plan_id, plan_name)
-    return plan_id
 
 
 def create_subscription(
@@ -84,49 +36,56 @@ def create_subscription(
     card_token: str,
     user_id: int,
 ) -> dict:
-    """Cria assinatura recorrente MP. Retorna dict com id e status."""
-    plan_id = get_or_create_plan(plan_name)
+    """
+    Cobra o cartão via /v1/payments (Checkout Transparente).
+    Retorna dict com id e status do pagamento.
+    Renovação mensal é gerenciada pelo backend via webhooks ou cron.
+    """
+    amount = PLAN_AMOUNTS[plan_name]
     resp = _req.post(
-        f"{MP_BASE}/preapproval",
+        f"{MP_BASE}/v1/payments",
         json={
-            "preapproval_plan_id": plan_id,
-            "reason":              f"LeakLabs {plan_name.title()} — usuário {user_id}",
-            "external_reference":  f"user_{user_id}_{plan_name}",
-            "payer_email":         payer_email,
-            "card_token_id":       card_token,
-            "status":              "authorized",
+            "transaction_amount": amount,
+            "token":              card_token,
+            "description":        f"LeakLabs {plan_name.title()} — 30 dias",
+            "installments":       1,
+            "payer": {
+                "email": payer_email,
+            },
+            "external_reference": f"user_{user_id}_{plan_name}",
+            "statement_descriptor": "LEAKLABS",
+            "metadata": {
+                "user_id":   user_id,
+                "plan_name": plan_name,
+            },
         },
         headers=_headers(),
         timeout=30,
     )
     if not resp.ok:
-        log.error("MP create_subscription error %s: %s", resp.status_code, resp.text[:300])
+        log.error("MP create_subscription error %s: %s", resp.status_code, resp.text[:500])
     resp.raise_for_status()
-    return resp.json()
+    data = resp.json()
+    # Normaliza para o formato esperado pelo app.py (id + status)
+    return {
+        "id":     str(data.get("id", "")),
+        "status": data.get("status", "pending"),
+        "raw":    data,
+    }
 
 
 def cancel_subscription(sub_id: str) -> bool:
-    """Pausa/cancela uma assinatura MP."""
-    resp = _req.put(
-        f"{MP_BASE}/preapproval/{sub_id}",
-        json={"status": "cancelled"},
-        headers=_headers(),
-        timeout=30,
-    )
-    if not resp.ok:
-        log.error("MP cancel error %s: %s", resp.status_code, resp.text[:200])
-    return resp.ok
+    """
+    Para pagamentos avulsos não existe cancelamento na API MP.
+    Aqui apenas marcamos como cancelado no nosso banco (retorna True).
+    """
+    log.info("MP cancel_subscription: pagamento %s marcado como cancelado localmente", sub_id)
+    return True
 
 
 def get_subscription(sub_id: str) -> dict | None:
-    """Busca dados de uma assinatura MP."""
-    try:
-        resp = _req.get(f"{MP_BASE}/preapproval/{sub_id}", headers=_headers(), timeout=30)
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        log.error("Failed to fetch MP subscription %s: %s", sub_id, e)
-        return None
+    """Busca dados de um pagamento MP (usado no contexto de subscription)."""
+    return get_payment(sub_id)
 
 
 def get_payment(payment_id: str) -> dict | None:
