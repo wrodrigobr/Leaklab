@@ -39,9 +39,10 @@ const PLAN_INFO = {
   },
 } as const;
 
-// PCI-secured fields: MP renders iframes into these divs
+// PCI-secured fields: MP renders iframe inside — needs relative so absolute-positioned
+// iframe is contained correctly; no overflow-hidden to avoid clipping hit-area
 const iframeContainerClass =
-  "h-10 w-full rounded-md border border-border bg-background overflow-hidden";
+  "relative h-10 w-full rounded-md border border-border bg-background";
 
 // Non-PCI fields: real HTML elements styled to match
 const inputClass =
@@ -168,14 +169,10 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] overflow-y-auto bg-background/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        className="flex min-h-full items-center justify-center p-4 py-6"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      >
-        <div className="w-full max-w-md rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-4">
+      <div className="w-full max-w-md rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-4 overflow-y-auto max-h-[calc(100vh-2rem)]">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -302,7 +299,6 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
             </p>
           </form>
         )}
-        </div>
       </div>
     </div>,
     document.body
