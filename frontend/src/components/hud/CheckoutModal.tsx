@@ -167,17 +167,15 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
   }, [sdkReady, plan]);
 
   return createPortal(
-    <>
-      {/* Backdrop — renderizado no body via portal, fora do stacking context do header */}
+    <div
+      className="fixed inset-0 z-[200] overflow-y-auto bg-background/80 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div
-        className="fixed inset-0 z-[200] bg-background/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      {/* Container de scroll — pointer-events-none para cliques passarem ao backdrop */}
-      <div className="fixed inset-0 z-[200] overflow-y-auto pointer-events-none">
-        <div className="flex min-h-full items-center justify-center p-4 py-6">
-          {/* Card — pointer-events-auto reativa interação */}
-          <div className="pointer-events-auto w-full max-w-md rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-4">
+        className="flex min-h-full items-center justify-center p-4 py-6"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        <div className="w-full max-w-md rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-4">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -304,10 +302,9 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
             </p>
           </form>
         )}
-          </div>
         </div>
       </div>
-    </>,
+    </div>,
     document.body
   );
 }
