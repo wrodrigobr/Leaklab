@@ -828,10 +828,18 @@ export const subscription = {
       body: JSON.stringify({ plan }),
     }),
 
-  checkout: (plan: string, card_token: string) =>
+  checkout: (
+    plan: string,
+    card_token: string,
+    payment_method_id?: string,
+    issuer_id?: string,
+    identification_type?: string,
+    identification_number?: string,
+    payer_email?: string,
+  ) =>
     request<{ ok: boolean; plan: string; subscription_id: string }>("/subscription/checkout", {
       method: "POST",
-      body: JSON.stringify({ plan, card_token }),
+      body: JSON.stringify({ plan, card_token, payment_method_id, issuer_id, identification_type, identification_number, payer_email }),
     }),
 
   invoices: () => request<{ invoices: Invoice[] }>("/subscription/invoices"),

@@ -161,6 +161,42 @@ def test_checkout_approved_updates_user_plan():
     print(f"OK  test_checkout_approved_updates_user_plan | plan={user_data['plan']}")
 
 
+def test_checkout_forwards_identification():
+    """identification_type/number do form são repassados ao gateway MP."""
+    c = _make_client()
+    token = _register_and_login(c, 'ident')
+    with patch('api.app.create_subscription', return_value=_mock_sub('authorized', 'SUB_ID')) as mock_cs:
+        r = c.post('/subscription/checkout',
+                   json={'plan': 'starter', 'card_token': 'tok_id',
+                         'identification_type': 'CPF', 'identification_number': '12345678909'},
+                   headers=_auth(token))
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_data(as_text=True)}"
+    call_kwargs = mock_cs.call_args[1] if mock_cs.call_args[1] else {}
+    call_args   = mock_cs.call_args[0] if mock_cs.call_args[0] else ()
+    # identification fields deve ter chegado ao gateway
+    assert call_kwargs.get('identification_type') == 'CPF' or (len(call_args) > 6 and call_args[6] == 'CPF'), \
+        f"identification_type not forwarded: kwargs={call_kwargs} args={call_args}"
+    print("OK  test_checkout_forwards_identification")
+
+
+def test_checkout_payer_email_override():
+    """payer_email do form substitui o email do usuário logado."""
+    c = _make_client()
+    token = _register_and_login(c, 'emailov')
+    with patch('api.app.create_subscription', return_value=_mock_sub('authorized', 'SUB_EM')) as mock_cs:
+        r = c.post('/subscription/checkout',
+                   json={'plan': 'starter', 'card_token': 'tok_em',
+                         'payer_email': 'test_buyer@testuser.com'},
+                   headers=_auth(token))
+    assert r.status_code == 200
+    # payer_email customizado deve ter chegado ao gateway
+    call_kwargs = mock_cs.call_args[1] if mock_cs.call_args[1] else {}
+    assert call_kwargs.get('payer_email') == 'test_buyer@testuser.com' or \
+           'test_buyer@testuser.com' in str(mock_cs.call_args), \
+        f"payer_email override not forwarded: {mock_cs.call_args}"
+    print("OK  test_checkout_payer_email_override")
+
+
 def test_checkout_mp_error_returns_502():
     """OTHE/FUND/SECU — MP recusa o cartão → backend retorna 502."""
     c = _make_client()

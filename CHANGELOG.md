@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.28.1] — 2026-05-01 — BACK-015 fix: payer.identification + debugging
+
+### Pagamentos
+- **`mercadopago_gateway.py`** — `create_subscription` aceita `identification_type`/`identification_number`; inclui `payer.identification` no body do `/v1/payments` (obrigatório no Brasil); log completo do response de erro
+- **`POST /subscription/checkout`** — extrai `identification_type`, `identification_number` e `payer_email` do body; `payer_email` do form substitui email do usuário quando fornecido (permite usar email de conta teste MP)
+- **`CheckoutModal.tsx`** — extrai `identificationType`, `identificationNumber`, `cardholderEmail` de `getCardFormData()` e envia ao backend
+- **`api.ts`** — `subscription.checkout()` aceita os novos campos
+
+### Testes
+- 2 novos testes: `test_checkout_forwards_identification`, `test_checkout_payer_email_override`
+- 23 testes de subscription — 0 regressões
+
+---
+
 ## [v0.28.0] — 2026-04-27 — BACK-015: Mercado Pago Transparent Checkout
 
 ### Pagamentos

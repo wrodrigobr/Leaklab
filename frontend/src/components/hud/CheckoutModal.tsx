@@ -144,9 +144,13 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
           setSubmitting(true);
           setError(null);
           try {
-            const { token } = formRef.current.getCardFormData();
+            const { token, paymentMethodId, issuerId, identificationType, identificationNumber, cardholderEmail } =
+              formRef.current.getCardFormData() as {
+                token: string; paymentMethodId: string; issuerId: string;
+                identificationType: string; identificationNumber: string; cardholderEmail: string;
+              };
             if (!token) throw new Error("Token de cartão não gerado. Verifique os dados e tente novamente.");
-            await subscription.checkout(plan, token);
+            await subscription.checkout(plan, token, paymentMethodId, issuerId, identificationType, identificationNumber, cardholderEmail);
             if (!active) return;
             setSuccess(true);
             await refreshUser();

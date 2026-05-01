@@ -8,6 +8,7 @@ import os
 import hmac
 import hashlib
 import logging
+import uuid
 import requests as _req
 
 log = logging.getLogger(__name__)
@@ -35,35 +36,50 @@ def create_subscription(
     payer_email: str,
     card_token: str,
     user_id: int,
+    payment_method_id: str | None = None,
+    issuer_id: str | None = None,
+    identification_type: str | None = None,
+    identification_number: str | None = None,
 ) -> dict:
     """
     Cobra o cartão via /v1/payments (Checkout Transparente).
     Retorna dict com id e status do pagamento.
-    Renovação mensal é gerenciada pelo backend via webhooks ou cron.
     """
     amount = PLAN_AMOUNTS[plan_name]
+    payer: dict = {"email": payer_email}
+    if identification_type and identification_number:
+        payer["identification"] = {
+            "type":   identification_type,
+            "number": identification_number,
+        }
+    body: dict = {
+        "transaction_amount": amount,
+        "token":              card_token,
+        "description":        f"LeakLabs {plan_name.title()} — 30 dias",
+        "installments":       1,
+        "payer":              payer,
+        "external_reference":   f"user_{user_id}_{plan_name}",
+        "statement_descriptor": "LEAKLABS",
+        "metadata": {
+            "user_id":   user_id,
+            "plan_name": plan_name,
+        },
+    }
+    if payment_method_id:
+        body["payment_method_id"] = payment_method_id
+    if issuer_id:
+        body["issuer_id"] = int(issuer_id) if str(issuer_id).isdigit() else issuer_id
+
+    log.info("MP /v1/payments payload: amount=%s method=%s email=%s id_type=%s",
+             amount, payment_method_id, payer_email, identification_type)
     resp = _req.post(
         f"{MP_BASE}/v1/payments",
-        json={
-            "transaction_amount": amount,
-            "token":              card_token,
-            "description":        f"LeakLabs {plan_name.title()} — 30 dias",
-            "installments":       1,
-            "payer": {
-                "email": payer_email,
-            },
-            "external_reference": f"user_{user_id}_{plan_name}",
-            "statement_descriptor": "LEAKLABS",
-            "metadata": {
-                "user_id":   user_id,
-                "plan_name": plan_name,
-            },
-        },
-        headers=_headers(),
+        json=body,
+        headers={**_headers(), "X-Idempotency-Key": str(uuid.uuid4())},
         timeout=30,
     )
     if not resp.ok:
-        log.error("MP create_subscription error %s: %s", resp.status_code, resp.text[:500])
+        log.error("MP create_subscription error %s: %s", resp.status_code, resp.text)
     resp.raise_for_status()
     data = resp.json()
     # Normaliza para o formato esperado pelo app.py (id + status)

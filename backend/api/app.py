@@ -2167,22 +2167,30 @@ def subscription_upgrade():
 @limiter.limit("5 per hour")
 def subscription_checkout():
     """Cria assinatura recorrente via Mercado Pago Transparent Checkout."""
-    data       = request.get_json(silent=True) or {}
-    plan       = data.get('plan')
-    card_token = data.get('card_token')
+    data                  = request.get_json(silent=True) or {}
+    plan                  = data.get('plan')
+    card_token            = data.get('card_token')
+    payment_method_id     = data.get('payment_method_id')
+    issuer_id             = data.get('issuer_id')
+    identification_type   = data.get('identification_type')
+    identification_number = data.get('identification_number')
+    payer_email           = data.get('payer_email') or g.user.get('email', '')
 
     if plan not in ('starter', 'pro'):
         return jsonify({'error': 'Plano inválido. Use starter ou pro.'}), 400
     if not card_token:
         return jsonify({'error': 'card_token obrigatório'}), 400
 
-    payer_email = g.user.get('email', '')
     try:
         sub = create_subscription(
             plan_name=plan,
             payer_email=payer_email,
             card_token=card_token,
             user_id=g.user_id,
+            payment_method_id=payment_method_id,
+            issuer_id=issuer_id,
+            identification_type=identification_type,
+            identification_number=identification_number,
         )
     except Exception as e:
         log.exception("MP checkout error for user %s plan %s", g.user_id, plan)
