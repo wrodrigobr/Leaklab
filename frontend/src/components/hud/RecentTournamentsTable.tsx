@@ -21,13 +21,15 @@ function formatDate(iso: string | null): string {
 
 function formatTournamentLabel(row: Tournament): string {
   if (row.tournament_name) return row.tournament_name;
-  return row.site;
+  return `#${row.tournament_id}`;
 }
 
-function formatBadge(row: Tournament): string {
-  const name = (row.tournament_name ?? "").toLowerCase();
-  if (name.includes("spin")) return "Spin&Go";
-  if (name.startsWith("sng")) return "SNG";
+function formatBadge(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes("spin")) return "Spin&Go";
+  if (n.includes("satellite") || n.includes("satélite")) return "SAT";
+  if (n.includes("knockout") || n.includes("bounty") || /\bpko\b/.test(n) || /\bko\b/.test(n)) return "KO";
+  if (n.includes("sit & go") || n.includes("sit&go") || n.startsWith("sng") || /\bsng\b/.test(n)) return "SNG";
   return "MTT";
 }
 
@@ -91,11 +93,14 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                           {formatTournamentLabel(row)}
                         </span>
                         <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                          {formatBadge(row)}
+                          {formatBadge(row.tournament_name ?? "")}
                         </span>
                       </div>
                       <div className="font-mono text-[10px] text-muted-foreground">
                         {row.tournament_id}
+                        {row.hands_count != null && (
+                          <span className="ml-2 text-muted-foreground/60">{row.hands_count} mãos</span>
+                        )}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-foreground">

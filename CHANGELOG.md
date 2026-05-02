@@ -9,6 +9,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.31.0] — 2026-05-02 — Sprint A: UX-001 + UX-003 + LLM template upgrade
+
+### Frontend — UX-001: Lista de torneios melhorada
+- **`RecentTournamentsTable.tsx`** — fallback de nome agora usa `#tournament_id` (era `site`); badge detection estendida: +SAT (satellite), +KO (knockout/bounty/PKO), +SNG (sit & go variants); subtitle mostra `{hands_count} mãos` abaixo do ID
+- **`Tournaments.tsx`** — coluna "ID" renomeada para "Torneio"; mesmas melhorias de badge e fallback; `{hands_count} mãos` no subtitle
+
+### Frontend — UX-003: Tooltips e score auto-explicativo
+- **`TournamentDetail.tsx`** — componente `InfoTooltip` (HelpCircle + Radix Tooltip) adicionado a cabeçalhos das seções fase/textura e às colunas "Erros %" e "Score Médio"; tooltips explicam os thresholds (M-Ratio, texturas de board com exemplos de cartas, % de erro, faixas do score)
+- **`TournamentDetail.tsx`** — componente `ScoreLabel` exibe rótulo colorido (Ótimo / Bom / Moderado / Alto) inline ao score para leitura imediata sem referência externa
+
+### Backend / IA — LLM template upgrade
+- **`llm_explainer.py`** — `analyze_single_decision` migrada de 3 parágrafos genéricos para template estruturado em 5 seções: ❌ O Erro / 📐 A Matemática / 🧭 O Contexto / ✅ A Ação Correta / 💡 A Lição; `max_tokens` 500 → 900
+
+### Infra — BACK-007 (confirmado como já implementado)
+- `UploadQueue.tsx` + `HudHeader.tsx` já implementavam upload múltiplo com fila sequencial — confirmado durante Sprint A; nenhuma mudança necessária
+
+---
+
 ## [v0.30.0] — 2026-05-02 — Análise por Fase e Textura de Board
 
 ### Backend

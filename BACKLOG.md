@@ -6,25 +6,6 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ---
 
-## [UX-001] — Lista de torneios: melhorar informações exibidas
-
-**Reportado:** 2026-04-26
-
-**Problema:** Na tabela de torneios recentes, a coluna de nome exibe `site + nome do hero`, o que é redundante (hero é sempre o próprio usuário). Faltam informações úteis como tipo de torneio (MTT vs Sit-and-Go) e descrição.
-
-**Melhorias desejadas:**
-- Remover o nome do hero da listagem — substituir por informação útil
-- Exibir tipo de torneio: MTT, SNG/Sit-and-Go, Spin&Go (detectável via número de jogadores, structura de níveis ou nome do torneio)
-- Exibir descrição do torneio quando disponível (ex: "$1.96+$0.24 NLH" já está no título do arquivo)
-- Extrair e exibir número de jogadores da mesa inicial como indicativo do formato
-
-**Arquivos a modificar:**
-- `backend/api/app.py` ou `parser.py` — extrair tipo/formato do torneio no parsing
-- `frontend/src/components/hud/RecentTournamentsTable.tsx` — ajustar coluna nome
-- `frontend/src/pages/coach/StudentDetail.tsx` → `TournamentsTab` — idem
-
----
-
 ## [BUG-001] — Prêmio do torneio calculado incorretamente
 
 **Reportado:** 2026-04-26
@@ -76,7 +57,7 @@ else:
 | **Sprint 6** | BACK-002 | Feed de progresso + baseline | ~9h | Coach acompanha evolução temporal — argumento de venda do coaching |
 | **Sprint 7** | BACK-006 (parte 1) | Perfil estendido do coach + reviews | ~10h | Prepara os coaches para serem descobertos |
 | **Sprint 8** | BACK-006 (parte 2) | Diretório público + marketplace | ~10h | Alunos descobrem coaches — crescimento orgânico da plataforma |
-| **Sprint 9** | BACK-007 | Importação múltipla com fila | ~6h | UX de upload em escala — usuário importa toda a semana de uma vez |
+| ~~Sprint 9~~ | ~~BACK-007~~ | ~~Importação múltipla com fila~~ | ~~6h~~ | ✅ Já implementado |
 | **Sprint 10** | BACK-009 | Sistema de nível + gamificação | ~8h | Progressão clara — aluno sabe onde está e o que falta; coach usa como referência |
 | **Sprint 11** | BACK-010 | Planos comerciais + monetização | ~12h | Plataforma sustentável — freemium para alunos, revenue share para coaches |
 | **Sprint 12** | BACK-011 | Segurança: anti-injection + moderação de conteúdo | ~8h | Plataforma segura para uso público — proteção contra abuso de IA e conteúdo inapropriado |

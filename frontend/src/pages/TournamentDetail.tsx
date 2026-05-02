@@ -15,10 +15,12 @@ import {
   Loader2,
   Brain,
   RefreshCw,
+  HelpCircle,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { TournamentAiReport } from "@/components/hud/TournamentAiReport";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { tournaments, Tournament, TournamentDecision, PhaseData, TextureData } from "@/lib/api";
 
@@ -151,6 +153,38 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
     });
   });
   return hands;
+}
+
+// ── Tooltip helper ───────────────────────────────────────────────────────────
+
+function InfoTooltip({ children }: { children: React.ReactNode }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <HelpCircle className="inline-block size-3 cursor-help text-muted-foreground/60 hover:text-muted-foreground transition-colors ml-1 align-middle" aria-hidden />
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[260px] text-xs leading-relaxed font-normal normal-case tracking-normal">
+          {children}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function ScoreLabel({ score }: { score: number }) {
+  const { label, cls } = score < 0.08
+    ? { label: "Ótimo",    cls: "text-primary" }
+    : score < 0.15
+    ? { label: "Bom",      cls: "text-primary/70" }
+    : score < 0.25
+    ? { label: "Moderado", cls: "text-warning" }
+    : { label: "Alto",     cls: "text-destructive" };
+  return (
+    <span className={cn("ml-1.5 font-mono text-[9px] uppercase tracking-wider", cls)}>
+      {label}
+    </span>
+  );
 }
 
 // ── Severity meta ────────────────────────────────────────────────────────────
@@ -307,6 +341,13 @@ const TournamentDetail = () => {
               <div className="mb-3 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-2">
                 <span className="inline-block size-1.5 rounded-full bg-primary" />
                 Análise por Fase
+                <InfoTooltip>
+                  Agrupa suas decisões pelas fases do torneio, derivadas do <strong>M-Ratio</strong> (sua pilha ÷ custo de uma órbita completa de blinds+antes).<br /><br />
+                  <strong>Folgado (M≥20):</strong> jogo completo, sem urgência.<br />
+                  <strong>Médio (M 10–20):</strong> jogo restrito, priorize spots favoráveis.<br />
+                  <strong>Pressão (M 6–10):</strong> zona de reshove, fold equity crítica.<br />
+                  <strong>Crítico (M&lt;6):</strong> push/fold puro, math decide tudo.
+                </InfoTooltip>
               </div>
               <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-xs">
@@ -315,8 +356,26 @@ const TournamentDetail = () => {
                       <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Fase</th>
                       <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">M-Ratio</th>
                       <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Decisões</th>
-                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Erros %</th>
-                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Score Médio</th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Erros %
+                        <InfoTooltip>
+                          % de decisões classificadas como erro (pequeno ou claro) nesta fase.<br /><br />
+                          <strong>Abaixo de 20%:</strong> consistente.<br />
+                          <strong>20–40%:</strong> atenção — fase problemática.<br />
+                          <strong>Acima de 40%:</strong> leak grave nesta fase.
+                        </InfoTooltip>
+                      </th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Score Médio
+                        <InfoTooltip>
+                          Pontuação média de erro das decisões nesta fase.<br /><br />
+                          <strong>Abaixo de 0.08:</strong> ótimo — quase sem erros.<br />
+                          <strong>0.08–0.15:</strong> bom — erros leves e raros.<br />
+                          <strong>0.15–0.25:</strong> moderado — ajustes necessários.<br />
+                          <strong>Acima de 0.25:</strong> alto — leak relevante.<br /><br />
+                          Quanto menor, melhor.
+                        </InfoTooltip>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -328,8 +387,11 @@ const TournamentDetail = () => {
                         <td className={cn("px-4 py-2.5 text-right font-mono tabular-nums", row.mistake_rate > 40 ? "text-destructive" : row.mistake_rate > 25 ? "text-warning" : "text-primary")}>
                           {row.mistake_rate.toFixed(1)}%
                         </td>
-                        <td className={cn("px-4 py-2.5 text-right font-mono tabular-nums", row.avg_score > 2 ? "text-destructive" : "text-muted-foreground")}>
-                          {row.avg_score.toFixed(3)}
+                        <td className="px-4 py-2.5 text-right font-mono tabular-nums">
+                          <span className={cn(row.avg_score > 0.25 ? "text-destructive" : row.avg_score > 0.15 ? "text-warning" : "text-muted-foreground")}>
+                            {row.avg_score.toFixed(3)}
+                          </span>
+                          <ScoreLabel score={row.avg_score} />
                         </td>
                       </tr>
                     ))}
@@ -344,6 +406,14 @@ const TournamentDetail = () => {
               <div className="mb-3 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-2">
                 <span className="inline-block size-1.5 rounded-full bg-primary" />
                 Pós-Flop por Textura de Board
+                <InfoTooltip>
+                  Classifica os boards pós-flop pelo nível de conectividade e risco de draws, revelando em que tipo de textura você comete mais erros.<br /><br />
+                  <strong>Seco:</strong> poucas draws possíveis (ex: A♠ 7♦ 2♣).<br />
+                  <strong>Coordenado:</strong> potencial de sequência (ex: K♠ Q♦ J♣).<br />
+                  <strong>Molhado:</strong> flush draw + straight draw (ex: J♥ T♠ 9♥).<br />
+                  <strong>Monocromático:</strong> três cartas do mesmo naipe.<br />
+                  <strong>Pareado:</strong> par no board (ex: A♠ A♦ 7♣).
+                </InfoTooltip>
               </div>
               <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-xs">
@@ -351,8 +421,23 @@ const TournamentDetail = () => {
                     <tr className="border-b border-border bg-hud-surface">
                       <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Textura</th>
                       <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Decisões</th>
-                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Erros %</th>
-                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Score Médio</th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Erros %
+                        <InfoTooltip>
+                          % de decisões classificadas como erro nesta textura de board.<br />
+                          Uma taxa alta indica dificuldade em jogar boards deste tipo.
+                        </InfoTooltip>
+                      </th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Score Médio
+                        <InfoTooltip>
+                          Pontuação média de erro nas decisões pós-flop nesta textura.<br /><br />
+                          <strong>Abaixo de 0.08:</strong> ótimo.<br />
+                          <strong>0.08–0.15:</strong> bom.<br />
+                          <strong>0.15–0.25:</strong> moderado.<br />
+                          <strong>Acima de 0.25:</strong> alto — priorize este board type no estudo.
+                        </InfoTooltip>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -363,8 +448,11 @@ const TournamentDetail = () => {
                         <td className={cn("px-4 py-2.5 text-right font-mono tabular-nums", row.mistake_rate > 40 ? "text-destructive" : row.mistake_rate > 25 ? "text-warning" : "text-primary")}>
                           {row.mistake_rate.toFixed(1)}%
                         </td>
-                        <td className={cn("px-4 py-2.5 text-right font-mono tabular-nums", row.avg_score > 2 ? "text-destructive" : "text-muted-foreground")}>
-                          {row.avg_score.toFixed(3)}
+                        <td className="px-4 py-2.5 text-right font-mono tabular-nums">
+                          <span className={cn(row.avg_score > 0.25 ? "text-destructive" : row.avg_score > 0.15 ? "text-warning" : "text-muted-foreground")}>
+                            {row.avg_score.toFixed(3)}
+                          </span>
+                          <ScoreLabel score={row.avg_score} />
                         </td>
                       </tr>
                     ))}

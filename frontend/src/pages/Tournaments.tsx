@@ -229,7 +229,7 @@ const Tournaments = () => {
                   <tr>
                     {[
                       { k: "played_at" as SortKey, label: "Data" },
-                      { k: null, label: "ID" },
+                      { k: null, label: "Torneio" },
                       { k: null, label: "Rede" },
                       { k: "buy_in" as SortKey, label: "Buy-in" },
                       { k: "place" as SortKey, label: "Posição" },
@@ -279,11 +279,19 @@ const Tournaments = () => {
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-foreground">
-                              {t.tournament_name ?? t.site}
+                              {t.tournament_name ?? `#${t.tournament_id}`}
                             </span>
                             {(() => {
-                              const name = (t.tournament_name ?? "").toLowerCase();
-                              const badge = name.includes("spin") ? "Spin&Go" : name.startsWith("sng") ? "SNG" : "MTT";
+                              const n = (t.tournament_name ?? "").toLowerCase();
+                              const badge = n.includes("spin")
+                                ? "Spin&Go"
+                                : n.includes("satellite") || n.includes("satélite")
+                                ? "SAT"
+                                : n.includes("knockout") || n.includes("bounty") || /\bpko\b/.test(n) || /\bko\b/.test(n)
+                                ? "KO"
+                                : n.includes("sit & go") || n.includes("sit&go") || n.startsWith("sng") || /\bsng\b/.test(n)
+                                ? "SNG"
+                                : "MTT";
                               return (
                                 <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                                   {badge}
@@ -293,6 +301,9 @@ const Tournaments = () => {
                           </div>
                           <div className="font-mono text-[10px] text-muted-foreground">
                             {t.tournament_id}
+                            {t.hands_count != null && (
+                              <span className="ml-2 text-muted-foreground/60">{t.hands_count} mãos</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3.5">
