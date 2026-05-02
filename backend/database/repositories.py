@@ -117,7 +117,18 @@ def get_user_by_email(email: str) -> Optional[dict]:
     conn = get_conn()
     try:
         row = conn.execute(
-            "SELECT * FROM users WHERE email = ?", (email,)
+            _adapt("SELECT * FROM users WHERE email = ?"), (email,)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_user_by_username(username: str) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            _adapt("SELECT id, username, role FROM users WHERE username = ?"), (username,)
         ).fetchone()
         return dict(row) if row else None
     finally:

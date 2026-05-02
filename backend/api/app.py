@@ -29,7 +29,7 @@ from leaklab.llm_explainer import explain_decisions, generate_tournament_summary
 
 from database.schema import init_db
 from database.repositories import (
-    create_user, verify_password, get_user_by_email, get_user_by_id,
+    create_user, verify_password, get_user_by_email, get_user_by_id, get_user_by_username,
     save_tournament, save_decisions, get_tournaments,
     get_tournament, get_tournament_by_db_id, get_decisions, update_llm_summary,
     get_llm_cache, set_llm_cache,
@@ -164,6 +164,8 @@ def register():
         return jsonify({'error': 'Senha deve ter pelo menos 8 caracteres'}), 400
     if get_user_by_email(email):
         return jsonify({'error': 'Email já cadastrado'}), 409
+    if get_user_by_username(username):
+        return jsonify({'error': 'Nome de usuário já está em uso'}), 409
 
     try:
         user_id = create_user(username, email, password, role)

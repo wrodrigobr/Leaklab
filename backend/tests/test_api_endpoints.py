@@ -150,6 +150,82 @@ def test_register_short_password():
     print("OK  test_register_short_password")
 
 
+def test_register_coach_success():
+    """Criação de conta com role=coach deve retornar 201 com token e role corretos."""
+    c = _make_client()
+    r = c.post('/auth/register',
+               json={'username': 'coachjohn', 'email': 'coach@test.com',
+                     'password': 'pass1234', 'role': 'coach'},
+               content_type='application/json')
+    assert r.status_code == 201, f"Expected 201, got {r.status_code}: {r.get_json()}"
+    data = r.get_json()
+    assert 'token' in data, "Resposta não contém token"
+    assert 'user_id' in data, "Resposta não contém user_id"
+    assert data.get('role') == 'coach', f"role esperado='coach', obtido='{data.get('role')}'"
+    assert data['user_id'] is not None, "user_id não pode ser None"
+    print(f"OK  test_register_coach_success | user_id={data['user_id']}")
+
+
+def test_register_coach_can_login():
+    """Após criar conta coach, login deve funcionar e retornar role=coach."""
+    c = _make_client()
+    email, pw = 'coachlogin@test.com', 'pass1234'
+    c.post('/auth/register',
+           json={'username': 'coachlogin', 'email': email,
+                 'password': pw, 'role': 'coach'},
+           content_type='application/json')
+    r = c.post('/auth/login',
+               json={'email': email, 'password': pw},
+               content_type='application/json')
+    assert r.status_code == 200, f"Login falhou: {r.status_code}: {r.get_json()}"
+    data = r.get_json()
+    assert data.get('role') == 'coach', f"role esperado='coach', obtido='{data.get('role')}'"
+    print(f"OK  test_register_coach_can_login | role={data.get('role')}")
+
+
+def test_register_coach_me_returns_correct_role():
+    """/auth/me após login de coach deve retornar role=coach."""
+    c = _make_client()
+    email, pw = 'coachme@test.com', 'pass1234'
+    reg = c.post('/auth/register',
+                 json={'username': 'coachme', 'email': email,
+                       'password': pw, 'role': 'coach'},
+                 content_type='application/json')
+    assert reg.status_code == 201, f"Register falhou: {reg.get_json()}"
+    token = reg.get_json()['token']
+    r = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert r.status_code == 200, f"/auth/me retornou {r.status_code}: {r.get_json()}"
+    data = r.get_json()
+    assert data.get('role') == 'coach', f"role esperado='coach', obtido='{data.get('role')}'"
+    print(f"OK  test_register_coach_me_returns_correct_role | role={data.get('role')}")
+
+
+def test_register_coach_duplicate_username():
+    """Username duplicado para coach deve retornar 409."""
+    c = _make_client()
+    payload = {'username': 'dupcoach', 'email': 'dupcoach@test.com',
+               'password': 'pass1234', 'role': 'coach'}
+    c.post('/auth/register', json=payload, content_type='application/json')
+    r = c.post('/auth/register',
+               json={**payload, 'email': 'other@test.com'},
+               content_type='application/json')
+    assert r.status_code in (409, 400), f"Expected 409/400, got {r.status_code}"
+    print(f"OK  test_register_coach_duplicate_username | status={r.status_code}")
+
+
+def test_register_invalid_role_defaults_to_player():
+    """Role inválido deve ser tratado como player, não causar erro."""
+    c = _make_client()
+    r = c.post('/auth/register',
+               json={'username': 'roleinvalid', 'email': 'roleinvalid@test.com',
+                     'password': 'pass1234', 'role': 'superadmin'},
+               content_type='application/json')
+    assert r.status_code == 201, f"Expected 201, got {r.status_code}: {r.get_json()}"
+    data = r.get_json()
+    assert data.get('role') == 'player', f"role esperado='player', obtido='{data.get('role')}'"
+    print(f"OK  test_register_invalid_role_defaults_to_player | role={data.get('role')}")
+
+
 # ── /auth/login ───────────────────────────────────────────────────────────────
 
 def test_login_success():
