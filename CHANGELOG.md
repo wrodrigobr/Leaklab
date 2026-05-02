@@ -9,6 +9,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.32.0] — 2026-05-02 — Sprint 4: BACK-001 + BACK-005 (confirmados + gap fechado)
+
+### Backend
+- **`api/app.py` → `history_tournament`** — enriquece cada decisão com `has_annotation: bool` usando `get_annotations_for_decisions`; aluno agora sabe quais mãos têm anotação do coach sem fazer request extra
+
+### Frontend
+- **`api.ts`** — `TournamentDecision` ganha campo opcional `has_annotation?: boolean`
+- **`TournamentDetail.tsx`** — `Hand.hasAnnotation` propagado via `groupByHand` (true se qualquer decisão do grupo tem anotação); badge "Coach" com ícone GraduationCap aparece ao lado do severity badge em mãos anotadas pelo coach
+
+### Confirmado já implementado (BACK-001 e BACK-005 core)
+- Tabela `coach_hand_annotations` + endpoints GET/POST/DELETE `/coach/student/:id/hand-annotations`
+- `AnnotationForm` no `WorstTab` do `StudentDetail.tsx` (visão coach)
+- Replayer: painel de anotação para coach (form com modo/ação/veredito) e balão read-only para aluno
+- Ambos os endpoints de replay (`/replay/:t/:h` e `/coach/student/:id/replay/:t/:h`) incluem `coach_annotations`
+- Badge "✓ Coach" na listagem de torneios do aluno (`Tournaments.tsx`) via `get_reviewed_tournament_ids()`
+
+---
+
 ## [v0.31.0] — 2026-05-02 — Sprint A: UX-001 + UX-003 + LLM template upgrade
 
 ### Frontend — UX-001: Lista de torneios melhorada

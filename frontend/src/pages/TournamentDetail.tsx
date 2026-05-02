@@ -16,6 +16,7 @@ import {
   Brain,
   RefreshCw,
   HelpCircle,
+  GraduationCap,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
@@ -47,6 +48,7 @@ interface Hand {
   levelSb?: number | null;
   levelBb?: number | null;
   levelNum?: number | null;
+  hasAnnotation?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -150,6 +152,7 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
       levelSb: worst.level_sb,
       levelBb: worst.level_bb,
       levelNum: worst.level_num,
+      hasAnnotation: decs.some((d) => d.has_annotation),
     });
   });
   return hands;
@@ -556,6 +559,12 @@ const TournamentDetail = () => {
                           <Icon className="size-3" aria-hidden />
                           {meta.label}
                         </span>
+                        {h.hasAnnotation && (
+                          <span className="inline-flex items-center gap-1 rounded-sm bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-violet-400 ring-1 ring-violet-400/30">
+                            <GraduationCap className="size-3" aria-hidden />
+                            Coach
+                          </span>
+                        )}
                         {h.position && h.position !== "—" && (
                           <span className="rounded-sm bg-secondary px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground">
                             {h.position}

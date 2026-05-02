@@ -465,6 +465,9 @@ def history_tournament(tournament_id):
     if not t:
         return jsonify({'error': 'Torneio não encontrado'}), 404
     decisions = get_decisions(t['id'])
+    annotated = {a['decision_id'] for a in get_annotations_for_decisions([d['id'] for d in decisions])}
+    for d in decisions:
+        d['has_annotation'] = d['id'] in annotated
     return jsonify({'tournament': t, 'decisions': decisions})
 
 

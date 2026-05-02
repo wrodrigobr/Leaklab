@@ -147,6 +147,7 @@ export interface TournamentDecision {
   level_bb: number | null;
   level_num: number | null;
   note: string | null;
+  has_annotation?: boolean;
 }
 
 export interface ReplaySeat {
