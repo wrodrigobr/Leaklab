@@ -1,0 +1,42 @@
+{
+  "title": "Tournament History",
+  "eyebrow": "Performance Analysis",
+  "subtitle": "Review your results, filter by network, and analyze decisions hand-by-hand.",
+  "filters": {
+    "all": "All",
+    "search": "Search tournament…",
+    "clearAll": "Clear all",
+    "confirmClear": "Confirm?",
+    "confirmClearBtn": "Yes, clear all",
+    "clearing": "Clearing…"
+  },
+  "sort": {
+    "date": "Date",
+    "buyin": "Buy-in",
+    "place": "Place",
+    "profit": "Profit"
+  },
+  "table": {
+    "date": "Date",
+    "tournament": "Tournament",
+    "network": "Network",
+    "buyin": "Buy-in",
+    "position": "Position",
+    "profit": "Result",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "badges": {
+    "spinGo": "Spin&Go",
+    "satellite": "SAT",
+    "ko": "KO",
+    "sng": "SNG",
+    "mtt": "MTT"
+  },
+  "empty": {
+    "noImports": "No tournaments imported yet. Use the Dashboard to upload.",
+    "noFilter": "No tournaments found for the current filters."
+  },
+  "deleteConfirm": "Delete tournament?",
+  "deleteAriaLabel": "Delete tournament"
+}

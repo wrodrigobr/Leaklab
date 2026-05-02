@@ -1,0 +1,70 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "tournaments": "Tournaments",
+    "study": "Study Plan",
+    "coach": "AI Coach",
+    "coaches": "Coaches",
+    "admin": "Admin",
+    "profile": "Profile",
+    "coachDashboard": "Dashboard"
+  },
+  "actions": {
+    "import": "Import",
+    "viewAll": "View all →",
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "generate": "Generate with AI",
+    "generating": "Generating…",
+    "loading": "Loading…",
+    "retry": "Try again",
+    "open": "Open",
+    "close": "Close",
+    "link": "Link",
+    "logout": "Log out"
+  },
+  "status": {
+    "analyzed": "Analyzed",
+    "pending": "In queue",
+    "active": "Active",
+    "inactive": "Inactive",
+    "paid": "Paid",
+    "free": "Free",
+    "pro": "PRO",
+    "coach": "Coach",
+    "new": "NEW",
+    "alpha": "ALPHA"
+  },
+  "labels": {
+    "date": "Date",
+    "tournament": "Tournament",
+    "buyin": "Buy-in",
+    "position": "Place",
+    "result": "Result",
+    "profit": "Profit",
+    "network": "Network",
+    "hands": "{{count}} hands",
+    "handsShort": "{{count}}h",
+    "place": "#{{place}}",
+    "noData": "—",
+    "demo": "demo",
+    "plan": "Plan",
+    "role": "Role"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "notFound": "Not found.",
+    "unauthorized": "Unauthorized.",
+    "noTournaments": "No tournaments imported yet. Use the Dashboard to upload.",
+    "noResults": "No results found for the current filters."
+  },
+  "engineActive": "Engine Active",
+  "sessionLocked": "ENC: AES-256 • LATENCY: 14ms • SESSION_LOCKED",
+  "docs": "Documentation",
+  "status_page": "Status",
+  "support": "Support"
+}

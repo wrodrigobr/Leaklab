@@ -1,6 +1,7 @@
-import { Activity, BarChart3, Bot, GraduationCap, LayoutDashboard, Shield, Trophy, UploadCloud, Users, UserCircle } from "lucide-react";
+import { Activity, BarChart3, Bot, GraduationCap, Globe, LayoutDashboard, Shield, Trophy, UploadCloud, Users, UserCircle } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { useUploadQueue } from "@/components/hud/UploadQueue";
 import { AccountMenu } from "@/components/hud/AccountMenu";
@@ -9,32 +10,81 @@ interface HudHeaderProps {
   onUpload?: () => void;
 }
 
-const playerNavItems = [
-  { label: "Dashboard",        mobileLabel: "Home",     to: "/dashboard",       icon: LayoutDashboard },
-  { label: "Tournaments",      mobileLabel: "Torneios", to: "/tournaments",     icon: Trophy },
-  { label: "Plano de Estudos", mobileLabel: "Estudos",  to: "/study",           icon: GraduationCap, badge: "NEW" },
-  { label: "AI Coach",         mobileLabel: "IA",       to: "/coach",           icon: Bot, badge: "ALPHA" },
-  { label: "Coaches",          mobileLabel: "Coaches",  to: "/coaches",         icon: Users },
+const LANGUAGES = [
+  { code: "pt-BR", label: "PT", flag: "🇧🇷" },
+  { code: "en",    label: "EN", flag: "🇺🇸" },
+  { code: "es",    label: "ES", flag: "🇪🇸" },
 ] as const;
 
-const coachNavItems = [
-  { label: "Dashboard", mobileLabel: "Dashboard", to: "/coach-dashboard",         icon: Users,       end: true },
-  { label: "Perfil",    mobileLabel: "Perfil",    to: "/coach-dashboard/profile", icon: UserCircle },
-] as const;
+function LanguageSwitcher() {
+  const { i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const current = LANGUAGES.find((l) => i18n.language.startsWith(l.code.split("-")[0]) && (l.code === "pt-BR" ? i18n.language.startsWith("pt") : true))
+    ?? LANGUAGES.find((l) => i18n.language.startsWith(l.code.split("-")[0]))
+    ?? LANGUAGES[0];
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="hidden sm:inline-flex items-center gap-1.5 rounded-md bg-card px-2.5 py-1.5 ring-1 ring-border text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
+        aria-label="Change language"
+      >
+        <Globe className="size-3" aria-hidden />
+        <span className="font-mono text-[10px] font-bold uppercase tracking-wide">{current.label}</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[80px] rounded-lg border border-border bg-card shadow-elevated overflow-hidden">
+            {LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
+                className={`flex w-full items-center gap-2 px-3 py-2 font-mono text-[10px] uppercase tracking-wide transition-colors hover:bg-primary/10 ${
+                  lang.code === current.code ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <span>{lang.flag}</span>
+                <span>{lang.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function HudHeader({ onUpload }: HudHeaderProps) {
   const { user } = useAuth();
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const playerNavItems = [
+    { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",       icon: LayoutDashboard },
+    { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments",     icon: Trophy },
+    { label: t("nav.study"),       mobileLabel: t("nav.study"),       to: "/study",           icon: GraduationCap, badge: t("status.new") },
+    { label: t("nav.coach"),       mobileLabel: t("nav.coach"),       to: "/coach",           icon: Bot, badge: t("status.alpha") },
+    { label: t("nav.coaches"),     mobileLabel: t("nav.coaches"),     to: "/coaches",         icon: Users },
+  ];
+
+  const coachNavItems = [
+    { label: t("nav.coachDashboard"), mobileLabel: t("nav.coachDashboard"), to: "/coach-dashboard",         icon: Users,       end: true },
+    { label: t("nav.profile"),        mobileLabel: t("nav.profile"),        to: "/coach-dashboard/profile", icon: UserCircle },
+  ];
+
   const adminNavItems = [
-    { label: "Admin", mobileLabel: "Admin", to: "/admin", icon: Shield, end: true },
-  ] as const;
+    { label: t("nav.admin"), mobileLabel: t("nav.admin"), to: "/admin", icon: Shield, end: true },
+  ];
 
   const navItems = (
-    user?.role === "admin"  ? adminNavItems  :
-    user?.role === "coach"  ? coachNavItems  :
+    user?.role === "admin" ? adminNavItems :
+    user?.role === "coach" ? coachNavItems :
     playerNavItems
-  ) as readonly { label: string; mobileLabel: string; to: string; icon: React.ElementType; badge?: string; end?: boolean }[];
+  ) as { label: string; mobileLabel: string; to: string; icon: React.ElementType; badge?: string; end?: boolean }[];
+
   const { enqueue, panel } = useUploadQueue(onUpload);
 
   return (
@@ -94,11 +144,11 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
             {user?.role !== "coach" && (
               <button
                 onClick={() => inputRef.current?.click()}
-                title="Importar torneio"
+                title={t("actions.import")}
                 className="hidden sm:inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/30 hover:bg-primary/20 transition-colors focus-visible:outline-none"
               >
                 <UploadCloud className="size-3.5" />
-                Import
+                {t("actions.import")}
               </button>
             )}
 
@@ -117,16 +167,18 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                 <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
               </span>
               <span className="font-mono text-[10px] font-medium uppercase tracking-widest-2 text-muted-foreground">
-                Engine Active
+                {t("engineActive")}
               </span>
             </div>
+
+            <LanguageSwitcher />
 
             {user && <AccountMenu />}
             {!user && (
               <button
                 onClick={() => navigate("/login")}
                 className="size-9 rounded-full bg-card ring-2 ring-border hover:ring-primary/40 transition-all flex items-center justify-center"
-                aria-label="Entrar"
+                aria-label="Sign in"
               >
                 <Activity className="size-4 text-primary" aria-hidden />
               </button>
@@ -168,7 +220,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
         <button
           onClick={() => inputRef.current?.click()}
           className="fixed bottom-[72px] right-4 z-50 md:hidden size-12 rounded-full bg-primary text-primary-foreground shadow-glow flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
-          aria-label="Importar torneio"
+          aria-label={t("actions.import")}
         >
           <UploadCloud className="size-5" aria-hidden />
         </button>

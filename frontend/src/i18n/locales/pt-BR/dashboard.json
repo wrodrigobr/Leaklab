@@ -1,0 +1,39 @@
+{
+  "eyebrow": "Sessão sincronizada",
+  "eyebrowEmpty": "Importe torneios para começar",
+  "title": "{{name}} — Centro de comando",
+  "titleDefault": "Centro de comando tático",
+  "subtitle": "Monitore métricas de performance, importe novos torneios e revise os leaks identificados pela IA em tempo real.",
+  "kpis": {
+    "roi": "Net ROI",
+    "roiTooltip": "Retorno sobre investimento acumulado. ROI positivo significa que você está lucrando acima do buy-in médio. Referência: jogadores regulares consistentes ficam entre +20% e +80% em MTTs.",
+    "roiDelta": "{{value}}% total",
+    "itm": "ITM Frequency",
+    "itmHint": "Field avg ~18.5%",
+    "itmTooltip": "Percentual de torneios em que você terminou no dinheiro (in-the-money). A média do field é ~18%. Acima de 22% sugere jogo sólido ou conservador; abaixo pode indicar bust-out precoce.",
+    "standard": "Standard %",
+    "standardHint": "decisões dentro do range",
+    "standardTooltip": "Percentual médio de decisões classificadas como 'standard' (score ≤ 0.08). Meta: acima de 70%. Abaixo de 60% indica volume significativo de erros que estão custando EV real.",
+    "events": "Total Eventos",
+    "eventsHint": "{{hands}} mãos",
+    "eventsHintEmpty": "Importe torneios",
+    "eventsTooltip": "Volume total de torneios analisados. Amostras menores que 30 torneios podem ter resultados financeiros distorcidos por variância. A análise de decisões é confiável a partir de ~500 mãos.",
+    "noData": "Sem dados"
+  },
+  "recentTournaments": {
+    "title": "Torneios recentes",
+    "viewAll": "Ver todos →"
+  },
+  "linkCoach": {
+    "message": "Tem um professor? Vincule seu perfil para compartilhar seu histórico.",
+    "action": "Vincular"
+  },
+  "aiConfidence": {
+    "title": "Confiança da IA",
+    "tooltip": "Indica a confiabilidade das análises baseada no volume de dados. Quanto mais torneios importados, mais precisas as recomendações de leaks e plano de estudos.",
+    "active": "ativo",
+    "noData": "sem dados",
+    "summary": "{{count}} torneios analisados. Volume suficiente para sugerir ajustes confiáveis.",
+    "empty": "Importe torneios para ativar a análise de confiança da IA."
+  }
+}

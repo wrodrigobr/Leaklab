@@ -9,6 +9,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.35.0] — 2026-05-02 — Sprint F: UX-005 Internacionalização (i18n) PT/EN/ES
+
+### Frontend
+
+- **`i18n/index.ts`** — setup `i18next` + `i18next-browser-languagedetector`; auto-detecta via `localStorage` → `navigator.language`; fallback `pt-BR`; namespaces: `common`, `dashboard`, `tournaments`, `study`, `auth`
+- **`main.tsx`** — importa `./i18n` para inicializar antes do React
+- **Locales PT-BR** — `common.json`, `dashboard.json`, `tournaments.json`, `study.json`, `auth.json`
+- **Locales EN** — `common.json`, `dashboard.json`, `tournaments.json`, `study.json`, `auth.json`
+- **Locales ES** — `common.json`, `dashboard.json`, `tournaments.json`, `study.json`, `auth.json`
+- **`HudHeader.tsx`** — `LanguageSwitcher` dropdown (🇧🇷 PT · 🇺🇸 EN · 🇪🇸 ES) no canto direito; nav labels e botão Import traduzidos via `t()`; preferência salva em `localStorage` (`leaklab_lang`)
+- **`Login.tsx`** — labels, placeholders e estados de loading traduzidos via namespace `auth`
+- **`Index.tsx`** — eyebrow, título, subtítulo, KPIs, AI Confidence e footer traduzidos via namespaces `dashboard` + `common`
+
+---
+
 ## [v0.34.0] — 2026-05-02 — Sprint C+E: BACK-014 + BACK-017 Revenue Share + Admin Panel
 
 ### Backend

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BarChart3, Loader2, GraduationCap, User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 
 const Login = () => {
@@ -13,6 +14,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login, register, user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation("auth");
 
   useEffect(() => {
     if (user) navigate(user.role === "coach" ? "/coach-dashboard" : "/dashboard", { replace: true });
@@ -28,12 +30,11 @@ const Login = () => {
       } else {
         await register(username, email, password, role);
       }
-      // redirect handled by useEffect above via user state update
     } catch (err: unknown) {
       if (err instanceof TypeError) {
-        setError("Não foi possível conectar ao servidor. Tente novamente.");
+        setError(t("errors.invalidCredentials"));
       } else {
-        setError(err instanceof Error ? err.message : "Erro desconhecido");
+        setError(err instanceof Error ? err.message : t("errors.invalidCredentials"));
       }
     } finally {
       setLoading(false);
@@ -62,21 +63,18 @@ const Login = () => {
 
         <div className="rounded-xl border border-border bg-hud-surface p-6 shadow-elevated">
           <div className="flex mb-6 border-b border-border">
-            {(["login", "register"] as const).map((t) => (
+            {(["login", "register"] as const).map((tabKey) => (
               <button
-                key={t}
+                key={tabKey}
                 type="button"
-                onClick={() => {
-                  setTab(t);
-                  setError("");
-                }}
+                onClick={() => { setTab(tabKey); setError(""); }}
                 className={`flex-1 pb-3 font-mono text-xs font-bold uppercase tracking-widest-2 transition-colors ${
-                  tab === t
+                  tab === tabKey
                     ? "text-primary border-b-2 border-primary -mb-px"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t === "login" ? "Entrar" : "Criar conta"}
+                {tabKey === "login" ? t("login.submit") : t("register.submit")}
               </button>
             ))}
           </div>
@@ -86,7 +84,7 @@ const Login = () => {
               <>
                 <div className="space-y-1.5">
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                    Nickname
+                    {t("register.username")}
                   </label>
                   <input
                     value={username}
@@ -129,7 +127,7 @@ const Login = () => {
 
             <div className="space-y-1.5">
               <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                E-mail
+                {t("login.email")}
               </label>
               <input
                 type="email"
@@ -144,7 +142,7 @@ const Login = () => {
 
             <div className="space-y-1.5">
               <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                Senha
+                {t("login.password")}
               </label>
               <input
                 type="password"
@@ -170,7 +168,9 @@ const Login = () => {
               className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
               {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              {tab === "login" ? "Entrar" : "Criar conta"}
+              {loading
+                ? (tab === "login" ? t("login.submitting") : t("register.submitting"))
+                : (tab === "login" ? t("login.submit") : t("register.submit"))}
             </button>
           </form>
         </div>

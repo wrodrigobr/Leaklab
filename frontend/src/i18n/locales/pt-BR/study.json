@@ -1,0 +1,66 @@
+{
+  "eyebrow": "Plano de Estudos · Adaptive",
+  "title": "Seu roteiro tático personalizado",
+  "subtitle": "Diagnóstico de leaks, roteiro semanal, recursos curados e exercícios com correção automática.",
+  "toolbar": {
+    "planReady": "Plano gerado a partir dos seus leaks reais",
+    "planLoading": "Carregando plano de estudos…",
+    "analysisWaiting": "Aguarde enquanto o Coach IA analisa seu histórico.",
+    "managedBy": "Gerenciado por {{coach}}",
+    "managedSub": "Entre em contato para solicitar atualização",
+    "generateBtn": "Gerar com IA",
+    "generating": "Gerando…",
+    "regenerated": "Plano regenerado com IA."
+  },
+  "loading": {
+    "analyzing": "Coach IA analisando seus leaks…",
+    "firstTime": "Pode levar alguns segundos na primeira vez."
+  },
+  "error": {
+    "noTournaments": "Importe pelo menos um torneio para gerar um plano personalizado."
+  },
+  "kpis": {
+    "level": "Nível",
+    "levelValue": "Lv {{level}}",
+    "xpHint": "{{xp}}/500 XP",
+    "streak": "Streak",
+    "streakValue": "{{count}} dia",
+    "streakValue_plural": "{{count}} dias",
+    "streakHint": "Estude todo dia para manter",
+    "roadmap": "Roteiro",
+    "daysCompleted": "Dias concluídos",
+    "exercises": "Exercícios",
+    "exercisesHint": "Acertos no quiz"
+  },
+  "diagnosis": {
+    "title": "Diagnóstico priorizado",
+    "leaksCount": "{{count}} leaks ativos"
+  },
+  "weekly": {
+    "title": "Roteiro semanal",
+    "weekLabel": "Semana {{week}}",
+    "totalHint": "{{weeks}} semanas · ~{{hours}}h totais"
+  },
+  "resources": {
+    "title": "Recursos do leak",
+    "coachesTitle": "Coaches especializados neste leak",
+    "viewAll": "Ver todos →"
+  },
+  "howTo": {
+    "title": "Como usar",
+    "tip1": "Clique num leak para ver os recursos correspondentes na sidebar.",
+    "tip2": "Siga o roteiro diário e marque o dia como concluído.",
+    "tip3": "Resolva os exercícios abaixo para fixar cada conceito.",
+    "tip4": "Re-importe seu histórico ao fim da semana para medir o delta."
+  },
+  "exercises": {
+    "title": "Bateria de exercícios",
+    "hint": "Auto-correção · {{count}} questões"
+  },
+  "whatsapp": {
+    "title": "Treinar no WhatsApp",
+    "description": "Receba uma questão deste plano direto no WhatsApp. Responda, acerte e peça ao AI Coach para explicar o raciocínio.",
+    "cta": "Iniciar no WhatsApp →",
+    "hint": "Envie qualquer mensagem para começar · salve o número no celular"
+  }
+}

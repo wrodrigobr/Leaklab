@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Coins, Layers, Percent, Target, GraduationCap } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { KpiCard } from "@/components/hud/KpiCard";
 import { LeaksPanel } from "@/components/hud/LeaksPanel";
@@ -21,6 +22,8 @@ import { useAuth } from "@/lib/auth";
 
 const Index = () => {
   const { user } = useAuth();
+  const { t } = useTranslation("dashboard");
+  const { t: tc } = useTranslation("common");
   const [showLinkCoach, setShowLinkCoach] = useState(false);
   const [evo, setEvo]           = useState<EvolutionResponse | null>(null);
   const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
@@ -41,7 +44,6 @@ const Index = () => {
 
   const handleUpload = () => setRefreshKey((k) => k + 1);
 
-  // KPIs
   const totalInvested = tourns.reduce((s, t) => s + (t.buy_in ?? 0), 0);
   const totalProfit   = tourns.reduce((s, t) => s + (t.profit ?? 0), 0);
   const roi           = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : null;
@@ -50,7 +52,6 @@ const Index = () => {
   const totalEvents   = tourns.length;
   const totalHands    = tourns.reduce((s, t) => s + (t.hands_count ?? 0), 0);
 
-  // standard_pct já está em escala 0-100 no banco (ex: 84.3 = 84.3%)
   const stdPcts   = (evo?.evolution ?? []).map((e) => e.standard_pct).filter((v) => v != null) as number[];
   const avgStdPct = stdPcts.length > 0 ? stdPcts.reduce((a, b) => a + b, 0) / stdPcts.length : null;
 
@@ -68,75 +69,71 @@ const Index = () => {
 
       {showLinkCoach && <AcceptCoachModal onClose={() => setShowLinkCoach(false)} />}
 
-      <main className="mx-auto max-w-[1440px] space-y-8 px-6 py-8 md:px-8 animate-fade-in">
-        {/* Link coach banner — só aparece se player SEM coach vinculado */}
+      <main className="mx-auto max-w-[1440px] space-y-8 px-4 pt-8 pb-28 md:px-8 md:pb-8 animate-fade-in">
         {user?.role === "player" && !user?.coach_id && (
           <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
             <div className="flex items-center gap-2 text-sm text-foreground">
               <GraduationCap className="size-4 text-primary" />
-              <span>Tem um professor? Vincule seu perfil para compartilhar seu histórico.</span>
+              <span>{t("linkCoach.message")}</span>
             </div>
             <button
               onClick={() => setShowLinkCoach(true)}
               className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:underline"
             >
-              Vincular
+              {t("linkCoach.action")}
             </button>
           </div>
         )}
 
-        {/* Hero */}
         <section className="flex flex-col gap-3">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">
             <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-            {hasData ? "Sessão sincronizada" : "Importe torneios para começar"}
+            {hasData ? t("eyebrow") : t("eyebrowEmpty")}
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-            {user?.username ? `${user.username} — Centro de comando` : "Centro de comando tático"}
+            {user?.username ? t("title", { name: user.username }) : t("titleDefault")}
           </h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Monitore métricas de performance, importe novos torneios e revise os leaks identificados
-            pela IA em tempo real.
+            {t("subtitle")}
           </p>
         </section>
 
-        {/* KPIs */}
         <section
-          aria-label="Indicadores chave"
-          className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-2 lg:grid-cols-4 shadow-elevated"
+          aria-label="KPIs"
+          className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-4 shadow-elevated"
         >
           <KpiCard
             index="01"
-            label="Net ROI"
-            value={roi != null ? (roi >= 0 ? `+${roi.toFixed(2)}` : roi.toFixed(2)) : "—"}
-            delta={roi != null ? { value: `${roi >= 0 ? "+" : ""}${roi.toFixed(1)}% total`, trend: roi >= 0 ? "up" : "down" } : undefined}
+            label={t("kpis.roi")}
+            value={roi != null ? (roi >= 0 ? `+${roi.toFixed(2)}` : roi.toFixed(2)) : tc("labels.noData")}
+            delta={roi != null ? { value: t("kpis.roiDelta", { value: `${roi >= 0 ? "+" : ""}${roi.toFixed(1)}` }), trend: roi >= 0 ? "up" : "down" } : undefined}
             icon={Percent}
             highlight
-            tooltip="Retorno sobre investimento acumulado. ROI positivo significa que você está lucrando acima do buy-in médio. Referência: jogadores regulares consistentes ficam entre +20% e +80% em MTTs."
+            tooltip={t("kpis.roiTooltip")}
           />
           <KpiCard
             index="02"
-            label="ITM Frequency"
-            value={itmPct != null ? `${itmPct.toFixed(1)}%` : "—"}
-            hint={hasData ? "Field avg ~18.5%" : "Sem dados"}
+            label={t("kpis.itm")}
+            value={itmPct != null ? `${itmPct.toFixed(1)}%` : tc("labels.noData")}
+            hint={hasData ? t("kpis.itmHint") : t("kpis.noData")}
             icon={Target}
-            tooltip="Percentual de torneios em que você terminou no dinheiro (in-the-money). A média do field é ~18%. Acima de 22% sugere jogo sólido ou conservador; abaixo pode indicar bust-out precoce."
+            tooltip={t("kpis.itmTooltip")}
           />
           <KpiCard
             index="03"
-            label="Standard %"
-            value={avgStdPct != null ? `${avgStdPct.toFixed(1)}%` : "—"}
-            hint={hasData ? "decisões dentro do range" : "Sem dados"}
+            label={t("kpis.standard")}
+            value={avgStdPct != null ? `${avgStdPct.toFixed(1)}%` : tc("labels.noData")}
+            hint={hasData ? t("kpis.standardHint") : t("kpis.noData")}
             icon={Coins}
-            tooltip="Percentual médio de decisões classificadas como 'standard' (score ≤ 0.08). Meta: acima de 70%. Abaixo de 60% indica volume significativo de erros que estão custando EV real."
+            tooltip={t("kpis.standardTooltip")}
           />
           <KpiCard
             index="04"
-            label="Total Eventos"
-            value={totalEvents > 0 ? totalEvents.toLocaleString() : "—"}
-            hint={hasData ? `${totalHands.toLocaleString()} mãos` : "Importe torneios"}
+            label={t("kpis.events")}
+            value={totalEvents > 0 ? totalEvents.toLocaleString() : tc("labels.noData")}
+            hint={hasData ? t("kpis.eventsHint", { hands: totalHands.toLocaleString() }) : t("kpis.eventsHintEmpty")}
             icon={Layers}
-            tooltip="Volume total de torneios analisados. Amostras menores que 30 torneios podem ter resultados financeiros distorcidos por variância. A análise de decisões é confiável a partir de ~500 mãos."
+            tooltip={t("kpis.eventsTooltip")}
           />
         </section>
 
@@ -144,49 +141,40 @@ const Index = () => {
           <EmptyDashboard onComplete={handleUpload} />
         ) : (
           <>
-          {/* Player HUD Stats strip — full width, prominente */}
           <PlayerStatsCard stats={playerStats} />
 
           <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-
-            {/* Coluna principal */}
             <div className="space-y-6 lg:col-span-8">
-              {/* Forma recente + qualidade lado a lado */}
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <RecentForm evolution={evo?.evolution} />
                 <DecisionQualityCard byLabel={breakdown?.by_label} />
               </div>
 
-              {/* Gráfico de bankroll */}
               <BankrollChart evolution={evo?.evolution} />
 
-              {/* Street + Position lado a lado */}
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <StreetBreakdown byStreet={breakdown?.by_street} />
                 <PositionChart byPosition={breakdown?.by_position} />
               </div>
 
-              {/* Tabela de torneios recentes */}
               <RecentTournamentsTable tournaments={tourns} />
             </div>
 
-            {/* Sidebar */}
-            <aside className="space-y-6 lg:col-span-4">
+            <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
               {levelData?.level && <LevelCard data={levelData} showStudyLink />}
               <LeaksPanel leaks={evo?.leaks} />
               <IcmBreakdown icm={evo?.icm} />
 
-              {/* Confiança da IA */}
               <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                      Confiança da IA
+                      {t("aiConfidence.title")}
                     </span>
-                    <HudTooltip content="Indica a confiabilidade das análises baseada no volume de dados. Quanto mais torneios importados, mais precisas as recomendações de leaks e plano de estudos." />
+                    <HudTooltip content={t("aiConfidence.tooltip")} />
                   </div>
                   <span className="font-mono text-[10px] text-primary">
-                    {hasData ? "ativo" : "sem dados"}
+                    {hasData ? t("aiConfidence.active") : t("aiConfidence.noData")}
                   </span>
                 </div>
                 <div className="flex gap-1">
@@ -199,8 +187,8 @@ const Index = () => {
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                   {hasData
-                    ? `${totalEvents} torneios analisados. Volume suficiente para sugerir ajustes confiáveis.`
-                    : "Importe torneios para ativar a análise de confiança da IA."}
+                    ? t("aiConfidence.summary", { count: totalEvents })
+                    : t("aiConfidence.empty")}
                 </p>
               </div>
             </aside>
@@ -211,10 +199,10 @@ const Index = () => {
 
       <footer className="mx-auto mt-8 flex max-w-[1440px] items-center justify-between border-t border-border/60 px-6 py-6 md:px-8">
         <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-          ENC: AES-256 • LATENCY: 14ms • SESSION_LOCKED
+          {tc("sessionLocked")}
         </span>
         <div className="hidden gap-6 sm:flex">
-          {["Documentação", "Status", "Suporte"].map((l) => (
+          {([tc("docs"), tc("status_page"), tc("support")] as const).map((l) => (
             <a key={l} href="#" className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors">{l}</a>
           ))}
         </div>

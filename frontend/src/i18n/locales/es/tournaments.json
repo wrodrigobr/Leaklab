@@ -1,0 +1,42 @@
+{
+  "title": "Historial de Torneos",
+  "eyebrow": "Análisis de Rendimiento",
+  "subtitle": "Revisa tus resultados, filtra por red y analiza decisiones mano a mano.",
+  "filters": {
+    "all": "Todas",
+    "search": "Buscar torneo…",
+    "clearAll": "Limpiar todo",
+    "confirmClear": "¿Confirmar?",
+    "confirmClearBtn": "Sí, limpiar todo",
+    "clearing": "Limpiando…"
+  },
+  "sort": {
+    "date": "Fecha",
+    "buyin": "Buy-in",
+    "place": "Posición",
+    "profit": "Ganancia"
+  },
+  "table": {
+    "date": "Fecha",
+    "tournament": "Torneo",
+    "network": "Red",
+    "buyin": "Buy-in",
+    "position": "Posición",
+    "profit": "Resultado",
+    "status": "Estado",
+    "actions": "Acciones"
+  },
+  "badges": {
+    "spinGo": "Spin&Go",
+    "satellite": "SAT",
+    "ko": "KO",
+    "sng": "SNG",
+    "mtt": "MTT"
+  },
+  "empty": {
+    "noImports": "Aún no hay torneos importados. Usa el Panel para subir archivos.",
+    "noFilter": "No se encontraron torneos para los filtros actuales."
+  },
+  "deleteConfirm": "¿Eliminar torneo?",
+  "deleteAriaLabel": "Eliminar torneo"
+}

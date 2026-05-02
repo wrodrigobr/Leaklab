@@ -1,0 +1,66 @@
+{
+  "eyebrow": "Study Plan · Adaptive",
+  "title": "Your personalized tactical roadmap",
+  "subtitle": "Leak diagnosis, weekly roadmap, curated resources, and exercises with automatic correction.",
+  "toolbar": {
+    "planReady": "Plan generated from your real leaks",
+    "planLoading": "Loading study plan…",
+    "analysisWaiting": "Please wait while the AI Coach analyzes your history.",
+    "managedBy": "Managed by {{coach}}",
+    "managedSub": "Contact to request an update",
+    "generateBtn": "Generate with AI",
+    "generating": "Generating…",
+    "regenerated": "Plan regenerated with AI."
+  },
+  "loading": {
+    "analyzing": "AI Coach analyzing your leaks…",
+    "firstTime": "This may take a few seconds the first time."
+  },
+  "error": {
+    "noTournaments": "Import at least one tournament to generate a personalized plan."
+  },
+  "kpis": {
+    "level": "Level",
+    "levelValue": "Lv {{level}}",
+    "xpHint": "{{xp}}/500 XP",
+    "streak": "Streak",
+    "streakValue": "{{count}} day",
+    "streakValue_plural": "{{count}} days",
+    "streakHint": "Study every day to keep it",
+    "roadmap": "Roadmap",
+    "daysCompleted": "Days completed",
+    "exercises": "Exercises",
+    "exercisesHint": "Quiz score"
+  },
+  "diagnosis": {
+    "title": "Prioritized diagnosis",
+    "leaksCount": "{{count}} active leaks"
+  },
+  "weekly": {
+    "title": "Weekly roadmap",
+    "weekLabel": "Week {{week}}",
+    "totalHint": "{{weeks}} weeks · ~{{hours}}h total"
+  },
+  "resources": {
+    "title": "Leak resources",
+    "coachesTitle": "Coaches specialized in this leak",
+    "viewAll": "View all →"
+  },
+  "howTo": {
+    "title": "How to use",
+    "tip1": "Click a leak to see the corresponding resources in the sidebar.",
+    "tip2": "Follow the daily roadmap and mark the day as completed.",
+    "tip3": "Solve the exercises below to reinforce each concept.",
+    "tip4": "Re-import your history at the end of the week to measure the delta."
+  },
+  "exercises": {
+    "title": "Exercise battery",
+    "hint": "Auto-graded · {{count}} questions"
+  },
+  "whatsapp": {
+    "title": "Train on WhatsApp",
+    "description": "Receive a question from this plan directly on WhatsApp. Answer, get it right, and ask the AI Coach to explain the reasoning.",
+    "cta": "Start on WhatsApp →",
+    "hint": "Send any message to get started · save the number on your phone"
+  }
+}

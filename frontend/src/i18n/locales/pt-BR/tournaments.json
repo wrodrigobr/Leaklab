@@ -1,0 +1,42 @@
+{
+  "title": "Histórico de torneios",
+  "eyebrow": "Análise de performance",
+  "subtitle": "Revise seus resultados, filtre por rede e analise decisões hand-by-hand.",
+  "filters": {
+    "all": "Todas",
+    "search": "Buscar torneio…",
+    "clearAll": "Limpar tudo",
+    "confirmClear": "Confirmar?",
+    "confirmClearBtn": "Sim, limpar tudo",
+    "clearing": "Limpando…"
+  },
+  "sort": {
+    "date": "Data",
+    "buyin": "Buy-in",
+    "place": "Posição",
+    "profit": "Lucro"
+  },
+  "table": {
+    "date": "Data",
+    "tournament": "Torneio",
+    "network": "Rede",
+    "buyin": "Buy-in",
+    "position": "Posição",
+    "profit": "Resultado",
+    "status": "Status",
+    "actions": "Ações"
+  },
+  "badges": {
+    "spinGo": "Spin&Go",
+    "satellite": "SAT",
+    "ko": "KO",
+    "sng": "SNG",
+    "mtt": "MTT"
+  },
+  "empty": {
+    "noImports": "Nenhum torneio importado ainda. Use o Dashboard para fazer upload.",
+    "noFilter": "Nenhum torneio encontrado para os filtros atuais."
+  },
+  "deleteConfirm": "Deletar torneio?",
+  "deleteAriaLabel": "Deletar torneio"
+}

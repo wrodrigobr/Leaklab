@@ -1,0 +1,39 @@
+{
+  "eyebrow": "Sesión sincronizada",
+  "eyebrowEmpty": "Importa torneos para comenzar",
+  "title": "{{name}} — Centro de Mando",
+  "titleDefault": "Centro de Mando Táctico",
+  "subtitle": "Monitorea métricas de rendimiento, importa nuevos torneos y revisa los leaks identificados por la IA en tiempo real.",
+  "kpis": {
+    "roi": "ROI Neto",
+    "roiTooltip": "Retorno acumulado sobre la inversión. ROI positivo significa que estás ganando por encima del buy-in promedio. Referencia: jugadores regulares consistentes se sitúan entre +20% y +80% en MTTs.",
+    "roiDelta": "{{value}}% total",
+    "itm": "Frecuencia ITM",
+    "itmHint": "Promedio del field ~18.5%",
+    "itmTooltip": "Porcentaje de torneos en los que terminaste en el dinero. El promedio del field es ~18%. Por encima del 22% sugiere juego sólido o conservador; por debajo puede indicar eliminaciones tempranas.",
+    "standard": "% Estándar",
+    "standardHint": "decisiones dentro del rango",
+    "standardTooltip": "Porcentaje promedio de decisiones clasificadas como 'estándar' (score ≤ 0.08). Meta: por encima del 70%. Por debajo del 60% indica errores significativos que cuestan EV real.",
+    "events": "Total de Eventos",
+    "eventsHint": "{{hands}} manos",
+    "eventsHintEmpty": "Importa torneos",
+    "eventsTooltip": "Volumen total de torneos analizados. Muestras menores a 30 torneos pueden tener resultados financieros distorsionados por varianza. El análisis de decisiones es confiable a partir de ~500 manos.",
+    "noData": "Sin datos"
+  },
+  "recentTournaments": {
+    "title": "Torneos recientes",
+    "viewAll": "Ver todos →"
+  },
+  "linkCoach": {
+    "message": "¿Tienes un coach? Vincula tu perfil para compartir tu historial.",
+    "action": "Vincular"
+  },
+  "aiConfidence": {
+    "title": "Confianza de la IA",
+    "tooltip": "Indica la fiabilidad de los análisis basados en el volumen de datos. Cuantos más torneos se importen, más precisas serán las recomendaciones de leaks y el plan de estudio.",
+    "active": "activo",
+    "noData": "sin datos",
+    "summary": "{{count}} torneos analizados. Volumen suficiente para sugerir ajustes confiables.",
+    "empty": "Importa torneos para activar el análisis de confianza de la IA."
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "nav": {
+    "dashboard": "Panel",
+    "tournaments": "Torneos",
+    "study": "Plan de Estudio",
+    "coach": "Coach IA",
+    "coaches": "Coaches",
+    "admin": "Admin",
+    "profile": "Perfil",
+    "coachDashboard": "Panel"
+  },
+  "actions": {
+    "import": "Importar",
+    "viewAll": "Ver todos →",
+    "back": "Volver",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "confirm": "Confirmar",
+    "generate": "Generar con IA",
+    "generating": "Generando…",
+    "loading": "Cargando…",
+    "retry": "Reintentar",
+    "open": "Abrir",
+    "close": "Cerrar",
+    "link": "Vincular",
+    "logout": "Cerrar sesión"
+  },
+  "status": {
+    "analyzed": "Analizado",
+    "pending": "En cola",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "paid": "Pagado",
+    "free": "Gratuito",
+    "pro": "PRO",
+    "coach": "Coach",
+    "new": "NUEVO",
+    "alpha": "ALPHA"
+  },
+  "labels": {
+    "date": "Fecha",
+    "tournament": "Torneo",
+    "buyin": "Buy-in",
+    "position": "Posición",
+    "result": "Resultado",
+    "profit": "Ganancia",
+    "network": "Red",
+    "hands": "{{count}} manos",
+    "handsShort": "{{count}}m",
+    "place": "#{{place}}",
+    "noData": "—",
+    "demo": "demo",
+    "plan": "Plan",
+    "role": "Rol"
+  },
+  "errors": {
+    "generic": "Algo salió mal. Por favor, inténtalo de nuevo.",
+    "notFound": "No encontrado.",
+    "unauthorized": "No autorizado.",
+    "noTournaments": "Aún no hay torneos importados. Usa el Panel para subir archivos.",
+    "noResults": "No se encontraron resultados para los filtros actuales."
+  },
+  "engineActive": "Motor Activo",
+  "sessionLocked": "ENC: AES-256 • LATENCIA: 14ms • SESIÓN_BLOQUEADA",
+  "docs": "Documentación",
+  "status_page": "Estado",
+  "support": "Soporte"
+}

@@ -1,0 +1,39 @@
+{
+  "eyebrow": "Session synced",
+  "eyebrowEmpty": "Import tournaments to get started",
+  "title": "{{name}} — Command Center",
+  "titleDefault": "Tactical Command Center",
+  "subtitle": "Monitor performance metrics, import new tournaments, and review leaks identified by AI in real time.",
+  "kpis": {
+    "roi": "Net ROI",
+    "roiTooltip": "Cumulative return on investment. Positive ROI means you're profiting above the average buy-in. Reference: consistent regular players sit between +20% and +80% in MTTs.",
+    "roiDelta": "{{value}}% total",
+    "itm": "ITM Frequency",
+    "itmHint": "Field avg ~18.5%",
+    "itmTooltip": "Percentage of tournaments where you finished in the money. Field average is ~18%. Above 22% suggests solid or conservative play; below may indicate early bust-outs.",
+    "standard": "Standard %",
+    "standardHint": "decisions within range",
+    "standardTooltip": "Average percentage of decisions classified as 'standard' (score ≤ 0.08). Goal: above 70%. Below 60% indicates significant errors costing real EV.",
+    "events": "Total Events",
+    "eventsHint": "{{hands}} hands",
+    "eventsHintEmpty": "Import tournaments",
+    "eventsTooltip": "Total volume of analyzed tournaments. Samples smaller than 30 tournaments may have financial results skewed by variance. Decision analysis is reliable from ~500 hands.",
+    "noData": "No data"
+  },
+  "recentTournaments": {
+    "title": "Recent tournaments",
+    "viewAll": "View all →"
+  },
+  "linkCoach": {
+    "message": "Have a coach? Link your profile to share your history.",
+    "action": "Link"
+  },
+  "aiConfidence": {
+    "title": "AI Confidence",
+    "tooltip": "Indicates the reliability of analyses based on data volume. The more tournaments imported, the more accurate the leak recommendations and study plan.",
+    "active": "active",
+    "noData": "no data",
+    "summary": "{{count}} tournaments analyzed. Sufficient volume to suggest reliable adjustments.",
+    "empty": "Import tournaments to activate AI confidence analysis."
+  }
+}
