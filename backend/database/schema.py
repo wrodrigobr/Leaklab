@@ -450,6 +450,8 @@ def _run_migrations(conn):
             # Sprint C — BACK-014 + BACK-017: revenue share + admin panel
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_coach_id INTEGER REFERENCES users(id)",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT FALSE",
+            # Sprint D — BACK-016: WhatsApp Coaching Drills
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_phone TEXT UNIQUE",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -670,6 +672,7 @@ def _run_migrations(conn):
             ("mp_subscription_id", "ALTER TABLE users ADD COLUMN mp_subscription_id TEXT"),
             ("referral_coach_id",  "ALTER TABLE users ADD COLUMN referral_coach_id  INTEGER REFERENCES users(id)"),
             ("suspended",          "ALTER TABLE users ADD COLUMN suspended           INTEGER NOT NULL DEFAULT 0"),
+            ("whatsapp_phone",     "ALTER TABLE users ADD COLUMN whatsapp_phone      TEXT UNIQUE"),
         ]:
             if col not in usr_existing:
                 try: conn.execute(sql)

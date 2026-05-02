@@ -9,6 +9,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.36.0] — 2026-05-02 — Sprint D: BACK-016 WhatsApp Coaching Drills
+
+### Backend
+
+- **`leaklab/whatsapp_bot.py`** — módulo do bot: `send_text()` (Cloud API v19), `handle_incoming()` (dispatcher), `_handle_answer()` (correção MCQ), `_send_question()` (busca top leak e gera exercício), `_generate_exercise()` (Claude Haiku → JSON com question/answer/explanation), `_fallback_exercise()` (template local sem LLM); estado de questões pendentes em dict in-memory por número
+- **`api/app.py`** — 3 novas rotas:
+  - `GET /whatsapp/webhook` — verificação de webhook pelo Meta (hub.challenge)
+  - `POST /whatsapp/webhook` — recebe eventos Meta, despacha para `handle_incoming()`; sempre retorna 200 imediato
+  - `PATCH /profile/phone` — vincula/desvincula número de WhatsApp ao usuário logado (validação E.164, unicidade)
+  - `GET /auth/me` — agora retorna `whatsapp_phone`
+- **`database/schema.py`** — migration `ALTER TABLE users ADD COLUMN whatsapp_phone TEXT UNIQUE` (Postgres + SQLite)
+- **`database/repositories.py`** — `get_user_by_phone(phone)` + `update_user_phone(user_id, phone)`
+- **`.env`** — adicionado `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`
+
+### Frontend
+
+- **`lib/api.ts`** — `auth.updatePhone(phone)` → `PATCH /profile/phone`; `UserProfile.whatsapp_phone` adicionado ao tipo
+- **`pages/StudentProfile.tsx`** — nova seção "WhatsApp — Coaching Drills": campo para inserir número (formato DDI+DDD), botão Salvar e botão Desvincular; mostra número atual vinculado
+- **`frontend/.env`** — `VITE_WHATSAPP_NUMBER=15556305701` (número sandbox Meta; substituir pelo número real em produção)
+
+### Fluxo
+1. Usuário vincula número em Perfil → WhatsApp
+2. Clica "Iniciar no WhatsApp" no StudyPlan → abre conversa com o bot
+3. Qualquer mensagem → bot busca top leak, gera MCQ via Claude Haiku, envia a questão
+4. Usuário responde A/B/C/D → bot corrige e explica
+5. Próxima mensagem → novo exercício
+
+---
+
 ## [v0.35.0] — 2026-05-02 — Sprint F: UX-005 Internacionalização (i18n) PT/EN/ES
 
 ### Frontend

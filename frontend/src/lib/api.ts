@@ -50,6 +50,7 @@ export interface UserProfile {
   tournaments_used: number;
   ai_calls_used: number;
   plan_limits: { tournaments: number | null; ai_calls: number | null };
+  whatsapp_phone?: string | null;
 }
 
 export const auth = {
@@ -77,6 +78,12 @@ export const auth = {
     request<{ ok: boolean }>("/auth/change-password", {
       method: "POST",
       body: JSON.stringify({ current_password, new_password }),
+    }),
+
+  updatePhone: (phone: string | null) =>
+    request<{ ok: boolean; phone: string | null }>("/profile/phone", {
+      method: "PATCH",
+      body: JSON.stringify({ phone }),
     }),
 };
 

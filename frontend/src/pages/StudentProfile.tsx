@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { KeyRound, Mail, UserX, Loader2, Check, AlertTriangle, GraduationCap, Star, Trash2, Users, ChevronRight } from "lucide-react";
+import { KeyRound, Mail, MessageCircle, UserX, Loader2, Check, AlertTriangle, GraduationCap, Star, Trash2, Users, ChevronRight } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { useAuth } from "@/lib/auth";
 import { auth as authApi, student as studentApi, coachDashboard, coaches, CoachReview, PublicCoach } from "@/lib/api";
@@ -325,6 +325,24 @@ export default function StudentProfile() {
     }
   };
 
+  // ── WhatsApp ──────────────────────────────────────────────────────────────
+  const [waPhone,     setWaPhone]     = useState(user?.whatsapp_phone ?? "");
+  const [waLoading,   setWaLoading]   = useState(false);
+
+  const handleSavePhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWaLoading(true);
+    try {
+      await authApi.updatePhone(waPhone.trim() || null);
+      await refreshUser();
+      toast.success(waPhone.trim() ? "Número vinculado com sucesso." : "Número desvinculado.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar número");
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
   // ── Desvincular coach ─────────────────────────────────────────────────────
   const [unlinkLoading, setUnlinkLoading] = useState(false);
   const [confirmUnlink, setConfirmUnlink] = useState(false);
@@ -356,6 +374,50 @@ export default function StudentProfile() {
           <h1 className="text-2xl font-bold text-foreground">Meu Perfil</h1>
           <p className="font-mono text-[11px] text-muted-foreground mt-1">{user?.username}</p>
         </div>
+
+        {/* WhatsApp */}
+        <Section icon={MessageCircle} title="WhatsApp — Coaching Drills">
+          <p className="text-xs text-muted-foreground">
+            Vincule seu número para receber exercícios personalizados diretamente no WhatsApp.
+            Use o formato <span className="font-mono text-foreground">DDI+DDD+número</span> sem espaços ou traços.
+          </p>
+          <form onSubmit={handleSavePhone} className="space-y-3">
+            <Field label="Número de WhatsApp">
+              <input
+                type="tel"
+                value={waPhone}
+                onChange={(e) => setWaPhone(e.target.value)}
+                placeholder="5511999999999"
+                className={inputCls}
+              />
+            </Field>
+            {user?.whatsapp_phone && (
+              <p className="font-mono text-[10px] text-green-400">
+                ✓ Número atual: {user.whatsapp_phone}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={waLoading}
+                className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-white hover:bg-green-500 disabled:opacity-50 transition-colors"
+              >
+                {waLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                Salvar número
+              </button>
+              {user?.whatsapp_phone && (
+                <button
+                  type="button"
+                  disabled={waLoading}
+                  onClick={async () => { setWaPhone(""); await authApi.updatePhone(null); await refreshUser(); toast.success("Número desvinculado."); }}
+                  className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                >
+                  Desvincular
+                </button>
+              )}
+            </div>
+          </form>
+        </Section>
 
         {/* Alterar e-mail */}
         <Section icon={Mail} title="Alterar E-mail">

@@ -63,6 +63,8 @@ from database.repositories import (
     get_coaches_with_payout_status, upsert_coach_payment, mark_coach_payment_paid,
     get_coach_finance_summary, get_coach_finance_students, get_coach_finance_history,
     get_admin_activity_logs,
+    # Sprint D — BACK-016: WhatsApp
+    get_user_by_phone, update_user_phone,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -213,6 +215,7 @@ def me():
         'tournaments_used':     quota['tournaments_used'],
         'ai_calls_used':        quota['ai_calls_used'],
         'plan_limits':          quota['limits'],
+        'whatsapp_phone':       g.user.get('whatsapp_phone'),
     })
 
 
@@ -2420,6 +2423,64 @@ def coach_finance_students():
 def coach_finance_history():
     history = get_coach_finance_history(g.user_id)
     return jsonify({'payments': history})
+
+
+# ── WhatsApp Webhook — BACK-016 ───────────────────────────────────────────────
+
+WA_PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '')
+WA_VERIFY_TOKEN   = os.environ.get('WHATSAPP_VERIFY_TOKEN', 'leaklab_wh_verify_2026')
+
+
+@app.route('/whatsapp/webhook', methods=['GET'])
+def whatsapp_verify():
+    """Verificação do webhook pelo Meta Developer Portal."""
+    mode      = request.args.get('hub.mode')
+    token     = request.args.get('hub.verify_token')
+    challenge = request.args.get('hub.challenge')
+    if mode == 'subscribe' and token == WA_VERIFY_TOKEN:
+        log.info("WhatsApp webhook verified")
+        return challenge, 200
+    return jsonify({'error': 'Forbidden'}), 403
+
+
+@app.route('/whatsapp/webhook', methods=['POST'])
+def whatsapp_webhook():
+    """Recebe eventos de mensagem da Meta e despacha para o bot."""
+    from leaklab.whatsapp_bot import handle_incoming
+    try:
+        body = request.get_json(force=True, silent=True) or {}
+        for entry in body.get('entry', []):
+            for change in entry.get('changes', []):
+                value = change.get('value', {})
+                phone_number_id = value.get('metadata', {}).get('phone_number_id', WA_PHONE_NUMBER_ID)
+                for msg in value.get('messages', []):
+                    from_number  = msg.get('from', '')
+                    message_text = (msg.get('text') or {}).get('body', '')
+                    if from_number and message_text:
+                        handle_incoming(phone_number_id, from_number, message_text)
+    except Exception as exc:
+        log.error("WhatsApp webhook error: %s", exc)
+    # Meta exige 200 imediato — sempre
+    return jsonify({'status': 'ok'}), 200
+
+
+@app.route('/profile/phone', methods=['PATCH'])
+@require_auth
+def update_phone():
+    """Vincula/desvincula número de WhatsApp ao perfil do usuário logado."""
+    data  = request.get_json(force=True, silent=True) or {}
+    phone = data.get('phone', '').strip() or None
+    if phone:
+        # Normaliza: remove +, espaços e traços
+        phone = phone.replace('+', '').replace(' ', '').replace('-', '')
+        if not phone.isdigit() or len(phone) < 10 or len(phone) > 15:
+            return jsonify({'error': 'Número inválido. Use formato DDI+DDD+número (ex: 5511999999999)'}), 400
+        # Verifica se já está em uso por outro usuário
+        existing = get_user_by_phone(phone)
+        if existing and existing['id'] != g.user_id:
+            return jsonify({'error': 'Número já vinculado a outro usuário'}), 409
+    update_user_phone(g.user_id, phone)
+    return jsonify({'ok': True, 'phone': phone})
 
 
 @app.errorhandler(500)

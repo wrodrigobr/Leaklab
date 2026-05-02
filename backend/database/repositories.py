@@ -2219,3 +2219,30 @@ def get_user_by_external_ref(ext_ref: str) -> tuple[Optional[dict], str]:
         return (dict(row) if row else None), plan
     finally:
         conn.close()
+
+
+# ── WhatsApp — BACK-016 ───────────────────────────────────────────────────────
+
+def get_user_by_phone(phone: str) -> Optional[dict]:
+    """Retorna usuário pelo número de WhatsApp (E.164 sem +)."""
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            _adapt("SELECT * FROM users WHERE whatsapp_phone = ?"), (phone,)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def update_user_phone(user_id: int, phone: str | None) -> None:
+    """Vincula ou desvincula número de WhatsApp ao perfil do usuário."""
+    conn = get_conn()
+    try:
+        conn.execute(
+            _adapt("UPDATE users SET whatsapp_phone = ? WHERE id = ?"),
+            (phone, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
