@@ -50,6 +50,7 @@ Fix aplicado: quando herói é eliminado sem ITM no PokerStars (`finished the to
 | Sprint B | UX-002 | Responsividade mobile/tablet | ✅ v0.33.0 |
 | Sprint C+E | BACK-014 + BACK-017 | Revenue share + Admin Panel | ✅ v0.34.0 |
 | **Sprint D** | **BACK-016** | **WhatsApp Coaching Drills (PRO)** | ⏳ Pendente ~14h |
+| **Sprint F** | **UX-005** | **Internacionalização (i18n) — PT/EN/ES** | ⏳ Pendente ~18h |
 
 ---
 
@@ -346,3 +347,72 @@ CREATE TABLE coach_payments (
 - Frontend coach (aba financeiro): ~4h
 - Cálculo de MRR + churn no backend: ~2h
 - **Total: ~1 sprint grande (~22h)**
+
+---
+
+## [UX-005] — Internacionalização (i18n) — PT / EN / ES
+
+**Reportado:** 2026-05-02
+**Prioridade:** Alta — expande mercado para jogadores internacionais (EN) e latino-americanos não-brasileiros (ES)
+
+### Visão
+
+O site detecta automaticamente o idioma do browser do usuário e carrega as traduções correspondentes. O usuário pode trocar o idioma a qualquer momento via seletor no header. A preferência é salva no `localStorage`. Idiomas iniciais: Português (pt-BR, padrão), Inglês (en), Espanhol (es).
+
+### Abordagem técnica
+
+**Biblioteca:** `react-i18next` + `i18next` — padrão da indústria para React, suporta lazy loading de namespaces.
+
+**Detecção automática:** plugin `i18next-browser-languagedetector` — detecta `navigator.language`, `localStorage`, `htmlTag` em cascata.
+
+**Estrutura de arquivos:**
+```
+frontend/src/i18n/
+  index.ts                  — init do i18next
+  locales/
+    pt-BR/
+      common.json           — textos gerais (nav, botões, labels)
+      dashboard.json        — KPIs, seções do dashboard
+      tournaments.json      — tabela de torneios, filtros
+      study.json            — plano de estudos, exercícios
+      coach.json            — área de coach, anotações
+      auth.json             — login, cadastro
+    en/
+      (mesmos arquivos)
+    es/
+      (mesmos arquivos)
+```
+
+**Seletor de idioma:** dropdown compacto no HudHeader (ao lado do AccountMenu), mostra bandeira + código (🇧🇷 PT · 🇺🇸 EN · 🇪🇸 ES). Em mobile aparece no AccountMenu.
+
+**Componentes:** todos os textos hardcoded substituídos por `t('chave')` via hook `useTranslation()`. Componentes com interpolação (ex: "3 torneios analisados") usam `t('key', { count: 3 })`.
+
+**Backend:** sem mudanças — labels de erros já são genéricos. O sistema de leaks usa chaves internas; as descrições em linguagem natural são geradas pelo Claude já no idioma do usuário (passar `language` no payload da chamada LLM).
+
+### Escopo de tradução (MVP)
+
+Prioridade máxima (telas com mais texto visível):
+1. HudHeader (nav, botões)
+2. Dashboard (KPIs, seções, tooltips)
+3. Tournaments (tabela, filtros, badges)
+4. StudyPlan (plano, exercícios, "como usar")
+5. Login/cadastro
+
+Prioridade média (após MVP):
+6. TournamentDetail (fases, texturas, análise IA)
+7. Replayer (action log, controles)
+8. Coach area (StudentDetail, CoachDashboard)
+
+### Dados não traduzidos (intencionalmente)
+- Nomes de torneios (vindos do arquivo importado)
+- Explicações geradas pelo Claude (a IA já responde no idioma do usuário)
+- Poker terms técnicos (fold, check, raise — universais)
+
+### Esforço estimado
+
+- Setup i18next + detecção + seletor no header: ~3h
+- Extração de textos PT-BR (mapeamento de todos os hardcoded strings): ~4h
+- Tradução EN (nativa, revisão de poker terms): ~4h
+- Tradução ES (revisar com falante nativo ou ajuste Claude): ~3h
+- Integração nas telas de alta prioridade: ~4h
+- **Total: ~1 sprint grande (~18h)**
