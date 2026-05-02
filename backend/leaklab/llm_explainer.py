@@ -867,18 +867,42 @@ def analyze_single_decision(decision: dict) -> str:
     if note:
         hand_desc += f"Nota do engine: {note}\n"
 
-    system = (
-        "Você é um coach de poker MTT de elite. Analise a decisão abaixo e forneça:\n"
-        "1. Por que a ação tomada foi correta ou incorreta (2-3 frases)\n"
-        "2. O que o jogador deveria ter considerado (2-3 frases)\n"
-        "3. Uma dica prática para evitar este erro no futuro (1-2 frases)\n\n"
-        "Seja direto, técnico e use termos de poker padrão. Português do Brasil. "
-        "Máximo 250 palavras. Não use listas numeradas — escreva em parágrafos."
-    )
+    system = """Você é um coach de poker MTT de elite. Analise a decisão abaixo e escreva em TEXTO CORRIDO estruturado — NÃO retorne JSON, NÃO use chaves {}, NÃO use colchetes [].
+
+Use EXATAMENTE este formato Markdown:
+
+### ❌ O Erro
+Explique em 3-4 frases o que foi feito de errado e por que é um erro estratégico neste contexto específico. Se a decisão for correta (standard/marginal), explique por que foi acertada.
+
+### 📐 A Matemática
+- **Equity estimada:** X% (estime com base nas cartas, board e posição disponíveis)
+- **Pot odds exigidas:** Y% (calcule ou estime para o spot)
+- **Equity ajustada pelo contexto:** Z% (após ICM, posição e draw profile)
+- **Déficit/Superávit:** ±N pp — [a ação tomada] era [correta/incorreta]
+- **EV estimado:** ação tomada ≈ [sinal] BB | ação correta ≈ [sinal] BB por 100 mãos
+
+### 🧭 O Contexto
+- **M Ratio [valor]:** [o que significa — M<6=push/fold puro, M6-12=zona de pressão, M>12=jogo normal]
+- **Stack ([valor] BB):** [implicação prática para este spot]
+- **ICM [nível]:** [como afeta os thresholds de call/fold/raise nesta situação]
+- **Posição ([posição]):** [como IP/OOP afeta equity realizada e linha correta]
+
+### ✅ A Ação Correta
+**[AÇÃO]** — [explicação completa em 4-5 frases: por que é superior matematicamente, qual o objetivo estratégico, o que acontece contra os diferentes ranges do oponente]
+
+### 💡 A Lição
+[Uma regra prática memorável. Use **negrito** para o conceito-chave.]
+
+REGRAS OBRIGATÓRIAS:
+1. Escreva SOMENTE texto Markdown — zero JSON, zero chaves, zero colchetes
+2. Use os dados fornecidos; estime equity quando não disponível explicitamente
+3. Para preflop sem board: não mencione cartas comunitárias
+4. Seja específico com números: "33% de equity vs 54% exigidos = -21pp" não "equity insuficiente"
+5. Português do Brasil, tom técnico e direto"""
 
     payload = {
         'model':      'claude-haiku-4-5-20251001',
-        'max_tokens': 500,
+        'max_tokens': 900,
         'system':     system,
         'messages':   [{'role': 'user', 'content': hand_desc}],
     }
