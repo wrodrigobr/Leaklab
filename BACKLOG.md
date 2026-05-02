@@ -2,7 +2,7 @@
 
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
-> **Sprints já entregues:** Sprints 1–13 + Sprint A + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.32.0.
+> **Sprints já entregues:** Sprints 1–13 + Sprint A + Sprint B + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.33.0.
 
 ---
 
@@ -49,6 +49,7 @@ Fix aplicado: quando herói é eliminado sem ITM no PokerStars (`finished the to
 | Sprint 15 | BACK-015 | Gateway de pagamento (Stripe) | ✅ v0.29.0 |
 | Sprint B | UX-002 | Responsividade mobile/tablet | ✅ v0.33.0 |
 | **Sprint C** | **BACK-014** | **Revenue share para coaches** | ⏳ Pendente ~20h |
+| **Sprint D** | **BACK-016** | **WhatsApp Coaching Drills (PRO)** | ⏳ Pendente ~14h |
 
 ---
 
@@ -155,3 +156,72 @@ CREATE TABLE coach_payments (
 - Frontend coach (painel de indicações): ~4h
 - Frontend admin (backoffice): ~8h
 - **Total: ~1 sprint grande (~20h)**
+
+---
+
+## [BACK-016] — WhatsApp Coaching Drills (PRO)
+
+**Reportado:** 2026-05-02
+**Prioridade:** Alta — diferencial de produto e retenção PRO
+**Plano PRO exclusivo** — usuários Starter acessam lições apenas dentro do app (StudyPlan.tsx)
+
+### Visão
+
+Usuário PRO cadastra seu número de WhatsApp nas configurações. Quando quiser treinar, envia qualquer mensagem para o número da LeakLab. O bot responde com uma pergunta de múltipla escolha baseada nos leaks ativos do usuário. A resposta é avaliada e o AI Coach explica o raciocínio correto se o usuário errar ou pedir mais detalhes.
+
+Sem disparo automático pelo sistema — o usuário sempre inicia a sessão.
+
+### Fluxo completo
+
+```
+1. Usuário salva telefone no perfil (Settings)
+2. Usuário manda "oi" / "lição" / qualquer msg para o número WA Business
+3. Webhook identifica usuário pelo telefone → busca leak/plano mais crítico
+4. Bot envia pergunta múltipla escolha (ex: "M=7, BB é 2.5x, você tem A9o no CO…")
+5. Usuário responde "a" / "b" / "c" / "d"
+6. Acertou → "✓ Correto! streak: 3" + opção "próxima"
+   Errou   → Claude gera explicação ≤300 chars + pergunta se quer mais
+   "?" / "explicar" → Claude responde com contexto completo dos leaks do usuário
+```
+
+### Por que não precisa de template Meta
+
+O usuário sempre inicia a conversa — o sistema está sempre dentro da janela de sessão de 24h da Meta. Sem templates, sem review, sem scheduler.
+
+### Modelo de dados necessário
+
+```sql
+-- Adicionar ao users
+ALTER TABLE users ADD COLUMN whatsapp_number TEXT;  -- formato E.164: +5511999999999
+
+-- Estado de sessão WA (TTL 24h)
+CREATE TABLE whatsapp_sessions (
+    phone           TEXT PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES users(id),
+    pending_card_id INTEGER REFERENCES study_cards(id),
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+### Backend
+
+- `GET /POST /whatsapp/webhook` — verificação + recebimento de mensagens Meta
+- Identificação de usuário por `from` (número E.164)
+- Geração de pergunta: reusa `StudyCard` do plano ativo ou gera via Claude a partir de `leaks_summary`
+- Avaliação de resposta: compara letra com gabarito, armazena acerto no `study_cards`
+- Chamada Claude (AI Coach): explicação curta personalizada com contexto do usuário (leaks, M-ratio habitual, nível atual)
+- Variável de ambiente: `WHATSAPP_TOKEN` (token de acesso Meta), `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN`
+
+### Frontend
+
+- **Settings/Perfil** — campo "WhatsApp" com formatação E.164 + instrução: "Envie qualquer mensagem para wa.me/[número] para começar"
+- **Indicador visual** — badge "WA Ativo" no perfil quando número cadastrado + plano PRO
+
+### Esforço estimado
+
+- Setup Meta Business Account + número WA Business: ~2h (manual)
+- Backend webhook + identificação + estado de sessão: ~5h
+- Geração de perguntas + avaliação + streak: ~4h
+- Integração Claude para explicações curtas: ~3h
+- Frontend settings + instrução: ~2h
+- **Total: ~1 sprint média (~14h) + setup Meta**
