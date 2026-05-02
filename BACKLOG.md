@@ -50,6 +50,7 @@ Fix aplicado: quando herói é eliminado sem ITM no PokerStars (`finished the to
 | Sprint B | UX-002 | Responsividade mobile/tablet | ✅ v0.33.0 |
 | **Sprint C** | **BACK-014** | **Revenue share para coaches** | ⏳ Pendente ~20h |
 | **Sprint D** | **BACK-016** | **WhatsApp Coaching Drills (PRO)** | ⏳ Pendente ~14h |
+| **Sprint E** | **BACK-017** | **Admin Panel + Financeiro de Coaches** | ⏳ Pendente ~22h |
 
 ---
 
@@ -214,6 +215,7 @@ CREATE TABLE whatsapp_sessions (
 
 ### Frontend
 
+- **`StudyPlan.tsx`** — CTA "Treinar no WhatsApp" já adicionado na sidebar; aparece automaticamente quando a variável `VITE_WHATSAPP_NUMBER` estiver configurada no Vercel; link `wa.me/{número}?text=lição` abre o WhatsApp com mensagem pré-preenchida; instrução "salve o número no celular" para descoberta orgânica
 - **Settings/Perfil** — campo "WhatsApp" com formatação E.164 + instrução: "Envie qualquer mensagem para wa.me/[número] para começar"
 - **Indicador visual** — badge "WA Ativo" no perfil quando número cadastrado + plano PRO
 
@@ -225,3 +227,123 @@ CREATE TABLE whatsapp_sessions (
 - Integração Claude para explicações curtas: ~3h
 - Frontend settings + instrução: ~2h
 - **Total: ~1 sprint média (~14h) + setup Meta**
+
+---
+
+## [BACK-017] — Admin Panel + Financeiro de Coaches
+
+**Reportado:** 2026-05-02
+**Prioridade:** Alta — controle operacional do negócio
+**Audiências:** (1) Proprietário do sistema (role `admin`) · (2) Coaches (role `coach`)
+
+### Visão geral
+
+Duas interfaces distintas com dados complementares:
+- **Admin**: visão total da plataforma — usuários, saúde financeira, repasses pendentes
+- **Coach**: visão do seu próprio negócio — alunos ativos, receita estimada, histórico de repasses
+
+---
+
+### Interface Admin (`/admin`)
+
+#### Painel executivo (homepage do admin)
+
+| Métrica | Descrição |
+|---|---|
+| MRR (Monthly Recurring Revenue) | Soma das mensalidades ativas no mês |
+| Usuários ativos (30 dias) | Importaram ≥ 1 torneio |
+| Planos: Starter / PRO / Coach | Contagem e % por plano |
+| Churn rate mensal | % que cancelou vs. mês anterior |
+| Total a repassar no ciclo atual | Soma de todos os repasses pendentes de coaches |
+
+#### Gestão de usuários
+
+- Tabela com: nome, email, plano, status (ativo/inativo), data de cadastro, último torneio importado, coach vinculado
+- Filtros: plano, status, com/sem coach, data de cadastro
+- Ações: suspender conta, alterar plano manualmente, desvincular coach
+
+#### Financeiro — Repasses de Coaches
+
+- Tabela por coach: nome, alunos ativos no período, valor bruto calculado, status (`pendente` / `pago`), data do repasse
+- Regras de cálculo visíveis (1–3 alunos = mensalidade zerada; 4–9 = R$15/aluno; 10+ = R$20/aluno)
+- Botão "Marcar como pago" por linha
+- Exportação CSV do período (para processamento bancário)
+- Histórico de repasses anteriores (últimos 12 meses)
+
+#### Logs de atividade
+
+- Últimas importações de torneios (usuário, timestamp, site, nº de mãos)
+- Últimas análises geradas (custo estimado de tokens Claude)
+- Erros recentes da pipeline (falhas de parsing, timeouts LLM)
+
+---
+
+### Interface Coach — aba "Financeiro" no dashboard (`/coach-dashboard`)
+
+Nova aba "Financeiro" no `CoachDashboard.tsx`, ao lado das abas existentes.
+
+#### Resumo do ciclo atual
+
+| Bloco | Conteúdo |
+|---|---|
+| Alunos vinculados | Total (ativos + inativos) |
+| Alunos ativos este mês | Com critério explícito: importou ≥1 torneio + plano PRO |
+| Mensalidade este mês | R$0 (zerada) ou valor cobrado normal |
+| Receita estimada | Valor calculado com base nos alunos ativos |
+| Próximo repasse | Data estimada do próximo ciclo de pagamento |
+
+#### Lista de alunos com status financeiro
+
+- Cada aluno: nome, status (ativo/inativo), último torneio importado, plano atual, contribuição para o repasse
+- Alunos inativos com destaque vermelho + dica "Incentive este aluno a importar torneios"
+
+#### Histórico de repasses
+
+- Tabela: período (mês/ano), alunos ativos, valor recebido, status (pendente/pago), data do crédito
+- Linha do total acumulado
+
+---
+
+### Modelo de dados necessário
+
+```sql
+-- Já especificado em BACK-014:
+ALTER TABLE users ADD COLUMN referral_coach_id INTEGER REFERENCES users(id);
+
+CREATE TABLE coach_payments (
+    id              SERIAL PRIMARY KEY,
+    coach_id        INTEGER NOT NULL REFERENCES users(id),
+    period          TEXT    NOT NULL,  -- 'YYYY-MM'
+    active_students INTEGER NOT NULL DEFAULT 0,
+    amount_cents    INTEGER NOT NULL DEFAULT 0,
+    status          TEXT    NOT NULL DEFAULT 'pending',
+    paid_at         TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+### Backend
+
+- `GET /admin/dashboard` — MRR, usuários ativos, contagem por plano, churn, total a repassar (role `admin`)
+- `GET /admin/users` — lista paginada com filtros (role `admin`)
+- `PATCH /admin/users/:id` — suspender / alterar plano (role `admin`)
+- `GET /admin/finance/coaches` — repasses do ciclo com status (role `admin`)
+- `PATCH /admin/finance/coaches/:id/pay` — marcar como pago (role `admin`)
+- `GET /admin/finance/coaches/export.csv` — exportação (role `admin`)
+- `GET /admin/logs/activity` — últimas importações e erros (role `admin`)
+- `GET /coach/finance/summary` — resumo do ciclo atual para o coach autenticado
+- `GET /coach/finance/students` — alunos com status financeiro
+- `GET /coach/finance/history` — histórico de repasses recebidos
+
+### Frontend
+
+- **`/admin`** — nova rota protegida por `role === "admin"`; layout com sidebar de navegação (Painel, Usuários, Financeiro, Logs)
+- **`CoachDashboard.tsx`** — nova aba "Financeiro" com os 3 blocos acima
+
+### Esforço estimado
+
+- Backend (7 endpoints admin + 3 coach + role guard): ~8h
+- Frontend admin (dashboard + usuários + financeiro + logs): ~8h
+- Frontend coach (aba financeiro): ~4h
+- Cálculo de MRR + churn no backend: ~2h
+- **Total: ~1 sprint grande (~22h)**

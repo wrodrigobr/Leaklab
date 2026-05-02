@@ -10,6 +10,7 @@ import {
   Library,
   Loader2,
   Lock,
+  MessageCircle,
   Sparkles,
   Target,
   Timer,
@@ -171,6 +172,7 @@ const StudyPlanPage = () => {
   const [generating, setGenerating] = useState(false);
   const [coachManaged, setCoachManaged] = useState(false);
   const hasCoach = !!user?.coach_id;
+  const waNumber = (import.meta.env.VITE_WHATSAPP_NUMBER ?? "") as string;
   const [activeLeakId, setActiveLeakId] = useState<string>("");
   const [progress, setProgress]   = useState<Progress>(loadProgress);
 
@@ -498,6 +500,31 @@ const StudyPlanPage = () => {
                   </>
                 )}
               </section>
+
+              {/* WhatsApp Coaching Drills CTA — visível apenas quando VITE_WHATSAPP_NUMBER estiver configurado */}
+              {waNumber && (
+                <section className="rounded-xl border border-green-500/30 bg-green-500/5 p-5 space-y-3">
+                  <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-green-400">
+                    <MessageCircle className="size-4" aria-hidden />
+                    Treinar no WhatsApp
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Receba uma questão deste plano direto no WhatsApp. Responda, acerte e peça ao AI Coach para explicar o raciocínio.
+                  </p>
+                  <a
+                    href={`https://wa.me/${waNumber}?text=lição`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2 rounded-md bg-green-500/15 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-green-400 ring-1 ring-green-500/30 hover:bg-green-500/25 transition-colors"
+                  >
+                    <MessageCircle className="size-3.5" />
+                    Iniciar no WhatsApp →
+                  </a>
+                  <p className="text-center font-mono text-[9px] text-muted-foreground">
+                    Envie qualquer mensagem para começar · salve o número no celular
+                  </p>
+                </section>
+              )}
 
               <section className="rounded-xl border border-border bg-hud-surface p-5">
                 <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
