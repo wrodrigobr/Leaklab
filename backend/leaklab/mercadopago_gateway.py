@@ -80,7 +80,12 @@ def create_subscription(
     )
     if not resp.ok:
         log.error("MP create_subscription error %s: %s", resp.status_code, resp.text)
-    resp.raise_for_status()
+        # Propaga a mensagem MP para que o handler do app.py possa exibi-la em debug
+        try:
+            mp_msg = resp.json().get("message") or resp.text[:300]
+        except Exception:
+            mp_msg = resp.text[:300]
+        raise Exception(f"MP {resp.status_code}: {mp_msg}")
     data = resp.json()
     # Normaliza para o formato esperado pelo app.py (id + status)
     return {

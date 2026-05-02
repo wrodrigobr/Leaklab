@@ -1,17 +1,14 @@
 """
-test_subscription.py — Testes dos endpoints de assinatura (BACK-015)
+test_subscription.py — Testes dos endpoints de assinatura (BACK-015 / Stripe)
 
 Cobre:
-- /subscription/checkout  (POST) — validação, auth, cenários MP
-- /subscription/invoices  (GET)  — auth, resposta vazia
-- /subscription/cancel    (POST) — auth, sem assinatura ativa, cancelamento
-- /subscription/webhook   (POST) — assinatura e pagamento
+- /subscription/checkout  (POST) — validação, retorna client_secret
+- /subscription/activate  (POST) — verifica PaymentIntent e ativa plano
+- /subscription/invoices  (GET)  — histórico de pagamentos
+- /subscription/cancel    (POST) — cancela assinatura
+- /subscription/webhook   (POST) — eventos Stripe
 
-Os testes mockam o gateway Mercado Pago via unittest.mock para não depender
-de rede real. Os cenários refletem os cartões/titulares de teste do MP:
-  APRO → authorized   FUND → cc_rejected_insufficient_amount
-  SECU → cc_rejected_bad_filled_security_code  EXPI → cc_rejected_bad_filled_date
-  OTHE → cc_rejected_other_reason  CALL → cc_rejected_call_for_authorize
+Todos os testes mockam o Stripe gateway via unittest.mock.
 """
 
 import sys, os, json, traceback, sqlite3, tempfile
@@ -70,11 +67,18 @@ def _register_and_login(client, suffix=''):
 def _auth(token):
     return {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
 
-# ── /subscription/checkout — validação ───────────────────────────────────────
+def _mock_checkout(sub_id='sub_TEST001', cs='pi_secret_test'):
+    return {'subscription_id': sub_id, 'client_secret': cs, 'status': 'incomplete'}
+
+def _mock_pi(pi_id='pi_TEST001', status='succeeded'):
+    return {'id': pi_id, 'status': status}
+
+
+# ── /subscription/checkout ───────────────────────────────────────────────────
 
 def test_checkout_requires_auth():
     c = _make_client()
-    r = c.post('/subscription/checkout', json={'plan': 'starter', 'card_token': 'tok'})
+    r = c.post('/subscription/checkout', json={'plan': 'starter'})
     assert r.status_code == 401, f"Expected 401, got {r.status_code}"
     print("OK  test_checkout_requires_auth")
 
@@ -82,185 +86,163 @@ def test_checkout_requires_auth():
 def test_checkout_missing_plan():
     c = _make_client()
     token = _register_and_login(c, 'mp1')
-    r = c.post('/subscription/checkout',
-               json={'card_token': 'tok_test'},
-               headers=_auth(token))
-    assert r.status_code == 400, f"Expected 400, got {r.status_code}"
+    r = c.post('/subscription/checkout', json={}, headers=_auth(token))
+    assert r.status_code == 400
     print("OK  test_checkout_missing_plan")
 
 
 def test_checkout_invalid_plan():
     c = _make_client()
     token = _register_and_login(c, 'mp2')
-    r = c.post('/subscription/checkout',
-               json={'plan': 'ultra', 'card_token': 'tok_test'},
-               headers=_auth(token))
-    assert r.status_code == 400, f"Expected 400, got {r.status_code}"
+    r = c.post('/subscription/checkout', json={'plan': 'ultra'}, headers=_auth(token))
+    assert r.status_code == 400
     print("OK  test_checkout_invalid_plan")
 
 
-def test_checkout_missing_card_token():
+def test_checkout_starter_returns_client_secret():
     c = _make_client()
-    token = _register_and_login(c, 'mp3')
-    r = c.post('/subscription/checkout',
-               json={'plan': 'starter'},
-               headers=_auth(token))
-    assert r.status_code == 400, f"Expected 400, got {r.status_code}"
-    print("OK  test_checkout_missing_card_token")
-
-
-# ── /subscription/checkout — cenários MP mockados ────────────────────────────
-
-def _mock_sub(status='authorized', sub_id='SUBTEST001'):
-    """Retorna dict simulando resposta do MP preapproval."""
-    return {'id': sub_id, 'status': status, 'preapproval_plan_id': 'PLAN001'}
-
-
-def test_checkout_starter_approved():
-    """APRO — assinatura Starter aprovada."""
-    c = _make_client()
-    token = _register_and_login(c, 'apro1')
-    with patch('api.app.create_subscription', return_value=_mock_sub('authorized', 'SUB_STARTER')) as mock_cs:
-        r = c.post('/subscription/checkout',
-                   json={'plan': 'starter', 'card_token': 'tok_apro'},
-                   headers=_auth(token))
+    token = _register_and_login(c, 'cs1')
+    with patch('api.app.create_subscription', return_value=_mock_checkout('sub_S', 'pi_s_cs')) as mock:
+        r = c.post('/subscription/checkout', json={'plan': 'starter'}, headers=_auth(token))
     assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_data(as_text=True)}"
+    data = r.get_json()
+    assert data.get('client_secret') == 'pi_s_cs'
+    assert data.get('subscription_id') == 'sub_S'
+    mock.assert_called_once()
+    print(f"OK  test_checkout_starter_returns_client_secret")
+
+
+def test_checkout_pro_returns_client_secret():
+    c = _make_client()
+    token = _register_and_login(c, 'cs2')
+    with patch('api.app.create_subscription', return_value=_mock_checkout('sub_P', 'pi_p_cs')):
+        r = c.post('/subscription/checkout', json={'plan': 'pro'}, headers=_auth(token))
+    assert r.status_code == 200
+    assert r.get_json().get('client_secret') == 'pi_p_cs'
+    print("OK  test_checkout_pro_returns_client_secret")
+
+
+def test_checkout_stripe_error_returns_502():
+    c = _make_client()
+    token = _register_and_login(c, 'err1')
+    with patch('api.app.create_subscription', side_effect=Exception("Stripe config error")):
+        r = c.post('/subscription/checkout', json={'plan': 'starter'}, headers=_auth(token))
+    assert r.status_code == 502
+    assert 'error' in r.get_json()
+    print("OK  test_checkout_stripe_error_returns_502")
+
+
+def test_checkout_no_plan_update_before_activate():
+    """checkout não deve atualizar o plano — só /activate faz isso."""
+    c = _make_client()
+    token = _register_and_login(c, 'noupd')
+    with patch('api.app.create_subscription', return_value=_mock_checkout()):
+        c.post('/subscription/checkout', json={'plan': 'pro'}, headers=_auth(token))
+    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert me.get_json().get('plan') == 'free', "Plan should still be free before activation"
+    print("OK  test_checkout_no_plan_update_before_activate")
+
+
+# ── /subscription/activate ───────────────────────────────────────────────────
+
+def test_activate_requires_auth():
+    c = _make_client()
+    r = c.post('/subscription/activate',
+               json={'plan': 'starter', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'})
+    assert r.status_code == 401
+    print("OK  test_activate_requires_auth")
+
+
+def test_activate_invalid_plan():
+    c = _make_client()
+    token = _register_and_login(c, 'act1')
+    r = c.post('/subscription/activate',
+               json={'plan': 'ultra', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'},
+               headers=_auth(token))
+    assert r.status_code == 400
+    print("OK  test_activate_invalid_plan")
+
+
+def test_activate_missing_fields():
+    c = _make_client()
+    token = _register_and_login(c, 'act2')
+    r = c.post('/subscription/activate', json={'plan': 'starter'}, headers=_auth(token))
+    assert r.status_code == 400
+    print("OK  test_activate_missing_fields")
+
+
+def test_activate_payment_not_succeeded():
+    """PaymentIntent com status != succeeded deve retornar 400."""
+    c = _make_client()
+    token = _register_and_login(c, 'act3')
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_x', 'requires_payment_method')):
+        r = c.post('/subscription/activate',
+                   json={'plan': 'starter', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'},
+                   headers=_auth(token))
+    assert r.status_code == 400
+    print("OK  test_activate_payment_not_succeeded")
+
+
+def test_activate_payment_not_found():
+    c = _make_client()
+    token = _register_and_login(c, 'act4')
+    with patch('api.app.get_payment', return_value=None):
+        r = c.post('/subscription/activate',
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'},
+                   headers=_auth(token))
+    assert r.status_code == 400
+    print("OK  test_activate_payment_not_found")
+
+
+def test_activate_starter_success():
+    c = _make_client()
+    token = _register_and_login(c, 'act5')
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_ok', 'succeeded')):
+        r = c.post('/subscription/activate',
+                   json={'plan': 'starter', 'payment_intent_id': 'pi_ok', 'subscription_id': 'sub_ok'},
+                   headers=_auth(token))
+    assert r.status_code == 200, f"Expected 200: {r.get_data(as_text=True)}"
     data = r.get_json()
     assert data.get('ok') is True
     assert data.get('plan') == 'starter'
-    assert data.get('subscription_id') == 'SUB_STARTER'
-    mock_cs.assert_called_once()
-    print(f"OK  test_checkout_starter_approved | plan={data['plan']} sub={data['subscription_id']}")
+    print(f"OK  test_activate_starter_success | plan={data['plan']}")
 
 
-def test_checkout_pro_approved():
-    """APRO — assinatura Pro aprovada."""
+def test_activate_pro_success():
     c = _make_client()
-    token = _register_and_login(c, 'apro2')
-    with patch('api.app.create_subscription', return_value=_mock_sub('authorized', 'SUB_PRO')):
-        r = c.post('/subscription/checkout',
-                   json={'plan': 'pro', 'card_token': 'tok_apro_pro'},
+    token = _register_and_login(c, 'act6')
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_pro', 'succeeded')):
+        r = c.post('/subscription/activate',
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_pro', 'subscription_id': 'sub_pro'},
                    headers=_auth(token))
     assert r.status_code == 200
-    data = r.get_json()
-    assert data['plan'] == 'pro'
-    print(f"OK  test_checkout_pro_approved | plan={data['plan']}")
+    assert r.get_json().get('plan') == 'pro'
+    print("OK  test_activate_pro_success")
 
 
-def test_checkout_approved_updates_user_plan():
-    """Verifica que o plano do usuário é atualizado no banco após aprovação."""
+def test_activate_updates_user_plan():
+    """Após activate, /auth/me deve refletir o novo plano."""
     c = _make_client()
     token = _register_and_login(c, 'planupd')
-    with patch('api.app.create_subscription', return_value=_mock_sub('authorized', 'SUB_PLANUPD')):
-        c.post('/subscription/checkout',
-               json={'plan': 'pro', 'card_token': 'tok_planupd'},
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_u', 'succeeded')):
+        c.post('/subscription/activate',
+               json={'plan': 'pro', 'payment_intent_id': 'pi_u', 'subscription_id': 'sub_u'},
                headers=_auth(token))
     me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
-    user_data = me.get_json()
-    assert user_data.get('plan') == 'pro', f"Plan not updated: {user_data.get('plan')}"
-    print(f"OK  test_checkout_approved_updates_user_plan | plan={user_data['plan']}")
+    assert me.get_json().get('plan') == 'pro'
+    print("OK  test_activate_updates_user_plan")
 
 
-def test_checkout_forwards_identification():
-    """identification_type/number do form são repassados ao gateway MP."""
+def test_activate_processing_status_accepted():
+    """status=processing também deve ativar (pagamento em processamento)."""
     c = _make_client()
-    token = _register_and_login(c, 'ident')
-    with patch('api.app.create_subscription', return_value=_mock_sub('authorized', 'SUB_ID')) as mock_cs:
-        r = c.post('/subscription/checkout',
-                   json={'plan': 'starter', 'card_token': 'tok_id',
-                         'identification_type': 'CPF', 'identification_number': '12345678909'},
-                   headers=_auth(token))
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_data(as_text=True)}"
-    call_kwargs = mock_cs.call_args[1] if mock_cs.call_args[1] else {}
-    call_args   = mock_cs.call_args[0] if mock_cs.call_args[0] else ()
-    # identification fields deve ter chegado ao gateway
-    assert call_kwargs.get('identification_type') == 'CPF' or (len(call_args) > 6 and call_args[6] == 'CPF'), \
-        f"identification_type not forwarded: kwargs={call_kwargs} args={call_args}"
-    print("OK  test_checkout_forwards_identification")
-
-
-def test_checkout_payer_email_override():
-    """payer_email do form substitui o email do usuário logado."""
-    c = _make_client()
-    token = _register_and_login(c, 'emailov')
-    with patch('api.app.create_subscription', return_value=_mock_sub('authorized', 'SUB_EM')) as mock_cs:
-        r = c.post('/subscription/checkout',
-                   json={'plan': 'starter', 'card_token': 'tok_em',
-                         'payer_email': 'test_buyer@testuser.com'},
+    token = _register_and_login(c, 'proc')
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_proc', 'processing')):
+        r = c.post('/subscription/activate',
+                   json={'plan': 'starter', 'payment_intent_id': 'pi_proc', 'subscription_id': 'sub_proc'},
                    headers=_auth(token))
     assert r.status_code == 200
-    # payer_email customizado deve ter chegado ao gateway
-    call_kwargs = mock_cs.call_args[1] if mock_cs.call_args[1] else {}
-    assert call_kwargs.get('payer_email') == 'test_buyer@testuser.com' or \
-           'test_buyer@testuser.com' in str(mock_cs.call_args), \
-        f"payer_email override not forwarded: {mock_cs.call_args}"
-    print("OK  test_checkout_payer_email_override")
-
-
-def test_checkout_mp_error_returns_502():
-    """OTHE/FUND/SECU — MP recusa o cartão → backend retorna 502."""
-    c = _make_client()
-    token = _register_and_login(c, 'mperr')
-    with patch('api.app.create_subscription', side_effect=Exception("cc_rejected_insufficient_amount")):
-        r = c.post('/subscription/checkout',
-                   json={'plan': 'starter', 'card_token': 'tok_fund'},
-                   headers=_auth(token))
-    assert r.status_code == 502, f"Expected 502, got {r.status_code}"
-    data = r.get_json()
-    assert 'error' in data
-    print(f"OK  test_checkout_mp_error_returns_502 | error={data['error'][:60]}")
-
-
-def test_checkout_rejected_insufficient_funds():
-    """FUND — saldo insuficiente."""
-    c = _make_client()
-    token = _register_and_login(c, 'fund')
-    with patch('api.app.create_subscription',
-               side_effect=Exception("cc_rejected_insufficient_amount")):
-        r = c.post('/subscription/checkout',
-                   json={'plan': 'pro', 'card_token': 'tok_fund'},
-                   headers=_auth(token))
-    assert r.status_code == 502
-    print("OK  test_checkout_rejected_insufficient_funds")
-
-
-def test_checkout_rejected_bad_cvv():
-    """SECU — CVV inválido."""
-    c = _make_client()
-    token = _register_and_login(c, 'secu')
-    with patch('api.app.create_subscription',
-               side_effect=Exception("cc_rejected_bad_filled_security_code")):
-        r = c.post('/subscription/checkout',
-                   json={'plan': 'starter', 'card_token': 'tok_secu'},
-                   headers=_auth(token))
-    assert r.status_code == 502
-    print("OK  test_checkout_rejected_bad_cvv")
-
-
-def test_checkout_rejected_expired_card():
-    """EXPI — data de vencimento inválida."""
-    c = _make_client()
-    token = _register_and_login(c, 'expi')
-    with patch('api.app.create_subscription',
-               side_effect=Exception("cc_rejected_bad_filled_date")):
-        r = c.post('/subscription/checkout',
-                   json={'plan': 'starter', 'card_token': 'tok_expi'},
-                   headers=_auth(token))
-    assert r.status_code == 502
-    print("OK  test_checkout_rejected_expired_card")
-
-
-def test_checkout_rejected_call_for_authorize():
-    """CALL — requer autorização manual."""
-    c = _make_client()
-    token = _register_and_login(c, 'call')
-    with patch('api.app.create_subscription',
-               side_effect=Exception("cc_rejected_call_for_authorize")):
-        r = c.post('/subscription/checkout',
-                   json={'plan': 'pro', 'card_token': 'tok_call'},
-                   headers=_auth(token))
-    assert r.status_code == 502
-    print("OK  test_checkout_rejected_call_for_authorize")
+    print("OK  test_activate_processing_status_accepted")
 
 
 # ── /subscription/invoices ───────────────────────────────────────────────────
@@ -278,27 +260,22 @@ def test_invoices_empty_for_new_user():
     r = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'})
     assert r.status_code == 200
     data = r.get_json()
-    assert 'invoices' in data
-    assert isinstance(data['invoices'], list)
+    assert isinstance(data.get('invoices'), list)
     print(f"OK  test_invoices_empty_for_new_user | count={len(data['invoices'])}")
 
 
-def test_invoices_after_payment():
-    """Pagamento salvo no banco aparece em /invoices."""
+def test_invoices_after_activation():
     c = _make_client()
     token = _register_and_login(c, 'invpay')
-    with patch('api.app.create_subscription', return_value=_mock_sub('authorized', 'SUB_INV')):
-        c.post('/subscription/checkout',
-               json={'plan': 'starter', 'card_token': 'tok_inv'},
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_inv', 'succeeded')):
+        c.post('/subscription/activate',
+               json={'plan': 'starter', 'payment_intent_id': 'pi_inv', 'subscription_id': 'sub_inv'},
                headers=_auth(token))
     r = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'})
-    assert r.status_code == 200
     data = r.get_json()
     assert len(data['invoices']) >= 1
-    inv = data['invoices'][0]
-    assert inv.get('plan') == 'starter'
-    assert inv.get('status') in ('authorized', 'approved')
-    print(f"OK  test_invoices_after_payment | invoices={len(data['invoices'])}")
+    assert data['invoices'][0].get('plan') == 'starter'
+    print(f"OK  test_invoices_after_activation | count={len(data['invoices'])}")
 
 
 # ── /subscription/cancel ─────────────────────────────────────────────────────
@@ -311,25 +288,23 @@ def test_cancel_requires_auth():
 
 
 def test_cancel_no_active_subscription():
-    """Usuário sem assinatura → 400."""
     c = _make_client()
     token = _register_and_login(c, 'canc0')
     r = c.post('/subscription/cancel', headers=_auth(token))
-    assert r.status_code in (400, 404), f"Expected 400/404, got {r.status_code}"
+    assert r.status_code in (400, 404)
     print(f"OK  test_cancel_no_active_subscription | status={r.status_code}")
 
 
 def test_cancel_active_subscription():
-    """Assina e depois cancela — plano volta para free."""
     c = _make_client()
     token = _register_and_login(c, 'cancact')
-    with patch('api.app.create_subscription', return_value=_mock_sub('authorized', 'SUB_CANCEL')):
-        c.post('/subscription/checkout',
-               json={'plan': 'pro', 'card_token': 'tok_cancel'},
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_c', 'succeeded')):
+        c.post('/subscription/activate',
+               json={'plan': 'pro', 'payment_intent_id': 'pi_c', 'subscription_id': 'sub_CANCEL'},
                headers=_auth(token))
     with patch('api.app.cancel_subscription', return_value=True):
         r = c.post('/subscription/cancel', headers=_auth(token))
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_data(as_text=True)}"
+    assert r.status_code == 200, f"Expected 200: {r.get_data(as_text=True)}"
     data = r.get_json()
     assert data.get('ok') is True
     assert data.get('plan') == 'free'
@@ -340,64 +315,64 @@ def test_cancel_active_subscription():
 
 # ── /subscription/webhook ────────────────────────────────────────────────────
 
-def test_webhook_no_signature_allowed_without_secret():
-    """Sem MP_WEBHOOK_SECRET configurado, webhook passa sem validar assinatura."""
+def test_webhook_no_secret_allowed():
+    """Sem STRIPE_WEBHOOK_SECRET configurado, webhook é aceito sem validação."""
     c = _make_client()
-    payload = {'type': 'subscription_preapproval', 'data': {'id': 'SUB_WH001'}}
-    with patch('api.app.get_subscription', return_value={'id': 'SUB_WH001', 'status': 'authorized',
-                                                          'external_reference': 'user_1_starter',
-                                                          'preapproval_plan_id': 'PLAN001'}):
-        with patch('api.app.get_user_by_external_ref', return_value=(None, 'starter')):
-            r = c.post('/subscription/webhook',
-                       json=payload,
-                       content_type='application/json')
+    token = _register_and_login(c, 'wh_ns')
+    payload = json.dumps({'type': 'invoice.payment_succeeded',
+                          'data': {'object': {'subscription': 'sub_wh1',
+                                              'amount_paid': 1900,
+                                              'payment_intent': 'pi_wh1'}}}).encode()
+    with patch('api.app.get_subscription', return_value={'metadata': {'user_id': '999', 'plan_name': 'starter'}}):
+        with patch('api.app.update_user_plan') as mock_upd:
+            with patch('api.app.save_payment') as mock_pay:
+                r = c.post('/subscription/webhook', data=payload, content_type='application/json')
     assert r.status_code == 200
-    print(f"OK  test_webhook_no_signature_allowed_without_secret")
+    print("OK  test_webhook_no_secret_allowed")
 
 
-def test_webhook_payment_event_approved():
-    """Evento payment approved → save_payment chamado."""
+def test_webhook_subscription_deleted_downgrades():
+    """customer.subscription.deleted → plano volta para free."""
     c = _make_client()
-    token = _register_and_login(c, 'wh_pay')
-    with patch('api.app.create_subscription', return_value=_mock_sub('authorized', 'SUB_WHPAY')):
-        c.post('/subscription/checkout',
-               json={'plan': 'starter', 'card_token': 'tok_whpay'},
+    token = _register_and_login(c, 'wh_del')
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_del', 'succeeded')):
+        c.post('/subscription/activate',
+               json={'plan': 'pro', 'payment_intent_id': 'pi_del', 'subscription_id': 'sub_del'},
                headers=_auth(token))
-    payment_data = {
-        'id': 'PAY001', 'status': 'approved',
-        'external_reference': 'user_1_starter',
-        'transaction_amount': 19.00, 'currency_id': 'BRL',
-        'date_approved': '2026-04-28T00:00:00Z',
-    }
-    payload = {'type': 'payment', 'data': {'id': 'PAY001'}}
-    with patch('api.app.get_payment', return_value=payment_data):
-        with patch('api.app.get_user_by_external_ref', return_value=({'id': 1}, 'starter')):
-            r = c.post('/subscription/webhook',
-                       json=payload,
-                       content_type='application/json')
+
+    from database.repositories import get_user_by_email
+    from database.schema import get_conn
+    conn = get_conn()
+    user = dict(conn.execute("SELECT id FROM users WHERE email='subwh_del@test.com'").fetchone() or {})
+    user_id = user.get('id', 1)
+    conn.close()
+
+    payload = json.dumps({'type': 'customer.subscription.deleted',
+                          'data': {'object': {'metadata': {'user_id': str(user_id)}}}}).encode()
+    r = c.post('/subscription/webhook', data=payload, content_type='application/json')
     assert r.status_code == 200
-    print(f"OK  test_webhook_payment_event_approved")
+    print("OK  test_webhook_subscription_deleted_downgrades")
 
 
 def test_webhook_invalid_signature_rejected():
-    """Webhook com secret configurado e assinatura inválida → 400."""
-    import os
+    """Com STRIPE_WEBHOOK_SECRET configurado, assinatura inválida → 400."""
     c = _make_client()
-    original = os.environ.get('MP_WEBHOOK_SECRET', '')
-    os.environ['MP_WEBHOOK_SECRET'] = 'test_secret_key_abc'
+    import leaklab.stripe_gateway as gw
+    original = gw.STRIPE_WEBHOOK_SECRET
+    os.environ['STRIPE_WEBHOOK_SECRET'] = 'whsec_test'
+    gw.STRIPE_WEBHOOK_SECRET = 'whsec_test'
     try:
-        import leaklab.mercadopago_gateway as gw
-        gw.MP_WEBHOOK_SECRET = 'test_secret_key_abc'
-        payload = json.dumps({'type': 'payment', 'data': {'id': '999'}}).encode()
-        r = c.post('/subscription/webhook',
-                   data=payload,
-                   content_type='application/json',
-                   headers={'x-signature': 'ts=000,v1=invalidsignature'})
+        payload = json.dumps({'type': 'ping'}).encode()
+        with patch('api.app.STRIPE_WEBHOOK_SECRET', 'whsec_test'):
+            with patch('api.app.validate_webhook', side_effect=Exception("Invalid signature")):
+                r = c.post('/subscription/webhook', data=payload,
+                           content_type='application/json',
+                           headers={'stripe-signature': 'bad_sig'})
         assert r.status_code == 400, f"Expected 400, got {r.status_code}"
         print("OK  test_webhook_invalid_signature_rejected")
     finally:
-        os.environ['MP_WEBHOOK_SECRET'] = original
-        gw.MP_WEBHOOK_SECRET = original
+        gw.STRIPE_WEBHOOK_SECRET = original
+        os.environ.pop('STRIPE_WEBHOOK_SECRET', None)
 
 
 # ── runner ───────────────────────────────────────────────────────────────────

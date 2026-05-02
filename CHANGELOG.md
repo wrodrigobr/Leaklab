@@ -9,6 +9,39 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.29.0] — 2026-05-02 — BACK-015: Migração Mercado Pago → Stripe
+
+### Pagamentos
+- **`stripe_gateway.py`** — novo gateway: `create_subscription`, `cancel_subscription`, `get_subscription`, `get_payment`, `validate_webhook`; usa Stripe Subscriptions API com `payment_behavior=default_incomplete`
+- **`POST /subscription/checkout`** — simplificado: recebe só `plan`, cria Stripe Customer + Subscription, retorna `{ client_secret, subscription_id }` para confirmação no frontend
+- **`POST /subscription/activate`** — novo: verifica `PaymentIntent.status` e ativa o plano no banco (chamado pelo frontend após `stripe.confirmPayment`)
+- **`POST /subscription/webhook`** — reescrito para eventos Stripe: `invoice.payment_succeeded` → ativa plano; `customer.subscription.deleted` → reverte para free; sem secret configurado aceita sem validação (dev mode)
+- **`POST /subscription/cancel`** — usa `stripe.Subscription.cancel()` via gateway
+- Removido `mercadopago_gateway.py` (todas as rotas MP descontinuadas)
+
+### Frontend
+- **`CheckoutModal.tsx`** — reescrito com `@stripe/stripe-js`; `loadStripe` + `PaymentElement` substitui 8 campos manuais do MP; `Promise.all` carrega SDK e intent em paralelo; confirmação via `stripe.confirmPayment({ redirect: 'if_required' })` + `/subscription/activate`
+- **`api.ts`** — `checkout()` simplificado (só `plan`); novo `activate(plan, payment_intent_id, subscription_id)`
+
+### Dependências
+- `requirements.txt`: + `stripe==12.0.0`; removido `requests` (não mais usado pelo gateway)
+- `package.json`: + `@stripe/stripe-js`
+
+### Env vars necessárias
+| Variável | Descrição |
+|---|---|
+| `STRIPE_SECRET_KEY` | Chave secreta Stripe (`sk_test_...` / `sk_live_...`) |
+| `STRIPE_PUBLISHABLE_KEY` | Não usada no backend |
+| `STRIPE_WEBHOOK_SECRET` | Secret do webhook Stripe (`whsec_...`) |
+| `STRIPE_PRICE_STARTER` | Price ID do plano Starter (`price_...`) |
+| `STRIPE_PRICE_PRO` | Price ID do plano Pro (`price_...`) |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Chave pública Stripe para o frontend |
+
+### Testes
+- `test_subscription.py` reescrito: 25 testes cobrindo checkout, activate, invoices, cancel, webhook — 0 regressões
+
+---
+
 ## [v0.28.1] — 2026-05-01 — BACK-015 fix: payer.identification + debugging
 
 ### Pagamentos

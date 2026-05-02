@@ -57,13 +57,12 @@ from database.repositories import (
     decision_belongs_to_student,
     # Sprint 15 — BACK-015: payments
     save_payment, get_payments, update_user_plan,
-    get_user_by_external_ref,
 )
 from database.auth import generate_token, require_auth, require_coach
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
-from leaklab.mercadopago_gateway import (
+from leaklab.stripe_gateway import (
     create_subscription, cancel_subscription, get_subscription, get_payment,
-    validate_webhook_signature, PLAN_AMOUNTS,
+    validate_webhook, PLAN_AMOUNTS, STRIPE_WEBHOOK_SECRET,
 )
 
 app = Flask(__name__)
@@ -2160,97 +2159,116 @@ def subscription_upgrade():
     return jsonify({'ok': True, 'plan': new_plan})
 
 
-# ── BACK-015: Mercado Pago ────────────────────────────────────────────────────
+# ── BACK-015: Stripe Billing ──────────────────────────────────────────────────
 
 @app.route('/subscription/checkout', methods=['POST'])
 @require_auth
-@limiter.limit("5 per hour")
+@limiter.limit("10 per hour")
 def subscription_checkout():
-    """Cria assinatura recorrente via Mercado Pago Transparent Checkout."""
-    data                  = request.get_json(silent=True) or {}
-    plan                  = data.get('plan')
-    card_token            = data.get('card_token')
-    payment_method_id     = data.get('payment_method_id')
-    issuer_id             = data.get('issuer_id')
-    identification_type   = data.get('identification_type')
-    identification_number = data.get('identification_number')
-    payer_email           = data.get('payer_email') or g.user.get('email', '')
-
+    """Cria assinatura Stripe incompleta e retorna client_secret para o frontend."""
+    data = request.get_json(silent=True) or {}
+    plan = data.get('plan')
     if plan not in ('starter', 'pro'):
         return jsonify({'error': 'Plano inválido. Use starter ou pro.'}), 400
-    if not card_token:
-        return jsonify({'error': 'card_token obrigatório'}), 400
 
     try:
-        sub = create_subscription(
+        result = create_subscription(
             plan_name=plan,
-            payer_email=payer_email,
-            card_token=card_token,
+            payer_email=g.user.get('email', ''),
             user_id=g.user_id,
-            payment_method_id=payment_method_id,
-            issuer_id=issuer_id,
-            identification_type=identification_type,
-            identification_number=identification_number,
         )
     except Exception as e:
-        log.exception("MP checkout error for user %s plan %s", g.user_id, plan)
-        return jsonify({'error': 'Erro ao processar pagamento. Verifique os dados do cartão.'}), 502
+        log.exception("Stripe checkout error for user %s plan %s", g.user_id, plan)
+        if app.debug:
+            return jsonify({'error': f'[DEBUG] Stripe: {e}'}), 502
+        return jsonify({'error': 'Erro ao iniciar pagamento. Tente novamente.'}), 502
 
-    sub_id = sub.get('id')
-    update_user_plan(g.user_id, plan, sub_id)
+    return jsonify({
+        'client_secret':   result['client_secret'],
+        'subscription_id': result['subscription_id'],
+    })
+
+
+@app.route('/subscription/activate', methods=['POST'])
+@require_auth
+def subscription_activate():
+    """Verifica PaymentIntent e ativa o plano — chamado após confirmPayment no frontend."""
+    data              = request.get_json(silent=True) or {}
+    plan              = data.get('plan')
+    payment_intent_id = data.get('payment_intent_id')
+    subscription_id   = data.get('subscription_id')
+
+    if plan not in ('starter', 'pro'):
+        return jsonify({'error': 'Plano inválido'}), 400
+    if not payment_intent_id or not subscription_id:
+        return jsonify({'error': 'payment_intent_id e subscription_id obrigatórios'}), 400
+
+    pi = get_payment(payment_intent_id)
+    if not pi or pi.get('status') not in ('succeeded', 'processing'):
+        status = pi.get('status') if pi else 'not_found'
+        return jsonify({'error': f'Pagamento não confirmado (status: {status})'}), 400
+
+    update_user_plan(g.user_id, plan, subscription_id)
     save_payment(
         user_id=g.user_id,
         plan=plan,
         amount_cents=int(PLAN_AMOUNTS[plan] * 100),
-        status=sub.get('status', 'authorized'),
-        gateway_id=sub_id,
-        gateway_sub_id=sub_id,
+        status='approved',
+        gateway_id=payment_intent_id,
+        gateway_sub_id=subscription_id,
     )
-    return jsonify({'ok': True, 'plan': plan, 'subscription_id': sub_id})
+    return jsonify({'ok': True, 'plan': plan, 'subscription_id': subscription_id})
 
 
 @app.route('/subscription/webhook', methods=['POST'])
 def subscription_webhook():
-    """Recebe notificações do Mercado Pago e atualiza planos/pagamentos."""
-    body     = request.get_data()
-    x_sig    = request.headers.get('x-signature', '')
-    payload  = request.get_json(silent=True) or {}
-    data_id  = (payload.get('data') or {}).get('id') or request.args.get('data.id', '')
+    """Recebe eventos Stripe e atualiza planos/pagamentos."""
+    import json as _json
+    payload    = request.get_data()
+    sig_header = request.headers.get('stripe-signature', '')
 
-    if x_sig and not validate_webhook_signature(body, x_sig, str(data_id)):
-        log.warning("MP webhook invalid signature data_id=%s", data_id)
-        return jsonify({'error': 'Invalid signature'}), 400
+    if not STRIPE_WEBHOOK_SECRET:
+        # Dev sem secret — aceita sem validar
+        try:
+            event = _json.loads(payload)
+        except Exception:
+            return jsonify({'error': 'Bad payload'}), 400
+    else:
+        try:
+            event = validate_webhook(payload, sig_header)
+        except Exception as e:
+            log.warning("Stripe webhook validation error: %s", e)
+            return jsonify({'error': 'Invalid signature'}), 400
 
-    event_type = payload.get('type', '')
-    log.info("MP webhook type=%s data_id=%s", event_type, data_id)
+    event_type = event.get('type', '') if isinstance(event, dict) else event.type
+    obj        = (event.get('data', {}).get('object', {})
+                  if isinstance(event, dict) else event.data.object)
+    log.info("Stripe webhook type=%s", event_type)
 
-    if event_type == 'subscription_preapproval' and data_id:
-        sub = get_subscription(str(data_id))
-        if sub:
-            ext_ref = sub.get('external_reference', '')
-            status  = sub.get('status', '')
-            user, plan = get_user_by_external_ref(ext_ref)
-            if user:
-                if status == 'authorized':
-                    update_user_plan(user['id'], plan, sub.get('id'))
-                elif status in ('cancelled', 'paused'):
-                    update_user_plan(user['id'], 'free', None)
-
-    elif event_type == 'payment' and data_id:
-        pmt = get_payment(str(data_id))
-        if pmt:
-            ext_ref = pmt.get('external_reference', '')
-            status  = pmt.get('status', '')
-            amount  = float(pmt.get('transaction_amount', 0))
-            user, plan = get_user_by_external_ref(ext_ref)
-            if user:
+    if event_type == 'invoice.payment_succeeded':
+        sub_id = obj.get('subscription') if isinstance(obj, dict) else obj.subscription
+        amount = obj.get('amount_paid', 0) if isinstance(obj, dict) else obj.amount_paid
+        pi_id  = obj.get('payment_intent', '') if isinstance(obj, dict) else obj.payment_intent
+        if sub_id:
+            sub  = get_subscription(str(sub_id))
+            meta = sub.get('metadata', {}) if isinstance(sub, dict) else (sub.metadata if sub else {})
+            user_id   = int(meta.get('user_id', 0))
+            plan_name = meta.get('plan_name', 'starter')
+            if user_id:
+                update_user_plan(user_id, plan_name, str(sub_id))
                 save_payment(
-                    user_id=user['id'],
-                    plan=plan,
-                    amount_cents=int(amount * 100),
-                    status='paid' if status == 'approved' else 'failed',
-                    gateway_id=str(data_id),
+                    user_id=user_id, plan=plan_name,
+                    amount_cents=int(amount),
+                    status='approved',
+                    gateway_id=str(pi_id),
+                    gateway_sub_id=str(sub_id),
                 )
+
+    elif event_type == 'customer.subscription.deleted':
+        meta      = obj.get('metadata', {}) if isinstance(obj, dict) else obj.metadata
+        user_id   = int(meta.get('user_id', 0))
+        if user_id:
+            update_user_plan(user_id, 'free', None)
 
     return jsonify({'ok': True})
 

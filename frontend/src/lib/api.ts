@@ -828,18 +828,16 @@ export const subscription = {
       body: JSON.stringify({ plan }),
     }),
 
-  checkout: (
-    plan: string,
-    card_token: string,
-    payment_method_id?: string,
-    issuer_id?: string,
-    identification_type?: string,
-    identification_number?: string,
-    payer_email?: string,
-  ) =>
-    request<{ ok: boolean; plan: string; subscription_id: string }>("/subscription/checkout", {
+  checkout: (plan: string) =>
+    request<{ client_secret: string; subscription_id: string }>("/subscription/checkout", {
       method: "POST",
-      body: JSON.stringify({ plan, card_token, payment_method_id, issuer_id, identification_type, identification_number, payer_email }),
+      body: JSON.stringify({ plan }),
+    }),
+
+  activate: (plan: string, payment_intent_id: string, subscription_id: string) =>
+    request<{ ok: boolean; plan: string; subscription_id: string }>("/subscription/activate", {
+      method: "POST",
+      body: JSON.stringify({ plan, payment_intent_id, subscription_id }),
     }),
 
   invoices: () => request<{ invoices: Invoice[] }>("/subscription/invoices"),
