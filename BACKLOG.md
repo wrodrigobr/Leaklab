@@ -48,9 +48,8 @@ Fix aplicado: quando herói é eliminado sem ITM no PokerStars (`finished the to
 | Sprint A | UX-001 + UX-003 | Lista de torneios + tooltips auto-explicativos | ✅ v0.31.0 |
 | Sprint 15 | BACK-015 | Gateway de pagamento (Stripe) | ✅ v0.29.0 |
 | Sprint B | UX-002 | Responsividade mobile/tablet | ✅ v0.33.0 |
-| **Sprint C** | **BACK-014** | **Revenue share para coaches** | ⏳ Pendente ~20h |
+| Sprint C+E | BACK-014 + BACK-017 | Revenue share + Admin Panel | ✅ v0.34.0 |
 | **Sprint D** | **BACK-016** | **WhatsApp Coaching Drills (PRO)** | ⏳ Pendente ~14h |
-| **Sprint E** | **BACK-017** | **Admin Panel + Financeiro de Coaches** | ⏳ Pendente ~22h |
 
 ---
 

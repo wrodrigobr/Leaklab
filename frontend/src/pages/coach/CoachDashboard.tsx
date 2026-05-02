@@ -4,11 +4,12 @@ import { useNavigate } from "react-router-dom";
 import {
   Users, TrendingUp, Award, Activity, AlertTriangle,
   Play, Filter, ChevronDown, ChevronUp, LayoutDashboard,
+  BarChart2, CheckCircle2, Clock,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
 import { StudentRow } from "@/components/coach/StudentRow";
-import { coachDashboard, MultiStudentDecision, CommonLeak } from "@/lib/api";
+import { coachDashboard, coachFinance, MultiStudentDecision, CommonLeak } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // ── shared ────────────────────────────────────────────────────────────────────
@@ -333,13 +334,149 @@ function LeaksTab() {
 
 // ── Tabs definition ───────────────────────────────────────────────────────────
 
-type Tab = "alunos" | "urgente" | "leaks";
+type Tab = "alunos" | "urgente" | "leaks" | "financeiro";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "alunos",  label: "Alunos",          icon: Users },
-  { id: "urgente", label: "Atenção Urgente", icon: AlertTriangle },
-  { id: "leaks",   label: "Leaks Sistêmicos", icon: LayoutDashboard },
+  { id: "alunos",      label: "Alunos",           icon: Users },
+  { id: "urgente",     label: "Atenção Urgente",  icon: AlertTriangle },
+  { id: "leaks",       label: "Leaks Sistêmicos", icon: LayoutDashboard },
+  { id: "financeiro",  label: "Financeiro",       icon: BarChart2 },
 ];
+
+// ── Finance Tab ───────────────────────────────────────────────────────────────
+
+function fmtCents(cents: number) {
+  return `R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+}
+function fmtDate(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" });
+}
+
+function FinanceiroTab() {
+  const { data: summary, isLoading: loadSum } = useQuery({
+    queryKey: ["coach-finance-summary"],
+    queryFn: coachFinance.summary,
+    staleTime: 60_000,
+  });
+  const { data: stData, isLoading: loadSt } = useQuery({
+    queryKey: ["coach-finance-students"],
+    queryFn: coachFinance.students,
+    staleTime: 60_000,
+  });
+  const { data: histData, isLoading: loadHist } = useQuery({
+    queryKey: ["coach-finance-history"],
+    queryFn: coachFinance.history,
+    staleTime: 60_000,
+  });
+
+  const students = stData?.students ?? [];
+  const payments = histData?.payments ?? [];
+  const activeCount = students.filter(s => s.is_active).length;
+
+  return (
+    <div className="space-y-6 mt-4">
+      {/* Resumo do ciclo */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[
+          { label: "Alunos Vinculados", value: loadSum ? "…" : String(summary?.total_students ?? 0), sub: "total" },
+          { label: "Alunos Ativos", value: loadSt ? "…" : String(activeCount), sub: "PRO + importaram este mês" },
+          { label: "Receita Estimada", value: loadSum ? "…" : fmtCents(summary?.amount_cents ?? 0), sub: summary?.period ?? "" },
+          { label: "Mensalidade", value: summary?.monthly_fee_waived ? "Zerada" : "Normal", sub: summary?.monthly_fee_waived ? "≥1 aluno ativo" : "sem alunos" },
+        ].map(k => (
+          <div key={k.label} className="rounded-xl border border-border bg-hud-surface p-4 space-y-1">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">{k.label}</p>
+            <p className="text-xl font-bold text-foreground">{k.value}</p>
+            <p className="font-mono text-[9px] text-muted-foreground">{k.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Lista de alunos com status */}
+      <div className="rounded-xl border border-border bg-hud-surface overflow-hidden">
+        <div className="px-4 py-3 border-b border-border bg-hud-elevated/40">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alunos — Status de Atividade</span>
+        </div>
+        {loadSt ? (
+          <div className="py-10 flex justify-center"><Activity className="size-5 animate-spin text-primary" /></div>
+        ) : students.length === 0 ? (
+          <p className="px-4 py-8 text-sm text-muted-foreground text-center">Nenhum aluno vinculado.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {students.map(s => (
+              <li key={s.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{s.username}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">
+                    {s.plan} · {s.tournament_count} torneios · último: {fmtDate(s.last_import)}
+                  </p>
+                </div>
+                <div className="shrink-0">
+                  {s.is_active ? (
+                    <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
+                      <CheckCircle2 className="size-3" /> Ativo
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-sm bg-border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border">
+                      <Clock className="size-3" /> Inativo
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Histórico de repasses */}
+      <div className="rounded-xl border border-border bg-hud-surface overflow-hidden">
+        <div className="px-4 py-3 border-b border-border bg-hud-elevated/40">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Histórico de Repasses</span>
+        </div>
+        {loadHist ? (
+          <div className="py-10 flex justify-center"><Activity className="size-5 animate-spin text-primary" /></div>
+        ) : payments.length === 0 ? (
+          <p className="px-4 py-8 text-sm text-muted-foreground text-center">Nenhum histórico ainda.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="border-b border-border">
+                <tr>
+                  {["Período", "Alunos Ativos", "Valor", "Status", "Pago em"].map(h => (
+                    <th key={h} className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {payments.map(p => (
+                  <tr key={p.id} className="hover:bg-primary/5 transition-colors">
+                    <td className="px-4 py-3 font-mono text-foreground">{p.period}</td>
+                    <td className="px-4 py-3 font-mono tabular-nums text-center text-foreground">{p.active_students}</td>
+                    <td className="px-4 py-3 font-mono font-bold tabular-nums text-foreground">
+                      {p.amount_cents > 0 ? fmtCents(p.amount_cents) : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.status === "paid" ? (
+                        <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
+                          <CheckCircle2 className="size-3" /> Pago
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20">
+                          <Clock className="size-3" /> Pendente
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-muted-foreground">{fmtDate(p.paid_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function CoachDashboard() {
   const [tab, setTab] = useState<Tab>("alunos");
@@ -376,7 +513,7 @@ export default function CoachDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-border gap-0">
+        <div className="flex overflow-x-auto border-b border-border gap-0 scrollbar-none">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -394,9 +531,10 @@ export default function CoachDashboard() {
           ))}
         </div>
 
-        {tab === "alunos"  && <AlunosTab />}
-        {tab === "urgente" && <UrgentTab />}
-        {tab === "leaks"   && <LeaksTab />}
+        {tab === "alunos"      && <AlunosTab />}
+        {tab === "urgente"     && <UrgentTab />}
+        {tab === "leaks"       && <LeaksTab />}
+        {tab === "financeiro"  && <FinanceiroTab />}
       </main>
     </div>
   );

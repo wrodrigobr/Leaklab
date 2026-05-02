@@ -1929,6 +1929,279 @@ def get_texture_analysis(tournament_db_id: int) -> list:
     return result
 
 
+# ── Admin & Coach Finance — BACK-014 + BACK-017 ───────────────────────────────
+
+def calculate_coach_payout(active_students: int) -> int:
+    """Revenue share em centavos (BRL). 1-3: mensalidade zerada; 4-9: R$15/aluno; 10+: R$20/aluno."""
+    if active_students >= 10: return active_students * 2000
+    if active_students >= 4:  return active_students * 1500
+    return 0
+
+
+def get_admin_dashboard_stats() -> dict:
+    """Stats executivos para o painel admin."""
+    conn = get_conn()
+    try:
+        total_users   = _fetchone(conn, "SELECT COUNT(*) AS n FROM users WHERE role = 'player'")['n']
+        total_coaches = _fetchone(conn, "SELECT COUNT(*) AS n FROM users WHERE role = 'coach'")['n']
+        active_30d    = _fetchone(conn, f"""
+            SELECT COUNT(DISTINCT user_id) AS n FROM tournaments
+            WHERE imported_at >= {interval_sql(30)}
+        """)['n']
+        plan_rows = _fetchall(conn, """
+            SELECT plan, COUNT(*) AS n FROM users
+            WHERE role IN ('player','coach') GROUP BY plan
+        """)
+        plans = {r['plan']: r['n'] for r in plan_rows}
+        pending_payouts = _fetchone(conn, """
+            SELECT COALESCE(SUM(amount_cents), 0) AS total FROM coach_payments
+            WHERE status = 'pending'
+        """)['total']
+        # MRR estimado: pro users pagam ~R$49/mês (4900 centavos)
+        pro_users = plans.get('pro', 0)
+        mrr_cents = pro_users * 4900
+        return {
+            'total_users':          total_users,
+            'total_coaches':        total_coaches,
+            'active_users_30d':     active_30d,
+            'plans':                plans,
+            'mrr_cents':            mrr_cents,
+            'pending_payouts_cents': int(pending_payouts),
+        }
+    finally:
+        conn.close()
+
+
+def get_all_users(limit: int = 50, offset: int = 0, plan: str = None,
+                  role: str = None, search: str = None) -> list:
+    """Lista paginada de usuários para o admin."""
+    conn = get_conn()
+    try:
+        filters, params = [], []
+        if plan:
+            filters.append("u.plan = ?"); params.append(plan)
+        if role:
+            filters.append("u.role = ?"); params.append(role)
+        if search:
+            filters.append("(u.username ILIKE ? OR u.email ILIKE ?)") if USE_POSTGRES else \
+            filters.append("(LOWER(u.username) LIKE ? OR LOWER(u.email) LIKE ?)")
+            term = f'%{search.lower()}%'
+            params.extend([term, term])
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        params.extend([limit, offset])
+        return _fetchall(conn, f"""
+            SELECT u.id, u.username, u.email, u.role, u.plan,
+                   u.created_at, u.last_login, u.suspended,
+                   c.username AS coach_username,
+                   (SELECT MAX(imported_at) FROM tournaments WHERE user_id = u.id) AS last_import,
+                   (SELECT COUNT(*) FROM tournaments WHERE user_id = u.id) AS tournament_count
+            FROM users u
+            LEFT JOIN users c ON c.id = u.coach_id
+            {where}
+            ORDER BY u.created_at DESC
+            LIMIT ? OFFSET ?
+        """, params)
+    finally:
+        conn.close()
+
+
+def get_all_users_count(plan: str = None, role: str = None, search: str = None) -> int:
+    conn = get_conn()
+    try:
+        filters, params = [], []
+        if plan:
+            filters.append("plan = ?"); params.append(plan)
+        if role:
+            filters.append("role = ?"); params.append(role)
+        if search:
+            filters.append("(LOWER(username) LIKE ? OR LOWER(email) LIKE ?)")
+            term = f'%{search.lower()}%'
+            params.extend([term, term])
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        return _fetchone(conn, f"SELECT COUNT(*) AS n FROM users {where}", params)['n']
+    finally:
+        conn.close()
+
+
+def update_user_admin(user_id: int, plan: str = None, suspended: bool = None) -> None:
+    conn = get_conn()
+    try:
+        if plan is not None:
+            conn.execute("UPDATE users SET plan = ? WHERE id = ?", (plan, user_id))
+        if suspended is not None:
+            val = 1 if suspended else 0
+            conn.execute("UPDATE users SET suspended = ? WHERE id = ?", (val, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_coaches_with_payout_status(period: str) -> list:
+    """Coaches com contagem de alunos ativos e status de repasse para o período."""
+    conn = get_conn()
+    try:
+        coaches = _fetchall(conn, """
+            SELECT u.id, u.username, cp.display_name, u.plan,
+                   (SELECT COUNT(*) FROM users WHERE coach_id = u.id) AS total_students
+            FROM users u
+            LEFT JOIN coach_profiles cp ON cp.user_id = u.id
+            WHERE u.role = 'coach'
+            ORDER BY u.username
+        """)
+        for coach in coaches:
+            # alunos ativos: importaram torneio nos últimos 30 dias + plano pro
+            active = _fetchone(conn, f"""
+                SELECT COUNT(DISTINCT s.id) AS n
+                FROM users s
+                INNER JOIN tournaments t ON t.user_id = s.id
+                WHERE s.coach_id = ? AND s.plan = 'pro'
+                  AND t.imported_at >= {interval_sql(30)}
+            """, (coach['id'],))['n']
+            coach['active_students'] = active
+            coach['amount_cents']    = calculate_coach_payout(active)
+            # busca pagamento existente para o período
+            pay = _fetchone(conn, """
+                SELECT id, status, paid_at FROM coach_payments
+                WHERE coach_id = ? AND period = ?
+            """, (coach['id'], period))
+            coach['payment_id'] = pay['id']    if pay else None
+            coach['status']     = pay['status'] if pay else 'pending'
+            coach['paid_at']    = pay['paid_at'] if pay else None
+        return coaches
+    finally:
+        conn.close()
+
+
+def upsert_coach_payment(coach_id: int, period: str, active_students: int, amount_cents: int) -> int:
+    """Cria ou atualiza o registro de repasse para o coach no período."""
+    conn = get_conn()
+    try:
+        existing = _fetchone(conn, """
+            SELECT id FROM coach_payments WHERE coach_id = ? AND period = ?
+        """, (coach_id, period))
+        if existing:
+            conn.execute("""
+                UPDATE coach_payments SET active_students = ?, amount_cents = ?
+                WHERE id = ?
+            """, (active_students, amount_cents, existing['id']))
+            conn.commit()
+            return existing['id']
+        else:
+            pid = _insert(conn, """
+                INSERT INTO coach_payments (coach_id, period, active_students, amount_cents, status)
+                VALUES (?, ?, ?, ?, 'pending')
+            """, (coach_id, period, active_students, amount_cents))
+            conn.commit()
+            return pid
+    finally:
+        conn.close()
+
+
+def mark_coach_payment_paid(payment_id: int) -> None:
+    conn = get_conn()
+    try:
+        conn.execute(f"""
+            UPDATE coach_payments SET status = 'paid', paid_at = {now_sql()}
+            WHERE id = ?
+        """, (payment_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_coach_finance_summary(coach_id: int) -> dict:
+    """Resumo financeiro do coach para o período atual."""
+    import datetime
+    period = datetime.date.today().strftime('%Y-%m')
+    conn = get_conn()
+    try:
+        total_students = _fetchone(conn,
+            "SELECT COUNT(*) AS n FROM users WHERE coach_id = ?", (coach_id,))['n']
+        active_students = _fetchone(conn, f"""
+            SELECT COUNT(DISTINCT s.id) AS n
+            FROM users s
+            INNER JOIN tournaments t ON t.user_id = s.id
+            WHERE s.coach_id = ? AND s.plan = 'pro'
+              AND t.imported_at >= {interval_sql(30)}
+        """, (coach_id,))['n']
+        amount_cents = calculate_coach_payout(active_students)
+        pay = _fetchone(conn, """
+            SELECT id, status, paid_at FROM coach_payments
+            WHERE coach_id = ? AND period = ?
+        """, (coach_id, period))
+        monthly_fee_waived = total_students >= 1
+        return {
+            'period':             period,
+            'total_students':     total_students,
+            'active_students':    active_students,
+            'amount_cents':       amount_cents,
+            'status':             pay['status'] if pay else 'pending',
+            'paid_at':            pay['paid_at'] if pay else None,
+            'monthly_fee_waived': monthly_fee_waived,
+        }
+    finally:
+        conn.close()
+
+
+def get_coach_finance_students(coach_id: int) -> list:
+    """Alunos do coach com status de atividade para fins de revenue share."""
+    conn = get_conn()
+    try:
+        students = _fetchall(conn, f"""
+            SELECT s.id, s.username, s.plan,
+                   (SELECT MAX(imported_at) FROM tournaments WHERE user_id = s.id) AS last_import,
+                   (SELECT COUNT(*) FROM tournaments WHERE user_id = s.id) AS tournament_count
+            FROM users s
+            WHERE s.coach_id = ?
+            ORDER BY last_import DESC NULLS LAST
+        """, (coach_id,))
+        cutoff_sql = interval_sql(30)
+        for s in students:
+            last = s.get('last_import') or ''
+            # ativo = tem importação recente e plano pro
+            s['is_active'] = bool(
+                s['plan'] == 'pro' and last and
+                _fetchone(conn, f"""
+                    SELECT 1 FROM tournaments
+                    WHERE user_id = ? AND imported_at >= {cutoff_sql}
+                    LIMIT 1
+                """, (s['id'],))
+            )
+        return students
+    finally:
+        conn.close()
+
+
+def get_coach_finance_history(coach_id: int) -> list:
+    """Histórico de repasses do coach (todos os períodos)."""
+    conn = get_conn()
+    try:
+        return _fetchall(conn, """
+            SELECT id, period, active_students, amount_cents, status, paid_at, created_at
+            FROM coach_payments
+            WHERE coach_id = ?
+            ORDER BY period DESC
+        """, (coach_id,))
+    finally:
+        conn.close()
+
+
+def get_admin_activity_logs(limit: int = 50) -> list:
+    """Últimas importações de torneios (para log de atividade do admin)."""
+    conn = get_conn()
+    try:
+        return _fetchall(conn, """
+            SELECT t.id, t.tournament_id, t.site, t.hands_count, t.imported_at,
+                   u.username, u.plan
+            FROM tournaments t
+            INNER JOIN users u ON u.id = t.user_id
+            ORDER BY t.imported_at DESC
+            LIMIT ?
+        """, (limit,))
+    finally:
+        conn.close()
+
+
 def get_user_by_external_ref(ext_ref: str) -> tuple[Optional[dict], str]:
     """
     Extrai user_id e plan_name do external_reference 'user_<id>_<plan>'.

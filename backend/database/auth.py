@@ -95,6 +95,28 @@ def require_coach(f):
     return decorated
 
 
+def require_admin(f):
+    """Decorator — só admins. Valida role no banco."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = _extract_token()
+        if not token:
+            return jsonify({'error': 'Token ausente'}), 401
+        payload = decode_token(token)
+        if not payload:
+            return jsonify({'error': 'Token inválido'}), 401
+        user = get_user_by_id(payload['user_id'])
+        if not user:
+            return jsonify({'error': 'Usuário não encontrado'}), 401
+        if user['role'] != 'admin':
+            return jsonify({'error': 'Acesso restrito a administradores'}), 403
+        g.user    = user
+        g.user_id = user['id']
+        g.role    = user['role']
+        return f(*args, **kwargs)
+    return decorated
+
+
 def _extract_token() -> str | None:
     auth = request.headers.get('Authorization', '')
     if auth.startswith('Bearer '):

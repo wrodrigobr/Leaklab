@@ -872,3 +872,106 @@ export const subscription = {
   cancel: () =>
     request<{ ok: boolean; plan: string }>("/subscription/cancel", { method: "POST" }),
 };
+
+// ── Admin & Coach Finance — BACK-014 + BACK-017 ───────────────────────────────
+
+export interface AdminStats {
+  total_users: number;
+  total_coaches: number;
+  active_users_30d: number;
+  plans: Record<string, number>;
+  mrr_cents: number;
+  pending_payouts_cents: number;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  plan: string;
+  created_at: string;
+  last_login: string | null;
+  last_import: string | null;
+  tournament_count: number;
+  coach_username: string | null;
+  suspended: boolean | number;
+}
+
+export interface CoachPayout {
+  id: number;
+  username: string;
+  display_name: string | null;
+  plan: string;
+  total_students: number;
+  active_students: number;
+  amount_cents: number;
+  status: "pending" | "paid";
+  payment_id: number | null;
+  paid_at: string | null;
+}
+
+export interface CoachFinanceSummary {
+  period: string;
+  total_students: number;
+  active_students: number;
+  amount_cents: number;
+  status: string;
+  paid_at: string | null;
+  monthly_fee_waived: boolean;
+}
+
+export interface CoachFinanceStudent {
+  id: number;
+  username: string;
+  plan: string;
+  last_import: string | null;
+  tournament_count: number;
+  is_active: boolean;
+}
+
+export interface CoachPaymentRecord {
+  id: number;
+  period: string;
+  active_students: number;
+  amount_cents: number;
+  status: "pending" | "paid";
+  paid_at: string | null;
+  created_at: string;
+}
+
+export const adminDashboard = {
+  stats: () => request<AdminStats>("/admin/dashboard"),
+
+  users: (params?: { limit?: number; offset?: number; plan?: string; role?: string; search?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.limit  != null) q.set("limit",  String(params.limit));
+    if (params?.offset != null) q.set("offset", String(params.offset));
+    if (params?.plan)           q.set("plan",   params.plan);
+    if (params?.role)           q.set("role",   params.role);
+    if (params?.search)         q.set("search", params.search);
+    return request<{ users: AdminUser[]; total: number }>(`/admin/users?${q}`);
+  },
+
+  updateUser: (id: number, data: { plan?: string; suspended?: boolean }) =>
+    request<{ ok: boolean }>(`/admin/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  coachPayouts: (period?: string) =>
+    request<{ payouts: CoachPayout[]; period: string; total_pending_cents: number }>(
+      `/admin/finance/coaches${period ? `?period=${period}` : ""}`
+    ),
+
+  markPaid: (paymentId: number) =>
+    request<{ ok: boolean }>(`/admin/finance/coaches/${paymentId}/pay`, { method: "PATCH" }),
+
+  logs: (limit = 50) => request<{ logs: Array<{ id: number; username: string; plan: string; tournament_id: string; site: string; hands_count: number; imported_at: string }> }>(`/admin/logs?limit=${limit}`),
+};
+
+export const coachFinance = {
+  summary: () => request<CoachFinanceSummary>("/coach/finance/summary"),
+  students: () => request<{ students: CoachFinanceStudent[] }>("/coach/finance/students"),
+  history: () => request<{ payments: CoachPaymentRecord[] }>("/coach/finance/history"),
+};

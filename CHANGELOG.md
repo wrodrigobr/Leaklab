@@ -9,6 +9,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.34.0] — 2026-05-02 — Sprint C+E: BACK-014 + BACK-017 Revenue Share + Admin Panel
+
+### Backend
+
+- **`schema.py`** — novo campo `users.referral_coach_id` + `users.suspended`; nova tabela `coach_payments` (coach_id, period YYYY-MM, active_students, amount_cents, status, paid_at) em SQLite e PostgreSQL via `_run_migrations`
+- **`auth.py`** — novo decorator `require_admin()` que valida `role == 'admin'` no banco
+- **`repositories.py`** — novas funções: `calculate_coach_payout()` (lógica de revenue share), `get_admin_dashboard_stats()`, `get_all_users()`, `get_all_users_count()`, `update_user_admin()`, `get_coaches_with_payout_status()`, `upsert_coach_payment()`, `mark_coach_payment_paid()`, `get_coach_finance_summary()`, `get_coach_finance_students()`, `get_coach_finance_history()`, `get_admin_activity_logs()`
+- **`app.py`** — 10 novos endpoints:
+  - `GET /admin/dashboard` — MRR estimado, usuários ativos, distribuição de planos, repasses pendentes
+  - `GET /admin/users` — lista paginada com filtros (plan, role, search)
+  - `PATCH /admin/users/<id>` — suspender/alterar plano
+  - `GET /admin/finance/coaches` — repasses do ciclo com auto-upsert
+  - `PATCH /admin/finance/coaches/<id>/pay` — marcar como pago
+  - `GET /admin/finance/export.csv` — exportação CSV para processamento bancário
+  - `GET /admin/logs` — últimas importações de torneios
+  - `GET /coach/finance/summary` — ciclo atual do coach
+  - `GET /coach/finance/students` — alunos com status de atividade
+  - `GET /coach/finance/history` — histórico de repasses recebidos
+
+### Frontend
+
+- **`api.ts`** — tipos `AdminStats`, `AdminUser`, `CoachPayout`, `CoachFinanceSummary`, `CoachFinanceStudent`, `CoachPaymentRecord`; objetos `adminDashboard` e `coachFinance` com todas as chamadas
+- **`pages/admin/AdminDashboard.tsx`** — painel admin com 4 abas: Visão Geral (KPIs + distribuição de planos), Usuários (tabela paginada com filtros, alterar plano inline, suspender/reativar), Financeiro (tabela de repasses por período, "Marcar pago", exportar CSV), Logs (últimas importações)
+- **`CoachDashboard.tsx`** — nova aba "Financeiro": resumo do ciclo atual (alunos totais/ativos, receita estimada, mensalidade zerada), lista de alunos com badge Ativo/Inativo, histórico de repasses
+- **`App.tsx`** — `AdminRoute` guard + rota `/admin`; `PublicRoute` redireciona admin para `/admin`
+- **`HudHeader.tsx`** — nav item "Admin" com ícone Shield para role admin
+
+### Regras de negócio implementadas
+- 1–3 alunos ativos: mensalidade do coach zerada, R$0 de repasse
+- 4–9 alunos ativos: mensalidade zerada + R$15/aluno/mês
+- 10+ alunos ativos: mensalidade zerada + R$20/aluno/mês
+- Aluno ativo = importou ≥1 torneio nos últimos 30 dias + plano PRO
+
+---
+
 ## [v0.33.0] — 2026-05-02 — Sprint B: UX-002 Responsividade Mobile/Tablet
 
 ### Frontend

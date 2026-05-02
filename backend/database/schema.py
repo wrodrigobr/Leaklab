@@ -447,6 +447,9 @@ def _run_migrations(conn):
             "ALTER TABLE coach_hand_annotations   ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'approved'",
             # Sprint 15 — BACK-015: Mercado Pago
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS mp_subscription_id TEXT",
+            # Sprint C — BACK-014 + BACK-017: revenue share + admin panel
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_coach_id INTEGER REFERENCES users(id)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT FALSE",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -486,6 +489,23 @@ def _run_migrations(conn):
                 )
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)")
+        except Exception: pass
+        # coach_payments table (Postgres) — BACK-014 revenue share
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS coach_payments (
+                    id              SERIAL PRIMARY KEY,
+                    coach_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    period          TEXT    NOT NULL,
+                    active_students INTEGER NOT NULL DEFAULT 0,
+                    amount_cents    INTEGER NOT NULL DEFAULT 0,
+                    status          TEXT    NOT NULL DEFAULT 'pending',
+                    paid_at         TIMESTAMP,
+                    created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+                    UNIQUE(coach_id, period)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_payments_coach ON coach_payments(coach_id)")
         except Exception: pass
     else:
         conn.execute("""
@@ -629,11 +649,31 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)")
-        # migrate users: mp_subscription_id
+        # coach_payments table (SQLite) — BACK-014 revenue share
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coach_payments (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                period          TEXT    NOT NULL,
+                active_students INTEGER NOT NULL DEFAULT 0,
+                amount_cents    INTEGER NOT NULL DEFAULT 0,
+                status          TEXT    NOT NULL DEFAULT 'pending',
+                paid_at         TEXT,
+                created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(coach_id, period)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_payments_coach ON coach_payments(coach_id)")
+        # migrate users: mp_subscription_id + BACK-014 fields
         usr_existing = {r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()}
-        if 'mp_subscription_id' not in usr_existing:
-            try: conn.execute("ALTER TABLE users ADD COLUMN mp_subscription_id TEXT")
-            except Exception: pass
+        for col, sql in [
+            ("mp_subscription_id", "ALTER TABLE users ADD COLUMN mp_subscription_id TEXT"),
+            ("referral_coach_id",  "ALTER TABLE users ADD COLUMN referral_coach_id  INTEGER REFERENCES users(id)"),
+            ("suspended",          "ALTER TABLE users ADD COLUMN suspended           INTEGER NOT NULL DEFAULT 0"),
+        ]:
+            if col not in usr_existing:
+                try: conn.execute(sql)
+                except Exception: pass
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────

@@ -20,6 +20,7 @@ import CoachProfile from "./pages/coach/CoachProfile.tsx";
 import StudentProfile from "./pages/StudentProfile.tsx";
 import CoachesDirectory from "./pages/CoachesDirectory.tsx";
 import PublicCoachProfile from "./pages/PublicCoachProfile.tsx";
+import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 
 const queryClient = new QueryClient();
 
@@ -35,7 +36,7 @@ const LoadingScreen = () => (
 function PublicRoute({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <LoadingScreen />;
-  if (user) return <Navigate to={user.role === "coach" ? "/coach-dashboard" : "/dashboard"} replace />;
+  if (user) return <Navigate to={user.role === "admin" ? "/admin" : user.role === "coach" ? "/coach-dashboard" : "/dashboard"} replace />;
   return <>{children}</>;
 }
 
@@ -52,6 +53,14 @@ function CoachRoute({ children }: { children: ReactNode }) {
   if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "coach") return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "admin") return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -166,6 +175,14 @@ const App = () => (
                 <AuthRoute>
                   <PublicCoachProfile />
                 </AuthRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
               }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

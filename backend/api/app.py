@@ -58,8 +58,13 @@ from database.repositories import (
     # Sprint 15 — BACK-015: payments
     save_payment, get_payments, update_user_plan,
     get_phase_analysis, get_texture_analysis,
+    # Sprint C — BACK-014 + BACK-017: admin panel + revenue share
+    get_admin_dashboard_stats, get_all_users, get_all_users_count, update_user_admin,
+    get_coaches_with_payout_status, upsert_coach_payment, mark_coach_payment_paid,
+    get_coach_finance_summary, get_coach_finance_students, get_coach_finance_history,
+    get_admin_activity_logs,
 )
-from database.auth import generate_token, require_auth, require_coach
+from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
 from leaklab.stripe_gateway import (
     create_subscription, cancel_subscription, get_subscription, get_payment,
@@ -2306,6 +2311,115 @@ def subscription_cancel_endpoint():
         update_user_plan(g.user_id, 'free', None)
         return jsonify({'ok': True, 'plan': 'free'})
     return jsonify({'error': 'Erro ao cancelar assinatura no gateway'}), 502
+
+
+# ── Admin Panel — BACK-017 ────────────────────────────────────────────────────
+
+@app.route('/admin/dashboard', methods=['GET'])
+@require_admin
+def admin_dashboard():
+    return jsonify(get_admin_dashboard_stats())
+
+
+@app.route('/admin/users', methods=['GET'])
+@require_admin
+def admin_users():
+    limit  = int(request.args.get('limit', 50))
+    offset = int(request.args.get('offset', 0))
+    plan   = request.args.get('plan')
+    role   = request.args.get('role')
+    search = request.args.get('search')
+    users  = get_all_users(limit=limit, offset=offset, plan=plan, role=role, search=search)
+    total  = get_all_users_count(plan=plan, role=role, search=search)
+    return jsonify({'users': users, 'total': total})
+
+
+@app.route('/admin/users/<int:uid>', methods=['PATCH'])
+@require_admin
+def admin_update_user(uid):
+    data      = request.get_json() or {}
+    plan      = data.get('plan')
+    suspended = data.get('suspended')
+    if plan is None and suspended is None:
+        return jsonify({'error': 'Nenhum campo para atualizar'}), 400
+    update_user_admin(uid, plan=plan, suspended=suspended)
+    return jsonify({'ok': True})
+
+
+@app.route('/admin/finance/coaches', methods=['GET'])
+@require_admin
+def admin_finance_coaches():
+    import datetime
+    period = request.args.get('period', datetime.date.today().strftime('%Y-%m'))
+    payouts = get_coaches_with_payout_status(period)
+    # upsert payment records for coaches with active students
+    for p in payouts:
+        if p['active_students'] > 0 and not p['payment_id']:
+            pid = upsert_coach_payment(p['id'], period, p['active_students'], p['amount_cents'])
+            p['payment_id'] = pid
+            p['status'] = 'pending'
+    total_pending = sum(p['amount_cents'] for p in payouts if p.get('status') == 'pending')
+    return jsonify({'payouts': payouts, 'period': period, 'total_pending_cents': total_pending})
+
+
+@app.route('/admin/finance/coaches/<int:payment_id>/pay', methods=['PATCH'])
+@require_admin
+def admin_mark_payment_paid(payment_id):
+    mark_coach_payment_paid(payment_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/admin/finance/export.csv', methods=['GET'])
+@require_admin
+def admin_finance_export():
+    import datetime, io, csv
+    from flask import Response
+    period = request.args.get('period', datetime.date.today().strftime('%Y-%m'))
+    payouts = get_coaches_with_payout_status(period)
+    buf = io.StringIO()
+    w   = csv.writer(buf)
+    w.writerow(['Coach', 'Alunos Ativos', 'Valor (R$)', 'Status', 'Pago em'])
+    for p in payouts:
+        w.writerow([
+            p.get('display_name') or p['username'],
+            p['active_students'],
+            f"{p['amount_cents'] / 100:.2f}",
+            p.get('status', 'pending'),
+            p.get('paid_at', ''),
+        ])
+    resp = Response(buf.getvalue(), mimetype='text/csv')
+    resp.headers['Content-Disposition'] = f'attachment; filename=repasses-{period}.csv'
+    return resp
+
+
+@app.route('/admin/logs', methods=['GET'])
+@require_admin
+def admin_logs():
+    limit = int(request.args.get('limit', 50))
+    logs  = get_admin_activity_logs(limit=limit)
+    return jsonify({'logs': logs})
+
+
+# ── Coach Finance — BACK-014 ──────────────────────────────────────────────────
+
+@app.route('/coach/finance/summary', methods=['GET'])
+@require_coach
+def coach_finance_summary():
+    return jsonify(get_coach_finance_summary(g.user_id))
+
+
+@app.route('/coach/finance/students', methods=['GET'])
+@require_coach
+def coach_finance_students():
+    students = get_coach_finance_students(g.user_id)
+    return jsonify({'students': students})
+
+
+@app.route('/coach/finance/history', methods=['GET'])
+@require_coach
+def coach_finance_history():
+    history = get_coach_finance_history(g.user_id)
+    return jsonify({'payments': history})
 
 
 @app.errorhandler(500)
