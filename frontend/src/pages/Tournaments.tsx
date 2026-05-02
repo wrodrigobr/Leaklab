@@ -223,7 +223,76 @@ const Tournaments = () => {
           </section>
 
           <section className="overflow-hidden rounded-xl border border-border bg-hud-surface">
-            <div className="overflow-x-auto">
+            {/* ── Mobile card list ────────────────────────────────────────────── */}
+            <ul className="md:hidden divide-y divide-border">
+              {rows.map((t) => {
+                const profit = t.profit ?? null;
+                const positive = profit !== null && profit > 0;
+                const isDeleting = deletingId === t.tournament_id;
+                const n = (t.tournament_name ?? "").toLowerCase();
+                const badge = n.includes("spin") ? "Spin&Go"
+                  : n.includes("satellite") || n.includes("satélite") ? "SAT"
+                  : n.includes("knockout") || n.includes("bounty") || /\bpko\b/.test(n) || /\bko\b/.test(n) ? "KO"
+                  : n.includes("sit & go") || n.includes("sit&go") || n.startsWith("sng") || /\bsng\b/.test(n) ? "SNG"
+                  : "MTT";
+                return (
+                  <li
+                    key={t.id}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 transition-colors cursor-pointer active:bg-primary/10",
+                      isDeleting && "opacity-40 pointer-events-none"
+                    )}
+                    onClick={() => navigate(`/tournaments/${t.tournament_id}`)}
+                  >
+                    <SiteLogo site={t.site} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {t.tournament_name ?? `#${t.tournament_id}`}
+                        </span>
+                        <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">
+                          {badge}
+                        </span>
+                        {t.coach_reviewed && (
+                          <GraduationCap className="size-3 text-violet-400 shrink-0" aria-label="Coach" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 font-mono text-[10px] text-muted-foreground">
+                        <span>{formatDate(t.played_at)}</span>
+                        {t.buy_in != null && <span>· ${t.buy_in}</span>}
+                        {t.hands_count != null && <span>· {t.hands_count}m</span>}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className={cn(
+                        "font-mono text-sm font-medium tabular-nums",
+                        profit === null ? "text-muted-foreground" : positive ? "text-primary" : "text-destructive"
+                      )}>
+                        {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
+                      </span>
+                      <button
+                        onClick={(e) => handleDelete(e, t.tournament_id)}
+                        disabled={isDeleting}
+                        className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                        aria-label="Deletar torneio"
+                      >
+                        {isDeleting ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+              {rows.length === 0 && !loading && (
+                <li className="px-4 py-16 text-center text-sm text-muted-foreground">
+                  {data.length === 0
+                    ? "Nenhum torneio importado ainda. Use o Dashboard para fazer upload."
+                    : "Nenhum torneio encontrado para os filtros atuais."}
+                </li>
+              )}
+            </ul>
+
+            {/* ── Desktop table ────────────────────────────────────────────────── */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="border-b border-border bg-hud-elevated/40">
                   <tr>
