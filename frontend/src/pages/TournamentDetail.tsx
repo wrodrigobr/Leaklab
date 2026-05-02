@@ -20,7 +20,7 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { TournamentAiReport } from "@/components/hud/TournamentAiReport";
 import { cn } from "@/lib/utils";
-import { tournaments, Tournament, TournamentDecision } from "@/lib/api";
+import { tournaments, Tournament, TournamentDecision, PhaseData, TextureData } from "@/lib/api";
 
 type Severity = "critical" | "major" | "minor" | "ok";
 type Street = "Pré-flop" | "Flop" | "Turn" | "River" | "Outros";
@@ -185,6 +185,8 @@ const TournamentDetail = () => {
   const [street, setStreet] = useState<Street | "all">("all");
   const [analyses, setAnalyses] = useState<Record<number, string>>({});
   const [analysisLoading, setAnalysisLoading] = useState<Record<number, boolean>>({});
+  const [phaseAnalysis, setPhaseAnalysis] = useState<PhaseData[]>([]);
+  const [textureAnalysis, setTextureAnalysis] = useState<TextureData[]>([]);
 
   const requestAnalysis = async (decisionId: number, force = false) => {
     if (analysisLoading[decisionId]) return;
@@ -213,6 +215,8 @@ const TournamentDetail = () => {
       })
       .catch(() => null)
       .finally(() => setLoading(false));
+    tournaments.phaseAnalysis(id).then((r) => setPhaseAnalysis(r.phase_analysis)).catch(() => null);
+    tournaments.textureAnalysis(id).then((r) => setTextureAnalysis(r.texture_analysis)).catch(() => null);
   }, [id]);
 
   const filtered = useMemo(
@@ -297,6 +301,78 @@ const TournamentDetail = () => {
               </div>
             ))}
           </section>
+
+          {phaseAnalysis.length > 0 && (
+            <section>
+              <div className="mb-3 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-2">
+                <span className="inline-block size-1.5 rounded-full bg-primary" />
+                Análise por Fase
+              </div>
+              <div className="rounded-xl border border-border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-hud-surface">
+                      <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Fase</th>
+                      <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">M-Ratio</th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Decisões</th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Erros %</th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Score Médio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {phaseAnalysis.map((row) => (
+                      <tr key={row.phase} className="border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors">
+                        <td className="px-4 py-2.5 font-mono font-semibold text-foreground">{row.phase}</td>
+                        <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">{row.range}</td>
+                        <td className="px-4 py-2.5 text-right font-mono tabular-nums text-foreground">{row.n}</td>
+                        <td className={cn("px-4 py-2.5 text-right font-mono tabular-nums", row.mistake_rate > 40 ? "text-destructive" : row.mistake_rate > 25 ? "text-warning" : "text-primary")}>
+                          {row.mistake_rate.toFixed(1)}%
+                        </td>
+                        <td className={cn("px-4 py-2.5 text-right font-mono tabular-nums", row.avg_score > 2 ? "text-destructive" : "text-muted-foreground")}>
+                          {row.avg_score.toFixed(3)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {textureAnalysis.length > 0 && (
+            <section>
+              <div className="mb-3 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-2">
+                <span className="inline-block size-1.5 rounded-full bg-primary" />
+                Pós-Flop por Textura de Board
+              </div>
+              <div className="rounded-xl border border-border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-hud-surface">
+                      <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Textura</th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Decisões</th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Erros %</th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Score Médio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {textureAnalysis.map((row) => (
+                      <tr key={row.texture} className="border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors">
+                        <td className="px-4 py-2.5 font-mono font-semibold text-foreground">{row.label}</td>
+                        <td className="px-4 py-2.5 text-right font-mono tabular-nums text-foreground">{row.n}</td>
+                        <td className={cn("px-4 py-2.5 text-right font-mono tabular-nums", row.mistake_rate > 40 ? "text-destructive" : row.mistake_rate > 25 ? "text-warning" : "text-primary")}>
+                          {row.mistake_rate.toFixed(1)}%
+                        </td>
+                        <td className={cn("px-4 py-2.5 text-right font-mono tabular-nums", row.avg_score > 2 ? "text-destructive" : "text-muted-foreground")}>
+                          {row.avg_score.toFixed(3)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           <section className="space-y-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

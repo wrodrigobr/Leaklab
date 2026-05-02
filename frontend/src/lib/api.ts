@@ -108,6 +108,22 @@ export interface TournamentsResponse {
   tournaments: Tournament[];
 }
 
+export interface PhaseData {
+  phase: string;
+  range: string;
+  n: number;
+  mistake_rate: number;
+  avg_score: number;
+}
+
+export interface TextureData {
+  texture: string;
+  label: string;
+  n: number;
+  mistake_rate: number;
+  avg_score: number;
+}
+
 export interface TournamentDecision {
   id: number;
   tournament_id: number;
@@ -265,6 +281,16 @@ export const tournaments = {
     request<{ ok: boolean; message: string }>("/admin/reset-my-data", {
       method: "POST",
     }),
+
+  phaseAnalysis: (tournamentId: string) =>
+    request<{ phase_analysis: PhaseData[] }>(
+      `/history/tournament/${tournamentId}/phase_analysis`
+    ),
+
+  textureAnalysis: (tournamentId: string) =>
+    request<{ texture_analysis: TextureData[] }>(
+      `/history/tournament/${tournamentId}/texture_analysis`
+    ),
 };
 
 // ── Evolution / KPIs ──────────────────────────────────────────────────────────

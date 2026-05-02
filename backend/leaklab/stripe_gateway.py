@@ -36,30 +36,29 @@ def _get_or_create_customer(user_id: int, email: str) -> str:
 
 def create_subscription(plan_name: str, payer_email: str, user_id: int) -> dict:
     """
-    Cria assinatura Stripe incompleta e retorna client_secret para confirmação no frontend.
-    Retorna dict com subscription_id, client_secret e status.
+    Cria PaymentIntent Stripe e retorna client_secret para confirmação no frontend.
+    Usa PaymentIntent direto (sem Subscription) para evitar complexidade da
+    Invoice.payments API que mudou em 2025-03-31.
+    Retorna dict com subscription_id (= pi_id), client_secret e status.
     """
-    price_id = PLAN_PRICES.get(plan_name, "")
-    if not price_id:
-        raise ValueError(f"STRIPE_PRICE_{plan_name.upper()} não configurado")
+    amount_cents = int(PLAN_AMOUNTS[plan_name] * 100)
+    customer_id  = _get_or_create_customer(user_id, payer_email)
 
-    customer_id = _get_or_create_customer(user_id, payer_email)
-
-    sub = _stripe.Subscription.create(
+    pi = _stripe.PaymentIntent.create(
+        amount=amount_cents,
+        currency="brl",
         customer=customer_id,
-        items=[{"price": price_id}],
-        payment_behavior="default_incomplete",
-        payment_settings={"save_default_payment_method": "on_subscription"},
-        expand=["latest_invoice.payment_intent"],
+        # allow_redirects=never: só métodos não-redirect (cartão), permite confirmar sem return_url
+        automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
         metadata={"user_id": str(user_id), "plan_name": plan_name},
+        description=f"LeakLabs {plan_name.title()} — 30 dias",
     )
 
-    pi = sub["latest_invoice"]["payment_intent"]
-    log.info("Stripe subscription created: sub=%s pi=%s status=%s", sub.id, pi["id"], sub.status)
+    log.info("Stripe PaymentIntent created: pi=%s amount=%s", pi.id, amount_cents)
     return {
-        "subscription_id": sub.id,
-        "client_secret":   pi["client_secret"],
-        "status":          sub.status,
+        "subscription_id": pi.id,   # usamos o pi_id como referência de cobrança
+        "client_secret":   pi.client_secret,
+        "status":          pi.status,
     }
 
 
@@ -75,7 +74,7 @@ def cancel_subscription(subscription_id: str) -> bool:
 
 def get_subscription(subscription_id: str) -> dict | None:
     try:
-        return _stripe.Subscription.retrieve(subscription_id)
+        return _stripe.Subscription.retrieve(subscription_id).to_dict()
     except Exception as e:
         log.error("Failed to fetch Stripe subscription %s: %s", subscription_id, e)
         return None
@@ -83,7 +82,7 @@ def get_subscription(subscription_id: str) -> dict | None:
 
 def get_payment(payment_intent_id: str) -> dict | None:
     try:
-        return _stripe.PaymentIntent.retrieve(payment_intent_id)
+        return _stripe.PaymentIntent.retrieve(payment_intent_id).to_dict()
     except Exception as e:
         log.error("Failed to fetch Stripe PaymentIntent %s: %s", payment_intent_id, e)
         return None

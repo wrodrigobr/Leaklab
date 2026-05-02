@@ -1838,6 +1838,97 @@ def get_user_by_mp_subscription(sub_id: str) -> Optional[dict]:
         conn.close()
 
 
+def get_phase_analysis(tournament_db_id: int) -> list:
+    """Agrupa decisões do torneio por fase derivada do m_ratio."""
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT m_ratio, label, score FROM decisions WHERE tournament_id = ? AND m_ratio IS NOT NULL",
+            (tournament_db_id,)
+        ).fetchall()
+    finally:
+        conn.close()
+
+    phases = [
+        {'label': 'Folgado', 'range': 'M ≥ 20',  'decs': []},
+        {'label': 'Médio',   'range': 'M 10–20', 'decs': []},
+        {'label': 'Pressão', 'range': 'M 6–10',  'decs': []},
+        {'label': 'Crítico', 'range': 'M < 6',   'decs': []},
+    ]
+
+    for row in rows:
+        m = float(row['m_ratio'] or 0)
+        d = {'label': row['label'], 'score': float(row['score'] or 0)}
+        if m >= 20:
+            phases[0]['decs'].append(d)
+        elif m >= 10:
+            phases[1]['decs'].append(d)
+        elif m >= 6:
+            phases[2]['decs'].append(d)
+        else:
+            phases[3]['decs'].append(d)
+
+    result = []
+    for ph in phases:
+        decs = ph['decs']
+        n = len(decs)
+        if n == 0:
+            continue
+        mistakes = [d for d in decs if d['label'] in ('small_mistake', 'clear_mistake')]
+        result.append({
+            'phase':        ph['label'],
+            'range':        ph['range'],
+            'n':            n,
+            'mistake_rate': round(len(mistakes) / n * 100, 1),
+            'avg_score':    round(sum(d['score'] for d in decs) / n, 3),
+        })
+    return result
+
+
+def get_texture_analysis(tournament_db_id: int) -> list:
+    """Agrupa decisões pós-flop do torneio por textura do board."""
+    from leaklab.board_texture import classify_board_texture
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT board, label, score FROM decisions "
+            "WHERE tournament_id = ? AND street != 'preflop' AND board IS NOT NULL AND board != '[]'",
+            (tournament_db_id,)
+        ).fetchall()
+    finally:
+        conn.close()
+
+    buckets: Dict[str, list] = {}
+    for row in rows:
+        tex = classify_board_texture(row['board'])
+        if tex == 'unknown':
+            continue
+        if tex not in buckets:
+            buckets[tex] = []
+        buckets[tex].append({'label': row['label'], 'score': float(row['score'] or 0)})
+
+    LABELS = {
+        'dry':         'Seco',
+        'coordinated': 'Coordenado',
+        'wet':         'Molhado',
+        'monotone':    'Monocromático',
+        'paired':      'Pareado',
+    }
+
+    result = []
+    for tex, decs in sorted(buckets.items(), key=lambda x: -len(x[1])):
+        n = len(decs)
+        mistakes = [d for d in decs if d['label'] in ('small_mistake', 'clear_mistake')]
+        result.append({
+            'texture':      tex,
+            'label':        LABELS.get(tex, tex),
+            'n':            n,
+            'mistake_rate': round(len(mistakes) / n * 100, 1),
+            'avg_score':    round(sum(d['score'] for d in decs) / n, 3),
+        })
+    return result
+
+
 def get_user_by_external_ref(ext_ref: str) -> tuple[Optional[dict], str]:
     """
     Extrai user_id e plan_name do external_reference 'user_<id>_<plan>'.

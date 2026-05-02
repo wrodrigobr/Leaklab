@@ -57,6 +57,7 @@ from database.repositories import (
     decision_belongs_to_student,
     # Sprint 15 — BACK-015: payments
     save_payment, get_payments, update_user_plan,
+    get_phase_analysis, get_texture_analysis,
 )
 from database.auth import generate_token, require_auth, require_coach
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -465,6 +466,24 @@ def history_tournament(tournament_id):
         return jsonify({'error': 'Torneio não encontrado'}), 404
     decisions = get_decisions(t['id'])
     return jsonify({'tournament': t, 'decisions': decisions})
+
+
+@app.route('/history/tournament/<tournament_id>/phase_analysis', methods=['GET'])
+@require_auth
+def history_tournament_phase_analysis(tournament_id):
+    t = get_tournament(g.user_id, tournament_id)
+    if not t:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+    return jsonify({'phase_analysis': get_phase_analysis(t['id'])})
+
+
+@app.route('/history/tournament/<tournament_id>/texture_analysis', methods=['GET'])
+@require_auth
+def history_tournament_texture_analysis(tournament_id):
+    t = get_tournament(g.user_id, tournament_id)
+    if not t:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+    return jsonify({'texture_analysis': get_texture_analysis(t['id'])})
 
 
 @app.route('/history/evolution', methods=['GET'])
@@ -2245,30 +2264,22 @@ def subscription_webhook():
                   if isinstance(event, dict) else event.data.object)
     log.info("Stripe webhook type=%s", event_type)
 
-    if event_type == 'invoice.payment_succeeded':
-        sub_id = obj.get('subscription') if isinstance(obj, dict) else obj.subscription
-        amount = obj.get('amount_paid', 0) if isinstance(obj, dict) else obj.amount_paid
-        pi_id  = obj.get('payment_intent', '') if isinstance(obj, dict) else obj.payment_intent
-        if sub_id:
-            sub  = get_subscription(str(sub_id))
-            meta = sub.get('metadata', {}) if isinstance(sub, dict) else (sub.metadata if sub else {})
-            user_id   = int(meta.get('user_id', 0))
-            plan_name = meta.get('plan_name', 'starter')
-            if user_id:
-                update_user_plan(user_id, plan_name, str(sub_id))
-                save_payment(
-                    user_id=user_id, plan=plan_name,
-                    amount_cents=int(amount),
-                    status='approved',
-                    gateway_id=str(pi_id),
-                    gateway_sub_id=str(sub_id),
-                )
-
-    elif event_type == 'customer.subscription.deleted':
+    if event_type == 'payment_intent.succeeded':
+        # PaymentIntent concluído — ativa plano via metadata
         meta      = obj.get('metadata', {}) if isinstance(obj, dict) else obj.metadata
         user_id   = int(meta.get('user_id', 0))
-        if user_id:
-            update_user_plan(user_id, 'free', None)
+        plan_name = meta.get('plan_name', '')
+        pi_id     = obj.get('id', '') if isinstance(obj, dict) else obj.id
+        amount    = obj.get('amount', 0) if isinstance(obj, dict) else obj.amount
+        if user_id and plan_name:
+            update_user_plan(user_id, plan_name, str(pi_id))
+            save_payment(
+                user_id=user_id, plan=plan_name,
+                amount_cents=int(amount),
+                status='approved',
+                gateway_id=str(pi_id),
+                gateway_sub_id=str(pi_id),
+            )
 
     return jsonify({'ok': True})
 

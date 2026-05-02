@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.30.0] — 2026-05-02 — Análise por Fase e Textura de Board
+
+### Backend
+- **`leaklab/board_texture.py`** — novo módulo: `classify_board_texture(board_json)` classifica boards pós-flop em `dry | coordinated | wet | monotone | paired` usando span de ranks e contagem de naipes
+- **`repositories.py`** — `get_phase_analysis(tournament_db_id)`: agrupa decisões por fase (Folgado M≥20 / Médio M10-20 / Pressão M6-10 / Crítico M<6) derivando fase do `m_ratio`; `get_texture_analysis(tournament_db_id)`: classifica boards pós-flop e retorna stats por textura
+- **`GET /history/tournament/<id>/phase_analysis`** — novo endpoint: retorna distribuição de erros e score médio por fase de torneio
+- **`GET /history/tournament/<id>/texture_analysis`** — novo endpoint: retorna distribuição de erros pós-flop por textura de board
+
+### Frontend
+- **`TournamentDetail.tsx`** — duas novas seções entre o grid de stats e os filtros: tabela de Análise por Fase e tabela de Pós-Flop por Textura de Board; código de cores: verde (<25% erros), amarelo (25-40%), vermelho (>40%)
+- **`api.ts`** — `tournaments.phaseAnalysis()` e `tournaments.textureAnalysis()`; novas interfaces `PhaseData` e `TextureData`
+
+---
+
 ## [v0.29.0] — 2026-05-02 — BACK-015: Migração Mercado Pago → Stripe
 
 ### Pagamentos
