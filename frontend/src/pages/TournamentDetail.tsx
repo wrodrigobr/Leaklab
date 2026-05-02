@@ -352,7 +352,7 @@ const TournamentDetail = () => {
                   <strong>Crítico (M&lt;6):</strong> push/fold puro, math decide tudo.
                 </InfoTooltip>
               </div>
-              <div className="rounded-xl border border-border overflow-hidden">
+              <div className="rounded-xl border border-border overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-hud-surface">
@@ -418,7 +418,7 @@ const TournamentDetail = () => {
                   <strong>Pareado:</strong> par no board (ex: A♠ A♦ 7♣).
                 </InfoTooltip>
               </div>
-              <div className="rounded-xl border border-border overflow-hidden">
+              <div className="rounded-xl border border-border overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-hud-surface">

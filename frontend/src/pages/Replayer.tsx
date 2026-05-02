@@ -329,7 +329,7 @@ const Replayer = () => {
           <PokerTable seats={seats} community={community} pot={step.pot} street={step.street} bb={replayData.bb} betUnit={betUnit} />
 
           {/* Controls */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-border bg-hud-surface p-3">
+          <div className="sticky bottom-14 z-30 md:static border-t border-border md:border md:rounded-xl bg-background/95 backdrop-blur-md md:bg-hud-surface p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-1">
               <button onClick={() => setStepIdx(0)}
                 className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

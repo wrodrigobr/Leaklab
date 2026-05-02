@@ -9,6 +9,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.33.0] — 2026-05-02 — Sprint B: UX-002 Responsividade Mobile/Tablet
+
+### Frontend
+
+- **`HudHeader.tsx`** — bottom navigation bar fixa em mobile (`fixed bottom-0 z-50 md:hidden`) com ícone + label curto por rota; FAB de import (`fixed bottom-[72px] right-4 size-12`) substitui o botão de import do header em mobile; padding do header ajustado para `px-4 md:px-8`
+- **`HudLayout.tsx`** — padding inferior `pb-28 md:pb-8` para deixar clearance acima do bottom nav fixo
+- **`Index.tsx`** — grid de KPIs vai de 1-col para `grid-cols-2 lg:grid-cols-4` (2 colunas em mobile); sidebar com LevelCard/LeaksPanel usa `order-first lg:order-none` — aparece antes dos gráficos em mobile
+- **`RecentTournamentsTable.tsx`** — modo duplo: lista de cards clicáveis `md:hidden` + tabela `hidden md:block overflow-x-auto`; `formatDateShort()` para data compacta nos cards mobile
+- **`Tournaments.tsx`** — modo duplo: lista de cards mobile com profit, badge, delete + tabela desktop; empty state diferente por viewport
+- **`Replayer.tsx`** — barra de controles vira sticky bottom em mobile (`sticky bottom-14 z-30 border-t bg-background/95 backdrop-blur-md`) e volta ao painel normal em desktop (`md:static md:border md:rounded-xl md:bg-hud-surface`)
+- **`TournamentDetail.tsx`** — tabelas de fase (M-Ratio) e textura de board recebem `overflow-x-auto` para scroll horizontal em mobile
+- **`StudentDetail.tsx`** — tabs do detalhe do aluno (coach view) recebem `overflow-x-auto` + `shrink-0` nos botões para scroll horizontal em telas pequenas
+
+---
+
 ## [v0.32.0] — 2026-05-02 — Sprint 4: BACK-001 + BACK-005 (confirmados + gap fechado)
 
 ### Backend
