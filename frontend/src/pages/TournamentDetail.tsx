@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Search,
@@ -175,37 +176,7 @@ function InfoTooltip({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ScoreLabel({ score }: { score: number }) {
-  const { label, cls } = score < 0.08
-    ? { label: "Ótimo",    cls: "text-primary" }
-    : score < 0.15
-    ? { label: "Bom",      cls: "text-primary/70" }
-    : score < 0.25
-    ? { label: "Moderado", cls: "text-warning" }
-    : { label: "Alto",     cls: "text-destructive" };
-  return (
-    <span className={cn("ml-1.5 font-mono text-[9px] uppercase tracking-wider", cls)}>
-      {label}
-    </span>
-  );
-}
-
-// ── Severity meta ────────────────────────────────────────────────────────────
-
-const SEVERITY_META: Record<Severity, { label: string; cls: string; chipCls: string; icon: typeof AlertOctagon }> = {
-  critical: { label: "Leak crítico", cls: "text-destructive", chipCls: "bg-destructive/10 text-destructive ring-1 ring-destructive/30", icon: AlertOctagon },
-  major:    { label: "Leak relevante", cls: "text-warning",     chipCls: "bg-warning/10 text-warning ring-1 ring-warning/30",         icon: AlertTriangle },
-  minor:    { label: "Pequeno ajuste", cls: "text-muted-foreground", chipCls: "bg-muted/40 text-muted-foreground ring-1 ring-border", icon: Flame },
-  ok:       { label: "Linha sólida",  cls: "text-primary",     chipCls: "bg-primary/10 text-primary ring-1 ring-primary/30",         icon: CheckCircle2 },
-};
-
-const FILTERS: { key: Severity | "all"; label: string }[] = [
-  { key: "all",      label: "Todas"     },
-  { key: "critical", label: "Críticos"  },
-  { key: "major",    label: "Relevantes"},
-  { key: "minor",    label: "Pequenos"  },
-  { key: "ok",       label: "Sólidas"   },
-];
+// ScoreLabel and SEVERITY_META/FILTERS moved inside TournamentDetail component for i18n access
 
 const STREETS: (Street | "all")[] = ["all", "Pré-flop", "Flop", "Turn", "River"];
 
@@ -214,6 +185,31 @@ const STREETS: (Street | "all")[] = ["all", "Pré-flop", "Flop", "Turn", "River"
 const TournamentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation("tournaments");
+  const { t: tc } = useTranslation("common");
+
+  const SEVERITY_META: Record<Severity, { label: string; cls: string; chipCls: string; icon: typeof AlertOctagon }> = {
+    critical: { label: t("detail.severity.critical"), cls: "text-destructive", chipCls: "bg-destructive/10 text-destructive ring-1 ring-destructive/30", icon: AlertOctagon },
+    major:    { label: t("detail.severity.major"),    cls: "text-warning",     chipCls: "bg-warning/10 text-warning ring-1 ring-warning/30",         icon: AlertTriangle },
+    minor:    { label: t("detail.severity.minor"),    cls: "text-muted-foreground", chipCls: "bg-muted/40 text-muted-foreground ring-1 ring-border", icon: Flame },
+    ok:       { label: t("detail.severity.ok"),       cls: "text-primary",     chipCls: "bg-primary/10 text-primary ring-1 ring-primary/30",         icon: CheckCircle2 },
+  };
+
+  const FILTERS: { key: Severity | "all"; label: string }[] = [
+    { key: "all",      label: t("detail.severity.all")      },
+    { key: "critical", label: t("detail.severity.criticals") },
+    { key: "major",    label: t("detail.severity.majors")   },
+    { key: "minor",    label: t("detail.severity.minors")   },
+    { key: "ok",       label: t("detail.severity.oks")      },
+  ];
+
+  const scoreLabel = (score: number) => score < 0.08
+    ? { label: t("detail.score.great"), cls: "text-primary" }
+    : score < 0.15
+    ? { label: t("detail.score.good"),  cls: "text-primary/70" }
+    : score < 0.25
+    ? { label: t("detail.score.moderate"), cls: "text-warning" }
+    : { label: t("detail.score.high"), cls: "text-destructive" };
   const [loading, setLoading] = useState(true);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [hands, setHands] = useState<Hand[]>([]);
@@ -287,14 +283,14 @@ const TournamentDetail = () => {
 
   return (
     <HudLayout
-      eyebrow={`Torneio · ${id ?? "—"}`}
+      eyebrow={t("detail.eyebrow", { id: id ?? "—" })}
       title={tournamentLabel}
-      description="Todas as mãos do torneio classificadas por severidade de leak. Abra qualquer mão no replayer ou peça análise da IA."
+      description={t("detail.description")}
     >
       {loading ? (
         <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
           <Loader2 className="size-5 animate-spin text-primary" />
-          <span className="font-mono text-xs uppercase tracking-wider">Carregando torneio…</span>
+          <span className="font-mono text-xs uppercase tracking-wider">{t("loading")}</span>
         </div>
       ) : (
         <>
@@ -304,7 +300,7 @@ const TournamentDetail = () => {
               className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary"
             >
               <ArrowLeft className="size-3.5" aria-hidden />
-              Voltar para Torneios
+              {t("detail.backToList")}
             </Link>
             <div className="flex flex-wrap items-center gap-2">
               {tournament && (
@@ -320,17 +316,17 @@ const TournamentDetail = () => {
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--primary)/0.5)] transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <PlayCircle className="size-3.5" aria-hidden />
-                Replay completo
+                {t("detail.replay")}
               </button>
             </div>
           </div>
 
           <section className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-4">
             {[
-              { label: "Mãos jogadas",    value: stats.total.toString() },
-              { label: "Leaks críticos",  value: stats.critical.toString(), accent: "text-destructive" },
-              { label: "Leaks relevantes",value: stats.major.toString(),    accent: "text-warning" },
-              { label: "Score médio",     value: tournament?.avg_score != null ? tournament.avg_score.toFixed(4) : "—", accent: "text-destructive" },
+              { label: t("detail.stats.handsPlayed"),   value: stats.total.toString() },
+              { label: t("detail.stats.criticalLeaks"), value: stats.critical.toString(), accent: "text-destructive" },
+              { label: t("detail.stats.relevantLeaks"), value: stats.major.toString(),    accent: "text-warning" },
+              { label: t("detail.stats.avgScore"),      value: tournament?.avg_score != null ? tournament.avg_score.toFixed(4) : "—", accent: "text-destructive" },
             ].map((s, i) => (
               <div key={i} className="bg-hud-surface p-5">
                 <div className="mb-2 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">{s.label}</div>
@@ -343,7 +339,7 @@ const TournamentDetail = () => {
             <section>
               <div className="mb-3 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-2">
                 <span className="inline-block size-1.5 rounded-full bg-primary" />
-                Análise por Fase
+                {t("detail.phase.title")}
                 <InfoTooltip>
                   Agrupa suas decisões pelas fases do torneio, derivadas do <strong>M-Ratio</strong> (sua pilha ÷ custo de uma órbita completa de blinds+antes).<br /><br />
                   <strong>Folgado (M≥20):</strong> jogo completo, sem urgência.<br />
@@ -356,11 +352,11 @@ const TournamentDetail = () => {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-hud-surface">
-                      <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Fase</th>
-                      <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">M-Ratio</th>
-                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Decisões</th>
+                      <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("detail.phase.phase")}</th>
+                      <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("detail.phase.mRatio")}</th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("detail.phase.decisions")}</th>
                       <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Erros %
+                        {t("detail.phase.errorPct")}
                         <InfoTooltip>
                           % de decisões classificadas como erro (pequeno ou claro) nesta fase.<br /><br />
                           <strong>Abaixo de 20%:</strong> consistente.<br />
@@ -369,7 +365,7 @@ const TournamentDetail = () => {
                         </InfoTooltip>
                       </th>
                       <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Score Médio
+                        {t("detail.phase.avgScore")}
                         <InfoTooltip>
                           Pontuação média de erro das decisões nesta fase.<br /><br />
                           <strong>Abaixo de 0.08:</strong> ótimo — quase sem erros.<br />
@@ -394,7 +390,7 @@ const TournamentDetail = () => {
                           <span className={cn(row.avg_score > 0.25 ? "text-destructive" : row.avg_score > 0.15 ? "text-warning" : "text-muted-foreground")}>
                             {row.avg_score.toFixed(3)}
                           </span>
-                          <ScoreLabel score={row.avg_score} />
+                          {(() => { const sl = scoreLabel(row.avg_score); return <span className={cn("ml-1.5 font-mono text-[9px] uppercase tracking-wider", sl.cls)}>{sl.label}</span>; })()}
                         </td>
                       </tr>
                     ))}
@@ -408,7 +404,7 @@ const TournamentDetail = () => {
             <section>
               <div className="mb-3 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-2">
                 <span className="inline-block size-1.5 rounded-full bg-primary" />
-                Pós-Flop por Textura de Board
+                {t("detail.texture.title")}
                 <InfoTooltip>
                   Classifica os boards pós-flop pelo nível de conectividade e risco de draws, revelando em que tipo de textura você comete mais erros.<br /><br />
                   <strong>Seco:</strong> poucas draws possíveis (ex: A♠ 7♦ 2♣).<br />
@@ -422,17 +418,17 @@ const TournamentDetail = () => {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-hud-surface">
-                      <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Textura</th>
-                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Decisões</th>
+                      <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("detail.texture.texture")}</th>
+                      <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("detail.texture.decisions")}</th>
                       <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Erros %
+                        {t("detail.texture.errorPct")}
                         <InfoTooltip>
                           % de decisões classificadas como erro nesta textura de board.<br />
                           Uma taxa alta indica dificuldade em jogar boards deste tipo.
                         </InfoTooltip>
                       </th>
                       <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Score Médio
+                        {t("detail.texture.avgScore")}
                         <InfoTooltip>
                           Pontuação média de erro nas decisões pós-flop nesta textura.<br /><br />
                           <strong>Abaixo de 0.08:</strong> ótimo.<br />
@@ -455,7 +451,7 @@ const TournamentDetail = () => {
                           <span className={cn(row.avg_score > 0.25 ? "text-destructive" : row.avg_score > 0.15 ? "text-warning" : "text-muted-foreground")}>
                             {row.avg_score.toFixed(3)}
                           </span>
-                          <ScoreLabel score={row.avg_score} />
+                          {(() => { const sl = scoreLabel(row.avg_score); return <span className={cn("ml-1.5 font-mono text-[9px] uppercase tracking-wider", sl.cls)}>{sl.label}</span>; })()}
                         </td>
                       </tr>
                     ))}
@@ -473,9 +469,9 @@ const TournamentDetail = () => {
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar por ação, leak…"
+                  placeholder={t("detail.searchPlaceholder")}
                   className="h-10 w-full rounded-md border border-border bg-hud-surface pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
-                  aria-label="Buscar mão"
+                  aria-label={t("detail.searchAriaLabel")}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -506,11 +502,11 @@ const TournamentDetail = () => {
                     street === s ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                   )}
                 >
-                  {s === "all" ? "Todas" : s}
+                  {s === "all" ? t("detail.streets.all") : s}
                 </button>
               ))}
               <span className="ml-auto font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-                {filtered.length} {filtered.length === 1 ? "mão" : "mãos"}
+                {t(filtered.length === 1 ? "detail.handCount" : "detail.handCount_plural", { count: filtered.length })}
               </span>
             </div>
           </section>
@@ -562,7 +558,7 @@ const TournamentDetail = () => {
                         {h.hasAnnotation && (
                           <span className="inline-flex items-center gap-1 rounded-sm bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-violet-400 ring-1 ring-violet-400/30">
                             <GraduationCap className="size-3" aria-hidden />
-                            Coach
+                            {tc("status.coach")}
                           </span>
                         )}
                         {h.position && h.position !== "—" && (
@@ -619,7 +615,7 @@ const TournamentDetail = () => {
                           <div className="flex items-center gap-2">
                             <Brain className="size-3.5 text-primary" aria-hidden />
                             <span className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
-                              Análise do Coach IA
+                              {t("detail.analysis.title")}
                             </span>
                           </div>
                           <div className="flex items-center gap-3">
@@ -634,10 +630,9 @@ const TournamentDetail = () => {
                               onClick={() => requestAnalysis(h.decisionId, true)}
                               disabled={analysisLoading[h.decisionId]}
                               className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                              title="Gerar nova análise"
                             >
                               <RefreshCw className={cn("size-3", analysisLoading[h.decisionId] && "animate-spin")} />
-                              Gerar novamente
+                              {t("detail.analysis.regenerate")}
                             </button>
                           </div>
                         </div>
@@ -652,7 +647,7 @@ const TournamentDetail = () => {
                           className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-secondary px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground hover:border-primary/30"
                         >
                           <PlayCircle className="size-3.5" aria-hidden />
-                          Abrir no replayer
+                          {t("detail.analysis.openReplayer")}
                         </Link>
                         <button
                           onClick={() => requestAnalysis(h.decisionId)}
@@ -662,12 +657,12 @@ const TournamentDetail = () => {
                           {analysisLoading[h.decisionId] ? (
                             <>
                               <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                              Analisando…
+                              {t("detail.analysis.analyzing")}
                             </>
                           ) : (
                             <>
                               <Sparkles className="size-3.5" aria-hidden />
-                              Pedir análise da IA
+                              {t("detail.analysis.requestAnalysis")}
                             </>
                           )}
                         </button>

@@ -53,6 +53,11 @@
     "tip3": "Resuelve los ejercicios a continuación para fijar cada concepto.",
     "tip4": "Vuelve a importar tu historial al final de la semana para medir el delta."
   },
+  "day": {
+    "label": "Día {{n}}",
+    "mark": "Marcar",
+    "done": "Completado"
+  },
   "exercises": {
     "title": "Batería de ejercicios",
     "hint": "Corrección automática · {{count}} preguntas"

@@ -19,6 +19,16 @@ function formatDate(iso: string | null): string {
   }
 }
 
+function formatDateShort(iso: string | null): string {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
 function formatTournamentLabel(row: Tournament): string {
   if (row.tournament_name) return row.tournament_name;
   return `#${row.tournament_id}`;
@@ -61,7 +71,60 @@ export function RecentTournamentsTable({ tournaments }: Props) {
       </div>
 
       <div className="overflow-hidden rounded-xl border border-border bg-hud-surface">
-        <div className="overflow-x-auto">
+        {/* ── Mobile card list ──────────────────────────────────────────────── */}
+        <ul className="md:hidden divide-y divide-border">
+          {rows.map((row) => {
+            const profit = row.profit ?? null;
+            const positive = profit !== null && profit > 0;
+            const analyzed = !!row.avg_score;
+            return (
+              <li
+                key={row.id}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-primary/5 transition-colors cursor-pointer active:bg-primary/10"
+                onClick={() => navigate(`/tournaments/${row.tournament_id}`)}
+              >
+                <SiteLogo site={row.site} size={16} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {formatTournamentLabel(row)}
+                    </span>
+                    <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">
+                      {formatBadge(row.tournament_name ?? "")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {formatDateShort(row.played_at || row.imported_at)}
+                    </span>
+                    {row.buy_in != null && (
+                      <span className="font-mono text-[10px] text-muted-foreground">· ${row.buy_in}</span>
+                    )}
+                    {row.place != null && (
+                      <span className="font-mono text-[10px] text-muted-foreground">· {row.place}º</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span className={cn(
+                    "font-mono text-sm font-medium tabular-nums",
+                    profit === null ? "text-muted-foreground" : positive ? "text-primary" : "text-destructive"
+                  )}>
+                    {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
+                  </span>
+                  {analyzed ? (
+                    <CheckCircle2 className="size-3.5 text-primary" aria-label="Analisado" />
+                  ) : (
+                    <Clock className="size-3.5 text-warning animate-pulse" aria-label="Em fila" />
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* ── Desktop table ─────────────────────────────────────────────────── */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead className="border-b border-border bg-hud-elevated/40">
               <tr>

@@ -1,0 +1,62 @@
+{
+  "directory": {
+    "eyebrow": "Coach Marketplace",
+    "title": "Find your coach",
+    "description": "Verified coaches specializing in MTT, SNG, Cash Game, and more. Filter by specialty, language, and rating."
+  },
+  "filters": {
+    "search": "Search coaches…",
+    "specialty": "Specialty",
+    "language": "Language",
+    "sort": "Sort",
+    "all": "All",
+    "verified": "Verified"
+  },
+  "sort": {
+    "rating": "Top rated",
+    "students": "Most students",
+    "price": "Lowest price"
+  },
+  "card": {
+    "studentsCount": "{{count}} students",
+    "ratePerHour": "/h",
+    "noRate": "Contact for rate",
+    "verified": "Verified",
+    "viewProfile": "View profile",
+    "hire": "Hire"
+  },
+  "empty": {
+    "title": "No coaches found",
+    "description": "Try adjusting your filters or searching for a different specialty."
+  },
+  "profile": {
+    "back": "← Coaches",
+    "hire": "Hire coach",
+    "contact": "Contact",
+    "students": "Students",
+    "rating": "Rating",
+    "since": "Since {{year}}",
+    "specialties": "Specialties",
+    "languages": "Languages",
+    "about": "About",
+    "reviews": "Reviews",
+    "reviewsCount": "{{count}} review",
+    "reviewsCount_plural": "{{count}} reviews",
+    "noReviews": "No reviews yet.",
+    "yourReview": "Your review",
+    "writeReview": "Write a review",
+    "editReview": "Edit review",
+    "deleteReview": "Remove review",
+    "reviewPlaceholder": "Share your experience with this coach… (optional)",
+    "saveReview": "Save review",
+    "alreadyLinked": "Already linked",
+    "requestLink": "Request link",
+    "linkSent": "Request sent!",
+    "unlinkCoach": "Unlink coach",
+    "confirmUnlink": "Confirm unlink?",
+    "socialLinks": "Social links",
+    "stakes": "Stakes",
+    "pricePerHour": "{{price}}/h",
+    "priceContact": "Contact for rate"
+  }
+}

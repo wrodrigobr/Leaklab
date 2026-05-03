@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Award,
   BrainCircuit,
@@ -116,10 +117,10 @@ function CoachRecommendationStrip({ spot }: { spot: string }) {
     <div className="mt-4 space-y-2">
       <div className="flex items-center justify-between">
         <p className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
-          <GraduationCap className="size-3" /> Coaches especializados neste leak
+          <GraduationCap className="size-3" /> {t("resources.coachesTitle")}
         </p>
         <Link to="/coaches" className="font-mono text-[10px] text-primary hover:underline">
-          Ver todos →
+          {t("resources.viewAll")}
         </Link>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -164,6 +165,7 @@ type LoadState = "idle" | "loading" | "error";
 
 const StudyPlanPage = () => {
   const { user } = useAuth();
+  const { t } = useTranslation("study");
   const [searchParams]            = useSearchParams();
   const spotParam                 = searchParams.get("spot") ?? "";
   const [plan, setPlan]           = useState<StudyPlan | null>(null);
@@ -201,7 +203,7 @@ const StudyPlanPage = () => {
         setActiveLeakId(target?.id ?? built.diagnosis.leaks[0]?.id ?? "");
       }
       setLoadState("idle");
-      if (force) toast.success("Plano regenerado com IA.");
+      if (force) toast.success(t("toolbar.regenerated"));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erro ao gerar plano";
       setErrorMsg(msg);
@@ -247,9 +249,9 @@ const StudyPlanPage = () => {
 
   return (
     <HudLayout
-      eyebrow="Plano de Estudos · Adaptive"
-      title="Seu roteiro tático personalizado"
-      description="Diagnóstico de leaks, roteiro semanal, recursos curados e exercícios com correção automática."
+      eyebrow={t("eyebrow")}
+      title={t("title")}
+      description={t("subtitle")}
     >
       {/* Toolbar */}
       <section className="flex flex-col gap-4 rounded-xl border border-border bg-hud-surface p-5 md:flex-row md:items-center md:justify-between">
@@ -259,10 +261,10 @@ const StudyPlanPage = () => {
           </span>
           <div>
             <h2 className="text-sm font-semibold text-foreground">
-              {plan ? "Plano gerado a partir dos seus leaks reais" : "Carregando plano de estudos…"}
+              {plan ? t("toolbar.planReady") : t("toolbar.planLoading")}
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {plan?.diagnosis.summary ?? "Aguarde enquanto o Coach IA analisa seu histórico."}
+              {plan?.diagnosis.summary ?? t("toolbar.analysisWaiting")}
             </p>
           </div>
         </div>
@@ -271,9 +273,9 @@ const StudyPlanPage = () => {
             <Lock className="size-3.5 shrink-0" />
             <div className="text-left">
               <p className="font-mono text-[11px] font-bold uppercase tracking-widest-2">
-                Gerenciado por {user?.coach_username ?? "Coach"}
+                {t("toolbar.managedBy", { coach: user?.coach_username ?? "Coach" })}
               </p>
-              <p className="font-mono text-[9px] text-muted-foreground/70">Entre em contato para solicitar atualização</p>
+              <p className="font-mono text-[9px] text-muted-foreground/70">{t("toolbar.managedSub")}</p>
             </div>
           </div>
         ) : (
@@ -285,7 +287,7 @@ const StudyPlanPage = () => {
             {generating || loadState === "loading"
               ? <Loader2 className="size-3.5 animate-spin" aria-hidden />
               : <Sparkles className="size-3.5" aria-hidden />}
-            {generating || loadState === "loading" ? "Gerando…" : "Gerar com IA"}
+            {generating || loadState === "loading" ? t("toolbar.generating") : t("toolbar.generateBtn")}
           </button>
         )}
       </section>
@@ -294,8 +296,8 @@ const StudyPlanPage = () => {
       {loadState === "loading" && !plan && (
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
           <Loader2 className="size-6 animate-spin text-primary" />
-          <span className="font-mono text-xs uppercase tracking-wider">Coach IA analisando seus leaks…</span>
-          <p className="text-xs text-center max-w-xs">Pode levar alguns segundos na primeira vez.</p>
+          <span className="font-mono text-xs uppercase tracking-wider">{t("loading.analyzing")}</span>
+          <p className="text-xs text-center max-w-xs">{t("loading.firstTime")}</p>
         </div>
       )}
 
@@ -305,13 +307,13 @@ const StudyPlanPage = () => {
           <GraduationCap className="size-6 text-muted-foreground" />
           <p className="text-sm text-destructive text-center max-w-sm">{errorMsg}</p>
           <p className="text-xs text-muted-foreground text-center max-w-xs">
-            Importe pelo menos um torneio para gerar um plano personalizado.
+            {t("error.noTournaments")}
           </p>
           <button
             onClick={() => fetchPlan()}
             className="mt-2 font-mono text-[10px] uppercase tracking-wider text-primary hover:underline"
           >
-            Tentar novamente
+            {t("toolbar.generateBtn")}
           </button>
         </div>
       )}
@@ -323,29 +325,29 @@ const StudyPlanPage = () => {
           <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <KpiTile
               icon={Award}
-              label="Nível"
-              value={`Lv ${level}`}
-              hint={`${xpInLevel}/500 XP`}
+              label={t("kpis.level")}
+              value={t("kpis.levelValue", { level })}
+              hint={t("kpis.xpHint", { xp: xpInLevel })}
               progress={xpInLevel / 500}
             />
             <KpiTile
               icon={Flame}
-              label="Streak"
-              value={`${progress.streak} dia${progress.streak === 1 ? "" : "s"}`}
-              hint="Estude todo dia para manter"
+              label={t("kpis.streak")}
+              value={t(progress.streak === 1 ? "kpis.streakValue" : "kpis.streakValue_plural", { count: progress.streak })}
+              hint={t("kpis.streakHint")}
             />
             <KpiTile
               icon={CheckCheck}
-              label="Roteiro"
+              label={t("kpis.roadmap")}
               value={`${progress.daysCompleted.length}/${totalDays}`}
-              hint="Dias concluídos"
+              hint={t("kpis.daysCompleted")}
               progress={completedRatio}
             />
             <KpiTile
               icon={Target}
-              label="Exercícios"
+              label={t("kpis.exercises")}
               value={`${progress.exercisesCorrect}/${plan.exercises.length}`}
-              hint="Acertos no quiz"
+              hint={t("kpis.exercisesHint")}
               progress={plan.exercises.length ? progress.exercisesCorrect / plan.exercises.length : 0}
             />
           </section>
@@ -359,10 +361,10 @@ const StudyPlanPage = () => {
                 <header className="mb-4 flex items-center justify-between">
                   <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
                     <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-                    Diagnóstico priorizado
+                    {t("diagnosis.title")}
                   </h3>
                   <span className="font-mono text-[10px] text-muted-foreground">
-                    {plan.diagnosis.leaks.length} leaks ativos
+                    {t("diagnosis.leaksCount", { count: plan.diagnosis.leaks.length })}
                   </span>
                 </header>
                 <ul className="space-y-3">
@@ -406,13 +408,13 @@ const StudyPlanPage = () => {
                 <header className="mb-4 flex items-center justify-between">
                   <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
                     <CalendarDays className="size-4 text-primary" aria-hidden />
-                    Roteiro semanal
+                    {t("weekly.title")}
                   </h3>
                   <span className="font-mono text-[10px] text-muted-foreground">
-                    {plan.weeks.length} semanas ·{" "}
-                    ~{Math.round(
-                      plan.weeks.reduce((a, w) => a + w.days.reduce((b, d) => b + d.estimatedMinutes, 0), 0) / 60
-                    )}h totais
+                    {t("weekly.totalHint", {
+                      weeks: plan.weeks.length,
+                      hours: Math.round(plan.weeks.reduce((a, w) => a + w.days.reduce((b, d) => b + d.estimatedMinutes, 0), 0) / 60),
+                    })}
                   </span>
                 </header>
 
@@ -421,7 +423,7 @@ const StudyPlanPage = () => {
                     <section key={week.week} className="rounded-md border border-border bg-background p-4">
                       <header className="mb-3 flex items-center justify-between">
                         <h4 className="text-xs font-bold uppercase tracking-widest-2 text-primary">
-                          Semana {week.week}
+                          {t("weekly.weekLabel", { week: week.week })}
                         </h4>
                         <p className="text-xs text-muted-foreground">{week.focus}</p>
                       </header>
@@ -440,6 +442,7 @@ const StudyPlanPage = () => {
                                     <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
                                       Dia {day.day}
                                     </span>
+
                                     <span className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
                                       <Timer className="size-3" aria-hidden />
                                       {day.estimatedMinutes} min
@@ -467,7 +470,7 @@ const StudyPlanPage = () => {
                                   )}
                                 >
                                   <CheckCheck className="size-3" aria-hidden />
-                                  {done ? "Concluído" : "Marcar"}
+                                  {done ? t("day.done") : t("day.mark")}
                                 </button>
                               </div>
                             </li>
@@ -486,7 +489,7 @@ const StudyPlanPage = () => {
                 <header className="mb-4 flex items-center justify-between">
                   <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
                     <Library className="size-4 text-primary" aria-hidden />
-                    Recursos do leak
+                    {t("resources.title")}
                   </h3>
                 </header>
                 {activeLeak && (
@@ -506,10 +509,10 @@ const StudyPlanPage = () => {
                 <section className="rounded-xl border border-green-500/30 bg-green-500/5 p-5 space-y-3">
                   <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-green-400">
                     <MessageCircle className="size-4" aria-hidden />
-                    Treinar no WhatsApp
+                    {t("whatsapp.title")}
                   </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Receba uma questão deste plano direto no WhatsApp. Responda, acerte e peça ao AI Coach para explicar o raciocínio.
+                    {t("whatsapp.description")}
                   </p>
                   <a
                     href={`https://wa.me/${waNumber}?text=lição`}
@@ -518,10 +521,10 @@ const StudyPlanPage = () => {
                     className="flex w-full items-center justify-center gap-2 rounded-md bg-green-500/15 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-green-400 ring-1 ring-green-500/30 hover:bg-green-500/25 transition-colors"
                   >
                     <MessageCircle className="size-3.5" />
-                    Iniciar no WhatsApp →
+                    {t("whatsapp.cta")}
                   </a>
                   <p className="text-center font-mono text-[9px] text-muted-foreground">
-                    Envie qualquer mensagem para começar · salve o número no celular
+                    {t("whatsapp.hint")}
                   </p>
                 </section>
               )}
@@ -529,25 +532,15 @@ const StudyPlanPage = () => {
               <section className="rounded-xl border border-border bg-hud-surface p-5">
                 <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
                   <Sparkles className="size-4 text-primary" aria-hidden />
-                  Como usar
+                  {t("howTo.title")}
                 </h3>
                 <ul className="space-y-2 text-xs text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1 size-1 shrink-0 rounded-full bg-primary" aria-hidden />
-                    Clique num leak para ver os recursos correspondentes na sidebar.
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1 size-1 shrink-0 rounded-full bg-primary" aria-hidden />
-                    Siga o roteiro diário e marque o dia como concluído.
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1 size-1 shrink-0 rounded-full bg-primary" aria-hidden />
-                    Resolva os exercícios abaixo para fixar cada conceito.
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1 size-1 shrink-0 rounded-full bg-primary" aria-hidden />
-                    Re-importe seu histórico ao fim da semana para medir o delta.
-                  </li>
+                  {[t("howTo.tip1"), t("howTo.tip2"), t("howTo.tip3"), t("howTo.tip4")].map((tip, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1 size-1 shrink-0 rounded-full bg-primary" aria-hidden />
+                      {tip}
+                    </li>
+                  ))}
                 </ul>
               </section>
             </aside>
@@ -558,10 +551,10 @@ const StudyPlanPage = () => {
             <header className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
                 <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-                Bateria de exercícios
+                {t("exercises.title")}
               </h2>
               <span className="font-mono text-[10px] text-muted-foreground">
-                Auto-correção · {plan.exercises.length} questões
+                {t("exercises.hint", { count: plan.exercises.length })}
               </span>
             </header>
             <ExerciseRunner exercises={plan.exercises} onProgressChange={onExerciseProgress} />

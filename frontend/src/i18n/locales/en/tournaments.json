@@ -38,5 +38,73 @@
     "noFilter": "No tournaments found for the current filters."
   },
   "deleteConfirm": "Delete tournament?",
-  "deleteAriaLabel": "Delete tournament"
+  "deleteAriaLabel": "Delete tournament",
+  "stats": {
+    "totalEvents": "Total events",
+    "invested": "Invested",
+    "netProfit": "Net profit",
+    "periodRoi": "Period ROI"
+  },
+  "loading": "Loading tournaments…",
+  "detail": {
+    "eyebrow": "Tournament · {{id}}",
+    "description": "All hands classified by leak severity. Open any hand in the replayer or request an AI analysis.",
+    "backToList": "Back to Tournaments",
+    "replay": "Full replay",
+    "searchPlaceholder": "Search by action, leak…",
+    "searchAriaLabel": "Search hand",
+    "handCount": "{{count}} hand",
+    "handCount_plural": "{{count}} hands",
+    "all": "All",
+    "stats": {
+      "handsPlayed": "Hands played",
+      "criticalLeaks": "Critical leaks",
+      "relevantLeaks": "Relevant leaks",
+      "avgScore": "Avg score"
+    },
+    "severity": {
+      "critical": "Critical leak",
+      "major": "Relevant leak",
+      "minor": "Minor adjustment",
+      "ok": "Solid line",
+      "all": "All",
+      "criticals": "Critical",
+      "majors": "Relevant",
+      "minors": "Minor",
+      "oks": "Solid"
+    },
+    "streets": {
+      "all": "All",
+      "preflop": "Pre-flop"
+    },
+    "score": {
+      "great": "Great",
+      "good": "Good",
+      "moderate": "Moderate",
+      "high": "High"
+    },
+    "phase": {
+      "title": "Phase Analysis",
+      "phase": "Phase",
+      "mRatio": "M-Ratio",
+      "decisions": "Decisions",
+      "errorPct": "Error %",
+      "avgScore": "Avg Score"
+    },
+    "texture": {
+      "title": "Post-Flop by Board Texture",
+      "texture": "Texture",
+      "decisions": "Decisions",
+      "errorPct": "Error %",
+      "avgScore": "Avg Score"
+    },
+    "analysisError": "Error generating analysis",
+    "analysis": {
+      "title": "AI Coach Analysis",
+      "regenerate": "Regenerate",
+      "openReplayer": "Open in replayer",
+      "requestAnalysis": "Request AI analysis",
+      "analyzing": "Analyzing…"
+    }
+  }
 }

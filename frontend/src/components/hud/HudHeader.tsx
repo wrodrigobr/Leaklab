@@ -65,8 +65,8 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   const playerNavItems = [
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",       icon: LayoutDashboard },
     { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments",     icon: Trophy },
-    { label: t("nav.study"),       mobileLabel: t("nav.study"),       to: "/study",           icon: GraduationCap, badge: t("status.new") },
-    { label: t("nav.coach"),       mobileLabel: t("nav.coach"),       to: "/coach",           icon: Bot, badge: t("status.alpha") },
+    { label: t("nav.study"),       mobileLabel: t("nav.study"),       to: "/study",           icon: GraduationCap },
+    { label: t("nav.coach"),       mobileLabel: t("nav.coach"),       to: "/coach",           icon: Bot },
     { label: t("nav.coaches"),     mobileLabel: t("nav.coaches"),     to: "/coaches",         icon: Users },
   ];
 
@@ -83,7 +83,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     user?.role === "admin" ? adminNavItems :
     user?.role === "coach" ? coachNavItems :
     playerNavItems
-  ) as { label: string; mobileLabel: string; to: string; icon: React.ElementType; badge?: string; end?: boolean }[];
+  ) as { label: string; mobileLabel: string; to: string; icon: React.ElementType; end?: boolean }[];
 
   const { enqueue, panel } = useUploadQueue(onUpload);
 
@@ -117,11 +117,6 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                     <>
                       <item.icon className="size-3.5" aria-hidden />
                       {item.label}
-                      {"badge" in item && item.badge && (
-                        <span className="ml-1 rounded-sm bg-primary/10 px-1.5 py-0.5 text-[9px] font-mono font-semibold text-primary ring-1 ring-primary/30">
-                          {item.badge}
-                        </span>
-                      )}
                       {isActive && (
                         <span className="absolute -bottom-[17px] left-2 right-2 h-0.5 bg-primary" />
                       )}
@@ -151,25 +146,6 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                 {t("actions.import")}
               </button>
             )}
-
-            {user?.coach_id && user.role !== "coach" && (
-              <div className="hidden sm:flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 ring-1 ring-primary/30">
-                <GraduationCap className="size-3 text-primary" />
-                <span className="font-mono text-[10px] font-medium uppercase tracking-widest-2 text-primary">
-                  {user.coach_username}
-                </span>
-              </div>
-            )}
-
-            <div className="hidden sm:flex items-center gap-2 rounded-full bg-card px-3 py-1.5 ring-1 ring-border">
-              <span className="relative flex size-1.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
-                <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
-              </span>
-              <span className="font-mono text-[10px] font-medium uppercase tracking-widest-2 text-muted-foreground">
-                {t("engineActive")}
-              </span>
-            </div>
 
             <LanguageSwitcher />
 

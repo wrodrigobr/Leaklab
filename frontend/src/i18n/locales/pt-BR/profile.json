@@ -1,0 +1,46 @@
+{
+  "title": "Meu Perfil",
+  "eyebrow": "Configurações da conta",
+  "sections": {
+    "account": "Conta",
+    "security": "Segurança",
+    "coach": "Meu Coach",
+    "whatsapp": "WhatsApp Coaching"
+  },
+  "fields": {
+    "username": "Username",
+    "email": "E-mail",
+    "plan": "Plano",
+    "role": "Tipo de conta",
+    "currentPassword": "Senha atual",
+    "newPassword": "Nova senha",
+    "confirmPassword": "Confirmar senha",
+    "phone": "Número WhatsApp"
+  },
+  "coach": {
+    "linked": "Coach vinculado",
+    "none": "Nenhum coach vinculado",
+    "noneHint": "Encontre um coach no marketplace para receber orientação personalizada.",
+    "findCoaches": "Encontrar coaches",
+    "viewProfile": "Ver perfil",
+    "unlink": "Desvincular",
+    "unlinkConfirm": "Confirmar desvinculação?"
+  },
+  "whatsapp": {
+    "description": "Vincule seu número para receber exercícios e alertas de leaks diretamente no WhatsApp.",
+    "placeholder": "+55 11 99999-9999",
+    "save": "Salvar número",
+    "unlink": "Desvincular",
+    "linked": "WhatsApp vinculado",
+    "notLinked": "Número não vinculado"
+  },
+  "password": {
+    "change": "Alterar senha",
+    "mismatch": "As senhas não coincidem.",
+    "success": "Senha alterada com sucesso."
+  },
+  "actions": {
+    "saveProfile": "Salvar perfil",
+    "saving": "Salvando…"
+  }
+}

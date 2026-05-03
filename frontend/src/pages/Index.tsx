@@ -96,6 +96,14 @@ const Index = () => {
           <p className="max-w-2xl text-sm text-muted-foreground">
             {t("subtitle")}
           </p>
+          {user?.coach_id && user.role !== "coach" && user.coach_username && (
+            <div className="flex items-center gap-2 self-start rounded-full bg-primary/10 px-3 py-1.5 ring-1 ring-primary/20">
+              <GraduationCap className="size-3.5 text-primary" />
+              <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-primary">
+                {user.coach_username}
+              </span>
+            </div>
+          )}
         </section>
 
         <section

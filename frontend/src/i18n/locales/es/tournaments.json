@@ -38,5 +38,73 @@
     "noFilter": "No se encontraron torneos para los filtros actuales."
   },
   "deleteConfirm": "¿Eliminar torneo?",
-  "deleteAriaLabel": "Eliminar torneo"
+  "deleteAriaLabel": "Eliminar torneo",
+  "stats": {
+    "totalEvents": "Total eventos",
+    "invested": "Invertido",
+    "netProfit": "Ganancia neta",
+    "periodRoi": "ROI del período"
+  },
+  "loading": "Cargando torneos…",
+  "detail": {
+    "eyebrow": "Torneo · {{id}}",
+    "description": "Todas las manos clasificadas por gravedad de leak. Abre cualquier mano en el replayer o solicita análisis de IA.",
+    "backToList": "Volver a Torneos",
+    "replay": "Replay completo",
+    "searchPlaceholder": "Buscar por acción, leak…",
+    "searchAriaLabel": "Buscar mano",
+    "handCount": "{{count}} mano",
+    "handCount_plural": "{{count}} manos",
+    "all": "Todas",
+    "stats": {
+      "handsPlayed": "Manos jugadas",
+      "criticalLeaks": "Leaks críticos",
+      "relevantLeaks": "Leaks relevantes",
+      "avgScore": "Score promedio"
+    },
+    "severity": {
+      "critical": "Leak crítico",
+      "major": "Leak relevante",
+      "minor": "Ajuste menor",
+      "ok": "Línea sólida",
+      "all": "Todas",
+      "criticals": "Críticos",
+      "majors": "Relevantes",
+      "minors": "Menores",
+      "oks": "Sólidas"
+    },
+    "streets": {
+      "all": "Todas",
+      "preflop": "Preflop"
+    },
+    "score": {
+      "great": "Excelente",
+      "good": "Bueno",
+      "moderate": "Moderado",
+      "high": "Alto"
+    },
+    "phase": {
+      "title": "Análisis por Fase",
+      "phase": "Fase",
+      "mRatio": "M-Ratio",
+      "decisions": "Decisiones",
+      "errorPct": "% Errores",
+      "avgScore": "Score Promedio"
+    },
+    "texture": {
+      "title": "Postflop por Textura de Board",
+      "texture": "Textura",
+      "decisions": "Decisiones",
+      "errorPct": "% Errores",
+      "avgScore": "Score Promedio"
+    },
+    "analysisError": "Error al generar análisis",
+    "analysis": {
+      "title": "Análisis del Coach IA",
+      "regenerate": "Regenerar",
+      "openReplayer": "Abrir en replayer",
+      "requestAnalysis": "Solicitar análisis de IA",
+      "analyzing": "Analizando…"
+    }
+  }
 }

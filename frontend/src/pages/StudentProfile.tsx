@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { KeyRound, Mail, MessageCircle, UserX, Loader2, Check, AlertTriangle, GraduationCap, Star, Trash2, Users, ChevronRight } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { useAuth } from "@/lib/auth";
@@ -280,6 +281,8 @@ const inputCls = "w-full rounded-md border border-border bg-background px-3 py-2
 
 export default function StudentProfile() {
   const { user, refreshUser } = useAuth();
+  const { t } = useTranslation("profile");
+  const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
 
   // ── Alterar e-mail ────────────────────────────────────────────────────────
@@ -371,12 +374,12 @@ export default function StudentProfile() {
       <HudHeader />
       <main className="mx-auto max-w-2xl px-6 py-10 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Meu Perfil</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
           <p className="font-mono text-[11px] text-muted-foreground mt-1">{user?.username}</p>
         </div>
 
         {/* WhatsApp */}
-        <Section icon={MessageCircle} title="WhatsApp — Coaching Drills">
+        <Section icon={MessageCircle} title={t("sections.whatsapp")}>
           <p className="text-xs text-muted-foreground">
             Vincule seu número para receber exercícios personalizados diretamente no WhatsApp.
             Use o formato <span className="font-mono text-foreground">DDI+DDD+número</span> sem espaços ou traços.
@@ -420,7 +423,7 @@ export default function StudentProfile() {
         </Section>
 
         {/* Alterar e-mail */}
-        <Section icon={Mail} title="Alterar E-mail">
+        <Section icon={Mail} title={t("fields.email")}>
           <form onSubmit={handleUpdateEmail} className="space-y-3">
             <Field label="Novo e-mail">
               <input
@@ -453,7 +456,7 @@ export default function StudentProfile() {
         </Section>
 
         {/* Trocar senha */}
-        <Section icon={KeyRound} title="Trocar Senha">
+        <Section icon={KeyRound} title={t("password.change")}>
           <form onSubmit={handleChangePassword} className="space-y-3">
             <Field label="Senha atual">
               <input
@@ -503,14 +506,14 @@ export default function StudentProfile() {
         </Section>
 
         {/* Vínculo com coach */}
-        <Section icon={GraduationCap} title="Meu Coach">
+        <Section icon={GraduationCap} title={t("sections.coach")}>
           {user?.coach_id ? (
             <div className="space-y-4">
               <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
                 <GraduationCap className="size-4 text-primary shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-foreground">{user.coach_username}</p>
-                  <p className="font-mono text-[10px] text-muted-foreground">Coach vinculado</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">{t("coach.linked")}</p>
                 </div>
               </div>
               <CoachReviewWidget coachId={user.coach_id} />
@@ -520,7 +523,7 @@ export default function StudentProfile() {
                   onClick={handleUnlink}
                   className="inline-flex items-center gap-2 rounded-md border border-destructive/40 px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-destructive hover:bg-destructive/10 transition-colors"
                 >
-                  <UserX className="size-3.5" /> Remover vínculo
+                  <UserX className="size-3.5" /> {t("coach.unlink")}
                 </button>
               ) : (
                 <form onSubmit={handleUnlink} className="space-y-3">
@@ -546,14 +549,14 @@ export default function StudentProfile() {
                       className="inline-flex items-center gap-2 rounded-md bg-destructive px-4 py-2 font-mono text-[11px] font-bold uppercase text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
                     >
                       {unlinkLoading ? <Loader2 className="size-3.5 animate-spin" /> : <UserX className="size-3.5" />}
-                      Confirmar remoção
+                      {t("coach.unlinkConfirm")}
                     </button>
                     <button
                       type="button"
                       onClick={() => { setConfirmUnlink(false); setUnlinkPw(""); }}
                       className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      Cancelar
+                      {tc("actions.cancel")}
                     </button>
                   </div>
                 </form>

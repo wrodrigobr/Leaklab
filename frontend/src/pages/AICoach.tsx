@@ -3,6 +3,7 @@ import { Bot, Loader2, Send, Sparkles, User } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { coach, CoachContext } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "react-i18next";
 
 interface Msg {
   id: number;
@@ -10,21 +11,22 @@ interface Msg {
   content: string;
 }
 
-const SUGGESTIONS = [
-  "Quais são meus 3 maiores leaks pré-flop?",
-  "Como devo ajustar meu range de SB vs BTN?",
-  "Resuma minha performance dos últimos 90 dias",
-  "Quando devo 4-bet bluff em torneios?",
-];
-
 const AICoach = () => {
   const { user } = useAuth();
+  const { t } = useTranslation("aicoach");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [ctx, setCtx] = useState<CoachContext | null>(null);
   const [ctxLoading, setCtxLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const SUGGESTIONS = [
+    t("suggestions.s1"),
+    t("suggestions.s2"),
+    t("suggestions.s3"),
+    t("suggestions.s4"),
+  ];
 
   useEffect(() => {
     coach
@@ -33,33 +35,29 @@ const AICoach = () => {
         setCtx(data);
         const leakNote =
           data.top_leaks.length > 0
-            ? ` Detectei ${data.top_leaks.length} leak(s) prioritários: ${data.top_leaks
-                .slice(0, 2)
-                .map((l) => l.spot.replace(/_/g, " "))
-                .join(", ")}.`
-            : " Ainda sem dados de leaks — importe torneios para começar.";
+            ? t("greeting.leakNote", {
+                count: data.top_leaks.length,
+                spots: data.top_leaks.slice(0, 2).map((l) => l.spot.replace(/_/g, " ")).join(", "),
+              })
+            : t("greeting.noData");
         setMessages([
           {
             id: 1,
             role: "ai",
-            content: `Olá${user?.username ? `, ${user.username}` : ""}! Analisei suas últimas ${
-              data.hands_analyzed
-            } mãos em ${data.tournaments_analyzed} torneios.${leakNote} Por onde quer começar?`,
+            content: t("greeting.withData", {
+              name: user?.username ? `, ${user.username}` : "",
+              hands: data.hands_analyzed,
+              tournaments: data.tournaments_analyzed,
+              leakNote,
+            }),
           },
         ]);
       })
       .catch(() => {
-        setMessages([
-          {
-            id: 1,
-            role: "ai",
-            content:
-              "Olá! Importe torneios para que eu possa analisar seu jogo e oferecer coaching personalizado.",
-          },
-        ]);
+        setMessages([{ id: 1, role: "ai", content: t("greeting.noHistory") }]);
       })
       .finally(() => setCtxLoading(false));
-  }, [user?.username]);
+  }, [user?.username]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -78,7 +76,7 @@ const AICoach = () => {
       const res = await coach.chat(trimmed);
       setMessages((m) => [...m, { id: Date.now() + 1, role: "ai", content: res.reply }]);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro desconhecido";
+      const msg = err instanceof Error ? err.message : t("context.loading");
       setMessages((m) => [
         ...m,
         { id: Date.now() + 1, role: "ai", content: `Erro ao processar: ${msg}` },
@@ -90,9 +88,9 @@ const AICoach = () => {
 
   return (
     <HudLayout
-      eyebrow="IA Coach • Alpha"
-      title="Converse com seu coach tático"
-      description="Pergunte sobre leaks, ranges, posições ou peça resumos de sessões. A IA usa seu histórico importado como contexto."
+      eyebrow={t("eyebrow")}
+      title={t("title")}
+      description={t("description")}
     >
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <section className="lg:col-span-8 flex flex-col rounded-xl border border-border bg-hud-surface min-h-[60vh]">
@@ -102,19 +100,19 @@ const AICoach = () => {
                 <Sparkles className="size-4" aria-hidden />
               </span>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Sessão de coaching</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("session.title")}</h2>
                 <p className="font-mono text-[10px] text-muted-foreground">
-                  Modelo tático v2.1 •{" "}
+                  {t("session.model")} •{" "}
                   {ctxLoading
-                    ? "carregando contexto…"
+                    ? t("session.loadingCtx")
                     : ctx
-                    ? `contexto: ${ctx.hands_analyzed.toLocaleString()} mãos`
-                    : "sem dados"}
+                    ? t("session.contextLabel", { count: ctx.hands_analyzed.toLocaleString() })
+                    : t("session.noData")}
                 </p>
               </div>
             </div>
             <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary ring-1 ring-primary/20">
-              <span className="size-1.5 rounded-full bg-primary animate-pulse" /> Online
+              <span className="size-1.5 rounded-full bg-primary animate-pulse" /> {t("session.online")}
             </span>
           </header>
 
@@ -159,10 +157,7 @@ const AICoach = () => {
           </div>
 
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              send(input);
-            }}
+            onSubmit={(e) => { e.preventDefault(); send(input); }}
             className="border-t border-border p-3"
           >
             <div className="flex items-end gap-2 rounded-lg border border-border bg-background p-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/40">
@@ -170,22 +165,19 @@ const AICoach = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send(input);
-                  }
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
                 }}
                 rows={1}
-                placeholder="Pergunte ao coach…"
+                placeholder={t("input.placeholder")}
                 className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground focus:outline-none"
-                aria-label="Mensagem"
+                aria-label={t("input.ariaLabel")}
                 disabled={sending}
               />
               <button
                 type="submit"
                 disabled={!input.trim() || sending}
                 className="inline-flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground transition-opacity hover:bg-primary-glow disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Enviar"
+                aria-label={t("input.send")}
               >
                 {sending ? (
                   <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -200,7 +192,7 @@ const AICoach = () => {
         <aside className="lg:col-span-4 space-y-6">
           <section className="rounded-xl border border-border bg-hud-surface p-5">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-3">
-              Sugestões rápidas
+              {t("suggestions.title")}
             </h3>
             <div className="space-y-2">
               {SUGGESTIONS.map((s) => (
@@ -218,37 +210,35 @@ const AICoach = () => {
 
           <section className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-2">
-              Contexto carregado
+              {t("context.title")}
             </h3>
             {ctxLoading ? (
               <div className="flex items-center gap-2 py-2">
                 <Loader2 className="size-3 animate-spin text-primary" />
-                <span className="font-mono text-[10px] text-muted-foreground">Carregando…</span>
+                <span className="font-mono text-[10px] text-muted-foreground">{t("context.loading")}</span>
               </div>
             ) : (
               <ul className="space-y-2 text-xs text-foreground">
                 <li className="flex items-center justify-between">
-                  <span>Mãos</span>
+                  <span>{t("context.hands")}</span>
                   <span className="font-mono tabular-nums text-primary">
                     {ctx ? ctx.hands_analyzed.toLocaleString() : "—"}
                   </span>
                 </li>
                 <li className="flex items-center justify-between">
-                  <span>Torneios</span>
+                  <span>{t("context.tournaments")}</span>
                   <span className="font-mono tabular-nums text-primary">
                     {ctx ? ctx.tournaments_analyzed : "—"}
                   </span>
                 </li>
                 <li className="flex items-center justify-between">
-                  <span>Score médio</span>
+                  <span>{t("context.avgScore")}</span>
                   <span
                     className={`font-mono tabular-nums ${
                       ctx?.avg_score != null
-                        ? ctx.avg_score < 0.08
-                          ? "text-primary"
-                          : ctx.avg_score < 0.15
-                          ? "text-warning"
-                          : "text-destructive"
+                        ? ctx.avg_score < 0.08 ? "text-primary"
+                        : ctx.avg_score < 0.15 ? "text-warning"
+                        : "text-destructive"
                         : "text-muted-foreground"
                     }`}
                   >
@@ -256,11 +246,9 @@ const AICoach = () => {
                   </span>
                 </li>
                 <li className="flex items-center justify-between">
-                  <span>% Standard</span>
+                  <span>{t("context.stdPct")}</span>
                   <span className="font-mono tabular-nums text-muted-foreground">
-                    {ctx?.standard_pct != null
-                      ? `${(ctx.standard_pct * 100).toFixed(1)}%`
-                      : "—"}
+                    {ctx?.standard_pct != null ? `${(ctx.standard_pct * 100).toFixed(1)}%` : "—"}
                   </span>
                 </li>
               </ul>
@@ -268,7 +256,7 @@ const AICoach = () => {
             {ctx && ctx.top_leaks.length > 0 && (
               <div className="mt-3 pt-3 border-t border-border/60">
                 <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-2">
-                  Top leaks
+                  {t("context.topLeaks")}
                 </p>
                 <ul className="space-y-1">
                   {ctx.top_leaks.slice(0, 3).map((l) => (
@@ -279,11 +267,9 @@ const AICoach = () => {
                       <span className="truncate">{l.spot.replace(/_/g, " ")}</span>
                       <span
                         className={`font-mono tabular-nums shrink-0 ${
-                          l.avg_score >= 0.36
-                            ? "text-destructive"
-                            : l.avg_score >= 0.2
-                            ? "text-warning"
-                            : "text-primary"
+                          l.avg_score >= 0.36 ? "text-destructive"
+                          : l.avg_score >= 0.2 ? "text-warning"
+                          : "text-primary"
                         }`}
                       >
                         {l.avg_score.toFixed(3)}

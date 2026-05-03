@@ -38,5 +38,73 @@
     "noFilter": "Nenhum torneio encontrado para os filtros atuais."
   },
   "deleteConfirm": "Deletar torneio?",
-  "deleteAriaLabel": "Deletar torneio"
+  "deleteAriaLabel": "Deletar torneio",
+  "stats": {
+    "totalEvents": "Total eventos",
+    "invested": "Investido",
+    "netProfit": "Lucro líquido",
+    "periodRoi": "ROI período"
+  },
+  "loading": "Carregando torneios…",
+  "detail": {
+    "eyebrow": "Torneio · {{id}}",
+    "description": "Todas as mãos do torneio classificadas por severidade de leak. Abra qualquer mão no replayer ou peça análise da IA.",
+    "backToList": "Voltar para Torneios",
+    "replay": "Replay completo",
+    "searchPlaceholder": "Buscar por ação, leak…",
+    "searchAriaLabel": "Buscar mão",
+    "handCount": "{{count}} mão",
+    "handCount_plural": "{{count}} mãos",
+    "all": "Todas",
+    "stats": {
+      "handsPlayed": "Mãos jogadas",
+      "criticalLeaks": "Leaks críticos",
+      "relevantLeaks": "Leaks relevantes",
+      "avgScore": "Score médio"
+    },
+    "severity": {
+      "critical": "Leak crítico",
+      "major": "Leak relevante",
+      "minor": "Pequeno ajuste",
+      "ok": "Linha sólida",
+      "all": "Todas",
+      "criticals": "Críticos",
+      "majors": "Relevantes",
+      "minors": "Pequenos",
+      "oks": "Sólidas"
+    },
+    "streets": {
+      "all": "Todas",
+      "preflop": "Pré-flop"
+    },
+    "score": {
+      "great": "Ótimo",
+      "good": "Bom",
+      "moderate": "Moderado",
+      "high": "Alto"
+    },
+    "phase": {
+      "title": "Análise por Fase",
+      "phase": "Fase",
+      "mRatio": "M-Ratio",
+      "decisions": "Decisões",
+      "errorPct": "Erros %",
+      "avgScore": "Score Médio"
+    },
+    "texture": {
+      "title": "Pós-Flop por Textura de Board",
+      "texture": "Textura",
+      "decisions": "Decisões",
+      "errorPct": "Erros %",
+      "avgScore": "Score Médio"
+    },
+    "analysisError": "Erro ao gerar análise",
+    "analysis": {
+      "title": "Análise do Coach IA",
+      "regenerate": "Gerar novamente",
+      "openReplayer": "Abrir no replayer",
+      "requestAnalysis": "Pedir análise da IA",
+      "analyzing": "Analisando…"
+    }
+  }
 }

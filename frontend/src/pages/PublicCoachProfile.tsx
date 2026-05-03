@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Star, Users, DollarSign, Globe, GraduationCap,
@@ -106,6 +107,8 @@ export default function PublicCoachProfile() {
   const coachId = Number(id);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation("coaches");
+  const { t: tc } = useTranslation("common");
   const qc = useQueryClient();
   const isStudent = user?.role === "player";
   const hasCoach = !!user?.coach_id;
@@ -163,7 +166,7 @@ export default function PublicCoachProfile() {
       <div className="min-h-dvh bg-background">
         <HudHeader />
         <div className="flex items-center justify-center py-32 text-muted-foreground gap-2">
-          <Loader2 className="size-5 animate-spin" /> Carregando perfil…
+          <Loader2 className="size-5 animate-spin" /> {tc("actions.loading")}
         </div>
       </div>
     );
@@ -176,8 +179,8 @@ export default function PublicCoachProfile() {
         <HudHeader />
         <div className="flex flex-col items-center justify-center py-32 gap-3 text-muted-foreground">
           <GraduationCap className="size-10 opacity-30" />
-          <p className="text-sm">Coach não encontrado.</p>
-          <Link to="/coaches" className="font-mono text-xs text-primary hover:underline">← Voltar ao diretório</Link>
+          <p className="text-sm">{tc("errors.notFound")}</p>
+          <Link to="/coaches" className="font-mono text-xs text-primary hover:underline">{t("profile.back")}</Link>
         </div>
       </div>
     );
@@ -202,7 +205,7 @@ export default function PublicCoachProfile() {
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="size-3.5" /> Voltar
+          <ArrowLeft className="size-3.5" /> {tc("actions.back")}
         </button>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -236,7 +239,7 @@ export default function PublicCoachProfile() {
               <div className="grid grid-cols-2 gap-2 text-center">
                 <div className="rounded-md border border-border bg-background p-2">
                   <p className="font-mono text-lg font-bold text-foreground">{c.student_count}</p>
-                  <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">Alunos</p>
+                  <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">{t("profile.students")}</p>
                 </div>
                 {c.experience_years != null && (
                   <div className="rounded-md border border-border bg-background p-2">

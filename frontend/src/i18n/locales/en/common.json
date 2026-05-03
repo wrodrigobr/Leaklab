@@ -62,6 +62,11 @@
     "noTournaments": "No tournaments imported yet. Use the Dashboard to upload.",
     "noResults": "No results found for the current filters."
   },
+  "notFound": {
+    "title": "404",
+    "message": "Oops! Page not found",
+    "back": "Return to Home"
+  },
   "engineActive": "Engine Active",
   "sessionLocked": "ENC: AES-256 • LATENCY: 14ms • SESSION_LOCKED",
   "docs": "Documentation",

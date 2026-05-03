@@ -1,0 +1,62 @@
+{
+  "directory": {
+    "eyebrow": "Marketplace de Coaches",
+    "title": "Encontre seu coach",
+    "description": "Coaches verificados especializados em MTT, SNG, Cash Game e mais. Filtre por especialidade, idioma e avaliação."
+  },
+  "filters": {
+    "search": "Buscar coaches…",
+    "specialty": "Especialidade",
+    "language": "Idioma",
+    "sort": "Ordenar",
+    "all": "Todos",
+    "verified": "Verificados"
+  },
+  "sort": {
+    "rating": "Melhor avaliado",
+    "students": "Mais alunos",
+    "price": "Menor preço"
+  },
+  "card": {
+    "studentsCount": "{{count}} alunos",
+    "ratePerHour": "/h",
+    "noRate": "A combinar",
+    "verified": "Verificado",
+    "viewProfile": "Ver perfil",
+    "hire": "Contratar"
+  },
+  "empty": {
+    "title": "Nenhum coach encontrado",
+    "description": "Tente ajustar os filtros ou buscar por outra especialidade."
+  },
+  "profile": {
+    "back": "← Coaches",
+    "hire": "Contratar coach",
+    "contact": "Entrar em contato",
+    "students": "Alunos",
+    "rating": "Avaliação",
+    "since": "Desde {{year}}",
+    "specialties": "Especialidades",
+    "languages": "Idiomas",
+    "about": "Sobre",
+    "reviews": "Avaliações",
+    "reviewsCount": "{{count}} avaliação",
+    "reviewsCount_plural": "{{count}} avaliações",
+    "noReviews": "Ainda sem avaliações.",
+    "yourReview": "Sua avaliação",
+    "writeReview": "Escrever avaliação",
+    "editReview": "Editar avaliação",
+    "deleteReview": "Remover avaliação",
+    "reviewPlaceholder": "Conte sua experiência com este coach… (opcional)",
+    "saveReview": "Salvar avaliação",
+    "alreadyLinked": "Já vinculado",
+    "requestLink": "Solicitar vínculo",
+    "linkSent": "Solicitação enviada!",
+    "unlinkCoach": "Desvincular coach",
+    "confirmUnlink": "Confirmar desvinculação?",
+    "socialLinks": "Redes sociais",
+    "stakes": "Stakes",
+    "pricePerHour": "{{price}}/h",
+    "priceContact": "A combinar"
+  }
+}

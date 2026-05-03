@@ -1,0 +1,81 @@
+{
+  "nav": {
+    "login": "Entrar",
+    "startFree": "Começar grátis"
+  },
+  "hero": {
+    "badge": "Powered by Claude AI",
+    "title1": "Pare de vazar fichas",
+    "title2": "nos mesmos spots.",
+    "subtitle": "O LeakLabs analisa cada decisão do seu histórico de torneios, identifica os padrões de erro mais caros e entrega um plano de estudo baseado nos seus dados reais — não em teoria genérica que todo mundo já conhece.",
+    "ctaStart": "Começar grátis",
+    "ctaPlans": "Ver planos",
+    "levels": "7 níveis de evolução — de Iniciante a Elite"
+  },
+  "stats": {
+    "leakSpots": "Spots de leak mapeados",
+    "levels": "Níveis de progressão",
+    "realData": "Baseado nos seus dados reais"
+  },
+  "howItWorks": {
+    "eyebrow": "Como funciona",
+    "heading": "Do arquivo HH ao diagnóstico preciso",
+    "step1Title": "Importe seu histórico",
+    "step1Desc": "Faça upload do arquivo .txt de qualquer torneio (PokerStars ou GGPoker). Suporte a múltiplos arquivos de uma vez.",
+    "step2Title": "LeakLabs prioriza seus erros",
+    "step2Desc": "Cada decisão é avaliada por equity, posição e contexto MTT/SNG. O motor de detecção cruza frequência com impacto — e te mostra exatamente o que está custando fichas.",
+    "step3Title": "Evolua com foco no que importa",
+    "step3Desc": "Plano de estudos construído sobre os seus próprios padrões de erro — não conteúdo genérico. Acompanhe a evolução pelos 7 níveis do sistema."
+  },
+  "features": {
+    "eyebrow": "Funcionalidades",
+    "heading": "Por que o LeakLabs é diferente",
+    "f1Title": "Seus dados, não teoria genérica",
+    "f1Desc": "O diagnóstico é construído sobre os seus próprios torneios. Cada leak identificado existe no seu histórico real.",
+    "f2Title": "Prioridade por impacto financeiro",
+    "f2Desc": "Leaks são ranqueados por frequência × gravidade. Você foca no que realmente está custando fichas, não no que é mais fácil de estudar.",
+    "f3Title": "Plano de estudos por spot",
+    "f3Desc": "Cards de estudo gerados por spot de erro específico — com diagnóstico, exercício e recursos — não conteúdo genérico.",
+    "f4Title": "Contexto MTT nativo",
+    "f4Desc": "M-ratio, pressão ICM, estágio do torneio, posição — o motor avalia cada decisão com o contexto certo, não equity isolada.",
+    "f5Title": "Replayer com análise de decisão",
+    "f5Desc": "Revisão mão a mão com explicação detalhada de cada ação crítica — entenda o que errou e por quê.",
+    "f6Title": "Progressão mensurável",
+    "f6Desc": "7 níveis de evolução com métricas claras. Você sabe exatamente onde está e o que falta para avançar."
+  },
+  "plans": {
+    "eyebrow": "Planos",
+    "heading": "Simples e transparente",
+    "details": "Comece grátis. Faça upgrade conforme sua frequência de jogo.",
+    "period": "/mês",
+    "popular": "Mais popular",
+    "grinder": "Grinder",
+    "ctaFree": "Começar grátis",
+    "ctaSubscribe": "Assinar {{name}}",
+    "manualActivation": "Planos pagos ativados manualmente via e-mail em até 24h · Sem cartão de crédito obrigatório",
+    "freeF1": "3 torneios por mês",
+    "freeF2": "10 análises LeakLabs/mês",
+    "freeF3": "Detecção de leaks e score",
+    "freeF4": "Sistema de 7 níveis",
+    "starterF1": "20 torneios por mês",
+    "starterF2": "40 análises LeakLabs/mês",
+    "starterF3": "Plano de estudos personalizado",
+    "starterF4": "Histórico completo + evolução",
+    "starterF5": "Replayer com análise de decisão",
+    "proF1": "Torneios ilimitados",
+    "proF2": "150 análises LeakLabs/mês",
+    "proF3": "Plano de estudos personalizado",
+    "proF4": "Histórico completo + evolução",
+    "proF5": "Marketplace de coaches",
+    "proF6": "Suporte prioritário"
+  },
+  "cta": {
+    "heading": "Seus leaks já existem. Você só não sabe quais são.",
+    "desc": "Importe seu primeiro torneio agora — em minutos você vai saber exatamente onde está perdendo fichas.",
+    "btn": "Criar conta grátis"
+  },
+  "footer": {
+    "copyright": "© 2026 LeakLabs · Tactical Tournament Intelligence",
+    "login": "Entrar →"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "eyebrow": "Coach IA • Alpha",
+  "title": "Conversa con tu coach táctico",
+  "description": "Pregunta sobre leaks, rangos, posiciones o pide resúmenes de sesiones. La IA usa tu historial importado como contexto.",
+  "session": {
+    "title": "Sesión de coaching",
+    "model": "Modelo táctico v2.1",
+    "loadingCtx": "cargando contexto…",
+    "noData": "sin datos",
+    "contextLabel": "contexto: {{count}} manos",
+    "online": "En línea"
+  },
+  "greeting": {
+    "withData": "¡Hola{{name}}! Analicé tus últimas {{hands}} manos en {{tournaments}} torneos.{{leakNote}} ¿Por dónde quieres empezar?",
+    "leakNote": " Detecté {{count}} leak(s) prioritario(s): {{spots}}.",
+    "noData": " Aún sin datos de leaks — importa torneos para empezar.",
+    "noHistory": "¡Hola! Importa torneos para que pueda analizar tu juego y ofrecerte coaching personalizado."
+  },
+  "input": {
+    "placeholder": "Pregunta al coach…",
+    "ariaLabel": "Mensaje",
+    "send": "Enviar"
+  },
+  "suggestions": {
+    "title": "Sugerencias rápidas",
+    "s1": "¿Cuáles son mis 3 mayores leaks preflop?",
+    "s2": "¿Cómo debo ajustar mi rango de SB vs BTN?",
+    "s3": "Resume mi rendimiento de los últimos 90 días",
+    "s4": "¿Cuándo debo hacer 4-bet bluff en torneos?"
+  },
+  "context": {
+    "title": "Contexto cargado",
+    "loading": "Cargando…",
+    "hands": "Manos",
+    "tournaments": "Torneos",
+    "avgScore": "Score promedio",
+    "stdPct": "% Estándar",
+    "topLeaks": "Top leaks"
+  }
+}

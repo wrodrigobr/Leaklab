@@ -53,6 +53,11 @@
     "tip3": "Solve the exercises below to reinforce each concept.",
     "tip4": "Re-import your history at the end of the week to measure the delta."
   },
+  "day": {
+    "label": "Day {{n}}",
+    "mark": "Mark",
+    "done": "Done"
+  },
   "exercises": {
     "title": "Exercise battery",
     "hint": "Auto-graded · {{count}} questions"

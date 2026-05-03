@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Search, Star, Users, DollarSign, Globe, Filter,
   Loader2, GraduationCap, CheckCircle2, ChevronDown,
@@ -22,11 +23,7 @@ const LANGUAGES = [
   { code: "es", label: "Español" },
 ];
 
-const SORT_OPTIONS = [
-  { value: "rating",   label: "Melhor avaliado" },
-  { value: "students", label: "Mais alunos" },
-  { value: "price",    label: "Menor preço" },
-];
+const SORT_KEYS = ["rating", "students", "price"] as const;
 
 function StarRow({ rating, count }: { rating: number | null; count: number }) {
   const r = rating ?? 0;
@@ -49,6 +46,7 @@ function StarRow({ rating, count }: { rating: number | null; count: number }) {
 
 function CoachCard({ coach }: { coach: PublicCoach }) {
   const navigate = useNavigate();
+  const { t } = useTranslation("coaches");
   return (
     <div
       onClick={() => navigate(`/coaches/${coach.user_id}`)}
@@ -98,11 +96,11 @@ function CoachCard({ coach }: { coach: PublicCoach }) {
       <div className="flex items-center justify-between pt-1 border-t border-border">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-            <Users className="size-3" /> {coach.student_count} alunos
+            <Users className="size-3" /> {t("card.studentsCount", { count: coach.student_count })}
           </span>
           {coach.price_per_session != null && (
             <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-              <DollarSign className="size-3" /> R$ {coach.price_per_session}/sessão
+              <DollarSign className="size-3" /> R$ {coach.price_per_session}{t("card.ratePerHour")}
             </span>
           )}
         </div>
@@ -131,18 +129,21 @@ function FilterPanel({
   filters: CoachDirectoryFilters;
   onChange: (f: CoachDirectoryFilters) => void;
 }) {
+  const { t } = useTranslation("coaches");
   const set = (key: keyof CoachDirectoryFilters, val: unknown) =>
     onChange({ ...filters, [key]: val || undefined });
+
+  const SORT_OPTIONS = SORT_KEYS.map((k) => ({ value: k, label: t(`sort.${k}`) }));
 
   return (
     <aside className="space-y-5 shrink-0 w-52">
       <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1.5">
-        <Filter className="size-3" /> Filtros
+        <Filter className="size-3" /> {t("filters.sort")}
       </p>
 
       {/* Sort */}
       <div className="space-y-1.5">
-        <p className="font-mono text-[10px] text-muted-foreground">Ordenar por</p>
+        <p className="font-mono text-[10px] text-muted-foreground">{t("filters.sort")}</p>
         <div className="relative">
           <select
             value={filters.sort ?? "rating"}
@@ -159,7 +160,7 @@ function FilterPanel({
 
       {/* Specialty */}
       <div className="space-y-1.5">
-        <p className="font-mono text-[10px] text-muted-foreground">Especialidade</p>
+        <p className="font-mono text-[10px] text-muted-foreground">{t("filters.specialty")}</p>
         <div className="flex flex-wrap gap-1">
           {SPECIALTIES.map((s) => (
             <button
@@ -178,7 +179,7 @@ function FilterPanel({
 
       {/* Language */}
       <div className="space-y-1.5">
-        <p className="font-mono text-[10px] text-muted-foreground">Idioma</p>
+        <p className="font-mono text-[10px] text-muted-foreground">{t("filters.language")}</p>
         <div className="flex flex-col gap-1">
           {LANGUAGES.map((l) => (
             <label key={l.code} className="flex items-center gap-2 cursor-pointer">
@@ -217,7 +218,7 @@ function FilterPanel({
           onChange={(e) => set("trial", e.target.checked ? true : undefined)}
           className="accent-primary"
         />
-        <span className="text-xs">Só com sessão trial</span>
+        <span className="text-xs">Trial</span>
       </label>
 
       {/* Reset */}
@@ -226,7 +227,7 @@ function FilterPanel({
           onClick={() => onChange({ sort: filters.sort })}
           className="font-mono text-[10px] text-muted-foreground hover:text-foreground underline"
         >
-          Limpar filtros
+          {t("filters.all")}
         </button>
       )}
     </aside>
@@ -236,6 +237,7 @@ function FilterPanel({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CoachesDirectory() {
+  const { t } = useTranslation("coaches");
   const [filters, setFilters] = useState<CoachDirectoryFilters>({ sort: "rating" });
   const [search, setSearch] = useState("");
 
@@ -253,9 +255,9 @@ export default function CoachesDirectory() {
       <main className="mx-auto max-w-6xl px-6 py-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Coaches Disponíveis</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("directory.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Encontre um coach especializado nos seus spots de melhoria
+            {t("directory.description")}
           </p>
         </div>
 
@@ -266,7 +268,7 @@ export default function CoachesDirectory() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome…"
+            placeholder={t("filters.search")}
             className="w-full rounded-lg border border-border bg-hud-surface pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
@@ -278,24 +280,21 @@ export default function CoachesDirectory() {
           <div className="flex-1">
             {isLoading ? (
               <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
-                <Loader2 className="size-5 animate-spin" /> Carregando coaches…
+                <Loader2 className="size-5 animate-spin" /> {t("filters.sort")}…
               </div>
             ) : list.length === 0 ? (
               <div className="text-center py-20 text-muted-foreground">
                 <GraduationCap className="size-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Nenhum coach encontrado para os filtros selecionados.</p>
+                <p className="text-sm">{t("empty.description")}</p>
                 <button
                   onClick={() => { setFilters({ sort: "rating" }); setSearch(""); }}
                   className="mt-3 font-mono text-xs text-primary hover:underline"
                 >
-                  Limpar filtros
+                  {t("filters.all")}
                 </button>
               </div>
             ) : (
               <>
-                <p className="font-mono text-[10px] text-muted-foreground mb-3">
-                  {list.length} coach{list.length !== 1 ? "es" : ""} encontrado{list.length !== 1 ? "s" : ""}
-                </p>
                 <div className="grid md:grid-cols-2 gap-4">
                   {list.map((c) => <CoachCard key={c.user_id} coach={c} />)}
                 </div>

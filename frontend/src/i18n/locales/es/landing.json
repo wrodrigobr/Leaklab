@@ -1,0 +1,81 @@
+{
+  "nav": {
+    "login": "Iniciar sesión",
+    "startFree": "Empezar gratis"
+  },
+  "hero": {
+    "badge": "Potenciado por Claude AI",
+    "title1": "Deja de perder fichas",
+    "title2": "en los mismos spots.",
+    "subtitle": "LeakLabs analiza cada decisión en tu historial de torneos, identifica tus patrones de error más costosos y entrega un plan de estudio basado en tus datos reales — no en teoría genérica que todos ya conocen.",
+    "ctaStart": "Empezar gratis",
+    "ctaPlans": "Ver planes",
+    "levels": "7 niveles de progresión — de Principiante a Elite"
+  },
+  "stats": {
+    "leakSpots": "Spots de leak mapeados",
+    "levels": "Niveles de progresión",
+    "realData": "Basado en tus datos reales"
+  },
+  "howItWorks": {
+    "eyebrow": "Cómo funciona",
+    "heading": "Del archivo HH al diagnóstico preciso",
+    "step1Title": "Importa tu historial",
+    "step1Desc": "Sube el archivo .txt de cualquier torneo (PokerStars o GGPoker). Soporta múltiples archivos a la vez.",
+    "step2Title": "LeakLabs prioriza tus errores",
+    "step2Desc": "Cada decisión es evaluada por equity, posición y contexto MTT/SNG. El motor cruza frecuencia con impacto y te muestra exactamente qué te está costando fichas.",
+    "step3Title": "Mejora enfocándote en lo que importa",
+    "step3Desc": "Plan de estudio construido sobre tus propios patrones de error — no contenido genérico. Sigue tu progresión a través de los 7 niveles del sistema."
+  },
+  "features": {
+    "eyebrow": "Funcionalidades",
+    "heading": "Por qué LeakLabs es diferente",
+    "f1Title": "Tus datos, no teoría genérica",
+    "f1Desc": "El diagnóstico está construido sobre tus propios torneos. Cada leak identificado existe en tu historial real.",
+    "f2Title": "Prioridad por impacto financiero",
+    "f2Desc": "Los leaks se clasifican por frecuencia × gravedad. Te enfocas en lo que realmente te está costando fichas, no en lo que es más fácil de estudiar.",
+    "f3Title": "Plan de estudio por spot",
+    "f3Desc": "Tarjetas de estudio generadas para cada spot de error específico — con diagnóstico, ejercicio y recursos.",
+    "f4Title": "Contexto MTT nativo",
+    "f4Desc": "M-ratio, presión ICM, etapa del torneo, posición — el motor evalúa cada decisión con el contexto correcto, no solo equity aislada.",
+    "f5Title": "Replayer con análisis de decisión",
+    "f5Desc": "Revisión mano a mano con explicación detallada de cada acción crítica — entiende qué fallaste y por qué.",
+    "f6Title": "Progresión medible",
+    "f6Desc": "7 niveles de progresión con métricas claras. Sabes exactamente dónde estás y qué te falta para avanzar."
+  },
+  "plans": {
+    "eyebrow": "Planes",
+    "heading": "Simple y transparente",
+    "details": "Empieza gratis. Actualiza según tu frecuencia de juego.",
+    "period": "/mes",
+    "popular": "Más popular",
+    "grinder": "Grinder",
+    "ctaFree": "Empezar gratis",
+    "ctaSubscribe": "Suscribirse a {{name}}",
+    "manualActivation": "Planes pagos activados manualmente por email en 24h · Sin tarjeta de crédito requerida",
+    "freeF1": "3 torneos por mes",
+    "freeF2": "10 análisis LeakLabs/mes",
+    "freeF3": "Detección de leaks y score",
+    "freeF4": "Sistema de 7 niveles",
+    "starterF1": "20 torneos por mes",
+    "starterF2": "40 análisis LeakLabs/mes",
+    "starterF3": "Plan de estudio personalizado",
+    "starterF4": "Historial completo + evolución",
+    "starterF5": "Replayer con análisis de decisión",
+    "proF1": "Torneos ilimitados",
+    "proF2": "150 análisis LeakLabs/mes",
+    "proF3": "Plan de estudio personalizado",
+    "proF4": "Historial completo + evolución",
+    "proF5": "Marketplace de coaches",
+    "proF6": "Soporte prioritario"
+  },
+  "cta": {
+    "heading": "Tus leaks ya existen. Solo que no sabes cuáles son.",
+    "desc": "Importa tu primer torneo ahora — en minutos sabrás exactamente dónde estás perdiendo fichas.",
+    "btn": "Crear cuenta gratis"
+  },
+  "footer": {
+    "copyright": "© 2026 LeakLabs · Tactical Tournament Intelligence",
+    "login": "Iniciar sesión →"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "title": "My Profile",
+  "eyebrow": "Account settings",
+  "sections": {
+    "account": "Account",
+    "security": "Security",
+    "coach": "My Coach",
+    "whatsapp": "WhatsApp Coaching"
+  },
+  "fields": {
+    "username": "Username",
+    "email": "Email",
+    "plan": "Plan",
+    "role": "Account type",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "phone": "WhatsApp number"
+  },
+  "coach": {
+    "linked": "Linked coach",
+    "none": "No coach linked",
+    "noneHint": "Find a coach in the marketplace to receive personalized guidance.",
+    "findCoaches": "Find coaches",
+    "viewProfile": "View profile",
+    "unlink": "Unlink",
+    "unlinkConfirm": "Confirm unlink?"
+  },
+  "whatsapp": {
+    "description": "Link your number to receive exercises and leak alerts directly on WhatsApp.",
+    "placeholder": "+1 555 000 0000",
+    "save": "Save number",
+    "unlink": "Unlink",
+    "linked": "WhatsApp linked",
+    "notLinked": "Number not linked"
+  },
+  "password": {
+    "change": "Change password",
+    "mismatch": "Passwords don't match.",
+    "success": "Password changed successfully."
+  },
+  "actions": {
+    "saveProfile": "Save profile",
+    "saving": "Saving…"
+  }
+}

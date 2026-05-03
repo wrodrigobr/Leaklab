@@ -1,101 +1,17 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   BarChart3, Upload, Brain, TrendingUp, ChevronRight,
   Check, Zap, Shield, BookOpen, Target, Activity,
 } from "lucide-react";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const PLANS = [
-  {
-    id: "free",
-    name: "Free",
-    price: "R$ 0",
-    period: "/mês",
-    highlight: false,
-    badge: null,
-    features: [
-      "3 torneios por mês",
-      "10 análises LeakLabs/mês",
-      "Detecção de leaks e score",
-      "Sistema de 7 níveis",
-    ],
-    cta: "Começar grátis",
-    href: "/login",
-  },
-  {
-    id: "starter",
-    name: "Starter",
-    price: "R$ 19",
-    period: "/mês",
-    highlight: false,
-    badge: "Mais popular",
-    features: [
-      "20 torneios por mês",
-      "40 análises LeakLabs/mês",
-      "Plano de estudos personalizado",
-      "Histórico completo + evolução",
-      "Replayer com análise de decisão",
-    ],
-    cta: "Assinar Starter",
-    href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Starter",
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "R$ 39",
-    period: "/mês",
-    highlight: true,
-    badge: "Grinder",
-    features: [
-      "Torneios ilimitados",
-      "150 análises LeakLabs/mês",
-      "Plano de estudos personalizado",
-      "Histórico completo + evolução",
-      "Marketplace de coaches",
-      "Suporte prioritário",
-    ],
-    cta: "Assinar Pro",
-    href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Pro",
-  },
-];
-
-const HOW_IT_WORKS = [
-  {
-    step: "01",
-    icon: Upload,
-    title: "Importe seu histórico",
-    desc: "Faça upload do arquivo .txt de qualquer torneio (PokerStars ou GGPoker). Suporte a múltiplos arquivos de uma vez.",
-  },
-  {
-    step: "02",
-    icon: Brain,
-    title: "LeakLabs prioriza seus erros",
-    desc: "Cada decisão é avaliada por equity, posição e contexto MTT/SNG. O motor de detecção cruza frequência com impacto — e te mostra exatamente o que está custando fichas.",
-  },
-  {
-    step: "03",
-    icon: TrendingUp,
-    title: "Evolua com foco no que importa",
-    desc: "Plano de estudos construído sobre os seus próprios padrões de erro — não conteúdo genérico. Acompanhe a evolução pelos 7 níveis do sistema.",
-  },
-];
-
-const FEATURES = [
-  { icon: Target,   title: "Seus dados, não teoria genérica",   desc: "O diagnóstico é construído sobre os seus próprios torneios. Cada leak identificado existe no seu histórico real." },
-  { icon: Activity, title: "Prioridade por impacto financeiro",  desc: "Leaks são ranqueados por frequência × gravidade. Você foca no que realmente está custando fichas, não no que é mais fácil de estudar." },
-  { icon: BookOpen, title: "Plano de estudos por spot",          desc: "Cards de estudo gerados por spot de erro específico — com diagnóstico, exercício e recursos — não conteúdo genérico." },
-  { icon: Shield,   title: "Contexto MTT nativo",               desc: "M-ratio, pressão ICM, estágio do torneio, posição — o motor avalia cada decisão com o contexto certo, não equity isolada." },
-  { icon: Brain,    title: "Replayer com análise de decisão",    desc: "Revisão mão a mão com explicação detalhada de cada ação crítica — entenda o que errou e por quê." },
-  { icon: BarChart3,title: "Progressão mensurável",              desc: "7 níveis de evolução com métricas claras. Você sabe exatamente onde está e o que falta para avançar." },
-];
-
 const LEVELS = ["Iniciante", "Estudante", "Grinder", "Regular", "Sólido", "Expert", "Elite"] as const;
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────
 
 function Navbar() {
+  const { t } = useTranslation("landing");
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
@@ -112,13 +28,13 @@ function Navbar() {
             to="/login"
             className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest-2"
           >
-            Entrar
+            {t("nav.login")}
           </Link>
           <Link
             to="/login"
             className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            Começar grátis <ChevronRight className="size-3" />
+            {t("nav.startFree")} <ChevronRight className="size-3" />
           </Link>
         </nav>
       </div>
@@ -127,9 +43,9 @@ function Navbar() {
 }
 
 function HeroSection() {
+  const { t } = useTranslation("landing");
   return (
     <section className="relative flex min-h-dvh flex-col items-center justify-center px-6 pt-20 pb-16 text-center overflow-hidden">
-      {/* Grid de fundo */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
         style={{
@@ -137,24 +53,23 @@ function HeroSection() {
           backgroundSize: "40px 40px",
         }}
       />
-      {/* Glow central */}
       <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[500px] rounded-full bg-primary/8 blur-3xl" />
 
       <div className="relative space-y-6 max-w-3xl">
         <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1">
           <span className="size-1.5 rounded-full bg-primary animate-pulse" />
           <span className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
-            Powered by Claude AI
+            {t("hero.badge")}
           </span>
         </div>
 
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">
-          Pare de vazar fichas<br />
-          <span className="text-primary">nos mesmos spots.</span>
+          {t("hero.title1")}<br />
+          <span className="text-primary">{t("hero.title2")}</span>
         </h1>
 
         <p className="text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
-          O LeakLabs analisa cada decisão do seu histórico de torneios, identifica os padrões de erro mais caros e entrega um plano de estudo baseado nos <em>seus</em> dados reais — não em teoria genérica que todo mundo já conhece.
+          {t("hero.subtitle")}
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
@@ -162,17 +77,16 @@ function HeroSection() {
             to="/login"
             className="flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow"
           >
-            Começar grátis <Zap className="size-4" />
+            {t("hero.ctaStart")} <Zap className="size-4" />
           </Link>
           <a
             href="#planos"
             className="flex items-center gap-2 rounded-md border border-border px-5 py-2.5 font-mono text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
           >
-            Ver planos <ChevronRight className="size-4" />
+            {t("hero.ctaPlans")} <ChevronRight className="size-4" />
           </a>
         </div>
 
-        {/* Níveis mini-preview */}
         <div className="flex items-center justify-center gap-2 pt-4">
           {LEVELS.map((lvl) => {
             const Icon = LEVEL_ICONS[lvl];
@@ -185,7 +99,7 @@ function HeroSection() {
           })}
         </div>
         <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
-          7 níveis de evolução — de Iniciante a Elite
+          {t("hero.levels")}
         </p>
       </div>
     </section>
@@ -193,10 +107,11 @@ function HeroSection() {
 }
 
 function StatsSection() {
+  const { t } = useTranslation("landing");
   const stats = [
-    { value: "100+",  label: "Spots de leak mapeados" },
-    { value: "7",     label: "Níveis de progressão" },
-    { value: "100%",  label: "Baseado nos seus dados reais" },
+    { value: "100+", label: t("stats.leakSpots") },
+    { value: "7",    label: t("stats.levels") },
+    { value: "100%", label: t("stats.realData") },
   ];
   return (
     <section className="border-y border-border bg-hud-surface/50 py-10">
@@ -215,15 +130,21 @@ function StatsSection() {
 }
 
 function HowItWorksSection() {
+  const { t } = useTranslation("landing");
+  const steps = [
+    { step: "01", icon: Upload,     title: t("howItWorks.step1Title"), desc: t("howItWorks.step1Desc") },
+    { step: "02", icon: Brain,      title: t("howItWorks.step2Title"), desc: t("howItWorks.step2Desc") },
+    { step: "03", icon: TrendingUp, title: t("howItWorks.step3Title"), desc: t("howItWorks.step3Desc") },
+  ];
   return (
     <section className="py-24 px-6">
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-14">
-          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">Como funciona</p>
-          <h2 className="text-2xl font-bold text-foreground">Do arquivo HH ao diagnóstico preciso</h2>
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("howItWorks.eyebrow")}</p>
+          <h2 className="text-2xl font-bold text-foreground">{t("howItWorks.heading")}</h2>
         </div>
         <div className="grid sm:grid-cols-3 gap-8">
-          {HOW_IT_WORKS.map((item) => (
+          {steps.map((item) => (
             <div key={item.step} className="relative rounded-xl border border-border bg-hud-surface p-6 space-y-4">
               <span className="font-mono text-4xl font-bold text-primary/15 absolute top-4 right-5 select-none">
                 {item.step}
@@ -242,15 +163,24 @@ function HowItWorksSection() {
 }
 
 function FeaturesSection() {
+  const { t } = useTranslation("landing");
+  const features = [
+    { icon: Target,    title: t("features.f1Title"), desc: t("features.f1Desc") },
+    { icon: Activity,  title: t("features.f2Title"), desc: t("features.f2Desc") },
+    { icon: BookOpen,  title: t("features.f3Title"), desc: t("features.f3Desc") },
+    { icon: Shield,    title: t("features.f4Title"), desc: t("features.f4Desc") },
+    { icon: Brain,     title: t("features.f5Title"), desc: t("features.f5Desc") },
+    { icon: BarChart3, title: t("features.f6Title"), desc: t("features.f6Desc") },
+  ];
   return (
     <section className="py-24 px-6 bg-hud-surface/30">
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-14">
-          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">Funcionalidades</p>
-          <h2 className="text-2xl font-bold text-foreground">Por que o LeakLabs é diferente</h2>
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("features.eyebrow")}</p>
+          <h2 className="text-2xl font-bold text-foreground">{t("features.heading")}</h2>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {FEATURES.map((f) => (
+          {features.map((f) => (
             <div key={f.title} className="rounded-xl border border-border bg-hud-surface p-5 space-y-3 hover:border-primary/40 transition-colors">
               <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <f.icon className="size-4.5" />
@@ -266,16 +196,52 @@ function FeaturesSection() {
 }
 
 function PricingSection() {
+  const { t } = useTranslation("landing");
+  const plans = [
+    {
+      id: "free",
+      name: "Free",
+      price: "R$ 0",
+      period: t("plans.period"),
+      highlight: false,
+      badge: null as string | null,
+      features: [t("plans.freeF1"), t("plans.freeF2"), t("plans.freeF3"), t("plans.freeF4")],
+      cta: t("plans.ctaFree"),
+      href: "/login",
+    },
+    {
+      id: "starter",
+      name: "Starter",
+      price: "R$ 19",
+      period: t("plans.period"),
+      highlight: false,
+      badge: t("plans.popular") as string | null,
+      features: [t("plans.starterF1"), t("plans.starterF2"), t("plans.starterF3"), t("plans.starterF4"), t("plans.starterF5")],
+      cta: t("plans.ctaSubscribe", { name: "Starter" }),
+      href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Starter",
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      price: "R$ 39",
+      period: t("plans.period"),
+      highlight: true,
+      badge: t("plans.grinder") as string | null,
+      features: [t("plans.proF1"), t("plans.proF2"), t("plans.proF3"), t("plans.proF4"), t("plans.proF5"), t("plans.proF6")],
+      cta: t("plans.ctaSubscribe", { name: "Pro" }),
+      href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Pro",
+    },
+  ];
   return (
     <section id="planos" className="py-24 px-6">
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-14">
-          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">Planos</p>
-          <h2 className="text-2xl font-bold text-foreground">Simples e transparente</h2>
-          <p className="text-sm text-muted-foreground mt-2">Comece grátis. Faça upgrade conforme sua frequência de jogo.</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("plans.eyebrow")}</p>
+          <h2 className="text-2xl font-bold text-foreground">{t("plans.heading")}</h2>
+          <p className="text-sm text-muted-foreground mt-2">{t("plans.details")}</p>
         </div>
         <div className="grid sm:grid-cols-3 gap-5">
-          {PLANS.map((plan) => (
+          {plans.map((plan) => (
             <div
               key={plan.id}
               className={`relative rounded-xl border p-6 space-y-5 flex flex-col ${
@@ -323,7 +289,7 @@ function PricingSection() {
           ))}
         </div>
         <p className="text-center font-mono text-[10px] text-muted-foreground mt-8">
-          Planos pagos ativados manualmente via e-mail em até 24h · Sem cartão de crédito obrigatório
+          {t("plans.manualActivation")}
         </p>
       </div>
     </section>
@@ -331,20 +297,21 @@ function PricingSection() {
 }
 
 function CtaSection() {
+  const { t } = useTranslation("landing");
   return (
     <section className="py-24 px-6 border-t border-border">
       <div className="mx-auto max-w-xl text-center space-y-6">
         <h2 className="text-2xl font-bold text-foreground">
-          Seus leaks já existem. Você só não sabe quais são.
+          {t("cta.heading")}
         </h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Importe seu primeiro torneio agora — em minutos você vai saber exatamente onde está perdendo fichas.
+          {t("cta.desc")}
         </p>
         <Link
           to="/login"
           className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow"
         >
-          Criar conta grátis <Zap className="size-4" />
+          {t("cta.btn")} <Zap className="size-4" />
         </Link>
       </div>
     </section>
@@ -352,6 +319,7 @@ function CtaSection() {
 }
 
 function Footer() {
+  const { t } = useTranslation("landing");
   return (
     <footer className="border-t border-border bg-hud-surface/30 py-8 px-6">
       <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -364,13 +332,13 @@ function Footer() {
           </span>
         </div>
         <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
-          © 2026 LeakLabs · Tactical Tournament Intelligence
+          {t("footer.copyright")}
         </p>
         <Link
           to="/login"
           className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest-2"
         >
-          Entrar →
+          {t("footer.login")}
         </Link>
       </div>
     </footer>

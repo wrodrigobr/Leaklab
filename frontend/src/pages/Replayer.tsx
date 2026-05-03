@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, SkipBack, SkipForward, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
@@ -73,6 +74,7 @@ function anonymizeDesc(desc: string, aliases: Record<string, string>): string {
 const Replayer = () => {
   const [params]   = useSearchParams();
   const navigate   = useNavigate();
+  const { t } = useTranslation("replayer");
   const tournamentId = params.get("t") ?? "";
   const handId       = params.get("h") ?? "";
   const studentId    = params.get("student") ? Number(params.get("student")) : null;
@@ -237,11 +239,11 @@ const Replayer = () => {
   // ── No params: show placeholder ──────────────────────────────────────────────
   if (!tournamentId || !handId) {
     return (
-      <HudLayout eyebrow="Hand Replayer" title="Selecione uma mão" description="Abra uma mão a partir da página de detalhe do torneio.">
+      <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("description")}>
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-          <p className="text-sm">Nenhuma mão selecionada. Volte para o torneio e clique em "Abrir no replayer".</p>
+          <p className="text-sm">{t("noParams")}</p>
           <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:underline">
-            <ArrowLeft className="size-3.5" /> Voltar
+            <ArrowLeft className="size-3.5" /> {t("back")}
           </button>
         </div>
       </HudLayout>
@@ -250,10 +252,10 @@ const Replayer = () => {
 
   if (loading) {
     return (
-      <HudLayout eyebrow="Hand Replayer" title="Carregando…" description="">
+      <HudLayout eyebrow={t("eyebrow")} title={t("loading")} description="">
         <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
           <Loader2 className="size-5 animate-spin text-primary" />
-          <span className="font-mono text-xs uppercase tracking-wider">Carregando mão…</span>
+          <span className="font-mono text-xs uppercase tracking-wider">{t("loadingHand")}</span>
         </div>
       </HudLayout>
     );
@@ -261,11 +263,11 @@ const Replayer = () => {
 
   if (error) {
     return (
-      <HudLayout eyebrow="Hand Replayer" title="Erro" description="">
+      <HudLayout eyebrow={t("eyebrow")} title={t("error")} description="">
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <p className="text-sm text-destructive">{error}</p>
           <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:underline">
-            <ArrowLeft className="size-3.5" /> Voltar
+            <ArrowLeft className="size-3.5" /> {t("back")}
           </button>
         </div>
       </HudLayout>
@@ -274,8 +276,8 @@ const Replayer = () => {
 
   if (!replayData || !step) {
     return (
-      <HudLayout eyebrow="Hand Replayer" title="—" description="">
-        <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">Sem dados.</div>
+      <HudLayout eyebrow={t("eyebrow")} title="—" description="">
+        <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">{t("noData")}</div>
       </HudLayout>
     );
   }
@@ -289,16 +291,16 @@ const Replayer = () => {
 
   return (
     <HudLayout
-      eyebrow={`Replayer · Mão ${replayData.hand_id}`}
-      title={`${replayData.hero} — ${replayData.seats ? Object.values(replayData.seats).length : "?"} jogadores`}
-      description={`Use ← → ou barra de espaço para navegar. Hero: ${replayData.hero} · BB: ${replayData.bb}`}
+      eyebrow={t("eyebrow")}
+      title={`${replayData.hero} — ${replayData.seats ? Object.values(replayData.seats).length : "?"} ${t("players")}`}
+      description={t("description")}
     >
       <div className="flex items-center justify-between gap-2 mb-2">
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary"
         >
-          <ArrowLeft className="size-3.5" /> Voltar
+          <ArrowLeft className="size-3.5" /> {t("back")}
         </button>
 
         {handList.length > 1 && (
@@ -308,7 +310,7 @@ const Replayer = () => {
               disabled={!prevHand}
               className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary disabled:opacity-30"
             >
-              <SkipBack className="size-3.5" /> Mão anterior
+              <SkipBack className="size-3.5" /> {t("navigation.prevHand")}
             </button>
             <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
               {handIdx + 1}/{handList.length}
@@ -318,7 +320,7 @@ const Replayer = () => {
               disabled={!nextHand}
               className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary disabled:opacity-30"
             >
-              Próxima mão <SkipForward className="size-3.5" />
+              {t("navigation.nextHand")} <SkipForward className="size-3.5" />
             </button>
           </div>
         )}
@@ -339,7 +341,7 @@ const Replayer = () => {
                 aria-label="Anterior"><ChevronLeft className="size-5" /></button>
               <button onClick={() => setPlaying((p) => !p)}
                 className="inline-flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={playing ? "Pausar" : "Reproduzir"}>
+                aria-label={playing ? t("controls.pause") : t("controls.play")}>
                 {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
               </button>
               <button onClick={() => setStepIdx((i) => Math.min(steps.length - 1, i + 1))} disabled={stepIdx === steps.length - 1}
@@ -399,7 +401,7 @@ const Replayer = () => {
           {/* Action log */}
           <section className="rounded-xl border border-border bg-hud-surface overflow-hidden">
             <header className="flex items-center justify-between border-b border-border px-4 py-3">
-              <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground">Action Log</h2>
+              <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground">{t("actionLog")}</h2>
               <div className="flex items-center gap-3">
                 {step.street === 'preflop' && (
                   <button
@@ -431,7 +433,7 @@ const Replayer = () => {
                   </div>
                   {s.is_error && s.best_action && (
                     <div className="mt-0.5 font-mono text-[10px] text-destructive">
-                      correto: {s.best_action} · score {s.error_score?.toFixed(3)}
+                      {t("decision.correct", { action: s.best_action, score: s.error_score?.toFixed(3) })}
                     </div>
                   )}
                   {s.type === "showdown" && s.summary?.seats && s.summary.seats.length > 0 && (
@@ -442,7 +444,7 @@ const Replayer = () => {
                           {sd.cards?.length > 0 && ` [${sd.cards.join(" ")}]`}
                           {" · "}
                           <span className={sd.outcome === "won" ? "text-primary" : ""}>
-                            {sd.outcome === "won" ? `ganhou ${sd.won}` : sd.hand_desc}
+                            {sd.outcome === "won" ? t("decision.won", { amount: sd.won }) : sd.hand_desc}
                           </span>
                         </div>
                       ))}
@@ -482,24 +484,24 @@ const Replayer = () => {
                   : <CheckCircle2 className="size-4 text-primary" />}
                 <span className={cn("font-mono text-[10px] font-bold uppercase tracking-widest-2",
                   isError ? "text-destructive" : "text-primary")}>
-                  IA Coach · {isError ? (step.error_label?.replace(/_/g," ") ?? "-EV") : "+EV"}
+                  {t("decision.aiCoach")} · {isError ? (step.error_label?.replace(/_/g," ") ?? "-EV") : "+EV"}
                 </span>
               </div>
               {isError ? (
                 <div className="space-y-1.5 text-xs text-foreground">
-                  <p>Ação: <strong>{step.action}</strong> — Recomendado: <strong>{step.best_action}</strong></p>
+                  <p>{t("decision.actionTaken", { action: step.action, best: step.best_action })}</p>
                   {step.hand_equity != null && (
                     <p className="text-muted-foreground">
-                      Equity: {(step.hand_equity * 100).toFixed(1)}%
-                      {step.pot_odds_equity != null && ` (necessário: ${(step.pot_odds_equity * 100).toFixed(1)}%)`}
+                      {t("decision.equity")}: {(step.hand_equity * 100).toFixed(1)}%
+                      {step.pot_odds_equity != null && ` (${t("decision.required")}: ${(step.pot_odds_equity * 100).toFixed(1)}%)`}
                     </p>
                   )}
                   {step.m_ratio != null && (
-                    <p className="text-muted-foreground">M ratio: {step.m_ratio} · ICM: {step.icm_pressure}</p>
+                    <p className="text-muted-foreground">{t("decision.mRatioLine", { m: step.m_ratio, icm: step.icm_pressure })}</p>
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-foreground">Linha sólida para o spot.</p>
+                <p className="text-xs text-foreground">{t("decision.solidLine")}</p>
               )}
             </section>
           )}
@@ -511,7 +513,7 @@ const Replayer = () => {
                 <div className="flex items-center gap-2">
                   <GraduationCap className="size-4 text-primary" />
                   <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
-                    Coach · {coachAnnotation ? (coachAnnotation.mode === "replace" ? "Análise exclusiva" : "Complemento") : "Anotação"}
+                    {t("annotation.coachLabel")} · {coachAnnotation ? (coachAnnotation.mode === "replace" ? t("annotation.exclusive") : t("annotation.complement")) : t("annotation.title")}
                   </span>
                 </div>
                 {!annotating && (
@@ -521,7 +523,7 @@ const Replayer = () => {
                       className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-primary transition-colors"
                     >
                       <PenLine className="size-3" />
-                      {coachAnnotation ? "Editar" : "Anotar"}
+                      {coachAnnotation ? t("annotation.edit") : t("annotation.annotate")}
                     </button>
                     {coachAnnotation && (
                       <button
@@ -548,7 +550,7 @@ const Replayer = () => {
 
               {/* No annotation placeholder */}
               {!annotating && !coachAnnotation && (
-                <p className="text-xs text-muted-foreground">Nenhuma anotação para esta decisão.</p>
+                <p className="text-xs text-muted-foreground">{t("annotation.noAnnotation")}</p>
               )}
 
               {/* Annotation form */}
@@ -564,7 +566,7 @@ const Replayer = () => {
                             : "border-border text-muted-foreground hover:border-primary/50"
                         }`}
                       >
-                        {m === "complement" ? "Complementar" : "Substituir IA"}
+                        {m === "complement" ? t("annotation.complementMode") : t("annotation.replaceMode")}
                       </button>
                     ))}
                   </div>
@@ -572,34 +574,34 @@ const Replayer = () => {
                     value={annComment}
                     onChange={(e) => setAnnComment(e.target.value)}
                     rows={3}
-                    placeholder="Sua análise desta decisão…"
+                    placeholder={t("annotation.commentPlaceholder")}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">Ação correta</label>
+                      <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">{t("annotation.correctAction")}</label>
                       <select
                         value={annAction}
                         onChange={(e) => setAnnAction(e.target.value)}
                         className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
                       >
                         {["", "fold", "check", "call", "bet", "raise", "re-raise", "all-in"].map((a) => (
-                          <option key={a} value={a}>{a || "— Não especificar"}</option>
+                          <option key={a} value={a}>{a || t("annotation.noSpecify")}</option>
                         ))}
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">Classificação</label>
+                      <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">{t("annotation.classification")}</label>
                       <select
                         value={annOverride ?? ""}
                         onChange={(e) => setAnnOverride((e.target.value || null) as CoachOverrideLabel)}
                         className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
                       >
-                        <option value="">— Sem veredito</option>
-                        <option value="standard">✓ Jogada Correta</option>
-                        <option value="marginal">~ Marginal</option>
-                        <option value="small_mistake">⚠ Erro Pequeno</option>
-                        <option value="clear_mistake">✕ Erro Claro</option>
+                        <option value="">{t("annotation.noVerdict")}</option>
+                        <option value="standard">{t("annotation.overrideStandard")}</option>
+                        <option value="marginal">{t("annotation.overrideMarginal")}</option>
+                        <option value="small_mistake">{t("annotation.overrideSmall")}</option>
+                        <option value="clear_mistake">{t("annotation.overrideClear")}</option>
                       </select>
                     </div>
                   </div>
@@ -610,19 +612,19 @@ const Replayer = () => {
                       className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-mono text-[10px] font-bold uppercase text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
                       {saveAnn.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
-                      Salvar
+                      {t("annotation.saveBtn")}
                     </button>
                     <button onClick={() => setAnnotating(false)}
                       className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 font-mono text-[10px] text-muted-foreground hover:text-foreground"
                     >
-                      <X className="size-3" /> Cancelar
+                      <X className="size-3" /> {t("annotation.cancel")}
                     </button>
                     {coachAnnotation && (
                       <button
                         onClick={() => deleteAnn.mutate()} disabled={deleteAnn.isPending}
                         className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] text-destructive hover:underline disabled:opacity-50"
                       >
-                        <Trash2 className="size-3" /> Remover
+                        <Trash2 className="size-3" /> {t("annotation.delete")}
                       </button>
                     )}
                   </div>
@@ -642,7 +644,7 @@ const Replayer = () => {
               <div className="flex items-center gap-2 flex-wrap">
                 <GraduationCap className="size-4 text-primary" />
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
-                  Coach · {coachAnnotation.mode === "replace" ? "Análise exclusiva" : "Complemento do coach"}
+                  {t("annotation.coachLabel")} · {coachAnnotation.mode === "replace" ? t("annotation.exclusive") : t("annotation.complementTitle")}
                 </span>
                 {coachAnnotation.coach_override_label && (
                   <span className={cn(
@@ -655,10 +657,10 @@ const Replayer = () => {
                       ? "text-amber-400 ring-amber-400/30 bg-amber-400/10"
                       : "text-destructive ring-destructive/30 bg-destructive/10"
                   )}>
-                    {coachAnnotation.coach_override_label === "standard" ? "✓ Jogada Correta"
-                      : coachAnnotation.coach_override_label === "marginal" ? "~ Marginal"
-                      : coachAnnotation.coach_override_label === "small_mistake" ? "⚠ Erro Pequeno"
-                      : "✕ Erro Claro"}
+                    {coachAnnotation.coach_override_label === "standard" ? t("annotation.overrideStandard")
+                      : coachAnnotation.coach_override_label === "marginal" ? t("annotation.overrideMarginal")
+                      : coachAnnotation.coach_override_label === "small_mistake" ? t("annotation.overrideSmall")
+                      : t("annotation.overrideClear")}
                   </span>
                 )}
               </div>
@@ -674,10 +676,10 @@ const Replayer = () => {
           {/* Showdown result panel */}
           {step.type === "showdown" && step.summary && (
             <section className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">Resultado da mão</div>
+              <div className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">{t("decision.handResult")}</div>
               {step.summary.total_pot != null && (
                 <div className="text-xs text-muted-foreground">
-                  Pot total: <span className="font-mono font-medium text-foreground">{(step.summary.total_pot / (replayData?.bb ?? 100)).toFixed(1)} BB</span>
+                  {t("decision.totalPot")}: <span className="font-mono font-medium text-foreground">{(step.summary.total_pot / (replayData?.bb ?? 100)).toFixed(1)} BB</span>
                 </div>
               )}
               <ul className="space-y-2">

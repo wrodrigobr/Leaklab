@@ -9,6 +9,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.37.0] — 2026-05-02 — Sprint G: UX-006 Header Cleanup + i18n Full Coverage
+
+### Frontend — Header simplification
+
+- **`HudHeader.tsx`** — removidos badges (NEW/ALPHA) dos itens de nav, pill "Engine Active" e pill com nome do coach
+- **`Index.tsx`** — coach badge movido para a seção hero do dashboard (abaixo do subtítulo), com ícone `GraduationCap` e ring sutil
+
+### Frontend — i18n cobertura completa (5 novos namespaces, 3 idiomas)
+
+- **Novos namespaces** — `aicoach`, `coaches`, `profile`, `replayer`, `landing` (PT-BR + EN + ES)
+- **`NotFound.tsx`** — traduzido via `common.notFound.*`
+- **`AICoach.tsx`** — traduzido via namespace `aicoach`; sugestões, saudação, painel de contexto e sessão
+- **`Tournaments.tsx`** — traduzido; badges de formato, stats, cabeçalhos de tabela, estados vazios
+- **`TournamentDetail.tsx`** — traduzido; `SEVERITY_META` e `FILTERS` movidos para dentro do componente; `ScoreLabel` inline
+- **`StudyPlan.tsx`** — traduzido; toolbar, KPIs, diagnóstico, roadmap semanal, recursos, botões de dia
+- **`CoachesDirectory.tsx`** — traduzido; `SORT_OPTIONS` movido para dentro de `FilterPanel`
+- **`PublicCoachProfile.tsx`** — traduzido; loading, não encontrado, botão voltar, contadores
+- **`StudentProfile.tsx`** — traduzido; títulos de seção, coach linkado, botões de unlink
+- **`Replayer.tsx`** — traduzido; navegação de mãos, controles, action log, painel EV, formulário de anotação de coach, resultado do showdown
+- **`Landing.tsx`** — traduzido completamente; arrays `PLANS`, `HOW_IT_WORKS`, `FEATURES` movidos para dentro dos sub-componentes; cada seção usa `useTranslation("landing")`
+- **Locales atualizados** — `tournaments.json` + `common.json` + `study.json` com novas chaves; `landing.json` reescrito com estrutura completa (planos, CTA, footer)
+
+---
+
 ## [v0.36.0] — 2026-05-02 — Sprint D: BACK-016 WhatsApp Coaching Drills
 
 ### Backend
