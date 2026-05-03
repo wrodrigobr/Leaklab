@@ -58,6 +58,21 @@
   },
   "loading": "Loading spots…",
   "errorLoad": "Error loading spots. Please try again.",
+  "situation": {
+    "label": "Hand Situation",
+    "openingHand": "You are opening the hand",
+    "facingRaise": "You are facing a preflop raise",
+    "facing3bet": "You are facing a 3-Bet",
+    "defendingBB": "You are defending the Big Blind",
+    "defendingSB": "You are in the Small Blind, facing a raise",
+    "completeSB": "You are completing the Small Blind",
+    "openBB": "You are opening from the Big Blind",
+    "facingBet": "You are facing a bet",
+    "checkBet": "Your turn — bet or check",
+    "betting": "You are betting into the pot",
+    "actingFirst": "You are acting first",
+    "aiNote": "AI Analysis"
+  },
   "heroCards": "Your cards",
   "board": "Board",
   "noCards": "Cards not available"

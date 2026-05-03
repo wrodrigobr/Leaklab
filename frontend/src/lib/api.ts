@@ -395,6 +395,8 @@ export interface DrillSpot {
   tournament_name: string | null;
   played_at: string | null;
   buy_in: number | null;
+  note: string | null;
+  draw_profile: string | null;
 }
 
 export interface DrillStats {

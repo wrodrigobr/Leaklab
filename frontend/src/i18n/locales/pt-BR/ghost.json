@@ -58,6 +58,21 @@
   },
   "loading": "Carregando spots…",
   "errorLoad": "Erro ao carregar spots. Tente novamente.",
+  "situation": {
+    "label": "Situação da Mão",
+    "openingHand": "Você está abrindo a mão",
+    "facingRaise": "Você está enfrentando um raise pré-flop",
+    "facing3bet": "Você está enfrentando um 3-Bet",
+    "defendingBB": "Você está defendendo o Big Blind",
+    "defendingSB": "Você está no Small Blind, enfrentando raise",
+    "completeSB": "Você está completando o Small Blind",
+    "openBB": "Você está abrindo do Big Blind",
+    "facingBet": "Você está enfrentando uma aposta",
+    "checkBet": "Sua vez — bet ou check",
+    "betting": "Você está apostando no pote",
+    "actingFirst": "Você está atuando primeiro",
+    "aiNote": "Análise da IA"
+  },
   "heroCards": "Suas cartas",
   "board": "Board",
   "noCards": "Cartas não disponíveis"

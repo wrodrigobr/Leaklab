@@ -608,7 +608,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
                 d.id, d.hand_id, d.street, d.hero_cards, d.board,
                 d.action_taken, d.best_action, d.label, d.score,
                 d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
-                d.num_players, d.is_3bet, d.level_bb, d.note,
+                d.num_players, d.is_3bet, d.level_bb, d.note, d.draw_profile,
                 t.tournament_name, t.played_at, t.buy_in
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
