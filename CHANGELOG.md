@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.41.0] — 2026-05-03 — Sprint K: PERF-006 Ghost Table Simulator MVP
+
+### Backend — PERF-006
+- `schema.py` — `drill_sessions` table (id, user_id, decision_id, new_action, new_score, original_score, delta, drilled_at) — SQLite + PostgreSQL
+- `repositories.py` — `get_drill_spots()`: fetches undrilled mistake decisions (7-day cooldown); `save_drill_session()`: persists re-decision with score delta; `get_drill_stats()`: 30-day accuracy/total/avg_delta; `get_decision_for_drill()`: ownership-verified decision fetch
+- `app.py` — `GET /player/spots/drill`: returns spots + stats; `POST /player/spots/drill/submit`: evaluates new_action vs best_action, scores 0.02 if correct else original_score
+
+### Frontend — PERF-006
+- `GhostTable.tsx` — full drill page with state machine (intro → loading → active → result → done): spot context card (street/ICM/position/stack/M-ratio/cards/board), 6 action buttons, result reveal, session accuracy, done screen
+- `App.tsx` — `/ghost` route with `ProtectedRoute`
+- `HudHeader.tsx` — "Ghost Table" nav item (Swords icon) for playerNavItems
+- `i18n/locales/[pt-BR|en|es]/ghost.json` — new namespace (63 keys: drill UI, actions, result messages, stats)
+- `i18n/locales/[pt-BR|en|es]/common.json` — `nav.ghost` key added
+- `api.ts` — `DrillSpot`, `DrillStats`, `DrillSubmitResult` interfaces + `drill.spots()` + `drill.submit()`
+
+---
+
 ## [v0.40.0] — 2026-05-03 — Sprint J: PERF-003+004+005 Leak Progression + Pressure Collapse + Drift
 
 ### Backend — PERF-003: Leak Progression (trend)

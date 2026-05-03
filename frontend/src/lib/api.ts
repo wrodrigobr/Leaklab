@@ -375,6 +375,62 @@ export interface ConfidenceDrift {
   sessions: { tournament_id: number; name: string; played_at: string; avg_score: number; delta_pct: number }[];
 }
 
+export interface DrillSpot {
+  id: number;
+  hand_id: string;
+  street: string;
+  hero_cards: string | null;
+  board: string | null;
+  action_taken: string;
+  best_action: string;
+  label: string;
+  score: number;
+  m_ratio: number | null;
+  icm_pressure: string | null;
+  stack_bb: number | null;
+  position: string | null;
+  num_players: number | null;
+  is_3bet: boolean;
+  level_bb: number | null;
+  tournament_name: string | null;
+  played_at: string | null;
+  buy_in: number | null;
+}
+
+export interface DrillStats {
+  total: number;
+  correct: number;
+  incorrect: number;
+  accuracy: number | null;
+  avg_delta: number | null;
+}
+
+export interface DrillSubmitResult {
+  is_correct: boolean;
+  best_action: string;
+  new_action: string;
+  new_score: number;
+  original_score: number;
+  delta: number;
+}
+
+export const drill = {
+  spots: (params?: { limit?: number; street?: string; spot?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.limit)  q.set("limit",  String(params.limit));
+    if (params?.street) q.set("street", params.street);
+    if (params?.spot)   q.set("spot",   params.spot);
+    const qs = q.toString();
+    return request<{ spots: DrillSpot[]; stats: DrillStats }>(`/player/spots/drill${qs ? "?" + qs : ""}`);
+  },
+
+  submit: (decision_id: number, new_action: string) =>
+    request<DrillSubmitResult>("/player/spots/drill/submit", {
+      method: "POST",
+      body: JSON.stringify({ decision_id, new_action }),
+    }),
+};
+
 export const metrics = {
   evolution: (days = 90) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}`),

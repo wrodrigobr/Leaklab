@@ -509,6 +509,22 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_payments_coach ON coach_payments(coach_id)")
         except Exception: pass
+        # drill_sessions table (Postgres) — Sprint K: Ghost Table Simulator
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS drill_sessions (
+                    id             SERIAL PRIMARY KEY,
+                    user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    decision_id    INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+                    new_action     TEXT    NOT NULL,
+                    new_score      REAL    NOT NULL,
+                    original_score REAL    NOT NULL,
+                    delta          REAL    NOT NULL,
+                    drilled_at     TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_drill_user ON drill_sessions(user_id, drilled_at)")
+        except Exception: pass
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS coach_baselines (
@@ -666,6 +682,20 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_payments_coach ON coach_payments(coach_id)")
+        # drill_sessions table (SQLite) — Sprint K: Ghost Table Simulator
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS drill_sessions (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                decision_id    INTEGER NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+                new_action     TEXT    NOT NULL,
+                new_score      REAL    NOT NULL,
+                original_score REAL    NOT NULL,
+                delta          REAL    NOT NULL,
+                drilled_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_drill_user ON drill_sessions(user_id, drilled_at)")
         # migrate users: mp_subscription_id + BACK-014 fields
         usr_existing = {r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()}
         for col, sql in [

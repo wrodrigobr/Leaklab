@@ -35,6 +35,7 @@ from database.repositories import (
     get_llm_cache, set_llm_cache,
     get_evolution_metrics, get_leak_summary, get_leak_roi_impact,
     get_pressure_profile, get_confidence_drift,
+    get_drill_spots, save_drill_session, get_drill_stats, get_decision_for_drill,
     get_icm_performance, get_breakdown, get_player_stats,
     get_player_level,
     get_students,
@@ -554,6 +555,56 @@ def player_confidence_drift():
     """PERF-005 — Detecta sessões com possível tilt/drift de confiança."""
     days = int(request.args.get('days', 30))
     return jsonify(get_confidence_drift(g.user_id, days))
+
+
+@app.route('/player/spots/drill', methods=['GET'])
+@require_auth
+def player_drill_spots():
+    """Sprint K — Retorna spots de mistakes para o Ghost Table Simulator."""
+    limit  = min(int(request.args.get('limit', 10)), 20)
+    street = request.args.get('street') or None
+    spot   = request.args.get('spot')   or None
+    spots  = get_drill_spots(g.user_id, limit=limit, street=street, spot=spot)
+    stats  = get_drill_stats(g.user_id, days=30)
+    return jsonify({'spots': spots, 'stats': stats})
+
+
+@app.route('/player/spots/drill/submit', methods=['POST'])
+@require_auth
+def player_drill_submit():
+    """Sprint K — Salva redecisão e retorna avaliação."""
+    data = request.get_json() or {}
+    decision_id = data.get('decision_id')
+    new_action  = data.get('new_action', '').strip().lower()
+
+    if not decision_id or not new_action:
+        return jsonify({'error': 'decision_id e new_action são obrigatórios'}), 400
+
+    row = get_decision_for_drill(g.user_id, decision_id)
+    if not row:
+        return jsonify({'error': 'Decisão não encontrada'}), 404
+
+    best_action    = row['best_action']
+    original_score = row['score']
+    # Evaluation: correct if new action matches best action
+    is_correct = new_action == best_action
+    new_score  = 0.02 if is_correct else original_score
+
+    result = save_drill_session(
+        user_id=g.user_id,
+        decision_id=decision_id,
+        new_action=new_action,
+        new_score=new_score,
+        original_score=original_score,
+    )
+    return jsonify({
+        'is_correct':     is_correct,
+        'best_action':    best_action,
+        'new_action':     new_action,
+        'new_score':      new_score,
+        'original_score': original_score,
+        'delta':          result['delta'],
+    })
 
 
 # ── Coach: nível do aluno ────────────────────────────────────────────────────

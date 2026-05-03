@@ -592,6 +592,102 @@ def get_confidence_drift(user_id: int, days: int = 30) -> dict:
         conn.close()
 
 
+def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str = None) -> list:
+    """Sprint K — Retorna spots de mistakes não recentemente drillados para o Ghost Table."""
+    conn = get_conn()
+    try:
+        street_filter = "AND d.street = ?" if street else ""
+        spot_filter   = "AND (d.street || '/' || d.best_action) = ?" if spot else ""
+        params = [user_id, user_id]
+        if street: params.append(street)
+        if spot:   params.append(spot)
+        params.append(limit)
+
+        rows = conn.execute(_adapt(f"""
+            SELECT
+                d.id, d.hand_id, d.street, d.hero_cards, d.board,
+                d.action_taken, d.best_action, d.label, d.score,
+                d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
+                d.num_players, d.is_3bet, d.level_bb, d.note,
+                t.tournament_name, t.played_at, t.buy_in
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND d.label IN ('small_mistake','clear_mistake')
+              AND d.id NOT IN (
+                  SELECT ds.decision_id FROM drill_sessions ds
+                  WHERE ds.user_id = ? AND ds.drilled_at >= datetime('now', '-7 days')
+              )
+              {street_filter}
+              {spot_filter}
+            ORDER BY d.score DESC
+            LIMIT ?
+        """), params).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def save_drill_session(user_id: int, decision_id: int, new_action: str,
+                       new_score: float, original_score: float) -> dict:
+    """Sprint K — Salva resultado de uma redecisão no drill."""
+    delta = round(new_score - original_score, 4)
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("""
+            INSERT INTO drill_sessions (user_id, decision_id, new_action, new_score, original_score, delta)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """), (user_id, decision_id, new_action, new_score, original_score, delta))
+        conn.commit()
+        return {'decision_id': decision_id, 'new_action': new_action,
+                'new_score': new_score, 'original_score': original_score, 'delta': delta}
+    finally:
+        conn.close()
+
+
+def get_drill_stats(user_id: int, days: int = 30) -> dict:
+    """Sprint K — Estatísticas de drill dos últimos N dias."""
+    conn = get_conn()
+    try:
+        row = conn.execute(_adapt("""
+            SELECT
+                COUNT(*)                                          AS total,
+                AVG(delta)                                        AS avg_delta,
+                SUM(CASE WHEN delta < 0 THEN 1 ELSE 0 END)       AS correct,
+                SUM(CASE WHEN delta >= 0 THEN 1 ELSE 0 END)      AS incorrect
+            FROM drill_sessions
+            WHERE user_id = ? AND drilled_at >= datetime('now', ? || ' days')
+        """), (user_id, f'-{days}')).fetchone()
+        if not row or not row['total']:
+            return {'total': 0, 'correct': 0, 'incorrect': 0, 'accuracy': None, 'avg_delta': None}
+        total = row['total'] or 0
+        correct = row['correct'] or 0
+        return {
+            'total':     total,
+            'correct':   correct,
+            'incorrect': row['incorrect'] or 0,
+            'accuracy':  round(correct / total * 100, 1) if total > 0 else None,
+            'avg_delta': round(row['avg_delta'], 4) if row['avg_delta'] is not None else None,
+        }
+    finally:
+        conn.close()
+
+
+def get_decision_for_drill(user_id: int, decision_id: int) -> dict | None:
+    """Sprint K — Busca decisão verificando que pertence ao usuário."""
+    conn = get_conn()
+    try:
+        row = conn.execute(_adapt("""
+            SELECT d.id, d.best_action, d.score, d.label
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE d.id = ? AND t.user_id = ?
+        """), (decision_id, user_id)).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
 def get_icm_performance(user_id: int, days: int = 90) -> dict:
     """Performance separada por nível de ICM pressure."""
     from datetime import datetime, timedelta

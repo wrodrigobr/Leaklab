@@ -1,0 +1,64 @@
+{
+  "title": "Ghost Table",
+  "subtitle": "Modo Drill — Revise seus spots de erro e treine a decisão correta",
+  "startBtn": "Iniciar Drill",
+  "noSpots": "Nenhum spot disponível para drill no momento. Importe mais torneios ou aguarde 7 dias para rever os spots já treinados.",
+  "done": "Sessão concluída",
+  "doneSub": "Você completou todos os spots desta sessão.",
+  "doneAccuracy": "Precisão: {{pct}}%",
+  "doneCorrect": "{{correct}} / {{total}} corretos",
+  "backDashboard": "Voltar ao Dashboard",
+  "drillAgain": "Novo Drill",
+  "spot": "Spot {{n}} de {{total}}",
+  "street": {
+    "preflop": "Pré-Flop",
+    "flop": "Flop",
+    "turn": "Turn",
+    "river": "River"
+  },
+  "context": {
+    "position": "Posição",
+    "stack": "Stack",
+    "mRatio": "M-Ratio",
+    "icm": "ICM",
+    "players": "{{n}} jogadores",
+    "is3bet": "3-Bet pot",
+    "bb": "{{n}}bb"
+  },
+  "icmLabel": {
+    "high": "Alta pressão",
+    "medium": "Média",
+    "low": "Baixa",
+    "none": "Sem ICM"
+  },
+  "question": "Qual é a ação correta?",
+  "actions": {
+    "fold":  "Fold",
+    "check": "Check",
+    "call":  "Call",
+    "bet":   "Bet",
+    "raise": "Raise",
+    "jam":   "Jam"
+  },
+  "result": {
+    "correct": "Correto!",
+    "wrong": "Errado",
+    "bestAction": "Ação correta: {{action}}",
+    "yourAction": "Você escolheu: {{action}}",
+    "originalMistake": "Erro original: {{action}} (score {{score}})",
+    "improvement": "Melhora de {{delta}} pts",
+    "noImprovement": "Erro repetido"
+  },
+  "next": "Próximo →",
+  "stats": {
+    "title": "Seu histórico de drill (30 dias)",
+    "total": "{{n}} spots treinados",
+    "accuracy": "{{pct}}% de precisão",
+    "noStats": "Nenhum drill realizado ainda."
+  },
+  "loading": "Carregando spots…",
+  "errorLoad": "Erro ao carregar spots. Tente novamente.",
+  "heroCards": "Suas cartas",
+  "board": "Board",
+  "noCards": "Cartas não disponíveis"
+}

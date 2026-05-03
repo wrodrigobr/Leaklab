@@ -21,6 +21,7 @@ import StudentProfile from "./pages/StudentProfile.tsx";
 import CoachesDirectory from "./pages/CoachesDirectory.tsx";
 import PublicCoachProfile from "./pages/PublicCoachProfile.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
+import GhostTable from "./pages/GhostTable.tsx";
 
 const queryClient = new QueryClient();
 
@@ -183,6 +184,14 @@ const App = () => (
                 <AdminRoute>
                   <AdminDashboard />
                 </AdminRoute>
+              }
+            />
+            <Route
+              path="/ghost"
+              element={
+                <ProtectedRoute>
+                  <GhostTable />
+                </ProtectedRoute>
               }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
