@@ -47,6 +47,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint J | PERF-003 + PERF-004 + PERF-005 | Leak Progression + Pressure Collapse + Confidence Drift | ✅ v0.40.0 |
 | Sprint K | PERF-006 | Ghost Table Simulator MVP | ✅ v0.41.0–v0.42.0 |
 | Sprint L | PERF-007 | Decision DNA — assinatura estratégica do jogador | ✅ v0.43.0 |
+| Sprint N | PERF-009 | GGPoker Parser — detecção automática de formato | ✅ (já entregue) |
 
 ---
 
@@ -77,13 +78,7 @@ Gerar narrativa estratégica de 2–3 frases por torneio descrevendo o arco de q
 
 ---
 
-### [PERF-009] — GGPoker Parser *(Sprint N — prioridade alta)*
-
-**Valor:** Muito Alto · **Complexidade:** Média · **Dep. estrutural:** Leve
-
-Parser atual suporta apenas PokerStars. GGPoker tem formato diferente (blinds, nomenclatura, hero cards inline). Expandir o parser para aceitar ambos os formatos amplia o mercado endereçável significativamente.
-
-**Esforço estimado: ~6h backend + ~2h frontend (upload aceita ambos)**
+### ~~[PERF-009] — GGPoker Parser~~ ✅ *Já entregue (parser.py — detecção automática por marker "Poker Hand #")*
 
 ---
 
