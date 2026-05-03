@@ -35,5 +35,118 @@
     "noData": "sin datos",
     "summary": "{{count}} torneos analizados. Volumen suficiente para sugerir ajustes confiables.",
     "empty": "Importa torneos para activar el análisis de confianza de la IA."
+  },
+  "leaks": {
+    "title": "Top Leaks Detectados",
+    "study": "Estudiar",
+    "studyLabel": "Estudiar leak {{spot}}",
+    "doing": "{{street}} — haciendo {{action}} cuando no debía"
+  },
+  "bankroll": {
+    "title": "Evolución del bankroll",
+    "demo": "Demo • importa torneos para ver tus datos",
+    "lastN": "Últimos {{n}} torneos",
+    "ariaLabel": "Gráfico de evolución del bankroll",
+    "p1m": "1M",
+    "p3m": "3M",
+    "p1y": "1A",
+    "pAll": "Todo"
+  },
+  "table": {
+    "title": "Torneos recientes",
+    "viewAll": "Ver todos →",
+    "demo": "(demo)",
+    "hands": "{{n}} manos",
+    "analyzed": "Analizado",
+    "inQueue": "En cola",
+    "open": "Abrir {{id}}",
+    "actions": "Acciones",
+    "hDate": "Fecha",
+    "hTournament": "Torneo",
+    "hBuyin": "Buy-in",
+    "hPlace": "Posición",
+    "hResult": "Resultado",
+    "hStatus": "Estado"
+  },
+  "decisions": {
+    "title": "Calidad de Decisiones",
+    "total": "{{n}} decisiones",
+    "noData": "Datos insuficientes.",
+    "tooltip": "Distribución de todas tus decisiones por calidad. Estándar = dentro del rango esperado (score ≤ 0.08). Marginal = aceptable pero subóptimo. Los errores reducen tu ROI a largo plazo.",
+    "standard": "Estándar",
+    "marginal": "Marginal",
+    "smallMistake": "Error menor",
+    "clearMistake": "Error claro"
+  },
+  "streets": {
+    "title": "Rendimiento por Calle",
+    "noData": "Datos insuficientes.",
+    "tooltip": "Tasa de decisiones estándar (score ≤ 0.08) por calle. Calles en naranja o rojo indican dónde se concentran tus leaks."
+  },
+  "positions": {
+    "title": "Rendimiento por Posición",
+    "noData": "Datos insuficientes.",
+    "tooltip": "Tasa de decisiones estándar por posición en la mesa. BTN y CO suelen tener ventaja posicional. BB y SB defensivos son donde la mayoría de jugadores pierde más equity."
+  },
+  "form": {
+    "title": "Forma Reciente",
+    "tournaments": "{{n}} torneos",
+    "noData": "Datos insuficientes.",
+    "now": "ahora",
+    "tooltip": "Calidad promedio de decisiones en torneos recientes. Verde = sesión estándar, amarillo = marginal, naranja/rojo = sesión con errores significativos.",
+    "standard": "Estándar",
+    "marginal": "Marginal",
+    "error": "Error",
+    "clearError": "Error claro",
+    "smallMistake": "Error menor"
+  },
+  "icm": {
+    "title": "Presión ICM",
+    "noData": "Sin datos ICM disponibles.",
+    "tooltip": "ICM (Independent Chip Model) mide el valor monetario de las fichas en MTTs. Bajo alta presión (burbuja, mesa final), los errores cuestan mucho más que el valor nominal de las fichas.",
+    "high": "Alta presión",
+    "medium": "Media",
+    "low": "Baja",
+    "none": "Sin ICM"
+  },
+  "level": {
+    "title": "Mi Nivel",
+    "noData": "Importa al menos 5 torneos para calcular tu nivel.",
+    "tournament_one": "{{count}} torneo",
+    "tournament_other": "{{count}} torneos",
+    "progress": "{{pct}}% del camino a {{next}}",
+    "maxLevel": "Nivel máximo alcanzado",
+    "blockingLeaks": "Leaks que bloquean tu avance",
+    "studyLink": "Ver plan de estudio para avanzar",
+    "nextAt": "{{next}} en {{pct}}%"
+  },
+  "playerStats": {
+    "hands": "{{n}} manos",
+    "soon": "próximamente",
+    "noStats": "sin datos",
+    "noData": "Importa torneos para calcular tu perfil de juego."
+  },
+  "empty": {
+    "phase": "Phase 01 // Data acquisition",
+    "loading": "Analizando torneo…",
+    "errorTitle": "Error al importar",
+    "title": "Inicializa tu base táctica",
+    "loadingDesc": "El HUD se llenará cuando termine el análisis.",
+    "desc": "Sube tu archivo de historial de manos (PokerStars .txt) para calibrar el HUD y exponer los leaks de tu mesa.",
+    "retry": "Intentar de nuevo",
+    "import": "Importar Hand History",
+    "fileLabel": "Seleccionar archivo de historial de manos",
+    "unlocks": "Qué se desbloqueará",
+    "modules": "03 módulos // esperando datos",
+    "parseError": "Error al analizar archivo",
+    "m1code": "MÓDULO 01",
+    "m1title": "Detección de leaks",
+    "m1desc": "Identificación automática de patrones sub-óptimos en tu árbol de decisiones, con severidad y pérdida de EV calculadas mano a mano.",
+    "m2code": "MÓDULO 02",
+    "m2title": "Bankroll Guard",
+    "m2desc": "Seguimiento de varianza y gráfico de evolución del bankroll torneo a torneo, para decisiones de stake con confianza.",
+    "m3code": "MÓDULO 03",
+    "m3title": "Coach Neural",
+    "m3desc": "Análisis conversacional de la IA con tus datos reales: rangos, ICM, leaks y plan de estudio personalizado."
   }
 }

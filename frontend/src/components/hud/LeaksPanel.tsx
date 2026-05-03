@@ -1,5 +1,6 @@
 import { ChevronRight, ShieldAlert, AlertTriangle, TrendingDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 type Severity = "critical" | "moderate" | "minor";
@@ -27,14 +28,6 @@ const STREET_LABEL: Record<string, string> = {
   river:   "River",
 };
 
-function spotLabel(spot: string): string {
-  if (spot.includes("/")) {
-    const [street, action] = spot.split("/");
-    return `${STREET_LABEL[street] ?? street} — dando ${action} quando não devia`;
-  }
-  return spot.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 function severity(score: number): Severity {
   if (score >= 0.36) return "critical";
   if (score >= 0.2)  return "moderate";
@@ -49,41 +42,44 @@ const FALLBACK: LeakData[] = [
 
 export function LeaksPanel({ leaks }: Props) {
   const navigate  = useNavigate();
+  const { t } = useTranslation("dashboard");
   const data      = leaks && leaks.length > 0 ? leaks.slice(0, 6) : FALLBACK;
   const isFallback = !leaks || leaks.length === 0;
 
+  function spotLabel(spot: string): string {
+    if (spot.includes("/")) {
+      const [street, action] = spot.split("/");
+      return t("leaks.doing", { street: STREET_LABEL[street] ?? street, action });
+    }
+    return spot.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
   return (
     <section aria-labelledby="leaks-heading" className="rounded-xl border border-border bg-hud-surface overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2
           id="leaks-heading"
           className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground"
         >
           <span className="size-1.5 rounded-full bg-destructive animate-pulse" aria-hidden />
-          Top Leaks detectados
+          {t("leaks.title")}
         </h2>
         <span className="font-mono text-[10px] text-muted-foreground">
           {isFallback ? "DEMO" : "IA_CORE v2.1"}
         </span>
       </div>
 
-      {/* Compact list */}
       <ul className="divide-y divide-border/50">
         {data.map((leak) => {
           const sev = severity(leak.avg_score);
           const { dot, badge, Icon } = SEVERITY[sev];
+          const label = spotLabel(leak.spot);
           return (
             <li key={leak.spot} className="flex items-center gap-3 px-4 py-2.5 hover:bg-hud-elevated/40 transition-colors">
-              {/* Severity dot */}
               <span className={cn("size-1.5 shrink-0 rounded-full", dot)} aria-hidden />
-
-              {/* Spot label */}
               <span className="flex-1 text-xs text-foreground leading-tight truncate min-w-0">
-                {spotLabel(leak.spot)}
+                {label}
               </span>
-
-              {/* Count badge */}
               <span className={cn(
                 "shrink-0 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-mono text-[10px] font-bold ring-1",
                 badge
@@ -91,14 +87,12 @@ export function LeaksPanel({ leaks }: Props) {
                 <Icon className="size-2.5" aria-hidden />
                 {leak.n}×
               </span>
-
-              {/* Estudar link */}
               <button
                 onClick={() => navigate(`/study?spot=${encodeURIComponent(leak.spot)}`)}
                 className="shrink-0 inline-flex items-center gap-0.5 font-mono text-[10px] font-bold text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={`Estudar leak ${spotLabel(leak.spot)}`}
+                aria-label={t("leaks.studyLabel", { spot: label })}
               >
-                Estudar
+                {t("leaks.study")}
                 <ChevronRight className="size-3" aria-hidden />
               </button>
             </li>

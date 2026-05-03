@@ -1,43 +1,27 @@
 import { useCallback, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FileUp, Loader2, ShieldCheck, Target, Sparkles, UploadCloud, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tournaments } from "@/lib/api";
 
 const SUPPORTED = [".txt", ".log"];
 
-const MODULES = [
-  {
-    code: "MÓDULO 01",
-    title: "Detecção de leaks",
-    description:
-      "Identificação automática de padrões sub-ótimos no seu game tree, com severidade e perda de EV calculadas mão a mão.",
-    icon: Target,
-  },
-  {
-    code: "MÓDULO 02",
-    title: "Bankroll Guard",
-    description:
-      "Tracking de variância e gráfico de evolução do bankroll torneio a torneio, para decisões de stake com confiança.",
-    icon: ShieldCheck,
-  },
-  {
-    code: "MÓDULO 03",
-    title: "Coach Neural",
-    description:
-      "Análise conversacional da IA com seus dados reais: ranges, ICM, leaks e plano de estudo personalizado.",
-    icon: Sparkles,
-  },
-];
-
 interface Props {
   onComplete?: () => void;
 }
 
 export function EmptyDashboard({ onComplete }: Props) {
+  const { t } = useTranslation("dashboard");
   const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const MODULES = [
+    { code: t("empty.m1code"), title: t("empty.m1title"), description: t("empty.m1desc"), icon: Target },
+    { code: t("empty.m2code"), title: t("empty.m2title"), description: t("empty.m2desc"), icon: ShieldCheck },
+    { code: t("empty.m3code"), title: t("empty.m3title"), description: t("empty.m3desc"), icon: Sparkles },
+  ];
 
   const processFile = useCallback(
     async (file: File) => {
@@ -49,11 +33,11 @@ export function EmptyDashboard({ onComplete }: Props) {
         onComplete?.();
       } catch (err: unknown) {
         setStatus("error");
-        const msg = err instanceof Error ? err.message : "Erro ao analisar arquivo";
+        const msg = err instanceof Error ? err.message : t("empty.parseError");
         setErrorMsg(msg.includes("já foi importado") ? msg : msg);
       }
     },
-    [onComplete]
+    [onComplete, t]
   );
 
   const handleDrop = useCallback(
@@ -74,7 +58,7 @@ export function EmptyDashboard({ onComplete }: Props) {
     <div className="space-y-16">
       <section className="relative">
         <div className="absolute -top-7 left-0 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-          Phase 01 // Data acquisition
+          {t("empty.phase")}
         </div>
 
         <div
@@ -109,17 +93,17 @@ export function EmptyDashboard({ onComplete }: Props) {
 
             <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-foreground mb-3">
               {status === "loading"
-                ? "Analisando torneio…"
+                ? t("empty.loading")
                 : status === "error"
-                ? "Erro ao importar"
-                : "Inicialize sua base tática"}
+                ? t("empty.errorTitle")
+                : t("empty.title")}
             </h1>
             <p className="text-muted-foreground max-w-md mx-auto mb-10 text-sm leading-relaxed">
               {status === "error"
                 ? errorMsg
                 : status === "loading"
-                ? "O HUD será populado assim que a varredura terminar."
-                : "Envie seu arquivo de hand history (PokerStars .txt) para calibrar o HUD e expor os leaks da sua mesa."}
+                ? t("empty.loadingDesc")
+                : t("empty.desc")}
             </p>
 
             {status !== "loading" && (
@@ -129,7 +113,7 @@ export function EmptyDashboard({ onComplete }: Props) {
                 className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 font-mono text-xs font-bold uppercase tracking-widest-2 transition-colors hover:bg-primary-glow rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <FileUp className="size-3.5" aria-hidden />
-                {status === "error" ? "Tentar novamente" : "Importar Hand History"}
+                {status === "error" ? t("empty.retry") : t("empty.import")}
               </button>
             )}
 
@@ -139,7 +123,7 @@ export function EmptyDashboard({ onComplete }: Props) {
               accept=".txt,.log"
               className="sr-only"
               onChange={(e) => handleFiles(e.target.files)}
-              aria-label="Selecionar arquivo de hand history"
+              aria-label={t("empty.fileLabel")}
             />
 
             <div className="mt-8 flex flex-wrap justify-center items-center gap-3 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
@@ -161,10 +145,10 @@ export function EmptyDashboard({ onComplete }: Props) {
       <section>
         <div className="mb-6 flex items-baseline justify-between">
           <h2 className="text-sm font-bold uppercase tracking-widest-2 text-foreground">
-            O que será desbloqueado
+            {t("empty.unlocks")}
           </h2>
           <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-            03 módulos // aguardando dados
+            {t("empty.modules")}
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

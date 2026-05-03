@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
 
@@ -12,12 +13,6 @@ interface Props {
 }
 
 const ICM_ORDER = ["high", "medium", "low", "none"];
-const ICM_LABEL: Record<string, string> = {
-  high:   "Alta pressão",
-  medium: "Média",
-  low:    "Baixa",
-  none:   "Sem ICM",
-};
 
 function rateColor(rate: number) {
   if (rate >= 0.80) return "bg-primary";
@@ -33,6 +28,15 @@ function rateText(rate: number) {
 }
 
 export function IcmBreakdown({ icm }: Props) {
+  const { t } = useTranslation("dashboard");
+
+  const ICM_LABEL: Record<string, string> = {
+    high:   t("icm.high"),
+    medium: t("icm.medium"),
+    low:    t("icm.low"),
+    none:   t("icm.none"),
+  };
+
   const rows = ICM_ORDER
     .filter((k) => icm?.[k])
     .map((k) => ({ key: k, label: ICM_LABEL[k] ?? k, ...icm![k] }));
@@ -47,13 +51,13 @@ export function IcmBreakdown({ icm }: Props) {
     <div className="rounded-xl border border-border bg-hud-surface p-5">
       <div className="flex items-center gap-1.5 mb-4">
         <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-          Pressão ICM
+          {t("icm.title")}
         </span>
-        <HudTooltip content="ICM (Independent Chip Model) mede o valor monetário dos chips em MTT. Sob alta pressão (bubble, FT), erros custam muito mais do que o valor nominal dos chips. Compare sua performance em cada nível para identificar se você joga bem ou mal sob pressão." />
+        <HudTooltip content={t("icm.tooltip")} />
       </div>
 
       {all.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Sem dados de ICM disponíveis.</p>
+        <p className="text-xs text-muted-foreground">{t("icm.noData")}</p>
       ) : (
         <div className="space-y-2.5">
           {all.map(({ key, label, standard_rate, n }) => {

@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.38.0] — 2026-05-03 — Sprint H: UX-007 Dashboard i18n — cards traduzidos
+
+### Frontend — Dashboard cards i18n (bug fix)
+
+- **`LeaksPanel.tsx`** — `spotLabel()` movido para dentro do componente; `t("leaks.*")` para título, botão estudar e descrição de leak
+- **`BankrollChart.tsx`** — botões de período, título e estado vazio via `t("bankroll.*")`
+- **`RecentTournamentsTable.tsx`** — cabeçalhos, status (Analisado/Em fila) e `formatDate` com `i18n.language` dinâmico
+- **`DecisionQualityCard.tsx`** — array `LABELS` movido para dentro do componente; todos os rótulos via `t("decisions.*")`
+- **`StreetBreakdown.tsx`** — título, tooltip e estado vazio via `t("streets.*")`
+- **`PositionChart.tsx`** — título, tooltip e estado vazio via `t("positions.*")`
+- **`RecentForm.tsx`** — `scoreDot()` movido para dentro do componente; legenda e título via `t("form.*")`
+- **`IcmBreakdown.tsx`** — `ICM_LABEL` movido para dentro do componente; rótulos de pressão ICM e título via `t("icm.*")`
+- **`LevelCard.tsx`** — nível, progresso, leaks bloqueadores e link de estudo via `t("level.*")`; pluralização i18next (`tournament_one`/`tournament_other`)
+- **`EmptyDashboard.tsx`** — array `MODULES` movido para dentro do componente; upload section e módulos via `t("empty.*")`
+- **`PlayerStatsCard.tsx`** — "em breve", "sem dados", "mãos" e mensagem vazia via `t("playerStats.*")`
+- **Locales** — ~80 novas chaves adicionadas a `dashboard.json` (PT-BR + EN + ES)
+
 ## [v0.37.0] — 2026-05-02 — Sprint G: UX-006 Header Cleanup + i18n Full Coverage
 
 ### Frontend — Header simplification

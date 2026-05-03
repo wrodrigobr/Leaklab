@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
 
@@ -33,19 +34,20 @@ function rateText(rate: number) {
 }
 
 export function StreetBreakdown({ byStreet }: Props) {
+  const { t } = useTranslation("dashboard");
   const hasData = byStreet && Object.keys(byStreet).length > 0;
 
   return (
     <div className="rounded-xl border border-border bg-hud-surface p-5">
       <div className="flex items-center gap-1.5 mb-4">
         <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-          Performance por Street
+          {t("streets.title")}
         </span>
-        <HudTooltip content="Taxa de decisões standard (score ≤ 0.08) em cada street. Streets em laranja ou vermelho indicam onde seus leaks se concentram." />
+        <HudTooltip content={t("streets.tooltip")} />
       </div>
 
       {!hasData ? (
-        <p className="text-xs text-muted-foreground">Sem dados suficientes.</p>
+        <p className="text-xs text-muted-foreground">{t("streets.noData")}</p>
       ) : (
         <div className="space-y-3">
           {STREETS.map(({ key, label }) => {

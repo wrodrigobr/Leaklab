@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
 
@@ -27,6 +28,8 @@ function rateText(rate: number) {
 }
 
 export function PositionChart({ byPosition }: Props) {
+  const { t } = useTranslation("dashboard");
+
   const positions = byPosition
     ? POS_ORDER.filter((p) => byPosition[p]).map((p) => ({ pos: p, ...byPosition[p] }))
     : [];
@@ -41,13 +44,13 @@ export function PositionChart({ byPosition }: Props) {
     <div className="rounded-xl border border-border bg-hud-surface p-5">
       <div className="flex items-center gap-1.5 mb-4">
         <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-          Performance por Posição
+          {t("positions.title")}
         </span>
-        <HudTooltip content="Taxa de decisões standard por posição na mesa. BTN e CO costumam ter vantagem posicional. BB e SB defensivos são onde a maioria dos jogadores perde mais equity." />
+        <HudTooltip content={t("positions.tooltip")} />
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Sem dados suficientes.</p>
+        <p className="text-xs text-muted-foreground">{t("positions.noData")}</p>
       ) : (
         <div className="space-y-2.5">
           {rows.map(({ pos, standard_rate, n }) => {

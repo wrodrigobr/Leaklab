@@ -1,5 +1,6 @@
 import { CheckCircle2, Clock, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Tournament } from "@/lib/api";
 import { SiteLogo } from "@/components/hud/SiteLogo";
@@ -8,22 +9,22 @@ interface Props {
   tournaments?: Tournament[];
 }
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, lang: string): string {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) + " • " +
-      d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString(lang, { day: "2-digit", month: "short" }) + " • " +
+      d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
   } catch {
     return iso.slice(0, 10);
   }
 }
 
-function formatDateShort(iso: string | null): string {
+function formatDateShort(iso: string | null, lang: string): string {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+    return d.toLocaleDateString(lang, { day: "2-digit", month: "short" });
   } catch {
     return iso.slice(0, 10);
   }
@@ -50,6 +51,8 @@ const DEMO_ROWS: Tournament[] = [
 
 export function RecentTournamentsTable({ tournaments }: Props) {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation("dashboard");
+  const lang = i18n.language;
   const rows = tournaments && tournaments.length > 0 ? tournaments.slice(0, 5) : DEMO_ROWS;
   const isDemo = !tournaments || tournaments.length === 0;
 
@@ -60,13 +63,13 @@ export function RecentTournamentsTable({ tournaments }: Props) {
           id="recent-tournaments"
           className="text-sm font-bold uppercase tracking-widest-2 text-foreground"
         >
-          Torneios recentes{isDemo && <span className="ml-2 font-mono text-[10px] text-muted-foreground normal-case tracking-normal">(demo)</span>}
+          {t("table.title")}{isDemo && <span className="ml-2 font-mono text-[10px] text-muted-foreground normal-case tracking-normal">{t("table.demo")}</span>}
         </h2>
         <button
           onClick={() => navigate("/tournaments")}
           className="font-mono text-[11px] text-primary hover:text-primary-glow transition-colors"
         >
-          Ver todos →
+          {t("table.viewAll")}
         </button>
       </div>
 
@@ -95,7 +98,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="font-mono text-[10px] text-muted-foreground">
-                      {formatDateShort(row.played_at || row.imported_at)}
+                      {formatDateShort(row.played_at || row.imported_at, lang)}
                     </span>
                     {row.buy_in != null && (
                       <span className="font-mono text-[10px] text-muted-foreground">· ${row.buy_in}</span>
@@ -113,9 +116,9 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                     {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
                   </span>
                   {analyzed ? (
-                    <CheckCircle2 className="size-3.5 text-primary" aria-label="Analisado" />
+                    <CheckCircle2 className="size-3.5 text-primary" aria-label={t("table.analyzed")} />
                   ) : (
-                    <Clock className="size-3.5 text-warning animate-pulse" aria-label="Em fila" />
+                    <Clock className="size-3.5 text-warning animate-pulse" aria-label={t("table.inQueue")} />
                   )}
                 </div>
               </li>
@@ -128,15 +131,15 @@ export function RecentTournamentsTable({ tournaments }: Props) {
           <table className="w-full text-left">
             <thead className="border-b border-border bg-hud-elevated/40">
               <tr>
-                {["Data", "Torneio", "Buy-in", "Posição", "Resultado", "Status"].map((h) => (
+                {(["hDate", "hTournament", "hBuyin", "hPlace", "hResult", "hStatus"] as const).map((h) => (
                   <th
                     key={h}
                     className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground"
                   >
-                    {h}
+                    {t(`table.${h}`)}
                   </th>
                 ))}
-                <th className="sr-only">Ações</th>
+                <th className="sr-only">{t("table.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -147,7 +150,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                 return (
                   <tr key={row.id} className="group transition-colors hover:bg-primary/5">
                     <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                      {formatDate(row.played_at || row.imported_at)}
+                      {formatDate(row.played_at || row.imported_at, lang)}
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
@@ -162,7 +165,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                       <div className="font-mono text-[10px] text-muted-foreground">
                         {row.tournament_id}
                         {row.hands_count != null && (
-                          <span className="ml-2 text-muted-foreground/60">{row.hands_count} mãos</span>
+                          <span className="ml-2 text-muted-foreground/60">{t("table.hands", { n: row.hands_count })}</span>
                         )}
                       </div>
                     </td>
@@ -190,19 +193,19 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                       {analyzed ? (
                         <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
                           <CheckCircle2 className="size-3" aria-hidden />
-                          Analisado
+                          {t("table.analyzed")}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20">
                           <Clock className="size-3 animate-pulse" aria-hidden />
-                          Em fila
+                          {t("table.inQueue")}
                         </span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 text-right">
                       <button
                         className="inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:bg-secondary hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        aria-label={`Abrir ${row.tournament_id}`}
+                        aria-label={t("table.open", { id: row.tournament_id })}
                       >
                         <Eye className="size-3.5" aria-hidden />
                       </button>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
 
@@ -116,6 +117,7 @@ const BAR_COLORS: Record<Status, string> = {
 };
 
 function StatCell({ def, value, compact }: { def: StatDef; value: number | null; compact?: boolean }) {
+  const { t } = useTranslation("dashboard");
   const status = getStatus(value, def.range, def.soon);
   const { min, max } = def.range;
   const margin = (max - min) * 0.35;
@@ -157,7 +159,7 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
         </span>
         {def.soon && (
           <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
-            em breve
+            {t("playerStats.soon")}
           </span>
         )}
       </div>
@@ -186,6 +188,7 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
 }
 
 export function PlayerStatsCard({ stats }: Props) {
+  const { t } = useTranslation("dashboard");
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-hud-surface shadow-elevated">
       <div className="flex items-center justify-between border-b border-border px-6 py-3">
@@ -197,13 +200,13 @@ export function PlayerStatsCard({ stats }: Props) {
           <HudTooltip content="Indicadores táticos do seu perfil de jogo. Row 1: VPIP, PFR, AF, Flop Bet — calculados diretamente. Row 2: Fold to 3BET e WTSD (aproximados), 3BET e W$SD (em breve)." />
         </div>
         <span className="font-mono text-[10px] text-primary">
-          {stats && stats.total_hands > 0 ? `${stats.total_hands} mãos` : "sem dados"}
+          {stats && stats.total_hands > 0 ? t("playerStats.hands", { n: stats.total_hands }) : t("playerStats.noStats")}
         </span>
       </div>
 
       {!stats || stats.total_hands === 0 ? (
         <p className="px-6 py-5 text-xs text-muted-foreground text-center">
-          Importe torneios para calcular seu perfil de jogo.
+          {t("playerStats.noData")}
         </p>
       ) : (
         <>

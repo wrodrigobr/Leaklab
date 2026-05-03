@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { TrendingUp, ChevronRight, AlertCircle } from "lucide-react";
 import { PlayerLevel } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -31,14 +32,16 @@ interface Props {
 }
 
 export function LevelCard({ data, showStudyLink = true, compact = false }: Props) {
+  const { t } = useTranslation("dashboard");
+
   if (!data.level) {
     return (
       <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-2">
         <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1.5">
-          <TrendingUp className="size-3" /> Meu Nível
+          <TrendingUp className="size-3" /> {t("level.title")}
         </p>
         <p className="text-xs text-muted-foreground">
-          Importe pelo menos 5 torneios para calcular seu nível.
+          {t("level.noData")}
         </p>
       </div>
     );
@@ -50,17 +53,15 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
 
   return (
     <div className={cn("rounded-xl border bg-hud-surface", compact ? "p-4" : "p-5", "space-y-4")}>
-      {/* Header */}
       <div className="flex items-center justify-between">
         <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1.5">
-          <TrendingUp className="size-3" /> Meu Nível
+          <TrendingUp className="size-3" /> {t("level.title")}
         </p>
         <span className="font-mono text-[10px] text-muted-foreground">
-          {data.tournament_count} torneio{data.tournament_count !== 1 ? "s" : ""}
+          {t("level.tournament", { count: data.tournament_count })}
         </span>
       </div>
 
-      {/* Badge */}
       <div className="flex items-center gap-3">
         <div className={cn("rounded-xl border px-3 py-2.5 text-center min-w-[72px] flex flex-col items-center gap-1", colorCls)}>
           {(() => { const Icon = LEVEL_ICONS[data.level]; return Icon ? <Icon size={22} /> : null; })()}
@@ -74,7 +75,7 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
             {data.next_level && (
               <span className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
                 {(() => { const Icon = LEVEL_ICONS[data.next_level]; return Icon ? <Icon size={11} /> : null; })()}
-                {data.next_level} em {data.next_pct}%
+                {t("level.nextAt", { next: data.next_level, pct: data.next_pct })}
               </span>
             )}
           </div>
@@ -86,17 +87,16 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
           </div>
           <p className="font-mono text-[10px] text-muted-foreground">
             {data.next_level
-              ? `${pct}% do caminho para ${data.next_level}`
-              : "Nível máximo atingido"}
+              ? t("level.progress", { pct, next: data.next_level })
+              : t("level.maxLevel")}
           </p>
         </div>
       </div>
 
-      {/* Blocking leaks */}
       {!compact && data.top_blocking_leaks.length > 0 && (
         <div className="space-y-1.5">
           <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1">
-            <AlertCircle className="size-3" /> Leaks que travam o avanço
+            <AlertCircle className="size-3" /> {t("level.blockingLeaks")}
           </p>
           <ul className="space-y-1">
             {data.top_blocking_leaks.map((lk) => (
@@ -109,13 +109,12 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
         </div>
       )}
 
-      {/* CTA */}
       {showStudyLink && data.next_level && (
         <Link
           to="/study"
           className="flex items-center justify-between w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
         >
-          <span>Ver plano de estudos para avançar</span>
+          <span>{t("level.studyLink")}</span>
           <ChevronRight className="size-3.5 shrink-0" />
         </Link>
       )}

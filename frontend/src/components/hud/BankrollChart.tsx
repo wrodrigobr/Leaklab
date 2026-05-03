@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 interface EvolutionPoint {
   profit: number | null;
@@ -29,9 +30,10 @@ function buildPath(points: number[]) {
 }
 
 export function BankrollChart({ evolution }: Props) {
+  const { t } = useTranslation("dashboard");
+
   const { path, area, max, min, isDemo } = useMemo(() => {
     if (evolution && evolution.length >= 2) {
-      // Build cumulative profit series
       let running = 0;
       const pts = evolution.map((e) => {
         running += e.profit ?? 0;
@@ -42,6 +44,13 @@ export function BankrollChart({ evolution }: Props) {
     return { ...buildPath(DEMO_POINTS), isDemo: true };
   }, [evolution]);
 
+  const periods = [
+    { key: "p1m", label: t("bankroll.p1m") },
+    { key: "p3m", label: t("bankroll.p3m") },
+    { key: "p1y", label: t("bankroll.p1y") },
+    { key: "pAll", label: t("bankroll.pAll") },
+  ];
+
   return (
     <section
       aria-labelledby="bankroll-heading"
@@ -50,16 +59,16 @@ export function BankrollChart({ evolution }: Props) {
       <header className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
           <h2 id="bankroll-heading" className="text-sm font-semibold text-foreground">
-            Evolução do bankroll
+            {t("bankroll.title")}
           </h2>
           <p className="font-mono text-[11px] text-muted-foreground">
-            {isDemo ? "Demo • importe torneios para ver seus dados" : `Últimos ${evolution!.length} torneios`}
+            {isDemo ? t("bankroll.demo") : t("bankroll.lastN", { n: evolution!.length })}
           </p>
         </div>
         <div className="flex gap-1">
-          {["1M", "3M", "1A", "Tudo"].map((label, i) => (
+          {periods.map(({ key, label }, i) => (
             <button
-              key={label}
+              key={key}
               className={`rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 i === 1
                   ? "bg-primary/10 text-primary ring-1 ring-primary/30"
@@ -85,7 +94,7 @@ export function BankrollChart({ evolution }: Props) {
           preserveAspectRatio="none"
           className="h-56 w-full"
           role="img"
-          aria-label="Gráfico de evolução de bankroll"
+          aria-label={t("bankroll.ariaLabel")}
         >
           <defs>
             <linearGradient id="bankrollFill" x1="0" y1="0" x2="0" y2="1">

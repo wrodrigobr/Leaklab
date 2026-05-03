@@ -35,5 +35,118 @@
     "noData": "no data",
     "summary": "{{count}} tournaments analyzed. Sufficient volume to suggest reliable adjustments.",
     "empty": "Import tournaments to activate AI confidence analysis."
+  },
+  "leaks": {
+    "title": "Top Leaks Detected",
+    "study": "Study",
+    "studyLabel": "Study leak {{spot}}",
+    "doing": "{{street}} — doing {{action}} when you shouldn't"
+  },
+  "bankroll": {
+    "title": "Bankroll evolution",
+    "demo": "Demo • import tournaments to see your data",
+    "lastN": "Last {{n}} tournaments",
+    "ariaLabel": "Bankroll evolution chart",
+    "p1m": "1M",
+    "p3m": "3M",
+    "p1y": "1Y",
+    "pAll": "All"
+  },
+  "table": {
+    "title": "Recent tournaments",
+    "viewAll": "View all →",
+    "demo": "(demo)",
+    "hands": "{{n}} hands",
+    "analyzed": "Analyzed",
+    "inQueue": "In queue",
+    "open": "Open {{id}}",
+    "actions": "Actions",
+    "hDate": "Date",
+    "hTournament": "Tournament",
+    "hBuyin": "Buy-in",
+    "hPlace": "Place",
+    "hResult": "Result",
+    "hStatus": "Status"
+  },
+  "decisions": {
+    "title": "Decision Quality",
+    "total": "{{n}} decisions",
+    "noData": "Not enough data.",
+    "tooltip": "Distribution of all your decisions by quality. Standard = within expected range (score ≤ 0.08). Marginal = acceptable but suboptimal. Mistakes reduce your long-term ROI.",
+    "standard": "Standard",
+    "marginal": "Marginal",
+    "smallMistake": "Small mistake",
+    "clearMistake": "Clear mistake"
+  },
+  "streets": {
+    "title": "Performance by Street",
+    "noData": "Not enough data.",
+    "tooltip": "Standard decision rate (score ≤ 0.08) per street. Streets in orange or red indicate where your leaks are concentrated."
+  },
+  "positions": {
+    "title": "Performance by Position",
+    "noData": "Not enough data.",
+    "tooltip": "Standard decision rate by table position. BTN and CO usually have positional advantage. Defensive BB and SB are where most players lose the most equity."
+  },
+  "form": {
+    "title": "Recent Form",
+    "tournaments": "{{n}} tournaments",
+    "noData": "Not enough data.",
+    "now": "now",
+    "tooltip": "Average decision quality in recent tournaments. Green = standard session, yellow = marginal, orange/red = session with significant errors.",
+    "standard": "Standard",
+    "marginal": "Marginal",
+    "error": "Mistake",
+    "clearError": "Clear mistake",
+    "smallMistake": "Small mistake"
+  },
+  "icm": {
+    "title": "ICM Pressure",
+    "noData": "No ICM data available.",
+    "tooltip": "ICM (Independent Chip Model) measures the monetary value of chips in MTTs. Under high pressure (bubble, FT), mistakes cost much more than the nominal chip value.",
+    "high": "High pressure",
+    "medium": "Medium",
+    "low": "Low",
+    "none": "No ICM"
+  },
+  "level": {
+    "title": "My Level",
+    "noData": "Import at least 5 tournaments to calculate your level.",
+    "tournament_one": "{{count}} tournament",
+    "tournament_other": "{{count}} tournaments",
+    "progress": "{{pct}}% of the way to {{next}}",
+    "maxLevel": "Maximum level reached",
+    "blockingLeaks": "Leaks blocking your progress",
+    "studyLink": "View study plan to advance",
+    "nextAt": "{{next}} at {{pct}}%"
+  },
+  "playerStats": {
+    "hands": "{{n}} hands",
+    "soon": "coming soon",
+    "noStats": "no data",
+    "noData": "Import tournaments to calculate your playing profile."
+  },
+  "empty": {
+    "phase": "Phase 01 // Data acquisition",
+    "loading": "Analyzing tournament…",
+    "errorTitle": "Import error",
+    "title": "Initialize your tactical base",
+    "loadingDesc": "The HUD will be populated once the scan is complete.",
+    "desc": "Upload your hand history file (PokerStars .txt) to calibrate the HUD and expose your table leaks.",
+    "retry": "Try again",
+    "import": "Import Hand History",
+    "fileLabel": "Select hand history file",
+    "unlocks": "What will be unlocked",
+    "modules": "03 modules // awaiting data",
+    "parseError": "Error analyzing file",
+    "m1code": "MODULE 01",
+    "m1title": "Leak detection",
+    "m1desc": "Automatic identification of sub-optimal patterns in your game tree, with severity and EV loss calculated hand by hand.",
+    "m2code": "MODULE 02",
+    "m2title": "Bankroll Guard",
+    "m2desc": "Variance tracking and bankroll evolution chart tournament by tournament, for stake decisions with confidence.",
+    "m3code": "MODULE 03",
+    "m3title": "Neural Coach",
+    "m3desc": "Conversational AI analysis with your real data: ranges, ICM, leaks and personalized study plan."
   }
 }
