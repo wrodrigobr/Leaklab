@@ -425,6 +425,21 @@ export interface DrillAnalysisResult {
   cached: boolean;
 }
 
+export interface PlayerDna {
+  aggression_index: number;
+  fold_frequency: number;
+  three_bet_pct: number;
+  positional_awareness: number;
+  discipline: number;
+  icm_awareness: number | null;
+  archetype: string;
+}
+
+export interface PlayerDnaResponse {
+  dna: PlayerDna | null;
+  sample_size: number;
+}
+
 export const drill = {
   spots: (params?: { limit?: number; street?: string; spot?: string }) => {
     const q = new URLSearchParams();
@@ -469,6 +484,9 @@ export const metrics = {
 
   confidenceDrift: (days = 30) =>
     request<ConfidenceDrift>(`/player/confidence-drift?days=${days}`),
+
+  dna: (days = 90) =>
+    request<PlayerDnaResponse>(`/player/dna?days=${days}`),
 };
 
 // ── Player Level / Gamification (BACK-009) ────────────────────────────────────

@@ -9,6 +9,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.43.0] — 2026-05-03 — Sprint L: PERF-007 Decision DNA
+
+### Backend — PERF-007
+
+- **`repositories.py`** — `get_player_dna(user_id, days)`: agrega `decisions` em 5 métricas normalizadas (0-100):
+  - `aggression_index` — % de ações que são raise/bet/jam (excluindo folds)
+  - `fold_frequency` — % global de folds
+  - `three_bet_pct` — % de preflop decisions com `is_3bet = True`
+  - `positional_awareness` — diferencial de agressividade BTN/CO vs UTG/EP (escala 0-100, 50 = neutro)
+  - `discipline` — standard% geral
+  - `icm_awareness` (opcional) — ratio de standard% sob alta pressão ICM vs sem pressão ICM
+  - `_classify_archetype()`: classifica em TAG / LAG / Nit / Calling Station / Balanced a partir das métricas
+- **`app.py`** — `GET /player/dna?days=N`: retorna `{dna, sample_size}`; requer auth
+
+### Frontend — PERF-007
+
+- **`PlayerDnaCard.tsx`** (novo) — card com radar chart pentagon (Recharts RadarChart), badge de arquétipo colorido por tipo, grid de 6 métricas, descrição contextual do arquétipo; estado vazio com mensagem quando sample_size < 10
+- **`pages/Index.tsx`** — fetch paralelo de `metrics.dna(90)`; `<PlayerDnaCard>` inserido entre o grid `RecentForm+DecisionQuality` e `BankrollChart`
+- **`lib/api.ts`** — interfaces `PlayerDna`, `PlayerDnaResponse`; `metrics.dna(days)`
+
+### i18n — 3 locales (pt-BR / en / es)
+
+- `dashboard.json` — seção `dna.*`: title, tooltip, archetype label, sampleSize, noData, 6 axis labels, 5 archetype names + descriptions
+
+### BACKLOG
+
+- Sprint L (PERF-007) concluída; Sprint M (PERF-008 Tournament Narrative) e Sprint N (PERF-009 GGPoker Parser) aguardam priorização
+
+---
+
 ## [v0.42.0] — 2026-05-03 — Sprint K pt.2: Ghost Table UX + Engine Notes + Drill-Dashboard Loop
 
 ### Backend — Ghost Table enhancements

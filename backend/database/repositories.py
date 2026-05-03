@@ -2572,3 +2572,100 @@ def update_user_phone(user_id: int, phone: str | None) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+# ── Decision DNA — PERF-007 ───────────────────────────────────────────────────
+
+def _classify_archetype(aggression: float, fold_freq: float, three_bet: float, discipline: float) -> str:
+    if fold_freq >= 55 and aggression >= 35:
+        return "TAG"
+    if fold_freq >= 55:
+        return "Nit"
+    if fold_freq <= 28 and aggression >= 40:
+        return "LAG"
+    if fold_freq <= 28:
+        return "Calling Station"
+    if discipline >= 70 and 28 < fold_freq < 55:
+        return "Balanced"
+    if aggression >= 48:
+        return "LAG"
+    return "TAG"
+
+
+def get_player_dna(user_id: int, days: int = 90) -> dict:
+    """
+    Computa a assinatura estratégica do jogador a partir dos padrões de decisão.
+    Retorna métricas normalizadas 0-100 + arquétipo classificado.
+    """
+    conn = get_conn()
+    try:
+        cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        rows = _fetchall(conn, _adapt("""
+            SELECT d.action_taken, d.street, d.position, d.is_3bet,
+                   d.label, d.icm_pressure
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+        """), (user_id, cutoff))
+
+        total = len(rows)
+        if total < 10:
+            return {"dna": None, "sample_size": total}
+
+        _agg  = {'raise', 'bet', 'jam'}
+        _fold = {'fold'}
+
+        n_agg  = sum(1 for r in rows if (r['action_taken'] or '').lower() in _agg)
+        n_fold = sum(1 for r in rows if (r['action_taken'] or '').lower() in _fold)
+
+        fold_freq = round(n_fold / total * 100, 1)
+        non_fold  = total - n_fold
+        aggr_idx  = round(n_agg / non_fold * 100, 1) if non_fold else 0.0
+
+        # 3-bet preflop
+        pf     = [r for r in rows if r['street'] == 'preflop']
+        n_3bet = sum(1 for r in pf if r['is_3bet'])
+        three_bet_pct = round(n_3bet / len(pf) * 100, 1) if pf else 0.0
+
+        # Positional awareness: aggression% in LP vs EP
+        lp = {'BTN', 'CO'}
+        ep = {'UTG', 'UTG+1', 'UTG+2', 'MP1', 'MP2', 'MP3', 'HJ'}
+        lp_nf = [r for r in rows if (r['position'] or '') in lp and (r['action_taken'] or '').lower() not in _fold]
+        ep_nf = [r for r in rows if (r['position'] or '') in ep and (r['action_taken'] or '').lower() not in _fold]
+        lp_aggr = sum(1 for r in lp_nf if (r['action_taken'] or '').lower() in _agg)
+        ep_aggr = sum(1 for r in ep_nf if (r['action_taken'] or '').lower() in _agg)
+        lp_pct = (lp_aggr / len(lp_nf) * 100) if lp_nf else aggr_idx
+        ep_pct = (ep_aggr / len(ep_nf) * 100) if ep_nf else aggr_idx
+        pos_awareness = round(min(100.0, max(0.0, 50.0 + (lp_pct - ep_pct) * 2)), 1)
+
+        # Disciplina técnica — standard%
+        n_std     = sum(1 for r in rows if r['label'] == 'standard')
+        discipline = round(n_std / total * 100, 1)
+
+        # ICM awareness — standard% sob alta pressão vs sem pressão
+        high_icm = [r for r in rows if r['icm_pressure'] == 'high']
+        no_icm   = [r for r in rows if r['icm_pressure'] == 'none']
+        hi_std   = sum(1 for r in high_icm if r['label'] == 'standard')
+        no_std   = sum(1 for r in no_icm   if r['label'] == 'standard')
+        if high_icm and no_icm and no_std:
+            ratio = (hi_std / len(high_icm)) / (no_std / len(no_icm))
+            icm_awareness: float | None = round(min(100.0, ratio * 100), 1)
+        else:
+            icm_awareness = None
+
+        archetype = _classify_archetype(aggr_idx, fold_freq, three_bet_pct, discipline)
+
+        return {
+            "dna": {
+                "aggression_index":    aggr_idx,
+                "fold_frequency":      fold_freq,
+                "three_bet_pct":       three_bet_pct,
+                "positional_awareness": pos_awareness,
+                "discipline":          discipline,
+                "icm_awareness":       icm_awareness,
+                "archetype":           archetype,
+            },
+            "sample_size": total,
+        }
+    finally:
+        conn.close()

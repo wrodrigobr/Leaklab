@@ -159,6 +159,35 @@
     "noStats": "sem dados",
     "noData": "Importe torneios para calcular seu perfil de jogo."
   },
+  "dna": {
+    "title": "Perfil Estratégico",
+    "tooltip": "Assinatura estratégica baseada nos seus padrões de decisão reais. Cada eixo representa uma dimensão do seu estilo de jogo.",
+    "archetype": "Arquétipo detectado",
+    "sampleSize": "{{n}} decisões",
+    "noData": "Importe torneios para calcular seu perfil estratégico.",
+    "axes": {
+      "aggression": "Agressividade",
+      "foldFreq": "Freq. Fold",
+      "threeBet": "3-Bet",
+      "positional": "Posicional",
+      "discipline": "Disciplina",
+      "icm": "ICM Awareness"
+    },
+    "archetypes": {
+      "TAG": "TAG",
+      "LAG": "LAG",
+      "Nit": "Nit",
+      "Calling Station": "Calling Station",
+      "Balanced": "Balanced"
+    },
+    "archetypeDesc": {
+      "TAG": "Seletivo e agressivo quando entra — perfil vencedor em MTTs regulares.",
+      "LAG": "Entra em muitos potes e aplica pressão — eficaz, mas exige calibragem de range.",
+      "Nit": "Folds demais — perde equity passivo e é explorado por regulares.",
+      "Calling Station": "Chama demais — facilita extração de EV pelos oponentes.",
+      "Balanced": "Perfil equilibrado — bom controle de range em múltiplas posições."
+    }
+  },
   "empty": {
     "phase": "Phase 01 // Data acquisition",
     "loading": "Analisando torneio…",

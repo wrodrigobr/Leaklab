@@ -36,6 +36,7 @@ from database.repositories import (
     get_evolution_metrics, get_leak_summary, get_leak_roi_impact,
     get_pressure_profile, get_confidence_drift,
     get_drill_spots, save_drill_session, get_drill_stats, get_decision_for_drill,
+    get_player_dna,
     get_icm_performance, get_breakdown, get_player_stats,
     get_player_level,
     get_students,
@@ -614,6 +615,14 @@ def player_drill_stats_only():
     """Dashboard — Estatísticas de drill sem carregar os spots."""
     days = int(request.args.get('days', 30))
     return jsonify(get_drill_stats(g.user_id, days=days))
+
+
+@app.route('/player/dna', methods=['GET'])
+@require_auth
+def player_dna():
+    """Sprint L — Assinatura estratégica do jogador (Decision DNA)."""
+    days = int(request.args.get('days', 90))
+    return jsonify(get_player_dna(g.user_id, days=days))
 
 
 @app.route('/player/spots/drill/<int:decision_id>/analysis', methods=['GET'])

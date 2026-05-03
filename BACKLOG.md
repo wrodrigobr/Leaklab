@@ -2,7 +2,7 @@
 
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
-> **Sprints já entregues:** Sprints 1–13 + Sprint A–K + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.42.0.
+> **Sprints já entregues:** Sprints 1–13 + Sprint A–L + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.43.0.
 > **Sprint atual:** — aguardando priorização
 
 ---
@@ -46,36 +46,13 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint I | PERF-001 + PERF-002 | ROI Attribution Engine + Leak Priority Optimizer | ✅ v0.39.0 |
 | Sprint J | PERF-003 + PERF-004 + PERF-005 | Leak Progression + Pressure Collapse + Confidence Drift | ✅ v0.40.0 |
 | Sprint K | PERF-006 | Ghost Table Simulator MVP | ✅ v0.41.0–v0.42.0 |
+| Sprint L | PERF-007 | Decision DNA — assinatura estratégica do jogador | ✅ v0.43.0 |
 
 ---
 
 ## Próximas Sprints — Em Aberto
 
-### [PERF-007] — Decision DNA *(Sprint L — prioridade alta)*
-
-**Valor:** Muito Alto · **Complexidade:** Média · **Dep. estrutural:** Nenhuma
-
-Criar assinatura estratégica do jogador a partir dos dados já existentes no banco.
-
-**Campos a calcular:**
-- `aggression_index` — % de raises + bets vs. calls totais
-- `fold_frequency` — fold% global + por street
-- `3bet_pct` — 3-bet preflop sobre oportunidades
-- `limp_pct` — limp% preflop (alavanca de leak passivo)
-- `cbet_pct` — continuação de aposta no flop como aggressor
-- `wtsd_pct` — went to showdown % (tendência de chase)
-
-**Exibição:** novo card "Perfil Estratégico" no dashboard com radar chart (6 eixos) + rótulo de arquétipo (`Nit`, `LAG`, `TAG`, `Calling Station`, `Balanced`).
-
-**Backend:**
-- `repositories.py` — `get_player_dna(user_id, days)`: agrega `decisions` por tipo de ação, street, posição
-- `app.py` — `GET /player/dna`
-
-**Frontend:**
-- `PlayerDnaCard.tsx` — radar chart (Recharts) + arquétipo label
-- Locales `dashboard.json` — chaves `dna.*`
-
-**Esforço estimado: ~5h backend + ~6h frontend**
+### ~~[PERF-007] — Decision DNA~~ ✅ *Entregue em v0.43.0*
 
 ---
 

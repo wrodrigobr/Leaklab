@@ -19,7 +19,8 @@ import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { LevelCard } from "@/components/hud/LevelCard";
 import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
 import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
-import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats } from "@/lib/api";
+import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
+import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
@@ -36,6 +37,7 @@ const Index = () => {
   const [driftData, setDriftData]       = useState<ConfidenceDrift | null>(null);
   const [driftDismissed, setDriftDismissed] = useState(false);
   const [drillStats, setDrillStats]     = useState<DrillStats | null>(null);
+  const [dnaData, setDnaData]           = useState<PlayerDnaResponse | null>(null);
   const [loading, setLoading]   = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -51,6 +53,7 @@ const Index = () => {
       metrics.confidenceDrift(30).then(setDriftData).catch(() => null),
       tournaments.list().then((r) => setTourns(r.tournaments)).catch(() => null),
       metrics.drillStats(30).then(setDrillStats).catch(() => null),
+      metrics.dna(90).then(setDnaData).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
 
@@ -190,6 +193,8 @@ const Index = () => {
                 <RecentForm evolution={evo?.evolution} />
                 <DecisionQualityCard byLabel={breakdown?.by_label} />
               </div>
+
+              <PlayerDnaCard data={dnaData} />
 
               <BankrollChart evolution={evo?.evolution} />
 

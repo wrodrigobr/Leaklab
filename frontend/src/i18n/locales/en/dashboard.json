@@ -159,6 +159,35 @@
     "noStats": "no data",
     "noData": "Import tournaments to calculate your playing profile."
   },
+  "dna": {
+    "title": "Strategic Profile",
+    "tooltip": "Strategic signature based on your real decision patterns. Each axis represents a dimension of your playing style.",
+    "archetype": "Detected archetype",
+    "sampleSize": "{{n}} decisions",
+    "noData": "Import tournaments to calculate your strategic profile.",
+    "axes": {
+      "aggression": "Aggression",
+      "foldFreq": "Fold Freq.",
+      "threeBet": "3-Bet",
+      "positional": "Positional",
+      "discipline": "Discipline",
+      "icm": "ICM Awareness"
+    },
+    "archetypes": {
+      "TAG": "TAG",
+      "LAG": "LAG",
+      "Nit": "Nit",
+      "Calling Station": "Calling Station",
+      "Balanced": "Balanced"
+    },
+    "archetypeDesc": {
+      "TAG": "Selective and aggressive when entering — winning profile in regular MTTs.",
+      "LAG": "Plays many pots and applies pressure — effective, but requires range calibration.",
+      "Nit": "Folds too much — loses passive equity and gets exploited by regulars.",
+      "Calling Station": "Calls too much — makes it easy for opponents to extract EV.",
+      "Balanced": "Well-rounded profile — good range control across multiple positions."
+    }
+  },
   "empty": {
     "phase": "Phase 01 // Data acquisition",
     "loading": "Analyzing tournament…",
