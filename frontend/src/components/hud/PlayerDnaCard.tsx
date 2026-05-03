@@ -86,7 +86,7 @@ export function PlayerDnaCard({ data }: Props) {
         {/* Radar chart */}
         <div className="h-[200px] w-full sm:w-[200px] shrink-0">
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
+            <RadarChart data={chartData} outerRadius="65%" margin={{ top: 15, right: 35, bottom: 20, left: 35 }}>
               <PolarGrid stroke="hsl(var(--border))" />
               <PolarAngleAxis
                 dataKey="metric"
@@ -133,7 +133,7 @@ export function PlayerDnaCard({ data }: Props) {
           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-border/50 pt-3">
             {stats.map(({ label, value }) => (
               <div key={label} className="flex justify-between gap-2">
-                <span className="font-mono text-[9px] uppercase text-muted-foreground truncate">
+                <span className="font-mono text-[9px] uppercase text-muted-foreground">
                   {label}
                 </span>
                 <span className="font-mono text-[11px] font-semibold text-foreground">

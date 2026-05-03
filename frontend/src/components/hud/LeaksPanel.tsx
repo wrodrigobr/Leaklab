@@ -91,7 +91,7 @@ export function LeaksPanel({ leaks }: Props) {
         {data.map((leak) => {
           const sev = severity(leak.avg_score);
           const { dot, badge, Icon } = SEVERITY[sev];
-          const label      = spotLabel(leak.spot);
+          const label       = spotLabel(leak.spot);
           const isCritical  = (leak.priority_rank ?? 99) <= 3;
           const evLoss      = leak.ev_loss_monthly != null ? formatEvLoss(leak.ev_loss_monthly) : "";
           const trendCfg    = leak.trend && leak.trend !== "new" ? TREND_CONFIG[leak.trend] : null;
@@ -102,60 +102,73 @@ export function LeaksPanel({ leaks }: Props) {
           const drillMastered = isDrilling && drillAccuracy != null && drillAccuracy >= 70;
 
           return (
-            <li key={leak.spot} className="flex items-center gap-3 px-4 py-2.5 hover:bg-hud-elevated/40 transition-colors">
-              <span className={cn("size-1.5 shrink-0 rounded-full", dot)} aria-hidden />
+            <li key={leak.spot} className="px-4 py-3 hover:bg-hud-elevated/40 transition-colors">
 
-              <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                <span className="text-xs text-foreground leading-tight truncate">{label}</span>
-                {evLoss && (
-                  <span className="font-mono text-[9px] text-destructive/70 leading-none">
-                    {t("leaks.evLoss", { amount: evLoss })}
+              {/* Linha 1: dot + nome completo do leak (sem truncate) */}
+              <div className="flex items-start gap-2">
+                <span className={cn("size-1.5 shrink-0 rounded-full mt-[5px]", dot)} aria-hidden />
+                <span className="text-xs text-foreground leading-snug">{label}</span>
+              </div>
+
+              {/* Linha 2: badges à esquerda | botão Estudar ancorado à direita */}
+              <div className="flex items-center justify-between gap-2 mt-1.5 pl-3.5">
+
+                {/* Grupo esquerdo: severidade + EV + status */}
+                <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                  <span className={cn(
+                    "inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 font-mono text-[10px] font-bold ring-1",
+                    badge
+                  )}>
+                    <Icon className="size-2.5" aria-hidden />
+                    {leak.n}×
                   </span>
-                )}
-              </span>
 
-              {isDrilling && (
-                <span
-                  className={cn(
-                    "shrink-0 inline-flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ring-1",
-                    drillMastered
-                      ? "text-primary bg-primary/10 ring-primary/20"
-                      : "text-muted-foreground bg-muted/30 ring-border"
+                  {evLoss && (
+                    <span className="shrink-0 font-mono text-[9px] text-destructive/70 leading-none">
+                      {t("leaks.evLoss", { amount: evLoss })}
+                    </span>
                   )}
-                  title={`Ghost Table: ${drillCount}× treinado${drillAccuracy != null ? ` (${drillAccuracy}% acerto)` : ""}`}
+
+                  {isDrilling && (
+                    <span
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-0.5 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ring-1",
+                        drillMastered
+                          ? "text-primary bg-primary/10 ring-primary/20"
+                          : "text-muted-foreground bg-muted/30 ring-border"
+                      )}
+                      title={`Ghost Table: ${drillCount}× treinado${drillAccuracy != null ? ` (${drillAccuracy}% acerto)` : ""}`}
+                    >
+                      <BookOpen className="size-2.5" aria-hidden />
+                      {drillMastered ? t("leaks.drillMastering") : t("leaks.drillPracticing")}
+                    </span>
+                  )}
+
+                  {isCritical && !isDrilling && (
+                    <span className="inline-flex shrink-0 items-center gap-0.5 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-destructive bg-destructive/10 ring-1 ring-destructive/20">
+                      <Flame className="size-2.5" aria-hidden />
+                      {t("leaks.critical")}
+                    </span>
+                  )}
+
+                  {trendCfg && (
+                    <span className={cn("shrink-0", trendCfg.cls)} title={t(trendCfg.key)}>
+                      <trendCfg.Icon className="size-3" aria-hidden />
+                    </span>
+                  )}
+                </div>
+
+                {/* Botão de ação — sempre ancorado à direita */}
+                <button
+                  onClick={() => navigate(`/study?spot=${encodeURIComponent(leak.spot)}`)}
+                  className="shrink-0 inline-flex items-center gap-0.5 font-mono text-[10px] font-bold text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={t("leaks.studyLabel", { spot: label })}
                 >
-                  <BookOpen className="size-2.5" aria-hidden />
-                  {drillMastered ? t("leaks.drillMastering") : t("leaks.drillPracticing")}
-                </span>
-              )}
-              {isCritical && !isDrilling && (
-                <span className="shrink-0 inline-flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-destructive bg-destructive/10 ring-1 ring-destructive/20">
-                  <Flame className="size-2.5" aria-hidden />
-                  {t("leaks.critical")}
-                </span>
-              )}
-              {trendCfg && (
-                <span className={cn("shrink-0", trendCfg.cls)} title={t(trendCfg.key)}>
-                  <trendCfg.Icon className="size-3" aria-hidden />
-                </span>
-              )}
+                  {t("leaks.study")}
+                  <ChevronRight className="size-3" aria-hidden />
+                </button>
+              </div>
 
-              <span className={cn(
-                "shrink-0 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-mono text-[10px] font-bold ring-1",
-                badge
-              )}>
-                <Icon className="size-2.5" aria-hidden />
-                {leak.n}×
-              </span>
-
-              <button
-                onClick={() => navigate(`/study?spot=${encodeURIComponent(leak.spot)}`)}
-                className="shrink-0 inline-flex items-center gap-0.5 font-mono text-[10px] font-bold text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={t("leaks.studyLabel", { spot: label })}
-              >
-                {t("leaks.study")}
-                <ChevronRight className="size-3" aria-hidden />
-              </button>
             </li>
           );
         })}

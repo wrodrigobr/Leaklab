@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.44.0] — 2026-05-03 — UX: LeaksPanel layout + PlayerDnaCard radar fix
+
+### Changed
+- **`LeaksPanel.tsx`**: redesign do layout de cada item — nome do leak em linha própria (sem truncate), badges reorganizadas com `justify-between` — n× badge e EV loss à esquerda como grupo, botão **Estudar** sempre ancorado à direita; elimina hack de `flex-1` spacer e overflow em cards com muitos badges simultâneos.
+- **`PlayerDnaCard.tsx`**: corrige label "Disciplina" cortada no gráfico radar — `outerRadius="65%"` + margens aumentadas (`top:15 right:35 bottom:20 left:35`); remove `truncate` desnecessário nas labels do grid de stats.
+
+---
+
 ## [v0.43.0] — 2026-05-03 — Sprint L: PERF-007 Decision DNA
 
 ### Backend — PERF-007
