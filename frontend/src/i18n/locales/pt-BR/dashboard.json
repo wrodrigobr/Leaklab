@@ -131,7 +131,7 @@
     "alertTitle": "Possível drift de confiança detectado",
     "alertDesc": "{{n}} sessões recentes com qualidade técnica abaixo do seu baseline — possível tilt ou fadiga.",
     "dismiss": "Fechar alerta"
-  }
+  },
   "level": {
     "title": "Meu Nível",
     "noData": "Importe pelo menos 5 torneios para calcular seu nível.",
