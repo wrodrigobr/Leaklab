@@ -2597,6 +2597,7 @@ def get_player_dna(user_id: int, days: int = 90) -> dict:
     Computa a assinatura estratégica do jogador a partir dos padrões de decisão.
     Retorna métricas normalizadas 0-100 + arquétipo classificado.
     """
+    from datetime import datetime, timedelta
     conn = get_conn()
     try:
         cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
