@@ -194,8 +194,6 @@ const Index = () => {
                 <DecisionQualityCard byLabel={breakdown?.by_label} />
               </div>
 
-              <PlayerDnaCard data={dnaData} />
-
               <BankrollChart evolution={evo?.evolution} />
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -203,15 +201,17 @@ const Index = () => {
                 <PositionChart byPosition={breakdown?.by_position} />
               </div>
 
+              <PlayerDnaCard data={dnaData} />
+
               <RecentTournamentsTable tournaments={tourns} />
             </div>
 
             <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
-              {levelData?.level && <LevelCard data={levelData} showStudyLink />}
-              <GhostDrillCard stats={drillStats} />
               <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} />
+              {levelData?.level && <LevelCard data={levelData} showStudyLink />}
               <IcmBreakdown icm={evo?.icm} />
               <PressureProfileCard data={pressureData} />
+              <GhostDrillCard stats={drillStats} />
 
               <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
                 <div className="mb-3 flex items-center justify-between">

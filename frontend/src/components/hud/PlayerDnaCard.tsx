@@ -125,7 +125,7 @@ export function PlayerDnaCard({ data }: Props) {
                 {t(`dna.archetypes.${archetype}`, { defaultValue: archetype })}
               </span>
             </div>
-            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground line-clamp-2">
               {t(`dna.archetypeDesc.${archetype}`, { defaultValue: "" })}
             </p>
           </div>
