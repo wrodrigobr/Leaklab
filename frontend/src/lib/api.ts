@@ -348,6 +348,17 @@ export interface PlayerStatsResponse {
   w_at_sd: number | null;
 }
 
+export interface LeakRoiData {
+  spot: string;
+  n: number;
+  avg_score: number;
+  total_score: number;
+  avg_buy_in: number;
+  ev_loss_monthly: number;
+  priority_score: number;
+  priority_rank: number;
+}
+
 export const metrics = {
   evolution: (days = 90) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}`),
@@ -360,6 +371,9 @@ export const metrics = {
 
   level: () =>
     request<PlayerLevel>(`/metrics/level`),
+
+  leakRoi: (days = 90) =>
+    request<{ leaks: LeakRoiData[] }>(`/player/leak-roi?days=${days}`),
 };
 
 // ── Player Level / Gamification (BACK-009) ────────────────────────────────────

@@ -410,6 +410,43 @@ def get_leak_summary(user_id: int, days: int = 90) -> List[dict]:
     finally:
         conn.close()
 
+def get_leak_roi_impact(user_id: int, days: int = 90) -> list:
+    """Leaks enriquecidos com ROI estimado e priority_score = n × avg_score."""
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt("""
+            SELECT
+                d.street || '/' || d.best_action  AS spot,
+                COUNT(*)                           AS n,
+                AVG(d.score)                       AS avg_score,
+                SUM(d.score)                       AS total_score,
+                AVG(COALESCE(t.buy_in, 0))         AS avg_buy_in,
+                COUNT(*) * AVG(d.score)            AS priority_score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND t.imported_at >= ?
+              AND d.label IN ('small_mistake','clear_mistake')
+            GROUP BY spot
+            HAVING COUNT(*) >= 2
+            ORDER BY priority_score DESC
+            LIMIT 10
+        """), (user_id, since)).fetchall()
+
+        result = []
+        for rank, row in enumerate(rows, 1):
+            r = dict(row)
+            n_monthly = r['n'] * (30.0 / days)
+            r['ev_loss_monthly'] = round(n_monthly * r['avg_score'] * (r['avg_buy_in'] or 0) * 0.10, 2)
+            r['priority_rank'] = rank
+            result.append(r)
+        return result
+    finally:
+        conn.close()
+
+
 def get_icm_performance(user_id: int, days: int = 90) -> dict:
     """Performance separada por nível de ICM pressure."""
     from datetime import datetime, timedelta
@@ -1826,19 +1863,19 @@ def get_payments(user_id: int, limit: int = 20) -> List[dict]:
         conn.close()
 
 
-def update_user_plan(user_id: int, plan: str, mp_subscription_id: str | None = None) -> None:
+def update_user_plan(user_id: int, plan: str, subscription_id: str | None = None) -> None:
     conn = get_conn()
     try:
         conn.execute(
-            "UPDATE users SET plan = ?, mp_subscription_id = ? WHERE id = ?",
-            (plan, mp_subscription_id, user_id),
+            _adapt("UPDATE users SET plan = ?, mp_subscription_id = ? WHERE id = ?"),
+            (plan, subscription_id, user_id),
         )
         conn.commit()
     finally:
         conn.close()
 
 
-def get_user_by_mp_subscription(sub_id: str) -> Optional[dict]:
+def get_user_by_subscription(sub_id: str) -> Optional[dict]:
     conn = get_conn()
     try:
         row = conn.execute(

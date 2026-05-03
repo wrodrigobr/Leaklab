@@ -2,7 +2,8 @@
 
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
-> **Sprints já entregues:** Sprints 1–13 + Sprint A + Sprint B + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.33.0.
+> **Sprints já entregues:** Sprints 1–13 + Sprint A–F + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.38.0.
+> **Sprint atual:** Sprint I — PERF-001 (ROI Attribution) + PERF-002 (Leak Priority Optimizer)
 
 ---
 
@@ -51,6 +52,11 @@ Fix aplicado: quando herói é eliminado sem ITM no PokerStars (`finished the to
 | Sprint C+E | BACK-014 + BACK-017 | Revenue share + Admin Panel | ✅ v0.34.0 |
 | Sprint D | BACK-016 | WhatsApp Coaching Drills | ✅ v0.36.0 |
 | Sprint F | UX-005 | Internacionalização (i18n) — PT/EN/ES | ✅ v0.35.0 |
+| Sprint G | UX-006 | Header cleanup + i18n full coverage | ✅ v0.37.0 |
+| Sprint H | UX-007 | Dashboard cards i18n — 11 componentes | ✅ v0.38.0 |
+| **Sprint I** | **PERF-001 + PERF-002** | **ROI Attribution Engine + Leak Priority Optimizer** | 🔄 Em desenvolvimento |
+| Sprint J | PERF-003 + PERF-004 + PERF-005 | Leak Progression + Pressure Collapse + Confidence Drift | 📋 Backlog |
+| Sprint K | PERF-006 | Ghost Table Simulator MVP | 📋 Backlog |
 
 ---
 
@@ -416,3 +422,196 @@ Prioridade média (após MVP):
 - Tradução ES (revisar com falante nativo ou ajuste Claude): ~3h
 - Integração nas telas de alta prioridade: ~4h
 - **Total: ~1 sprint grande (~18h)**
+
+---
+
+## [PERF-001] — ROI Attribution Engine *(Sprint I)*
+
+**Reportado:** 2026-05-03
+**Prioridade:** Crítica — transforma análise técnica em custo financeiro real; diferencial de conversão
+
+### Visão
+
+Para cada leak detectado, estimar o custo mensal em dólares com base na frequência de ocorrência, severidade do erro (mistake_score) e buy-in médio dos torneios onde o leak aconteceu.
+
+**Fórmula:**
+```
+ev_loss_monthly = (n × 30 / days) × avg_score × avg_buy_in × 0.10
+```
+
+O fator `0.10` é o calibrador empírico: cada unidade de mistake_score por ocorrência custa ~10% do buy-in. Um `clear_mistake` (score ≈ 0.6) em torneios de $10 custa ~$0.60/ocorrência.
+
+### Campos retornados pelo novo endpoint
+
+```json
+{
+  "leaks": [
+    {
+      "spot": "preflop/fold",
+      "n": 15,
+      "avg_score": 0.52,
+      "total_score": 7.8,
+      "avg_buy_in": 10.0,
+      "ev_loss_monthly": 7.80,
+      "priority_score": 7.80,
+      "priority_rank": 1
+    }
+  ]
+}
+```
+
+### Implementação
+
+**Backend:**
+- `repositories.py` — `get_leak_roi_impact(user_id, days)`: query enriquecida com `AVG(t.buy_in)` e cálculo de `priority_score = n × avg_score`; ordenada por `priority_score DESC`
+- `app.py` — `GET /player/leak-roi`: protegido por `@require_auth`, retorna leaks com ROI
+
+**Frontend:**
+- `lib/api.ts` — interface `LeakRoiData` + `metrics.leakRoi(days)`
+- `pages/Index.tsx` — fetch paralelo de `leakRoi` no `Promise.all` do dashboard
+- `components/hud/LeaksPanel.tsx` — badge de custo mensal (`~$12/mês`) por leak; usa `leakRoi` se disponível
+- Locales `dashboard.json` (PT/EN/ES) — chaves `leaks.evLoss`, `leaks.evLossSmall`
+
+### Esforço estimado
+- Backend (query + endpoint): ~3h
+- Frontend (api.ts + Index + LeaksPanel): ~3h
+- i18n (3 locales): ~0.5h
+- **Total: ~6.5h**
+
+---
+
+## [PERF-002] — Leak Priority Optimizer *(Sprint I)*
+
+**Reportado:** 2026-05-03
+**Prioridade:** Crítica — torna o plano de estudos um diagnóstico real, não uma lista arbitrária
+
+### Visão
+
+Rankear leaks por `priority_score = n × avg_score` (frequência × severidade). Os 3 primeiros recebem badge "CRÍTICO". O plano de estudos é reordenado pelo mesmo critério.
+
+O ordering atual (`avg_score DESC`) privilegia leaks raros mas severos. O novo ordering privilegia leaks com maior impacto total no resultado do jogador.
+
+### Implementação
+
+Integrada ao PERF-001: `get_leak_roi_impact()` já retorna `priority_score` e `priority_rank`.
+
+**Frontend adicional:**
+- `LeaksPanel.tsx` — badge `CRÍTICO` para `priority_rank <= 3`; ícone `Flame` vermelho
+- Badge distinto de severity: severity é baseado em `avg_score`; priority badge é baseado em `priority_rank`
+
+### Esforço estimado
+- Embutido no PERF-001 (~1h extra no frontend)
+
+---
+
+## [PERF-003] — Leak Progression Engine *(Sprint J)*
+
+**Reportado:** 2026-05-03
+**Prioridade:** Alta — retenção; jogador precisa ver evolução para continuar usando a plataforma
+
+### Visão
+
+Rastrear evolução temporal dos leaks: severidade por semana, tendência de melhora/regressão, velocidade de correção. Exibir gráfico de linha por leak ao longo do tempo.
+
+### Implementação
+
+**Backend:**
+- `repositories.py` — `get_leak_progression(user_id, weeks=8)`: agrupa decisões por `(spot, week)`, retorna `avg_score` por período
+- `app.py` — `GET /player/leak-progression`
+
+**Frontend:**
+- Novo card no dashboard (ou aba no detail de leak) com gráfico de tendência
+- Exibir: "Melhorando ↓", "Estagnado →", "Regredindo ↑" com base na slope
+
+### Esforço estimado: ~5h backend + ~6h frontend
+
+---
+
+## [PERF-004] — Pressure Collapse Detection *(Sprint J)*
+
+**Reportado:** 2026-05-03
+**Prioridade:** Alta — diferencial MTT específico; `mtt_context.py` já fornece os dados
+
+### Visão
+
+Comparar `mistake_score` médio do jogador por contexto de pressão ICM (`high`/`medium`/`low`/`none`). Detectar se o jogador degrada tecnicamente em bubble, FT ou spots de alto ICM.
+
+### Implementação
+
+**Backend:**
+- Query: `SELECT icm_pressure, AVG(score), COUNT(*) FROM decisions ... GROUP BY icm_pressure`
+- Já parcialmente disponível em `get_icm_performance()` — estender para retornar `avg_score` segmentado
+- Calcular `collapse_delta = avg_score_high - avg_score_none` (positivo = colapso sob pressão)
+- `app.py` — `GET /player/pressure-profile`
+
+**Frontend:**
+- Novo card "Pressão ICM" com comparativo: score baseline vs. score em alta pressão
+- Destaque vermelho se `collapse_delta > 0.08`
+
+### Esforço estimado: ~3h backend + ~4h frontend
+
+---
+
+## [PERF-005] — Confidence Drift Monitor *(Sprint J)*
+
+**Reportado:** 2026-05-03
+**Prioridade:** Média-alta — mental game é sub-explorado por concorrentes
+
+### Visão
+
+Detectar degradação de qualidade técnica após sequências negativas: bad beats, pots grandes perdidos, sequência de 3+ torneios abaixo do baseline.
+
+**Heurística:** identificar janelas de N decisões consecutivas onde `avg_score > baseline × 1.3` (30% acima do normal do jogador), especialmente após mãos com `showdown_result = 'lost'` em potes grandes.
+
+### Implementação
+
+**Backend:**
+- `repositories.py` — `get_confidence_drift(user_id, days=30)`: janela deslizante de 10 decisões, flag drift se slope > threshold
+- `app.py` — `GET /player/confidence-drift`
+
+**Frontend:**
+- Alerta contextual no dashboard: "Sessão X — possível tilt detectado"
+- Badge discreto, não alarmista
+
+### Esforço estimado: ~4h backend + ~3h frontend
+
+---
+
+## [PERF-006] — Ghost Table Simulator MVP *(Sprint K)*
+
+**Reportado:** 2026-05-03
+**Prioridade:** Alta — aprendizado ativo; diferencial de produto mais difícil de copiar
+
+### Visão
+
+Reapresentar spots reais do histórico do jogador para que ele tome nova decisão. Comparar: decisão original vs. nova decisão vs. ideal (`best_action`). Score a nova decisão com o engine.
+
+### Fases do MVP
+
+**Fase 1 (backend + API):**
+- `GET /player/spots/drill` — retorna N spots filtráveis por leak, street, posição; exclui spots já revisados
+- Payload: `{hand_context, hero_cards, board, street, position, stack_bb, m_ratio, original_action, best_action, score}`
+
+**Fase 2 (frontend — drill mode):**
+- Modo sequencial de spots: apresenta contexto da mão, pede ação (fold/call/raise/jam)
+- Avalia com engine, exibe score comparativo, mostra explicação
+
+**Fase 3 (persistência de sessão):**
+- Registrar cada redecisão em `drill_sessions` para rastrear melhora no drill
+
+### Modelo de dados
+
+```sql
+CREATE TABLE drill_sessions (
+    id            SERIAL PRIMARY KEY,
+    user_id       INTEGER NOT NULL REFERENCES users(id),
+    decision_id   INTEGER NOT NULL REFERENCES decisions(id),
+    new_action    TEXT    NOT NULL,
+    new_score     REAL    NOT NULL,
+    original_score REAL   NOT NULL,
+    delta         REAL    NOT NULL,
+    drilled_at    TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+### Esforço estimado: ~5h backend + ~10h frontend (UI intensiva)

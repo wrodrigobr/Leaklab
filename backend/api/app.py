@@ -33,7 +33,7 @@ from database.repositories import (
     save_tournament, save_decisions, get_tournaments,
     get_tournament, get_tournament_by_db_id, get_decisions, update_llm_summary,
     get_llm_cache, set_llm_cache,
-    get_evolution_metrics, get_leak_summary, get_icm_performance, get_breakdown, get_player_stats,
+    get_evolution_metrics, get_leak_summary, get_leak_roi_impact, get_icm_performance, get_breakdown, get_player_stats,
     get_player_level,
     get_students,
     # Coach system
@@ -528,6 +528,14 @@ def player_stats():
 @require_auth
 def player_level():
     return jsonify(get_player_level(g.user_id))
+
+
+@app.route('/player/leak-roi', methods=['GET'])
+@require_auth
+def player_leak_roi():
+    """PERF-001 — Leaks com ROI estimado e priority score."""
+    days = int(request.args.get('days', 90))
+    return jsonify({'leaks': get_leak_roi_impact(g.user_id, days)})
 
 
 # ── Coach: nível do aluno ────────────────────────────────────────────────────

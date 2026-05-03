@@ -40,7 +40,9 @@
     "title": "Top Leaks detectados",
     "study": "Estudar",
     "studyLabel": "Estudar leak {{spot}}",
-    "doing": "{{street}} — dando {{action}} quando não devia"
+    "doing": "{{street}} — dando {{action}} quando não devia",
+    "critical": "Crítico",
+    "evLoss": "{{amount}}/mês"
   },
   "bankroll": {
     "title": "Evolução do bankroll",

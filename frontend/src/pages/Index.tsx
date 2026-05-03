@@ -17,7 +17,7 @@ import { HudTooltip } from "@/components/hud/HudTooltip";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { LevelCard } from "@/components/hud/LevelCard";
-import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse } from "@/lib/api";
+import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
@@ -29,6 +29,7 @@ const Index = () => {
   const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStatsResponse | null>(null);
   const [tourns, setTourns]     = useState<Tournament[]>([]);
+  const [leakRoi, setLeakRoi]   = useState<LeakRoiData[]>([]);
   const [loading, setLoading]   = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -38,6 +39,7 @@ const Index = () => {
       metrics.evolution(90).then(setEvo).catch(() => null),
       metrics.breakdown(90).then(setBreakdown).catch(() => null),
       metrics.playerStats(90).then(setPlayerStats).catch(() => null),
+      metrics.leakRoi(90).then((r) => setLeakRoi(r.leaks)).catch(() => null),
       tournaments.list().then((r) => setTourns(r.tournaments)).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
@@ -170,7 +172,7 @@ const Index = () => {
 
             <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
               {levelData?.level && <LevelCard data={levelData} showStudyLink />}
-              <LeaksPanel leaks={evo?.leaks} />
+              <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} />
               <IcmBreakdown icm={evo?.icm} />
 
               <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">

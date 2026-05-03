@@ -1,4 +1,4 @@
-import { ChevronRight, ShieldAlert, AlertTriangle, TrendingDown } from "lucide-react";
+import { ChevronRight, ShieldAlert, AlertTriangle, TrendingDown, Flame } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,8 @@ interface LeakData {
   spot: string;
   n: number;
   avg_score: number;
+  ev_loss_monthly?: number;
+  priority_rank?: number;
 }
 
 interface Props {
@@ -34,16 +36,22 @@ function severity(score: number): Severity {
   return "minor";
 }
 
+function formatEvLoss(amount: number): string {
+  if (amount < 0.01) return "";
+  if (amount < 1)    return `~$${amount.toFixed(2)}`;
+  return `~$${Math.round(amount)}`;
+}
+
 const FALLBACK: LeakData[] = [
-  { spot: "over_aggression_oop_3bet",       n: 24, avg_score: 0.42 },
-  { spot: "sb_fold_vs_btn_steal",           n: 18, avg_score: 0.28 },
-  { spot: "river_check_call_flush_board",   n: 11, avg_score: 0.21 },
+  { spot: "over_aggression_oop_3bet",     n: 24, avg_score: 0.42 },
+  { spot: "sb_fold_vs_btn_steal",         n: 18, avg_score: 0.28 },
+  { spot: "river_check_call_flush_board", n: 11, avg_score: 0.21 },
 ];
 
 export function LeaksPanel({ leaks }: Props) {
-  const navigate  = useNavigate();
-  const { t } = useTranslation("dashboard");
-  const data      = leaks && leaks.length > 0 ? leaks.slice(0, 6) : FALLBACK;
+  const navigate   = useNavigate();
+  const { t }      = useTranslation("dashboard");
+  const data       = leaks && leaks.length > 0 ? leaks.slice(0, 6) : FALLBACK;
   const isFallback = !leaks || leaks.length === 0;
 
   function spotLabel(spot: string): string {
@@ -73,13 +81,30 @@ export function LeaksPanel({ leaks }: Props) {
         {data.map((leak) => {
           const sev = severity(leak.avg_score);
           const { dot, badge, Icon } = SEVERITY[sev];
-          const label = spotLabel(leak.spot);
+          const label      = spotLabel(leak.spot);
+          const isCritical = (leak.priority_rank ?? 99) <= 3;
+          const evLoss     = leak.ev_loss_monthly != null ? formatEvLoss(leak.ev_loss_monthly) : "";
+
           return (
             <li key={leak.spot} className="flex items-center gap-3 px-4 py-2.5 hover:bg-hud-elevated/40 transition-colors">
               <span className={cn("size-1.5 shrink-0 rounded-full", dot)} aria-hidden />
-              <span className="flex-1 text-xs text-foreground leading-tight truncate min-w-0">
-                {label}
+
+              <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                <span className="text-xs text-foreground leading-tight truncate">{label}</span>
+                {evLoss && (
+                  <span className="font-mono text-[9px] text-destructive/70 leading-none">
+                    {t("leaks.evLoss", { amount: evLoss })}
+                  </span>
+                )}
               </span>
+
+              {isCritical && (
+                <span className="shrink-0 inline-flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-destructive bg-destructive/10 ring-1 ring-destructive/20">
+                  <Flame className="size-2.5" aria-hidden />
+                  {t("leaks.critical")}
+                </span>
+              )}
+
               <span className={cn(
                 "shrink-0 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-mono text-[10px] font-bold ring-1",
                 badge
@@ -87,6 +112,7 @@ export function LeaksPanel({ leaks }: Props) {
                 <Icon className="size-2.5" aria-hidden />
                 {leak.n}×
               </span>
+
               <button
                 onClick={() => navigate(`/study?spot=${encodeURIComponent(leak.spot)}`)}
                 className="shrink-0 inline-flex items-center gap-0.5 font-mono text-[10px] font-bold text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

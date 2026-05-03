@@ -9,6 +9,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.39.0] — 2026-05-03 — Sprint I: PERF-001 + PERF-002 ROI Attribution + Leak Priority
+
+### Backend — PERF-001: ROI Attribution Engine
+
+- **`repositories.py`** — `get_leak_roi_impact(user_id, days)`: query enriquecida com `AVG(t.buy_in)`, `priority_score = n × avg_score`, `ev_loss_monthly = (n×30/days) × avg_score × avg_buy_in × 0.10`; ordenada por `priority_score DESC`
+- **`app.py`** — `GET /player/leak-roi`: endpoint protegido por `@require_auth`; importa `get_leak_roi_impact`
+
+### Frontend — PERF-001 + PERF-002
+
+- **`lib/api.ts`** — interface `LeakRoiData` com campos `ev_loss_monthly`, `priority_score`, `priority_rank`; `metrics.leakRoi(days)`
+- **`pages/Index.tsx`** — fetch paralelo de `leakRoi`; passa ao `LeaksPanel` quando disponível
+- **`components/hud/LeaksPanel.tsx`** — custo mensal estimado por leak (`~$X/mês`); badge `CRÍTICO` com ícone chama para `priority_rank ≤ 3`
+- **Locales** — chaves `leaks.critical` e `leaks.evLoss` adicionadas a `dashboard.json` (PT-BR + EN + ES)
+
+### Backlog
+
+- **`BACKLOG.md`** — roadmap atualizado com Sprint I (🔄), J, K (📋); specs completos de PERF-001 a PERF-006
+
 ## [v0.38.0] — 2026-05-03 — Sprint H: UX-007 Dashboard i18n — cards traduzidos
 
 ### Frontend — Dashboard cards i18n (bug fix)
