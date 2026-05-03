@@ -30,11 +30,40 @@ const ICM_COLORS: Record<string, string> = {
 
 function parseCards(raw: string | null): CardData[] {
   if (!raw) return [];
-  return raw.trim().split(/\s+/).flatMap((token) => {
-    if (token.length < 2) return [];
-    const rank = token.slice(0, -1);
+  const SUITS = ["s", "h", "d", "c"];
+
+  // JSON array format: ["4h", "4c", "As"] or ['4h','4c']
+  if (raw.trim().startsWith("[")) {
+    try {
+      const arr: string[] = JSON.parse(raw);
+      return arr.flatMap((t) => parseCards(t));
+    } catch { return []; }
+  }
+
+  // Concatenated format without spaces: "4sAd" → ["4s", "Ad"]
+  // Also handles space-separated: "4s Ad" → ["4s", "Ad"]
+  const tokens: string[] = [];
+  const str = raw.replace(/\s+/g, "");
+  let i = 0;
+  while (i < str.length) {
+    // rank can be 1 or 2 chars (T, J, Q, K, A, 2-9, 10)
+    const twoChar = str.slice(i, i + 2);
+    const threeChar = str.slice(i, i + 3);
+    if (threeChar.length === 3 && SUITS.includes(threeChar[2].toLowerCase()) && twoChar === "10") {
+      tokens.push(threeChar);
+      i += 3;
+    } else if (twoChar.length === 2 && SUITS.includes(twoChar[1].toLowerCase())) {
+      tokens.push(twoChar);
+      i += 2;
+    } else {
+      i++;
+    }
+  }
+
+  return tokens.flatMap((token) => {
     const suit = token.slice(-1).toLowerCase() as "s" | "h" | "d" | "c";
-    if (!["s", "h", "d", "c"].includes(suit)) return [];
+    const rank = token.slice(0, -1).toUpperCase();
+    if (!SUITS.includes(suit) || !rank) return [];
     return [{ rank, suit }];
   });
 }
@@ -79,7 +108,8 @@ export default function GhostTable() {
       setSessionTotal(0);
       setLastResult(null);
       setPhase("active");
-    } catch {
+    } catch (err) {
+      console.error("[GhostTable] startDrill error:", err);
       setLoadError(t("errorLoad"));
       setPhase("intro");
     }
