@@ -42,7 +42,10 @@
     "studyLabel": "Estudar leak {{spot}}",
     "doing": "{{street}} — dando {{action}} quando não devia",
     "critical": "Crítico",
-    "evLoss": "{{amount}}/mês"
+    "evLoss": "{{amount}}/mês",
+    "trendImproving": "Melhorando",
+    "trendRegressing": "Regredindo",
+    "trendStagnant": "Estagnado"
   },
   "bankroll": {
     "title": "Evolução do bankroll",
@@ -111,6 +114,24 @@
     "low": "Baixa",
     "none": "Sem ICM"
   },
+  "pressure": {
+    "title": "Colapso sob Pressão",
+    "tooltip": "Compara a qualidade técnica das suas decisões em diferentes níveis de pressão ICM. Um jogador sólido mantém o mesmo score independente da pressão. Delta acima de 8pts indica colapso.",
+    "noData": "Dados insuficientes para análise de pressão.",
+    "none": "Sem ICM",
+    "low": "ICM baixo",
+    "medium": "ICM médio",
+    "high": "ICM alto",
+    "collapseDetected": "Colapso",
+    "solid": "Sólido",
+    "collapseSummary": "Score +{{delta}}pts pior sob alta pressão ICM — foco em spots de bubble e FT.",
+    "stableSummary": "Performance estável — variação de apenas {{delta}}pts entre pressão alta e sem pressão."
+  },
+  "drift": {
+    "alertTitle": "Possível drift de confiança detectado",
+    "alertDesc": "{{n}} sessões recentes com qualidade técnica abaixo do seu baseline — possível tilt ou fadiga.",
+    "dismiss": "Fechar alerta"
+  }
   "level": {
     "title": "Meu Nível",
     "noData": "Importe pelo menos 5 torneios para calcular seu nível.",

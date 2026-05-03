@@ -42,7 +42,10 @@
     "studyLabel": "Study leak {{spot}}",
     "doing": "{{street}} — doing {{action}} when you shouldn't",
     "critical": "Critical",
-    "evLoss": "{{amount}}/mo"
+    "evLoss": "{{amount}}/mo",
+    "trendImproving": "Improving",
+    "trendRegressing": "Regressing",
+    "trendStagnant": "Stagnant"
   },
   "bankroll": {
     "title": "Bankroll evolution",
@@ -110,6 +113,24 @@
     "medium": "Medium",
     "low": "Low",
     "none": "No ICM"
+  },
+  "pressure": {
+    "title": "Pressure Collapse",
+    "tooltip": "Compares your decision quality across ICM pressure levels. A solid player maintains consistent scores regardless of pressure. A delta above 8pts indicates collapse.",
+    "noData": "Insufficient data for pressure analysis.",
+    "none": "No ICM",
+    "low": "Low ICM",
+    "medium": "Medium ICM",
+    "high": "High ICM",
+    "collapseDetected": "Collapse",
+    "solid": "Solid",
+    "collapseSummary": "Score +{{delta}}pts worse under high ICM pressure — focus on bubble and FT spots.",
+    "stableSummary": "Stable performance — only {{delta}}pts variation between high pressure and no pressure."
+  },
+  "drift": {
+    "alertTitle": "Possible confidence drift detected",
+    "alertDesc": "{{n}} recent sessions with technical quality below your baseline — possible tilt or fatigue.",
+    "dismiss": "Dismiss"
   },
   "level": {
     "title": "My Level",

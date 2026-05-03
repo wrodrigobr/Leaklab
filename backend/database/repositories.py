@@ -411,9 +411,13 @@ def get_leak_summary(user_id: int, days: int = 90) -> List[dict]:
         conn.close()
 
 def get_leak_roi_impact(user_id: int, days: int = 90) -> list:
-    """Leaks enriquecidos com ROI estimado e priority_score = n × avg_score."""
+    """Leaks enriquecidos com ROI estimado, priority_score e trend de progressão."""
     from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    now   = datetime.utcnow()
+    since = (now - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    # Trend: compare last 30 days vs. previous 30 days
+    recent_since = (now - timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    prev_since   = (now - timedelta(days=60)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
         rows = conn.execute(_adapt("""
@@ -435,14 +439,155 @@ def get_leak_roi_impact(user_id: int, days: int = 90) -> list:
             LIMIT 10
         """), (user_id, since)).fetchall()
 
+        # Recent period scores for trend comparison
+        recent_rows = conn.execute(_adapt("""
+            SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+              AND d.label IN ('small_mistake','clear_mistake')
+            GROUP BY spot
+        """), (user_id, recent_since)).fetchall()
+        recent_map = {r['spot']: r['avg_score'] for r in recent_rows}
+
+        # Previous period scores
+        prev_rows = conn.execute(_adapt("""
+            SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ? AND t.imported_at < ?
+              AND d.label IN ('small_mistake','clear_mistake')
+            GROUP BY spot
+        """), (user_id, prev_since, recent_since)).fetchall()
+        prev_map = {r['spot']: r['avg_score'] for r in prev_rows}
+
         result = []
         for rank, row in enumerate(rows, 1):
             r = dict(row)
             n_monthly = r['n'] * (30.0 / days)
             r['ev_loss_monthly'] = round(n_monthly * r['avg_score'] * (r['avg_buy_in'] or 0) * 0.10, 2)
             r['priority_rank'] = rank
+            # Trend: negative score change = improving (fewer/smaller mistakes)
+            s_recent = recent_map.get(r['spot'])
+            s_prev   = prev_map.get(r['spot'])
+            if s_recent is None or s_prev is None:
+                r['trend'] = 'new'
+            elif s_recent < s_prev * 0.85:
+                r['trend'] = 'improving'
+            elif s_recent > s_prev * 1.15:
+                r['trend'] = 'regressing'
+            else:
+                r['trend'] = 'stagnant'
             result.append(r)
         return result
+    finally:
+        conn.close()
+
+
+def get_pressure_profile(user_id: int, days: int = 90) -> dict:
+    """PERF-004 — Detecta colapso técnico sob pressão ICM."""
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    conn = get_conn()
+    try:
+        # Per-pressure avg_score (baseline = all decisions, not just mistakes)
+        rows = conn.execute(_adapt("""
+            SELECT
+                COALESCE(d.icm_pressure, 'none') AS pressure,
+                COUNT(*)                          AS n,
+                AVG(d.score)                      AS avg_score,
+                AVG(CASE WHEN d.label='standard' THEN 1.0 ELSE 0.0 END) AS standard_rate
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+            GROUP BY pressure
+            HAVING COUNT(*) >= 3
+        """), (user_id, since)).fetchall()
+
+        pressure_map = {r['pressure']: dict(r) for r in rows}
+
+        baseline_row = conn.execute(_adapt("""
+            SELECT AVG(d.score) AS avg_score, COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+        """), (user_id, since)).fetchone()
+
+        baseline_score = baseline_row['avg_score'] if baseline_row else None
+
+        score_high = pressure_map.get('high', {}).get('avg_score')
+        score_none = pressure_map.get('none', {}).get('avg_score')
+        collapse_delta = None
+        if score_high is not None and score_none is not None:
+            collapse_delta = round(score_high - score_none, 4)
+
+        return {
+            'baseline_score':  round(baseline_score, 4) if baseline_score else None,
+            'by_pressure':     pressure_map,
+            'collapse_delta':  collapse_delta,
+            'has_collapse':    collapse_delta is not None and collapse_delta > 0.08,
+        }
+    finally:
+        conn.close()
+
+
+def get_confidence_drift(user_id: int, days: int = 30) -> dict:
+    """PERF-005 — Detecta sessões com degradação técnica (possível tilt)."""
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    conn = get_conn()
+    try:
+        # Per-tournament avg_score
+        tourn_rows = conn.execute(_adapt("""
+            SELECT
+                t.id              AS tournament_id,
+                t.tournament_name AS name,
+                t.played_at,
+                COUNT(d.id)       AS n_decisions,
+                AVG(d.score)      AS avg_score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+            GROUP BY t.id
+            HAVING COUNT(d.id) >= 3
+            ORDER BY t.played_at DESC
+        """), (user_id, since)).fetchall()
+
+        if not tourn_rows:
+            return {'drift_detected': False, 'affected_sessions': 0, 'severity': None, 'sessions': []}
+
+        scores = [r['avg_score'] for r in tourn_rows if r['avg_score'] is not None]
+        if not scores:
+            return {'drift_detected': False, 'affected_sessions': 0, 'severity': None, 'sessions': []}
+
+        baseline = sum(scores) / len(scores)
+        threshold = baseline * 1.30
+
+        flagged = [
+            {
+                'tournament_id': r['tournament_id'],
+                'name':          r['name'],
+                'played_at':     r['played_at'],
+                'avg_score':     round(r['avg_score'], 4),
+                'delta_pct':     round((r['avg_score'] - baseline) / baseline * 100, 1) if baseline else 0,
+            }
+            for r in tourn_rows
+            if r['avg_score'] is not None and r['avg_score'] > threshold
+        ]
+
+        n = len(flagged)
+        severity = None
+        if n >= 5:   severity = 'severe'
+        elif n >= 3: severity = 'moderate'
+        elif n >= 1: severity = 'mild'
+
+        return {
+            'drift_detected':   n > 0,
+            'affected_sessions': n,
+            'severity':         severity,
+            'baseline_score':   round(baseline, 4),
+            'sessions':         flagged[:5],
+        }
     finally:
         conn.close()
 

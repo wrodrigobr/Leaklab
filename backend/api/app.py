@@ -33,7 +33,9 @@ from database.repositories import (
     save_tournament, save_decisions, get_tournaments,
     get_tournament, get_tournament_by_db_id, get_decisions, update_llm_summary,
     get_llm_cache, set_llm_cache,
-    get_evolution_metrics, get_leak_summary, get_leak_roi_impact, get_icm_performance, get_breakdown, get_player_stats,
+    get_evolution_metrics, get_leak_summary, get_leak_roi_impact,
+    get_pressure_profile, get_confidence_drift,
+    get_icm_performance, get_breakdown, get_player_stats,
     get_player_level,
     get_students,
     # Coach system
@@ -533,9 +535,25 @@ def player_level():
 @app.route('/player/leak-roi', methods=['GET'])
 @require_auth
 def player_leak_roi():
-    """PERF-001 — Leaks com ROI estimado e priority score."""
+    """PERF-001+002 — Leaks com ROI estimado, priority score e trend."""
     days = int(request.args.get('days', 90))
     return jsonify({'leaks': get_leak_roi_impact(g.user_id, days)})
+
+
+@app.route('/player/pressure-profile', methods=['GET'])
+@require_auth
+def player_pressure_profile():
+    """PERF-004 — Perfil de colapso técnico sob pressão ICM."""
+    days = int(request.args.get('days', 90))
+    return jsonify(get_pressure_profile(g.user_id, days))
+
+
+@app.route('/player/confidence-drift', methods=['GET'])
+@require_auth
+def player_confidence_drift():
+    """PERF-005 — Detecta sessões com possível tilt/drift de confiança."""
+    days = int(request.args.get('days', 30))
+    return jsonify(get_confidence_drift(g.user_id, days))
 
 
 # ── Coach: nível do aluno ────────────────────────────────────────────────────

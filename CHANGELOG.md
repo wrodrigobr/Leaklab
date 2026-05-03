@@ -9,6 +9,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.40.0] — 2026-05-03 — Sprint J: PERF-003+004+005 Leak Progression + Pressure Collapse + Drift
+
+### Backend — PERF-003: Leak Progression (trend)
+
+- **`repositories.py`** — `get_leak_roi_impact()` estendido: compara avg_score dos últimos 30 dias vs. 30-60 dias anteriores por spot; retorna `trend`: `improving` / `stagnant` / `regressing` / `new`
+
+### Backend — PERF-004: Pressure Collapse Detection
+
+- **`repositories.py`** — `get_pressure_profile(user_id, days)`: baseline score geral + avg_score por `icm_pressure`; calcula `collapse_delta = score_high - score_none`; flag `has_collapse` se delta > 0.08
+- **`app.py`** — `GET /player/pressure-profile`
+
+### Backend — PERF-005: Confidence Drift Monitor
+
+- **`repositories.py`** — `get_confidence_drift(user_id, days=30)`: detecta torneios com avg_score > baseline × 1.30; retorna `drift_detected`, `severity` (mild/moderate/severe), lista de sessões afetadas
+- **`app.py`** — `GET /player/confidence-drift`
+
+### Frontend — Sprint J completo
+
+- **`lib/api.ts`** — interfaces `PressureProfile`, `ConfidenceDrift`; `metrics.pressureProfile()`, `metrics.confidenceDrift()`; `LeakRoiData` expandido com campo `trend`
+- **`components/hud/PressureProfileCard.tsx`** — novo card: barras de mistake_score por pressão ICM, badge "Colapso" / "Sólido", delta summary
+- **`components/hud/LeaksPanel.tsx`** — ícones de tendência (↓ melhorando / → estagnado / ↑ regredindo) por leak
+- **`pages/Index.tsx`** — fetch paralelo de `pressureProfile` + `confidenceDrift`; banner de alerta dismissível quando drift detectado; `PressureProfileCard` no sidebar
+- **Locales** — chaves `pressure.*`, `drift.*` e `leaks.trend*` adicionadas a `dashboard.json` (PT-BR + EN + ES)
+
 ## [v0.39.0] — 2026-05-03 — Sprint I: PERF-001 + PERF-002 ROI Attribution + Leak Priority
 
 ### Backend — PERF-001: ROI Attribution Engine

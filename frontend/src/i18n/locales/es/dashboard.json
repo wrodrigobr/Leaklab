@@ -42,7 +42,10 @@
     "studyLabel": "Estudiar leak {{spot}}",
     "doing": "{{street}} — haciendo {{action}} cuando no debía",
     "critical": "Crítico",
-    "evLoss": "{{amount}}/mes"
+    "evLoss": "{{amount}}/mes",
+    "trendImproving": "Mejorando",
+    "trendRegressing": "Retrocediendo",
+    "trendStagnant": "Estancado"
   },
   "bankroll": {
     "title": "Evolución del bankroll",
@@ -110,6 +113,24 @@
     "medium": "Media",
     "low": "Baja",
     "none": "Sin ICM"
+  },
+  "pressure": {
+    "title": "Colapso bajo Presión",
+    "tooltip": "Compara la calidad técnica de tus decisiones en diferentes niveles de presión ICM. Un jugador sólido mantiene el mismo score independientemente de la presión. Delta superior a 8pts indica colapso.",
+    "noData": "Datos insuficientes para análisis de presión.",
+    "none": "Sin ICM",
+    "low": "ICM bajo",
+    "medium": "ICM medio",
+    "high": "ICM alto",
+    "collapseDetected": "Colapso",
+    "solid": "Sólido",
+    "collapseSummary": "Score +{{delta}}pts peor bajo alta presión ICM — enfócate en spots de burbuja y mesa final.",
+    "stableSummary": "Rendimiento estable — solo {{delta}}pts de variación entre presión alta y sin presión."
+  },
+  "drift": {
+    "alertTitle": "Posible drift de confianza detectado",
+    "alertDesc": "{{n}} sesiones recientes con calidad técnica por debajo de tu baseline — posible tilt o fatiga.",
+    "dismiss": "Cerrar"
   },
   "level": {
     "title": "Mi Nivel",

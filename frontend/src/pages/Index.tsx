@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Coins, Layers, Percent, Target, GraduationCap } from "lucide-react";
+import { Coins, Layers, Percent, Target, GraduationCap, Brain } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { KpiCard } from "@/components/hud/KpiCard";
@@ -17,7 +17,8 @@ import { HudTooltip } from "@/components/hud/HudTooltip";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { LevelCard } from "@/components/hud/LevelCard";
-import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData } from "@/lib/api";
+import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
+import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
@@ -29,17 +30,23 @@ const Index = () => {
   const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStatsResponse | null>(null);
   const [tourns, setTourns]     = useState<Tournament[]>([]);
-  const [leakRoi, setLeakRoi]   = useState<LeakRoiData[]>([]);
+  const [leakRoi, setLeakRoi]         = useState<LeakRoiData[]>([]);
+  const [pressureData, setPressureData] = useState<PressureProfile | null>(null);
+  const [driftData, setDriftData]       = useState<ConfidenceDrift | null>(null);
+  const [driftDismissed, setDriftDismissed] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
+    setDriftDismissed(false);
     Promise.all([
       metrics.evolution(90).then(setEvo).catch(() => null),
       metrics.breakdown(90).then(setBreakdown).catch(() => null),
       metrics.playerStats(90).then(setPlayerStats).catch(() => null),
       metrics.leakRoi(90).then((r) => setLeakRoi(r.leaks)).catch(() => null),
+      metrics.pressureProfile(90).then(setPressureData).catch(() => null),
+      metrics.confidenceDrift(30).then(setDriftData).catch(() => null),
       tournaments.list().then((r) => setTourns(r.tournaments)).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
@@ -147,6 +154,27 @@ const Index = () => {
           />
         </section>
 
+        {driftData?.drift_detected && !driftDismissed && hasData && (
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <Brain className="size-4 text-yellow-400 shrink-0 mt-0.5" aria-hidden />
+              <div>
+                <p className="text-sm font-medium text-foreground">{t("drift.alertTitle")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t("drift.alertDesc", { n: driftData.affected_sessions })}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setDriftDismissed(true)}
+              className="shrink-0 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={t("drift.dismiss")}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {!loading && !hasData ? (
           <EmptyDashboard onComplete={handleUpload} />
         ) : (
@@ -174,6 +202,7 @@ const Index = () => {
               {levelData?.level && <LevelCard data={levelData} showStudyLink />}
               <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} />
               <IcmBreakdown icm={evo?.icm} />
+              <PressureProfileCard data={pressureData} />
 
               <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
                 <div className="mb-3 flex items-center justify-between">

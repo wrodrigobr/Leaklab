@@ -1,4 +1,4 @@
-import { ChevronRight, ShieldAlert, AlertTriangle, TrendingDown, Flame } from "lucide-react";
+import { ChevronRight, ShieldAlert, AlertTriangle, TrendingDown, Flame, TrendingUp, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,15 @@ interface LeakData {
   avg_score: number;
   ev_loss_monthly?: number;
   priority_rank?: number;
+  trend?: "improving" | "regressing" | "stagnant" | "new";
 }
+
+const TREND_CONFIG = {
+  improving:  { Icon: TrendingDown, cls: "text-primary",     key: "leaks.trendImproving"  },
+  regressing: { Icon: TrendingUp,   cls: "text-destructive", key: "leaks.trendRegressing" },
+  stagnant:   { Icon: Minus,        cls: "text-yellow-400",  key: "leaks.trendStagnant"   },
+  new:        { Icon: Minus,        cls: "text-muted-foreground/50", key: "" },
+} as const;
 
 interface Props {
   leaks?: LeakData[];
@@ -82,8 +90,9 @@ export function LeaksPanel({ leaks }: Props) {
           const sev = severity(leak.avg_score);
           const { dot, badge, Icon } = SEVERITY[sev];
           const label      = spotLabel(leak.spot);
-          const isCritical = (leak.priority_rank ?? 99) <= 3;
-          const evLoss     = leak.ev_loss_monthly != null ? formatEvLoss(leak.ev_loss_monthly) : "";
+          const isCritical  = (leak.priority_rank ?? 99) <= 3;
+          const evLoss      = leak.ev_loss_monthly != null ? formatEvLoss(leak.ev_loss_monthly) : "";
+          const trendCfg    = leak.trend && leak.trend !== "new" ? TREND_CONFIG[leak.trend] : null;
 
           return (
             <li key={leak.spot} className="flex items-center gap-3 px-4 py-2.5 hover:bg-hud-elevated/40 transition-colors">
@@ -102,6 +111,11 @@ export function LeaksPanel({ leaks }: Props) {
                 <span className="shrink-0 inline-flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-destructive bg-destructive/10 ring-1 ring-destructive/20">
                   <Flame className="size-2.5" aria-hidden />
                   {t("leaks.critical")}
+                </span>
+              )}
+              {trendCfg && (
+                <span className={cn("shrink-0", trendCfg.cls)} title={t(trendCfg.key)}>
+                  <trendCfg.Icon className="size-3" aria-hidden />
                 </span>
               )}
 

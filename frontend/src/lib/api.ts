@@ -357,6 +357,22 @@ export interface LeakRoiData {
   ev_loss_monthly: number;
   priority_score: number;
   priority_rank: number;
+  trend: "improving" | "regressing" | "stagnant" | "new";
+}
+
+export interface PressureProfile {
+  baseline_score: number | null;
+  by_pressure: Record<string, { n: number; avg_score: number; standard_rate: number }>;
+  collapse_delta: number | null;
+  has_collapse: boolean;
+}
+
+export interface ConfidenceDrift {
+  drift_detected: boolean;
+  affected_sessions: number;
+  severity: "mild" | "moderate" | "severe" | null;
+  baseline_score: number;
+  sessions: { tournament_id: number; name: string; played_at: string; avg_score: number; delta_pct: number }[];
 }
 
 export const metrics = {
@@ -374,6 +390,12 @@ export const metrics = {
 
   leakRoi: (days = 90) =>
     request<{ leaks: LeakRoiData[] }>(`/player/leak-roi?days=${days}`),
+
+  pressureProfile: (days = 90) =>
+    request<PressureProfile>(`/player/pressure-profile?days=${days}`),
+
+  confidenceDrift: (days = 30) =>
+    request<ConfidenceDrift>(`/player/confidence-drift?days=${days}`),
 };
 
 // ── Player Level / Gamification (BACK-009) ────────────────────────────────────
