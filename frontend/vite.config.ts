@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => ({
       "/subscription": { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/admin":       { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/health":      { target: "http://127.0.0.1:5000", changeOrigin: true },
+      "/player":      { target: "http://127.0.0.1:5000", changeOrigin: true },
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
