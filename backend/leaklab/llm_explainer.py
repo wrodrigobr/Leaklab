@@ -490,6 +490,95 @@ def _tournament_cache_key(ctx: dict) -> str:
     return 'summary_' + hashlib.md5(raw.encode()).hexdigest()[:10]
 
 
+# ── Tournament narrative (short, inline) ─────────────────────────────────────
+
+def generate_tournament_narrative(tournament_id: int, ctx: dict) -> str:
+    """
+    2-3 frases descrevendo o arco de qualidade da sessão.
+    Diferente do generate_tournament_summary (4 parágrafos), esta é
+    uma narrativa curta para exibição inline na página do torneio.
+    Cacheia por tournament_id para evitar chamadas repetidas.
+    """
+    cache_key = f"narr_{tournament_id}"
+    if cache_key in _cache:
+        return _cache[cache_key]
+
+    try:
+        text = _call_llm_narrative(ctx)
+    except Exception:
+        text = _template_narrative(ctx)
+
+    _cache[cache_key] = text
+    return text
+
+
+def _call_llm_narrative(ctx: dict) -> str:
+    system_prompt = (
+        "Você é um coach de poker MTT. "
+        "Com base nas métricas abaixo, escreva EXATAMENTE 2 ou 3 frases "
+        "descrevendo o arco de qualidade desta sessão. "
+        "Seja específico: cite o padrão dominante de erros, a fase de maior deterioração "
+        "(se houver) e o impacto de ICM se relevante. "
+        "Use linguagem técnica e direta, como um coach falando ao vivo após a sessão. "
+        "NÃO use títulos, bullets ou formatação Markdown. Apenas as frases, ponto final."
+    )
+    user_msg = json.dumps(ctx, ensure_ascii=False, indent=2)
+    payload = {
+        'model':      'claude-haiku-4-5-20251001',
+        'max_tokens': 130,
+        'system':     system_prompt,
+        'messages':   [{'role': 'user', 'content': user_msg}],
+    }
+    import requests as _req
+    resp = _req.post(
+        'https://api.anthropic.com/v1/messages',
+        json=payload,
+        headers={
+            'Content-Type':      'application/json',
+            'anthropic-version': '2023-06-01',
+            'x-api-key':         _api_key(),
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return ''.join(
+        block['text'] for block in data.get('content', [])
+        if block.get('type') == 'text'
+    ).strip()
+
+
+def _template_narrative(ctx: dict) -> str:
+    """Fallback determinístico quando LLM indisponível."""
+    std   = ctx.get('standard_pct', 0) or 0
+    avg   = ctx.get('avg_score', 0) or 0
+    leaks = ctx.get('top_leaks', [])
+    icm   = ctx.get('icm_breakdown', {})
+    worst = ctx.get('worst_phase')
+
+    if std >= 75:
+        quality = f"Sessão sólida: {std:.0f}% das decisões dentro do padrão esperado (score médio {avg:.3f})."
+    elif std >= 60:
+        quality = f"Desempenho regular com {std:.0f}% de decisões padrão e score médio {avg:.3f}."
+    else:
+        quality = f"Sessão abaixo do esperado: apenas {std:.0f}% de decisões padrão (score médio {avg:.3f})."
+
+    leak_str = ""
+    if leaks:
+        spot, score, n = leaks[0]
+        street, action = (spot.split("/") + ["?"])[:2]
+        leak_str = f" Leak dominante: {street}/{action} ({n}× detectado, score {score:.3f})."
+
+    icm_high = icm.get('high', {})
+    phase_str = ""
+    if worst and worst.get('avg_score', 0) > avg * 1.25:
+        phase_str = f" Maior deterioração na fase {worst.get('phase', '?')} (score {worst['avg_score']:.3f})."
+    elif icm_high and icm_high.get('count', 0) >= 3 and icm_high.get('avg', 0) > avg * 1.2:
+        phase_str = f" Deterioração detectada sob ICM elevado ({icm_high['count']} mãos, score {icm_high['avg']:.3f})."
+
+    return f"{quality}{leak_str}{phase_str}"
+
+
 def generate_study_plan(leaks: list, evolution: list, icm: dict,
                         hero: str = 'Jogador',
                         user_id: int | None = None,

@@ -47,6 +47,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint J | PERF-003 + PERF-004 + PERF-005 | Leak Progression + Pressure Collapse + Confidence Drift | ✅ v0.40.0 |
 | Sprint K | PERF-006 | Ghost Table Simulator MVP | ✅ v0.41.0–v0.42.0 |
 | Sprint L | PERF-007 | Decision DNA — assinatura estratégica do jogador | ✅ v0.43.0 |
+| Sprint M | PERF-008 | Tournament Narrative Engine | ✅ v0.45.0 |
 | Sprint N | PERF-009 | GGPoker Parser — detecção automática de formato | ✅ (já entregue) |
 
 ---
@@ -57,24 +58,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ---
 
-### [PERF-008] — Tournament Narrative Engine *(Sprint M — prioridade média)*
-
-**Valor:** Alto · **Complexidade:** Média · **Dep. estrutural:** Leve (LLM)
-
-Gerar narrativa estratégica de 2–3 frases por torneio descrevendo o arco de qualidade da sessão. Ex: *"Jogo sólido até o nível 6. Colapso técnico detectado após mão X com alta pressão ICM no FT."*
-
-**Dados já disponíveis:** `evolution`, `standard_pct` por fase, `icm_pressure`, `best_action` vs. `action_taken`, `collapse_delta`.
-
-**Backend:**
-- `llm_explainer.py` — `generate_tournament_narrative(tournament_id)`: monta prompt com arco de qualidade + eventos-chave + contexto ICM; chama Claude Haiku; cache por `tournament_id`
-- `app.py` — narrativa gerada on-demand (botão no detalhe do torneio) ou background task pós-import
-
-**Frontend:**
-- `TournamentDetail.tsx` — seção "Narrativa da Sessão" com texto gerado + badge de qualidade geral
-
-**Riscos:** qualidade dependente de prompt engineering; adicionar fallback determinístico se LLM falhar.
-
-**Esforço estimado: ~4h backend + ~3h frontend**
+### ~~[PERF-008] — Tournament Narrative Engine~~ ✅ *Entregue em v0.45.0*
 
 ---
 

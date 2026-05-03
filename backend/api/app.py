@@ -25,7 +25,7 @@ from leaklab.decision_engine_v11 import evaluate_decision
 from leaklab.mtt_context import build_mtt_context
 from leaklab.session_metrics import build_session_metrics
 from leaklab.leak_correlator import correlate_leaks
-from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, coach_chat_reply
+from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, generate_tournament_narrative, coach_chat_reply
 
 from database.schema import init_db
 from database.repositories import (
@@ -502,6 +502,65 @@ def history_tournament_texture_analysis(tournament_id):
     if not t:
         return jsonify({'error': 'Torneio não encontrado'}), 404
     return jsonify({'texture_analysis': get_texture_analysis(t['id'])})
+
+
+@app.route('/history/tournament/<tournament_id>/narrative', methods=['GET'])
+@require_auth
+def history_tournament_narrative(tournament_id):
+    t = get_tournament(g.user_id, tournament_id)
+    if not t:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+
+    decisions  = get_decisions(t['id'])
+    phases     = get_phase_analysis(t['id'])
+    ctx        = _build_narrative_context(t, decisions, phases)
+    narrative  = generate_tournament_narrative(t['id'], ctx)
+
+    std = t.get('standard_pct') or 0
+    quality_level = 'solid' if std >= 75 else 'regular' if std >= 60 else 'poor'
+
+    return jsonify({'narrative': narrative, 'quality_level': quality_level})
+
+
+def _build_narrative_context(tourn: dict, decisions: list, phases: list) -> dict:
+    from collections import Counter, defaultdict
+    if not decisions:
+        return {}
+
+    labels = Counter(d.get('label', 'standard') for d in decisions)
+    total  = len(decisions)
+
+    spot_scores = defaultdict(list)
+    for d in decisions:
+        key = f"{d.get('street', '?')}/{d.get('best_action', '?')}"
+        spot_scores[key].append(d.get('score', 0) or 0)
+
+    top_leaks = sorted(
+        [(k, round(sum(v) / len(v), 3), len(v)) for k, v in spot_scores.items() if len(v) >= 2],
+        key=lambda x: x[1], reverse=True
+    )[:3]
+
+    icm_groups = defaultdict(list)
+    for d in decisions:
+        icm = d.get('icm_pressure') or 'low'
+        icm_groups[icm].append(d.get('score', 0) or 0)
+
+    icm_breakdown = {
+        level: {'count': len(scores), 'avg': round(sum(scores) / len(scores), 4)}
+        for level, scores in icm_groups.items()
+    }
+
+    worst_phase = max(phases, key=lambda p: p.get('avg_score', 0)) if phases else None
+
+    return {
+        'standard_pct':    tourn.get('standard_pct') or 0,
+        'avg_score':       tourn.get('avg_score') or 0,
+        'total_decisions': total,
+        'label_counts':    dict(labels),
+        'top_leaks':       top_leaks,
+        'icm_breakdown':   icm_breakdown,
+        'worst_phase':     worst_phase,
+    }
 
 
 @app.route('/history/evolution', methods=['GET'])

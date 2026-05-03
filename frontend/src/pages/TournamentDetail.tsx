@@ -220,6 +220,7 @@ const TournamentDetail = () => {
   const [analysisLoading, setAnalysisLoading] = useState<Record<number, boolean>>({});
   const [phaseAnalysis, setPhaseAnalysis] = useState<PhaseData[]>([]);
   const [textureAnalysis, setTextureAnalysis] = useState<TextureData[]>([]);
+  const [narrative, setNarrative] = useState<{ narrative: string; quality_level: "solid" | "regular" | "poor" } | null>(null);
 
   const requestAnalysis = async (decisionId: number, force = false) => {
     if (analysisLoading[decisionId]) return;
@@ -250,6 +251,7 @@ const TournamentDetail = () => {
       .finally(() => setLoading(false));
     tournaments.phaseAnalysis(id).then((r) => setPhaseAnalysis(r.phase_analysis)).catch(() => null);
     tournaments.textureAnalysis(id).then((r) => setTextureAnalysis(r.texture_analysis)).catch(() => null);
+    tournaments.narrative(id).then(setNarrative).catch(() => null);
   }, [id]);
 
   const filtered = useMemo(
@@ -334,6 +336,27 @@ const TournamentDetail = () => {
               </div>
             ))}
           </section>
+
+          {narrative && (
+            <section className="rounded-xl border border-border bg-hud-surface px-5 py-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                  {t("detail.narrative.title")}
+                </span>
+                <span className={cn(
+                  "rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ring-1",
+                  narrative.quality_level === "solid"
+                    ? "text-primary bg-primary/10 ring-primary/20"
+                    : narrative.quality_level === "regular"
+                    ? "text-yellow-400 bg-yellow-400/10 ring-yellow-400/20"
+                    : "text-destructive bg-destructive/10 ring-destructive/20"
+                )}>
+                  {t(`detail.narrative.${narrative.quality_level}`)}
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed text-foreground">{narrative.narrative}</p>
+            </section>
+          )}
 
           {phaseAnalysis.length > 0 && (
             <section>

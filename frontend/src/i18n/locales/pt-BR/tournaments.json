@@ -62,6 +62,12 @@
       "relevantLeaks": "Leaks relevantes",
       "avgScore": "Score médio"
     },
+    "narrative": {
+      "title": "Narrativa da Sessão",
+      "solid": "Sessão sólida",
+      "regular": "Regular",
+      "poor": "Sessão problemática"
+    },
     "severity": {
       "critical": "Leak crítico",
       "major": "Leak relevante",

@@ -271,6 +271,11 @@ export const tournaments = {
       body: JSON.stringify({ tournament_id: dbId }),
     }),
 
+  narrative: (tournamentId: string) =>
+    request<{ narrative: string; quality_level: "solid" | "regular" | "poor" }>(
+      `/history/tournament/${tournamentId}/narrative`
+    ),
+
   replay: (tournamentId: string, handId: string) =>
     request<ReplayData>(`/replay/${tournamentId}/${handId}`),
 

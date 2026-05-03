@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.45.0] — 2026-05-03 — Sprint M: PERF-008 Tournament Narrative Engine
+
+### Added
+- **`backend/leaklab/llm_explainer.py`**: `generate_tournament_narrative(tournament_id, ctx)` — gera 2-3 frases descrevendo o arco de qualidade da sessão via Claude Haiku (max 130 tokens); cache em memória por `tournament_id`; fallback determinístico `_template_narrative()` se LLM indisponível.
+- **`backend/api/app.py`**: endpoint `GET /history/tournament/<id>/narrative` — retorna `{narrative, quality_level}` (solid/regular/poor derivado de `standard_pct`); helper `_build_narrative_context()` agrega label counts, top leaks, ICM breakdown e pior fase do torneio.
+- **`frontend/src/lib/api.ts`**: `tournaments.narrative(id)` → `{narrative, quality_level}`.
+- **`frontend/src/pages/TournamentDetail.tsx`**: seção "Narrativa da Sessão" inline (entre stats grid e phase analysis) — badge de qualidade colorido + texto narrativo gerado pelo LLM, carregado automaticamente ao abrir o torneio.
+- **`frontend/src/i18n/locales/*/tournaments.json`**: chaves `detail.narrative.*` em PT-BR, EN e ES.
+
+---
+
 ## [v0.44.0] — 2026-05-03 — UX: LeaksPanel layout + PlayerDnaCard radar fix
 
 ### Changed
