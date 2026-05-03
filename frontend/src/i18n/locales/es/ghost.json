@@ -23,7 +23,9 @@
     "icm": "ICM",
     "players": "{{n}} jugadores",
     "is3bet": "Bote 3-Bet",
-    "bb": "{{n}}bb"
+    "bb": "{{n}}bb",
+    "pot": "Bote",
+    "facing": "Apuesta"
   },
   "icmLabel": {
     "high": "Alta presión",
@@ -38,7 +40,7 @@
     "call":  "Call",
     "bet":   "Bet",
     "raise": "Raise",
-    "jam":   "Jam"
+    "jam":   "All-In"
   },
   "result": {
     "correct": "¡Correcto!",
@@ -47,7 +49,11 @@
     "yourAction": "Elegiste: {{action}}",
     "originalMistake": "Error original: {{action}} (score {{score}})",
     "improvement": "Mejora de {{delta}} pts",
-    "noImprovement": "Error repetido"
+    "noImprovement": "Error repetido",
+    "engineNote": "Análisis del Motor",
+    "requestAnalysis": "Ver análisis de esta mano",
+    "analysisLoading": "Generando análisis…",
+    "analysisError": "Análisis no disponible en este momento. Inténtalo de nuevo."
   },
   "next": "Siguiente →",
   "stats": {

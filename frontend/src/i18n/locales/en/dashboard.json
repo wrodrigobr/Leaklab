@@ -45,7 +45,17 @@
     "evLoss": "{{amount}}/mo",
     "trendImproving": "Improving",
     "trendRegressing": "Regressing",
-    "trendStagnant": "Stagnant"
+    "trendStagnant": "Stagnant",
+    "drillPracticing": "Drilling",
+    "drillMastering": "Mastering"
+  },
+  "ghost": {
+    "title": "Ghost Table",
+    "spots": "Spots",
+    "accuracy": "Accuracy",
+    "continueStudy": "Continue drilling",
+    "noActivity": "No drills in the last 30 days.",
+    "startNow": "Start drill"
   },
   "bankroll": {
     "title": "Bankroll evolution",

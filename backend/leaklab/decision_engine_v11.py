@@ -258,29 +258,119 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
 
 def build_interpretation(input_data: Dict[str, Any], label: str, adjusted_required_equity: float | None):
     summary_map = {
-        "standard": "Linha sólida para o spot, compatível com a faixa esperada de decisão.",
-        "marginal": "Ação defensável, mas ligeiramente inferior à linha preferida.",
+        "standard":      "Linha sólida para o spot.",
+        "marginal":      "Ação defensável, mas existe alternativa levemente melhor.",
         "small_mistake": "Pequena perda estratégica, relevante no longo prazo.",
-        "clear_mistake": "Ação claramente inferior no contexto do spot, com erro estratégico relevante.",
+        "clear_mistake": "Erro claro com impacto relevante em EV.",
     }
-    math_explanation = ""
-    strategic_explanation = ""
-    est = input_data["math"].get("estimatedHandEquity")
-    if est is not None and adjusted_required_equity is not None:
-        diff = round4(est - adjusted_required_equity)
-        if diff > 0.02:
-            math_explanation = "A mão tinha equity suficiente para continuar com mais conforto."
-        elif 0 <= diff <= 0.02:
-            math_explanation = "O spot estava próximo do threshold, indicando uma decisão relativamente close."
-        elif diff > -0.04:
-            math_explanation = "A equity estimada ficou levemente abaixo da exigência ajustada."
+
+    if label not in ("small_mistake", "clear_mistake"):
+        return {"summary": summary_map[label], "mathExplanation": "", "strategicExplanation": ""}
+
+    action = input_data.get("player_action", "")
+    street = input_data.get("street", "preflop")
+    rng    = input_data.get("range_evaluation", {})
+    best   = rng.get("recommendedPrimaryAction", "")
+    zone   = rng.get("rangeZone", "")
+    mt     = input_data.get("math", {})
+    spot   = input_data.get("spot", {})
+    ctx    = input_data.get("context", {})
+
+    est      = mt.get("estimatedHandEquity")
+    pot_odds = mt.get("potOddsEquity")
+    draw     = (mt.get("drawProfile") or "none").lower()
+    riods    = mt.get("reverseImpliedOddsFactor") or 0
+
+    position = spot.get("position", "")
+    facing   = spot.get("facingSize") or 0
+
+    m_ratio  = ctx.get("mRatio")
+    icm      = ctx.get("icmPressure", "low")
+
+    _act = {"fold": "fold", "check": "check", "call": "call",
+            "bet": "bet", "raise": "raise", "jam": "all-in"}.get
+    _str = {"preflop": "pré-flop", "flop": "flop",
+            "turn": "turn", "river": "river"}.get
+
+    action_pt = _act(action, action)
+    best_pt   = _act(best, best)
+    street_pt = _str(street, street)
+
+    parts = []
+
+    # ── Equity analysis ──────────────────────────────────────────────────────
+    if est is not None:
+        eq_pct = round(est * 100, 1)
+        req_pct = (round(adjusted_required_equity * 100, 1)
+                   if adjusted_required_equity is not None
+                   else (round(pot_odds * 100, 1) if pot_odds is not None else None))
+
+        if req_pct is not None:
+            diff = round(eq_pct - req_pct, 1)
+            if action == "call" and best == "fold":
+                parts.append(f"Equity de {eq_pct}% ficou {abs(diff)}pp abaixo dos {req_pct}% exigidos — sem valor para continuar no pot.")
+            elif action == "fold" and best == "call":
+                parts.append(f"Com equity de {eq_pct}% vs {req_pct}% exigidos pelo pot, o call tinha valor positivo (+{abs(diff)}pp).")
+            elif action == "fold" and best in ("raise", "jam", "bet"):
+                parts.append(f"Equity de {eq_pct}% suporta {best_pt.upper()} neste spot — foldar deixou valor na mesa.")
+            elif action in ("raise", "bet", "jam") and best == "fold":
+                parts.append(f"Equity de {eq_pct}% ficou {abs(diff)}pp abaixo dos {req_pct}% necessários — a agressão não tinha suporte matemático.")
+            elif action in ("check", "call") and best in ("bet", "raise"):
+                parts.append(f"Com equity de {eq_pct}%, {best_pt.upper()} extrai mais valor e protege melhor do que {action_pt.upper()}.")
+            elif diff > 0:
+                parts.append(f"Equity de {eq_pct}% supera os {req_pct}% exigidos (+{diff}pp) — linha mais agressiva era suportada.")
+            else:
+                parts.append(f"Equity de {eq_pct}% ficou {abs(diff)}pp abaixo dos {req_pct}% exigidos para o spot.")
         else:
-            math_explanation = "A equity estimada ficou materialmente abaixo da exigência ajustada do spot."
-    zone = input_data["range_evaluation"].get("rangeZone")
-    if zone == "borderline_range":
-        strategic_explanation = "A mão está em região de borda do range, então a decisão exige mais nuance do que um julgamento binário."
-    elif zone == "outside_range":
-        strategic_explanation = "A ação escolhida força uma linha fora da banda mais defensável do range estimado."
-    else:
-        strategic_explanation = "A decisão deve seguir a estrutura principal esperada para esse spot."
-    return {"summary": summary_map[label], "mathExplanation": math_explanation, "strategicExplanation": strategic_explanation}
+            parts.append(f"Equity estimada da mão: {eq_pct}%.")
+
+    # ── Draw context ─────────────────────────────────────────────────────────
+    if draw not in ("none", "no_draw", ""):
+        if "combo" in draw:
+            parts.append("Draw combinado (flush + straight) adiciona equity implícita significativa ao cálculo.")
+        elif "flush" in draw:
+            parts.append("Projeto de flush adiciona ~9% de equity implícita não capturada pelos pot odds simples.")
+        elif "straight" in draw:
+            parts.append("Projeto de straight adiciona equity implícita — relevante para decisões de call/fold no turn.")
+        elif "backdoor" in draw:
+            parts.append("Draw backdoor contribui marginalmente com equity extra.")
+
+    if riods > 0.3 and action in ("call", "check") and best == "fold":
+        parts.append("Reverse implied odds elevados: quando atrás, o pot fica maior; quando frente, os oponentes param de pagar.")
+
+    # ── MTT / Stack ──────────────────────────────────────────────────────────
+    if m_ratio is not None:
+        mr = round(m_ratio, 1)
+        if mr < 6:
+            parts.append(f"M-Ratio {mr}: jogo push/fold — sem espaço para linhas especulativas.")
+        elif mr < 10:
+            parts.append(f"M-Ratio {mr}: zona crítica de pressão — priorize spots com fold equity real.")
+        elif mr < 15:
+            parts.append(f"M-Ratio {mr}: pressão moderada — stack preservation pesa em spots marginais.")
+
+    if icm == "high":
+        parts.append("ICM elevado: risco de eliminação aumenta o threshold de call — sobrevivência tem valor real.")
+    elif icm == "medium" and label == "clear_mistake":
+        parts.append("ICM médio: equity de fichas subestima o risco de eliminação neste spot.")
+
+    # ── Range zone / position ────────────────────────────────────────────────
+    if zone == "outside_range":
+        pos_txt = f"em {position}" if position else "nesta posição"
+        parts.append(f"A linha {action_pt.upper()} está fora do range defensável {pos_txt} no {street_pt}.")
+    elif zone == "borderline_range":
+        parts.append("Spot de borda do range — pequena variação de stack ou ICM pode inverter a decisão correta.")
+
+    # ── Facing bet context ───────────────────────────────────────────────────
+    if facing and facing > 0 and action == "fold" and best in ("call", "raise"):
+        parts.append(f"A aposta/raise que veio representava uma oferta matematicamente atraente para o pot odds da situação.")
+
+    if not parts:
+        parts.append(f"A linha {action_pt.upper()} ficou abaixo do esperado para o spot — {best_pt.upper()} era a ação correta.")
+
+    parts.append(f"Ação esperada: {best_pt.upper()}.")
+
+    return {
+        "summary": summary_map[label],
+        "mathExplanation": "",
+        "strategicExplanation": " ".join(parts),
+    }

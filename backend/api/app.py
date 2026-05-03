@@ -481,6 +481,7 @@ def history_tournament(tournament_id):
     annotated = {a['decision_id'] for a in get_annotations_for_decisions([d['id'] for d in decisions])}
     for d in decisions:
         d['has_annotation'] = d['id'] in annotated
+        d['note'] = _enrich_note(d)
     return jsonify({'tournament': t, 'decisions': decisions})
 
 
@@ -605,6 +606,38 @@ def player_drill_submit():
         'original_score': original_score,
         'delta':          result['delta'],
     })
+
+
+@app.route('/player/drill-stats', methods=['GET'])
+@require_auth
+def player_drill_stats_only():
+    """Dashboard — Estatísticas de drill sem carregar os spots."""
+    days = int(request.args.get('days', 30))
+    return jsonify(get_drill_stats(g.user_id, days=days))
+
+
+@app.route('/player/spots/drill/<int:decision_id>/analysis', methods=['GET'])
+@require_auth
+def player_drill_analysis(decision_id: int):
+    """Sprint K — Análise LLM on-demand de uma decisão do drill, com cache no banco."""
+    from database.repositories import get_llm_cache, set_llm_cache
+
+    cache_key = f'drill_analysis:{decision_id}'
+    cached = get_llm_cache(g.user_id, cache_key)
+    if cached:
+        return jsonify({'analysis': cached, 'cached': True})
+
+    row = get_decision_for_drill(g.user_id, decision_id)
+    if not row:
+        return jsonify({'error': 'Decisão não encontrada'}), 404
+
+    try:
+        from leaklab.llm_explainer import analyze_single_decision
+        analysis = analyze_single_decision(dict(row))
+        set_llm_cache(g.user_id, cache_key, analysis)
+        return jsonify({'analysis': analysis, 'cached': False})
+    except Exception as e:
+        return jsonify({'error': f'Análise indisponível: {str(e)}'}), 503
 
 
 # ── Coach: nível do aluno ────────────────────────────────────────────────────
@@ -755,6 +788,101 @@ def _extract_content(req) -> str | None:
     return req.form.get('content')
 
 
+_GENERIC_NOTES = {
+    "A decisão deve seguir a estrutura principal esperada para esse spot.",
+    "A ação escolhida força uma linha fora da banda mais defensável do range estimado.",
+    "A mão está em região de borda do range, então a decisão exige mais nuance do que um julgamento binário.",
+}
+
+def _enrich_note(row: dict) -> str:
+    """Gera nota descritiva a partir dos campos da tabela decisions.
+    Substitui notas genéricas antigas por texto específico usando os dados já armazenados.
+    """
+    note = (row.get('note') or '').strip()
+    if note and note not in _GENERIC_NOTES:
+        return note
+
+    action  = row.get('action_taken', '') or ''
+    best    = row.get('best_action', '')  or ''
+    street  = row.get('street', 'preflop') or 'preflop'
+    label   = row.get('label', 'standard') or 'standard'
+    score   = row.get('score', 0) or 0
+    m_ratio = row.get('m_ratio')
+    icm     = (row.get('icm_pressure') or 'low').lower()
+    stack   = row.get('stack_bb')
+    draw    = (row.get('draw_profile') or 'none').lower()
+    pos     = (row.get('position') or '').upper()
+    is_3bet = row.get('is_3bet', 0)
+    facing  = row.get('facing_bet')
+    pot_sz  = row.get('pot_size')
+
+    _act = {"fold": "fold", "check": "check", "call": "call",
+            "bet": "bet", "raise": "raise", "jam": "all-in"}.get
+    _str = {"preflop": "pré-flop", "flop": "flop",
+            "turn": "turn", "river": "river"}.get
+
+    action_pt = (_act(action, action) or action).upper()
+    best_pt   = (_act(best,   best)   or best).upper()
+    street_pt = (_str(street, street) or street).capitalize()
+
+    parts = []
+
+    # ── Contexto da situação ─────────────────────────────────────────────────
+    ctx_items = []
+    if pos:
+        ctx_items.append(pos)
+    if stack is not None:
+        ctx_items.append(f"{stack:.0f}bb")
+    if is_3bet:
+        ctx_items.append("3-Bet pot")
+    if facing and facing > 0:
+        ctx_items.append(f"aposta {facing:.1f}bb")
+    if pot_sz and pot_sz > 0:
+        ctx_items.append(f"pot {pot_sz:.1f}bb")
+
+    header = street_pt
+    if ctx_items:
+        header += " — " + " · ".join(ctx_items)
+    parts.append(header + ".")
+
+    # ── Ação ────────────────────────────────────────────────────────────────
+    if label in ("small_mistake", "clear_mistake") and best and best != action:
+        parts.append(f"Você deu {action_pt}, mas o esperado era {best_pt}.")
+
+    # ── Draw ────────────────────────────────────────────────────────────────
+    if draw not in ("none", "no_draw", ""):
+        if "combo" in draw:
+            parts.append("Board com draw combinado (flush + straight).")
+        elif "flush" in draw:
+            parts.append("Board com projeto de flush — equity implícita relevante.")
+        elif "straight" in draw:
+            parts.append("Board com projeto de straight.")
+        elif "backdoor" in draw:
+            parts.append("Draw backdoor presente.")
+
+    # ── MTT context ──────────────────────────────────────────────────────────
+    if m_ratio is not None:
+        mr = round(m_ratio, 1)
+        if mr < 6:
+            parts.append(f"M-Ratio {mr}: jogo push/fold — range muito estreito.")
+        elif mr < 10:
+            parts.append(f"M-Ratio {mr}: zona crítica de pressão.")
+        elif mr < 15:
+            parts.append(f"M-Ratio {mr}: pressão moderada de stack.")
+
+    if icm == "high":
+        parts.append("ICM elevado: risco de eliminação amplifica o custo do erro.")
+    elif icm == "medium":
+        parts.append("ICM médio: equity de fichas subestima o risco de bust.")
+
+    # ── Score ────────────────────────────────────────────────────────────────
+    if label in ("small_mistake", "clear_mistake"):
+        severity = "Erro grave" if label == "clear_mistake" else "Pequeno erro"
+        parts.append(f"{severity} (score {score:.3f}).")
+
+    return " ".join(parts) if parts else note
+
+
 def _detect_showdown(raw_text: str, hero: str) -> str | None:
     """Retorna 'won', 'lost' ou None se o hero não chegou ao showdown.
     Só conta showdown se o hero mostrou cartas (participou efetivamente).
@@ -783,6 +911,7 @@ def _analyze_hands(hands):
                     'street':           di['street'],
                     'context':          di['context'],
                     'math':             di['math'],
+                    'spot':             di['spot'],
                     'hero_cards':       hand.hero_cards,
                     'board':            hand.board or [],
                     'draw_profile':     di['math'].get('drawProfile', ''),
@@ -1125,6 +1254,8 @@ def coach_student_tournament(student_id, tournament_id):
     if not t:
         return jsonify({'error': 'Torneio não encontrado'}), 404
     decisions = get_decisions(t['id'])
+    for d in decisions:
+        d['note'] = _enrich_note(d)
     return jsonify({'tournament': t, 'decisions': decisions})
 
 

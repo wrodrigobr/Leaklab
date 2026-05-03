@@ -357,6 +357,8 @@ export interface LeakRoiData {
   ev_loss_monthly: number;
   priority_score: number;
   priority_rank: number;
+  drill_count: number;
+  drill_accuracy: number | null;
   trend: "improving" | "regressing" | "stagnant" | "new";
 }
 
@@ -397,6 +399,8 @@ export interface DrillSpot {
   buy_in: number | null;
   note: string | null;
   draw_profile: string | null;
+  pot_size: number | null;
+  facing_bet: number | null;
 }
 
 export interface DrillStats {
@@ -416,6 +420,11 @@ export interface DrillSubmitResult {
   delta: number;
 }
 
+export interface DrillAnalysisResult {
+  analysis: string;
+  cached: boolean;
+}
+
 export const drill = {
   spots: (params?: { limit?: number; street?: string; spot?: string }) => {
     const q = new URLSearchParams();
@@ -431,6 +440,9 @@ export const drill = {
       method: "POST",
       body: JSON.stringify({ decision_id, new_action }),
     }),
+
+  analysis: (decision_id: number) =>
+    request<DrillAnalysisResult>(`/player/spots/drill/${decision_id}/analysis`),
 };
 
 export const metrics = {
@@ -448,6 +460,9 @@ export const metrics = {
 
   leakRoi: (days = 90) =>
     request<{ leaks: LeakRoiData[] }>(`/player/leak-roi?days=${days}`),
+
+  drillStats: (days = 30) =>
+    request<DrillStats>(`/player/drill-stats?days=${days}`),
 
   pressureProfile: (days = 90) =>
     request<PressureProfile>(`/player/pressure-profile?days=${days}`),

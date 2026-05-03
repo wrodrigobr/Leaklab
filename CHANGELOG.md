@@ -9,6 +9,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.42.0] — 2026-05-03 — Sprint K pt.2: Ghost Table UX + Engine Notes + Drill-Dashboard Loop
+
+### Backend — Ghost Table enhancements
+
+- **`schema.py`** — colunas `pot_size REAL` e `facing_bet REAL` adicionadas à tabela `decisions` (SQLite + PostgreSQL, com migration automática)
+- **`repositories.py`** — `save_decisions()`: extrai `potSize`/`facingSize` do `spot` e armazena em BB dividindo por `level_bb`; `get_drill_spots()`: inclui `pot_size` e `facing_bet` no SELECT; `get_decision_for_drill()`: expandido para retornar todos os campos necessários pelo `analyze_single_decision()`; `get_leak_roi_impact()`: JOIN com `drill_sessions` — adiciona `drill_count` e `drill_accuracy` por spot
+- **`app.py`** — Bug fix crítico em `_analyze_hands()`: `enriched` dict agora inclui `'spot': di['spot']` (sem isso `pot_size`/`facing_bet` eram sempre `None`); `_GENERIC_NOTES` + `_enrich_note(row)`: detecta 3 strings genéricas legadas e as substitui por notas específicas geradas dos campos do banco (street, position, stack_bb, facing_bet, pot_size, m_ratio, ICM, label, score, action gap); aplicado em `history_tournament` e `coach_student_tournament`; novo endpoint `GET /player/drill-stats` (resumo leve sem carregar spots); novo endpoint `GET /player/spots/drill/<id>/analysis` com cache na tabela `llm_cache` (chave `drill_analysis:{decision_id}`) — chama Claude Haiku apenas na primeira vez
+- **`decision_engine_v11.py`** — `build_interpretation()` reescrito: notas vazias para `standard`/`marginal`; para `small_mistake`/`clear_mistake` gera nota específica usando equity diff, draw context, M-Ratio zone, ICM pressure, range zone + position, facing bet context; sempre termina com "Ação esperada: X."
+
+### Frontend — Ghost Table UX
+
+- **`GhostTable.tsx`** — board cards limitados por street (preflop = 0, flop = 3, turn = 4, river = 5) para não revelar cartas futuras; `pot_size` e `facing_bet` em BB adicionados ao SituationBox; nota do motor movida da fase `active` para a fase `result` (não influencia decisão); renomeado "Análise da IA" → "Análise do Motor"; botão "Ver análise desta mão" (BookOpen) na fase result com `requestAnalysis()` → `drill.analysis(id)`; estado `analysis` e `analysisLoading` gerenciados; ações "JAM" renomeadas para "All-In" nas 3 locales
+- **`GhostDrillCard.tsx`** (novo) — card sidebar no dashboard: mostra total de spots treinados, acerto %, avg delta dos últimos 30 dias; estado vazio com CTA "Iniciar drill" para `/ghost`
+- **`LeaksPanel.tsx`** — badge "Treinando" (cinza) ou "Dominando" (primária) quando `drill_count > 0`; badge "Crítico" ocultado quando spot em treino; tooltip mostra `Ghost Table: Nx treinado (X% acerto)`
+- **`pages/Index.tsx`** — fetch paralelo de `metrics.drillStats(30)`; `<GhostDrillCard stats={drillStats} />` inserido entre LevelCard e LeaksPanel
+
+### i18n — 3 locales (pt-BR / en / es)
+
+- **`ghost.json`** — chaves: `context.pot`, `context.facing`, `result.engineNote`, `result.requestAnalysis`, `result.analysisLoading`, `result.analysisError`, `situation.*`; `actions.jam` → "All-In"
+- **`dashboard.json`** — chaves: `leaks.drillPracticing`, `leaks.drillMastering`, `ghost.title`, `ghost.spots`, `ghost.accuracy`, `ghost.continueStudy`, `ghost.noActivity`, `ghost.startNow`
+
+### Removido
+
+- **`backend/leaklab/mercadopago_gateway.py`** — arquivo legado do gateway Mercado Pago (migrado para Stripe em v0.29.0); removido para limpar o repositório
+
+---
+
 ## [v0.41.0] — 2026-05-03 — Sprint K: PERF-006 Ghost Table Simulator MVP
 
 ### Backend — PERF-006

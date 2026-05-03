@@ -2,8 +2,8 @@
 
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
-> **Sprints já entregues:** Sprints 1–13 + Sprint A–F + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.38.0.
-> **Sprint atual:** Sprint K — PERF-006 Ghost Table Simulator MVP
+> **Sprints já entregues:** Sprints 1–13 + Sprint A–K + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.42.0.
+> **Sprint atual:** — aguardando priorização
 
 ---
 
@@ -56,7 +56,7 @@ Fix aplicado: quando herói é eliminado sem ITM no PokerStars (`finished the to
 | Sprint H | UX-007 | Dashboard cards i18n — 11 componentes | ✅ v0.38.0 |
 | Sprint I | PERF-001 + PERF-002 | ROI Attribution Engine + Leak Priority Optimizer | ✅ v0.39.0 |
 | Sprint J | PERF-003 + PERF-004 + PERF-005 | Leak Progression + Pressure Collapse + Confidence Drift | ✅ v0.40.0 |
-| **Sprint K** | **PERF-006** | **Ghost Table Simulator MVP** | 🔄 Em desenvolvimento |
+| Sprint K | PERF-006 | Ghost Table Simulator MVP | ✅ v0.41.0–v0.42.0 |
 
 ---
 

@@ -145,6 +145,8 @@ def _init_postgres(conn):
             note            TEXT,
             is_3bet         BOOLEAN NOT NULL DEFAULT FALSE,
             showdown_result TEXT,
+            pot_size        REAL,
+            facing_bet      REAL,
             created_at      TIMESTAMP NOT NULL DEFAULT NOW()
         );
         CREATE TABLE IF NOT EXISTS coach_profiles (
@@ -308,6 +310,8 @@ def _init_sqlite(conn):
             note            TEXT,
             is_3bet         INTEGER NOT NULL DEFAULT 0,
             showdown_result TEXT,
+            pot_size        REAL,
+            facing_bet      REAL,
             created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS coach_profiles (
@@ -422,6 +426,8 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS note        TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS is_3bet         BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS showdown_result TEXT",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS pot_size        REAL",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS facing_bet      REAL",
             "ALTER TABLE coach_hand_annotations ADD COLUMN IF NOT EXISTS coach_override_label TEXT",
             # Sprint 9 — BACK-010: quota tracking
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS tournaments_this_month INTEGER NOT NULL DEFAULT 0",
@@ -599,6 +605,8 @@ def _run_migrations(conn):
             ("note",            "ALTER TABLE decisions ADD COLUMN note            TEXT"),
             ("is_3bet",         "ALTER TABLE decisions ADD COLUMN is_3bet         INTEGER NOT NULL DEFAULT 0"),
             ("showdown_result", "ALTER TABLE decisions ADD COLUMN showdown_result TEXT"),
+            ("pot_size",        "ALTER TABLE decisions ADD COLUMN pot_size        REAL"),
+            ("facing_bet",      "ALTER TABLE decisions ADD COLUMN facing_bet      REAL"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)

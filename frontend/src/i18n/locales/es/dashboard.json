@@ -45,7 +45,17 @@
     "evLoss": "{{amount}}/mes",
     "trendImproving": "Mejorando",
     "trendRegressing": "Retrocediendo",
-    "trendStagnant": "Estancado"
+    "trendStagnant": "Estancado",
+    "drillPracticing": "Entrenando",
+    "drillMastering": "Dominando"
+  },
+  "ghost": {
+    "title": "Ghost Table",
+    "spots": "Spots",
+    "accuracy": "Acierto",
+    "continueStudy": "Continuar entrenando",
+    "noActivity": "Sin entrenamientos en los últimos 30 días.",
+    "startNow": "Iniciar drill"
   },
   "bankroll": {
     "title": "Evolución del bankroll",

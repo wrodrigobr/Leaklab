@@ -1,4 +1,4 @@
-import { ChevronRight, ShieldAlert, AlertTriangle, TrendingDown, Flame, TrendingUp, Minus } from "lucide-react";
+import { ChevronRight, ShieldAlert, AlertTriangle, TrendingDown, Flame, TrendingUp, Minus, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,8 @@ interface LeakData {
   ev_loss_monthly?: number;
   priority_rank?: number;
   trend?: "improving" | "regressing" | "stagnant" | "new";
+  drill_count?: number;
+  drill_accuracy?: number | null;
 }
 
 const TREND_CONFIG = {
@@ -94,6 +96,11 @@ export function LeaksPanel({ leaks }: Props) {
           const evLoss      = leak.ev_loss_monthly != null ? formatEvLoss(leak.ev_loss_monthly) : "";
           const trendCfg    = leak.trend && leak.trend !== "new" ? TREND_CONFIG[leak.trend] : null;
 
+          const drillCount    = leak.drill_count ?? 0;
+          const drillAccuracy = leak.drill_accuracy ?? null;
+          const isDrilling    = drillCount > 0;
+          const drillMastered = isDrilling && drillAccuracy != null && drillAccuracy >= 70;
+
           return (
             <li key={leak.spot} className="flex items-center gap-3 px-4 py-2.5 hover:bg-hud-elevated/40 transition-colors">
               <span className={cn("size-1.5 shrink-0 rounded-full", dot)} aria-hidden />
@@ -107,7 +114,21 @@ export function LeaksPanel({ leaks }: Props) {
                 )}
               </span>
 
-              {isCritical && (
+              {isDrilling && (
+                <span
+                  className={cn(
+                    "shrink-0 inline-flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ring-1",
+                    drillMastered
+                      ? "text-primary bg-primary/10 ring-primary/20"
+                      : "text-muted-foreground bg-muted/30 ring-border"
+                  )}
+                  title={`Ghost Table: ${drillCount}× treinado${drillAccuracy != null ? ` (${drillAccuracy}% acerto)` : ""}`}
+                >
+                  <BookOpen className="size-2.5" aria-hidden />
+                  {drillMastered ? t("leaks.drillMastering") : t("leaks.drillPracticing")}
+                </span>
+              )}
+              {isCritical && !isDrilling && (
                 <span className="shrink-0 inline-flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-destructive bg-destructive/10 ring-1 ring-destructive/20">
                   <Flame className="size-2.5" aria-hidden />
                   {t("leaks.critical")}

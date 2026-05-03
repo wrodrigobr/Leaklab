@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  BookOpen,
   CheckCircle2,
   Loader2,
   ShieldAlert,
@@ -116,6 +117,8 @@ export default function GhostTable() {
   const [sessionTotal, setSessionTotal]     = useState(0);
   const [loadError, setLoadError]           = useState("");
   const [submitting, setSubmitting]         = useState(false);
+  const [analysis, setAnalysis]             = useState<string | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
   const current = spots[index] ?? null;
 
@@ -157,13 +160,28 @@ export default function GhostTable() {
 
   const nextSpot = () => {
     const next = index + 1;
+    setAnalysis(null);
     if (next >= spots.length) { setPhase("done"); }
     else { setIndex(next); setLastResult(null); setPhase("active"); }
+  };
+
+  const requestAnalysis = async () => {
+    if (!current || analysisLoading) return;
+    setAnalysisLoading(true);
+    try {
+      const res = await drill.analysis(current.id);
+      setAnalysis(res.analysis);
+    } catch {
+      setAnalysis(t("result.analysisError"));
+    } finally {
+      setAnalysisLoading(false);
+    }
   };
 
   const resetDrill = () => {
     setPhase("intro"); setSpots([]); setIndex(0);
     setLastResult(null); setSessionCorrect(0); setSessionTotal(0);
+    setAnalysis(null);
   };
 
   const accuracy = sessionTotal > 0 ? Math.round((sessionCorrect / sessionTotal) * 100) : 0;
@@ -278,6 +296,16 @@ export default function GhostTable() {
                 {current.is_3bet && (
                   <span className="font-mono text-[11px] font-semibold text-warning">{t("context.is3bet")}</span>
                 )}
+                {current.pot_size !== null && current.pot_size > 0 && (
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {t("context.pot")}: <span className="text-foreground font-semibold">{t("context.bb", { n: current.pot_size.toFixed(1) })}</span>
+                  </span>
+                )}
+                {current.facing_bet !== null && current.facing_bet > 0 && (
+                  <span className={cn("font-mono text-[11px]", sit.variant === "aggression" ? "text-warning font-semibold" : "text-muted-foreground")}>
+                    {t("context.facing")}: <span className="font-semibold">{t("context.bb", { n: current.facing_bet.toFixed(1) })}</span>
+                  </span>
+                )}
                 {current.icm_pressure && current.icm_pressure !== "none" && (
                   <span className="font-mono text-[11px] text-muted-foreground">
                     ICM: <span className={cn("font-semibold", {
@@ -289,49 +317,46 @@ export default function GhostTable() {
                 )}
               </div>
 
-              {/* AI note */}
-              {current.note && (
-                <div className="pt-2 border-t border-border/60 space-y-1">
-                  <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-                    {t("situation.aiNote")}
-                  </p>
-                  <p className="text-xs leading-relaxed text-muted-foreground">{current.note}</p>
-                </div>
-              )}
             </div>
 
             {/* ── CARDS ── */}
             <article className="rounded-xl border border-border bg-hud-surface p-4 space-y-4">
-              {/* Hero cards + board side by side when both exist */}
-              <div className={cn("flex gap-6 flex-wrap", current.board ? "" : "")}>
-                {current.hero_cards && (
-                  <div>
-                    <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {t("heroCards")}
-                    </p>
-                    <div className="flex gap-2">
-                      {parseCards(current.hero_cards).length > 0
-                        ? parseCards(current.hero_cards).map((card, i) => (
+              {/* Hero cards + board — board is trimmed to cards visible at this street */}
+              {(() => {
+                const boardLimit = { preflop: 0, flop: 3, turn: 4, river: 5 }[current.street] ?? 5;
+                const visibleBoard = current.board ? parseCards(current.board).slice(0, boardLimit) : [];
+                return (
+                  <div className="flex gap-6 flex-wrap">
+                    {current.hero_cards && (
+                      <div>
+                        <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {t("heroCards")}
+                        </p>
+                        <div className="flex gap-2">
+                          {parseCards(current.hero_cards).length > 0
+                            ? parseCards(current.hero_cards).map((card, i) => (
+                                <PlayingCard key={i} card={card} size="md" />
+                              ))
+                            : <span className="font-mono text-xs text-muted-foreground">{t("noCards")}</span>
+                          }
+                        </div>
+                      </div>
+                    )}
+                    {visibleBoard.length > 0 && (
+                      <div>
+                        <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {t("board")}
+                        </p>
+                        <div className="flex gap-2">
+                          {visibleBoard.map((card, i) => (
                             <PlayingCard key={i} card={card} size="md" />
-                          ))
-                        : <span className="font-mono text-xs text-muted-foreground">{t("noCards")}</span>
-                      }
-                    </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-                {current.board && (
-                  <div>
-                    <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {t("board")}
-                    </p>
-                    <div className="flex gap-2">
-                      {parseCards(current.board).map((card, i) => (
-                        <PlayingCard key={i} card={card} size="md" />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Score de erro original */}
               <p className="font-mono text-[10px] text-muted-foreground border-t border-border pt-3">
@@ -407,6 +432,28 @@ export default function GhostTable() {
               {lastResult.delta > 0 ? "+" : ""}{lastResult.delta.toFixed(3)}
             </span>
           </div>
+
+          {analysis ? (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-primary">
+                {t("result.engineNote")}
+              </p>
+              <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">
+                {analysis}
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={requestAnalysis}
+              disabled={analysisLoading}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-hud-surface px-5 py-3 font-mono text-sm font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 disabled:opacity-60 transition-colors"
+            >
+              {analysisLoading
+                ? <><Loader2 className="size-4 animate-spin" aria-hidden /> {t("result.analysisLoading")}</>
+                : <><BookOpen className="size-4" aria-hidden /> {t("result.requestAnalysis")}</>
+              }
+            </button>
+          )}
 
           <button
             onClick={nextSpot}

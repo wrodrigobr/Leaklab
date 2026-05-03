@@ -18,7 +18,8 @@ import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { LevelCard } from "@/components/hud/LevelCard";
 import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
-import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift } from "@/lib/api";
+import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
+import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
@@ -34,6 +35,7 @@ const Index = () => {
   const [pressureData, setPressureData] = useState<PressureProfile | null>(null);
   const [driftData, setDriftData]       = useState<ConfidenceDrift | null>(null);
   const [driftDismissed, setDriftDismissed] = useState(false);
+  const [drillStats, setDrillStats]     = useState<DrillStats | null>(null);
   const [loading, setLoading]   = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -48,6 +50,7 @@ const Index = () => {
       metrics.pressureProfile(90).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30).then(setDriftData).catch(() => null),
       tournaments.list().then((r) => setTourns(r.tournaments)).catch(() => null),
+      metrics.drillStats(30).then(setDrillStats).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
 
@@ -200,6 +203,7 @@ const Index = () => {
 
             <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
               {levelData?.level && <LevelCard data={levelData} showStudyLink />}
+              <GhostDrillCard stats={drillStats} />
               <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} />
               <IcmBreakdown icm={evo?.icm} />
               <PressureProfileCard data={pressureData} />

@@ -252,6 +252,12 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
         for r in results:
             bd  = r.get('evaluation', {}).get('scoreBreakdown', {})
             ctx = r.get('context', {})
+            level_bb_val = r.get('level_bb', 0) or 1
+            spot_ctx     = r.get('spot', {})
+            raw_pot  = spot_ctx.get('potSize') or 0
+            raw_face = spot_ctx.get('facingSize') or 0
+            pot_size_bb   = round(raw_pot  / level_bb_val, 1) if raw_pot  else None
+            facing_bet_bb = round(raw_face / level_bb_val, 1) if raw_face else None
             rows.append((
                 tournament_db_id,
                 r.get('handId', ''),
@@ -276,6 +282,8 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 r.get('note', ''),
                 1 if r.get('is_3bet') else 0,
                 r.get('showdown_result'),
+                pot_size_bb,
+                facing_bet_bb,
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -283,8 +291,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                action_taken, best_action, label, score,
                math_penalty, range_penalty, m_ratio, icm_pressure,
                stack_bb, draw_profile, position, num_players,
-               level_sb, level_bb, level_num, note, is_3bet, showdown_result)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               level_sb, level_bb, level_num, note, is_3bet, showdown_result,
+               pot_size, facing_bet)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:
@@ -461,13 +470,32 @@ def get_leak_roi_impact(user_id: int, days: int = 90) -> list:
         """), (user_id, prev_since, recent_since)).fetchall()
         prev_map = {r['spot']: r['avg_score'] for r in prev_rows}
 
+        # Drill stats per spot (last 30 days)
+        drill_rows = conn.execute(_adapt("""
+            SELECT
+                dec.street || '/' || dec.best_action  AS spot,
+                COUNT(*)                               AS drill_count,
+                SUM(CASE WHEN ds.delta < 0 THEN 1 ELSE 0 END) AS drill_correct
+            FROM drill_sessions ds
+            JOIN decisions dec ON dec.id = ds.decision_id
+            WHERE ds.user_id = ? AND ds.drilled_at >= datetime('now', '-30 days')
+            GROUP BY spot
+        """), (user_id,)).fetchall()
+        drill_map = {
+            r['spot']: {
+                'count':    r['drill_count'],
+                'accuracy': round(r['drill_correct'] / r['drill_count'] * 100, 1) if r['drill_count'] else None,
+            }
+            for r in drill_rows
+        }
+
         result = []
         for rank, row in enumerate(rows, 1):
             r = dict(row)
             n_monthly = r['n'] * (30.0 / days)
             r['ev_loss_monthly'] = round(n_monthly * r['avg_score'] * (r['avg_buy_in'] or 0) * 0.10, 2)
             r['priority_rank'] = rank
-            # Trend: negative score change = improving (fewer/smaller mistakes)
+            # Trend from tournament decisions
             s_recent = recent_map.get(r['spot'])
             s_prev   = prev_map.get(r['spot'])
             if s_recent is None or s_prev is None:
@@ -478,6 +506,10 @@ def get_leak_roi_impact(user_id: int, days: int = 90) -> list:
                 r['trend'] = 'regressing'
             else:
                 r['trend'] = 'stagnant'
+            # Ghost Table drill activity for this spot
+            d = drill_map.get(r['spot'], {})
+            r['drill_count']    = d.get('count', 0)
+            r['drill_accuracy'] = d.get('accuracy')
             result.append(r)
         return result
     finally:
@@ -609,6 +641,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
                 d.action_taken, d.best_action, d.label, d.score,
                 d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
                 d.num_players, d.is_3bet, d.level_bb, d.note, d.draw_profile,
+                d.pot_size, d.facing_bet,
                 t.tournament_name, t.played_at, t.buy_in
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
@@ -674,11 +707,15 @@ def get_drill_stats(user_id: int, days: int = 30) -> dict:
 
 
 def get_decision_for_drill(user_id: int, decision_id: int) -> dict | None:
-    """Sprint K — Busca decisão verificando que pertence ao usuário."""
+    """Sprint K — Busca decisão verificando que pertence ao usuário (dados completos para análise)."""
     conn = get_conn()
     try:
         row = conn.execute(_adapt("""
-            SELECT d.id, d.best_action, d.score, d.label
+            SELECT d.id, d.best_action, d.score, d.label,
+                   d.street, d.hero_cards, d.board, d.action_taken,
+                   d.m_ratio, d.icm_pressure, d.stack_bb, d.draw_profile,
+                   d.position, d.num_players, d.level_sb, d.level_bb,
+                   d.level_num, d.note, d.is_3bet, d.pot_size, d.facing_bet
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE d.id = ? AND t.user_id = ?
