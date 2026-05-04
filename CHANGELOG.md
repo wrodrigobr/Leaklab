@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.83.4] — 2026-05-04 — Bugfix: termos de poker em inglês nos prompts LLM
+
+### Fixed
+- **`backend/leaklab/llm_explainer.py`**: adicionada constante `_POKER_TERMS_EN` com lista canônica de termos técnicos (fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP, shove, reshove, open, limp, squeeze). Instrução injetada em todos os system prompts: decisão, resumo de torneio, comparação, sessão review, coach chat e sparring. Elimina traduções indevidas como "ruas" (→ turn/river), "mão" (→ hand), "tabuleiro" (→ board) no texto gerado pela IA.
+- **`backend/leaklab/llm_explainer.py`**: `_LANG_INSTRUCTIONS` atualizado para incluir a cláusula de poker terms nas 3 locales (PT-BR e ES).
+
+---
+
 ## [v0.83.3] — 2026-05-04 — Bugfix: terminologia técnica e truncamento na Análise Comparativa
 
 ### Fixed

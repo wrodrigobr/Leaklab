@@ -180,7 +180,8 @@ REGRAS OBRIGATÓRIAS:
 3. Para preflop sem board: não mencione cartas comunitárias
 4. Separe cada decisão com ---
 5. Seja específico: "33% de equity vs 54% exigidos = -21pp" não "equity insuficiente"
-6. Português do Brasil, tom técnico e direto"""
+6. Português do Brasil, tom técnico e direto
+7. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP"""
 
     decisions_data = []
     for i, d in enumerate(decisions):
@@ -419,6 +420,7 @@ def _call_llm_summary(ctx: dict, hero: str) -> str:
         "(4) um conselho concreto de foco para a próxima sessão. "
         "É obrigatório terminar o parágrafo 4 com uma frase de encerramento completa. "
         "NÃO use bullet points. Escreva em prosa fluida. "
+        "Termos técnicos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position. "
         "Retorne APENAS o texto do resumo, sem título ou formatação extra."
     )
 
@@ -608,8 +610,8 @@ def _call_llm_comparison(items: list) -> str:
     system_prompt = (
         "Você é um coach de poker MTT. Compare os torneios abaixo e escreva "
         "EXATAMENTE 2 frases descrevendo a evolução entre eles. "
-        "Use os termos 'Standard%' (para standard_pct) e 'score médio' (para score_medio). "
-        "Cite os números concretos. Seja direto e técnico. NÃO use títulos ou bullets."
+        "Use 'Standard%' para a taxa de decisões corretas e 'score médio' para o erro médio. "
+        f"Cite os números concretos. Seja direto e técnico. NÃO use títulos ou bullets. {_POKER_TERMS_EN}"
     )
     payload = {
         "model": "claude-haiku-4-5-20251001",
@@ -931,10 +933,17 @@ def explain_leak_causality(edges: list, hero: str = 'você', lang: str = 'pt-BR'
     return text
 
 
+_POKER_TERMS_EN = (
+    "Termos técnicos de poker SEMPRE em inglês: "
+    "fold, call, raise, bet, check, jam, preflop, flop, turn, river, "
+    "hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, "
+    "board, position, IP, OOP, shove, reshove, open, limp, squeeze."
+)
+
 _LANG_INSTRUCTIONS = {
-    'pt-BR': "Responda APENAS em português do Brasil.",
-    'en':    "Respond ONLY in English.",
-    'es':    "Responde ÚNICAMENTE en español.",
+    'pt-BR': f"Responda APENAS em português do Brasil. {_POKER_TERMS_EN}",
+    'en':    "Respond ONLY in English. Keep poker technical terms in English.",
+    'es':    f"Responde ÚNICAMENTE en español. {_POKER_TERMS_EN}",
 }
 
 
@@ -1395,7 +1404,7 @@ def _call_llm_session_review(goal: dict, tournament: dict) -> str:
         "(1) se o jogador atingiu ou não a meta e por qual margem, "
         "(2) o ponto técnico mais relevante que os dados revelam, "
         "(3) uma recomendação concreta para a próxima sessão. "
-        "Seja direto e técnico. NÃO use títulos, bullets ou saudações."
+        f"Seja direto e técnico. NÃO use títulos, bullets ou saudações. {_POKER_TERMS_EN}"
     )
 
     payload = {
@@ -1482,7 +1491,7 @@ def coach_chat_reply(message: str, leaks: list, evolution: list,
         f"Seu aluno é {hero}.\n\n"
         f"Dados reais de desempenho atual:\n{context}\n\n"
         "Use esses dados para personalizar cada resposta. Seja direto e técnico. "
-        "Português do Brasil. Máximo 300 palavras."
+        f"Português do Brasil. {_POKER_TERMS_EN} Máximo 300 palavras."
     )
 
     safe_message = sanitize_llm_input(message, max_len=1000)
@@ -1595,7 +1604,8 @@ REGRAS OBRIGATÓRIAS:
 2. Use os dados fornecidos; estime equity quando não disponível explicitamente
 3. Para preflop sem board: não mencione cartas comunitárias
 4. Seja específico com números: "33% de equity vs 54% exigidos = -21pp" não "equity insuficiente"
-5. Português do Brasil, tom técnico e direto"""
+5. Português do Brasil, tom técnico e direto
+6. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP"""
 
     payload = {
         'model':      'claude-haiku-4-5-20251001',
