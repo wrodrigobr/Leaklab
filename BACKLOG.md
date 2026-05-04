@@ -2,8 +2,8 @@
 
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
-> **Sprints já entregues:** Sprints 1–13 + Sprint A–L + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.43.0.
-> **Sprint atual:** — aguardando priorização
+> **Sprints já entregues:** Sprints 1–13 + Sprint A–N + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.45.0.
+> **Sprint atual:** Sprint O — FEAT-01 Comparativo de Torneios
 
 ---
 
@@ -49,20 +49,149 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint L | PERF-007 | Decision DNA — assinatura estratégica do jogador | ✅ v0.43.0 |
 | Sprint M | PERF-008 | Tournament Narrative Engine | ✅ v0.45.0 |
 | Sprint N | PERF-009 | GGPoker Parser — detecção automática de formato | ✅ (já entregue) |
+| Sprint O | FEAT-01 | Comparativo de Torneios | 🔄 em andamento |
+| Sprint P | FEAT-04 | Relatório PDF Premium | ⏳ |
+| Sprint Q | FEAT-02 + FEAT-03 | Daily Focus + XP Server-Side | ⏳ |
+| Sprint R | FEAT-05 | SRS Adaptativo nos Drills | ⏳ |
+| Sprint S | FEAT-06 | Leak Causal Map | ⏳ |
+| Sprint T | FEAT-07 | Coach Effectiveness Metrics | ⏳ |
+| Sprint U | FEAT-08 | Session Goals + AI Review | ⏳ |
+| Sprint V | FEAT-09 + FEAT-10 | Coach Templates + Coach Messaging | ⏳ |
+| Sprint W | FEAT-11 | Weekly Digest Email | ⏳ |
 
 ---
 
 ## Próximas Sprints — Em Aberto
 
-### ~~[PERF-007] — Decision DNA~~ ✅ *Entregue em v0.43.0*
+### [FEAT-01] — Comparativo de Torneios *(Sprint O — 🔄 em andamento)*
+
+**Valor:** Compara qualidade técnica de decisão entre 2–4 torneios — não só resultado financeiro. Nenhuma outra ferramenta de poker faz isso.
+
+**Backend:** `GET /history/tournaments/compare?ids=A,B,C` — agrega `standard_pct`, `avg_score`, `clear_pct`, top 3 leaks, phase breakdown, ICM collapse delta por torneio. Narrativa comparativa via LLM (Haiku, ~100 tokens).
+
+**Frontend:** Multi-seleção em `/tournaments` → página `TournamentCompare.tsx` com tabela lado a lado + sparklines + leaks com delta colorido (verde=melhorou, vermelho=piorou).
+
+**Esforço:** ~8h backend + ~10h frontend
 
 ---
 
-### ~~[PERF-008] — Tournament Narrative Engine~~ ✅ *Entregue em v0.45.0*
+### [FEAT-04] — Relatório PDF Premium *(Sprint P)*
+
+**Valor:** Relatório com design profissional (Google Fonts, gráficos SVG, paleta dark) que coach envia ao aluno e jogador compartilha. Também marketing orgânico.
+
+**Backend:** Redesign completo de `report_generator.py` com template Jinja2 + WeasyPrint para conversão PDF. Endpoint `GET /history/tournament/<id>/report.pdf`.
+
+**Frontend:** Botão "Baixar PDF" em `TournamentDetail.tsx`.
+
+**Esforço:** ~12h backend + ~2h frontend
 
 ---
 
-### ~~[PERF-009] — GGPoker Parser~~ ✅ *Já entregue (parser.py — detecção automática por marker "Poker Hand #")*
+### [FEAT-02] — Daily Focus *(Sprint Q — junto com FEAT-03)*
+
+**Valor:** Elimina paralisia de decisão — diz exatamente o que fazer hoje com base nos dados reais do jogador. Zero LLM, lógica determinística.
+
+**Backend:** `GET /player/daily-focus` — 1 ação primária + 2 secundárias com links diretos (leak drill, torneio pendente, estudo).
+
+**Frontend:** `DailyFocusCard.tsx` no topo do dashboard com timer até meia-noite e badge "concluído".
+
+**Esforço:** ~6h backend + ~5h frontend
+
+---
+
+### [FEAT-03] — XP e Progressão Server-Side *(Sprint Q — junto com FEAT-02)*
+
+**Valor:** Elimina bug silencioso de retenção — XP vive em localStorage e reseta ao limpar o browser.
+
+**Backend:** Colunas `xp_total`, `xp_updated_at` em `users`. Tabela `achievements`. Endpoints `/player/xp` e `/player/achievements`.
+
+**Frontend:** `LevelCard.tsx` e `StudyPlan.tsx` migram de localStorage para API.
+
+**Esforço:** ~8h backend + ~4h frontend
+
+---
+
+### [FEAT-05] — SRS Adaptativo nos Drills *(Sprint R)*
+
+**Valor:** Substitui cooldown fixo de 7 dias por intervalos baseados em performance real (acerto → dobra, erro → reseta). Primeiro sistema SRS para poker baseado nas mãos do próprio jogador.
+
+**Backend:** Campo `next_drill_at` em `drill_sessions`. `get_drill_spots` filtra por vencimento. Lógica: acerto → 3d→7d→14d→28d→60d; erro → reset 3d.
+
+**Frontend:** `GhostDrillCard.tsx` e `GhostTable.tsx` exibem intervalo e indicador visual.
+
+**Esforço:** ~10h backend + ~6h frontend
+
+---
+
+### [FEAT-06] — Leak Causal Map *(Sprint S)*
+
+**Valor:** Mostra como leaks se causam mutuamente — diagnóstico sistêmico, não lista de erros isolados. Diferencial único no mercado.
+
+**Backend:** `leak_causal_graph.py` analisa co-ocorrência de leaks por torneio. LLM explica os 3 pares mais correlacionados. Endpoint `/player/leak-graph`.
+
+**Frontend:** `LeakCausalMap.tsx` — grafo SVG com nós por severidade e arestas proporcionais à correlação.
+
+**Esforço:** ~14h backend + ~12h frontend
+
+---
+
+### [FEAT-07] — Métricas de Efetividade do Coach *(Sprint T)*
+
+**Valor:** ROI verificado por dados: "alunos melhoram X% em standard_pct em 60 dias". Argumento de vendas mais forte do setor para coaches sérios.
+
+**Backend:** `get_coach_effectiveness_report` — delta `standard_pct`/`avg_score` antes vs após baseline por aluno.
+
+**Frontend:** Aba "Efetividade" no `CoachDashboard.tsx` + badge verificado em `PublicCoachProfile.tsx`.
+
+**Esforço:** ~12h backend + ~10h frontend
+
+---
+
+### [FEAT-08] — Session Goals + Review Pós-Sessão via IA *(Sprint U)*
+
+**Valor:** Liga intenção pedagógica ao resultado mensurável. Modal de meta antes do torneio → review automático após import comparando meta vs realidade.
+
+**Backend:** Tabela `session_goals`. `generate_session_review` (Haiku, ~300 tokens).
+
+**Frontend:** Modal pré-import em `UploadQueue.tsx` + card review em `TournamentDetail.tsx`.
+
+**Esforço:** ~16h backend + ~14h frontend
+
+---
+
+### [FEAT-09] — Templates de Plano de Estudo (Coach) *(Sprint V — junto com FEAT-10)*
+
+**Valor:** Coach cria metodologia reutilizável por arquétipo de aluno. Reduz fricção e escala o atendimento.
+
+**Backend:** Tabela `coach_plan_templates`. CRUD endpoints.
+
+**Frontend:** "Salvar como template" em `StudentDetail.tsx` + dropdown de aplicação.
+
+**Esforço:** ~6h backend + ~8h frontend
+
+---
+
+### [FEAT-10] — Mensagens Coach-Aluno com Contexto de Mão *(Sprint V — junto com FEAT-09)*
+
+**Valor:** Chat in-app com referência direta à mão discutida + link para replayer. Elimina WhatsApp/Discord onde o contexto técnico se perde.
+
+**Backend:** Tabela `coach_messages`. Endpoints bidirecionais.
+
+**Frontend:** Painel de chat em `StudentDetail.tsx` + badge de não lidas em `HudHeader.tsx`.
+
+**Esforço:** ~18h backend + ~16h frontend
+
+---
+
+### [FEAT-11] — Digest Semanal por Email *(Sprint W)*
+
+**Valor:** Recupera usuários que não abriram o app — email com EV loss real da semana, drill atrasado e evolução de standard_pct. Zero LLM (determinístico).
+
+**Backend:** `email_digest.py` + cron toda segunda 9h. Template Jinja2. Integração SendGrid/SES.
+
+**Frontend:** Banner "ativar digest" no dashboard + opt-out via token.
+
+**Esforço:** ~14h backend + ~4h frontend
 
 ---
 
