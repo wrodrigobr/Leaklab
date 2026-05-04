@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.52.0] — 2026-05-03 — Sprint U: FEAT-08 Session Goals + AI Review
+
+### Added
+- **`backend/database/schema.py`**: tabela `session_goals` (SQLite + Postgres) — `id`, `user_id`, `goal_leak_spot`, `target_standard_pct`, `notes`, `tournament_id` (nullable), `llm_review`, `created_at`, `linked_at`.
+- **`backend/database/repositories.py`**: `create_session_goal`, `link_session_goal`, `get_pending_session_goal`, `get_session_goal_by_tournament`, `save_session_review`.
+- **`backend/leaklab/llm_explainer.py`**: `generate_session_review(goal, tournament)` — Claude Haiku (~300 tokens) compara meta pré-sessão com resultado real; 3 frases: atingiu/não atingiu meta, ponto técnico relevante, recomendação para próxima sessão. Fallback `_template_session_review` determinístico.
+- **`backend/api/app.py`**: endpoints `POST /player/session-goals`, `GET /player/session-goals/pending`, `POST /player/session-goals/<id>/link`, `GET /player/session-review/<tournament_id>` (gera e persiste review on-demand).
+- **`frontend/src/lib/api.ts`**: interfaces `SessionGoal`, `SessionReviewResponse`; métodos `metrics.createSessionGoal`, `metrics.pendingSessionGoal`, `metrics.linkSessionGoal`, `metrics.sessionReview`.
+- **`frontend/src/components/hud/UploadQueue.tsx`**: `SessionGoalPanel` exportado — painel colapsável com campos spot de foco, meta de standard% e anotação livre; persiste goal ID em `sessionStorage`; hook `useUploadQueue` lê `ll_pending_goal` do `sessionStorage` após upload e chama `metrics.linkSessionGoal` automaticamente.
+- **`frontend/src/pages/Index.tsx`**: `SessionGoalPanel` integrado ao dashboard (visível apenas para players).
+- **`frontend/src/pages/TournamentDetail.tsx`**: card "Review da Sessão" exibido após narrativa quando há meta vinculada — mostra spot de foco, meta vs resultado real com indicador ✓/✗, review gerado por IA e anotação livre do jogador.
+
+---
+
 ## [v0.51.0] — 2026-05-03 — Sprint T: FEAT-07 Coach Effectiveness Metrics
 
 ### Added

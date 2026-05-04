@@ -559,6 +559,24 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id)")
         except Exception: pass
+        # session_goals table (Postgres) — FEAT-08
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS session_goals (
+                    id                  SERIAL PRIMARY KEY,
+                    user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    goal_leak_spot      TEXT,
+                    target_standard_pct REAL,
+                    notes               TEXT,
+                    tournament_id       INTEGER REFERENCES tournaments(id) ON DELETE SET NULL,
+                    llm_review          TEXT,
+                    created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+                    linked_at           TIMESTAMP
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_session_goals_user    ON session_goals(user_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_session_goals_tourney ON session_goals(tournament_id)")
+        except Exception: pass
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS coach_baselines (
@@ -767,6 +785,22 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id)")
+        # session_goals table (SQLite) — FEAT-08
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS session_goals (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                goal_leak_spot      TEXT,
+                target_standard_pct REAL,
+                notes               TEXT,
+                tournament_id       INTEGER REFERENCES tournaments(id) ON DELETE SET NULL,
+                llm_review          TEXT,
+                created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+                linked_at           TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_session_goals_user    ON session_goals(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_session_goals_tourney ON session_goals(tournament_id)")
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────

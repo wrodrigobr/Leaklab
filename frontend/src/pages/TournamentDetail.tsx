@@ -19,13 +19,14 @@ import {
   HelpCircle,
   GraduationCap,
   FileDown,
+  Target,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { TournamentAiReport } from "@/components/hud/TournamentAiReport";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { tournaments, Tournament, TournamentDecision, PhaseData, TextureData } from "@/lib/api";
+import { tournaments, metrics, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse } from "@/lib/api";
 
 type Severity = "critical" | "major" | "minor" | "ok";
 type Street = "Pré-flop" | "Flop" | "Turn" | "River" | "Outros";
@@ -224,6 +225,7 @@ const TournamentDetail = () => {
   const [narrative, setNarrative] = useState<{ narrative: string; quality_level: "solid" | "regular" | "poor" } | null>(null);
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [pdfFallback, setPdfFallback] = useState(false);
+  const [sessionReview, setSessionReview] = useState<SessionReviewResponse | null>(null);
 
   const requestAnalysis = async (decisionId: number, force = false) => {
     if (analysisLoading[decisionId]) return;
@@ -256,6 +258,11 @@ const TournamentDetail = () => {
     tournaments.textureAnalysis(id).then((r) => setTextureAnalysis(r.texture_analysis)).catch(() => null);
     tournaments.narrative(id).then(setNarrative).catch(() => null);
   }, [id]);
+
+  useEffect(() => {
+    if (!tournament?.id) return;
+    metrics.sessionReview(tournament.id).then(setSessionReview).catch(() => null);
+  }, [tournament?.id]);
 
   const filtered = useMemo(
     () =>
@@ -385,6 +392,56 @@ const TournamentDetail = () => {
                 </span>
               </div>
               <p className="text-sm leading-relaxed text-foreground">{narrative.narrative}</p>
+            </section>
+          )}
+
+          {sessionReview?.goal && (
+            <section className="rounded-xl border border-primary/30 bg-primary/5 px-5 py-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Target className="size-3.5 text-primary" />
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
+                  Review da Sessão
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-3 text-xs">
+                {sessionReview.goal.goal_leak_spot && (
+                  <div className="flex items-center gap-1.5 rounded-md bg-background/60 px-2.5 py-1 ring-1 ring-border">
+                    <span className="text-muted-foreground">Foco:</span>
+                    <span className="font-medium text-foreground">{sessionReview.goal.goal_leak_spot}</span>
+                  </div>
+                )}
+                {sessionReview.goal.target_standard_pct != null && (
+                  <div className="flex items-center gap-1.5 rounded-md bg-background/60 px-2.5 py-1 ring-1 ring-border">
+                    <span className="text-muted-foreground">Meta:</span>
+                    <span className="font-medium text-foreground">{sessionReview.goal.target_standard_pct}% standard</span>
+                    {tournament?.standard_pct != null && (
+                      <span className={cn(
+                        "font-mono text-[10px] font-bold",
+                        tournament.standard_pct >= sessionReview.goal.target_standard_pct
+                          ? "text-primary"
+                          : "text-destructive"
+                      )}>
+                        → {tournament.standard_pct.toFixed(1)}%
+                        {tournament.standard_pct >= sessionReview.goal.target_standard_pct ? " ✓" : " ✗"}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {sessionReview.review && (
+                <div className="flex gap-2.5">
+                  <Brain className="size-3.5 text-primary shrink-0 mt-0.5" />
+                  <p className="text-sm leading-relaxed text-foreground">{sessionReview.review}</p>
+                </div>
+              )}
+
+              {sessionReview.goal.notes && (
+                <p className="text-xs text-muted-foreground italic border-t border-border/50 pt-2">
+                  &ldquo;{sessionReview.goal.notes}&rdquo;
+                </p>
+              )}
             </section>
           )}
 

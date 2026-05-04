@@ -3078,6 +3078,95 @@ def get_achievements(user_id: int) -> list:
         conn.close()
 
 
+# ── Session Goals — FEAT-08 ───────────────────────────────────────────────────
+
+def create_session_goal(user_id: int, goal_leak_spot: str | None,
+                        target_standard_pct: float | None, notes: str | None) -> dict:
+    """Creates a pre-session goal. Returns the created goal."""
+    conn = get_conn()
+    from datetime import datetime
+    now_str = datetime.utcnow().isoformat()
+    cur = conn.execute(
+        "INSERT INTO session_goals (user_id, goal_leak_spot, target_standard_pct, notes, created_at) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (user_id, goal_leak_spot, target_standard_pct, notes, now_str)
+    )
+    goal_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return {"id": goal_id, "goal_leak_spot": goal_leak_spot,
+            "target_standard_pct": target_standard_pct, "notes": notes}
+
+
+def link_session_goal(goal_id: int, user_id: int, tournament_id: int) -> bool:
+    """Links a pending goal to a newly imported tournament. Returns True if linked."""
+    conn = get_conn()
+    from datetime import datetime
+    now_str = datetime.utcnow().isoformat()
+    conn.execute(
+        "UPDATE session_goals SET tournament_id = ?, linked_at = ? "
+        "WHERE id = ? AND user_id = ? AND tournament_id IS NULL",
+        (tournament_id, now_str, goal_id, user_id)
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_pending_session_goal(user_id: int) -> Optional[dict]:
+    """Returns the most recent unlinked session goal for the user."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT id, goal_leak_spot, target_standard_pct, notes, created_at "
+        "FROM session_goals WHERE user_id = ? AND tournament_id IS NULL "
+        "ORDER BY created_at DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {
+        "id":                  row['id'],
+        "goal_leak_spot":      row['goal_leak_spot'],
+        "target_standard_pct": row['target_standard_pct'],
+        "notes":               row['notes'],
+        "created_at":          row['created_at'],
+    }
+
+
+def get_session_goal_by_tournament(user_id: int, tournament_id: int) -> Optional[dict]:
+    """Returns the session goal linked to a tournament, or None."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT id, goal_leak_spot, target_standard_pct, notes, llm_review, created_at, linked_at "
+        "FROM session_goals WHERE user_id = ? AND tournament_id = ? LIMIT 1",
+        (user_id, tournament_id)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {
+        "id":                  row['id'],
+        "goal_leak_spot":      row['goal_leak_spot'],
+        "target_standard_pct": row['target_standard_pct'],
+        "notes":               row['notes'],
+        "llm_review":          row['llm_review'],
+        "created_at":          row['created_at'],
+        "linked_at":           row['linked_at'],
+    }
+
+
+def save_session_review(goal_id: int, review_text: str) -> None:
+    """Persists the LLM-generated review into session_goals.llm_review."""
+    conn = get_conn()
+    conn.execute(
+        "UPDATE session_goals SET llm_review = ? WHERE id = ?",
+        (review_text, goal_id)
+    )
+    conn.commit()
+    conn.close()
+
+
 def _check_and_grant_achievements(conn, user_id: int, event_type: str,
                                    xp_total: int, streak: int) -> list:
     existing = {r['achievement_key'] for r in conn.execute(

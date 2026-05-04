@@ -21,6 +21,7 @@ import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
 import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
 import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
 import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
+import { SessionGoalPanel } from "@/components/hud/UploadQueue";
 import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
 import { metrics, drill, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -128,6 +129,8 @@ const Index = () => {
         </section>
 
         {hasData && <DailyFocusCard />}
+
+        {user?.role === "player" && <SessionGoalPanel />}
 
         <section
           aria-label="KPIs"

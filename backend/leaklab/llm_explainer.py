@@ -985,6 +985,108 @@ def _template_causality(edges: list) -> str:
     )
 
 
+# ── Session Review (FEAT-08) ─────────────────────────────────────────────────
+
+def generate_session_review(goal: dict, tournament: dict) -> str:
+    """
+    Compares a pre-session goal with the actual tournament result.
+    ~300 tokens. Cache by (goal_id, tournament_id).
+    """
+    cache_key = f"sreview_{goal.get('id', '')}_{tournament.get('tournament_id', '')}"
+    if cache_key in _cache:
+        return _cache[cache_key]
+    try:
+        text = _call_llm_session_review(goal, tournament)
+    except Exception:
+        text = _template_session_review(goal, tournament)
+    _cache[cache_key] = text
+    return text
+
+
+def _call_llm_session_review(goal: dict, tournament: dict) -> str:
+    import requests as _req
+
+    leak_spot      = goal.get('goal_leak_spot') or 'nenhum spot específico'
+    target_std     = goal.get('target_standard_pct')
+    notes          = goal.get('notes') or ''
+    actual_std     = tournament.get('standard_pct', 0) or 0
+    actual_score   = tournament.get('avg_score', 0) or 0
+    total_hands    = tournament.get('total_hands', 0) or 0
+    clear_mistakes = tournament.get('clear_mistake_pct', 0) or 0
+
+    target_line = f"Meta de standard%: {target_std:.0f}%" if target_std is not None else ""
+    notes_line  = f"Anotação do jogador: {notes}" if notes else ""
+
+    user_content = (
+        f"Foco declarado: {leak_spot}\n"
+        f"{target_line}\n{notes_line}\n\n"
+        f"Resultado real:\n"
+        f"- Standard%: {actual_std:.1f}%\n"
+        f"- Avg Score: {actual_score:.4f}\n"
+        f"- Total decisões: {total_hands}\n"
+        f"- Clear mistakes%: {clear_mistakes:.1f}%"
+    ).strip()
+
+    system_prompt = (
+        "Você é um coach de poker MTT analítico. "
+        "O jogador definiu uma meta antes da sessão. Compare a meta com o resultado e escreva "
+        "EXATAMENTE 3 frases: "
+        "(1) se o jogador atingiu ou não a meta e por qual margem, "
+        "(2) o ponto técnico mais relevante que os dados revelam, "
+        "(3) uma recomendação concreta para a próxima sessão. "
+        "Seja direto e técnico. NÃO use títulos, bullets ou saudações."
+    )
+
+    payload = {
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 300,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_content}],
+    }
+    resp = _req.post(
+        "https://api.anthropic.com/v1/messages",
+        json=payload,
+        headers={
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01",
+            "x-api-key": _api_key(),
+        },
+        timeout=25,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return "".join(
+        block["text"] for block in data.get("content", []) if block.get("type") == "text"
+    ).strip()
+
+
+def _template_session_review(goal: dict, tournament: dict) -> str:
+    leak_spot   = goal.get('goal_leak_spot') or 'o spot-alvo'
+    target_std  = goal.get('target_standard_pct')
+    actual_std  = tournament.get('standard_pct', 0) or 0
+
+    if target_std is not None:
+        delta = actual_std - target_std
+        if delta >= 0:
+            result_line = (
+                f"Você atingiu sua meta de standard% — resultado {actual_std:.1f}% "
+                f"superou os {target_std:.0f}% planejados em {delta:.1f} pontos percentuais."
+            )
+        else:
+            result_line = (
+                f"Você ficou {abs(delta):.1f} pontos abaixo da meta de {target_std:.0f}% "
+                f"de standard%, encerrando em {actual_std:.1f}%."
+            )
+    else:
+        result_line = f"A sessão encerrou com {actual_std:.1f}% de decisões standard."
+
+    return (
+        f"{result_line} "
+        f"O foco em {leak_spot} é válido — revise as mãos filtradas por esse spot no replayer. "
+        f"Na próxima sessão, defina uma meta numérica de standard% para tornar o progresso mensurável."
+    )
+
+
 # ── AI Coach conversacional ────────────────────────────────────────────────────
 
 def coach_chat_reply(message: str, leaks: list, evolution: list,

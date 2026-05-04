@@ -3,7 +3,7 @@
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
 > **Sprints já entregues:** Sprints 1–13 + Sprint A–T + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.51.0.
-> **Sprint atual:** Sprint U — FEAT-08 Session Goals + AI Review
+> **Sprint atual:** Sprint V — FEAT-09 Coach Templates + FEAT-10 Coach Messaging
 
 ---
 
@@ -55,7 +55,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint R | FEAT-05 | SRS Adaptativo nos Drills | ✅ v0.49.0 |
 | Sprint S | FEAT-06 | Leak Causal Map | ✅ v0.50.0 |
 | Sprint T | FEAT-07 | Coach Effectiveness Metrics | ✅ v0.51.0 |
-| Sprint U | FEAT-08 | Session Goals + AI Review | ⏳ |
+| Sprint U | FEAT-08 | Session Goals + AI Review | ✅ v0.52.0 |
 | Sprint V | FEAT-09 + FEAT-10 | Coach Templates + Coach Messaging | ⏳ |
 | Sprint W | FEAT-11 | Weekly Digest Email | ⏳ |
 | Sprint X | FEAT-12 | Página de Documentação / Wiki do Sistema | ⏳ |

@@ -25,7 +25,7 @@ from leaklab.decision_engine_v11 import evaluate_decision
 from leaklab.mtt_context import build_mtt_context
 from leaklab.session_metrics import build_session_metrics
 from leaklab.leak_correlator import correlate_leaks
-from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, generate_tournament_narrative, generate_comparison_narrative, coach_chat_reply
+from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, generate_tournament_narrative, generate_comparison_narrative, coach_chat_reply, generate_session_review
 from leaklab.report_generator import build_html_report, generate_pdf_bytes
 
 from database.schema import init_db
@@ -77,6 +77,9 @@ from database.repositories import (
     get_leak_graph_data,
     # Sprint T — FEAT-07: Coach Effectiveness
     get_coach_effectiveness_report,
+    # Sprint U — FEAT-08: Session Goals + AI Review
+    create_session_goal, link_session_goal, get_pending_session_goal,
+    get_session_goal_by_tournament, save_session_review,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -785,6 +788,60 @@ def player_add_xp():
 @require_auth
 def player_achievements():
     return jsonify({'achievements': get_achievements(g.user_id)})
+
+
+# ── Session Goals — FEAT-08 ───────────────────────────────────────────────────
+
+@app.route('/player/session-goals', methods=['POST'])
+@require_auth
+def session_goal_create():
+    d = request.get_json(silent=True) or {}
+    leak_spot  = (d.get('goal_leak_spot') or '').strip() or None
+    target_pct = d.get('target_standard_pct')
+    notes      = (d.get('notes') or '').strip() or None
+    if target_pct is not None:
+        try:
+            target_pct = float(target_pct)
+        except (ValueError, TypeError):
+            target_pct = None
+    goal = create_session_goal(g.user_id, leak_spot, target_pct, notes)
+    return jsonify(goal), 201
+
+
+@app.route('/player/session-goals/pending', methods=['GET'])
+@require_auth
+def session_goal_pending():
+    goal = get_pending_session_goal(g.user_id)
+    return jsonify(goal or {})
+
+
+@app.route('/player/session-goals/<int:goal_id>/link', methods=['POST'])
+@require_auth
+def session_goal_link(goal_id: int):
+    d = request.get_json(silent=True) or {}
+    tournament_id = d.get('tournament_id')
+    if not tournament_id:
+        return jsonify({'error': 'tournament_id obrigatório'}), 400
+    link_session_goal(goal_id, g.user_id, int(tournament_id))
+    return jsonify({'ok': True})
+
+
+@app.route('/player/session-review/<int:tournament_id>', methods=['GET'])
+@require_auth
+def session_review_get(tournament_id: int):
+    goal = get_session_goal_by_tournament(g.user_id, tournament_id)
+    if not goal:
+        return jsonify({'review': None, 'goal': None})
+    if goal.get('llm_review'):
+        return jsonify({'review': goal['llm_review'], 'goal': goal})
+    # Generate review on-demand
+    tourney = get_tournament_by_db_id(g.user_id, tournament_id)
+    if not tourney:
+        return jsonify({'review': None, 'goal': goal})
+    review = generate_session_review(goal, tourney)
+    save_session_review(goal['id'], review)
+    goal['llm_review'] = review
+    return jsonify({'review': review, 'goal': goal})
 
 
 @app.route('/player/spots/drill/<int:decision_id>/analysis', methods=['GET'])
