@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.68.0] — 2026-05-03 — Sprint AM: UX-018 Tabela de Alunos com Busca e Filtros
+
+### Changed
+- **`frontend/src/pages/coach/CoachDashboard.tsx`**: `AlunosTab` reescrita como tabela responsiva com busca por nome, filtro de status (Todos/Ativos/Inativos), ordenação por coluna (Aluno, Torneios, Último Import, Tendência) e paginação client-side (25 por página). Colunas responsivas: Torneios oculto em mobile, Último Import oculto abaixo de md, Tendência oculta abaixo de lg. Ícone de tendência colorido (verde↑/vermelho↓/cinza→). Badge Ativo/Inativo baseado em import nos últimos 30 dias. Contador "X–Y de Z" e botões Anterior/Próximo.
+
+---
+
 ## [v0.67.0] — 2026-05-04 — Sprint AJ+AK: UX-015 Coach Inbox + UX-016 Student Badge
 
 ### Added

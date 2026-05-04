@@ -5,11 +5,12 @@ import {
   Users, TrendingUp, Award, Activity, AlertTriangle,
   Play, Filter, ChevronDown, ChevronUp, LayoutDashboard,
   BarChart2, CheckCircle2, Clock, MessageSquare,
+  Search, ChevronLeft, ChevronRight as ChevronRightIcon, TrendingDown, Minus,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
 import { StudentRow } from "@/components/coach/StudentRow";
-import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak, InboxThread } from "@/lib/api";
+import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak, InboxThread, StudentSummary } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
 // ── shared ────────────────────────────────────────────────────────────────────
@@ -31,7 +32,33 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string |
 
 // ── Tab: Alunos ────────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 25;
+
+type SortKey = "username" | "total_tournaments" | "last_import" | "trend";
+type SortDir = "asc" | "desc";
+
+function isActive(s: StudentSummary): boolean {
+  if (!s.recent_tournament?.imported_at) return false;
+  return Date.now() - new Date(s.recent_tournament.imported_at).getTime() < 30 * 86_400_000;
+}
+
+function fmtImport(s: StudentSummary): string {
+  const d = s.recent_tournament?.imported_at ?? s.recent_tournament?.played_at;
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+}
+
+const TREND_ORDER: Record<string, number> = { improving: 0, stable: 1, worsening: 2 };
+const TREND_LABEL: Record<string, string> = { improving: "Melhorando", stable: "Estável", worsening: "Piorando" };
+const TrendIcon = ({ trend }: { trend: string | null }) => {
+  if (trend === "improving") return <TrendingUp  className="size-3.5 text-primary" />;
+  if (trend === "worsening") return <TrendingDown className="size-3.5 text-destructive" />;
+  if (trend === "stable")    return <Minus        className="size-3.5 text-muted-foreground" />;
+  return null;
+};
+
 function AlunosTab() {
+  const navigate = useNavigate();
   const { data: studentsData, isLoading } = useQuery({
     queryKey: ["coach-students"],
     queryFn: coachDashboard.students,
@@ -41,31 +68,174 @@ function AlunosTab() {
     queryFn: () => coachDashboard.impact(30),
   });
 
-  const students = studentsData?.students ?? [];
+  const [search,  setSearch]  = useState("");
+  const [status,  setStatus]  = useState<"all" | "active" | "inactive">("all");
+  const [sortKey, setSortKey] = useState<SortKey>("username");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [page,    setPage]    = useState(0);
+
+  const allStudents = studentsData?.students ?? [];
+
+  const filtered = allStudents
+    .filter((s) => {
+      if (search && !s.username.toLowerCase().includes(search.toLowerCase())) return false;
+      if (status === "active"   && !isActive(s)) return false;
+      if (status === "inactive" &&  isActive(s)) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "username")          cmp = a.username.localeCompare(b.username);
+      else if (sortKey === "total_tournaments") cmp = (a.total_tournaments ?? 0) - (b.total_tournaments ?? 0);
+      else if (sortKey === "last_import")  {
+        const da = a.recent_tournament?.imported_at ?? "";
+        const db = b.recent_tournament?.imported_at ?? "";
+        cmp = da.localeCompare(db);
+      }
+      else if (sortKey === "trend") cmp = (TREND_ORDER[a.trend ?? ""] ?? 3) - (TREND_ORDER[b.trend ?? ""] ?? 3);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+  const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+    setPage(0);
+  };
+
+  const SortHeader = ({ col, label }: { col: SortKey; label: string }) => (
+    <button
+      onClick={() => toggleSort(col)}
+      className="flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors"
+    >
+      {label}
+      {sortKey === col
+        ? <span className="text-primary">{sortDir === "asc" ? "↑" : "↓"}</span>
+        : <span className="opacity-30">↕</span>}
+    </button>
+  );
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
-      <div className="md:col-span-2 space-y-3">
-        {isLoading && <p className="text-sm text-muted-foreground animate-pulse">Carregando…</p>}
-        {!isLoading && students.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border p-8 text-center space-y-2">
-            <p className="text-sm text-muted-foreground">Nenhum aluno vinculado ainda.</p>
-            <p className="text-xs text-muted-foreground">Compartilhe sua chave de convite para que alunos possam se vincular.</p>
+      <div className="md:col-span-2 space-y-4">
+        {/* Toolbar */}
+        <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 flex-1 min-w-[160px]">
+            <Search className="size-3.5 text-muted-foreground shrink-0" />
+            <input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              placeholder="Buscar aluno…"
+              className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+            />
+          </div>
+          {(["all", "active", "inactive"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => { setStatus(s); setPage(0); }}
+              className={cn(
+                "rounded-md px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest-2 transition-colors",
+                status === s ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "border border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {s === "all" ? "Todos" : s === "active" ? "Ativos" : "Inativos"}
+            </button>
+          ))}
+        </div>
+
+        {isLoading && <p className="text-sm text-muted-foreground animate-pulse py-4">Carregando…</p>}
+
+        {!isLoading && filtered.length === 0 && (
+          <div className="rounded-xl border border-dashed border-border p-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              {allStudents.length === 0 ? "Nenhum aluno vinculado ainda." : "Nenhum aluno encontrado com este filtro."}
+            </p>
           </div>
         )}
-        <div className="space-y-2">
-          {students.map((s) => <StudentRow key={s.id} student={s} />)}
-        </div>
+
+        {!isLoading && filtered.length > 0 && (
+          <div className="rounded-xl border border-border bg-hud-surface overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-hud-elevated/40">
+                <tr>
+                  <th className="px-4 py-2.5 text-left"><SortHeader col="username"          label="Aluno" /></th>
+                  <th className="px-4 py-2.5 text-right hidden sm:table-cell"><SortHeader col="total_tournaments" label="Torneios" /></th>
+                  <th className="px-4 py-2.5 text-right hidden md:table-cell"><SortHeader col="last_import"        label="Último import" /></th>
+                  <th className="px-4 py-2.5 text-center hidden lg:table-cell"><SortHeader col="trend"             label="Tendência" /></th>
+                  <th className="px-4 py-2.5 text-center font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {paged.map((s) => (
+                  <tr
+                    key={s.id}
+                    onClick={() => navigate(`/coach-dashboard/student/${s.id}`)}
+                    className="hover:bg-primary/5 cursor-pointer transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-xs uppercase">
+                          {s.username[0]}
+                        </div>
+                        <span className="font-medium text-foreground">{s.username}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs tabular-nums text-muted-foreground text-right hidden sm:table-cell">
+                      {s.total_tournaments}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground text-right hidden md:table-cell">
+                      {fmtImport(s)}
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <TrendIcon trend={s.trend} />
+                        {s.trend && <span className="font-mono text-[10px] text-muted-foreground">{TREND_LABEL[s.trend]}</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {isActive(s)
+                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20"><CheckCircle2 className="size-3" /> Ativo</span>
+                        : <span className="inline-flex items-center gap-1 rounded-sm bg-border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border"><Clock className="size-3" /> Inativo</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {pageCount > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} de {filtered.length}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setPage((p) => p - 1)}
+                    disabled={page === 0}
+                    className="size-7 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronLeft className="size-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={page >= pageCount - 1}
+                    className="size-7 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronRightIcon className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">
         <InviteKeyWidget />
-
         {impact?.top_leaks && impact.top_leaks.length > 0 && (
           <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-              Leaks em comum
-            </p>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Leaks em comum</p>
             <div className="space-y-2">
               {impact.top_leaks.slice(0, 5).map((leak) => (
                 <div key={leak.spot} className="flex items-center justify-between">
