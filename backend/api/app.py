@@ -831,17 +831,21 @@ def session_goal_link(goal_id: int):
 def session_review_get(tournament_id: int):
     goal = get_session_goal_by_tournament(g.user_id, tournament_id)
     if not goal:
-        return jsonify({'review': None, 'goal': None})
+        return jsonify({'review': None, 'goal': None, 'requires_pro': False})
+    # Return cached review regardless of plan (already generated and paid for)
     if goal.get('llm_review'):
-        return jsonify({'review': goal['llm_review'], 'goal': goal})
+        return jsonify({'review': goal['llm_review'], 'goal': goal, 'requires_pro': False})
+    # AI review generation requires Pro plan
+    if g.user.get('plan', 'free') != 'pro':
+        return jsonify({'review': None, 'goal': goal, 'requires_pro': True})
     # Generate review on-demand
     tourney = get_tournament_by_db_id(g.user_id, tournament_id)
     if not tourney:
-        return jsonify({'review': None, 'goal': goal})
+        return jsonify({'review': None, 'goal': goal, 'requires_pro': False})
     review = generate_session_review(goal, tourney)
     save_session_review(goal['id'], review)
     goal['llm_review'] = review
-    return jsonify({'review': review, 'goal': goal})
+    return jsonify({'review': review, 'goal': goal, 'requires_pro': False})
 
 
 @app.route('/player/spots/drill/<int:decision_id>/analysis', methods=['GET'])

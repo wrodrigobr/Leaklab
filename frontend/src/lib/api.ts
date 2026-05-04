@@ -1307,4 +1307,5 @@ export interface SessionGoal {
 export interface SessionReviewResponse {
   review: string | null;
   goal: SessionGoal | null;
+  requires_pro: boolean;
 }

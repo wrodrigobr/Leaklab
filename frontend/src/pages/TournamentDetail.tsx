@@ -437,6 +437,18 @@ const TournamentDetail = () => {
                 </div>
               )}
 
+              {sessionReview.requires_pro && !sessionReview.review && (
+                <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
+                  <Sparkles className="size-3.5 text-amber-400 shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Review por IA disponível no plano Pro</p>
+                    <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                      Faça upgrade para receber análise comparativa da meta vs resultado.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {sessionReview.goal.notes && (
                 <p className="text-xs text-muted-foreground italic border-t border-border/50 pt-2">
                   &ldquo;{sessionReview.goal.notes}&rdquo;
