@@ -3,7 +3,7 @@
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
 > **Sprints já entregues:** Sprints 1–13 + Sprint A–T + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.51.0.
-> **Sprint atual:** Sprint V — FEAT-09 Coach Templates + FEAT-10 Coach Messaging
+> **Sprint atual:** Sprint W — FEAT-11 Weekly Digest Email
 
 ---
 
@@ -56,7 +56,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint S | FEAT-06 | Leak Causal Map | ✅ v0.50.0 |
 | Sprint T | FEAT-07 | Coach Effectiveness Metrics | ✅ v0.51.0 |
 | Sprint U | FEAT-08 | Session Goals + AI Review | ✅ v0.52.0 |
-| Sprint V | FEAT-09 + FEAT-10 | Coach Templates + Coach Messaging | ⏳ |
+| Sprint V | FEAT-09 + FEAT-10 | Coach Templates + Coach Messaging | ✅ v0.53.0 |
 | Sprint W | FEAT-11 | Weekly Digest Email | ⏳ |
 | Sprint X | FEAT-12 | Página de Documentação / Wiki do Sistema | ⏳ |
 | Sprint Y | UX-008 | Coaches Directory — mobile layout + remover "professor" | ⏳ |
@@ -64,6 +64,8 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AA | INFRA-001 | Correção de erros de build no Render (backend) e Vercel (frontend) | ⏳ |
 | Sprint AB | UX-010 | Filtros de período no gráfico de Bankroll (1M/3M/1A/tudo) não funcionam | ⏳ |
 | Sprint AC | UX-011 | Dashboard — remover nome do hero, "Centro de Comando" → "Dashboard", corrigir quebra de linha no subtítulo | ⏳ |
+| Sprint AD | UX-012 | Dashboard — remover lista de últimos torneios (há menu próprio); liberar espaço para cards de indicadores | ⏳ |
+| Sprint AE | UX-013 | Substituir "JAM" por "All In" em toda a plataforma (UI, textos, labels, parser output) | ⏳ |
 
 ---
 
@@ -262,6 +264,21 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 3. Corrigir quaisquer erros de tipagem, import missing, ou dependência ausente que apareçam no CI
 
 **Esforço:** ~2h (diagnóstico + correção)
+
+---
+
+### [UX-012] — Dashboard — Remover Lista de Últimos Torneios *(Sprint AD)*
+
+**Valor:** A lista de últimos torneios ocupa espaço no dashboard sem agregar informação única — o menu de Torneios já cobre essa necessidade com filtros e ordenação. Remover libera espaço para expandir os cards de indicadores (KPIs, gráficos, leaks).
+
+**Escopo:**
+- Remover o componente `RecentTournamentsTable` de `Index.tsx`
+- Verificar se o componente é usado em outro lugar antes de deletar o arquivo
+- Avaliar se o espaço liberado comporta um card adicional de indicador (ex: `ConfidenceDrift` ou `PressureProfileCard` promovidos para o topo)
+
+**Frontend only** — sem alterações de backend.
+
+**Esforço:** ~1h frontend
 
 ---
 

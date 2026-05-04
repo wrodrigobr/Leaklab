@@ -1030,6 +1030,29 @@ export const coachDashboard = {
     request<{ ok: boolean }>(`/coach/review${coachId ? `?coach_id=${coachId}` : ""}`, {
       method: "DELETE",
     }),
+
+  // Sprint V — FEAT-09: Plan Templates
+  getTemplates: () =>
+    request<{ templates: CoachTemplate[] }>("/coach/templates"),
+
+  createTemplate: (data: { name: string; target_archetype?: string; cards_json: object[] }) =>
+    request<CoachTemplate>("/coach/templates", {
+      method: "POST",
+      body: JSON.stringify({ ...data, cards_json: data.cards_json }),
+    }),
+
+  deleteTemplate: (templateId: number) =>
+    request<{ ok: boolean }>(`/coach/templates/${templateId}`, { method: "DELETE" }),
+
+  // Sprint V — FEAT-10: Messages (coach side)
+  getMessages: (studentId: number) =>
+    request<{ messages: CoachMessage[] }>(`/coach/student/${studentId}/messages`),
+
+  sendMessage: (studentId: number, body: string, decision_id?: number) =>
+    request<CoachMessage>(`/coach/student/${studentId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body, decision_id }),
+    }),
 };
 
 export interface StudyOverride {
@@ -1290,6 +1313,41 @@ export interface CoachEffectivenessReport {
 
 export const coachEffectiveness = {
   report: () => request<CoachEffectivenessReport>("/coach/effectiveness"),
+};
+
+// ── Coach Plan Templates — FEAT-09 ───────────────────────────────────────────
+
+export interface CoachTemplate {
+  id: number;
+  name: string;
+  target_archetype: string | null;
+  cards_json: string;
+  created_at: string;
+}
+
+// ── Coach Messages — FEAT-10 ─────────────────────────────────────────────────
+
+export interface CoachMessage {
+  id: number;
+  body: string;
+  sender_role: "coach" | "student";
+  decision_id: number | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export const playerMessages = {
+  list: () =>
+    request<{ messages: CoachMessage[] }>("/player/coach/messages"),
+
+  send: (body: string) =>
+    request<CoachMessage>("/player/coach/messages", {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    }),
+
+  unreadCount: () =>
+    request<{ unread: number }>("/player/messages/unread"),
 };
 
 // ── Session Goals — FEAT-08 ───────────────────────────────────────────────────

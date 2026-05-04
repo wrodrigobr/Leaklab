@@ -3078,6 +3078,113 @@ def get_achievements(user_id: int) -> list:
         conn.close()
 
 
+# ── Coach Plan Templates — FEAT-09 ───────────────────────────────────────────
+
+def get_coach_templates(coach_id: int) -> list:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, name, target_archetype, cards_json, created_at "
+        "FROM coach_plan_templates WHERE coach_id = ? ORDER BY created_at DESC",
+        (coach_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def create_coach_template(coach_id: int, name: str,
+                          target_archetype: Optional[str], cards_json: str) -> dict:
+    conn = get_conn()
+    cur = conn.execute(
+        "INSERT INTO coach_plan_templates (coach_id, name, target_archetype, cards_json) "
+        "VALUES (?, ?, ?, ?)",
+        (coach_id, name, target_archetype, cards_json)
+    )
+    template_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return {"id": template_id, "name": name,
+            "target_archetype": target_archetype, "cards_json": cards_json}
+
+
+def delete_coach_template(template_id: int, coach_id: int) -> bool:
+    conn = get_conn()
+    conn.execute(
+        "DELETE FROM coach_plan_templates WHERE id = ? AND coach_id = ?",
+        (template_id, coach_id)
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
+# ── Coach Messages — FEAT-10 ──────────────────────────────────────────────────
+
+def send_coach_message(coach_id: int, student_id: int, body: str,
+                       sender_role: str = 'coach',
+                       decision_id: Optional[int] = None) -> dict:
+    from datetime import datetime
+    conn = get_conn()
+    now_str = datetime.utcnow().isoformat()
+    cur = conn.execute(
+        "INSERT INTO coach_messages (coach_id, student_id, body, sender_role, decision_id, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (coach_id, student_id, body, sender_role, decision_id, now_str)
+    )
+    msg_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return {"id": msg_id, "body": body, "sender_role": sender_role,
+            "created_at": now_str, "read_at": None, "decision_id": decision_id}
+
+
+def get_coach_messages(coach_id: int, student_id: int, limit: int = 50) -> list:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, body, sender_role, decision_id, read_at, created_at "
+        "FROM coach_messages WHERE coach_id = ? AND student_id = ? "
+        "ORDER BY created_at ASC LIMIT ?",
+        (coach_id, student_id, limit)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def mark_messages_read(coach_id: int, student_id: int, reader_role: str) -> None:
+    """Marca como lidas as mensagens enviadas pelo papel oposto ao leitor."""
+    from datetime import datetime
+    sender = 'coach' if reader_role == 'student' else 'student'
+    now_str = datetime.utcnow().isoformat()
+    conn = get_conn()
+    conn.execute(
+        "UPDATE coach_messages SET read_at = ? "
+        "WHERE coach_id = ? AND student_id = ? AND sender_role = ? AND read_at IS NULL",
+        (now_str, coach_id, student_id, sender)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_unread_message_count(user_id: int, role: str) -> int:
+    """Conta mensagens não lidas recebidas pelo usuário."""
+    conn = get_conn()
+    if role == 'student':
+        # student recebe mensagens com sender_role='coach'
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM coach_messages "
+            "WHERE student_id = ? AND sender_role = 'coach' AND read_at IS NULL",
+            (user_id,)
+        ).fetchone()
+    else:
+        # coach recebe mensagens com sender_role='student'
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM coach_messages "
+            "WHERE coach_id = ? AND sender_role = 'student' AND read_at IS NULL",
+            (user_id,)
+        ).fetchone()
+    conn.close()
+    return (row['n'] or 0) if row else 0
+
+
 # ── Session Goals — FEAT-08 ───────────────────────────────────────────────────
 
 def create_session_goal(user_id: int, goal_leak_spot: str | None,

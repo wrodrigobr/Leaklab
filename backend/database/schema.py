@@ -559,6 +559,37 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id)")
         except Exception: pass
+        # coach_plan_templates (Postgres) — FEAT-09
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS coach_plan_templates (
+                    id               SERIAL PRIMARY KEY,
+                    coach_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    name             TEXT    NOT NULL,
+                    target_archetype TEXT,
+                    cards_json       TEXT    NOT NULL DEFAULT '[]',
+                    created_at       TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_templates_coach ON coach_plan_templates(coach_id)")
+        except Exception: pass
+        # coach_messages (Postgres) — FEAT-10
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS coach_messages (
+                    id          SERIAL PRIMARY KEY,
+                    coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    body        TEXT    NOT NULL,
+                    sender_role TEXT    NOT NULL DEFAULT 'coach',
+                    decision_id INTEGER REFERENCES decisions(id) ON DELETE SET NULL,
+                    read_at     TIMESTAMP,
+                    created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_msgs_pair ON coach_messages(coach_id, student_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_msgs_unread ON coach_messages(student_id, read_at)")
+        except Exception: pass
         # session_goals table (Postgres) — FEAT-08
         try:
             conn.execute("""
@@ -801,6 +832,33 @@ def _run_migrations(conn):
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_session_goals_user    ON session_goals(user_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_session_goals_tourney ON session_goals(tournament_id)")
+        # coach_plan_templates (SQLite) — FEAT-09
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coach_plan_templates (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name             TEXT    NOT NULL,
+                target_archetype TEXT,
+                cards_json       TEXT    NOT NULL DEFAULT '[]',
+                created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_templates_coach ON coach_plan_templates(coach_id)")
+        # coach_messages (SQLite) — FEAT-10
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coach_messages (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                student_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                body        TEXT    NOT NULL,
+                sender_role TEXT    NOT NULL DEFAULT 'coach',
+                decision_id INTEGER REFERENCES decisions(id) ON DELETE SET NULL,
+                read_at     TEXT,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_msgs_pair   ON coach_messages(coach_id, student_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_msgs_unread ON coach_messages(student_id, read_at)")
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────

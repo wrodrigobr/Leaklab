@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.53.0] — 2026-05-03 — Sprint V: FEAT-09 Coach Templates + FEAT-10 Coach Messaging
+
+### Added
+- **`backend/database/schema.py`**: tabela `coach_plan_templates` (id, coach_id, name, target_archetype, cards_json) e `coach_messages` (id, coach_id, student_id, body, sender_role, decision_id, read_at) — SQLite + Postgres.
+- **`backend/database/repositories.py`**: `get_coach_templates`, `create_coach_template`, `delete_coach_template`; `send_coach_message`, `get_coach_messages`, `mark_messages_read`, `get_unread_message_count`.
+- **`backend/api/app.py`**: endpoints `GET/POST /coach/templates`, `DELETE /coach/templates/<id>`; `GET/POST /coach/student/<id>/messages`; `GET/POST /player/coach/messages`, `GET /player/messages/unread`.
+- **`frontend/src/lib/api.ts`**: interfaces `CoachTemplate`, `CoachMessage`; métodos em `coachDashboard` (getTemplates, createTemplate, deleteTemplate, getMessages, sendMessage); módulo `playerMessages` (list, send, unreadCount).
+- **`frontend/src/pages/coach/StudentDetail.tsx`**: aba "Mensagens" com chat bidirecional em tempo real (polling 15s), badge de não lidas na aba, botão "Salvar como template" nos cards substituídos do plano de estudos.
+- **`frontend/src/components/hud/CoachMessagesPanel.tsx`**: painel colapsável de chat para o player na página do AI Coach — mostra conversa com coach humano vinculado, badge de não lidas, envio via Enter.
+- **`frontend/src/pages/AICoach.tsx`**: `CoachMessagesPanel` integrado na sidebar, visível apenas quando `user.coach_id` está presente.
+- **`frontend/src/components/hud/HudHeader.tsx`**: badge de não lidas no header (ícone `MessageSquare` com contador) para players com coach vinculado — polling 60s, link para `/coach`.
+
+---
+
 ## [v0.52.0] — 2026-05-03 — Sprint U: FEAT-08 Session Goals + AI Review
 
 ### Added

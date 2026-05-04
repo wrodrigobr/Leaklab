@@ -80,6 +80,10 @@ from database.repositories import (
     # Sprint U — FEAT-08: Session Goals + AI Review
     create_session_goal, link_session_goal, get_pending_session_goal,
     get_session_goal_by_tournament, save_session_review,
+    # Sprint V — FEAT-09: Coach Plan Templates
+    get_coach_templates, create_coach_template, delete_coach_template,
+    # Sprint V — FEAT-10: Coach Messages
+    send_coach_message, get_coach_messages, mark_messages_read, get_unread_message_count,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -1348,6 +1352,106 @@ def coach_profile():
 @require_coach
 def coach_effectiveness():
     return jsonify(get_coach_effectiveness_report(g.user_id))
+
+
+# ── Coach Plan Templates — FEAT-09 ───────────────────────────────────────────
+
+@app.route('/coach/templates', methods=['GET'])
+@require_coach
+def coach_templates_list():
+    return jsonify({'templates': get_coach_templates(g.user_id)})
+
+
+@app.route('/coach/templates', methods=['POST'])
+@require_coach
+def coach_templates_create():
+    d = request.get_json(silent=True) or {}
+    name = (d.get('name') or '').strip()
+    if not name:
+        return jsonify({'error': 'name obrigatório'}), 400
+    archetype  = (d.get('target_archetype') or '').strip() or None
+    cards_json = d.get('cards_json')
+    if not isinstance(cards_json, (list, str)):
+        return jsonify({'error': 'cards_json obrigatório'}), 400
+    import json as _json
+    if isinstance(cards_json, list):
+        cards_json = _json.dumps(cards_json, ensure_ascii=False)
+    t = create_coach_template(g.user_id, name, archetype, cards_json)
+    return jsonify(t), 201
+
+
+@app.route('/coach/templates/<int:template_id>', methods=['DELETE'])
+@require_coach
+def coach_templates_delete(template_id: int):
+    delete_coach_template(template_id, g.user_id)
+    return jsonify({'ok': True})
+
+
+# ── Coach Messages — FEAT-10 ─────────────────────────────────────────────────
+
+def _resolve_coach_student(user_id: int, role: str, student_id_param: int | None = None):
+    """Returns (coach_id, student_id) for the current user or 403."""
+    if role == 'coach':
+        return user_id, student_id_param
+    else:
+        # Student — look up their coach
+        user = get_user_by_id(user_id)
+        if not user or not user.get('coach_id'):
+            return None, None
+        return user['coach_id'], user_id
+
+
+@app.route('/coach/student/<int:student_id>/messages', methods=['GET'])
+@require_coach
+def coach_messages_list(student_id: int):
+    msgs = get_coach_messages(g.user_id, student_id, limit=100)
+    mark_messages_read(g.user_id, student_id, reader_role='coach')
+    return jsonify({'messages': msgs})
+
+
+@app.route('/coach/student/<int:student_id>/messages', methods=['POST'])
+@require_coach
+def coach_messages_send(student_id: int):
+    d = request.get_json(silent=True) or {}
+    body = sanitize_llm_input((d.get('body') or '').strip(), max_len=1000)
+    if not body:
+        return jsonify({'error': 'body obrigatório'}), 400
+    decision_id = d.get('decision_id')
+    msg = send_coach_message(g.user_id, student_id, body,
+                             sender_role='coach', decision_id=decision_id)
+    return jsonify(msg), 201
+
+
+@app.route('/player/coach/messages', methods=['GET'])
+@require_auth
+def player_messages_list():
+    coach_id, student_id = _resolve_coach_student(g.user_id, g.role)
+    if not coach_id:
+        return jsonify({'messages': []})
+    msgs = get_coach_messages(coach_id, student_id, limit=100)
+    mark_messages_read(coach_id, student_id, reader_role='student')
+    return jsonify({'messages': msgs})
+
+
+@app.route('/player/coach/messages', methods=['POST'])
+@require_auth
+def player_messages_send():
+    d = request.get_json(silent=True) or {}
+    body = sanitize_llm_input((d.get('body') or '').strip(), max_len=1000)
+    if not body:
+        return jsonify({'error': 'body obrigatório'}), 400
+    coach_id, student_id = _resolve_coach_student(g.user_id, g.role)
+    if not coach_id:
+        return jsonify({'error': 'Sem coach vinculado'}), 400
+    msg = send_coach_message(coach_id, student_id, body, sender_role='student')
+    return jsonify(msg), 201
+
+
+@app.route('/player/messages/unread', methods=['GET'])
+@require_auth
+def player_messages_unread():
+    count = get_unread_message_count(g.user_id, g.role)
+    return jsonify({'unread': count})
 
 
 @app.route('/coach/impact', methods=['GET'])

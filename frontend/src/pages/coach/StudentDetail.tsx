@@ -1,16 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Trophy, AlertTriangle, BookOpen, LayoutDashboard,
   ChevronRight, Play, TrendingUp, TrendingDown, Minus,
   CheckCircle2, MessageSquare, PenLine, Trash2, X, Check, Loader2,
-  Activity, Flag, Star, BarChart2
+  Activity, Flag, Star, BarChart2, Save, Send, FileText
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PlayingCard } from "@/components/hud/PlayingCard";
 import { LevelCard } from "@/components/hud/LevelCard";
-import { coachDashboard, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation, CoachOverrideLabel, ActivityEvent, ProgressReport } from "@/lib/api";
+import { coachDashboard, CoachTemplate, CoachMessage, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation, CoachOverrideLabel, ActivityEvent, ProgressReport } from "@/lib/api";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar
@@ -40,7 +40,7 @@ function StatPill({ label, value, sub }: { label: string; value: string | number
 
 // ── tabs ──────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "tournaments" | "worst" | "study" | "progress";
+type Tab = "overview" | "tournaments" | "worst" | "study" | "progress" | "mensagens";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "overview",    label: "Visão Geral",     icon: LayoutDashboard },
@@ -48,6 +48,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "worst",       label: "Mãos Críticas",   icon: AlertTriangle },
   { id: "study",       label: "Plano de Estudos", icon: BookOpen },
   { id: "progress",   label: "Progresso",         icon: Activity },
+  { id: "mensagens",  label: "Mensagens",          icon: MessageSquare },
 ];
 
 // ── Overview tab ──────────────────────────────────────────────────────────────
@@ -727,6 +728,7 @@ function StudyCardItem({
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState<EditMode>(null);
   const [noteText, setNoteText] = useState(override?.note ?? "");
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [customTitle, setCustomTitle] = useState(() => {
     try { return JSON.parse(override?.custom_card ?? "{}").titulo ?? card.titulo; } catch { return card.titulo; }
   });
@@ -992,6 +994,30 @@ function StudyCardItem({
             }`}>
             <PenLine className="size-3" /> Substituir
           </button>
+          {override?.status === "replaced" && (
+            <button
+              onClick={async () => {
+                setSavingTemplate(true);
+                try {
+                  const custom = (() => { try { return JSON.parse(override!.custom_card ?? "{}"); } catch { return {}; } })();
+                  await coachDashboard.createTemplate({
+                    name: custom.titulo ?? card.titulo ?? card.spot,
+                    target_archetype: undefined,
+                    cards_json: [{ ...custom, spot: card.spot }],
+                  });
+                  qc.invalidateQueries({ queryKey: ["coach-templates"] });
+                } finally {
+                  setSavingTemplate(false);
+                }
+              }}
+              disabled={savingTemplate}
+              title="Salvar este card substituído como template reutilizável"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[10px] font-bold uppercase border border-border text-muted-foreground hover:text-blue-400 hover:border-blue-400/40 transition-colors disabled:opacity-40"
+            >
+              {savingTemplate ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+              Template
+            </button>
+          )}
           {override && (
             <button onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}
               title="Remover anotação"
@@ -1001,6 +1027,101 @@ function StudyCardItem({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Messaging tab — FEAT-10 ──────────────────────────────────────────────────
+
+function MessagingTab({ studentId }: { studentId: number }) {
+  const qc = useQueryClient();
+  const [body, setBody] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["coach-messages", studentId],
+    queryFn: () => coachDashboard.getMessages(studentId),
+    refetchInterval: 15_000,
+  });
+
+  const sendMut = useMutation({
+    mutationFn: (text: string) => coachDashboard.sendMessage(studentId, text),
+    onSuccess: () => {
+      setBody("");
+      qc.invalidateQueries({ queryKey: ["coach-messages", studentId] });
+    },
+  });
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [data?.messages]);
+
+  const handleSend = () => {
+    const text = body.trim();
+    if (!text || sendMut.isPending) return;
+    sendMut.mutate(text);
+  };
+
+  const messages: CoachMessage[] = data?.messages ?? [];
+
+  return (
+    <div className="flex flex-col h-[520px] rounded-xl border border-border bg-hud-surface overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
+        <MessageSquare className="size-3.5 text-primary" />
+        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          Conversa com o aluno
+        </span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {isLoading && (
+          <p className="text-xs text-muted-foreground text-center py-8 animate-pulse">Carregando mensagens…</p>
+        )}
+        {!isLoading && messages.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-8">Nenhuma mensagem ainda. Inicie a conversa.</p>
+        )}
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            className={`flex ${m.sender_role === "coach" ? "justify-end" : "justify-start"}`}
+          >
+            <div className={`max-w-[75%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
+              m.sender_role === "coach"
+                ? "bg-primary text-primary-foreground"
+                : "bg-hud-surface border border-border text-foreground"
+            }`}>
+              {m.body}
+              <p className={`font-mono text-[9px] mt-1 ${
+                m.sender_role === "coach" ? "text-primary-foreground/60" : "text-muted-foreground"
+              }`}>
+                {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {m.sender_role === "student" && !m.read_at && (
+                  <span className="ml-1 text-amber-400">● não lida</span>
+                )}
+              </p>
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="border-t border-border px-3 py-2.5 flex gap-2">
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+          placeholder="Mensagem… (Enter para enviar)"
+          rows={2}
+          className="flex-1 rounded-md border border-border bg-transparent px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!body.trim() || sendMut.isPending}
+          className="self-end rounded-md bg-primary px-3 py-1.5 text-primary-foreground disabled:opacity-40 transition-opacity"
+        >
+          {sendMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+        </button>
+      </div>
     </div>
   );
 }
@@ -1378,6 +1499,17 @@ export default function StudentDetail() {
     queryFn: coachDashboard.students,
   });
 
+  const { data: messagesData } = useQuery({
+    queryKey: ["coach-messages", studentId],
+    queryFn: () => coachDashboard.getMessages(studentId),
+    refetchInterval: 30_000,
+    enabled: !isNaN(studentId),
+  });
+
+  const unreadFromStudent = (messagesData?.messages ?? []).filter(
+    (m) => m.sender_role === "student" && !m.read_at
+  ).length;
+
   const studentName = studentsData?.students.find((s) => s.id === studentId)?.username ?? `Aluno #${studentId}`;
 
   const { data: history } = useQuery({
@@ -1451,7 +1583,7 @@ export default function StudentDetail() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest-2 transition-colors ${
+              className={`relative flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest-2 transition-colors ${
                 tab === t.id
                   ? "text-primary border-b-2 border-primary -mb-px"
                   : "text-muted-foreground hover:text-foreground"
@@ -1459,6 +1591,11 @@ export default function StudentDetail() {
             >
               <t.icon className="size-3.5" />
               {t.label}
+              {t.id === "mensagens" && unreadFromStudent > 0 && (
+                <span className="absolute -top-0.5 right-1 flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
+                  {unreadFromStudent}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -1469,6 +1606,7 @@ export default function StudentDetail() {
         {tab === "worst"       && <WorstTab        studentId={studentId} />}
         {tab === "study"       && <StudyTab        studentId={studentId} />}
         {tab === "progress"    && <ProgressTab     studentId={studentId} />}
+        {tab === "mensagens"   && <MessagingTab    studentId={studentId} />}
       </main>
     </div>
   );

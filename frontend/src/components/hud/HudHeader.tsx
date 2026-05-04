@@ -1,10 +1,12 @@
-import { Activity, BarChart3, Bot, GraduationCap, Globe, LayoutDashboard, Shield, Swords, Trophy, UploadCloud, Users, UserCircle } from "lucide-react";
+import { Activity, BarChart3, Bot, GraduationCap, Globe, LayoutDashboard, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useUploadQueue } from "@/components/hud/UploadQueue";
 import { AccountMenu } from "@/components/hud/AccountMenu";
+import { playerMessages } from "@/lib/api";
 
 interface HudHeaderProps {
   onUpload?: () => void;
@@ -88,6 +90,14 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
 
   const { enqueue, panel } = useUploadQueue(onUpload);
 
+  const { data: unreadData } = useQuery({
+    queryKey: ["player-messages-unread"],
+    queryFn: playerMessages.unreadCount,
+    refetchInterval: 60_000,
+    enabled: user?.role === "player" && !!user?.coach_id,
+  });
+  const unreadCount = unreadData?.unread ?? 0;
+
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
@@ -146,6 +156,19 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                 <UploadCloud className="size-3.5" />
                 {t("actions.import")}
               </button>
+            )}
+
+            {unreadCount > 0 && user?.role === "player" && (
+              <NavLink
+                to="/coach"
+                title="Mensagens não lidas do coach"
+                className="relative flex items-center justify-center size-8 rounded-full bg-destructive/10 ring-1 ring-destructive/30 hover:bg-destructive/20 transition-colors"
+              >
+                <MessageSquare className="size-3.5 text-destructive" />
+                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              </NavLink>
             )}
 
             <LanguageSwitcher />
