@@ -600,7 +600,7 @@ export default function CoachDashboard() {
   return (
     <div className="min-h-dvh bg-background">
       <HudHeader />
-      <main className="mx-auto max-w-5xl px-6 py-8 space-y-8">
+      <main className="mx-auto max-w-[1440px] px-4 py-8 space-y-8 md:px-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard do Coach</h1>
           <p className="text-sm text-muted-foreground mt-1">Acompanhe a evolução dos seus alunos</p>

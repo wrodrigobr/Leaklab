@@ -121,86 +121,90 @@ function OverviewTab({ studentId }: { studentId: number }) {
   const s = stats;
 
   return (
-    <div className="space-y-6">
-      {/* Level card */}
-      {levelData?.level && <LevelCard data={levelData} compact showStudyLink={false} />}
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
 
-      {/* HUD stats */}
-      {s && (
-        <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
-          <StatPill label="VPIP"  value={s.vpip  != null ? `${s.vpip}%`  : "—"} sub="Voluntário" />
-          <StatPill label="PFR"   value={s.pfr   != null ? `${s.pfr}%`   : "—"} sub="Preflop raise" />
-          <StatPill label="AF"    value={s.af     != null ? `${s.af}x`    : "—"} sub="Agressão" />
-          <StatPill label="3BET"  value={s.three_bet != null ? `${s.three_bet}%` : "—"} sub="Re-raise PF" />
-          <StatPill label="F3B"   value={s.fold_to_3bet != null ? `${s.fold_to_3bet}%` : "—"} sub="Fold to 3bet" />
-          <StatPill label="Flop%" value={s.flop_bet_pct != null ? `${s.flop_bet_pct}%` : "—"} sub="Bet flop" />
-          <StatPill label="WTSD"  value={s.wtsd   != null ? `${s.wtsd}%`  : "—"} sub="Vai a SD" />
-          <StatPill label="W$SD"  value={s.w_at_sd != null ? `${s.w_at_sd}%` : "—"} sub="Ganha SD" />
-        </div>
-      )}
+      {/* ── Main column ──────────────────────────────────────────────────── */}
+      <div className="space-y-6 lg:col-span-8">
+        {levelData?.level && <LevelCard data={levelData} compact showStudyLink={false} />}
 
-      {/* Comparativo histórico */}
-      {evo.length >= 2 && (
-        <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-            Comparativo — primeiros 3 vs últimos 3 torneios
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: "Score Inicial", value: earlyScore?.toFixed(1), unit: "pts" },
-              { label: "Score Atual",   value: recentScore?.toFixed(1), unit: "pts" },
-              { label: "Standard Inicial", value: earlyStd?.toFixed(1), unit: "%" },
-              { label: "Standard Atual",   value: recentStd?.toFixed(1), unit: "%" },
-            ].map(({ label, value, unit }) => (
-              <div key={label} className="rounded-lg bg-background border border-border px-3 py-2 text-center">
-                <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">{label}</p>
-                <p className="text-xl font-bold text-foreground">{value ?? "—"}{value ? ` ${unit}` : ""}</p>
-              </div>
-            ))}
+        {/* HUD stats */}
+        {s && (
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+            <StatPill label="VPIP"  value={s.vpip  != null ? `${s.vpip}%`  : "—"} sub="Voluntário" />
+            <StatPill label="PFR"   value={s.pfr   != null ? `${s.pfr}%`   : "—"} sub="Preflop raise" />
+            <StatPill label="AF"    value={s.af     != null ? `${s.af}x`    : "—"} sub="Agressão" />
+            <StatPill label="3BET"  value={s.three_bet != null ? `${s.three_bet}%` : "—"} sub="Re-raise PF" />
+            <StatPill label="F3B"   value={s.fold_to_3bet != null ? `${s.fold_to_3bet}%` : "—"} sub="Fold to 3bet" />
+            <StatPill label="Flop%" value={s.flop_bet_pct != null ? `${s.flop_bet_pct}%` : "—"} sub="Bet flop" />
+            <StatPill label="WTSD"  value={s.wtsd   != null ? `${s.wtsd}%`  : "—"} sub="Vai a SD" />
+            <StatPill label="W$SD"  value={s.w_at_sd != null ? `${s.w_at_sd}%` : "—"} sub="Ganha SD" />
           </div>
-          <div className="flex items-center gap-6">
-            {deltaScore != null && (
-              <div className={`flex items-center gap-1.5 text-sm font-semibold ${deltaScore > 0 ? "text-destructive" : deltaScore < 0 ? "text-primary" : "text-muted-foreground"}`}>
-                {deltaScore < 0 ? <TrendingDown className="size-4" /> : deltaScore > 0 ? <TrendingUp className="size-4" /> : <Minus className="size-4" />}
-                Score: {deltaScore > 0 ? "+" : ""}{deltaScore.toFixed(1)} pts
-                <span className="text-xs font-normal text-muted-foreground ml-1">
-                  {deltaScore < 0 ? "(melhorou)" : deltaScore > 0 ? "(piorou)" : "(estável)"}
-                </span>
-              </div>
-            )}
-            {deltaStd != null && (
-              <div className={`flex items-center gap-1.5 text-sm font-semibold ${deltaStd > 0 ? "text-primary" : deltaStd < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                Standard: {deltaStd > 0 ? "+" : ""}{deltaStd.toFixed(1)}%
-                <span className="text-xs font-normal text-muted-foreground ml-1">
-                  {deltaStd > 0 ? "(melhorou)" : deltaStd < 0 ? "(piorou)" : "(estável)"}
-                </span>
-              </div>
-            )}
-            <span className="font-mono text-[10px] text-muted-foreground ml-auto">{evo.length} torneios no período</span>
+        )}
+
+        {/* Evolution chart */}
+        {chartData.length > 0 && (
+          <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+              Evolução (90 dias)
+            </p>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                <Tooltip contentStyle={{ background: "hsl(var(--hud-surface))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }} />
+                <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Score" />
+                <Line type="monotone" dataKey="std" stroke="hsl(var(--primary) / 0.4)" strokeWidth={1.5} dot={false} name="Standard %" />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Evolution chart */}
-      {chartData.length > 0 && (
-        <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-            Evolução (90 dias)
-          </p>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <Tooltip contentStyle={{ background: "hsl(var(--hud-surface))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }} />
-              <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Score" />
-              <Line type="monotone" dataKey="std" stroke="hsl(var(--primary) / 0.4)" strokeWidth={1.5} dot={false} name="Standard %" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+        {/* Comparativo histórico */}
+        {evo.length >= 2 && (
+          <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+              Comparativo — primeiros 3 vs últimos 3 torneios
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { label: "Score Inicial",    value: earlyScore?.toFixed(1),  unit: "pts" },
+                { label: "Score Atual",      value: recentScore?.toFixed(1), unit: "pts" },
+                { label: "Standard Inicial", value: earlyStd?.toFixed(1),    unit: "%" },
+                { label: "Standard Atual",   value: recentStd?.toFixed(1),   unit: "%" },
+              ].map(({ label, value, unit }) => (
+                <div key={label} className="rounded-lg bg-background border border-border px-3 py-2 text-center">
+                  <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">{label}</p>
+                  <p className="text-xl font-bold text-foreground">{value ?? "—"}{value ? ` ${unit}` : ""}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              {deltaScore != null && (
+                <div className={`flex items-center gap-1.5 text-sm font-semibold ${deltaScore > 0 ? "text-destructive" : deltaScore < 0 ? "text-primary" : "text-muted-foreground"}`}>
+                  {deltaScore < 0 ? <TrendingDown className="size-4" /> : deltaScore > 0 ? <TrendingUp className="size-4" /> : <Minus className="size-4" />}
+                  Score: {deltaScore > 0 ? "+" : ""}{deltaScore.toFixed(1)} pts
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {deltaScore < 0 ? "(melhorou)" : deltaScore > 0 ? "(piorou)" : "(estável)"}
+                  </span>
+                </div>
+              )}
+              {deltaStd != null && (
+                <div className={`flex items-center gap-1.5 text-sm font-semibold ${deltaStd > 0 ? "text-primary" : deltaStd < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                  Standard: {deltaStd > 0 ? "+" : ""}{deltaStd.toFixed(1)}%
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {deltaStd > 0 ? "(melhorou)" : deltaStd < 0 ? "(piorou)" : "(estável)"}
+                  </span>
+                </div>
+              )}
+              <span className="font-mono text-[10px] text-muted-foreground ml-auto">{evo.length} torneios no período</span>
+            </div>
+          </div>
+        )}
+      </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      {/* ── Aside ────────────────────────────────────────────────────────── */}
+      <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
         {/* Leaks */}
         {(history?.leaks ?? []).length > 0 && (
           <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
@@ -237,25 +241,26 @@ function OverviewTab({ studentId }: { studentId: number }) {
             </ResponsiveContainer>
           </div>
         )}
-      </div>
 
-      {/* Por posição */}
-      {posData.length > 0 && (
-        <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-2">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-            Performance por Posição
-          </p>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-            {posData.map(({ pos, std, n }) => (
-              <div key={pos} className="rounded-lg bg-background border border-border px-3 py-2 text-center">
-                <p className="font-mono text-[9px] uppercase text-muted-foreground">{pos}</p>
-                <p className={`text-lg font-bold ${SCORE_COLOR(std)}`}>{std}%</p>
-                <p className="font-mono text-[9px] text-muted-foreground">{n} dec</p>
-              </div>
-            ))}
+        {/* Por posição */}
+        {posData.length > 0 && (
+          <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-2">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+              Performance por Posição
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {posData.map(({ pos, std, n }) => (
+                <div key={pos} className="rounded-lg bg-background border border-border px-3 py-2 text-center">
+                  <p className="font-mono text-[9px] uppercase text-muted-foreground">{pos}</p>
+                  <p className={`text-lg font-bold ${SCORE_COLOR(std)}`}>{std}%</p>
+                  <p className="font-mono text-[9px] text-muted-foreground">{n} dec</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </aside>
+
     </div>
   );
 }
@@ -1538,7 +1543,7 @@ export default function StudentDetail() {
   return (
     <div className="min-h-dvh bg-background">
       <HudHeader />
-      <main className="mx-auto max-w-5xl px-6 py-8 space-y-6">
+      <main className="mx-auto max-w-[1440px] px-4 py-8 space-y-6 md:px-8">
         {/* Header */}
         <div className="flex items-center gap-3">
           <Link

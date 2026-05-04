@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.64.0] — 2026-05-03 — Sprint AF: UX-014 StudentDetail + CoachDashboard wide layout
+
+### Changed
+- **`frontend/src/pages/coach/StudentDetail.tsx`**: container `max-w-5xl` → `max-w-[1440px] px-4 md:px-8` (consistente com o dashboard principal). `OverviewTab` reestruturado para grid `lg:grid-cols-12` — coluna principal (8-col) com LevelCard + HUD stats + evolution chart + comparativo; aside (4-col) com Principais Leaks + Performance por Street + Performance por Posição. Evolution chart aumentado de 200px para 220px de altura.
+- **`frontend/src/pages/coach/CoachDashboard.tsx`**: mesma atualização de container `max-w-5xl` → `max-w-[1440px] px-4 md:px-8`.
+
+---
+
 ## [v0.63.0] — 2026-05-03 — Sprint AF-fix: Dashboard layout holes
 
 ### Fixed

@@ -65,7 +65,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AC | UX-011 | Dashboard — remover nome do hero, "Centro de Comando" → "Dashboard", corrigir quebra de linha no subtítulo | ✅ v0.59.0 |
 | Sprint AD | UX-012 | Dashboard — remover lista de últimos torneios (há menu próprio); liberar espaço para cards de indicadores | ✅ v0.60.0 |
 | Sprint AE | UX-013 | Substituir "JAM" por "All In" em toda a plataforma (UI, textos, labels, parser output) | ⏳ |
-| Sprint AF | UX-014 | Página do Coach (StudentDetail) — remover limitação horizontal, aproveitar melhor o espaço disponível em telas largas | ⏳ |
+| Sprint AF | UX-014 | Página do Coach (StudentDetail) — remover limitação horizontal, aproveitar melhor o espaço disponível em telas largas | ✅ v0.64.0 |
 | Sprint AL | UX-017 | Dashboard personalizável — arrastar e reordenar cards, preferência salva por usuário | ⏳ |
 | Sprint AH | BACK-018 | Coach Application Flow — candidatura com aprovação manual pelo admin | ⏳ |
 | Sprint AI | BACK-019 | Perfil demográfico do usuário — idade, localização, experiência de poker | ⏳ |
