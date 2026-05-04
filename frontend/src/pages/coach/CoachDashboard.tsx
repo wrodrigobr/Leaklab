@@ -10,7 +10,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
 import { StudentRow } from "@/components/coach/StudentRow";
 import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, formatAction } from "@/lib/utils";
 
 // ── shared ────────────────────────────────────────────────────────────────────
 
@@ -188,8 +188,8 @@ function UrgentTab() {
                 <tr key={d.id} className="border-b border-border/40 last:border-0 hover:bg-primary/5 transition-colors">
                   <td className="px-4 py-2.5 text-xs font-medium text-foreground">{d.username}</td>
                   <td className="px-4 py-2.5 font-mono text-xs capitalize text-muted-foreground">{d.street}</td>
-                  <td className="px-4 py-2.5 text-xs text-destructive font-medium">{d.action_taken}</td>
-                  <td className="px-4 py-2.5 text-xs text-primary font-medium">{d.best_action}</td>
+                  <td className="px-4 py-2.5 text-xs text-destructive font-medium">{formatAction(d.action_taken)}</td>
+                  <td className="px-4 py-2.5 text-xs text-primary font-medium">{formatAction(d.best_action)}</td>
                   <td className={`px-4 py-2.5 font-mono text-xs font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</td>
                   <td className="px-4 py-2.5">
                     <span className={cn(

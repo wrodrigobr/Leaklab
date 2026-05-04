@@ -261,37 +261,39 @@ const Index = () => {
                 />
               )}
               {levelData?.level && <LevelCard data={levelData} showStudyLink />}
-              <IcmBreakdown icm={evo?.icm} />
-              <PressureProfileCard data={pressureData} />
-              <GhostDrillCard stats={drillStats} pendingSpots={drillSpots} />
-
-              <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                      {t("aiConfidence.title")}
-                    </span>
-                    <HudTooltip content={t("aiConfidence.tooltip")} />
-                  </div>
-                  <span className="font-mono text-[10px] text-primary">
-                    {hasData ? t("aiConfidence.active") : t("aiConfidence.noData")}
-                  </span>
-                </div>
-                <div className="flex gap-1">
-                  {Array.from({ length: 12 }).map((_, i) => {
-                    const filled = hasData ? Math.min(12, Math.round((totalEvents / 10) * 12)) : 0;
-                    return (
-                      <span key={i} className={`h-1.5 flex-1 rounded-sm ${i < filled ? "bg-primary" : "bg-border"}`} />
-                    );
-                  })}
-                </div>
-                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                  {hasData
-                    ? t("aiConfidence.summary", { count: totalEvents })
-                    : t("aiConfidence.empty")}
-                </p>
-              </div>
             </aside>
+          </section>
+
+          <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <GhostDrillCard stats={drillStats} pendingSpots={drillSpots} />
+            <PressureProfileCard data={pressureData} />
+            <IcmBreakdown icm={evo?.icm} />
+            <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                    {t("aiConfidence.title")}
+                  </span>
+                  <HudTooltip content={t("aiConfidence.tooltip")} />
+                </div>
+                <span className="font-mono text-[10px] text-primary">
+                  {hasData ? t("aiConfidence.active") : t("aiConfidence.noData")}
+                </span>
+              </div>
+              <div className="flex gap-1">
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const filled = hasData ? Math.min(12, Math.round((totalEvents / 10) * 12)) : 0;
+                  return (
+                    <span key={i} className={`h-1.5 flex-1 rounded-sm ${i < filled ? "bg-primary" : "bg-border"}`} />
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                {hasData
+                  ? t("aiConfidence.summary", { count: totalEvents })
+                  : t("aiConfidence.empty")}
+              </p>
+            </div>
           </section>
           </>
         )}

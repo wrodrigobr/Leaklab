@@ -55,7 +55,7 @@ const ROW1: StatDef[] = [
     label: "Flop Bet",
     unit: "%",
     range: { min: 40, max: 65, label: "40–65%" },
-    tooltip: "Frequência de aposta no flop (bet/raise/jam como % das decisões no flop). Inclui c-bets e raises. MTT ideal: 40–65% dependendo da posição e range.",
+    tooltip: "Frequência de aposta no flop (bet/raise/all-in como % das decisões no flop). Inclui c-bets e raises. MTT ideal: 40–65% dependendo da posição e range.",
   },
 ];
 

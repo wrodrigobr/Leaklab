@@ -9,6 +9,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.62.0] — 2026-05-03 — Sprint AF: Dashboard card reposition
+
+### Changed
+- **`frontend/src/pages/Index.tsx`**: GhostDrillCard, PressureProfileCard, IcmBreakdown e AI Confidence movidos da aside (4 col) para uma nova row full-width abaixo do grid principal, em `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`. Aside agora contém apenas LeaksPanel, LeakCausalMap e LevelCard — os cards analíticos mais críticos.
+
+---
+
+## [v0.61.0] — 2026-05-03 — Sprint AE: UX-013 "JAM" → "All In" na camada de display
+
+### Added
+- **`frontend/src/lib/utils.ts`**: função `formatAction(a: string)` — mapeia `"jam"` → `"All In"`, capitaliza demais ações. Identificadores internos do backend permanecem inalterados.
+
+### Changed
+- **`frontend/src/pages/GhostTable.tsx`**: `.toUpperCase()` direto nos valores de ação substituído por `formatAction(...).toUpperCase()` em 4 locais (originalMistake, bestAction subtitle, yourAction card, bestAction card).
+- **`frontend/src/pages/coach/CoachDashboard.tsx`**: `{d.action_taken}` e `{d.best_action}` na tabela de decisões encapsulados com `formatAction()`.
+- **`frontend/src/pages/coach/StudentDetail.tsx`**: mesma correção nas duas tabelas de decisões e no card de detalhe (6 ocorrências).
+- **`frontend/src/components/hud/PlayerStatsCard.tsx`**: tooltip de Flop Bet atualizado de "bet/raise/jam" para "bet/raise/all-in".
+
+---
+
 ## [v0.60.0] — 2026-05-03 — Sprint AD: UX-012 Remove recent tournaments from dashboard
 
 ### Removed

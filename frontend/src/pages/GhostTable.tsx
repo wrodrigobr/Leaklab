@@ -19,7 +19,7 @@ import { PlayingCard } from "@/components/hud/PlayingCard";
 import type { CardData } from "@/components/hud/PlayingCard";
 import { drill } from "@/lib/api";
 import type { DrillSpot, DrillStats, DrillSubmitResult } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, formatAction } from "@/lib/utils";
 
 type Phase = "intro" | "loading" | "active" | "result" | "done";
 
@@ -370,7 +370,7 @@ export default function GhostTable() {
 
               {/* Score de erro original */}
               <p className="font-mono text-[10px] text-muted-foreground border-t border-border pt-3">
-                {t("result.originalMistake", { action: current.action_taken.toUpperCase(), score: current.score.toFixed(2) })}
+                {t("result.originalMistake", { action: formatAction(current.action_taken).toUpperCase(), score: current.score.toFixed(2) })}
               </p>
             </article>
 
@@ -409,7 +409,7 @@ export default function GhostTable() {
                 {lastResult.is_correct ? t("result.correct") : t("result.wrong")}
               </p>
               <p className="text-sm text-muted-foreground">
-                {t("result.bestAction", { action: lastResult.best_action.toUpperCase() })}
+                {t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}
               </p>
             </div>
           </div>
@@ -417,11 +417,11 @@ export default function GhostTable() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-border bg-hud-surface p-4">
               <p className="font-mono text-[10px] uppercase text-muted-foreground">{t("result.yourAction", { action: "" }).split(":")[0]}</p>
-              <p className="mt-1 font-mono text-xl font-bold text-foreground">{lastResult.new_action.toUpperCase()}</p>
+              <p className="mt-1 font-mono text-xl font-bold text-foreground">{formatAction(lastResult.new_action).toUpperCase()}</p>
             </div>
             <div className="rounded-lg border border-border bg-hud-surface p-4">
               <p className="font-mono text-[10px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
-              <p className="mt-1 font-mono text-xl font-bold text-foreground">{lastResult.best_action.toUpperCase()}</p>
+              <p className="mt-1 font-mono text-xl font-bold text-foreground">{formatAction(lastResult.best_action).toUpperCase()}</p>
             </div>
           </div>
 

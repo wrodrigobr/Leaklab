@@ -8,6 +8,7 @@ import {
   Activity, Flag, Star, BarChart2, Save, Send, FileText
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
+import { formatAction } from "@/lib/utils";
 import { PlayingCard } from "@/components/hud/PlayingCard";
 import { LevelCard } from "@/components/hud/LevelCard";
 import { coachDashboard, CoachTemplate, CoachMessage, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation, CoachOverrideLabel, ActivityEvent, ProgressReport } from "@/lib/api";
@@ -324,8 +325,8 @@ function TournamentsTab({ studentId }: { studentId: number }) {
               {decisions.map((d) => (
                 <tr key={d.id} className="border-b border-border/40 last:border-0 hover:bg-primary/5 transition-colors">
                   <td className="px-4 py-2 font-mono text-xs capitalize">{d.street}</td>
-                  <td className="px-4 py-2 text-xs">{d.action_taken}</td>
-                  <td className="px-4 py-2 text-xs">{d.best_action}</td>
+                  <td className="px-4 py-2 text-xs">{formatAction(d.action_taken)}</td>
+                  <td className="px-4 py-2 text-xs">{formatAction(d.best_action)}</td>
                   <td className={`px-4 py-2 font-mono text-xs font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</td>
                   <td className={`px-4 py-2 font-mono text-[10px] capitalize ${LABEL_COLOR[d.label] ?? ""}`}>{d.label}</td>
                   <td className="px-4 py-2">
@@ -611,11 +612,11 @@ function WorstTab({ studentId }: { studentId: number }) {
             <div className="flex items-center gap-6 text-sm">
               <div>
                 <p className="font-mono text-[9px] text-muted-foreground uppercase">Jogou</p>
-                <p className="font-medium text-destructive">{d.action_taken}</p>
+                <p className="font-medium text-destructive">{formatAction(d.action_taken)}</p>
               </div>
               <div>
                 <p className="font-mono text-[9px] text-muted-foreground uppercase">Correto</p>
-                <p className="font-medium text-primary">{d.best_action}</p>
+                <p className="font-medium text-primary">{formatAction(d.best_action)}</p>
               </div>
               {d.m_ratio != null && (
                 <div>
