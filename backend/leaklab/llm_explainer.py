@@ -1226,6 +1226,7 @@ _ACTION_LABEL_EN = {
     "call":  "call",
     "raise": "raise",
     "bet":   "bet",
+    "check": "check",
 }
 
 _ICM_LABEL_EN = {
@@ -1310,8 +1311,8 @@ def _template_twin(profile: dict, lang: str = 'pt-BR') -> str:
     avg_pct = int(profile["player_avg_error_rate"] * 100)
     err_pct = int(top["error_rate"] * 100)
     delta   = int(top["delta_from_avg"] * 100)
-    action_pt = {"jam": "reshove", "fold": "fold", "call": "call", "raise": "raise", "bet": "bet"}
-    action_es = {"jam": "reshove", "fold": "fold", "call": "call", "raise": "raise", "bet": "bet"}
+    action_pt = {"jam": "reshove", "fold": "fold", "call": "call", "raise": "raise", "bet": "bet", "check": "check"}
+    action_es = {"jam": "reshove", "fold": "fold", "call": "call", "raise": "raise", "bet": "bet", "check": "check"}
     icm_pt    = {"low": "ICM baixo", "medium": "ICM moderado", "high": "ICM alto", "critical": "ICM crítico"}
     icm_es    = {"low": "ICM bajo", "medium": "ICM moderado", "high": "ICM alto", "critical": "ICM crítico"}
     street_pt = {"preflop": "preflop", "flop": "no flop", "turn": "no turn", "river": "no river"}

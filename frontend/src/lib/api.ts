@@ -688,7 +688,7 @@ export interface CognitiveFailureData {
 
 export interface TwinSpot {
   street: "preflop" | "flop" | "turn" | "river";
-  best_action: "jam" | "fold" | "call" | "raise" | "bet";
+  best_action: "jam" | "fold" | "call" | "raise" | "bet" | "check";
   icm_pressure: "low" | "medium" | "high" | "critical";
   total: number;
   mistakes: number;

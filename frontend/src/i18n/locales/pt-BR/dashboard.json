@@ -291,7 +291,8 @@
       "fold":  "Fold",
       "call":  "Call",
       "raise": "Raise",
-      "bet":   "Bet"
+      "bet":   "Bet",
+      "check": "Check"
     },
     "streets": {
       "preflop": "Preflop",
