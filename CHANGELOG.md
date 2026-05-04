@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.82.2] — 2026-05-04 — Fix: perfil i18n completo + telefone no perfil + remoção WhatsApp Coaching
+
+### Changed
+- **`frontend/src/pages/StudentProfile.tsx`**: seção WhatsApp Coaching removida (integração Meta adiada). Campo "Telefone / WhatsApp" movido para dentro de "Dados do Jogador" — salvo em conjunto com os demais dados no mesmo botão; saves chamadom `profileApi.update()` + `authApi.updatePhone()`.
+- **`frontend/src/pages/StudentProfile.tsx`**: i18n completo — todos os textos hardcoded da página substituídos por `t()`. Sub-componentes `CoachReviewWidget`, `CoachDiscoveryCard` e `NoCoachDiscovery` agora usam `useTranslation("profile")` e não têm nenhum string hardcoded em PT-BR.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/profile.json`**: adicionados grupos `email.*`, `password.*` (labels, placeholders, botões, toasts) e `coach.*` (review, discovery, unlink) — cobertura total da página em PT/EN/ES. Chaves `whatsapp.*` e `sections.whatsapp` removidas.
+
+---
+
 ## [v0.82.1] — 2026-05-04 — Fix: perfil demográfico visível e editável na página de Perfil
 
 ### Added

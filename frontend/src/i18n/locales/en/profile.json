@@ -4,18 +4,22 @@
   "sections": {
     "account": "Account",
     "security": "Security",
-    "coach": "My Coach",
-    "whatsapp": "WhatsApp Coaching"
+    "coach": "My Coach"
   },
   "fields": {
     "username": "Username",
     "email": "Email",
     "plan": "Plan",
-    "role": "Account type",
-    "currentPassword": "Current password",
-    "newPassword": "New password",
-    "confirmPassword": "Confirm password",
-    "phone": "WhatsApp number"
+    "role": "Account type"
+  },
+  "email": {
+    "newLabel": "New email",
+    "confirmPwLabel": "Confirm with your current password",
+    "currentPwPlaceholder": "Your current password",
+    "save": "Save email",
+    "invalid": "Invalid email",
+    "success": "Email updated successfully.",
+    "error": "Error updating email"
   },
   "coach": {
     "linked": "Linked coach",
@@ -24,20 +28,46 @@
     "findCoaches": "Find coaches",
     "viewProfile": "View profile",
     "unlink": "Unlink",
-    "unlinkConfirm": "Confirm unlink?"
-  },
-  "whatsapp": {
-    "description": "Link your number to receive exercises and leak alerts directly on WhatsApp.",
-    "placeholder": "+1 555 000 0000",
-    "save": "Save number",
-    "unlink": "Unlink",
-    "linked": "WhatsApp linked",
-    "notLinked": "Number not linked"
+    "unlinkConfirm": "Confirm unlink?",
+    "myReview": "My review",
+    "editReview": "Edit",
+    "editReviewTitle": "Edit review",
+    "rateCoach": "Rate my coach",
+    "reviewPlaceholder": "Optional comment…",
+    "submitReview": "Submit",
+    "cancel": "Cancel",
+    "addReview": "+ Rate coach",
+    "rateMyCoach": "+ Rate my coach",
+    "noCoachDesc": "You don't have a linked coach yet. The AI is already your coach — but you can hire a human coach to further accelerate your growth.",
+    "topCoaches": "Top-rated coaches",
+    "viewAll": "View all available coaches →",
+    "inviteHint": "Enter the invite key received from your coach:",
+    "invitePlaceholder": "Invite key…",
+    "linkBtn": "Link",
+    "hasInvite": "I have an invite key",
+    "linkedSuccess": "Linked to coach {{name}}!",
+    "unlinkSuccess": "Coach link removed.",
+    "unlinkError": "Error removing coach link",
+    "unlinkConfirmMsg": "Confirm removal of link with {{name}}?",
+    "unlinkPwLabel": "Enter your password to confirm",
+    "unlinkPwRequired": "Enter your password to confirm",
+    "students": "{{n}} students",
+    "reviewSaved": "Review saved!",
+    "reviewRemoved": "Review removed."
   },
   "password": {
     "change": "Change password",
-    "mismatch": "Passwords don't match.",
-    "success": "Password changed successfully."
+    "currentLabel": "Current password",
+    "currentPlaceholder": "Current password",
+    "newLabel": "New password (min. 8 characters)",
+    "newPlaceholder": "New password",
+    "confirmLabel": "Confirm new password",
+    "confirmPlaceholder": "Repeat new password",
+    "save": "Change password",
+    "mismatch": "Passwords don't match",
+    "minLength": "New password must be at least 8 characters",
+    "success": "Password changed successfully.",
+    "error": "Error changing password"
   },
   "actions": {
     "saveProfile": "Save profile",
@@ -65,6 +95,8 @@
       "mid": "Mid ($30 – $200)",
       "high": "High (> $200)"
     },
+    "phone": "Phone / WhatsApp",
+    "phonePlaceholder": "+1 555 000 0000",
     "completion": "{{n}}/5 core fields filled",
     "completionDone": "Profile complete",
     "save": "Save info",

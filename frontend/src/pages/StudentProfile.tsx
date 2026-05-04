@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { KeyRound, Mail, MessageCircle, User, UserX, Loader2, Check, AlertTriangle, GraduationCap, Star, Trash2, Users, ChevronRight } from "lucide-react";
+import { KeyRound, Mail, User, UserX, Loader2, Check, AlertTriangle, GraduationCap, Star, Trash2, Users, ChevronRight } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { useAuth } from "@/lib/auth";
 import { auth as authApi, student as studentApi, coachDashboard, coaches, profile as profileApi, CoachReview, PublicCoach, DemographicProfile } from "@/lib/api";
@@ -24,6 +24,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 }
 
 function CoachReviewWidget({ coachId }: { coachId: number }) {
+  const { t } = useTranslation("profile");
   const qc = useQueryClient();
   const [rating, setRating] = useState(0);
   const [text, setText] = useState("");
@@ -39,7 +40,7 @@ function CoachReviewWidget({ coachId }: { coachId: number }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-review", coachId] });
       setEditing(false);
-      toast.success("Avaliação salva!");
+      toast.success(t("coach.reviewSaved"));
     },
   });
 
@@ -48,7 +49,7 @@ function CoachReviewWidget({ coachId }: { coachId: number }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-review", coachId] });
       setRating(0); setText(""); setEditing(false);
-      toast.success("Avaliação removida.");
+      toast.success(t("coach.reviewRemoved"));
     },
   });
 
@@ -65,13 +66,13 @@ function CoachReviewWidget({ coachId }: { coachId: number }) {
       <div className="rounded-lg border border-border bg-background p-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Minha avaliação</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">{t("coach.myReview")}</p>
             <div className="flex gap-0.5">
               {[1,2,3,4,5].map(n => <Star key={n} className={`size-3.5 ${existing.rating >= n ? "fill-amber-400 text-amber-400" : "text-border"}`} />)}
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => startEdit(existing)} className="font-mono text-[10px] text-muted-foreground hover:text-foreground">Editar</button>
+            <button onClick={() => startEdit(existing)} className="font-mono text-[10px] text-muted-foreground hover:text-foreground">{t("coach.editReview")}</button>
             <button onClick={() => remove.mutate()} className="font-mono text-[10px] text-destructive hover:text-destructive/80">
               <Trash2 className="size-3" />
             </button>
@@ -86,14 +87,14 @@ function CoachReviewWidget({ coachId }: { coachId: number }) {
     return (
       <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
         <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-          {existing ? "Editar avaliação" : "Avaliar meu coach"}
+          {existing ? t("coach.editReviewTitle") : t("coach.rateCoach")}
         </p>
         <StarPicker value={rating} onChange={setRating} />
         <textarea
           rows={2}
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder="Comentário opcional…"
+          placeholder={t("coach.reviewPlaceholder")}
           className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
         />
         <div className="flex gap-2">
@@ -102,16 +103,16 @@ function CoachReviewWidget({ coachId }: { coachId: number }) {
             disabled={rating === 0 || save.isPending}
             className="flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 font-mono text-[11px] font-bold text-primary-foreground disabled:opacity-50"
           >
-            {save.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />} Enviar
+            {save.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />} {t("coach.submitReview")}
           </button>
           {(existing || editing) && (
             <button onClick={() => setEditing(false)} className="rounded border border-border px-3 py-1.5 font-mono text-[11px] text-muted-foreground">
-              Cancelar
+              {t("coach.cancel")}
             </button>
           )}
         </div>
         {!existing && !editing && (
-          <button onClick={() => startEdit()} className="font-mono text-[10px] text-primary hover:underline">+ Avaliar coach</button>
+          <button onClick={() => startEdit()} className="font-mono text-[10px] text-primary hover:underline">{t("coach.addReview")}</button>
         )}
       </div>
     );
@@ -119,7 +120,7 @@ function CoachReviewWidget({ coachId }: { coachId: number }) {
 
   return (
     <button onClick={() => startEdit()} className="font-mono text-[10px] text-primary hover:underline">
-      + Avaliar meu coach
+      {t("coach.rateMyCoach")}
     </button>
   );
 }
@@ -127,6 +128,7 @@ function CoachReviewWidget({ coachId }: { coachId: number }) {
 // ── BACK-013: Coach discovery when no coach is linked ─────────────────────────
 
 function CoachDiscoveryCard({ coach }: { coach: PublicCoach }) {
+  const { t } = useTranslation("profile");
   const r = coach.avg_rating ?? 0;
   return (
     <Link
@@ -153,7 +155,7 @@ function CoachDiscoveryCard({ coach }: { coach: PublicCoach }) {
             ))}
           </div>
           <span className="font-mono text-[9px] text-muted-foreground flex items-center gap-0.5">
-            <Users className="size-2.5" /> {coach.student_count} alunos
+            <Users className="size-2.5" /> {t("coach.students", { n: coach.student_count })}
           </span>
         </div>
       </div>
@@ -163,6 +165,7 @@ function CoachDiscoveryCard({ coach }: { coach: PublicCoach }) {
 }
 
 function NoCoachDiscovery() {
+  const { t } = useTranslation("profile");
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { refreshUser } = useAuth();
@@ -178,7 +181,7 @@ function NoCoachDiscovery() {
   const linkMut = useMutation({
     mutationFn: () => studentApi.linkCoach(inviteKey),
     onSuccess: async (data) => {
-      toast.success(`Vinculado ao coach ${data.coach.username}!`);
+      toast.success(t("coach.linkedSuccess", { name: data.coach.username }));
       await refreshUser();
       qc.invalidateQueries({ queryKey: ["coaches-top"] });
       navigate("/profile");
@@ -190,14 +193,12 @@ function NoCoachDiscovery() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Você ainda não tem um coach vinculado. A IA já é seu coach — mas você pode contratar um coach humano para potencializar ainda mais sua evolução.
-      </p>
+      <p className="text-sm text-muted-foreground">{t("coach.noCoachDesc")}</p>
 
       {topCoaches.length > 0 && (
         <div className="space-y-2">
           <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-            Coaches bem avaliados
+            {t("coach.topCoaches")}
           </p>
           <div className="space-y-2">
             {topCoaches.map((c) => <CoachDiscoveryCard key={c.user_id} coach={c} />)}
@@ -206,19 +207,19 @@ function NoCoachDiscovery() {
             to="/coaches"
             className="font-mono text-[10px] text-primary hover:underline flex items-center gap-1"
           >
-            Ver todos os coaches disponíveis →
+            {t("coach.viewAll")}
           </Link>
         </div>
       )}
 
       {showForm ? (
         <div className="space-y-2 border-t border-border pt-3">
-          <p className="font-mono text-[10px] text-muted-foreground">Insira a chave de convite recebida do coach:</p>
+          <p className="font-mono text-[10px] text-muted-foreground">{t("coach.inviteHint")}</p>
           <input
             type="text"
             value={inviteKey}
             onChange={(e) => setInviteKey(e.target.value)}
-            placeholder="Chave de convite…"
+            placeholder={t("coach.invitePlaceholder")}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
           <div className="flex gap-2">
@@ -228,13 +229,13 @@ function NoCoachDiscovery() {
               className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {linkMut.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-              Vincular
+              {t("coach.linkBtn")}
             </button>
             <button
               onClick={() => setShowForm(false)}
               className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
             >
-              Cancelar
+              {t("coach.cancel")}
             </button>
           </div>
         </div>
@@ -243,7 +244,7 @@ function NoCoachDiscovery() {
           onClick={() => setShowForm(true)}
           className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
         >
-          <GraduationCap className="size-3.5" /> Tenho uma chave de convite
+          <GraduationCap className="size-3.5" /> {t("coach.hasInvite")}
         </button>
       )}
     </div>
@@ -282,22 +283,26 @@ const inputCls = "w-full rounded-md border border-border bg-background px-3 py-2
 export default function StudentProfile() {
   const { user, refreshUser } = useAuth();
   const { t } = useTranslation("profile");
-  const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  // ── Dados do Jogador (demográficos) ───────────────────────────────────────
+  // ── Dados do Jogador (demográficos + telefone) ────────────────────────────
   const { data: demographics, isLoading: demoLoading } = useQuery({
     queryKey: ["my-demographics"],
     queryFn: () => profileApi.get(),
   });
 
   const [demoForm, setDemoForm] = useState<Partial<DemographicProfile>>({});
+  const [phone, setPhone]       = useState(user?.whatsapp_phone ?? "");
   const [demoSaving, setDemoSaving] = useState(false);
 
   useEffect(() => {
     if (demographics) setDemoForm(demographics);
   }, [demographics]);
+
+  useEffect(() => {
+    setPhone(user?.whatsapp_phone ?? "");
+  }, [user?.whatsapp_phone]);
 
   const CORE_DEMO_FIELDS = ["birth_year", "country", "poker_experience_years", "main_game_type", "usual_buyin_range"] as const;
   const demoFilledCount = CORE_DEMO_FIELDS.filter((f) => {
@@ -310,10 +315,12 @@ export default function StudentProfile() {
     setDemoSaving(true);
     try {
       await profileApi.update(demoForm);
+      await authApi.updatePhone(phone.trim() || null);
       qc.invalidateQueries({ queryKey: ["my-demographics"] });
+      await refreshUser();
       toast.success(t("demo.saved"));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erro ao salvar dados");
+      toast.error(err instanceof Error ? err.message : t("demo.saved"));
     } finally {
       setDemoSaving(false);
     }
@@ -326,15 +333,15 @@ export default function StudentProfile() {
 
   const handleUpdateEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmail.includes("@")) { toast.error("E-mail inválido"); return; }
+    if (!newEmail.includes("@")) { toast.error(t("email.invalid")); return; }
     setEmailLoading(true);
     try {
       await authApi.updateEmail(newEmail, emailPw);
       await refreshUser();
       setEmailPw("");
-      toast.success("E-mail atualizado com sucesso.");
+      toast.success(t("email.success"));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erro ao atualizar e-mail");
+      toast.error(err instanceof Error ? err.message : t("email.error"));
     } finally {
       setEmailLoading(false);
     }
@@ -348,35 +355,17 @@ export default function StudentProfile() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPw.length < 8) { toast.error("Nova senha deve ter pelo menos 8 caracteres"); return; }
-    if (newPw !== confirmPw) { toast.error("As senhas não coincidem"); return; }
+    if (newPw.length < 8) { toast.error(t("password.minLength")); return; }
+    if (newPw !== confirmPw) { toast.error(t("password.mismatch")); return; }
     setPwLoading(true);
     try {
       await authApi.changePassword(currentPw, newPw);
       setCurrentPw(""); setNewPw(""); setConfirmPw("");
-      toast.success("Senha alterada com sucesso.");
+      toast.success(t("password.success"));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erro ao trocar senha");
+      toast.error(err instanceof Error ? err.message : t("password.error"));
     } finally {
       setPwLoading(false);
-    }
-  };
-
-  // ── WhatsApp ──────────────────────────────────────────────────────────────
-  const [waPhone,     setWaPhone]     = useState(user?.whatsapp_phone ?? "");
-  const [waLoading,   setWaLoading]   = useState(false);
-
-  const handleSavePhone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setWaLoading(true);
-    try {
-      await authApi.updatePhone(waPhone.trim() || null);
-      await refreshUser();
-      toast.success(waPhone.trim() ? "Número vinculado com sucesso." : "Número desvinculado.");
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erro ao salvar número");
-    } finally {
-      setWaLoading(false);
     }
   };
 
@@ -388,16 +377,16 @@ export default function StudentProfile() {
   const handleUnlink = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!confirmUnlink) { setConfirmUnlink(true); return; }
-    if (!unlinkPw) { toast.error("Digite sua senha para confirmar"); return; }
+    if (!unlinkPw) { toast.error(t("coach.unlinkPwRequired")); return; }
     setUnlinkLoading(true);
     try {
       await studentApi.unlinkCoach(unlinkPw);
       await refreshUser();
       setConfirmUnlink(false);
       setUnlinkPw("");
-      toast.success("Vínculo com coach removido.");
+      toast.success(t("coach.unlinkSuccess"));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erro ao remover vínculo");
+      toast.error(err instanceof Error ? err.message : t("coach.unlinkError"));
     } finally {
       setUnlinkLoading(false);
     }
@@ -518,6 +507,16 @@ export default function StudentProfile() {
                 </Field>
               </div>
 
+              <Field label={t("demo.phone")}>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder={t("demo.phonePlaceholder")}
+                  className={inputCls}
+                />
+              </Field>
+
               <button
                 type="submit"
                 disabled={demoSaving}
@@ -530,54 +529,10 @@ export default function StudentProfile() {
           )}
         </Section>
 
-        {/* WhatsApp */}
-        <Section icon={MessageCircle} title={t("sections.whatsapp")}>
-          <p className="text-xs text-muted-foreground">
-            Vincule seu número para receber exercícios personalizados diretamente no WhatsApp.
-            Use o formato <span className="font-mono text-foreground">DDI+DDD+número</span> sem espaços ou traços.
-          </p>
-          <form onSubmit={handleSavePhone} className="space-y-3">
-            <Field label="Número de WhatsApp">
-              <input
-                type="tel"
-                value={waPhone}
-                onChange={(e) => setWaPhone(e.target.value)}
-                placeholder="5511999999999"
-                className={inputCls}
-              />
-            </Field>
-            {user?.whatsapp_phone && (
-              <p className="font-mono text-[10px] text-green-400">
-                ✓ Número atual: {user.whatsapp_phone}
-              </p>
-            )}
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={waLoading}
-                className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-white hover:bg-green-500 disabled:opacity-50 transition-colors"
-              >
-                {waLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-                Salvar número
-              </button>
-              {user?.whatsapp_phone && (
-                <button
-                  type="button"
-                  disabled={waLoading}
-                  onClick={async () => { setWaPhone(""); await authApi.updatePhone(null); await refreshUser(); toast.success("Número desvinculado."); }}
-                  className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                >
-                  Desvincular
-                </button>
-              )}
-            </div>
-          </form>
-        </Section>
-
         {/* Alterar e-mail */}
         <Section icon={Mail} title={t("fields.email")}>
           <form onSubmit={handleUpdateEmail} className="space-y-3">
-            <Field label="Novo e-mail">
+            <Field label={t("email.newLabel")}>
               <input
                 type="email"
                 value={newEmail}
@@ -586,12 +541,12 @@ export default function StudentProfile() {
                 required
               />
             </Field>
-            <Field label="Confirmar com sua senha atual">
+            <Field label={t("email.confirmPwLabel")}>
               <input
                 type="password"
                 value={emailPw}
                 onChange={(e) => setEmailPw(e.target.value)}
-                placeholder="Sua senha atual"
+                placeholder={t("email.currentPwPlaceholder")}
                 className={inputCls}
                 required
               />
@@ -602,7 +557,7 @@ export default function StudentProfile() {
               className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {emailLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-              Salvar e-mail
+              {t("email.save")}
             </button>
           </form>
         </Section>
@@ -610,40 +565,40 @@ export default function StudentProfile() {
         {/* Trocar senha */}
         <Section icon={KeyRound} title={t("password.change")}>
           <form onSubmit={handleChangePassword} className="space-y-3">
-            <Field label="Senha atual">
+            <Field label={t("password.currentLabel")}>
               <input
                 type="password"
                 value={currentPw}
                 onChange={(e) => setCurrentPw(e.target.value)}
-                placeholder="Senha atual"
+                placeholder={t("password.currentPlaceholder")}
                 className={inputCls}
                 required
               />
             </Field>
-            <Field label="Nova senha (mínimo 8 caracteres)">
+            <Field label={t("password.newLabel")}>
               <input
                 type="password"
                 value={newPw}
                 onChange={(e) => setNewPw(e.target.value)}
-                placeholder="Nova senha"
+                placeholder={t("password.newPlaceholder")}
                 className={inputCls}
                 required
                 minLength={8}
               />
             </Field>
-            <Field label="Confirmar nova senha">
+            <Field label={t("password.confirmLabel")}>
               <input
                 type="password"
                 value={confirmPw}
                 onChange={(e) => setConfirmPw(e.target.value)}
-                placeholder="Repita a nova senha"
+                placeholder={t("password.confirmPlaceholder")}
                 className={inputCls}
                 required
               />
             </Field>
             {newPw && confirmPw && newPw !== confirmPw && (
               <p className="font-mono text-[10px] text-destructive flex items-center gap-1">
-                <AlertTriangle className="size-3" /> As senhas não coincidem
+                <AlertTriangle className="size-3" /> {t("password.mismatch")}
               </p>
             )}
             <button
@@ -652,7 +607,7 @@ export default function StudentProfile() {
               className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {pwLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-              Trocar senha
+              {t("password.save")}
             </button>
           </form>
         </Section>
@@ -681,14 +636,14 @@ export default function StudentProfile() {
                 <form onSubmit={handleUnlink} className="space-y-3">
                   <p className="font-mono text-[11px] text-destructive flex items-center gap-1.5">
                     <AlertTriangle className="size-3.5" />
-                    Confirma remoção do vínculo com <strong>{user.coach_username}</strong>?
+                    {t("coach.unlinkConfirmMsg", { name: user.coach_username })}
                   </p>
-                  <Field label="Digite sua senha para confirmar">
+                  <Field label={t("coach.unlinkPwLabel")}>
                     <input
                       type="password"
                       value={unlinkPw}
                       onChange={(e) => setUnlinkPw(e.target.value)}
-                      placeholder="Sua senha atual"
+                      placeholder={t("password.currentPlaceholder")}
                       className={inputCls}
                       autoFocus
                       required
@@ -708,7 +663,7 @@ export default function StudentProfile() {
                       onClick={() => { setConfirmUnlink(false); setUnlinkPw(""); }}
                       className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {tc("actions.cancel")}
+                      {t("coach.cancel")}
                     </button>
                   </div>
                 </form>

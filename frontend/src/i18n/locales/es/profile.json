@@ -4,18 +4,22 @@
   "sections": {
     "account": "Cuenta",
     "security": "Seguridad",
-    "coach": "Mi Coach",
-    "whatsapp": "Coaching por WhatsApp"
+    "coach": "Mi Coach"
   },
   "fields": {
     "username": "Usuario",
     "email": "Correo",
     "plan": "Plan",
-    "role": "Tipo de cuenta",
-    "currentPassword": "Contraseña actual",
-    "newPassword": "Nueva contraseña",
-    "confirmPassword": "Confirmar contraseña",
-    "phone": "Número de WhatsApp"
+    "role": "Tipo de cuenta"
+  },
+  "email": {
+    "newLabel": "Nuevo correo",
+    "confirmPwLabel": "Confirmar con tu contraseña actual",
+    "currentPwPlaceholder": "Tu contraseña actual",
+    "save": "Guardar correo",
+    "invalid": "Correo inválido",
+    "success": "Correo actualizado exitosamente.",
+    "error": "Error al actualizar correo"
   },
   "coach": {
     "linked": "Coach vinculado",
@@ -24,20 +28,46 @@
     "findCoaches": "Encontrar coaches",
     "viewProfile": "Ver perfil",
     "unlink": "Desvincular",
-    "unlinkConfirm": "¿Confirmar desvinculación?"
-  },
-  "whatsapp": {
-    "description": "Vincula tu número para recibir ejercicios y alertas de leaks directamente por WhatsApp.",
-    "placeholder": "+54 11 9999-9999",
-    "save": "Guardar número",
-    "unlink": "Desvincular",
-    "linked": "WhatsApp vinculado",
-    "notLinked": "Número no vinculado"
+    "unlinkConfirm": "¿Confirmar desvinculación?",
+    "myReview": "Mi reseña",
+    "editReview": "Editar",
+    "editReviewTitle": "Editar reseña",
+    "rateCoach": "Calificar mi coach",
+    "reviewPlaceholder": "Comentario opcional…",
+    "submitReview": "Enviar",
+    "cancel": "Cancelar",
+    "addReview": "+ Calificar coach",
+    "rateMyCoach": "+ Calificar mi coach",
+    "noCoachDesc": "Aún no tienes un coach vinculado. La IA ya es tu coach — pero puedes contratar un coach humano para potenciar aún más tu evolución.",
+    "topCoaches": "Coaches mejor valorados",
+    "viewAll": "Ver todos los coaches disponibles →",
+    "inviteHint": "Ingresa la clave de invitación recibida del coach:",
+    "invitePlaceholder": "Clave de invitación…",
+    "linkBtn": "Vincular",
+    "hasInvite": "Tengo una clave de invitación",
+    "linkedSuccess": "Vinculado al coach {{name}}!",
+    "unlinkSuccess": "Vínculo con coach eliminado.",
+    "unlinkError": "Error al eliminar vínculo con coach",
+    "unlinkConfirmMsg": "¿Confirmar eliminación del vínculo con {{name}}?",
+    "unlinkPwLabel": "Ingresa tu contraseña para confirmar",
+    "unlinkPwRequired": "Ingresa tu contraseña para confirmar",
+    "students": "{{n}} alumnos",
+    "reviewSaved": "¡Reseña guardada!",
+    "reviewRemoved": "Reseña eliminada."
   },
   "password": {
     "change": "Cambiar contraseña",
-    "mismatch": "Las contraseñas no coinciden.",
-    "success": "Contraseña cambiada exitosamente."
+    "currentLabel": "Contraseña actual",
+    "currentPlaceholder": "Contraseña actual",
+    "newLabel": "Nueva contraseña (mín. 8 caracteres)",
+    "newPlaceholder": "Nueva contraseña",
+    "confirmLabel": "Confirmar nueva contraseña",
+    "confirmPlaceholder": "Repite la nueva contraseña",
+    "save": "Cambiar contraseña",
+    "mismatch": "Las contraseñas no coinciden",
+    "minLength": "La nueva contraseña debe tener al menos 8 caracteres",
+    "success": "Contraseña cambiada exitosamente.",
+    "error": "Error al cambiar contraseña"
   },
   "actions": {
     "saveProfile": "Guardar perfil",
@@ -65,6 +95,8 @@
       "mid": "Mid ($30 – $200)",
       "high": "High (> $200)"
     },
+    "phone": "Teléfono / WhatsApp",
+    "phonePlaceholder": "+54 11 9999-9999",
     "completion": "{{n}}/5 campos esenciales completados",
     "completionDone": "Perfil completo",
     "save": "Guardar datos",
