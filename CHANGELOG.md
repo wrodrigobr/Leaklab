@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.60.0] — 2026-05-03 — Sprint AD: UX-012 Remove recent tournaments from dashboard
+
+### Removed
+- **`frontend/src/pages/Index.tsx`**: `RecentTournamentsTable` removido do dashboard — o menu /tournaments já serve essa função. O estado `tourns` e o fetch de `tournaments.list()` permanecem para os cálculos de KPI (ROI, ITM, Total Eventos, Total Mãos).
+
+---
+
 ## [v0.59.0] — 2026-05-03 — Sprint AC: UX-011 Dashboard title/subtitle
 
 ### Changed

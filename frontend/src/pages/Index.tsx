@@ -6,7 +6,6 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { KpiCard } from "@/components/hud/KpiCard";
 import { LeaksPanel } from "@/components/hud/LeaksPanel";
 import { BankrollChart } from "@/components/hud/BankrollChart";
-import { RecentTournamentsTable } from "@/components/hud/RecentTournamentsTable";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { DecisionQualityCard } from "@/components/hud/DecisionQualityCard";
 import { StreetBreakdown } from "@/components/hud/StreetBreakdown";
@@ -250,8 +249,6 @@ const Index = () => {
               </div>
 
               <PlayerDnaCard data={dnaData} />
-
-              <RecentTournamentsTable tournaments={tourns} />
             </div>
 
             <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
