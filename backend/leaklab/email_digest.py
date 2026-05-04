@@ -14,7 +14,7 @@ Variáveis de ambiente requeridas:
   SMTP_PASSWORD    — senha SMTP / API key
   DIGEST_FROM      — ex: noreply@leaklabs.ai
   APP_BASE_URL     — ex: https://leaklabs.ai (para links de unsubscribe)
-  JWT_SECRET_KEY   — usado para assinar token de unsubscribe
+  LEAKLAB_SECRET   — usado para assinar token de unsubscribe
 """
 from __future__ import annotations
 import hashlib
@@ -34,7 +34,7 @@ _UNSUBSCRIBE_SALT = "digest_unsub_v1"
 # ── Token de unsubscribe ──────────────────────────────────────────────────────
 
 def _unsub_token(user_id: int) -> str:
-    secret = os.environ.get("JWT_SECRET_KEY", "dev-secret")
+    secret = os.environ.get("LEAKLAB_SECRET", "dev-secret")
     msg = f"{_UNSUBSCRIBE_SALT}:{user_id}"
     return hmac.new(secret.encode(), msg.encode(), hashlib.sha256).hexdigest()[:32]
 

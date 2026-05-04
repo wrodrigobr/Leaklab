@@ -249,7 +249,7 @@ const AICoach = () => {
                 <li className="flex items-center justify-between">
                   <span>{t("context.stdPct")}</span>
                   <span className="font-mono tabular-nums text-muted-foreground">
-                    {ctx?.standard_pct != null ? `${(ctx.standard_pct * 100).toFixed(1)}%` : "—"}
+                    {ctx?.standard_pct != null ? `${ctx.standard_pct.toFixed(1)}%` : "—"}
                   </span>
                 </li>
               </ul>

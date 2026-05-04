@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.57.0] — 2026-05-03 — Sprint AA: INFRA-001 Build + display bugs
+
+### Fixed
+- **`vercel.json`**: substituído config quebrado `@vercel/static-build` com rotas `"/frontend/$1"` pelo formato moderno — `buildCommand` + `outputDirectory` + `rewrites` apontando tudo para `/index.html`; corrige roteamento do React Router em produção.
+- **`backend/leaklab/email_digest.py`**: variável de ambiente do token de unsubscribe corrigida de `JWT_SECRET_KEY` para `LEAKLAB_SECRET` (alinhado com `database/auth.py` e `render.yaml`).
+- **`frontend/src/pages/AICoach.tsx`**: `standard_pct` no painel de contexto exibia valor multiplicado por 100 duas vezes (ex: 85.18 → 8518%). O endpoint retorna já em % — removida a multiplicação `* 100` incorreta.
+
+---
+
 ## [v0.56.0] — 2026-05-03 — Sprint Z: UX-009 Tournament date display
 
 ### Changed

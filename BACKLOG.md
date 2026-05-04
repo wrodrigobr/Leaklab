@@ -3,7 +3,7 @@
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
 > **Sprints já entregues:** Sprints 1–13 + Sprint A–T + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.51.0.
-> **Sprint atual:** Sprint AA — INFRA-001 Build errors
+> **Sprint atual:** Sprint AB — UX-010 Bankroll filters
 
 ---
 
@@ -60,7 +60,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint W | FEAT-11 | Weekly Digest Email | ✅ v0.54.0 |
 | Sprint Y | UX-008 | Coaches Directory — mobile layout + remover "professor" | ✅ v0.55.0 |
 | Sprint Z | UX-009 | Torneios — data do torneio vs importação + exibir ano | ✅ v0.56.0 |
-| Sprint AA | INFRA-001 | Correção de erros de build no Render (backend) e Vercel (frontend) | ⏳ |
+| Sprint AA | INFRA-001 | Correção de erros de build no Render (backend) e Vercel (frontend) | ✅ v0.57.0 |
 | Sprint AB | UX-010 | Filtros de período no gráfico de Bankroll (1M/3M/1A/tudo) não funcionam | ⏳ |
 | Sprint AC | UX-011 | Dashboard — remover nome do hero, "Centro de Comando" → "Dashboard", corrigir quebra de linha no subtítulo | ⏳ |
 | Sprint AD | UX-012 | Dashboard — remover lista de últimos torneios (há menu próprio); liberar espaço para cards de indicadores | ⏳ |
@@ -68,11 +68,48 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AF | UX-014 | Página do Coach (StudentDetail) — remover limitação horizontal, aproveitar melhor o espaço disponível em telas largas | ⏳ |
 | Sprint AH | BACK-018 | Coach Application Flow — candidatura com aprovação manual pelo admin | ⏳ |
 | Sprint AI | BACK-019 | Perfil demográfico do usuário — idade, localização, experiência de poker | ⏳ |
+| Sprint AJ | UX-015 | Inbox global de mensagens para o coach — ver todas as conversas com badge de não lidas | ⏳ |
+| Sprint AK | UX-016 | Badge de mensagens não lidas no dashboard/header do aluno → link direto para conversa com coach | ⏳ |
 | Sprint AG | FEAT-12 | Página de Documentação / Wiki do Sistema (deixar por último) | ⏳ |
 
 ---
 
 ## Próximas Sprints — Em Aberto
+
+### [UX-015] — Inbox Global de Mensagens para o Coach *(Sprint AJ)*
+
+**Problema:** o coach precisa abrir o perfil de cada aluno para verificar se há mensagens não lidas — inviável com muitos alunos.
+
+**Solução:** inbox global no `CoachDashboard.tsx` — lista todas as conversas com badge de não lidas e acesso direto.
+
+**Backend:**
+- `GET /coach/messages/inbox` — retorna todas as conversas ativas: `[{student_id, student_username, last_message_body, last_message_at, unread_count}]`
+- Ordenado por `last_message_at DESC` (conversa mais recente primeiro)
+
+**Frontend:**
+- Nova aba "Mensagens" no `CoachDashboard.tsx` (ao lado de Alunos, Analytics, etc.)
+- Cada linha: avatar inicial, nome do aluno, prévia da última mensagem (truncada), timestamp relativo ("5 min", "ontem"), badge vermelho com contagem de não lidas
+- Clique → abre `StudentDetail` do aluno direto na aba de Mensagens
+- Badge de não lidas total no tab "Mensagens" do dashboard (polling 60s)
+
+**Esforço:** ~4h backend + ~6h frontend
+
+---
+
+### [UX-016] — Badge de Mensagens Não Lidas no Aluno *(Sprint AK)*
+
+**Problema:** o aluno só vê as mensagens do coach se navegar até a página AI Coach — sem nenhuma indicação visual de mensagem pendente.
+
+**Solução:** badge no header e/ou dashboard do aluno com contagem de não lidas + link direto.
+
+**Observação:** parte desta feature já foi implementada no `HudHeader.tsx` (Sprint V) — há um `MessageSquare` com badge via polling 60s visível quando `user.coach_id` existe e `unreadCount > 0`. O que falta é:
+- Confirmar que o link do badge leva para `/coach` (aba de AI Coach com o `CoachMessagesPanel`)
+- Adicionar no `CoachMessagesPanel` um estado de "não lidas" mais visível (scroll automático, highlight nas mensagens novas)
+- Verificar se o badge desaparece ao marcar como lido quando o painel é aberto
+
+**Esforço:** ~2h (revisão e ajustes do que já existe)
+
+---
 
 ### [BACK-019] — Perfil Demográfico do Usuário *(Sprint AI)*
 
