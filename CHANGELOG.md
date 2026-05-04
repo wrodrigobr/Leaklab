@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.73.0] — 2026-05-04 — Bugfix: i18n level names, LeakCausalMap narrative, drag handle
+
+### Fixed
+- **`frontend/src/components/hud/LevelCard.tsx`**: nomes de nível agora são traduzidos (PT/EN/ES) via chaves `level.names.*` no namespace `dashboard`; mapeamento `LEVEL_SLUG` converte strings PT do backend em slugs canônicos para cores, ícones e i18n.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/dashboard.json`**: adicionada seção `level.names` com os 7 nomes de nível em cada idioma.
+- **`backend/leaklab/llm_explainer.py`**: `explain_leak_causality` e `_call_llm_causality` aceitam `lang` param — o prompt agora instrui o LLM a responder no idioma correto (PT/EN/ES); `max_tokens` aumentado de 150 para 280 para evitar truncamento da narrativa.
+- **`backend/database/repositories.py`**: `get_leak_graph_data` aceita `lang` param e o passa para o LLM.
+- **`backend/api/app.py`**: endpoint `GET /player/leak-graph` agora lê `?lang=` da query string.
+- **`frontend/src/lib/api.ts`**: `metrics.leakGraph(days, lang)` passa idioma para o endpoint.
+- **`frontend/src/pages/Index.tsx`**: `leakGraph` carregado com `i18n.language` para narrativa no idioma correto.
+- **`frontend/src/components/hud/DraggableCard.tsx`**: grip handle movido para `left-3` (era `right-3`) — evita sobreposição com conteúdo como "90d" no canto direito do header.
+
+---
+
 ## [v0.72.0] — 2026-05-04 — Sprint i18n: cobertura completa de novos componentes
 
 ### Changed

@@ -567,8 +567,8 @@ export const metrics = {
   dna: (days = 90) =>
     request<PlayerDnaResponse>(`/player/dna?days=${days}`),
 
-  leakGraph: (days = 90) =>
-    request<LeakGraphResponse>(`/player/leak-graph?days=${days}`),
+  leakGraph: (days = 90, lang = "pt-BR") =>
+    request<LeakGraphResponse>(`/player/leak-graph?days=${days}&lang=${encodeURIComponent(lang)}`),
 
   dailyFocus: () =>
     request<DailyFocusData>(`/player/daily-focus`),

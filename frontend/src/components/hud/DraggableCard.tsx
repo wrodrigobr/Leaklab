@@ -26,7 +26,7 @@ export function DraggableCard({ id, children, className }: DraggableCardProps) {
       <button
         {...attributes}
         {...listeners}
-        className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded p-1 hover:bg-muted"
+        className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded p-1 hover:bg-muted"
         title={t("actions.dragToReorder")}
         tabIndex={-1}
       >

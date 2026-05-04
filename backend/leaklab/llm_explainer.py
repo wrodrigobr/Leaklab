@@ -915,43 +915,51 @@ Seja direto, use linguagem de coach (não acadêmica). Não use markdown, apenas
 
 # ── Leak Causal Map (FEAT-06) ────────────────────────────────────────────────
 
-def explain_leak_causality(edges: list, hero: str = 'você') -> str:
-    """1 parágrafo curto (3 frases) explicando a causa raiz dos pares mais correlacionados."""
+def explain_leak_causality(edges: list, hero: str = 'você', lang: str = 'pt-BR') -> str:
+    """1 parágrafo curto (2-3 frases) explicando a causa raiz dos pares mais correlacionados."""
     if not edges:
         return ""
-    cache_key = "causal_" + "_".join(
+    cache_key = "causal_" + lang + "_" + "_".join(
         f"{e['source']}:{e['target']}" for e in edges[:3]
     )
     if cache_key in _cache:
         return _cache[cache_key]
     try:
-        text = _call_llm_causality(edges[:3], hero)
+        text = _call_llm_causality(edges[:3], hero, lang)
     except Exception:
         text = _template_causality(edges[:3])
     _cache[cache_key] = text
     return text
 
 
-def _call_llm_causality(edges: list, hero: str) -> str:
+_LANG_INSTRUCTIONS = {
+    'pt-BR': "Responda APENAS em português do Brasil.",
+    'en':    "Respond ONLY in English.",
+    'es':    "Responde ÚNICAMENTE en español.",
+}
+
+
+def _call_llm_causality(edges: list, hero: str, lang: str = 'pt-BR') -> str:
     import requests as _req
+    lang_instr = _LANG_INSTRUCTIONS.get(lang, _LANG_INSTRUCTIONS['pt-BR'])
     pairs = "\n".join(
-        f"- {e['source']} ↔ {e['target']}: correlação {e['correlation']:.0%} "
-        f"({e['co_occurrences']} torneios em conjunto)"
+        f"- {e['source']} ↔ {e['target']}: {e['correlation']:.0%} correlation "
+        f"({e['co_occurrences']} tournaments together)"
         for e in edges
     )
     system_prompt = (
-        "Você é um coach de poker MTT analítico. "
-        "Analise as correlações de leaks abaixo e escreva EXATAMENTE 2-3 frases "
-        "explicando: (1) por que esses erros tendem a ocorrer juntos, "
-        "(2) qual é a provável causa raiz, "
-        "(3) qual corrigir primeiro para maior impacto. "
-        "Seja técnico e direto. NÃO use títulos, bullets ou introduções."
+        f"You are an analytical MTT poker coach. {lang_instr} "
+        "Analyze the leak correlations below and write EXACTLY 2-3 sentences explaining: "
+        "(1) why these errors tend to occur together, "
+        "(2) what the likely root cause is, "
+        "(3) which one to fix first for the greatest impact. "
+        "Be technical and direct. Do NOT use titles, bullets, or introductions."
     )
     payload = {
         "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 150,
+        "max_tokens": 280,
         "system": system_prompt,
-        "messages": [{"role": "user", "content": f"Leaks de {hero}:\n{pairs}"}],
+        "messages": [{"role": "user", "content": f"Player leaks ({hero}):\n{pairs}"}],
     }
     resp = _req.post(
         "https://api.anthropic.com/v1/messages",

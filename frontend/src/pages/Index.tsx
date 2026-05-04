@@ -32,7 +32,7 @@ import { useAuth } from "@/lib/auth";
 
 const Index = () => {
   const { user, refreshUser } = useAuth();
-  const { t } = useTranslation("dashboard");
+  const { t, i18n } = useTranslation("dashboard");
   const { t: tc } = useTranslation("common");
   const [showLinkCoach, setShowLinkCoach] = useState(false);
   const [evo, setEvo]           = useState<EvolutionResponse | null>(null);
@@ -66,7 +66,7 @@ const Index = () => {
       metrics.drillStats(30).then(setDrillStats).catch(() => null),
       metrics.dna(90).then(setDnaData).catch(() => null),
       drill.spots({ limit: 20 }).then((r) => setDrillSpots(r.spots)).catch(() => null),
-      metrics.leakGraph(90).then(setLeakGraph).catch(() => null),
+      metrics.leakGraph(90, i18n.language).then(setLeakGraph).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
 

@@ -2768,7 +2768,7 @@ def get_coach_effectiveness_report(coach_id: int) -> dict:
     }
 
 
-def get_leak_graph_data(user_id: int, days: int = 90) -> dict:
+def get_leak_graph_data(user_id: int, days: int = 90, lang: str = 'pt-BR') -> dict:
     """Sprint S — Retorna grafo causal de leaks: nós, arestas e narrativa LLM."""
     from datetime import datetime, timedelta
     from leaklab.leak_causal_graph import build_leak_graph
@@ -2803,7 +2803,7 @@ def get_leak_graph_data(user_id: int, days: int = 90) -> dict:
     except Exception:
         pass
 
-    narrative = explain_leak_causality(graph['edges'], hero=hero or 'você')
+    narrative = explain_leak_causality(graph['edges'], hero=hero or 'você', lang=lang)
     return {**graph, 'narrative': narrative}
 
 

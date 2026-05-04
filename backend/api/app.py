@@ -809,7 +809,8 @@ def player_dna():
 @require_auth
 def player_leak_graph():
     days = int(request.args.get('days', 90))
-    return jsonify(get_leak_graph_data(g.user_id, days=days))
+    lang = request.args.get('lang', 'pt-BR')
+    return jsonify(get_leak_graph_data(g.user_id, days=days, lang=lang))
 
 
 @app.route('/player/daily-focus', methods=['GET'])

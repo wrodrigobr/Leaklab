@@ -5,24 +5,35 @@ import { PlayerLevel } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 
+// Maps backend-returned PT names to canonical slugs used for colors/icons/i18n
+const LEVEL_SLUG: Record<string, string> = {
+  "Iniciante": "beginner",
+  "Estudante": "student",
+  "Grinder":   "grinder",
+  "Regular":   "regular",
+  "Sólido":    "solid",
+  "Expert":    "expert",
+  "Elite":     "elite",
+};
+
 const LEVEL_COLOR: Record<string, string> = {
-  "Iniciante": "text-muted-foreground border-muted-foreground/30 bg-muted-foreground/5",
-  "Estudante": "text-blue-400 border-blue-400/30 bg-blue-400/5",
-  "Grinder":   "text-amber-400 border-amber-400/30 bg-amber-400/5",
-  "Regular":   "text-emerald-400 border-emerald-400/30 bg-emerald-400/5",
-  "Sólido":    "text-primary border-primary/30 bg-primary/5",
-  "Expert":    "text-violet-400 border-violet-400/30 bg-violet-400/5",
-  "Elite":     "text-amber-300 border-amber-300/30 bg-amber-300/5",
+  beginner: "text-muted-foreground border-muted-foreground/30 bg-muted-foreground/5",
+  student:  "text-blue-400 border-blue-400/30 bg-blue-400/5",
+  grinder:  "text-amber-400 border-amber-400/30 bg-amber-400/5",
+  regular:  "text-emerald-400 border-emerald-400/30 bg-emerald-400/5",
+  solid:    "text-primary border-primary/30 bg-primary/5",
+  expert:   "text-violet-400 border-violet-400/30 bg-violet-400/5",
+  elite:    "text-amber-300 border-amber-300/30 bg-amber-300/5",
 };
 
 const PROGRESS_COLOR: Record<string, string> = {
-  "Iniciante": "bg-muted-foreground",
-  "Estudante": "bg-blue-400",
-  "Grinder":   "bg-amber-400",
-  "Regular":   "bg-emerald-400",
-  "Sólido":    "bg-primary",
-  "Expert":    "bg-violet-400",
-  "Elite":     "bg-amber-300",
+  beginner: "bg-muted-foreground",
+  student:  "bg-blue-400",
+  grinder:  "bg-amber-400",
+  regular:  "bg-emerald-400",
+  solid:    "bg-primary",
+  expert:   "bg-violet-400",
+  elite:    "bg-amber-300",
 };
 
 interface Props {
@@ -47,9 +58,13 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
     );
   }
 
-  const colorCls    = LEVEL_COLOR[data.level] ?? "text-primary border-primary/30 bg-primary/5";
-  const progressCls = PROGRESS_COLOR[data.level] ?? "bg-primary";
+  const slug        = LEVEL_SLUG[data.level] ?? data.level.toLowerCase();
+  const colorCls    = LEVEL_COLOR[slug] ?? "text-primary border-primary/30 bg-primary/5";
+  const progressCls = PROGRESS_COLOR[slug] ?? "bg-primary";
   const pct         = Math.round(data.progress * 100);
+  const levelName   = t(`level.names.${slug}`, { defaultValue: data.level });
+  const nextSlug    = data.next_level ? (LEVEL_SLUG[data.next_level] ?? data.next_level.toLowerCase()) : null;
+  const nextName    = nextSlug ? t(`level.names.${nextSlug}`, { defaultValue: data.next_level }) : null;
 
   return (
     <div className={cn("rounded-xl border bg-hud-surface", compact ? "p-4" : "p-5", "space-y-4")}>
@@ -66,16 +81,16 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
         <div className={cn("rounded-xl border px-3 py-2.5 text-center min-w-[72px] flex flex-col items-center gap-1", colorCls)}>
           {(() => { const Icon = LEVEL_ICONS[data.level]; return Icon ? <Icon size={22} /> : null; })()}
           <p className={cn("font-mono text-[10px] font-bold uppercase tracking-wider", colorCls.split(" ")[0])}>
-            {data.level}
+            {levelName}
           </p>
         </div>
         <div className="flex-1 space-y-1">
           <div className="flex items-center justify-between">
             <span className="font-mono text-xs font-bold text-foreground">{data.standard_pct.toFixed(1)}%</span>
-            {data.next_level && (
+            {data.next_level && nextName && (
               <span className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
                 {(() => { const Icon = LEVEL_ICONS[data.next_level]; return Icon ? <Icon size={11} /> : null; })()}
-                {t("level.nextAt", { next: data.next_level, pct: data.next_pct })}
+                {t("level.nextAt", { next: nextName, pct: data.next_pct })}
               </span>
             )}
           </div>
@@ -86,8 +101,8 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
             />
           </div>
           <p className="font-mono text-[10px] text-muted-foreground">
-            {data.next_level
-              ? t("level.progress", { pct, next: data.next_level })
+            {nextName
+              ? t("level.progress", { pct, next: nextName })
               : t("level.maxLevel")}
           </p>
         </div>

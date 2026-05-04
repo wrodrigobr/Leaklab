@@ -151,7 +151,16 @@
     "maxLevel": "Nivel máximo alcanzado",
     "blockingLeaks": "Leaks que bloquean tu avance",
     "studyLink": "Ver plan de estudio para avanzar",
-    "nextAt": "{{next}} en {{pct}}%"
+    "nextAt": "{{next}} en {{pct}}%",
+    "names": {
+      "beginner": "Principiante",
+      "student":  "Estudiante",
+      "grinder":  "Grinder",
+      "regular":  "Regular",
+      "solid":    "Sólido",
+      "expert":   "Expert",
+      "elite":    "Elite"
+    }
   },
   "playerStats": {
     "hands": "{{n}} manos",
