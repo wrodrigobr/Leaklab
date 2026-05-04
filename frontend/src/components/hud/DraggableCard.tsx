@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface DraggableCardProps {
@@ -26,11 +26,11 @@ export function DraggableCard({ id, children, className }: DraggableCardProps) {
       <button
         {...attributes}
         {...listeners}
-        className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded p-1 hover:bg-muted"
+        className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded-full px-2 py-0.5 bg-card border border-border hover:border-primary/40 shadow-sm"
         title={t("actions.dragToReorder")}
         tabIndex={-1}
       >
-        <GripVertical className="size-3.5 text-muted-foreground" />
+        <GripHorizontal className="size-3 text-muted-foreground" />
       </button>
       {children}
     </div>
