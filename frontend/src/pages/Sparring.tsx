@@ -24,6 +24,18 @@ type Phase = "idle" | "loading" | "playing" | "feedback" | "summary";
 const ACTION_KEYS_FACING    = ["fold", "call", "raise", "jam"] as const; // facing a bet
 const ACTION_KEYS_NO_FACING = ["fold", "check", "bet",  "jam"] as const; // no bet to face
 const ACTION_KEYS_ALL       = ["fold", "check", "call", "bet", "raise", "jam"] as const;
+
+function getActionKeys(step: SparringStep): readonly string[] {
+  // Primary signal: facing_bet from the DB
+  if (step.facing_bet !== null) {
+    return step.facing_bet > 0 ? ACTION_KEYS_FACING : ACTION_KEYS_NO_FACING;
+  }
+  // Fallback: infer from best_action — doesn't reveal which is correct,
+  // only mirrors the game reality the player already sees on the table
+  if (["call", "raise"].includes(step.best_action)) return ACTION_KEYS_FACING;
+  if (["check", "bet"].includes(step.best_action))  return ACTION_KEYS_NO_FACING;
+  return ACTION_KEYS_ALL;
+}
 const STREETS = ["preflop", "flop", "turn", "river"] as const;
 
 // ── Card parser ───────────────────────────────────────────────────────────────
@@ -562,12 +574,9 @@ export default function Sparring() {
           {/* Question */}
           <p className="text-center text-sm font-semibold text-foreground">{t("question")}</p>
 
-          {/* Action buttons — context-aware: facing bet → call/raise; no bet → check/bet */}
+          {/* Action buttons — context-aware set derived from facing_bet or best_action */}
           {(() => {
-            const actionKeys =
-              current.facing_bet == null ? ACTION_KEYS_ALL :
-              current.facing_bet > 0    ? ACTION_KEYS_FACING :
-                                          ACTION_KEYS_NO_FACING;
+            const actionKeys = getActionKeys(current);
             const cols = actionKeys.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3 sm:grid-cols-6";
             return (
               <div className={`grid gap-3 ${cols}`}>
