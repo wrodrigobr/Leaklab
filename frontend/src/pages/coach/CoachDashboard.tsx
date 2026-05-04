@@ -622,7 +622,7 @@ export default function CoachDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex overflow-x-auto border-b border-border gap-0 scrollbar-none">
+        <div className="flex overflow-x-auto overflow-y-hidden border-b border-border gap-0 scrollbar-none">
           {TABS.map((t) => (
             <button
               key={t.id}
