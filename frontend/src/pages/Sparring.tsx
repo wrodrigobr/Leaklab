@@ -63,6 +63,7 @@ function buildSparringSeats(step: SparringStep, heroCards: CardData[]): Seat[] {
   const numPlayers = Math.max(2, step.num_players ?? 6);
   const seats: Seat[] = [];
 
+  // Hero at index 0 → bottom-center in PokerTable geometry
   seats.push({
     id: 0,
     name: step.position ? `You (${step.position})` : "You",
@@ -72,6 +73,11 @@ function buildSparringSeats(step: SparringStep, heroCards: CardData[]): Seat[] {
     cards: heroCards.length >= 2 ? heroCards : undefined,
   });
 
+  // Seat index that appears roughly opposite the hero (across the table)
+  // → best approximation of "the villain who last bet/raised"
+  const aggressorIdx = Math.floor(numPlayers / 2);
+  const facingBet = step.facing_bet && step.facing_bet > 0 ? step.facing_bet : undefined;
+
   for (let i = 1; i < numPlayers; i++) {
     seats.push({
       id: i,
@@ -79,6 +85,7 @@ function buildSparringSeats(step: SparringStep, heroCards: CardData[]): Seat[] {
       stack: 100,
       cards: [DUMMY_CARD, DUMMY_CARD],
       revealed: false,
+      bet: i === aggressorIdx ? facingBet : undefined,
     });
   }
 
