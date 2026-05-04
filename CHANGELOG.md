@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.51.0] — 2026-05-03 — Sprint T: FEAT-07 Coach Effectiveness Metrics
+
+### Added
+- **`backend/database/repositories.py`**: `get_coach_effectiveness_report(coach_id)` — itera todos os alunos com baseline, chama `get_baseline_comparison` por aluno, calcula delta de `standard_pct`, melhora mediana, % com melhora positiva e badge público (visível com ≥3 alunos e mediana positiva).
+- **`backend/api/app.py`**: endpoint `GET /coach/effectiveness` (autenticado como coach). Perfil público `GET /coaches/<id>` passa a incluir `effectiveness_badge` e `effectiveness_median_delta`.
+- **`frontend/src/lib/api.ts`**: interfaces `EffectivenessStudent`, `EffectivenessSummary`, `CoachEffectivenessReport`; módulo `coachEffectiveness` com método `report()`.
+- **`frontend/src/pages/coach/CoachDashboard.tsx`**: aba "Efetividade" com 3 KPI cards (alunos analisados, melhora mediana, % com melhora), preview do badge público com indicação "visível no perfil público", tabela por aluno com before/after `standard_pct`, delta colorido e leaks corrigidos.
+- **`frontend/src/pages/PublicCoachProfile.tsx`**: badge "Alunos melhoram +Xpp em standard_pct" exibido na seção de badges do perfil público quando disponível.
+
+---
+
 ## [v0.50.0] — 2026-05-03 — Sprint S: FEAT-06 Leak Causal Map
 
 ### Added

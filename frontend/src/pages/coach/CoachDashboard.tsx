@@ -9,7 +9,7 @@ import {
 import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
 import { StudentRow } from "@/components/coach/StudentRow";
-import { coachDashboard, coachFinance, MultiStudentDecision, CommonLeak } from "@/lib/api";
+import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // ── shared ────────────────────────────────────────────────────────────────────
@@ -334,14 +334,123 @@ function LeaksTab() {
 
 // ── Tabs definition ───────────────────────────────────────────────────────────
 
-type Tab = "alunos" | "urgente" | "leaks" | "financeiro";
+type Tab = "alunos" | "urgente" | "leaks" | "financeiro" | "efetividade";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "alunos",      label: "Alunos",           icon: Users },
-  { id: "urgente",     label: "Atenção Urgente",  icon: AlertTriangle },
-  { id: "leaks",       label: "Leaks Sistêmicos", icon: LayoutDashboard },
-  { id: "financeiro",  label: "Financeiro",       icon: BarChart2 },
+  { id: "alunos",       label: "Alunos",           icon: Users },
+  { id: "urgente",      label: "Atenção Urgente",  icon: AlertTriangle },
+  { id: "leaks",        label: "Leaks Sistêmicos", icon: LayoutDashboard },
+  { id: "efetividade",  label: "Efetividade",      icon: TrendingUp },
+  { id: "financeiro",   label: "Financeiro",       icon: BarChart2 },
 ];
+
+// ── Effectiveness Tab ─────────────────────────────────────────────────────────
+
+function DeltaBadge({ delta }: { delta: number }) {
+  const positive = delta > 0;
+  const zero     = delta === 0;
+  return (
+    <span className={cn(
+      "font-mono text-xs font-bold tabular-nums",
+      zero ? "text-muted-foreground" : positive ? "text-emerald-400" : "text-red-400"
+    )}>
+      {positive ? "+" : ""}{delta.toFixed(1)}pp
+    </span>
+  );
+}
+
+function EfetividadeTab() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["coach-effectiveness"],
+    queryFn: coachEffectiveness.report,
+    staleTime: 5 * 60_000,
+  });
+
+  const summary  = data?.summary;
+  const students = data?.students ?? [];
+
+  if (isLoading) {
+    return <p className="mt-6 text-sm text-muted-foreground animate-pulse">Calculando efetividade…</p>;
+  }
+
+  if (!summary || summary.students_analyzed === 0) {
+    return (
+      <div className="mt-6 rounded-xl border border-border bg-hud-surface p-8 text-center space-y-2">
+        <TrendingUp className="mx-auto size-8 text-muted-foreground" />
+        <p className="text-sm font-medium text-foreground">Sem dados de efetividade ainda</p>
+        <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+          Configure a data de baseline de pelo menos um aluno para começar a medir a evolução com seu coaching.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 space-y-6">
+      {/* Summary KPIs */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-1 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Alunos analisados</p>
+          <p className="text-2xl font-bold text-foreground">{summary.students_analyzed}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-1 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Melhora mediana</p>
+          <p className={cn("text-2xl font-bold tabular-nums",
+            (summary.median_delta ?? 0) > 0 ? "text-emerald-400" : "text-red-400"
+          )}>
+            {summary.median_delta != null
+              ? `${summary.median_delta > 0 ? "+" : ""}${summary.median_delta.toFixed(1)}pp`
+              : "—"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-1 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">% com melhora</p>
+          <p className={cn("text-2xl font-bold tabular-nums",
+            (summary.positive_pct ?? 0) >= 50 ? "text-emerald-400" : "text-amber-400"
+          )}>
+            {summary.positive_pct != null ? `${summary.positive_pct}%` : "—"}
+          </p>
+        </div>
+      </div>
+
+      {/* Badge preview */}
+      {summary.badge && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5">
+          <Award className="size-4 text-emerald-400 shrink-0" />
+          <p className="text-sm text-emerald-400 font-medium">{summary.badge}</p>
+          <span className="ml-auto font-mono text-[10px] text-muted-foreground">visível no perfil público</span>
+        </div>
+      )}
+
+      {/* Per-student table */}
+      <div className="rounded-xl border border-border overflow-hidden">
+        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-0 border-b border-border bg-muted/30 px-4 py-2">
+          {["Aluno", "Antes", "Depois", "Δ Standard%", "Leaks corrigidos"].map((h) => (
+            <span key={h} className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
+              {h}
+            </span>
+          ))}
+        </div>
+        {students.map((s) => (
+          <div
+            key={s.student_id}
+            className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-0 border-b border-border/50 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors"
+          >
+            <span className="text-sm font-medium text-foreground">{s.username}</span>
+            <span className="font-mono text-xs text-muted-foreground tabular-nums pr-6">{s.std_before.toFixed(1)}%</span>
+            <span className="font-mono text-xs text-foreground tabular-nums pr-6">{s.std_after.toFixed(1)}%</span>
+            <span className="pr-6"><DeltaBadge delta={s.delta} /></span>
+            <span className="font-mono text-xs text-muted-foreground text-right">
+              {s.fixed_leaks > 0
+                ? <span className="text-emerald-400">{s.fixed_leaks} corrigido{s.fixed_leaks > 1 ? "s" : ""}</span>
+                : "—"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Finance Tab ───────────────────────────────────────────────────────────────
 
@@ -531,10 +640,11 @@ export default function CoachDashboard() {
           ))}
         </div>
 
-        {tab === "alunos"      && <AlunosTab />}
-        {tab === "urgente"     && <UrgentTab />}
-        {tab === "leaks"       && <LeaksTab />}
-        {tab === "financeiro"  && <FinanceiroTab />}
+        {tab === "alunos"       && <AlunosTab />}
+        {tab === "urgente"      && <UrgentTab />}
+        {tab === "leaks"        && <LeaksTab />}
+        {tab === "efetividade"  && <EfetividadeTab />}
+        {tab === "financeiro"   && <FinanceiroTab />}
       </main>
     </div>
   );

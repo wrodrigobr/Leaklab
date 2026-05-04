@@ -2710,6 +2710,64 @@ def _classify_archetype(aggression: float, fold_freq: float, three_bet: float, d
     return "TAG"
 
 
+def get_coach_effectiveness_report(coach_id: int) -> dict:
+    """Sprint T — Agrega evolução de todos os alunos com baseline. Retorna resumo + por aluno."""
+    students = get_students(coach_id)
+    per_student = []
+
+    for s in students:
+        cmp = get_baseline_comparison(coach_id, s['id'])
+        if not cmp:
+            continue
+        before = cmp.get('before') or {}
+        after  = cmp.get('after')  or {}
+        std_before = before.get('standard_pct')
+        std_after  = after.get('standard_pct')
+        if std_before is None or std_after is None:
+            continue
+        delta = round(float(std_after) - float(std_before), 2)
+        per_student.append({
+            'student_id':       s['id'],
+            'username':         s['username'],
+            'baseline_date':    cmp['baseline']['baseline_date'],
+            'std_before':       round(float(std_before), 2),
+            'std_after':        round(float(std_after),  2),
+            'delta':            delta,
+            'score_before':     round(float(before.get('avg_score') or 0), 3),
+            'score_after':      round(float(after.get('avg_score')  or 0), 3),
+            'fixed_leaks':      len(cmp.get('fixed_leaks') or []),
+            'tournaments_after': int(after.get('n') or 0),
+        })
+
+    per_student.sort(key=lambda x: x['delta'], reverse=True)
+
+    if not per_student:
+        return {
+            'students': [],
+            'summary':  {'students_analyzed': 0, 'median_delta': None,
+                         'positive_pct': None, 'badge': None},
+        }
+
+    deltas = sorted(x['delta'] for x in per_student)
+    n = len(deltas)
+    median = deltas[n // 2] if n % 2 == 1 else round((deltas[n // 2 - 1] + deltas[n // 2]) / 2, 2)
+    positive_pct = round(sum(1 for d in deltas if d > 0) / n * 100, 1)
+
+    badge = None
+    if n >= 3 and median > 0:
+        badge = f"Alunos melhoram +{median:.1f}pp em standard_pct"
+
+    return {
+        'students': per_student,
+        'summary': {
+            'students_analyzed': n,
+            'median_delta':      median,
+            'positive_pct':      positive_pct,
+            'badge':             badge,
+        },
+    }
+
+
 def get_leak_graph_data(user_id: int, days: int = 90) -> dict:
     """Sprint S — Retorna grafo causal de leaks: nós, arestas e narrativa LLM."""
     from datetime import datetime, timedelta

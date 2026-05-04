@@ -75,6 +75,8 @@ from database.repositories import (
     add_xp, get_xp_status, get_achievements,
     # Sprint S — FEAT-06: Leak Causal Graph
     get_leak_graph_data,
+    # Sprint T — FEAT-07: Coach Effectiveness
+    get_coach_effectiveness_report,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -1281,6 +1283,12 @@ def coach_profile():
     return jsonify(profile)
 
 
+@app.route('/coach/effectiveness', methods=['GET'])
+@require_coach
+def coach_effectiveness():
+    return jsonify(get_coach_effectiveness_report(g.user_id))
+
+
 @app.route('/coach/impact', methods=['GET'])
 @require_coach
 def coach_impact():
@@ -1371,6 +1379,13 @@ def public_coach_profile(coach_user_id):
     PRIVATE = {'password_hash', 'email'}
     safe = {k: v for k, v in profile.items() if k not in PRIVATE}
     safe['reviews'] = get_public_coach_reviews(coach_user_id, limit=10)
+    try:
+        eff = get_coach_effectiveness_report(coach_user_id)
+        safe['effectiveness_badge'] = eff['summary'].get('badge')
+        safe['effectiveness_median_delta'] = eff['summary'].get('median_delta')
+    except Exception:
+        safe['effectiveness_badge'] = None
+        safe['effectiveness_median_delta'] = None
     return jsonify(safe)
 
 

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Star, Users, DollarSign, Globe, GraduationCap,
   CheckCircle2, Loader2, Youtube, Twitch, Twitter, ExternalLink,
-  Mail, Calendar, Zap, Trophy, MessageSquare, Trash2,
+  Mail, Calendar, Zap, Trophy, MessageSquare, Trash2, TrendingUp,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { coaches, coachDashboard, student, PublicCoach, PublicCoachReview } from "@/lib/api";
@@ -259,6 +259,11 @@ export default function PublicCoachProfile() {
                 {c.languages.length > 0 && (
                   <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
                     <Globe className="size-3" /> {c.languages.map((l) => l.toUpperCase()).join(" · ")}
+                  </span>
+                )}
+                {(c as any).effectiveness_badge && (
+                  <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 font-mono text-[10px] text-emerald-400 ring-1 ring-emerald-500/20">
+                    <TrendingUp className="size-3" /> {(c as any).effectiveness_badge}
                   </span>
                 )}
               </div>

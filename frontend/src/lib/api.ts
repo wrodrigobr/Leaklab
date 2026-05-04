@@ -1242,3 +1242,34 @@ export const coachFinance = {
   students: () => request<{ students: CoachFinanceStudent[] }>("/coach/finance/students"),
   history: () => request<{ payments: CoachPaymentRecord[] }>("/coach/finance/history"),
 };
+
+// ── Coach Effectiveness (Sprint T — FEAT-07) ──────────────────────────────────
+
+export interface EffectivenessStudent {
+  student_id: number;
+  username: string;
+  baseline_date: string;
+  std_before: number;
+  std_after: number;
+  delta: number;
+  score_before: number;
+  score_after: number;
+  fixed_leaks: number;
+  tournaments_after: number;
+}
+
+export interface EffectivenessSummary {
+  students_analyzed: number;
+  median_delta: number | null;
+  positive_pct: number | null;
+  badge: string | null;
+}
+
+export interface CoachEffectivenessReport {
+  students: EffectivenessStudent[];
+  summary: EffectivenessSummary;
+}
+
+export const coachEffectiveness = {
+  report: () => request<CoachEffectivenessReport>("/coach/effectiveness"),
+};
