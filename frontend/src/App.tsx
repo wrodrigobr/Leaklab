@@ -23,6 +23,7 @@ import PublicCoachProfile from "./pages/PublicCoachProfile.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GhostTable from "./pages/GhostTable.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
+import CoachApply from "./pages/CoachApply.tsx";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +84,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/coach-apply" element={<CoachApply />} />
             <Route
               path="/dashboard"
               element={

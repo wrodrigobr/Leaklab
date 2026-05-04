@@ -250,6 +250,39 @@ def send_digest_email(to_email: str, username: str, data: dict, user_id: int) ->
         return False
 
 
+# ── Email transacional (aprovação/rejeição de coach) ─────────────────────────
+
+def send_transactional_email(to_email: str, subject: str, html_body: str) -> bool:
+    """Envia email transacional simples (sem unsubscribe). Retorna True se enviado."""
+    smtp_host = os.environ.get("SMTP_HOST", "")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_pass = os.environ.get("SMTP_PASSWORD", "")
+    from_addr = os.environ.get("DIGEST_FROM", "noreply@leaklabs.ai")
+
+    if not smtp_host or not smtp_user or not smtp_pass:
+        log.warning("SMTP não configurado — email transacional não enviado para %s", to_email)
+        return False
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"]    = from_addr
+    msg["To"]      = to_email
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(from_addr, [to_email], msg.as_string())
+        log.info("Email transacional enviado para %s", to_email)
+        return True
+    except Exception as e:
+        log.error("Erro ao enviar email transacional para %s: %s", to_email, e)
+        return False
+
+
 # ── Runner (chamado pelo endpoint admin) ──────────────────────────────────────
 
 def run_weekly_digest() -> dict:

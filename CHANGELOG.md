@@ -9,6 +9,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.65.0] — 2026-05-03 — Sprint AH: BACK-018 Coach Application Flow
+
+### Added
+- **`backend/database/schema.py`**: tabela `coach_applications` (user_id, instagram_handle, bio, specialties, experience_years, biggest_results, status pending/approved/rejected, admin_note, reviewed_at).
+- **`backend/database/repositories.py`**: `create_coach_application`, `get_coach_applications`, `approve_coach_application`, `reject_coach_application`, helper `_now()`.
+- **`backend/leaklab/email_digest.py`**: helper `send_transactional_email(to_email, subject, html_body)` reutilizando a infra SMTP do digest.
+- **`backend/api/app.py`**: `POST /auth/coach-apply` (público, rate-limited 5/min) — cria usuário com role `coach_pending` + registro de candidatura. `GET /admin/coach-applications` + `POST /admin/coach-applications/<id>/approve` + `POST /admin/coach-applications/<id>/reject` — gestão pelo admin com envio de e-mail automático.
+- **`frontend/src/pages/CoachApply.tsx`**: formulário público de candidatura (username, @instagram, email, senha, bio ≥30 chars, especialidades, anos de experiência, maiores resultados) com estado de confirmação.
+- **`frontend/src/lib/api.ts`**: interface `CoachApplication`, métodos `adminDashboard.coachApplications`, `approveApplication`, `rejectApplication`; `coachApplyApi.apply`.
+- **`frontend/src/pages/admin/AdminDashboard.tsx`**: aba "Candidaturas" com filtro por status, linhas expansíveis (bio/especialidades/resultados), botões aprovar/rejeitar com nota opcional.
+- **`frontend/src/App.tsx`**: rota pública `/coach-apply`.
+
+### Changed
+- **`backend/api/app.py`**: `POST /auth/register` com `role: coach` retorna 400 — coaches devem usar `/auth/coach-apply`.
+- **`backend/api/app.py`**: `POST /auth/login` com role `coach_pending` retorna 403 com `code: 'coach_pending'`.
+- **`frontend/src/pages/Login.tsx`**: botão "Coach" na aba de registro redireciona para `/coach-apply`; mensagem de erro `coach_pending` tratada com texto específico.
+
+### Fixed
+- **`frontend/src/pages/coach/StudentDetail.tsx`**: Feed de Atividade exibia `standard_pct` multiplicado por 100 (ex.: 83% aparecia como 8300%). Removida duplicação de `* 100`.
+
+---
+
 ## [v0.64.0] — 2026-05-03 — Sprint AF: UX-014 StudentDetail + CoachDashboard wide layout
 
 ### Changed

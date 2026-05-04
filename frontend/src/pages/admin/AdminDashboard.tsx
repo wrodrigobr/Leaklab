@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, BarChart2, CheckCircle2, ChevronRight, Clock,
-  Download, LayoutDashboard, Loader2, Search, Shield, Users
+  Download, LayoutDashboard, Loader2, Search, Shield, Users,
+  GraduationCap, X, Check
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { cn } from "@/lib/utils";
-import { adminDashboard, AdminUser, CoachPayout } from "@/lib/api";
+import { adminDashboard, AdminUser, CoachPayout, CoachApplication } from "@/lib/api";
 import { toast } from "sonner";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -42,12 +43,13 @@ function KpiTile({ label, value, sub, icon: Icon, accent }: {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "users" | "finance" | "logs";
+type Tab = "overview" | "users" | "finance" | "logs" | "candidaturas";
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "overview", label: "Visão Geral",  icon: LayoutDashboard },
-  { id: "users",    label: "Usuários",     icon: Users },
-  { id: "finance",  label: "Financeiro",   icon: BarChart2 },
-  { id: "logs",     label: "Logs",         icon: Activity },
+  { id: "overview",      label: "Visão Geral",   icon: LayoutDashboard },
+  { id: "users",         label: "Usuários",      icon: Users },
+  { id: "finance",       label: "Financeiro",    icon: BarChart2 },
+  { id: "logs",          label: "Logs",          icon: Activity },
+  { id: "candidaturas",  label: "Candidaturas",  icon: GraduationCap },
 ];
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
@@ -378,6 +380,171 @@ function Loading() {
   );
 }
 
+// ── Candidaturas Tab (BACK-018) ───────────────────────────────────────────────
+
+function CandidaturasTab() {
+  const qc = useQueryClient();
+  const [status, setStatus]     = useState<"pending" | "approved" | "rejected">("pending");
+  const [noteMap, setNoteMap]   = useState<Record<number, string>>({});
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-coach-applications", status],
+    queryFn: () => adminDashboard.coachApplications(status),
+    staleTime: 30_000,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-coach-applications"] });
+
+  const approveMut = useMutation({
+    mutationFn: ({ id, note }: { id: number; note?: string }) =>
+      adminDashboard.approveApplication(id, note),
+    onSuccess: () => { toast.success("Candidatura aprovada"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rejectMut = useMutation({
+    mutationFn: ({ id, note }: { id: number; note?: string }) =>
+      adminDashboard.rejectApplication(id, note),
+    onSuccess: () => { toast.success("Candidatura rejeitada"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const apps: CoachApplication[] = data?.applications ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        {(["pending", "approved", "rejected"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setStatus(s)}
+            className={cn(
+              "rounded-full px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 transition-colors",
+              status === s
+                ? "bg-primary text-primary-foreground"
+                : "bg-hud-surface text-muted-foreground hover:text-foreground border border-border"
+            )}
+          >
+            {s === "pending" ? "Pendentes" : s === "approved" ? "Aprovadas" : "Rejeitadas"}
+          </button>
+        ))}
+      </div>
+
+      {isLoading && <Loading />}
+
+      {!isLoading && apps.length === 0 && (
+        <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma candidatura {status === "pending" ? "pendente" : status === "approved" ? "aprovada" : "rejeitada"}.</p>
+      )}
+
+      <div className="space-y-3">
+        {apps.map((app) => (
+          <div key={app.id} className="rounded-xl border border-border bg-hud-surface overflow-hidden">
+            <div
+              className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-primary/5 transition-colors"
+              onClick={() => setExpanded(expanded === app.id ? null : app.id)}
+            >
+              <div className="flex items-center gap-3">
+                <GraduationCap className="size-4 text-primary shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{app.username}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">{app.email}{app.instagram_handle ? ` · ${app.instagram_handle}` : ""}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="font-mono text-[9px] text-muted-foreground">
+                  {new Date(app.created_at).toLocaleDateString("pt-BR")}
+                </span>
+                {status === "pending" && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); approveMut.mutate({ id: app.id, note: noteMap[app.id] }); }}
+                      disabled={approveMut.isPending}
+                      className="flex items-center gap-1 rounded bg-primary/10 px-2 py-1 font-mono text-[10px] font-bold text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <Check className="size-3" /> Aprovar
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (!noteMap[app.id]) { setExpanded(app.id); } else { rejectMut.mutate({ id: app.id, note: noteMap[app.id] }); } }}
+                      disabled={rejectMut.isPending}
+                      className="flex items-center gap-1 rounded bg-destructive/10 px-2 py-1 font-mono text-[10px] font-bold text-destructive hover:bg-destructive/20 transition-colors"
+                    >
+                      <X className="size-3" /> Rejeitar
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {expanded === app.id && (
+              <div className="border-t border-border px-4 py-4 space-y-3 bg-background/40">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="font-mono text-[9px] uppercase text-muted-foreground mb-1">Bio</p>
+                    <p className="text-foreground leading-relaxed">{app.bio || "—"}</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="font-mono text-[9px] uppercase text-muted-foreground mb-1">Especialidades</p>
+                      <p className="text-foreground">{app.specialties || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="font-mono text-[9px] uppercase text-muted-foreground mb-1">Experiência</p>
+                      <p className="text-foreground">{app.experience_years ? `${app.experience_years} anos` : "—"}</p>
+                    </div>
+                    {app.biggest_results && (
+                      <div>
+                        <p className="font-mono text-[9px] uppercase text-muted-foreground mb-1">Resultados</p>
+                        <p className="text-foreground">{app.biggest_results}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {app.admin_note && (
+                  <p className="font-mono text-[10px] text-muted-foreground border-t border-border pt-2">
+                    Nota: {app.admin_note}
+                  </p>
+                )}
+
+                {status === "pending" && (
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <label className="font-mono text-[10px] uppercase text-muted-foreground">
+                      Nota para o candidato (opcional — enviada no email de rejeição)
+                    </label>
+                    <input
+                      value={noteMap[app.id] ?? ""}
+                      onChange={(e) => setNoteMap((m) => ({ ...m, [app.id]: e.target.value }))}
+                      placeholder="ex: Perfil insuficiente, experiência não verificável..."
+                      className="h-9 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => approveMut.mutate({ id: app.id, note: noteMap[app.id] })}
+                        disabled={approveMut.isPending}
+                        className="flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 font-mono text-[11px] font-bold text-primary-foreground disabled:opacity-50"
+                      >
+                        <Check className="size-3" /> Aprovar
+                      </button>
+                      <button
+                        onClick={() => rejectMut.mutate({ id: app.id, note: noteMap[app.id] })}
+                        disabled={rejectMut.isPending}
+                        className="flex items-center gap-1.5 rounded bg-destructive/10 px-3 py-1.5 font-mono text-[11px] font-bold text-destructive disabled:opacity-50"
+                      >
+                        <X className="size-3" /> Rejeitar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 const AdminDashboard = () => {
@@ -417,7 +584,8 @@ const AdminDashboard = () => {
         {tab === "overview" && <OverviewTab />}
         {tab === "users"    && <UsersTab />}
         {tab === "finance"  && <FinanceTab />}
-        {tab === "logs"     && <LogsTab />}
+        {tab === "logs"          && <LogsTab />}
+        {tab === "candidaturas"  && <CandidaturasTab />}
       </main>
     </div>
   );

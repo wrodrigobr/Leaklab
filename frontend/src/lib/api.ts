@@ -1277,6 +1277,49 @@ export const adminDashboard = {
     request<{ ok: boolean }>(`/admin/finance/coaches/${paymentId}/pay`, { method: "PATCH" }),
 
   logs: (limit = 50) => request<{ logs: Array<{ id: number; username: string; plan: string; tournament_id: string; site: string; hands_count: number; imported_at: string }> }>(`/admin/logs?limit=${limit}`),
+
+  coachApplications: (status = "pending") =>
+    request<{ applications: CoachApplication[] }>(`/admin/coach-applications?status=${status}`),
+
+  approveApplication: (id: number, note?: string) =>
+    request<{ ok: boolean }>(`/admin/coach-applications/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ note: note ?? "" }),
+    }),
+
+  rejectApplication: (id: number, note?: string) =>
+    request<{ ok: boolean }>(`/admin/coach-applications/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ note: note ?? "" }),
+    }),
+};
+
+export interface CoachApplication {
+  id: number;
+  user_id: number;
+  username: string;
+  email: string;
+  instagram_handle: string | null;
+  bio: string;
+  specialties: string;
+  experience_years: number;
+  biggest_results: string;
+  status: "pending" | "approved" | "rejected";
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export const coachApplyApi = {
+  apply: (data: {
+    username: string; email: string; password: string;
+    instagram_handle?: string; bio: string; specialties?: string;
+    experience_years?: number; biggest_results?: string;
+  }) =>
+    request<{ ok: boolean; message: string }>("/auth/coach-apply", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 export const coachFinance = {

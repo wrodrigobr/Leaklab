@@ -27,7 +27,7 @@ from leaklab.session_metrics import build_session_metrics
 from leaklab.leak_correlator import correlate_leaks
 from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, generate_tournament_narrative, generate_comparison_narrative, coach_chat_reply, generate_session_review
 from leaklab.report_generator import build_html_report, generate_pdf_bytes
-from leaklab.email_digest import run_weekly_digest, verify_unsub_token
+from leaklab.email_digest import run_weekly_digest, verify_unsub_token, send_transactional_email
 
 from database.schema import init_db
 from database.repositories import (
@@ -87,6 +87,9 @@ from database.repositories import (
     send_coach_message, get_coach_messages, mark_messages_read, get_unread_message_count,
     # Sprint W — FEAT-11: Digest
     get_digest_subscribers, update_digest_subscription,
+    # Sprint AH — BACK-018: Coach Application Flow
+    create_coach_application, get_coach_applications,
+    approve_coach_application, reject_coach_application,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -177,7 +180,9 @@ def register():
     password = data.get('password', '')
     role     = data.get('role', 'player')
 
-    if role not in ('player', 'coach'):
+    if role == 'coach':
+        return jsonify({'error': 'Coaches devem se candidatar via /auth/coach-apply'}), 400
+    if role not in ('player',):
         role = 'player'
 
     if not all([username, email, password]):
@@ -198,6 +203,41 @@ def register():
         return jsonify({'error': 'Erro interno ao criar conta'}), 500
 
 
+@app.route('/auth/coach-apply', methods=['POST'])
+@limiter.limit("5 per minute")
+def coach_apply():
+    data = request.get_json(silent=True) or {}
+    username         = data.get('username', '').strip()
+    email            = data.get('email', '').strip().lower()
+    password         = data.get('password', '')
+    instagram_handle = data.get('instagram_handle', '').strip()
+    bio              = data.get('bio', '').strip()
+    specialties      = data.get('specialties', '[]')
+    experience_years = int(data.get('experience_years', 0) or 0)
+    biggest_results  = data.get('biggest_results', '').strip()
+
+    if not all([username, email, password]):
+        return jsonify({'error': 'username, email e password são obrigatórios'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Senha deve ter pelo menos 8 caracteres'}), 400
+    if get_user_by_email(email):
+        return jsonify({'error': 'Email já cadastrado'}), 409
+    if get_user_by_username(username):
+        return jsonify({'error': 'Nome de usuário já está em uso'}), 409
+    if not bio or len(bio) < 30:
+        return jsonify({'error': 'Bio deve ter pelo menos 30 caracteres'}), 400
+
+    try:
+        user_id = create_user(username, email, password, 'coach_pending')
+        create_coach_application(user_id, instagram_handle, bio,
+                                  specialties if isinstance(specialties, str) else str(specialties),
+                                  experience_years, biggest_results)
+        return jsonify({'ok': True, 'message': 'Candidatura recebida. Você será notificado por email.'}), 201
+    except Exception as e:
+        log.exception("coach_apply error for %s", email)
+        return jsonify({'error': 'Erro interno ao criar candidatura'}), 500
+
+
 @app.route('/auth/login', methods=['POST'])
 @limiter.limit("15 per minute")
 def login():
@@ -208,6 +248,12 @@ def login():
     user = verify_password(email, password)
     if not user:
         return jsonify({'error': 'Credenciais inválidas'}), 401
+
+    if user.get('role') == 'coach_pending':
+        return jsonify({
+            'error': 'Candidatura em análise. Você receberá um email quando for aprovado.',
+            'code': 'coach_pending'
+        }), 403
 
     token = generate_token(user['id'], user['role'])
     return jsonify({
@@ -3084,6 +3130,56 @@ def digest_unsubscribe_link():
 def admin_send_digest():
     result = run_weekly_digest()
     return jsonify(result)
+
+
+# ── Admin — Coach Applications (BACK-018) ─────────────────────────────────────
+
+@app.route('/admin/coach-applications', methods=['GET'])
+@require_admin
+def admin_list_coach_applications():
+    status = request.args.get('status', 'pending')
+    apps   = get_coach_applications(status=status)
+    return jsonify({'applications': apps})
+
+
+@app.route('/admin/coach-applications/<int:app_id>/approve', methods=['POST'])
+@require_admin
+def admin_approve_coach_application(app_id):
+    note = (request.get_json(silent=True) or {}).get('note', '')
+    app  = approve_coach_application(app_id, note)
+    if not app:
+        return jsonify({'error': 'Candidatura não encontrada'}), 404
+    base_url = os.environ.get('APP_BASE_URL', 'https://leaklabs.ai')
+    html = f"""<!DOCTYPE html><html><body style="font-family:sans-serif;background:#0f1117;color:#f1f5f9;padding:40px">
+<h2 style="color:#6366f1">Candidatura aprovada — LeakLabs.ai</h2>
+<p>Olá, <strong>{app['username']}</strong>!</p>
+<p>Sua candidatura como coach foi <strong style="color:#22c55e">aprovada</strong>.</p>
+<p>Você já pode fazer login e configurar seu perfil:</p>
+<p><a href="{base_url}/login" style="color:#6366f1">{base_url}/login</a></p>
+{f'<p style="color:#9ca3af">Nota do admin: {note}</p>' if note else ''}
+</body></html>"""
+    send_transactional_email(app['email'], 'Candidatura aprovada — LeakLabs.ai', html)
+    return jsonify({'ok': True})
+
+
+@app.route('/admin/coach-applications/<int:app_id>/reject', methods=['POST'])
+@require_admin
+def admin_reject_coach_application(app_id):
+    note = (request.get_json(silent=True) or {}).get('note', '')
+    app  = reject_coach_application(app_id, note)
+    if not app:
+        return jsonify({'error': 'Candidatura não encontrada'}), 404
+    if note:
+        base_url = os.environ.get('APP_BASE_URL', 'https://leaklabs.ai')
+        html = f"""<!DOCTYPE html><html><body style="font-family:sans-serif;background:#0f1117;color:#f1f5f9;padding:40px">
+<h2 style="color:#6366f1">Atualização da candidatura — LeakLabs.ai</h2>
+<p>Olá, <strong>{app['username']}</strong>.</p>
+<p>Sua candidatura como coach não foi aprovada neste momento.</p>
+<p style="color:#9ca3af">Motivo: {note}</p>
+<p>Você pode entrar em contato pelo site para mais informações.</p>
+</body></html>"""
+        send_transactional_email(app['email'], 'Candidatura — LeakLabs.ai', html)
+    return jsonify({'ok': True})
 
 
 @app.errorhandler(500)

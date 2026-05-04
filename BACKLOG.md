@@ -67,7 +67,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AE | UX-013 | Substituir "JAM" por "All In" em toda a plataforma (UI, textos, labels, parser output) | ⏳ |
 | Sprint AF | UX-014 | Página do Coach (StudentDetail) — remover limitação horizontal, aproveitar melhor o espaço disponível em telas largas | ✅ v0.64.0 |
 | Sprint AL | UX-017 | Dashboard personalizável — arrastar e reordenar cards, preferência salva por usuário | ⏳ |
-| Sprint AH | BACK-018 | Coach Application Flow — candidatura com aprovação manual pelo admin | ⏳ |
+| Sprint AH | BACK-018 | Coach Application Flow — candidatura com aprovação manual pelo admin | ✅ v0.65.0 |
 | Sprint AI | BACK-019 | Perfil demográfico do usuário — idade, localização, experiência de poker | ⏳ |
 | Sprint AJ | UX-015 | Inbox global de mensagens para o coach — ver todas as conversas com badge de não lidas | ⏳ |
 | Sprint AK | UX-016 | Badge de mensagens não lidas no dashboard/header do aluno → link direto para conversa com coach | ⏳ |

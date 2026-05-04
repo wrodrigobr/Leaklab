@@ -1170,7 +1170,7 @@ function ActivityTimeline({ events }: { events: ActivityEvent[] }) {
                   score {ev.avg_score?.toFixed(1)}
                 </span>
                 <span className="font-mono text-xs text-muted-foreground">
-                  {((ev.standard_pct ?? 0) * 100).toFixed(0)}% std
+                  {(ev.standard_pct ?? 0).toFixed(0)}% std
                 </span>
                 <span className="font-mono text-xs text-muted-foreground">{ev.hands_count}m</span>
               </div>

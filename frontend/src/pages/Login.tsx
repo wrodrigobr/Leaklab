@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { BarChart3, Loader2, GraduationCap, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
@@ -31,10 +31,13 @@ const Login = () => {
         await register(username, email, password, role);
       }
     } catch (err: unknown) {
-      if (err instanceof TypeError) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("Candidatura em análise")) {
+        setError("Candidatura em análise — você receberá um email quando for aprovado.");
+      } else if (err instanceof TypeError) {
         setError(t("errors.invalidCredentials"));
       } else {
-        setError(err instanceof Error ? err.message : t("errors.invalidCredentials"));
+        setError(msg || t("errors.invalidCredentials"));
       }
     } finally {
       setLoading(false);
@@ -101,26 +104,27 @@ const Login = () => {
                     Tipo de conta
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {(["player", "coach"] as const).map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setRole(r)}
-                        className={`flex items-center justify-center gap-2 h-10 rounded-md border text-xs font-mono font-bold uppercase tracking-widest-2 transition-all ${
-                          role === r
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                        }`}
-                      >
-                        {r === "player" ? (
-                          <User className="size-3.5" />
-                        ) : (
-                          <GraduationCap className="size-3.5" />
-                        )}
-                        {r === "player" ? "Jogador" : "Coach"}
-                      </button>
-                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setRole("player")}
+                      className={`flex items-center justify-center gap-2 h-10 rounded-md border text-xs font-mono font-bold uppercase tracking-widest-2 transition-all ${
+                        role === "player"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                      }`}
+                    >
+                      <User className="size-3.5" /> Jogador
+                    </button>
+                    <Link
+                      to="/coach-apply"
+                      className="flex items-center justify-center gap-2 h-10 rounded-md border border-border bg-background text-xs font-mono font-bold uppercase tracking-widest-2 text-muted-foreground hover:border-primary/50 hover:text-foreground transition-all"
+                    >
+                      <GraduationCap className="size-3.5" /> Coach →
+                    </Link>
                   </div>
+                  <p className="font-mono text-[9px] text-muted-foreground">
+                    Coaches precisam enviar candidatura para aprovação.
+                  </p>
                 </div>
               </>
             )}

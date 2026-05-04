@@ -3339,3 +3339,95 @@ def _check_and_grant_achievements(conn, user_id: int, event_type: str,
         except Exception:
             pass
     return new_ach
+
+
+# ── Coach Applications — BACK-018 ─────────────────────────────────────────────
+
+def create_coach_application(user_id: int, instagram_handle: str, bio: str,
+                              specialties: str, experience_years: int,
+                              biggest_results: str) -> None:
+    conn = get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO coach_applications "
+            "(user_id, instagram_handle, bio, specialties, experience_years, biggest_results) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, instagram_handle, bio, specialties, experience_years, biggest_results)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_coach_applications(status: str = 'pending') -> List[dict]:
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT ca.*, u.username, u.email FROM coach_applications ca "
+            "JOIN users u ON u.id = ca.user_id "
+            "WHERE ca.status = ? ORDER BY ca.created_at DESC",
+            (status,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def approve_coach_application(app_id: int, admin_note: str = '') -> Optional[dict]:
+    """Aprova candidatura: muda role para 'coach', cria coach_profile. Retorna dados do user."""
+    conn = get_conn()
+    try:
+        app = conn.execute(
+            "SELECT ca.*, u.email, u.username FROM coach_applications ca "
+            "JOIN users u ON u.id = ca.user_id WHERE ca.id = ?",
+            (app_id,)
+        ).fetchone()
+        if not app:
+            return None
+        app = dict(app)
+        user_id = app['user_id']
+
+        conn.execute(
+            "UPDATE coach_applications SET status = 'approved', admin_note = ?, "
+            "reviewed_at = ? WHERE id = ?",
+            (admin_note, _now(), app_id)
+        )
+        conn.execute("UPDATE users SET role = 'coach' WHERE id = ?", (user_id,))
+        # Create coach_profile if not exists
+        conn.execute(
+            "INSERT OR IGNORE INTO coach_profiles (user_id, display_name) VALUES (?, ?)",
+            (user_id, app['username'])
+        )
+        conn.commit()
+        return app
+    finally:
+        conn.close()
+
+
+def reject_coach_application(app_id: int, admin_note: str = '') -> Optional[dict]:
+    """Rejeita candidatura: mantém role 'coach_pending'. Retorna dados do user."""
+    conn = get_conn()
+    try:
+        app = conn.execute(
+            "SELECT ca.*, u.email, u.username FROM coach_applications ca "
+            "JOIN users u ON u.id = ca.user_id WHERE ca.id = ?",
+            (app_id,)
+        ).fetchone()
+        if not app:
+            return None
+        app = dict(app)
+        conn.execute(
+            "UPDATE coach_applications SET status = 'rejected', admin_note = ?, "
+            "reviewed_at = ? WHERE id = ?",
+            (admin_note, _now(), app_id)
+        )
+        conn.commit()
+        return app
+    finally:
+        conn.close()
+
+
+def _now() -> str:
+    from database.schema import USE_POSTGRES, now_sql
+    import datetime
+    return datetime.datetime.utcnow().isoformat()

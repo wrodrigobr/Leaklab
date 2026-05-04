@@ -591,6 +591,26 @@ def _run_migrations(conn):
             conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_msgs_pair ON coach_messages(coach_id, student_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_msgs_unread ON coach_messages(student_id, read_at)")
         except Exception: pass
+        # coach_applications (Postgres) — BACK-018
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS coach_applications (
+                    id               SERIAL PRIMARY KEY,
+                    user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    instagram_handle TEXT,
+                    bio              TEXT    NOT NULL DEFAULT '',
+                    specialties      TEXT    NOT NULL DEFAULT '[]',
+                    experience_years INTEGER NOT NULL DEFAULT 0,
+                    biggest_results  TEXT    NOT NULL DEFAULT '',
+                    status           TEXT    NOT NULL DEFAULT 'pending',
+                    admin_note       TEXT,
+                    created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+                    reviewed_at      TIMESTAMP,
+                    UNIQUE(user_id)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_apps_status ON coach_applications(status)")
+        except Exception: pass
         # session_goals table (Postgres) — FEAT-08
         try:
             conn.execute("""
@@ -861,6 +881,24 @@ def _run_migrations(conn):
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_msgs_pair   ON coach_messages(coach_id, student_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_msgs_unread ON coach_messages(student_id, read_at)")
+        # coach_applications (SQLite) — BACK-018
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coach_applications (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                instagram_handle TEXT,
+                bio              TEXT    NOT NULL DEFAULT '',
+                specialties      TEXT    NOT NULL DEFAULT '[]',
+                experience_years INTEGER NOT NULL DEFAULT 0,
+                biggest_results  TEXT    NOT NULL DEFAULT '',
+                status           TEXT    NOT NULL DEFAULT 'pending',
+                admin_note       TEXT,
+                created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+                reviewed_at      TEXT,
+                UNIQUE(user_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_apps_status ON coach_applications(status)")
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────
