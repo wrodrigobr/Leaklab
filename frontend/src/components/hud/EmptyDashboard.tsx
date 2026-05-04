@@ -1,8 +1,8 @@
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileUp, Loader2, ShieldCheck, Target, Sparkles, UploadCloud, XCircle } from "lucide-react";
+import { FileUp, ShieldCheck, Target, Sparkles, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { tournaments } from "@/lib/api";
+import { useUploadQueue } from "@/components/hud/UploadQueue";
 
 const SUPPORTED = [".txt", ".log"];
 
@@ -13,9 +13,8 @@ interface Props {
 export function EmptyDashboard({ onComplete }: Props) {
   const { t } = useTranslation("dashboard");
   const [isDragging, setIsDragging] = useState(false);
-  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const { enqueue, panel } = useUploadQueue(onComplete);
 
   const MODULES = [
     { code: t("empty.m1code"), title: t("empty.m1title"), description: t("empty.m1desc"), icon: Target },
@@ -23,38 +22,19 @@ export function EmptyDashboard({ onComplete }: Props) {
     { code: t("empty.m3code"), title: t("empty.m3title"), description: t("empty.m3desc"), icon: Sparkles },
   ];
 
-  const processFile = useCallback(
-    async (file: File) => {
-      setStatus("loading");
-      setErrorMsg("");
-      try {
-        const content = await file.text();
-        await tournaments.analyze(content);
-        onComplete?.();
-      } catch (err: unknown) {
-        setStatus("error");
-        const msg = err instanceof Error ? err.message : t("empty.parseError");
-        setErrorMsg(msg.includes("já foi importado") ? msg : msg);
-      }
-    },
-    [onComplete, t]
-  );
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
-    },
-    [processFile]
-  );
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files.length) enqueue(e.dataTransfer.files);
+  };
 
   const handleFiles = (selected: FileList | null) => {
-    if (selected?.[0]) processFile(selected[0]);
+    if (selected?.length) enqueue(selected);
   };
 
   return (
+    <>
+    {panel}
     <div className="space-y-16">
       <section className="relative">
         <div className="absolute -top-7 left-0 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
@@ -74,55 +54,39 @@ export function EmptyDashboard({ onComplete }: Props) {
             className={cn(
               "border border-dashed border-border rounded-lg py-20 px-6 text-center transition-colors",
               isDragging && "border-primary/40 bg-primary/5",
-              status === "error" && "border-destructive/40 bg-destructive/5"
             )}
           >
             <div className="mb-8 flex justify-center">
               <div className="size-16 rounded-full border border-border flex items-center justify-center bg-background">
                 <div className="size-8 bg-primary/10 rounded-sm flex items-center justify-center">
-                  {status === "loading" ? (
-                    <Loader2 className="size-4 text-primary animate-spin" aria-hidden />
-                  ) : status === "error" ? (
-                    <XCircle className="size-4 text-destructive" aria-hidden />
-                  ) : (
-                    <UploadCloud className="size-4 text-primary" aria-hidden />
-                  )}
+                  <UploadCloud className="size-4 text-primary" aria-hidden />
                 </div>
               </div>
             </div>
 
             <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-foreground mb-3">
-              {status === "loading"
-                ? t("empty.loading")
-                : status === "error"
-                ? t("empty.errorTitle")
-                : t("empty.title")}
+              {t("empty.title")}
             </h1>
             <p className="text-muted-foreground max-w-md mx-auto mb-10 text-sm leading-relaxed">
-              {status === "error"
-                ? errorMsg
-                : status === "loading"
-                ? t("empty.loadingDesc")
-                : t("empty.desc")}
+              {t("empty.desc")}
             </p>
 
-            {status !== "loading" && (
-              <button
-                type="button"
-                onClick={() => { setStatus("idle"); inputRef.current?.click(); }}
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 font-mono text-xs font-bold uppercase tracking-widest-2 transition-colors hover:bg-primary-glow rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              >
-                <FileUp className="size-3.5" aria-hidden />
-                {status === "error" ? t("empty.retry") : t("empty.import")}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 font-mono text-xs font-bold uppercase tracking-widest-2 transition-colors hover:bg-primary-glow rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <FileUp className="size-3.5" aria-hidden />
+              {t("empty.import")}
+            </button>
 
             <input
               ref={inputRef}
               type="file"
               accept=".txt,.log"
+              multiple
               className="sr-only"
-              onChange={(e) => handleFiles(e.target.files)}
+              onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
               aria-label={t("empty.fileLabel")}
             />
 
@@ -179,5 +143,6 @@ export function EmptyDashboard({ onComplete }: Props) {
         </div>
       </section>
     </div>
+    </>
   );
 }

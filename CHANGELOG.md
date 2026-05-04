@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.83.2] — 2026-05-04 — Bugfix: import múltiplo de torneios no EmptyDashboard
+
+### Fixed
+- **`frontend/src/components/hud/EmptyDashboard.tsx`**: refatorado para usar `useUploadQueue` (mesmo hook do HudHeader) em vez de `processFile` próprio. Agora aceita múltiplos arquivos via drag-and-drop e via seletor (`multiple`). O painel de fila com status por arquivo é exibido durante o processamento. Reset `e.target.value = ""` no `onChange` para permitir re-seleção do mesmo arquivo.
+
+---
+
 ## [v0.83.1] — 2026-05-04 — Sprint AY: Mobile audit + responsividade
 
 ### Fixed
