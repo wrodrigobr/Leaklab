@@ -381,7 +381,8 @@ const Index = () => {
           {tc("sessionLocked")}
         </span>
         <div className="hidden gap-6 sm:flex">
-          {([tc("docs"), tc("status_page"), tc("support")] as const).map((l) => (
+          <a href="/docs" className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors">{tc("docs")}</a>
+          {([tc("status_page"), tc("support")] as const).map((l) => (
             <a key={l} href="#" className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors">{l}</a>
           ))}
         </div>

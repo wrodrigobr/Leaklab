@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.71.0] — 2026-05-04 — Sprint AG: FEAT-12 Página de Documentação
+
+### Added
+- **`frontend/src/pages/Docs.tsx`**: página `/docs` estilo wiki com 8 seções — Sistema de Scoring, Indicadores, Fases de M-Ratio, Decision DNA, Ghost Table/Drills, Comparativo de Torneios, Coaching, Gamificação. Sidebar fixa com navegação âncora e active highlight por IntersectionObserver. Tabelas com valores precisos extraídos do código (thresholds reais do engine, XP amounts, níveis, conquistas).
+- **`frontend/src/App.tsx`**: rota `/docs` pública (AuthRoute).
+- **`frontend/src/pages/Index.tsx`**: link "Docs" no footer agora aponta para `/docs`.
+
+---
+
 ## [v0.70.0] — 2026-05-04 — Sprint AL: UX-017 Dashboard Personalizável
 
 ### Added

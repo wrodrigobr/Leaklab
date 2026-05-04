@@ -24,6 +24,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GhostTable from "./pages/GhostTable.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
+import Docs from "./pages/Docs.tsx";
 
 const queryClient = new QueryClient();
 
@@ -205,6 +206,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/docs" element={<AuthRoute><Docs /></AuthRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
