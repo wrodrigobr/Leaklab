@@ -539,6 +539,16 @@ export const drill = {
     request<DrillAnalysisResult>(`/player/spots/drill/${decision_id}/analysis`),
 };
 
+export const sparring = {
+  hand: (hand_id?: string, tournament_id?: number) => {
+    const q = new URLSearchParams();
+    if (hand_id)       q.set("hand_id", hand_id);
+    if (tournament_id) q.set("tournament_id", String(tournament_id));
+    const qs = q.toString();
+    return request<SparringHand>(`/player/sparring/hand${qs ? "?" + qs : ""}`);
+  },
+};
+
 export const metrics = {
   evolution: (days = 90) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}`),
@@ -703,6 +713,38 @@ export interface StrategicTwinProfile {
   high_volume_spots?: TwinSpot[];
   costly_spots?: TwinSpot[];
   narrative?: string;
+}
+
+// ── Sparring Mode (Sprint AS) ─────────────────────────────────────────────────
+
+export interface SparringStep {
+  step_index: number;
+  decision_id: number;
+  street: "preflop" | "flop" | "turn" | "river";
+  hero_cards: string | null;
+  board: string | null;
+  action_taken: string;
+  best_action: string;
+  label: string;
+  score: number;
+  m_ratio: number | null;
+  icm_pressure: string | null;
+  stack_bb: number | null;
+  position: string | null;
+  num_players: number | null;
+  pot_size: number | null;
+  facing_bet: number | null;
+  is_3bet: boolean;
+}
+
+export interface SparringHand {
+  insufficient_data: boolean;
+  hand_id?: string;
+  tournament_id?: number;
+  tournament_name?: string | null;
+  primary_decision_id?: number;
+  steps?: SparringStep[];
+  total_steps?: number;
 }
 
 // ── Daily Focus + XP (Sprint Q) ───────────────────────────────────────────────

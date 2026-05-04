@@ -1,0 +1,70 @@
+{
+  "title": "Sparring Mode",
+  "subtitle": "Juega una mano real pausando en cada decisión. El engine evalúa cada elección y la registra en el SRS.",
+  "startBtn": "Iniciar Sparring",
+  "loading": "Cargando mano...",
+  "noData": "No hay mano disponible para Sparring. Importa torneos para comenzar.",
+  "hand": "Mano",
+  "tournament": "Torneo",
+  "stepOf": "Decisión {{n}} de {{total}}",
+  "historyLabel": "Historial de la mano",
+  "question": "¿Cuál sería tu acción?",
+  "next": "Siguiente Decisión",
+  "viewSummary": "Ver Resumen de la Mano",
+  "newHand": "Nueva Mano",
+  "backGhost": "Volver al Ghost Table",
+  "street": {
+    "preflop": "Pre-Flop",
+    "flop": "Flop",
+    "turn": "Turn",
+    "river": "River"
+  },
+  "context": {
+    "position": "Posición",
+    "players": "{{n}} jugadores",
+    "bb": "{{n}}bb",
+    "pot": "Bote",
+    "facing": "Apuesta",
+    "is3bet": "3-Bet pot"
+  },
+  "icmLabel": {
+    "low": "ICM Bajo",
+    "medium": "ICM Medio",
+    "high": "ICM Alto",
+    "critical": "ICM Crítico"
+  },
+  "heroCards": "Tus cartas",
+  "board": "Board",
+  "actions": {
+    "fold":  "Fold",
+    "check": "Check",
+    "call":  "Call",
+    "bet":   "Bet",
+    "raise": "Raise",
+    "jam":   "Jam"
+  },
+  "result": {
+    "correct": "¡Correcto!",
+    "wrong": "Incorrecto",
+    "bestAction": "Acción correcta: {{action}}",
+    "yourAction": "Tu acción: {{action}}",
+    "improvement": "Mejora: −{{delta}} score",
+    "noImprovement": "Error mantenido",
+    "requestAnalysis": "Ver análisis del engine",
+    "analysisLoading": "Analizando...",
+    "analysisError": "No se pudo cargar el análisis.",
+    "engineNote": "Análisis del engine",
+    "srsCorrect": "Próxima revisión en {{n}} días",
+    "srsReset": "Reiniciado — revisión en {{n}} días"
+  },
+  "summary": {
+    "title": "Resumen de la Mano",
+    "subtitle": "Completaste todas las decisiones de esta mano.",
+    "accuracy": "Precisión",
+    "correct": "{{correct}} de {{total}} correctas",
+    "decisions": "decisiones",
+    "step": "Decisión {{n}}",
+    "correct_label": "Correcto",
+    "wrong_label": "Incorrecto"
+  }
+}

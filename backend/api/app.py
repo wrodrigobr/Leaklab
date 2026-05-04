@@ -96,6 +96,8 @@ from database.repositories import (
     get_cognitive_failure_report,
     # Sprint AR — Personal Strategic Twin
     get_strategic_twin_profile,
+    # Sprint AS — AI Sparring Mode
+    get_sparring_hand,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -840,6 +842,15 @@ def player_cognitive_failures():
     if not report.get("insufficient_data") and report.get("patterns"):
         report["narrative"] = generate_cognitive_narrative(report["patterns"], lang=lang)
     return jsonify(report)
+
+
+@app.route('/player/sparring/hand', methods=['GET'])
+@require_auth
+def player_sparring_hand():
+    hand_id       = request.args.get('hand_id')
+    tournament_id = request.args.get('tournament_id', type=int)
+    data = get_sparring_hand(g.user_id, hand_id=hand_id, tournament_id=tournament_id)
+    return jsonify(data)
 
 
 @app.route('/player/strategic-twin', methods=['GET'])

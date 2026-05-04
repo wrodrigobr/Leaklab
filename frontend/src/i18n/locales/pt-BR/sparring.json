@@ -1,0 +1,70 @@
+{
+  "title": "Sparring Mode",
+  "subtitle": "Jogue uma mão real pausando em cada decisão. O engine avalia cada escolha e registra no SRS.",
+  "startBtn": "Iniciar Sparring",
+  "loading": "Carregando mão...",
+  "noData": "Nenhuma mão disponível para Sparring. Importe torneios para começar.",
+  "hand": "Mão",
+  "tournament": "Torneio",
+  "stepOf": "Decisão {{n}} de {{total}}",
+  "historyLabel": "Histórico desta mão",
+  "question": "Qual seria sua ação?",
+  "next": "Próxima Decisão",
+  "viewSummary": "Ver Resumo da Mão",
+  "newHand": "Nova Mão",
+  "backGhost": "Voltar ao Ghost Table",
+  "street": {
+    "preflop": "Pré-Flop",
+    "flop": "Flop",
+    "turn": "Turn",
+    "river": "River"
+  },
+  "context": {
+    "position": "Posição",
+    "players": "{{n}} jogadores",
+    "bb": "{{n}}bb",
+    "pot": "Pote",
+    "facing": "Aposta",
+    "is3bet": "3-Bet pot"
+  },
+  "icmLabel": {
+    "low": "ICM Baixo",
+    "medium": "ICM Médio",
+    "high": "ICM Alto",
+    "critical": "ICM Crítico"
+  },
+  "heroCards": "Suas cartas",
+  "board": "Board",
+  "actions": {
+    "fold":  "Fold",
+    "check": "Check",
+    "call":  "Call",
+    "bet":   "Bet",
+    "raise": "Raise",
+    "jam":   "Jam"
+  },
+  "result": {
+    "correct": "Correto!",
+    "wrong": "Incorreto",
+    "bestAction": "Ação correta: {{action}}",
+    "yourAction": "Sua ação: {{action}}",
+    "improvement": "Melhora: −{{delta}} score",
+    "noImprovement": "Erro mantido",
+    "requestAnalysis": "Ver análise do engine",
+    "analysisLoading": "Analisando...",
+    "analysisError": "Não foi possível carregar a análise.",
+    "engineNote": "Análise do engine",
+    "srsCorrect": "Próxima revisão em {{n}} dias",
+    "srsReset": "Resetado — revisão em {{n}} dias"
+  },
+  "summary": {
+    "title": "Resumo da Mão",
+    "subtitle": "Você completou todas as decisões desta mão.",
+    "accuracy": "Precisão",
+    "correct": "{{correct}} de {{total}} corretas",
+    "decisions": "decisões",
+    "step": "Decisão {{n}}",
+    "correct_label": "Correto",
+    "wrong_label": "Incorreto"
+  }
+}

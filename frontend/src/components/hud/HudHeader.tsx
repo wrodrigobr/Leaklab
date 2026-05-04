@@ -78,6 +78,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments",     icon: Trophy },
     { label: t("nav.study"),       mobileLabel: t("nav.study"),       to: "/study",           icon: GraduationCap },
     { label: t("nav.ghost"),       mobileLabel: t("nav.ghost"),       to: "/ghost",           icon: Swords },
+    { label: t("nav.sparring"),    mobileLabel: t("nav.sparring"),    to: "/sparring",         icon: Swords },
     { label: t("nav.coach"),       mobileLabel: t("nav.coach"),       to: "/coach",           icon: Bot },
     { label: t("nav.coaches"),     mobileLabel: t("nav.coaches"),     to: "/coaches",         icon: Users },
   ];

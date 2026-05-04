@@ -13,7 +13,8 @@
     "gamification": "Gamification",
     "career": "Career Trajectory",
     "cognitive": "Cognitive Failure Mapper",
-    "twin": "Strategic Profile"
+    "twin": "Strategic Profile",
+    "sparring": "Sparring Mode"
   },
   "scoring": {
     "title": "Scoring System",
@@ -208,5 +209,19 @@
       "delta_meaning": "How much the spot's error_rate exceeds (positive) or falls below (negative) your personal average"
     },
     "p3": "The vertical line in the bar chart represents your personal average. Bars that exceed this line indicate spots where you perform below your usual standard. The AI narrative summarises the 3 most costly tendencies and proposes one concrete adjustment."
+  },
+  "sparring": {
+    "title": "Sparring Mode",
+    "p1": "<strong>Sparring Mode</strong> (<code>/sparring</code>) turns passive learning into learning by action. Instead of reviewing an isolated spot, you play a complete historical hand, pausing at each real decision point — and the engine evaluates every choice with the same rigour as the Ghost Table.",
+    "col_phase": "Phase",
+    "col_desc": "What happens",
+    "phase_playing": "Playing",
+    "phase_playing_desc": "Each hand decision is presented with cards, board, and full context (position, stack, M-ratio, ICM, pot). The user chooses one of 6 available actions.",
+    "phase_feedback": "Feedback",
+    "phase_feedback_desc": "Immediate result: correct or incorrect, recommended action, score delta, SRS scheduling, and optional engine analysis via AI.",
+    "phase_summary": "Summary",
+    "phase_summary_desc": "After all decisions: overall accuracy, per-decision outcome summary, and a button to play a new hand.",
+    "p2": "The auto-selected hand is the one containing the player's worst mistake in the last 90 days, preferring hands with multiple decisions to create a full narrative arc (preflop → flop → turn/river).",
+    "p3": "Every answer is registered in the SRS (Spaced Repetition) system: correct answers advance the review interval [3, 7, 14, 28, 60 days]; wrong answers reset to 3 days. <strong>Sparring integrates directly with the Ghost Table</strong> — the same spots appear in both modes as the SRS schedules them."
   }
 }

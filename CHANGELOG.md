@@ -9,6 +9,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.78.0] — 2026-05-04 — Sprint AS: AI Sparring Mode
+
+### Added
+- **`backend/database/repositories.py`**: `get_sparring_hand(user_id, hand_id, tournament_id)` — auto-seleciona a mão com pior erro nos últimos 90 dias (priorizando mãos com múltiplas decisões), retorna todas as decisões em ordem cronológica com contexto completo.
+- **`backend/api/app.py`**: `GET /player/sparring/hand?hand_id=&tournament_id=` — serve mão para o modo Sparring.
+- **`frontend/src/lib/api.ts`**: interfaces `SparringStep` e `SparringHand`; `sparring.hand(hand_id?, tournament_id?)`.
+- **`frontend/src/pages/Sparring.tsx`**: nova página `/sparring` com 4 fases — playing (cartas + botões de ação), feedback (correto/errado, best action, delta, SRS, análise engine), summary (precisão geral, linha por decisão), idle. Reutiliza `PlayingCard`, `drill.submit`, `drill.analysis` e SRS do Ghost Table.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/sparring.json`**: namespace `sparring` com todas as strings da página (PT/EN/ES).
+- **`frontend/src/i18n/index.ts`**: namespace `sparring` registrado nas 3 locales.
+- **`frontend/src/pages/Docs.tsx`**: seção `sparring` com tabela de fases.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/docs.json`**: seção `sparring` na docs e chave `nav.sparring`.
+
+### Changed
+- **`frontend/src/App.tsx`**: rota `/sparring` adicionada (ProtectedRoute).
+- **`frontend/src/components/hud/HudHeader.tsx`**: item "Sparring" adicionado ao nav de players.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/common.json`**: chave `nav.sparring` adicionada.
+
+---
+
 ## [v0.77.0] — 2026-05-04 — Sprint AR: Personal Strategic Twin
 
 ### Added

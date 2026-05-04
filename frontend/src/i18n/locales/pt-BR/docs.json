@@ -13,7 +13,8 @@
     "gamification": "Gamificação",
     "career": "Trajetória de Carreira",
     "cognitive": "Cognitive Failure Mapper",
-    "twin": "Perfil Estratégico"
+    "twin": "Perfil Estratégico",
+    "sparring": "Sparring Mode"
   },
   "scoring": {
     "title": "Sistema de Scoring",
@@ -208,5 +209,19 @@
       "delta_meaning": "Quanto o error_rate do spot excede (positivo) ou fica abaixo (negativo) da média pessoal"
     },
     "p3": "A linha vertical no gráfico de barra representa sua média pessoal. Barras que ultrapassam essa linha indicam spots onde você performa abaixo do seu padrão usual. A narrativa de IA resume as 3 tendências mais custosas e propõe um ajuste concreto."
+  },
+  "sparring": {
+    "title": "Sparring Mode",
+    "p1": "O <strong>Sparring Mode</strong> (<code>/sparring</code>) transforma o aprendizado passivo em aprendizado por ação. Em vez de revisar um spot isolado, você joga uma mão histórica completa pausando em cada ponto de decisão real — e o engine avalia cada escolha com o mesmo rigor do Ghost Table.",
+    "col_phase": "Fase",
+    "col_desc": "O que acontece",
+    "phase_playing": "Jogando",
+    "phase_playing_desc": "Cada decisão da mão é apresentada com cartas, board e contexto completo (posição, stack, M-ratio, ICM, pote). O usuário escolhe uma das 6 ações disponíveis.",
+    "phase_feedback": "Feedback",
+    "phase_feedback_desc": "Resultado imediato: correto ou incorreto, ação recomendada, delta de score, SRS scheduling e análise opcional do engine via IA.",
+    "phase_summary": "Resumo",
+    "phase_summary_desc": "Ao fim de todas as decisões: precisão geral, resumo de cada decisão com outcome, botão para jogar nova mão.",
+    "p2": "A mão auto-selecionada é a que contém o pior erro do jogador nos últimos 90 dias, priorizando mãos com múltiplas decisões para criar um arco narrativo completo (preflop → flop → turn/river).",
+    "p3": "Cada resposta é registrada no sistema SRS (Spaced Repetition): acertos avançam o intervalo de revisão [3, 7, 14, 28, 60 dias]; erros resetam para 3 dias. O <strong>Sparring integra diretamente ao Ghost Table</strong> — os mesmos spots aparecem nos dois modos conforme o SRS agenda."
   }
 }

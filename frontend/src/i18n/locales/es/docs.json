@@ -13,7 +13,8 @@
     "gamification": "Gamificación",
     "career": "Trayectoria de Carrera",
     "cognitive": "Cognitive Failure Mapper",
-    "twin": "Perfil Estratégico"
+    "twin": "Perfil Estratégico",
+    "sparring": "Sparring Mode"
   },
   "scoring": {
     "title": "Sistema de Scoring",
@@ -208,5 +209,19 @@
       "delta_meaning": "Cuánto supera (positivo) o queda por debajo (negativo) del promedio personal el error_rate del spot"
     },
     "p3": "La línea vertical en el gráfico de barras representa tu promedio personal. Las barras que superan esa línea indican spots donde rindes por debajo de tu estándar habitual. La narrativa de IA resume las 3 tendencias más costosas y propone un ajuste concreto."
+  },
+  "sparring": {
+    "title": "Sparring Mode",
+    "p1": "El <strong>Sparring Mode</strong> (<code>/sparring</code>) transforma el aprendizaje pasivo en aprendizaje por acción. En lugar de revisar un spot aislado, juegas una mano histórica completa pausando en cada punto de decisión real — y el engine evalúa cada elección con el mismo rigor que el Ghost Table.",
+    "col_phase": "Fase",
+    "col_desc": "Qué sucede",
+    "phase_playing": "Jugando",
+    "phase_playing_desc": "Cada decisión de la mano se presenta con cartas, board y contexto completo (posición, stack, M-ratio, ICM, bote). El usuario elige una de las 6 acciones disponibles.",
+    "phase_feedback": "Feedback",
+    "phase_feedback_desc": "Resultado inmediato: correcto o incorrecto, acción recomendada, delta de score, scheduling SRS y análisis opcional del engine vía IA.",
+    "phase_summary": "Resumen",
+    "phase_summary_desc": "Al finalizar todas las decisiones: precisión global, resumen por decisión con resultado, botón para jugar una nueva mano.",
+    "p2": "La mano auto-seleccionada es la que contiene el peor error del jugador en los últimos 90 días, priorizando manos con múltiples decisiones para crear un arco narrativo completo (preflop → flop → turn/river).",
+    "p3": "Cada respuesta se registra en el sistema SRS (Spaced Repetition): los aciertos avanzan el intervalo de revisión [3, 7, 14, 28, 60 días]; los errores lo reinician a 3 días. El <strong>Sparring se integra directamente con el Ghost Table</strong> — los mismos spots aparecen en ambos modos según el SRS los programe."
   }
 }

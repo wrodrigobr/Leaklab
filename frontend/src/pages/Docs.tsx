@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight } from "lucide-react";
 
-const SECTION_IDS = ["scoring", "indicators", "mstacks", "dna", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin"] as const;
+const SECTION_IDS = ["scoring", "indicators", "mstacks", "dna", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -288,6 +288,21 @@ export default function Docs() {
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("twin.p3") }} />
+            </Section>
+
+            {/* Sparring Mode */}
+            <Section id="sparring" title={t("sparring.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("sparring.p1") }} />
+              <Table
+                headers={[t("sparring.col_phase"), t("sparring.col_desc")]}
+                rows={[
+                  [t("sparring.phase_playing"), t("sparring.phase_playing_desc")],
+                  [t("sparring.phase_feedback"), t("sparring.phase_feedback_desc")],
+                  [t("sparring.phase_summary"), t("sparring.phase_summary_desc")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("sparring.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("sparring.p3") }} />
             </Section>
 
           </div>

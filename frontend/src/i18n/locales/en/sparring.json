@@ -1,0 +1,70 @@
+{
+  "title": "Sparring Mode",
+  "subtitle": "Play a real hand, pausing at each decision point. The engine evaluates every choice and registers it in SRS.",
+  "startBtn": "Start Sparring",
+  "loading": "Loading hand...",
+  "noData": "No hand available for Sparring. Import tournaments to get started.",
+  "hand": "Hand",
+  "tournament": "Tournament",
+  "stepOf": "Decision {{n}} of {{total}}",
+  "historyLabel": "Hand history",
+  "question": "What would you do here?",
+  "next": "Next Decision",
+  "viewSummary": "View Hand Summary",
+  "newHand": "New Hand",
+  "backGhost": "Back to Ghost Table",
+  "street": {
+    "preflop": "Pre-Flop",
+    "flop": "Flop",
+    "turn": "Turn",
+    "river": "River"
+  },
+  "context": {
+    "position": "Position",
+    "players": "{{n}} players",
+    "bb": "{{n}}bb",
+    "pot": "Pot",
+    "facing": "Facing bet",
+    "is3bet": "3-Bet pot"
+  },
+  "icmLabel": {
+    "low": "Low ICM",
+    "medium": "Medium ICM",
+    "high": "High ICM",
+    "critical": "Critical ICM"
+  },
+  "heroCards": "Your cards",
+  "board": "Board",
+  "actions": {
+    "fold":  "Fold",
+    "check": "Check",
+    "call":  "Call",
+    "bet":   "Bet",
+    "raise": "Raise",
+    "jam":   "Jam"
+  },
+  "result": {
+    "correct": "Correct!",
+    "wrong": "Incorrect",
+    "bestAction": "Correct action: {{action}}",
+    "yourAction": "Your action: {{action}}",
+    "improvement": "Improvement: −{{delta}} score",
+    "noImprovement": "Error maintained",
+    "requestAnalysis": "View engine analysis",
+    "analysisLoading": "Analysing...",
+    "analysisError": "Could not load analysis.",
+    "engineNote": "Engine analysis",
+    "srsCorrect": "Next review in {{n}} days",
+    "srsReset": "Reset — review in {{n}} days"
+  },
+  "summary": {
+    "title": "Hand Summary",
+    "subtitle": "You completed all decisions in this hand.",
+    "accuracy": "Accuracy",
+    "correct": "{{correct}} of {{total}} correct",
+    "decisions": "decisions",
+    "step": "Decision {{n}}",
+    "correct_label": "Correct",
+    "wrong_label": "Incorrect"
+  }
+}

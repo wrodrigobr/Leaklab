@@ -8,7 +8,8 @@
     "admin": "Admin",
     "profile": "Perfil",
     "coachDashboard": "Dashboard",
-    "ghost": "Ghost Table"
+    "ghost": "Ghost Table",
+    "sparring": "Sparring"
   },
   "actions": {
     "import": "Import",

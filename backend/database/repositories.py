@@ -1396,6 +1396,100 @@ def get_strategic_twin_profile(user_id: int, days: int = 180) -> dict:
     }
 
 
+def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = None) -> dict:
+    """
+    Sprint AS — Seleciona uma mão histórica do jogador para o modo Sparring.
+    Auto-seleciona a mão com mais decisões que contém o pior erro dos últimos 90 dias.
+    Retorna todas as decisões da mão em ordem cronológica.
+    """
+    from datetime import datetime, timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=90)).strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = get_conn()
+    try:
+        if hand_id and tournament_id:
+            target_hand_id      = hand_id
+            target_tournament_id = tournament_id
+        else:
+            best = conn.execute(_adapt("""
+                SELECT sub.hand_id, sub.tournament_id
+                FROM (
+                    SELECT d.hand_id, d.tournament_id,
+                           COUNT(*) AS total_decisions,
+                           MAX(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN d.score ELSE 0 END) AS max_err,
+                           SUM(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN 1 ELSE 0 END) AS mistakes
+                    FROM decisions d
+                    JOIN tournaments t ON t.id = d.tournament_id
+                    WHERE t.user_id = ? AND t.imported_at >= ?
+                    GROUP BY d.hand_id, d.tournament_id
+                    HAVING mistakes > 0
+                ) sub
+                ORDER BY sub.total_decisions DESC, sub.max_err DESC
+                LIMIT 1
+            """), (user_id, cutoff)).fetchone()
+
+            if not best:
+                return {"insufficient_data": True}
+
+            target_hand_id       = best["hand_id"]
+            target_tournament_id = best["tournament_id"]
+
+        rows = conn.execute(_adapt("""
+            SELECT d.id, d.hand_id, d.street, d.hero_cards, d.board,
+                   d.action_taken, d.best_action, d.label, d.score,
+                   d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
+                   d.num_players, d.pot_size, d.facing_bet, d.is_3bet,
+                   t.name AS tournament_name, t.id AS tournament_id
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND d.hand_id = ? AND d.tournament_id = ?
+            ORDER BY d.id
+        """), (user_id, target_hand_id, target_tournament_id)).fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {"insufficient_data": True}
+
+    mistakes = [r for r in rows if r["label"] in ("small_mistake", "clear_mistake")]
+    primary_id = (
+        max(mistakes, key=lambda r: r["score"])["id"] if mistakes else rows[0]["id"]
+    )
+
+    steps = [
+        {
+            "step_index":   i,
+            "decision_id":  r["id"],
+            "street":       r["street"],
+            "hero_cards":   r["hero_cards"],
+            "board":        r["board"] or "",
+            "action_taken": r["action_taken"],
+            "best_action":  r["best_action"],
+            "label":        r["label"],
+            "score":        r["score"],
+            "m_ratio":      r["m_ratio"],
+            "icm_pressure": r["icm_pressure"],
+            "stack_bb":     r["stack_bb"],
+            "position":     r["position"],
+            "num_players":  r["num_players"],
+            "pot_size":     r["pot_size"],
+            "facing_bet":   r["facing_bet"],
+            "is_3bet":      bool(r["is_3bet"]),
+        }
+        for i, r in enumerate(rows)
+    ]
+
+    return {
+        "insufficient_data":    False,
+        "hand_id":               rows[0]["hand_id"],
+        "tournament_id":         rows[0]["tournament_id"],
+        "tournament_name":       rows[0]["tournament_name"],
+        "primary_decision_id":   primary_id,
+        "steps":                 steps,
+        "total_steps":           len(steps),
+    }
+
+
 def get_llm_cache(user_id: int, cache_key: str) -> Optional[str]:
     """Retorna análise cacheada ou None se não existir."""
     conn = get_conn()

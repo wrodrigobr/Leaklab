@@ -22,6 +22,7 @@ import CoachesDirectory from "./pages/CoachesDirectory.tsx";
 import PublicCoachProfile from "./pages/PublicCoachProfile.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GhostTable from "./pages/GhostTable.tsx";
+import Sparring from "./pages/Sparring.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
 import Docs from "./pages/Docs.tsx";
@@ -203,6 +204,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <GhostTable />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sparring"
+              element={
+                <ProtectedRoute>
+                  <Sparring />
                 </ProtectedRoute>
               }
             />

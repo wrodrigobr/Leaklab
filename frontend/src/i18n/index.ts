@@ -14,6 +14,7 @@ import ptBRReplayer from './locales/pt-BR/replayer.json';
 import ptBRLanding from './locales/pt-BR/landing.json';
 import ptBRGhost from './locales/pt-BR/ghost.json';
 import ptBRDocs from './locales/pt-BR/docs.json';
+import ptBRSparring from './locales/pt-BR/sparring.json';
 
 import enCommon from './locales/en/common.json';
 import enDashboard from './locales/en/dashboard.json';
@@ -27,6 +28,7 @@ import enReplayer from './locales/en/replayer.json';
 import enLanding from './locales/en/landing.json';
 import enGhost from './locales/en/ghost.json';
 import enDocs from './locales/en/docs.json';
+import enSparring from './locales/en/sparring.json';
 
 import esCommon from './locales/es/common.json';
 import esDashboard from './locales/es/dashboard.json';
@@ -40,6 +42,7 @@ import esReplayer from './locales/es/replayer.json';
 import esLanding from './locales/es/landing.json';
 import esGhost from './locales/es/ghost.json';
 import esDocs from './locales/es/docs.json';
+import esSparring from './locales/es/sparring.json';
 
 i18n
   .use(LanguageDetector)
@@ -59,6 +62,7 @@ i18n
         landing: ptBRLanding,
         ghost: ptBRGhost,
         docs: ptBRDocs,
+        sparring: ptBRSparring,
       },
       en: {
         common: enCommon,
@@ -73,6 +77,7 @@ i18n
         landing: enLanding,
         ghost: enGhost,
         docs: enDocs,
+        sparring: enSparring,
       },
       es: {
         common: esCommon,
@@ -87,6 +92,7 @@ i18n
         landing: esLanding,
         ghost: esGhost,
         docs: esDocs,
+        sparring: esSparring,
       },
     },
     fallbackLng: 'pt-BR',
