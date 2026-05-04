@@ -73,6 +73,8 @@ from database.repositories import (
     # Sprint Q — FEAT-02 + FEAT-03: Daily Focus + XP Server-Side
     get_daily_focus, mark_daily_focus_done,
     add_xp, get_xp_status, get_achievements,
+    # Sprint S — FEAT-06: Leak Causal Graph
+    get_leak_graph_data,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -741,6 +743,13 @@ def player_dna():
     """Sprint L — Assinatura estratégica do jogador (Decision DNA)."""
     days = int(request.args.get('days', 90))
     return jsonify(get_player_dna(g.user_id, days=days))
+
+
+@app.route('/player/leak-graph', methods=['GET'])
+@require_auth
+def player_leak_graph():
+    days = int(request.args.get('days', 90))
+    return jsonify(get_leak_graph_data(g.user_id, days=days))
 
 
 @app.route('/player/daily-focus', methods=['GET'])

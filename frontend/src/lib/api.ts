@@ -545,6 +545,9 @@ export const metrics = {
   dna: (days = 90) =>
     request<PlayerDnaResponse>(`/player/dna?days=${days}`),
 
+  leakGraph: (days = 90) =>
+    request<LeakGraphResponse>(`/player/leak-graph?days=${days}`),
+
   dailyFocus: () =>
     request<DailyFocusData>(`/player/daily-focus`),
 
@@ -563,6 +566,30 @@ export const metrics = {
   achievements: () =>
     request<{ achievements: Achievement[] }>(`/player/achievements`),
 };
+
+// ── Leak Causal Graph (Sprint S) ─────────────────────────────────────────────
+
+export interface LeakGraphNode {
+  id: string;
+  label: string;
+  n: number;
+  avg_score: number;
+  severity: "critical" | "moderate" | "minor";
+  degree: number;
+}
+
+export interface LeakGraphEdge {
+  source: string;
+  target: string;
+  co_occurrences: number;
+  correlation: number;
+}
+
+export interface LeakGraphResponse {
+  nodes: LeakGraphNode[];
+  edges: LeakGraphEdge[];
+  narrative: string;
+}
 
 // ── Daily Focus + XP (Sprint Q) ───────────────────────────────────────────────
 

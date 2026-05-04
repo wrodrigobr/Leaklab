@@ -913,6 +913,78 @@ Seja direto, use linguagem de coach (não acadêmica). Não use markdown, apenas
         return f'Erro ao conectar ao Coach IA: {str(e)}'
 
 
+# ── Leak Causal Map (FEAT-06) ────────────────────────────────────────────────
+
+def explain_leak_causality(edges: list, hero: str = 'você') -> str:
+    """1 parágrafo curto (3 frases) explicando a causa raiz dos pares mais correlacionados."""
+    if not edges:
+        return ""
+    cache_key = "causal_" + "_".join(
+        f"{e['source']}:{e['target']}" for e in edges[:3]
+    )
+    if cache_key in _cache:
+        return _cache[cache_key]
+    try:
+        text = _call_llm_causality(edges[:3], hero)
+    except Exception:
+        text = _template_causality(edges[:3])
+    _cache[cache_key] = text
+    return text
+
+
+def _call_llm_causality(edges: list, hero: str) -> str:
+    import requests as _req
+    pairs = "\n".join(
+        f"- {e['source']} ↔ {e['target']}: correlação {e['correlation']:.0%} "
+        f"({e['co_occurrences']} torneios em conjunto)"
+        for e in edges
+    )
+    system_prompt = (
+        "Você é um coach de poker MTT analítico. "
+        "Analise as correlações de leaks abaixo e escreva EXATAMENTE 2-3 frases "
+        "explicando: (1) por que esses erros tendem a ocorrer juntos, "
+        "(2) qual é a provável causa raiz, "
+        "(3) qual corrigir primeiro para maior impacto. "
+        "Seja técnico e direto. NÃO use títulos, bullets ou introduções."
+    )
+    payload = {
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 150,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": f"Leaks de {hero}:\n{pairs}"}],
+    }
+    resp = _req.post(
+        "https://api.anthropic.com/v1/messages",
+        json=payload,
+        headers={
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01",
+            "x-api-key": _api_key(),
+        },
+        timeout=20,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return "".join(
+        block["text"] for block in data.get("content", []) if block.get("type") == "text"
+    ).strip()
+
+
+def _template_causality(edges: list) -> str:
+    if not edges:
+        return ""
+    top = edges[0]
+    a = top['source'].replace('/', ' ').replace('_', ' ')
+    b = top['target'].replace('/', ' ').replace('_', ' ')
+    corr = int(top['correlation'] * 100)
+    return (
+        f"Os leaks de {a} e {b} co-ocorrem em {corr}% dos torneios analisados, "
+        f"sugerindo uma causa raiz comum — provavelmente relacionada a leitura de range ou "
+        f"gestão de stack. Corrija o spot com maior frequência primeiro para reduzir "
+        f"automaticamente os demais."
+    )
+
+
 # ── AI Coach conversacional ────────────────────────────────────────────────────
 
 def coach_chat_reply(message: str, leaks: list, evolution: list,

@@ -2710,6 +2710,45 @@ def _classify_archetype(aggression: float, fold_freq: float, three_bet: float, d
     return "TAG"
 
 
+def get_leak_graph_data(user_id: int, days: int = 90) -> dict:
+    """Sprint S — Retorna grafo causal de leaks: nós, arestas e narrativa LLM."""
+    from datetime import datetime, timedelta
+    from leaklab.leak_causal_graph import build_leak_graph
+    from leaklab.llm_explainer import explain_leak_causality
+
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt("""
+            SELECT
+                t.id                                   AS tournament_id,
+                d.street || '/' || d.best_action       AS spot,
+                d.score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND d.label IN ('small_mistake','clear_mistake')
+              AND t.imported_at >= ?
+        """), (user_id, cutoff)).fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {'nodes': [], 'edges': [], 'narrative': ''}
+
+    graph = build_leak_graph([dict(r) for r in rows])
+
+    hero = ''
+    try:
+        u = get_user_by_id(user_id)
+        hero = (u or {}).get('username', '') or ''
+    except Exception:
+        pass
+
+    narrative = explain_leak_causality(graph['edges'], hero=hero or 'você')
+    return {**graph, 'narrative': narrative}
+
+
 def get_player_dna(user_id: int, days: int = 90) -> dict:
     """
     Computa a assinatura estratégica do jogador a partir dos padrões de decisão.

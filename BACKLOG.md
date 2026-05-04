@@ -2,8 +2,8 @@
 
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
-> **Sprints já entregues:** Sprints 1–13 + Sprint A–R + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.49.0.
-> **Sprint atual:** Sprint S — FEAT-06 Leak Causal Map
+> **Sprints já entregues:** Sprints 1–13 + Sprint A–S + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.50.0.
+> **Sprint atual:** Sprint T — FEAT-07 Coach Effectiveness Metrics
 
 ---
 
@@ -53,7 +53,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint P | FEAT-04 | Relatório PDF Premium | ✅ v0.47.0 |
 | Sprint Q | FEAT-02 + FEAT-03 | Daily Focus + XP Server-Side | ✅ v0.48.0 |
 | Sprint R | FEAT-05 | SRS Adaptativo nos Drills | ✅ v0.49.0 |
-| Sprint S | FEAT-06 | Leak Causal Map | ⏳ |
+| Sprint S | FEAT-06 | Leak Causal Map | ✅ v0.50.0 |
 | Sprint T | FEAT-07 | Coach Effectiveness Metrics | ⏳ |
 | Sprint U | FEAT-08 | Session Goals + AI Review | ⏳ |
 | Sprint V | FEAT-09 + FEAT-10 | Coach Templates + Coach Messaging | ⏳ |

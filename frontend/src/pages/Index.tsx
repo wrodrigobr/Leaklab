@@ -21,7 +21,8 @@ import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
 import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
 import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
 import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
-import { metrics, drill, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot } from "@/lib/api";
+import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
+import { metrics, drill, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
@@ -40,6 +41,7 @@ const Index = () => {
   const [drillStats, setDrillStats]     = useState<DrillStats | null>(null);
   const [dnaData, setDnaData]           = useState<PlayerDnaResponse | null>(null);
   const [drillSpots, setDrillSpots]     = useState<DrillSpot[]>([]);
+  const [leakGraph, setLeakGraph]       = useState<LeakGraphResponse | null>(null);
   const [loading, setLoading]   = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -57,6 +59,7 @@ const Index = () => {
       metrics.drillStats(30).then(setDrillStats).catch(() => null),
       metrics.dna(90).then(setDnaData).catch(() => null),
       drill.spots({ limit: 20 }).then((r) => setDrillSpots(r.spots)).catch(() => null),
+      metrics.leakGraph(90).then(setLeakGraph).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
 
@@ -213,6 +216,13 @@ const Index = () => {
 
             <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
               <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} />
+              {leakGraph && leakGraph.nodes.length >= 3 && (
+                <LeakCausalMap
+                  nodes={leakGraph.nodes}
+                  edges={leakGraph.edges}
+                  narrative={leakGraph.narrative}
+                />
+              )}
               {levelData?.level && <LevelCard data={levelData} showStudyLink />}
               <IcmBreakdown icm={evo?.icm} />
               <PressureProfileCard data={pressureData} />

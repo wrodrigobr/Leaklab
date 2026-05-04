@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.50.0] — 2026-05-03 — Sprint S: FEAT-06 Leak Causal Map
+
+### Added
+- **`backend/leaklab/leak_causal_graph.py`**: `build_leak_graph(rows)` — analisa co-ocorrência de leaks entre torneios, calcula correlação de Jaccard por par (threshold 35%), retorna nós com `severity` (critical/moderate/minor por avg_score) e arestas ordenadas por correlação; label compacto (`PF Fold`, `FL Bet`, etc.); nós incluem `degree` (número de conexões).
+- **`backend/leaklab/llm_explainer.py`**: `explain_leak_causality(edges, hero)` — 1 chamada Claude Haiku (~150 tokens) gerando 2-3 frases de diagnóstico causal para os 3 pares mais correlacionados; cache em memória por combinação de pares; fallback `_template_causality()` determinístico.
+- **`backend/database/repositories.py`**: `get_leak_graph_data(user_id, days)` — busca todas as decisões com mistake do usuário no período, chama `build_leak_graph` e `explain_leak_causality`, retorna `{nodes, edges, narrative}`.
+- **`backend/api/app.py`**: endpoint `GET /player/leak-graph?days=90`.
+- **`frontend/src/lib/api.ts`**: interfaces `LeakGraphNode`, `LeakGraphEdge`, `LeakGraphResponse`; método `metrics.leakGraph(days)`.
+- **`frontend/src/components/hud/LeakCausalMap.tsx`**: card com grafo SVG circular — nós coloridos por severidade (vermelho/âmbar/verde), arestas com espessura e opacidade proporcionais à correlação; interação: clique no nó destaca suas conexões e exibe detalhe com lista de co-ocorrências; narrativa LLM abaixo do grafo; legenda de cores.
+- **`frontend/src/pages/Index.tsx`**: `LeakCausalMap` inserido após `LeaksPanel` quando há ≥ 3 nós; `metrics.leakGraph(90)` carregado no mount.
+
+---
+
 ## [v0.49.0] — 2026-05-03 — Sprint R: FEAT-05 SRS Adaptativo nos Drills
 
 ### Added
