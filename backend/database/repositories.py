@@ -3185,6 +3185,30 @@ def get_unread_message_count(user_id: int, role: str) -> int:
     return (row['n'] or 0) if row else 0
 
 
+# ── Coach Inbox — UX-015 ─────────────────────────────────────────────────────
+
+def get_coach_inbox(coach_id: int) -> list:
+    """Aggregated conversations for coach inbox, sorted by most recent."""
+    conn = get_conn()
+    rows = conn.execute(_adapt("""
+        SELECT
+            m.student_id,
+            u.username AS student_username,
+            MAX(m.created_at) AS last_message_at,
+            (SELECT body FROM coach_messages
+             WHERE coach_id = m.coach_id AND student_id = m.student_id
+             ORDER BY created_at DESC LIMIT 1) AS last_message_body,
+            SUM(CASE WHEN m.sender_role = 'student' AND m.read_at IS NULL THEN 1 ELSE 0 END) AS unread_count
+        FROM coach_messages m
+        JOIN users u ON u.id = m.student_id
+        WHERE m.coach_id = ?
+        GROUP BY m.student_id, u.username
+        ORDER BY last_message_at DESC
+    """), (coach_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 # ── Digest semanal — FEAT-11 ──────────────────────────────────────────────────
 
 def get_digest_subscribers() -> list:

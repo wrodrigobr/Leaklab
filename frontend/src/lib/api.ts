@@ -1075,7 +1075,18 @@ export const coachDashboard = {
       method: "POST",
       body: JSON.stringify({ body, decision_id }),
     }),
+
+  inbox: () =>
+    request<{ threads: InboxThread[] }>("/coach/messages/inbox"),
 };
+
+export interface InboxThread {
+  student_id: number;
+  student_username: string;
+  last_message_at: string;
+  last_message_body: string;
+  unread_count: number;
+}
 
 export interface StudyOverride {
   id: number;

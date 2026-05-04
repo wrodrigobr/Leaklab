@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.67.0] — 2026-05-04 — Sprint AJ+AK: UX-015 Coach Inbox + UX-016 Student Badge
+
+### Added
+- **`backend/database/repositories.py`**: `get_coach_inbox(coach_id)` — agrega conversas por aluno com `last_message_body`, `last_message_at` e `unread_count`.
+- **`backend/api/app.py`**: `GET /coach/messages/inbox` — retorna threads ordenadas por `last_message_at DESC`.
+- **`frontend/src/lib/api.ts`**: interface `InboxThread`; `coachDashboard.inbox()`.
+- **`frontend/src/pages/coach/CoachDashboard.tsx`**: aba "Mensagens" com inbox — avatar inicial, nome do aluno, prévia da última mensagem, timestamp relativo e badge vermelho de não lidas. Badge de não lidas total no botão da aba (polling 60s).
+
+### Changed
+- **`frontend/src/components/hud/CoachMessagesPanel.tsx`**: mensagens não lidas do coach recebem highlight (`border-primary/30 bg-primary/5`). Badge no header da aba desaparece imediatamente ao abrir o painel via `invalidateQueries`.
+
+### Backlog
+- **Sprint AM (UX-018)** adicionado: listagem de alunos com tabela, busca, filtros e paginação.
+
+---
+
 ## [v0.66.0] — 2026-05-03 — Sprint AI: BACK-019 Perfil Demográfico do Usuário
 
 ### Added

@@ -1452,6 +1452,14 @@ def _resolve_coach_student(user_id: int, role: str, student_id_param: int | None
         return user['coach_id'], user_id
 
 
+@app.route('/coach/messages/inbox', methods=['GET'])
+@require_coach
+def coach_messages_inbox():
+    from database.repositories import get_coach_inbox
+    threads = get_coach_inbox(g.user_id)
+    return jsonify({'threads': threads})
+
+
 @app.route('/coach/student/<int:student_id>/messages', methods=['GET'])
 @require_coach
 def coach_messages_list(student_id: int):

@@ -69,13 +69,36 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AL | UX-017 | Dashboard personalizável — arrastar e reordenar cards, preferência salva por usuário | ⏳ |
 | Sprint AH | BACK-018 | Coach Application Flow — candidatura com aprovação manual pelo admin | ✅ v0.65.0 |
 | Sprint AI | BACK-019 | Perfil demográfico do usuário — idade, localização, experiência de poker | ✅ v0.66.0 |
-| Sprint AJ | UX-015 | Inbox global de mensagens para o coach — ver todas as conversas com badge de não lidas | ⏳ |
-| Sprint AK | UX-016 | Badge de mensagens não lidas no dashboard/header do aluno → link direto para conversa com coach | ⏳ |
+| Sprint AJ | UX-015 | Inbox global de mensagens para o coach — ver todas as conversas com badge de não lidas | ✅ v0.67.0 |
+| Sprint AK | UX-016 | Badge de mensagens não lidas no dashboard/header do aluno → link direto para conversa com coach | ✅ v0.67.0 |
+| Sprint AM | UX-018 | Listagem de alunos do coach — tabela com busca, filtros (ativo/inativo, plano) e paginação | ⏳ |
 | Sprint AG | FEAT-12 | Página de Documentação / Wiki do Sistema (deixar por último) | ⏳ |
 
 ---
 
 ## Próximas Sprints — Em Aberto
+
+### [UX-018] — Listagem de Alunos com Tabela e Filtros *(Sprint AM)*
+
+**Problema:** a lista de alunos no CoachDashboard é uma lista simples (`<ul>`) — com muitos alunos fica ilegível e sem capacidade de busca ou triagem.
+
+**Solução:** substituir por tabela com busca por nome, filtros de status (ativo/inativo) e plano, ordenação por coluna e paginação client-side (25 por página).
+
+**Escopo:**
+- Busca por nome (debounce 300ms)
+- Filtro "Status": Todos / Ativos / Inativos
+- Filtro "Plano": Todos / Free / Pro / Premium
+- Colunas clicáveis para ordenar: Aluno, Plano, Torneios, Último import, Status
+- Paginação: botões Anterior / Próximo com contagem "1–25 de 47"
+- Clique na linha → navega para `/coach-dashboard/student/:id`
+- Sem mudança de backend — os dados já vêm via `GET /coach/students`
+
+**Arquivos:**
+- `frontend/src/pages/coach/CoachDashboard.tsx` — substituir `<ul>` da AlunosTab por tabela com filtros
+
+**Esforço:** ~4h frontend puro
+
+---
 
 ### [UX-017] — Dashboard Personalizável *(Sprint AL)*
 

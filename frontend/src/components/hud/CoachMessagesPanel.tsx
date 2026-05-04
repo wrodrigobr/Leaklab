@@ -28,6 +28,13 @@ export function CoachMessagesPanel({ coachUsername }: { coachUsername?: string }
     if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [data?.messages, open]);
 
+  // Clear header badge immediately when panel is opened and messages are loaded
+  useEffect(() => {
+    if (open && data?.messages?.length) {
+      qc.invalidateQueries({ queryKey: ["player-messages-unread"] });
+    }
+  }, [open, data?.messages?.length, qc]);
+
   const handleSend = () => {
     const text = body.trim();
     if (!text || sendMut.isPending) return;
@@ -79,7 +86,9 @@ export function CoachMessagesPanel({ coachUsername }: { coachUsername?: string }
                 <div className={`max-w-[78%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
                   m.sender_role === "student"
                     ? "bg-primary text-primary-foreground"
-                    : "bg-background border border-border text-foreground"
+                    : m.read_at == null
+                      ? "bg-primary/5 border border-primary/30 text-foreground"
+                      : "bg-background border border-border text-foreground"
                 }`}>
                   {m.sender_role === "coach" && (
                     <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-primary mb-1">

@@ -4,12 +4,12 @@ import { useNavigate } from "react-router-dom";
 import {
   Users, TrendingUp, Award, Activity, AlertTriangle,
   Play, Filter, ChevronDown, ChevronUp, LayoutDashboard,
-  BarChart2, CheckCircle2, Clock,
+  BarChart2, CheckCircle2, Clock, MessageSquare,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
 import { StudentRow } from "@/components/coach/StudentRow";
-import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak } from "@/lib/api";
+import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak, InboxThread } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
 // ── shared ────────────────────────────────────────────────────────────────────
@@ -334,7 +334,7 @@ function LeaksTab() {
 
 // ── Tabs definition ───────────────────────────────────────────────────────────
 
-type Tab = "alunos" | "urgente" | "leaks" | "financeiro" | "efetividade";
+type Tab = "alunos" | "urgente" | "leaks" | "financeiro" | "efetividade" | "mensagens";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "alunos",       label: "Alunos",           icon: Users },
@@ -342,7 +342,84 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "leaks",        label: "Leaks Sistêmicos", icon: LayoutDashboard },
   { id: "efetividade",  label: "Efetividade",      icon: TrendingUp },
   { id: "financeiro",   label: "Financeiro",       icon: BarChart2 },
+  { id: "mensagens",    label: "Mensagens",         icon: MessageSquare },
 ];
+
+// ── Mensagens Tab ─────────────────────────────────────────────────────────────
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins  = Math.floor(diff / 60_000);
+  if (mins < 1)   return "agora";
+  if (mins < 60)  return `${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7)   return `${days}d`;
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+function MensagensTab() {
+  const navigate = useNavigate();
+  const { data, isLoading } = useQuery({
+    queryKey: ["coach-inbox"],
+    queryFn: coachDashboard.inbox,
+    refetchInterval: 60_000,
+  });
+
+  const threads: InboxThread[] = data?.threads ?? [];
+  const totalUnread = threads.reduce((s, t) => s + (t.unread_count ?? 0), 0);
+
+  if (isLoading) return <p className="text-sm text-muted-foreground animate-pulse py-8 text-center">Carregando…</p>;
+
+  if (threads.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-16 text-center">
+        <MessageSquare className="size-8 text-muted-foreground/30" />
+        <p className="text-sm text-muted-foreground">Nenhuma conversa ainda.</p>
+        <p className="text-xs text-muted-foreground">As mensagens dos seus alunos aparecerão aqui.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {totalUnread > 0 && (
+        <p className="font-mono text-[10px] text-destructive uppercase tracking-widest-2">
+          {totalUnread} mensagem{totalUnread > 1 ? "ns" : ""} não lida{totalUnread > 1 ? "s" : ""}
+        </p>
+      )}
+      <div className="rounded-xl border border-border bg-hud-surface overflow-hidden divide-y divide-border">
+        {threads.map((t) => (
+          <button
+            key={t.student_id}
+            type="button"
+            onClick={() => navigate(`/coach-dashboard/student/${t.student_id}?tab=mensagens`)}
+            className="flex w-full items-center gap-4 px-4 py-3 hover:bg-muted/20 transition-colors text-left"
+          >
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-sm uppercase select-none">
+              {t.student_username.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">{t.student_username}</p>
+              <p className="font-mono text-xs text-muted-foreground truncate max-w-[340px]">
+                {t.last_message_body}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <span className="font-mono text-[10px] text-muted-foreground">{relativeTime(t.last_message_at)}</span>
+              {t.unread_count > 0 && (
+                <span className="flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground px-1">
+                  {t.unread_count > 9 ? "9+" : t.unread_count}
+                </span>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Effectiveness Tab ─────────────────────────────────────────────────────────
 
@@ -595,6 +672,13 @@ export default function CoachDashboard() {
     queryFn: () => coachDashboard.impact(30),
   });
 
+  const { data: inboxData } = useQuery({
+    queryKey: ["coach-inbox"],
+    queryFn: coachDashboard.inbox,
+    refetchInterval: 60_000,
+  });
+
+  const inboxUnread = (inboxData?.threads ?? []).reduce((s, t) => s + (t.unread_count ?? 0), 0);
   const summary = impact?.summary;
 
   return (
@@ -636,6 +720,11 @@ export default function CoachDashboard() {
             >
               <t.icon className="size-3.5" />
               {t.label}
+              {t.id === "mensagens" && inboxUnread > 0 && (
+                <span className="flex items-center justify-center min-w-[16px] h-4 rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground px-1">
+                  {inboxUnread > 9 ? "9+" : inboxUnread}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -645,6 +734,7 @@ export default function CoachDashboard() {
         {tab === "leaks"        && <LeaksTab />}
         {tab === "efetividade"  && <EfetividadeTab />}
         {tab === "financeiro"   && <FinanceiroTab />}
+        {tab === "mensagens"    && <MensagensTab />}
       </main>
     </div>
   );
