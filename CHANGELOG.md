@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.58.0] — 2026-05-03 — Sprint AB: UX-010 Bankroll period filters
+
+### Fixed
+- **`frontend/src/components/hud/BankrollChart.tsx`**: filtros de período (1M/3M/1Y/Tudo) agora funcionam — componente passou a ser self-contained, gerencia seu próprio estado de período e busca os dados via `useQuery` com o número correto de dias (30/90/365/3650). Botão ativo destacado corretamente. Spinner overlay durante refetch. Prop `evolution` removida (o componente não depende mais do parent para dados).
+- **`frontend/src/pages/Index.tsx`**: `<BankrollChart>` sem prop — componente busca seus próprios dados.
+- **`backend/requirements.txt`**: `python-dotenv==1.0.1` adicionado — estava faltando, causando `ModuleNotFoundError: No module named 'dotenv'` no boot do Gunicorn no Render.
+
+---
+
 ## [v0.57.0] — 2026-05-03 — Sprint AA: INFRA-001 Build + display bugs
 
 ### Fixed

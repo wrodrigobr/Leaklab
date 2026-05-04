@@ -242,7 +242,7 @@ const Index = () => {
                 <DecisionQualityCard byLabel={breakdown?.by_label} />
               </div>
 
-              <BankrollChart evolution={evo?.evolution} />
+              <BankrollChart />
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <StreetBreakdown byStreet={breakdown?.by_street} />

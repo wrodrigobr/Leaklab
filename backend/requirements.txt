@@ -8,3 +8,4 @@ bcrypt==4.2.1
 Flask-Limiter==3.8.0
 stripe==12.0.0
 weasyprint==62.3
+python-dotenv==1.0.1

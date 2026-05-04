@@ -1,16 +1,20 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-
-interface EvolutionPoint {
-  profit: number | null;
-  imported_at: string;
-}
-
-interface Props {
-  evolution?: EvolutionPoint[];
-}
+import { Loader2 } from "lucide-react";
+import { metrics } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const DEMO_POINTS = [120, 95, 140, 110, 180, 165, 220, 250, 240, 310, 330, 380, 420, 460, 510, 540, 600, 640, 690, 720, 760, 820, 880, 940];
+
+const PERIODS = [
+  { key: "1M" as const, days: 30  },
+  { key: "3M" as const, days: 90  },
+  { key: "1Y" as const, days: 365 },
+  { key: "ALL" as const, days: 3650 },
+] as const;
+
+type PeriodKey = typeof PERIODS[number]["key"];
 
 function buildPath(points: number[]) {
   const w = 100;
@@ -29,8 +33,19 @@ function buildPath(points: number[]) {
   return { path, area, max, min };
 }
 
-export function BankrollChart({ evolution }: Props) {
+export function BankrollChart() {
   const { t } = useTranslation("dashboard");
+  const [period, setPeriod] = useState<PeriodKey>("3M");
+
+  const days = PERIODS.find((p) => p.key === period)!.days;
+
+  const { data, isFetching } = useQuery({
+    queryKey: ["bankroll-evolution", days],
+    queryFn: () => metrics.evolution(days),
+    staleTime: 30_000,
+  });
+
+  const evolution = data?.evolution;
 
   const { path, area, max, min, isDemo } = useMemo(() => {
     if (evolution && evolution.length >= 2) {
@@ -44,12 +59,12 @@ export function BankrollChart({ evolution }: Props) {
     return { ...buildPath(DEMO_POINTS), isDemo: true };
   }, [evolution]);
 
-  const periods = [
-    { key: "p1m", label: t("bankroll.p1m") },
-    { key: "p3m", label: t("bankroll.p3m") },
-    { key: "p1y", label: t("bankroll.p1y") },
-    { key: "pAll", label: t("bankroll.pAll") },
-  ];
+  const periodLabels: Record<PeriodKey, string> = {
+    "1M": t("bankroll.p1m"),
+    "3M": t("bankroll.p3m"),
+    "1Y": t("bankroll.p1y"),
+    "ALL": t("bankroll.pAll"),
+  };
 
   return (
     <section
@@ -62,26 +77,36 @@ export function BankrollChart({ evolution }: Props) {
             {t("bankroll.title")}
           </h2>
           <p className="font-mono text-[11px] text-muted-foreground">
-            {isDemo ? t("bankroll.demo") : t("bankroll.lastN", { n: evolution!.length })}
+            {isDemo
+              ? t("bankroll.demo")
+              : t("bankroll.lastN", { n: evolution!.length })}
           </p>
         </div>
         <div className="flex gap-1">
-          {periods.map(({ key, label }, i) => (
+          {PERIODS.map(({ key }) => (
             <button
               key={key}
-              className={`rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                i === 1
+              onClick={() => setPeriod(key)}
+              className={cn(
+                "rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                period === key
                   ? "bg-primary/10 text-primary ring-1 ring-primary/30"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-              }`}
+              )}
             >
-              {label}
+              {periodLabels[key]}
             </button>
           ))}
         </div>
       </header>
 
       <div className="relative px-5 pb-5 pt-6">
+        {isFetching && (
+          <div className="absolute inset-0 flex items-center justify-center bg-hud-surface/60 z-10">
+            <Loader2 className="size-4 animate-spin text-primary" />
+          </div>
+        )}
+
         <div className="absolute left-5 top-6 font-mono text-[10px] text-muted-foreground">
           {max >= 0 ? "+" : ""}${Math.round(max).toLocaleString()}
         </div>
