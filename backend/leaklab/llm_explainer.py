@@ -597,24 +597,23 @@ def generate_comparison_narrative(items: list) -> str:
 def _call_llm_comparison(items: list) -> str:
     ctx = [
         {
-            "tournament_id": i.get("tournament_id"),
-            "played_at": str(i.get("played_at", ""))[:10],
-            "standard_pct": i.get("standard_pct"),
-            "avg_score": i.get("avg_score"),
-            "clear_pct": i.get("clear_pct"),
-            "top_leak": i["top_leaks"][0][0] if i.get("top_leaks") else None,
+            "torneio": i.get("tournament_id"),
+            "data": str(i.get("played_at", ""))[:10],
+            "standard_pct": f"{i.get('standard_pct', 0):.1f}%",
+            "score_medio": round(i.get("avg_score") or 0, 4),
+            "principal_leak": i["top_leaks"][0][0] if i.get("top_leaks") else None,
         }
         for i in items
     ]
     system_prompt = (
         "Você é um coach de poker MTT. Compare os torneios abaixo e escreva "
         "EXATAMENTE 2 frases descrevendo a evolução entre eles. "
-        "Cite números concretos (standard_pct, avg_score). "
-        "Seja direto e técnico. NÃO use títulos ou bullets."
+        "Use os termos 'Standard%' (para standard_pct) e 'score médio' (para score_medio). "
+        "Cite os números concretos. Seja direto e técnico. NÃO use títulos ou bullets."
     )
     payload = {
         "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 100,
+        "max_tokens": 350,
         "system": system_prompt,
         "messages": [{"role": "user", "content": json.dumps(ctx, ensure_ascii=False)}],
     }
@@ -645,7 +644,7 @@ def _template_comparison(items: list) -> str:
     direction = "melhora" if std_delta > 0 else "queda"
     sign = "+" if std_delta >= 0 else ""
     return (
-        f"Evolução de {sign}{std_delta:.1f}pp em standard_pct entre o primeiro e o último torneio "
+        f"Evolução de {sign}{std_delta:.1f}pp em Standard% entre o primeiro e o último torneio "
         f"({'score médio melhorou' if score_delta < 0 else 'score médio piorou'} "
         f"{abs(score_delta):.3f}). "
         f"Tendência de {direction} técnica no período analisado."
@@ -714,13 +713,13 @@ Analise os dados de performance abaixo e gere um plano de estudos DETALHADO e PE
 ## Dados do Jogador ({hero})
 
 **Métricas gerais ({n_torneioa} torneios analisados):**
-- Score médio de erro: {{avg_score:.4f}} (meta: abaixo de 0.08)
-- Taxa de decisões corretas (standard): {{avg_std:.1f}}% (meta: acima de 80%)
-- Taxa de erros graves (clear mistakes): {{avg_clear:.1f}}% (meta: abaixo de 5%)
-- Pior fase ICM: pressão {{icm_weak}}
+- Score médio de erro: {avg_score:.4f} (meta: abaixo de 0.08)
+- Standard% (decisões corretas): {avg_std:.1f}% (meta: acima de 80%)
+- Erros claros: {avg_clear:.1f}% (meta: abaixo de 5%)
+- Pior fase ICM: pressão {icm_weak}
 
 **Leaks identificados (por frequência de erro):**
-{{leaks_txt}}
+{leaks_txt}
 
 ## Instrução de Coach
 
@@ -1085,7 +1084,7 @@ def _template_career(projection: dict) -> str:
         )
     elif slope <= 0:
         return (
-            f"Sua standard_pct está estagnada ou em queda nos últimos torneios. "
+            f"Seu Standard% está estagnado ou em queda nos últimos torneios. "
             f"O foco imediato deve ser consistência, não volume. "
             f"O leak de {top} é o ponto de maior impacto para retomar a curva positiva."
         )
@@ -1384,9 +1383,9 @@ def _call_llm_session_review(goal: dict, tournament: dict) -> str:
         f"{target_line}\n{notes_line}\n\n"
         f"Resultado real:\n"
         f"- Standard%: {actual_std:.1f}%\n"
-        f"- Avg Score: {actual_score:.4f}\n"
+        f"- Score médio: {actual_score:.4f}\n"
         f"- Total decisões: {total_hands}\n"
-        f"- Clear mistakes%: {clear_mistakes:.1f}%"
+        f"- Erros claros: {clear_mistakes:.1f}%"
     ).strip()
 
     system_prompt = (
@@ -1470,8 +1469,8 @@ def coach_chat_reply(message: str, leaks: list, evolution: list,
         recent = evolution[-5:]
         ev_txt = '\n'.join(
             f"  - {e.get('tournament_id','?')}: "
-            f"avg_score={e.get('avg_score',0):.3f}, "
-            f"standard={e.get('standard_pct',0)*100:.0f}%"
+            f"score médio={e.get('avg_score',0):.3f}, "
+            f"Standard%={e.get('standard_pct',0)*100:.0f}%"
             for e in recent
         )
         ctx_parts.append(f"Últimos {len(recent)} torneios:\n{ev_txt}")

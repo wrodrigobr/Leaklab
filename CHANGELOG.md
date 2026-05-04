@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.83.3] — 2026-05-04 — Bugfix: terminologia técnica e truncamento na Análise Comparativa
+
+### Fixed
+- **`backend/leaklab/llm_explainer.py`**: `max_tokens` da narrativa comparativa aumentado de 100 → 350 (texto era cortado no meio da segunda frase).
+- **`backend/leaklab/llm_explainer.py`**: prompts de comparação, sessão e coach chat substituem `standard_pct`/`avg_score`/`clear_pct` por `Standard%`/`Score médio`/`Erros claros` — o LLM não mais repete nomes de variáveis no texto gerado.
+- **`backend/leaklab/llm_explainer.py`**: corrigida interpolação dupla-chave `{{avg_score:.4f}}` → `{avg_score:.4f}` no prompt do plano de estudos — métricas reais agora chegam ao LLM em vez de placeholders literais.
+- **`backend/leaklab/llm_explainer.py`**: template fallback `_template_comparison` e string de carreira usam `Standard%` em vez de `standard_pct`.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/docs.json`**: seção Trajetória de Carreira substituiu todos os `standard_pct` por `Standard%` (em negrito) nos valores de parágrafo e tabela.
+
+---
+
 ## [v0.83.2] — 2026-05-04 — Bugfix: import múltiplo de torneios no EmptyDashboard
 
 ### Fixed

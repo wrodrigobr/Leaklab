@@ -153,16 +153,16 @@
   },
   "career": {
     "title": "Trayectoria de Carrera",
-    "p1": "La tarjeta de <strong>Trayectoria de Carrera</strong> proyecta cuándo alcanzarás cada nivel basándose en tu curva real de <em>standard_pct</em> a lo largo de los torneos importados. El sistema usa regresión lineal sobre los últimos torneos para calcular la tasa de mejora y estimar fechas.",
+    "p1": "La tarjeta de <strong>Trayectoria de Carrera</strong> proyecta cuándo alcanzarás cada nivel basándose en tu curva real de <strong>Standard%</strong> a lo largo de los torneos importados. El sistema usa regresión lineal sobre los últimos torneos para calcular la tasa de mejora y estimar fechas.",
     "table": {
       "col_term": "Término",
       "col_meaning": "Significado",
       "slope_term": "Slope",
-      "slope_meaning": "Mejora de standard_pct por torneo (ej: +0.12% = crece 1.2% cada 10 torneos)",
+      "slope_meaning": "Mejora de Standard% por torneo (ej: +0.12% = crece 1.2% cada 10 torneos)",
       "milestone_term": "Hito",
-      "milestone_meaning": "Umbral de standard_pct para alcanzar cada nivel (ej: Sólido requiere 86%)",
+      "milestone_meaning": "Umbral de Standard% para alcanzar cada nivel (ej: Sólido requiere 86%)",
       "blocking_term": "Obstáculo",
-      "blocking_meaning": "Spots de leak de alta frecuencia con mayor impacto en el standard_pct actual"
+      "blocking_meaning": "Spots de leak de alta frecuencia con mayor impacto en tu Standard% actual"
     },
     "p2": "La <strong>línea punteada</strong> en el gráfico representa la proyección futura — no una garantía. Si el slope es negativo o cero, el sistema indica estancamiento y no proyecta fechas.",
     "p3": "La narrativa de IA en la tarjeta resume: (1) tendencia actual, (2) tiempo estimado hasta el próximo nivel, (3) el leak prioritario para acelerar la progresión."
