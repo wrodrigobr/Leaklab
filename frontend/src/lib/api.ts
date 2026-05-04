@@ -1613,12 +1613,29 @@ export const preferences = {
     }),
 };
 
+export interface MyTicket {
+  id: number;
+  category: string;
+  subject: string;
+  message: string;
+  status: string;
+  admin_reply: string | null;
+  replied_at: string | null;
+  created_at: string;
+}
+
 export const support = {
   contact: (payload: { category: string; subject: string; message: string }) =>
     request<{ ok: boolean }>("/support/contact", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  myTickets: () =>
+    request<{ tickets: MyTicket[] }>("/support/my-tickets"),
+
+  myUnreadCount: () =>
+    request<{ replied: number }>("/support/my-tickets/unread"),
 
   listTickets: () =>
     request<{ tickets: unknown[] }>("/admin/support-tickets"),

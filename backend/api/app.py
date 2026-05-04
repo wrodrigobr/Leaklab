@@ -3402,6 +3402,38 @@ def support_contact():
     return jsonify({'ok': True})
 
 
+@app.route('/support/my-tickets', methods=['GET'])
+@require_auth
+def support_my_tickets():
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        rows = conn.execute(
+            "SELECT id, category, subject, message, status, admin_reply, replied_at, created_at "
+            "FROM support_tickets WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+            (g.user_id,)
+        ).fetchall()
+        return jsonify({'tickets': [dict(r) for r in rows]})
+    finally:
+        conn.close()
+
+
+@app.route('/support/my-tickets/unread', methods=['GET'])
+@require_auth
+def support_my_tickets_unread():
+    """Count of replied tickets the user hasn't explicitly dismissed."""
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM support_tickets WHERE user_id = ? AND status = 'replied'",
+            (g.user_id,)
+        ).fetchone()
+        return jsonify({'replied': int(row['n']) if row else 0})
+    finally:
+        conn.close()
+
+
 @app.errorhandler(500)
 def internal_error(e): return jsonify({'error': f'Erro interno do servidor: {e}'}), 500
 

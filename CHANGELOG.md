@@ -9,6 +9,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.84.0] — 2026-05-04 — Suporte bidirecional: aluno visualiza resposta do admin
+
+### Added
+- **`backend/api/app.py`**: `GET /support/my-tickets` — retorna todos os tickets do usuário logado (com admin_reply e replied_at). `GET /support/my-tickets/unread` — contagem de tickets com resposta do admin.
+- **`frontend/src/components/hud/SupportModal.tsx`**: reescrito com duas abas — "Nova mensagem" (formulário) e "Minhas mensagens" (histórico de tickets + respostas do admin). Badge na aba Minhas mensagens quando há respostas. Abre direto na aba inbox quando `initialTab="inbox"`.
+- **`frontend/src/pages/Index.tsx`**: badge no botão Suporte do footer para alunos não-admin quando há tickets respondidos. Modal abre na aba inbox automaticamente nesse caso. `useQuery` para `myUnreadCount` com polling de 2min.
+- **`frontend/src/lib/api.ts`**: interface `MyTicket` + métodos `support.myTickets()` e `support.myUnreadCount()`.
+
+---
+
 ## [v0.83.9] — 2026-05-04 — Admin: exclusão permanente de usuários com confirmação
 
 ### Added
