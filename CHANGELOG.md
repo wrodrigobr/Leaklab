@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.82.1] — 2026-05-04 — Fix: perfil demográfico visível e editável na página de Perfil
+
+### Added
+- **`frontend/src/pages/StudentProfile.tsx`**: nova seção "Dados do Jogador" no topo da página de perfil — exibe e permite editar todos os 7 campos demográficos (ano de nascimento, país, estado, cidade, anos de experiência, modalidade, faixa de buy-in) mesmo quando ainda não preenchidos. Barra de progresso mostra quantos dos 5 campos essenciais estão completos; fica verde ao completar todos.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/profile.json`**: namespace `demo.*` adicionado nas 3 locales com todas as labels, opções de select e mensagens de status.
+
+### Fixed
+- **Dados do jogador preenchidos mas invisíveis**: os campos demográficos só existiam no `ProfileCompletionCard` do dashboard (descartável e que some após o preenchimento). Agora ficam sempre acessíveis via `/profile`, com valores carregados do backend e salvos via `PATCH /player/profile`.
+
+---
+
 ## [v0.82.0] — 2026-05-04 — Sprint AW: Ghost Table Pressure Mode + Sparring hand rotation
 
 ### Added

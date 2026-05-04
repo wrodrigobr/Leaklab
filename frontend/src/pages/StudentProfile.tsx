@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { KeyRound, Mail, MessageCircle, UserX, Loader2, Check, AlertTriangle, GraduationCap, Star, Trash2, Users, ChevronRight } from "lucide-react";
+import { KeyRound, Mail, MessageCircle, User, UserX, Loader2, Check, AlertTriangle, GraduationCap, Star, Trash2, Users, ChevronRight } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { useAuth } from "@/lib/auth";
-import { auth as authApi, student as studentApi, coachDashboard, coaches, CoachReview, PublicCoach } from "@/lib/api";
+import { auth as authApi, student as studentApi, coachDashboard, coaches, profile as profileApi, CoachReview, PublicCoach, DemographicProfile } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -284,6 +284,40 @@ export default function StudentProfile() {
   const { t } = useTranslation("profile");
   const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  // ── Dados do Jogador (demográficos) ───────────────────────────────────────
+  const { data: demographics, isLoading: demoLoading } = useQuery({
+    queryKey: ["my-demographics"],
+    queryFn: () => profileApi.get(),
+  });
+
+  const [demoForm, setDemoForm] = useState<Partial<DemographicProfile>>({});
+  const [demoSaving, setDemoSaving] = useState(false);
+
+  useEffect(() => {
+    if (demographics) setDemoForm(demographics);
+  }, [demographics]);
+
+  const CORE_DEMO_FIELDS = ["birth_year", "country", "poker_experience_years", "main_game_type", "usual_buyin_range"] as const;
+  const demoFilledCount = CORE_DEMO_FIELDS.filter((f) => {
+    const v = demoForm[f as keyof DemographicProfile];
+    return v !== null && v !== undefined && v !== "";
+  }).length;
+
+  const handleSaveDemographics = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDemoSaving(true);
+    try {
+      await profileApi.update(demoForm);
+      qc.invalidateQueries({ queryKey: ["my-demographics"] });
+      toast.success(t("demo.saved"));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar dados");
+    } finally {
+      setDemoSaving(false);
+    }
+  };
 
   // ── Alterar e-mail ────────────────────────────────────────────────────────
   const [newEmail, setNewEmail]         = useState(user?.email ?? "");
@@ -377,6 +411,124 @@ export default function StudentProfile() {
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
           <p className="font-mono text-[11px] text-muted-foreground mt-1">{user?.username}</p>
         </div>
+
+        {/* Dados do Jogador */}
+        <Section icon={User} title={t("demo.title")}>
+          {/* Completion bar */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+              <div
+                className={cn("h-full transition-all", demoFilledCount >= 5 ? "bg-emerald-500" : "bg-primary")}
+                style={{ width: `${(demoFilledCount / 5) * 100}%` }}
+              />
+            </div>
+            <span className={cn("font-mono text-[10px] shrink-0", demoFilledCount >= 5 ? "text-emerald-400" : "text-muted-foreground")}>
+              {demoFilledCount >= 5 ? t("demo.completionDone") : t("demo.completion", { n: demoFilledCount })}
+            </span>
+          </div>
+
+          <p className="text-xs text-muted-foreground">{t("demo.desc")}</p>
+
+          {demoLoading ? (
+            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+          ) : (
+            <form onSubmit={handleSaveDemographics} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={t("demo.birthYear")}>
+                  <input
+                    type="number"
+                    min={1940}
+                    max={2015}
+                    value={demoForm.birth_year ?? ""}
+                    onChange={(e) => setDemoForm((p) => ({ ...p, birth_year: e.target.value ? Number(e.target.value) : null }))}
+                    placeholder="1990"
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label={t("demo.experienceYears")}>
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={demoForm.poker_experience_years ?? ""}
+                    onChange={(e) => setDemoForm((p) => ({ ...p, poker_experience_years: e.target.value ? Number(e.target.value) : null }))}
+                    placeholder="3"
+                    className={inputCls}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={t("demo.gameType")}>
+                  <select
+                    value={demoForm.main_game_type ?? ""}
+                    onChange={(e) => setDemoForm((p) => ({ ...p, main_game_type: (e.target.value as DemographicProfile["main_game_type"]) || null }))}
+                    className={inputCls}
+                  >
+                    <option value="">{t("demo.selectPlaceholder")}</option>
+                    <option value="mtt">{t("demo.gameTypes.mtt")}</option>
+                    <option value="cash">{t("demo.gameTypes.cash")}</option>
+                    <option value="spin">{t("demo.gameTypes.spin")}</option>
+                    <option value="mixed">{t("demo.gameTypes.mixed")}</option>
+                  </select>
+                </Field>
+                <Field label={t("demo.buyinRange")}>
+                  <select
+                    value={demoForm.usual_buyin_range ?? ""}
+                    onChange={(e) => setDemoForm((p) => ({ ...p, usual_buyin_range: (e.target.value as DemographicProfile["usual_buyin_range"]) || null }))}
+                    className={inputCls}
+                  >
+                    <option value="">{t("demo.selectPlaceholder")}</option>
+                    <option value="micro">{t("demo.buyinRanges.micro")}</option>
+                    <option value="low">{t("demo.buyinRanges.low")}</option>
+                    <option value="mid">{t("demo.buyinRanges.mid")}</option>
+                    <option value="high">{t("demo.buyinRanges.high")}</option>
+                  </select>
+                </Field>
+              </div>
+
+              <Field label={t("demo.country")}>
+                <input
+                  type="text"
+                  value={demoForm.country ?? ""}
+                  onChange={(e) => setDemoForm((p) => ({ ...p, country: e.target.value || null }))}
+                  placeholder="Brasil"
+                  className={inputCls}
+                />
+              </Field>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={t("demo.stateProvince")}>
+                  <input
+                    type="text"
+                    value={demoForm.state_province ?? ""}
+                    onChange={(e) => setDemoForm((p) => ({ ...p, state_province: e.target.value || null }))}
+                    placeholder="SP"
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label={t("demo.city")}>
+                  <input
+                    type="text"
+                    value={demoForm.city ?? ""}
+                    onChange={(e) => setDemoForm((p) => ({ ...p, city: e.target.value || null }))}
+                    placeholder="São Paulo"
+                    className={inputCls}
+                  />
+                </Field>
+              </div>
+
+              <button
+                type="submit"
+                disabled={demoSaving}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {demoSaving ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                {t("demo.save")}
+              </button>
+            </form>
+          )}
+        </Section>
 
         {/* WhatsApp */}
         <Section icon={MessageCircle} title={t("sections.whatsapp")}>

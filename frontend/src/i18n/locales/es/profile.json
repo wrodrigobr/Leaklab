@@ -42,5 +42,33 @@
   "actions": {
     "saveProfile": "Guardar perfil",
     "saving": "Guardando…"
+  },
+  "demo": {
+    "title": "Datos del Jugador",
+    "desc": "Utilizados para personalizar el análisis de IA y las recomendaciones de estudio.",
+    "birthYear": "Año de nacimiento",
+    "country": "País",
+    "stateProvince": "Estado / Provincia",
+    "city": "Ciudad",
+    "experienceYears": "Años de experiencia en poker",
+    "gameType": "Modalidad principal",
+    "buyinRange": "Rango de buy-in habitual",
+    "gameTypes": {
+      "mtt": "MTT — Torneos",
+      "cash": "Cash Game",
+      "spin": "Spin & Go",
+      "mixed": "Mixto"
+    },
+    "buyinRanges": {
+      "micro": "Micro (< $5)",
+      "low": "Low ($5 – $30)",
+      "mid": "Mid ($30 – $200)",
+      "high": "High (> $200)"
+    },
+    "completion": "{{n}}/5 campos esenciales completados",
+    "completionDone": "Perfil completo",
+    "save": "Guardar datos",
+    "saved": "Datos guardados exitosamente.",
+    "selectPlaceholder": "Seleccione"
   }
 }
