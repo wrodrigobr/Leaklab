@@ -18,18 +18,15 @@ function timeUntilMidnight(): string {
 function ActionItem({
   action,
   primary,
-  onComplete,
 }: {
   action: DailyFocusAction;
   primary?: boolean;
-  onComplete?: () => void;
 }) {
   const navigate = useNavigate();
 
   if (action.type === "none") return null;
 
   const handleClick = () => {
-    onComplete?.();
     if (action.link.startsWith("/")) navigate(action.link);
   };
 
@@ -151,11 +148,7 @@ export function DailyFocusCard() {
       </div>
 
       {data.primary.type !== "none" && (
-        <ActionItem
-          action={data.primary}
-          primary
-          onComplete={() => complete.mutate()}
-        />
+        <ActionItem action={data.primary} primary />
       )}
 
       {secondaries.length > 0 && (
@@ -165,15 +158,24 @@ export function DailyFocusCard() {
           </p>
           <div className="space-y-1.5">
             {secondaries.map((a, i) => (
-              <ActionItem
-                key={i}
-                action={a}
-                onComplete={() => complete.mutate()}
-              />
+              <ActionItem key={i} action={a} />
             ))}
           </div>
         </div>
       )}
+
+      <button
+        onClick={() => complete.mutate()}
+        disabled={complete.isPending}
+        className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+      >
+        {complete.isPending ? (
+          <Loader2 className="size-3.5 animate-spin" />
+        ) : (
+          <CheckCircle2 className="size-3.5" />
+        )}
+        Marcar como concluído
+      </button>
     </div>
   );
 }
