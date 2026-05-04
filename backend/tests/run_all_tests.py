@@ -31,8 +31,8 @@ def run_suite(name: str, files: list, fast: bool = False) -> tuple[int,int,list]
             print(f"  ⚠️  {fname} — arquivo não encontrado, pulando")
             continue
         r = subprocess.run(
-            ['python3', fpath],
-            capture_output=True, text=True,
+            [sys.executable, fpath],
+            capture_output=True, text=True, encoding='utf-8',
             cwd=os.path.join(BASE, '..')
         )
         lines = (r.stdout + r.stderr).strip().split('\n')

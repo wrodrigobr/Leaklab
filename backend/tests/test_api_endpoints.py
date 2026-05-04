@@ -151,53 +151,49 @@ def test_register_short_password():
 
 
 def test_register_coach_success():
-    """Criação de conta com role=coach deve retornar 201 com token e role corretos."""
+    """role=coach em /auth/register deve ser rejeitado — coaches devem usar /auth/coach-apply."""
     c = _make_client()
     r = c.post('/auth/register',
                json={'username': 'coachjohn', 'email': 'coach@test.com',
                      'password': 'pass1234', 'role': 'coach'},
                content_type='application/json')
-    assert r.status_code == 201, f"Expected 201, got {r.status_code}: {r.get_json()}"
-    data = r.get_json()
-    assert 'token' in data, "Resposta não contém token"
-    assert 'user_id' in data, "Resposta não contém user_id"
-    assert data.get('role') == 'coach', f"role esperado='coach', obtido='{data.get('role')}'"
-    assert data['user_id'] is not None, "user_id não pode ser None"
-    print(f"OK  test_register_coach_success | user_id={data['user_id']}")
+    assert r.status_code == 400, f"Expected 400, got {r.status_code}: {r.get_json()}"
+    print(f"OK  test_register_coach_success | correctly rejects coach role on /register")
 
 
 def test_register_coach_can_login():
-    """Após criar conta coach, login deve funcionar e retornar role=coach."""
+    """Coach apply cria conta coach_pending — login retorna 403 até aprovação admin."""
     c = _make_client()
     email, pw = 'coachlogin@test.com', 'pass1234'
-    c.post('/auth/register',
-           json={'username': 'coachlogin', 'email': email,
-                 'password': pw, 'role': 'coach'},
-           content_type='application/json')
+    apply = c.post('/auth/coach-apply',
+                   json={'username': 'coachlogin', 'email': email, 'password': pw,
+                         'instagram_handle': '@coachlogin', 'bio': 'Professional poker coach with 5+ years of MTT experience.',
+                         'specialties': 'MTT', 'experience_years': 3, 'biggest_results': 'Top 3 WCOOP'},
+                   content_type='application/json')
+    assert apply.status_code == 201, f"Apply falhou: {apply.status_code}: {apply.get_json()}"
     r = c.post('/auth/login',
                json={'email': email, 'password': pw},
                content_type='application/json')
-    assert r.status_code == 200, f"Login falhou: {r.status_code}: {r.get_json()}"
-    data = r.get_json()
-    assert data.get('role') == 'coach', f"role esperado='coach', obtido='{data.get('role')}'"
-    print(f"OK  test_register_coach_can_login | role={data.get('role')}")
+    # Pending coaches cannot login until admin approves — they get 403 with coach_pending code
+    assert r.status_code == 403, f"Expected 403 (coach_pending), got {r.status_code}: {r.get_json()}"
+    assert r.get_json().get('code') == 'coach_pending', f"code inesperado: {r.get_json()}"
+    print(f"OK  test_register_coach_can_login | correctly returns 403 coach_pending")
 
 
 def test_register_coach_me_returns_correct_role():
-    """/auth/me após login de coach deve retornar role=coach."""
+    """/auth/coach-apply retorna 201 com mensagem de confirmação."""
     c = _make_client()
     email, pw = 'coachme@test.com', 'pass1234'
-    reg = c.post('/auth/register',
-                 json={'username': 'coachme', 'email': email,
-                       'password': pw, 'role': 'coach'},
-                 content_type='application/json')
-    assert reg.status_code == 201, f"Register falhou: {reg.get_json()}"
-    token = reg.get_json()['token']
-    r = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
-    assert r.status_code == 200, f"/auth/me retornou {r.status_code}: {r.get_json()}"
-    data = r.get_json()
-    assert data.get('role') == 'coach', f"role esperado='coach', obtido='{data.get('role')}'"
-    print(f"OK  test_register_coach_me_returns_correct_role | role={data.get('role')}")
+    apply = c.post('/auth/coach-apply',
+                   json={'username': 'coachme', 'email': email, 'password': pw,
+                         'instagram_handle': '@coachme', 'bio': 'Professional poker coach with 5+ years of MTT experience.',
+                         'specialties': 'MTT', 'experience_years': 2, 'biggest_results': 'WCOOP min cash'},
+                   content_type='application/json')
+    assert apply.status_code == 201, f"Apply falhou: {apply.get_json()}"
+    data = apply.get_json()
+    assert data.get('ok') is True, f"Resposta inesperada: {data}"
+    assert 'message' in data, "Resposta deve conter 'message'"
+    print(f"OK  test_register_coach_me_returns_correct_role | msg={data.get('message', '')[:40]}")
 
 
 def test_register_coach_duplicate_username():

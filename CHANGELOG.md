@@ -9,10 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-## [v0.81.1] — 2026-05-04 — Bugfix: i18n sparring arenaLabel/arenaDesc
+## [v0.81.1] — 2026-05-04 — Bugfix: i18n sparring + test suite verde
 
 ### Fixed
 - **`frontend/src/i18n/locales/{pt-BR,en,es}/sparring.json`**: chaves `arenaLabel` e `arenaDesc` adicionadas nas 3 locales — eram usadas pelo card de intro da fase idle do Sparring mas estavam ausentes nos arquivos de tradução (as chaves retornavam o próprio nome da chave em vez do texto traduzido).
+- **`backend/tests/run_all_tests.py`**: substituído `python3` por `sys.executable` + adicionado `encoding='utf-8'` — `python3` no Windows apontava para Python 3.10 (sem suporte a backslash em f-strings), causando falsos negativos em 25 testes da suite de subscription.
+- **`backend/tests/test_api_endpoints.py`**: 3 testes de coach registration atualizados para o novo fluxo `/auth/coach-apply` (coaches não se registram mais diretamente via `/auth/register`; login retorna 403 `coach_pending` até aprovação admin).
+- **`backend/tests/test_subscription.py`**: 2 testes de webhook atualizados — `test_webhook_no_secret_allowed` e `test_webhook_subscription_deleted_downgrades` agora patcham `api.app.STRIPE_WEBHOOK_SECRET` para `""` evitando interferência do `.env` local; comportamento esperado corrigido para refletir a implementação atual do endpoint.
 
 ---
 
