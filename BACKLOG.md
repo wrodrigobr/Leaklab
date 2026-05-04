@@ -2,8 +2,8 @@
 
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
-> **Sprints já entregues:** Sprints 1–13 + Sprint A–T + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.51.0.
-> **Sprint atual:** Sprint AE — UX-013 JAM → All In
+> **Sprints já entregues:** Sprints 1–13 + Sprint A–AP — ver CHANGELOG v0.9.0 a v0.74.0.
+> **Próxima sprint:** Sprint AQ — Cognitive Failure Mapper
 
 ---
 
@@ -66,393 +66,129 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AD | UX-012 | Dashboard — remover lista de últimos torneios (há menu próprio); liberar espaço para cards de indicadores | ✅ v0.60.0 |
 | Sprint AE | UX-013 | Substituir "JAM" por "All In" em toda a plataforma (UI, textos, labels, parser output) | ✅ v0.63.1 |
 | Sprint AF | UX-014 | Página do Coach (StudentDetail) — remover limitação horizontal, aproveitar melhor o espaço disponível em telas largas | ✅ v0.64.0 |
-| Sprint AL | UX-017 | Dashboard personalizável — arrastar e reordenar cards, preferência salva por usuário | ✅ v0.70.0 |
 | Sprint AH | BACK-018 | Coach Application Flow — candidatura com aprovação manual pelo admin | ✅ v0.65.0 |
 | Sprint AI | BACK-019 | Perfil demográfico do usuário — idade, localização, experiência de poker | ✅ v0.66.0 |
 | Sprint AJ | UX-015 | Inbox global de mensagens para o coach — ver todas as conversas com badge de não lidas | ✅ v0.67.0 |
 | Sprint AK | UX-016 | Badge de mensagens não lidas no dashboard/header do aluno → link direto para conversa com coach | ✅ v0.67.0 |
+| Sprint AL | UX-017 | Dashboard personalizável — arrastar e reordenar cards, preferência salva por usuário | ✅ v0.70.0 |
 | Sprint AM | UX-018 | Listagem de alunos do coach — tabela com busca, filtros (ativo/inativo, plano) e paginação | ✅ v0.68.0 |
-| Sprint AG | FEAT-12 | Página de Documentação / Wiki do Sistema (deixar por último) | ✅ v0.71.0 |
+| Sprint AN | UX-019 | Coach Chat Drawer — painel lateral de mensagens no header do aluno | ✅ v0.69.0 |
+| Sprint AG | FEAT-12 | Página de Documentação / Wiki do Sistema | ✅ v0.71.0 |
+| Sprint AO | i18n ext. | Cobertura i18n completa: LeakCausalMap, DraggableCard, Docs career section | ✅ v0.72.0 |
+| — | bugfixes | Bugfixes: nomes de nível i18n no dashboard, narrativa LeakCausalMap em PT, drag handle UX | ✅ v0.73.0 |
+| Sprint AP | FEAT-13 | Strategic Career Graph — projeção de carreira com regressão linear + sparkline + narrativa IA | ✅ v0.74.0 |
 
 ---
 
 ## Próximas Sprints — Em Aberto
 
-### [UX-018] — Listagem de Alunos com Tabela e Filtros *(Sprint AM)*
+### [FEAT-14] — Cognitive Failure Mapper *(Sprint AQ)*
 
-**Problema:** a lista de alunos no CoachDashboard é uma lista simples (`<ul>`) — com muitos alunos fica ilegível e sem capacidade de busca ou triagem.
+**Valor:** O mapeamento de padrões cognitivo-emocionais com base em sequências decisional reais é genuinamente o diferencial mais original da lista. Nenhuma ferramenta de poker faz isso.
 
-**Solução:** substituir por tabela com busca por nome, filtros de status (ativo/inativo) e plano, ordenação por coluna e paginação client-side (25 por página).
+**O que detecta** (padrões nas decisões ordenadas dentro de cada torneio):
+- `revenge_aggression` — aumento de clear_mistakes após sequência de folds corretos (frustração)
+- `fear_folding` — folding excessivo após bust de stack grande (medo de bust)
+- `sunk_cost_continuation` — calls ruins nos rivers após investimento crescente no pot
+- `entitlement_tilt` — sequência de clear_mistakes após bloco de decisões standard (relaxamento pós-boa-fase)
+- `compensation_call` — call-downs excessivos nas N mãos após fold correto de strong hand
 
-**Escopo:**
-- Busca por nome (debounce 300ms)
-- Filtro "Status": Todos / Ativos / Inativos
-- Filtro "Plano": Todos / Free / Pro / Premium
-- Colunas clicáveis para ordenar: Aluno, Plano, Torneios, Último import, Status
-- Paginação: botões Anterior / Próximo com contagem "1–25 de 47"
-- Clique na linha → navega para `/coach-dashboard/student/:id`
-- Sem mudança de backend — os dados já vêm via `GET /coach/students`
-
-**Arquivos:**
-- `frontend/src/pages/coach/CoachDashboard.tsx` — substituir `<ul>` da AlunosTab por tabela com filtros
-
-**Esforço:** ~4h frontend puro
-
----
-
-### [UX-017] — Dashboard Personalizável *(Sprint AL)*
-
-**Problema:** o layout do dashboard é fixo — jogadores têm estilos e prioridades diferentes (alguns vivem no Ghost Table, outros focam no Leak Causal Map), mas todos veem a mesma ordem.
-
-**Solução:** drag-and-drop para reordenar os cards do dashboard, com preferência salva por usuário.
-
-**Escopo:**
-- Cards arrastáveis: LeaksPanel, LeakCausalMap, LevelCard, GhostDrillCard, PressureProfileCard, IcmBreakdown, AI Confidence (os cards de posição fixa — KPIs, BankrollChart, PlayerDnaCard — permanecem fixos pois são hierarquicamente prioritários)
-- Reordenação dentro de cada coluna (aside e coluna de baixo) — não troca de coluna
-- Ícone de drag handle (⠿) visível ao hover no header de cada card
-- Botão "Restaurar padrão" no header do dashboard
-
-**Persistência — server-side:**
-- Coluna `dashboard_layout TEXT` (JSON serializado) na tabela `users` — padrão `NULL` (= layout default)
-- `GET /player/preferences` — retorna `{ dashboard_layout: string[] | null }` junto com outros dados do usuário; pode ser incluído na resposta do `/auth/me` para evitar request extra
-- `PATCH /player/preferences` — recebe `{ dashboard_layout: string[] }` e persiste; debounce de 1s no frontend para não disparar a cada pixel arrastado
-- Layout sincronizado entre devices automaticamente — ao abrir em outro browser, carrega a mesma ordem
-
-**Biblioteca:** `@dnd-kit/core` + `@dnd-kit/sortable` (acessível, sem dependência de mouse, funciona em touch/mobile)
-
-**Arquivos:**
-- `backend/database/schema.py` — `ALTER TABLE users ADD COLUMN dashboard_layout TEXT DEFAULT NULL`
-- `backend/database/repositories.py` — `get_user_preferences(user_id)`, `save_user_preferences(user_id, layout)`
-- `backend/api/app.py` — `GET /player/preferences`, `PATCH /player/preferences`; adicionar `dashboard_layout` na resposta do `/auth/me`
-- `frontend/package.json` — adicionar `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
-- `frontend/src/hooks/useDashboardLayout.ts` — hook que lê do `/auth/me` (ou `/player/preferences`) e persiste via `PATCH` com debounce
-- `frontend/src/pages/Index.tsx` — envolver cards arrastáveis com `SortableContext`
-- `frontend/src/components/hud/DraggableCard.tsx` — wrapper com drag handle
-- `frontend/src/lib/api.ts` — `preferences.get()`, `preferences.save(layout)`
-
-**Esforço:** ~4h backend + ~8h frontend
-
----
-
-### [UX-015] — Inbox Global de Mensagens para o Coach *(Sprint AJ)*
-
-**Problema:** o coach precisa abrir o perfil de cada aluno para verificar se há mensagens não lidas — inviável com muitos alunos.
-
-**Solução:** inbox global no `CoachDashboard.tsx` — lista todas as conversas com badge de não lidas e acesso direto.
+**Como funciona:**
+- Analisa janelas deslizantes de 5–10 decisões consecutivas dentro de um torneio
+- Correlaciona padrão de score com contexto anterior (sequência de folds, stack loss, pot investment)
+- LLM (Haiku, ~200 tokens) gera o diagnóstico em linguagem natural com o padrão detectado e sugestão de correção
 
 **Backend:**
-- `GET /coach/messages/inbox` — retorna todas as conversas ativas: `[{student_id, student_username, last_message_body, last_message_at, unread_count}]`
-- Ordenado por `last_message_at DESC` (conversa mais recente primeiro)
+- `backend/leaklab/cognitive_mapper.py` — detector de padrões cognitivos sobre sequência de decisões
+- `backend/database/repositories.py` — `get_cognitive_failure_report(user_id, tournament_id=None)`
+- `backend/api/app.py` — `GET /player/cognitive-failures?lang=`
+- `backend/leaklab/llm_explainer.py` — `generate_cognitive_narrative(patterns, lang)`
 
 **Frontend:**
-- Nova aba "Mensagens" no `CoachDashboard.tsx` (ao lado de Alunos, Analytics, etc.)
-- Cada linha: avatar inicial, nome do aluno, prévia da última mensagem (truncada), timestamp relativo ("5 min", "ontem"), badge vermelho com contagem de não lidas
-- Clique → abre `StudentDetail` do aluno direto na aba de Mensagens
-- Badge de não lidas total no tab "Mensagens" do dashboard (polling 60s)
+- `frontend/src/components/hud/CognitiveFailureCard.tsx` — card no sidebar do dashboard
+- Lista os padrões detectados com ícone de severidade, frequência e contexto de gatilho
+- Narrativa LLM abaixo da lista
+- Seção na página `/docs` com explicação dos padrões (3 locales)
+- `frontend/src/i18n/locales/{pt-BR,en,es}/dashboard.json` — chaves `cognitiveFailure.*`
 
-**Esforço:** ~4h backend + ~6h frontend
-
----
-
-### [UX-016] — Badge de Mensagens Não Lidas no Aluno *(Sprint AK)*
-
-**Problema:** o aluno só vê as mensagens do coach se navegar até a página AI Coach — sem nenhuma indicação visual de mensagem pendente.
-
-**Solução:** badge no header e/ou dashboard do aluno com contagem de não lidas + link direto.
-
-**Observação:** parte desta feature já foi implementada no `HudHeader.tsx` (Sprint V) — há um `MessageSquare` com badge via polling 60s visível quando `user.coach_id` existe e `unreadCount > 0`. O que falta é:
-- Confirmar que o link do badge leva para `/coach` (aba de AI Coach com o `CoachMessagesPanel`)
-- Adicionar no `CoachMessagesPanel` um estado de "não lidas" mais visível (scroll automático, highlight nas mensagens novas)
-- Verificar se o badge desaparece ao marcar como lido quando o painel é aberto
-
-**Esforço:** ~2h (revisão e ajustes do que já existe)
+**Esforço:** ~16h backend + ~12h frontend
 
 ---
 
-### [BACK-019] — Perfil Demográfico do Usuário *(Sprint AI)*
+### [FEAT-15] — Personal Strategic Twin (simplificado) *(Sprint AR)*
 
-**Problema atual:** o cadastro coleta apenas username, email, senha e role — sem dados que permitam benchmarks, segmentação ou pesquisa de produto.
+**Valor:** Transforma os dados de frequência de erros por spot em linguagem preditiva: *"em spots de reshove M≤8 IP você erra 63% das vezes — esse é seu padrão mais custoso"*. Nenhum solver ou ferramenta de revisão apresenta os dados do próprio jogador dessa forma.
 
-**Estratégia:** não adicionar campos ao formulário de cadastro (evitar abandono). Os dados são coletados em um card "Complete seu perfil" exibido no dashboard pós-login — colapsável, voluntário, com nota LGPD clara.
+**O que NÃO é:** não é um modelo ML preditivo individual (exigiria meses de engenharia + dados de treinamento). É uma camada de apresentação sobre dados existentes.
 
-**Campos coletados:**
-- `birth_year` (INTEGER) — para faixa etária; não armazenar data exata
-- `country` (TEXT) — país
-- `state_province` (TEXT) — estado / província
-- `city` (TEXT) — cidade
-- `poker_experience_years` (INTEGER) — anos de experiência (0 = iniciante)
-- `main_game_type` (TEXT) — `mtt` / `cash` / `spin` / `mixed`
-- `usual_buyin_range` (TEXT) — `micro` (<$5) / `low` ($5–$30) / `mid` ($30–$200) / `high` (>$200)
-- `profile_completed_at` (TIMESTAMP) — usado para controlar exibição do card; NULL = nunca preencheu
+**O que constrói:**
+- Endpoint `GET /player/strategic-twin?lang=` que agrega:
+  - Spots de alta frequência (top 5 por volume de decisões)
+  - Spots com erro acima da média individual do jogador (% de clear_mistakes > player avg)
+  - Padrão de contexto para cada spot (ICM level predominante, posição, street)
+- LLM (Haiku, ~300 tokens) gera o card no estilo "twin diagnóstico": texto em 1ª pessoa, preditivo, com os 3 padrões mais custosos identificados
 
 **Backend:**
-- Migração com `ALTER TABLE users ADD COLUMN` para cada campo (SQLite + Postgres)
-- `GET /player/profile` — retorna campos demográficos do usuário logado
-- `PATCH /player/profile` — atualiza campos; marca `profile_completed_at`
-- `GET /admin/demographics` (admin) — agrega dados anonimizados: distribuição por país/estado, faixa etária, experiência, game type — para uso em relatórios e produto
+- `backend/database/repositories.py` — `get_strategic_twin_profile(user_id)`
+- `backend/api/app.py` — `GET /player/strategic-twin?lang=`
+- `backend/leaklab/llm_explainer.py` — `generate_twin_narrative(profile, lang)`
 
 **Frontend:**
-- `ProfileCompletionCard.tsx` — card colapsável no dashboard, exibido quando `user.profile_completed_at` é null; barra de progresso dos campos preenchidos; botão "Não mostrar novamente" armazena dismissal em `localStorage`; nota LGPD: *"Dados usados apenas para benchmarks agregados e anonimizados — nunca compartilhados individualmente"*
-- `frontend/src/pages/StudentProfile.tsx` ou nova aba em configurações — formulário completo de edição do perfil demográfico
-- `UserProfile` em `api.ts` — adicionar campos demográficos opcionais
-- Dashboard admin — nova seção "Demographics" com distribuição geográfica e de experiência
-
-**Uso dos dados (valor direto para o produto):**
-- Benchmarks: "Sua standard% está X% acima da média de jogadores do Brasil com 2–5 anos de experiência"
-- Segmentação de emails (digest por faixa de buyin)
-- Pesquisa de produto: quais países têm maior engajamento, quais faixas de buyin têm maior retenção
-- Futuramente: rankings regionais, torneios com filtro de stake
-
-**Esforço:** ~8h backend + ~6h frontend
-
----
-
-### [BACK-018] — Coach Application Flow *(Sprint AH)*
-
-**Problema atual:** qualquer pessoa pode se registrar como coach livremente via `POST /auth/register` com `role: "coach"`, sem qualquer validação de profissionalismo.
-
-**Solução:** fluxo de candidatura com aprovação manual pelo admin.
-
-**Fluxo:**
-1. Na página de registro, quem escolhe "Coach" é redirecionado para um formulário de candidatura — não cria conta imediatamente
-2. Candidatura salva com status `pending`; conta criada com role `coach_pending` (sem acesso ao painel de coach e sem login)
-3. Admin vê candidaturas pendentes no painel — pode aprovar ou rejeitar com nota opcional
-4. Aprovação: role muda para `coach`, email de boas-vindas enviado via SMTP (mesmo do digest)
-5. Rejeição: email com motivo opcional; conta pode ser removida ou mantida como registro
-
-**Backend:**
-- Tabela `coach_applications`: `id`, `user_id` (FK users), `instagram_handle`, `bio`, `specialties`, `experience_years`, `biggest_results`, `status` (`pending`/`approved`/`rejected`), `admin_note`, `created_at`, `reviewed_at`
-- `POST /auth/coach-apply` — cria usuário com role `coach_pending` + salva candidatura (sem JWT, público)
-- `GET /admin/coach-applications` — lista candidaturas por status
-- `POST /admin/coach-applications/<id>/approve` — muda role para `coach`, envia email
-- `POST /admin/coach-applications/<id>/reject` — armazena nota, envia email de rejeição opcional
-- Bloquear login para role `coach_pending` — retorna 403 com mensagem "Candidatura em análise"
-
-**Frontend:**
-- `frontend/src/pages/CoachApply.tsx` — formulário público: nome, email, senha, @instagram, bio, especialidades, anos de experiência, maiores resultados; botão "Enviar candidatura"
-- Página de confirmação pós-envio: "Candidatura recebida — você receberá um email quando for analisada"
-- `frontend/src/pages/admin/AdminPanel.tsx` — nova aba "Candidaturas" com lista de pendentes, botões approve/reject, campo de nota
-- Tela de login — exibir mensagem específica para `coach_pending` (não mostrar erro genérico de credenciais)
+- `frontend/src/components/hud/StrategicTwinCard.tsx` — card no sidebar do dashboard
+- Cabeçalho: "Seu Perfil Estratégico" / "Your Strategic Profile"
+- Corpo: lista dos 3 padrões mais custosos + narrativa LLM
+- `frontend/src/i18n/locales/{pt-BR,en,es}/dashboard.json` — chaves `strategicTwin.*`
 
 **Esforço:** ~10h backend + ~8h frontend
 
 ---
 
-### [FEAT-01] — Comparativo de Torneios *(Sprint O — 🔄 em andamento)*
+### [FEAT-16] — AI Sparring Mode no Ghost Table *(Sprint AS)*
 
-**Valor:** Compara qualidade técnica de decisão entre 2–4 torneios — não só resultado financeiro. Nenhuma outra ferramenta de poker faz isso.
+**Valor:** Em vez de revisar texto sobre o spot de leak, o jogador joga a mão real que contém o leak, pausando em cada decisão e recebendo feedback imediato. Aprendizado por ação, não por leitura.
 
-**Backend:** `GET /history/tournaments/compare?ids=A,B,C` — agrega `standard_pct`, `avg_score`, `clear_pct`, top 3 leaks, phase breakdown, ICM collapse delta por torneio. Narrativa comparativa via LLM (Haiku, ~100 tokens).
+**Arquitetura:** "Sparring Mode" dentro do Ghost Table existente — reutiliza o visual do Replayer e o engine de avaliação de decisões. NÃO usa o `leaklab-replayer-v3.html` diretamente (timeline fixo sem ramificações).
 
-**Frontend:** Multi-seleção em `/tournaments` → página `TournamentCompare.tsx` com tabela lado a lado + sparklines + leaks com delta colorido (verde=melhorou, vermelho=piorou).
+**Como funciona:**
+1. Sistema seleciona uma mão histórica do jogador que contém seu leak mais crítico
+2. Replayer carrega a mão mas **pausa em cada ponto de decisão do hero** (`is_hero: true`)
+3. Usuário escolhe sua ação (fold/call/raise/jam) com visual completo (cartas, board, pot, posições, M-ratio)
+4. Engine avalia a escolha via `decision_engine_v11` → feedback imediato (score + label + explicação)
+5. Mão continua com a ação escolhida pelo usuário (ou a ação real, como modo de comparação)
+6. Ao final: resumo de todas as decisões + EV total perdido/ganho vs linha ideal
 
-**Esforço:** ~8h backend + ~10h frontend
+**O que reutiliza sem reescrita:**
+- Componentes visuais do Replayer (cartas, board, pot, posições, stacks)
+- Mecanismo de `submit_drill` do Ghost Table existente
+- `decision_engine_v11` para avaliação
+- Endpoints `/player/spots/drill` e `/player/spots/drill/submit`
 
----
+**O que constrói:**
+- Backend: endpoint `GET /player/sparring/hand` — serve mão completa em sparring mode (mesma estrutura de ReplayData + flag `sparring: true` + lista de `decision_points` com índice no timeline)
+- Frontend: modo "Sparring" na página Ghost Table — intercepta pontos `is_hero: true` no timeline para mostrar botões de ação em vez de auto-avançar; painel de feedback inline; resumo final
+- SRS: a mão completa vira um "drill spot" com dificuldade baseada no número de erros cometidos
+- `frontend/src/i18n/locales/{pt-BR,en,es}/dashboard.json` — chaves `sparring.*`
 
-### [FEAT-04] — Relatório PDF Premium *(Sprint P)*
+**Arquivos:**
+- `backend/api/app.py` — `GET /player/sparring/hand?spot_id=`
+- `backend/database/repositories.py` — `get_sparring_hand(user_id, spot_id)`
+- `frontend/src/pages/GhostTable.tsx` — modo sparring inline
+- `frontend/src/components/hud/SparringFeedback.tsx` — painel de decisão + feedback
 
-**Valor:** Relatório com design profissional (Google Fonts, gráficos SVG, paleta dark) que coach envia ao aluno e jogador compartilha. Também marketing orgânico.
-
-**Backend:** Redesign completo de `report_generator.py` com template Jinja2 + WeasyPrint para conversão PDF. Endpoint `GET /history/tournament/<id>/report.pdf`.
-
-**Frontend:** Botão "Baixar PDF" em `TournamentDetail.tsx`.
-
-**Esforço:** ~12h backend + ~2h frontend
-
----
-
-### [FEAT-02] — Daily Focus *(Sprint Q — junto com FEAT-03)*
-
-**Valor:** Elimina paralisia de decisão — diz exatamente o que fazer hoje com base nos dados reais do jogador. Zero LLM, lógica determinística.
-
-**Backend:** `GET /player/daily-focus` — 1 ação primária + 2 secundárias com links diretos (leak drill, torneio pendente, estudo).
-
-**Frontend:** `DailyFocusCard.tsx` no topo do dashboard com timer até meia-noite e badge "concluído".
-
-**Esforço:** ~6h backend + ~5h frontend
-
----
-
-### [FEAT-03] — XP e Progressão Server-Side *(Sprint Q — junto com FEAT-02)*
-
-**Valor:** Elimina bug silencioso de retenção — XP vive em localStorage e reseta ao limpar o browser.
-
-**Backend:** Colunas `xp_total`, `xp_updated_at` em `users`. Tabela `achievements`. Endpoints `/player/xp` e `/player/achievements`.
-
-**Frontend:** `LevelCard.tsx` e `StudyPlan.tsx` migram de localStorage para API.
-
-**Esforço:** ~8h backend + ~4h frontend
+**Esforço:** ~12h backend + ~14h frontend
 
 ---
 
-### [FEAT-05] — SRS Adaptativo nos Drills *(Sprint R)*
-
-**Valor:** Substitui cooldown fixo de 7 dias por intervalos baseados em performance real (acerto → dobra, erro → reseta). Primeiro sistema SRS para poker baseado nas mãos do próprio jogador.
-
-**Backend:** Campo `next_drill_at` em `drill_sessions`. `get_drill_spots` filtra por vencimento. Lógica: acerto → 3d→7d→14d→28d→60d; erro → reset 3d.
-
-**Frontend:** `GhostDrillCard.tsx` e `GhostTable.tsx` exibem intervalo e indicador visual.
-
-**Esforço:** ~10h backend + ~6h frontend
-
----
-
-### [FEAT-06] — Leak Causal Map *(Sprint S)*
-
-**Valor:** Mostra como leaks se causam mutuamente — diagnóstico sistêmico, não lista de erros isolados. Diferencial único no mercado.
-
-**Backend:** `leak_causal_graph.py` analisa co-ocorrência de leaks por torneio. LLM explica os 3 pares mais correlacionados. Endpoint `/player/leak-graph`.
-
-**Frontend:** `LeakCausalMap.tsx` — grafo SVG com nós por severidade e arestas proporcionais à correlação.
-
-**Esforço:** ~14h backend + ~12h frontend
-
----
-
-### [FEAT-07] — Métricas de Efetividade do Coach *(Sprint T)*
-
-**Valor:** ROI verificado por dados: "alunos melhoram X% em standard_pct em 60 dias". Argumento de vendas mais forte do setor para coaches sérios.
-
-**Backend:** `get_coach_effectiveness_report` — delta `standard_pct`/`avg_score` antes vs após baseline por aluno.
-
-**Frontend:** Aba "Efetividade" no `CoachDashboard.tsx` + badge verificado em `PublicCoachProfile.tsx`.
-
-**Esforço:** ~12h backend + ~10h frontend
-
----
-
-### [FEAT-08] — Session Goals + Review Pós-Sessão via IA *(Sprint U)*
-
-**Valor:** Liga intenção pedagógica ao resultado mensurável. Modal de meta antes do torneio → review automático após import comparando meta vs realidade.
-
-**Backend:** Tabela `session_goals`. `generate_session_review` (Haiku, ~300 tokens).
-
-**Frontend:** Modal pré-import em `UploadQueue.tsx` + card review em `TournamentDetail.tsx`.
-
-**Esforço:** ~16h backend + ~14h frontend
-
----
-
-### [FEAT-09] — Templates de Plano de Estudo (Coach) *(Sprint V — junto com FEAT-10)*
-
-**Valor:** Coach cria metodologia reutilizável por arquétipo de aluno. Reduz fricção e escala o atendimento.
-
-**Backend:** Tabela `coach_plan_templates`. CRUD endpoints.
-
-**Frontend:** "Salvar como template" em `StudentDetail.tsx` + dropdown de aplicação.
-
-**Esforço:** ~6h backend + ~8h frontend
-
----
-
-### [FEAT-10] — Mensagens Coach-Aluno com Contexto de Mão *(Sprint V — junto com FEAT-09)*
-
-**Valor:** Chat in-app com referência direta à mão discutida + link para replayer. Elimina WhatsApp/Discord onde o contexto técnico se perde.
-
-**Backend:** Tabela `coach_messages`. Endpoints bidirecionais.
-
-**Frontend:** Painel de chat em `StudentDetail.tsx` + badge de não lidas em `HudHeader.tsx`.
-
-**Esforço:** ~18h backend + ~16h frontend
-
----
-
-### [FEAT-11] — Digest Semanal por Email *(Sprint W)*
-
-**Valor:** Recupera usuários que não abriram o app — email com EV loss real da semana, drill atrasado e evolução de standard_pct. Zero LLM (determinístico).
-
-**Backend:** `email_digest.py` + cron toda segunda 9h. Template Jinja2. Integração SendGrid/SES.
-
-**Frontend:** Banner "ativar digest" no dashboard + opt-out via token.
-
-**Esforço:** ~14h backend + ~4h frontend
-
----
-
-### [FEAT-12] — Página de Documentação / Wiki do Sistema *(Sprint X)*
-
-**Valor:** Reduz fricção de onboarding — novos usuários e coaches entendem o que cada indicador significa sem precisar pedir suporte. Aumenta confiança técnica no produto (especialmente com coaches que querem validar a metodologia antes de assinar).
-
-**O que é:** Uma página `/docs` estilo wiki, com navegação lateral por seções, explicando em profundidade:
-- Como funciona o sistema de scoring de decisões (score 0–1, labels: standard/marginal/clear_mistake/disaster)
-- O que é e como interpretar cada indicador: Standard%, Avg Score, Clear Mistakes%, Leak ROI, ICM Pressure
-- Fases de M-ratio: Deep Stack / Mid Stack / Short Stack / Push/Fold — critérios e o que muda
-- Decision DNA: o que representa cada eixo do radar (Agressividade, Fold Frequency, 3-Bet%, Positional Awareness, Disciplina)
-- Ghost Table: como funciona o drill de spots, o que é cooldown/SRS, como interpretar o resultado
-- Como ler o Comparativo de Torneios: o que é Delta, como interpretar "▲ melhor"
-- Coaching: o que é um baseline, como funciona a medição de evolução, o que significa "Coach Reviewed"
-- Gamificação: como XP é calculado, critérios de nível, conquistas
-
-**Design:** Wiki-style dentro do HudLayout — sidebar fixa com links âncora, conteúdo em prosa técnica com exemplos, tabelas e badges reais do sistema. Sem imagens externas — usa os próprios componentes visuais do sistema como referência inline.
-
-**Frontend only** — conteúdo estático, sem backend. Rota `/docs`.
-
-**Esforço:** ~20h frontend (conteúdo + layout + navegação)
-
----
-
-### [UX-008] — Coaches Directory — Mobile Layout + Padronização "Coach" *(Sprint Y)*
-
-**Valor:** A página de coaches (`/coaches`) está com layout ruim em mobile — filtros e cards dos coaches cadastrados precisam ser reorganizados para uma experiência adequada em telas menores. Também há inconsistência terminológica: o termo "professor" aparece em algumas páginas e deve ser removido, mantendo sempre "Coach" como padrão em todo o sistema.
-
-**Escopo:**
-- Refatorar layout da página `CoachesDirectory.tsx`: filtros em coluna no mobile, cards com padding adequado
-- Grep de toda a codebase por "professor" (strings visíveis ao usuário em PT-BR) e substituir por "Coach"
-- Verificar i18n — todos os locales (PT-BR, EN, ES) devem usar "Coach" ou equivalente cultural correto
-
-**Frontend only** — sem alterações de backend.
-
-**Esforço:** ~5h frontend
-
----
-
-### [UX-009] — Torneios — Data do Torneio vs Importação + Exibir Ano *(Sprint Z)*
-
-**Valor:** A data exibida na tabela de torneios pode ser a data de importação (`imported_at`) em vez da data real do torneio (`played_at`). Além disso, o formato atual (DD/MM HH:MM) não mostra o ano — relevante para quem tem histórico de mais de um ano.
-
-**Escopo:**
-1. Verificar no backend se `played_at` é corretamente populado pelo parser (PokerStars e GGPoker) ou se fica como a data de importação
-2. Atualizar `formatDate` em `Tournaments.tsx` para incluir o ano (ex: `DD/MM/YY` ou `DD/MM/YYYY`)
-3. Se `played_at` não vier do arquivo, investigar como extrair do header da hand history e persistir corretamente
-4. Manter ordenação padrão do mais recente para o mais antigo (já funciona via `sortDir: "desc"`)
-
-**Esforço:** ~4h backend + ~1h frontend
-
----
-
-### [INFRA-001] — Correção de Erros de Build no Render e Vercel *(Sprint AA)*
-
-**Valor:** Garantir que os pipelines de CI/CD do Render (backend/Docker) e Vercel (frontend) funcionem sem erros após as mudanças recentes — WeasyPrint + render.yaml docker runtime, novos imports no frontend.
-
-**Escopo:**
-1. Verificar logs de build do Render após migração para `runtime: docker`
-2. Verificar logs de build do Vercel após adição de novos componentes e imports
-3. Corrigir quaisquer erros de tipagem, import missing, ou dependência ausente que apareçam no CI
-
-**Esforço:** ~2h (diagnóstico + correção)
-
----
-
-### [UX-012] — Dashboard — Remover Lista de Últimos Torneios *(Sprint AD)*
-
-**Valor:** A lista de últimos torneios ocupa espaço no dashboard sem agregar informação única — o menu de Torneios já cobre essa necessidade com filtros e ordenação. Remover libera espaço para expandir os cards de indicadores (KPIs, gráficos, leaks).
-
-**Escopo:**
-- Remover o componente `RecentTournamentsTable` de `Index.tsx`
-- Verificar se o componente é usado em outro lugar antes de deletar o arquivo
-- Avaliar se o espaço liberado comporta um card adicional de indicador (ex: `ConfidenceDrift` ou `PressureProfileCard` promovidos para o topo)
-
-**Frontend only** — sem alterações de backend.
-
-**Esforço:** ~1h frontend
-
----
-
-### Backlog Futuro (não priorizar agora)
+## Backlog Futuro (não priorizar agora)
 
 | Item | Motivo de adiar |
 |---|---|
+| Tournament Future Simulation | Requer reescrita do parser para capturar chip stacks + payout structure; ~3–4 meses de engenharia. Game-changer no longo prazo. |
+| Autonomous Evolution Engine | Precisa ≥500 usuários ativos com ≥10 sessões cada para adaptação pedagógica real — sem essa massa, seria heurística fake |
+| Meta-Game Evolution Forecast | Requer pool de dados de milhares de jogadores — inviável sem volume de usuários |
+| Adversarial Exploit Engine | Sistema captura apenas decisões do hero, não dados de oponentes — exigiria produto HUD, categoria diferente |
+| Neural Population Benchmark | Vetores de estilo estratégico de múltiplos jogadores = produto de research, não SaaS early-stage |
+| Self-Evolving Decision Engine | Auto-ajuste de thresholds sem ground truth validado por experts = risco de degradação silenciosa do engine |
 | Counterfactual Replay | Exige simulação Monte Carlo prospectiva — não temos equity calculator para linhas hipotéticas |
 | Reg Archetype Recognition | Exige dados de adversários; fora do escopo atual (análise do herói, não do field) |
-| Competitive Benchmark Layer | Exige pool de dados de outros usuários; questões de privacidade + volume mínimo de usuários |
+| Competitive Benchmark Layer | Exige pool de dados de outros usuários; questões de privacidade + volume mínimo |
