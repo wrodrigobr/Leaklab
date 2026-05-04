@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.83.1] — 2026-05-04 — Sprint AY: Mobile audit + responsividade
+
+### Fixed
+- **`frontend/src/components/hud/DraggableCard.tsx`**: drag handle sempre visível em mobile (`opacity-100 md:opacity-0 md:group-hover:opacity-100`); tamanho aumentado (`px-3 py-1 / size-4`) para alvo de toque adequado; `touch-none` para impedir scroll acidental durante drag.
+- **`frontend/src/pages/GhostTable.tsx`**: botões de ação com `min-h-[44px]` — atende ao mínimo de toque iOS/Android HIG (era ~42px).
+- **`frontend/src/pages/Sparring.tsx`**: mesmo fix de `min-h-[44px]` nos botões de ação contextuais.
+- **`frontend/src/components/hud/HudHeader.tsx`**: `LanguageSwitcher` removido do `hidden sm:` — seletor de idioma agora acessível em mobile (era invisível em telas < 640px).
+- **`frontend/src/pages/StudentProfile.tsx`**: grids de 2 colunas nos formulários de dados do jogador alterados para `grid-cols-1 sm:grid-cols-2` — campos não colapsam em telas < 400px.
+
+---
+
 ## [v0.83.0] — 2026-05-04 — Sprint AX: Onboarding para novos usuários
 
 ### Added

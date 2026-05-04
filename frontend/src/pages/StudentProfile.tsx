@@ -422,7 +422,7 @@ export default function StudentProfile() {
             <Loader2 className="size-4 animate-spin text-muted-foreground" />
           ) : (
             <form onSubmit={handleSaveDemographics} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label={t("demo.birthYear")}>
                   <input
                     type="number"
@@ -447,7 +447,7 @@ export default function StudentProfile() {
                 </Field>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label={t("demo.gameType")}>
                   <select
                     value={demoForm.main_game_type ?? ""}
@@ -486,7 +486,7 @@ export default function StudentProfile() {
                 />
               </Field>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label={t("demo.stateProvince")}>
                   <input
                     type="text"

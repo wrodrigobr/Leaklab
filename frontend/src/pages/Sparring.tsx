@@ -578,7 +578,7 @@ export default function Sparring() {
                     key={action}
                     onClick={() => submitAction(action)}
                     disabled={submitting}
-                    className="rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 hover:ring-amber-500/40 disabled:opacity-60 transition-all active:scale-95"
+                    className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 hover:ring-amber-500/40 disabled:opacity-60 transition-all active:scale-95"
                   >
                     {t(`actions.${action}`)}
                   </button>

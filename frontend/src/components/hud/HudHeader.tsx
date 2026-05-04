@@ -39,7 +39,7 @@ function LanguageSwitcher() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="hidden sm:inline-flex items-center gap-1.5 rounded-md bg-card px-2.5 py-1.5 ring-1 ring-border text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
+        className="inline-flex items-center gap-1.5 rounded-md bg-card px-2.5 py-1.5 ring-1 ring-border text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
         aria-label="Change language"
       >
         <Globe className="size-3" aria-hidden />

@@ -26,11 +26,11 @@ export function DraggableCard({ id, children, className }: DraggableCardProps) {
       <button
         {...attributes}
         {...listeners}
-        className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded-full px-2 py-0.5 bg-card border border-border hover:border-primary/40 shadow-sm"
+        className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded-full px-3 py-1 md:px-2 md:py-0.5 bg-card border border-border hover:border-primary/40 shadow-sm touch-none"
         title={t("actions.dragToReorder")}
         tabIndex={-1}
       >
-        <GripHorizontal className="size-3 text-muted-foreground" />
+        <GripHorizontal className="size-4 md:size-3 text-muted-foreground" />
       </button>
       {children}
     </div>
