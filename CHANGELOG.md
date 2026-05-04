@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.79.0] — 2026-05-04 — Sprint AT: Menu "Treinos" + Sparring Visual
+
+### Added
+- **`frontend/src/components/hud/HudHeader.tsx`**: componente `TrainingDropdown` — agrupamento de Ghost Table e Sparring sob um menu "Treinos/Training/Entrenamiento" com dropdown no desktop; mobile mantém item único "Treinos" → `/ghost` com estado ativo cobrindo ambas as rotas (`/ghost`, `/sparring`).
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/common.json`**: chave `nav.training` adicionada ("Treinos" / "Training" / "Entrenamiento").
+
+### Changed
+- **`frontend/src/pages/Sparring.tsx`**: redesign visual completo para diferenciar do Ghost Table — esquema de cores amber/laranja, componente `StreetTimeline` (cadeia horizontal de pontos com ícones Flame/CheckCircle2/XCircle), componente `HandRecap` (histórico compacto de decisões anteriores), arena intro card com gradiente e ícone `Swords`.
+
+---
+
 ## [v0.78.0] — 2026-05-04 — Sprint AS: AI Sparring Mode
 
 ### Added

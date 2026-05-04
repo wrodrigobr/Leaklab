@@ -9,7 +9,8 @@
     "profile": "Profile",
     "coachDashboard": "Dashboard",
     "ghost": "Ghost Table",
-    "sparring": "Sparring"
+    "sparring": "Sparring",
+    "training": "Training"
   },
   "actions": {
     "import": "Import",
