@@ -3167,8 +3167,8 @@ def mark_messages_read(coach_id: int, student_id: int, reader_role: str) -> None
 def get_unread_message_count(user_id: int, role: str) -> int:
     """Conta mensagens não lidas recebidas pelo usuário."""
     conn = get_conn()
-    if role == 'student':
-        # student recebe mensagens com sender_role='coach'
+    if role in ('student', 'player'):
+        # player/student recebe mensagens com sender_role='coach'
         row = conn.execute(
             "SELECT COUNT(*) AS n FROM coach_messages "
             "WHERE student_id = ? AND sender_role = 'coach' AND read_at IS NULL",
