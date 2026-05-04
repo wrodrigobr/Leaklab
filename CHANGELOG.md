@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.82.0] — 2026-05-04 — Sprint AW: Ghost Table Pressure Mode + Sparring hand rotation
+
+### Added
+- **`frontend/src/pages/GhostTable.tsx`**: **Pressure Mode** — toggle na intro desbloqueia modo cronometrado: 30 s por decisão, timeout dispara fold automático via `submitRef.current` (sem stale closure), streak de acertos exibido com badge 🔥 durante a sessão e tile dedicado na tela de conclusão.
+- **`frontend/src/pages/GhostTable.tsx`**: `TimerRing` — anel SVG circular de contagem regressiva com transição CSS suave; vermelho quando ≤ 10 s. Botões de ação bloqueados após timeout até o próximo spot.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/ghost.json`**: chaves `pressure.toggle`, `pressure.desc`, `pressure.timedOut`, `pressure.streakLabel` adicionadas nas 3 locales.
+- **`backend/database/repositories.py`**: parâmetro `exclude_hand_ids: list` em `get_sparring_hand` — filtra mãos já vistas na sessão; se todas as mãos foram excluídas, retorna o ciclo desde o início.
+- **`backend/api/app.py`**: endpoint `GET /player/sparring/hand` passa `exclude_hand_ids` (comma-separated) para o repositório.
+- **`frontend/src/lib/api.ts`**: `sparring.hand()` aceita `exclude_hand_ids?: string[]` e os envia como query param.
+- **`frontend/src/pages/Sparring.tsx`**: `seenHandIds` ref — rastreia IDs de mãos já jogadas na sessão; `loadHand()` passa a lista para excluir ao buscar a próxima mão, garantindo rotação mesmo com múltiplas chamadas de "New Hand".
+
+### Fixed
+- **Sparring sempre exibia a mesma mão**: `get_sparring_hand` não tinha mecanismo de exclusão — `New Hand` sempre retornava a mão com o pior erro. Agora cada mão jogada é adicionada à lista de exclusão e a próxima chamada traz uma mão diferente.
+
+---
+
 ## [v0.81.1] — 2026-05-04 — Bugfix: i18n sparring + test suite verde
 
 ### Fixed

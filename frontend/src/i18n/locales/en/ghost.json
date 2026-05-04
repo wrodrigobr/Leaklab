@@ -81,5 +81,11 @@
   },
   "heroCards": "Your cards",
   "board": "Board",
-  "noCards": "Cards not available"
+  "noCards": "Cards not available",
+  "pressure": {
+    "toggle": "Pressure Mode",
+    "desc": "30 seconds per decision. Wrong answer or timeout resets your streak.",
+    "timedOut": "Time's up — auto-fold",
+    "streakLabel": "Final streak"
+  }
 }

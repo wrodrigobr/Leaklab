@@ -540,10 +540,11 @@ export const drill = {
 };
 
 export const sparring = {
-  hand: (hand_id?: string, tournament_id?: number) => {
+  hand: (hand_id?: string, tournament_id?: number, exclude_hand_ids?: string[]) => {
     const q = new URLSearchParams();
     if (hand_id)       q.set("hand_id", hand_id);
     if (tournament_id) q.set("tournament_id", String(tournament_id));
+    if (exclude_hand_ids?.length) q.set("exclude_hand_ids", exclude_hand_ids.join(","));
     const qs = q.toString();
     return request<SparringHand>(`/player/sparring/hand${qs ? "?" + qs : ""}`);
   },

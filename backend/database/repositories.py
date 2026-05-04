@@ -1396,10 +1396,12 @@ def get_strategic_twin_profile(user_id: int, days: int = 180) -> dict:
     }
 
 
-def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = None) -> dict:
+def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = None,
+                      exclude_hand_ids: list = None) -> dict:
     """
     Sprint AS — Seleciona uma mão histórica do jogador para o modo Sparring.
     Auto-seleciona a mão com mais decisões que contém o pior erro dos últimos 90 dias.
+    exclude_hand_ids: lista de hand_ids já vistos nesta sessão — evita repetição.
     Retorna todas as decisões da mão em ordem cronológica.
     """
     from datetime import datetime, timedelta
@@ -1411,7 +1413,16 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
             target_hand_id      = hand_id
             target_tournament_id = tournament_id
         else:
-            best = conn.execute(_adapt("""
+            exclusions = [h for h in (exclude_hand_ids or []) if h]
+            if exclusions:
+                placeholders = ",".join(["?" for _ in exclusions])
+                excl_clause  = f"AND d.hand_id NOT IN ({placeholders})"
+                params = (user_id, cutoff, *exclusions)
+            else:
+                excl_clause = ""
+                params = (user_id, cutoff)
+
+            best = conn.execute(_adapt(f"""
                 SELECT sub.hand_id, sub.tournament_id
                 FROM (
                     SELECT d.hand_id, d.tournament_id,
@@ -1420,13 +1431,32 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
                            SUM(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN 1 ELSE 0 END) AS mistakes
                     FROM decisions d
                     JOIN tournaments t ON t.id = d.tournament_id
-                    WHERE t.user_id = ? AND t.imported_at >= ?
+                    WHERE t.user_id = ? AND t.imported_at >= ? {excl_clause}
                     GROUP BY d.hand_id, d.tournament_id
                     HAVING mistakes > 0
                 ) sub
                 ORDER BY sub.total_decisions DESC, sub.max_err DESC
                 LIMIT 1
-            """), (user_id, cutoff)).fetchone()
+            """), params).fetchone()
+
+            if not best:
+                # All hands seen — reset exclusion list and return first hand again
+                best = conn.execute(_adapt("""
+                    SELECT sub.hand_id, sub.tournament_id
+                    FROM (
+                        SELECT d.hand_id, d.tournament_id,
+                               COUNT(*) AS total_decisions,
+                               MAX(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN d.score ELSE 0 END) AS max_err,
+                               SUM(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN 1 ELSE 0 END) AS mistakes
+                        FROM decisions d
+                        JOIN tournaments t ON t.id = d.tournament_id
+                        WHERE t.user_id = ? AND t.imported_at >= ?
+                        GROUP BY d.hand_id, d.tournament_id
+                        HAVING mistakes > 0
+                    ) sub
+                    ORDER BY sub.total_decisions DESC, sub.max_err DESC
+                    LIMIT 1
+                """), (user_id, cutoff)).fetchone()
 
             if not best:
                 return {"insufficient_data": True}

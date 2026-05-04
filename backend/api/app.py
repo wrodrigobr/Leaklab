@@ -849,7 +849,10 @@ def player_cognitive_failures():
 def player_sparring_hand():
     hand_id       = request.args.get('hand_id')
     tournament_id = request.args.get('tournament_id', type=int)
-    data = get_sparring_hand(g.user_id, hand_id=hand_id, tournament_id=tournament_id)
+    raw_excl      = request.args.get('exclude_hand_ids', '')
+    exclude_hand_ids = [h.strip() for h in raw_excl.split(',') if h.strip()] if raw_excl else []
+    data = get_sparring_hand(g.user_id, hand_id=hand_id, tournament_id=tournament_id,
+                             exclude_hand_ids=exclude_hand_ids)
     return jsonify(data)
 
 

@@ -81,5 +81,11 @@
   },
   "heroCards": "Tus cartas",
   "board": "Board",
-  "noCards": "Cartas no disponibles"
+  "noCards": "Cartas no disponibles",
+  "pressure": {
+    "toggle": "Modo Presión",
+    "desc": "30 segundos por decisión. Error o timeout reinicia tu racha.",
+    "timedOut": "Tiempo agotado — fold automático",
+    "streakLabel": "Racha final"
+  }
 }

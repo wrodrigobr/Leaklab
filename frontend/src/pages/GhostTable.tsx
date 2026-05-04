@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
@@ -6,10 +6,12 @@ import {
   BookOpen,
   CheckCircle2,
   Clock,
+  Flame,
   Loader2,
   ShieldAlert,
   Swords,
   Target,
+  Timer,
   TrendingUp,
   XCircle,
   Zap,
@@ -24,6 +26,7 @@ import { cn, formatAction } from "@/lib/utils";
 type Phase = "intro" | "loading" | "active" | "result" | "done";
 
 const ACTION_KEYS = ["fold", "check", "call", "bet", "raise", "jam"] as const;
+const PRESSURE_TIME = 30;
 
 // ── Card parser ───────────────────────────────────────────────────────────────
 
@@ -64,7 +67,7 @@ function parseCards(raw: string | null): CardData[] {
 type SitVariant = "aggression" | "opening" | "neutral";
 
 interface SituationInfo {
-  key: string;      // i18n key suffix under situation.*
+  key: string;
   variant: SitVariant;
 }
 
@@ -80,7 +83,6 @@ function getSituation(spot: DrillSpot): SituationInfo {
     return                          { key: "openingHand",  variant: "opening" };
   }
 
-  // Postflop
   if (facingPassive)                                           return { key: "facingBet",   variant: "aggression" };
   if (spot.action_taken === "check")                          return { key: "checkBet",    variant: "neutral" };
   if (["bet", "raise", "jam"].includes(spot.action_taken))   return { key: "betting",     variant: "opening" };
@@ -92,6 +94,37 @@ const SIT_STYLES: Record<SitVariant, { box: string; label: string; icon: typeof 
   opening:    { box: "border-primary/50 bg-primary/5",   label: "text-primary",   icon: Zap },
   neutral:    { box: "border-border bg-hud-surface",     label: "text-foreground", icon: Target },
 };
+
+// ── Timer ring ────────────────────────────────────────────────────────────────
+
+function TimerRing({ timeLeft, total = PRESSURE_TIME }: { timeLeft: number; total?: number }) {
+  const r     = 16;
+  const circ  = 2 * Math.PI * r;
+  const pct   = Math.max(0, timeLeft) / total;
+  const urgent = timeLeft <= 10;
+  return (
+    <div className="relative size-10 shrink-0">
+      <svg width={40} height={40} viewBox="0 0 40 40" style={{ transform: "rotate(-90deg)" }} aria-hidden>
+        <circle cx={20} cy={20} r={r} fill="none" stroke="hsl(var(--border))" strokeWidth={2.5} />
+        <circle
+          cx={20} cy={20} r={r} fill="none"
+          stroke={urgent ? "hsl(var(--destructive))" : "hsl(var(--primary))"}
+          strokeWidth={2.5}
+          strokeDasharray={circ}
+          strokeDashoffset={circ * (1 - pct)}
+          strokeLinecap="round"
+          style={{ transition: "stroke-dashoffset 0.8s linear, stroke 0.3s" }}
+        />
+      </svg>
+      <span className={cn(
+        "absolute inset-0 flex items-center justify-center font-mono text-[10px] font-bold tabular-nums",
+        urgent ? "text-destructive" : "text-foreground"
+      )}>
+        {timeLeft}
+      </span>
+    </div>
+  );
+}
 
 // ── Stat tile ─────────────────────────────────────────────────────────────────
 
@@ -121,11 +154,65 @@ export default function GhostTable() {
   const [analysis, setAnalysis]             = useState<string | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
 
+  // ── Pressure mode state ───────────────────────────────────────────────────
+  const [pressureMode, setPressureMode] = useState(false);
+  const [timeLeft, setTimeLeft]         = useState(PRESSURE_TIME);
+  const [streak, setStreak]             = useState(0);
+  const [timedOut, setTimedOut]         = useState(false);
+  // Keep a ref to submitAction so the timer interval can call it without stale closure
+  const submitRef = useRef<((action: string) => Promise<void>) | null>(null);
+
   const current = spots[index] ?? null;
+
+  const submitAction = useCallback(async (action: string) => {
+    if (!current || submitting) return;
+    setSubmitting(true);
+    setTimedOut(false);
+    try {
+      const result = await drill.submit(current.id, action);
+      if (result.is_correct) {
+        setSessionCorrect((c) => c + 1);
+        setStreak((s) => s + 1);
+      } else {
+        setStreak(0);
+      }
+      setSessionTotal((n) => n + 1);
+      setLastResult(result);
+      setPhase("result");
+    } catch {
+      // keep active on error
+    } finally {
+      setSubmitting(false);
+    }
+  }, [current, submitting]);
+
+  // Always keep submitRef in sync with the latest submitAction
+  useEffect(() => { submitRef.current = submitAction; });
+
+  // ── Timer effect: start/reset when active+pressure, index changes ─────────
+  useEffect(() => {
+    if (!pressureMode || phase !== "active") return;
+    setTimeLeft(PRESSURE_TIME);
+    setTimedOut(false);
+    const id = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(id);
+          setTimedOut(true);
+          // Delay slightly so React processes the state update first
+          setTimeout(() => submitRef.current?.("fold"), 50);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [phase, index, pressureMode]);
 
   const startDrill = async () => {
     setPhase("loading");
     setLoadError("");
+    setStreak(0);
     try {
       const data = await drill.spots({ limit: 10 });
       setStats(data.stats);
@@ -140,22 +227,6 @@ export default function GhostTable() {
       console.error("[GhostTable] startDrill error:", err);
       setLoadError(t("errorLoad"));
       setPhase("intro");
-    }
-  };
-
-  const submitAction = async (action: string) => {
-    if (!current || submitting) return;
-    setSubmitting(true);
-    try {
-      const result = await drill.submit(current.id, action);
-      if (result.is_correct) setSessionCorrect((c) => c + 1);
-      setSessionTotal((n) => n + 1);
-      setLastResult(result);
-      setPhase("result");
-    } catch {
-      // keep active on error
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -182,7 +253,7 @@ export default function GhostTable() {
   const resetDrill = () => {
     setPhase("intro"); setSpots([]); setIndex(0);
     setLastResult(null); setSessionCorrect(0); setSessionTotal(0);
-    setAnalysis(null);
+    setAnalysis(null); setStreak(0); setTimedOut(false);
   };
 
   const accuracy = sessionTotal > 0 ? Math.round((sessionCorrect / sessionTotal) * 100) : 0;
@@ -216,6 +287,40 @@ export default function GhostTable() {
               {loadError}
             </p>
           )}
+
+          {/* Pressure mode toggle */}
+          <button
+            onClick={() => setPressureMode((m) => !m)}
+            className={cn(
+              "w-full flex items-center justify-between rounded-xl border px-4 py-3 transition-colors",
+              pressureMode
+                ? "border-destructive/40 bg-destructive/5"
+                : "border-border bg-hud-surface hover:border-border/80"
+            )}
+            type="button"
+          >
+            <div className="flex items-center gap-2">
+              <Timer className={cn("size-4 shrink-0", pressureMode ? "text-destructive" : "text-muted-foreground")} aria-hidden />
+              <div className="text-left">
+                <p className={cn("font-mono text-xs font-bold uppercase tracking-wider", pressureMode ? "text-destructive" : "text-foreground")}>
+                  {t("pressure.toggle")}
+                </p>
+                <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                  {t("pressure.desc")}
+                </p>
+              </div>
+            </div>
+            <div className={cn(
+              "h-5 w-9 rounded-full border-2 transition-colors shrink-0",
+              pressureMode ? "border-destructive bg-destructive" : "border-border bg-border/40"
+            )}>
+              <div className={cn(
+                "h-3.5 w-3.5 rounded-full bg-white shadow transition-transform mt-px",
+                pressureMode ? "translate-x-[18px]" : "translate-x-px"
+              )} />
+            </div>
+          </button>
+
           <button
             onClick={startDrill}
             disabled={phase === "loading"}
@@ -238,7 +343,7 @@ export default function GhostTable() {
         return (
           <div className="mx-auto max-w-2xl space-y-4">
 
-            {/* Progress */}
+            {/* Progress + streak + timer */}
             <div className="flex items-center gap-3">
               <span className="font-mono text-xs text-muted-foreground shrink-0">
                 {t("spot", { n: index + 1, total: spots.length })}
@@ -258,14 +363,24 @@ export default function GhostTable() {
                   {current.days_overdue}d
                 </span>
               )}
+              {/* Streak badge */}
+              {pressureMode && streak > 0 && (
+                <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-amber-400 shrink-0">
+                  <Flame className="size-3" aria-hidden />
+                  {streak}
+                </span>
+              )}
               <span className="font-mono text-xs text-muted-foreground shrink-0">
                 {sessionCorrect}/{sessionTotal}
               </span>
+              {/* Timer ring */}
+              {pressureMode && (
+                <TimerRing timeLeft={timeLeft} />
+              )}
             </div>
 
             {/* ── SITUATION BOX ── */}
             <div className={cn("rounded-xl border p-4 space-y-3", style.box)}>
-              {/* Header */}
               <div className="flex items-center gap-2">
                 <SitIcon className={cn("size-4 shrink-0", style.label)} aria-hidden />
                 <p className={cn("font-mono text-[10px] font-bold uppercase tracking-widest", style.label)}>
@@ -273,7 +388,6 @@ export default function GhostTable() {
                 </p>
               </div>
 
-              {/* Main situation sentence */}
               <p className="text-base font-bold text-foreground leading-snug">
                 {t(`situation.${sit.key}`)}
               </p>
@@ -331,7 +445,6 @@ export default function GhostTable() {
 
             {/* ── CARDS ── */}
             <article className="rounded-xl border border-border bg-hud-surface p-4 space-y-4">
-              {/* Hero cards + board — board is trimmed to cards visible at this street */}
               {(() => {
                 const boardLimit = { preflop: 0, flop: 3, turn: 4, river: 5 }[current.street] ?? 5;
                 const visibleBoard = current.board ? parseCards(current.board).slice(0, boardLimit) : [];
@@ -368,11 +481,18 @@ export default function GhostTable() {
                 );
               })()}
 
-              {/* Score de erro original */}
               <p className="font-mono text-[10px] text-muted-foreground border-t border-border pt-3">
                 {t("result.originalMistake", { action: formatAction(current.action_taken).toUpperCase(), score: current.score.toFixed(2) })}
               </p>
             </article>
+
+            {/* Timeout banner */}
+            {timedOut && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-2.5">
+                <Timer className="size-4 text-destructive shrink-0" aria-hidden />
+                <span className="font-mono text-xs font-semibold text-destructive">{t("pressure.timedOut")}</span>
+              </div>
+            )}
 
             {/* ── QUESTION + ACTIONS ── */}
             <p className="text-center text-sm font-semibold text-foreground">{t("question")}</p>
@@ -382,7 +502,7 @@ export default function GhostTable() {
                 <button
                   key={action}
                   onClick={() => submitAction(action)}
-                  disabled={submitting}
+                  disabled={submitting || timedOut}
                   className="rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-60 transition-all active:scale-95"
                 >
                   {t(`actions.${action}`)}
@@ -404,7 +524,7 @@ export default function GhostTable() {
               ? <CheckCircle2 className="size-9 shrink-0 text-success" aria-hidden />
               : <XCircle     className="size-9 shrink-0 text-destructive" aria-hidden />
             }
-            <div>
+            <div className="flex-1 min-w-0">
               <p className={cn("text-lg font-bold", lastResult.is_correct ? "text-success" : "text-destructive")}>
                 {lastResult.is_correct ? t("result.correct") : t("result.wrong")}
               </p>
@@ -412,6 +532,13 @@ export default function GhostTable() {
                 {t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}
               </p>
             </div>
+            {/* Streak badge in result */}
+            {pressureMode && streak > 0 && (
+              <div className="flex items-center gap-1 font-mono text-sm font-bold text-amber-400 shrink-0">
+                <Flame className="size-4" aria-hidden />
+                {streak}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -499,7 +626,7 @@ export default function GhostTable() {
             <h2 className="text-xl font-bold text-foreground">{t("done")}</h2>
             <p className="text-sm text-muted-foreground">{t("doneSub")}</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn("grid gap-3", pressureMode ? "grid-cols-3" : "grid-cols-2")}>
             <div className="rounded-lg border border-border bg-hud-surface p-5">
               <p className="font-mono text-3xl font-bold tabular-nums text-primary">{accuracy}%</p>
               <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -512,6 +639,16 @@ export default function GhostTable() {
                 {t("doneCorrect", { correct: sessionCorrect, total: sessionTotal })}
               </p>
             </div>
+            {pressureMode && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-5">
+                <p className="font-mono text-3xl font-bold tabular-nums text-amber-400 flex items-center justify-center gap-1">
+                  <Flame className="size-6" aria-hidden />{streak}
+                </p>
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t("pressure.streakLabel")}
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link

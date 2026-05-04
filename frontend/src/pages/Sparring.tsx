@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
@@ -348,6 +348,8 @@ export default function Sparring() {
   const [error, setError]           = useState("");
   // Hero-action steps from the full replay — loaded in parallel, non-blocking
   const [replayHeroSteps, setReplayHeroSteps] = useState<ReplayStep[]>([]);
+  // Session-level exclusion list so "New Hand" always brings a different hand
+  const seenHandIds = useRef<string[]>([]);
 
   const steps   = hand?.steps ?? [];
   const current = steps[stepIndex] ?? null;
@@ -362,8 +364,12 @@ export default function Sparring() {
     setAnalysis(null);
     setReplayHeroSteps([]);
     try {
-      const data = await sparring.hand();
+      const data = await sparring.hand(undefined, undefined, seenHandIds.current);
       if (data.insufficient_data) { setError(t("noData")); setPhase("idle"); return; }
+      // Record this hand so the next call excludes it
+      if (data.hand_id && !seenHandIds.current.includes(data.hand_id)) {
+        seenHandIds.current = [...seenHandIds.current, data.hand_id];
+      }
       setHand(data);
       setPhase("playing");
 

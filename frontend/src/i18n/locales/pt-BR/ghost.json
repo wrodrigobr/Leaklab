@@ -81,5 +81,11 @@
   },
   "heroCards": "Suas cartas",
   "board": "Board",
-  "noCards": "Cartas não disponíveis"
+  "noCards": "Cartas não disponíveis",
+  "pressure": {
+    "toggle": "Modo Pressão",
+    "desc": "30 segundos por decisão. Erro ou timeout zera o streak.",
+    "timedOut": "Tempo esgotado — fold automático",
+    "streakLabel": "Streak final"
+  }
 }
