@@ -89,20 +89,25 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 - Ícone de drag handle (⠿) visível ao hover no header de cada card
 - Botão "Restaurar padrão" no header do dashboard
 
-**Persistência:**
-- `localStorage` para a ordem dos cards (`dashboard_layout_${userId}`) — sem necessidade de backend
-- Se o usuário estiver logado em dois devices, cada um mantém sua própria ordem (comportamento aceitável para MVP)
-- Futuro: sincronização server-side via `PATCH /player/preferences` com coluna `dashboard_layout JSON` em `users`
+**Persistência — server-side:**
+- Coluna `dashboard_layout TEXT` (JSON serializado) na tabela `users` — padrão `NULL` (= layout default)
+- `GET /player/preferences` — retorna `{ dashboard_layout: string[] | null }` junto com outros dados do usuário; pode ser incluído na resposta do `/auth/me` para evitar request extra
+- `PATCH /player/preferences` — recebe `{ dashboard_layout: string[] }` e persiste; debounce de 1s no frontend para não disparar a cada pixel arrastado
+- Layout sincronizado entre devices automaticamente — ao abrir em outro browser, carrega a mesma ordem
 
 **Biblioteca:** `@dnd-kit/core` + `@dnd-kit/sortable` (acessível, sem dependência de mouse, funciona em touch/mobile)
 
 **Arquivos:**
+- `backend/database/schema.py` — `ALTER TABLE users ADD COLUMN dashboard_layout TEXT DEFAULT NULL`
+- `backend/database/repositories.py` — `get_user_preferences(user_id)`, `save_user_preferences(user_id, layout)`
+- `backend/api/app.py` — `GET /player/preferences`, `PATCH /player/preferences`; adicionar `dashboard_layout` na resposta do `/auth/me`
 - `frontend/package.json` — adicionar `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
-- `frontend/src/hooks/useDashboardLayout.ts` — hook que lê/escreve ordem em localStorage
+- `frontend/src/hooks/useDashboardLayout.ts` — hook que lê do `/auth/me` (ou `/player/preferences`) e persiste via `PATCH` com debounce
 - `frontend/src/pages/Index.tsx` — envolver cards arrastáveis com `SortableContext`
 - `frontend/src/components/hud/DraggableCard.tsx` — wrapper com drag handle
+- `frontend/src/lib/api.ts` — `preferences.get()`, `preferences.save(layout)`
 
-**Esforço:** ~2h (deps + hook) + ~8h frontend (integração nos cards)
+**Esforço:** ~4h backend + ~8h frontend
 
 ---
 
