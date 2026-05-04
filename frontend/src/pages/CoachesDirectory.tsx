@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Search, Star, Users, DollarSign, Globe, Filter,
-  Loader2, GraduationCap, CheckCircle2, ChevronDown,
+  Loader2, GraduationCap, CheckCircle2, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { coaches, PublicCoach, CoachDirectoryFilters } from "@/lib/api";
@@ -136,7 +136,7 @@ function FilterPanel({
   const SORT_OPTIONS = SORT_KEYS.map((k) => ({ value: k, label: t(`sort.${k}`) }));
 
   return (
-    <aside className="space-y-5 shrink-0 w-52">
+    <aside className="space-y-5 w-full lg:w-52 lg:shrink-0">
       <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1.5">
         <Filter className="size-3" /> {t("filters.sort")}
       </p>
@@ -240,6 +240,11 @@ export default function CoachesDirectory() {
   const { t } = useTranslation("coaches");
   const [filters, setFilters] = useState<CoachDirectoryFilters>({ sort: "rating" });
   const [search, setSearch] = useState("");
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  const activeFilterCount = Object.keys(filters).filter(
+    (k) => k !== "sort" && filters[k as keyof CoachDirectoryFilters] != null
+  ).length;
 
   const { data, isLoading } = useQuery({
     queryKey: ["coaches-directory", filters, search],
@@ -273,11 +278,40 @@ export default function CoachesDirectory() {
           />
         </div>
 
+        {/* Mobile filter toggle */}
+        <div className="lg:hidden mb-4">
+          <button
+            onClick={() => setShowMobileFilters((v) => !v)}
+            className="flex items-center gap-2 rounded-lg border border-border bg-hud-surface px-3 py-2 text-sm text-foreground"
+          >
+            <Filter className="size-4 text-muted-foreground" />
+            <span>{t("filters.sort")}</span>
+            {activeFilterCount > 0 && (
+              <span className="ml-1 flex size-4 items-center justify-center rounded-full bg-primary font-mono text-[10px] text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
+            {showMobileFilters ? (
+              <ChevronUp className="size-4 ml-auto text-muted-foreground" />
+            ) : (
+              <ChevronDown className="size-4 ml-auto text-muted-foreground" />
+            )}
+          </button>
+          {showMobileFilters && (
+            <div className="mt-3 rounded-lg border border-border bg-hud-surface p-4">
+              <FilterPanel filters={filters} onChange={setFilters} />
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-8">
-          <FilterPanel filters={filters} onChange={setFilters} />
+          {/* Desktop sidebar */}
+          <div className="hidden lg:block">
+            <FilterPanel filters={filters} onChange={setFilters} />
+          </div>
 
           {/* Grid */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {isLoading ? (
               <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
                 <Loader2 className="size-5 animate-spin" /> {t("filters.sort")}…
@@ -294,11 +328,9 @@ export default function CoachesDirectory() {
                 </button>
               </div>
             ) : (
-              <>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {list.map((c) => <CoachCard key={c.user_id} coach={c} />)}
-                </div>
-              </>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {list.map((c) => <CoachCard key={c.user_id} coach={c} />)}
+              </div>
             )}
           </div>
         </div>

@@ -16,7 +16,7 @@ export function AcceptCoachModal({ onClose }: Props) {
   const mutation = useMutation({
     mutationFn: () => student.linkCoach(key.trim()),
     onSuccess: async (data) => {
-      setSuccess(`Vinculado ao professor ${data.coach.username}!`);
+      setSuccess(`Vinculado ao coach ${data.coach.username}!`);
       await refreshUser();
       setTimeout(onClose, 2000);
     },
@@ -28,7 +28,7 @@ export function AcceptCoachModal({ onClose }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <GraduationCap className="size-5 text-primary" />
-            <h2 className="font-semibold text-foreground">Vincular Professor</h2>
+            <h2 className="font-semibold text-foreground">Vincular Coach</h2>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="size-4" />
@@ -36,7 +36,7 @@ export function AcceptCoachModal({ onClose }: Props) {
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Insira a chave de convite fornecida pelo seu professor para compartilhar seu histórico com ele.
+          Insira a chave de convite fornecida pelo seu coach para compartilhar seu histórico com ele.
         </p>
 
         {success ? (

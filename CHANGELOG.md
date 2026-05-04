@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.55.0] — 2026-05-03 — Sprint Y: UX-008 Coaches Directory mobile + terminologia
+
+### Changed
+- **`frontend/src/pages/CoachesDirectory.tsx`**: layout mobile corrigido — filtros movidos para painel colapsável com toggle (botão mostra contagem de filtros ativos); sidebar visível apenas em `lg+`; grid muda de `md:grid-cols-2` para `sm:grid-cols-2` para usar melhor o espaço; `min-w-0` na coluna do grid evita overflow.
+- **`frontend/src/pages/Login.tsx`**: seletor de role na tela de registro: "Professor" → "Coach".
+- **`frontend/src/pages/coach/CoachDashboard.tsx`**: título "Dashboard do Professor" → "Dashboard do Coach".
+- **`frontend/src/i18n/locales/pt-BR/dashboard.json`**: banner de vínculo: "Tem um professor?" → "Tem um coach?".
+- **`frontend/src/components/hud/AcceptCoachModal.tsx`**: 3 ocorrências de "professor" substituídas por "coach" (título do modal, mensagem de instrução, confirmação de sucesso).
+
+---
+
 ## [v0.54.0] — 2026-05-03 — Sprint W: FEAT-11 Weekly Digest Email
 
 ### Added

@@ -3,7 +3,7 @@
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
 > **Sprints já entregues:** Sprints 1–13 + Sprint A–T + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.51.0.
-> **Sprint atual:** Sprint Y — UX-008 Coaches Directory
+> **Sprint atual:** Sprint Z — UX-009 Tournament dates
 
 ---
 
@@ -58,7 +58,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint U | FEAT-08 | Session Goals + AI Review | ✅ v0.52.0 |
 | Sprint V | FEAT-09 + FEAT-10 | Coach Templates + Coach Messaging | ✅ v0.53.0 |
 | Sprint W | FEAT-11 | Weekly Digest Email | ✅ v0.54.0 |
-| Sprint Y | UX-008 | Coaches Directory — mobile layout + remover "professor" | ⏳ |
+| Sprint Y | UX-008 | Coaches Directory — mobile layout + remover "professor" | ✅ v0.55.0 |
 | Sprint Z | UX-009 | Torneios — data do torneio vs importação + exibir ano | ⏳ |
 | Sprint AA | INFRA-001 | Correção de erros de build no Render (backend) e Vercel (frontend) | ⏳ |
 | Sprint AB | UX-010 | Filtros de período no gráfico de Bankroll (1M/3M/1A/tudo) não funcionam | ⏳ |
@@ -66,11 +66,43 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AD | UX-012 | Dashboard — remover lista de últimos torneios (há menu próprio); liberar espaço para cards de indicadores | ⏳ |
 | Sprint AE | UX-013 | Substituir "JAM" por "All In" em toda a plataforma (UI, textos, labels, parser output) | ⏳ |
 | Sprint AF | UX-014 | Página do Coach (StudentDetail) — remover limitação horizontal, aproveitar melhor o espaço disponível em telas largas | ⏳ |
+| Sprint AH | BACK-018 | Coach Application Flow — candidatura com aprovação manual pelo admin | ⏳ |
 | Sprint AG | FEAT-12 | Página de Documentação / Wiki do Sistema (deixar por último) | ⏳ |
 
 ---
 
 ## Próximas Sprints — Em Aberto
+
+### [BACK-018] — Coach Application Flow *(Sprint AH)*
+
+**Problema atual:** qualquer pessoa pode se registrar como coach livremente via `POST /auth/register` com `role: "coach"`, sem qualquer validação de profissionalismo.
+
+**Solução:** fluxo de candidatura com aprovação manual pelo admin.
+
+**Fluxo:**
+1. Na página de registro, quem escolhe "Coach" é redirecionado para um formulário de candidatura — não cria conta imediatamente
+2. Candidatura salva com status `pending`; conta criada com role `coach_pending` (sem acesso ao painel de coach e sem login)
+3. Admin vê candidaturas pendentes no painel — pode aprovar ou rejeitar com nota opcional
+4. Aprovação: role muda para `coach`, email de boas-vindas enviado via SMTP (mesmo do digest)
+5. Rejeição: email com motivo opcional; conta pode ser removida ou mantida como registro
+
+**Backend:**
+- Tabela `coach_applications`: `id`, `user_id` (FK users), `instagram_handle`, `bio`, `specialties`, `experience_years`, `biggest_results`, `status` (`pending`/`approved`/`rejected`), `admin_note`, `created_at`, `reviewed_at`
+- `POST /auth/coach-apply` — cria usuário com role `coach_pending` + salva candidatura (sem JWT, público)
+- `GET /admin/coach-applications` — lista candidaturas por status
+- `POST /admin/coach-applications/<id>/approve` — muda role para `coach`, envia email
+- `POST /admin/coach-applications/<id>/reject` — armazena nota, envia email de rejeição opcional
+- Bloquear login para role `coach_pending` — retorna 403 com mensagem "Candidatura em análise"
+
+**Frontend:**
+- `frontend/src/pages/CoachApply.tsx` — formulário público: nome, email, senha, @instagram, bio, especialidades, anos de experiência, maiores resultados; botão "Enviar candidatura"
+- Página de confirmação pós-envio: "Candidatura recebida — você receberá um email quando for analisada"
+- `frontend/src/pages/admin/AdminPanel.tsx` — nova aba "Candidaturas" com lista de pendentes, botões approve/reject, campo de nota
+- Tela de login — exibir mensagem específica para `coach_pending` (não mostrar erro genérico de credenciais)
+
+**Esforço:** ~10h backend + ~8h frontend
+
+---
 
 ### [FEAT-01] — Comparativo de Torneios *(Sprint O — 🔄 em andamento)*
 

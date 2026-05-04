@@ -117,7 +117,7 @@ const Login = () => {
                         ) : (
                           <GraduationCap className="size-3.5" />
                         )}
-                        {r === "player" ? "Jogador" : "Professor"}
+                        {r === "player" ? "Jogador" : "Coach"}
                       </button>
                     ))}
                   </div>
