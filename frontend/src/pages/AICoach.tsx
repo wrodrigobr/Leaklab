@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Loader2, Send, Sparkles, User } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { CoachMessagesPanel } from "@/components/hud/CoachMessagesPanel";
 import { coach, CoachContext } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useTranslation } from "react-i18next";
@@ -282,9 +281,6 @@ const AICoach = () => {
             )}
           </section>
 
-          {user?.coach_id && (
-            <CoachMessagesPanel coachUsername={user.coach_username ?? undefined} />
-          )}
         </aside>
       </div>
     </HudLayout>

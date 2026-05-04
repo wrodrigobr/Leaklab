@@ -1,11 +1,12 @@
-import { Activity, BarChart3, Bot, GraduationCap, Globe, LayoutDashboard, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare } from "lucide-react";
+import { Activity, BarChart3, Bot, GraduationCap, Globe, LayoutDashboard, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, X } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useUploadQueue } from "@/components/hud/UploadQueue";
 import { AccountMenu } from "@/components/hud/AccountMenu";
+import { CoachMessagesPanel } from "@/components/hud/CoachMessagesPanel";
 import { playerMessages } from "@/lib/api";
 
 interface HudHeaderProps {
@@ -63,6 +64,14 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+
+  useEffect(() => {
+    if (!chatOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setChatOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [chatOpen]);
 
   const playerNavItems = [
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",       icon: LayoutDashboard },
@@ -158,17 +167,19 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
               </button>
             )}
 
-            {unreadCount > 0 && user?.role === "player" && (
-              <NavLink
-                to="/coach"
-                title="Mensagens não lidas do coach"
-                className="relative flex items-center justify-center size-8 rounded-full bg-destructive/10 ring-1 ring-destructive/30 hover:bg-destructive/20 transition-colors"
+            {user?.role === "player" && user?.coach_id && (
+              <button
+                onClick={() => setChatOpen((o) => !o)}
+                title="Mensagens do coach"
+                className="relative flex items-center justify-center size-8 rounded-full bg-card ring-1 ring-border hover:ring-primary/40 transition-all"
               >
-                <MessageSquare className="size-3.5 text-destructive" />
-                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              </NavLink>
+                <MessageSquare className="size-3.5 text-muted-foreground" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
             )}
 
             <LanguageSwitcher />
@@ -227,6 +238,37 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
       )}
 
       {panel}
+
+      {/* ── Coach chat drawer ─────────────────────────────────────────────────── */}
+      {chatOpen && user?.role === "player" && user?.coach_id && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm"
+            onClick={() => setChatOpen(false)}
+          />
+          <div className="fixed inset-y-0 right-0 z-[61] flex w-full flex-col sm:w-96 bg-background border-l border-border shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="size-4 text-primary" />
+                <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-foreground">
+                  {user.coach_username ? `Coach ${user.coach_username}` : "Mensagens do Coach"}
+                </span>
+              </div>
+              <button
+                onClick={() => setChatOpen(false)}
+                className="rounded-md p-1.5 hover:bg-muted transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="size-4 text-muted-foreground" />
+              </button>
+            </div>
+            <CoachMessagesPanel
+              coachUsername={user.coach_username ?? undefined}
+              drawer
+            />
+          </div>
+        </>
+      )}
     </>
   );
 }

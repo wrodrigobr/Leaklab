@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.69.0] — 2026-05-04 — Sprint AN: UX-019 Coach Chat Drawer
+
+### Changed
+- **`frontend/src/components/hud/CoachMessagesPanel.tsx`**: adicionado prop `drawer` — quando `true`, renderiza como painel full-height (sem header colapsável, `flex-1 min-h-0`) para uso dentro do drawer flutuante.
+- **`frontend/src/components/hud/HudHeader.tsx`**: ícone de mensagens no header agora é um botão que abre/fecha o drawer de chat em vez de navegar para `/coach`. Badge vermelho exibido somente quando há mensagens não lidas (badge oculto quando zero). Drawer renderizado como `fixed inset-y-0 right-0 w-full sm:w-96` com overlay semi-transparente; fecha com clique no overlay ou tecla Escape.
+- **`frontend/src/pages/AICoach.tsx`**: `CoachMessagesPanel` removido da sidebar — chat agora está exclusivamente no drawer global do header.
+
+---
+
 ## [v0.68.0] — 2026-05-03 — Sprint AM: UX-018 Tabela de Alunos com Busca e Filtros
 
 ### Changed
