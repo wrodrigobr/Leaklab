@@ -11,7 +11,9 @@
     "compare": "Comparativo de Torneios",
     "coaching": "Coaching",
     "gamification": "Gamificação",
-    "career": "Trajetória de Carreira"
+    "career": "Trajetória de Carreira",
+    "cognitive": "Cognitive Failure Mapper",
+    "twin": "Perfil Estratégico"
   },
   "scoring": {
     "title": "Sistema de Scoring",
@@ -162,5 +164,49 @@
     },
     "p2": "A <strong>linha pontilhada</strong> no gráfico representa a projeção futura — não uma garantia. Se o slope for negativo ou zero, o sistema indica estagnação e não projeta datas.",
     "p3": "A narrativa de IA no card resume: (1) tendência atual, (2) tempo estimado para o próximo nível, (3) o leak prioritário para acelerar a progressão."
+  },
+  "cognitive": {
+    "title": "Cognitive Failure Mapper",
+    "p1": "O <strong>Cognitive Failure Mapper</strong> detecta padrões cognitivo-emocionais na sequência cronológica de decisões dentro de cada torneio. Em vez de olhar decisões isoladas, o sistema analisa janelas deslizantes de 5–10 decisões consecutivas para identificar quando o estado mental do jogador muda.",
+    "table": {
+      "col_pattern": "Padrão",
+      "col_trigger": "Gatilho",
+      "col_signal": "Sinal detectado"
+    },
+    "patterns": {
+      "revenge": "Revenge Aggression",
+      "revenge_trigger": "3+ folds corretos consecutivos",
+      "revenge_signal": "2+ erros agressivos nas próximas 5 decisões",
+      "fear": "Fear Folding",
+      "fear_trigger": "2+ erros agressivos consecutivos",
+      "fear_signal": "2+ erros de fold nas próximas 5 decisões",
+      "sunk": "Sunk Cost",
+      "sunk_trigger": "Investimento crescente no pot",
+      "sunk_signal": "Call errado em 2+ streets da mesma mão",
+      "entitlement": "Entitlement Tilt",
+      "entitlement_trigger": "5+ decisões corretas consecutivas",
+      "entitlement_signal": "3+ erros nas próximas 5 decisões",
+      "compensation": "Compensation Call",
+      "compensation_trigger": "Fold correto de mão forte",
+      "compensation_signal": "2+ call errados nas próximas 3 decisões"
+    },
+    "p2": "Cada padrão recebe uma <strong>frequência</strong> (% das oportunidades em que o padrão se manifesta) e um <strong>nível de severidade</strong> — <em>high</em> (≥ 40%), <em>medium</em> (≥ 20%) ou <em>low</em> (abaixo de 20%). Mínimo: 30 decisões para ativação.",
+    "p3": "A narrativa de IA descreve o padrão dominante, por que ele custa EV e um hábito corretivo concreto para aplicar na próxima sessão."
+  },
+  "twin": {
+    "title": "Perfil Estratégico (Strategic Twin)",
+    "p1": "O <strong>Strategic Twin</strong> transforma os dados de frequência de erro por spot em linguagem preditiva. Em vez de listar erros passados, o sistema diz: <em>\"em spots de jam preflop sob ICM alto, você erra 63% das vezes — bem acima da sua média de 28%\"</em>.",
+    "p2": "Cada <strong>spot</strong> é definido pela combinação de <em>street</em> (preflop/flop/turn/river), <em>best_action</em> (a ação correta: fold/call/raise/bet/check/jam) e <em>ICM pressure</em> (baixo/médio/alto/crítico). O sistema filtra spots com mínimo 5 decisões e error_rate pelo menos 10% acima da sua média pessoal.",
+    "table": {
+      "col_term": "Conceito",
+      "col_meaning": "Significado",
+      "avg_term": "Taxa média de erro",
+      "avg_meaning": "Percentual global de decisões classificadas como small_mistake ou clear_mistake nos últimos 180 dias",
+      "costly_term": "Spot custoso",
+      "costly_meaning": "Spot onde error_rate > média pessoal + 10% e volume ≥ 5 decisões",
+      "delta_term": "Delta",
+      "delta_meaning": "Quanto o error_rate do spot excede (positivo) ou fica abaixo (negativo) da média pessoal"
+    },
+    "p3": "A linha vertical no gráfico de barra representa sua média pessoal. Barras que ultrapassam essa linha indicam spots onde você performa abaixo do seu padrão usual. A narrativa de IA resume as 3 tendências mais custosas e propõe um ajuste concreto."
   }
 }

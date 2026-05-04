@@ -11,7 +11,9 @@
     "compare": "Comparativo de Torneos",
     "coaching": "Coaching",
     "gamification": "Gamificación",
-    "career": "Trayectoria de Carrera"
+    "career": "Trayectoria de Carrera",
+    "cognitive": "Cognitive Failure Mapper",
+    "twin": "Perfil Estratégico"
   },
   "scoring": {
     "title": "Sistema de Scoring",
@@ -162,5 +164,49 @@
     },
     "p2": "La <strong>línea punteada</strong> en el gráfico representa la proyección futura — no una garantía. Si el slope es negativo o cero, el sistema indica estancamiento y no proyecta fechas.",
     "p3": "La narrativa de IA en la tarjeta resume: (1) tendencia actual, (2) tiempo estimado hasta el próximo nivel, (3) el leak prioritario para acelerar la progresión."
+  },
+  "cognitive": {
+    "title": "Cognitive Failure Mapper",
+    "p1": "El <strong>Cognitive Failure Mapper</strong> detecta patrones cognitivo-emocionales en la secuencia cronológica de decisiones dentro de cada torneo. En lugar de analizar decisiones aisladas, el sistema analiza ventanas deslizantes de 5–10 decisiones consecutivas para identificar cuándo cambia el estado mental del jugador.",
+    "table": {
+      "col_pattern": "Patrón",
+      "col_trigger": "Disparador",
+      "col_signal": "Señal detectada"
+    },
+    "patterns": {
+      "revenge": "Revenge Aggression",
+      "revenge_trigger": "3+ folds correctos consecutivos",
+      "revenge_signal": "2+ errores agresivos en las siguientes 5 decisiones",
+      "fear": "Fear Folding",
+      "fear_trigger": "2+ errores agresivos consecutivos",
+      "fear_signal": "2+ errores de fold en las siguientes 5 decisiones",
+      "sunk": "Sunk Cost",
+      "sunk_trigger": "Inversión creciente en el pot",
+      "sunk_signal": "Call incorrecto en 2+ streets de la misma mano",
+      "entitlement": "Entitlement Tilt",
+      "entitlement_trigger": "5+ decisiones correctas consecutivas",
+      "entitlement_signal": "3+ errores en las siguientes 5 decisiones",
+      "compensation": "Compensation Call",
+      "compensation_trigger": "Fold correcto de mano fuerte",
+      "compensation_signal": "2+ calls incorrectos en las siguientes 3 decisiones"
+    },
+    "p2": "Cada patrón recibe una <strong>frecuencia</strong> (% de oportunidades en que el patrón se manifiesta) y un <strong>nivel de severidad</strong> — <em>high</em> (≥ 40%), <em>medium</em> (≥ 20%) o <em>low</em> (por debajo del 20%). Mínimo: 30 decisiones para la activación.",
+    "p3": "La narrativa de IA describe el patrón dominante, por qué cuesta EV y un hábito correctivo concreto para aplicar en la próxima sesión."
+  },
+  "twin": {
+    "title": "Perfil Estratégico (Strategic Twin)",
+    "p1": "El <strong>Strategic Twin</strong> transforma los datos de frecuencia de error por spot en lenguaje predictivo. En lugar de listar errores pasados, el sistema dice: <em>«en spots de jam preflop bajo ICM alto, cometes errores el 63% de las veces — muy por encima de tu promedio personal del 28%»</em>.",
+    "p2": "Cada <strong>spot</strong> se define por la combinación de <em>street</em> (preflop/flop/turn/river), <em>best_action</em> (la acción correcta: fold/call/raise/bet/check/jam) e <em>ICM pressure</em> (bajo/medio/alto/crítico). El sistema filtra spots con un mínimo de 5 decisiones y error_rate al menos 10% superior a tu promedio personal.",
+    "table": {
+      "col_term": "Concepto",
+      "col_meaning": "Significado",
+      "avg_term": "Tasa media de error",
+      "avg_meaning": "Porcentaje global de decisiones clasificadas como small_mistake o clear_mistake en los últimos 180 días",
+      "costly_term": "Spot costoso",
+      "costly_meaning": "Spot donde error_rate > promedio personal + 10% y volumen ≥ 5 decisiones",
+      "delta_term": "Delta",
+      "delta_meaning": "Cuánto supera (positivo) o queda por debajo (negativo) del promedio personal el error_rate del spot"
+    },
+    "p3": "La línea vertical en el gráfico de barras representa tu promedio personal. Las barras que superan esa línea indican spots donde rindes por debajo de tu estándar habitual. La narrativa de IA resume las 3 tendencias más costosas y propone un ajuste concreto."
   }
 }

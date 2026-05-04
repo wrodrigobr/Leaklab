@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight } from "lucide-react";
 
-const SECTION_IDS = ["scoring", "indicators", "mstacks", "dna", "ghost", "compare", "coaching", "gamification", "career"] as const;
+const SECTION_IDS = ["scoring", "indicators", "mstacks", "dna", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -256,6 +256,38 @@ export default function Docs() {
               />
               <p dangerouslySetInnerHTML={{ __html: t("career.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("career.p3") }} />
+            </Section>
+
+            {/* Cognitive Failure Mapper */}
+            <Section id="cognitive" title={t("cognitive.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("cognitive.p1") }} />
+              <Table
+                headers={[t("cognitive.table.col_pattern"), t("cognitive.table.col_trigger"), t("cognitive.table.col_signal")]}
+                rows={[
+                  [<Badge color="bg-destructive/15 text-destructive">{t("cognitive.patterns.revenge")}</Badge>,     t("cognitive.patterns.revenge_trigger"),     t("cognitive.patterns.revenge_signal")],
+                  [<Badge color="bg-orange-500/15 text-orange-400">{t("cognitive.patterns.fear")}</Badge>,          t("cognitive.patterns.fear_trigger"),          t("cognitive.patterns.fear_signal")],
+                  [<Badge color="bg-yellow-500/15 text-yellow-400">{t("cognitive.patterns.sunk")}</Badge>,          t("cognitive.patterns.sunk_trigger"),          t("cognitive.patterns.sunk_signal")],
+                  [<Badge color="bg-orange-500/15 text-orange-400">{t("cognitive.patterns.entitlement")}</Badge>,  t("cognitive.patterns.entitlement_trigger"),  t("cognitive.patterns.entitlement_signal")],
+                  [<Badge color="bg-yellow-500/15 text-yellow-400">{t("cognitive.patterns.compensation")}</Badge>, t("cognitive.patterns.compensation_trigger"), t("cognitive.patterns.compensation_signal")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("cognitive.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("cognitive.p3") }} />
+            </Section>
+
+            {/* Strategic Twin */}
+            <Section id="twin" title={t("twin.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("twin.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("twin.p2") }} />
+              <Table
+                headers={[t("twin.table.col_term"), t("twin.table.col_meaning")]}
+                rows={[
+                  [t("twin.table.avg_term"),    t("twin.table.avg_meaning")],
+                  [t("twin.table.costly_term"), t("twin.table.costly_meaning")],
+                  [t("twin.table.delta_term"),  t("twin.table.delta_meaning")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("twin.p3") }} />
             </Section>
 
           </div>

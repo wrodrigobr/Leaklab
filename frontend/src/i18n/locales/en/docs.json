@@ -11,7 +11,9 @@
     "compare": "Tournament Comparison",
     "coaching": "Coaching",
     "gamification": "Gamification",
-    "career": "Career Trajectory"
+    "career": "Career Trajectory",
+    "cognitive": "Cognitive Failure Mapper",
+    "twin": "Strategic Profile"
   },
   "scoring": {
     "title": "Scoring System",
@@ -162,5 +164,49 @@
     },
     "p2": "The <strong>dashed line</strong> in the chart represents the future projection — not a guarantee. If the slope is negative or zero, the system indicates stagnation and does not project dates.",
     "p3": "The AI narrative in the card summarizes: (1) current trend, (2) estimated time to the next level, (3) the priority leak to fix to accelerate progression."
+  },
+  "cognitive": {
+    "title": "Cognitive Failure Mapper",
+    "p1": "The <strong>Cognitive Failure Mapper</strong> detects cognitive-emotional patterns in the chronological sequence of decisions within each tournament. Instead of looking at isolated decisions, the system analyses sliding windows of 5–10 consecutive decisions to identify when the player's mental state shifts.",
+    "table": {
+      "col_pattern": "Pattern",
+      "col_trigger": "Trigger",
+      "col_signal": "Detected signal"
+    },
+    "patterns": {
+      "revenge": "Revenge Aggression",
+      "revenge_trigger": "3+ consecutive correct folds",
+      "revenge_signal": "2+ aggressive mistakes in the next 5 decisions",
+      "fear": "Fear Folding",
+      "fear_trigger": "2+ consecutive aggressive mistakes",
+      "fear_signal": "2+ fold mistakes in the next 5 decisions",
+      "sunk": "Sunk Cost",
+      "sunk_trigger": "Growing pot investment",
+      "sunk_signal": "Wrong call on 2+ streets of the same hand",
+      "entitlement": "Entitlement Tilt",
+      "entitlement_trigger": "5+ consecutive correct decisions",
+      "entitlement_signal": "3+ mistakes in the next 5 decisions",
+      "compensation": "Compensation Call",
+      "compensation_trigger": "Correct fold of a strong hand",
+      "compensation_signal": "2+ wrong calls in the next 3 decisions"
+    },
+    "p2": "Each pattern receives a <strong>frequency</strong> (% of opportunities where the pattern manifests) and a <strong>severity level</strong> — <em>high</em> (≥ 40%), <em>medium</em> (≥ 20%) or <em>low</em> (below 20%). Minimum: 30 decisions to activate.",
+    "p3": "The AI narrative describes the dominant pattern, why it costs EV, and one concrete corrective habit to apply in the next session."
+  },
+  "twin": {
+    "title": "Strategic Profile (Strategic Twin)",
+    "p1": "The <strong>Strategic Twin</strong> turns spot-level error frequency data into predictive language. Instead of listing past mistakes, the system says: <em>\"in jam preflop spots under high ICM, you make errors 63% of the time — well above your personal average of 28%\"</em>.",
+    "p2": "Each <strong>spot</strong> is defined by the combination of <em>street</em> (preflop/flop/turn/river), <em>best_action</em> (the correct action: fold/call/raise/bet/check/jam) and <em>ICM pressure</em> (low/medium/high/critical). The system filters spots with a minimum of 5 decisions and error_rate at least 10% above your personal average.",
+    "table": {
+      "col_term": "Concept",
+      "col_meaning": "Meaning",
+      "avg_term": "Average error rate",
+      "avg_meaning": "Global percentage of decisions classified as small_mistake or clear_mistake in the last 180 days",
+      "costly_term": "Costly spot",
+      "costly_meaning": "Spot where error_rate > personal average + 10% and volume ≥ 5 decisions",
+      "delta_term": "Delta",
+      "delta_meaning": "How much the spot's error_rate exceeds (positive) or falls below (negative) your personal average"
+    },
+    "p3": "The vertical line in the bar chart represents your personal average. Bars that exceed this line indicate spots where you perform below your usual standard. The AI narrative summarises the 3 most costly tendencies and proposes one concrete adjustment."
   }
 }
