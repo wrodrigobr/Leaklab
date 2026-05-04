@@ -1616,4 +1616,13 @@ export const support = {
 
   listTickets: () =>
     request<{ tickets: unknown[] }>("/admin/support-tickets"),
+
+  unreadCount: () =>
+    request<{ open: number }>("/admin/support-tickets/count"),
+
+  replyTicket: (ticketId: number, reply: string) =>
+    request<{ ok: boolean }>(`/admin/support-tickets/${ticketId}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ reply }),
+    }),
 };

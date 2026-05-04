@@ -3303,6 +3303,20 @@ def complete_onboarding():
     return jsonify({'ok': True})
 
 
+@app.route('/admin/support-tickets/count', methods=['GET'])
+@require_admin
+def admin_support_tickets_count():
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM support_tickets WHERE status = 'open'"
+        ).fetchone()
+        return jsonify({'open': row['n'] if row else 0})
+    finally:
+        conn.close()
+
+
 @app.route('/admin/support-tickets', methods=['GET'])
 @require_admin
 def admin_support_tickets():
@@ -3311,7 +3325,7 @@ def admin_support_tickets():
     try:
         rows = conn.execute("""
             SELECT st.id, st.user_id, u.username, st.category, st.subject,
-                   st.message, st.status, st.created_at
+                   st.message, st.status, st.admin_reply, st.replied_at, st.created_at
             FROM support_tickets st
             LEFT JOIN users u ON u.id = st.user_id
             ORDER BY st.created_at DESC
@@ -3320,6 +3334,26 @@ def admin_support_tickets():
         return jsonify({'tickets': [dict(r) for r in rows]})
     finally:
         conn.close()
+
+
+@app.route('/admin/support-tickets/<int:ticket_id>/reply', methods=['POST'])
+@require_admin
+def admin_support_reply(ticket_id):
+    from database.schema import get_conn as _gc
+    data  = request.get_json(force=True) or {}
+    reply = str(data.get('reply', '')).strip()
+    if not reply:
+        return jsonify({'error': 'Resposta obrigatória'}), 400
+    conn = _gc()
+    try:
+        conn.execute(
+            "UPDATE support_tickets SET admin_reply = ?, status = 'replied', replied_at = datetime('now') WHERE id = ?",
+            (reply, ticket_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({'ok': True})
 
 
 @app.route('/support/contact', methods=['POST'])

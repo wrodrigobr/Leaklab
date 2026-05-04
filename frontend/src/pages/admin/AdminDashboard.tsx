@@ -599,6 +599,8 @@ interface SupportTicket {
   subject: string;
   message: string;
   status: string;
+  admin_reply: string | null;
+  replied_at: string | null;
   created_at: string;
 }
 
@@ -606,7 +608,90 @@ const CATEGORY_LABEL: Record<string, string> = {
   bug: "Bug", question: "Dúvida", suggestion: "Sugestão", billing: "Cobrança", other: "Outro",
 };
 
+const STATUS_STYLE: Record<string, string> = {
+  open:    "bg-destructive/10 text-destructive",
+  replied: "bg-primary/10 text-primary",
+};
+
+function TicketRow({ ticket, onReplied }: { ticket: SupportTicket; onReplied: () => void }) {
+  const qc = useQueryClient();
+  const [reply, setReply]   = useState(ticket.admin_reply ?? "");
+  const [open, setOpen]     = useState(!ticket.admin_reply);
+  const [saving, setSaving] = useState(false);
+
+  const handleReply = async () => {
+    if (!reply.trim()) return;
+    setSaving(true);
+    try {
+      await support.replyTicket(ticket.id, reply.trim());
+      qc.invalidateQueries({ queryKey: ["admin-support-tickets"] });
+      qc.invalidateQueries({ queryKey: ["admin-support-count"] });
+      onReplied();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="px-5 py-4 space-y-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="font-mono text-[9px] font-bold uppercase tracking-wider bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+          {CATEGORY_LABEL[ticket.category] ?? ticket.category}
+        </span>
+        <span className={cn("font-mono text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full", STATUS_STYLE[ticket.status] ?? "bg-muted text-muted-foreground")}>
+          {ticket.status === "open" ? "Aberto" : "Respondido"}
+        </span>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {ticket.username ?? `user #${ticket.user_id}`}
+        </span>
+        <span className="font-mono text-[10px] text-muted-foreground ml-auto">
+          {new Date(ticket.created_at).toLocaleString("pt-BR")}
+        </span>
+      </div>
+
+      {ticket.subject && (
+        <p className="text-sm font-semibold text-foreground">{ticket.subject}</p>
+      )}
+      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{ticket.message}</p>
+
+      {ticket.admin_reply && !open ? (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 space-y-1">
+          <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-primary">Resposta enviada · {ticket.replied_at ? new Date(ticket.replied_at).toLocaleString("pt-BR") : ""}</p>
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{ticket.admin_reply}</p>
+          <button onClick={() => setOpen(true)} className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors">Editar resposta</button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <textarea
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            placeholder="Escreva a resposta para o usuário…"
+            rows={3}
+            className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleReply}
+              disabled={saving || !reply.trim()}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary-foreground disabled:opacity-50 hover:bg-primary-glow transition-colors"
+            >
+              {saving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+              {saving ? "Enviando…" : "Responder"}
+            </button>
+            {ticket.admin_reply && (
+              <button onClick={() => setOpen(false)} className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors px-2">
+                Cancelar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SupportTab() {
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["admin-support-tickets"],
     queryFn:  () => support.listTickets(),
@@ -635,26 +720,17 @@ function SupportTab() {
         <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           Mensagens de Suporte — {tickets.length}
         </span>
+        <span className="ml-auto font-mono text-[9px] text-destructive">
+          {tickets.filter(t => t.status === "open").length} abertos
+        </span>
       </div>
       <div className="divide-y divide-border">
         {tickets.map((t) => (
-          <div key={t.id} className="px-5 py-4 space-y-1.5">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="font-mono text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                {CATEGORY_LABEL[t.category] ?? t.category}
-              </span>
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {t.username ?? `user #${t.user_id}`}
-              </span>
-              <span className="font-mono text-[10px] text-muted-foreground ml-auto">
-                {new Date(t.created_at).toLocaleString("pt-BR")}
-              </span>
-            </div>
-            {t.subject && (
-              <p className="text-sm font-semibold text-foreground">{t.subject}</p>
-            )}
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{t.message}</p>
-          </div>
+          <TicketRow
+            key={t.id}
+            ticket={t}
+            onReplied={() => qc.invalidateQueries({ queryKey: ["admin-support-tickets"] })}
+          />
         ))}
       </div>
     </div>

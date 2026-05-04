@@ -627,15 +627,18 @@ def _run_migrations(conn):
         try:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS support_tickets (
-                    id         SERIAL PRIMARY KEY,
-                    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                    category   TEXT      NOT NULL DEFAULT 'other',
-                    subject    TEXT      NOT NULL DEFAULT '',
-                    message    TEXT      NOT NULL,
-                    status     TEXT      NOT NULL DEFAULT 'open',
-                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                    id          SERIAL PRIMARY KEY,
+                    user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    category    TEXT      NOT NULL DEFAULT 'other',
+                    subject     TEXT      NOT NULL DEFAULT '',
+                    message     TEXT      NOT NULL,
+                    status      TEXT      NOT NULL DEFAULT 'open',
+                    admin_reply TEXT,
+                    replied_at  TIMESTAMP,
+                    created_at  TIMESTAMP NOT NULL DEFAULT NOW()
                 )
             """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_support_status ON support_tickets(status)")
         except Exception: pass
         # session_goals table (Postgres) — FEAT-08
         try:
@@ -938,15 +941,18 @@ def _run_migrations(conn):
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS support_tickets (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                category   TEXT    NOT NULL DEFAULT 'other',
-                subject    TEXT    NOT NULL DEFAULT '',
-                message    TEXT    NOT NULL,
-                status     TEXT    NOT NULL DEFAULT 'open',
-                created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                category    TEXT    NOT NULL DEFAULT 'other',
+                subject     TEXT    NOT NULL DEFAULT '',
+                message     TEXT    NOT NULL,
+                status      TEXT    NOT NULL DEFAULT 'open',
+                admin_reply TEXT,
+                replied_at  TEXT,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
             )
         """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_support_status ON support_tickets(status)")
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────

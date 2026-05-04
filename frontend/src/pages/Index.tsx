@@ -31,7 +31,7 @@ import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, drill, tournaments, digest, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile } from "@/lib/api";
+import { metrics, drill, tournaments, digest, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
@@ -41,6 +41,14 @@ const Index = () => {
   const [showLinkCoach, setShowLinkCoach]   = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !user?.onboarding_completed);
   const [showSupport, setShowSupport]       = useState(false);
+
+  const { data: supportCount } = useQuery({
+    queryKey: ["admin-support-count"],
+    queryFn:  support.unreadCount,
+    refetchInterval: 120_000,
+    enabled: user?.role === "admin",
+  });
+  const openTickets = supportCount?.open ?? 0;
   const [evo, setEvo]                     = useState<EvolutionResponse | null>(null);
   const [breakdown, setBreakdown]         = useState<BreakdownResponse | null>(null);
   const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
@@ -390,9 +398,14 @@ const Index = () => {
           <a href="/docs" className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors">{tc("docs")}</a>
           <button
             onClick={() => setShowSupport(true)}
-            className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="relative font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             {tc("support")}
+            {openTickets > 0 && (
+              <span className="absolute -top-2 -right-3 flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
+                {openTickets > 9 ? "9+" : openTickets}
+              </span>
+            )}
           </button>
         </div>
       </footer>

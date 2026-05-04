@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.83.8] — 2026-05-04 — Badge de tickets abertos + sistema de resposta no admin
+
+### Added
+- **`frontend/src/pages/Index.tsx`**: badge vermelho no botão "Suporte" do footer mostrando contagem de tickets abertos (admin only). Polling a cada 2 minutos via `useQuery`.
+- **`frontend/src/pages/admin/AdminDashboard.tsx`**: aba "Suporte" agora exibe lista completa de tickets com sistema de resposta inline — textarea de reply, botão de envio, toggle "editar resposta", badges de status (open=vermelho, replied=azul). Consulta e invalida `admin-support-count` após resposta.
+- **`backend/api/app.py`**: `POST /admin/support-tickets/<id>/reply` — atualiza `admin_reply`, `status='replied'` e `replied_at` (require_admin). `GET /admin/support-tickets/count` — retorna `{ open: N }` (require_admin).
+- **`backend/database/schema.py`**: colunas `admin_reply TEXT` e `replied_at` adicionadas à tabela `support_tickets` em SQLite e PostgreSQL.
+- **`frontend/src/lib/api.ts`**: métodos `support.unreadCount()` e `support.replyTicket(id, reply)` adicionados ao namespace `support`.
+
+---
+
 ## [v0.83.6] — 2026-05-04 — Footer: remoção do status bar + modal de suporte
 
 ### Changed
