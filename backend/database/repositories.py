@@ -2176,10 +2176,10 @@ def get_phase_analysis(tournament_db_id: int) -> list:
         conn.close()
 
     phases = [
-        {'label': 'Folgado', 'range': 'M ≥ 20',  'decs': []},
-        {'label': 'Médio',   'range': 'M 10–20', 'decs': []},
-        {'label': 'Pressão', 'range': 'M 6–10',  'decs': []},
-        {'label': 'Crítico', 'range': 'M < 6',   'decs': []},
+        {'label': 'Deep Stack',  'range': 'M ≥ 20',  'decs': []},
+        {'label': 'Mid Stack',   'range': 'M 10–20', 'decs': []},
+        {'label': 'Short Stack', 'range': 'M 6–10',  'decs': []},
+        {'label': 'Push/Fold',   'range': 'M < 6',   'decs': []},
     ]
 
     for row in rows:

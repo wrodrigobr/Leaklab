@@ -365,10 +365,10 @@ const TournamentDetail = () => {
                 {t("detail.phase.title")}
                 <InfoTooltip>
                   Agrupa suas decisões pelas fases do torneio, derivadas do <strong>M-Ratio</strong> (sua pilha ÷ custo de uma órbita completa de blinds+antes).<br /><br />
-                  <strong>Folgado (M≥20):</strong> jogo completo, sem urgência.<br />
-                  <strong>Médio (M 10–20):</strong> jogo restrito, priorize spots favoráveis.<br />
-                  <strong>Pressão (M 6–10):</strong> zona de reshove, fold equity crítica.<br />
-                  <strong>Crítico (M&lt;6):</strong> push/fold puro, math decide tudo.
+                  <strong>Deep Stack (M≥20):</strong> jogo completo, sem urgência.<br />
+                  <strong>Mid Stack (M 10–20):</strong> jogo restrito, priorize spots favoráveis.<br />
+                  <strong>Short Stack (M 6–10):</strong> zona de reshove, fold equity crítica.<br />
+                  <strong>Push/Fold (M&lt;6):</strong> push/fold puro, math decide tudo.
                 </InfoTooltip>
               </div>
               <div className="rounded-xl border border-border overflow-x-auto">
