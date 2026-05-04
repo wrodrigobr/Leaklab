@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
@@ -328,12 +327,6 @@ function Summary({
           <Swords className="size-4" aria-hidden />
           {t("newHand")}
         </button>
-        <Link
-          to="/ghost"
-          className="block text-center font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {t("backGhost")}
-        </Link>
       </div>
     </div>
   );
@@ -468,12 +461,6 @@ export default function Sparring() {
             }
           </button>
 
-          <Link
-            to="/ghost"
-            className="block text-center font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {t("backGhost")}
-          </Link>
         </div>
       )}
 
