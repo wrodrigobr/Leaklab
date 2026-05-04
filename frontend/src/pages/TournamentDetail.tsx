@@ -18,6 +18,7 @@ import {
   RefreshCw,
   HelpCircle,
   GraduationCap,
+  FileDown,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
@@ -221,6 +222,7 @@ const TournamentDetail = () => {
   const [phaseAnalysis, setPhaseAnalysis] = useState<PhaseData[]>([]);
   const [textureAnalysis, setTextureAnalysis] = useState<TextureData[]>([]);
   const [narrative, setNarrative] = useState<{ narrative: string; quality_level: "solid" | "regular" | "poor" } | null>(null);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
 
   const requestAnalysis = async (decisionId: number, force = false) => {
     if (analysisLoading[decisionId]) return;
@@ -312,6 +314,23 @@ const TournamentDetail = () => {
                   existingSummary={tournament.llm_summary}
                 />
               )}
+              <button
+                onClick={async () => {
+                  if (!id || pdfDownloading) return;
+                  setPdfDownloading(true);
+                  try { await tournaments.downloadReport(id); }
+                  catch { /* silently ignore — user sees nothing change */ }
+                  finally { setPdfDownloading(false); }
+                }}
+                disabled={pdfDownloading || !tournament}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-hud-surface px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Baixar relatório PDF"
+              >
+                {pdfDownloading
+                  ? <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                  : <FileDown className="size-3.5" aria-hidden />}
+                PDF
+              </button>
               <button
                 onClick={() => hands[0] && navigate(`/replayer?t=${id}&h=${hands[0].id}`)}
                 disabled={!hands.length}

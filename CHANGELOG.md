@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.47.0] — 2026-05-03 — Sprint P: FEAT-04 Relatório PDF Premium
+
+### Added
+- **`backend/leaklab/report_generator.py`**: redesign completo — `build_html_report(t, decisions, phases, hero)` gera template HTML premium com Inter/JetBrains Mono (Google Fonts), paleta dark profissional, gráficos CSS puros (barras, indicadores de score coloridos por threshold). Seções: capa com hero + torneio + meta pills, KPI row (Standard%, Avg Score, Clear Mistakes%, Decisões), Quality Distribution com barras + referência MTT saudável, Phase Breakdown (Deep/Mid/Short Stack/Push/Fold), Top 5 Leaks com barra proporcional e score colorido, Performance por ICM Pressure, Top 10 Decisões Críticas com label badges.
+- **`generate_pdf_bytes(html)`**: converte HTML para PDF via WeasyPrint; levanta `ImportError` se a lib não estiver disponível — o endpoint faz fallback automático para download HTML.
+- **`backend/Dockerfile`**: adicionadas dependências de sistema para WeasyPrint — `libpango`, `libcairo2`, `libgdk-pixbuf2.0-0`, `libpangocairo`, `libffi-dev`, `fonts-liberation`.
+- **`render.yaml`**: migrado de `runtime: python` para `runtime: docker` (necessário para instalar as dependências de sistema do WeasyPrint no Render).
+- **`backend/requirements.txt`**: `weasyprint==62.3`.
+- **`backend/api/app.py`**: endpoint `GET /history/tournament/<id>/report.pdf` — retorna PDF (`application/pdf`) ou HTML como fallback se WeasyPrint não disponível; `Content-Disposition: attachment`.
+- **`frontend/src/lib/api.ts`**: `tournaments.downloadReport(tournamentId)` — fetch binário com auth header, cria blob URL e dispara download automaticamente.
+- **`frontend/src/pages/TournamentDetail.tsx`**: botão "PDF" (ícone `FileDown`) ao lado do botão Replay; estado `pdfDownloading` com spinner enquanto gera.
+
+### Changed
+- **`backend/leaklab/report_generator.py`**: `generate_report()` (legacy) mantida e intacta para compatibilidade com callers existentes.
+
+---
+
 ## [v0.46.0] — 2026-05-03 — Sprint O: FEAT-01 Comparativo de Torneios
 
 ### Added

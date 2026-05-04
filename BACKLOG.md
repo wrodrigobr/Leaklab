@@ -49,8 +49,8 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint L | PERF-007 | Decision DNA — assinatura estratégica do jogador | ✅ v0.43.0 |
 | Sprint M | PERF-008 | Tournament Narrative Engine | ✅ v0.45.0 |
 | Sprint N | PERF-009 | GGPoker Parser — detecção automática de formato | ✅ (já entregue) |
-| Sprint O | FEAT-01 | Comparativo de Torneios | 🔄 em andamento |
-| Sprint P | FEAT-04 | Relatório PDF Premium | ⏳ |
+| Sprint O | FEAT-01 | Comparativo de Torneios | ✅ v0.46.0 |
+| Sprint P | FEAT-04 | Relatório PDF Premium | 🔄 em andamento |
 | Sprint Q | FEAT-02 + FEAT-03 | Daily Focus + XP Server-Side | ⏳ |
 | Sprint R | FEAT-05 | SRS Adaptativo nos Drills | ⏳ |
 | Sprint S | FEAT-06 | Leak Causal Map | ⏳ |
@@ -59,6 +59,8 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint V | FEAT-09 + FEAT-10 | Coach Templates + Coach Messaging | ⏳ |
 | Sprint W | FEAT-11 | Weekly Digest Email | ⏳ |
 | Sprint X | FEAT-12 | Página de Documentação / Wiki do Sistema | ⏳ |
+| Sprint Y | UX-008 | Coaches Directory — mobile layout + remover "professor" | ⏳ |
+| Sprint Z | UX-009 | Torneios — data do torneio vs importação + exibir ano | ⏳ |
 
 ---
 
@@ -215,6 +217,35 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 **Frontend only** — conteúdo estático, sem backend. Rota `/docs`.
 
 **Esforço:** ~20h frontend (conteúdo + layout + navegação)
+
+---
+
+### [UX-008] — Coaches Directory — Mobile Layout + Padronização "Coach" *(Sprint Y)*
+
+**Valor:** A página de coaches (`/coaches`) está com layout ruim em mobile — filtros e cards dos coaches cadastrados precisam ser reorganizados para uma experiência adequada em telas menores. Também há inconsistência terminológica: o termo "professor" aparece em algumas páginas e deve ser removido, mantendo sempre "Coach" como padrão em todo o sistema.
+
+**Escopo:**
+- Refatorar layout da página `CoachesDirectory.tsx`: filtros em coluna no mobile, cards com padding adequado
+- Grep de toda a codebase por "professor" (strings visíveis ao usuário em PT-BR) e substituir por "Coach"
+- Verificar i18n — todos os locales (PT-BR, EN, ES) devem usar "Coach" ou equivalente cultural correto
+
+**Frontend only** — sem alterações de backend.
+
+**Esforço:** ~5h frontend
+
+---
+
+### [UX-009] — Torneios — Data do Torneio vs Importação + Exibir Ano *(Sprint Z)*
+
+**Valor:** A data exibida na tabela de torneios pode ser a data de importação (`imported_at`) em vez da data real do torneio (`played_at`). Além disso, o formato atual (DD/MM HH:MM) não mostra o ano — relevante para quem tem histórico de mais de um ano.
+
+**Escopo:**
+1. Verificar no backend se `played_at` é corretamente populado pelo parser (PokerStars e GGPoker) ou se fica como a data de importação
+2. Atualizar `formatDate` em `Tournaments.tsx` para incluir o ano (ex: `DD/MM/YY` ou `DD/MM/YYYY`)
+3. Se `played_at` não vier do arquivo, investigar como extrair do header da hand history e persistir corretamente
+4. Manter ordenação padrão do mais recente para o mais antigo (já funciona via `sortDir: "desc"`)
+
+**Esforço:** ~4h backend + ~1h frontend
 
 ---
 

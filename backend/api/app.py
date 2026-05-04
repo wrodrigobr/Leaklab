@@ -26,6 +26,7 @@ from leaklab.mtt_context import build_mtt_context
 from leaklab.session_metrics import build_session_metrics
 from leaklab.leak_correlator import correlate_leaks
 from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, generate_tournament_narrative, generate_comparison_narrative, coach_chat_reply
+from leaklab.report_generator import build_html_report, generate_pdf_bytes
 
 from database.schema import init_db
 from database.repositories import (
@@ -577,6 +578,43 @@ def history_tournaments_compare():
 
     narrative = generate_comparison_narrative(items)
     return jsonify({'items': items, 'narrative': narrative})
+
+
+@app.route('/history/tournament/<tournament_id>/report.pdf', methods=['GET'])
+@require_auth
+def history_tournament_report_pdf(tournament_id):
+    t = get_tournament(g.user_id, tournament_id)
+    if not t:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+
+    decisions = get_decisions(t['id'])
+    phases    = get_phase_analysis(t['id'])
+    hero      = t.get('hero', 'Hero')
+
+    from flask import Response
+    html = build_html_report(t, decisions, phases, hero)
+
+    try:
+        pdf_bytes = generate_pdf_bytes(html)
+        safe_id = tournament_id.replace(' ', '_')[:40]
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={
+                'Content-Disposition': f'attachment; filename="leaklab-report-{safe_id}.pdf"',
+                'Cache-Control': 'no-store',
+            }
+        )
+    except ImportError:
+        safe_id = tournament_id.replace(' ', '_')[:40]
+        return Response(
+            html,
+            mimetype='text/html',
+            headers={
+                'Content-Disposition': f'attachment; filename="leaklab-report-{safe_id}.html"',
+                'Cache-Control': 'no-store',
+            }
+        )
 
 
 @app.route('/history/evolution', methods=['GET'])

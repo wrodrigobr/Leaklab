@@ -1,15 +1,12 @@
 services:
   - type: web
     name: leaklab-api
-    runtime: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn api.app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --graceful-timeout 30
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
     envVars:
       - key: LEAKLAB_SECRET
         generateValue: true
-      - key: PYTHON_VERSION
-        value: 3.11.0
       - key: DATABASE_URL
         fromDatabase:
           name: leaklab-db
