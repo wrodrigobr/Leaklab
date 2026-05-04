@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Coins, Layers, Percent, Target, GraduationCap, Brain } from "lucide-react";
+import { Coins, Layers, Percent, Target, GraduationCap, Brain, Mail, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { KpiCard } from "@/components/hud/KpiCard";
@@ -23,11 +23,11 @@ import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
 import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
 import { SessionGoalPanel } from "@/components/hud/UploadQueue";
 import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
-import { metrics, drill, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse } from "@/lib/api";
+import { metrics, drill, tournaments, digest, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { t } = useTranslation("dashboard");
   const { t: tc } = useTranslation("common");
   const [showLinkCoach, setShowLinkCoach] = useState(false);
@@ -45,6 +45,8 @@ const Index = () => {
   const [leakGraph, setLeakGraph]       = useState<LeakGraphResponse | null>(null);
   const [loading, setLoading]   = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [digestDismissed, setDigestDismissed] = useState(false);
+  const [digestSubscribing, setDigestSubscribing] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -65,6 +67,16 @@ const Index = () => {
   }, [refreshKey]);
 
   const handleUpload = () => setRefreshKey((k) => k + 1);
+
+  const handleDigestSubscribe = async () => {
+    setDigestSubscribing(true);
+    try {
+      await digest.subscribe();
+      await refreshUser();
+    } finally {
+      setDigestSubscribing(false);
+    }
+  };
 
   const totalInvested = tourns.reduce((s, t) => s + (t.buy_in ?? 0), 0);
   const totalProfit   = tourns.reduce((s, t) => s + (t.profit ?? 0), 0);
@@ -131,6 +143,31 @@ const Index = () => {
         {hasData && <DailyFocusCard />}
 
         {user?.role === "player" && <SessionGoalPanel />}
+
+        {user?.role === "player" && hasData && !user.digest_subscribed && !digestDismissed && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-foreground">
+              <Mail className="size-4 text-primary shrink-0" />
+              <span>Receba um resumo semanal dos seus leaks e drills por email.</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleDigestSubscribe}
+                disabled={digestSubscribing}
+                className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:underline disabled:opacity-50"
+              >
+                {digestSubscribing ? "Ativando…" : "Ativar"}
+              </button>
+              <button
+                onClick={() => setDigestDismissed(true)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Fechar"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
 
         <section
           aria-label="KPIs"

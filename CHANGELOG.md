@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.54.0] — 2026-05-03 — Sprint W: FEAT-11 Weekly Digest Email
+
+### Added
+- **`backend/leaklab/email_digest.py`**: módulo de digest semanal — `build_digest_data` (coleta métricas dos últimos 7 dias: standard%, EV loss, drill atrasado, precisão), `build_digest_html` (template dark responsivo com EV bar visual), `send_digest_email` (SMTP via smtplib nativo com STARTTLS), `run_weekly_digest` (itera inscritos e envia). Sem dependências extras além da stdlib.
+- **`backend/database/schema.py`**: coluna `digest_subscribed INTEGER NOT NULL DEFAULT 0` na tabela `users` (SQLite + Postgres migration).
+- **`backend/database/repositories.py`**: `get_digest_subscribers` (usuários com `digest_subscribed=1` e `last_login` nos últimos 30 dias), `update_digest_subscription`.
+- **`backend/api/app.py`**: `POST /player/digest/subscribe`, `POST /player/digest/unsubscribe` (autenticado), `GET /player/digest/unsubscribe` (link do email com token HMAC), `POST /admin/send-digest`; campo `digest_subscribed` incluído na resposta de `/auth/me`.
+- **`frontend/src/lib/api.ts`**: campo `digest_subscribed` em `UserProfile`; módulo `digest` com `subscribe()` e `unsubscribe()`.
+- **`frontend/src/pages/Index.tsx`**: banner de opt-in contextual — visível para players com dados que ainda não ativaram o digest; dispensável pelo X; botão "Ativar" chama `digest.subscribe()` e atualiza o perfil via `refreshUser()`.
+
+---
+
 ## [v0.53.0] — 2026-05-03 — Sprint V: FEAT-09 Coach Templates + FEAT-10 Coach Messaging
 
 ### Added

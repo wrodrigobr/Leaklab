@@ -3,7 +3,7 @@
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
 > **Sprints já entregues:** Sprints 1–13 + Sprint A–T + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.51.0.
-> **Sprint atual:** Sprint W — FEAT-11 Weekly Digest Email
+> **Sprint atual:** Sprint Y — UX-008 Coaches Directory
 
 ---
 
@@ -57,8 +57,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint T | FEAT-07 | Coach Effectiveness Metrics | ✅ v0.51.0 |
 | Sprint U | FEAT-08 | Session Goals + AI Review | ✅ v0.52.0 |
 | Sprint V | FEAT-09 + FEAT-10 | Coach Templates + Coach Messaging | ✅ v0.53.0 |
-| Sprint W | FEAT-11 | Weekly Digest Email | ⏳ |
-| Sprint X | FEAT-12 | Página de Documentação / Wiki do Sistema | ⏳ |
+| Sprint W | FEAT-11 | Weekly Digest Email | ✅ v0.54.0 |
 | Sprint Y | UX-008 | Coaches Directory — mobile layout + remover "professor" | ⏳ |
 | Sprint Z | UX-009 | Torneios — data do torneio vs importação + exibir ano | ⏳ |
 | Sprint AA | INFRA-001 | Correção de erros de build no Render (backend) e Vercel (frontend) | ⏳ |
@@ -66,6 +65,8 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AC | UX-011 | Dashboard — remover nome do hero, "Centro de Comando" → "Dashboard", corrigir quebra de linha no subtítulo | ⏳ |
 | Sprint AD | UX-012 | Dashboard — remover lista de últimos torneios (há menu próprio); liberar espaço para cards de indicadores | ⏳ |
 | Sprint AE | UX-013 | Substituir "JAM" por "All In" em toda a plataforma (UI, textos, labels, parser output) | ⏳ |
+| Sprint AF | UX-014 | Página do Coach (StudentDetail) — remover limitação horizontal, aproveitar melhor o espaço disponível em telas largas | ⏳ |
+| Sprint AG | FEAT-12 | Página de Documentação / Wiki do Sistema (deixar por último) | ⏳ |
 
 ---
 

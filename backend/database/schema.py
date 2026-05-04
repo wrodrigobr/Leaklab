@@ -544,6 +544,7 @@ def _run_migrations(conn):
             ("xp_streak",           "ALTER TABLE users ADD COLUMN xp_streak           INTEGER NOT NULL DEFAULT 0"),
             ("xp_last_activity",    "ALTER TABLE users ADD COLUMN xp_last_activity    TEXT"),
             ("daily_focus_done_at", "ALTER TABLE users ADD COLUMN daily_focus_done_at TEXT"),
+            ("digest_subscribed",   "ALTER TABLE users ADD COLUMN digest_subscribed   INTEGER NOT NULL DEFAULT 0"),
         ]:
             try: conn.execute(_sql)
             except Exception: pass
@@ -800,7 +801,8 @@ def _run_migrations(conn):
             ("xp_total",            "ALTER TABLE users ADD COLUMN xp_total            INTEGER NOT NULL DEFAULT 0"),
             ("xp_streak",           "ALTER TABLE users ADD COLUMN xp_streak           INTEGER NOT NULL DEFAULT 0"),
             ("xp_last_activity",    "ALTER TABLE users ADD COLUMN xp_last_activity    TEXT"),
-            ("daily_focus_done_at", "ALTER TABLE users ADD COLUMN daily_focus_done_at TEXT"),
+            ("daily_focus_done_at",   "ALTER TABLE users ADD COLUMN daily_focus_done_at   TEXT"),
+            ("digest_subscribed",     "ALTER TABLE users ADD COLUMN digest_subscribed     INTEGER NOT NULL DEFAULT 0"),
         ]:
             if col not in usr_existing:
                 try: conn.execute(sql)

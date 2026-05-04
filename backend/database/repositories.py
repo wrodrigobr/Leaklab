@@ -3185,6 +3185,31 @@ def get_unread_message_count(user_id: int, role: str) -> int:
     return (row['n'] or 0) if row else 0
 
 
+# ── Digest semanal — FEAT-11 ──────────────────────────────────────────────────
+
+def get_digest_subscribers() -> list:
+    """Retorna usuários com digest_subscribed=1 que fizeram login nos últimos 30 dias."""
+    conn = get_conn()
+    rows = _fetchall(conn,
+        "SELECT id, email, username FROM users "
+        "WHERE digest_subscribed = 1 "
+        "AND last_login >= datetime('now', '-30 days')",
+    )
+    conn.close()
+    return rows
+
+
+def update_digest_subscription(user_id: int, subscribed: bool) -> None:
+    """Ativa ou desativa o digest semanal para um usuário."""
+    conn = get_conn()
+    _execute(conn,
+        "UPDATE users SET digest_subscribed = ? WHERE id = ?",
+        (1 if subscribed else 0, user_id),
+    )
+    conn.commit()
+    conn.close()
+
+
 # ── Session Goals — FEAT-08 ───────────────────────────────────────────────────
 
 def create_session_goal(user_id: int, goal_leak_spot: str | None,

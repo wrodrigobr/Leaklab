@@ -27,6 +27,7 @@ from leaklab.session_metrics import build_session_metrics
 from leaklab.leak_correlator import correlate_leaks
 from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, generate_tournament_narrative, generate_comparison_narrative, coach_chat_reply, generate_session_review
 from leaklab.report_generator import build_html_report, generate_pdf_bytes
+from leaklab.email_digest import run_weekly_digest, verify_unsub_token
 
 from database.schema import init_db
 from database.repositories import (
@@ -84,6 +85,8 @@ from database.repositories import (
     get_coach_templates, create_coach_template, delete_coach_template,
     # Sprint V — FEAT-10: Coach Messages
     send_coach_message, get_coach_messages, mark_messages_read, get_unread_message_count,
+    # Sprint W — FEAT-11: Digest
+    get_digest_subscribers, update_digest_subscription,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -237,6 +240,7 @@ def me():
         'ai_calls_used':        quota['ai_calls_used'],
         'plan_limits':          quota['limits'],
         'whatsapp_phone':       g.user.get('whatsapp_phone'),
+        'digest_subscribed':    bool(g.user.get('digest_subscribed', 0)),
     })
 
 
@@ -3040,6 +3044,46 @@ def update_phone():
             return jsonify({'error': 'Número já vinculado a outro usuário'}), 409
     update_user_phone(g.user_id, phone)
     return jsonify({'ok': True, 'phone': phone})
+
+
+# ── Sprint W — FEAT-11: Digest semanal ───────────────────────────────────────
+
+@app.route('/player/digest/subscribe', methods=['POST'])
+@require_auth
+def digest_subscribe():
+    update_digest_subscription(g.user_id, True)
+    return jsonify({'ok': True, 'digest_subscribed': True})
+
+
+@app.route('/player/digest/unsubscribe', methods=['POST'])
+@require_auth
+def digest_unsubscribe_auth():
+    update_digest_subscription(g.user_id, False)
+    return jsonify({'ok': True, 'digest_subscribed': False})
+
+
+@app.route('/player/digest/unsubscribe', methods=['GET'])
+def digest_unsubscribe_link():
+    """Link de opt-out do email (não requer token JWT — usa token HMAC)."""
+    uid   = request.args.get('uid', '')
+    token = request.args.get('token', '')
+    if not uid or not token:
+        return jsonify({'error': 'Parâmetros inválidos'}), 400
+    try:
+        user_id = int(uid)
+    except ValueError:
+        return jsonify({'error': 'uid inválido'}), 400
+    if not verify_unsub_token(user_id, token):
+        return jsonify({'error': 'Token inválido'}), 403
+    update_digest_subscription(user_id, False)
+    return '<html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>Inscrição cancelada</h2><p>Você não receberá mais o digest semanal do LeakLabs.</p></body></html>', 200
+
+
+@app.route('/admin/send-digest', methods=['POST'])
+@require_admin
+def admin_send_digest():
+    result = run_weekly_digest()
+    return jsonify(result)
 
 
 @app.errorhandler(500)

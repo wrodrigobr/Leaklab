@@ -51,6 +51,7 @@ export interface UserProfile {
   ai_calls_used: number;
   plan_limits: { tournaments: number | null; ai_calls: number | null };
   whatsapp_phone?: string | null;
+  digest_subscribed?: boolean;
 }
 
 export const auth = {
@@ -1367,3 +1368,17 @@ export interface SessionReviewResponse {
   goal: SessionGoal | null;
   requires_pro: boolean;
 }
+
+// ── Digest semanal — FEAT-11 ─────────────────────────────────────────────────
+
+export const digest = {
+  subscribe: () =>
+    request<{ ok: boolean; digest_subscribed: boolean }>("/player/digest/subscribe", {
+      method: "POST",
+    }),
+
+  unsubscribe: () =>
+    request<{ ok: boolean; digest_subscribed: boolean }>("/player/digest/unsubscribe", {
+      method: "POST",
+    }),
+};
