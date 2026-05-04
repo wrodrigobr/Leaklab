@@ -1606,3 +1606,11 @@ export const preferences = {
       body: JSON.stringify({ dashboard_layout }),
     }),
 };
+
+export const support = {
+  contact: (payload: { category: string; subject: string; message: string }) =>
+    request<{ ok: boolean }>("/support/contact", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X, MessageSquarePlus, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
-import { request } from "@/lib/api";
+import { support } from "@/lib/api";
 
 interface Props {
   onClose: () => void;
@@ -32,10 +32,7 @@ export function SupportModal({ onClose }: Props) {
     if (!message.trim()) return;
     setStatus("sending");
     try {
-      await request("/support/contact", {
-        method: "POST",
-        body: JSON.stringify({ category, subject: subject.trim(), message: message.trim() }),
-      });
+      await support.contact({ category, subject: subject.trim(), message: message.trim() });
       setStatus("success");
     } catch {
       setStatus("error");
