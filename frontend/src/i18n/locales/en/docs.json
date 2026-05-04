@@ -10,7 +10,8 @@
     "ghost": "Ghost Table / Drills",
     "compare": "Tournament Comparison",
     "coaching": "Coaching",
-    "gamification": "Gamification"
+    "gamification": "Gamification",
+    "career": "Career Trajectory"
   },
   "scoring": {
     "title": "Scoring System",
@@ -145,5 +146,21 @@
     "level_solid": "🔷 Solid",
     "level_expert": "♠ Expert",
     "level_elite": "👑 Elite"
+  },
+  "career": {
+    "title": "Career Trajectory",
+    "p1": "The <strong>Career Trajectory</strong> card projects when you will reach each level based on your actual <em>standard_pct</em> curve across imported tournaments. The system uses linear regression over recent tournaments to calculate improvement rate and estimate dates.",
+    "table": {
+      "col_term": "Term",
+      "col_meaning": "Meaning",
+      "slope_term": "Slope",
+      "slope_meaning": "standard_pct improvement per tournament (e.g. +0.12% = grows 1.2% every 10 tournaments)",
+      "milestone_term": "Milestone",
+      "milestone_meaning": "standard_pct threshold to reach each level (e.g. Solid requires 86%)",
+      "blocking_term": "Blocker",
+      "blocking_meaning": "High-frequency leak spots with the greatest impact on current standard_pct"
+    },
+    "p2": "The <strong>dashed line</strong> in the chart represents the future projection — not a guarantee. If the slope is negative or zero, the system indicates stagnation and does not project dates.",
+    "p3": "The AI narrative in the card summarizes: (1) current trend, (2) estimated time to the next level, (3) the priority leak to fix to accelerate progression."
   }
 }

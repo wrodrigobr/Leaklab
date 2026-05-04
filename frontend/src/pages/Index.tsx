@@ -25,9 +25,10 @@ import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
 import { ProfileCompletionCard } from "@/components/hud/ProfileCompletionCard";
 import { SessionGoalPanel } from "@/components/hud/UploadQueue";
 import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
+import { CareerGraphCard } from "@/components/hud/CareerGraphCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, drill, tournaments, digest, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse } from "@/lib/api";
+import { metrics, drill, tournaments, digest, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
@@ -47,6 +48,7 @@ const Index = () => {
   const [dnaData, setDnaData]           = useState<PlayerDnaResponse | null>(null);
   const [drillSpots, setDrillSpots]     = useState<DrillSpot[]>([]);
   const [leakGraph, setLeakGraph]       = useState<LeakGraphResponse | null>(null);
+  const [careerData, setCareerData]     = useState<CareerProjection | null>(null);
   const [loading, setLoading]   = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [digestDismissed, setDigestDismissed] = useState(false);
@@ -67,6 +69,7 @@ const Index = () => {
       metrics.dna(90).then(setDnaData).catch(() => null),
       drill.spots({ limit: 20 }).then((r) => setDrillSpots(r.spots)).catch(() => null),
       metrics.leakGraph(90, i18n.language).then(setLeakGraph).catch(() => null),
+      metrics.career(i18n.language).then(setCareerData).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
 
@@ -334,6 +337,11 @@ const Index = () => {
                     if (id === "level") return levelData?.level ? (
                       <DraggableCard key={id} id={id}>
                         <LevelCard data={levelData} showStudyLink />
+                      </DraggableCard>
+                    ) : <div key={id} />;
+                    if (id === "career") return careerData ? (
+                      <DraggableCard key={id} id={id}>
+                        <CareerGraphCard data={careerData} />
                       </DraggableCard>
                     ) : <div key={id} />;
                     if (id === "ai_confidence") return (

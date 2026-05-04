@@ -993,6 +993,110 @@ def _template_causality(edges: list) -> str:
     )
 
 
+# ── Career Projection Narrative (Sprint AP) ─────────────────────────────────
+
+_LANG_CAREER = {
+    'pt-BR': "Responda APENAS em português do Brasil.",
+    'en':    "Respond ONLY in English.",
+    'es':    "Responde ÚNICAMENTE en español.",
+}
+
+
+def generate_career_narrative(projection: dict, lang: str = 'pt-BR') -> str:
+    """2-3 sentences: current trajectory, next milestone, key blocker."""
+    cache_key = (
+        f"career_{lang}_{projection.get('current_level_slug','?')}_"
+        f"{projection.get('current_avg', 0):.1f}_"
+        + "_".join(lk['spot'] for lk in projection.get('blocking_leaks', [])[:2])
+    )
+    if cache_key in _cache:
+        return _cache[cache_key]
+    try:
+        text = _call_career_narrative(projection, lang)
+    except Exception:
+        text = _template_career(projection)
+    _cache[cache_key] = text
+    return text
+
+
+def _call_career_narrative(projection: dict, lang: str) -> str:
+    import requests as _req
+    lang_instr = _LANG_CAREER.get(lang, _LANG_CAREER['pt-BR'])
+    nm = projection.get("next_milestone") or {}
+    leaks = projection.get("blocking_leaks", [])
+    leak_str = ", ".join(lk['spot'].replace('/', ' → ') for lk in leaks[:2]) or "—"
+    if nm.get("reachable") and nm.get("months_needed", 0) > 0:
+        timeline = (f"At the current rate, the next level ({nm['level_name']} / "
+                    f"{nm['threshold']}%) is ~{nm['months_needed']} months away "
+                    f"({nm['tournaments_needed']} tournaments).")
+    elif projection.get("slope_per_tournament", 0) <= 0:
+        timeline = "The current trajectory is flat or declining."
+    else:
+        timeline = f"The player is close to the next threshold already."
+
+    system = (
+        f"You are a concise MTT poker coach. {lang_instr} "
+        "Write EXACTLY 2-3 sentences summarizing: (1) the player's current trajectory "
+        "(improving/flat/declining), (2) when they'll reach the next level if on track, "
+        "(3) the single most important leak to fix to accelerate that. "
+        "Be direct and specific. No headers or bullets."
+    )
+    user_content = (
+        f"Current level: {projection['current_level']} ({projection['current_avg']:.1f}% standard). "
+        f"Trend: {projection['slope_per_tournament']:+.3f}% per tournament over "
+        f"{projection['tournament_count']} tournaments. "
+        f"{timeline} "
+        f"Top blocking leaks: {leak_str}."
+    )
+    payload = {
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 220,
+        "system": system,
+        "messages": [{"role": "user", "content": user_content}],
+    }
+    resp = _req.post(
+        "https://api.anthropic.com/v1/messages",
+        json=payload,
+        headers={
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01",
+            "x-api-key": _api_key(),
+        },
+        timeout=20,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return "".join(
+        block["text"] for block in data.get("content", []) if block.get("type") == "text"
+    ).strip()
+
+
+def _template_career(projection: dict) -> str:
+    slope = projection.get("slope_per_tournament", 0)
+    nm    = projection.get("next_milestone") or {}
+    leaks = projection.get("blocking_leaks", [])
+    top   = leaks[0]["spot"].replace("/", " → ") if leaks else "leaks recorrentes"
+    if slope > 0.05 and nm.get("reachable"):
+        return (
+            f"Sua trajetória atual mostra melhora consistente de {slope:+.2f}% por torneio. "
+            f"Mantendo esse ritmo, você alcançará o nível {nm['level_name']} "
+            f"({nm['threshold']}%) em aproximadamente {nm['months_needed']} meses. "
+            f"O principal obstáculo é o leak em {top} — corrigi-lo acelera diretamente essa projeção."
+        )
+    elif slope <= 0:
+        return (
+            f"Sua standard_pct está estagnada ou em queda nos últimos torneios. "
+            f"O foco imediato deve ser consistência, não volume. "
+            f"O leak de {top} é o ponto de maior impacto para retomar a curva positiva."
+        )
+    else:
+        return (
+            f"Você está progredindo, mas o ritmo está abaixo do potencial. "
+            f"O leak de {top} aparece com alta frequência e é o principal freio de crescimento. "
+            f"Corrigi-lo pode acelerar sua chegada ao próximo nível."
+        )
+
+
 # ── Session Review (FEAT-08) ─────────────────────────────────────────────────
 
 def generate_session_review(goal: dict, tournament: dict) -> str:

@@ -10,7 +10,8 @@
     "ghost": "Ghost Table / Drills",
     "compare": "Comparativo de Torneios",
     "coaching": "Coaching",
-    "gamification": "Gamificação"
+    "gamification": "Gamificação",
+    "career": "Trajetória de Carreira"
   },
   "scoring": {
     "title": "Sistema de Scoring",
@@ -145,5 +146,21 @@
     "level_solid": "🔷 Sólido",
     "level_expert": "♠ Expert",
     "level_elite": "👑 Elite"
+  },
+  "career": {
+    "title": "Trajetória de Carreira",
+    "p1": "O card de <strong>Trajetória de Carreira</strong> projeta quando você atingirá cada nível com base na sua curva real de <em>standard_pct</em> ao longo dos torneios importados. O sistema usa regressão linear sobre os últimos torneios para calcular a taxa de melhora e estimar datas.",
+    "table": {
+      "col_term": "Termo",
+      "col_meaning": "Significado",
+      "slope_term": "Slope",
+      "slope_meaning": "Melhora de standard_pct por torneio (ex: +0.12% = cresce 1.2% a cada 10 torneios)",
+      "milestone_term": "Marco",
+      "milestone_meaning": "Threshold de standard_pct para atingir cada nível (ex: Sólido requer 86%)",
+      "blocking_term": "Obstáculo",
+      "blocking_meaning": "Leak spots de alta frequência que mais impactam o standard_pct atual"
+    },
+    "p2": "A <strong>linha pontilhada</strong> no gráfico representa a projeção futura — não uma garantia. Se o slope for negativo ou zero, o sistema indica estagnação e não projeta datas.",
+    "p3": "A narrativa de IA no card resume: (1) tendência atual, (2) tempo estimado para o próximo nível, (3) o leak prioritário para acelerar a progressão."
   }
 }

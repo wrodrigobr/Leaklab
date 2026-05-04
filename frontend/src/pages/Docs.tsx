@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight } from "lucide-react";
 
-const SECTION_IDS = ["scoring", "indicators", "mstacks", "dna", "ghost", "compare", "coaching", "gamification"] as const;
+const SECTION_IDS = ["scoring", "indicators", "mstacks", "dna", "ghost", "compare", "coaching", "gamification", "career"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -241,6 +241,21 @@ export default function Docs() {
                 <li>🔥 {t("gamification.ach_streak")}</li>
                 <li>🏆 {t("gamification.ach_10")}</li>
               </ul>
+            </Section>
+
+            {/* Career Trajectory */}
+            <Section id="career" title={t("career.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("career.p1") }} />
+              <Table
+                headers={[t("career.table.col_term"), t("career.table.col_meaning")]}
+                rows={[
+                  [t("career.table.slope_term"),     t("career.table.slope_meaning")],
+                  [t("career.table.milestone_term"),  t("career.table.milestone_meaning")],
+                  [t("career.table.blocking_term"),  t("career.table.blocking_meaning")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("career.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("career.p3") }} />
             </Section>
 
           </div>

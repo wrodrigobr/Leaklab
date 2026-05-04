@@ -231,5 +231,25 @@
       "moderate": "moderate",
       "minor": "minor"
     }
+  },
+  "career": {
+    "title": "Career Trajectory",
+    "eyebrow": "Career Projection",
+    "noData": "Import at least 5 tournaments to generate your career projection.",
+    "currentLevel": "Current level",
+    "nextLevel": "Next level",
+    "monthsAway": "~{{n}} months",
+    "tournamentsAway": "{{n}} tournaments",
+    "estimatedDate": "Est.: {{date}}",
+    "stagnant": "Flat trajectory",
+    "declining": "Declining trajectory",
+    "improving": "+{{v}}% per tournament",
+    "blockingLeaks": "Main blockers",
+    "milestones": "Projected milestones",
+    "reachable": "Reachable",
+    "notReachable": "Stagnant — no growth trend",
+    "already": "Already reached",
+    "perMonth": "{{n}} tournaments/month",
+    "projection": "Projection"
   }
 }

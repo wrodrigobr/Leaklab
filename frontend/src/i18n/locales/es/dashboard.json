@@ -231,5 +231,25 @@
       "moderate": "moderado",
       "minor": "leve"
     }
+  },
+  "career": {
+    "title": "Trayectoria de Carrera",
+    "eyebrow": "Proyección de Carrera",
+    "noData": "Importa al menos 5 torneos para generar tu proyección de carrera.",
+    "currentLevel": "Nivel actual",
+    "nextLevel": "Próximo nivel",
+    "monthsAway": "~{{n}} meses",
+    "tournamentsAway": "{{n}} torneos",
+    "estimatedDate": "Est.: {{date}}",
+    "stagnant": "Trayectoria plana",
+    "declining": "Trayectoria en caída",
+    "improving": "+{{v}}% por torneo",
+    "blockingLeaks": "Principales obstáculos",
+    "milestones": "Hitos proyectados",
+    "reachable": "Alcanzable",
+    "notReachable": "Estancado — sin tendencia de crecimiento",
+    "already": "Ya alcanzado",
+    "perMonth": "{{n}} torneos/mes",
+    "projection": "Proyección"
   }
 }

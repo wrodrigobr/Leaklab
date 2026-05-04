@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { preferences } from "@/lib/api";
 
 export type MainSection = "quality_row" | "street_row" | "drill_row";
-export type SidebarSection = "leaks" | "causal_map" | "level" | "ai_confidence";
+export type SidebarSection = "leaks" | "causal_map" | "level" | "ai_confidence" | "career";
 
 export interface DashboardLayout {
   main: MainSection[];
@@ -11,7 +11,7 @@ export interface DashboardLayout {
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
   main: ["quality_row", "street_row", "drill_row"],
-  sidebar: ["leaks", "causal_map", "level", "ai_confidence"],
+  sidebar: ["leaks", "causal_map", "level", "career", "ai_confidence"],
 };
 
 export function useDashboardLayout() {

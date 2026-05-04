@@ -570,6 +570,9 @@ export const metrics = {
   leakGraph: (days = 90, lang = "pt-BR") =>
     request<LeakGraphResponse>(`/player/leak-graph?days=${days}&lang=${encodeURIComponent(lang)}`),
 
+  career: (lang = "pt-BR") =>
+    request<CareerProjection>(`/player/career?lang=${encodeURIComponent(lang)}`),
+
   dailyFocus: () =>
     request<DailyFocusData>(`/player/daily-focus`),
 
@@ -629,6 +632,34 @@ export interface LeakGraphResponse {
   nodes: LeakGraphNode[];
   edges: LeakGraphEdge[];
   narrative: string;
+}
+
+// ── Career Projection (Sprint AP) ────────────────────────────────────────────
+
+export interface CareerMilestone {
+  level_name: string;
+  level_slug: string;
+  threshold: number;
+  reachable: boolean;
+  tournaments_needed?: number;
+  months_needed?: number;
+  estimated_date?: string;
+}
+
+export interface CareerProjection {
+  insufficient_data: boolean;
+  tournament_count: number;
+  current_level?: string;
+  current_level_slug?: string;
+  current_avg?: number;
+  slope_per_tournament?: number;
+  tourns_per_month?: number;
+  milestones?: CareerMilestone[];
+  next_milestone?: CareerMilestone | null;
+  series_history?: number[];
+  series_projection?: number[];
+  blocking_leaks?: { spot: string; n: number; avg_score: number }[];
+  narrative?: string;
 }
 
 // ── Daily Focus + XP (Sprint Q) ───────────────────────────────────────────────

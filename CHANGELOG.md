@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.74.0] — 2026-05-04 — Sprint AP: Strategic Career Graph
+
+### Added
+- **`backend/database/repositories.py`**: `get_career_projection(user_id)` — regressão linear pura (sem numpy) sobre histórico completo de `standard_pct`; calcula slope, projeção por torneio, datas estimadas para cada um dos 7 níveis, leaks bloqueadores (top 3, últimos 90d), e séries de sparkline (histórico + projeção curta).
+- **`backend/leaklab/llm_explainer.py`**: `generate_career_narrative(projection, lang)` — narrativa de 2-3 frases sobre tendência, tempo para próximo nível e leak prioritário; template fallback se LLM indisponível; suporte multilíngue (PT/EN/ES).
+- **`backend/api/app.py`**: `GET /player/career?lang=` — retorna projeção + narrativa LLM.
+- **`frontend/src/lib/api.ts`**: interfaces `CareerProjection` e `CareerMilestone`; `metrics.career(lang)`.
+- **`frontend/src/components/hud/CareerGraphCard.tsx`**: card com sparkline SVG (linha histórica sólida + projeção tracejada), nível atual vs. próximo, milestones projetados, leaks bloqueadores e narrativa LLM. Totalmente i18n (PT/EN/ES).
+- **`frontend/src/hooks/useDashboardLayout.ts`**: adicionado `"career"` como `SidebarSection`; incluído no `DEFAULT_LAYOUT` entre `"level"` e `"ai_confidence"`.
+- **`frontend/src/pages/Index.tsx`**: busca `metrics.career(i18n.language)` no carregamento; renderiza `CareerGraphCard` como card draggable no sidebar.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/dashboard.json`**: seção `career` com 15 chaves de tradução.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/docs.json`**: seção `career` + chave `nav.career` adicionadas.
+- **`frontend/src/pages/Docs.tsx`**: nova seção `/docs#career` com tabela de termos e descrição da metodologia de projeção.
+
+---
+
 ## [v0.73.0] — 2026-05-04 — Bugfix: i18n level names, LeakCausalMap narrative, drag handle
 
 ### Fixed

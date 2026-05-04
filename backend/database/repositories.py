@@ -1129,6 +1129,158 @@ def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> 
         conn.close()
 
 
+def get_career_projection(user_id: int) -> dict:
+    """
+    Sprint AP — Projeta a trajetória de carreira do jogador.
+    Regressão linear sobre standard_pct histórico → data estimada para cada nível.
+    """
+    from datetime import datetime, timedelta
+
+    LEVELS = [
+        {"name": "Iniciante", "slug": "beginner", "min": 0,  "max": 60},
+        {"name": "Estudante", "slug": "student",  "min": 60, "max": 70},
+        {"name": "Grinder",   "slug": "grinder",  "min": 70, "max": 77},
+        {"name": "Regular",   "slug": "regular",  "min": 77, "max": 86},
+        {"name": "Sólido",    "slug": "solid",    "min": 86, "max": 92},
+        {"name": "Expert",    "slug": "expert",   "min": 92, "max": 96},
+        {"name": "Elite",     "slug": "elite",    "min": 96, "max": 100},
+    ]
+
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt("""
+            SELECT standard_pct, imported_at
+            FROM tournaments
+            WHERE user_id = ? AND standard_pct IS NOT NULL
+            ORDER BY imported_at ASC
+        """), (user_id,)).fetchall()
+    finally:
+        conn.close()
+
+    history = [{"std": r["standard_pct"], "date": r["imported_at"]} for r in rows]
+
+    if len(history) < 5:
+        return {"insufficient_data": True, "tournament_count": len(history)}
+
+    stds = [h["std"] for h in history]
+    n = len(stds)
+    xs = list(range(n))
+
+    # Linear regression (pure Python — no numpy)
+    sum_x  = sum(xs)
+    sum_y  = sum(stds)
+    sum_xy = sum(x * y for x, y in zip(xs, stds))
+    sum_x2 = sum(x * x for x in xs)
+    denom  = n * sum_x2 - sum_x ** 2
+    slope     = (n * sum_xy - sum_x * sum_y) / denom if denom else 0.0
+    intercept = (sum_y - slope * sum_x) / n
+
+    current_projected = slope * (n - 1) + intercept
+    current_avg       = round(sum(stds[-5:]) / 5, 2)
+
+    # Tournaments per month from actual cadence
+    try:
+        first_date = datetime.fromisoformat(history[0]["date"].replace("Z", ""))
+        last_date  = datetime.fromisoformat(history[-1]["date"].replace("Z", ""))
+        months_span = max((last_date - first_date).days / 30.0, 1.0)
+    except Exception:
+        months_span = max(n / 4.0, 1.0)
+    tourns_per_month = n / months_span
+
+    # Current level
+    current_level = LEVELS[0]
+    for lv in LEVELS:
+        if current_avg >= lv["min"]:
+            current_level = lv
+
+    # Project milestones (only levels above current)
+    milestones = []
+    today = datetime.utcnow()
+    for lv in LEVELS:
+        if lv["min"] <= current_level["min"]:
+            continue
+        if slope <= 0:
+            milestones.append({
+                "level_name": lv["name"],
+                "level_slug": lv["slug"],
+                "threshold":  lv["min"],
+                "reachable":  False,
+            })
+            continue
+        tourns_needed = (lv["min"] - current_projected) / slope
+        if tourns_needed <= 0:
+            milestones.append({
+                "level_name": lv["name"],
+                "level_slug": lv["slug"],
+                "threshold":  lv["min"],
+                "reachable":  True,
+                "tournaments_needed": 0,
+                "months_needed": 0.0,
+                "estimated_date": today.strftime("%Y-%m-%d"),
+            })
+        else:
+            months_needed = tourns_needed / tourns_per_month
+            est_date = today + timedelta(days=months_needed * 30)
+            milestones.append({
+                "level_name":       lv["name"],
+                "level_slug":       lv["slug"],
+                "threshold":        lv["min"],
+                "reachable":        True,
+                "tournaments_needed": round(tourns_needed),
+                "months_needed":    round(months_needed, 1),
+                "estimated_date":   est_date.strftime("%Y-%m-%d"),
+            })
+
+    # Sparkline: historical points + short projection
+    series_history = [round(s, 1) for s in stds]
+    proj_points = max(5, min(10, round(n * 0.3)))
+    series_projection = []
+    for i in range(1, proj_points + 1):
+        proj_val = slope * (n - 1 + i) + intercept
+        series_projection.append(round(min(100, max(0, proj_val)), 1))
+
+    # Next milestone shorthand
+    next_milestone = next((m for m in milestones if m.get("reachable", False)), None)
+
+    # Blocking leaks (from get_player_level logic)
+    conn2 = get_conn()
+    try:
+        since = (datetime.utcnow() - timedelta(days=90)).isoformat()
+        blocking_rows = conn2.execute(_adapt("""
+            SELECT d.street || '/' || d.best_action AS spot,
+                   COUNT(*) AS n, AVG(d.score) AS avg_score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND d.label IN ('small_mistake','clear_mistake')
+              AND t.imported_at >= ?
+            GROUP BY spot HAVING COUNT(*) >= 2
+            ORDER BY n DESC LIMIT 3
+        """), (user_id, since)).fetchall()
+    finally:
+        conn2.close()
+
+    blocking_leaks = [
+        {"spot": r["spot"], "n": r["n"], "avg_score": round(r["avg_score"], 2)}
+        for r in blocking_rows
+    ]
+
+    return {
+        "insufficient_data":   False,
+        "tournament_count":    n,
+        "current_level":       current_level["name"],
+        "current_level_slug":  current_level["slug"],
+        "current_avg":         current_avg,
+        "slope_per_tournament": round(slope, 4),
+        "tourns_per_month":    round(tourns_per_month, 1),
+        "milestones":          milestones,
+        "next_milestone":      next_milestone,
+        "series_history":      series_history,
+        "series_projection":   series_projection,
+        "blocking_leaks":      blocking_leaks,
+    }
+
+
 def get_llm_cache(user_id: int, cache_key: str) -> Optional[str]:
     """Retorna análise cacheada ou None se não existir."""
     conn = get_conn()

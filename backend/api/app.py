@@ -90,6 +90,8 @@ from database.repositories import (
     # Sprint AH — BACK-018: Coach Application Flow
     create_coach_application, get_coach_applications,
     approve_coach_application, reject_coach_application,
+    # Sprint AP — Career Graph
+    get_career_projection,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -811,6 +813,17 @@ def player_leak_graph():
     days = int(request.args.get('days', 90))
     lang = request.args.get('lang', 'pt-BR')
     return jsonify(get_leak_graph_data(g.user_id, days=days, lang=lang))
+
+
+@app.route('/player/career', methods=['GET'])
+@require_auth
+def player_career():
+    from leaklab.llm_explainer import generate_career_narrative
+    lang       = request.args.get('lang', 'pt-BR')
+    projection = get_career_projection(g.user_id)
+    if not projection.get("insufficient_data"):
+        projection["narrative"] = generate_career_narrative(projection, lang=lang)
+    return jsonify(projection)
 
 
 @app.route('/player/daily-focus', methods=['GET'])
