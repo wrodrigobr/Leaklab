@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Trophy, AlertTriangle, BookOpen, LayoutDashboard,
   ChevronRight, Play, TrendingUp, TrendingDown, Minus,
@@ -1498,7 +1498,9 @@ function StudyTab({ studentId }: { studentId: number }) {
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
   const studentId = Number(id);
-  const [tab, setTab] = useState<Tab>("overview");
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get("tab") as Tab | null) ?? "overview";
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   const { data: studentsData } = useQuery({
     queryKey: ["coach-students"],
