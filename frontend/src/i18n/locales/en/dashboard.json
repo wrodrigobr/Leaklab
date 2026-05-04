@@ -1,9 +1,9 @@
 {
   "eyebrow": "Session synced",
   "eyebrowEmpty": "Import tournaments to get started",
-  "title": "{{name}} — Command Center",
-  "titleDefault": "Tactical Command Center",
-  "subtitle": "Monitor performance metrics, import new tournaments, and review leaks identified by AI in real time.",
+  "title": "Dashboard",
+  "titleDefault": "Dashboard",
+  "subtitle": "Monitor performance, review leaks, and track your technical evolution tournament by tournament.",
   "kpis": {
     "roi": "Net ROI",
     "roiTooltip": "Cumulative return on investment. Positive ROI means you're profiting above the average buy-in. Reference: consistent regular players sit between +20% and +80% in MTTs.",

@@ -125,7 +125,7 @@ const Index = () => {
             {hasData ? t("eyebrow") : t("eyebrowEmpty")}
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-            {user?.username ? t("title", { name: user.username }) : t("titleDefault")}
+            {t("title")}
           </h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
             {t("subtitle")}

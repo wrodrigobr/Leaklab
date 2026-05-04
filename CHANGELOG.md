@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.59.0] — 2026-05-03 — Sprint AC: UX-011 Dashboard title/subtitle
+
+### Changed
+- **`frontend/src/i18n/locales/pt-BR|en|es/dashboard.json`**: `title` e `titleDefault` passam de "{{name}} — Centro de Comando / Command Center / Centro de Mando" para simplesmente `"Dashboard"` nos três idiomas. Subtitle encurtado para caber em uma linha sem quebra em viewports comuns.
+- **`frontend/src/pages/Index.tsx`**: `<h1>` simplificado — removida interpolação `{name}` e o fallback `titleDefault`; ambas as keys agora retornam `"Dashboard"`.
+
+---
+
 ## [v0.58.0] — 2026-05-03 — Sprint AB: UX-010 Bankroll period filters
 
 ### Fixed

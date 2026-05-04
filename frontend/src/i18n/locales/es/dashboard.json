@@ -1,9 +1,9 @@
 {
   "eyebrow": "Sesión sincronizada",
   "eyebrowEmpty": "Importa torneos para comenzar",
-  "title": "{{name}} — Centro de Mando",
-  "titleDefault": "Centro de Mando Táctico",
-  "subtitle": "Monitorea métricas de rendimiento, importa nuevos torneos y revisa los leaks identificados por la IA en tiempo real.",
+  "title": "Dashboard",
+  "titleDefault": "Dashboard",
+  "subtitle": "Monitorea el rendimiento, revisa leaks y sigue tu evolución técnica torneo a torneo.",
   "kpis": {
     "roi": "ROI Neto",
     "roiTooltip": "Retorno acumulado sobre la inversión. ROI positivo significa que estás ganando por encima del buy-in promedio. Referencia: jugadores regulares consistentes se sitúan entre +20% y +80% en MTTs.",
