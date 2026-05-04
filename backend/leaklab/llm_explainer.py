@@ -1097,6 +1097,121 @@ def _template_career(projection: dict) -> str:
         )
 
 
+# ── Cognitive Failure Narrative (Sprint AQ) ──────────────────────────────────
+
+_LANG_COGNITIVE = {
+    'pt-BR': "Responda APENAS em português do Brasil.",
+    'en':    "Respond ONLY in English.",
+    'es':    "Responde ÚNICAMENTE en español.",
+}
+
+_PATTERN_NAMES_EN = {
+    "revenge_aggression": "Revenge Aggression",
+    "fear_folding":       "Fear Folding",
+    "sunk_cost":          "Sunk Cost Continuation",
+    "entitlement_tilt":   "Entitlement Tilt",
+    "compensation_call":  "Compensation Call",
+}
+
+
+def generate_cognitive_narrative(patterns: list, lang: str = 'pt-BR') -> str:
+    """2-3 sentences on the dominant cognitive pattern, its EV cost, and one corrective habit."""
+    if not patterns:
+        return ""
+    cache_key = (
+        f"cog_{lang}_"
+        + "_".join(f"{p['type']}:{p['severity']}" for p in patterns[:3])
+    )
+    if cache_key in _cache:
+        return _cache[cache_key]
+    try:
+        text = _call_cognitive_narrative(patterns, lang)
+    except Exception:
+        text = _template_cognitive(patterns, lang)
+    _cache[cache_key] = text
+    return text
+
+
+def _call_cognitive_narrative(patterns: list, lang: str) -> str:
+    import requests as _req
+    lang_instr = _LANG_COGNITIVE.get(lang, _LANG_COGNITIVE['pt-BR'])
+    pattern_str = "; ".join(
+        f"{_PATTERN_NAMES_EN.get(p['type'], p['type'])} ({p['frequency']*100:.0f}% frequency, {p['severity']} severity)"
+        for p in patterns[:3]
+    )
+    system = (
+        f"You are a concise MTT poker coach specialising in mental game. {lang_instr} "
+        "Write EXACTLY 2-3 sentences: (1) name the most damaging cognitive pattern and its trigger, "
+        "(2) explain briefly why it costs EV, "
+        "(3) give one concrete corrective habit the player can apply immediately. "
+        "Be direct and specific. No headers or bullets."
+    )
+    user_content = (
+        f"Detected cognitive failure patterns: {pattern_str}. "
+        f"Most frequent: {patterns[0]['type']} at {patterns[0]['frequency']*100:.0f}% of opportunities."
+    )
+    payload = {
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 220,
+        "system": system,
+        "messages": [{"role": "user", "content": user_content}],
+    }
+    resp = _req.post(
+        "https://api.anthropic.com/v1/messages",
+        json=payload,
+        headers={
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01",
+            "x-api-key": _api_key(),
+        },
+        timeout=20,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return "".join(
+        block["text"] for block in data.get("content", []) if block.get("type") == "text"
+    ).strip()
+
+
+def _template_cognitive(patterns: list, lang: str = 'pt-BR') -> str:
+    top  = patterns[0]
+    freq = int(top['frequency'] * 100)
+    names_pt = {
+        "revenge_aggression": "Agressividade Reativa",
+        "fear_folding":       "Fold por Medo",
+        "sunk_cost":          "Custo Afundado",
+        "entitlement_tilt":   "Tilt por Relaxamento",
+        "compensation_call":  "Call Compensatório",
+    }
+    names_es = {
+        "revenge_aggression": "Agresividad Reactiva",
+        "fear_folding":       "Fold por Miedo",
+        "sunk_cost":          "Costo Hundido",
+        "entitlement_tilt":   "Tilt por Complacencia",
+        "compensation_call":  "Call de Compensación",
+    }
+    if lang == 'en':
+        pname = _PATTERN_NAMES_EN.get(top['type'], top['type'])
+        return (
+            f"Your most frequent cognitive pattern is {pname} ({freq}% of opportunities). "
+            f"This breaks decision discipline at the moments of highest strategic cost. "
+            f"Take a deliberate 30-second pause after triggering events before acting on your next hand."
+        )
+    if lang == 'es':
+        pname = names_es.get(top['type'], top['type'])
+        return (
+            f"Tu patrón cognitivo más frecuente es {pname} ({freq}% de las oportunidades). "
+            f"Esto rompe la disciplina decisional en los momentos de mayor coste estratégico. "
+            f"Haz una pausa consciente de 30 segundos tras los eventos desencadenantes antes de actuar."
+        )
+    pname = names_pt.get(top['type'], top['type'])
+    return (
+        f"Seu padrão cognitivo mais frequente é {pname} ({freq}% das oportunidades). "
+        f"Isso quebra a disciplina decisional nos momentos de maior custo estratégico. "
+        f"Faça uma pausa consciente de 30 segundos após eventos gatilho antes de agir na próxima mão."
+    )
+
+
 # ── Session Review (FEAT-08) ─────────────────────────────────────────────────
 
 def generate_session_review(goal: dict, tournament: dict) -> str:

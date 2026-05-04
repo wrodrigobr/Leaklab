@@ -92,6 +92,8 @@ from database.repositories import (
     approve_coach_application, reject_coach_application,
     # Sprint AP — Career Graph
     get_career_projection,
+    # Sprint AQ — Cognitive Failure Mapper
+    get_cognitive_failure_report,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -824,6 +826,18 @@ def player_career():
     if not projection.get("insufficient_data"):
         projection["narrative"] = generate_career_narrative(projection, lang=lang)
     return jsonify(projection)
+
+
+@app.route('/player/cognitive-failures', methods=['GET'])
+@require_auth
+def player_cognitive_failures():
+    from leaklab.llm_explainer import generate_cognitive_narrative
+    lang   = request.args.get('lang', 'pt-BR')
+    days   = int(request.args.get('days', 90))
+    report = get_cognitive_failure_report(g.user_id, days=days)
+    if not report.get("insufficient_data") and report.get("patterns"):
+        report["narrative"] = generate_cognitive_narrative(report["patterns"], lang=lang)
+    return jsonify(report)
 
 
 @app.route('/player/daily-focus', methods=['GET'])

@@ -26,9 +26,10 @@ import { ProfileCompletionCard } from "@/components/hud/ProfileCompletionCard";
 import { SessionGoalPanel } from "@/components/hud/UploadQueue";
 import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
 import { CareerGraphCard } from "@/components/hud/CareerGraphCard";
+import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, drill, tournaments, digest, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection } from "@/lib/api";
+import { metrics, drill, tournaments, digest, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection, CognitiveFailureData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
@@ -47,8 +48,9 @@ const Index = () => {
   const [drillStats, setDrillStats]     = useState<DrillStats | null>(null);
   const [dnaData, setDnaData]           = useState<PlayerDnaResponse | null>(null);
   const [drillSpots, setDrillSpots]     = useState<DrillSpot[]>([]);
-  const [leakGraph, setLeakGraph]       = useState<LeakGraphResponse | null>(null);
-  const [careerData, setCareerData]     = useState<CareerProjection | null>(null);
+  const [leakGraph, setLeakGraph]         = useState<LeakGraphResponse | null>(null);
+  const [careerData, setCareerData]       = useState<CareerProjection | null>(null);
+  const [cognitiveData, setCognitiveData] = useState<CognitiveFailureData | null>(null);
   const [loading, setLoading]   = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [digestDismissed, setDigestDismissed] = useState(false);
@@ -70,6 +72,7 @@ const Index = () => {
       drill.spots({ limit: 20 }).then((r) => setDrillSpots(r.spots)).catch(() => null),
       metrics.leakGraph(90, i18n.language).then(setLeakGraph).catch(() => null),
       metrics.career(i18n.language).then(setCareerData).catch(() => null),
+      metrics.cognitiveFailures(i18n.language).then(setCognitiveData).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
 
@@ -342,6 +345,11 @@ const Index = () => {
                     if (id === "career") return careerData ? (
                       <DraggableCard key={id} id={id}>
                         <CareerGraphCard data={careerData} />
+                      </DraggableCard>
+                    ) : <div key={id} />;
+                    if (id === "cognitive_failures") return cognitiveData ? (
+                      <DraggableCard key={id} id={id}>
+                        <CognitiveFailureCard data={cognitiveData} />
                       </DraggableCard>
                     ) : <div key={id} />;
                     if (id === "ai_confidence") return (

@@ -1281,6 +1281,51 @@ def get_career_projection(user_id: int) -> dict:
     }
 
 
+def get_cognitive_failure_report(user_id: int, days: int = 90) -> dict:
+    """
+    Sprint AQ — Detecta padrões de falha cognitivo-emocional nas decisões do jogador.
+    Analisa janelas deslizantes sobre a sequência cronológica de decisões por torneio.
+    """
+    from datetime import datetime, timedelta
+    from leaklab.cognitive_mapper import analyze_cognitive_failures
+
+    cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt("""
+            SELECT d.id, d.tournament_id, d.hand_id, d.street,
+                   d.action_taken, d.best_action, d.label, d.score,
+                   d.position, d.m_ratio, d.icm_pressure, d.stack_bb
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+            ORDER BY d.tournament_id, d.id
+        """), (user_id, cutoff)).fetchall()
+    finally:
+        conn.close()
+
+    decisions = [
+        {
+            "id":            r["id"],
+            "tournament_id": r["tournament_id"],
+            "hand_id":       r["hand_id"],
+            "street":        r["street"],
+            "action_taken":  (r["action_taken"] or "").lower(),
+            "best_action":   r["best_action"],
+            "label":         r["label"],
+            "score":         r["score"],
+            "position":      r["position"],
+            "m_ratio":       r["m_ratio"],
+            "icm_pressure":  r["icm_pressure"],
+            "stack_bb":      r["stack_bb"],
+        }
+        for r in rows
+    ]
+
+    return analyze_cognitive_failures(decisions)
+
+
 def get_llm_cache(user_id: int, cache_key: str) -> Optional[str]:
     """Retorna análise cacheada ou None se não existir."""
     conn = get_conn()

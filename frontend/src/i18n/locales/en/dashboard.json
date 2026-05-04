@@ -252,4 +252,29 @@
     "perMonth": "{{n}} tournaments/month",
     "projection": "Projection"
   }
+  ,"cognitiveFailure": {
+    "title": "Cognitive Patterns",
+    "noData": "Insufficient data. Import more tournaments to detect cognitive patterns.",
+    "noPatterns": "No cognitive patterns detected. Your game is cognitively consistent.",
+    "decisions": "{{count}} decisions",
+    "patterns": {
+      "revenge_aggression": "Revenge Aggression",
+      "fear_folding": "Fear Folding",
+      "sunk_cost": "Sunk Cost Continuation",
+      "entitlement_tilt": "Entitlement Tilt",
+      "compensation_call": "Compensation Call"
+    },
+    "descriptions": {
+      "revenge_aggression": "Aggressive mistakes shortly after a sequence of correct folds",
+      "fear_folding": "Incorrect folds after consecutive aggressive mistakes (blowup hands)",
+      "sunk_cost": "Bad calls across multiple streets of the same hand (chasing the pot)",
+      "entitlement_tilt": "Cascading mistakes after a long streak of correct decisions",
+      "compensation_call": "Incorrect calls in the hands following a correct fold of a strong hand"
+    },
+    "severity": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    }
+  }
 }

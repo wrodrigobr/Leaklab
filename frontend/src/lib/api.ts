@@ -573,6 +573,9 @@ export const metrics = {
   career: (lang = "pt-BR") =>
     request<CareerProjection>(`/player/career?lang=${encodeURIComponent(lang)}`),
 
+  cognitiveFailures: (lang = "pt-BR", days = 90) =>
+    request<CognitiveFailureData>(`/player/cognitive-failures?lang=${encodeURIComponent(lang)}&days=${days}`),
+
   dailyFocus: () =>
     request<DailyFocusData>(`/player/daily-focus`),
 
@@ -659,6 +662,22 @@ export interface CareerProjection {
   series_history?: number[];
   series_projection?: number[];
   blocking_leaks?: { spot: string; n: number; avg_score: number }[];
+  narrative?: string;
+}
+
+// ── Cognitive Failure Mapper (Sprint AQ) ─────────────────────────────────────
+
+export interface CognitivePattern {
+  type: "revenge_aggression" | "fear_folding" | "sunk_cost" | "entitlement_tilt" | "compensation_call";
+  count: number;
+  frequency: number;
+  severity: "high" | "medium" | "low";
+}
+
+export interface CognitiveFailureData {
+  insufficient_data: boolean;
+  patterns: CognitivePattern[];
+  total_decisions: number;
   narrative?: string;
 }
 

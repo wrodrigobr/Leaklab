@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.75.0] — 2026-05-04 — Sprint AQ: Cognitive Failure Mapper
+
+### Added
+- **`backend/leaklab/cognitive_mapper.py`**: detector de 5 padrões cognitivo-emocionais sobre sequências de decisões — `revenge_aggression` (agressividade após folds corretos), `fear_folding` (folds incorretos após blowups), `sunk_cost` (calls ruins em múltiplas streets), `entitlement_tilt` (erros após boa sequência) e `compensation_call` (calls ruins após fold correto). Usa janelas deslizantes de 5–10 decisões por torneio; retorna padrões ordenados por frequência com severity (high/medium/low).
+- **`backend/database/repositories.py`**: `get_cognitive_failure_report(user_id, days=90)` — consulta decisões dos últimos N dias ordenadas por torneio + id, e chama `analyze_cognitive_failures`.
+- **`backend/leaklab/llm_explainer.py`**: `generate_cognitive_narrative(patterns, lang)`, `_call_cognitive_narrative`, `_template_cognitive` — narrativa de 2-3 frases com o padrão dominante, custo em EV e um hábito corretivo; suporte multilíngue (PT/EN/ES); fallback determinístico.
+- **`backend/api/app.py`**: `GET /player/cognitive-failures?lang=&days=` — retorna relatório + narrativa LLM.
+- **`frontend/src/lib/api.ts`**: interfaces `CognitivePattern` e `CognitiveFailureData`; `metrics.cognitiveFailures(lang, days)`.
+- **`frontend/src/components/hud/CognitiveFailureCard.tsx`**: card com lista de padrões detectados (nome traduzido, severity badge colorido, barra de frequência, descrição), narrativa LLM e estados de loading/empty. Totalmente i18n.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/dashboard.json`**: seção `cognitiveFailure` com 5 nomes de padrão, 5 descrições, 3 níveis de severity.
+
+### Changed
+- **`frontend/src/hooks/useDashboardLayout.ts`**: adicionado `"cognitive_failures"` ao tipo `SidebarSection`; incluído no `DEFAULT_LAYOUT` entre `"career"` e `"ai_confidence"`.
+- **`frontend/src/pages/Index.tsx`**: busca `metrics.cognitiveFailures(i18n.language)` no carregamento; renderiza `CognitiveFailureCard` como card draggable no sidebar.
+
+---
+
 ## [v0.74.0] — 2026-05-04 — Sprint AP: Strategic Career Graph
 
 ### Added
