@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.81.0] — 2026-05-04 — Sprint AV: Página Treinos + Botões contextuais
+
+### Added
+- **`frontend/src/pages/Training.tsx`**: nova página `/training` — landing de treino com dois cards (Ghost Table e Sparring Mode), esquema visual primário vs amber, lista de features, CTAs diretos.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/training.json`**: namespace `training` com todas as strings da página nas 3 locales.
+- **`frontend/src/i18n/index.ts`**: namespace `training` registrado nas 3 locales.
+- **`frontend/src/App.tsx`**: rota `/training` adicionada (ProtectedRoute).
+
+### Changed
+- **`frontend/src/components/hud/HudHeader.tsx`**: `TrainingDropdown` removido — substituído por `NavLink` simples `/training` com `activePaths: ["/training", "/ghost", "/sparring"]`; código simplificado (sem `TrainingDropdown`, sem `ChevronDown`, sem `isDropdown`).
+- **`frontend/src/pages/Sparring.tsx`**: botões de ação contextuais — `facing_bet > 0` exibe `[fold, call, raise, jam]`; `facing_bet == 0` exibe `[fold, check, bet, jam]`; `facing_bet == null` exibe todos os 6 (fallback). Grid adapta de 4 para 6 colunas conforme o conjunto.
+
+---
+
 ## [v0.80.0] — 2026-05-04 — Sprint AU: PokerTable visual no Sparring
 
 ### Changed

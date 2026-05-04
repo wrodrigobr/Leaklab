@@ -1,0 +1,23 @@
+{
+  "eyebrow": "Training Module",
+  "title": "Training",
+  "subtitle": "Two ways to turn your mistakes into active learning.",
+  "ghost": {
+    "title": "Ghost Table",
+    "badge": "Spaced Repetition",
+    "desc": "Drills focused on your highest-error spots. The SRS system schedules automatic reviews — reinforcing your costliest patterns before they surface in real play.",
+    "f1": "Spots extracted automatically from your history",
+    "f2": "Adaptive intervals: 3 → 7 → 14 → 28 → 60 days",
+    "f3": "25 XP per completed drill, 100 XP on mastery",
+    "cta": "Open Ghost Table"
+  },
+  "sparring": {
+    "title": "Sparring Mode",
+    "badge": "Full hands",
+    "desc": "Play historical hands pausing at each real decision point. The engine evaluates every choice with the same rigor as the tournament analysis, and results are registered in the SRS.",
+    "f1": "Hand auto-selected by your worst recent mistake",
+    "f2": "Full visual table with real positions, folds and bets",
+    "f3": "Integrates directly with Ghost Table via SRS",
+    "cta": "Start Sparring"
+  }
+}

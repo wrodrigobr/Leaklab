@@ -23,6 +23,7 @@ import PublicCoachProfile from "./pages/PublicCoachProfile.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GhostTable from "./pages/GhostTable.tsx";
 import Sparring from "./pages/Sparring.tsx";
+import Training from "./pages/Training.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
 import Docs from "./pages/Docs.tsx";
@@ -212,6 +213,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Sparring />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/training"
+              element={
+                <ProtectedRoute>
+                  <Training />
                 </ProtectedRoute>
               }
             />

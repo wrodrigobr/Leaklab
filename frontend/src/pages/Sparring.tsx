@@ -21,7 +21,9 @@ import { cn, formatAction } from "@/lib/utils";
 
 type Phase = "idle" | "loading" | "playing" | "feedback" | "summary";
 
-const ACTION_KEYS = ["fold", "check", "call", "bet", "raise", "jam"] as const;
+const ACTION_KEYS_FACING    = ["fold", "call", "raise", "jam"] as const; // facing a bet
+const ACTION_KEYS_NO_FACING = ["fold", "check", "bet",  "jam"] as const; // no bet to face
+const ACTION_KEYS_ALL       = ["fold", "check", "call", "bet", "raise", "jam"] as const;
 const STREETS = ["preflop", "flop", "turn", "river"] as const;
 
 // ── Card parser ───────────────────────────────────────────────────────────────
@@ -560,19 +562,28 @@ export default function Sparring() {
           {/* Question */}
           <p className="text-center text-sm font-semibold text-foreground">{t("question")}</p>
 
-          {/* Action buttons — amber accent on hover */}
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-            {ACTION_KEYS.map((action) => (
-              <button
-                key={action}
-                onClick={() => submitAction(action)}
-                disabled={submitting}
-                className="rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 hover:ring-amber-500/40 disabled:opacity-60 transition-all active:scale-95"
-              >
-                {t(`actions.${action}`)}
-              </button>
-            ))}
-          </div>
+          {/* Action buttons — context-aware: facing bet → call/raise; no bet → check/bet */}
+          {(() => {
+            const actionKeys =
+              current.facing_bet == null ? ACTION_KEYS_ALL :
+              current.facing_bet > 0    ? ACTION_KEYS_FACING :
+                                          ACTION_KEYS_NO_FACING;
+            const cols = actionKeys.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3 sm:grid-cols-6";
+            return (
+              <div className={`grid gap-3 ${cols}`}>
+                {actionKeys.map((action) => (
+                  <button
+                    key={action}
+                    onClick={() => submitAction(action)}
+                    disabled={submitting}
+                    className="rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 hover:ring-amber-500/40 disabled:opacity-60 transition-all active:scale-95"
+                  >
+                    {t(`actions.${action}`)}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 

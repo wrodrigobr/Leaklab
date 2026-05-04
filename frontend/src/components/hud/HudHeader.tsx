@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bot, ChevronDown, Dumbbell, GraduationCap, Globe, LayoutDashboard, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, X } from "lucide-react";
+import { Activity, BarChart3, Bot, Dumbbell, GraduationCap, Globe, LayoutDashboard, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, X } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,7 +13,6 @@ interface HudHeaderProps {
   onUpload?: () => void;
 }
 
-type DropdownItem = { label: string; to: string; icon: React.ElementType };
 type NavItem = {
   label: string;
   mobileLabel: string;
@@ -21,8 +20,6 @@ type NavItem = {
   icon: React.ElementType;
   end?: boolean;
   activePaths?: string[];
-  isDropdown?: boolean;
-  dropdownItems?: DropdownItem[];
 };
 
 const LANGUAGES = [
@@ -71,62 +68,6 @@ function LanguageSwitcher() {
   );
 }
 
-function TrainingDropdown({ label, items }: { label: string; items: DropdownItem[] }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const location = useLocation();
-  const isActive = items.some((i) => location.pathname === i.to);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`relative flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium tracking-wide uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-          isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        <Dumbbell className="size-3.5" aria-hidden />
-        {label}
-        <ChevronDown className={`size-3 transition-transform duration-150 ${open ? "rotate-180" : ""}`} aria-hidden />
-        {isActive && (
-          <span className="absolute -bottom-[17px] left-2 right-2 h-0.5 bg-primary" />
-        )}
-      </button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 min-w-[168px] rounded-lg border border-border bg-card shadow-elevated overflow-hidden">
-            {items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={() => setOpen(false)}
-                className={({ isActive: a }) =>
-                  `flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium uppercase tracking-wide transition-colors hover:bg-primary/10 ${
-                    a ? "text-primary bg-primary/5" : "text-muted-foreground"
-                  }`
-                }
-              >
-                <item.icon className="size-3.5" aria-hidden />
-                {item.label}
-              </NavLink>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 export function HudHeader({ onUpload }: HudHeaderProps) {
   const { user } = useAuth();
   const { t } = useTranslation("common");
@@ -142,22 +83,15 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [chatOpen]);
 
-  const trainingItems: DropdownItem[] = [
-    { label: t("nav.ghost"),    to: "/ghost",    icon: Swords },
-    { label: t("nav.sparring"), to: "/sparring", icon: Swords },
-  ];
-
   const playerNavItems: NavItem[] = [
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",   icon: LayoutDashboard },
     { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments", icon: Trophy },
     { label: t("nav.study"),       mobileLabel: t("nav.study"),       to: "/study",       icon: GraduationCap },
     {
       label: t("nav.training"), mobileLabel: t("nav.training"),
-      to: "/ghost",
+      to: "/training",
       icon: Dumbbell,
-      activePaths: ["/ghost", "/sparring"],
-      isDropdown: true,
-      dropdownItems: trainingItems,
+      activePaths: ["/training", "/ghost", "/sparring"],
     },
     { label: t("nav.coach"),   mobileLabel: t("nav.coach"),   to: "/coach",   icon: Bot },
     { label: t("nav.coaches"), mobileLabel: t("nav.coaches"), to: "/coaches", icon: Users },
@@ -203,36 +137,28 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
             </a>
 
             <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
-              {navItems.map((item) =>
-                item.isDropdown ? (
-                  <TrainingDropdown
-                    key="training-dropdown"
-                    label={item.label}
-                    items={item.dropdownItems!}
-                  />
-                ) : (
+              {navItems.map((item) => {
+                const activePaths = item.activePaths ?? [item.to];
+                const isActive = activePaths.some((p) => location.pathname === p);
+                return (
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    end={"end" in item ? item.end : item.to === "/"}
-                    className={({ isActive }) =>
+                    end={item.end ?? item.to === "/"}
+                    className={() =>
                       `relative flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium tracking-wide uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                         isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                       }`
                     }
                   >
-                    {({ isActive }) => (
-                      <>
-                        <item.icon className="size-3.5" aria-hidden />
-                        {item.label}
-                        {isActive && (
-                          <span className="absolute -bottom-[17px] left-2 right-2 h-0.5 bg-primary" />
-                        )}
-                      </>
+                    <item.icon className="size-3.5" aria-hidden />
+                    {item.label}
+                    {isActive && (
+                      <span className="absolute -bottom-[17px] left-2 right-2 h-0.5 bg-primary" />
                     )}
                   </NavLink>
-                )
-              )}
+                );
+              })}
             </nav>
           </div>
 
@@ -301,7 +227,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  end={"end" in item ? item.end : item.to === "/"}
+                  end={item.end ?? item.to === "/"}
                   className={() =>
                     `flex flex-col items-center gap-0.5 flex-1 rounded-lg px-1 py-2 min-w-0 transition-colors ${
                       isActive ? "text-primary" : "text-muted-foreground"

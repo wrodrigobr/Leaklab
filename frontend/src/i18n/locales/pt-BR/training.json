@@ -1,0 +1,23 @@
+{
+  "eyebrow": "Módulo de Treino",
+  "title": "Treinos",
+  "subtitle": "Duas formas de transformar seus erros em aprendizado ativo.",
+  "ghost": {
+    "title": "Ghost Table",
+    "badge": "Spaced Repetition",
+    "desc": "Drills focados nos seus spots de maior erro. O sistema SRS agenda revisões automáticas — reforça os padrões mais custosos antes que eles voltem a aparecer em jogo real.",
+    "f1": "Spots extraídos automaticamente do seu histórico",
+    "f2": "Intervalos adaptativos: 3 → 7 → 14 → 28 → 60 dias",
+    "f3": "25 XP por drill concluído, 100 XP ao masterizar",
+    "cta": "Abrir Ghost Table"
+  },
+  "sparring": {
+    "title": "Sparring Mode",
+    "badge": "Mãos completas",
+    "desc": "Jogue mãos históricas pausando em cada ponto de decisão real. O engine avalia cada escolha com o mesmo rigor da análise de torneio, e o resultado é registrado no SRS.",
+    "f1": "Mão selecionada automaticamente pelo pior erro recente",
+    "f2": "Mesa visual completa com posições, folds e apostas reais",
+    "f3": "Integra diretamente com o Ghost Table via SRS",
+    "cta": "Iniciar Sparring"
+  }
+}
