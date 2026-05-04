@@ -299,7 +299,7 @@ export const tournaments = {
       narrative: string;
     }>(`/history/tournaments/compare?ids=${ids.join(",")}`),
 
-  downloadReport: async (tournamentId: string): Promise<void> => {
+  downloadReport: async (tournamentId: string): Promise<{ format: "pdf" | "html" }> => {
     const t = sessionStorage.getItem("ll_token");
     const res = await fetch(`${BASE}/history/tournament/${tournamentId}/report.pdf`, {
       headers: t ? { Authorization: `Bearer ${t}` } : {},
@@ -308,15 +308,18 @@ export const tournaments = {
       const msg = await res.text().catch(() => `HTTP ${res.status}`);
       throw new Error(msg);
     }
+    const isPdf = (res.headers.get("content-type") ?? "").includes("application/pdf");
+    const ext = isPdf ? "pdf" : "html";
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `leaklab-report-${tournamentId}.pdf`;
+    a.download = `leaklab-report-${tournamentId}.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    return { format: isPdf ? "pdf" : "html" };
   },
 
   replay: (tournamentId: string, handId: string) =>

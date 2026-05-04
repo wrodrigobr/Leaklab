@@ -223,6 +223,7 @@ const TournamentDetail = () => {
   const [textureAnalysis, setTextureAnalysis] = useState<TextureData[]>([]);
   const [narrative, setNarrative] = useState<{ narrative: string; quality_level: "solid" | "regular" | "poor" } | null>(null);
   const [pdfDownloading, setPdfDownloading] = useState(false);
+  const [pdfFallback, setPdfFallback] = useState(false);
 
   const requestAnalysis = async (decisionId: number, force = false) => {
     if (analysisLoading[decisionId]) return;
@@ -314,23 +315,33 @@ const TournamentDetail = () => {
                   existingSummary={tournament.llm_summary}
                 />
               )}
-              <button
-                onClick={async () => {
-                  if (!id || pdfDownloading) return;
-                  setPdfDownloading(true);
-                  try { await tournaments.downloadReport(id); }
-                  catch { /* silently ignore — user sees nothing change */ }
-                  finally { setPdfDownloading(false); }
-                }}
-                disabled={pdfDownloading || !tournament}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-hud-surface px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Baixar relatório PDF"
-              >
-                {pdfDownloading
-                  ? <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                  : <FileDown className="size-3.5" aria-hidden />}
-                PDF
-              </button>
+              <div className="flex flex-col items-end gap-1">
+                <button
+                  onClick={async () => {
+                    if (!id || pdfDownloading) return;
+                    setPdfDownloading(true);
+                    setPdfFallback(false);
+                    try {
+                      const { format } = await tournaments.downloadReport(id);
+                      if (format === "html") setPdfFallback(true);
+                    } catch { /* silently ignore */ }
+                    finally { setPdfDownloading(false); }
+                  }}
+                  disabled={pdfDownloading || !tournament}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-hud-surface px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Baixar relatório PDF"
+                >
+                  {pdfDownloading
+                    ? <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                    : <FileDown className="size-3.5" aria-hidden />}
+                  PDF
+                </button>
+                {pdfFallback && (
+                  <span className="font-mono text-[9px] text-yellow-400 text-right leading-tight">
+                    WeasyPrint indisponível — baixado como HTML
+                  </span>
+                )}
+              </div>
               <button
                 onClick={() => hands[0] && navigate(`/replayer?t=${id}&h=${hands[0].id}`)}
                 disabled={!hands.length}
