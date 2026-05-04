@@ -3537,3 +3537,34 @@ def get_demographics_aggregate() -> dict:
         }
     finally:
         conn.close()
+
+
+# ── Dashboard preferences ─────────────────────────────────────────────────────
+
+def get_user_preferences(user_id: int) -> dict:
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT dashboard_layout FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        layout = None
+        if row and row['dashboard_layout']:
+            try:
+                layout = json.loads(row['dashboard_layout'])
+            except Exception:
+                pass
+        return {'dashboard_layout': layout}
+    finally:
+        conn.close()
+
+
+def save_user_preferences(user_id: int, dashboard_layout: dict) -> None:
+    conn = get_conn()
+    try:
+        conn.execute(
+            "UPDATE users SET dashboard_layout = ? WHERE id = ?",
+            (json.dumps(dashboard_layout), user_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()

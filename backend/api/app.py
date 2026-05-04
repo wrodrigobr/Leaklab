@@ -3219,6 +3219,25 @@ def admin_demographics():
     return jsonify(get_demographics_aggregate())
 
 
+@app.route('/player/preferences', methods=['GET'])
+@require_auth
+def get_player_preferences():
+    from database.repositories import get_user_preferences
+    return jsonify(get_user_preferences(g.user_id))
+
+
+@app.route('/player/preferences', methods=['PATCH'])
+@require_auth
+def save_player_preferences():
+    from database.repositories import save_user_preferences
+    body = request.get_json(silent=True) or {}
+    layout = body.get('dashboard_layout')
+    if layout is None:
+        return jsonify({'error': 'dashboard_layout required'}), 400
+    save_user_preferences(g.user_id, layout)
+    return jsonify({'ok': True})
+
+
 @app.errorhandler(500)
 def internal_error(e): return jsonify({'error': f'Erro interno do servidor: {e}'}), 500
 

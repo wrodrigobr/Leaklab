@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.70.0] — 2026-05-04 — Sprint AL: UX-017 Dashboard Personalizável
+
+### Added
+- **`backend/database/schema.py`**: coluna `dashboard_layout TEXT` na tabela `users` (SQLite + PostgreSQL).
+- **`backend/database/repositories.py`**: `get_user_preferences(user_id)` e `save_user_preferences(user_id, layout)`.
+- **`backend/api/app.py`**: `GET /player/preferences` e `PATCH /player/preferences`.
+- **`frontend/package.json`**: dependências `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`.
+- **`frontend/src/hooks/useDashboardLayout.ts`**: hook que carrega layout do servidor, persiste com debounce de 800ms e expõe `updateMain`, `updateSidebar`, `reset`.
+- **`frontend/src/components/hud/DraggableCard.tsx`**: wrapper sortable com drag handle (⠿) visível ao hover no canto superior direito.
+- **`frontend/src/lib/api.ts`**: interface `DashboardLayoutData`; objeto `preferences` com `get()` e `save()`.
+
+### Changed
+- **`frontend/src/pages/Index.tsx`**: coluna principal (3 linhas: quality_row, street_row, drill_row) e sidebar (leaks, causal_map, level, ai_confidence) agora são sortáveis via `@dnd-kit`. BankrollChart e PlayerDnaCard permanecem fixos. Botão "Restaurar padrão" no header do dashboard. Layout sincronizado entre devices via backend.
+
+---
+
 ## [v0.69.0] — 2026-05-04 — Sprint AN: UX-019 Coach Chat Drawer
 
 ### Changed

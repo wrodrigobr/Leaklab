@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Coins, Layers, Percent, Target, GraduationCap, Brain, Mail, X } from "lucide-react";
+import { Coins, Layers, Percent, Target, GraduationCap, Brain, Mail, X, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { KpiCard } from "@/components/hud/KpiCard";
 import { LeaksPanel } from "@/components/hud/LeaksPanel";
@@ -23,6 +25,8 @@ import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
 import { ProfileCompletionCard } from "@/components/hud/ProfileCompletionCard";
 import { SessionGoalPanel } from "@/components/hud/UploadQueue";
 import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
+import { DraggableCard } from "@/components/hud/DraggableCard";
+import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
 import { metrics, drill, tournaments, digest, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -67,6 +71,29 @@ const Index = () => {
   }, [refreshKey]);
 
   const handleUpload = () => setRefreshKey((k) => k + 1);
+
+  const { layout, updateMain, updateSidebar, reset: resetLayout } = useDashboardLayout();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleMainDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = layout.main.indexOf(active.id as MainSection);
+    const to   = layout.main.indexOf(over.id   as MainSection);
+    if (from !== -1 && to !== -1) updateMain(arrayMove(layout.main, from, to));
+  };
+
+  const handleSidebarDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = layout.sidebar.indexOf(active.id as SidebarSection);
+    const to   = layout.sidebar.indexOf(over.id   as SidebarSection);
+    if (from !== -1 && to !== -1) updateSidebar(arrayMove(layout.sidebar, from, to));
+  };
 
   const handleDigestSubscribe = async () => {
     setDigestSubscribing(true);
@@ -120,9 +147,21 @@ const Index = () => {
         )}
 
         <section className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">
-            <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-            {hasData ? t("eyebrow") : t("eyebrowEmpty")}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">
+              <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
+              {hasData ? t("eyebrow") : t("eyebrowEmpty")}
+            </div>
+            {hasData && (
+              <button
+                onClick={resetLayout}
+                title="Restaurar layout padrão"
+                className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground ring-1 ring-border hover:text-foreground hover:ring-primary/40 transition-colors"
+              >
+                <RotateCcw className="size-3" />
+                Restaurar padrão
+              </button>
+            )}
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
             {t("title")}
@@ -238,65 +277,100 @@ const Index = () => {
           <PlayerStatsCard stats={playerStats} />
 
           <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-            <div className="space-y-6 lg:col-span-8">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <RecentForm evolution={evo?.evolution} />
-                <DecisionQualityCard byLabel={breakdown?.by_label} />
-              </div>
-
-              <BankrollChart />
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <StreetBreakdown byStreet={breakdown?.by_street} />
-                <PositionChart byPosition={breakdown?.by_position} />
-              </div>
-
-              <PlayerDnaCard data={dnaData} />
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                <GhostDrillCard stats={drillStats} pendingSpots={drillSpots} />
-                <PressureProfileCard data={pressureData} />
-                <IcmBreakdown icm={evo?.icm} />
-              </div>
-            </div>
-
-            <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
-              <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} />
-              {leakGraph && leakGraph.nodes.length >= 3 && (
-                <LeakCausalMap
-                  nodes={leakGraph.nodes}
-                  edges={leakGraph.edges}
-                  narrative={leakGraph.narrative}
-                />
-              )}
-              {levelData?.level && <LevelCard data={levelData} showStudyLink />}
-              <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                      {t("aiConfidence.title")}
-                    </span>
-                    <HudTooltip content={t("aiConfidence.tooltip")} />
-                  </div>
-                  <span className="font-mono text-[10px] text-primary">
-                    {hasData ? t("aiConfidence.active") : t("aiConfidence.noData")}
-                  </span>
+            {/* ── Main column (sortable rows) ──────────────────────────────── */}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMainDragEnd}>
+              <SortableContext items={layout.main} strategy={verticalListSortingStrategy}>
+                <div className="space-y-6 lg:col-span-8">
+                  {layout.main.map((id, idx) => (
+                    <div key={id} className="space-y-6">
+                      <DraggableCard id={id}>
+                        {id === "quality_row" && (
+                          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <RecentForm evolution={evo?.evolution} />
+                            <DecisionQualityCard byLabel={breakdown?.by_label} />
+                          </div>
+                        )}
+                        {id === "street_row" && (
+                          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <StreetBreakdown byStreet={breakdown?.by_street} />
+                            <PositionChart byPosition={breakdown?.by_position} />
+                          </div>
+                        )}
+                        {id === "drill_row" && (
+                          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                            <GhostDrillCard stats={drillStats} pendingSpots={drillSpots} />
+                            <PressureProfileCard data={pressureData} />
+                            <IcmBreakdown icm={evo?.icm} />
+                          </div>
+                        )}
+                      </DraggableCard>
+                      {idx === 0 && <BankrollChart />}
+                      {idx === 1 && <PlayerDnaCard data={dnaData} />}
+                    </div>
+                  ))}
                 </div>
-                <div className="flex gap-1">
-                  {Array.from({ length: 12 }).map((_, i) => {
-                    const filled = hasData ? Math.min(12, Math.round((totalEvents / 10) * 12)) : 0;
-                    return (
-                      <span key={i} className={`h-1.5 flex-1 rounded-sm ${i < filled ? "bg-primary" : "bg-border"}`} />
+              </SortableContext>
+            </DndContext>
+
+            {/* ── Sidebar (sortable cards) ─────────────────────────────────── */}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSidebarDragEnd}>
+              <SortableContext items={layout.sidebar} strategy={verticalListSortingStrategy}>
+                <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
+                  {layout.sidebar.map((id) => {
+                    if (id === "leaks") return (
+                      <DraggableCard key={id} id={id}>
+                        <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} />
+                      </DraggableCard>
                     );
+                    if (id === "causal_map") return leakGraph && leakGraph.nodes.length >= 3 ? (
+                      <DraggableCard key={id} id={id}>
+                        <LeakCausalMap
+                          nodes={leakGraph.nodes}
+                          edges={leakGraph.edges}
+                          narrative={leakGraph.narrative}
+                        />
+                      </DraggableCard>
+                    ) : <div key={id} />;
+                    if (id === "level") return levelData?.level ? (
+                      <DraggableCard key={id} id={id}>
+                        <LevelCard data={levelData} showStudyLink />
+                      </DraggableCard>
+                    ) : <div key={id} />;
+                    if (id === "ai_confidence") return (
+                      <DraggableCard key={id} id={id}>
+                        <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
+                          <div className="mb-3 flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                                {t("aiConfidence.title")}
+                              </span>
+                              <HudTooltip content={t("aiConfidence.tooltip")} />
+                            </div>
+                            <span className="font-mono text-[10px] text-primary">
+                              {hasData ? t("aiConfidence.active") : t("aiConfidence.noData")}
+                            </span>
+                          </div>
+                          <div className="flex gap-1">
+                            {Array.from({ length: 12 }).map((_, i) => {
+                              const filled = hasData ? Math.min(12, Math.round((totalEvents / 10) * 12)) : 0;
+                              return (
+                                <span key={i} className={`h-1.5 flex-1 rounded-sm ${i < filled ? "bg-primary" : "bg-border"}`} />
+                              );
+                            })}
+                          </div>
+                          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                            {hasData
+                              ? t("aiConfidence.summary", { count: totalEvents })
+                              : t("aiConfidence.empty")}
+                          </p>
+                        </div>
+                      </DraggableCard>
+                    );
+                    return null;
                   })}
-                </div>
-                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                  {hasData
-                    ? t("aiConfidence.summary", { count: totalEvents })
-                    : t("aiConfidence.empty")}
-                </p>
-              </div>
-            </aside>
+                </aside>
+              </SortableContext>
+            </DndContext>
           </section>
           </>
         )}

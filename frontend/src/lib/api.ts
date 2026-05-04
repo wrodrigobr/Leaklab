@@ -1467,3 +1467,21 @@ export const digest = {
       method: "POST",
     }),
 };
+
+// ── Dashboard preferences — UX-017 ───────────────────────────────────────────
+
+export interface DashboardLayoutData {
+  main: string[];
+  sidebar: string[];
+}
+
+export const preferences = {
+  get: () =>
+    request<{ dashboard_layout: DashboardLayoutData | null }>("/player/preferences"),
+
+  save: (dashboard_layout: DashboardLayoutData) =>
+    request<{ ok: boolean }>("/player/preferences", {
+      method: "PATCH",
+      body: JSON.stringify({ dashboard_layout }),
+    }),
+};
