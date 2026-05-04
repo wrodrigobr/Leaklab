@@ -2739,8 +2739,8 @@ def get_daily_focus(user_id: int) -> dict:
         user = conn.execute(
             "SELECT daily_focus_done_at, xp_streak FROM users WHERE id = ?", (user_id,)
         ).fetchone()
-        completed = bool(user and user.get('daily_focus_done_at') == today)
-        streak    = (user or {}).get('xp_streak') or 0
+        completed = bool(user and user['daily_focus_done_at'] == today)
+        streak    = int(user['xp_streak'] or 0) if user else 0
     finally:
         conn.close()
 
@@ -2754,13 +2754,11 @@ def get_daily_focus(user_id: int) -> dict:
         label = spot.replace('/', ' / ').replace('_', ' ')
         n     = top.get('n', 0)
         actions.append({
-            'type':        'study_leak',
+            'type':        'leak',
             'priority':    'primary',
-            'title':       f'Drill: {label}',
-            'subtitle':    f'{n} erros recentes — score médio {top.get("avg_score", 0):.3f}',
+            'label':       f'Drill: {label}',
+            'description': f'{n} erros recentes — score médio {top.get("avg_score", 0):.3f}',
             'link':        '/ghost',
-            'badge':       'Drill',
-            'badge_color': 'destructive',
         })
 
     # 2. Most overdue drill spot → secondary
@@ -2769,13 +2767,11 @@ def get_daily_focus(user_id: int) -> dict:
         s    = spots[0]
         slbl = f"{(s.get('street') or '?').capitalize()} / {s.get('best_action') or '?'}"
         actions.append({
-            'type':        'ghost_drill',
+            'type':        'drill',
             'priority':    'secondary',
-            'title':       f'Ghost Table: {slbl}',
-            'subtitle':    f'Score: {s.get("score", 0):.3f} — spot a redecedir',
+            'label':       f'Ghost Table: {slbl}',
+            'description': f'Score: {s.get("score", 0):.3f} — spot a revisitar',
             'link':        '/ghost',
-            'badge':       'Ghost',
-            'badge_color': 'warning',
         })
 
     # 3. Most recent unreviewed tournament → secondary
@@ -2786,18 +2782,17 @@ def get_daily_focus(user_id: int) -> dict:
         tid  = t.get('tournament_id', '')
         name = (t.get('tournament_name') or f'#{tid}')[:35]
         actions.append({
-            'type':        'review_tournament',
+            'type':        'tournament',
             'priority':    'secondary',
-            'title':       f'Revisar: {name}',
-            'subtitle':    f'{t.get("hands_count", 0)} mãos · {t.get("site", "")}',
+            'label':       f'Revisar: {name}',
+            'description': f'{t.get("hands_count", 0)} mãos · {t.get("site", "")}',
             'link':        f'/tournaments/{tid}',
-            'badge':       'Review',
-            'badge_color': 'default',
         })
 
     if not actions:
         return {
-            'primary': None, 'secondary': [],
+            'primary':   {'type': 'none', 'label': '', 'description': '', 'link': ''},
+            'secondary': [],
             'valid_until': f'{today}T23:59:59',
             'completed': completed, 'streak': streak,
         }
@@ -2861,9 +2856,9 @@ def add_xp(user_id: int, event_type: str, amount: int | None = None) -> dict:
         if not user:
             return {}
 
-        xp_total = (user.get('xp_total') or 0) + xp_gain
-        last     = user.get('xp_last_activity') or ''
-        streak   = user.get('xp_streak') or 0
+        xp_total = (user['xp_total'] or 0) + xp_gain
+        last     = user['xp_last_activity'] or ''
+        streak   = user['xp_streak'] or 0
 
         if last == today:
             new_streak = streak
@@ -2897,9 +2892,9 @@ def get_xp_status(user_id: int) -> dict:
         if not user:
             return {'xp_total': 0, 'streak': 0, 'achievements': []}
         return {
-            'xp_total':      user.get('xp_total') or 0,
-            'streak':        user.get('xp_streak') or 0,
-            'last_activity': user.get('xp_last_activity'),
+            'xp_total':      user['xp_total'] or 0,
+            'streak':        user['xp_streak'] or 0,
+            'last_activity': user['xp_last_activity'],
             'achievements':  get_achievements(user_id),
         }
     finally:
@@ -2939,7 +2934,7 @@ def _check_and_grant_achievements(conn, user_id: int, event_type: str,
             "JOIN tournaments t ON t.id = d.tournament_id WHERE t.user_id = ?",
             (user_id,)
         ).fetchone()
-        if cnt and (cnt.get('n') or 0) >= 100:
+        if cnt and (cnt['n'] or 0) >= 100:
             candidates.append('decisions_100')
     if event_type in ('drill_completed', 'drill_mastered') and 'first_drill' not in existing:
         candidates.append('first_drill')
@@ -2949,7 +2944,7 @@ def _check_and_grant_achievements(conn, user_id: int, event_type: str,
         tc = conn.execute(
             "SELECT COUNT(*) AS n FROM tournaments WHERE user_id = ?", (user_id,)
         ).fetchone()
-        if tc and (tc.get('n') or 0) >= 10:
+        if tc and (tc['n'] or 0) >= 10:
             candidates.append('tournaments_10')
 
     new_ach = []
