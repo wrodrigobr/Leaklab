@@ -73,9 +73,25 @@
     "back": "Return to Home"
   },
   "engineActive": "Engine Active",
-  "sessionLocked": "ENC: AES-256 • LATENCY: 14ms • SESSION_LOCKED",
   "docs": "Documentation",
-  "status_page": "Status",
   "support": "Support",
-  "coachMessages": "Coach Messages"
+  "coachMessages": "Coach Messages",
+  "supportModal": {
+    "title": "Contact Us",
+    "subject": "Subject",
+    "subjectPlaceholder": "E.g. question about analysis, bug, suggestion…",
+    "message": "Message",
+    "messagePlaceholder": "Describe your question or need…",
+    "send": "Send",
+    "sending": "Sending…",
+    "success": "Message sent! We'll get back to you within 48h.",
+    "error": "Failed to send. Please try again.",
+    "categories": {
+      "bug": "Bug / Technical issue",
+      "question": "Question about the system",
+      "suggestion": "Improvement suggestion",
+      "billing": "Billing / Subscription",
+      "other": "Other"
+    }
+  }
 }

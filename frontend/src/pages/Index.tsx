@@ -17,6 +17,7 @@ import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { OnboardingModal } from "@/components/hud/OnboardingModal";
+import { SupportModal } from "@/components/hud/SupportModal";
 import { LevelCard } from "@/components/hud/LevelCard";
 import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
 import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
@@ -39,6 +40,7 @@ const Index = () => {
   const { t: tc } = useTranslation("common");
   const [showLinkCoach, setShowLinkCoach]   = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !user?.onboarding_completed);
+  const [showSupport, setShowSupport]       = useState(false);
   const [evo, setEvo]                     = useState<EvolutionResponse | null>(null);
   const [breakdown, setBreakdown]         = useState<BreakdownResponse | null>(null);
   const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
@@ -383,17 +385,19 @@ const Index = () => {
         )}
       </main>
 
-      <footer className="mx-auto mt-8 flex max-w-[1440px] items-center justify-between border-t border-border/60 px-6 py-6 md:px-8">
-        <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-          {tc("sessionLocked")}
-        </span>
-        <div className="hidden gap-6 sm:flex">
+      <footer className="mx-auto mt-8 flex max-w-[1440px] items-center justify-end border-t border-border/60 px-6 py-6 md:px-8">
+        <div className="flex gap-6">
           <a href="/docs" className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors">{tc("docs")}</a>
-          {([tc("status_page"), tc("support")] as const).map((l) => (
-            <a key={l} href="#" className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors">{l}</a>
-          ))}
+          <button
+            onClick={() => setShowSupport(true)}
+            className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {tc("support")}
+          </button>
         </div>
       </footer>
+
+      {showSupport && <SupportModal onClose={() => setShowSupport(false)} />}
     </div>
   );
 };

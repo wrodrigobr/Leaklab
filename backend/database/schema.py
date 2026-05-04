@@ -624,6 +624,19 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_apps_status ON coach_applications(status)")
         except Exception: pass
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS support_tickets (
+                    id         SERIAL PRIMARY KEY,
+                    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    category   TEXT      NOT NULL DEFAULT 'other',
+                    subject    TEXT      NOT NULL DEFAULT '',
+                    message    TEXT      NOT NULL,
+                    status     TEXT      NOT NULL DEFAULT 'open',
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+        except Exception: pass
         # session_goals table (Postgres) — FEAT-08
         try:
             conn.execute("""
@@ -922,6 +935,18 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_apps_status ON coach_applications(status)")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS support_tickets (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                category   TEXT    NOT NULL DEFAULT 'other',
+                subject    TEXT    NOT NULL DEFAULT '',
+                message    TEXT    NOT NULL,
+                status     TEXT    NOT NULL DEFAULT 'open',
+                created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────

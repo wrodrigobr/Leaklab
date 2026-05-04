@@ -73,9 +73,25 @@
     "back": "Volver al inicio"
   },
   "engineActive": "Motor Activo",
-  "sessionLocked": "ENC: AES-256 • LATENCIA: 14ms • SESIÓN_BLOQUEADA",
   "docs": "Documentación",
-  "status_page": "Estado",
   "support": "Soporte",
-  "coachMessages": "Mensajes del Coach"
+  "coachMessages": "Mensajes del Coach",
+  "supportModal": {
+    "title": "Contáctanos",
+    "subject": "Asunto",
+    "subjectPlaceholder": "Ej: duda sobre análisis, bug, sugerencia…",
+    "message": "Mensaje",
+    "messagePlaceholder": "Describe tu duda o necesidad…",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "success": "¡Mensaje enviado! Te respondemos en hasta 48h.",
+    "error": "Error al enviar. Inténtalo de nuevo.",
+    "categories": {
+      "bug": "Bug / Problema técnico",
+      "question": "Duda sobre el sistema",
+      "suggestion": "Sugerencia de mejora",
+      "billing": "Facturación / Suscripción",
+      "other": "Otro"
+    }
+  }
 }

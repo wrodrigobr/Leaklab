@@ -3303,6 +3303,28 @@ def complete_onboarding():
     return jsonify({'ok': True})
 
 
+@app.route('/support/contact', methods=['POST'])
+@require_auth
+def support_contact():
+    from database.schema import get_conn as _gc
+    data     = request.get_json(force=True) or {}
+    category = str(data.get('category', 'other'))[:50]
+    subject  = str(data.get('subject',  ''))[:120]
+    message  = str(data.get('message',  '')).strip()
+    if not message:
+        return jsonify({'error': 'Mensagem obrigatória'}), 400
+    conn = _gc()
+    try:
+        conn.execute(
+            "INSERT INTO support_tickets (user_id, category, subject, message) VALUES (?, ?, ?, ?)",
+            (g.user_id, category, subject, message)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({'ok': True})
+
+
 @app.errorhandler(500)
 def internal_error(e): return jsonify({'error': f'Erro interno do servidor: {e}'}), 500
 

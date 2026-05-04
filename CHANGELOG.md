@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.83.6] — 2026-05-04 — Footer: remoção do status bar + modal de suporte
+
+### Changed
+- **`frontend/src/pages/Index.tsx`**: footer simplificado — removido "ENC: AES-256 • LATENCY: 14ms • SESSION_LOCKED" e link "Status". Mantidos apenas "Docs" e "Suporte". Suporte agora abre um modal em vez de ser um link morto.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/common.json`**: removidas chaves `sessionLocked` e `status_page`; adicionadas chaves `supportModal.*` com título, campos, categorias e mensagens de feedback nas 3 locales.
+
+### Added
+- **`frontend/src/components/hud/SupportModal.tsx`**: modal de contato com seletor de categoria (bug, dúvida, sugestão, cobrança, outro), campo de assunto e mensagem (2000 chars), pré-preenchimento de usuário/email, feedback de sucesso e erro. i18n nas 3 locales.
+- **`backend/database/schema.py`**: tabela `support_tickets` (id, user_id, category, subject, message, status, created_at) criada em SQLite e PostgreSQL.
+- **`backend/api/app.py`**: `POST /support/contact` — salva ticket no banco, exige mensagem não-vazia, requer autenticação.
+
+---
+
 ## [v0.83.5] — 2026-05-04 — Bugfix: narrativas IA não atualizam ao trocar idioma
 
 ### Fixed
