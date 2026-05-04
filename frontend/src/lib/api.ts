@@ -538,7 +538,56 @@ export const metrics = {
 
   dna: (days = 90) =>
     request<PlayerDnaResponse>(`/player/dna?days=${days}`),
+
+  dailyFocus: () =>
+    request<DailyFocusData>(`/player/daily-focus`),
+
+  completeDailyFocus: () =>
+    request<{ ok: boolean }>(`/player/daily-focus/complete`, { method: "POST" }),
+
+  xpStatus: () =>
+    request<XpStatus>(`/player/xp`),
+
+  addXp: (event_type: string, amount?: number) =>
+    request<XpStatus>(`/player/xp`, {
+      method: "POST",
+      body: JSON.stringify({ event_type, amount }),
+    }),
+
+  achievements: () =>
+    request<{ achievements: Achievement[] }>(`/player/achievements`),
 };
+
+// ── Daily Focus + XP (Sprint Q) ───────────────────────────────────────────────
+
+export interface DailyFocusAction {
+  type: "leak" | "drill" | "tournament" | "none";
+  label: string;
+  description: string;
+  link: string;
+}
+
+export interface DailyFocusData {
+  primary: DailyFocusAction;
+  secondary: DailyFocusAction[];
+  valid_until: string;
+  completed: boolean;
+  streak: number;
+}
+
+export interface XpStatus {
+  xp_total: number;
+  streak: number;
+  last_activity: string | null;
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked_at: string;
+}
 
 // ── Player Level / Gamification (BACK-009) ────────────────────────────────────
 

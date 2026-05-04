@@ -25,7 +25,7 @@ import { ResourceList } from "@/components/study/ResourceList";
 import { buildStudyPlan } from "@/components/study/planBuilder";
 import type { StudyPlan } from "@/components/study/types";
 import { cn } from "@/lib/utils";
-import { study, coaches, PublicCoach } from "@/lib/api";
+import { study, coaches, metrics, PublicCoach } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -231,7 +231,11 @@ const StudyPlanPage = () => {
   };
 
   const onExerciseProgress = (correct: number, total: number) => {
+    const prev = progress.exercisesCorrect;
     persist(updateStreak({ ...progress, exercisesCorrect: correct, exercisesTotal: total }));
+    if (correct > prev) {
+      metrics.addXp("exercise_correct").catch(() => null);
+    }
   };
 
   const totalDays     = useMemo(() => plan?.weeks.reduce((a, w) => a + w.days.length, 0) ?? 0, [plan]);

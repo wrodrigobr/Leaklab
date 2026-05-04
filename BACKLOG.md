@@ -2,8 +2,8 @@
 
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
-> **Sprints já entregues:** Sprints 1–13 + Sprint A–N + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.45.0.
-> **Sprint atual:** Sprint O — FEAT-01 Comparativo de Torneios
+> **Sprints já entregues:** Sprints 1–13 + Sprint A–Q + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.48.0.
+> **Sprint atual:** Sprint R — FEAT-05 SRS Adaptativo nos Drills
 
 ---
 
@@ -50,8 +50,8 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint M | PERF-008 | Tournament Narrative Engine | ✅ v0.45.0 |
 | Sprint N | PERF-009 | GGPoker Parser — detecção automática de formato | ✅ (já entregue) |
 | Sprint O | FEAT-01 | Comparativo de Torneios | ✅ v0.46.0 |
-| Sprint P | FEAT-04 | Relatório PDF Premium | 🔄 em andamento |
-| Sprint Q | FEAT-02 + FEAT-03 | Daily Focus + XP Server-Side | ⏳ |
+| Sprint P | FEAT-04 | Relatório PDF Premium | ✅ v0.47.0 |
+| Sprint Q | FEAT-02 + FEAT-03 | Daily Focus + XP Server-Side | ✅ v0.48.0 |
 | Sprint R | FEAT-05 | SRS Adaptativo nos Drills | ⏳ |
 | Sprint S | FEAT-06 | Leak Causal Map | ⏳ |
 | Sprint T | FEAT-07 | Coach Effectiveness Metrics | ⏳ |
@@ -61,6 +61,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint X | FEAT-12 | Página de Documentação / Wiki do Sistema | ⏳ |
 | Sprint Y | UX-008 | Coaches Directory — mobile layout + remover "professor" | ⏳ |
 | Sprint Z | UX-009 | Torneios — data do torneio vs importação + exibir ano | ⏳ |
+| Sprint AA | INFRA-001 | Correção de erros de build no Render (backend) e Vercel (frontend) | ⏳ |
 
 ---
 
@@ -246,6 +247,19 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 4. Manter ordenação padrão do mais recente para o mais antigo (já funciona via `sortDir: "desc"`)
 
 **Esforço:** ~4h backend + ~1h frontend
+
+---
+
+### [INFRA-001] — Correção de Erros de Build no Render e Vercel *(Sprint AA)*
+
+**Valor:** Garantir que os pipelines de CI/CD do Render (backend/Docker) e Vercel (frontend) funcionem sem erros após as mudanças recentes — WeasyPrint + render.yaml docker runtime, novos imports no frontend.
+
+**Escopo:**
+1. Verificar logs de build do Render após migração para `runtime: docker`
+2. Verificar logs de build do Vercel após adição de novos componentes e imports
+3. Corrigir quaisquer erros de tipagem, import missing, ou dependência ausente que apareçam no CI
+
+**Esforço:** ~2h (diagnóstico + correção)
 
 ---
 

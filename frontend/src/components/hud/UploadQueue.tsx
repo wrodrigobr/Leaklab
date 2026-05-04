@@ -1,6 +1,6 @@
 import { useReducer, useEffect, useRef, useCallback } from "react";
 import { CheckCircle2, AlertTriangle, Clock, Loader2, X, UploadCloud } from "lucide-react";
-import { tournaments } from "@/lib/api";
+import { tournaments, metrics } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -152,6 +152,7 @@ export function useUploadQueue(onAllDone?: () => void) {
         const content = await file.text();
         await tournaments.analyze(content);
         dispatch({ type: "SET_STATUS", id: next.id, status: "done" });
+        metrics.addXp("tournament_imported").catch(() => null);
         window.dispatchEvent(new CustomEvent("leaklab:tournament-imported"));
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Erro ao processar arquivo";

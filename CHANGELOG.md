@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.48.0] — 2026-05-03 — Sprint Q: FEAT-02 Daily Focus + FEAT-03 XP Server-Side
+
+### Added
+- **`backend/database/schema.py`**: migrações para `xp_total INT DEFAULT 0`, `xp_streak INT DEFAULT 0`, `xp_last_activity DATE`, `daily_focus_done_at DATE` na tabela `users`; nova tabela `achievements` (`user_id`, `achievement_id`, `unlocked_at`).
+- **`backend/database/repositories.py`**: `get_daily_focus(user_id)` — lógica determinística (zero LLM) que combina top EV-loss leak, drill com cooldown expirado e torneio não revisado; retorna `{primary, secondary[], valid_until, completed, streak}`. `mark_daily_focus_done(user_id)` — persiste data de conclusão. `add_xp(user_id, event_type, amount?)` — streak server-side: +1 se último XP foi ontem, reset se mais antigo; checa conquistas automaticamente via `_check_and_grant_achievements()`. `get_xp_status(user_id)`, `get_achievements(user_id)`. `_XP_AMOUNTS` (`tournament_imported=50`, `exercise_correct=10`, `drill_completed=25`, `drill_mastered=100`). 5 conquistas: `first_tournament`, `decisions_100`, `first_drill`, `streak_7`, `tournaments_10`.
+- **`backend/api/app.py`**: 5 novos endpoints — `GET /player/daily-focus`, `POST /player/daily-focus/complete`, `GET /player/xp`, `POST /player/xp`, `GET /player/achievements`.
+- **`frontend/src/components/hud/DailyFocusCard.tsx`**: card de foco diário — exibe ação primária e 2 secundárias com link direto; timer countdown até meia-noite; estado "concluído" com streak de dias; usa `useQuery` + `useMutation` via React Query.
+- **`frontend/src/lib/api.ts`**: interfaces `DailyFocusData`, `DailyFocusAction`, `XpStatus`, `Achievement`; métodos `metrics.dailyFocus()`, `metrics.completeDailyFocus()`, `metrics.xpStatus()`, `metrics.addXp(event_type)`, `metrics.achievements()`.
+- **`frontend/src/pages/Index.tsx`**: `DailyFocusCard` inserido acima da seção de KPIs (visível apenas quando há torneios importados).
+- **`frontend/src/pages/StudyPlan.tsx`**: `metrics.addXp("exercise_correct")` disparado a cada resposta correta em exercício (fire-and-forget).
+- **`frontend/src/components/hud/UploadQueue.tsx`**: `metrics.addXp("tournament_imported")` disparado após upload bem-sucedido de torneio.
+
+---
+
 ## [v0.47.0] — 2026-05-03 — Sprint P: FEAT-04 Relatório PDF Premium
 
 ### Added

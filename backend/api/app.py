@@ -70,6 +70,9 @@ from database.repositories import (
     get_admin_activity_logs,
     # Sprint D — BACK-016: WhatsApp
     get_user_by_phone, update_user_phone,
+    # Sprint Q — FEAT-02 + FEAT-03: Daily Focus + XP Server-Side
+    get_daily_focus, mark_daily_focus_done,
+    add_xp, get_xp_status, get_achievements,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -736,6 +739,39 @@ def player_dna():
     """Sprint L — Assinatura estratégica do jogador (Decision DNA)."""
     days = int(request.args.get('days', 90))
     return jsonify(get_player_dna(g.user_id, days=days))
+
+
+@app.route('/player/daily-focus', methods=['GET'])
+@require_auth
+def player_daily_focus():
+    return jsonify(get_daily_focus(g.user_id))
+
+
+@app.route('/player/daily-focus/complete', methods=['POST'])
+@require_auth
+def player_daily_focus_complete():
+    mark_daily_focus_done(g.user_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/player/xp', methods=['GET'])
+@require_auth
+def player_get_xp():
+    return jsonify(get_xp_status(g.user_id))
+
+
+@app.route('/player/xp', methods=['POST'])
+@require_auth
+def player_add_xp():
+    body = request.get_json(force=True) or {}
+    result = add_xp(g.user_id, body.get('event_type', ''), body.get('amount'))
+    return jsonify(result)
+
+
+@app.route('/player/achievements', methods=['GET'])
+@require_auth
+def player_achievements():
+    return jsonify({'achievements': get_achievements(g.user_id)})
 
 
 @app.route('/player/spots/drill/<int:decision_id>/analysis', methods=['GET'])

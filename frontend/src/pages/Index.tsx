@@ -20,6 +20,7 @@ import { LevelCard } from "@/components/hud/LevelCard";
 import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
 import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
 import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
+import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
 import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -120,6 +121,8 @@ const Index = () => {
             </div>
           )}
         </section>
+
+        {hasData && <DailyFocusCard />}
 
         <section
           aria-label="KPIs"

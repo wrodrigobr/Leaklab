@@ -531,6 +531,27 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_drill_user ON drill_sessions(user_id, drilled_at)")
         except Exception: pass
+        # Sprint Q — FEAT-02+03: XP server-side + Daily Focus
+        for _col, _sql in [
+            ("xp_total",            "ALTER TABLE users ADD COLUMN xp_total            INTEGER NOT NULL DEFAULT 0"),
+            ("xp_streak",           "ALTER TABLE users ADD COLUMN xp_streak           INTEGER NOT NULL DEFAULT 0"),
+            ("xp_last_activity",    "ALTER TABLE users ADD COLUMN xp_last_activity    TEXT"),
+            ("daily_focus_done_at", "ALTER TABLE users ADD COLUMN daily_focus_done_at TEXT"),
+        ]:
+            try: conn.execute(_sql)
+            except Exception: pass
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS achievements (
+                    id              SERIAL PRIMARY KEY,
+                    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    achievement_key TEXT    NOT NULL,
+                    earned_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+                    UNIQUE(user_id, achievement_key)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id)")
+        except Exception: pass
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS coach_baselines (
@@ -704,17 +725,32 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_drill_user ON drill_sessions(user_id, drilled_at)")
-        # migrate users: mp_subscription_id + BACK-014 fields
+        # migrate users: mp_subscription_id + BACK-014 fields + FEAT-02/03 XP
         usr_existing = {r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()}
         for col, sql in [
-            ("mp_subscription_id", "ALTER TABLE users ADD COLUMN mp_subscription_id TEXT"),
-            ("referral_coach_id",  "ALTER TABLE users ADD COLUMN referral_coach_id  INTEGER REFERENCES users(id)"),
-            ("suspended",          "ALTER TABLE users ADD COLUMN suspended           INTEGER NOT NULL DEFAULT 0"),
-            ("whatsapp_phone",     "ALTER TABLE users ADD COLUMN whatsapp_phone      TEXT UNIQUE"),
+            ("mp_subscription_id",  "ALTER TABLE users ADD COLUMN mp_subscription_id  TEXT"),
+            ("referral_coach_id",   "ALTER TABLE users ADD COLUMN referral_coach_id   INTEGER REFERENCES users(id)"),
+            ("suspended",           "ALTER TABLE users ADD COLUMN suspended            INTEGER NOT NULL DEFAULT 0"),
+            ("whatsapp_phone",      "ALTER TABLE users ADD COLUMN whatsapp_phone       TEXT UNIQUE"),
+            ("xp_total",            "ALTER TABLE users ADD COLUMN xp_total            INTEGER NOT NULL DEFAULT 0"),
+            ("xp_streak",           "ALTER TABLE users ADD COLUMN xp_streak           INTEGER NOT NULL DEFAULT 0"),
+            ("xp_last_activity",    "ALTER TABLE users ADD COLUMN xp_last_activity    TEXT"),
+            ("daily_focus_done_at", "ALTER TABLE users ADD COLUMN daily_focus_done_at TEXT"),
         ]:
             if col not in usr_existing:
                 try: conn.execute(sql)
                 except Exception: pass
+        # achievements table (SQLite) — FEAT-03
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS achievements (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                achievement_key TEXT    NOT NULL,
+                earned_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id, achievement_key)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id)")
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────

@@ -2726,3 +2726,241 @@ def get_player_dna(user_id: int, days: int = 90) -> dict:
         }
     finally:
         conn.close()
+
+
+# ── Sprint Q — FEAT-02: Daily Focus ──────────────────────────────────────────
+
+def get_daily_focus(user_id: int) -> dict:
+    """Retorna 1 ação primária + até 2 secundárias para o foco do dia. Zero LLM."""
+    from datetime import datetime
+    today = datetime.now().date().isoformat()
+    conn = get_conn()
+    try:
+        user = conn.execute(
+            "SELECT daily_focus_done_at, xp_streak FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        completed = bool(user and user.get('daily_focus_done_at') == today)
+        streak    = (user or {}).get('xp_streak') or 0
+    finally:
+        conn.close()
+
+    actions: list = []
+
+    # 1. Top EV-loss leak → primary drill action
+    leaks = get_leak_roi_impact(user_id, days=90)
+    if leaks:
+        top   = leaks[0]
+        spot  = top.get('spot', '')
+        label = spot.replace('/', ' / ').replace('_', ' ')
+        n     = top.get('n', 0)
+        actions.append({
+            'type':        'study_leak',
+            'priority':    'primary',
+            'title':       f'Drill: {label}',
+            'subtitle':    f'{n} erros recentes — score médio {top.get("avg_score", 0):.3f}',
+            'link':        '/ghost',
+            'badge':       'Drill',
+            'badge_color': 'destructive',
+        })
+
+    # 2. Most overdue drill spot → secondary
+    spots = get_drill_spots(user_id, limit=3)
+    if spots:
+        s    = spots[0]
+        slbl = f"{(s.get('street') or '?').capitalize()} / {s.get('best_action') or '?'}"
+        actions.append({
+            'type':        'ghost_drill',
+            'priority':    'secondary',
+            'title':       f'Ghost Table: {slbl}',
+            'subtitle':    f'Score: {s.get("score", 0):.3f} — spot a redecedir',
+            'link':        '/ghost',
+            'badge':       'Ghost',
+            'badge_color': 'warning',
+        })
+
+    # 3. Most recent unreviewed tournament → secondary
+    tourns = get_tournaments(user_id, limit=5)
+    unreviewed = [t for t in tourns if not t.get('llm_summary')]
+    if unreviewed:
+        t    = unreviewed[0]
+        tid  = t.get('tournament_id', '')
+        name = (t.get('tournament_name') or f'#{tid}')[:35]
+        actions.append({
+            'type':        'review_tournament',
+            'priority':    'secondary',
+            'title':       f'Revisar: {name}',
+            'subtitle':    f'{t.get("hands_count", 0)} mãos · {t.get("site", "")}',
+            'link':        f'/tournaments/{tid}',
+            'badge':       'Review',
+            'badge_color': 'default',
+        })
+
+    if not actions:
+        return {
+            'primary': None, 'secondary': [],
+            'valid_until': f'{today}T23:59:59',
+            'completed': completed, 'streak': streak,
+        }
+
+    primary   = next((a for a in actions if a['priority'] == 'primary'), actions[0])
+    secondary = [a for a in actions if a is not primary][:2]
+    return {
+        'primary':     primary,
+        'secondary':   secondary,
+        'valid_until': f'{today}T23:59:59',
+        'completed':   completed,
+        'streak':      streak,
+    }
+
+
+def mark_daily_focus_done(user_id: int) -> None:
+    from datetime import datetime
+    today = datetime.now().date().isoformat()
+    conn = get_conn()
+    try:
+        conn.execute(
+            "UPDATE users SET daily_focus_done_at = ? WHERE id = ?", (today, user_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ── Sprint Q — FEAT-03: XP Server-Side ───────────────────────────────────────
+
+_XP_AMOUNTS: dict = {
+    'tournament_imported': 50,
+    'exercise_correct':    10,
+    'drill_completed':     25,
+    'drill_mastered':     100,
+}
+
+_ACHIEVEMENT_DEFS = [
+    ('first_tournament', '🎯 Primeira Análise',  'Importou e analisou o primeiro torneio'),
+    ('decisions_100',    '📊 100 Decisões',       '100 decisões analisadas'),
+    ('first_drill',      '🎮 Primeiro Drill',     'Completou o primeiro drill no Ghost Table'),
+    ('streak_7',         '🔥 Semana de Foco',     '7 dias consecutivos de atividade'),
+    ('tournaments_10',   '🏆 10 Torneios',        '10 torneios importados e analisados'),
+]
+
+_ACH_META = {k: {'title': t, 'desc': d} for k, t, d in _ACHIEVEMENT_DEFS}
+
+
+def add_xp(user_id: int, event_type: str, amount: int | None = None) -> dict:
+    """Adiciona XP, atualiza streak e verifica conquistas."""
+    from datetime import datetime, timedelta
+    xp_gain   = amount if amount is not None else _XP_AMOUNTS.get(event_type, 10)
+    today     = datetime.now().date().isoformat()
+    yesterday = (datetime.now().date() - timedelta(days=1)).isoformat()
+
+    conn = get_conn()
+    try:
+        user = conn.execute(
+            "SELECT xp_total, xp_streak, xp_last_activity FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        if not user:
+            return {}
+
+        xp_total = (user.get('xp_total') or 0) + xp_gain
+        last     = user.get('xp_last_activity') or ''
+        streak   = user.get('xp_streak') or 0
+
+        if last == today:
+            new_streak = streak
+        elif last == yesterday:
+            new_streak = streak + 1
+        else:
+            new_streak = 1
+
+        conn.execute(
+            "UPDATE users SET xp_total = ?, xp_streak = ?, xp_last_activity = ? WHERE id = ?",
+            (xp_total, new_streak, today, user_id)
+        )
+        new_achievements = _check_and_grant_achievements(conn, user_id, event_type, xp_total, new_streak)
+        conn.commit()
+        return {
+            'xp_total':         xp_total,
+            'xp_gained':        xp_gain,
+            'streak':           new_streak,
+            'new_achievements': new_achievements,
+        }
+    finally:
+        conn.close()
+
+
+def get_xp_status(user_id: int) -> dict:
+    conn = get_conn()
+    try:
+        user = conn.execute(
+            "SELECT xp_total, xp_streak, xp_last_activity FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        if not user:
+            return {'xp_total': 0, 'streak': 0, 'achievements': []}
+        return {
+            'xp_total':      user.get('xp_total') or 0,
+            'streak':        user.get('xp_streak') or 0,
+            'last_activity': user.get('xp_last_activity'),
+            'achievements':  get_achievements(user_id),
+        }
+    finally:
+        conn.close()
+
+
+def get_achievements(user_id: int) -> list:
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT achievement_key, earned_at FROM achievements WHERE user_id = ? ORDER BY earned_at",
+            (user_id,)
+        ).fetchall()
+        result = []
+        for r in rows:
+            key  = r['achievement_key']
+            meta = _ACH_META.get(key, {'title': key, 'desc': ''})
+            result.append({'key': key, 'title': meta['title'],
+                           'desc': meta['desc'], 'earned_at': r['earned_at']})
+        return result
+    finally:
+        conn.close()
+
+
+def _check_and_grant_achievements(conn, user_id: int, event_type: str,
+                                   xp_total: int, streak: int) -> list:
+    existing = {r['achievement_key'] for r in conn.execute(
+        "SELECT achievement_key FROM achievements WHERE user_id = ?", (user_id,)
+    ).fetchall()}
+
+    candidates: list = []
+    if event_type == 'tournament_imported' and 'first_tournament' not in existing:
+        candidates.append('first_tournament')
+    if 'decisions_100' not in existing:
+        cnt = conn.execute(
+            "SELECT COUNT(*) AS n FROM decisions d "
+            "JOIN tournaments t ON t.id = d.tournament_id WHERE t.user_id = ?",
+            (user_id,)
+        ).fetchone()
+        if cnt and (cnt.get('n') or 0) >= 100:
+            candidates.append('decisions_100')
+    if event_type in ('drill_completed', 'drill_mastered') and 'first_drill' not in existing:
+        candidates.append('first_drill')
+    if streak >= 7 and 'streak_7' not in existing:
+        candidates.append('streak_7')
+    if 'tournaments_10' not in existing:
+        tc = conn.execute(
+            "SELECT COUNT(*) AS n FROM tournaments WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        if tc and (tc.get('n') or 0) >= 10:
+            candidates.append('tournaments_10')
+
+    new_ach = []
+    for key in candidates:
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO achievements (user_id, achievement_key) VALUES (?, ?)",
+                (user_id, key)
+            )
+            meta = _ACH_META.get(key, {'title': key, 'desc': ''})
+            new_ach.append({'key': key, 'title': meta['title'], 'desc': meta['desc']})
+        except Exception:
+            pass
+    return new_ach
