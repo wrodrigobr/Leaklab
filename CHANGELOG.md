@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.56.0] — 2026-05-03 — Sprint Z: UX-009 Tournament date display
+
+### Changed
+- **`frontend/src/pages/Tournaments.tsx`**: `formatDate` agora exibe ano de 2 dígitos (`DD/MM/YY`) quando o torneio é de ano anterior ao atual — torneios do ano corrente continuam como `DD/MM`. Novo componente `TournamentDate` distingue visualmente `played_at` (data real do torneio) de `imported_at` (data de importação): quando `played_at` não está disponível, exibe a data de importação com label "importado" em tom reduzido. Aplicado na tabela desktop e nos cards mobile.
+
+---
+
 ## [v0.55.0] — 2026-05-03 — Sprint Y: UX-008 Coaches Directory mobile + terminologia
 
 ### Changed

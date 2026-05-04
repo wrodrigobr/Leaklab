@@ -13,14 +13,25 @@ function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
-    return (
-      d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) +
-      " " +
-      d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-    );
+    const sameYear = d.getFullYear() === new Date().getFullYear();
+    return d.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      ...(sameYear ? {} : { year: "2-digit" }),
+    });
   } catch {
     return iso.slice(0, 10);
   }
+}
+
+function TournamentDate({ playedAt, importedAt }: { playedAt: string | null; importedAt: string }) {
+  if (playedAt) return <span>{formatDate(playedAt)}</span>;
+  return (
+    <span className="flex flex-col leading-tight">
+      <span>{formatDate(importedAt)}</span>
+      <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wide">importado</span>
+    </span>
+  );
 }
 
 const Tournaments = () => {
@@ -308,7 +319,7 @@ const Tournaments = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 font-mono text-[10px] text-muted-foreground">
-                        <span>{formatDate(t.played_at)}</span>
+                        <TournamentDate playedAt={t.played_at} importedAt={t.imported_at} />
                         {t.buy_in != null && <span>· ${t.buy_in}</span>}
                         {t.hands_count != null && <span>· {t.hands_count}m</span>}
                       </div>
@@ -403,8 +414,8 @@ const Tournaments = () => {
                             aria-label="Selecionar para comparar"
                           />
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                          {formatDate(t.played_at)}
+                        <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                          <TournamentDate playedAt={t.played_at} importedAt={t.imported_at} />
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">

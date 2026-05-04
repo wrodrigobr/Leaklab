@@ -3,7 +3,7 @@
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
 > **Sprints já entregues:** Sprints 1–13 + Sprint A–T + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.51.0.
-> **Sprint atual:** Sprint Z — UX-009 Tournament dates
+> **Sprint atual:** Sprint AA — INFRA-001 Build errors
 
 ---
 
@@ -59,7 +59,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint V | FEAT-09 + FEAT-10 | Coach Templates + Coach Messaging | ✅ v0.53.0 |
 | Sprint W | FEAT-11 | Weekly Digest Email | ✅ v0.54.0 |
 | Sprint Y | UX-008 | Coaches Directory — mobile layout + remover "professor" | ✅ v0.55.0 |
-| Sprint Z | UX-009 | Torneios — data do torneio vs importação + exibir ano | ⏳ |
+| Sprint Z | UX-009 | Torneios — data do torneio vs importação + exibir ano | ✅ v0.56.0 |
 | Sprint AA | INFRA-001 | Correção de erros de build no Render (backend) e Vercel (frontend) | ⏳ |
 | Sprint AB | UX-010 | Filtros de período no gráfico de Bankroll (1M/3M/1A/tudo) não funcionam | ⏳ |
 | Sprint AC | UX-011 | Dashboard — remover nome do hero, "Centro de Comando" → "Dashboard", corrigir quebra de linha no subtítulo | ⏳ |
@@ -67,11 +67,50 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AE | UX-013 | Substituir "JAM" por "All In" em toda a plataforma (UI, textos, labels, parser output) | ⏳ |
 | Sprint AF | UX-014 | Página do Coach (StudentDetail) — remover limitação horizontal, aproveitar melhor o espaço disponível em telas largas | ⏳ |
 | Sprint AH | BACK-018 | Coach Application Flow — candidatura com aprovação manual pelo admin | ⏳ |
+| Sprint AI | BACK-019 | Perfil demográfico do usuário — idade, localização, experiência de poker | ⏳ |
 | Sprint AG | FEAT-12 | Página de Documentação / Wiki do Sistema (deixar por último) | ⏳ |
 
 ---
 
 ## Próximas Sprints — Em Aberto
+
+### [BACK-019] — Perfil Demográfico do Usuário *(Sprint AI)*
+
+**Problema atual:** o cadastro coleta apenas username, email, senha e role — sem dados que permitam benchmarks, segmentação ou pesquisa de produto.
+
+**Estratégia:** não adicionar campos ao formulário de cadastro (evitar abandono). Os dados são coletados em um card "Complete seu perfil" exibido no dashboard pós-login — colapsável, voluntário, com nota LGPD clara.
+
+**Campos coletados:**
+- `birth_year` (INTEGER) — para faixa etária; não armazenar data exata
+- `country` (TEXT) — país
+- `state_province` (TEXT) — estado / província
+- `city` (TEXT) — cidade
+- `poker_experience_years` (INTEGER) — anos de experiência (0 = iniciante)
+- `main_game_type` (TEXT) — `mtt` / `cash` / `spin` / `mixed`
+- `usual_buyin_range` (TEXT) — `micro` (<$5) / `low` ($5–$30) / `mid` ($30–$200) / `high` (>$200)
+- `profile_completed_at` (TIMESTAMP) — usado para controlar exibição do card; NULL = nunca preencheu
+
+**Backend:**
+- Migração com `ALTER TABLE users ADD COLUMN` para cada campo (SQLite + Postgres)
+- `GET /player/profile` — retorna campos demográficos do usuário logado
+- `PATCH /player/profile` — atualiza campos; marca `profile_completed_at`
+- `GET /admin/demographics` (admin) — agrega dados anonimizados: distribuição por país/estado, faixa etária, experiência, game type — para uso em relatórios e produto
+
+**Frontend:**
+- `ProfileCompletionCard.tsx` — card colapsável no dashboard, exibido quando `user.profile_completed_at` é null; barra de progresso dos campos preenchidos; botão "Não mostrar novamente" armazena dismissal em `localStorage`; nota LGPD: *"Dados usados apenas para benchmarks agregados e anonimizados — nunca compartilhados individualmente"*
+- `frontend/src/pages/StudentProfile.tsx` ou nova aba em configurações — formulário completo de edição do perfil demográfico
+- `UserProfile` em `api.ts` — adicionar campos demográficos opcionais
+- Dashboard admin — nova seção "Demographics" com distribuição geográfica e de experiência
+
+**Uso dos dados (valor direto para o produto):**
+- Benchmarks: "Sua standard% está X% acima da média de jogadores do Brasil com 2–5 anos de experiência"
+- Segmentação de emails (digest por faixa de buyin)
+- Pesquisa de produto: quais países têm maior engajamento, quais faixas de buyin têm maior retenção
+- Futuramente: rankings regionais, torneios com filtro de stake
+
+**Esforço:** ~8h backend + ~6h frontend
+
+---
 
 ### [BACK-018] — Coach Application Flow *(Sprint AH)*
 
