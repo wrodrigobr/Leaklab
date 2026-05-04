@@ -303,7 +303,7 @@ export default function GhostTable() {
                     M-Ratio: <span className="text-foreground font-semibold">{current.m_ratio.toFixed(1)}</span>
                   </span>
                 )}
-                {current.is_3bet && (
+                {!!current.is_3bet && (
                   <span className="font-mono text-[11px] font-semibold text-warning">{t("context.is3bet")}</span>
                 )}
                 {current.pot_size !== null && current.pot_size > 0 && (
