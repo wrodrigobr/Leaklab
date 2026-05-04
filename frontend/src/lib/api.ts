@@ -1085,6 +1085,7 @@ export interface InboxThread {
   student_username: string;
   last_message_at: string;
   last_message_body: string;
+  last_sender_role: "coach" | "student";
   unread_count: number;
 }
 

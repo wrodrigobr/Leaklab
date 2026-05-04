@@ -3198,6 +3198,9 @@ def get_coach_inbox(coach_id: int) -> list:
             (SELECT body FROM coach_messages
              WHERE coach_id = m.coach_id AND student_id = m.student_id
              ORDER BY created_at DESC LIMIT 1) AS last_message_body,
+            (SELECT sender_role FROM coach_messages
+             WHERE coach_id = m.coach_id AND student_id = m.student_id
+             ORDER BY created_at DESC LIMIT 1) AS last_sender_role,
             SUM(CASE WHEN m.sender_role = 'student' AND m.read_at IS NULL THEN 1 ELSE 0 END) AS unread_count
         FROM coach_messages m
         JOIN users u ON u.id = m.student_id

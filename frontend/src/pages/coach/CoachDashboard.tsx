@@ -367,7 +367,7 @@ function MensagensTab() {
     refetchInterval: 60_000,
   });
 
-  const threads: InboxThread[] = (data?.threads ?? []).filter((t) => t.unread_count > 0);
+  const threads: InboxThread[] = (data?.threads ?? []).filter((t) => t.last_sender_role === "student");
   const totalUnread = threads.reduce((s, t) => s + (t.unread_count ?? 0), 0);
 
   if (isLoading) return <p className="text-sm text-muted-foreground animate-pulse py-8 text-center">Carregando…</p>;
@@ -678,7 +678,7 @@ export default function CoachDashboard() {
     refetchInterval: 60_000,
   });
 
-  const inboxUnread = (inboxData?.threads ?? []).reduce((s, t) => s + (t.unread_count ?? 0), 0);
+  const inboxUnread = (inboxData?.threads ?? []).filter((t) => t.last_sender_role === "student").length;
   const summary = impact?.summary;
 
   return (
