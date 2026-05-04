@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.49.0] — 2026-05-03 — Sprint R: FEAT-05 SRS Adaptativo nos Drills
+
+### Added
+- **`backend/database/schema.py`**: colunas `next_drill_at TEXT` e `srs_interval_days INTEGER DEFAULT 3` em `drill_sessions` (Postgres + SQLite migrations).
+- **`backend/database/repositories.py`**: `save_drill_session` reescrito com lógica SRS — acerto dobra o intervalo (`3d → 7d → 14d → 28d → 60d`, cap em 60), erro reseta para 3 dias; calcula `next_drill_at = now + interval` e persiste ambos os campos. `get_drill_spots` reescrito — substitui filtro de `drilled_at >= 7 days` por LEFT JOIN na sessão mais recente por decisão, filtra por `next_drill_at IS NULL OR next_drill_at <= now`, ordena por mais atrasado primeiro; calcula `days_overdue` em Python (compatível SQLite + Postgres).
+- **`backend/api/app.py`**: endpoint `POST /player/spots/drill/submit` passa a retornar `next_drill_at` e `srs_interval_days`.
+- **`frontend/src/lib/api.ts`**: `DrillSpot` com campos `next_drill_at`, `srs_interval_days`, `days_overdue`; `DrillSubmitResult` com `next_drill_at` e `srs_interval_days`.
+- **`frontend/src/pages/GhostTable.tsx`**: badge "próxima revisão em X dias" (verde=acerto, amarelo=reset) no card de resultado após cada drill; badge de dias de atraso discreto (vermelho/amarelo) na barra de progresso do spot ativo.
+- **`frontend/src/components/hud/GhostDrillCard.tsx`**: prop `pendingSpots` opcional — exibe contador "N atrasados" com ícone Clock no header do card quando há spots vencidos.
+- **`frontend/src/pages/Index.tsx`**: carrega `drill.spots({ limit: 20 })` no mount e passa `pendingSpots` para `GhostDrillCard`.
+
+---
+
 ## [v0.48.0] — 2026-05-03 — Sprint Q: FEAT-02 Daily Focus + FEAT-03 XP Server-Side
 
 ### Added

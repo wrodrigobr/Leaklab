@@ -452,6 +452,10 @@ export interface DrillSpot {
   draw_profile: string | null;
   pot_size: number | null;
   facing_bet: number | null;
+  // Sprint R — SRS
+  next_drill_at: string | null;
+  srs_interval_days: number | null;
+  days_overdue: number | null;
 }
 
 export interface DrillStats {
@@ -469,6 +473,8 @@ export interface DrillSubmitResult {
   new_score: number;
   original_score: number;
   delta: number;
+  next_drill_at: string;
+  srs_interval_days: number;
 }
 
 export interface DrillAnalysisResult {

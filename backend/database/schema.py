@@ -531,6 +531,13 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_drill_user ON drill_sessions(user_id, drilled_at)")
         except Exception: pass
+        # Sprint R — FEAT-05: SRS columns on drill_sessions (Postgres)
+        try:
+            conn.execute("ALTER TABLE drill_sessions ADD COLUMN next_drill_at    TIMESTAMP")
+        except Exception: pass
+        try:
+            conn.execute("ALTER TABLE drill_sessions ADD COLUMN srs_interval_days INTEGER NOT NULL DEFAULT 3")
+        except Exception: pass
         # Sprint Q — FEAT-02+03: XP server-side + Daily Focus
         for _col, _sql in [
             ("xp_total",            "ALTER TABLE users ADD COLUMN xp_total            INTEGER NOT NULL DEFAULT 0"),
@@ -725,6 +732,15 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_drill_user ON drill_sessions(user_id, drilled_at)")
+        # Sprint R — FEAT-05: SRS columns on drill_sessions (SQLite)
+        drill_existing = {r[1] for r in conn.execute('PRAGMA table_info(drill_sessions)').fetchall()}
+        for col, sql in [
+            ("next_drill_at",     "ALTER TABLE drill_sessions ADD COLUMN next_drill_at     TEXT"),
+            ("srs_interval_days", "ALTER TABLE drill_sessions ADD COLUMN srs_interval_days INTEGER NOT NULL DEFAULT 3"),
+        ]:
+            if col not in drill_existing:
+                try: conn.execute(sql)
+                except Exception: pass
         # migrate users: mp_subscription_id + BACK-014 fields + FEAT-02/03 XP
         usr_existing = {r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()}
         for col, sql in [

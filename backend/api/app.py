@@ -716,12 +716,14 @@ def player_drill_submit():
         original_score=original_score,
     )
     return jsonify({
-        'is_correct':     is_correct,
-        'best_action':    best_action,
-        'new_action':     new_action,
-        'new_score':      new_score,
-        'original_score': original_score,
-        'delta':          result['delta'],
+        'is_correct':        is_correct,
+        'best_action':       best_action,
+        'new_action':        new_action,
+        'new_score':         new_score,
+        'original_score':    original_score,
+        'delta':             result['delta'],
+        'next_drill_at':     result['next_drill_at'],
+        'srs_interval_days': result['srs_interval_days'],
     })
 
 

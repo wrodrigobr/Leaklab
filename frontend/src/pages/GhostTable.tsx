@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  Clock,
   Loader2,
   ShieldAlert,
   Swords,
@@ -248,6 +249,15 @@ export default function GhostTable() {
                   style={{ width: `${((index + 1) / spots.length) * 100}%` }}
                 />
               </div>
+              {current.days_overdue != null && current.days_overdue > 0 && (
+                <span className={cn(
+                  "flex items-center gap-1 font-mono text-[10px] shrink-0",
+                  current.days_overdue > 7 ? "text-destructive" : "text-warning"
+                )}>
+                  <Clock className="size-3" aria-hidden />
+                  {current.days_overdue}d
+                </span>
+              )}
               <span className="font-mono text-xs text-muted-foreground shrink-0">
                 {sessionCorrect}/{sessionTotal}
               </span>
@@ -432,6 +442,23 @@ export default function GhostTable() {
               {lastResult.delta > 0 ? "+" : ""}{lastResult.delta.toFixed(3)}
             </span>
           </div>
+
+          {lastResult.srs_interval_days && (
+            <div className={cn(
+              "flex items-center gap-2 rounded-lg border px-4 py-2.5",
+              lastResult.is_correct
+                ? "border-primary/30 bg-primary/5 text-primary"
+                : "border-warning/30 bg-warning/5 text-warning"
+            )}>
+              <Clock className="size-3.5 shrink-0" aria-hidden />
+              <span className="font-mono text-[11px]">
+                {lastResult.is_correct
+                  ? `Próxima revisão em ${lastResult.srs_interval_days} dias`
+                  : `Resetado — revisão em ${lastResult.srs_interval_days} dias`
+                }
+              </span>
+            </div>
+          )}
 
           {analysis ? (
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">

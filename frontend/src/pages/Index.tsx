@@ -21,7 +21,7 @@ import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
 import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
 import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
 import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
-import { metrics, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse } from "@/lib/api";
+import { metrics, drill, tournaments, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
@@ -39,6 +39,7 @@ const Index = () => {
   const [driftDismissed, setDriftDismissed] = useState(false);
   const [drillStats, setDrillStats]     = useState<DrillStats | null>(null);
   const [dnaData, setDnaData]           = useState<PlayerDnaResponse | null>(null);
+  const [drillSpots, setDrillSpots]     = useState<DrillSpot[]>([]);
   const [loading, setLoading]   = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -55,6 +56,7 @@ const Index = () => {
       tournaments.list().then((r) => setTourns(r.tournaments)).catch(() => null),
       metrics.drillStats(30).then(setDrillStats).catch(() => null),
       metrics.dna(90).then(setDnaData).catch(() => null),
+      drill.spots({ limit: 20 }).then((r) => setDrillSpots(r.spots)).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
 
@@ -214,7 +216,7 @@ const Index = () => {
               {levelData?.level && <LevelCard data={levelData} showStudyLink />}
               <IcmBreakdown icm={evo?.icm} />
               <PressureProfileCard data={pressureData} />
-              <GhostDrillCard stats={drillStats} />
+              <GhostDrillCard stats={drillStats} pendingSpots={drillSpots} />
 
               <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
                 <div className="mb-3 flex items-center justify-between">

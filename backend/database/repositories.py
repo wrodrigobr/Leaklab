@@ -681,12 +681,14 @@ def get_confidence_drift(user_id: int, days: int = 30) -> dict:
 
 
 def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str = None) -> list:
-    """Sprint K — Retorna spots de mistakes não recentemente drillados para o Ghost Table."""
+    """Sprint R — Retorna spots disponíveis para drill respeitando SRS (next_drill_at <= now)."""
+    from datetime import datetime
+    now_str = datetime.utcnow().isoformat()
     conn = get_conn()
     try:
         street_filter = "AND d.street = ?" if street else ""
         spot_filter   = "AND (d.street || '/' || d.best_action) = ?" if spot else ""
-        params = [user_id, user_id]
+        params = [user_id, user_id, now_str]
         if street: params.append(street)
         if spot:   params.append(spot)
         params.append(limit)
@@ -698,38 +700,98 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
                 d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
                 d.num_players, d.is_3bet, d.level_bb, d.note, d.draw_profile,
                 d.pot_size, d.facing_bet,
-                t.tournament_name, t.played_at, t.buy_in
+                t.tournament_name, t.played_at, t.buy_in,
+                ds_last.next_drill_at, ds_last.srs_interval_days
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
+            LEFT JOIN (
+                SELECT ds1.decision_id, ds1.next_drill_at, ds1.srs_interval_days
+                FROM drill_sessions ds1
+                WHERE ds1.user_id = ?
+                  AND ds1.drilled_at = (
+                      SELECT MAX(ds2.drilled_at) FROM drill_sessions ds2
+                      WHERE ds2.decision_id = ds1.decision_id AND ds2.user_id = ds1.user_id
+                  )
+            ) ds_last ON ds_last.decision_id = d.id
             WHERE t.user_id = ?
               AND d.label IN ('small_mistake','clear_mistake')
-              AND d.id NOT IN (
-                  SELECT ds.decision_id FROM drill_sessions ds
-                  WHERE ds.user_id = ? AND ds.drilled_at >= datetime('now', '-7 days')
-              )
+              AND (ds_last.next_drill_at IS NULL OR ds_last.next_drill_at <= ?)
               {street_filter}
               {spot_filter}
-            ORDER BY d.score DESC
+            ORDER BY
+                CASE WHEN ds_last.next_drill_at IS NULL THEN 0 ELSE 1 END ASC,
+                ds_last.next_drill_at ASC,
+                d.score DESC
             LIMIT ?
         """), params).fetchall()
-        return [dict(r) for r in rows]
+
+        now = datetime.utcnow()
+        result = []
+        for row in rows:
+            r = dict(row)
+            nda = r.get('next_drill_at')
+            if nda:
+                try:
+                    nda_dt = datetime.fromisoformat(str(nda).split('.')[0])
+                    r['days_overdue'] = max(0, (now - nda_dt).days)
+                except Exception:
+                    r['days_overdue'] = 0
+            else:
+                r['days_overdue'] = None  # never drilled
+            result.append(r)
+        return result
     finally:
         conn.close()
 
 
+_SRS_INTERVALS = [3, 7, 14, 28, 60]
+
+
 def save_drill_session(user_id: int, decision_id: int, new_action: str,
                        new_score: float, original_score: float) -> dict:
-    """Sprint K — Salva resultado de uma redecisão no drill."""
-    delta = round(new_score - original_score, 4)
+    """Sprint R — Salva drill com lógica SRS: acerto dobra intervalo, erro reseta para 3 dias."""
+    from datetime import datetime, timedelta
+    delta      = round(new_score - original_score, 4)
+    is_correct = delta < 0  # score melhorou = acerto
+
     conn = get_conn()
     try:
+        last = conn.execute(_adapt("""
+            SELECT srs_interval_days FROM drill_sessions
+            WHERE user_id = ? AND decision_id = ?
+            ORDER BY drilled_at DESC LIMIT 1
+        """), (user_id, decision_id)).fetchone()
+
+        last_interval = (last['srs_interval_days'] or 3) if last else 3
+
+        if is_correct:
+            try:
+                idx = _SRS_INTERVALS.index(last_interval)
+                new_interval = _SRS_INTERVALS[min(idx + 1, len(_SRS_INTERVALS) - 1)]
+            except ValueError:
+                new_interval = min(last_interval * 2, _SRS_INTERVALS[-1])
+        else:
+            new_interval = _SRS_INTERVALS[0]
+
+        next_drill_at = (datetime.utcnow() + timedelta(days=new_interval)).isoformat()
+
         conn.execute(_adapt("""
-            INSERT INTO drill_sessions (user_id, decision_id, new_action, new_score, original_score, delta)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """), (user_id, decision_id, new_action, new_score, original_score, delta))
+            INSERT INTO drill_sessions
+                (user_id, decision_id, new_action, new_score, original_score, delta, next_drill_at, srs_interval_days)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """), (user_id, decision_id, new_action, new_score, original_score,
+               delta, next_drill_at, new_interval))
         conn.commit()
-        return {'decision_id': decision_id, 'new_action': new_action,
-                'new_score': new_score, 'original_score': original_score, 'delta': delta}
+        return {
+            'decision_id':       decision_id,
+            'new_action':        new_action,
+            'new_score':         new_score,
+            'original_score':    original_score,
+            'delta':             delta,
+            'is_correct':        is_correct,
+            'next_drill_at':     next_drill_at,
+            'srs_interval_days': new_interval,
+        }
     finally:
         conn.close()
 

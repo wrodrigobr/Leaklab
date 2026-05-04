@@ -1,16 +1,20 @@
-import { Swords, ChevronRight, Target } from "lucide-react";
+import { Swords, ChevronRight, Target, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import type { DrillStats } from "@/lib/api";
+import type { DrillStats, DrillSpot } from "@/lib/api";
 
 interface Props {
   stats: DrillStats | null;
+  pendingSpots?: DrillSpot[];
 }
 
-export function GhostDrillCard({ stats }: Props) {
+export function GhostDrillCard({ stats, pendingSpots }: Props) {
   const { t } = useTranslation("dashboard");
   const hasActivity = stats && stats.total > 0;
+  const overdueCount = (pendingSpots ?? []).filter(
+    (s) => s.days_overdue != null && s.days_overdue > 0
+  ).length;
 
   return (
     <section
@@ -25,7 +29,15 @@ export function GhostDrillCard({ stats }: Props) {
           <Swords className="size-3" aria-hidden />
           {t("ghost.title")}
         </h2>
-        <span className="font-mono text-[10px] text-muted-foreground">30d</span>
+        <div className="flex items-center gap-2">
+          {overdueCount > 0 && (
+            <span className="flex items-center gap-1 font-mono text-[10px] text-warning">
+              <Clock className="size-3" aria-hidden />
+              {overdueCount} atrasado{overdueCount > 1 ? "s" : ""}
+            </span>
+          )}
+          <span className="font-mono text-[10px] text-muted-foreground">30d</span>
+        </div>
       </div>
 
       {hasActivity ? (

@@ -2,8 +2,8 @@
 
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
-> **Sprints já entregues:** Sprints 1–13 + Sprint A–Q + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.48.0.
-> **Sprint atual:** Sprint R — FEAT-05 SRS Adaptativo nos Drills
+> **Sprints já entregues:** Sprints 1–13 + Sprint A–R + BACK-008 + BACK-015 — ver CHANGELOG v0.9.0 a v0.49.0.
+> **Sprint atual:** Sprint S — FEAT-06 Leak Causal Map
 
 ---
 
@@ -52,7 +52,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint O | FEAT-01 | Comparativo de Torneios | ✅ v0.46.0 |
 | Sprint P | FEAT-04 | Relatório PDF Premium | ✅ v0.47.0 |
 | Sprint Q | FEAT-02 + FEAT-03 | Daily Focus + XP Server-Side | ✅ v0.48.0 |
-| Sprint R | FEAT-05 | SRS Adaptativo nos Drills | ⏳ |
+| Sprint R | FEAT-05 | SRS Adaptativo nos Drills | ✅ v0.49.0 |
 | Sprint S | FEAT-06 | Leak Causal Map | ⏳ |
 | Sprint T | FEAT-07 | Coach Effectiveness Metrics | ⏳ |
 | Sprint U | FEAT-08 | Session Goals + AI Review | ⏳ |
@@ -62,6 +62,8 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint Y | UX-008 | Coaches Directory — mobile layout + remover "professor" | ⏳ |
 | Sprint Z | UX-009 | Torneios — data do torneio vs importação + exibir ano | ⏳ |
 | Sprint AA | INFRA-001 | Correção de erros de build no Render (backend) e Vercel (frontend) | ⏳ |
+| Sprint AB | UX-010 | Filtros de período no gráfico de Bankroll (1M/3M/1A/tudo) não funcionam | ⏳ |
+| Sprint AC | UX-011 | Dashboard — remover nome do hero, "Centro de Comando" → "Dashboard", corrigir quebra de linha no subtítulo | ⏳ |
 
 ---
 
