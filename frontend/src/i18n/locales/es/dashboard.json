@@ -276,5 +276,34 @@
       "medium": "Medio",
       "low": "Bajo"
     }
+  },
+  "strategicTwin": {
+    "title": "Perfil Estratégico",
+    "noData": "Importa más torneos para generar tu perfil estratégico. Mínimo: 30 decisiones analizadas.",
+    "noPatterns": "No se detectaron spots costosos. Sigue jugando para refinar tu análisis.",
+    "avgLabel": "Error avg:",
+    "avgLine": "Tu promedio",
+    "vsAvg": "vs promedio",
+    "nDecisions": "{{n}} decisiones",
+    "costlyTitle": "Spots más costosos",
+    "actions": {
+      "jam":   "Jam",
+      "fold":  "Fold",
+      "call":  "Call",
+      "raise": "Raise",
+      "bet":   "Bet"
+    },
+    "streets": {
+      "preflop": "Preflop",
+      "flop":    "Flop",
+      "turn":    "Turn",
+      "river":   "River"
+    },
+    "icm": {
+      "low":      "ICM bajo",
+      "medium":   "ICM medio",
+      "high":     "ICM alto",
+      "critical": "ICM crítico"
+    }
   }
 }

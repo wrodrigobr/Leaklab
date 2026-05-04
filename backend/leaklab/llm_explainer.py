@@ -1212,6 +1212,140 @@ def _template_cognitive(patterns: list, lang: str = 'pt-BR') -> str:
     )
 
 
+# ── Strategic Twin Narrative (Sprint AR) ─────────────────────────────────────
+
+_LANG_TWIN = {
+    'pt-BR': "Responda APENAS em português do Brasil.",
+    'en':    "Respond ONLY in English.",
+    'es':    "Responde ÚNICAMENTE en español.",
+}
+
+_ACTION_LABEL_EN = {
+    "jam":   "jam/all-in",
+    "fold":  "fold",
+    "call":  "call",
+    "raise": "raise",
+    "bet":   "bet",
+}
+
+_ICM_LABEL_EN = {
+    "low":      "low ICM pressure",
+    "medium":   "medium ICM pressure",
+    "high":     "high ICM pressure",
+    "critical": "critical ICM pressure",
+}
+
+
+def generate_twin_narrative(profile: dict, lang: str = 'pt-BR') -> str:
+    """2-3 sentences describing the player's dominant strategic tendencies and their cost."""
+    costly = profile.get("costly_spots", [])
+    if not costly:
+        return ""
+    cache_key = (
+        f"twin_{lang}_"
+        + "_".join(f"{s['street']}:{s['best_action']}:{s['icm_pressure']}" for s in costly[:3])
+    )
+    if cache_key in _cache:
+        return _cache[cache_key]
+    try:
+        text = _call_twin_narrative(profile, lang)
+    except Exception:
+        text = _template_twin(profile, lang)
+    _cache[cache_key] = text
+    return text
+
+
+def _call_twin_narrative(profile: dict, lang: str) -> str:
+    import requests as _req
+    lang_instr = _LANG_TWIN.get(lang, _LANG_TWIN['pt-BR'])
+    avg_pct = int(profile["player_avg_error_rate"] * 100)
+    costly  = profile.get("costly_spots", [])[:3]
+    spot_str = "; ".join(
+        f"{_ACTION_LABEL_EN.get(s['best_action'], s['best_action'])} on {s['street']} "
+        f"under {_ICM_LABEL_EN.get(s['icm_pressure'], s['icm_pressure'])} "
+        f"({int(s['error_rate'] * 100)}% error rate, {int(s['delta_from_avg'] * 100)}% above your avg)"
+        for s in costly
+    )
+    system = (
+        f"You are a concise MTT poker coach writing a personal strategic profile. {lang_instr} "
+        "Write EXACTLY 2-3 sentences in the FIRST PERSON ('In situations where...', 'My most costly spot...'): "
+        "(1) name the most costly spot and the error rate, "
+        "(2) explain what this tendency reveals about the player's strategy, "
+        "(3) state one concrete adjustment. "
+        "No headers, no bullets. Be specific and predictive in tone."
+    )
+    user_content = (
+        f"Player average error rate: {avg_pct}%. "
+        f"Costliest spots (above average): {spot_str}. "
+        f"Total decisions analysed: {profile.get('total_decisions', 0)}."
+    )
+    payload = {
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 250,
+        "system": system,
+        "messages": [{"role": "user", "content": user_content}],
+    }
+    resp = _req.post(
+        "https://api.anthropic.com/v1/messages",
+        json=payload,
+        headers={
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01",
+            "x-api-key": _api_key(),
+        },
+        timeout=20,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return "".join(
+        block["text"] for block in data.get("content", []) if block.get("type") == "text"
+    ).strip()
+
+
+def _template_twin(profile: dict, lang: str = 'pt-BR') -> str:
+    costly  = profile.get("costly_spots", [])
+    if not costly:
+        return ""
+    top     = costly[0]
+    avg_pct = int(profile["player_avg_error_rate"] * 100)
+    err_pct = int(top["error_rate"] * 100)
+    delta   = int(top["delta_from_avg"] * 100)
+    action_pt = {"jam": "reshove", "fold": "fold", "call": "call", "raise": "raise", "bet": "bet"}
+    action_es = {"jam": "reshove", "fold": "fold", "call": "call", "raise": "raise", "bet": "bet"}
+    icm_pt    = {"low": "ICM baixo", "medium": "ICM moderado", "high": "ICM alto", "critical": "ICM crítico"}
+    icm_es    = {"low": "ICM bajo", "medium": "ICM moderado", "high": "ICM alto", "critical": "ICM crítico"}
+    street_pt = {"preflop": "preflop", "flop": "no flop", "turn": "no turn", "river": "no river"}
+    street_es = {"preflop": "preflop", "flop": "en el flop", "turn": "en el turn", "river": "en el river"}
+    if lang == 'en':
+        act = _ACTION_LABEL_EN.get(top["best_action"], top["best_action"])
+        icm = _ICM_LABEL_EN.get(top["icm_pressure"], top["icm_pressure"])
+        return (
+            f"In {top['street']} spots requiring a {act} under {icm}, I make errors {err_pct}% of the time — "
+            f"{delta}% above my personal average of {avg_pct}%. "
+            f"This reveals a tendency to deviate from the correct line under pressure. "
+            f"Focus on pre-committing to your action range for these spots before the hand begins."
+        )
+    if lang == 'es':
+        act = action_es.get(top["best_action"], top["best_action"])
+        st  = street_es.get(top["street"], top["street"])
+        icm = icm_es.get(top["icm_pressure"], top["icm_pressure"])
+        return (
+            f"En spots que requieren {act} {st} con {icm}, cometo errores el {err_pct}% de las veces — "
+            f"{delta}% por encima de mi promedio personal del {avg_pct}%. "
+            f"Esto revela una tendencia a desviarme de la línea correcta bajo presión. "
+            f"Pre-comprométete con tu rango de acción para estos spots antes de que comience la mano."
+        )
+    act = action_pt.get(top["best_action"], top["best_action"])
+    st  = street_pt.get(top["street"], top["street"])
+    icm = icm_pt.get(top["icm_pressure"], top["icm_pressure"])
+    return (
+        f"Em spots que exigem {act} {st} com {icm}, erro {err_pct}% das vezes — "
+        f"{delta}% acima da minha média pessoal de {avg_pct}%. "
+        f"Isso revela uma tendência a desviar da linha correta sob pressão. "
+        f"Pré-comprometimento com o range de ação para esses spots antes da mão começa pode corrigir isso."
+    )
+
+
 # ── Session Review (FEAT-08) ─────────────────────────────────────────────────
 
 def generate_session_review(goal: dict, tournament: dict) -> str:

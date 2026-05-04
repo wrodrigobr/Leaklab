@@ -576,6 +576,9 @@ export const metrics = {
   cognitiveFailures: (lang = "pt-BR", days = 90) =>
     request<CognitiveFailureData>(`/player/cognitive-failures?lang=${encodeURIComponent(lang)}&days=${days}`),
 
+  strategicTwin: (lang = "pt-BR", days = 180) =>
+    request<StrategicTwinProfile>(`/player/strategic-twin?lang=${encodeURIComponent(lang)}&days=${days}`),
+
   dailyFocus: () =>
     request<DailyFocusData>(`/player/daily-focus`),
 
@@ -678,6 +681,27 @@ export interface CognitiveFailureData {
   insufficient_data: boolean;
   patterns: CognitivePattern[];
   total_decisions: number;
+  narrative?: string;
+}
+
+// ── Strategic Twin (Sprint AR) ───────────────────────────────────────────────
+
+export interface TwinSpot {
+  street: "preflop" | "flop" | "turn" | "river";
+  best_action: "jam" | "fold" | "call" | "raise" | "bet";
+  icm_pressure: "low" | "medium" | "high" | "critical";
+  total: number;
+  mistakes: number;
+  error_rate: number;
+  delta_from_avg: number;
+}
+
+export interface StrategicTwinProfile {
+  insufficient_data: boolean;
+  total_decisions: number;
+  player_avg_error_rate?: number;
+  high_volume_spots?: TwinSpot[];
+  costly_spots?: TwinSpot[];
   narrative?: string;
 }
 

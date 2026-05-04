@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.77.0] — 2026-05-04 — Sprint AR: Personal Strategic Twin
+
+### Added
+- **`backend/database/repositories.py`**: `get_strategic_twin_profile(user_id, days=180)` — agrega spots por `(street, best_action, icm_pressure)`, calcula taxa de erro por spot, retorna taxa média do jogador, top 5 spots por volume e top 5 spots mais custosos (error_rate > avg + 10%, mín. 5 decisões).
+- **`backend/leaklab/llm_explainer.py`**: `generate_twin_narrative(profile, lang)`, `_call_twin_narrative`, `_template_twin` — narrativa em 1ª pessoa preditiva (2-3 frases) com o spot mais custoso, tendência revelada e ajuste concreto; suporte PT/EN/ES; fallback determinístico.
+- **`backend/api/app.py`**: `GET /player/strategic-twin?lang=&days=` — retorna perfil + narrativa LLM.
+- **`frontend/src/lib/api.ts`**: interfaces `TwinSpot` e `StrategicTwinProfile`; `metrics.strategicTwin(lang, days)`.
+- **`frontend/src/components/hud/StrategicTwinCard.tsx`**: card lateral com taxa média de erro, lista dos 3 spots mais custosos (barra de erro vs linha de média do jogador, delta colorido, volume de decisões) e narrativa LLM. Totalmente i18n.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/dashboard.json`**: seção `strategicTwin` com ações, streets, níveis de ICM e labels de UI.
+
+### Changed
+- **`frontend/src/hooks/useDashboardLayout.ts`**: `"twin"` adicionado ao tipo `SidebarSection`; incluído no `DEFAULT_LAYOUT.sidebar` ao final da lista — merge automático garante aparição para usuários existentes.
+- **`frontend/src/pages/Index.tsx`**: busca `metrics.strategicTwin(i18n.language)` no carregamento; renderiza `StrategicTwinCard` como card draggable no sidebar.
+
+---
+
 ## [v0.76.0] — 2026-05-04 — Sprint AQ+: Dashboard UX Redesign
 
 ### Changed

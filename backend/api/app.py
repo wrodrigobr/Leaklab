@@ -94,6 +94,8 @@ from database.repositories import (
     get_career_projection,
     # Sprint AQ — Cognitive Failure Mapper
     get_cognitive_failure_report,
+    # Sprint AR — Personal Strategic Twin
+    get_strategic_twin_profile,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -838,6 +840,18 @@ def player_cognitive_failures():
     if not report.get("insufficient_data") and report.get("patterns"):
         report["narrative"] = generate_cognitive_narrative(report["patterns"], lang=lang)
     return jsonify(report)
+
+
+@app.route('/player/strategic-twin', methods=['GET'])
+@require_auth
+def player_strategic_twin():
+    from leaklab.llm_explainer import generate_twin_narrative
+    lang    = request.args.get('lang', 'pt-BR')
+    days    = int(request.args.get('days', 180))
+    profile = get_strategic_twin_profile(g.user_id, days=days)
+    if not profile.get("insufficient_data") and profile.get("costly_spots"):
+        profile["narrative"] = generate_twin_narrative(profile, lang=lang)
+    return jsonify(profile)
 
 
 @app.route('/player/daily-focus', methods=['GET'])

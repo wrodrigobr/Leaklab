@@ -26,9 +26,10 @@ import { SessionGoalPanel } from "@/components/hud/UploadQueue";
 import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
 import { CareerGraphCard } from "@/components/hud/CareerGraphCard";
 import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
+import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, drill, tournaments, digest, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection, CognitiveFailureData } from "@/lib/api";
+import { metrics, drill, tournaments, digest, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const Index = () => {
@@ -50,6 +51,7 @@ const Index = () => {
   const [leakGraph, setLeakGraph]         = useState<LeakGraphResponse | null>(null);
   const [careerData, setCareerData]       = useState<CareerProjection | null>(null);
   const [cognitiveData, setCognitiveData] = useState<CognitiveFailureData | null>(null);
+  const [twinData, setTwinData]           = useState<StrategicTwinProfile | null>(null);
   const [loading, setLoading]             = useState(true);
   const [refreshKey, setRefreshKey]       = useState(0);
   const [digestDismissed, setDigestDismissed] = useState(false);
@@ -72,6 +74,7 @@ const Index = () => {
       metrics.leakGraph(90, i18n.language).then(setLeakGraph).catch(() => null),
       metrics.career(i18n.language).then(setCareerData).catch(() => null),
       metrics.cognitiveFailures(i18n.language).then(setCognitiveData).catch(() => null),
+      metrics.strategicTwin(i18n.language).then(setTwinData).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
 
@@ -180,6 +183,11 @@ const Index = () => {
         <LevelCard data={levelData} showStudyLink />
       </DraggableCard>
     ) : <div key={id} />;
+    if (id === "twin") return (
+      <DraggableCard key={id} id={id}>
+        <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />
+      </DraggableCard>
+    );
     return null;
   };
 

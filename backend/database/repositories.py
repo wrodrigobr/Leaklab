@@ -1326,6 +1326,76 @@ def get_cognitive_failure_report(user_id: int, days: int = 90) -> dict:
     return analyze_cognitive_failures(decisions)
 
 
+def get_strategic_twin_profile(user_id: int, days: int = 180) -> dict:
+    """
+    Sprint AR — Agrega spots de alta frequência e erro para o Personal Strategic Twin.
+    Retorna taxa média de erro, spots de maior volume e spots mais custosos.
+    """
+    from datetime import datetime, timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = get_conn()
+    try:
+        total_row = conn.execute(_adapt("""
+            SELECT COUNT(*) as total,
+                   SUM(CASE WHEN d.label IN ('small_mistake', 'clear_mistake') THEN 1 ELSE 0 END) as mistakes
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+        """), (user_id, cutoff)).fetchone()
+
+        spot_rows = conn.execute(_adapt("""
+            SELECT d.street, d.best_action, d.icm_pressure,
+                   COUNT(*) as total,
+                   SUM(CASE WHEN d.label IN ('small_mistake', 'clear_mistake') THEN 1 ELSE 0 END) as mistakes
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+            GROUP BY d.street, d.best_action, d.icm_pressure
+            HAVING COUNT(*) >= 3
+            ORDER BY total DESC
+        """), (user_id, cutoff)).fetchall()
+    finally:
+        conn.close()
+
+    total_decisions = (total_row["total"] or 0) if total_row else 0
+    total_mistakes  = (total_row["mistakes"] or 0) if total_row else 0
+
+    if total_decisions < 30:
+        return {"insufficient_data": True, "total_decisions": total_decisions}
+
+    player_avg = total_mistakes / total_decisions if total_decisions > 0 else 0.0
+
+    spots = []
+    for r in spot_rows:
+        err = r["mistakes"] / r["total"] if r["total"] > 0 else 0.0
+        spots.append({
+            "street":        r["street"] or "preflop",
+            "best_action":   r["best_action"] or "fold",
+            "icm_pressure":  r["icm_pressure"] or "low",
+            "total":         r["total"],
+            "mistakes":      r["mistakes"],
+            "error_rate":    round(err, 3),
+            "delta_from_avg": round(err - player_avg, 3),
+        })
+
+    high_volume_spots = spots[:5]
+
+    costly_spots = sorted(
+        [s for s in spots if s["total"] >= 5 and s["error_rate"] > player_avg + 0.10],
+        key=lambda s: s["error_rate"],
+        reverse=True,
+    )[:5]
+
+    return {
+        "insufficient_data":    False,
+        "total_decisions":       total_decisions,
+        "player_avg_error_rate": round(player_avg, 3),
+        "high_volume_spots":     high_volume_spots,
+        "costly_spots":          costly_spots,
+    }
+
+
 def get_llm_cache(user_id: int, cache_key: str) -> Optional[str]:
     """Retorna análise cacheada ou None se não existir."""
     conn = get_conn()
