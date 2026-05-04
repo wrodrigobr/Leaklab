@@ -579,6 +579,79 @@ def _template_narrative(ctx: dict) -> str:
     return f"{quality}{leak_str}{phase_str}"
 
 
+def generate_comparison_narrative(items: list) -> str:
+    """2 frases comparando evolução entre 2+ torneios. Cache por IDs."""
+    cache_key = "cmp_" + "_".join(str(i.get("tournament_id", "")) for i in items)
+    if cache_key in _cache:
+        return _cache[cache_key]
+
+    try:
+        text = _call_llm_comparison(items)
+    except Exception:
+        text = _template_comparison(items)
+
+    _cache[cache_key] = text
+    return text
+
+
+def _call_llm_comparison(items: list) -> str:
+    ctx = [
+        {
+            "tournament_id": i.get("tournament_id"),
+            "played_at": str(i.get("played_at", ""))[:10],
+            "standard_pct": i.get("standard_pct"),
+            "avg_score": i.get("avg_score"),
+            "clear_pct": i.get("clear_pct"),
+            "top_leak": i["top_leaks"][0][0] if i.get("top_leaks") else None,
+        }
+        for i in items
+    ]
+    system_prompt = (
+        "Você é um coach de poker MTT. Compare os torneios abaixo e escreva "
+        "EXATAMENTE 2 frases descrevendo a evolução entre eles. "
+        "Cite números concretos (standard_pct, avg_score). "
+        "Seja direto e técnico. NÃO use títulos ou bullets."
+    )
+    payload = {
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 100,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": json.dumps(ctx, ensure_ascii=False)}],
+    }
+    import requests as _req
+    resp = _req.post(
+        "https://api.anthropic.com/v1/messages",
+        json=payload,
+        headers={
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01",
+            "x-api-key": _api_key(),
+        },
+        timeout=20,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return "".join(
+        block["text"] for block in data.get("content", []) if block.get("type") == "text"
+    ).strip()
+
+
+def _template_comparison(items: list) -> str:
+    if len(items) < 2:
+        return ""
+    first, last = items[0], items[-1]
+    std_delta = (last.get("standard_pct") or 0) - (first.get("standard_pct") or 0)
+    score_delta = (last.get("avg_score") or 0) - (first.get("avg_score") or 0)
+    direction = "melhora" if std_delta > 0 else "queda"
+    sign = "+" if std_delta >= 0 else ""
+    return (
+        f"Evolução de {sign}{std_delta:.1f}pp em standard_pct entre o primeiro e o último torneio "
+        f"({'score médio melhorou' if score_delta < 0 else 'score médio piorou'} "
+        f"{abs(score_delta):.3f}). "
+        f"Tendência de {direction} técnica no período analisado."
+    )
+
+
 def generate_study_plan(leaks: list, evolution: list, icm: dict,
                         hero: str = 'Jogador',
                         user_id: int | None = None,

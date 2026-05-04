@@ -371,6 +371,62 @@ def get_decisions(tournament_db_id: int) -> List[dict]:
         conn.close()
 
 
+# ── Tournament comparison ─────────────────────────────────────────────────────
+
+def get_tournaments_comparison(user_id: int, tournament_ids: list) -> list:
+    """Retorna dados agregados de múltiplos torneios para comparação lado a lado."""
+    if not tournament_ids or len(tournament_ids) < 2:
+        return []
+
+    conn = get_conn()
+    try:
+        placeholders = ','.join('?' * len(tournament_ids))
+        rows = conn.execute(
+            f"SELECT * FROM tournaments WHERE user_id=? AND tournament_id IN ({placeholders})",
+            [user_id] + list(tournament_ids)
+        ).fetchall()
+    finally:
+        conn.close()
+
+    result = []
+    for row in rows:
+        t = dict(row)
+        phases    = get_phase_analysis(t['id'])
+        decisions = get_decisions(t['id'])
+        top_leaks = _compute_comparison_leaks(decisions)
+        result.append({
+            'tournament_id':   t['tournament_id'],
+            'tournament_name': t.get('tournament_name'),
+            'played_at':       t.get('played_at') or t.get('imported_at'),
+            'site':            t.get('site'),
+            'standard_pct':    t.get('standard_pct'),
+            'avg_score':       t.get('avg_score'),
+            'clear_pct':       t.get('clear_pct'),
+            'hands_count':     t.get('hands_count'),
+            'decisions_count': t.get('decisions_count'),
+            'profit':          t.get('profit'),
+            'buy_in':          t.get('buy_in'),
+            'place':           t.get('place'),
+            'phases':          phases,
+            'top_leaks':       top_leaks,
+        })
+
+    result.sort(key=lambda x: x.get('played_at') or '')
+    return result
+
+
+def _compute_comparison_leaks(decisions: list) -> list:
+    from collections import defaultdict
+    spot_scores: dict = defaultdict(list)
+    for d in decisions:
+        key = f"{d.get('street', '?')}/{d.get('best_action', '?')}"
+        spot_scores[key].append(d.get('score', 0) or 0)
+    return sorted(
+        [(k, round(sum(v) / len(v), 3), len(v)) for k, v in spot_scores.items() if len(v) >= 2],
+        key=lambda x: x[1], reverse=True
+    )[:5]
+
+
 # ── Evolution metrics (queries para o dashboard) ──────────────────────────────
 
 def get_evolution_metrics(user_id: int, days: int = 90) -> List[dict]:

@@ -25,7 +25,7 @@ from leaklab.decision_engine_v11 import evaluate_decision
 from leaklab.mtt_context import build_mtt_context
 from leaklab.session_metrics import build_session_metrics
 from leaklab.leak_correlator import correlate_leaks
-from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, generate_tournament_narrative, coach_chat_reply
+from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, generate_tournament_narrative, generate_comparison_narrative, coach_chat_reply
 
 from database.schema import init_db
 from database.repositories import (
@@ -61,7 +61,7 @@ from database.repositories import (
     decision_belongs_to_student,
     # Sprint 15 — BACK-015: payments
     save_payment, get_payments, update_user_plan,
-    get_phase_analysis, get_texture_analysis,
+    get_phase_analysis, get_texture_analysis, get_tournaments_comparison,
     # Sprint C — BACK-014 + BACK-017: admin panel + revenue share
     get_admin_dashboard_stats, get_all_users, get_all_users_count, update_user_admin,
     get_coaches_with_payout_status, upsert_coach_payment, mark_coach_payment_paid,
@@ -561,6 +561,22 @@ def _build_narrative_context(tourn: dict, decisions: list, phases: list) -> dict
         'icm_breakdown':   icm_breakdown,
         'worst_phase':     worst_phase,
     }
+
+
+@app.route('/history/tournaments/compare', methods=['GET'])
+@require_auth
+def history_tournaments_compare():
+    raw = request.args.get('ids', '')
+    ids = [i.strip() for i in raw.split(',') if i.strip()]
+    if len(ids) < 2 or len(ids) > 4:
+        return jsonify({'error': 'Selecione entre 2 e 4 torneios'}), 400
+
+    items = get_tournaments_comparison(g.user_id, ids)
+    if len(items) < 2:
+        return jsonify({'error': 'Torneios não encontrados'}), 404
+
+    narrative = generate_comparison_narrative(items)
+    return jsonify({'items': items, 'narrative': narrative})
 
 
 @app.route('/history/evolution', methods=['GET'])

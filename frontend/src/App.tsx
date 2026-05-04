@@ -22,6 +22,7 @@ import CoachesDirectory from "./pages/CoachesDirectory.tsx";
 import PublicCoachProfile from "./pages/PublicCoachProfile.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GhostTable from "./pages/GhostTable.tsx";
+import TournamentCompare from "./pages/TournamentCompare.tsx";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Tournaments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tournaments/compare"
+              element={
+                <ProtectedRoute>
+                  <TournamentCompare />
                 </ProtectedRoute>
               }
             />

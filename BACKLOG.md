@@ -58,6 +58,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint U | FEAT-08 | Session Goals + AI Review | ⏳ |
 | Sprint V | FEAT-09 + FEAT-10 | Coach Templates + Coach Messaging | ⏳ |
 | Sprint W | FEAT-11 | Weekly Digest Email | ⏳ |
+| Sprint X | FEAT-12 | Página de Documentação / Wiki do Sistema | ⏳ |
 
 ---
 
@@ -192,6 +193,28 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 **Frontend:** Banner "ativar digest" no dashboard + opt-out via token.
 
 **Esforço:** ~14h backend + ~4h frontend
+
+---
+
+### [FEAT-12] — Página de Documentação / Wiki do Sistema *(Sprint X)*
+
+**Valor:** Reduz fricção de onboarding — novos usuários e coaches entendem o que cada indicador significa sem precisar pedir suporte. Aumenta confiança técnica no produto (especialmente com coaches que querem validar a metodologia antes de assinar).
+
+**O que é:** Uma página `/docs` estilo wiki, com navegação lateral por seções, explicando em profundidade:
+- Como funciona o sistema de scoring de decisões (score 0–1, labels: standard/marginal/clear_mistake/disaster)
+- O que é e como interpretar cada indicador: Standard%, Avg Score, Clear Mistakes%, Leak ROI, ICM Pressure
+- Fases de M-ratio: Deep Stack / Mid Stack / Short Stack / Push/Fold — critérios e o que muda
+- Decision DNA: o que representa cada eixo do radar (Agressividade, Fold Frequency, 3-Bet%, Positional Awareness, Disciplina)
+- Ghost Table: como funciona o drill de spots, o que é cooldown/SRS, como interpretar o resultado
+- Como ler o Comparativo de Torneios: o que é Delta, como interpretar "▲ melhor"
+- Coaching: o que é um baseline, como funciona a medição de evolução, o que significa "Coach Reviewed"
+- Gamificação: como XP é calculado, critérios de nível, conquistas
+
+**Design:** Wiki-style dentro do HudLayout — sidebar fixa com links âncora, conteúdo em prosa técnica com exemplos, tabelas e badges reais do sistema. Sem imagens externas — usa os próprios componentes visuais do sistema como referência inline.
+
+**Frontend only** — conteúdo estático, sem backend. Rota `/docs`.
+
+**Esforço:** ~20h frontend (conteúdo + layout + navegação)
 
 ---
 

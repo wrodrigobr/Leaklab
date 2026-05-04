@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.46.0] — 2026-05-03 — Sprint O: FEAT-01 Comparativo de Torneios
+
+### Added
+- **`backend/database/repositories.py`**: `get_tournaments_comparison(user_id, ids)` — agrega por torneio: `standard_pct`, `avg_score`, `clear_pct`, hands/decisions count, profit, buy_in, place, phase breakdown e top 5 leaks; `_compute_comparison_leaks(decisions)` — calcula média de score por spot para o ranking de leaks.
+- **`backend/leaklab/llm_explainer.py`**: `generate_comparison_narrative(items)` — narrativa comparativa de 2 frases via Claude Haiku (max 100 tokens); cache por `cmp_{id1}_{id2}...`; fallback `_template_comparison()` calcula delta de `standard_pct` entre primeiro e último torneio.
+- **`backend/api/app.py`**: endpoint `GET /history/tournaments/compare?ids=A,B,C` — valida 2–4 IDs, retorna `{items: TournamentComparison[], narrative}`.
+- **`frontend/src/lib/api.ts`**: interface `TournamentComparison` e método `tournaments.compare(ids)`.
+- **`frontend/src/pages/TournamentCompare.tsx`**: página de comparativo lado a lado — componentes `Delta` (trend ±) e `QualityBar` (barra colorida por threshold); seções: narrativa LLM, cards de cabeçalho por torneio, tabela de qualidade (Standard%/Avg Score/Clear Mistakes%), phase breakdown (Deep/Mid/Short Stack/Push-Fold), top leaks com destaque amarelo para leaks compartilhados entre torneios; badge "▲ melhor" no melhor valor de cada métrica.
+- **`frontend/src/pages/Tournaments.tsx`**: multi-seleção de 2–4 torneios via checkboxes (desktop e mobile); CTA "Comparar N torneios" com ícone aparece ao selecionar ≥ 2 itens; navega para `/tournaments/compare?ids=...`.
+- **`frontend/src/App.tsx`**: rota `/tournaments/compare` adicionada antes de `/tournaments/:id`.
+- **`backend/database/repositories.py`**: labels de fase de M-ratio padronizadas para inglês — `Deep Stack`, `Mid Stack`, `Short Stack`, `Push/Fold` (era PT-BR).
+
+### Changed
+- **`frontend/src/pages/TournamentDetail.tsx`**: tooltips das fases atualizados para inglês (Deep Stack / Mid Stack / Short Stack / Push/Fold).
+
+---
+
 ## [v0.45.0] — 2026-05-03 — Sprint M: PERF-008 Tournament Narrative Engine
 
 ### Added

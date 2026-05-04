@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2, Trash2, AlertTriangle, GraduationCap } from "lucide-react";
+import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2, Trash2, AlertTriangle, GraduationCap, BarChart2 } from "lucide-react";
 import { SiteLogo } from "@/components/hud/SiteLogo";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, Tournament } from "@/lib/api";
@@ -36,6 +36,18 @@ const Tournaments = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [clearConfirm, setClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) { n.delete(id); return n; }
+      if (n.size >= 4) return prev;
+      n.add(id);
+      return n;
+    });
+  };
 
   const reload = () => {
     setLoading(true);
@@ -166,6 +178,29 @@ const Tournaments = () => {
             ))}
           </section>
 
+          {selected.size >= 2 && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5">
+              <span className="font-mono text-[10px] text-primary uppercase tracking-wider">
+                {selected.size} torneio{selected.size > 1 ? "s" : ""} selecionado{selected.size > 1 ? "s" : ""}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelected(new Set())}
+                  className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Limpar
+                </button>
+                <button
+                  onClick={() => navigate(`/tournaments/compare?ids=${[...selected].join(",")}`)}
+                  className="inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  <BarChart2 className="size-3.5" />
+                  Comparar {selected.size} torneios
+                </button>
+              </div>
+            </div>
+          )}
+
           <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -244,10 +279,21 @@ const Tournaments = () => {
                     key={t.id}
                     className={cn(
                       "flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 transition-colors cursor-pointer active:bg-primary/10",
-                      isDeleting && "opacity-40 pointer-events-none"
+                      isDeleting && "opacity-40 pointer-events-none",
+                      selected.has(t.tournament_id) && "bg-primary/5"
                     )}
                     onClick={() => navigate(`/tournaments/${t.tournament_id}`)}
                   >
+                    <div onClick={(e) => toggleSelect(e, t.tournament_id)} className="shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(t.tournament_id)}
+                        onChange={() => {}}
+                        disabled={!selected.has(t.tournament_id) && selected.size >= 4}
+                        className="size-3.5 rounded border-border accent-primary cursor-pointer disabled:opacity-30"
+                        aria-label="Selecionar para comparar"
+                      />
+                    </div>
                     <SiteLogo site={t.site} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -298,6 +344,7 @@ const Tournaments = () => {
               <table className="w-full text-left">
                 <thead className="border-b border-border bg-hud-elevated/40">
                   <tr>
+                    <th className="w-8 px-3 py-3" />
                     {[
                       { k: "played_at" as SortKey, label: t("table.date") },
                       { k: null, label: t("table.tournament") },
@@ -341,10 +388,21 @@ const Tournaments = () => {
                         key={t.id}
                         className={cn(
                           "group transition-colors hover:bg-primary/5 cursor-pointer",
-                          isDeleting && "opacity-40 pointer-events-none"
+                          isDeleting && "opacity-40 pointer-events-none",
+                          selected.has(t.tournament_id) && "bg-primary/5"
                         )}
                         onClick={() => navigate(`/tournaments/${t.tournament_id}`)}
                       >
+                        <td className="w-8 px-3 py-3.5" onClick={(e) => toggleSelect(e, t.tournament_id)}>
+                          <input
+                            type="checkbox"
+                            checked={selected.has(t.tournament_id)}
+                            onChange={() => {}}
+                            disabled={!selected.has(t.tournament_id) && selected.size >= 4}
+                            className="size-3.5 rounded border-border accent-primary cursor-pointer disabled:opacity-30"
+                            aria-label="Selecionar para comparar"
+                          />
+                        </td>
                         <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-muted-foreground">
                           {formatDate(t.played_at)}
                         </td>
@@ -423,7 +481,7 @@ const Tournaments = () => {
                   })}
                   {rows.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-16 text-center text-sm text-muted-foreground">
+                      <td colSpan={9} className="px-4 py-16 text-center text-sm text-muted-foreground">
                         {data.length === 0 ? tc("errors.noTournaments") : tc("errors.noResults")}
                       </td>
                     </tr>

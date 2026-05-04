@@ -115,6 +115,23 @@ export interface TournamentsResponse {
   tournaments: Tournament[];
 }
 
+export interface TournamentComparison {
+  tournament_id: string;
+  tournament_name: string | null;
+  played_at: string | null;
+  site: string;
+  standard_pct: number | null;
+  avg_score: number | null;
+  clear_pct: number | null;
+  hands_count: number | null;
+  decisions_count: number | null;
+  profit: number | null;
+  buy_in: number | null;
+  place: number | null;
+  phases: { phase: string; range: string; n: number; mistake_rate: number; avg_score: number }[];
+  top_leaks: [string, number, number][];
+}
+
 export interface PhaseData {
   phase: string;
   range: string;
@@ -275,6 +292,12 @@ export const tournaments = {
     request<{ narrative: string; quality_level: "solid" | "regular" | "poor" }>(
       `/history/tournament/${tournamentId}/narrative`
     ),
+
+  compare: (ids: string[]) =>
+    request<{
+      items: TournamentComparison[];
+      narrative: string;
+    }>(`/history/tournaments/compare?ids=${ids.join(",")}`),
 
   replay: (tournamentId: string, handId: string) =>
     request<ReplayData>(`/replay/${tournamentId}/${handId}`),
