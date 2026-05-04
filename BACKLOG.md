@@ -66,6 +66,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AD | UX-012 | Dashboard — remover lista de últimos torneios (há menu próprio); liberar espaço para cards de indicadores | ✅ v0.60.0 |
 | Sprint AE | UX-013 | Substituir "JAM" por "All In" em toda a plataforma (UI, textos, labels, parser output) | ⏳ |
 | Sprint AF | UX-014 | Página do Coach (StudentDetail) — remover limitação horizontal, aproveitar melhor o espaço disponível em telas largas | ⏳ |
+| Sprint AL | UX-017 | Dashboard personalizável — arrastar e reordenar cards, preferência salva por usuário | ⏳ |
 | Sprint AH | BACK-018 | Coach Application Flow — candidatura com aprovação manual pelo admin | ⏳ |
 | Sprint AI | BACK-019 | Perfil demográfico do usuário — idade, localização, experiência de poker | ⏳ |
 | Sprint AJ | UX-015 | Inbox global de mensagens para o coach — ver todas as conversas com badge de não lidas | ⏳ |
@@ -75,6 +76,35 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 ---
 
 ## Próximas Sprints — Em Aberto
+
+### [UX-017] — Dashboard Personalizável *(Sprint AL)*
+
+**Problema:** o layout do dashboard é fixo — jogadores têm estilos e prioridades diferentes (alguns vivem no Ghost Table, outros focam no Leak Causal Map), mas todos veem a mesma ordem.
+
+**Solução:** drag-and-drop para reordenar os cards do dashboard, com preferência salva por usuário.
+
+**Escopo:**
+- Cards arrastáveis: LeaksPanel, LeakCausalMap, LevelCard, GhostDrillCard, PressureProfileCard, IcmBreakdown, AI Confidence (os cards de posição fixa — KPIs, BankrollChart, PlayerDnaCard — permanecem fixos pois são hierarquicamente prioritários)
+- Reordenação dentro de cada coluna (aside e coluna de baixo) — não troca de coluna
+- Ícone de drag handle (⠿) visível ao hover no header de cada card
+- Botão "Restaurar padrão" no header do dashboard
+
+**Persistência:**
+- `localStorage` para a ordem dos cards (`dashboard_layout_${userId}`) — sem necessidade de backend
+- Se o usuário estiver logado em dois devices, cada um mantém sua própria ordem (comportamento aceitável para MVP)
+- Futuro: sincronização server-side via `PATCH /player/preferences` com coluna `dashboard_layout JSON` em `users`
+
+**Biblioteca:** `@dnd-kit/core` + `@dnd-kit/sortable` (acessível, sem dependência de mouse, funciona em touch/mobile)
+
+**Arquivos:**
+- `frontend/package.json` — adicionar `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
+- `frontend/src/hooks/useDashboardLayout.ts` — hook que lê/escreve ordem em localStorage
+- `frontend/src/pages/Index.tsx` — envolver cards arrastáveis com `SortableContext`
+- `frontend/src/components/hud/DraggableCard.tsx` — wrapper com drag handle
+
+**Esforço:** ~2h (deps + hook) + ~8h frontend (integração nos cards)
+
+---
 
 ### [UX-015] — Inbox Global de Mensagens para o Coach *(Sprint AJ)*
 
