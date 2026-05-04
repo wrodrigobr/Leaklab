@@ -40,7 +40,7 @@ export function OnboardingModal({ onClose }: Props) {
       setSaving(false);
     }
     onClose();
-    if (goAnalyze) navigate("/analyze");
+    if (goAnalyze) navigate("/dashboard");
   };
 
   return (
