@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Coins, Layers, Percent, Target, GraduationCap, Brain, Mail, X, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -79,6 +79,16 @@ const Index = () => {
       metrics.strategicTwin(i18n.language).then(setTwinData).catch(() => null),
     ]).finally(() => setLoading(false));
   }, [refreshKey]);
+
+  // Re-fetch only language-sensitive AI narratives when locale changes
+  const langMounted = useRef(false);
+  useEffect(() => {
+    if (!langMounted.current) { langMounted.current = true; return; }
+    metrics.leakGraph(90, i18n.language).then(setLeakGraph).catch(() => null);
+    metrics.career(i18n.language).then(setCareerData).catch(() => null);
+    metrics.cognitiveFailures(i18n.language).then(setCognitiveData).catch(() => null);
+    metrics.strategicTwin(i18n.language).then(setTwinData).catch(() => null);
+  }, [i18n.language]);
 
   const handleUpload = () => setRefreshKey((k) => k + 1);
 

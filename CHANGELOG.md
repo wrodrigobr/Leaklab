@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.83.5] — 2026-05-04 — Bugfix: narrativas IA não atualizam ao trocar idioma
+
+### Fixed
+- **`frontend/src/pages/Index.tsx`**: adicionado `useEffect` separado com dependência `[i18n.language]` que re-busca apenas os 4 endpoints de narrativa sensíveis ao idioma (`leakGraph`, `career`, `cognitiveFailures`, `strategicTwin`) quando o locale muda. Guard `langMounted` evita double-fetch no mount inicial. Os demais dados (evolution, breakdown, tournaments, etc.) não são re-buscados desnecessariamente.
+
+---
+
 ## [v0.83.4] — 2026-05-04 — Bugfix: termos de poker em inglês nos prompts LLM
 
 ### Fixed
