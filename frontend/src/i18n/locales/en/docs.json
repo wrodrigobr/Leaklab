@@ -96,6 +96,7 @@
     "mastery_next": "Spot archived — maximum interval of 60 days",
     "p3": "The GhostDrillCard on the dashboard shows spots with overdue review (red), about to expire (yellow), and on track (green). The goal is to keep all spots green — a sign that the patterns have been internalized.",
     "p4": "XP earned: <strong>25 XP</strong> per completed drill, <strong>100 XP</strong> for reaching mastery on a spot.",
+    "p5": "<strong>Pressure Mode</strong> adds a 30-second countdown per decision. An SVG ring displays the countdown; when it reaches zero, a fold is automatically recorded and the hit streak resets. The accumulated streak is shown with a 🔥 badge during the session and on the final summary tile.",
     "result_hit": "Hit",
     "result_miss": "Miss",
     "result_mastery": "Mastery"
@@ -221,7 +222,7 @@
     "phase_feedback_desc": "Immediate result: correct or incorrect, recommended action, score delta, SRS scheduling, and optional engine analysis via AI.",
     "phase_summary": "Summary",
     "phase_summary_desc": "After all decisions: overall accuracy, per-decision outcome summary, and a button to play a new hand.",
-    "p2": "The auto-selected hand is the one containing the player's worst mistake in the last 90 days, preferring hands with multiple decisions to create a full narrative arc (preflop → flop → turn/river).",
+    "p2": "The auto-selected hand is the one containing the player's worst mistake in the last 90 days, preferring hands with multiple decisions to create a full narrative arc (preflop → flop → turn/river). Each new session excludes already-played hands from selection — the system cycles through distinct hands in the 90-day window; once all are exhausted, it restarts from the beginning.",
     "p3": "Every answer is registered in the SRS (Spaced Repetition) system: correct answers advance the review interval [3, 7, 14, 28, 60 days]; wrong answers reset to 3 days. <strong>Sparring integrates directly with the Ghost Table</strong> — the same spots appear in both modes as the SRS schedules them."
   }
 }

@@ -2,8 +2,8 @@
 
 Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão.
 
-> **Sprints já entregues:** Sprints 1–13 + Sprint A–AP — ver CHANGELOG v0.9.0 a v0.74.0.
-> **Próxima sprint:** Sprint AQ — Cognitive Failure Mapper
+> **Sprints já entregues:** Sprints 1–13 + Sprint A–AW — ver CHANGELOG v0.9.0 a v0.82.2.
+> **Próxima sprint:** Sprint AX — Onboarding para novos usuários
 
 ---
 
@@ -77,105 +77,61 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | Sprint AO | i18n ext. | Cobertura i18n completa: LeakCausalMap, DraggableCard, Docs career section | ✅ v0.72.0 |
 | — | bugfixes | Bugfixes: nomes de nível i18n no dashboard, narrativa LeakCausalMap em PT, drag handle UX | ✅ v0.73.0 |
 | Sprint AP | FEAT-13 | Strategic Career Graph — projeção de carreira com regressão linear + sparkline + narrativa IA | ✅ v0.74.0 |
+| Sprint AQ | FEAT-14 | Cognitive Failure Mapper — 5 padrões cognitivo-emocionais + CognitiveFailureCard | ✅ v0.75.0 |
+| Sprint AQ+ | — | Dashboard UX Redesign — layout reorganizado, insight_row com Career + Cognitive lado a lado | ✅ v0.76.0 |
+| Sprint AR | FEAT-15 | Personal Strategic Twin — perfil preditivo de spots custosos + narrativa LLM em 1ª pessoa | ✅ v0.77.0 |
+| Sprint AS | FEAT-16 | AI Sparring Mode — jogo de mãos históricas com pause em decisões + feedback imediato + SRS | ✅ v0.78.0 |
+| Sprint AT | — | Menu "Treinos" + redesign visual do Sparring (amber, StreetTimeline, HandRecap) | ✅ v0.79.0 |
+| Sprint AU | — | PokerTable visual no Sparring — herói + vilões + board + pot em tela real | ✅ v0.80.0 |
+| Sprint AV | — | Página /training + botões de ação contextuais no Sparring (facing_bet) | ✅ v0.81.0 |
+| — | bugfixes | i18n sparring (arenaLabel/arenaDesc) + test suite verde (sys.executable, coach flow) | ✅ v0.81.1 |
+| Sprint AW | — | Ghost Table Pressure Mode (30s timer + SVG ring + streak) + Sparring hand rotation | ✅ v0.82.0 |
+| — | bugfixes | Perfil demográfico visível + i18n completo do perfil + telefone no perfil | ✅ v0.82.1–v0.82.2 |
 
 ---
 
 ## Próximas Sprints — Em Aberto
 
-### [FEAT-14] — Cognitive Failure Mapper *(Sprint AQ)*
+### [FEAT-17] — Onboarding para novos usuários *(Sprint AX)*
 
-**Valor:** O mapeamento de padrões cognitivo-emocionais com base em sequências decisional reais é genuinamente o diferencial mais original da lista. Nenhuma ferramenta de poker faz isso.
+**Valor:** Não há fluxo guiado de boas-vindas após o registro. O usuário cai direto no dashboard sem saber o que fazer primeiro — aumenta abandono precoce e reduz a chance de o usuário fazer o primeiro upload.
 
-**O que detecta** (padrões nas decisões ordenadas dentro de cada torneio):
-- `revenge_aggression` — aumento de clear_mistakes após sequência de folds corretos (frustração)
-- `fear_folding` — folding excessivo após bust de stack grande (medo de bust)
-- `sunk_cost_continuation` — calls ruins nos rivers após investimento crescente no pot
-- `entitlement_tilt` — sequência de clear_mistakes após bloco de decisões standard (relaxamento pós-boa-fase)
-- `compensation_call` — call-downs excessivos nas N mãos após fold correto de strong hand
-
-**Como funciona:**
-- Analisa janelas deslizantes de 5–10 decisões consecutivas dentro de um torneio
-- Correlaciona padrão de score com contexto anterior (sequência de folds, stack loss, pot investment)
-- LLM (Haiku, ~200 tokens) gera o diagnóstico em linguagem natural com o padrão detectado e sugestão de correção
+**O que construir:**
+- Modal de boas-vindas exibido uma única vez após o primeiro login (flag `onboarding_completed` no perfil do usuário)
+- 3–4 passos: apresentar o produto, explicar o upload de hand history, mostrar onde ficam Ghost Table e Sparring, e convidar a importar o primeiro torneio
+- CTA final: botão direto para a tela de análise (`/analyze`)
+- Opção de pular (skip) em qualquer passo; ao pular ou concluir, flag gravada no backend
 
 **Backend:**
-- `backend/leaklab/cognitive_mapper.py` — detector de padrões cognitivos sobre sequência de decisões
-- `backend/database/repositories.py` — `get_cognitive_failure_report(user_id, tournament_id=None)`
-- `backend/api/app.py` — `GET /player/cognitive-failures?lang=`
-- `backend/leaklab/llm_explainer.py` — `generate_cognitive_narrative(patterns, lang)`
+- `backend/database/repositories.py` — campo `onboarding_completed` na tabela `users` (ou profile); `set_onboarding_completed(user_id)`
+- `backend/api/app.py` — `POST /player/onboarding/complete`
 
 **Frontend:**
-- `frontend/src/components/hud/CognitiveFailureCard.tsx` — card no sidebar do dashboard
-- Lista os padrões detectados com ícone de severidade, frequência e contexto de gatilho
-- Narrativa LLM abaixo da lista
-- Seção na página `/docs` com explicação dos padrões (3 locales)
-- `frontend/src/i18n/locales/{pt-BR,en,es}/dashboard.json` — chaves `cognitiveFailure.*`
+- `frontend/src/components/OnboardingModal.tsx` — modal multi-step com stepper, ilustrações e copy contextualizado
+- `frontend/src/pages/Index.tsx` — checa `user.onboarding_completed`; exibe modal se falso
+- `frontend/src/i18n/locales/{pt-BR,en,es}/onboarding.json` — namespace `onboarding` com todos os textos (PT/EN/ES)
 
-**Esforço:** ~16h backend + ~12h frontend
+**Esforço estimado:** ~4h backend + ~12h frontend
 
 ---
 
-### [FEAT-15] — Personal Strategic Twin (simplificado) *(Sprint AR)*
+### [FEAT-18] — Mobile audit + responsividade *(Sprint AY)*
 
-**Valor:** Transforma os dados de frequência de erros por spot em linguagem preditiva: *"em spots de reshove M≤8 IP você erra 63% das vezes — esse é seu padrão mais custoso"*. Nenhum solver ou ferramenta de revisão apresenta os dados do próprio jogador dessa forma.
+**Valor:** O dashboard com cards arrastáveis nunca foi auditado em mobile. A experiência provavelmente está quebrada — drag handle é inutilizável em touch, cards podem ter overflow, e o nav colide com conteúdo em telas pequenas.
 
-**O que NÃO é:** não é um modelo ML preditivo individual (exigiria meses de engenharia + dados de treinamento). É uma camada de apresentação sobre dados existentes.
+**O que auditar e corrigir:**
+- Dashboard: drag & drop em touch (desabilitar ou substituir por reorder via botões ↑↓ em mobile)
+- GhostTable e Sparring: botões de ação com tamanho mínimo de toque (44×44 px)
+- HudHeader: nav em mobile (menu hambúrguer funcional em todas as rotas)
+- Tabelas de docs e cards de análise: scroll horizontal em telas < 400px
+- Formulários de perfil: inputs e labels não colapsam em mobile
 
-**O que constrói:**
-- Endpoint `GET /player/strategic-twin?lang=` que agrega:
-  - Spots de alta frequência (top 5 por volume de decisões)
-  - Spots com erro acima da média individual do jogador (% de clear_mistakes > player avg)
-  - Padrão de contexto para cada spot (ICM level predominante, posição, street)
-- LLM (Haiku, ~300 tokens) gera o card no estilo "twin diagnóstico": texto em 1ª pessoa, preditivo, com os 3 padrões mais custosos identificados
+**Abordagem:**
+- Auditoria com DevTools (viewport 390×844 — iPhone 14) em todas as rotas principais
+- Corrigir breakpoints e adicionar `touch-action` onde necessário
+- Testar drag & drop em dispositivo real ou emulador iOS/Android
 
-**Backend:**
-- `backend/database/repositories.py` — `get_strategic_twin_profile(user_id)`
-- `backend/api/app.py` — `GET /player/strategic-twin?lang=`
-- `backend/leaklab/llm_explainer.py` — `generate_twin_narrative(profile, lang)`
-
-**Frontend:**
-- `frontend/src/components/hud/StrategicTwinCard.tsx` — card no sidebar do dashboard
-- Cabeçalho: "Seu Perfil Estratégico" / "Your Strategic Profile"
-- Corpo: lista dos 3 padrões mais custosos + narrativa LLM
-- `frontend/src/i18n/locales/{pt-BR,en,es}/dashboard.json` — chaves `strategicTwin.*`
-
-**Esforço:** ~10h backend + ~8h frontend
-
----
-
-### [FEAT-16] — AI Sparring Mode no Ghost Table *(Sprint AS)*
-
-**Valor:** Em vez de revisar texto sobre o spot de leak, o jogador joga a mão real que contém o leak, pausando em cada decisão e recebendo feedback imediato. Aprendizado por ação, não por leitura.
-
-**Arquitetura:** "Sparring Mode" dentro do Ghost Table existente — reutiliza o visual do Replayer e o engine de avaliação de decisões. NÃO usa o `leaklab-replayer-v3.html` diretamente (timeline fixo sem ramificações).
-
-**Como funciona:**
-1. Sistema seleciona uma mão histórica do jogador que contém seu leak mais crítico
-2. Replayer carrega a mão mas **pausa em cada ponto de decisão do hero** (`is_hero: true`)
-3. Usuário escolhe sua ação (fold/call/raise/jam) com visual completo (cartas, board, pot, posições, M-ratio)
-4. Engine avalia a escolha via `decision_engine_v11` → feedback imediato (score + label + explicação)
-5. Mão continua com a ação escolhida pelo usuário (ou a ação real, como modo de comparação)
-6. Ao final: resumo de todas as decisões + EV total perdido/ganho vs linha ideal
-
-**O que reutiliza sem reescrita:**
-- Componentes visuais do Replayer (cartas, board, pot, posições, stacks)
-- Mecanismo de `submit_drill` do Ghost Table existente
-- `decision_engine_v11` para avaliação
-- Endpoints `/player/spots/drill` e `/player/spots/drill/submit`
-
-**O que constrói:**
-- Backend: endpoint `GET /player/sparring/hand` — serve mão completa em sparring mode (mesma estrutura de ReplayData + flag `sparring: true` + lista de `decision_points` com índice no timeline)
-- Frontend: modo "Sparring" na página Ghost Table — intercepta pontos `is_hero: true` no timeline para mostrar botões de ação em vez de auto-avançar; painel de feedback inline; resumo final
-- SRS: a mão completa vira um "drill spot" com dificuldade baseada no número de erros cometidos
-- `frontend/src/i18n/locales/{pt-BR,en,es}/dashboard.json` — chaves `sparring.*`
-
-**Arquivos:**
-- `backend/api/app.py` — `GET /player/sparring/hand?spot_id=`
-- `backend/database/repositories.py` — `get_sparring_hand(user_id, spot_id)`
-- `frontend/src/pages/GhostTable.tsx` — modo sparring inline
-- `frontend/src/components/hud/SparringFeedback.tsx` — painel de decisão + feedback
-
-**Esforço:** ~12h backend + ~14h frontend
+**Esforço estimado:** ~2h audit + ~10h correções
 
 ---
 

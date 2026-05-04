@@ -96,6 +96,7 @@
     "mastery_next": "Spot arquivado — intervalo máximo de 60 dias",
     "p3": "O card GhostDrillCard no dashboard mostra os spots com revisão vencida (vermelho), próximos de vencer (amarelo) e em dia (verde). O objetivo é manter todos os spots no verde — sinal de que os padrões foram internalizados.",
     "p4": "XP ganho: <strong>25 XP</strong> por drill completo, <strong>100 XP</strong> ao atingir mastery em um spot.",
+    "p5": "O <strong>Modo Pressão</strong> adiciona um cronômetro de 30 segundos por decisão. Um anel SVG exibe a contagem regressiva; ao chegar a zero, fold é registrado automaticamente e o streak de acertos é zerado. O streak acumulado é exibido com badge 🔥 durante a sessão e no tile de resumo final.",
     "result_hit": "Acerto",
     "result_miss": "Erro",
     "result_mastery": "Mastery"
@@ -221,7 +222,7 @@
     "phase_feedback_desc": "Resultado imediato: correto ou incorreto, ação recomendada, delta de score, SRS scheduling e análise opcional do engine via IA.",
     "phase_summary": "Resumo",
     "phase_summary_desc": "Ao fim de todas as decisões: precisão geral, resumo de cada decisão com outcome, botão para jogar nova mão.",
-    "p2": "A mão auto-selecionada é a que contém o pior erro do jogador nos últimos 90 dias, priorizando mãos com múltiplas decisões para criar um arco narrativo completo (preflop → flop → turn/river).",
+    "p2": "A mão auto-selecionada é a que contém o pior erro do jogador nos últimos 90 dias, priorizando mãos com múltiplas decisões para criar um arco narrativo completo (preflop → flop → turn/river). A cada nova sessão, mãos já jogadas são excluídas da seleção — o sistema itera por mãos distintas na janela de 90 dias; quando todas forem esgotadas, o ciclo recomeça do início.",
     "p3": "Cada resposta é registrada no sistema SRS (Spaced Repetition): acertos avançam o intervalo de revisão [3, 7, 14, 28, 60 dias]; erros resetam para 3 dias. O <strong>Sparring integra diretamente ao Ghost Table</strong> — os mesmos spots aparecem nos dois modos conforme o SRS agenda."
   }
 }

@@ -96,6 +96,7 @@
     "mastery_next": "Spot archivado — intervalo máximo de 60 días",
     "p3": "La tarjeta GhostDrillCard en el dashboard muestra los spots con revisión vencida (rojo), próximos a vencer (amarillo) y al día (verde). El objetivo es mantener todos los spots en verde — señal de que los patrones fueron internalizados.",
     "p4": "XP ganado: <strong>25 XP</strong> por drill completado, <strong>100 XP</strong> al alcanzar mastery en un spot.",
+    "p5": "El <strong>Modo Presión</strong> agrega un cronómetro de 30 segundos por decisión. Un anillo SVG muestra la cuenta regresiva; al llegar a cero, se registra automáticamente un fold y el streak de aciertos se reinicia. El streak acumulado se muestra con badge 🔥 durante la sesión y en el tile de resumen final.",
     "result_hit": "Acierto",
     "result_miss": "Error",
     "result_mastery": "Mastery"
@@ -221,7 +222,7 @@
     "phase_feedback_desc": "Resultado inmediato: correcto o incorrecto, acción recomendada, delta de score, scheduling SRS y análisis opcional del engine vía IA.",
     "phase_summary": "Resumen",
     "phase_summary_desc": "Al finalizar todas las decisiones: precisión global, resumen por decisión con resultado, botón para jugar una nueva mano.",
-    "p2": "La mano auto-seleccionada es la que contiene el peor error del jugador en los últimos 90 días, priorizando manos con múltiples decisiones para crear un arco narrativo completo (preflop → flop → turn/river).",
+    "p2": "La mano auto-seleccionada es la que contiene el peor error del jugador en los últimos 90 días, priorizando manos con múltiples decisiones para crear un arco narrativo completo (preflop → flop → turn/river). En cada nueva sesión, las manos ya jugadas se excluyen de la selección — el sistema itera por manos distintas en la ventana de 90 días; cuando todas se agotan, el ciclo comienza de nuevo.",
     "p3": "Cada respuesta se registra en el sistema SRS (Spaced Repetition): los aciertos avanzan el intervalo de revisión [3, 7, 14, 28, 60 días]; los errores lo reinician a 3 días. El <strong>Sparring se integra directamente con el Ghost Table</strong> — los mismos spots aparecen en ambos modos según el SRS los programe."
   }
 }

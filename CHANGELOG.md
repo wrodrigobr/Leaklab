@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.82.3] — 2026-05-04 — Docs: Pressure Mode + Sparring rotation + BACKLOG atualizado
+
+### Changed
+- **`frontend/src/pages/Docs.tsx`**: seção Ghost Table agora renderiza `ghost.p5` — descrição do Pressure Mode (cronômetro 30s, anel SVG, fold automático, badge 🔥 de streak).
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/docs.json`**: adicionada chave `ghost.p5` nas 3 locales descrevendo o Pressure Mode. Chave `sparring.p2` atualizada para mencionar o mecanismo de rotação de mãos por sessão (exclusão de mãos já jogadas, ciclo de 90 dias).
+- **`BACKLOG.md`**: Sprints AQ–AW e bugfixes v0.81.1–v0.82.2 movidos para tabela de concluídos. Seção "Em Aberto" atualizada: FEAT-14/15/16 (entregues) removidos; FEAT-17 (Onboarding) e FEAT-18 (Mobile audit) adicionados como próximas sprints AX e AY.
+
+---
+
 ## [v0.82.2] — 2026-05-04 — Fix: perfil i18n completo + telefone no perfil + remoção WhatsApp Coaching
 
 ### Changed

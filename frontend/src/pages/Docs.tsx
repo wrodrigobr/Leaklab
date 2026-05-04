@@ -176,6 +176,7 @@ export default function Docs() {
               />
               <p>{t("ghost.p3")}</p>
               <p dangerouslySetInnerHTML={{ __html: t("ghost.p4") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("ghost.p5") }} />
             </Section>
 
             {/* Tournament Comparison */}
