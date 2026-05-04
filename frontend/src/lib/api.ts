@@ -1613,4 +1613,7 @@ export const support = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  listTickets: () =>
+    request<{ tickets: unknown[] }>("/admin/support-tickets"),
 };

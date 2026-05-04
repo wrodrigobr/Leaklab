@@ -3,11 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, BarChart2, CheckCircle2, ChevronRight, Clock,
   Download, LayoutDashboard, Loader2, Search, Shield, Users,
-  GraduationCap, X, Check
+  GraduationCap, X, Check, MessageSquarePlus
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { cn } from "@/lib/utils";
-import { adminDashboard, AdminUser, CoachPayout, CoachApplication } from "@/lib/api";
+import { adminDashboard, AdminUser, CoachPayout, CoachApplication, support } from "@/lib/api";
 import { toast } from "sonner";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -43,13 +43,14 @@ function KpiTile({ label, value, sub, icon: Icon, accent }: {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "users" | "finance" | "logs" | "candidaturas";
+type Tab = "overview" | "users" | "finance" | "logs" | "candidaturas" | "support";
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "overview",      label: "Visão Geral",   icon: LayoutDashboard },
   { id: "users",         label: "Usuários",      icon: Users },
   { id: "finance",       label: "Financeiro",    icon: BarChart2 },
   { id: "logs",          label: "Logs",          icon: Activity },
   { id: "candidaturas",  label: "Candidaturas",  icon: GraduationCap },
+  { id: "support",       label: "Suporte",       icon: MessageSquarePlus },
 ];
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
@@ -588,6 +589,78 @@ function CandidaturasTab() {
   );
 }
 
+// ── Support Tab ───────────────────────────────────────────────────────────────
+
+interface SupportTicket {
+  id: number;
+  user_id: number | null;
+  username: string | null;
+  category: string;
+  subject: string;
+  message: string;
+  status: string;
+  created_at: string;
+}
+
+const CATEGORY_LABEL: Record<string, string> = {
+  bug: "Bug", question: "Dúvida", suggestion: "Sugestão", billing: "Cobrança", other: "Outro",
+};
+
+function SupportTab() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-support-tickets"],
+    queryFn:  () => support.listTickets(),
+    staleTime: 30_000,
+  });
+
+  const tickets: SupportTicket[] = (data as { tickets: SupportTicket[] })?.tickets ?? [];
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
+      <Loader2 className="size-5 animate-spin text-primary" />
+      <span className="font-mono text-xs uppercase tracking-wider">Carregando…</span>
+    </div>
+  );
+
+  if (tickets.length === 0) return (
+    <div className="flex items-center justify-center py-24 text-muted-foreground font-mono text-xs uppercase tracking-wider">
+      Nenhuma mensagem de suporte recebida ainda.
+    </div>
+  );
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-hud-surface">
+      <div className="px-4 py-3 border-b border-border bg-hud-elevated/40 flex items-center gap-2">
+        <MessageSquarePlus className="size-3.5 text-primary" />
+        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          Mensagens de Suporte — {tickets.length}
+        </span>
+      </div>
+      <div className="divide-y divide-border">
+        {tickets.map((t) => (
+          <div key={t.id} className="px-5 py-4 space-y-1.5">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="font-mono text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                {CATEGORY_LABEL[t.category] ?? t.category}
+              </span>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {t.username ?? `user #${t.user_id}`}
+              </span>
+              <span className="font-mono text-[10px] text-muted-foreground ml-auto">
+                {new Date(t.created_at).toLocaleString("pt-BR")}
+              </span>
+            </div>
+            {t.subject && (
+              <p className="text-sm font-semibold text-foreground">{t.subject}</p>
+            )}
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{t.message}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 const AdminDashboard = () => {
@@ -607,7 +680,7 @@ const AdminDashboard = () => {
         </header>
 
         {/* Tabs */}
-        <div className="flex overflow-x-auto border-b border-border gap-0 scrollbar-none">
+        <div className="flex overflow-x-auto overflow-y-hidden border-b border-border gap-0 scrollbar-none">
           {TABS.map(t => (
             <button
               key={t.id}
@@ -624,11 +697,12 @@ const AdminDashboard = () => {
           ))}
         </div>
 
-        {tab === "overview" && <OverviewTab />}
-        {tab === "users"    && <UsersTab />}
-        {tab === "finance"  && <FinanceTab />}
-        {tab === "logs"          && <LogsTab />}
-        {tab === "candidaturas"  && <CandidaturasTab />}
+        {tab === "overview"     && <OverviewTab />}
+        {tab === "users"        && <UsersTab />}
+        {tab === "finance"      && <FinanceTab />}
+        {tab === "logs"         && <LogsTab />}
+        {tab === "candidaturas" && <CandidaturasTab />}
+        {tab === "support"      && <SupportTab />}
       </main>
     </div>
   );

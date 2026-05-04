@@ -3303,6 +3303,25 @@ def complete_onboarding():
     return jsonify({'ok': True})
 
 
+@app.route('/admin/support-tickets', methods=['GET'])
+@require_admin
+def admin_support_tickets():
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        rows = conn.execute("""
+            SELECT st.id, st.user_id, u.username, st.category, st.subject,
+                   st.message, st.status, st.created_at
+            FROM support_tickets st
+            LEFT JOIN users u ON u.id = st.user_id
+            ORDER BY st.created_at DESC
+            LIMIT 200
+        """).fetchall()
+        return jsonify({'tickets': [dict(r) for r in rows]})
+    finally:
+        conn.close()
+
+
 @app.route('/support/contact', methods=['POST'])
 @require_auth
 def support_contact():
