@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { preferences } from "@/lib/api";
 
-export type MainSection = "quality_row" | "street_row" | "drill_row";
-export type SidebarSection = "leaks" | "causal_map" | "level" | "ai_confidence" | "career" | "cognitive_failures";
+export type MainSection = "quality_row" | "bankroll_row" | "street_row" | "dna_row" | "drill_row" | "insight_row";
+export type SidebarSection = "leaks" | "causal_map" | "level";
 
 export interface DashboardLayout {
   main: MainSection[];
@@ -10,8 +10,8 @@ export interface DashboardLayout {
 }
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
-  main: ["quality_row", "street_row", "drill_row"],
-  sidebar: ["leaks", "causal_map", "level", "career", "cognitive_failures", "ai_confidence"],
+  main: ["quality_row", "bankroll_row", "street_row", "dna_row", "drill_row", "insight_row"],
+  sidebar: ["leaks", "causal_map", "level"],
 };
 
 export function useDashboardLayout() {
@@ -23,7 +23,7 @@ export function useDashboardLayout() {
       .then((prefs) => {
         const saved = prefs.dashboard_layout as DashboardLayout | null;
         if (saved?.main && saved?.sidebar) {
-          // Merge: append any new sections added to DEFAULT_LAYOUT that aren't in the saved layout
+          // Merge: keep user's order, append any new sections from DEFAULT_LAYOUT
           const mergedSidebar = [
             ...saved.sidebar.filter((s) => (DEFAULT_LAYOUT.sidebar as string[]).includes(s)),
             ...DEFAULT_LAYOUT.sidebar.filter((s) => !(saved.sidebar as string[]).includes(s)),

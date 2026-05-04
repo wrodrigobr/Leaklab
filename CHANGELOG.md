@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.76.0] — 2026-05-04 — Sprint AQ+: Dashboard UX Redesign
+
+### Changed
+- **`frontend/src/hooks/useDashboardLayout.ts`**: tipos `MainSection` e `SidebarSection` reescritos para novo modelo de layout. `MainSection` agora é `"quality_row" | "bankroll_row" | "street_row" | "dna_row" | "drill_row" | "insight_row"` (BankrollChart e PlayerDnaCard viram rows sortáveis). `SidebarSection` reduzido a `"leaks" | "causal_map" | "level"` (3 cards essenciais). `DEFAULT_LAYOUT` atualizado; merge automático migra layouts salvos de usuários existentes.
+- **`frontend/src/pages/Index.tsx`**: função `renderMainRow(id)` unifica renderização das 6 rows do main column, incluindo `insight_row` que exibe `CareerGraphCard` e `CognitiveFailureCard` lado a lado em grid 2-col. `renderSidebarCard(id)` reduzido a 3 cards. `BankrollChart` e `PlayerDnaCard` agora são rows sortáveis (`bankroll_row`, `dna_row`) em vez de injetados entre rows via índice. Card `ai_confidence` removido. Import `HudTooltip` removido (era unused após remoção do card).
+
+### Removed
+- Card `ai_confidence` removido do layout — não havia dados suficientes para preencher de forma significativa.
+- `career` e `cognitive_failures` removidos do sidebar — movidos para `insight_row` no main column onde ficam lado a lado com espaço adequado (~700px cada).
+
+---
+
 ## [v0.75.0] — 2026-05-04 — Sprint AQ: Cognitive Failure Mapper
 
 ### Added

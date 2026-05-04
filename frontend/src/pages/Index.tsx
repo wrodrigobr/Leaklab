@@ -14,7 +14,6 @@ import { StreetBreakdown } from "@/components/hud/StreetBreakdown";
 import { PositionChart } from "@/components/hud/PositionChart";
 import { RecentForm } from "@/components/hud/RecentForm";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
-import { HudTooltip } from "@/components/hud/HudTooltip";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { LevelCard } from "@/components/hud/LevelCard";
@@ -37,22 +36,22 @@ const Index = () => {
   const { t, i18n } = useTranslation("dashboard");
   const { t: tc } = useTranslation("common");
   const [showLinkCoach, setShowLinkCoach] = useState(false);
-  const [evo, setEvo]           = useState<EvolutionResponse | null>(null);
-  const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
-  const [playerStats, setPlayerStats] = useState<PlayerStatsResponse | null>(null);
-  const [tourns, setTourns]     = useState<Tournament[]>([]);
-  const [leakRoi, setLeakRoi]         = useState<LeakRoiData[]>([]);
-  const [pressureData, setPressureData] = useState<PressureProfile | null>(null);
-  const [driftData, setDriftData]       = useState<ConfidenceDrift | null>(null);
+  const [evo, setEvo]                     = useState<EvolutionResponse | null>(null);
+  const [breakdown, setBreakdown]         = useState<BreakdownResponse | null>(null);
+  const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
+  const [tourns, setTourns]               = useState<Tournament[]>([]);
+  const [leakRoi, setLeakRoi]             = useState<LeakRoiData[]>([]);
+  const [pressureData, setPressureData]   = useState<PressureProfile | null>(null);
+  const [driftData, setDriftData]         = useState<ConfidenceDrift | null>(null);
   const [driftDismissed, setDriftDismissed] = useState(false);
-  const [drillStats, setDrillStats]     = useState<DrillStats | null>(null);
-  const [dnaData, setDnaData]           = useState<PlayerDnaResponse | null>(null);
-  const [drillSpots, setDrillSpots]     = useState<DrillSpot[]>([]);
+  const [drillStats, setDrillStats]       = useState<DrillStats | null>(null);
+  const [dnaData, setDnaData]             = useState<PlayerDnaResponse | null>(null);
+  const [drillSpots, setDrillSpots]       = useState<DrillSpot[]>([]);
   const [leakGraph, setLeakGraph]         = useState<LeakGraphResponse | null>(null);
   const [careerData, setCareerData]       = useState<CareerProjection | null>(null);
   const [cognitiveData, setCognitiveData] = useState<CognitiveFailureData | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [loading, setLoading]             = useState(true);
+  const [refreshKey, setRefreshKey]       = useState(0);
   const [digestDismissed, setDigestDismissed] = useState(false);
   const [digestSubscribing, setDigestSubscribing] = useState(false);
 
@@ -129,6 +128,60 @@ const Index = () => {
     queryFn: metrics.level,
     staleTime: 60_000,
   });
+
+  const renderMainRow = (id: MainSection) => {
+    if (id === "quality_row") return (
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <RecentForm evolution={evo?.evolution} />
+        <DecisionQualityCard byLabel={breakdown?.by_label} />
+      </div>
+    );
+    if (id === "bankroll_row") return <BankrollChart />;
+    if (id === "street_row") return (
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <StreetBreakdown byStreet={breakdown?.by_street} />
+        <PositionChart byPosition={breakdown?.by_position} />
+      </div>
+    );
+    if (id === "dna_row") return <PlayerDnaCard data={dnaData} />;
+    if (id === "drill_row") return (
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <GhostDrillCard stats={drillStats} pendingSpots={drillSpots} />
+        <PressureProfileCard data={pressureData} />
+        <IcmBreakdown icm={evo?.icm} />
+      </div>
+    );
+    if (id === "insight_row") return (
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} />
+        <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />
+      </div>
+    );
+    return null;
+  };
+
+  const renderSidebarCard = (id: SidebarSection) => {
+    if (id === "leaks") return (
+      <DraggableCard key={id} id={id}>
+        <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} />
+      </DraggableCard>
+    );
+    if (id === "causal_map") return leakGraph && leakGraph.nodes.length >= 3 ? (
+      <DraggableCard key={id} id={id}>
+        <LeakCausalMap
+          nodes={leakGraph.nodes}
+          edges={leakGraph.edges}
+          narrative={leakGraph.narrative}
+        />
+      </DraggableCard>
+    ) : <div key={id} />;
+    if (id === "level") return levelData?.level ? (
+      <DraggableCard key={id} id={id}>
+        <LevelCard data={levelData} showStudyLink />
+      </DraggableCard>
+    ) : <div key={id} />;
+    return null;
+  };
 
   return (
     <div className="min-h-dvh bg-background hud-scanline">
@@ -280,114 +333,31 @@ const Index = () => {
           <EmptyDashboard onComplete={handleUpload} />
         ) : (
           <>
-          <PlayerStatsCard stats={playerStats} />
+            <PlayerStatsCard stats={playerStats} />
 
-          <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-            {/* ── Main column (sortable rows) ──────────────────────────────── */}
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMainDragEnd}>
-              <SortableContext items={layout.main} strategy={verticalListSortingStrategy}>
-                <div className="space-y-6 lg:col-span-8">
-                  {layout.main.map((id, idx) => (
-                    <div key={id} className="space-y-6">
-                      <DraggableCard id={id}>
-                        {id === "quality_row" && (
-                          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                            <RecentForm evolution={evo?.evolution} />
-                            <DecisionQualityCard byLabel={breakdown?.by_label} />
-                          </div>
-                        )}
-                        {id === "street_row" && (
-                          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                            <StreetBreakdown byStreet={breakdown?.by_street} />
-                            <PositionChart byPosition={breakdown?.by_position} />
-                          </div>
-                        )}
-                        {id === "drill_row" && (
-                          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                            <GhostDrillCard stats={drillStats} pendingSpots={drillSpots} />
-                            <PressureProfileCard data={pressureData} />
-                            <IcmBreakdown icm={evo?.icm} />
-                          </div>
-                        )}
+            <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+              {/* ── Main column (sortable rows) ──────────────────────────────── */}
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMainDragEnd}>
+                <SortableContext items={layout.main} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-6 lg:col-span-8">
+                    {layout.main.map((id) => (
+                      <DraggableCard key={id} id={id}>
+                        {renderMainRow(id)}
                       </DraggableCard>
-                      {idx === 0 && <BankrollChart />}
-                      {idx === 1 && <PlayerDnaCard data={dnaData} />}
-                    </div>
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
 
-            {/* ── Sidebar (sortable cards) ─────────────────────────────────── */}
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSidebarDragEnd}>
-              <SortableContext items={layout.sidebar} strategy={verticalListSortingStrategy}>
-                <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
-                  {layout.sidebar.map((id) => {
-                    if (id === "leaks") return (
-                      <DraggableCard key={id} id={id}>
-                        <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} />
-                      </DraggableCard>
-                    );
-                    if (id === "causal_map") return leakGraph && leakGraph.nodes.length >= 3 ? (
-                      <DraggableCard key={id} id={id}>
-                        <LeakCausalMap
-                          nodes={leakGraph.nodes}
-                          edges={leakGraph.edges}
-                          narrative={leakGraph.narrative}
-                        />
-                      </DraggableCard>
-                    ) : <div key={id} />;
-                    if (id === "level") return levelData?.level ? (
-                      <DraggableCard key={id} id={id}>
-                        <LevelCard data={levelData} showStudyLink />
-                      </DraggableCard>
-                    ) : <div key={id} />;
-                    if (id === "career") return (
-                      <DraggableCard key={id} id={id}>
-                        <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} />
-                      </DraggableCard>
-                    );
-                    if (id === "cognitive_failures") return (
-                      <DraggableCard key={id} id={id}>
-                        <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />
-                      </DraggableCard>
-                    );
-                    if (id === "ai_confidence") return (
-                      <DraggableCard key={id} id={id}>
-                        <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
-                          <div className="mb-3 flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                                {t("aiConfidence.title")}
-                              </span>
-                              <HudTooltip content={t("aiConfidence.tooltip")} />
-                            </div>
-                            <span className="font-mono text-[10px] text-primary">
-                              {hasData ? t("aiConfidence.active") : t("aiConfidence.noData")}
-                            </span>
-                          </div>
-                          <div className="flex gap-1">
-                            {Array.from({ length: 12 }).map((_, i) => {
-                              const filled = hasData ? Math.min(12, Math.round((totalEvents / 10) * 12)) : 0;
-                              return (
-                                <span key={i} className={`h-1.5 flex-1 rounded-sm ${i < filled ? "bg-primary" : "bg-border"}`} />
-                              );
-                            })}
-                          </div>
-                          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                            {hasData
-                              ? t("aiConfidence.summary", { count: totalEvents })
-                              : t("aiConfidence.empty")}
-                          </p>
-                        </div>
-                      </DraggableCard>
-                    );
-                    return null;
-                  })}
-                </aside>
-              </SortableContext>
-            </DndContext>
-          </section>
+              {/* ── Sidebar (sortable cards) ─────────────────────────────────── */}
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSidebarDragEnd}>
+                <SortableContext items={layout.sidebar} strategy={verticalListSortingStrategy}>
+                  <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
+                    {layout.sidebar.map(renderSidebarCard)}
+                  </aside>
+                </SortableContext>
+              </DndContext>
+            </section>
           </>
         )}
       </main>
