@@ -155,11 +155,11 @@ const Index = () => {
             {hasData && (
               <button
                 onClick={resetLayout}
-                title="Restaurar layout padrão"
+                title={tc("actions.resetLayout")}
                 className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground ring-1 ring-border hover:text-foreground hover:ring-primary/40 transition-colors"
               >
                 <RotateCcw className="size-3" />
-                Restaurar padrão
+                {tc("actions.resetLayout")}
               </button>
             )}
           </div>

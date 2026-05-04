@@ -170,7 +170,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
             {user?.role === "player" && user?.coach_id && (
               <button
                 onClick={() => setChatOpen((o) => !o)}
-                title="Mensagens do coach"
+                title={t("coachMessages")}
                 className="relative flex items-center justify-center size-8 rounded-full bg-card ring-1 ring-border hover:ring-primary/40 transition-all"
               >
                 <MessageSquare className="size-3.5 text-muted-foreground" />
@@ -251,7 +251,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
               <div className="flex items-center gap-2">
                 <GraduationCap className="size-4 text-primary" />
                 <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-foreground">
-                  {user.coach_username ? `Coach ${user.coach_username}` : "Mensagens do Coach"}
+                  {user.coach_username ? `Coach ${user.coach_username}` : t("coachMessages")}
                 </span>
               </div>
               <button

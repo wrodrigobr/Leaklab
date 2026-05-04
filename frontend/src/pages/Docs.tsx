@@ -1,17 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight } from "lucide-react";
 
-const SECTIONS = [
-  { id: "scoring",      label: "Sistema de Scoring" },
-  { id: "indicators",   label: "Indicadores" },
-  { id: "mstacks",      label: "Fases de M-Ratio" },
-  { id: "dna",          label: "Decision DNA" },
-  { id: "ghost",        label: "Ghost Table / Drills" },
-  { id: "compare",      label: "Comparativo de Torneios" },
-  { id: "coaching",     label: "Coaching" },
-  { id: "gamification", label: "Gamificação" },
-];
+const SECTION_IDS = ["scoring", "indicators", "mstacks", "dna", "ghost", "compare", "coaching", "gamification"] as const;
+type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
   return (
@@ -24,12 +17,8 @@ function Badge({ color, children }: { color: string; children: React.ReactNode }
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section id={id} className="scroll-mt-24 space-y-4">
-      <h2 className="text-xl font-semibold tracking-tight text-foreground border-b border-border pb-2">
-        {title}
-      </h2>
-      <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
-        {children}
-      </div>
+      <h2 className="text-xl font-semibold tracking-tight text-foreground border-b border-border pb-2">{title}</h2>
+      <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">{children}</div>
     </section>
   );
 }
@@ -41,20 +30,14 @@ function Table({ headers, rows }: { headers: string[]; rows: (string | React.Rea
         <thead>
           <tr className="border-b border-border bg-hud-surface">
             {headers.map((h) => (
-              <th key={h} className="px-3 py-2 text-left font-mono font-bold uppercase tracking-widest text-muted-foreground">
-                {h}
-              </th>
+              <th key={h} className="px-3 py-2 text-left font-mono font-bold uppercase tracking-widest text-muted-foreground">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => (
             <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-hud-surface/50 transition-colors">
-              {row.map((cell, j) => (
-                <td key={j} className="px-3 py-2 text-foreground">
-                  {cell}
-                </td>
-              ))}
+              {row.map((cell, j) => <td key={j} className="px-3 py-2 text-foreground">{cell}</td>)}
             </tr>
           ))}
         </tbody>
@@ -64,18 +47,19 @@ function Table({ headers, rows }: { headers: string[]; rows: (string | React.Rea
 }
 
 export default function Docs() {
-  const [active, setActive] = useState(SECTIONS[0].id);
+  const { t } = useTranslation("docs");
+  const [active, setActive] = useState<SectionId>("scoring");
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
     observerRef.current = new IntersectionObserver(
       (entries) => {
         const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length > 0) setActive(visible[0].target.id);
+        if (visible.length > 0) setActive(visible[0].target.id as SectionId);
       },
       { rootMargin: "-20% 0px -70% 0px", threshold: 0 }
     );
-    SECTIONS.forEach(({ id }) => {
+    SECTION_IDS.forEach((id) => {
       const el = document.getElementById(id);
       if (el) observerRef.current?.observe(el);
     });
@@ -88,256 +72,174 @@ export default function Docs() {
         <div className="mb-8">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary mb-3">
             <BookOpen className="size-3.5" />
-            Documentação
+            {t("eyebrow")}
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-            Como o Sistema Funciona
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Referência técnica dos indicadores, metodologia de scoring e recursos da plataforma.
-          </p>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">{t("title")}</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
 
         <div className="flex gap-10 items-start">
-          {/* ── Sidebar nav ──────────────────────────────────────────────── */}
+          {/* Sidebar nav */}
           <nav className="hidden lg:block sticky top-24 w-52 shrink-0 space-y-0.5">
-            {SECTIONS.map((s) => (
+            {SECTION_IDS.map((id) => (
               <a
-                key={s.id}
-                href={`#${s.id}`}
+                key={id}
+                href={`#${id}`}
                 className={`flex items-center gap-2 rounded-md px-3 py-2 font-mono text-[10px] uppercase tracking-wider transition-colors ${
-                  active === s.id
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-hud-surface"
+                  active === id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-hud-surface"
                 }`}
               >
-                {active === s.id && <ChevronRight className="size-3 shrink-0" />}
-                {active !== s.id && <span className="size-3 shrink-0" />}
-                {s.label}
+                {active === id ? <ChevronRight className="size-3 shrink-0" /> : <span className="size-3 shrink-0" />}
+                {t(`nav.${id}`)}
               </a>
             ))}
           </nav>
 
-          {/* ── Content ──────────────────────────────────────────────────── */}
+          {/* Content */}
           <div className="flex-1 min-w-0 space-y-14">
 
-            {/* ── 1. Sistema de Scoring ────────────────────────────────── */}
-            <Section id="scoring" title="Sistema de Scoring">
-              <p>
-                Cada decisão importada é avaliada por um score de <strong className="text-foreground">0 a 1</strong>, onde
-                0 representa a decisão ótima e 1 representa o maior desvio possível do ideal. O score combina
-                quatro fatores ponderados: equity da mão, adequação da aposta (bet sizing), awareness posicional e
-                contexto MTT (M-ratio e pressão ICM).
-              </p>
+            {/* Scoring */}
+            <Section id="scoring" title={t("scoring.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("scoring.p1") }} />
               <Table
-                headers={["Label", "Score", "Significado"]}
+                headers={[t("scoring.table.col_label"), t("scoring.table.col_score"), t("scoring.table.col_meaning")]}
                 rows={[
-                  [<Badge color="bg-emerald-500/15 text-emerald-400">Standard</Badge>,   "0.00 – 0.08", "Linha sólida. Desvio mínimo do ótimo."],
-                  [<Badge color="bg-yellow-500/15 text-yellow-400">Marginal</Badge>,      "0.09 – 0.18", "Ação defensável, mas existe alternativa levemente melhor."],
-                  [<Badge color="bg-orange-500/15 text-orange-400">Small Mistake</Badge>, "0.19 – 0.36", "Pequena perda estratégica, relevante no longo prazo."],
-                  [<Badge color="bg-destructive/15 text-destructive">Clear Mistake</Badge>, "> 0.36",   "Erro claro com impacto relevante em EV."],
+                  [<Badge color="bg-emerald-500/15 text-emerald-400">Standard</Badge>,    t("scoring.table.standard_score"), t("scoring.table.standard_meaning")],
+                  [<Badge color="bg-yellow-500/15 text-yellow-400">Marginal</Badge>,       t("scoring.table.marginal_score"), t("scoring.table.marginal_meaning")],
+                  [<Badge color="bg-orange-500/15 text-orange-400">Small Mistake</Badge>,  t("scoring.table.small_score"),    t("scoring.table.small_meaning")],
+                  [<Badge color="bg-destructive/15 text-destructive">Clear Mistake</Badge>, t("scoring.table.clear_score"),   t("scoring.table.clear_meaning")],
                 ]}
               />
-              <p>
-                O sistema considera o contexto MTT ao reclassificar decisões: em situações de alta pressão ICM
-                (M ≤ 6 ou final table), margens de erro são menores — uma decisão <em>marginal</em> pode ser
-                reclassificada para <em>small_mistake</em> se o contexto amplifica o custo estratégico.
-              </p>
-              <p>
-                O <strong className="text-foreground">Standard%</strong> de um torneio é a porcentagem de decisões
-                com label <em>standard</em> sobre o total analisado. É o principal indicador de qualidade
-                técnica de uma sessão.
-              </p>
+              <p dangerouslySetInnerHTML={{ __html: t("scoring.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("scoring.p3") }} />
             </Section>
 
-            {/* ── 2. Indicadores ───────────────────────────────────────── */}
-            <Section id="indicators" title="Indicadores">
+            {/* Indicators */}
+            <Section id="indicators" title={t("indicators.title")}>
               <Table
-                headers={["Indicador", "O que mede", "Como interpretar"]}
+                headers={[t("indicators.col_indicator"), t("indicators.col_measures"), t("indicators.col_interpret")]}
                 rows={[
-                  ["Standard%",     "% de decisões classificadas como standard no período",             "Alvo: acima de 70%. Jogadores elite ficam acima de 92%."],
-                  ["Avg Score",     "Média do score bruto 0–1 de todas as decisões",                    "Quanto menor, melhor. < 0.15 é excelente; > 0.30 indica volume de erros."],
-                  ["Clear Mistakes%", "% de decisões com score > 0.36",                                "Diretamente ligado ao EV perdido por sessão. Alvo: < 5%."],
-                  ["Leak ROI",      "EV estimado perdido por leak spot no período (em BBs)",            "Priorize os leaks com maior ROI negativo — são os que mais custam."],
-                  ["ICM Pressure",  "Nível de pressão ICM no momento da decisão (low / medium / high)", "Decisões com ICM high incorretas custam mais no longo prazo."],
-                  ["Confidence Drift", "Tendência de queda de qualidade em sessões consecutivas",       "Indica tilt ou fadiga. Revisão das últimas sessões recomendada."],
+                  ["Standard%",          t("indicators.std_measures"),      t("indicators.std_interpret")],
+                  ["Avg Score",          t("indicators.avg_measures"),      t("indicators.avg_interpret")],
+                  ["Clear Mistakes%",    t("indicators.clear_measures"),    t("indicators.clear_interpret")],
+                  ["Leak ROI",           t("indicators.leakroi_measures"),  t("indicators.leakroi_interpret")],
+                  ["ICM Pressure",       t("indicators.icm_measures"),      t("indicators.icm_interpret")],
+                  ["Confidence Drift",   t("indicators.drift_measures"),    t("indicators.drift_interpret")],
                 ]}
               />
-              <p>
-                <strong className="text-foreground">Leak ROI</strong> é calculado multiplicando a frequência de
-                cada spot de erro pelo custo médio em EV de uma decisão incorreta naquele spot. Spots com
-                frequência alta e custo individual baixo podem superar spots raros com custo alto — o ROI
-                captura isso.
-              </p>
+              <p dangerouslySetInnerHTML={{ __html: t("indicators.p1") }} />
             </Section>
 
-            {/* ── 3. Fases de M-Ratio ──────────────────────────────────── */}
-            <Section id="mstacks" title="Fases de M-Ratio">
-              <p>
-                O <strong className="text-foreground">M de Harrington</strong> mede quantas órbitas completas
-                de blinds (SB + BB + antes) seu stack aguenta sem jogar uma mão. Governa a estratégia MTT:
-                quanto menor o M, menor o leque de ações viáveis.
-              </p>
+            {/* M-Ratio Phases */}
+            <Section id="mstacks" title={t("mstacks.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("mstacks.p1") }} />
               <Table
-                headers={["Fase", "M-Ratio", "Estratégia implícita"]}
+                headers={[t("mstacks.col_phase"), t("mstacks.col_mratio"), t("mstacks.col_strategy")]}
                 rows={[
-                  ["Deep Stack",  "> 20",    "Poker pós-flop completo. Espaço para bluffs, slowplays e manobras de stack."],
-                  ["Mid Stack",   "10 – 20", "Jogabilidade pré-flop começa a reduzir. Cuidado com confrontos de grandes stacks."],
-                  ["Short Stack", "6 – 10",  "Foco em spots de reshove/push-fold. Resteals importantes para manter M."],
-                  ["Push/Fold",   "≤ 6",     "Estratégia binária: fold ou all-in. ICM pressure automaticamente alto."],
+                  ["Deep Stack",  "> 20",    t("mstacks.deep_strategy")],
+                  ["Mid Stack",   "10 – 20", t("mstacks.mid_strategy")],
+                  ["Short Stack", "6 – 10",  t("mstacks.short_strategy")],
+                  ["Push/Fold",   "≤ 6",     t("mstacks.pushfold_strategy")],
                 ]}
               />
-              <p>
-                Decisões tomadas em fase Push/Fold são avaliadas com critérios diferentes das demais fases.
-                O sistema aplica tabelas de push/fold baseadas em equity mínima e posição para calcular o
-                score correto nesse contexto.
-              </p>
-              <p>
-                O estágio do torneio (<em>early, middle, late, final_table, heads_up</em>) é detectado
-                pelo número de jogadores ativos na mesa e complementa o M na definição do contexto.
-              </p>
+              <p dangerouslySetInnerHTML={{ __html: t("mstacks.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("mstacks.p3") }} />
             </Section>
 
-            {/* ── 4. Decision DNA ──────────────────────────────────────── */}
-            <Section id="dna" title="Decision DNA">
-              <p>
-                O <strong className="text-foreground">Decision DNA</strong> é a assinatura estratégica do jogador —
-                um radar de 5 eixos calculados sobre o histórico completo de decisões. Revela padrões
-                estruturais de jogo independente de resultados financeiros.
-              </p>
+            {/* Decision DNA */}
+            <Section id="dna" title={t("dna.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("dna.p1") }} />
               <Table
-                headers={["Eixo", "Cálculo", "Referência saudável"]}
+                headers={[t("dna.col_axis"), t("dna.col_calc"), t("dna.col_ref")]}
                 rows={[
-                  ["Aggression Index",    "% de ações agressivas (bet/raise) sobre o total pós-flop",          "30–50% — abaixo indica passividade excessiva"],
-                  ["Fold Frequency",      "% de decisões que resultaram em fold",                               "28–55% — extremos indicam problema estrutural"],
-                  ["3-Bet%",             "% de situações pré-flop onde houve 3-bet sobre oportunidades",       "Varia por posição; > 12% em EP pode ser exploitável"],
-                  ["Positional Awareness","Diferença de aggression entre late position e early position",       "Positivo = mais agressivo em posição (correto)"],
-                  ["Discipline",         "% de decisões classificadas como standard (= Standard%)",             "> 70% é sólido; > 86% é elite"],
+                  ["Aggression Index",     t("dna.aggression_calc"), t("dna.aggression_ref")],
+                  ["Fold Frequency",       t("dna.fold_calc"),       t("dna.fold_ref")],
+                  ["3-Bet%",              t("dna.threebet_calc"),   t("dna.threebet_ref")],
+                  ["Positional Awareness", t("dna.positional_calc"), t("dna.positional_ref")],
+                  ["Discipline",           t("dna.discipline_calc"), t("dna.discipline_ref")],
                 ]}
               />
-              <p>
-                A combinação dos eixos gera um <strong className="text-foreground">arquétipo</strong>: Nit,
-                Passive Calling Station, LAG, TAG, Disciplined TAGfish, Aggressive Reg, ou Balanced Reg.
-                O arquétipo é um ponto de partida diagnóstico — não uma classificação definitiva.
-              </p>
+              <p dangerouslySetInnerHTML={{ __html: t("dna.p2") }} />
             </Section>
 
-            {/* ── 5. Ghost Table ───────────────────────────────────────── */}
-            <Section id="ghost" title="Ghost Table / Drills">
-              <p>
-                O <strong className="text-foreground">Ghost Table</strong> converte seus próprios leaks em drills
-                de revisão. Cada "spot" é um padrão recorrente onde você tomou decisões abaixo do ideal —
-                o sistema extrai esses spots automaticamente do histórico importado.
-              </p>
-              <p>
-                <strong className="text-foreground">Como funciona o SRS adaptativo:</strong> após cada sessão
-                de drill, o intervalo até a próxima revisão é ajustado com base na performance:
-              </p>
+            {/* Ghost Table */}
+            <Section id="ghost" title={t("ghost.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("ghost.p1") }} />
+              <p>{t("ghost.p2")}</p>
               <Table
-                headers={["Resultado", "Próxima revisão"]}
+                headers={[t("ghost.col_result"), t("ghost.col_next")]}
                 rows={[
-                  ["Acerto",    "Intervalo dobra: 3d → 7d → 14d → 28d → 60d"],
-                  ["Erro",      "Intervalo reseta para 3 dias"],
-                  ["Mastery",   "Spot arquivado — intervalo máximo de 60 dias"],
+                  [t("ghost.result_hit"),    t("ghost.hit_next")],
+                  [t("ghost.result_miss"),   t("ghost.miss_next")],
+                  [t("ghost.result_mastery"), t("ghost.mastery_next")],
                 ]}
               />
-              <p>
-                O card <em>GhostDrillCard</em> no dashboard mostra os spots com revisão vencida (vermelho),
-                próximos de vencer (amarelo) e em dia (verde). O objetivo é manter todos os spots no verde —
-                sinal de que os padrões foram internalizados.
-              </p>
-              <p>
-                XP ganho: <strong className="text-foreground">25 XP</strong> por drill completo,
-                <strong className="text-foreground"> 100 XP</strong> ao atingir mastery em um spot.
-              </p>
+              <p>{t("ghost.p3")}</p>
+              <p dangerouslySetInnerHTML={{ __html: t("ghost.p4") }} />
             </Section>
 
-            {/* ── 6. Comparativo de Torneios ───────────────────────────── */}
-            <Section id="compare" title="Comparativo de Torneios">
-              <p>
-                Selecione 2 a 4 torneios na página de Torneios e clique em "Comparar" para ver uma análise
-                lado a lado. O comparativo exibe:
-              </p>
+            {/* Tournament Comparison */}
+            <Section id="compare" title={t("compare.title")}>
+              <p>{t("compare.p1")}</p>
               <ul className="list-disc pl-5 space-y-1">
-                <li><strong className="text-foreground">Standard%</strong> e <strong className="text-foreground">Avg Score</strong> de cada torneio</li>
-                <li>Top 3 leaks ativos em cada sessão com frequência e EV loss</li>
-                <li>Breakdown por fase (early/middle/late/final table)</li>
-                <li>Delta de ICM collapse entre torneios</li>
-                <li>Narrativa gerada por IA destacando evolução ou regressão técnica</li>
+                <li><strong className="text-foreground">{t("compare.bullet_standard")}</strong></li>
+                <li>{t("compare.bullet_leaks")}</li>
+                <li>{t("compare.bullet_breakdown")}</li>
+                <li>{t("compare.bullet_icm")}</li>
+                <li>{t("compare.bullet_narrative")}</li>
               </ul>
-              <p>
-                O <strong className="text-foreground">Delta</strong> (▲/▼) indica a variação do indicador
-                entre o torneio de referência (mais antigo selecionado) e os demais. Verde significa melhora,
-                vermelho indica piora no mesmo spot.
-              </p>
+              <p dangerouslySetInnerHTML={{ __html: t("compare.p2") }} />
             </Section>
 
-            {/* ── 7. Coaching ──────────────────────────────────────────── */}
-            <Section id="coaching" title="Coaching">
-              <p>
-                Quando um coach é vinculado à sua conta, o sistema cria automaticamente um
-                <strong className="text-foreground"> baseline</strong> — um snapshot dos seus indicadores
-                no momento do vínculo. Todos os torneios importados a partir dali são comparados
-                contra esse baseline para medir evolução real.
-              </p>
+            {/* Coaching */}
+            <Section id="coaching" title={t("coaching.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("coaching.p1") }} />
               <Table
-                headers={["Termo", "Significado"]}
+                headers={[t("coaching.col_term"), t("coaching.col_meaning")]}
                 rows={[
-                  ["Baseline",        "Média de Standard%, Avg Score e top leaks na data de início do coaching"],
-                  ["Baseline Delta",  "Variação dos indicadores desde o baseline — principal métrica de progresso"],
-                  ["Coach Reviewed",  "O coach anotou ou comentou pelo menos uma decisão da sessão"],
-                  ["Override de Plano", "O coach substituiu o plano de estudos gerado por IA por um customizado"],
-                  ["Coach Effectiveness", "Melhora mediana de Standard% dos alunos nos primeiros 60 dias de coaching"],
+                  ["Baseline",          t("coaching.baseline_meaning")],
+                  ["Baseline Delta",    t("coaching.delta_meaning")],
+                  ["Coach Reviewed",    t("coaching.reviewed_meaning")],
+                  [t("coaching.term_override"), t("coaching.override_meaning")],
+                  ["Coach Effectiveness", t("coaching.effectiveness_meaning")],
                 ]}
               />
-              <p>
-                A <strong className="text-foreground">efetividade do coach</strong> é calculada comparando
-                o Standard% médio de cada aluno nos 30 dias antes do vínculo com os 30 dias após o baseline.
-                Coaches com ≥ 3 alunos com baseline recebem um badge público verificado no diretório.
-              </p>
+              <p dangerouslySetInnerHTML={{ __html: t("coaching.p2") }} />
             </Section>
 
-            {/* ── 8. Gamificação ───────────────────────────────────────── */}
-            <Section id="gamification" title="Gamificação">
-              <p>
-                O sistema de XP recompensa atividade de estudo, não resultados financeiros. XP é persistido
-                no servidor e sincronizado entre dispositivos.
-              </p>
+            {/* Gamification */}
+            <Section id="gamification" title={t("gamification.title")}>
+              <p>{t("gamification.p1")}</p>
               <Table
-                headers={["Evento", "XP"]}
+                headers={[t("gamification.col_event"), t("gamification.col_xp")]}
                 rows={[
-                  ["Importar e analisar um torneio", "50 XP"],
-                  ["Completar um exercício corretamente", "10 XP"],
-                  ["Completar um drill no Ghost Table", "25 XP"],
-                  ["Atingir mastery em um spot", "100 XP"],
+                  [t("gamification.event_import"),   "50 XP"],
+                  [t("gamification.event_exercise"),  "10 XP"],
+                  [t("gamification.event_drill"),     "25 XP"],
+                  [t("gamification.event_mastery"),  "100 XP"],
                 ]}
               />
-              <p className="mt-2"><strong className="text-foreground">Nível</strong> é calculado com base no Standard% médio dos últimos torneios (mínimo 5):</p>
+              <p className="mt-2">{t("gamification.levels_title")}</p>
               <Table
-                headers={["Nível", "Standard% necessário"]}
+                headers={[t("gamification.col_level"), t("gamification.col_req")]}
                 rows={[
-                  ["🎯 Iniciante",  "< 60%"],
-                  ["📖 Estudante",  "60% – 70%"],
-                  ["⚙️ Grinder",    "70% – 77%"],
-                  ["📈 Regular",    "77% – 86%"],
-                  ["🔷 Sólido",     "86% – 92%"],
-                  ["♠ Expert",     "92% – 96%"],
-                  ["👑 Elite",      "≥ 96%"],
+                  [t("gamification.level_beginner"), "< 60%"],
+                  [t("gamification.level_student"),  "60% – 70%"],
+                  [t("gamification.level_grinder"),  "70% – 77%"],
+                  [t("gamification.level_regular"),  "77% – 86%"],
+                  [t("gamification.level_solid"),    "86% – 92%"],
+                  [t("gamification.level_expert"),   "92% – 96%"],
+                  [t("gamification.level_elite"),    "≥ 96%"],
                 ]}
               />
-              <p>
-                <strong className="text-foreground">Streak</strong> é o número de dias consecutivos com
-                atividade registrada (qualquer evento que gere XP). Reinicia se houver um dia sem atividade.
-              </p>
-              <p>
-                <strong className="text-foreground">Conquistas:</strong>
-              </p>
+              <p>{t("gamification.streak_desc")}</p>
+              <p><strong className="text-foreground">{t("gamification.achievements_title")}</strong></p>
               <ul className="list-disc pl-5 space-y-1">
-                <li>🎯 Primeira Análise — importar e analisar o primeiro torneio</li>
-                <li>📊 100 Decisões — acumular 100 decisões analisadas</li>
-                <li>🎮 Primeiro Drill — completar o primeiro drill no Ghost Table</li>
-                <li>🔥 Semana de Foco — 7 dias consecutivos de streak</li>
-                <li>🏆 10 Torneios — importar e analisar 10 torneios</li>
+                <li>🎯 {t("gamification.ach_first")}</li>
+                <li>📊 {t("gamification.ach_100")}</li>
+                <li>🎮 {t("gamification.ach_drill")}</li>
+                <li>🔥 {t("gamification.ach_streak")}</li>
+                <li>🏆 {t("gamification.ach_10")}</li>
               </ul>
             </Section>
 

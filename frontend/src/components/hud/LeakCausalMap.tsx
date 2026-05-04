@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GitFork, Info } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 export interface LeakNode {
@@ -49,6 +50,7 @@ function circularLayout(
 }
 
 export function LeakCausalMap({ nodes, edges, narrative }: Props) {
+  const { t } = useTranslation("dashboard");
   const [selected, setSelected] = useState<string | null>(null);
 
   if (!nodes.length) return null;
@@ -78,7 +80,7 @@ export function LeakCausalMap({ nodes, edges, narrative }: Props) {
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
           <GitFork className="size-3" aria-hidden />
-          Mapa Causal de Leaks
+          {t("leakCausalMap.title")}
         </h2>
         <span className="font-mono text-[10px] text-muted-foreground">90d</span>
       </div>
@@ -89,7 +91,7 @@ export function LeakCausalMap({ nodes, edges, narrative }: Props) {
           viewBox={`0 0 ${W} ${H}`}
           className="w-full"
           style={{ maxHeight: 280 }}
-          aria-label="Grafo causal de leaks"
+          aria-label={t("leakCausalMap.aria")}
         >
           {/* Edges */}
           {edges.map((edge, i) => {
@@ -191,7 +193,7 @@ export function LeakCausalMap({ nodes, edges, narrative }: Props) {
                     return (
                       <li key={i} className="flex items-center justify-between text-[11px]">
                         <span className="text-muted-foreground">
-                          Co-ocorre com <span className="text-foreground font-semibold">{peer}</span>
+                          {t("leakCausalMap.coOccurs")} <span className="text-foreground font-semibold">{peer}</span>
                         </span>
                         <span className="font-mono text-primary">
                           {Math.round(e.correlation * 100)}%
@@ -205,7 +207,7 @@ export function LeakCausalMap({ nodes, edges, narrative }: Props) {
                 onClick={() => setSelected(null)}
                 className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
               >
-                limpar seleção
+                {t("leakCausalMap.clearSelection")}
               </button>
             </div>
           );
@@ -227,11 +229,11 @@ export function LeakCausalMap({ nodes, edges, narrative }: Props) {
                 className="inline-block size-2 rounded-full"
                 style={{ background: SEVERITY_FILL[s] }}
               />
-              {s}
+              {t(`leakCausalMap.severity.${s}`)}
             </span>
           ))}
           <span className="font-mono text-[9px] text-muted-foreground ml-auto">
-            espessura = correlação
+            {t("leakCausalMap.thicknessCorr")}
           </span>
         </div>
       </div>

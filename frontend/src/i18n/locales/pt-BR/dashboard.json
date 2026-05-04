@@ -210,5 +210,17 @@
     "m3code": "MÓDULO 03",
     "m3title": "Coach Neural",
     "m3desc": "Análise conversacional da IA com seus dados reais: ranges, ICM, leaks e plano de estudo personalizado."
+  },
+  "leakCausalMap": {
+    "title": "Mapa Causal de Leaks",
+    "aria": "Grafo causal de leaks",
+    "coOccurs": "Co-ocorre com",
+    "clearSelection": "limpar seleção",
+    "thicknessCorr": "espessura = correlação",
+    "severity": {
+      "critical": "crítico",
+      "moderate": "moderado",
+      "minor": "leve"
+    }
   }
 }

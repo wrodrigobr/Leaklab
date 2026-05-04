@@ -26,7 +26,9 @@
     "open": "Abrir",
     "close": "Cerrar",
     "link": "Vincular",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "resetLayout": "Restaurar predeterminado",
+    "dragToReorder": "Arrastrar para reordenar"
   },
   "status": {
     "analyzed": "Analizado",
@@ -72,5 +74,6 @@
   "sessionLocked": "ENC: AES-256 • LATENCIA: 14ms • SESIÓN_BLOQUEADA",
   "docs": "Documentación",
   "status_page": "Estado",
-  "support": "Soporte"
+  "support": "Soporte",
+  "coachMessages": "Mensajes del Coach"
 }

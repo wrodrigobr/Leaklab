@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.72.0] — 2026-05-04 — Sprint i18n: cobertura completa de novos componentes
+
+### Changed
+- **`frontend/src/pages/Docs.tsx`**: substituídos todos os placeholders por chaves i18n corretas — linhas da Ghost Table usam `t("ghost.result_hit/miss/mastery")`, termo de coaching usa `t("coaching.term_override")`, nomes de nível usam `t("gamification.level_*")`; removida importação `tc` desnecessária.
+- **`frontend/src/components/hud/LeakCausalMap.tsx`**: adicionado `useTranslation("dashboard")`; substituídos todos os 5 textos hardcoded por chaves `t("leakCausalMap.*")` — título, aria-label, "Co-ocorre com", "limpar seleção", labels de severidade, "espessura = correlação".
+- **`frontend/src/components/hud/HudHeader.tsx`**: título do drawer de chat do coach agora usa `t("coachMessages")` (fallback quando `coach_username` não está disponível); `title` do botão badge também i18n.
+- **`frontend/src/components/hud/DraggableCard.tsx`**: tooltip "Arrastar para reordenar" agora usa `tc("actions.dragToReorder")`.
+- **`frontend/src/pages/Index.tsx`**: botão "Restaurar padrão" agora usa `tc("actions.resetLayout")`.
+
+---
+
 ## [v0.71.0] — 2026-05-04 — Sprint AG: FEAT-12 Página de Documentação
 
 ### Added
