@@ -9,6 +9,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.80.0] — 2026-05-04 — Sprint AU: PokerTable visual no Sparring
+
+### Changed
+- **`frontend/src/pages/Sparring.tsx`**: substituição da exibição plana de cartas pelo componente `PokerTable` completo — herói posicionado na parte inferior da mesa, vilões ao redor (N baseado em `num_players`), board real, pot real, stacks em BB. Exibido tanto na fase *playing* quanto na fase *feedback* (mesa congelada como contexto). Remove import direto de `PlayingCard` (agora encapsulado no `PokerTable`).
+
+### Added
+- **`frontend/src/pages/Sparring.tsx`**: helper `buildSparringSeats(step, heroCards)` — constrói o array `Seat[]` com herói (cartas reais + stack real) e vilões (cartas viradas + 100 BB estimado).
+
+---
+
 ## [v0.79.0] — 2026-05-04 — Sprint AT: Menu "Treinos" + Sparring Visual
 
 ### Added

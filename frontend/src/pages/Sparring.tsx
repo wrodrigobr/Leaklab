@@ -12,8 +12,9 @@ import {
   XCircle,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { PlayingCard } from "@/components/hud/PlayingCard";
 import type { CardData } from "@/components/hud/PlayingCard";
+import { PokerTable } from "@/components/hud/PokerTable";
+import type { Seat } from "@/components/hud/PokerTable";
 import { sparring, drill } from "@/lib/api";
 import type { SparringHand, SparringStep, DrillSubmitResult } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
@@ -50,6 +51,38 @@ function parseCards(raw: string | null): CardData[] {
     if (!SUITS.includes(suit) || !rank) return [];
     return [{ rank, suit }];
   });
+}
+
+// ── Poker table builder ───────────────────────────────────────────────────────
+// Hero is index 0 → bottom-center of PokerTable geometry (angle = π/2)
+// Villain stacks are estimated at 100 BB (we only have hero's stack from the API)
+
+const DUMMY_CARD: CardData = { rank: "A", suit: "s" };
+
+function buildSparringSeats(step: SparringStep, heroCards: CardData[]): Seat[] {
+  const numPlayers = Math.max(2, step.num_players ?? 6);
+  const seats: Seat[] = [];
+
+  seats.push({
+    id: 0,
+    name: step.position ? `You (${step.position})` : "You",
+    stack: step.stack_bb ?? 100,
+    hero: true,
+    active: true,
+    cards: heroCards.length >= 2 ? heroCards : undefined,
+  });
+
+  for (let i = 1; i < numPlayers; i++) {
+    seats.push({
+      id: i,
+      name: `V${i}`,
+      stack: 100,
+      cards: [DUMMY_CARD, DUMMY_CARD],
+      revealed: false,
+    });
+  }
+
+  return seats;
 }
 
 // ── Street timeline ───────────────────────────────────────────────────────────
@@ -442,40 +475,23 @@ export default function Sparring() {
             </div>
           </div>
 
-          {/* Cards */}
-          <article className="rounded-xl border border-amber-500/20 bg-hud-surface p-4 space-y-4">
-            {(() => {
-              const boardLimit = { preflop: 0, flop: 3, turn: 4, river: 5 }[current.street] ?? 5;
-              const visibleBoard = parseCards(current.board).slice(0, boardLimit);
-              return (
-                <div className="flex gap-6 flex-wrap">
-                  {current.hero_cards && (
-                    <div>
-                      <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {t("heroCards")}
-                      </p>
-                      <div className="flex gap-2">
-                        {parseCards(current.hero_cards).length > 0
-                          ? parseCards(current.hero_cards).map((card, i) => <PlayingCard key={i} card={card} size="md" />)
-                          : <span className="font-mono text-xs text-muted-foreground">—</span>
-                        }
-                      </div>
-                    </div>
-                  )}
-                  {visibleBoard.length > 0 && (
-                    <div>
-                      <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {t("board")}
-                      </p>
-                      <div className="flex gap-2">
-                        {visibleBoard.map((card, i) => <PlayingCard key={i} card={card} size="md" />)}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </article>
+          {/* Poker table — hero at bottom, villains around, real board + pot */}
+          {(() => {
+            const boardLimit = { preflop: 0, flop: 3, turn: 4, river: 5 }[current.street] ?? 5;
+            const communityCards = parseCards(current.board).slice(0, boardLimit);
+            const heroCards      = parseCards(current.hero_cards);
+            const seats          = buildSparringSeats(current, heroCards);
+            return (
+              <PokerTable
+                seats={seats}
+                community={communityCards}
+                pot={current.pot_size ?? 0}
+                street={current.street}
+                bb={1}
+                betUnit="bb"
+              />
+            );
+          })()}
 
           {/* Question */}
           <p className="text-center text-sm font-semibold text-foreground">{t("question")}</p>
@@ -504,6 +520,24 @@ export default function Sparring() {
           <div className="flex justify-center">
             <StreetTimeline steps={steps} history={history} currentIndex={-1} t={t} />
           </div>
+
+          {/* Frozen table — same hand state, gives context while reading feedback */}
+          {(() => {
+            const boardLimit = { preflop: 0, flop: 3, turn: 4, river: 5 }[current.street] ?? 5;
+            const communityCards = parseCards(current.board).slice(0, boardLimit);
+            const heroCards      = parseCards(current.hero_cards);
+            const seats          = buildSparringSeats(current, heroCards);
+            return (
+              <PokerTable
+                seats={seats}
+                community={communityCards}
+                pot={current.pot_size ?? 0}
+                street={current.street}
+                bb={1}
+                betUnit="bb"
+              />
+            );
+          })()}
 
           {/* Result banner */}
           <div className={cn(
