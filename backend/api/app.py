@@ -296,6 +296,7 @@ def me():
         'whatsapp_phone':          g.user.get('whatsapp_phone'),
         'digest_subscribed':       bool(g.user.get('digest_subscribed', 0)),
         'profile_completed_at':    g.user.get('profile_completed_at'),
+        'onboarding_completed':    bool(g.user.get('onboarding_completed', 0)),
     })
 
 
@@ -3291,6 +3292,14 @@ def save_player_preferences():
     if layout is None:
         return jsonify({'error': 'dashboard_layout required'}), 400
     save_user_preferences(g.user_id, layout)
+    return jsonify({'ok': True})
+
+
+@app.route('/player/onboarding/complete', methods=['POST'])
+@require_auth
+def complete_onboarding():
+    from database.repositories import set_onboarding_completed
+    set_onboarding_completed(g.user_id)
     return jsonify({'ok': True})
 
 

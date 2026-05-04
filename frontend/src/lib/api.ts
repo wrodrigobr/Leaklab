@@ -53,6 +53,7 @@ export interface UserProfile {
   whatsapp_phone?: string | null;
   digest_subscribed?: boolean;
   profile_completed_at?: string | null;
+  onboarding_completed?: boolean;
 }
 
 export interface DemographicProfile {
@@ -107,6 +108,9 @@ export const auth = {
       method: "PATCH",
       body: JSON.stringify({ phone }),
     }),
+
+  completeOnboarding: () =>
+    request<{ ok: boolean }>("/player/onboarding/complete", { method: "POST" }),
 };
 
 // ── Tournaments ───────────────────────────────────────────────────────────────

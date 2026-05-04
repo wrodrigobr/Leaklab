@@ -1,0 +1,26 @@
+{
+  "step": "Paso {{current}} de {{total}}",
+  "skip": "Omitir",
+  "back": "Atrás",
+  "next": "Siguiente",
+  "finish": "Importar primer torneo",
+  "steps": {
+    "welcome": {
+      "title": "¡Bienvenido a PokerLeakLab!",
+      "desc": "La plataforma de coaching IA que analiza cada decisión de tu juego, identifica tus leaks y arma un plan de estudios personalizado para que evoluciones como jugador."
+    },
+    "upload": {
+      "title": "Importa tu hand history",
+      "desc": "Exporta un archivo .txt de PokerStars o GGPoker e impórtalo aquí. El sistema analiza automáticamente cada decisión — equity, posición, ICM — y genera un informe completo de tu sesión.",
+      "hint": "Dónde encontrarlo: PokerStars → Menú → Manos → Exportar historial; GGPoker → Historial de Manos."
+    },
+    "train": {
+      "title": "Entrénate con Ghost Table & Sparring",
+      "desc": "El Ghost Table convierte tus leaks en drills de revisión con SRS adaptativo — solo revisas lo que necesitas, cuando lo necesitas. El Sparring te pone a jugar tus propias manos históricas, pausando en cada decisión para evaluar tu elección."
+    },
+    "ready": {
+      "title": "¡Estás listo!",
+      "desc": "Empieza importando tu primer torneo. En menos de 2 minutos tendrás un diagnóstico completo de tu juego y un plan de estudio personalizado."
+    }
+  }
+}

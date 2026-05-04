@@ -469,6 +469,8 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_completed_at     TIMESTAMP",
             # Sprint AL — UX-017: dashboard layout personalizável
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS dashboard_layout         TEXT",
+            # Sprint AX — FEAT-17: onboarding para novos usuários
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed     BOOLEAN NOT NULL DEFAULT FALSE",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -843,6 +845,7 @@ def _run_migrations(conn):
             ("usual_buyin_range",         "ALTER TABLE users ADD COLUMN usual_buyin_range         TEXT"),
             ("profile_completed_at",      "ALTER TABLE users ADD COLUMN profile_completed_at      TEXT"),
             ("dashboard_layout",          "ALTER TABLE users ADD COLUMN dashboard_layout          TEXT"),
+            ("onboarding_completed",      "ALTER TABLE users ADD COLUMN onboarding_completed      INTEGER NOT NULL DEFAULT 0"),
         ]:
             if col not in usr_existing:
                 try: conn.execute(sql)

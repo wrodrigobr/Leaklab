@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.83.0] — 2026-05-04 — Sprint AX: Onboarding para novos usuários
+
+### Added
+- **`backend/database/schema.py`**: coluna `onboarding_completed` (BOOLEAN, default FALSE) adicionada à tabela `users` via migração em Postgres e SQLite.
+- **`backend/database/repositories.py`**: `set_onboarding_completed(user_id)` — marca o onboarding como concluído no banco.
+- **`backend/api/app.py`**: `POST /player/onboarding/complete` — endpoint para registrar conclusão ou skip do onboarding. Campo `onboarding_completed` incluído no payload de `GET /auth/me`.
+- **`frontend/src/lib/api.ts`**: campo `onboarding_completed?: boolean` adicionado à interface `UserProfile`; `auth.completeOnboarding()` chama `POST /player/onboarding/complete`.
+- **`frontend/src/components/hud/OnboardingModal.tsx`**: modal multi-step (4 passos) com stepper visual, ícones Lucide por etapa, botões Pular/Voltar/Próximo, CTA final navega para `/analyze`. Ao fechar (skip ou finish) chama `completeOnboarding()` e `refreshUser()` para não exibir novamente.
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/onboarding.json`**: namespace `onboarding` completo nas 3 locales — passos welcome, upload, train, ready.
+- **`frontend/src/i18n/index.ts`**: namespace `onboarding` registrado nas 3 locales.
+
+### Changed
+- **`frontend/src/pages/Index.tsx`**: estado `showOnboarding` inicializado com `!user?.onboarding_completed`; `<OnboardingModal>` renderizado condicionalmente ao lado do `<AcceptCoachModal>`.
+
+---
+
 ## [v0.82.3] — 2026-05-04 — Docs: Pressure Mode + Sparring rotation + BACKLOG atualizado
 
 ### Changed

@@ -16,6 +16,7 @@ import { RecentForm } from "@/components/hud/RecentForm";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
+import { OnboardingModal } from "@/components/hud/OnboardingModal";
 import { LevelCard } from "@/components/hud/LevelCard";
 import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
 import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
@@ -36,7 +37,8 @@ const Index = () => {
   const { user, refreshUser } = useAuth();
   const { t, i18n } = useTranslation("dashboard");
   const { t: tc } = useTranslation("common");
-  const [showLinkCoach, setShowLinkCoach] = useState(false);
+  const [showLinkCoach, setShowLinkCoach]   = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => !user?.onboarding_completed);
   const [evo, setEvo]                     = useState<EvolutionResponse | null>(null);
   const [breakdown, setBreakdown]         = useState<BreakdownResponse | null>(null);
   const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
@@ -195,7 +197,8 @@ const Index = () => {
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader onUpload={handleUpload} />
 
-      {showLinkCoach && <AcceptCoachModal onClose={() => setShowLinkCoach(false)} />}
+      {showLinkCoach   && <AcceptCoachModal  onClose={() => setShowLinkCoach(false)} />}
+      {showOnboarding  && <OnboardingModal   onClose={() => setShowOnboarding(false)} />}
 
       <main className="mx-auto max-w-[1440px] space-y-8 px-4 pt-8 pb-28 md:px-8 md:pb-8 animate-fade-in">
         {user?.role === "player" && !user?.coach_id && (

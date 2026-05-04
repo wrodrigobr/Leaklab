@@ -3959,3 +3959,17 @@ def save_user_preferences(user_id: int, dashboard_layout: dict) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+# ── Onboarding ────────────────────────────────────────────────────────────────
+
+def set_onboarding_completed(user_id: int) -> None:
+    conn = get_conn()
+    try:
+        conn.execute(
+            _adapt("UPDATE users SET onboarding_completed = 1 WHERE id = ?"),
+            (user_id,)
+        )
+        conn.commit()
+    finally:
+        conn.close()
