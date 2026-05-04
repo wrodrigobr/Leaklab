@@ -50,6 +50,7 @@
     "yourAction": "Sua ação: {{action}}",
     "improvement": "Melhora: −{{delta}} score",
     "noImprovement": "Erro mantido",
+    "residualScore": "Correto · score residual",
     "requestAnalysis": "Ver análise do engine",
     "analysisLoading": "Analisando...",
     "analysisError": "Não foi possível carregar a análise.",

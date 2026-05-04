@@ -50,6 +50,7 @@
     "yourAction": "Your action: {{action}}",
     "improvement": "Improvement: −{{delta}} score",
     "noImprovement": "Error maintained",
+    "residualScore": "Correct · residual score",
     "requestAnalysis": "View engine analysis",
     "analysisLoading": "Analysing...",
     "analysisError": "Could not load analysis.",

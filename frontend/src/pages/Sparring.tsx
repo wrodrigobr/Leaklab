@@ -648,21 +648,28 @@ export default function Sparring() {
             </div>
           </div>
 
-          {/* Delta */}
+          {/* Delta — label cruzado com is_correct para evitar "Erro mantido" em acertos */}
           <div className={cn(
             "flex items-center justify-between rounded-lg border p-4",
-            currentResult.delta < 0 ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-hud-surface"
+            currentResult.delta < 0 || currentResult.is_correct
+              ? "border-emerald-500/30 bg-emerald-500/5"
+              : "border-border bg-hud-surface"
           )}>
             <div className="flex items-center gap-2">
               <TrendingUp className="size-4 text-muted-foreground" aria-hidden />
               <span className="text-sm text-muted-foreground">
                 {currentResult.delta < 0
                   ? t("result.improvement", { delta: Math.abs(currentResult.delta).toFixed(3) })
+                  : currentResult.is_correct
+                  ? t("result.residualScore")
                   : t("result.noImprovement")
                 }
               </span>
             </div>
-            <span className={cn("font-mono text-sm font-bold tabular-nums", currentResult.delta < 0 ? "text-emerald-400" : "text-destructive")}>
+            <span className={cn(
+              "font-mono text-sm font-bold tabular-nums",
+              currentResult.delta < 0 || currentResult.is_correct ? "text-emerald-400" : "text-destructive"
+            )}>
               {currentResult.delta > 0 ? "+" : ""}{currentResult.delta.toFixed(3)}
             </span>
           </div>
