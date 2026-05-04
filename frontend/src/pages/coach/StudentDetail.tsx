@@ -1062,6 +1062,13 @@ function MessagingTab({ studentId }: { studentId: number }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [data?.messages]);
 
+  // Invalidate coach inbox so threads with no more unread msgs disappear immediately
+  useEffect(() => {
+    if (data?.messages?.length) {
+      qc.invalidateQueries({ queryKey: ["coach-inbox"] });
+    }
+  }, [data?.messages?.length, qc]);
+
   const handleSend = () => {
     const text = body.trim();
     if (!text || sendMut.isPending) return;

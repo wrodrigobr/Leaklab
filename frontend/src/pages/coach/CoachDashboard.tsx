@@ -367,7 +367,7 @@ function MensagensTab() {
     refetchInterval: 60_000,
   });
 
-  const threads: InboxThread[] = data?.threads ?? [];
+  const threads: InboxThread[] = (data?.threads ?? []).filter((t) => t.unread_count > 0);
   const totalUnread = threads.reduce((s, t) => s + (t.unread_count ?? 0), 0);
 
   if (isLoading) return <p className="text-sm text-muted-foreground animate-pulse py-8 text-center">Carregando…</p>;
@@ -376,8 +376,8 @@ function MensagensTab() {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <MessageSquare className="size-8 text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground">Nenhuma conversa ainda.</p>
-        <p className="text-xs text-muted-foreground">As mensagens dos seus alunos aparecerão aqui.</p>
+        <p className="text-sm text-muted-foreground">Nenhuma mensagem não respondida.</p>
+        <p className="text-xs text-muted-foreground">Quando um aluno enviar uma mensagem, aparecerá aqui.</p>
       </div>
     );
   }
