@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.63.0] — 2026-05-03 — Sprint AF-fix: Dashboard layout holes
+
+### Fixed
+- **`frontend/src/pages/Index.tsx`**: GhostDrillCard, PressureProfileCard e IcmBreakdown movidos para dentro da coluna principal (8-col) como subgrid `md:grid-cols-3` abaixo do PlayerDnaCard — elimina o "buraco" visual causado pela quebra de ritmo entre o grid 8+4 e o antigo row 4-col. AI Confidence card retorna para o aside, mantendo o painel lateral com conteúdo até o final.
+
+---
+
 ## [v0.62.0] — 2026-05-03 — Sprint AF: Dashboard card reposition
 
 ### Changed
