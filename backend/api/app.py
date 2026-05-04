@@ -65,7 +65,7 @@ from database.repositories import (
     save_payment, get_payments, update_user_plan,
     get_phase_analysis, get_texture_analysis, get_tournaments_comparison,
     # Sprint C — BACK-014 + BACK-017: admin panel + revenue share
-    get_admin_dashboard_stats, get_all_users, get_all_users_count, update_user_admin,
+    get_admin_dashboard_stats, get_all_users, get_all_users_count, update_user_admin, delete_user_admin,
     get_coaches_with_payout_status, upsert_coach_payment, mark_coach_payment_paid,
     get_coach_finance_summary, get_coach_finance_students, get_coach_finance_history,
     get_admin_activity_logs,
@@ -3022,6 +3022,30 @@ def admin_update_user(uid):
         return jsonify({'error': 'Nenhum campo para atualizar'}), 400
     update_user_admin(uid, plan=plan, suspended=suspended)
     return jsonify({'ok': True})
+
+
+@app.route('/admin/users/<int:uid>', methods=['DELETE'])
+@require_admin
+def admin_delete_user(uid):
+    """Permanently delete a user. Requires admin password in request body."""
+    data = request.get_json() or {}
+    admin_password = data.get('admin_password', '').strip()
+    if not admin_password:
+        return jsonify({'error': 'Senha administrativa obrigatória'}), 400
+    # verify admin credentials
+    admin_row = get_user_by_id(g.user_id)
+    if not admin_row:
+        return jsonify({'error': 'Admin não encontrado'}), 403
+    if not verify_password(admin_row['email'], admin_password):
+        return jsonify({'error': 'Senha incorreta'}), 403
+    # prevent deleting yourself
+    if uid == g.user_id:
+        return jsonify({'error': 'Não é possível excluir sua própria conta pelo painel admin'}), 400
+    target = get_user_by_id(uid)
+    if not target:
+        return jsonify({'error': 'Usuário não encontrado'}), 404
+    delete_user_admin(uid)
+    return jsonify({'ok': True, 'deleted_id': uid})
 
 
 @app.route('/admin/finance/coaches', methods=['GET'])

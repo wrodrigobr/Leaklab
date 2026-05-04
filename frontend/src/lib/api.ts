@@ -1422,6 +1422,12 @@ export const adminDashboard = {
       body: JSON.stringify(data),
     }),
 
+  deleteUser: (id: number, adminPassword: string) =>
+    request<{ ok: boolean; deleted_id: number }>(`/admin/users/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify({ admin_password: adminPassword }),
+    }),
+
   coachPayouts: (period?: string) =>
     request<{ payouts: CoachPayout[]; period: string; total_pending_cents: number }>(
       `/admin/finance/coaches${period ? `?period=${period}` : ""}`

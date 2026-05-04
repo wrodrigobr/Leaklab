@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, BarChart2, CheckCircle2, ChevronRight, Clock,
   Download, LayoutDashboard, Loader2, Search, Shield, Users,
-  GraduationCap, X, Check, MessageSquarePlus
+  GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { cn } from "@/lib/utils";
@@ -143,14 +143,99 @@ function OverviewTab() {
   );
 }
 
+// ── Delete User Modal ─────────────────────────────────────────────────────────
+
+interface DeleteTarget { id: number; username: string; email: string; }
+
+function DeleteUserModal({ target, onClose, onDeleted }: {
+  target: DeleteTarget;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [error, setError]       = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDelete = async () => {
+    if (!password.trim()) { setError("Digite sua senha administrativa"); return; }
+    setDeleting(true);
+    setError("");
+    try {
+      await adminDashboard.deleteUser(target.id, password.trim());
+      onDeleted();
+      onClose();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro ao excluir");
+      setDeleting(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-md rounded-2xl border border-destructive/30 bg-hud-surface p-6 shadow-2xl space-y-5">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+            <AlertTriangle className="size-5 text-destructive" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Excluir usuário permanentemente</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Esta ação é <strong className="text-destructive">irreversível</strong>. Todos os torneios,
+              decisões e dados de <strong className="text-foreground">@{target.username}</strong> ({target.email}) serão apagados.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+            Confirme com sua senha administrativa
+          </label>
+          <input
+            ref={inputRef}
+            type="password"
+            value={password}
+            onChange={e => { setPassword(e.target.value); setError(""); }}
+            onKeyDown={e => e.key === "Enter" && handleDelete()}
+            placeholder="Sua senha..."
+            autoFocus
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-destructive"
+          />
+          {error && <p className="font-mono text-[10px] text-destructive">{error}</p>}
+        </div>
+
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={onClose}
+            disabled={deleting}
+            className="rounded-md border border-border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting || !password.trim()}
+            className="inline-flex items-center gap-1.5 rounded-md bg-destructive px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
+          >
+            {deleting ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
+            {deleting ? "Excluindo…" : "Excluir definitivamente"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Users Tab ─────────────────────────────────────────────────────────────────
 
 function UsersTab() {
   const qc = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [plan,   setPlan]   = useState("");
-  const [role,   setRole]   = useState("");
-  const [offset, setOffset] = useState(0);
+  const [search, setSearch]       = useState("");
+  const [plan,   setPlan]         = useState("");
+  const [role,   setRole]         = useState("");
+  const [offset, setOffset]       = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const PAGE = 25;
 
   const { data, isLoading } = useQuery({
@@ -198,16 +283,16 @@ function UsersTab() {
           <table className="w-full text-xs text-left">
             <thead className="border-b border-border bg-hud-elevated/40">
               <tr>
-                {["Usuário", "Role", "Plano", "Coach", "Torneios", "Último import", "Cadastro", "Ações"].map(h => (
+                {["Usuário", "Role", "Plano", "Coach", "Torneios", "Último import", "Cadastro", "Ações", ""].map(h => (
                   <th key={h} className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
-                <tr><td colSpan={8} className="py-12 text-center"><Loader2 className="size-5 animate-spin text-primary mx-auto" /></td></tr>
+                <tr><td colSpan={9} className="py-12 text-center"><Loader2 className="size-5 animate-spin text-primary mx-auto" /></td></tr>
               ) : users.length === 0 ? (
-                <tr><td colSpan={8} className="py-12 text-center text-muted-foreground">Nenhum usuário encontrado.</td></tr>
+                <tr><td colSpan={9} className="py-12 text-center text-muted-foreground">Nenhum usuário encontrado.</td></tr>
               ) : users.map(u => (
                 <tr key={u.id} className={cn("transition-colors hover:bg-primary/5", u.suspended && "opacity-50")}>
                   <td className="px-4 py-3">
@@ -239,6 +324,15 @@ function UsersTab() {
                       {u.suspended ? "Reativar" : "Suspender"}
                     </button>
                   </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => setDeleteTarget({ id: u.id, username: u.username, email: u.email })}
+                      title="Excluir permanentemente"
+                      className="rounded p-1 text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -255,6 +349,19 @@ function UsersTab() {
           </div>
         </div>
       </div>
+
+      {deleteTarget && (
+        <DeleteUserModal
+          target={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            qc.invalidateQueries({ queryKey: ["admin-users"] });
+            qc.invalidateQueries({ queryKey: ["admin-stats"] });
+            toast.success(`Usuário @${deleteTarget.username} excluído permanentemente`);
+            setDeleteTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }

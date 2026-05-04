@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.83.9] — 2026-05-04 — Admin: exclusão permanente de usuários com confirmação
+
+### Added
+- **`frontend/src/pages/admin/AdminDashboard.tsx`**: botão de lixeira por linha na aba Usuários. Abre `DeleteUserModal` com nome/email do alvo, campo de senha administrativa e aviso de irreversibilidade. Senha é verificada no backend antes de qualquer exclusão.
+- **`frontend/src/pages/admin/AdminDashboard.tsx`**: `DeleteUserModal` — modal com ícone de alerta, input de senha com `autoFocus`, feedback de erro inline, botão "Excluir definitivamente" desabilitado até senha digitada.
+- **`backend/api/app.py`**: `DELETE /admin/users/<uid>` — exige `admin_password` no body, verifica credenciais do admin via `verify_password`, bloqueia auto-exclusão, deleta todos os dados do usuário em cascata.
+- **`backend/database/repositories.py`**: `delete_user_admin(user_id)` — remove decisões, torneios, cache LLM, tickets de suporte e o registro `users` em cascata, dentro de uma única transação.
+- **`frontend/src/lib/api.ts`**: `adminDashboard.deleteUser(id, adminPassword)` método adicionado.
+
+---
+
 ## [v0.83.8] — 2026-05-04 — Badge de tickets abertos + sistema de resposta no admin
 
 ### Added

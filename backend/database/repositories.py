@@ -2871,6 +2871,25 @@ def update_user_admin(user_id: int, plan: str = None, suspended: bool = None) ->
         conn.close()
 
 
+def delete_user_admin(user_id: int) -> None:
+    """Deletes a user and all their data (cascade). Do NOT call without admin password verification."""
+    conn = get_conn()
+    try:
+        # remove all decisions + tournaments + related data before removing the user
+        tournament_ids = [r['id'] for r in _fetchall(conn, "SELECT id FROM tournaments WHERE user_id = ?", (user_id,))]
+        for tid in tournament_ids:
+            conn.execute("DELETE FROM decisions WHERE tournament_id = ?", (tid,))
+        if tournament_ids:
+            placeholders = ",".join("?" * len(tournament_ids))
+            conn.execute(f"DELETE FROM tournaments WHERE id IN ({placeholders})", tournament_ids)
+        conn.execute("DELETE FROM llm_cache WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM support_tickets WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_coaches_with_payout_status(period: str) -> list:
     """Coaches com contagem de alunos ativos e status de repasse para o período."""
     conn = get_conn()
