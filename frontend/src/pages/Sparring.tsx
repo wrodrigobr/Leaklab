@@ -15,8 +15,8 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import type { CardData } from "@/components/hud/PlayingCard";
 import { PokerTable } from "@/components/hud/PokerTable";
 import type { Seat } from "@/components/hud/PokerTable";
-import { sparring, drill } from "@/lib/api";
-import type { SparringHand, SparringStep, DrillSubmitResult } from "@/lib/api";
+import { sparring, drill, tournaments } from "@/lib/api";
+import type { SparringHand, SparringStep, DrillSubmitResult, ReplayStep } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
 type Phase = "idle" | "loading" | "playing" | "feedback" | "summary";
@@ -59,37 +59,79 @@ function parseCards(raw: string | null): CardData[] {
 
 const DUMMY_CARD: CardData = { rank: "A", suit: "s" };
 
-function buildSparringSeats(step: SparringStep, heroCards: CardData[]): Seat[] {
-  const numPlayers = Math.max(2, step.num_players ?? 6);
-  const seats: Seat[] = [];
+interface TableState { seats: Seat[]; pot: number; bb: number }
 
-  // Hero at index 0 → bottom-center in PokerTable geometry
-  seats.push({
-    id: 0,
-    name: step.position ? `You (${step.position})` : "You",
-    stack: step.stack_bb ?? 100,
-    hero: true,
-    active: true,
-    cards: heroCards.length >= 2 ? heroCards : undefined,
-  });
+function buildSparringTable(
+  step: SparringStep,
+  heroCards: CardData[],
+  replayStep: ReplayStep | null,
+): TableState {
+  // ── Real data path: replay step available ────────────────────────────────
+  if (replayStep) {
+    const foldedSet = new Set(replayStep.folded ?? []);
+    const heroName  = replayStep.hero;
+    const entries   = Object.entries(replayStep.seats)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b));
+    const heroEntry = entries.find(([, sd]) => sd.player === heroName);
 
-  // Seat index that appears roughly opposite the hero (across the table)
-  // → best approximation of "the villain who last bet/raised"
-  const aggressorIdx = Math.floor(numPlayers / 2);
-  const facingBet = step.facing_bet && step.facing_bet > 0 ? step.facing_bet : undefined;
+    if (heroEntry) {
+      const [heroSeatNum] = heroEntry;
+      const seats: Seat[] = [];
 
-  for (let i = 1; i < numPlayers; i++) {
-    seats.push({
-      id: i,
-      name: `V${i}`,
-      stack: 100,
-      cards: [DUMMY_CARD, DUMMY_CARD],
-      revealed: false,
-      bet: i === aggressorIdx ? facingBet : undefined,
-    });
+      // Hero always first → bottom-center of PokerTable geometry
+      seats.push({
+        id: 0,
+        name: step.position ? `You (${step.position})` : "You",
+        stack: heroEntry[1].stack_bb,
+        hero: true,
+        active: true,
+        cards: heroCards.length >= 2 ? heroCards : undefined,
+      });
+
+      // Villains in seat-number order (clockwise from hero perspective)
+      let idx = 1;
+      for (const [seatNum, sd] of entries) {
+        if (seatNum === heroSeatNum) continue;
+        const betChips = replayStep.bets?.[seatNum];
+        seats.push({
+          id: idx++,
+          name: sd.pos || `V${idx}`,
+          stack: sd.stack_bb,
+          cards: [DUMMY_CARD, DUMMY_CARD],
+          revealed: false,
+          folded: foldedSet.has(sd.player),
+          bet: betChips ? betChips / replayStep.bb : undefined,
+        });
+      }
+
+      // pot_bb is already in BB; bb=1 so PokerTable fmt works correctly
+      return { seats, pot: replayStep.pot_bb ?? replayStep.pot / replayStep.bb, bb: 1 };
+    }
   }
 
-  return seats;
+  // ── Fallback: approximation from sparring step only ──────────────────────
+  const numPlayers  = Math.max(2, step.num_players ?? 6);
+  const aggressorIdx = Math.floor(numPlayers / 2);
+  const facingBet   = step.facing_bet && step.facing_bet > 0 ? step.facing_bet : undefined;
+  const seats: Seat[] = [
+    {
+      id: 0,
+      name: step.position ? `You (${step.position})` : "You",
+      stack: step.stack_bb ?? 100,
+      hero: true,
+      active: true,
+      cards: heroCards.length >= 2 ? heroCards : undefined,
+    },
+    ...Array.from({ length: numPlayers - 1 }, (_, i) => ({
+      id: i + 1,
+      name: `V${i + 1}`,
+      stack: 100,
+      cards: [DUMMY_CARD, DUMMY_CARD] as CardData[],
+      revealed: false,
+      bet: i + 1 === aggressorIdx ? facingBet : undefined,
+    })),
+  ];
+  return { seats, pot: step.pot_size ?? 0, bb: 1 };
 }
 
 // ── Street timeline ───────────────────────────────────────────────────────────
@@ -297,6 +339,8 @@ export default function Sparring() {
   const [analysis, setAnalysis]     = useState<string | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [error, setError]           = useState("");
+  // Hero-action steps from the full replay — loaded in parallel, non-blocking
+  const [replayHeroSteps, setReplayHeroSteps] = useState<ReplayStep[]>([]);
 
   const steps   = hand?.steps ?? [];
   const current = steps[stepIndex] ?? null;
@@ -309,11 +353,23 @@ export default function Sparring() {
     setStepIndex(0);
     setCurrentResult(null);
     setAnalysis(null);
+    setReplayHeroSteps([]);
     try {
       const data = await sparring.hand();
       if (data.insufficient_data) { setError(t("noData")); setPhase("idle"); return; }
       setHand(data);
       setPhase("playing");
+
+      // Fetch full replay in parallel — non-blocking, enriches PokerTable when ready
+      if (data.tournament_id && data.hand_id) {
+        tournaments.replay(String(data.tournament_id), data.hand_id)
+          .then((replay) => {
+            setReplayHeroSteps(
+              replay.timeline.filter((s) => s.type === "action" && s.is_hero === true)
+            );
+          })
+          .catch(() => { /* replay failed — PokerTable stays in approximation mode */ });
+      }
     } catch {
       setError(t("noData"));
       setPhase("idle");
@@ -482,19 +538,20 @@ export default function Sparring() {
             </div>
           </div>
 
-          {/* Poker table — hero at bottom, villains around, real board + pot */}
+          {/* Poker table — hero at bottom, real replay data when available */}
           {(() => {
             const boardLimit = { preflop: 0, flop: 3, turn: 4, river: 5 }[current.street] ?? 5;
             const communityCards = parseCards(current.board).slice(0, boardLimit);
             const heroCards      = parseCards(current.hero_cards);
-            const seats          = buildSparringSeats(current, heroCards);
+            const replayStep     = replayHeroSteps[stepIndex] ?? null;
+            const { seats, pot, bb } = buildSparringTable(current, heroCards, replayStep);
             return (
               <PokerTable
                 seats={seats}
                 community={communityCards}
-                pot={current.pot_size ?? 0}
+                pot={pot}
                 street={current.street}
-                bb={1}
+                bb={bb}
                 betUnit="bb"
               />
             );
@@ -533,14 +590,15 @@ export default function Sparring() {
             const boardLimit = { preflop: 0, flop: 3, turn: 4, river: 5 }[current.street] ?? 5;
             const communityCards = parseCards(current.board).slice(0, boardLimit);
             const heroCards      = parseCards(current.hero_cards);
-            const seats          = buildSparringSeats(current, heroCards);
+            const replayStep     = replayHeroSteps[stepIndex] ?? null;
+            const { seats, pot, bb } = buildSparringTable(current, heroCards, replayStep);
             return (
               <PokerTable
                 seats={seats}
                 community={communityCards}
-                pot={current.pot_size ?? 0}
+                pot={pot}
                 street={current.street}
-                bb={1}
+                bb={bb}
                 betUnit="bb"
               />
             );
