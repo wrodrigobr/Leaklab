@@ -144,8 +144,8 @@ body {
   margin-bottom: 18px;
 }
 .cover-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-.brand { font-size: 10.5pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #60a5fa; }
-.brand .g { color: #10b981; }
+.brand { font-size: 10.5pt; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #f9fafb; }
+.brand .ai { color: #10b981; font-style: italic; font-weight: 300; text-transform: lowercase; letter-spacing: 0; }
 .cover-date { font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #9ca3af; text-align: right; }
 .cover-hero { font-size: 26pt; font-weight: 300; letter-spacing: -0.02em; color: #f9fafb; margin-bottom: 4px; }
 .cover-sub { font-size: 9.5pt; color: #9ca3af; margin-bottom: 26px; }
@@ -266,12 +266,12 @@ def _render(t: dict, decisions: list, phases: list, ctx: dict, hero: str) -> str
         '<html lang="pt-BR">\n'
         '<head>\n'
         '<meta charset="UTF-8">\n'
-        f'<title>PokerLeakLab — {_h.escape(name)}</title>\n'
+        f'<title>LeakLabs.ai — {_h.escape(name)}</title>\n'
         f'<style>{_CSS}</style>\n'
         '</head>\n'
         '<body>\n'
         f'{body}\n'
-        f'<footer>PokerLeakLab &nbsp;·&nbsp; Análise técnica de decisão MTT &nbsp;·&nbsp; {_h.escape(now)}</footer>\n'
+        f'<footer>LeakLabs.ai &nbsp;·&nbsp; Análise técnica de decisão MTT &nbsp;·&nbsp; {_h.escape(now)}</footer>\n'
         '</body>\n'
         '</html>'
     )
@@ -304,7 +304,7 @@ def _cover(hero, name, played, site, buy_in, place, std, std_c, avg, avg_c, hand
     return (
         f'<div class="cover">'
         f'<div class="cover-top">'
-        f'<div class="brand">Poker<span class="g">Leak</span>Lab</div>'
+        f'<div class="brand">LeakLabs<span class="ai">.ai</span></div>'
         f'<div class="cover-date">Relatório Técnico<br>{_h.escape(now)}</div>'
         f'</div>'
         f'<div class="cover-hero">{_h.escape(hero)}</div>'
@@ -573,7 +573,7 @@ def _build_html(metrics, leaks, worst, results, hand_results, hero, tournament_i
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>PokerLeakLab — Relatório de Auditoria</title>
+<title>LeakLabs.ai — Relatório de Auditoria</title>
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -648,7 +648,7 @@ def _build_html(metrics, leaks, worst, results, hand_results, hero, tournament_i
 <body>
 <div class="container">
   <div class="header">
-    <h1>🎯 PokerLeakLab — Relatório de Auditoria</h1>
+    <h1>🎯 LeakLabs.ai — Relatório de Auditoria</h1>
     <div class="sub">Análise de decisões MTT · Motor v1.1</div>
     <div class="meta">
       <div class="meta-item">Hero <div class="val">{hero}</div></div>
@@ -705,7 +705,7 @@ def _build_html(metrics, leaks, worst, results, hand_results, hero, tournament_i
     {_mtt_insights(results)}
   </div>
 </div>
-<footer>PokerLeakLab v2 · Análise determinística de poker MTT · {now}</footer>
+<footer>LeakLabs.ai · Análise determinística de poker MTT · {now}</footer>
 </body>
 </html>"""
 
