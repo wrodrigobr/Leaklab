@@ -1439,7 +1439,7 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
                    d.action_taken, d.best_action, d.label, d.score,
                    d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
                    d.num_players, d.pot_size, d.facing_bet, d.is_3bet,
-                   t.name AS tournament_name, t.id AS tournament_id
+                   t.tournament_name, t.id AS tournament_id
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ? AND d.hand_id = ? AND d.tournament_id = ?
