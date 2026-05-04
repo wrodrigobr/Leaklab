@@ -342,16 +342,16 @@ const Index = () => {
                         <LevelCard data={levelData} showStudyLink />
                       </DraggableCard>
                     ) : <div key={id} />;
-                    if (id === "career") return careerData ? (
+                    if (id === "career") return (
                       <DraggableCard key={id} id={id}>
-                        <CareerGraphCard data={careerData} />
+                        <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} />
                       </DraggableCard>
-                    ) : <div key={id} />;
-                    if (id === "cognitive_failures") return cognitiveData ? (
+                    );
+                    if (id === "cognitive_failures") return (
                       <DraggableCard key={id} id={id}>
-                        <CognitiveFailureCard data={cognitiveData} />
+                        <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />
                       </DraggableCard>
-                    ) : <div key={id} />;
+                    );
                     if (id === "ai_confidence") return (
                       <DraggableCard key={id} id={id}>
                         <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">

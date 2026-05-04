@@ -22,7 +22,18 @@ export function useDashboardLayout() {
     preferences.get()
       .then((prefs) => {
         const saved = prefs.dashboard_layout as DashboardLayout | null;
-        if (saved?.main && saved?.sidebar) setLayout(saved);
+        if (saved?.main && saved?.sidebar) {
+          // Merge: append any new sections added to DEFAULT_LAYOUT that aren't in the saved layout
+          const mergedSidebar = [
+            ...saved.sidebar.filter((s) => (DEFAULT_LAYOUT.sidebar as string[]).includes(s)),
+            ...DEFAULT_LAYOUT.sidebar.filter((s) => !(saved.sidebar as string[]).includes(s)),
+          ] as SidebarSection[];
+          const mergedMain = [
+            ...saved.main.filter((s) => (DEFAULT_LAYOUT.main as string[]).includes(s)),
+            ...DEFAULT_LAYOUT.main.filter((s) => !(saved.main as string[]).includes(s)),
+          ] as MainSection[];
+          setLayout({ main: mergedMain, sidebar: mergedSidebar });
+        }
       })
       .catch(() => {});
   }, []);
