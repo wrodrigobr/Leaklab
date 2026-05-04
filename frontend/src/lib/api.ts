@@ -52,7 +52,28 @@ export interface UserProfile {
   plan_limits: { tournaments: number | null; ai_calls: number | null };
   whatsapp_phone?: string | null;
   digest_subscribed?: boolean;
+  profile_completed_at?: string | null;
 }
+
+export interface DemographicProfile {
+  birth_year?: number | null;
+  country?: string | null;
+  state_province?: string | null;
+  city?: string | null;
+  poker_experience_years?: number | null;
+  main_game_type?: "mtt" | "cash" | "spin" | "mixed" | null;
+  usual_buyin_range?: "micro" | "low" | "mid" | "high" | null;
+  profile_completed_at?: string | null;
+}
+
+export const profile = {
+  get: () => request<DemographicProfile>("/player/profile"),
+  update: (data: Partial<DemographicProfile>) =>
+    request<DemographicProfile>("/player/profile", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+};
 
 export const auth = {
   register: (username: string, email: string, password: string, role: "player" | "coach" = "player") =>
@@ -1292,6 +1313,15 @@ export const adminDashboard = {
       method: "POST",
       body: JSON.stringify({ note: note ?? "" }),
     }),
+
+  demographics: () => request<{
+    total_players: number;
+    profiles_completed: number;
+    completion_rate: number;
+    top_countries: Array<{ country: string; n: number }>;
+    game_types: Array<{ main_game_type: string; n: number }>;
+    buyin_ranges: Array<{ usual_buyin_range: string; n: number }>;
+  }>("/admin/demographics"),
 };
 
 export interface CoachApplication {

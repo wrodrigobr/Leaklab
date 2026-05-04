@@ -20,6 +20,7 @@ import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
 import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
 import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
 import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
+import { ProfileCompletionCard } from "@/components/hud/ProfileCompletionCard";
 import { SessionGoalPanel } from "@/components/hud/UploadQueue";
 import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
 import { metrics, drill, tournaments, digest, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse } from "@/lib/api";
@@ -140,6 +141,8 @@ const Index = () => {
         </section>
 
         {hasData && <DailyFocusCard />}
+
+        {user?.role === "player" && <ProfileCompletionCard />}
 
         {user?.role === "player" && <SessionGoalPanel />}
 

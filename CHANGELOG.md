@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.66.0] — 2026-05-03 — Sprint AI: BACK-019 Perfil Demográfico do Usuário
+
+### Added
+- **`backend/database/schema.py`**: 8 novas colunas em `users` — `birth_year`, `country`, `state_province`, `city`, `poker_experience_years`, `main_game_type`, `usual_buyin_range`, `profile_completed_at` (migrações Postgres e SQLite).
+- **`backend/database/repositories.py`**: `get_user_demographics`, `update_user_demographics` (marca `profile_completed_at` quando campos core preenchidos), `get_demographics_aggregate` (dados anonimizados para o admin).
+- **`backend/api/app.py`**: `GET /player/profile`, `PATCH /player/profile`, `GET /admin/demographics`; campo `profile_completed_at` adicionado à resposta do `/auth/me`.
+- **`frontend/src/lib/api.ts`**: interface `DemographicProfile`; objeto `profile` com `get()` e `update()`; `adminDashboard.demographics()`.
+- **`frontend/src/components/hud/ProfileCompletionCard.tsx`**: card colapsável no dashboard — exibido quando perfil não está completo; formulário com todos os campos demográficos; barra de progresso; nota LGPD; botão "Não mostrar mais" persiste em localStorage.
+- **`frontend/src/pages/admin/AdminDashboard.tsx`**: painel "Perfis Demográficos" na aba Visão Geral — taxa de completion, top países, distribuição por tipo de jogo e faixa de buy-in.
+
+### Changed
+- **`frontend/src/pages/Index.tsx`**: `ProfileCompletionCard` inserido entre `DailyFocusCard` e `SessionGoalPanel`.
+- **`backend/api/app.py`**: `/auth/me` passa a retornar `profile_completed_at`.
+
+---
+
 ## [v0.65.0] — 2026-05-03 — Sprint AH: BACK-018 Coach Application Flow
 
 ### Added

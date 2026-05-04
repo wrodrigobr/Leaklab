@@ -285,8 +285,9 @@ def me():
         'tournaments_used':     quota['tournaments_used'],
         'ai_calls_used':        quota['ai_calls_used'],
         'plan_limits':          quota['limits'],
-        'whatsapp_phone':       g.user.get('whatsapp_phone'),
-        'digest_subscribed':    bool(g.user.get('digest_subscribed', 0)),
+        'whatsapp_phone':          g.user.get('whatsapp_phone'),
+        'digest_subscribed':       bool(g.user.get('digest_subscribed', 0)),
+        'profile_completed_at':    g.user.get('profile_completed_at'),
     })
 
 
@@ -3180,6 +3181,34 @@ def admin_reject_coach_application(app_id):
 </body></html>"""
         send_transactional_email(app['email'], 'Candidatura — LeakLabs.ai', html)
     return jsonify({'ok': True})
+
+
+@app.route('/player/profile', methods=['GET'])
+@require_auth
+def get_player_profile():
+    from database.repositories import get_user_demographics
+    data = get_user_demographics(g.user_id)
+    return jsonify(data or {})
+
+
+@app.route('/player/profile', methods=['PATCH'])
+@require_auth
+def update_player_profile():
+    from database.repositories import update_user_demographics
+    body = request.get_json(silent=True) or {}
+    allowed = {'birth_year', 'country', 'state_province', 'city',
+                'poker_experience_years', 'main_game_type', 'usual_buyin_range'}
+    fields = {k: v for k, v in body.items() if k in allowed}
+    update_user_demographics(g.user_id, **fields)
+    from database.repositories import get_user_demographics
+    return jsonify(get_user_demographics(g.user_id) or {})
+
+
+@app.route('/admin/demographics', methods=['GET'])
+@require_admin
+def admin_demographics():
+    from database.repositories import get_demographics_aggregate
+    return jsonify(get_demographics_aggregate())
 
 
 @app.errorhandler(500)

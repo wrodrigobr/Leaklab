@@ -60,6 +60,11 @@ function OverviewTab() {
     queryFn: adminDashboard.stats,
     staleTime: 30_000,
   });
+  const { data: demo } = useQuery({
+    queryKey: ["admin-demographics"],
+    queryFn: adminDashboard.demographics,
+    staleTime: 60_000,
+  });
 
   if (isLoading) return <Loading />;
   if (!data) return null;
@@ -95,6 +100,44 @@ function OverviewTab() {
           })}
         </div>
       </div>
+
+      {demo && (
+        <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground">Perfis Demográficos</h3>
+            <span className="font-mono text-[10px] text-muted-foreground">{demo.profiles_completed}/{demo.total_players} preenchidos ({demo.completion_rate}%)</span>
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Top Países</p>
+              {demo.top_countries.slice(0, 5).map((c) => (
+                <div key={c.country} className="flex items-center gap-2">
+                  <span className="flex-1 text-xs text-foreground truncate">{c.country}</span>
+                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{c.n}</span>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Tipo de Jogo</p>
+              {demo.game_types.map((g) => (
+                <div key={g.main_game_type} className="flex items-center gap-2">
+                  <span className="flex-1 text-xs text-foreground uppercase font-mono">{g.main_game_type}</span>
+                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{g.n}</span>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Faixa de Buy-in</p>
+              {demo.buyin_ranges.map((b) => (
+                <div key={b.usual_buyin_range} className="flex items-center gap-2">
+                  <span className="flex-1 text-xs text-foreground uppercase font-mono">{b.usual_buyin_range}</span>
+                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{b.n}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

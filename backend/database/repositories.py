@@ -3431,3 +3431,82 @@ def _now() -> str:
     from database.schema import USE_POSTGRES, now_sql
     import datetime
     return datetime.datetime.utcnow().isoformat()
+
+
+# ── Demographic Profile — BACK-019 ────────────────────────────────────────────
+
+_DEMO_COLS = [
+    'birth_year', 'country', 'state_province', 'city',
+    'poker_experience_years', 'main_game_type', 'usual_buyin_range',
+    'profile_completed_at',
+]
+
+def get_user_demographics(user_id: int) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            _adapt(f"SELECT {', '.join(_DEMO_COLS)} FROM users WHERE id = ?"),
+            (user_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def update_user_demographics(user_id: int, **fields) -> dict:
+    """Updates allowed demographic fields. Marks profile_completed_at when all core fields set."""
+    allowed = set(_DEMO_COLS) - {'profile_completed_at'}
+    updates = {k: v for k, v in fields.items() if k in allowed}
+    if not updates:
+        return {}
+    import datetime
+    conn = get_conn()
+    try:
+        for col, val in updates.items():
+            conn.execute(_adapt(f"UPDATE users SET {col} = ? WHERE id = ?"), (val, user_id))
+        # mark completed if all core fields are now filled
+        core = ['birth_year', 'country', 'poker_experience_years', 'main_game_type', 'usual_buyin_range']
+        row = conn.execute(
+            _adapt(f"SELECT {', '.join(core + ['profile_completed_at'])} FROM users WHERE id = ?"),
+            (user_id,)
+        ).fetchone()
+        if row and all(row[c] not in (None, '') for c in core) and not row['profile_completed_at']:
+            conn.execute(
+                _adapt("UPDATE users SET profile_completed_at = ? WHERE id = ?"),
+                (_now(), user_id)
+            )
+        conn.commit()
+        return dict(row) if row else {}
+    finally:
+        conn.close()
+
+
+def get_demographics_aggregate() -> dict:
+    """Anonymized aggregates for admin panel."""
+    conn = get_conn()
+    try:
+        total = (conn.execute("SELECT COUNT(*) FROM users WHERE role = 'player'").fetchone() or [0])[0]
+        completed = (conn.execute(
+            "SELECT COUNT(*) FROM users WHERE profile_completed_at IS NOT NULL"
+        ).fetchone() or [0])[0]
+        countries = conn.execute(
+            "SELECT country, COUNT(*) AS n FROM users WHERE country IS NOT NULL GROUP BY country ORDER BY n DESC LIMIT 10"
+        ).fetchall()
+        game_types = conn.execute(
+            "SELECT main_game_type, COUNT(*) AS n FROM users WHERE main_game_type IS NOT NULL GROUP BY main_game_type"
+        ).fetchall()
+        buyin_ranges = conn.execute(
+            "SELECT usual_buyin_range, COUNT(*) AS n FROM users WHERE usual_buyin_range IS NOT NULL GROUP BY usual_buyin_range"
+        ).fetchall()
+        return {
+            'total_players': total,
+            'profiles_completed': completed,
+            'completion_rate': round(completed / total * 100, 1) if total else 0,
+            'top_countries': [dict(r) for r in countries],
+            'game_types': [dict(r) for r in game_types],
+            'buyin_ranges': [dict(r) for r in buyin_ranges],
+        }
+    finally:
+        conn.close()

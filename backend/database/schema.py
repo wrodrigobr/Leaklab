@@ -458,6 +458,15 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT FALSE",
             # Sprint D — BACK-016: WhatsApp Coaching Drills
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_phone TEXT UNIQUE",
+            # Sprint AI — BACK-019: demographic profile
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_year               INTEGER",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS country                  TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS state_province           TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS city                     TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS poker_experience_years   INTEGER",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS main_game_type           TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS usual_buyin_range        TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_completed_at     TIMESTAMP",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -822,7 +831,15 @@ def _run_migrations(conn):
             ("xp_streak",           "ALTER TABLE users ADD COLUMN xp_streak           INTEGER NOT NULL DEFAULT 0"),
             ("xp_last_activity",    "ALTER TABLE users ADD COLUMN xp_last_activity    TEXT"),
             ("daily_focus_done_at",   "ALTER TABLE users ADD COLUMN daily_focus_done_at   TEXT"),
-            ("digest_subscribed",     "ALTER TABLE users ADD COLUMN digest_subscribed     INTEGER NOT NULL DEFAULT 0"),
+            ("digest_subscribed",          "ALTER TABLE users ADD COLUMN digest_subscribed          INTEGER NOT NULL DEFAULT 0"),
+            ("birth_year",                "ALTER TABLE users ADD COLUMN birth_year                INTEGER"),
+            ("country",                   "ALTER TABLE users ADD COLUMN country                   TEXT"),
+            ("state_province",            "ALTER TABLE users ADD COLUMN state_province            TEXT"),
+            ("city",                      "ALTER TABLE users ADD COLUMN city                      TEXT"),
+            ("poker_experience_years",    "ALTER TABLE users ADD COLUMN poker_experience_years    INTEGER"),
+            ("main_game_type",            "ALTER TABLE users ADD COLUMN main_game_type            TEXT"),
+            ("usual_buyin_range",         "ALTER TABLE users ADD COLUMN usual_buyin_range         TEXT"),
+            ("profile_completed_at",      "ALTER TABLE users ADD COLUMN profile_completed_at      TEXT"),
         ]:
             if col not in usr_existing:
                 try: conn.execute(sql)
