@@ -1,6 +1,8 @@
 {
   "title": "Sparring Mode",
   "subtitle": "Juega una mano real pausando en cada decisión. El engine evalúa cada elección y la registra en el SRS.",
+  "arenaLabel": "Arena de Entrenamiento",
+  "arenaDesc": "Juega manos reales de tu historial. Pausa en cada decisión, elige tu acción, y el engine evalúa cada elección en tiempo real.",
   "startBtn": "Iniciar Sparring",
   "loading": "Cargando mano...",
   "noData": "No hay mano disponible para Sparring. Importa torneos para comenzar.",

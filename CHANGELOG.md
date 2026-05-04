@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.81.1] — 2026-05-04 — Bugfix: i18n sparring arenaLabel/arenaDesc
+
+### Fixed
+- **`frontend/src/i18n/locales/{pt-BR,en,es}/sparring.json`**: chaves `arenaLabel` e `arenaDesc` adicionadas nas 3 locales — eram usadas pelo card de intro da fase idle do Sparring mas estavam ausentes nos arquivos de tradução (as chaves retornavam o próprio nome da chave em vez do texto traduzido).
+
+---
+
 ## [v0.81.0] — 2026-05-04 — Sprint AV: Página Treinos + Botões contextuais
 
 ### Added
