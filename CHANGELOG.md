@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.84.3] — 2026-05-05 — Fix: 500/CORS em /study/plan após deploy de observabilidade
+
+### Fixed
+- **`backend/api/app.py`**: `_log_request` after_request handler agora envolto em `try/except` — uma falha no logging não mais substitui a resposta do endpoint por uma nova 500 sem CORS headers.
+- **`backend/api/app.py`**: `sentry_sdk.init()` movido para APÓS `logging.basicConfig(force=True)` — impede que `force=True` remova o `LoggingIntegration` handler do Sentry ao inicializar depois.
+- **`backend/api/app.py`**: imports do `sentry_sdk` agora dentro de `try/except ImportError` — app sobe normalmente em ambientes sem o SDK instalado (dev sem `pip install`).
+
+---
+
 ## [v0.84.2] — 2026-05-05 — Auditoria de segurança + CLAUDE.md atualizado
 
 ### Security

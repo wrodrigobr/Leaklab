@@ -11,24 +11,6 @@ sys.path.insert(0, str(_BASE))
 from dotenv import load_dotenv
 load_dotenv(_BASE / '.env')
 
-# ── Sentry (no-op when SENTRY_DSN is absent) ─────────────────────────────────
-import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-
-_SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
-if _SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=_SENTRY_DSN,
-        integrations=[
-            FlaskIntegration(),
-            LoggingIntegration(level=logging.WARNING, event_level=logging.ERROR),
-        ],
-        traces_sample_rate=0.05,
-        environment=os.environ.get('ENVIRONMENT', 'development'),
-        send_default_pii=False,
-    )
-
 # ── Structured JSON logging ───────────────────────────────────────────────────
 
 class _JsonFormatter(logging.Formatter):
@@ -51,6 +33,28 @@ _handler.setFormatter(_JsonFormatter())
 logging.basicConfig(handlers=[_handler], level=logging.INFO, force=True)
 
 log = logging.getLogger(__name__)
+
+# ── Sentry (no-op when SENTRY_DSN is absent or sdk not installed) ────────────
+# Init AFTER logging.basicConfig so Sentry's LoggingIntegration appends on top
+# of our handler instead of being wiped by force=True.
+_SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        sentry_sdk.init(
+            dsn=_SENTRY_DSN,
+            integrations=[
+                FlaskIntegration(),
+                LoggingIntegration(level=logging.WARNING, event_level=logging.ERROR),
+            ],
+            traces_sample_rate=0.05,
+            environment=os.environ.get('ENVIRONMENT', 'development'),
+            send_default_pii=False,
+        )
+    except ImportError:
+        log.warning('sentry-sdk not installed — Sentry disabled')
 
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
@@ -153,20 +157,23 @@ def _before():
 
 @app.after_request
 def _log_request(response):
-    duration_ms = round((time.monotonic() - g.get('t0', time.monotonic())) * 1000)
-    log.info(
-        '%s %s %s',
-        request.method, request.path, response.status_code,
-        extra={
-            'request_id': g.get('request_id', ''),
-            'user_id':    g.get('user_id', ''),
-            'method':     request.method,
-            'path':       request.path,
-            'status':     response.status_code,
-            'duration_ms': duration_ms,
-        },
-    )
-    response.headers['X-Request-Id'] = g.get('request_id', '')
+    try:
+        duration_ms = round((time.monotonic() - g.get('t0', time.monotonic())) * 1000)
+        log.info(
+            '%s %s %s',
+            request.method, request.path, response.status_code,
+            extra={
+                'request_id': g.get('request_id', ''),
+                'user_id':    g.get('user_id', ''),
+                'method':     request.method,
+                'path':       request.path,
+                'status':     response.status_code,
+                'duration_ms': duration_ms,
+            },
+        )
+        response.headers['X-Request-Id'] = g.get('request_id', '')
+    except Exception:
+        pass
     return response
 
 # ALLOWED_ORIGINS: comma-separated list of trusted frontend origins.
