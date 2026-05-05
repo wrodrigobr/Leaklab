@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
@@ -335,6 +335,20 @@ function Summary({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+const SPARRING_SEEN_KEY = "sparring_seen_hand_ids";
+
+function getSeenHandIds(): string[] {
+  try { return JSON.parse(localStorage.getItem(SPARRING_SEEN_KEY) ?? "[]"); }
+  catch { return []; }
+}
+function saveSeenHandId(handId: string) {
+  const seen = getSeenHandIds();
+  if (!seen.includes(handId)) localStorage.setItem(SPARRING_SEEN_KEY, JSON.stringify([...seen, handId]));
+}
+function resetSeenHandIds(firstHandId: string) {
+  localStorage.setItem(SPARRING_SEEN_KEY, JSON.stringify([firstHandId]));
+}
+
 export default function Sparring() {
   const { t } = useTranslation("sparring");
 
@@ -349,8 +363,6 @@ export default function Sparring() {
   const [error, setError]           = useState("");
   // Hero-action steps from the full replay — loaded in parallel, non-blocking
   const [replayHeroSteps, setReplayHeroSteps] = useState<ReplayStep[]>([]);
-  // Session-level exclusion list so "New Hand" always brings a different hand
-  const seenHandIds = useRef<string[]>([]);
 
   const steps   = hand?.steps ?? [];
   const current = steps[stepIndex] ?? null;
@@ -365,11 +377,16 @@ export default function Sparring() {
     setAnalysis(null);
     setReplayHeroSteps([]);
     try {
-      const data = await sparring.hand(undefined, undefined, seenHandIds.current);
+      const seen = getSeenHandIds();
+      const data = await sparring.hand(undefined, undefined, seen);
       if (data.insufficient_data) { setError(t("noData")); setPhase("idle"); return; }
-      // Record this hand so the next call excludes it
-      if (data.hand_id && !seenHandIds.current.includes(data.hand_id)) {
-        seenHandIds.current = [...seenHandIds.current, data.hand_id];
+      if (data.hand_id) {
+        if (seen.includes(data.hand_id)) {
+          // Backend cycled through all hands — start fresh with just this one
+          resetSeenHandIds(data.hand_id);
+        } else {
+          saveSeenHandId(data.hand_id);
+        }
       }
       setHand(data);
       setPhase("playing");
