@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.84.8] — 2026-05-05 — Fix: replay 404 no Sparring Mode
+
+### Fixed
+- **`backend/api/app.py`**: endpoint `/replay/<tournament_id>/<hand_id>` usava `get_tournament()` (busca por PokerStars tournament_id string), mas o Sparring envia o `id` inteiro do banco. Agora tenta `get_tournament_by_db_id` primeiro quando o parâmetro é numérico, com fallback para a busca por string — compatível com ambos os callers.
+
+---
+
 ## [v0.84.7] — 2026-05-05 — Fix: Sparring 500 no PostgreSQL (HAVING alias)
 
 ### Fixed
