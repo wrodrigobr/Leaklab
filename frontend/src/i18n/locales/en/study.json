@@ -58,6 +58,11 @@
     "mark": "Mark",
     "done": "Done"
   },
+  "tabs": {
+    "diagnosis": "Diagnosis",
+    "schedule": "Roadmap",
+    "exercises": "Exercises"
+  },
   "exercises": {
     "title": "Exercise battery",
     "hint": "Auto-graded · {{count}} questions"

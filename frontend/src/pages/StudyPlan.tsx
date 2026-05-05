@@ -174,6 +174,7 @@ const StudyPlanPage = () => {
   const [coachManaged, setCoachManaged] = useState(false);
   const hasCoach = !!user?.coach_id;
   const [activeLeakId, setActiveLeakId] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"diagnosis" | "schedule" | "exercises">("diagnosis");
   const [progress, setProgress]   = useState<Progress>(loadProgress);
 
   const persist = (next: Progress) => {
@@ -354,188 +355,213 @@ const StudyPlanPage = () => {
             />
           </section>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            {/* Main — diagnóstico + roteiro */}
-            <section className="lg:col-span-8 space-y-6">
-
-              {/* Diagnóstico priorizado */}
-              <article className="rounded-xl border border-border bg-hud-surface p-5">
-                <header className="mb-4 flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
-                    <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-                    {t("diagnosis.title")}
-                  </h3>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {t("diagnosis.leaksCount", { count: plan.diagnosis.leaks.length })}
-                  </span>
-                </header>
-                <ul className="space-y-3">
-                  {plan.diagnosis.leaks.map((leak) => {
-                    const isActive = leak.id === (activeLeak?.id ?? plan.diagnosis.leaks[0]?.id);
-                    return (
-                      <li key={leak.id}>
-                        <button
-                          onClick={() => setActiveLeakId(leak.id)}
-                          className={cn(
-                            "w-full text-left rounded-md border p-3 transition-colors",
-                            isActive
-                              ? "border-primary/60 bg-primary/5"
-                              : "border-border bg-background hover:border-primary/40"
-                          )}
-                        >
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <span className="font-mono text-[10px] text-muted-foreground">{leak.signature}</span>
-                            <span className={cn(
-                              "font-mono text-[10px] font-bold uppercase tracking-wider",
-                              SEVERITY_COLOR[leak.severity] ?? "text-muted-foreground"
-                            )}>
-                              {leak.severity}
-                            </span>
-                          </div>
-                          <p className="text-sm font-semibold text-foreground">{leak.title}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{leak.rationale}</p>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-                {/* BACK-013: coach recommendations for active leak (only when user has no coach) */}
-                {!hasCoach && activeLeak && (
-                  <CoachRecommendationStrip spot={activeLeak.spot} />
+          {/* Tab bar */}
+          <div role="tablist" className="flex gap-1 rounded-lg border border-border bg-hud-surface p-1">
+            {([
+              { id: "diagnosis" as const, icon: BrainCircuit, label: t("tabs.diagnosis") },
+              { id: "schedule"  as const, icon: CalendarDays, label: t("tabs.schedule")  },
+              { id: "exercises" as const, icon: Flame,         label: t("tabs.exercises") },
+            ]).map(({ id, icon: Icon, label }) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={activeTab === id}
+                onClick={() => setActiveTab(id)}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest-2 transition-colors",
+                  activeTab === id
+                    ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
-              </article>
-
-              {/* Roteiro semanal */}
-              <article className="rounded-xl border border-border bg-hud-surface p-5">
-                <header className="mb-4 flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
-                    <CalendarDays className="size-4 text-primary" aria-hidden />
-                    {t("weekly.title")}
-                  </h3>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {t("weekly.totalHint", {
-                      weeks: plan.weeks.length,
-                      hours: Math.round(plan.weeks.reduce((a, w) => a + w.days.reduce((b, d) => b + d.estimatedMinutes, 0), 0) / 60),
-                    })}
-                  </span>
-                </header>
-
-                <div className="space-y-5">
-                  {plan.weeks.map((week) => (
-                    <section key={week.week} className="rounded-md border border-border bg-background p-4">
-                      <header className="mb-3 flex items-center justify-between">
-                        <h4 className="text-xs font-bold uppercase tracking-widest-2 text-primary">
-                          {t("weekly.weekLabel", { week: week.week })}
-                        </h4>
-                        <p className="text-xs text-muted-foreground">{week.focus}</p>
-                      </header>
-                      <ul className="space-y-2">
-                        {week.days.map((day) => {
-                          const key  = `${week.week}-${day.day}`;
-                          const done = progress.daysCompleted.includes(key);
-                          return (
-                            <li key={key} className={cn(
-                              "rounded-md border p-3 transition-colors",
-                              done ? "border-success/40 bg-success/5" : "border-border bg-hud-surface"
-                            )}>
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1">
-                                  <div className="mb-1 flex items-center gap-2">
-                                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                                      Dia {day.day}
-                                    </span>
-
-                                    <span className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-                                      <Timer className="size-3" aria-hidden />
-                                      {day.estimatedMinutes} min
-                                    </span>
-                                  </div>
-                                  <p className="text-sm font-semibold text-foreground">{day.title}</p>
-                                  <p className="mt-0.5 text-xs text-muted-foreground">{day.topic}</p>
-                                  <ul className="mt-2 space-y-1">
-                                    {day.objectives.map((o, i) => (
-                                      <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-                                        <span className="mt-1 size-1 shrink-0 rounded-full bg-primary" aria-hidden />
-                                        {o}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                                <button
-                                  onClick={() => toggleDay(key)}
-                                  aria-pressed={done}
-                                  className={cn(
-                                    "inline-flex shrink-0 items-center gap-1.5 rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider ring-1 transition-colors",
-                                    done
-                                      ? "bg-success/15 text-success ring-success/30 hover:bg-success/25"
-                                      : "bg-secondary text-foreground ring-border hover:bg-muted"
-                                  )}
-                                >
-                                  <CheckCheck className="size-3" aria-hidden />
-                                  {done ? t("day.done") : t("day.mark")}
-                                </button>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </section>
-                  ))}
-                </div>
-              </article>
-            </section>
-
-            {/* Sidebar — recursos + instruções */}
-            <aside className="lg:col-span-4 space-y-6">
-              <section className="rounded-xl border border-border bg-hud-surface p-5">
-                <header className="mb-4 flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
-                    <Library className="size-4 text-primary" aria-hidden />
-                    {t("resources.title")}
-                  </h3>
-                </header>
-                {activeLeak && (
-                  <>
-                    <p className="mb-3 rounded-md border border-border bg-background px-3 py-2 font-mono text-[10px] text-muted-foreground">
-                      <span className="text-primary">{activeLeak.signature}</span>
-                      {" · "}
-                      <span className="text-foreground">{activeLeak.title}</span>
-                    </p>
-                    <ResourceList resources={plan.resourcesByLeak[activeLeak.id] ?? []} />
-                  </>
-                )}
-              </section>
-
-              <section className="rounded-xl border border-border bg-hud-surface p-5">
-                <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
-                  <Sparkles className="size-4 text-primary" aria-hidden />
-                  {t("howTo.title")}
-                </h3>
-                <ul className="space-y-2 text-xs text-muted-foreground">
-                  {[t("howTo.tip1"), t("howTo.tip2"), t("howTo.tip3"), t("howTo.tip4")].map((tip, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="mt-1 size-1 shrink-0 rounded-full bg-primary" aria-hidden />
-                      {tip}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            </aside>
+              >
+                <Icon className="size-3.5 shrink-0" aria-hidden />
+                {label}
+              </button>
+            ))}
           </div>
 
-          {/* Bateria de exercícios */}
-          <section className="space-y-3">
-            <header className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
-                <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-                {t("exercises.title")}
-              </h2>
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {t("exercises.hint", { count: plan.exercises.length })}
-              </span>
-            </header>
-            <ExerciseRunner exercises={plan.exercises} onProgressChange={onExerciseProgress} />
-          </section>
+          {/* Tab: Diagnóstico */}
+          {activeTab === "diagnosis" && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <section className="lg:col-span-8 space-y-6">
+                <article className="rounded-xl border border-border bg-hud-surface p-5">
+                  <header className="mb-4 flex items-center justify-between">
+                    <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
+                      <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
+                      {t("diagnosis.title")}
+                    </h3>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {t("diagnosis.leaksCount", { count: plan.diagnosis.leaks.length })}
+                    </span>
+                  </header>
+                  <ul className="space-y-3">
+                    {plan.diagnosis.leaks.map((leak) => {
+                      const isActive = leak.id === (activeLeak?.id ?? plan.diagnosis.leaks[0]?.id);
+                      return (
+                        <li key={leak.id}>
+                          <button
+                            onClick={() => setActiveLeakId(leak.id)}
+                            className={cn(
+                              "w-full text-left rounded-md border p-3 transition-colors",
+                              isActive
+                                ? "border-primary/60 bg-primary/5"
+                                : "border-border bg-background hover:border-primary/40"
+                            )}
+                          >
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <span className="font-mono text-[10px] text-muted-foreground">{leak.signature}</span>
+                              <span className={cn(
+                                "font-mono text-[10px] font-bold uppercase tracking-wider",
+                                SEVERITY_COLOR[leak.severity] ?? "text-muted-foreground"
+                              )}>
+                                {leak.severity}
+                              </span>
+                            </div>
+                            <p className="text-sm font-semibold text-foreground">{leak.title}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{leak.rationale}</p>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {!hasCoach && activeLeak && (
+                    <CoachRecommendationStrip spot={activeLeak.spot} />
+                  )}
+                </article>
+              </section>
+
+              <aside className="lg:col-span-4 space-y-6">
+                <section className="rounded-xl border border-border bg-hud-surface p-5">
+                  <header className="mb-4 flex items-center justify-between">
+                    <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
+                      <Library className="size-4 text-primary" aria-hidden />
+                      {t("resources.title")}
+                    </h3>
+                  </header>
+                  {activeLeak && (
+                    <>
+                      <p className="mb-3 rounded-md border border-border bg-background px-3 py-2 font-mono text-[10px] text-muted-foreground">
+                        <span className="text-primary">{activeLeak.signature}</span>
+                        {" · "}
+                        <span className="text-foreground">{activeLeak.title}</span>
+                      </p>
+                      <ResourceList resources={plan.resourcesByLeak[activeLeak.id] ?? []} />
+                    </>
+                  )}
+                </section>
+
+                <section className="rounded-xl border border-border bg-hud-surface p-5">
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
+                    <Sparkles className="size-4 text-primary" aria-hidden />
+                    {t("howTo.title")}
+                  </h3>
+                  <ul className="space-y-2 text-xs text-muted-foreground">
+                    {[t("howTo.tip1"), t("howTo.tip2"), t("howTo.tip3"), t("howTo.tip4")].map((tip, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="mt-1 size-1 shrink-0 rounded-full bg-primary" aria-hidden />
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </aside>
+            </div>
+          )}
+
+          {/* Tab: Roteiro */}
+          {activeTab === "schedule" && (
+            <article className="rounded-xl border border-border bg-hud-surface p-5">
+              <header className="mb-4 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
+                  <CalendarDays className="size-4 text-primary" aria-hidden />
+                  {t("weekly.title")}
+                </h3>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {t("weekly.totalHint", {
+                    weeks: plan.weeks.length,
+                    hours: Math.round(plan.weeks.reduce((a, w) => a + w.days.reduce((b, d) => b + d.estimatedMinutes, 0), 0) / 60),
+                  })}
+                </span>
+              </header>
+              <div className="space-y-5">
+                {plan.weeks.map((week) => (
+                  <section key={week.week} className="rounded-md border border-border bg-background p-4">
+                    <header className="mb-3 flex items-center justify-between">
+                      <h4 className="text-xs font-bold uppercase tracking-widest-2 text-primary">
+                        {t("weekly.weekLabel", { week: week.week })}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">{week.focus}</p>
+                    </header>
+                    <ul className="space-y-2">
+                      {week.days.map((day) => {
+                        const key  = `${week.week}-${day.day}`;
+                        const done = progress.daysCompleted.includes(key);
+                        return (
+                          <li key={key} className={cn(
+                            "rounded-md border p-3 transition-colors",
+                            done ? "border-success/40 bg-success/5" : "border-border bg-hud-surface"
+                          )}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="mb-1 flex items-center gap-2">
+                                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+                                    {t("day.label", { n: day.day })}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+                                    <Timer className="size-3" aria-hidden />
+                                    {day.estimatedMinutes} min
+                                  </span>
+                                </div>
+                                <p className="text-sm font-semibold text-foreground">{day.title}</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">{day.topic}</p>
+                                <ul className="mt-2 space-y-1">
+                                  {day.objectives.map((o, i) => (
+                                    <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                                      <span className="mt-1 size-1 shrink-0 rounded-full bg-primary" aria-hidden />
+                                      {o}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <button
+                                onClick={() => toggleDay(key)}
+                                aria-pressed={done}
+                                className={cn(
+                                  "inline-flex shrink-0 items-center gap-1.5 rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider ring-1 transition-colors",
+                                  done
+                                    ? "bg-success/15 text-success ring-success/30 hover:bg-success/25"
+                                    : "bg-secondary text-foreground ring-border hover:bg-muted"
+                                )}
+                              >
+                                <CheckCheck className="size-3" aria-hidden />
+                                {done ? t("day.done") : t("day.mark")}
+                              </button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            </article>
+          )}
+
+          {/* Tab: Exercícios */}
+          {activeTab === "exercises" && (
+            <section className="space-y-3">
+              <header className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest-2 text-foreground">
+                  <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
+                  {t("exercises.title")}
+                </h2>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {t("exercises.hint", { count: plan.exercises.length })}
+                </span>
+              </header>
+              <ExerciseRunner exercises={plan.exercises} onProgressChange={onExerciseProgress} />
+            </section>
+          )}
         </>
       )}
     </HudLayout>

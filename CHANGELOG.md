@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.84.5] — 2026-05-05 — UX: tabs na página Plano de Estudos
+
+### Changed
+- **`frontend/src/pages/StudyPlan.tsx`**: conteúdo reorganizado em 3 tabs — Diagnóstico, Roteiro, Exercícios — eliminando o scroll longo em coluna única. KPIs ficam sempre visíveis acima das tabs. Tab Diagnóstico mantém o layout 8/4 col no desktop.
+- **`frontend/src/i18n/locales/*/study.json`**: adicionada chave `tabs.{diagnosis,schedule,exercises}` nas 3 locales (PT-BR / EN / ES).
+- Aproveitado para substituir hardcoded `"Dia {n}"` pelo i18n `t("day.label", { n })` no roteiro semanal.
+
+---
+
 ## [v0.84.4] — 2026-05-05 — Fix /coaches 500 + remoção do card WhatsApp
 
 ### Fixed

@@ -58,6 +58,11 @@
     "mark": "Marcar",
     "done": "Completado"
   },
+  "tabs": {
+    "diagnosis": "Diagnóstico",
+    "schedule": "Hoja de ruta",
+    "exercises": "Ejercicios"
+  },
   "exercises": {
     "title": "Batería de ejercicios",
     "hint": "Corrección automática · {{count}} preguntas"
