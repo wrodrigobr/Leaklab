@@ -18,6 +18,7 @@ SUITES = {
     'llm':       ['test_llm_explainer.py', 'test_study_plan.py'],
     'api':       ['test_api_endpoints.py', 'test_subscription.py'],
     'regression':['test_tournament.py', 'test_multi_decision.py'],
+    'academy':   ['test_academy_variety.py'],
 }
 
 BASE = os.path.dirname(__file__)

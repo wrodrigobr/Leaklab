@@ -182,19 +182,32 @@ def _board_texture_label_pt(texture: str) -> str:
 
 # ── Math drill ─────────────────────────────────────────────────────────────────
 
+# Realistic pot/bet sizes for synthetic question generation.
+# Bets are expressed as fractions of pot for natural variety.
+_POT_SIZES   = [3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40]
+_BET_FRACS   = [0.25, 0.33, 0.40, 0.50, 0.60, 0.67, 0.75, 1.00, 1.25, 1.50]
+_STREETS     = ['flop', 'turn', 'river']
+_POSITIONS   = ['IP', 'OOP']
+
+
+def _random_pot_bet() -> tuple[float, float]:
+    """Generate a fresh random realistic pot/bet pair (in BBs)."""
+    pot = float(random.choice(_POT_SIZES))
+    bet = round(pot * random.choice(_BET_FRACS), 1)
+    bet = max(1.0, bet)
+    return pot, bet
+
+
 def _fetch_math_decision(user_id: int) -> Optional[dict]:
-    """Returns a random decision with facing_bet > 0 from user's history."""
+    """Returns a random decision from user history (context only — NOT for pot/bet values)."""
     conn = get_conn()
     try:
         row = conn.execute(_adapt("""
-            SELECT d.id, d.pot_size, d.facing_bet, d.stack_bb, d.m_ratio,
-                   d.label, d.action_taken, d.best_action, d.street,
-                   d.position, d.score
+            SELECT d.label, d.action_taken, d.best_action, d.street, d.position
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ?
               AND d.facing_bet IS NOT NULL AND d.facing_bet > 0
-              AND d.pot_size   IS NOT NULL AND d.pot_size   > 0
             ORDER BY RANDOM()
             LIMIT 1
         """), (user_id,)).fetchone()
@@ -203,21 +216,35 @@ def _fetch_math_decision(user_id: int) -> Optional[dict]:
         conn.close()
 
 
+def _context_or_default(decision: Optional[dict]) -> dict:
+    """Returns a context dict with street/position, using defaults when no history."""
+    if decision:
+        return decision
+    return {
+        'label': 'standard',
+        'action_taken': random.choice(['call', 'fold']),
+        'best_action': random.choice(['call', 'fold']),
+        'street': random.choice(_STREETS),
+        'position': random.choice(_POSITIONS),
+    }
+
+
 def generate_math_question(user_id: int, level: str = 'beginner') -> dict:
     """
     Generates math exercise questions by level.
 
     Beginner:     pot_odds_calc, call_or_fold, outs_count
     Intermediate: equity_estimate, odds_vs_equity, ev_direction
+
+    pot/bet values are ALWAYS synthetic (random from realistic pools) to
+    guarantee variety. History is used only for pedagogical context
+    (street, position, label) so questions feel grounded in real spots.
     """
-    decision = _fetch_math_decision(user_id)
+    ctx = _context_or_default(_fetch_math_decision(user_id))
+    pot, bet = _random_pot_bet()
+    min_equity_pct = round(bet / (pot + bet) * 100, 1)
 
     if level == 'intermediate':
-        if not decision:
-            return _equity_estimate_question()
-        pot = round(float(decision['pot_size']), 1)
-        bet = round(float(decision['facing_bet']), 1)
-        min_equity_pct = round(bet / (pot + bet) * 100, 1)
         qtype = random.choices(
             ['equity_estimate', 'odds_vs_equity', 'ev_direction'],
             weights=[0.40, 0.35, 0.25],
@@ -225,25 +252,19 @@ def generate_math_question(user_id: int, level: str = 'beginner') -> dict:
         if qtype == 'equity_estimate':
             return _equity_estimate_question()
         if qtype == 'odds_vs_equity':
-            return _odds_vs_equity_question(pot, bet, decision)
-        return _ev_direction_question(pot, bet, min_equity_pct, decision)
+            return _odds_vs_equity_question(pot, bet, ctx)
+        return _ev_direction_question(pot, bet, min_equity_pct, ctx)
 
     # Beginner (default)
-    if not decision:
-        return _outs_count_question() if random.random() < 0.4 else _synthetic_pot_odds_question()
-
-    pot   = round(float(decision['pot_size']), 1)
-    bet   = round(float(decision['facing_bet']), 1)
-    min_equity_pct = round(bet / (pot + bet) * 100, 1)
     qtype = random.choices(
         ['pot_odds_calc', 'call_or_fold', 'outs_count'],
-        weights=[0.40, 0.35, 0.25],
+        weights=[0.35, 0.35, 0.30],
     )[0]
     if qtype == 'outs_count':
         return _outs_count_question()
     if qtype == 'pot_odds_calc':
-        return _pot_odds_calc_question(pot, bet, min_equity_pct, decision)
-    return _call_or_fold_question(pot, bet, min_equity_pct, decision)
+        return _pot_odds_calc_question(pot, bet, min_equity_pct, ctx)
+    return _call_or_fold_question(pot, bet, min_equity_pct, ctx)
 
 
 def _pot_odds_calc_question(pot: float, bet: float, correct_pct: float, d: dict) -> dict:
@@ -743,15 +764,28 @@ _OUTS_SCENARIOS = [
 ]
 
 
+_OUTS_CONTEXT_PREFIXES = [
+    '',
+    'Você está **IP** e villain fez c-bet. ',
+    'Você está **OOP**, villain aposta após seu check. ',
+    'Multiway pot (3 jogadores). ',
+    'Blind vs blind, hero está OOP. ',
+    'Você está no **BTN** contra o BB. ',
+    f'Stack curto (~{random.choice([18, 22, 25, 30])} BB efetivos). ',  # evaluated once at import — intentional snapshot
+    'Heads-up no turn após call no flop. ',
+]
+
+
 def _outs_count_question() -> dict:
     """Quantos outs você tem com este tipo de draw?"""
     outs, draw_name, questions, explanation, mental_tip, distractors = random.choice(_OUTS_SCENARIOS)
     question_text = random.choice(questions)
+    prefix = random.choice(_OUTS_CONTEXT_PREFIXES)
     pool = [outs] + [d for d in distractors if d != outs][:2]
     random.shuffle(pool)
     return {
         'type': 'outs_count',
-        'question': question_text,
+        'question': f'{prefix}{question_text}' if prefix else question_text,
         'options': [f'{o} outs' for o in pool],
         'correct_index': pool.index(outs),
         'explanation': explanation,
@@ -788,10 +822,23 @@ def _equity_estimate_question() -> dict:
     distractor2 = max(4, correct + random.choice([-6, 8, -8, 6]))
     options = _make_options(correct, [distractor1, distractor2])
 
+    # Scenario context adds variety without changing the math
+    stack_bb = random.choice([15, 18, 22, 25, 28, 32, 38, 45, 55])
+    position = random.choice(['IP', 'OOP', 'BTN', 'CO', 'BB', 'SB'])
+    scenario_prefixes = [
+        f'Stack efetivo: **{stack_bb} BB**. ',
+        f'Você está **{position}** no {streets_label.split()[0]}. ',
+        f'Pote formado por c-bet no {streets_label.split()[0]}. ',
+        f'Villain apostou após check do herói no {streets_label.split()[0]}. ',
+        f'Situação de **{position}** com {stack_bb} BB efetivos. ',
+        '',  # sem contexto extra
+    ]
+    prefix = random.choice(scenario_prefixes)
+
     return {
         'type': 'equity_estimate',
         'question': (
-            f'Você está no **{streets_label}** com um **{draw["name"]}** ({draw["outs"]} outs).\n'
+            f'{prefix}Você está no **{streets_label}** com um **{draw["name"]}** ({draw["outs"]} outs).\n'
             f'Usando a Regra 2/4, qual sua equity **aproximada**?'
         ),
         'options': [f'~{v}%' for v in options['values']],
