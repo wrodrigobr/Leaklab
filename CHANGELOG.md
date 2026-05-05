@@ -9,6 +9,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.84.4] — 2026-05-05 — Fix /coaches 500 + remoção do card WhatsApp
+
+### Fixed
+- **`backend/database/repositories.py`**: `ROUND(AVG(CAST(rating AS REAL)), 1)` → `NUMERIC` em 3 queries — PostgreSQL não aceita `ROUND(double precision, integer)`, somente `ROUND(numeric, integer)`. Causava 500 em `/coaches` e no endpoint de perfil do coach.
+
+### Removed
+- **`frontend/src/pages/StudyPlan.tsx`**: card "Treinar no WhatsApp" removido junto com variável `waNumber` e import `MessageCircle` (ambos inutilizados após remoção).
+
+---
+
 ## [v0.84.3] — 2026-05-05 — Fix: 500/CORS em /study/plan após deploy de observabilidade
 
 ### Fixed

@@ -1728,7 +1728,7 @@ def get_coach_profile(user_id: int) -> Optional[dict]:
         row = conn.execute("""
             SELECT cp.*, u.username, u.email, u.invite_key, u.plan,
                    (SELECT COUNT(*) FROM users WHERE coach_id = u.id) as student_count,
-                   (SELECT ROUND(AVG(CAST(rating AS REAL)),1)
+                   (SELECT ROUND(AVG(CAST(rating AS NUMERIC)),1)
                     FROM coach_reviews WHERE coach_id = u.id) as avg_rating,
                    (SELECT COUNT(*) FROM coach_reviews WHERE coach_id = u.id) as review_count
             FROM coach_profiles cp
@@ -1792,7 +1792,7 @@ def get_reviews(coach_id: int, limit: int = 20) -> dict:
         """, (coach_id, limit)).fetchall()
         items = [dict(r) for r in rows]
         stats = conn.execute("""
-            SELECT ROUND(AVG(CAST(rating AS REAL)), 1) as avg_rating,
+            SELECT ROUND(AVG(CAST(rating AS NUMERIC)), 1) as avg_rating,
                    COUNT(*) as total,
                    SUM(CASE WHEN rating=5 THEN 1 ELSE 0 END) as r5,
                    SUM(CASE WHEN rating=4 THEN 1 ELSE 0 END) as r4,
@@ -1837,7 +1837,7 @@ def get_public_coaches(specialty: str | None = None,
         rows = conn.execute(f"""
             SELECT cp.*, u.username, u.invite_key,
                    (SELECT COUNT(*) FROM users WHERE coach_id = u.id) as student_count,
-                   (SELECT ROUND(AVG(CAST(rating AS REAL)),1)
+                   (SELECT ROUND(AVG(CAST(rating AS NUMERIC)),1)
                     FROM coach_reviews WHERE coach_id = u.id) as avg_rating,
                    (SELECT COUNT(*) FROM coach_reviews WHERE coach_id = u.id) as review_count,
                    (SELECT AVG(t.avg_score)
