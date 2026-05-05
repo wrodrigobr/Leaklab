@@ -107,6 +107,14 @@ def build_digest_html(username: str, data: dict, unsub_link: str) -> str:
     std_pct = data["last_std"]
     std_line = f"{std_pct:.1f}% standard" if std_pct is not None else "Dados insuficientes"
 
+    n_t = data["tournaments_week"]
+    s_t = "s" if n_t != 1 else ""
+    tourney_line = (
+        f'<p style="margin:4px 0 0 0;font-size:12px;color:#6b7280;">'
+        f'{n_t} torneio{s_t} analisado{s_t} esta semana</p>'
+        if n_t > 0 else ""
+    )
+
     top_leak = data["top_leak"]
     leak_block = ""
     if top_leak:
@@ -177,7 +185,7 @@ def build_digest_html(username: str, data: dict, unsub_link: str) -> str:
           <td style="padding:20px 24px;border-bottom:1px solid #1e2433;">
             <p style="margin:0 0 4px 0;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;">Qualidade de decisão (7 dias)</p>
             <p style="margin:0;font-size:26px;font-weight:700;color:#6366f1;">{std_line}</p>
-            {"<p style=\"margin:4px 0 0 0;font-size:12px;color:#6b7280;\">" + str(data["tournaments_week"]) + " torneio" + ("s" if data["tournaments_week"] != 1 else "") + " analisado" + ("s" if data["tournaments_week"] != 1 else "") + " esta semana</p>" if data["tournaments_week"] > 0 else ""}
+            {tourney_line}
           </td>
         </tr>
 
