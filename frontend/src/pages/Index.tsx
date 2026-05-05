@@ -24,7 +24,6 @@ import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
 import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
 import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
 import { ProfileCompletionCard } from "@/components/hud/ProfileCompletionCard";
-import { SessionGoalPanel } from "@/components/hud/UploadQueue";
 import { LeakCausalMap } from "@/components/hud/LeakCausalMap";
 import { CareerGraphCard } from "@/components/hud/CareerGraphCard";
 import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
@@ -274,7 +273,6 @@ const Index = () => {
 
         {user?.role === "player" && <ProfileCompletionCard />}
 
-        {user?.role === "player" && <SessionGoalPanel />}
 
         {user?.role === "player" && hasData && !user.digest_subscribed && !digestDismissed && (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">

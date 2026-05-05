@@ -612,21 +612,6 @@ export const metrics = {
   achievements: () =>
     request<{ achievements: Achievement[] }>(`/player/achievements`),
 
-  createSessionGoal: (goal: { goal_leak_spot?: string; target_standard_pct?: number; notes?: string }) =>
-    request<SessionGoal>(`/player/session-goals`, {
-      method: "POST",
-      body: JSON.stringify(goal),
-    }),
-
-  pendingSessionGoal: () =>
-    request<SessionGoal | Record<string, never>>(`/player/session-goals/pending`),
-
-  linkSessionGoal: (goalId: number, tournamentId: number) =>
-    request<{ ok: boolean }>(`/player/session-goals/${goalId}/link`, {
-      method: "POST",
-      body: JSON.stringify({ tournament_id: tournamentId }),
-    }),
-
   sessionReview: (tournamentId: number) =>
     request<SessionReviewResponse>(`/player/session-review/${tournamentId}`),
 };
@@ -1563,21 +1548,8 @@ export const playerMessages = {
     request<{ unread: number }>("/player/messages/unread"),
 };
 
-// ── Session Goals — FEAT-08 ───────────────────────────────────────────────────
-
-export interface SessionGoal {
-  id: number;
-  goal_leak_spot: string | null;
-  target_standard_pct: number | null;
-  notes: string | null;
-  llm_review?: string | null;
-  created_at: string;
-  linked_at?: string | null;
-}
-
 export interface SessionReviewResponse {
   review: string | null;
-  goal: SessionGoal | null;
   requires_pro: boolean;
 }
 
