@@ -1508,7 +1508,7 @@ REGRAS OBRIGATÓRIAS:
 
     payload = {
         'model':      'claude-haiku-4-5-20251001',
-        'max_tokens': 900,
+        'max_tokens': 1400,
         'system':     system,
         'messages':   [{'role': 'user', 'content': hand_desc}],
     }
