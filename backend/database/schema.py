@@ -640,10 +640,11 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_support_status ON support_tickets(status)")
         except Exception: pass
-        # migrate support_tickets: add admin_reply and replied_at if missing (Postgres)
+        # migrate support_tickets: add missing columns (Postgres)
         for sql in [
             "ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS admin_reply TEXT",
             "ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS replied_at  TIMESTAMP",
+            "ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS read_at     TIMESTAMP",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -960,11 +961,12 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_support_status ON support_tickets(status)")
-        # migrate support_tickets: add admin_reply and replied_at if missing
+        # migrate support_tickets: add missing columns
         st_existing = {r[1] for r in conn.execute('PRAGMA table_info(support_tickets)').fetchall()}
         for col, sql in [
             ("admin_reply", "ALTER TABLE support_tickets ADD COLUMN admin_reply TEXT"),
             ("replied_at",  "ALTER TABLE support_tickets ADD COLUMN replied_at  TEXT"),
+            ("read_at",     "ALTER TABLE support_tickets ADD COLUMN read_at     TEXT"),
         ]:
             if col not in st_existing:
                 try: conn.execute(sql)

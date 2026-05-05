@@ -1637,6 +1637,9 @@ export const support = {
   myUnreadCount: () =>
     request<{ replied: number }>("/support/my-tickets/unread"),
 
+  markRead: () =>
+    request<{ ok: boolean }>("/support/my-tickets/mark-read", { method: "POST" }),
+
   listTickets: () =>
     request<{ tickets: unknown[] }>("/admin/support-tickets"),
 

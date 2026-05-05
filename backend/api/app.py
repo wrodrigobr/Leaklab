@@ -3421,15 +3421,32 @@ def support_my_tickets():
 @app.route('/support/my-tickets/unread', methods=['GET'])
 @require_auth
 def support_my_tickets_unread():
-    """Count of replied tickets the user hasn't explicitly dismissed."""
+    """Count of replied tickets not yet read by the user."""
     from database.schema import get_conn as _gc
     conn = _gc()
     try:
         row = conn.execute(
-            "SELECT COUNT(*) AS n FROM support_tickets WHERE user_id = ? AND status = 'replied'",
+            "SELECT COUNT(*) AS n FROM support_tickets WHERE user_id = ? AND status = 'replied' AND read_at IS NULL",
             (g.user_id,)
         ).fetchone()
         return jsonify({'replied': int(row['n']) if row else 0})
+    finally:
+        conn.close()
+
+
+@app.route('/support/my-tickets/mark-read', methods=['POST'])
+@require_auth
+def support_mark_read():
+    """Mark all replied tickets as read (clears the unread badge)."""
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        conn.execute(
+            "UPDATE support_tickets SET read_at = datetime('now') WHERE user_id = ? AND status = 'replied' AND read_at IS NULL",
+            (g.user_id,)
+        )
+        conn.commit()
+        return jsonify({'ok': True})
     finally:
         conn.close()
 

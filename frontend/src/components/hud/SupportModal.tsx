@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { X, MessageSquarePlus, CheckCircle2, Inbox, PenLine, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -89,6 +89,14 @@ export function SupportModal({ onClose, initialTab = "new" }: Props) {
   });
   const tickets = ticketsData?.tickets ?? [];
   const repliedCount = tickets.filter(t => t.admin_reply).length;
+
+  // Mark all replied tickets as read as soon as inbox tab is visible
+  useEffect(() => {
+    if (activeTab !== "inbox") return;
+    support.markRead().then(() => {
+      qc.invalidateQueries({ queryKey: ["my-support-unread"] });
+    }).catch(() => null);
+  }, [activeTab]);
 
   const categories: { value: Category; label: string }[] = [
     { value: "bug",        label: t("supportModal.categories.bug") },
