@@ -184,10 +184,11 @@ def _board_texture_label_pt(texture: str) -> str:
 
 # Realistic pot/bet sizes for synthetic question generation.
 # Bets are expressed as fractions of pot for natural variety.
-_POT_SIZES   = [3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40]
-_BET_FRACS   = [0.25, 0.33, 0.40, 0.50, 0.60, 0.67, 0.75, 1.00, 1.25, 1.50]
-_STREETS     = ['flop', 'turn', 'river']
-_POSITIONS   = ['IP', 'OOP']
+_POT_SIZES        = [3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40]
+_BET_FRACS        = [0.25, 0.33, 0.40, 0.50, 0.60, 0.67, 0.75, 1.00, 1.25, 1.50]
+_STREETS          = ['flop', 'turn', 'river']      # postflop only — preflop excluded
+_STREETS_WITH_DRAWS = ['flop', 'turn']             # streets where rule-of-2/4 applies
+_POSITIONS        = ['IP', 'OOP']
 
 
 def _random_pot_bet() -> tuple[float, float]:
@@ -199,7 +200,8 @@ def _random_pot_bet() -> tuple[float, float]:
 
 
 def _fetch_math_decision(user_id: int) -> Optional[dict]:
-    """Returns a random decision from user history (context only — NOT for pot/bet values)."""
+    """Returns a random postflop decision from user history (context only — NOT for pot/bet values).
+    Preflop decisions are excluded: the rule of 2/4 and draw concepts don't apply there."""
     conn = get_conn()
     try:
         row = conn.execute(_adapt("""
@@ -208,6 +210,7 @@ def _fetch_math_decision(user_id: int) -> Optional[dict]:
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ?
               AND d.facing_bet IS NOT NULL AND d.facing_bet > 0
+              AND d.street IN ('flop', 'turn', 'river')
             ORDER BY RANDOM()
             LIMIT 1
         """), (user_id,)).fetchone()
@@ -874,7 +877,9 @@ def _odds_vs_equity_question(pot: float, bet: float, d: dict) -> dict:
         {'name': 'duas overcards + gutshot', 'outs': 10},
     ]
     draw = random.choice(draws)
-    street = d.get('street') or random.choice(['flop', 'turn'])
+    # Rule of 2/4 only applies on flop (2 cards to come) or turn (1 card to come).
+    # Preflop and river are invalid for this question type.
+    street = d.get('street') if d.get('street') in _STREETS_WITH_DRAWS else random.choice(_STREETS_WITH_DRAWS)
     multiplier = 4 if street == 'flop' else 2
     draw_equity = draw['outs'] * multiplier
     pot_odds_pct = round(bet / (pot + bet) * 100)

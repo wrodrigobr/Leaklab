@@ -1,12 +1,13 @@
 """
-test_academy_variety.py — Testa a taxa de variedade dos geradores da Academia.
+test_academy_variety.py — Testa a taxa de variedade e a correção semântica dos geradores da Academia.
 
-Objetivo: detectar quando um gerador repete questões com frequência excessiva.
-Critério de aprovação: >= 70% de questões únicas em 50 chamadas.
+Cobertura:
+  1. Variedade: >= 70% de questões únicas em 50 chamadas por gerador.
+  2. Validade de street: odds_vs_equity nunca usa preflop ou river (regra 2/4 não se aplica).
 
-Roda sem banco de dados (mock de _fetch_math_decision → None, que ativa fallback sintético).
+Roda sem banco de dados (mock de _fetch_math_decision).
 """
-import sys, os, unittest, unittest.mock
+import sys, os, re, unittest, unittest.mock
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import leaklab.academy as acad
@@ -105,6 +106,44 @@ class TestAcademyVariety(unittest.TestCase):
                                         side_effect=lambda uid: next(pool_cycle)):
             fn = lambda: acad.generate_math_question(user_id=1, level='beginner')
             self._assert_diverse("generate_math_question[beginner, small history=3]", fn)
+
+
+    # ── Street validity tests ──────────────────────────────────────────────────
+
+    def test_odds_vs_equity_rejects_preflop(self):
+        """Rule of 2/4 never appears with preflop context."""
+        ctx = {'street': 'preflop', 'label': 'standard',
+               'action_taken': 'call', 'best_action': 'call', 'position': 'IP'}
+        for _ in range(30):
+            q = acad._odds_vs_equity_question(10.0, 5.0, ctx)
+            m = re.search(r'No \*\*(\w+)\*\*', q['question'])
+            street = m.group(1) if m else 'unknown'
+            self.assertIn(street, ('flop', 'turn'),
+                          f"preflop leaked: {q['question'][:80]}")
+
+    def test_odds_vs_equity_rejects_river(self):
+        """Rule of 2/4 never appears with river context (no cards to come)."""
+        ctx = {'street': 'river', 'label': 'standard',
+               'action_taken': 'call', 'best_action': 'call', 'position': 'IP'}
+        for _ in range(30):
+            q = acad._odds_vs_equity_question(10.0, 5.0, ctx)
+            m = re.search(r'No \*\*(\w+)\*\*', q['question'])
+            street = m.group(1) if m else 'unknown'
+            self.assertIn(street, ('flop', 'turn'),
+                          f"river leaked: {q['question'][:80]}")
+
+    def test_generate_math_intermediate_preflop_history_safe(self):
+        """generate_math[intermediate] with preflop history never produces invalid street."""
+        bad_ctx = {'street': 'preflop', 'label': 'standard',
+                   'action_taken': 'call', 'best_action': 'call', 'position': 'IP'}
+        with unittest.mock.patch.object(acad, '_fetch_math_decision', return_value=bad_ctx):
+            for _ in range(50):
+                q = acad.generate_math_question(user_id=1, level='intermediate')
+                if q['type'] == 'odds_vs_equity':
+                    m = re.search(r'No \*\*(\w+)\*\*', q['question'])
+                    street = m.group(1) if m else 'unknown'
+                    self.assertIn(street, ('flop', 'turn'),
+                                  f"preflop leaked via dispatcher: {q['question'][:80]}")
 
 
 # ── Runner ─────────────────────────────────────────────────────────────────────
