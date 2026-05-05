@@ -36,6 +36,8 @@ export function OnboardingModal({ onClose }: Props) {
     try {
       await authApi.completeOnboarding();
       await refreshUser();
+    } catch {
+      // proceed regardless — onboarding state will sync on next login
     } finally {
       setSaving(false);
     }
