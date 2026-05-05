@@ -2479,7 +2479,11 @@ def get_replay(tournament_id, hand_id):
     """Constrói dados de replay para uma mão específica."""
     import re as _re
 
-    t = get_tournament(g.user_id, tournament_id)
+    t = None
+    if tournament_id.isdigit():
+        t = get_tournament_by_db_id(g.user_id, int(tournament_id))
+    if not t:
+        t = get_tournament(g.user_id, tournament_id)
     if not t:
         return jsonify({'error': 'Torneio não encontrado'}), 404
 
