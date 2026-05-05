@@ -271,8 +271,10 @@ def _pot_odds_calc_question(pot: float, bet: float, correct_pct: float, d: dict)
         'correct_index': options['correct_index'],
         'explanation': explanation,
         'mental_tip': (
-            f"**Atalho mental:** call ÷ pot_total = {bet} ÷ {total_after_call:.0f} ≈ **{correct_pct:.0f}%**. "
-            "Referências rápidas: aposta ½ pot → ~25%; aposta ⅔ pot → ~29%; aposta pot → ~33%; aposta 2× pot → ~40%."
+            f"**Fórmula:** call ÷ (pot + call) = {bet} ÷ {total_after_call:.0f} ≈ **{correct_pct:.0f}%**. "
+            "Tabela de referência rápida: "
+            "¼ pot → 20% | ½ pot → **25%** | ⅔ pot → **28%** | pot → **33%** | 1,5× pot → 37% | 2× pot → **40%**. "
+            "Decore estas âncoras — a maioria das apostas cai nestes intervalos."
         ),
         'context': {'street': d.get('street'), 'position': d.get('position')},
         'xp_value': 15,
@@ -324,9 +326,10 @@ def _call_or_fold_question(pot: float, bet: float, min_equity_pct: float, d: dic
         'correct_index': correct_index,
         'explanation': explanation,
         'mental_tip': (
-            "**Atalho mental:** compare apenas dois números — **equity estimada vs. pot odds**. "
-            "Se equity > pot odds → call. Se equity < pot odds → fold. "
-            "Não precisa calcular EV: a comparação direta já dá a resposta correta."
+            "**Atalho:** equity estimada vs pot odds — dois números, uma comparação. "
+            "Equity > pot odds → call. Equity < pot odds → fold. "
+            "Referência de pot odds por sizing: ½ pot → 25% | ⅔ pot → 28% | pot → 33% | 1,5× → 37%. "
+            "Para estimar equity: use outs × 2 (turn) ou outs × 4 (flop)."
         ),
         'context': {'street': d.get('street'), 'position': d.get('position')},
         'xp_value': 15,
@@ -799,9 +802,10 @@ def _equity_estimate_question() -> dict:
             f'use o multiplicador **{multiplier}**. Este é um atalho mental — o valor real pode variar ±2pp.'
         ),
         'mental_tip': (
-            '**Regra 2/4:** outs × 2 no **turn** (1 street); outs × 4 no **flop** (2 streets). '
-            'Referências: flush draw (9) → ~18% turn / ~36% flop. '
-            'OESD (8) → ~16% / ~32%. Gutshot (4) → ~8% / ~16%.'
+            '**Regra 2/4:** outs × 2 no **turn** | outs × 4 no **flop**. '
+            'Ajuste para > 8 outs no flop: subtraia 1 (ex: 9 outs × 4 − 1 = **35%** em vez de 36%). '
+            'Referências decoradas: flush draw (9) → 35% flop / 18% turn | '
+            'OESD (8) → 32% / 16% | gutshot (4) → 16% / 8% | flush+OESD (15) → ~60% flop.'
         ),
         'context': {},
         'xp_value': 20,
@@ -1109,7 +1113,9 @@ def _3bet_pot_question() -> dict:
         'mental_tip': (
             '**3-bet pots:** você geralmente precisa de **~30–35% de equity** para flat callar. '
             'Aplique a fórmula: call ÷ total_pot_após_call. '
-            'Combos abaixo de ~30% vs a range de 3-bet → fold ou 4-bet (não flat).'
+            'Combos abaixo de ~30% vs a range de 3-bet → fold ou 4-bet (não flat). '
+            'Combinatória útil: par específico (ex: AA) = **6 combos** | mão não-pareada (ex: AK) = **16 combos** '
+            '(AKs=4, AKo=12). Use isso para estimar a range do oponente rapidamente.'
         ),
         'context': {},
         'xp_value': 25,
