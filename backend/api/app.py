@@ -108,8 +108,13 @@ from leaklab.stripe_gateway import (
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+
+# ALLOWED_ORIGINS: comma-separated list of trusted frontend origins.
+# Defaults to "*" in dev; set explicitly in production via env var.
+_RAW_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
+_ALLOWED_ORIGINS = [o.strip() for o in _RAW_ORIGINS.split(',')] if _RAW_ORIGINS != '*' else '*'
 CORS(app,
-     resources={r"/*": {"origins": "*"}},
+     resources={r"/*": {"origins": _ALLOWED_ORIGINS}},
      supports_credentials=False,
      automatic_options=True)
 
@@ -127,7 +132,13 @@ def _exempt_in_testing():
 # Forçar CORS em TODA resposta incluindo erros não capturados
 @app.after_request
 def _cors_every_response(response):
-    response.headers.setdefault('Access-Control-Allow-Origin',  '*')
+    if _RAW_ORIGINS == '*':
+        response.headers.setdefault('Access-Control-Allow-Origin', '*')
+    else:
+        origin = request.headers.get('Origin', '')
+        if origin in _ALLOWED_ORIGINS:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Vary'] = 'Origin'
     response.headers.setdefault('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     response.headers.setdefault('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     return response
@@ -1082,13 +1093,11 @@ def coach_student_history(student_id):
 
 @app.route('/health', methods=['GET'])
 def health():
-    import os
-    db_url = os.environ.get('DATABASE_URL', '')
-    db_type = 'postgres' if db_url else 'sqlite'
-    return jsonify({'status': 'ok', 'version': '2.0', 'db': db_type, 'db_url_set': bool(db_url)})
+    return jsonify({'status': 'ok', 'version': '2.0'})
 
 
 @app.route('/analyze/guest', methods=['POST'])
+@limiter.limit("10 per hour")
 def analyze_guest():
     """Análise sem login — retorna dados mas não persiste."""
     content = _extract_content(request)

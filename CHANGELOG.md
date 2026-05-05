@@ -9,6 +9,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.84.2] — 2026-05-05 — Auditoria de segurança + CLAUDE.md atualizado
+
+### Security
+- **`backend/api/app.py`**: CORS configurável via variável de ambiente `ALLOWED_ORIGINS` (padrão `*` em dev; em prod, restrito aos domínios explicitamente listados). Header `Vary: Origin` adicionado quando origin-specific.
+- **`backend/api/app.py`**: `/health` não expõe mais tipo de banco nem `db_url_set` — retorna apenas `{status, version}`.
+- **`backend/api/app.py`**: `/analyze/guest` recebe `@limiter.limit("10 per hour")` — endpoint público agora tem rate limiting.
+- **`render.yaml`**: variável `ALLOWED_ORIGINS` adicionada com valor padrão `https://leaklab.vercel.app` (ajustar para domínio real antes de deploy).
+
+### Docs
+- **`CLAUDE.md`**: reescrito — arquitetura atualizada com todas as tabelas (18), endpoints principais, páginas frontend, módulos de features, variáveis de ambiente e notas de segurança/CORS. Era crítico: estava desatualizado desde v0.45.0.
+
+### Not changed (false positives / low risk)
+- `.env` com secrets: `backend/.env` está corretamente no `.gitignore`; `frontend/.env` contém apenas `pk_test_*` (Stripe publishable key — público por design).
+- JWT secret: `auth.py` já levanta `RuntimeError` em produção se `LEAKLAB_SECRET` não estiver setado.
+- `dangerouslySetInnerHTML` em `Docs.tsx`: strings vêm de JSON bundlado no build, sem input de usuário.
+
+---
+
 ## [v0.84.1] — 2026-05-04 — Suporte: badge no header + fix estado reply no admin
 
 ### Fixed

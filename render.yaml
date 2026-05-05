@@ -11,6 +11,8 @@ services:
         fromDatabase:
           name: leaklab-db
           property: connectionString
+      - key: ALLOWED_ORIGINS
+        value: https://leaklab.vercel.app  # update to actual frontend domain(s), comma-separated
 
 databases:
   - name: leaklab-db
