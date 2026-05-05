@@ -280,7 +280,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 r.get('level_bb', 0),
                 r.get('level_num', 0),
                 r.get('note', ''),
-                1 if r.get('is_3bet') else 0,
+                bool(r.get('is_3bet')),
                 r.get('showdown_result'),
                 pot_size_bb,
                 facing_bet_bb,
@@ -983,7 +983,7 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
         # ── 3BET%: hands where hero 3-bet / total preflop hands ──────────────
         tbet_row = conn.execute("""
             SELECT
-                COUNT(DISTINCT CASE WHEN d.is_3bet = 1 THEN d.hand_id END) AS three_bet_n,
+                COUNT(DISTINCT CASE WHEN d.is_3bet = TRUE THEN d.hand_id END) AS three_bet_n,
                 COUNT(DISTINCT d.hand_id) AS total_n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
@@ -2864,8 +2864,7 @@ def update_user_admin(user_id: int, plan: str = None, suspended: bool = None) ->
         if plan is not None:
             conn.execute("UPDATE users SET plan = ? WHERE id = ?", (plan, user_id))
         if suspended is not None:
-            val = 1 if suspended else 0
-            conn.execute("UPDATE users SET suspended = ? WHERE id = ?", (val, user_id))
+            conn.execute("UPDATE users SET suspended = ? WHERE id = ?", (bool(suspended), user_id))
         conn.commit()
     finally:
         conn.close()
@@ -3986,7 +3985,7 @@ def set_onboarding_completed(user_id: int) -> None:
     conn = get_conn()
     try:
         conn.execute(
-            _adapt("UPDATE users SET onboarding_completed = 1 WHERE id = ?"),
+            _adapt("UPDATE users SET onboarding_completed = TRUE WHERE id = ?"),
             (user_id,)
         )
         conn.commit()
