@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.84.7] — 2026-05-05 — Fix: Sparring 500 no PostgreSQL (HAVING alias)
+
+### Fixed
+- **`backend/database/repositories.py`**: `get_sparring_hand` usava `HAVING mistakes > 0` com alias de SELECT — PostgreSQL não permite aliases no HAVING (só SQLite). Substituído pela expressão completa `HAVING SUM(CASE WHEN ... THEN 1 ELSE 0 END) > 0` nas duas variantes da query (com e sem exclusão de mãos já vistas).
+
+---
+
 ## [v0.84.6] — 2026-05-05 — Fix: Ghost Table 500 no PostgreSQL
 
 ### Fixed
