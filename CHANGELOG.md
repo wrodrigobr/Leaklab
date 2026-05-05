@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.84.6] — 2026-05-05 — Fix: Ghost Table 500 no PostgreSQL
+
+### Fixed
+- **`backend/database/repositories.py`**: `get_drill_stats` usava `datetime('now', ? || ' days')` — concatenação dinâmica de parâmetro não é convertida pelo regex do `_adapt()`, então `datetime()` chegava ao PostgreSQL que não conhece essa função. Substituído por cutoff pré-computado em Python (mesmo padrão de todas as outras funções do arquivo).
+
+---
+
 ## [v0.84.5] — 2026-05-05 — UX: tabs na página Plano de Estudos
 
 ### Changed

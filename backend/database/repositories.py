@@ -798,6 +798,8 @@ def save_drill_session(user_id: int, decision_id: int, new_action: str,
 
 def get_drill_stats(user_id: int, days: int = 30) -> dict:
     """Sprint K — Estatísticas de drill dos últimos N dias."""
+    from datetime import datetime, timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
         row = conn.execute(_adapt("""
@@ -807,8 +809,8 @@ def get_drill_stats(user_id: int, days: int = 30) -> dict:
                 SUM(CASE WHEN delta < 0 THEN 1 ELSE 0 END)       AS correct,
                 SUM(CASE WHEN delta >= 0 THEN 1 ELSE 0 END)      AS incorrect
             FROM drill_sessions
-            WHERE user_id = ? AND drilled_at >= datetime('now', ? || ' days')
-        """), (user_id, f'-{days}')).fetchone()
+            WHERE user_id = ? AND drilled_at >= ?
+        """), (user_id, cutoff)).fetchone()
         if not row or not row['total']:
             return {'total': 0, 'correct': 0, 'incorrect': 0, 'accuracy': None, 'avg_delta': None}
         total = row['total'] or 0
