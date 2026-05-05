@@ -72,31 +72,8 @@ function parseCards(raw: string | null): CardData[] {
 
 const DUMMY_CARD: CardData = { rank: "A", suit: "s" };
 
-interface TableState { seats: Seat[]; pot: number; bb: number; dealerIndex: number }
+interface TableState { seats: Seat[]; pot: number; bb: number }
 
-// Returns the ordered_index of a position in the standard position sequence.
-// ordered[0]=SB, ordered[1]=BB, …, ordered[n-2]=CO, ordered[n-1]=BTN.
-function heroOrderedIndex(pos: string, n: number): number {
-  const p = pos.toUpperCase();
-  if (p === "SB")    return 0;
-  if (p === "BB")    return 1;
-  if (p === "BTN")   return n - 1;
-  if (p === "CO")    return n - 2;
-  if (p === "HJ")    return n - 3;
-  const utg = ["UTG", "UTG+1", "UTG+2", "MP1", "MP2", "MP3"];
-  const ui  = utg.indexOf(p);
-  if (ui >= 0) return 2 + ui;
-  return -1;
-}
-
-// Infers the dealer seat index from hero's position.
-// Seats are arranged clockwise: seats[0]=hero, seats[1]=next clockwise, …
-// Formula: dealerIndex = (n - 1 - heroOrderedIndex) % n
-function dealerFromHeroPos(pos: string | null, n: number): number {
-  const h = heroOrderedIndex((pos ?? "").toUpperCase(), n);
-  if (h < 0 || h > n - 1) return -1;
-  return (n - 1 - h + n) % n;
-}
 
 function buildSparringTable(
   step: SparringStep,
@@ -127,7 +104,6 @@ function buildSparringTable(
 
       // Villains in seat-number order (clockwise from hero perspective)
       let idx = 1;
-      let dealerIdx = dealerFromHeroPos(step.position, entries.length);
       for (const [seatNum, sd] of entries) {
         if (seatNum === heroSeatNum) continue;
         const betChips = replayStep.bets?.[seatNum];
@@ -140,12 +116,10 @@ function buildSparringTable(
           folded: foldedSet.has(sd.player),
           bet: betChips ? betChips / replayStep.bb : undefined,
         });
-        // If replay provides pos labels, find BTN by label
-        if (sd.pos?.toUpperCase() === "BTN") dealerIdx = idx - 1;
       }
 
       // pot_bb is already in BB; bb=1 so PokerTable fmt works correctly
-      return { seats, pot: replayStep.pot_bb ?? replayStep.pot / replayStep.bb, bb: 1, dealerIndex: dealerIdx };
+      return { seats, pot: replayStep.pot_bb ?? replayStep.pot / replayStep.bb, bb: 1 };
     }
   }
 
@@ -171,7 +145,7 @@ function buildSparringTable(
       bet: i + 1 === aggressorIdx ? facingBet : undefined,
     })),
   ];
-  return { seats, pot: step.pot_size ?? 0, bb: 1, dealerIndex: dealerFromHeroPos(step.position, numPlayers) };
+  return { seats, pot: step.pot_size ?? 0, bb: 1 };
 }
 
 // ── Street timeline ───────────────────────────────────────────────────────────
@@ -578,7 +552,7 @@ export default function Sparring() {
             const communityCards = parseCards(current.board).slice(0, boardLimit);
             const heroCards      = parseCards(current.hero_cards);
             const replayStep     = replayHeroSteps[stepIndex] ?? null;
-            const { seats, pot, bb, dealerIndex } = buildSparringTable(current, heroCards, replayStep);
+            const { seats, pot, bb } = buildSparringTable(current, heroCards, replayStep);
             return (
               <PokerTable
                 seats={seats}
@@ -587,7 +561,6 @@ export default function Sparring() {
                 street={current.street}
                 bb={bb}
                 betUnit="bb"
-                dealerIndex={dealerIndex}
               />
             );
           })()}
@@ -632,7 +605,7 @@ export default function Sparring() {
             const communityCards = parseCards(current.board).slice(0, boardLimit);
             const heroCards      = parseCards(current.hero_cards);
             const replayStep     = replayHeroSteps[stepIndex] ?? null;
-            const { seats, pot, bb, dealerIndex } = buildSparringTable(current, heroCards, replayStep);
+            const { seats, pot, bb } = buildSparringTable(current, heroCards, replayStep);
             return (
               <PokerTable
                 seats={seats}
@@ -641,7 +614,6 @@ export default function Sparring() {
                 street={current.street}
                 bb={bb}
                 betUnit="bb"
-                dealerIndex={dealerIndex}
               />
             );
           })()}
