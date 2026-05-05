@@ -140,6 +140,8 @@ CORS origins are controlled by the `ALLOWED_ORIGINS` env var (comma-separated). 
 | `PORT` | HTTP port (defaults to 5000) |
 | `STRIPE_SECRET_KEY` | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `SENTRY_DSN` | Sentry DSN para error tracking no backend (opcional — sem a var, Sentry é no-op) |
+| `ENVIRONMENT` | `production` / `development` — usado pelo Sentry para separar ambientes |
 
 ## Deployment
 

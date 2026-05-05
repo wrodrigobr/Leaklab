@@ -2,7 +2,7 @@
 PokerLeakLab API v2 — com persistência SQLite e autenticação JWT.
 """
 from __future__ import annotations
-import sys, os, re
+import sys, os, re, uuid, time, json, logging
 from pathlib import Path
 
 _BASE = Path(__file__).resolve().parent.parent  # backend/
@@ -11,13 +11,51 @@ sys.path.insert(0, str(_BASE))
 from dotenv import load_dotenv
 load_dotenv(_BASE / '.env')
 
-import logging
+# ── Sentry (no-op when SENTRY_DSN is absent) ─────────────────────────────────
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+_SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+if _SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        integrations=[
+            FlaskIntegration(),
+            LoggingIntegration(level=logging.WARNING, event_level=logging.ERROR),
+        ],
+        traces_sample_rate=0.05,
+        environment=os.environ.get('ENVIRONMENT', 'development'),
+        send_default_pii=False,
+    )
+
+# ── Structured JSON logging ───────────────────────────────────────────────────
+
+class _JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        entry: dict = {
+            'ts':    self.formatTime(record, '%Y-%m-%dT%H:%M:%S'),
+            'level': record.levelname,
+            'mod':   record.module,
+            'msg':   record.getMessage(),
+        }
+        for key in ('request_id', 'user_id', 'duration_ms', 'status', 'method', 'path'):
+            if hasattr(record, key):
+                entry[key] = getattr(record, key)
+        if record.exc_info:
+            entry['exc'] = self.formatException(record.exc_info)
+        return json.dumps(entry, ensure_ascii=False)
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(_JsonFormatter())
+logging.basicConfig(handlers=[_handler], level=logging.INFO, force=True)
+
+log = logging.getLogger(__name__)
+
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-
-log = logging.getLogger(__name__)
 
 from leaklab.parser import parse_pokerstars_file_from_text
 from leaklab.pipeline import build_decision_inputs_for_hand
@@ -105,6 +143,31 @@ from leaklab.stripe_gateway import (
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+
+# ── Request instrumentation ───────────────────────────────────────────────────
+
+@app.before_request
+def _before():
+    g.request_id = uuid.uuid4().hex[:8]
+    g.t0 = time.monotonic()
+
+@app.after_request
+def _log_request(response):
+    duration_ms = round((time.monotonic() - g.get('t0', time.monotonic())) * 1000)
+    log.info(
+        '%s %s %s',
+        request.method, request.path, response.status_code,
+        extra={
+            'request_id': g.get('request_id', ''),
+            'user_id':    g.get('user_id', ''),
+            'method':     request.method,
+            'path':       request.path,
+            'status':     response.status_code,
+            'duration_ms': duration_ms,
+        },
+    )
+    response.headers['X-Request-Id'] = g.get('request_id', '')
+    return response
 
 # ALLOWED_ORIGINS: comma-separated list of trusted frontend origins.
 # Defaults to "*" in dev; set explicitly in production via env var.
@@ -1044,7 +1107,17 @@ def coach_student_history(student_id):
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok', 'version': '2.0'})
+    db_ok = False
+    try:
+        from database.schema import get_conn
+        conn = get_conn()
+        conn.execute('SELECT 1')
+        conn.close()
+        db_ok = True
+    except Exception:
+        pass
+    status = 'ok' if db_ok else 'degraded'
+    return jsonify({'status': status, 'version': '2.0', 'db': db_ok}), (200 if db_ok else 503)
 
 
 @app.route('/analyze/guest', methods=['POST'])
