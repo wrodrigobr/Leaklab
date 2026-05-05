@@ -74,17 +74,28 @@ const DUMMY_CARD: CardData = { rank: "A", suit: "s" };
 
 interface TableState { seats: Seat[]; pot: number; bb: number; dealerIndex: number }
 
-// Infers the dealer seat index (in the seats array) from the hero's position label.
-// Seats are arranged clockwise: [hero, V1, V2, …]
-// BTN→0, SB→n-1, BB→n-2, CO→1; others return -1 (no chip shown).
+// Returns the ordered_index of a position in the standard position sequence.
+// ordered[0]=SB, ordered[1]=BB, …, ordered[n-2]=CO, ordered[n-1]=BTN.
+function heroOrderedIndex(pos: string, n: number): number {
+  const p = pos.toUpperCase();
+  if (p === "SB")    return 0;
+  if (p === "BB")    return 1;
+  if (p === "BTN")   return n - 1;
+  if (p === "CO")    return n - 2;
+  if (p === "HJ")    return n - 3;
+  const utg = ["UTG", "UTG+1", "UTG+2", "MP1", "MP2", "MP3"];
+  const ui  = utg.indexOf(p);
+  if (ui >= 0) return 2 + ui;
+  return -1;
+}
+
+// Infers the dealer seat index from hero's position.
+// Seats are arranged clockwise: seats[0]=hero, seats[1]=next clockwise, …
+// Formula: dealerIndex = (n - 1 - heroOrderedIndex) % n
 function dealerFromHeroPos(pos: string | null, n: number): number {
-  switch ((pos ?? "").toUpperCase()) {
-    case "BTN": return 0;
-    case "SB":  return n - 1;
-    case "BB":  return n - 2;
-    case "CO":  return 1;
-    default:    return -1;
-  }
+  const h = heroOrderedIndex((pos ?? "").toUpperCase(), n);
+  if (h < 0 || h > n - 1) return -1;
+  return (n - 1 - h + n) % n;
 }
 
 function buildSparringTable(
