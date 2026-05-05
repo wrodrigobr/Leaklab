@@ -1,0 +1,74 @@
+{
+  "eyebrow": "LeakLab Academy",
+  "title": "Academy",
+  "subtitle": "Fundamentals every serious player must master — from beginner to advanced.",
+  "comingSoon": "Coming soon",
+  "startDrill": "Start drill",
+  "loading": "Generating exercise…",
+  "loadError": "Could not load the exercise.",
+  "retry": "Try again",
+  "nextQuestion": "Next exercise",
+  "levels": {
+    "beginner": "Beginner",
+    "intermediate": "Intermediate",
+    "advanced": "Advanced"
+  },
+  "modules": {
+    "math": {
+      "title": "Intuitive Math",
+      "desc": "Master pot odds, EV and equity in a practical way — exercises generated from your own error spots."
+    },
+    "board_strength": {
+      "title": "Hand Strength on the Board",
+      "desc": "Accurately classify your hand and board texture. Knowing where you stand is the foundation of every post-flop decision."
+    },
+    "position": {
+      "title": "Position Fundamentals",
+      "desc": "Understand why position is the most persistent asset in poker and how it affects your realized equity."
+    },
+    "bet_sizing": {
+      "title": "Bet Sizing 101",
+      "desc": "Every wrong bet has an invisible cost. Learn the correct sizings and what each one communicates to opponents."
+    },
+    "ranges": {
+      "title": "Ranges by Stack Depth",
+      "desc": "Build and adjust ranges for push/fold, open and 3-bet as stack depth changes throughout the tournament."
+    },
+    "spr": {
+      "title": "SPR & Commitment",
+      "desc": "Before the flop you've already decided whether to stack off with top pair. Understand SPR and commitment thresholds."
+    },
+    "icm": {
+      "title": "Basic ICM",
+      "desc": "In MTTs, chip EV ≠ tournament EV. Understand ICM and make correct decisions on the bubble and at the final table."
+    }
+  },
+  "stats": {
+    "done": "Done",
+    "accuracy": "Accuracy",
+    "streak": "Streak"
+  },
+  "feedback": {
+    "correct": "Correct!",
+    "wrong": "Not quite"
+  },
+  "qtypes": {
+    "pot_odds_calc": "Pot Odds",
+    "call_or_fold": "Call or Fold",
+    "ev_direction": "Action EV",
+    "hand_classify": "Hand Strength",
+    "board_texture": "Board Texture"
+  },
+  "math": {
+    "eyebrow": "Academy — Beginner",
+    "title": "Intuitive Math",
+    "subtitle": "Pot odds, EV and equity in your own error spots."
+  },
+  "board": {
+    "eyebrow": "Academy — Beginner",
+    "title": "Hand Strength on the Board",
+    "subtitle": "Accurately classify your hand and board texture.",
+    "boardLabel": "Board",
+    "heroLabel": "Your cards"
+  }
+}

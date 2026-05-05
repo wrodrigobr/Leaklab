@@ -543,6 +543,44 @@ export const drill = {
     request<DrillAnalysisResult>(`/player/spots/drill/${decision_id}/analysis`),
 };
 
+// ── Academy ───────────────────────────────────────────────────────────────────
+
+export interface AcademyQuestion {
+  type: string;
+  question: string;
+  options: string[];
+  correct_index: number;
+  explanation: string;
+  hero_cards?: { rank: string; suit: string }[];
+  board_cards?: { rank: string; suit: string }[];
+  context?: { street?: string; position?: string; stack_bb?: number };
+  xp_value: number;
+}
+
+export interface AcademySubmitResult {
+  is_correct: boolean;
+}
+
+export const academy = {
+  mathQuestion: () =>
+    request<AcademyQuestion>("/academy/math/question"),
+
+  mathSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
+    request<AcademySubmitResult>("/academy/math/submit", {
+      method: "POST",
+      body: JSON.stringify({ selected_index, correct_index, xp_value }),
+    }),
+
+  boardStrengthQuestion: () =>
+    request<AcademyQuestion>("/academy/board-strength/question"),
+
+  boardStrengthSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
+    request<AcademySubmitResult>("/academy/board-strength/submit", {
+      method: "POST",
+      body: JSON.stringify({ selected_index, correct_index, xp_value }),
+    }),
+};
+
 export const sparring = {
   hand: (hand_id?: string, tournament_id?: number, exclude_hand_ids?: string[]) => {
     const q = new URLSearchParams();

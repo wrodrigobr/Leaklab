@@ -1,7 +1,7 @@
 {
   "eyebrow": "Módulo de Entrenamiento",
   "title": "Entrenamiento",
-  "subtitle": "Dos formas de convertir tus errores en aprendizaje activo.",
+  "subtitle": "Tres formas de convertir tus errores en aprendizaje activo.",
   "ghost": {
     "title": "Ghost Table",
     "badge": "Repetición Espaciada",
@@ -19,5 +19,15 @@
     "f2": "Mesa visual completa con posiciones, folds y apuestas reales",
     "f3": "Se integra directamente con Ghost Table vía SRS",
     "cta": "Iniciar Sparring"
+  },
+  "academy": {
+    "title": "Academia",
+    "badge": "Principiante → Avanzado",
+    "desc": "Módulos interactivos que cubren los fundamentos del juego — matemática, fuerza de mano, posición, ranges e ICM. Ejercicios generados de tu propio historial para máxima retención.",
+    "f1": "Matemática intuitiva: pot odds, EV y equity",
+    "f2": "Fuerza de mano y textura del board",
+    "f3": "Tres niveles: Principiante, Intermedio, Avanzado",
+    "f4": "XP y racha por cada ejercicio correcto",
+    "cta": "Ir a la Academia"
   }
 }

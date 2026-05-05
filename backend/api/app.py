@@ -943,6 +943,48 @@ def player_sparring_hand():
     return jsonify(data)
 
 
+# ── Academia ──────────────────────────────────────────────────────────────────
+
+@app.route('/academy/math/question', methods=['GET'])
+@require_auth
+def academy_math_question():
+    from leaklab.academy import generate_math_question
+    return jsonify(generate_math_question(g.user_id))
+
+
+@app.route('/academy/math/submit', methods=['POST'])
+@require_auth
+def academy_math_submit():
+    body          = request.get_json(force=True) or {}
+    selected      = body.get('selected_index')
+    correct       = body.get('correct_index')
+    xp_value      = int(body.get('xp_value', 15))
+    is_correct    = selected == correct
+    if is_correct:
+        add_xp(g.user_id, 'academy_math_correct', xp_value)
+    return jsonify({'is_correct': is_correct})
+
+
+@app.route('/academy/board-strength/question', methods=['GET'])
+@require_auth
+def academy_board_strength_question():
+    from leaklab.academy import generate_board_strength_question
+    return jsonify(generate_board_strength_question(g.user_id))
+
+
+@app.route('/academy/board-strength/submit', methods=['POST'])
+@require_auth
+def academy_board_strength_submit():
+    body          = request.get_json(force=True) or {}
+    selected      = body.get('selected_index')
+    correct       = body.get('correct_index')
+    xp_value      = int(body.get('xp_value', 20))
+    is_correct    = selected == correct
+    if is_correct:
+        add_xp(g.user_id, 'academy_board_correct', xp_value)
+    return jsonify({'is_correct': is_correct})
+
+
 @app.route('/player/strategic-twin', methods=['GET'])
 @require_auth
 def player_strategic_twin():

@@ -1,0 +1,74 @@
+{
+  "eyebrow": "Academia LeakLab",
+  "title": "Academia",
+  "subtitle": "Fundamentos que todo jugador serio debe dominar — del nivel básico al avanzado.",
+  "comingSoon": "Próximamente",
+  "startDrill": "Iniciar entrenamiento",
+  "loading": "Generando ejercicio…",
+  "loadError": "No se pudo cargar el ejercicio.",
+  "retry": "Intentar de nuevo",
+  "nextQuestion": "Siguiente ejercicio",
+  "levels": {
+    "beginner": "Principiante",
+    "intermediate": "Intermedio",
+    "advanced": "Avanzado"
+  },
+  "modules": {
+    "math": {
+      "title": "Matemática Intuitiva",
+      "desc": "Domina pot odds, EV y equity de forma práctica — ejercicios generados de tus propios spots de error."
+    },
+    "board_strength": {
+      "title": "Fuerza de Mano en el Board",
+      "desc": "Clasifica con precisión tu mano y la textura del board. Saber dónde estás es la base de toda decisión post-flop."
+    },
+    "position": {
+      "title": "Fundamentos de Posición",
+      "desc": "Entiende por qué la posición es el activo más persistente del poker y cómo afecta tu equity realizada."
+    },
+    "bet_sizing": {
+      "title": "Bet Sizing 101",
+      "desc": "Cada apuesta incorrecta tiene un costo invisible. Aprende los tamaños correctos y qué comunica cada sizing al rival."
+    },
+    "ranges": {
+      "title": "Ranges por Stack Depth",
+      "desc": "Construye y ajusta ranges para push/fold, open y 3-bet a medida que el stack depth cambia en el torneo."
+    },
+    "spr": {
+      "title": "SPR y Compromiso",
+      "desc": "Antes del flop ya decidiste si vas a stackear con top pair. Entiende el SPR y los umbrales de compromiso."
+    },
+    "icm": {
+      "title": "ICM Básico",
+      "desc": "En MTTs, EV de fichas ≠ EV de torneo. Comprende ICM y toma decisiones correctas en la burbuja y en la final."
+    }
+  },
+  "stats": {
+    "done": "Hechos",
+    "accuracy": "Precisión",
+    "streak": "Racha"
+  },
+  "feedback": {
+    "correct": "¡Correcto!",
+    "wrong": "Casi"
+  },
+  "qtypes": {
+    "pot_odds_calc": "Pot Odds",
+    "call_or_fold": "Call o Fold",
+    "ev_direction": "EV de la Acción",
+    "hand_classify": "Fuerza de Mano",
+    "board_texture": "Textura del Board"
+  },
+  "math": {
+    "eyebrow": "Academia — Principiante",
+    "title": "Matemática Intuitiva",
+    "subtitle": "Pot odds, EV y equity en tus propios spots de error."
+  },
+  "board": {
+    "eyebrow": "Academia — Principiante",
+    "title": "Fuerza de Mano en el Board",
+    "subtitle": "Clasifica con precisión tu mano y la textura del board.",
+    "boardLabel": "Board",
+    "heroLabel": "Tus cartas"
+  }
+}

@@ -1,7 +1,7 @@
 {
   "eyebrow": "Training Module",
   "title": "Training",
-  "subtitle": "Two ways to turn your mistakes into active learning.",
+  "subtitle": "Three ways to turn your mistakes into active learning.",
   "ghost": {
     "title": "Ghost Table",
     "badge": "Spaced Repetition",
@@ -19,5 +19,15 @@
     "f2": "Full visual table with real positions, folds and bets",
     "f3": "Integrates directly with Ghost Table via SRS",
     "cta": "Start Sparring"
+  },
+  "academy": {
+    "title": "Academy",
+    "badge": "Beginner → Advanced",
+    "desc": "Interactive modules covering game fundamentals — math, hand strength, position, ranges and ICM. Exercises generated from your own history for maximum retention.",
+    "f1": "Intuitive math: pot odds, EV and equity",
+    "f2": "Hand strength and board texture",
+    "f3": "Three levels: Beginner, Intermediate, Advanced",
+    "f4": "XP and streak for every correct exercise",
+    "cta": "Go to Academy"
   }
 }

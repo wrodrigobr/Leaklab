@@ -16,6 +16,7 @@ import ptBRGhost from './locales/pt-BR/ghost.json';
 import ptBRDocs from './locales/pt-BR/docs.json';
 import ptBRSparring from './locales/pt-BR/sparring.json';
 import ptBRTraining from './locales/pt-BR/training.json';
+import ptBRAcademy from './locales/pt-BR/academy.json';
 import ptBROnboarding from './locales/pt-BR/onboarding.json';
 
 import enCommon from './locales/en/common.json';
@@ -32,6 +33,7 @@ import enGhost from './locales/en/ghost.json';
 import enDocs from './locales/en/docs.json';
 import enSparring from './locales/en/sparring.json';
 import enTraining from './locales/en/training.json';
+import enAcademy from './locales/en/academy.json';
 import enOnboarding from './locales/en/onboarding.json';
 
 import esCommon from './locales/es/common.json';
@@ -48,6 +50,7 @@ import esGhost from './locales/es/ghost.json';
 import esDocs from './locales/es/docs.json';
 import esSparring from './locales/es/sparring.json';
 import esTraining from './locales/es/training.json';
+import esAcademy from './locales/es/academy.json';
 import esOnboarding from './locales/es/onboarding.json';
 
 i18n
@@ -70,6 +73,7 @@ i18n
         docs: ptBRDocs,
         sparring: ptBRSparring,
         training: ptBRTraining,
+        academy: ptBRAcademy,
         onboarding: ptBROnboarding,
       },
       en: {
@@ -87,6 +91,7 @@ i18n
         docs: enDocs,
         sparring: enSparring,
         training: enTraining,
+        academy: enAcademy,
         onboarding: enOnboarding,
       },
       es: {
@@ -104,6 +109,7 @@ i18n
         docs: esDocs,
         sparring: esSparring,
         training: esTraining,
+        academy: esAcademy,
         onboarding: esOnboarding,
       },
     },

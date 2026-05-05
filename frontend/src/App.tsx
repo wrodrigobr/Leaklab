@@ -24,6 +24,9 @@ import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GhostTable from "./pages/GhostTable.tsx";
 import Sparring from "./pages/Sparring.tsx";
 import Training from "./pages/Training.tsx";
+import Academy from "./pages/Academy.tsx";
+import AcademyMath from "./pages/AcademyMath.tsx";
+import AcademyBoardStrength from "./pages/AcademyBoardStrength.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
 import Docs from "./pages/Docs.tsx";
@@ -224,6 +227,9 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/academy" element={<ProtectedRoute><Academy /></ProtectedRoute>} />
+            <Route path="/academy/math" element={<ProtectedRoute><AcademyMath /></ProtectedRoute>} />
+            <Route path="/academy/board-strength" element={<ProtectedRoute><AcademyBoardStrength /></ProtectedRoute>} />
             <Route path="/docs" element={<AuthRoute><Docs /></AuthRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
