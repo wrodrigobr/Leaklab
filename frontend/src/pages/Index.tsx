@@ -50,13 +50,6 @@ const Index = () => {
   });
   const openTickets = supportCount?.open ?? 0;
 
-  const { data: myRepliesCount } = useQuery({
-    queryKey: ["my-support-unread"],
-    queryFn:  support.myUnreadCount,
-    refetchInterval: 120_000,
-    enabled: !!user && user.role !== "admin",
-  });
-  const myReplies = myRepliesCount?.replied ?? 0;
   const [evo, setEvo]                     = useState<EvolutionResponse | null>(null);
   const [breakdown, setBreakdown]         = useState<BreakdownResponse | null>(null);
   const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
@@ -409,16 +402,16 @@ const Index = () => {
             className="relative font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             {tc("support")}
-            {(openTickets > 0 || myReplies > 0) && (
+            {openTickets > 0 && (
               <span className="absolute -top-2 -right-3 flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
-                {(openTickets || myReplies) > 9 ? "9+" : (openTickets || myReplies)}
+                {openTickets > 9 ? "9+" : openTickets}
               </span>
             )}
           </button>
         </div>
       </footer>
 
-      {showSupport && <SupportModal onClose={() => setShowSupport(false)} initialTab={myReplies > 0 ? "inbox" : "new"} />}
+      {showSupport && <SupportModal onClose={() => setShowSupport(false)} />}
     </div>
   );
 };

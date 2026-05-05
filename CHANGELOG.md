@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.84.1] — 2026-05-04 — Suporte: badge no header + fix estado reply no admin
+
+### Fixed
+- **`frontend/src/pages/admin/AdminDashboard.tsx`**: `TicketRow.handleReply` chama `setOpen(false)` antes de invalidar queries — textarea some imediatamente ao confirmar envio, exibindo o card de "Resposta enviada".
+
+### Changed
+- **`frontend/src/components/hud/HudHeader.tsx`**: botão `LifeBuoy` adicionado no header (visível a todos os usuários não-admin). Badge vermelho aparece quando há tickets com resposta do admin. Clicar abre `SupportModal` diretamente na aba "Minhas mensagens" quando há respostas pendentes. `SupportModal` renderizado inline no header (igual ao drawer do coach).
+- **`frontend/src/pages/Index.tsx`**: badge de suporte do footer removido para não-admin (movido para o header). Footer mantém apenas o badge de tickets abertos para admin.
+
+---
+
 ## [v0.84.0] — 2026-05-04 — Suporte bidirecional: aluno visualiza resposta do admin
 
 ### Added

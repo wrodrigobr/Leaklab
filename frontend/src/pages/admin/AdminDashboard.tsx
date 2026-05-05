@@ -731,6 +731,7 @@ function TicketRow({ ticket, onReplied }: { ticket: SupportTicket; onReplied: ()
     setSaving(true);
     try {
       await support.replyTicket(ticket.id, reply.trim());
+      setOpen(false);
       qc.invalidateQueries({ queryKey: ["admin-support-tickets"] });
       qc.invalidateQueries({ queryKey: ["admin-support-count"] });
       onReplied();

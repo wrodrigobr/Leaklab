@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bot, Dumbbell, GraduationCap, Globe, LayoutDashboard, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, X } from "lucide-react";
+import { Activity, BarChart3, Bot, Dumbbell, GraduationCap, Globe, LayoutDashboard, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, LifeBuoy, X } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,7 +7,8 @@ import { useAuth } from "@/lib/auth";
 import { useUploadQueue } from "@/components/hud/UploadQueue";
 import { AccountMenu } from "@/components/hud/AccountMenu";
 import { CoachMessagesPanel } from "@/components/hud/CoachMessagesPanel";
-import { playerMessages } from "@/lib/api";
+import { SupportModal } from "@/components/hud/SupportModal";
+import { playerMessages, support } from "@/lib/api";
 
 interface HudHeaderProps {
   onUpload?: () => void;
@@ -74,14 +75,15 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen]       = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
-    if (!chatOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setChatOpen(false); };
+    if (!chatOpen && !supportOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setChatOpen(false); setSupportOpen(false); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [chatOpen]);
+  }, [chatOpen, supportOpen]);
 
   const playerNavItems: NavItem[] = [
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",   icon: LayoutDashboard },
@@ -121,6 +123,14 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     enabled: user?.role === "player" && !!user?.coach_id,
   });
   const unreadCount = unreadData?.unread ?? 0;
+
+  const { data: supportRepliesData } = useQuery({
+    queryKey: ["my-support-unread"],
+    queryFn: support.myUnreadCount,
+    refetchInterval: 120_000,
+    enabled: !!user && user.role !== "admin",
+  });
+  const supportReplies = supportRepliesData?.replied ?? 0;
 
   return (
     <>
@@ -179,6 +189,21 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
               >
                 <UploadCloud className="size-3.5" />
                 {t("actions.import")}
+              </button>
+            )}
+
+            {user && user.role !== "admin" && (
+              <button
+                onClick={() => setSupportOpen((o) => !o)}
+                title="Suporte"
+                className="relative flex items-center justify-center size-8 rounded-full bg-card ring-1 ring-border hover:ring-primary/40 transition-all"
+              >
+                <LifeBuoy className="size-3.5 text-muted-foreground" />
+                {supportReplies > 0 && (
+                  <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
+                    {supportReplies > 9 ? "9+" : supportReplies}
+                  </span>
+                )}
               </button>
             )}
 
@@ -257,6 +282,14 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
       )}
 
       {panel}
+
+      {/* ── Support modal ─────────────────────────────────────────────────────── */}
+      {supportOpen && (
+        <SupportModal
+          onClose={() => setSupportOpen(false)}
+          initialTab={supportReplies > 0 ? "inbox" : "new"}
+        />
+      )}
 
       {/* ── Coach chat drawer ─────────────────────────────────────────────────── */}
       {chatOpen && user?.role === "player" && user?.coach_id && (
