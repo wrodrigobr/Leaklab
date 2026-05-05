@@ -15,12 +15,13 @@ export interface Seat {
 }
 
 interface Props {
-  seats:     Seat[];
-  community: CardData[];
-  pot:       number;
-  street:    string;
-  bb?:       number;
-  betUnit?:  "chips" | "bb";
+  seats:       Seat[];
+  community:   CardData[];
+  pot:         number;
+  street:      string;
+  bb?:         number;
+  betUnit?:    "chips" | "bb";
+  dealerIndex?: number; // which seat (array index) holds the dealer button
 }
 
 // ── Geometry ──────────────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ function fmt(amount: number, bb: number, unit: "chips" | "bb") {
   return amount.toLocaleString();
 }
 
-export function PokerTable({ seats, community, pot, street, bb = 100, betUnit = "chips" }: Props) {
+export function PokerTable({ seats, community, pot, street, bb = 100, betUnit = "chips", dealerIndex }: Props) {
   const positions = seatPositions(seats.length);
 
   return (
@@ -95,6 +96,22 @@ export function PokerTable({ seats, community, pot, street, bb = 100, betUnit = 
           </div>
         );
       })}
+
+      {/* Dealer button */}
+      {typeof dealerIndex === "number" && dealerIndex >= 0 && dealerIndex < positions.length && (() => {
+        const { x, y } = positions[dealerIndex];
+        const { x: dx, y: dy } = betPosition(x, y, 0.22);
+        return (
+          <div
+            className="absolute z-30 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ left: `${dx}%`, top: `${dy}%` }}
+          >
+            <div className="flex size-5 items-center justify-center rounded-full bg-white font-mono text-[9px] font-black text-black shadow-md ring-1 ring-white/60">
+              D
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Seats */}
       {seats.map((seat, i) => {
