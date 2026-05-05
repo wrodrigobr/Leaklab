@@ -203,42 +203,47 @@ def _fetch_math_decision(user_id: int) -> Optional[dict]:
         conn.close()
 
 
-def generate_math_question(user_id: int) -> dict:
+def generate_math_question(user_id: int, level: str = 'beginner') -> dict:
     """
-    Generates one of 3 math exercise types:
-      - pot_odds_calc  : calcule a % mínima de equity
-      - call_or_fold   : dado equity e pot odds, call ou fold?
-      - ev_direction   : esta ação é +EV ou -EV?
+    Generates math exercise questions by level.
 
-    Returns a question dict ready to be JSON-serialized.
+    Beginner:     pot_odds_calc, call_or_fold, outs_count
+    Intermediate: equity_estimate, odds_vs_equity, ev_direction
     """
     decision = _fetch_math_decision(user_id)
 
-    # Fallback to synthetic question if no history
+    if level == 'intermediate':
+        if not decision:
+            return _equity_estimate_question()
+        pot = round(float(decision['pot_size']), 1)
+        bet = round(float(decision['facing_bet']), 1)
+        min_equity_pct = round(bet / (pot + bet) * 100, 1)
+        qtype = random.choices(
+            ['equity_estimate', 'odds_vs_equity', 'ev_direction'],
+            weights=[0.40, 0.35, 0.25],
+        )[0]
+        if qtype == 'equity_estimate':
+            return _equity_estimate_question()
+        if qtype == 'odds_vs_equity':
+            return _odds_vs_equity_question(pot, bet, decision)
+        return _ev_direction_question(pot, bet, min_equity_pct, decision)
+
+    # Beginner (default)
     if not decision:
-        return _synthetic_pot_odds_question()
+        return _outs_count_question() if random.random() < 0.4 else _synthetic_pot_odds_question()
 
     pot   = round(float(decision['pot_size']), 1)
     bet   = round(float(decision['facing_bet']), 1)
-    label = decision.get('label', 'standard')
-
-    # Minimum equity needed (pot odds formula)
-    min_equity_exact = bet / (pot + bet)
-    min_equity_pct   = round(min_equity_exact * 100, 1)
-
-    # Randomly pick a question type; bias toward pot_odds_calc for beginners
+    min_equity_pct = round(bet / (pot + bet) * 100, 1)
     qtype = random.choices(
-        ['pot_odds_calc', 'call_or_fold', 'ev_direction'],
-        weights=[0.50, 0.30, 0.20],
+        ['pot_odds_calc', 'call_or_fold', 'outs_count'],
+        weights=[0.40, 0.35, 0.25],
     )[0]
-
+    if qtype == 'outs_count':
+        return _outs_count_question()
     if qtype == 'pot_odds_calc':
         return _pot_odds_calc_question(pot, bet, min_equity_pct, decision)
-
-    if qtype == 'call_or_fold':
-        return _call_or_fold_question(pot, bet, min_equity_pct, decision)
-
-    return _ev_direction_question(pot, bet, min_equity_pct, decision)
+    return _call_or_fold_question(pot, bet, min_equity_pct, decision)
 
 
 def _pot_odds_calc_question(pot: float, bet: float, correct_pct: float, d: dict) -> dict:
@@ -258,12 +263,17 @@ def _pot_odds_calc_question(pot: float, bet: float, correct_pct: float, d: dict)
         f"Abaixo disso, fold preserva mais equity de stack a longo prazo."
     )
 
+    total_after_call = pot + 2 * bet
     return {
         'type': 'pot_odds_calc',
         'question': f'Pot: **{pot} BB**. Villain aposta **{bet} BB**.\nQual a equity mínima necessária para o call ser +EV?',
         'options': [f'{o}%' for o in options['values']],
         'correct_index': options['correct_index'],
         'explanation': explanation,
+        'mental_tip': (
+            f"**Atalho mental:** call ÷ pot_total = {bet} ÷ {total_after_call:.0f} ≈ **{correct_pct:.0f}%**. "
+            "Referências rápidas: aposta ½ pot → ~25%; aposta ⅔ pot → ~29%; aposta pot → ~33%; aposta 2× pot → ~40%."
+        ),
         'context': {'street': d.get('street'), 'position': d.get('position')},
         'xp_value': 15,
     }
@@ -313,6 +323,11 @@ def _call_or_fold_question(pot: float, bet: float, min_equity_pct: float, d: dic
         'options': options,
         'correct_index': correct_index,
         'explanation': explanation,
+        'mental_tip': (
+            "**Atalho mental:** compare apenas dois números — **equity estimada vs. pot odds**. "
+            "Se equity > pot odds → call. Se equity < pot odds → fold. "
+            "Não precisa calcular EV: a comparação direta já dá a resposta correta."
+        ),
         'context': {'street': d.get('street'), 'position': d.get('position')},
         'xp_value': 15,
     }
@@ -355,6 +370,11 @@ def _ev_direction_question(pot: float, bet: float, min_equity_pct: float, d: dic
         'options': options,
         'correct_index': correct_index,
         'explanation': explanation,
+        'mental_tip': (
+            "**Atalho mental:** equity > pot odds = **+EV sempre**, sem cálculo adicional. "
+            "Quer estimar quanto? Diferença em pp × pot = EV aproximado. "
+            "Ex: equity 5 pp acima do break-even, pot = 20 BB → ~+1 BB por call."
+        ),
         'context': {'street': d.get('street'), 'position': d.get('position')},
         'xp_value': 15,
     }
@@ -377,6 +397,7 @@ def _synthetic_pot_odds_question() -> dict:
     distractor2 = round((pot / (pot + bet)) * 100)
     options = _make_options(correct_pct, [distractor1, distractor2])
 
+    total_after_call = pot + 2 * bet
     return {
         'type': 'pot_odds_calc',
         'question': f'Pot: **{pot} BB**. Villain aposta **{bet} BB**.\nQual a equity mínima necessária para o call ser +EV?',
@@ -385,6 +406,10 @@ def _synthetic_pot_odds_question() -> dict:
         'explanation': (
             f"Fórmula: bet ÷ (pot + bet) = {bet} ÷ {pot + bet} ≈ **{correct_pct}%**.\n\n"
             "Você precisa de pelo menos essa equity para o call ser matematicamente justificado."
+        ),
+        'mental_tip': (
+            f"**Atalho mental:** call ÷ pot_total = {bet} ÷ {total_after_call} ≈ **{correct_pct}%**. "
+            "Referências rápidas: aposta ½ pot → ~25%; aposta ⅔ pot → ~29%; aposta pot → ~33%; aposta 2× pot → ~40%."
         ),
         'context': {},
         'xp_value': 15,
@@ -414,7 +439,7 @@ BUCKET_LABELS = {
     4: 'Mão muito forte (set / straight / flush / boat)',
     3: 'Mão forte (2 pares / top pair / overpair)',
     2: 'Par médio ou fraco',
-    1: 'Projeto (draw)',
+    1: 'Draw (flush draw, OESD ou gutshot — sem par)',
     0: 'Air (sem par, sem draw relevante)',
 }
 
@@ -422,8 +447,8 @@ BUCKET_LABELS_SHORT = {
     4: 'Mão muito forte',
     3: 'Mão forte',
     2: 'Par médio/fraco',
-    1: 'Projeto (draw)',
-    0: 'Air',
+    1: 'Draw (sem par feito)',
+    0: 'Air (nada)',
 }
 
 TEXTURE_LABELS = {
@@ -508,7 +533,7 @@ def _hand_classify_question(
         4: 'Esta mão forma uma combinação muito forte: set, straight, flush ou melhor. Na maioria dos spots, a linha correta é construir o pote.',
         3: 'Top pair, overpair ou dois pares — mão forte mas vulnerável a overCards e boards coordenados. Proteção e bet sizing adequados são críticos.',
         2: 'Par médio ou fraco: você tem showdown value mas está em terreno contestável. Pot control é a postura padrão.',
-        1: 'Você tem um projeto (draw): equity presente mas sem par ainda. Decisões envolvem comparar equity vs pot odds para justificar continuar.',
+        1: 'Você tem um **draw** (sem par feito): equity presente mas dependente de melhorar. Decisões envolvem comparar equity estimada vs pot odds para justificar continuar.',
         0: 'Sem par e sem draw relevante — air. Qualquer linha de continuação precisa de um objetivo claro (bluff bem selecionado com blockers).',
     }
 
@@ -523,6 +548,12 @@ def _hand_classify_question(
         'options': options,
         'correct_index': correct_index,
         'explanation': explanations[correct_bucket],
+        'mental_tip': (
+            "**Atalho:** verifique em ordem: (1) suas cartas formam par com o board? → par médio/forte; "
+            "(2) seu bolso bate as cartas do board? → overpair/set; "
+            "(3) 4 do mesmo naipe = flush draw; 4 cartas em sequência (gap ≤1) = straight draw. "
+            "Sem nada → air."
+        ),
         'context': {
             'street':   d.get('street'),
             'position': d.get('position'),
@@ -569,6 +600,12 @@ def _board_texture_question(
         'options': options,
         'correct_index': correct_index,
         'explanation': texture_exp[texture],
+        'mental_tip': (
+            "**Atalho:** conte naipes e gaps. "
+            "2+ cartas do mesmo naipe = flush draw presente. "
+            "2+ cartas com rank consecutivo (gap ≤1, ex: 7-8 ou 9-J) = straight draw presente. "
+            "Ambos = úmido; um só = semi-úmido; nenhum = seco."
+        ),
         'context': {'street': 'flop', 'position': d.get('position')},
         'xp_value': 20,
     }
@@ -623,6 +660,475 @@ def _synthetic_board_question() -> dict:
         'options': [BUCKET_LABELS_SHORT[b] for b in pool],
         'correct_index': correct_index,
         'explanation': 'Este é um exemplo de referência para treinar a classificação básica de força de mão.',
+        'mental_tip': (
+            "**Atalho:** verifique em ordem: (1) suas cartas formam par com o board? → par médio/forte; "
+            "(2) seu bolso bate as cartas do board? → overpair/set; "
+            "(3) 4 do mesmo naipe = flush draw; 4 cartas em sequência (gap ≤1) = straight draw. "
+            "Sem nada → air."
+        ),
         'context': {},
         'xp_value': 20,
     }
+
+
+# ── Beginner: Outs Count ────────────────────────────────────────────────────────
+
+# Each entry: (outs, draw_name, question_variants, explanation, mental_tip, distractors)
+_OUTS_SCENARIOS = [
+    (9, 'flush draw',
+     ['Você tem um **flush draw** (4 cartas do mesmo naipe). Quantos outs para completar o flush?',
+      'No flop, você flopped um **flush draw** com 4 cartas do mesmo naipe. Quantos outs você tem?',
+      'Villain aposta. Você tem um **flush draw** — 4 cartas do mesmo naipe no board + mão. Quantos outs?'],
+     '**9 outs**: há 13 cartas de cada naipe no deck. Você vê 4 delas, restam **9** que completam o flush.',
+     'Flush draw = **sempre 9 outs**. Memorize: 13 − 4 = 9.',
+     [6, 12]),
+    (8, 'OESD',
+     ['Você tem um **OESD** — sequência aberta pelos dois lados (ex: 7-8-9-T, precisa do 6 ou do J). Quantos outs?',
+      'Board de flop com um **OESD** nos seus hole cards (ex: 8-9-T-J, open-ended). Quantos outs para a sequência?',
+      'Você tem uma sequência aberta pelos dois lados (**OESD**). Quantos outs você tem para completar?'],
+     '**8 outs**: 4 cartas completam pela parte inferior + 4 pela superior da sequência = 8 total.',
+     'OESD = **8 outs**. Dois "lados" × 4 naipes = 8.',
+     [6, 9]),
+    (4, 'gutshot',
+     ['Você tem um **gutshot** (sequência com gap no meio, ex: 7-8-T-J precisando do 9). Quantos outs?',
+      'Você tem uma sequência com apenas uma rank que a fecha — um **gutshot**. Quantos outs?',
+      'No turn você tem um **gutshot**: só um rank específico completa a sua sequência. Quantos outs restam?'],
+     '**4 outs**: só uma rank específica fecha, em 4 naipes diferentes.',
+     'Gutshot = **4 outs**. Metade de um OESD. Sozinho raramente justifica calls grandes.',
+     [6, 8]),
+    (12, 'flush draw + gutshot',
+     ['Você tem **flush draw + gutshot** ao mesmo tempo. Qual o total aproximado de outs?',
+      'Combo draw: **flush draw** (4 ao flush) e **gutshot** simultaneamente. Quantos outs aproximados?',
+      'Você flopped **flush draw + gutshot** combinados. Estimando outs (descontando overlap), quantos você tem?'],
+     '**~12 outs**: 9 de flush + 4 de gutshot − 1 overlap (carta que completaria ambos conta só uma vez) ≈ 12.',
+     'Draws combinados: **some e subtraia ~1 de overlap**. Flush + gutshot ≈ 12.',
+     [9, 15]),
+    (15, 'flush draw + OESD',
+     ['Você tem o combo máximo: **flush draw + OESD**. Quantos outs aproximados?',
+      'Monster draw: **flush draw** + **OESD** no flop. Qual o total aproximado de outs?',
+      'Você flopped **flush draw e OESD** ao mesmo tempo. Quantos outs você tem (descontando overlap)?'],
+     '**~15 outs**: 9 de flush + 8 de OESD − 2 overlaps ≈ 15. Com ~15 outs você está quase no flip.',
+     'Flush + OESD ≈ **15 outs**. 15 × 4 = ~60% equity no flop — quase favorito!',
+     [12, 9]),
+    (6, 'duas overcards',
+     ['Você não tem par, mas suas duas cartas são maiores que o board inteiro (**duas overcards**). Quantos outs?',
+      'Você tem **duas overcards** — ambas as suas cartas superam todas as cartas do board. Quantos outs para virar par?',
+      'Sem par no flop, mas com **duas overcards**. Quantos outs você tem para pegar par?'],
+     '**6 outs**: cada overcard tem 3 outs (4 no deck − 1 já visível no board) × 2 cartas = 6.',
+     'Duas overcards = **6 outs**. Bom como equity adicional combinada com draws.',
+     [4, 9]),
+    (15, 'flush draw + duas overcards',
+     ['Você tem **flush draw + duas overcards** (sem par feito). Quantos outs aproximados?',
+      'Combo: **flush draw** com as duas cartas na mão também sendo overcards. Quantos outs?',
+      'Você tem um **flush draw** e suas duas cartas são overcards do board. Quantos outs no total?'],
+     '**~15 outs**: 9 de flush + 6 de overcards = 15. Com ~60% equity no flop, você frequentemente é favorito.',
+     '15 outs × 4 = **~60%** — isso é flip ou melhor contra muitas mãos feitas!',
+     [12, 9]),
+    (2, 'backdoor flush draw',
+     ['Você tem um **backdoor flush draw** (precisa de 2 cartas do mesmo naipe em turn + river). Quantos outs práticos tem?',
+      'Você tem apenas um **backdoor flush draw** — precisa que tanto o turn quanto o river sejam do mesmo naipe. Quantos outs?',
+      'Sua mão tem **backdoor flush draw** mas nenhum draw direto. Quantos outs isso representa?'],
+     '**~2 outs equivalentes**: a probabilidade (~4%) equivale a ter ~2 outs "reais". Não é draw para depender sozinho.',
+     'Backdoor draw = **~2 outs equivalentes** ou ~4%. Nunca chame bets grandes só por isso — use como equity adicional.',
+     [4, 6]),
+    (5, 'três overcards (flop A-alto)',
+     ['Em um flop com um Ás, você não tem par mas tem **três overcards** ao restante do board. Quantos outs para par?',
+      'Board tem um Ás. Você não pareou, mas suas cartas fazem **três overcards** ao segundo e terceiro card. Quantos outs?'],
+     '**~5 outs**: ~3 do overcard mais alto + ~2 do segundo overcard (já descontando o Ás do board). Estimativa aproximada.',
+     'Três overcards em board com Ás = **~5 outs** para pegar par. Não é muita equity — combine com outro draw.',
+     [4, 6]),
+]
+
+
+def _outs_count_question() -> dict:
+    """Quantos outs você tem com este tipo de draw?"""
+    outs, draw_name, questions, explanation, mental_tip, distractors = random.choice(_OUTS_SCENARIOS)
+    question_text = random.choice(questions)
+    pool = [outs] + [d for d in distractors if d != outs][:2]
+    random.shuffle(pool)
+    return {
+        'type': 'outs_count',
+        'question': question_text,
+        'options': [f'{o} outs' for o in pool],
+        'correct_index': pool.index(outs),
+        'explanation': explanation,
+        'mental_tip': mental_tip,
+        'context': {},
+        'xp_value': 15,
+    }
+
+
+# ── Intermediate: Equity Estimate (Regra 2/4) ───────────────────────────────────
+
+def _equity_estimate_question() -> dict:
+    """Dado X outs, calcule equity aproximada usando regra 2/4."""
+    draws = [
+        {'name': 'flush draw', 'outs': 9},
+        {'name': 'OESD', 'outs': 8},
+        {'name': 'gutshot', 'outs': 4},
+        {'name': 'flush draw + gutshot', 'outs': 12},
+        {'name': 'flush draw + OESD', 'outs': 15},
+        {'name': 'duas overcards', 'outs': 6},
+        {'name': 'flush draw + duas overcards', 'outs': 15},
+        {'name': 'OESD + duas overcards', 'outs': 14},
+        {'name': 'set (três outs para quads ou full house)', 'outs': 7},
+        {'name': 'duas overcards + gutshot', 'outs': 10},
+        {'name': 'backdoor flush draw', 'outs': 2},
+    ]
+    draw = random.choice(draws)
+    streets = random.choice(['turn', 'flop'])
+    multiplier = 2 if streets == 'turn' else 4
+    streets_label = 'turn (1 street restante)' if streets == 'turn' else 'flop (2 streets restantes)'
+    correct = draw['outs'] * multiplier
+
+    distractor1 = draw['outs'] * (4 if multiplier == 2 else 2)  # multiplicador errado
+    distractor2 = max(4, correct + random.choice([-6, 8, -8, 6]))
+    options = _make_options(correct, [distractor1, distractor2])
+
+    return {
+        'type': 'equity_estimate',
+        'question': (
+            f'Você está no **{streets_label}** com um **{draw["name"]}** ({draw["outs"]} outs).\n'
+            f'Usando a Regra 2/4, qual sua equity **aproximada**?'
+        ),
+        'options': [f'~{v}%' for v in options['values']],
+        'correct_index': options['correct_index'],
+        'explanation': (
+            f'Regra 2/4: {draw["outs"]} outs × **{multiplier}** = **~{correct}%** de equity.\n\n'
+            f'Com {1 if multiplier == 2 else 2} street{"" if multiplier == 2 else "s"} restante{"" if multiplier == 2 else "s"}, '
+            f'use o multiplicador **{multiplier}**. Este é um atalho mental — o valor real pode variar ±2pp.'
+        ),
+        'mental_tip': (
+            '**Regra 2/4:** outs × 2 no **turn** (1 street); outs × 4 no **flop** (2 streets). '
+            'Referências: flush draw (9) → ~18% turn / ~36% flop. '
+            'OESD (8) → ~16% / ~32%. Gutshot (4) → ~8% / ~16%.'
+        ),
+        'context': {},
+        'xp_value': 20,
+    }
+
+
+# ── Intermediate: Odds vs Equity ────────────────────────────────────────────────
+
+def _odds_vs_equity_question(pot: float, bet: float, d: dict) -> dict:
+    """Combine outs + pot odds: call ou fold?"""
+    draws = [
+        {'name': 'flush draw', 'outs': 9},
+        {'name': 'OESD', 'outs': 8},
+        {'name': 'gutshot', 'outs': 4},
+        {'name': 'duas overcards', 'outs': 6},
+        {'name': 'flush draw + gutshot', 'outs': 12},
+        {'name': 'flush draw + OESD', 'outs': 15},
+        {'name': 'OESD + duas overcards', 'outs': 14},
+        {'name': 'duas overcards + gutshot', 'outs': 10},
+    ]
+    draw = random.choice(draws)
+    street = d.get('street') or random.choice(['flop', 'turn'])
+    multiplier = 4 if street == 'flop' else 2
+    draw_equity = draw['outs'] * multiplier
+    pot_odds_pct = round(bet / (pot + bet) * 100)
+    correct_action = 'call' if draw_equity > pot_odds_pct else 'fold'
+
+    diff = draw_equity - pot_odds_pct
+    sign = '+' if diff >= 0 else ''
+
+    return {
+        'type': 'odds_vs_equity',
+        'question': (
+            f'No **{street}**: pot = **{pot} BB**, villain aposta **{bet} BB**.\n'
+            f'Você tem um **{draw["name"]}** ({draw["outs"]} outs).\n'
+            f'Usando regra ×{"4" if multiplier == 4 else "2"}, o call é correto?'
+        ),
+        'options': ['Call', 'Fold'],
+        'correct_index': 0 if correct_action == 'call' else 1,
+        'explanation': (
+            f'{draw["outs"]} outs × {multiplier} = **{draw_equity}%** de equity estimada.\n\n'
+            f'Pot odds mínimas: {bet} ÷ {pot + bet:.1f} = **{pot_odds_pct}%**.\n\n'
+            f'{draw_equity}% {">  →" if draw_equity > pot_odds_pct else "< →"} **{correct_action.upper()}** '
+            f'(margem: {sign}{diff} pp).'
+        ),
+        'mental_tip': (
+            '**Processo:** (1) conte os outs, (2) multiplique por 2 ou 4, '
+            '(3) compare com pot odds (call ÷ total_pot). '
+            'Equity > pot odds → call. Não precisa de calculadora.'
+        ),
+        'context': {'street': street, 'position': d.get('position')},
+        'xp_value': 20,
+    }
+
+
+# ── Advanced: SPR Commitment — parametric ──────────────────────────────────────
+
+# (hand_label, commitment_threshold_spr, explanation_template)
+# Committed when SPR < threshold
+_SPR_HANDS = [
+    ('set, straight ou flush', 99.0,
+     'Sets e mãos feitas muito fortes ficam **committed em qualquer SPR**. Você tem equity alta demais para abandonar.',
+     'Sets e melhor ficam committed em **qualquer SPR**.'),
+    ('dois pares fortes', 6.5,
+     'Com SPR < 6.5 e dois pares fortes você está **committed** — equity sólida mesmo em boards coordenados.',
+     'Dois pares fortes → committed com SPR < ~6.'),
+    ('overpair forte (AA/KK)', 5.5,
+     'AA/KK no flop com SPR < 5.5: você está **committed**. Fold equity de villain é alto demais para ceder o pot.',
+     'Overpairs fortes (AA/KK) → committed com SPR < ~5.5.'),
+    ('overpair médio (QQ-TT)', 4.2,
+     'Overpairs médios ficam committed com SPR < ~4.2 — equity ainda domina ranges amplamente.',
+     'Overpairs médios → committed com SPR < ~4.'),
+    ('top pair top kicker', 3.0,
+     'TPTK com SPR < 3: você está **committed**. O pot é muito grande para dobrar — a equity justifica.',
+     'TPTK → committed com SPR < ~3.'),
+    ('top pair kicker médio', 2.0,
+     'Top pair kicker médio com SPR < 2: **committed**. Mas com SPR maior, considere pot control.',
+     'Top pair kicker médio → committed com SPR < ~2.'),
+    ('top pair kicker fraco', 1.5,
+     'Top pair kicker fraco com SPR < 1.5: ainda **committed** pelo tamanho do pot. SPR maior → pot control obrigatório.',
+     'Top pair kicker fraco → committed apenas com SPR < ~1.5.'),
+    ('segunda par (second pair)', 1.0,
+     'Segunda par com SPR < 1: o pot já é tão grande que **committed** por pot odds implícitas.',
+     'Segunda par → committed apenas com SPR < ~1. Com mais stack, controle o pot.'),
+    ('bottom pair', 0.6,
+     'Bottom pair exige SPR muito baixo (< 0.6) para estar committed. Acima disso, **controle o pot** estritamente.',
+     'Bottom pair = quase nunca committed. Apenas com micro-stack.'),
+    ('flush draw (sem par)', 0.0,
+     'Draws sem par **nunca estão committed por SPR** — você depende de melhorar para ter valor. Avalie apenas por pot odds.',
+     'Draws sem par = nunca committed por SPR. Avalie só por pot odds.'),
+    ('gutshot (sem par feito)', 0.0,
+     'Gutshot sem par tem equity insuficiente para commitment em qualquer SPR. Avalie exclusivamente por pot odds.',
+     'Draws (gutshot sem par) = nunca committed. Chame apenas quando pot odds justificam.'),
+]
+
+# SPR values to sample from — realistic poker distribution
+_SPR_VALUES = [0.4, 0.6, 0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.2, 2.5, 2.8,
+               3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 8.0]
+
+
+def _spr_commitment_question() -> dict:
+    """Parametric SPR commitment — infinite variety from threshold table."""
+    spr = random.choice(_SPR_VALUES)
+
+    # Find hands clearly committed (threshold > spr + 0.4) and clearly not (threshold < spr - 0.4)
+    committed_pool = [(h, t, exp, tip) for h, t, exp, tip in _SPR_HANDS if t > spr + 0.4]
+    not_committed_pool = [(h, t, exp, tip) for h, t, exp, tip in _SPR_HANDS if t < spr - 0.4]
+
+    # Ensure we have both options; fall back to boundary if one pool is empty
+    if not committed_pool:
+        committed_pool = [(h, t, exp, tip) for h, t, exp, tip in _SPR_HANDS if t > spr]
+    if not not_committed_pool:
+        not_committed_pool = [(h, t, exp, tip) for h, t, exp, tip in _SPR_HANDS if t < spr]
+
+    is_committed = random.random() < 0.5
+    if is_committed and committed_pool:
+        hand, threshold, exp_template, tip = random.choice(committed_pool)
+    elif not_committed_pool:
+        hand, threshold, exp_template, tip = random.choice(not_committed_pool)
+        is_committed = False
+    else:
+        hand, threshold, exp_template, tip = random.choice(_SPR_HANDS)
+        is_committed = threshold > spr
+
+    options = ['Sim — jogo por todo o stack', 'Não — controlo o pot']
+    return {
+        'type': 'spr_commitment',
+        'question': (
+            f'No flop. SPR = **{spr}**. Sua mão: **{hand}**.\n'
+            f'Você está committed para stackar aqui?'
+        ),
+        'options': options,
+        'correct_index': 0 if is_committed else 1,
+        'explanation': exp_template,
+        'mental_tip': (
+            '**Guia SPR rápido:** '
+            'SPR < 1 → committed c/ qualquer par. '
+            'SPR 1–3 → top pair+ committed. '
+            'SPR 3–5 → overpair / TPTK. '
+            'SPR > 5 → set e melhor. '
+            'Draws sem par: **nunca committed por SPR**.'
+        ),
+        'context': {},
+        'xp_value': 25,
+    }
+
+
+# ── Advanced: ICM Spot ──────────────────────────────────────────────────────────
+
+_ICM_CONTEXTS = [
+    {
+        'ctx': 'bolha do torneio — você é stack médio, villain é chip leader',
+        'correct': 'fold',
+        'edge_range': (3, 6),
+        'pot_odds_range': (29, 36),
+        'exp_template': (
+            'Na bolha com stack médio, **perder = eliminação sem prêmio**. '
+            'Edge de apenas +{edge}pp não compensa o risco de 0 em equity de torneio. '
+            'ICM dita fold mesmo sendo +EV em chips.'
+        ),
+    },
+    {
+        'ctx': 'bolha — você tem micro-stack (M-ratio < 4), já quase eliminado',
+        'correct': 'call',
+        'edge_range': (5, 10),
+        'pot_odds_range': (33, 42),
+        'exp_template': (
+            'Com micro-stack na bolha, a diferença entre call e fold é pequena em equity de torneio. '
+            'Com +{edge}pp de edge você **chama** — de qualquer forma está quase eliminado.'
+        ),
+    },
+    {
+        'ctx': 'mesa final — você é big stack, villain é short stack',
+        'correct': 'call',
+        'edge_range': (6, 12),
+        'pot_odds_range': (24, 34),
+        'exp_template': (
+            'Como big stack na final, **eliminar short stacks aumenta seu equity de torneio**. '
+            'Edge de +{edge}pp contra um stack que não te ameaça → call correto.'
+        ),
+    },
+    {
+        'ctx': 'bolha — você é chip leader, villain é segundo colocado',
+        'correct': 'fold',
+        'edge_range': (3, 7),
+        'pot_odds_range': (30, 38),
+        'exp_template': (
+            'Como chip leader na bolha, seu equity de torneio é **máximo** — qualquer confronto de alto risco é desnecessário. '
+            'Fold preserva posição dominante com edge de apenas +{edge}pp.'
+        ),
+    },
+    {
+        'ctx': 'final table com 3 jogadores — pay jump enorme para 2º lugar',
+        'correct': 'fold',
+        'edge_range': (2, 6),
+        'pot_odds_range': (28, 36),
+        'exp_template': (
+            'Com pay jump enorme para 2º, o custo de eliminação é desproporcional. '
+            'Mesmo com edge de +{edge}pp, **ICM justifica fold** para garantir o prêmio.'
+        ),
+    },
+    {
+        'ctx': 'bolha — stack médio enfrenta reshove do pequeno stack isolado',
+        'correct': 'call',
+        'edge_range': (8, 14),
+        'pot_odds_range': (35, 44),
+        'exp_template': (
+            'Reshove de pequeno stack isolado não ameaça sua sobrevivência de forma crítica. '
+            'Com +{edge}pp de edge contra um range amplo de push, **chip EV prevalece** aqui.'
+        ),
+    },
+    {
+        'ctx': 'torneio — ITM recente, você é médio stack, villain é big stack agressivo',
+        'correct': 'fold',
+        'edge_range': (3, 5),
+        'pot_odds_range': (31, 37),
+        'exp_template': (
+            'Recém no dinheiro com stack médio contra um big stack, seu equity de torneio cresce ao sobreviver. '
+            'Edge marginal de +{edge}pp não justifica exposição total contra o chip leader.'
+        ),
+    },
+    {
+        'ctx': 'mesa final — você é short stack crítico (M < 3), qualquer um pode te eliminar',
+        'correct': 'call',
+        'edge_range': (4, 9),
+        'pot_odds_range': (36, 46),
+        'exp_template': (
+            'Com M < 3, seu equity de torneio já é mínimo independente de fold. '
+            'Com +{edge}pp de edge, **chame e tente dobrar** — esperar só piora sua situação.'
+        ),
+    },
+]
+
+
+def _icm_spot_question() -> dict:
+    """ICM pressure: pot odds normais ainda se aplicam?"""
+    ctx = random.choice(_ICM_CONTEXTS)
+    pot_odds = random.randint(*ctx['pot_odds_range'])
+    edge = random.randint(*ctx['edge_range'])
+    equity = pot_odds + edge
+    exp = ctx['exp_template'].format(edge=edge)
+    options = ['Call (pot odds justificam)', 'Fold (ICM neutraliza o edge)']
+    correct_index = 0 if ctx['correct'] == 'call' else 1
+    return {
+        'type': 'icm_spot',
+        'question': (
+            f'**{ctx["ctx"]}**.\n'
+            f'Pot odds exigem **{pot_odds}%**. Sua equity estimada: **{equity}%**.\n'
+            f'Considerando ICM, qual a linha correta?'
+        ),
+        'options': options,
+        'correct_index': correct_index,
+        'explanation': exp,
+        'mental_tip': (
+            '**Regra ICM prática:** edge pequeno (+3 a +5pp) na bolha com stack médio/grande → fold. '
+            'Micro-stack ou big stack eliminando curtos → chip EV prevalece. '
+            'Pay jump enorme próximo → seja mais conservador do que pot odds sugerem.'
+        ),
+        'context': {},
+        'xp_value': 25,
+    }
+
+
+# ── Advanced: 3-Bet Pot Equity ──────────────────────────────────────────────────
+
+_3BET_OPEN_SIZES  = [2.0, 2.2, 2.5, 2.5, 2.5, 2.8, 3.0, 3.0, 3.5]   # weighted toward 2.5/3.0
+_3BET_MULTIPLIERS = [3.0, 3.2, 3.3, 3.5, 3.5, 3.7, 4.0, 4.0, 4.2, 4.5]
+
+
+def _3bet_pot_question() -> dict:
+    """Em um pote de 3-bet, qual equity mínima para flat call? Parametric."""
+    open_bb = random.choice(_3BET_OPEN_SIZES)
+    mult    = random.choice(_3BET_MULTIPLIERS)
+    # round 3-bet to nearest 0.5 BB for realism
+    threbet_bb  = round(open_bb * mult * 2) / 2
+    call_amount = round((threbet_bb - open_bb) * 10) / 10
+    # pot = SB(0.5) + BB(1) + hero_open + villain_threbet + hero_call
+    # = 1.5 + open + threbet + call = 1.5 + open + threbet + (threbet - open) = 1.5 + 2*threbet
+    pot_after   = round((1.5 + 2 * threbet_bb) * 10) / 10
+    correct_pct = round(call_amount / pot_after * 100)
+
+    # distractors: one using call/threbet (common mistake), one offset
+    distractor1 = round(call_amount / threbet_bb * 100)
+    offset = random.choice([-9, -7, 8, 10])
+    distractor2 = max(20, min(55, correct_pct + offset))
+    options = _make_options(correct_pct, [distractor1, distractor2])
+
+    open_fmt    = f'{open_bb:.1f}'.rstrip('0').rstrip('.')
+    threbet_fmt = f'{threbet_bb:.1f}'.rstrip('0').rstrip('.')
+    call_fmt    = f'{call_amount:.1f}'.rstrip('0').rstrip('.')
+    pot_fmt     = f'{pot_after:.1f}'.rstrip('0').rstrip('.')
+
+    return {
+        'type': '3bet_pot',
+        'question': (
+            f'Você abre **{open_fmt} BB**, villain 3-bet para **{threbet_fmt} BB**.\n'
+            f'Qual a equity mínima necessária para o **flat call** ser matematicamente válido?'
+        ),
+        'options': [f'{v}%' for v in options['values']],
+        'correct_index': options['correct_index'],
+        'explanation': (
+            f'Você chama **{call_fmt} BB**. Pot total após o call: ~**{pot_fmt} BB**.\n\n'
+            f'Fórmula: {call_fmt} ÷ {pot_fmt} ≈ **{correct_pct}%** mínimo.'
+        ),
+        'mental_tip': (
+            '**3-bet pots:** você geralmente precisa de **~30–35% de equity** para flat callar. '
+            'Aplique a fórmula: call ÷ total_pot_após_call. '
+            'Combos abaixo de ~30% vs a range de 3-bet → fold ou 4-bet (não flat).'
+        ),
+        'context': {},
+        'xp_value': 25,
+    }
+
+
+# ── Tournament module dispatcher ────────────────────────────────────────────────
+
+def generate_tournament_question(user_id: int) -> dict:
+    """
+    Advanced tournament context questions:
+      spr_commitment, icm_spot, 3bet_pot
+    """
+    qtype = random.choices(
+        ['spr_commitment', 'icm_spot', '3bet_pot'],
+        weights=[0.35, 0.35, 0.30],
+    )[0]
+    if qtype == 'spr_commitment':
+        return _spr_commitment_question()
+    if qtype == 'icm_spot':
+        return _icm_spot_question()
+    return _3bet_pot_question()
