@@ -364,6 +364,14 @@ def unlink_coach():
 @require_auth
 @limiter.limit("30 per hour")
 def analyze():
+    try:
+        return _analyze_impl()
+    except Exception as e:
+        log.exception("unhandled error in /analyze for user %s", g.user_id)
+        return jsonify({'error': f'Erro ao processar arquivo: {type(e).__name__}: {e}'}), 500
+
+
+def _analyze_impl():
     quota_err = _check_upload_quota(g.user_id)
     if quota_err:
         return quota_err
