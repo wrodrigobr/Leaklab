@@ -103,6 +103,7 @@ function CoachMiniCard({ coach }: { coach: PublicCoach }) {
 }
 
 function CoachRecommendationStrip({ spot }: { spot: string }) {
+  const { t } = useTranslation("study");
   const { data, isLoading } = useQuery({
     queryKey: ["coaches-for-spot", spot],
     queryFn: () => coaches.list({ specialty: spot, sort: "rating", limit: 4 }),
