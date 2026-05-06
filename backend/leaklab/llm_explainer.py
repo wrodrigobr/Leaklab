@@ -920,7 +920,7 @@ def explain_leak_causality(edges: list, hero: str = 'você', lang: str = 'pt-BR'
     """1 parágrafo curto (2-3 frases) explicando a causa raiz dos pares mais correlacionados."""
     if not edges:
         return ""
-    cache_key = "causal_v2_" + lang + "_" + "_".join(
+    cache_key = "causal_v3_" + lang + "_" + "_".join(
         f"{e['source']}:{e['target']}" for e in edges[:3]
     )
     if cache_key in _cache:
@@ -942,7 +942,10 @@ _POKER_TERMS_EN = (
 )
 
 _LANG_INSTRUCTIONS = {
-    'pt-BR': f"Responda APENAS em português do Brasil. {_POKER_TERMS_EN}",
+    'pt-BR': (
+        f"Responda APENAS em português do Brasil formal. {_POKER_TERMS_EN} "
+        "Use 'você está', 'você precisa' — NUNCA contrações informais como 'tá', 'tô', 'pra'."
+    ),
     'en':    "Respond ONLY in English. Keep poker technical terms in English.",
     'es':    f"Responde ÚNICAMENTE en español. {_POKER_TERMS_EN}",
 }
@@ -1111,7 +1114,11 @@ def _template_career(projection: dict) -> str:
 # ── Cognitive Failure Narrative (Sprint AQ) ──────────────────────────────────
 
 _LANG_COGNITIVE = {
-    'pt-BR': "Responda APENAS em português do Brasil. NUNCA use 'rua' ou 'ruas' — sempre 'street' ou 'streets'.",
+    'pt-BR': (
+        "Responda APENAS em português do Brasil formal. "
+        "Use 'você está', 'você precisa', 'você tende' — NUNCA use contrações informais como 'tá', 'tô', 'pra'. "
+        "NUNCA use 'rua' ou 'ruas' — sempre 'street' ou 'streets'."
+    ),
     'en':    "Respond ONLY in English.",
     'es':    "Responde ÚNICAMENTE en español.",
 }
@@ -1155,7 +1162,7 @@ def generate_cognitive_narrative(patterns: list, lang: str = 'pt-BR') -> str:
     if not patterns:
         return ""
     cache_key = (
-        f"cog_v2_{lang}_"
+        f"cog_v3_{lang}_"
         + "_".join(f"{p['type']}:{p['severity']}" for p in patterns[:3])
     )
     if cache_key in _cache:
@@ -1190,7 +1197,9 @@ def _call_cognitive_narrative(patterns: list, lang: str) -> str:
         "(what they do with their chips or their decisions). "
         "(3) Give one simple, physical or mental reset trick they can use in the next session "
         "to interrupt the pattern — make it specific and immediately actionable. "
-        "Write as if talking face to face. Keep each sentence under 40 words. "
+        "Tone: warm and direct, like a good coach, but ALWAYS use formal language — "
+        "in Portuguese use 'você está' never 'você tá', avoid slang or contractions. "
+        "Keep each sentence under 40 words. "
         "Do NOT use titles, bullets, or academic labels like 'cognitive bias'."
     )
     user_content = (
