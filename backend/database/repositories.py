@@ -2820,20 +2820,22 @@ def get_all_users(limit: int = 50, offset: int = 0, plan: str = None,
         if role:
             filters.append("u.role = ?"); params.append(role)
         if search:
-            filters.append("(u.username ILIKE ? OR u.email ILIKE ?)") if USE_POSTGRES else \
-            filters.append("(LOWER(u.username) LIKE ? OR LOWER(u.email) LIKE ?)")
+            filters.append("(u.username ILIKE ? OR u.email ILIKE ? OR cp.display_name ILIKE ?)") if USE_POSTGRES else \
+            filters.append("(LOWER(u.username) LIKE ? OR LOWER(u.email) LIKE ? OR LOWER(COALESCE(cp.display_name,'')) LIKE ?)")
             term = f'%{search.lower()}%'
-            params.extend([term, term])
+            params.extend([term, term, term])
         where = ("WHERE " + " AND ".join(filters)) if filters else ""
         params.extend([limit, offset])
         return _fetchall(conn, f"""
             SELECT u.id, u.username, u.email, u.role, u.plan,
                    u.created_at, u.last_login, u.suspended,
                    c.username AS coach_username,
+                   cp.display_name,
                    (SELECT MAX(imported_at) FROM tournaments WHERE user_id = u.id) AS last_import,
                    (SELECT COUNT(*) FROM tournaments WHERE user_id = u.id) AS tournament_count
             FROM users u
             LEFT JOIN users c ON c.id = u.coach_id
+            LEFT JOIN coach_profiles cp ON cp.user_id = u.id
             {where}
             ORDER BY u.created_at DESC
             LIMIT ? OFFSET ?
@@ -2847,15 +2849,19 @@ def get_all_users_count(plan: str = None, role: str = None, search: str = None) 
     try:
         filters, params = [], []
         if plan:
-            filters.append("plan = ?"); params.append(plan)
+            filters.append("u.plan = ?"); params.append(plan)
         if role:
-            filters.append("role = ?"); params.append(role)
+            filters.append("u.role = ?"); params.append(role)
         if search:
-            filters.append("(LOWER(username) LIKE ? OR LOWER(email) LIKE ?)")
+            filters.append("(LOWER(u.username) LIKE ? OR LOWER(u.email) LIKE ? OR LOWER(COALESCE(cp.display_name,'')) LIKE ?)")
             term = f'%{search.lower()}%'
-            params.extend([term, term])
+            params.extend([term, term, term])
         where = ("WHERE " + " AND ".join(filters)) if filters else ""
-        return _fetchone(conn, f"SELECT COUNT(*) AS n FROM users {where}", params)['n']
+        return _fetchone(conn, f"""
+            SELECT COUNT(*) AS n FROM users u
+            LEFT JOIN coach_profiles cp ON cp.user_id = u.id
+            {where}
+        """, params)['n']
     finally:
         conn.close()
 

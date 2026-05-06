@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.85.3] — 2026-05-06 — fix: admin Users tab não mostrava display_name dos coaches
+
+### Fixed
+- **`get_all_users` (repositories.py)**: adicionado `LEFT JOIN coach_profiles` para incluir `display_name` do perfil público do coach na listagem de usuários do admin
+- **`get_all_users_count`**: mesma correção para manter contagem paginada consistente com a query principal; filtros de `plan` e `role` agora usam alias `u.` para evitar ambiguidade
+- **Busca por display_name**: admin pode agora buscar coaches pelo nome público (ex: "Daniel Negreanu") no campo de busca da aba Users — antes só buscava por `username` e `email`
+- **`AdminDashboard.tsx` UsersTab**: coaches com `display_name` são exibidos com o mesmo padrão da aba Finance: nome público em destaque + `@username` abaixo — elimina a confusão de um coach aparecer como "coach" na aba Users e "Daniel Negreanu" na aba Finance
+- **`AdminUser` interface (api.ts)**: adicionado campo `display_name: string | null`
+
+---
+
 ## [v0.85.2] — 2026-05-06 — fix: coach inbox mostrava só 1 conversa (filtro errado)
 
 ### Fixed

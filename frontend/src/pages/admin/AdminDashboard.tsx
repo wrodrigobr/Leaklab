@@ -296,7 +296,8 @@ function UsersTab() {
               ) : users.map(u => (
                 <tr key={u.id} className={cn("transition-colors hover:bg-primary/5", u.suspended && "opacity-50")}>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-foreground">{u.username}</p>
+                    <p className="font-medium text-foreground">{u.display_name || u.username}</p>
+                    {u.display_name && <p className="font-mono text-[10px] text-muted-foreground">@{u.username}</p>}
                     <p className="font-mono text-[10px] text-muted-foreground">{u.email}</p>
                   </td>
                   <td className="px-4 py-3 font-mono text-muted-foreground">{u.role}</td>

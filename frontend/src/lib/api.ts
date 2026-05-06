@@ -551,6 +551,7 @@ export interface AcademyQuestion {
   options: string[];
   correct_index: number;
   explanation: string;
+  mental_tip?: string;
   hero_cards?: { rank: string; suit: string }[];
   board_cards?: { rank: string; suit: string }[];
   context?: { street?: string; position?: string; stack_bb?: number };
@@ -562,8 +563,8 @@ export interface AcademySubmitResult {
 }
 
 export const academy = {
-  mathQuestion: () =>
-    request<AcademyQuestion>("/academy/math/question"),
+  mathQuestion: (level: "beginner" | "intermediate" = "beginner") =>
+    request<AcademyQuestion>(`/academy/math/question?level=${level}`),
 
   mathSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
     request<AcademySubmitResult>("/academy/math/submit", {
@@ -576,6 +577,15 @@ export const academy = {
 
   boardStrengthSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
     request<AcademySubmitResult>("/academy/board-strength/submit", {
+      method: "POST",
+      body: JSON.stringify({ selected_index, correct_index, xp_value }),
+    }),
+
+  tournamentQuestion: () =>
+    request<AcademyQuestion>("/academy/tournament/question"),
+
+  tournamentSubmit: (selected_index: number, correct_index: number, xp_value: number) =>
+    request<AcademySubmitResult>("/academy/tournament/submit", {
       method: "POST",
       body: JSON.stringify({ selected_index, correct_index, xp_value }),
     }),
@@ -1381,6 +1391,7 @@ export interface AdminUser {
   last_import: string | null;
   tournament_count: number;
   coach_username: string | null;
+  display_name: string | null;
   suspended: boolean | number;
 }
 
