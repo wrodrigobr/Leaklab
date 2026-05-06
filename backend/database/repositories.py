@@ -3926,3 +3926,35 @@ def set_onboarding_completed(user_id: int) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+# ── Session Goals — FEAT-08 ───────────────────────────────────────────────────
+
+def get_session_goal_for_tournament(user_id: int, tournament_id: int) -> Optional[dict]:
+    """Returns the most recent session goal linked to a tournament for a user."""
+    conn = get_conn()
+    try:
+        row = _fetchone(
+            conn,
+            _adapt("""SELECT id, goal_leak_spot, target_standard_pct, notes, llm_review
+                      FROM session_goals
+                      WHERE user_id = ? AND tournament_id = ?
+                      ORDER BY created_at DESC LIMIT 1"""),
+            (user_id, tournament_id),
+        )
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def save_session_goal_review(goal_id: int, review: str) -> None:
+    """Persists the LLM-generated review text for a session goal."""
+    conn = get_conn()
+    try:
+        conn.execute(
+            _adapt("UPDATE session_goals SET llm_review = ? WHERE id = ?"),
+            (review, goal_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()

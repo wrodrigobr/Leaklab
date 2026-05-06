@@ -1609,7 +1609,14 @@ export const coachContact = {
     request<{ messages: CoachMessage[] }>(`/coach/${coachId}/contact-thread`),
 };
 
+export interface SessionGoal {
+  goal_leak_spot: string | null;
+  target_standard_pct: number | null;
+  notes: string | null;
+}
+
 export interface SessionReviewResponse {
+  goal: SessionGoal | null;
   review: string | null;
   requires_pro: boolean;
 }

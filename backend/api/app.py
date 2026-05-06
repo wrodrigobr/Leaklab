@@ -138,6 +138,8 @@ from database.repositories import (
     get_strategic_twin_profile,
     # Sprint AS — AI Sparring Mode
     get_sparring_hand,
+    # FEAT-08 — Session Goals
+    get_session_goal_for_tournament, save_session_goal_review,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -1054,6 +1056,97 @@ def player_achievements():
 
 # ── Session Goals — FEAT-08 ───────────────────────────────────────────────────
 
+
+@app.route('/player/session-review/<int:tournament_id>', methods=['GET'])
+@require_auth
+def player_session_review(tournament_id: int):
+    """Returns the session goal linked to a tournament and an AI review (Pro only)."""
+    goal_row = get_session_goal_for_tournament(g.user_id, tournament_id)
+
+    if not goal_row:
+        return jsonify({'goal': None, 'review': None, 'requires_pro': False})
+
+    goal = {
+        'goal_leak_spot':      goal_row.get('goal_leak_spot'),
+        'target_standard_pct': goal_row.get('target_standard_pct'),
+        'notes':               goal_row.get('notes'),
+    }
+
+    user_plan = g.user.get('plan', 'free')
+    is_pro    = user_plan in ('pro', 'coach')
+    review    = goal_row.get('llm_review')
+
+    # Generate and cache review for Pro users on first access
+    if is_pro and not review:
+        try:
+            t = get_tournament_by_db_id(g.user_id, tournament_id)
+            if t:
+                review = _gen_session_review(goal, dict(t))
+                if review:
+                    save_session_goal_review(goal_row['id'], review)
+        except Exception:
+            review = None
+
+    return jsonify({'goal': goal, 'review': review, 'requires_pro': not is_pro})
+
+
+def _gen_session_review(goal: dict, tournament: dict) -> str | None:
+    """Calls Claude Haiku to compare session goal vs actual performance."""
+    import os, requests as _req
+    api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+    if not api_key:
+        return None
+
+    spot       = goal.get('goal_leak_spot') or 'sem foco específico'
+    target_pct = goal.get('target_standard_pct')
+    notes      = goal.get('notes') or ''
+    actual_pct = tournament.get('standard_pct')
+    avg_score  = tournament.get('avg_score')
+    hands      = tournament.get('hands_count', 0)
+
+    lines = [f"Foco de trabalho: {spot}"]
+    if target_pct is not None:
+        lines.append(f"Meta de standard%: {target_pct}%")
+    if notes:
+        lines.append(f"Anotações: {notes}")
+    lines.append("")
+    if actual_pct is not None:
+        lines.append(f"Standard% real: {actual_pct:.1f}%")
+    if avg_score is not None:
+        lines.append(f"Score médio de erro: {avg_score:.3f}")
+    if hands:
+        lines.append(f"Mãos analisadas: {hands}")
+
+    prompt = (
+        "Você é um coach de poker MTT. O jogador definiu um objetivo antes deste torneio. "
+        "Escreva um review técnico e direto (3-4 frases) comparando objetivo vs resultado real. "
+        "Comece indicando se o objetivo foi atingido. Use **negrito** para os pontos-chave. "
+        "Português do Brasil. Termos de poker em inglês (fold, call, raise, equity, etc.).\n\n"
+        + "\n".join(lines)
+    )
+
+    try:
+        resp = _req.post(
+            'https://api.anthropic.com/v1/messages',
+            json={
+                'model':      'claude-haiku-4-5-20251001',
+                'max_tokens': 300,
+                'messages':   [{'role': 'user', 'content': prompt}],
+            },
+            headers={
+                'Content-Type':      'application/json',
+                'anthropic-version': '2023-06-01',
+                'x-api-key':         api_key,
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return ''.join(
+            b['text'] for b in data.get('content', []) if b.get('type') == 'text'
+        ).strip() or None
+    except Exception:
+        return None
 
 
 @app.route('/player/spots/drill/<int:decision_id>/analysis', methods=['GET'])
