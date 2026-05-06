@@ -58,5 +58,19 @@
     "stakes": "Stakes",
     "pricePerHour": "{{price}}/h",
     "priceContact": "Contact for rate"
+  },
+  "contact": {
+    "cta": "Hire this Coach",
+    "composePlaceholder": "Hi! I saw your profile and would like to know more about your methodology and availability…",
+    "send": "Send message",
+    "cancel": "Cancel",
+    "threadTitle": "Conversation with coach",
+    "replyPlaceholder": "Type your message…",
+    "reply": "Send",
+    "inviteKeyToggle": "I already have an invite code →",
+    "inviteKeyPlaceholder": "Invite code…",
+    "linkButton": "Link",
+    "alreadyLinked": "You already have a linked coach.",
+    "limitReached": "Message limit reached."
   }
 }

@@ -12,12 +12,12 @@ type SortKey = "played_at" | "buy_in" | "profit" | "place";
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
-    const d = new Date(iso);
-    const sameYear = d.getFullYear() === new Date().getFullYear();
-    return d.toLocaleDateString("pt-BR", {
+    // Use local constructor to avoid UTC-midnight day-shift in negative timezones (e.g. UTC-3)
+    const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
-      ...(sameYear ? {} : { year: "2-digit" }),
+      year: "numeric",
     });
   } catch {
     return iso.slice(0, 10);

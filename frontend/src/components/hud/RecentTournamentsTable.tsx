@@ -9,12 +9,19 @@ interface Props {
   tournaments?: Tournament[];
 }
 
+function parseLocalDate(iso: string): Date {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  // Date-only strings (≤10 chars): use local constructor to avoid UTC-midnight day-shift
+  return iso.length <= 10 ? new Date(y, m - 1, d) : new Date(iso);
+}
+
 function formatDate(iso: string | null, lang: string): string {
   if (!iso) return "—";
   try {
-    const d = new Date(iso);
-    return d.toLocaleDateString(lang, { day: "2-digit", month: "short" }) + " • " +
-      d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+    const d = parseLocalDate(iso);
+    const datePart = d.toLocaleDateString(lang, { day: "2-digit", month: "short" });
+    if (iso.length <= 10) return datePart;
+    return datePart + " • " + d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
   } catch {
     return iso.slice(0, 10);
   }
@@ -23,8 +30,7 @@ function formatDate(iso: string | null, lang: string): string {
 function formatDateShort(iso: string | null, lang: string): string {
   if (!iso) return "—";
   try {
-    const d = new Date(iso);
-    return d.toLocaleDateString(lang, { day: "2-digit", month: "short" });
+    return parseLocalDate(iso).toLocaleDateString(lang, { day: "2-digit", month: "short" });
   } catch {
     return iso.slice(0, 10);
   }

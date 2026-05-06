@@ -124,6 +124,7 @@ from database.repositories import (
     get_coach_templates, create_coach_template, delete_coach_template,
     # Sprint V — FEAT-10: Coach Messages
     send_coach_message, get_coach_messages, mark_messages_read, get_unread_message_count,
+    get_coach_message_count,
     # Sprint W — FEAT-11: Digest
     get_digest_subscribers, update_digest_subscription,
     # Sprint AH — BACK-018: Coach Application Flow
@@ -754,9 +755,9 @@ def history_tournament_report_pdf(tournament_id):
     from flask import Response
     html = build_html_report(t, decisions, phases, hero)
 
+    safe_id = tournament_id.replace(' ', '_')[:40]
     try:
         pdf_bytes = generate_pdf_bytes(html)
-        safe_id = tournament_id.replace(' ', '_')[:40]
         return Response(
             pdf_bytes,
             mimetype='application/pdf',
@@ -765,8 +766,8 @@ def history_tournament_report_pdf(tournament_id):
                 'Cache-Control': 'no-store',
             }
         )
-    except ImportError:
-        safe_id = tournament_id.replace(' ', '_')[:40]
+    except Exception:
+        # WeasyPrint não disponível ou falhou (ex: libs GTK ausentes no Windows dev)
         return Response(
             html,
             mimetype='text/html',
@@ -1425,10 +1426,14 @@ def _extract_financials(raw: str, hero: str) -> dict:
     import re
     result = {'buy_in': None, 'prize': None, 'profit': None, 'place': None}
 
-    # ── PokerStars buy-in: '$0.98+$0.12' ─────────────────────────────────────
-    m = re.search(r'\$(\d+\.?\d*)\+\$(\d+\.?\d*)', raw)
+    # ── PokerStars buy-in: '$0.98+$0.12' ou '$0.49+$0.49+$0.12' ─────────────
+    # Captura 2 ou 3 componentes (prize [+bounty] + rake) e soma tudo
+    m = re.search(r'\$(\d+\.?\d*)\+\$(\d+\.?\d*)(?:\+\$(\d+\.?\d*))?', raw)
     if m:
-        result['buy_in'] = round(float(m.group(1)) + float(m.group(2)), 2)
+        total = float(m.group(1)) + float(m.group(2))
+        if m.group(3):
+            total += float(m.group(3))
+        result['buy_in'] = round(total, 2)
 
     # ── GGPoker buy-in: não está nos hand files, tenta extrair do nome do torneio
     # Ex: "Spin&Gold #14" → tiers conhecidos; "NL Hold'em $5.25+$0.25" → montante
@@ -1672,6 +1677,36 @@ def player_messages_send():
 def player_messages_unread():
     count = get_unread_message_count(g.user_id, g.role)
     return jsonify({'unread': count})
+
+
+@app.route('/coach/<int:coach_id>/contact', methods=['POST'])
+@require_auth
+def coach_contact_send(coach_id: int):
+    """Aluno envia mensagem inicial para um coach sem vínculo formal."""
+    d = request.get_json(silent=True) or {}
+    body = sanitize_llm_input((d.get('body') or '').strip(), max_len=1000)
+    if not body:
+        return jsonify({'error': 'body obrigatório'}), 400
+    target = get_user_by_id(coach_id)
+    if not target or target.get('role') != 'coach':
+        return jsonify({'error': 'Coach não encontrado'}), 404
+    # Anti-spam: max 20 mensagens por par quando não vinculado
+    if g.user.get('coach_id') != coach_id:
+        n = get_coach_message_count(coach_id, g.user_id)
+        if n >= 20:
+            return jsonify({'error': 'Limite de mensagens atingido'}), 429
+    msg = send_coach_message(coach_id, g.user_id, body, sender_role='student')
+    return jsonify(msg), 201
+
+
+@app.route('/coach/<int:coach_id>/contact-thread', methods=['GET'])
+@require_auth
+def coach_contact_thread(coach_id: int):
+    """Aluno lê a thread de mensagens com um coach específico."""
+    msgs = get_coach_messages(coach_id, g.user_id, limit=100)
+    if msgs:
+        mark_messages_read(coach_id, g.user_id, reader_role='student')
+    return jsonify({'messages': msgs})
 
 
 @app.route('/coach/impact', methods=['GET'])

@@ -3568,6 +3568,16 @@ def get_coach_messages(coach_id: int, student_id: int, limit: int = 50) -> list:
     return [dict(r) for r in rows]
 
 
+def get_coach_message_count(coach_id: int, student_id: int) -> int:
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM coach_messages WHERE coach_id = ? AND student_id = ?",
+        (coach_id, student_id)
+    ).fetchone()
+    conn.close()
+    return row['n'] if row else 0
+
+
 def mark_messages_read(coach_id: int, student_id: int, reader_role: str) -> None:
     """Marca como lidas as mensagens enviadas pelo papel oposto ao leitor."""
     from datetime import datetime

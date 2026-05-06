@@ -10,6 +10,7 @@ import {
   Sigma,
   Target,
   TrendingUp,
+  Brain,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { cn } from "@/lib/utils";
@@ -59,15 +60,16 @@ const MODULES: Module[] = [
     level: "beginner",
     xpReward: 15,
   },
-  {
-    id: "bet_sizing",
-    icon: Sigma,
-    color: "emerald",
-    status: "coming_soon",
-    level: "beginner",
-    xpReward: 15,
-  },
   // Intermediate
+  {
+    id: "math_intermediate",
+    icon: Sigma,
+    color: "amber",
+    path: "/academy/math/intermediate",
+    status: "available",
+    level: "intermediate",
+    xpReward: 20,
+  },
   {
     id: "ranges",
     icon: Shield,
@@ -77,19 +79,29 @@ const MODULES: Module[] = [
     xpReward: 25,
   },
   {
-    id: "spr",
-    icon: TrendingUp,
+    id: "bet_sizing",
+    icon: BookOpen,
     color: "amber",
     status: "coming_soon",
     level: "intermediate",
     xpReward: 25,
   },
+  // Advanced
   {
-    id: "icm",
-    icon: BookOpen,
-    color: "amber",
+    id: "tournament",
+    icon: Brain,
+    color: "rose",
+    path: "/academy/tournament",
+    status: "available",
+    level: "advanced",
+    xpReward: 25,
+  },
+  {
+    id: "ranges_advanced",
+    icon: TrendingUp,
+    color: "rose",
     status: "coming_soon",
-    level: "intermediate",
+    level: "advanced",
     xpReward: 30,
   },
 ];
@@ -114,6 +126,12 @@ function ModuleCard({ mod }: { mod: Module }) {
       bg:    "bg-amber-500/5",
       icon:  "bg-amber-500/10 ring-amber-500/30 text-amber-400",
       badge: "bg-amber-500/10 text-amber-400 ring-amber-500/20",
+    },
+    rose: {
+      ring:  "ring-rose-500/30 border-rose-500/20",
+      bg:    "bg-rose-500/5",
+      icon:  "bg-rose-500/10 ring-rose-500/30 text-rose-400",
+      badge: "bg-rose-500/10 text-rose-400 ring-rose-500/20",
     },
   };
   const c = colorMap[color] ?? colorMap.emerald;

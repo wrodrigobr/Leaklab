@@ -16,31 +16,35 @@
   "modules": {
     "math": {
       "title": "Intuitive Math",
-      "desc": "Master pot odds, EV and equity in a practical way — exercises generated from your own error spots."
+      "desc": "Pot odds, outs counting and call/fold — exercises generated from your own error spots."
     },
     "board_strength": {
       "title": "Hand Strength on the Board",
-      "desc": "Accurately classify your hand and board texture. Knowing where you stand is the foundation of every post-flop decision."
+      "desc": "Classify your hand and board texture. Knowing where you stand is the foundation of every post-flop decision."
     },
     "position": {
       "title": "Position Fundamentals",
       "desc": "Understand why position is the most persistent asset in poker and how it affects your realized equity."
     },
-    "bet_sizing": {
-      "title": "Bet Sizing 101",
-      "desc": "Every wrong bet has an invisible cost. Learn the correct sizings and what each one communicates to opponents."
+    "math_intermediate": {
+      "title": "Equity & Rule of 2/4",
+      "desc": "Calculate equity with outs, use the 2/4 rule, and combine draws with pot odds without a calculator."
     },
     "ranges": {
       "title": "Ranges by Stack Depth",
       "desc": "Build and adjust ranges for push/fold, open and 3-bet as stack depth changes throughout the tournament."
     },
-    "spr": {
-      "title": "SPR & Commitment",
-      "desc": "Before the flop you've already decided whether to stack off with top pair. Understand SPR and commitment thresholds."
+    "bet_sizing": {
+      "title": "Bet Sizing 101",
+      "desc": "Every wrong bet has an invisible cost. Learn the correct sizings and what each one communicates to opponents."
     },
-    "icm": {
-      "title": "Basic ICM",
-      "desc": "In MTTs, chip EV ≠ tournament EV. Understand ICM and make correct decisions on the bubble and at the final table."
+    "tournament": {
+      "title": "Tournament Context",
+      "desc": "SPR & commitment, ICM on the bubble and FT, equity in 3-bet pots — spots where chip EV ≠ tournament EV."
+    },
+    "ranges_advanced": {
+      "title": "Range Advantage",
+      "desc": "Identify who has range advantage on different board textures and how to exploit it with bet sizing."
     }
   },
   "stats": {
@@ -50,19 +54,31 @@
   },
   "feedback": {
     "correct": "Correct!",
-    "wrong": "Not quite"
+    "wrong": "Not quite",
+    "mentalTip": "Mental shortcut"
   },
   "qtypes": {
     "pot_odds_calc": "Pot Odds",
     "call_or_fold": "Call or Fold",
     "ev_direction": "Action EV",
     "hand_classify": "Hand Strength",
-    "board_texture": "Board Texture"
+    "board_texture": "Board Texture",
+    "outs_count": "Outs Count",
+    "equity_estimate": "Equity Estimate",
+    "odds_vs_equity": "Odds vs Equity",
+    "spr_commitment": "SPR & Commitment",
+    "icm_spot": "ICM Spot",
+    "3bet_pot": "3-Bet Pot"
   },
   "math": {
     "eyebrow": "Academy — Beginner",
     "title": "Intuitive Math",
-    "subtitle": "Pot odds, EV and equity in your own error spots."
+    "subtitle": "Pot odds, outs and call/fold in your own error spots."
+  },
+  "mathInt": {
+    "eyebrow": "Academy — Intermediate",
+    "title": "Equity & Rule of 2/4",
+    "subtitle": "Calculate equity with outs and compare with pot odds without a calculator."
   },
   "board": {
     "eyebrow": "Academy — Beginner",
@@ -70,5 +86,10 @@
     "subtitle": "Accurately classify your hand and board texture.",
     "boardLabel": "Board",
     "heroLabel": "Your cards"
+  },
+  "tournament": {
+    "eyebrow": "Academy — Advanced",
+    "title": "Tournament Context",
+    "subtitle": "SPR, ICM and decisions where chip EV ≠ tournament EV."
   }
 }

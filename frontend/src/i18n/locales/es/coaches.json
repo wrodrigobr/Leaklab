@@ -58,5 +58,19 @@
     "stakes": "Stakes",
     "pricePerHour": "{{price}}/h",
     "priceContact": "A convenir"
+  },
+  "contact": {
+    "cta": "Contratar este Coach",
+    "composePlaceholder": "¡Hola! Vi tu perfil y me gustaría saber más sobre tu metodología y disponibilidad…",
+    "send": "Enviar mensaje",
+    "cancel": "Cancelar",
+    "threadTitle": "Conversación con el coach",
+    "replyPlaceholder": "Escribe tu mensaje…",
+    "reply": "Enviar",
+    "inviteKeyToggle": "Ya tengo un código de invitación →",
+    "inviteKeyPlaceholder": "Código de invitación…",
+    "linkButton": "Vincular",
+    "alreadyLinked": "Ya tienes un coach vinculado.",
+    "limitReached": "Límite de mensajes alcanzado."
   }
 }

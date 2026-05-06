@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => ({
       "/player":      { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/support":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/academy":     { target: "http://127.0.0.1:5000", changeOrigin: true },
+      "/profile":     { target: "http://127.0.0.1:5000", changeOrigin: true },
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),

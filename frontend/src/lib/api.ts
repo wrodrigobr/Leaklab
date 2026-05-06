@@ -1598,6 +1598,17 @@ export const playerMessages = {
     request<{ unread: number }>("/player/messages/unread"),
 };
 
+export const coachContact = {
+  send: (coachId: number, body: string) =>
+    request<CoachMessage>(`/coach/${coachId}/contact`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    }),
+
+  getThread: (coachId: number) =>
+    request<{ messages: CoachMessage[] }>(`/coach/${coachId}/contact-thread`),
+};
+
 export interface SessionReviewResponse {
   review: string | null;
   requires_pro: boolean;

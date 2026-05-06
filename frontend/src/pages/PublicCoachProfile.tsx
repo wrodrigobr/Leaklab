@@ -8,7 +8,7 @@ import {
   Mail, Calendar, Zap, Trophy, MessageSquare, Trash2, TrendingUp,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
-import { coaches, coachDashboard, student, PublicCoach, PublicCoachReview } from "@/lib/api";
+import { coaches, coachDashboard, student, coachContact, CoachMessage, PublicCoach, PublicCoachReview } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -118,6 +118,11 @@ export default function PublicCoachProfile() {
   const [linkKey, setLinkKey] = useState("");
   const [showLinkForm, setShowLinkForm] = useState(false);
 
+  // Contact flow state
+  const [contactMode, setContactMode] = useState<"idle" | "compose" | "thread">("idle");
+  const [contactMsg, setContactMsg] = useState("");
+  const [showInviteKey, setShowInviteKey] = useState(false);
+
   const { data: profileData, isLoading } = useQuery({
     queryKey: ["public-coach", coachId],
     queryFn: () => coaches.get(coachId),
@@ -128,6 +133,37 @@ export default function PublicCoachProfile() {
     queryKey: ["my-review", coachId],
     queryFn: () => coachDashboard.getMyReview(coachId),
     enabled: isStudent,
+  });
+
+  const { data: threadData } = useQuery({
+    queryKey: ["coach-contact-thread", coachId],
+    queryFn: async () => {
+      const data = await coachContact.getThread(coachId);
+      if (data.messages.length > 0) setContactMode("thread");
+      return data;
+    },
+    enabled: isStudent && !hasCoach,
+    refetchInterval: contactMode === "thread" ? 15_000 : false,
+  });
+  const thread: CoachMessage[] = threadData?.messages ?? [];
+
+  const contactSendMut = useMutation({
+    mutationFn: (body: string) => coachContact.send(coachId, body),
+    onSuccess: () => {
+      setContactMsg("");
+      setContactMode("thread");
+      qc.invalidateQueries({ queryKey: ["coach-contact-thread", coachId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const contactReplyMut = useMutation({
+    mutationFn: (body: string) => coachContact.send(coachId, body),
+    onSuccess: () => {
+      setContactMsg("");
+      qc.invalidateQueries({ queryKey: ["coach-contact-thread", coachId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const submitReviewMut = useMutation({
@@ -333,50 +369,148 @@ export default function PublicCoachProfile() {
                 </div>
               </div>
 
-              {/* CTA — link with coach */}
+              {/* CTA — contact / link with coach */}
               {isStudent && !hasCoach && (
-                <div className="border-t border-border pt-3">
-                  {showLinkForm ? (
+                <div className="border-t border-border pt-3 space-y-2">
+                  {/* ── idle: botão inicial ── */}
+                  {contactMode === "idle" && (
+                    <button
+                      onClick={() => setContactMode("compose")}
+                      className="w-full rounded-md bg-primary px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      {t("contact.cta")}
+                    </button>
+                  )}
+
+                  {/* ── compose: primeira mensagem ── */}
+                  {contactMode === "compose" && (
                     <div className="space-y-2">
-                      <p className="font-mono text-[10px] text-muted-foreground">
-                        Insira a chave de convite do coach para se vincular:
-                      </p>
-                      <input
-                        type="text"
-                        value={linkKey}
-                        onChange={(e) => setLinkKey(e.target.value)}
-                        placeholder="Chave de convite…"
-                        className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      <textarea
+                        rows={4}
+                        value={contactMsg}
+                        onChange={(e) => setContactMsg(e.target.value)}
+                        placeholder={t("contact.composePlaceholder")}
+                        className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                       />
                       <div className="flex gap-2">
                         <button
-                          onClick={() => linkMut.mutate()}
-                          disabled={!linkKey || linkMut.isPending}
+                          onClick={() => contactSendMut.mutate(contactMsg)}
+                          disabled={!contactMsg.trim() || contactSendMut.isPending}
                           className="flex-1 rounded bg-primary px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
                         >
-                          {linkMut.isPending ? <Loader2 className="size-3 animate-spin mx-auto" /> : "Vincular"}
+                          {contactSendMut.isPending
+                            ? <Loader2 className="size-3 animate-spin mx-auto" />
+                            : t("contact.send")}
                         </button>
                         <button
-                          onClick={() => setShowLinkForm(false)}
+                          onClick={() => setContactMode("idle")}
                           className="px-3 py-1.5 font-mono text-[10px] text-muted-foreground hover:text-foreground"
                         >
-                          Cancelar
+                          {t("contact.cancel")}
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => setShowLinkForm(true)}
-                      className="w-full rounded-md bg-primary px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-primary-foreground hover:bg-primary/90 transition-colors"
-                    >
-                      Contratar este Coach
-                    </button>
+                  )}
+
+                  {/* ── thread: conversa em andamento ── */}
+                  {contactMode === "thread" && (
+                    <div className="space-y-2">
+                      <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <MessageSquare className="size-3" /> {t("contact.threadTitle")}
+                      </p>
+                      <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-md border border-border bg-background p-2">
+                        {thread.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={cn("flex", msg.sender_role === "student" ? "justify-end" : "justify-start")}
+                          >
+                            <div className={cn(
+                              "max-w-[85%] rounded-lg px-2.5 py-1.5 text-[10px] leading-relaxed",
+                              msg.sender_role === "student"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary text-secondary-foreground"
+                            )}>
+                              <p>{msg.body}</p>
+                              <p className="opacity-50 mt-0.5 text-right font-mono text-[8px]">
+                                {new Date(msg.created_at).toLocaleString("pt-BR", {
+                                  day: "2-digit", month: "short",
+                                  hour: "2-digit", minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Campo de resposta */}
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={contactMsg}
+                          onChange={(e) => setContactMsg(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey && contactMsg.trim()) {
+                              e.preventDefault();
+                              contactReplyMut.mutate(contactMsg);
+                            }
+                          }}
+                          placeholder={t("contact.replyPlaceholder")}
+                          className="flex-1 rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <button
+                          onClick={() => contactMsg.trim() && contactReplyMut.mutate(contactMsg)}
+                          disabled={!contactMsg.trim() || contactReplyMut.isPending}
+                          className="rounded bg-primary px-3 py-1.5 font-mono text-[10px] font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                        >
+                          {contactReplyMut.isPending
+                            ? <Loader2 className="size-3 animate-spin" />
+                            : t("contact.reply")}
+                        </button>
+                      </div>
+
+                      {/* Invite key toggle */}
+                      {!showInviteKey ? (
+                        <button
+                          onClick={() => setShowInviteKey(true)}
+                          className="w-full font-mono text-[9px] text-muted-foreground hover:text-primary transition-colors text-left"
+                        >
+                          {t("contact.inviteKeyToggle")}
+                        </button>
+                      ) : (
+                        <div className="space-y-1.5 pt-1 border-t border-border">
+                          <input
+                            type="text"
+                            value={linkKey}
+                            onChange={(e) => setLinkKey(e.target.value)}
+                            placeholder={t("contact.inviteKeyPlaceholder")}
+                            className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => linkMut.mutate()}
+                              disabled={!linkKey || linkMut.isPending}
+                              className="flex-1 rounded bg-primary px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                            >
+                              {linkMut.isPending
+                                ? <Loader2 className="size-3 animate-spin mx-auto" />
+                                : t("contact.linkButton")}
+                            </button>
+                            <button
+                              onClick={() => setShowInviteKey(false)}
+                              className="px-3 py-1.5 font-mono text-[10px] text-muted-foreground hover:text-foreground"
+                            >
+                              {t("contact.cancel")}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
               {isStudent && hasCoach && user?.coach_id !== coachId && (
                 <p className="font-mono text-[10px] text-center text-muted-foreground border-t border-border pt-3">
-                  Você já tem um coach vinculado.
+                  {t("contact.alreadyLinked")}
                 </p>
               )}
             </div>

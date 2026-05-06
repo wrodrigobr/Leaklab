@@ -527,7 +527,7 @@ def _call_llm_narrative(ctx: dict) -> str:
     user_msg = json.dumps(ctx, ensure_ascii=False, indent=2)
     payload = {
         'model':      'claude-haiku-4-5-20251001',
-        'max_tokens': 130,
+        'max_tokens': 400,
         'system':     system_prompt,
         'messages':   [{'role': 'user', 'content': user_msg}],
     }

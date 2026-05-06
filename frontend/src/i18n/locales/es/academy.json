@@ -16,31 +16,35 @@
   "modules": {
     "math": {
       "title": "Matemática Intuitiva",
-      "desc": "Domina pot odds, EV y equity de forma práctica — ejercicios generados de tus propios spots de error."
+      "desc": "Pot odds, conteo de outs y call/fold — ejercicios generados de tus propios spots de error."
     },
     "board_strength": {
       "title": "Fuerza de Mano en el Board",
-      "desc": "Clasifica con precisión tu mano y la textura del board. Saber dónde estás es la base de toda decisión post-flop."
+      "desc": "Clasifica tu mano y la textura del board. Saber dónde estás es la base de toda decisión post-flop."
     },
     "position": {
       "title": "Fundamentos de Posición",
       "desc": "Entiende por qué la posición es el activo más persistente del poker y cómo afecta tu equity realizada."
     },
-    "bet_sizing": {
-      "title": "Bet Sizing 101",
-      "desc": "Cada apuesta incorrecta tiene un costo invisible. Aprende los tamaños correctos y qué comunica cada sizing al rival."
+    "math_intermediate": {
+      "title": "Equity y Regla 2/4",
+      "desc": "Calcula equity con outs, usa la regla 2/4 y combina draws con pot odds sin calculadora."
     },
     "ranges": {
       "title": "Ranges por Stack Depth",
-      "desc": "Construye y ajusta ranges para push/fold, open y 3-bet a medida que el stack depth cambia en el torneo."
+      "desc": "Construye y ajusta ranges para push/fold, open y 3-bet a medida que el stack depth cambia."
     },
-    "spr": {
-      "title": "SPR y Compromiso",
-      "desc": "Antes del flop ya decidiste si vas a stackear con top pair. Entiende el SPR y los umbrales de compromiso."
+    "bet_sizing": {
+      "title": "Bet Sizing 101",
+      "desc": "Cada apuesta incorrecta tiene un costo invisible. Aprende los tamaños correctos y qué comunica cada sizing."
     },
-    "icm": {
-      "title": "ICM Básico",
-      "desc": "En MTTs, EV de fichas ≠ EV de torneo. Comprende ICM y toma decisiones correctas en la burbuja y en la final."
+    "tournament": {
+      "title": "Contexto de Torneo",
+      "desc": "SPR y compromiso, ICM en la burbuja y FT, equity en potes de 3-bet — spots donde chip EV ≠ equity de torneo."
+    },
+    "ranges_advanced": {
+      "title": "Range Advantage",
+      "desc": "Identifica quién tiene ventaja de range en distintas texturas de board y cómo explotarla con el sizing."
     }
   },
   "stats": {
@@ -50,19 +54,31 @@
   },
   "feedback": {
     "correct": "¡Correcto!",
-    "wrong": "Casi"
+    "wrong": "Casi",
+    "mentalTip": "Atajo mental"
   },
   "qtypes": {
     "pot_odds_calc": "Pot Odds",
     "call_or_fold": "Call o Fold",
     "ev_direction": "EV de la Acción",
     "hand_classify": "Fuerza de Mano",
-    "board_texture": "Textura del Board"
+    "board_texture": "Textura del Board",
+    "outs_count": "Conteo de Outs",
+    "equity_estimate": "Estimación de Equity",
+    "odds_vs_equity": "Odds vs Equity",
+    "spr_commitment": "SPR y Compromiso",
+    "icm_spot": "Spot ICM",
+    "3bet_pot": "Bote de 3-Bet"
   },
   "math": {
     "eyebrow": "Academia — Principiante",
     "title": "Matemática Intuitiva",
-    "subtitle": "Pot odds, EV y equity en tus propios spots de error."
+    "subtitle": "Pot odds, outs y call/fold en tus propios spots de error."
+  },
+  "mathInt": {
+    "eyebrow": "Academia — Intermedio",
+    "title": "Equity y Regla 2/4",
+    "subtitle": "Calcula equity con outs y compara con pot odds sin calculadora."
   },
   "board": {
     "eyebrow": "Academia — Principiante",
@@ -70,5 +86,10 @@
     "subtitle": "Clasifica con precisión tu mano y la textura del board.",
     "boardLabel": "Board",
     "heroLabel": "Tus cartas"
+  },
+  "tournament": {
+    "eyebrow": "Academia — Avanzado",
+    "title": "Contexto de Torneo",
+    "subtitle": "SPR, ICM y decisiones donde chip EV ≠ equity de torneo."
   }
 }

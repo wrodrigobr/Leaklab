@@ -27,6 +27,8 @@ import Training from "./pages/Training.tsx";
 import Academy from "./pages/Academy.tsx";
 import AcademyMath from "./pages/AcademyMath.tsx";
 import AcademyBoardStrength from "./pages/AcademyBoardStrength.tsx";
+import AcademyMathIntermediate from "./pages/AcademyMathIntermediate.tsx";
+import AcademyTournament from "./pages/AcademyTournament.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
 import Docs from "./pages/Docs.tsx";
@@ -229,7 +231,9 @@ const App = () => (
             />
             <Route path="/academy" element={<ProtectedRoute><Academy /></ProtectedRoute>} />
             <Route path="/academy/math" element={<ProtectedRoute><AcademyMath /></ProtectedRoute>} />
+            <Route path="/academy/math/intermediate" element={<ProtectedRoute><AcademyMathIntermediate /></ProtectedRoute>} />
             <Route path="/academy/board-strength" element={<ProtectedRoute><AcademyBoardStrength /></ProtectedRoute>} />
+            <Route path="/academy/tournament" element={<ProtectedRoute><AcademyTournament /></ProtectedRoute>} />
             <Route path="/docs" element={<AuthRoute><Docs /></AuthRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
