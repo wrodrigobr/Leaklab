@@ -920,7 +920,7 @@ def explain_leak_causality(edges: list, hero: str = 'você', lang: str = 'pt-BR'
     """1 parágrafo curto (2-3 frases) explicando a causa raiz dos pares mais correlacionados."""
     if not edges:
         return ""
-    cache_key = "causal_" + lang + "_" + "_".join(
+    cache_key = "causal_v2_" + lang + "_" + "_".join(
         f"{e['source']}:{e['target']}" for e in edges[:3]
     )
     if cache_key in _cache:
@@ -956,16 +956,18 @@ def _call_llm_causality(edges: list, hero: str, lang: str = 'pt-BR') -> str:
         for e in edges
     )
     system_prompt = (
-        f"You are an analytical MTT poker coach. {lang_instr} "
-        "Analyze the leak correlations below and write EXACTLY 2-3 sentences explaining: "
-        "(1) why these errors tend to occur together, "
-        "(2) what the likely root cause is, "
-        "(3) which one to fix first for the greatest impact. "
-        "Be technical and direct. Do NOT use titles, bullets, or introductions."
+        f"You are a friendly MTT poker coach talking directly to a student who is still learning. {lang_instr} "
+        "Analyze the leak correlations and write EXACTLY 3 SHORT sentences: "
+        "(1) Describe what both mistakes look like in practice at the table — use plain language about the BEHAVIOR (what the player does), not abstract concepts. "
+        "(2) Name the single habit or misunderstanding causing both errors — if you use a technical term, immediately explain it in simple words in parentheses. "
+        "(3) Give one concrete, actionable change the player can make starting in their next session. "
+        "Write as if talking face to face, not writing a report. "
+        "Avoid dense jargon clusters. Keep each sentence under 40 words. "
+        "Do NOT use titles, bullets, labels like '1)' or introductions."
     )
     payload = {
         "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 280,
+        "max_tokens": 340,
         "system": system_prompt,
         "messages": [{"role": "user", "content": f"Player leaks ({hero}):\n{pairs}"}],
     }
