@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.85.1] — 2026-05-06 — feat: UX-009 — exemplos visuais interativos na /docs
+
+### Added
+- **Exemplos visuais** adicionados a 9 seções da documentação: Scoring, Top Leaks, Forma Recente, Qualidade das Decisões, Performance por Street, Performance por Posição, Colapso sob Pressão, Pressão ICM e Meu Nível
+- **Componentes `ExampleBox`, `MiniBar`, `MiniScoreLine`, `MiniSessionBars`** em `Docs.tsx` para renderizar mini-réplicas dos indicadores reais com cores e proporções fiéis
+- **Chaves de exemplo i18n** em PT, EN e ES para todas as 9 seções (`exampleLabel`, `example`, `example_*` por seção)
+
+### Fixed
+- `t("leaks.critical")` e `t("form.*")` no `Docs.tsx` agora usam `td` (namespace `dashboard`) em vez do namespace `docs` — evita fallback silencioso para chave literal
+
+---
+
 ## [v0.85.0] — 2026-05-05 — feat: UX-008 — tooltips, renome Strategic Twin e docs expandida
 
 ### Added

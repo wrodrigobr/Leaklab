@@ -46,8 +46,91 @@ function Table({ headers, rows }: { headers: string[]; rows: (string | React.Rea
   );
 }
 
+// ─── Visual example helpers ───────────────────────────────────────────────────
+
+type BarColor = "emerald" | "amber" | "orange" | "destructive" | "primary";
+
+const BAR_CFG: Record<BarColor, { bar: string; text: string }> = {
+  emerald:     { bar: "bg-emerald-500", text: "text-emerald-400" },
+  amber:       { bar: "bg-amber-500",   text: "text-amber-400"   },
+  orange:      { bar: "bg-orange-500",  text: "text-orange-400"  },
+  destructive: { bar: "bg-destructive", text: "text-destructive" },
+  primary:     { bar: "bg-primary",     text: "text-primary"     },
+};
+
+function ExampleBox({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-hud-surface/60 p-4 space-y-3">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function MiniBar({ label, pct, color = "primary", refPct }: {
+  label: string; pct: number; color?: BarColor; refPct?: number;
+}) {
+  const { bar, text } = BAR_CFG[color];
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-[10px] text-muted-foreground w-16 shrink-0 truncate">{label}</span>
+      <div className="relative flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+        <div className={`h-full rounded-full ${bar}`} style={{ width: `${Math.min(100, pct)}%` }} />
+        {refPct !== undefined && (
+          <div className="absolute top-0 h-full w-px bg-primary/60" style={{ left: `${refPct}%` }} />
+        )}
+      </div>
+      <span className={`font-mono text-[10px] font-bold tabular-nums w-8 text-right ${text}`}>{pct}%</span>
+    </div>
+  );
+}
+
+const SCORE_BADGE_CFG = {
+  standard: "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20",
+  marginal: "bg-yellow-500/15 text-yellow-400 ring-1 ring-yellow-500/20",
+  small:    "bg-orange-500/15 text-orange-400 ring-1 ring-orange-500/20",
+  clear:    "bg-destructive/15 text-destructive ring-1 ring-destructive/20",
+} as const;
+
+function MiniScoreLine({ quality, score, decision }: {
+  quality: keyof typeof SCORE_BADGE_CFG; score: string; decision: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className={`shrink-0 mt-0.5 inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide ${SCORE_BADGE_CFG[quality]}`}>
+        {score}
+      </span>
+      <span className="text-xs text-muted-foreground leading-tight">{decision}</span>
+    </div>
+  );
+}
+
+const SESSION_CFG = {
+  standard: { cls: "bg-emerald-500", pct: 100 },
+  marginal: { cls: "bg-yellow-500",  pct: 62  },
+  small:    { cls: "bg-orange-500",  pct: 38  },
+  clear:    { cls: "bg-destructive", pct: 18  },
+} as const;
+
+function MiniSessionBars({ sessions }: { sessions: ReadonlyArray<keyof typeof SESSION_CFG> }) {
+  return (
+    <div className="flex items-end gap-1 h-12">
+      {sessions.map((q, i) => (
+        <div
+          key={i}
+          className={`flex-1 rounded-sm ${SESSION_CFG[q].cls}`}
+          style={{ height: `${SESSION_CFG[q].pct}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Docs() {
   const { t } = useTranslation("docs");
+  const { t: td } = useTranslation("dashboard");
   const [active, setActive] = useState<SectionId>("scoring");
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -112,6 +195,12 @@ export default function Docs() {
               />
               <p dangerouslySetInnerHTML={{ __html: t("scoring.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("scoring.p3") }} />
+              <ExampleBox label={t("exampleLabel")}>
+                <MiniScoreLine quality="standard" score="0.04" decision={t("scoring.example_standard")} />
+                <MiniScoreLine quality="marginal" score="0.14" decision={t("scoring.example_marginal")} />
+                <MiniScoreLine quality="small"    score="0.28" decision={t("scoring.example_small")} />
+                <MiniScoreLine quality="clear"    score="0.51" decision={t("scoring.example_clear")} />
+              </ExampleBox>
             </Section>
 
             {/* Indicators */}
@@ -168,6 +257,31 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("leaks.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("leaks.p3") }} />
               <p dangerouslySetInnerHTML={{ __html: t("leaks.p4") }} />
+              <ExampleBox label={t("exampleLabel")}>
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="size-1.5 rounded-full bg-destructive shrink-0" />
+                      <span className="font-mono text-[11px] font-semibold text-foreground truncate">River overcall OOP</span>
+                      <Badge color="bg-destructive/15 text-destructive">{td("leaks.critical")}</Badge>
+                    </div>
+                    <span className="font-mono text-[10px] text-destructive shrink-0">~$9/mo</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pl-3.5">
+                    {[
+                      { val: "31",  label: t("leaks.example_freq") },
+                      { val: "0.44", label: "avg score" },
+                      { val: "↘ reg.", label: t("leaks.example_trend") },
+                    ].map(({ val, label }) => (
+                      <div key={label} className="text-center">
+                        <p className="font-mono text-sm font-bold text-destructive">{val}</p>
+                        <p className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("leaks.example")}</p>
+              </ExampleBox>
             </Section>
 
             {/* Causal Map */}
@@ -182,6 +296,18 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("form.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("form.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("form.p3") }} />
+              <ExampleBox label={t("exampleLabel")}>
+                <MiniSessionBars sessions={["standard", "standard", "marginal", "clear", "small", "marginal", "standard"]} />
+                <div className="flex gap-4 flex-wrap">
+                  {(["standard", "marginal", "small", "clear"] as const).map((q) => (
+                    <div key={q} className="flex items-center gap-1.5">
+                      <div className={`size-2 rounded-sm ${SESSION_CFG[q].cls}`} />
+                      <span className="font-mono text-[9px] text-muted-foreground capitalize">{td(`form.${q === "small" ? "smallMistake" : q === "clear" ? "clearError" : q}`)}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">{t("form.example")}</p>
+              </ExampleBox>
             </Section>
 
             {/* Decision Quality */}
@@ -189,6 +315,13 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("decisions.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("decisions.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("decisions.p3") }} />
+              <ExampleBox label={t("exampleLabel")}>
+                <MiniBar label="Standard"  pct={74} color="emerald" />
+                <MiniBar label="Marginal"  pct={16} color="amber"   />
+                <MiniBar label="Small Err" pct={7}  color="orange"  />
+                <MiniBar label="Clear Err" pct={3}  color="destructive" />
+                <p className="text-xs text-muted-foreground">{t("decisions.example")}</p>
+              </ExampleBox>
             </Section>
 
             {/* Performance by Street */}
@@ -196,6 +329,13 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("streets.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("streets.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("streets.p3") }} />
+              <ExampleBox label={t("exampleLabel")}>
+                <MiniBar label="Preflop" pct={84} color="emerald" />
+                <MiniBar label="Flop"    pct={76} color="emerald" />
+                <MiniBar label="Turn"    pct={70} color="amber"   />
+                <MiniBar label="River"   pct={63} color="amber"   />
+                <p className="text-xs text-muted-foreground">{t("streets.example")}</p>
+              </ExampleBox>
             </Section>
 
             {/* Performance by Position */}
@@ -203,6 +343,15 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("positions.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("positions.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("positions.p3") }} />
+              <ExampleBox label={t("exampleLabel")}>
+                <MiniBar label="BTN" pct={84} color="emerald" />
+                <MiniBar label="CO"  pct={79} color="emerald" />
+                <MiniBar label="MP"  pct={73} color="amber"   />
+                <MiniBar label="UTG" pct={71} color="amber"   />
+                <MiniBar label="BB"  pct={63} color="orange"  />
+                <MiniBar label="SB"  pct={60} color="orange"  />
+                <p className="text-xs text-muted-foreground">{t("positions.example")}</p>
+              </ExampleBox>
             </Section>
 
             {/* Pressure Collapse */}
@@ -213,12 +362,33 @@ export default function Docs() {
               <Table
                 headers={[t("pressure.table.col_term"), t("pressure.table.col_meaning")]}
                 rows={[
-                  [t("pressure.table.none_term"), t("pressure.table.none_meaning")],
-                  [t("pressure.table.low_term"),  t("pressure.table.low_meaning")],
+                  [t("pressure.table.none_term"),   t("pressure.table.none_meaning")],
+                  [t("pressure.table.low_term"),    t("pressure.table.low_meaning")],
                   [t("pressure.table.medium_term"), t("pressure.table.medium_meaning")],
-                  [t("pressure.table.high_term"), t("pressure.table.high_meaning")],
+                  [t("pressure.table.high_term"),   t("pressure.table.high_meaning")],
                 ]}
               />
+              <ExampleBox label={t("exampleLabel")}>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-emerald-400">
+                      {t("pressure.example_stable_label")}
+                    </p>
+                    <MiniBar label="No ICM"   pct={79} color="emerald" />
+                    <MiniBar label="High ICM" pct={75} color="emerald" />
+                    <Badge color="bg-emerald-500/15 text-emerald-400">Δ 4pts</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-destructive">
+                      {t("pressure.example_collapse_label")}
+                    </p>
+                    <MiniBar label="No ICM"   pct={79} color="emerald"     />
+                    <MiniBar label="High ICM" pct={61} color="destructive" />
+                    <Badge color="bg-destructive/15 text-destructive">Δ 18pts</Badge>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("pressure.example")}</p>
+              </ExampleBox>
             </Section>
 
             {/* ICM Pressure */}
@@ -226,6 +396,13 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("icm.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("icm.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("icm.p3") }} />
+              <ExampleBox label={t("exampleLabel")}>
+                <MiniBar label="No ICM" pct={8}  color="primary"     />
+                <MiniBar label="Low"    pct={15}  color="primary"     />
+                <MiniBar label="Medium" pct={38}  color="amber"       />
+                <MiniBar label="High"   pct={39}  color="destructive" />
+                <p className="text-xs text-muted-foreground">{t("icm.example")}</p>
+              </ExampleBox>
             </Section>
 
             {/* Bankroll */}
@@ -241,6 +418,30 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("level.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("level.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("level.p3") }} />
+              <ExampleBox label={t("exampleLabel")}>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded border border-amber-400/30 bg-amber-400/5 px-2 py-1 font-mono text-[10px] font-bold text-amber-400">
+                        Grinder
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">73% Standard</span>
+                    </div>
+                    <span className="font-mono text-[9px] text-muted-foreground">Regular → 77%</span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="h-2 rounded-full bg-border overflow-hidden">
+                      <div className="h-full rounded-full bg-amber-500" style={{ width: "75%" }} />
+                    </div>
+                    <p className="font-mono text-[9px] text-muted-foreground">75% {t("level.example_progress")}</p>
+                  </div>
+                  <div className="rounded-md border border-orange-500/20 bg-orange-500/5 px-3 py-2">
+                    <p className="font-mono text-[9px] uppercase tracking-wide text-orange-400 mb-0.5">{t("level.example_blocker")}</p>
+                    <p className="text-[11px] text-muted-foreground">river overcall OOP · 31 occ.</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("level.example")}</p>
+              </ExampleBox>
             </Section>
 
             {/* Ghost Table */}
@@ -250,8 +451,8 @@ export default function Docs() {
               <Table
                 headers={[t("ghost.col_result"), t("ghost.col_next")]}
                 rows={[
-                  [t("ghost.result_hit"),    t("ghost.hit_next")],
-                  [t("ghost.result_miss"),   t("ghost.miss_next")],
+                  [t("ghost.result_hit"),     t("ghost.hit_next")],
+                  [t("ghost.result_miss"),    t("ghost.miss_next")],
                   [t("ghost.result_mastery"), t("ghost.mastery_next")],
                 ]}
               />
@@ -279,9 +480,9 @@ export default function Docs() {
               <Table
                 headers={[t("coaching.col_term"), t("coaching.col_meaning")]}
                 rows={[
-                  ["Baseline",          t("coaching.baseline_meaning")],
-                  ["Baseline Delta",    t("coaching.delta_meaning")],
-                  ["Coach Reviewed",    t("coaching.reviewed_meaning")],
+                  ["Baseline",            t("coaching.baseline_meaning")],
+                  ["Baseline Delta",      t("coaching.delta_meaning")],
+                  ["Coach Reviewed",      t("coaching.reviewed_meaning")],
                   [t("coaching.term_override"), t("coaching.override_meaning")],
                   ["Coach Effectiveness", t("coaching.effectiveness_meaning")],
                 ]}
@@ -295,7 +496,7 @@ export default function Docs() {
               <Table
                 headers={[t("gamification.col_event"), t("gamification.col_xp")]}
                 rows={[
-                  [t("gamification.event_import"),   "50 XP"],
+                  [t("gamification.event_import"),    "50 XP"],
                   [t("gamification.event_exercise"),  "10 XP"],
                   [t("gamification.event_drill"),     "25 XP"],
                   [t("gamification.event_mastery"),  "100 XP"],
@@ -331,9 +532,9 @@ export default function Docs() {
               <Table
                 headers={[t("career.table.col_term"), t("career.table.col_meaning")]}
                 rows={[
-                  [t("career.table.slope_term"),     t("career.table.slope_meaning")],
-                  [t("career.table.milestone_term"),  t("career.table.milestone_meaning")],
-                  [t("career.table.blocking_term"),  t("career.table.blocking_meaning")],
+                  [t("career.table.slope_term"),    t("career.table.slope_meaning")],
+                  [t("career.table.milestone_term"), t("career.table.milestone_meaning")],
+                  [t("career.table.blocking_term"), t("career.table.blocking_meaning")],
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("career.p2") }} />
@@ -347,17 +548,17 @@ export default function Docs() {
                 headers={[t("cognitive.table.col_pattern"), t("cognitive.table.col_trigger"), t("cognitive.table.col_signal")]}
                 rows={[
                   [<Badge color="bg-destructive/15 text-destructive">{t("cognitive.patterns.revenge")}</Badge>,     t("cognitive.patterns.revenge_trigger"),     t("cognitive.patterns.revenge_signal")],
-                  [<Badge color="bg-orange-500/15 text-orange-400">{t("cognitive.patterns.fear")}</Badge>,          t("cognitive.patterns.fear_trigger"),          t("cognitive.patterns.fear_signal")],
-                  [<Badge color="bg-yellow-500/15 text-yellow-400">{t("cognitive.patterns.sunk")}</Badge>,          t("cognitive.patterns.sunk_trigger"),          t("cognitive.patterns.sunk_signal")],
-                  [<Badge color="bg-orange-500/15 text-orange-400">{t("cognitive.patterns.entitlement")}</Badge>,  t("cognitive.patterns.entitlement_trigger"),  t("cognitive.patterns.entitlement_signal")],
-                  [<Badge color="bg-yellow-500/15 text-yellow-400">{t("cognitive.patterns.compensation")}</Badge>, t("cognitive.patterns.compensation_trigger"), t("cognitive.patterns.compensation_signal")],
+                  [<Badge color="bg-orange-500/15 text-orange-400">{t("cognitive.patterns.fear")}</Badge>,           t("cognitive.patterns.fear_trigger"),         t("cognitive.patterns.fear_signal")],
+                  [<Badge color="bg-yellow-500/15 text-yellow-400">{t("cognitive.patterns.sunk")}</Badge>,           t("cognitive.patterns.sunk_trigger"),         t("cognitive.patterns.sunk_signal")],
+                  [<Badge color="bg-orange-500/15 text-orange-400">{t("cognitive.patterns.entitlement")}</Badge>,   t("cognitive.patterns.entitlement_trigger"),  t("cognitive.patterns.entitlement_signal")],
+                  [<Badge color="bg-yellow-500/15 text-yellow-400">{t("cognitive.patterns.compensation")}</Badge>,  t("cognitive.patterns.compensation_trigger"), t("cognitive.patterns.compensation_signal")],
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("cognitive.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("cognitive.p3") }} />
             </Section>
 
-            {/* Strategic Twin */}
+            {/* Strategic Patterns */}
             <Section id="twin" title={t("twin.title")}>
               <p dangerouslySetInnerHTML={{ __html: t("twin.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("twin.p2") }} />
@@ -378,9 +579,9 @@ export default function Docs() {
               <Table
                 headers={[t("sparring.col_phase"), t("sparring.col_desc")]}
                 rows={[
-                  [t("sparring.phase_playing"), t("sparring.phase_playing_desc")],
+                  [t("sparring.phase_playing"),  t("sparring.phase_playing_desc")],
                   [t("sparring.phase_feedback"), t("sparring.phase_feedback_desc")],
-                  [t("sparring.phase_summary"), t("sparring.phase_summary_desc")],
+                  [t("sparring.phase_summary"),  t("sparring.phase_summary_desc")],
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("sparring.p2") }} />
