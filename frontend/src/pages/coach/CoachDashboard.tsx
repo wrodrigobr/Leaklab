@@ -537,7 +537,7 @@ function MensagensTab() {
     refetchInterval: 60_000,
   });
 
-  const threads: InboxThread[] = (data?.threads ?? []).filter((t) => t.last_sender_role === "student");
+  const threads: InboxThread[] = data?.threads ?? [];
   const totalUnread = threads.reduce((s, t) => s + (t.unread_count ?? 0), 0);
 
   if (isLoading) return <p className="text-sm text-muted-foreground animate-pulse py-8 text-center">Carregando…</p>;
@@ -546,7 +546,7 @@ function MensagensTab() {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <MessageSquare className="size-8 text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground">Nenhuma mensagem não respondida.</p>
+        <p className="text-sm text-muted-foreground">Nenhuma conversa ainda.</p>
         <p className="text-xs text-muted-foreground">Quando um aluno enviar uma mensagem, aparecerá aqui.</p>
       </div>
     );
@@ -571,8 +571,13 @@ function MensagensTab() {
               {t.student_username.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">{t.student_username}</p>
-              <p className="font-mono text-xs text-muted-foreground truncate max-w-[340px]">
+              <p className={`text-sm text-foreground ${t.unread_count > 0 ? "font-bold" : "font-semibold"}`}>
+                {t.student_username}
+              </p>
+              <p className={`font-mono text-xs truncate max-w-[340px] ${t.unread_count > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                {t.last_sender_role === "student" && t.unread_count === 0 && (
+                  <span className="text-amber-400 mr-1">↩</span>
+                )}
                 {t.last_message_body}
               </p>
             </div>
@@ -848,7 +853,7 @@ export default function CoachDashboard() {
     refetchInterval: 60_000,
   });
 
-  const inboxUnread = (inboxData?.threads ?? []).filter((t) => t.last_sender_role === "student").length;
+  const inboxUnread = (inboxData?.threads ?? []).reduce((s, t) => s + (t.unread_count ?? 0), 0);
   const summary = impact?.summary;
 
   return (

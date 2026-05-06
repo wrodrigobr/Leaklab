@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.85.2] — 2026-05-06 — fix: coach inbox mostrava só 1 conversa (filtro errado)
+
+### Fixed
+- **`CoachDashboard.tsx` `MensagensTab`**: o filtro `.filter((t) => t.last_sender_role === "student")` escondia todas as conversas onde o coach já havia respondido, deixando o inbox aparentemente vazio ou com 1 única thread. Removido o filtro — o inbox agora mostra **todas** as conversas
+- **Badge do tab "Mensagens"**: trocado `filter(last_sender_role === "student").length` por `reduce(unread_count)` para contar mensagens não lidas reais, não apenas threads sem resposta
+- **UX**: username em negrito e preview colorido para conversas com mensagens não lidas; prefixo `↩` para indicar threads que aguardam resposta do coach (aluno enviou último); empty state atualizado para "Nenhuma conversa ainda"
+
+---
+
 ## [v0.85.1] — 2026-05-06 — feat: UX-009 — exemplos visuais interativos na /docs
 
 ### Added
