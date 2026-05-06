@@ -937,7 +937,8 @@ _POKER_TERMS_EN = (
     "Termos técnicos de poker SEMPRE em inglês: "
     "fold, call, raise, bet, check, jam, preflop, flop, turn, river, "
     "hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, "
-    "board, position, IP, OOP, shove, reshove, open, limp, squeeze."
+    "board, position, IP, OOP, shove, reshove, open, limp, squeeze. "
+    "NUNCA use 'rua' ou 'ruas' — sempre 'street' ou 'streets'."
 )
 
 _LANG_INSTRUCTIONS = {
@@ -1110,7 +1111,7 @@ def _template_career(projection: dict) -> str:
 # ── Cognitive Failure Narrative (Sprint AQ) ──────────────────────────────────
 
 _LANG_COGNITIVE = {
-    'pt-BR': "Responda APENAS em português do Brasil.",
+    'pt-BR': "Responda APENAS em português do Brasil. NUNCA use 'rua' ou 'ruas' — sempre 'street' ou 'streets'.",
     'en':    "Respond ONLY in English.",
     'es':    "Responde ÚNICAMENTE en español.",
 }
@@ -1123,13 +1124,38 @@ _PATTERN_NAMES_EN = {
     "compensation_call":  "Compensation Call",
 }
 
+# Plain-language behavior descriptions used in the LLM prompt so the model
+# produces concrete, accessible language instead of clinical labels.
+_PATTERN_BEHAVIORS = {
+    "revenge_aggression": (
+        "bets and raises too much in the hands right after a bad beat or a big loss, "
+        "as if trying to quickly win back what was lost"
+    ),
+    "fear_folding": (
+        "folds too often when facing any pressure, especially after losing chips, "
+        "even when the hand and odds justify continuing"
+    ),
+    "sunk_cost": (
+        "keeps calling bets on later streets even when the hand is unlikely to win, "
+        "because they already put chips in the pot and feel they can't walk away"
+    ),
+    "entitlement_tilt": (
+        "starts playing looser and less carefully after a streak of good hands, "
+        "as if convinced that winning momentum will continue regardless of hand quality"
+    ),
+    "compensation_call": (
+        "calls bets they would normally fold immediately after correctly folding a strong hand, "
+        "as if needing to 'make up' for the fold they just made"
+    ),
+}
+
 
 def generate_cognitive_narrative(patterns: list, lang: str = 'pt-BR') -> str:
     """2-3 sentences on the dominant cognitive pattern, its EV cost, and one corrective habit."""
     if not patterns:
         return ""
     cache_key = (
-        f"cog_{lang}_"
+        f"cog_v2_{lang}_"
         + "_".join(f"{p['type']}:{p['severity']}" for p in patterns[:3])
     )
     if cache_key in _cache:
@@ -1145,24 +1171,35 @@ def generate_cognitive_narrative(patterns: list, lang: str = 'pt-BR') -> str:
 def _call_cognitive_narrative(patterns: list, lang: str) -> str:
     import requests as _req
     lang_instr = _LANG_COGNITIVE.get(lang, _LANG_COGNITIVE['pt-BR'])
+    top = patterns[0]
+    top_behavior = _PATTERN_BEHAVIORS.get(top['type'],
+        f"makes suboptimal decisions under pressure ({top['type']})")
+    severity_label = {"high": "strongly", "medium": "moderately", "low": "occasionally"}.get(
+        top['severity'], "notably")
     pattern_str = "; ".join(
-        f"{_PATTERN_NAMES_EN.get(p['type'], p['type'])} ({p['frequency']*100:.0f}% frequency, {p['severity']} severity)"
-        for p in patterns[:3]
+        f"{_PATTERN_BEHAVIORS.get(p['type'], p['type'])} "
+        f"(seen in {p['frequency']*100:.0f}% of sessions, {p['severity']} severity)"
+        for p in patterns[:2]
     )
     system = (
-        f"You are a concise MTT poker coach specialising in mental game. {lang_instr} "
-        "Write EXACTLY 2-3 sentences: (1) name the most damaging cognitive pattern and its trigger, "
-        "(2) explain briefly why it costs EV, "
-        "(3) give one concrete corrective habit the player can apply immediately. "
-        "Be direct and specific. No headers or bullets."
+        f"You are a friendly poker mental-game coach talking directly to a student. {lang_instr} "
+        "Write EXACTLY 3 SHORT sentences: "
+        "(1) Describe what the player FEELS at the table right before this pattern activates — "
+        "use simple, relatable language about the emotion or situation, not clinical labels. "
+        "(2) Describe the mistake this feeling causes at the table, in concrete terms "
+        "(what they do with their chips or their decisions). "
+        "(3) Give one simple, physical or mental reset trick they can use in the next session "
+        "to interrupt the pattern — make it specific and immediately actionable. "
+        "Write as if talking face to face. Keep each sentence under 40 words. "
+        "Do NOT use titles, bullets, or academic labels like 'cognitive bias'."
     )
     user_content = (
-        f"Detected cognitive failure patterns: {pattern_str}. "
-        f"Most frequent: {patterns[0]['type']} at {patterns[0]['frequency']*100:.0f}% of opportunities."
+        f"The player {severity_label} shows this pattern: {top_behavior}. "
+        f"Additional context: {pattern_str}."
     )
     payload = {
         "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 220,
+        "max_tokens": 320,
         "system": system,
         "messages": [{"role": "user", "content": user_content}],
     }
@@ -1186,40 +1223,102 @@ def _call_cognitive_narrative(patterns: list, lang: str) -> str:
 def _template_cognitive(patterns: list, lang: str = 'pt-BR') -> str:
     top  = patterns[0]
     freq = int(top['frequency'] * 100)
-    names_pt = {
-        "revenge_aggression": "Agressividade Reativa",
-        "fear_folding":       "Fold por Medo",
-        "sunk_cost":          "Custo Afundado",
-        "entitlement_tilt":   "Tilt por Relaxamento",
-        "compensation_call":  "Call Compensatório",
+    # Plain-language descriptions per pattern type and language
+    _PLAIN_PT = {
+        "revenge_aggression": (
+            f"Em {freq}% das sessões analisadas, você tende a apostar e relançar demais logo após perder uma mão — como se quisesse recuperar rápido o que perdeu. "
+            "Isso te leva a colocar fichas no pot com mãos fracas, em momentos em que o correto seria esperar. "
+            "Quando sentir esse impulso, espere 30 segundos e pergunte: 'eu apostaria assim se a mão anterior tivesse sido boa?'"
+        ),
+        "fear_folding": (
+            f"Em {freq}% das sessões, você tende a desistir de mãos com muita facilidade quando o oponente aposta, especialmente após perder fichas. "
+            "Esse medo de perder mais faz você sair de pots em que as probabilidades justificariam continuar. "
+            "Antes de foldar sob pressão, calcule rapidamente o que você precisa de equity (pot odds) — só então decida."
+        ),
+        "sunk_cost": (
+            f"Em {freq}% das sessões, você tende a continuar pagando bets no turn e no river mesmo quando a mão provavelmente perdeu, "
+            "porque já investiu fichas antes e sente que não pode sair. "
+            "Ignore o que já está no pot — a única pergunta que importa é: 'minha mão vale esse call agora?'"
+        ),
+        "entitlement_tilt": (
+            f"Em {freq}% das sessões, você começa a jogar de forma mais descuidada após uma sequência de boas mãos, como se a sorte fosse continuar independente do que você fizer. "
+            "Isso te leva a entrar em pots fracos e a apostar sem razão clara. "
+            "Após ganhar três mãos seguidas, faça uma pausa curta e redefina seu foco como se fosse a primeira mão do dia."
+        ),
+        "compensation_call": (
+            f"Em {freq}% das sessões, você tende a pagar bets que normalmente foldaria logo após ter foldado uma mão forte corretamente — como se precisasse 'compensar' o fold anterior. "
+            "Cada mão é independente: foldar bem não cria nenhuma dívida para a próxima. "
+            "Quando sentir vontade de pagar 'só para fazer alguma coisa', é sinal para foldar."
+        ),
     }
-    names_es = {
-        "revenge_aggression": "Agresividad Reactiva",
-        "fear_folding":       "Fold por Miedo",
-        "sunk_cost":          "Costo Hundido",
-        "entitlement_tilt":   "Tilt por Complacencia",
-        "compensation_call":  "Call de Compensación",
+    _PLAIN_EN = {
+        "revenge_aggression": (
+            f"In {freq}% of sessions, you tend to bet and raise too much right after losing a hand — as if trying to quickly win back what you lost. "
+            "This leads you to put chips in the pot with weak hands, when the right play is to wait. "
+            "When you feel that urge, pause 30 seconds and ask: 'would I play this way if my last hand had been good?'"
+        ),
+        "fear_folding": (
+            f"In {freq}% of sessions, you tend to give up hands too easily when facing a bet, especially after losing chips. "
+            "That fear of losing more makes you exit pots where the odds actually justify continuing. "
+            "Before folding under pressure, quickly check if your equity beats the pot odds — then decide."
+        ),
+        "sunk_cost": (
+            f"In {freq}% of sessions, you keep calling bets on the turn and river even when your hand has likely lost, "
+            "because you already put chips in and feel you can't walk away. "
+            "Ignore what's already in the pot — the only question is: 'is my hand worth this call right now?'"
+        ),
+        "entitlement_tilt": (
+            f"In {freq}% of sessions, you start playing more carelessly after a run of good hands, as if the winning streak will continue regardless of hand quality. "
+            "This leads you to enter weak pots and bet without a clear reason. "
+            "After winning three hands in a row, take a short break and reset your focus as if it's the first hand of the day."
+        ),
+        "compensation_call": (
+            f"In {freq}% of sessions, you tend to call bets you would normally fold right after correctly folding a strong hand — as if you need to 'make up' for the fold. "
+            "Each hand is independent: folding well creates no debt for the next hand. "
+            "When you feel like calling 'just to do something', that's your cue to fold."
+        ),
+    }
+    _PLAIN_ES = {
+        "revenge_aggression": (
+            f"En el {freq}% de las sesiones, tiendes a apostar y reraisear demasiado justo después de perder una mano — como si quisieras recuperar rápido lo perdido. "
+            "Esto te lleva a meter fichas al pot con manos débiles, cuando lo correcto sería esperar. "
+            "Cuando sientas ese impulso, espera 30 segundos y pregúntate: '¿jugaría así si mi última mano hubiera sido buena?'"
+        ),
+        "fear_folding": (
+            f"En el {freq}% de las sesiones, tiendes a rendirte demasiado fácil cuando el oponente apuesta, especialmente tras perder fichas. "
+            "Ese miedo a perder más te hace salir de pots donde las pot odds justificarían continuar. "
+            "Antes de foldear bajo presión, calcula rápidamente si tu equity supera las pot odds — luego decide."
+        ),
+        "sunk_cost": (
+            f"En el {freq}% de las sesiones, sigues pagando bets en el turn y river aunque tu mano probablemente perdió, "
+            "porque ya pusiste fichas antes y sientes que no puedes retirarte. "
+            "Ignora lo que ya está en el pot — la única pregunta es: '¿vale mi mano este call ahora?'"
+        ),
+        "entitlement_tilt": (
+            f"En el {freq}% de las sesiones, empiezas a jugar de forma más descuidada tras una racha de buenas manos, como si la suerte fuera a continuar sin importar lo que hagas. "
+            "Esto te lleva a entrar en pots débiles y apostar sin razón clara. "
+            "Tras ganar tres manos seguidas, tómate una pausa corta y resetea tu enfoque como si fuera la primera mano del día."
+        ),
+        "compensation_call": (
+            f"En el {freq}% de las sesiones, tiendes a pagar bets que normalmente foldearías justo después de haber foldeado bien una mano fuerte — como si necesitaras 'compensar' ese fold. "
+            "Cada mano es independiente: foldear bien no crea ninguna deuda para la siguiente. "
+            "Cuando sientas ganas de pagar 'solo para hacer algo', esa es tu señal de fold."
+        ),
     }
     if lang == 'en':
-        pname = _PATTERN_NAMES_EN.get(top['type'], top['type'])
-        return (
-            f"Your most frequent cognitive pattern is {pname} ({freq}% of opportunities). "
-            f"This breaks decision discipline at the moments of highest strategic cost. "
-            f"Take a deliberate 30-second pause after triggering events before acting on your next hand."
-        )
+        return _PLAIN_EN.get(top['type'],
+            f"In {freq}% of sessions you show emotional decision-making under pressure. "
+            f"This leads to mistakes at the most costly moments. "
+            f"Pause 30 seconds after any triggering event before playing your next hand.")
     if lang == 'es':
-        pname = names_es.get(top['type'], top['type'])
-        return (
-            f"Tu patrón cognitivo más frecuente es {pname} ({freq}% de las oportunidades). "
-            f"Esto rompe la disciplina decisional en los momentos de mayor coste estratégico. "
-            f"Haz una pausa consciente de 30 segundos tras los eventos desencadenantes antes de actuar."
-        )
-    pname = names_pt.get(top['type'], top['type'])
-    return (
-        f"Seu padrão cognitivo mais frequente é {pname} ({freq}% das oportunidades). "
-        f"Isso quebra a disciplina decisional nos momentos de maior custo estratégico. "
-        f"Faça uma pausa consciente de 30 segundos após eventos gatilho antes de agir na próxima mão."
-    )
+        return _PLAIN_ES.get(top['type'],
+            f"En el {freq}% de las sesiones muestras decisiones emocionales bajo presión. "
+            f"Esto genera errores en los momentos de mayor coste. "
+            f"Pausa 30 segundos tras cualquier evento desencadenante antes de jugar la siguiente mano.")
+    return _PLAIN_PT.get(top['type'],
+        f"Em {freq}% das sessões você toma decisões emocionais sob pressão. "
+        f"Isso gera erros nos momentos de maior custo. "
+        f"Faça uma pausa de 30 segundos após qualquer evento gatilho antes de jogar a próxima mão.")
 
 
 # ── Strategic Twin Narrative (Sprint AR) ─────────────────────────────────────
