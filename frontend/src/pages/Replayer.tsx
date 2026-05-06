@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, SkipBack, SkipForward, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
+import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTable, type Seat } from "@/components/hud/PokerTable";
 import { RangePanel } from "@/components/replayer/RangePanel";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
@@ -86,7 +87,7 @@ const Replayer = () => {
   const [playing, setPlaying]       = useState(false);
   const [speed, setSpeed]           = useState(1);
   const [handList, setHandList]     = useState<string[]>([]);
-  const [betUnit, setBetUnit]       = useState<"chips" | "bb">("chips");
+  const [betUnit, setBetUnit]       = useState<"chips" | "bb">("bb");
   const [decisions, setDecisions]   = useState<TournamentDecision[]>([]);
   const [showRange, setShowRange]           = useState(false);
   const [annotating, setAnnotating]         = useState(false);
@@ -94,6 +95,11 @@ const Replayer = () => {
   const [annMode, setAnnMode]               = useState<"complement" | "replace">("complement");
   const [annAction, setAnnAction]           = useState("");
   const [annOverride, setAnnOverride]       = useState<CoachOverrideLabel>(null);
+
+  // Floating Range panel drag state
+  const [rangePos, setRangePos]         = useState({ x: 24, y: 96 });
+  const isDraggingRange                 = useRef(false);
+  const rangeDragStart                  = useRef({ mouseX: 0, mouseY: 0, panelX: 0, panelY: 0 });
 
   useEffect(() => {
     if (!tournamentId || !handId) return;
@@ -176,6 +182,29 @@ const Replayer = () => {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [steps.length]);
+
+  // Draggable Range panel
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDraggingRange.current) return;
+      setRangePos({
+        x: rangeDragStart.current.panelX + (e.clientX - rangeDragStart.current.mouseX),
+        y: rangeDragStart.current.panelY + (e.clientY - rangeDragStart.current.mouseY),
+      });
+    };
+    const onUp = () => { isDraggingRange.current = false; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const handleRangeDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    isDraggingRange.current = true;
+    rangeDragStart.current = { mouseX: e.clientX, mouseY: e.clientY, panelX: rangePos.x, panelY: rangePos.y };
+  };
 
   // Reset annotation form when step changes
   useEffect(() => { setAnnotating(false); }, [stepIdx]);
@@ -290,226 +319,160 @@ const Replayer = () => {
   const isCorrect = step.is_hero && !isError && step.type === "action";
 
   return (
-    <HudLayout
-      eyebrow={t("eyebrow")}
-      title={`${replayData.hero} — ${replayData.seats ? Object.values(replayData.seats).length : "?"} ${t("players")}`}
-      description={t("description")}
-    >
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary"
-        >
-          <ArrowLeft className="size-3.5" /> {t("back")}
-        </button>
+    <div className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
+      <HudHeader />
 
-        {handList.length > 1 && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => prevHand && navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`)}
-              disabled={!prevHand}
-              className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary disabled:opacity-30"
-            >
-              <SkipBack className="size-3.5" /> {t("navigation.prevHand")}
-            </button>
-            <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-              {handIdx + 1}/{handList.length}
-            </span>
-            <button
-              onClick={() => nextHand && navigate(`/replayer?t=${tournamentId}&h=${nextHand}${studentId ? `&student=${studentId}` : ""}`)}
-              disabled={!nextHand}
-              className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary disabled:opacity-30"
-            >
-              {t("navigation.nextHand")} <SkipForward className="size-3.5" />
-            </button>
+      <div className="flex-1 min-h-0 flex flex-col gap-2 px-4 md:px-6 pt-2 pb-16 md:pb-2 mx-auto w-full max-w-[1440px]">
+
+        {/* Top bar */}
+        <div className="shrink-0 grid grid-cols-3 items-center">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary"
+          >
+            <ArrowLeft className="size-3.5" /> {t("back")}
+          </button>
+
+          {handList.length > 1 && handIdx >= 0 ? (
+            <div className="flex items-center justify-center gap-2.5">
+              <div className="flex items-baseline gap-1 font-mono tabular-nums">
+                <span className="text-[9px] uppercase tracking-widest text-muted-foreground">{t("navigation.handLabel")}</span>
+                <span className="text-sm font-bold text-foreground">{handIdx + 1}</span>
+                <span className="text-[11px] text-muted-foreground">/{handList.length}</span>
+              </div>
+              <div className="hidden sm:block h-1 w-28 overflow-hidden rounded-full bg-border">
+                <div
+                  className="h-full rounded-full bg-primary/70 transition-all duration-500 ease-out"
+                  style={{ width: `${Math.max(4, ((handIdx + 1) / handList.length) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ) : <div />}
+
+          <div />
+        </div>
+
+        {/* PokerTable — fills remaining vertical space, constrained by height */}
+        <div className="flex-1 min-h-0 max-h-[calc(100dvh-20rem)] flex items-center justify-center">
+          <div className="h-full max-w-full aspect-[16/10]">
+            <PokerTable seats={seats} community={community} pot={step.pot} street={step.street} bb={replayData.bb} betUnit={betUnit} />
           </div>
-        )}
-      </div>
+        </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8 space-y-4">
-          <PokerTable seats={seats} community={community} pot={step.pot} street={step.street} bb={replayData.bb} betUnit={betUnit} />
+        {/* Controls */}
+        <div className="shrink-0 border border-border rounded-xl bg-hud-surface p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                if (stepIdx > 0) setStepIdx(0);
+                else if (prevHand) navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`);
+              }}
+              disabled={stepIdx === 0 && !prevHand}
+              className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={stepIdx === 0 && prevHand ? t("navigation.prevHand") : "Reiniciar"}
+            ><Rewind className="size-4" /></button>
+            <button onClick={() => setStepIdx((i) => Math.max(0, i - 1))} disabled={stepIdx === 0}
+              className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Anterior"><ChevronLeft className="size-5" /></button>
+            <button onClick={() => setPlaying((p) => !p)}
+              className="inline-flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={playing ? t("controls.pause") : t("controls.play")}>
+              {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+            </button>
+            <button onClick={() => setStepIdx((i) => Math.min(steps.length - 1, i + 1))} disabled={stepIdx === steps.length - 1}
+              className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Próximo"><ChevronRight className="size-5" /></button>
+            <button
+              onClick={() => {
+                if (stepIdx < steps.length - 1) setStepIdx(steps.length - 1);
+                else if (nextHand) navigate(`/replayer?t=${tournamentId}&h=${nextHand}${studentId ? `&student=${studentId}` : ""}`);
+              }}
+              disabled={stepIdx === steps.length - 1 && !nextHand}
+              className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={stepIdx === steps.length - 1 && nextHand ? t("navigation.nextHand") : "Final"}
+            ><FastForward className="size-4" /></button>
+          </div>
 
-          {/* Controls */}
-          <div className="sticky bottom-14 z-30 md:static border-t border-border md:border md:rounded-xl bg-background/95 backdrop-blur-md md:bg-hud-surface p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-1 items-center gap-3">
+            <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+              {stepIdx + 1}/{steps.length}
+            </span>
+            <div className="flex-1 flex gap-0.5">
+              {steps.map((s, i) => (
+                <button key={i} onClick={() => setStepIdx(i)}
+                  className={cn(
+                    "h-1.5 flex-1 rounded-sm transition-colors focus-visible:outline-none",
+                    i <= stepIdx
+                      ? (s.is_error ? "bg-destructive" : "bg-primary")
+                      : "bg-border"
+                  )}
+                  aria-label={`Passo ${i + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowRange(s => !s)}
+              disabled={step.street !== 'preflop'}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-sm px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider ring-1 transition-colors focus-visible:outline-none',
+                showRange && step.street === 'preflop'
+                  ? 'bg-primary/15 text-primary ring-primary/30'
+                  : step.street !== 'preflop'
+                  ? 'cursor-not-allowed text-muted-foreground/30 ring-border/30'
+                  : 'text-muted-foreground ring-border hover:text-foreground',
+              )}
+            >
+              <LayoutGrid className="size-3" /> Range
+            </button>
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => {
-                  if (stepIdx > 0) setStepIdx(0);
-                  else if (prevHand) navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`);
-                }}
-                disabled={stepIdx === 0 && !prevHand}
-                className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={stepIdx === 0 && prevHand ? t("navigation.prevHand") : "Reiniciar"}
-              ><Rewind className="size-4" /></button>
-              <button onClick={() => setStepIdx((i) => Math.max(0, i - 1))} disabled={stepIdx === 0}
-                className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Anterior"><ChevronLeft className="size-5" /></button>
-              <button onClick={() => setPlaying((p) => !p)}
-                className="inline-flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={playing ? t("controls.pause") : t("controls.play")}>
-                {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
-              </button>
-              <button onClick={() => setStepIdx((i) => Math.min(steps.length - 1, i + 1))} disabled={stepIdx === steps.length - 1}
-                className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Próximo"><ChevronRight className="size-5" /></button>
-              <button
-                onClick={() => {
-                  if (stepIdx < steps.length - 1) setStepIdx(steps.length - 1);
-                  else if (nextHand) navigate(`/replayer?t=${tournamentId}&h=${nextHand}${studentId ? `&student=${studentId}` : ""}`);
-                }}
-                disabled={stepIdx === steps.length - 1 && !nextHand}
-                className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={stepIdx === steps.length - 1 && nextHand ? t("navigation.nextHand") : "Final"}
-              ><FastForward className="size-4" /></button>
+              {[0.5, 1, 2].map((s) => (
+                <button key={s} onClick={() => setSpeed(s)}
+                  className={cn(
+                    "rounded-sm px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none",
+                    speed === s ? "bg-primary/15 text-primary ring-1 ring-primary/30" : "text-muted-foreground hover:text-foreground"
+                  )}>{s}x</button>
+              ))}
             </div>
-
-            <div className="flex flex-1 items-center gap-3 sm:max-w-md">
-              <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-                {stepIdx + 1}/{steps.length}
-              </span>
-              <div className="flex-1 flex gap-0.5">
-                {steps.map((s, i) => (
-                  <button key={i} onClick={() => setStepIdx(i)}
-                    className={cn(
-                      "h-1.5 flex-1 rounded-sm transition-colors focus-visible:outline-none",
-                      i <= stepIdx
-                        ? (s.is_error ? "bg-destructive" : "bg-primary")
-                        : "bg-border"
-                    )}
-                    aria-label={`Passo ${i + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* Speed */}
-              <div className="flex items-center gap-1">
-                {[0.5, 1, 2].map((s) => (
-                  <button key={s} onClick={() => setSpeed(s)}
-                    className={cn(
-                      "rounded-sm px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none",
-                      speed === s ? "bg-primary/15 text-primary ring-1 ring-primary/30" : "text-muted-foreground hover:text-foreground"
-                    )}>{s}x</button>
-                ))}
-              </div>
-              {/* Bet unit toggle */}
-              <div className="flex items-center rounded-sm ring-1 ring-border overflow-hidden">
-                {(["chips", "bb"] as const).map((u) => (
-                  <button key={u} onClick={() => setBetUnit(u)}
-                    className={cn(
-                      "px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none",
-                      betUnit === u ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
-                    )}>{u}</button>
-                ))}
-              </div>
+            <div className="flex items-center rounded-sm ring-1 ring-border overflow-hidden">
+              {(["chips", "bb"] as const).map((u) => (
+                <button key={u} onClick={() => setBetUnit(u)}
+                  className={cn(
+                    "px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none",
+                    betUnit === u ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                  )}>{u}</button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Side panel */}
-        <aside className="lg:col-span-4 space-y-4">
-          {/* Action log */}
-          <section className="rounded-xl border border-border bg-hud-surface overflow-hidden">
-            <header className="flex items-center justify-between border-b border-border px-4 py-3">
-              <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-foreground">{t("actionLog")}</h2>
-              <div className="flex items-center gap-3">
-                {step.street === 'preflop' && (
-                  <button
-                    onClick={() => setShowRange(s => !s)}
-                    className={cn(
-                      'flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 transition-colors',
-                      showRange ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    <LayoutGrid className="size-3" /> Range
-                  </button>
-                )}
-                <span className="font-mono text-[10px] text-muted-foreground">{step.street?.toUpperCase()}</span>
-              </div>
-            </header>
-            <ol className="max-h-72 overflow-y-auto divide-y divide-border">
-              {steps.slice(0, stepIdx + 1).slice().reverse().map((s, ri) => {
-                const origIdx = stepIdx - ri;
-                return (
-                <li key={origIdx} className={cn(
-                  "px-4 py-2.5 text-xs transition-colors",
-                  origIdx === stepIdx && "bg-primary/5",
-                  s.is_error && "border-l-2 border-destructive",
-                  s.type === "showdown" && "border-l-2 border-primary/50"
-                )}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={cn("text-foreground", s.is_hero && "font-semibold text-primary")}>{anonymizeDesc(s.desc, playerAliases)}</span>
-                    <span className="font-mono text-[10px] text-muted-foreground shrink-0">{s.street?.toUpperCase()}</span>
-                  </div>
-                  {s.is_error && s.best_action && (
-                    <div className="mt-0.5 font-mono text-[10px] text-destructive">
-                      {t("decision.correct", { action: s.best_action, score: s.error_score?.toFixed(3) })}
-                    </div>
-                  )}
-                  {s.type === "showdown" && s.summary?.seats && s.summary.seats.length > 0 && (
-                    <div className="mt-1 space-y-0.5">
-                      {s.summary.seats.map((sd, j) => (
-                        <div key={j} className="font-mono text-[10px] text-muted-foreground">
-                          {playerAliases[sd.player] ?? sd.player}
-                          {sd.cards?.length > 0 && ` [${sd.cards.join(" ")}]`}
-                          {" · "}
-                          <span className={sd.outcome === "won" ? "text-primary" : ""}>
-                            {sd.outcome === "won" ? t("decision.won", { amount: sd.won }) : sd.hand_desc}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </li>
-                );
-              })}
-            </ol>
-          </section>
-
-          {/* Range reference panel */}
-          {showRange && step.street === 'preflop' && (
-            <RangePanel
-              key={stepIdx}
-              step={step}
-              hero={replayData.hero}
-              heroCards={replayData.hero_cards}
-              onClose={() => setShowRange(false)}
-            />
-          )}
-
-          {/* EV feedback — ocultado para aluno quando coach substituiu a análise */}
+        {/* Contextual panels — shrink-0, appear below controls when relevant */}
+        <div className="shrink-0 space-y-2">
           {step.type === "action" && step.is_hero &&
            (studentId !== null || coachAnnotation?.mode !== "replace") && (
             <section className={cn(
-              "rounded-xl border p-4 space-y-2",
-              isError
-                ? "border-destructive/40 bg-destructive/5"
-                : isCorrect
-                ? "border-primary/30 bg-primary/5"
-                : "border-border bg-hud-surface"
+              "rounded-xl border p-3 flex flex-wrap items-center gap-x-6 gap-y-1.5",
+              isError ? "border-destructive/40 bg-destructive/5" : isCorrect ? "border-primary/30 bg-primary/5" : "border-border bg-hud-surface"
             )}>
-              <div className="flex items-center gap-2">
-                {isError
-                  ? <AlertOctagon className="size-4 text-destructive" />
-                  : <CheckCircle2 className="size-4 text-primary" />}
-                <span className={cn("font-mono text-[10px] font-bold uppercase tracking-widest-2",
-                  isError ? "text-destructive" : "text-primary")}>
+              <div className="flex items-center gap-2 shrink-0">
+                {isError ? <AlertOctagon className="size-4 text-destructive" /> : <CheckCircle2 className="size-4 text-primary" />}
+                <span className={cn("font-mono text-[10px] font-bold uppercase tracking-widest-2", isError ? "text-destructive" : "text-primary")}>
                   {t("decision.aiCoach")} · {isError ? (step.error_label?.replace(/_/g," ") ?? "-EV") : "+EV"}
                 </span>
               </div>
               {isError ? (
-                <div className="space-y-1.5 text-xs text-foreground">
-                  <p>{t("decision.actionTaken", { action: step.action, best: step.best_action })}</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-foreground">
+                  <span>{t("decision.actionTaken", { action: step.action, best: step.best_action })}</span>
                   {step.hand_equity != null && (
-                    <p className="text-muted-foreground">
+                    <span className="text-muted-foreground">
                       {t("decision.equity")}: {(step.hand_equity * 100).toFixed(1)}%
                       {step.pot_odds_equity != null && ` (${t("decision.required")}: ${(step.pot_odds_equity * 100).toFixed(1)}%)`}
-                    </p>
+                    </span>
                   )}
                   {step.m_ratio != null && (
-                    <p className="text-muted-foreground">{t("decision.mRatioLine", { m: step.m_ratio, icm: step.icm_pressure })}</p>
+                    <span className="text-muted-foreground">{t("decision.mRatioLine", { m: step.m_ratio, icm: step.icm_pressure })}</span>
                   )}
                 </div>
               ) : (
@@ -518,7 +481,6 @@ const Replayer = () => {
             </section>
           )}
 
-          {/* Coach annotation panel */}
           {studentId && step?.is_hero && step?.is_error && currentDecisionId && (
             <section className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
@@ -530,85 +492,47 @@ const Replayer = () => {
                 </div>
                 {!annotating && (
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={openAnnotationForm}
-                      className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-primary transition-colors"
-                    >
+                    <button onClick={openAnnotationForm} className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-primary transition-colors">
                       <PenLine className="size-3" />
                       {coachAnnotation ? t("annotation.edit") : t("annotation.annotate")}
                     </button>
                     {coachAnnotation && (
-                      <button
-                        onClick={() => deleteAnn.mutate()}
-                        disabled={deleteAnn.isPending}
-                        className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
-                      >
+                      <button onClick={() => deleteAnn.mutate()} disabled={deleteAnn.isPending} className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50">
                         {deleteAnn.isPending ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
                       </button>
                     )}
                   </div>
                 )}
               </div>
-
-              {/* Existing annotation display */}
               {!annotating && coachAnnotation && (
                 <div className="space-y-1">
                   <p className="text-sm text-foreground leading-relaxed">{coachAnnotation.comment}</p>
-                  {coachAnnotation.coach_action && (
-                    <p className="font-mono text-[11px] text-primary">→ Correto: {coachAnnotation.coach_action}</p>
-                  )}
+                  {coachAnnotation.coach_action && <p className="font-mono text-[11px] text-primary">→ Correto: {coachAnnotation.coach_action}</p>}
                 </div>
               )}
-
-              {/* No annotation placeholder */}
-              {!annotating && !coachAnnotation && (
-                <p className="text-xs text-muted-foreground">{t("annotation.noAnnotation")}</p>
-              )}
-
-              {/* Annotation form */}
+              {!annotating && !coachAnnotation && <p className="text-xs text-muted-foreground">{t("annotation.noAnnotation")}</p>}
               {annotating && (
                 <div className="space-y-3">
-                  {/* Mode toggle */}
                   <div className="flex gap-2">
                     {(["complement", "replace"] as const).map((m) => (
                       <button key={m} type="button" onClick={() => setAnnMode(m)}
-                        className={`flex-1 py-1.5 rounded text-[10px] font-mono font-bold uppercase tracking-widest-2 border transition-colors ${
-                          annMode === m
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/50"
-                        }`}
-                      >
+                        className={`flex-1 py-1.5 rounded text-[10px] font-mono font-bold uppercase tracking-widest-2 border transition-colors ${annMode === m ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
                         {m === "complement" ? t("annotation.complementMode") : t("annotation.replaceMode")}
                       </button>
                     ))}
                   </div>
-                  <textarea
-                    value={annComment}
-                    onChange={(e) => setAnnComment(e.target.value)}
-                    rows={3}
-                    placeholder={t("annotation.commentPlaceholder")}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
-                  />
+                  <textarea value={annComment} onChange={(e) => setAnnComment(e.target.value)} rows={3} placeholder={t("annotation.commentPlaceholder")}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none" />
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">{t("annotation.correctAction")}</label>
-                      <select
-                        value={annAction}
-                        onChange={(e) => setAnnAction(e.target.value)}
-                        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
-                      >
-                        {["", "fold", "check", "call", "bet", "raise", "re-raise", "all-in"].map((a) => (
-                          <option key={a} value={a}>{a || t("annotation.noSpecify")}</option>
-                        ))}
+                      <select value={annAction} onChange={(e) => setAnnAction(e.target.value)} className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40">
+                        {["", "fold", "check", "call", "bet", "raise", "re-raise", "all-in"].map((a) => <option key={a} value={a}>{a || t("annotation.noSpecify")}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1">
                       <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">{t("annotation.classification")}</label>
-                      <select
-                        value={annOverride ?? ""}
-                        onChange={(e) => setAnnOverride((e.target.value || null) as CoachOverrideLabel)}
-                        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
-                      >
+                      <select value={annOverride ?? ""} onChange={(e) => setAnnOverride((e.target.value || null) as CoachOverrideLabel)} className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40">
                         <option value="">{t("annotation.noVerdict")}</option>
                         <option value="standard">{t("annotation.overrideStandard")}</option>
                         <option value="marginal">{t("annotation.overrideMarginal")}</option>
@@ -618,24 +542,16 @@ const Replayer = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => saveAnn.mutate()}
-                      disabled={!annComment.trim() || saveAnn.isPending}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-mono text-[10px] font-bold uppercase text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                    >
+                    <button onClick={() => saveAnn.mutate()} disabled={!annComment.trim() || saveAnn.isPending}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-mono text-[10px] font-bold uppercase text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                       {saveAnn.isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
                       {t("annotation.saveBtn")}
                     </button>
-                    <button onClick={() => setAnnotating(false)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 font-mono text-[10px] text-muted-foreground hover:text-foreground"
-                    >
+                    <button onClick={() => setAnnotating(false)} className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 font-mono text-[10px] text-muted-foreground hover:text-foreground">
                       <X className="size-3" /> {t("annotation.cancel")}
                     </button>
                     {coachAnnotation && (
-                      <button
-                        onClick={() => deleteAnn.mutate()} disabled={deleteAnn.isPending}
-                        className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] text-destructive hover:underline disabled:opacity-50"
-                      >
+                      <button onClick={() => deleteAnn.mutate()} disabled={deleteAnn.isPending} className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] text-destructive hover:underline disabled:opacity-50">
                         <Trash2 className="size-3" /> {t("annotation.delete")}
                       </button>
                     )}
@@ -645,30 +561,19 @@ const Replayer = () => {
             </section>
           )}
 
-          {/* Read-only annotation balloon for students */}
           {!studentId && coachAnnotation && (
-            <section className={cn(
-              "rounded-xl border p-4 space-y-2",
-              coachAnnotation.mode === "replace"
-                ? "border-primary/50 bg-primary/8"
-                : "border-primary/20 bg-primary/5"
-            )}>
+            <section className={cn("rounded-xl border p-4 space-y-2", coachAnnotation.mode === "replace" ? "border-primary/50 bg-primary/8" : "border-primary/20 bg-primary/5")}>
               <div className="flex items-center gap-2 flex-wrap">
                 <GraduationCap className="size-4 text-primary" />
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
                   {t("annotation.coachLabel")} · {coachAnnotation.mode === "replace" ? t("annotation.exclusive") : t("annotation.complementTitle")}
                 </span>
                 {coachAnnotation.coach_override_label && (
-                  <span className={cn(
-                    "font-mono text-[9px] font-bold px-1.5 py-0.5 rounded ring-1",
-                    coachAnnotation.coach_override_label === "standard"
-                      ? "text-primary ring-primary/30 bg-primary/10"
-                      : coachAnnotation.coach_override_label === "marginal"
-                      ? "text-yellow-500 ring-yellow-500/30 bg-yellow-500/10"
-                      : coachAnnotation.coach_override_label === "small_mistake"
-                      ? "text-amber-400 ring-amber-400/30 bg-amber-400/10"
-                      : "text-destructive ring-destructive/30 bg-destructive/10"
-                  )}>
+                  <span className={cn("font-mono text-[9px] font-bold px-1.5 py-0.5 rounded ring-1",
+                    coachAnnotation.coach_override_label === "standard" ? "text-primary ring-primary/30 bg-primary/10"
+                    : coachAnnotation.coach_override_label === "marginal" ? "text-yellow-500 ring-yellow-500/30 bg-yellow-500/10"
+                    : coachAnnotation.coach_override_label === "small_mistake" ? "text-amber-400 ring-amber-400/30 bg-amber-400/10"
+                    : "text-destructive ring-destructive/30 bg-destructive/10")}>
                     {coachAnnotation.coach_override_label === "standard" ? t("annotation.overrideStandard")
                       : coachAnnotation.coach_override_label === "marginal" ? t("annotation.overrideMarginal")
                       : coachAnnotation.coach_override_label === "small_mistake" ? t("annotation.overrideSmall")
@@ -677,59 +582,60 @@ const Replayer = () => {
                 )}
               </div>
               <p className="text-sm text-foreground leading-relaxed">{coachAnnotation.comment}</p>
-              {coachAnnotation.coach_action && (
-                <p className="font-mono text-[11px] text-primary">
-                  → Ação: {coachAnnotation.coach_action}
-                </p>
-              )}
+              {coachAnnotation.coach_action && <p className="font-mono text-[11px] text-primary">→ Ação: {coachAnnotation.coach_action}</p>}
             </section>
           )}
 
-          {/* Showdown result panel */}
           {step.type === "showdown" && step.summary && (
-            <section className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">{t("decision.handResult")}</div>
+            <section className="rounded-xl border border-primary/30 bg-primary/5 p-3 flex flex-wrap items-start gap-4">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary shrink-0">{t("decision.handResult")}</span>
               {step.summary.total_pot != null && (
-                <div className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground shrink-0">
                   {t("decision.totalPot")}: <span className="font-mono font-medium text-foreground">{(step.summary.total_pot / (replayData?.bb ?? 100)).toFixed(1)} BB</span>
-                </div>
+                </span>
               )}
-              <ul className="space-y-2">
+              <div className="flex flex-wrap gap-3">
                 {step.summary.seats.map((sd, i) => (
-                  <li key={i} className={cn(
-                    "text-xs space-y-0.5 rounded-lg px-2.5 py-2 -mx-2.5 transition-colors",
-                    sd.outcome === "won"
-                      ? "bg-primary/10 ring-1 ring-primary/30 shadow-[0_0_12px_rgba(var(--primary-rgb,99,179,132)/0.25)]"
-                      : "opacity-60"
-                  )}>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={cn("font-semibold", sd.outcome === "won" ? "text-primary" : "text-muted-foreground")}>
-                        {sd.outcome === "won" && <span className="mr-1">🏆</span>}
-                        {playerAliases[sd.player] ?? sd.player}
-                      </span>
-                      {sd.outcome === "won" && (
-                        <span className="font-mono text-[11px] font-bold text-primary">+{sd.won}</span>
-                      )}
-                    </div>
+                  <div key={i} className={cn("flex items-center gap-2 text-xs rounded-lg px-2.5 py-1.5 ring-1",
+                    sd.outcome === "won" ? "bg-primary/10 ring-primary/30 text-primary font-semibold" : "ring-border/30 text-muted-foreground opacity-60")}>
+                    {sd.outcome === "won" && <span>🏆</span>}
+                    <span>{playerAliases[sd.player] ?? sd.player}</span>
                     {sd.cards?.length > 0 && (
-                      <div className="flex gap-1 mt-1">
-                        {parseCards(sd.cards).map((c, j) => (
-                          <PlayingCard key={j} card={c} size="sm" />
-                        ))}
-                        {sd.hand_desc && sd.hand_desc !== "mucked" && sd.hand_desc !== "collected" && (
-                          <span className="self-center font-mono text-[10px] text-muted-foreground ml-1">{sd.hand_desc}</span>
-                        )}
+                      <div className="flex gap-0.5">
+                        {parseCards(sd.cards).map((c, j) => <PlayingCard key={j} card={c} size="sm" />)}
                       </div>
                     )}
-                  </li>
+                    {sd.hand_desc && sd.hand_desc !== "mucked" && sd.hand_desc !== "collected" && (
+                      <span className="font-mono text-[10px]">{sd.hand_desc}</span>
+                    )}
+                    {sd.outcome === "won" && <span className="font-mono font-bold">+{sd.won}</span>}
+                  </div>
                 ))}
-              </ul>
+              </div>
             </section>
           )}
+        </div>
 
-        </aside>
       </div>
-    </HudLayout>
+
+      {/* ── Range panel — floating (desktop) / bottom sheet (mobile) ── */}
+      {showRange && step.street === 'preflop' && (
+        <>
+          <div
+            className="hidden lg:block fixed z-50 w-[360px] rounded-xl shadow-2xl ring-1 ring-primary/25"
+            style={{ left: rangePos.x, top: rangePos.y }}
+          >
+            <RangePanel key={stepIdx} step={step} hero={replayData.hero} heroCards={replayData.hero_cards} onClose={() => setShowRange(false)} onHeaderMouseDown={handleRangeDragStart} />
+          </div>
+          <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowRange(false)} />
+            <div className="relative max-h-[72vh] overflow-y-auto rounded-t-2xl">
+              <RangePanel key={`mobile-${stepIdx}`} step={step} hero={replayData.hero} heroCards={replayData.hero_cards} onClose={() => setShowRange(false)} />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 };
 

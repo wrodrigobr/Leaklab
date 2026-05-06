@@ -25,7 +25,10 @@
     "prevHand": "Mano anterior",
     "nextHand": "Siguiente mano",
     "backToTournament": "Volver al torneo",
-    "allHands": "Todas las manos"
+    "allHands": "Todas las manos",
+    "handLabel": "Mano",
+    "prev": "Anterior",
+    "next": "Siguiente"
   },
   "decision": {
     "title": "Evaluación de la decisión",

@@ -13,9 +13,10 @@ interface Props {
   hero: string;
   heroCards: string[];
   onClose: () => void;
+  onHeaderMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-export function RangePanel({ step, hero, heroCards, onClose }: Props) {
+export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }: Props) {
   const heroSeat = Object.entries(step.seats ?? {}).find(([, s]) => s.player === hero);
   const detectedPos = heroSeat ? normalizePosition(heroSeat[1].pos) : null;
 
@@ -40,7 +41,10 @@ export function RangePanel({ step, hero, heroCards, onClose }: Props) {
   return (
     <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div
+        className={cn("flex items-center justify-between", onHeaderMouseDown && "cursor-grab active:cursor-grabbing select-none")}
+        onMouseDown={onHeaderMouseDown}
+      >
         <div className="flex items-center gap-2">
           <LayoutGrid className="size-3.5 text-primary" />
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-foreground">

@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.85.5] — 2026-05-06 — feat: Replayer redesign — full-screen, sem scroll, Range flutuante
+
+### Changed
+- **`Replayer.tsx`**: layout migrado de `HudLayout` para layout customizado `h-dvh overflow-hidden flex-col` — sem barra de rolagem, mesa ocupa todo o espaço disponível entre header e controles
+- **`Replayer.tsx`**: `PokerTable` agora é constrangida pela altura (`max-h-[calc(100dvh-20rem)]`) em vez da largura — aspect-ratio calculado automaticamente sem overflow
+- **`Replayer.tsx`**: `Action Log` removido — painéis contextuais (EV feedback, anotação coach, showdown) movidos para faixa horizontal compacta abaixo dos controles
+- **`Replayer.tsx`**: botão **Range** movido para a barra de controles (ao lado de Speed/BB); sempre visível, desabilitado fora do preflop
+- **`RangePanel.tsx`**: painel Range vira floating draggable no desktop (`fixed z-50`, arrastável pelo header via `onHeaderMouseDown`) e bottom sheet no mobile (backdrop + `max-h-72vh`)
+- **`Replayer.tsx`**: identificação da mão (`MÃO 4/68` + progress bar) centralizada na mesma linha do botão Voltar via `grid grid-cols-3`
+- **`Replayer.tsx`**: default de apostas alterado para `BB` em vez de chips
+- **`Replayer.tsx`**: `pb-16 md:pb-2` no container mobile para não sobrepor a nav bar fixa
+- **i18n** (`common.json` PT-BR/ES): `nav.study` encurtado para `"Estudos"` / `"Estudios"` (EN já era `"Study"`)
+- **i18n** (`replayer.json` PT-BR/EN/ES): novas chaves `navigation.handLabel`, `navigation.prev`, `navigation.next`
+
+---
+
 ## [v0.85.4] — 2026-05-06 — feat: campo Instagram no perfil público do coach
 
 ### Added
