@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.85.0] — 2026-05-05 — feat: UX-008 — tooltips, renome Strategic Twin e docs expandida
+
+### Added
+- **HudTooltip** adicionado a 8 cards que estavam sem: `BankrollChart`, `CareerGraphCard`, `CognitiveFailureCard`, `GhostDrillCard`, `LeakCausalMap`, `LeaksPanel`, `LevelCard`, `StrategicTwinCard`
+- **11 novas seções** em `/docs` cobrindo todos os cards do dashboard: Top Leaks, Mapa Causal, Forma Recente, Qualidade das Decisões, Performance por Street, Performance por Posição, Colapso sob Pressão, Pressão ICM, Evolução do Bankroll, Meu Nível — cada um com explicação de objetivo, conexão com leaks e orientação para iniciantes. Disponível em PT, EN e ES.
+- **8 chaves de tooltip** novas no `dashboard.json` (3 locales) para os cards acima
+
+### Changed
+- **`StrategicTwinCard`** renomeado de "Perfil Estratégico" para "Tendências Estratégicas" (PT) / "Strategic Patterns" (EN) / "Tendencias Estratégicas" (ES) — elimina conflito de nome com `PlayerDnaCard` (Decision DNA)
+- **`Docs.tsx`**: `SECTION_IDS` expandido de 12 para 23 seções com nav lateral totalmente funcional
+- **`docs.json`** (3 locales): nav atualizado, seção `twin.title` atualizado com novo nome
+
+---
+
 ## [v0.84.8] — 2026-05-05 — Fix: replay 404 no Sparring Mode
 
 ### Fixed
