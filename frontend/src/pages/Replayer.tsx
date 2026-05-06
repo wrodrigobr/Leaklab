@@ -333,9 +333,15 @@ const Replayer = () => {
           {/* Controls */}
           <div className="sticky bottom-14 z-30 md:static border-t border-border md:border md:rounded-xl bg-background/95 backdrop-blur-md md:bg-hud-surface p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-1">
-              <button onClick={() => setStepIdx(0)}
-                className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Reiniciar"><Rewind className="size-4" /></button>
+              <button
+                onClick={() => {
+                  if (stepIdx > 0) setStepIdx(0);
+                  else if (prevHand) navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`);
+                }}
+                disabled={stepIdx === 0 && !prevHand}
+                className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={stepIdx === 0 && prevHand ? t("navigation.prevHand") : "Reiniciar"}
+              ><Rewind className="size-4" /></button>
               <button onClick={() => setStepIdx((i) => Math.max(0, i - 1))} disabled={stepIdx === 0}
                 className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Anterior"><ChevronLeft className="size-5" /></button>
@@ -347,9 +353,15 @@ const Replayer = () => {
               <button onClick={() => setStepIdx((i) => Math.min(steps.length - 1, i + 1))} disabled={stepIdx === steps.length - 1}
                 className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Próximo"><ChevronRight className="size-5" /></button>
-              <button onClick={() => setStepIdx(steps.length - 1)}
-                className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Final"><FastForward className="size-4" /></button>
+              <button
+                onClick={() => {
+                  if (stepIdx < steps.length - 1) setStepIdx(steps.length - 1);
+                  else if (nextHand) navigate(`/replayer?t=${tournamentId}&h=${nextHand}${studentId ? `&student=${studentId}` : ""}`);
+                }}
+                disabled={stepIdx === steps.length - 1 && !nextHand}
+                className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={stepIdx === steps.length - 1 && nextHand ? t("navigation.nextHand") : "Final"}
+              ><FastForward className="size-4" /></button>
             </div>
 
             <div className="flex flex-1 items-center gap-3 sm:max-w-md">
