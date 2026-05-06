@@ -25,6 +25,7 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { TournamentAiReport } from "@/components/hud/TournamentAiReport";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AiText } from "@/components/ui/AiText";
 import { cn } from "@/lib/utils";
 import { tournaments, metrics, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse } from "@/lib/api";
 
@@ -391,7 +392,7 @@ const TournamentDetail = () => {
                   {t(`detail.narrative.${narrative.quality_level}`)}
                 </span>
               </div>
-              <p className="text-sm leading-relaxed text-foreground">{narrative.narrative}</p>
+              <AiText>{narrative.narrative}</AiText>
             </section>
           )}
 
@@ -758,9 +759,9 @@ const TournamentDetail = () => {
                             </button>
                           </div>
                         </div>
-                        <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-                          {analyses[h.decisionId]}
-                        </p>
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                          <AiText>{analyses[h.decisionId]}</AiText>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex items-center justify-end gap-2">

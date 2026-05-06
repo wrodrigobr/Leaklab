@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, XCircle, RotateCcw, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AiText } from "@/components/ui/AiText";
 import type { Exercise } from "./types";
 
 interface Props {
@@ -142,12 +143,12 @@ export function ExerciseRunner({ exercises, onProgressChange }: Props) {
                   </button>
                 )}
                 {s.revealed && (
-                  <p className="flex-1 rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-muted-foreground">
-                    <span className="mr-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
+                  <div className="flex-1 rounded-md border border-border bg-background p-3">
+                    <p className="mb-1 font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
                       Análise
-                    </span>
-                    {ex.explanation}
-                  </p>
+                    </p>
+                    <AiText size="xs">{ex.explanation}</AiText>
+                  </div>
                 )}
               </div>
             </li>

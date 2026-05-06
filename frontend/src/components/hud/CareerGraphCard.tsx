@@ -5,6 +5,7 @@ import { CareerProjection, CareerMilestone } from "@/lib/api";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import { cn } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
+import { AiText } from "@/components/ui/AiText";
 
 const LEVEL_SLUG: Record<string, string> = {
   "Iniciante": "beginner",
@@ -254,9 +255,9 @@ export function CareerGraphCard({ data }: Props) {
 
         {/* LLM Narrative */}
         {data.narrative && (
-          <p className="text-[11px] leading-relaxed text-muted-foreground border-t border-border pt-3">
-            {data.narrative}
-          </p>
+          <div className="border-t border-border pt-3">
+            <AiText size="xs">{data.narrative}</AiText>
+          </div>
         )}
       </div>
     </div>

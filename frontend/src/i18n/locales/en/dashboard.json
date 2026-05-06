@@ -14,7 +14,7 @@
     "standard": "Standard %",
     "standardHint": "decisions within range",
     "standardTooltip": "Average percentage of decisions classified as 'standard' (score ≤ 0.08). Goal: above 70%. Below 60% indicates significant errors costing real EV.",
-    "events": "Total Events",
+    "events": "Tournaments",
     "eventsHint": "{{hands}} hands",
     "eventsHintEmpty": "Import tournaments",
     "eventsTooltip": "Total volume of analyzed tournaments. Samples smaller than 30 tournaments may have financial results skewed by variance. Decision analysis is reliable from ~500 hands.",

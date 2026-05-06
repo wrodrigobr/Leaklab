@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Loader2, Send, Sparkles, User } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
+import { AiText } from "@/components/ui/AiText";
 import { coach, CoachContext } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useTranslation } from "react-i18next";
@@ -132,15 +133,15 @@ const AICoach = () => {
                 >
                   {m.role === "ai" ? <Bot className="size-4" /> : <User className="size-4" />}
                 </span>
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                    m.role === "ai"
-                      ? "bg-hud-elevated text-foreground border border-border"
-                      : "bg-primary text-primary-foreground"
-                  }`}
-                >
-                  {m.content}
-                </div>
+                {m.role === "ai" ? (
+                  <div className="max-w-[80%] rounded-lg border border-border bg-hud-elevated px-4 py-3">
+                    <AiText>{m.content}</AiText>
+                  </div>
+                ) : (
+                  <div className="max-w-[80%] rounded-lg bg-primary px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-primary-foreground">
+                    {m.content}
+                  </div>
+                )}
               </article>
             ))}
             {sending && (

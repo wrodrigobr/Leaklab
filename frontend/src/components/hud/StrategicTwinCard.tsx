@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Crosshair, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { HudTooltip } from "./HudTooltip";
+import { AiText } from "@/components/ui/AiText";
 import type { StrategicTwinProfile, TwinSpot } from "@/lib/api";
 
 function spotLabel(
@@ -130,9 +131,9 @@ export function StrategicTwinCard({ data }: { data: StrategicTwinProfile }) {
         )}
 
         {data.narrative && (
-          <p className="text-[11px] leading-relaxed text-muted-foreground border-t border-border/50 pt-3">
-            {data.narrative}
-          </p>
+          <div className="border-t border-border/50 pt-3">
+            <AiText size="xs">{data.narrative}</AiText>
+          </div>
         )}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Brain, AlertCircle, AlertTriangle, Info } from "lucide-react";
+import { AiText } from "@/components/ui/AiText";
 import { HudTooltip } from "./HudTooltip";
 import type { CognitiveFailureData, CognitivePattern } from "@/lib/api";
 
@@ -108,9 +109,9 @@ export function CognitiveFailureCard({ data }: { data: CognitiveFailureData }) {
         ))}
 
         {data.narrative && (
-          <p className="text-[11px] leading-relaxed text-muted-foreground border-t border-border/50 pt-3">
-            {data.narrative}
-          </p>
+          <div className="border-t border-border/50 pt-3">
+            <AiText size="xs">{data.narrative}</AiText>
+          </div>
         )}
       </div>
     </div>

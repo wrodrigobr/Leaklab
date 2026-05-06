@@ -11,6 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
+import { AiText } from "@/components/ui/AiText";
 import type { CardData } from "@/components/hud/PlayingCard";
 import { PokerTable } from "@/components/hud/PokerTable";
 import type { Seat } from "@/components/hud/PokerTable";
@@ -738,7 +739,7 @@ export default function Sparring() {
               {analysis ? (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
                   <p className="font-mono text-[9px] uppercase tracking-widest text-amber-400">{t("result.engineNote")}</p>
-                  <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">{analysis}</p>
+                  <AiText>{analysis}</AiText>
                 </div>
               ) : (
                 <button

@@ -13,7 +13,7 @@
     "training": "Treinos"
   },
   "actions": {
-    "import": "Import",
+    "import": "Importar",
     "viewAll": "Ver todos →",
     "back": "Voltar",
     "save": "Salvar",

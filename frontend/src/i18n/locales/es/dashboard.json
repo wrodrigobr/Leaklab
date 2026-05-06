@@ -14,7 +14,7 @@
     "standard": "% Estándar",
     "standardHint": "decisiones dentro del rango",
     "standardTooltip": "Porcentaje promedio de decisiones clasificadas como 'estándar' (score ≤ 0.08). Meta: por encima del 70%. Por debajo del 60% indica errores significativos que cuestan EV real.",
-    "events": "Total de Eventos",
+    "events": "Torneos",
     "eventsHint": "{{hands}} manos",
     "eventsHintEmpty": "Importa torneos",
     "eventsTooltip": "Volumen total de torneos analizados. Muestras menores a 30 torneos pueden tener resultados financieros distorsionados por varianza. El análisis de decisiones es confiable a partir de ~500 manos.",

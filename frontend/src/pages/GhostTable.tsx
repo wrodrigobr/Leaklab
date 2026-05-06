@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
+import { AiText } from "@/components/ui/AiText";
 import { PlayingCard } from "@/components/hud/PlayingCard";
 import type { CardData } from "@/components/hud/PlayingCard";
 import { drill } from "@/lib/api";
@@ -592,9 +593,7 @@ export default function GhostTable() {
               <p className="font-mono text-[9px] uppercase tracking-widest text-primary">
                 {t("result.engineNote")}
               </p>
-              <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">
-                {analysis}
-              </p>
+              <AiText>{analysis}</AiText>
             </div>
           ) : (
             <button

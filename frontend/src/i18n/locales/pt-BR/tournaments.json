@@ -40,7 +40,7 @@
   "deleteConfirm": "Deletar torneio?",
   "deleteAriaLabel": "Deletar torneio",
   "stats": {
-    "totalEvents": "Total eventos",
+    "totalEvents": "Torneios",
     "invested": "Investido",
     "netProfit": "Lucro líquido",
     "periodRoi": "ROI período"

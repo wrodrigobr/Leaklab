@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Brain, ChevronDown, Loader2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tournaments } from "@/lib/api";
+import { AiText } from "@/components/ui/AiText";
 
 interface Props {
   tournamentName: string;
@@ -138,13 +139,9 @@ function SummaryContent({ text }: { text: string }) {
   const hasMarkdown = /^#{1,3} /m.test(text);
 
   if (!hasMarkdown) {
-    // Prosa pura — divide por quebras de parágrafo e renderiza direto
-    const paragraphs = text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
     return (
       <div className="p-5 space-y-4">
-        {paragraphs.map((p, i) => (
-          <p key={i} className="text-sm leading-relaxed text-foreground">{p}</p>
-        ))}
+        <AiText>{text}</AiText>
         <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground text-center pt-2">
           LeakLabs AI Coach
         </p>
@@ -187,7 +184,7 @@ function SummarySection({ text }: { text: string }) {
   if (!body && !isHeading) {
     return (
       <div className="rounded-lg border border-border bg-hud-elevated/30 px-4 py-3">
-        <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{text}</p>
+        <AiText>{text}</AiText>
       </div>
     );
   }
@@ -209,7 +206,7 @@ function SummarySection({ text }: { text: string }) {
       </button>
       {open && body && (
         <div className="border-t border-border/40 px-4 py-3.5">
-          <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{body}</p>
+          <AiText>{body}</AiText>
         </div>
       )}
     </section>

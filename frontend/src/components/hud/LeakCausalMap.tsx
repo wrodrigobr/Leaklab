@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GitFork, Info } from "lucide-react";
+import { AiText } from "@/components/ui/AiText";
 import { useTranslation } from "react-i18next";
 import { HudTooltip } from "./HudTooltip";
 import { cn } from "@/lib/utils";
@@ -219,7 +220,7 @@ export function LeakCausalMap({ nodes, edges, narrative }: Props) {
         {narrative && (
           <div className="flex gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
             <Info className="size-3.5 shrink-0 text-primary mt-0.5" aria-hidden />
-            <p className="text-[11px] leading-relaxed text-muted-foreground">{narrative}</p>
+            <AiText size="xs" className="flex-1">{narrative}</AiText>
           </div>
         )}
 
