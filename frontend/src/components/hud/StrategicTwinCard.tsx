@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Crosshair, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { HudTooltip } from "./HudTooltip";
 import type { StrategicTwinProfile, TwinSpot } from "@/lib/api";
 
 function spotLabel(
@@ -72,6 +73,7 @@ export function StrategicTwinCard({ data }: { data: StrategicTwinProfile }) {
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
             {t("strategicTwin.title")}
           </span>
+          <HudTooltip content={t("strategicTwin.tooltip")} />
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
           {t("strategicTwin.noData")}
@@ -92,6 +94,7 @@ export function StrategicTwinCard({ data }: { data: StrategicTwinProfile }) {
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
             {t("strategicTwin.title")}
           </span>
+          <HudTooltip content={t("strategicTwin.tooltip")} />
         </div>
         <div className="flex items-center gap-1">
           <span className="font-mono text-[10px] text-muted-foreground">

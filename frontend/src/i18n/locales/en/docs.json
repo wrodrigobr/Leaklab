@@ -7,13 +7,23 @@
     "indicators": "Indicators",
     "mstacks": "M-Ratio Phases",
     "dna": "Decision DNA",
+    "leaks": "Top Leaks",
+    "causal_map": "Causal Map",
+    "form": "Recent Form",
+    "decisions": "Decision Quality",
+    "streets": "Performance by Street",
+    "positions": "Performance by Position",
+    "pressure": "Pressure Collapse",
+    "icm": "ICM Pressure",
+    "bankroll": "Bankroll Evolution",
+    "level": "My Level",
     "ghost": "Ghost Table / Drills",
     "compare": "Tournament Comparison",
     "coaching": "Coaching",
     "gamification": "Gamification",
     "career": "Career Trajectory",
-    "cognitive": "Cognitive Failure Mapper",
-    "twin": "Strategic Profile",
+    "cognitive": "Cognitive Patterns",
+    "twin": "Strategic Patterns",
     "sparring": "Sparring Mode"
   },
   "scoring": {
@@ -196,7 +206,7 @@
     "p3": "The AI narrative describes the dominant pattern, why it costs EV, and one concrete corrective habit to apply in the next session."
   },
   "twin": {
-    "title": "Strategic Profile (Strategic Twin)",
+    "title": "Strategic Patterns",
     "p1": "The <strong>Strategic Twin</strong> turns spot-level error frequency data into predictive language. Instead of listing past mistakes, the system says: <em>\"in jam preflop spots under high ICM, you make errors 63% of the time — well above your personal average of 28%\"</em>.",
     "p2": "Each <strong>spot</strong> is defined by the combination of <em>street</em> (preflop/flop/turn/river), <em>best_action</em> (the correct action: fold/call/raise/bet/check/jam) and <em>ICM pressure</em> (low/medium/high/critical). The system filters spots with a minimum of 5 decisions and error_rate at least 10% above your personal average.",
     "table": {
@@ -210,6 +220,85 @@
       "delta_meaning": "How much the spot's error_rate exceeds (positive) or falls below (negative) your personal average"
     },
     "p3": "The vertical line in the bar chart represents your personal average. Bars that exceed this line indicate spots where you perform below your usual standard. The AI narrative summarises the 3 most costly tendencies and proposes one concrete adjustment."
+  },
+  "leaks": {
+    "title": "Top Leaks Detected",
+    "p1": "The <strong>Top Leaks</strong> card lists the most frequent and costly error patterns found in your history. A <em>leak</em> is a spot (combination of street, position and action) where you consistently make sub-optimal decisions — not an isolated mistake, but a habit.",
+    "p2": "Each leak shows the frequency (how many times the pattern was detected), the average error score, and the estimated EV lost per month if the behaviour continues. Leaks marked as <strong>Critical</strong> have an average score above 0.36 — these cost the most real ROI.",
+    "p3": "The trend indicator (Improving / Stagnant / Regressing) shows whether your behaviour in that spot has improved over your recent tournaments. A <em>Regressing</em> leak needs immediate attention — it means you have reverted to the same mistake after a better period.",
+    "p4": "Use the <strong>Study</strong> button to open the spot's drill directly in the Ghost Table. Completing the drill and repeating until mastery is the most effective way to internalise the correction."
+  },
+  "causal_map": {
+    "title": "Leak Causal Map",
+    "p1": "The <strong>Causal Map</strong> visualises which leaks co-occur in the same sessions or hands. Each node is a leak; each line connecting two nodes indicates they appear together more often than expected. The line thickness represents the strength of the correlation.",
+    "p2": "Why it matters: when two leaks co-occur with high correlation, they usually share a <em>root cause</em> — for example, excessive preflop folding and bad flop calls may both stem from the same range-reading problem. Fixing the root cause resolves both at once.",
+    "p3": "Click a node to highlight only the leaks connected to it. Red nodes are critical (average score ≥ 0.36); yellow are moderate; green are minor. Always start with the red nodes that have the most connections — they have the greatest cascading impact."
+  },
+  "form": {
+    "title": "Recent Form",
+    "p1": "The <strong>Recent Form</strong> card shows average decision quality in recent tournaments, tournament by tournament. Each bar represents a session: green means a standard session, yellow is marginal, orange indicates small mistakes, and red signals a session with clear mistakes.",
+    "p2": "Recent form matters because it captures <em>short-term variation</em> that the overall average hides. A player with a good overall average may be declining over the last 5 tournaments — an early warning sign of tilt, fatigue, or a stake change.",
+    "p3": "If you see a sequence of red or orange bars, check the <strong>Cognitive Patterns</strong> card — there may be an active emotional pattern explaining the decline."
+  },
+  "decisions": {
+    "title": "Decision Quality",
+    "p1": "The <strong>Decision Quality</strong> card shows the percentage breakdown of all your decisions across the four quality levels: Standard, Marginal, Small Mistake, and Clear Mistake.",
+    "p2": "This aggregate view reveals the <em>overall profile</em> of your game. A player with 80%+ Standard and under 5% Clear Mistakes has a solid profile. A high concentration of Clear Mistakes indicates spots where you are losing EV significantly and consistently.",
+    "p3": "The connection to leaks: every Clear Mistake tracked here will appear in the Top Leaks card if the pattern is recurring. Reduce your Clear Mistake percentage by focusing drills on the most frequent spots."
+  },
+  "streets": {
+    "title": "Performance by Street",
+    "p1": "The <strong>Performance by Street</strong> chart shows the standard decision rate (score ≤ 0.08) broken down by preflop, flop, turn, and river.",
+    "p2": "Streets with orange or red bars indicate where your leaks are concentrated. Most players lose the most on the river — where the pot is largest and mistakes are most expensive. Players who level up quickly typically fix preflop first (highest decision volume) and then the turn.",
+    "p3": "Use this card to prioritise which streets to focus on in the Ghost Table and Academy."
+  },
+  "positions": {
+    "title": "Performance by Position",
+    "p1": "The <strong>Performance by Position</strong> chart shows the standard decision rate by table position: UTG, MP, CO, BTN, SB, and BB.",
+    "p2": "Late positions (BTN, CO) naturally have more positional advantage — better performance is expected from those seats. If BTN or CO appear red, that is a serious issue: you are not taking advantage of the positional edge you have.",
+    "p3": "BB and SB defensive spots are technically the hardest. Poor performance in the BB is common and not necessarily a crisis — but if the delta between BTN and BB is very large, the positional deficit is costing real EV."
+  },
+  "pressure": {
+    "title": "Pressure Collapse",
+    "p1": "The <strong>Pressure Collapse</strong> card compares your decision quality across three ICM pressure contexts: no pressure (early tournament), medium pressure (late / near-bubble), and high pressure (bubble and final table).",
+    "p2": "A technically solid player maintains the same score regardless of pressure. A delta above 8 points between high pressure and no pressure is a sign of <em>collapse</em> — you make significantly more mistakes when real money is at stake.",
+    "p3": "Pressure collapse is one of the most expensive leaks in MTTs because it is precisely in high-pressure situations (bubble, FT) that decisions have the greatest monetary impact. If the card shows collapse, prioritise drills with high ICM context in the Academy.",
+    "table": {
+      "col_term": "Term",
+      "col_meaning": "Meaning",
+      "none_term": "No ICM",
+      "none_meaning": "Early tournament — small blinds, no immediate elimination pressure",
+      "low_term": "Low ICM",
+      "low_meaning": "Tournament in progress, outside bubble — decisions carry normal weight",
+      "medium_term": "Medium ICM",
+      "medium_meaning": "Near the bubble or with significant pay jumps",
+      "high_term": "High ICM",
+      "high_meaning": "On the bubble, final table, or critical reshove situation"
+    }
+  },
+  "icm": {
+    "title": "ICM Pressure",
+    "p1": "The <strong>ICM Pressure</strong> card shows the distribution of your decisions by ICM pressure level: no ICM, low, medium, and high. Each slice represents the percentage of decisions made under that context.",
+    "p2": "<strong>ICM</strong> (Independent Chip Model) is a mathematical model that calculates the real monetary value of chips in an MTT. 1000 chips on the bubble are not worth the same as 1000 chips at the start of the tournament — ICM captures that difference.",
+    "p3": "Players who play many short-format tournaments (Sit & Go, Spin & Gold) will have a high proportion of high ICM — which amplifies the importance of getting pressure spots right. Compare this card with the Pressure Collapse card to understand whether you are gaining or losing EV in the most valuable situations."
+  },
+  "bankroll": {
+    "title": "Bankroll Evolution",
+    "p1": "The <strong>Bankroll Evolution</strong> chart shows the cumulative financial result curve tournament by tournament. The line rises on profitable results and falls on losses — the overall shape reveals your long-term trend.",
+    "p2": "Financial results are heavily influenced by variance in MTTs — especially with samples below 100 tournaments. A downward curve does not necessarily mean you are playing poorly; it may be variance. That is why the system uses <strong>Standard%</strong> as the primary quality indicator — it measures decisions, not results.",
+    "p3": "Use the period filters (1M, 3M, 1Y, All) to isolate trends in specific time windows. If Standard% is rising but the financial curve is falling, you are playing better — results tend to correct themselves with volume.",
+    "p4": "If both Standard% and the curve are falling simultaneously, review your most recent leaks and check whether you have recently changed stakes — buy-in changes alter field competitiveness."
+  },
+  "level": {
+    "title": "My Level",
+    "p1": "The <strong>My Level</strong> card shows your current level in the system, the progress percentage to the next level, and the leaks blocking your advancement.",
+    "p2": "Level is calculated based on the average <strong>Standard%</strong> of your recent tournaments (minimum 5 to calculate). Each level requires a higher decision quality threshold — it is based on technical consistency, not financial results.",
+    "table": {
+      "col_level": "Level",
+      "col_req": "Standard% required",
+      "col_focus": "Main focus"
+    },
+    "p3": "The <strong>blocking leaks</strong> shown in the card are the highest-frequency error spots that most impact your current Standard%. Fixing them is the most direct path to levelling up. Use the <em>View study plan</em> button to see the AI-generated personalised plan."
   },
   "sparring": {
     "title": "Sparring Mode",

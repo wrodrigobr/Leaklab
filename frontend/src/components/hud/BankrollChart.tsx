@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { metrics } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { HudTooltip } from "./HudTooltip";
 
 const DEMO_POINTS = [120, 95, 140, 110, 180, 165, 220, 250, 240, 310, 330, 380, 420, 460, 510, 540, 600, 640, 690, 720, 760, 820, 880, 940];
 
@@ -73,8 +74,9 @@ export function BankrollChart() {
     >
       <header className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
-          <h2 id="bankroll-heading" className="text-sm font-semibold text-foreground">
+          <h2 id="bankroll-heading" className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
             {t("bankroll.title")}
+            <HudTooltip content={t("bankroll.tooltip")} />
           </h2>
           <p className="font-mono text-[11px] text-muted-foreground">
             {isDemo

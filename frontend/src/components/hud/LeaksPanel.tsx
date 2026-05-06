@@ -1,6 +1,7 @@
 import { ChevronRight, ShieldAlert, AlertTriangle, TrendingDown, Flame, TrendingUp, Minus, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { HudTooltip } from "./HudTooltip";
 import { cn } from "@/lib/utils";
 
 type Severity = "critical" | "moderate" | "minor";
@@ -81,6 +82,7 @@ export function LeaksPanel({ leaks }: Props) {
         >
           <span className="size-1.5 rounded-full bg-destructive animate-pulse" aria-hidden />
           {t("leaks.title")}
+          <HudTooltip content={t("leaks.tooltip")} />
         </h2>
         <span className="font-mono text-[10px] text-muted-foreground">
           {isFallback ? "DEMO" : "IA_CORE v2.1"}

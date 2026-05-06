@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, Minus, Target, AlertCircle } from "lucide-rea
 import { CareerProjection, CareerMilestone } from "@/lib/api";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import { cn } from "@/lib/utils";
+import { HudTooltip } from "./HudTooltip";
 
 const LEVEL_SLUG: Record<string, string> = {
   "Iniciante": "beginner",
@@ -142,6 +143,7 @@ export function CareerGraphCard({ data }: Props) {
         <h2 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
           <Target className="size-3" aria-hidden />
           {t("career.title")}
+          <HudTooltip content={t("career.tooltip")} />
         </h2>
         <span className={cn("flex items-center gap-1 font-mono text-[10px]", slope > 0.05 ? "text-emerald-400" : slope < -0.05 ? "text-destructive" : "text-muted-foreground")}>
           <TrendIcon className="size-3" />

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Brain, AlertCircle, AlertTriangle, Info } from "lucide-react";
+import { HudTooltip } from "./HudTooltip";
 import type { CognitiveFailureData, CognitivePattern } from "@/lib/api";
 
 const SEVERITY_BADGE: Record<string, string> = {
@@ -75,6 +76,7 @@ export function CognitiveFailureCard({ data }: { data: CognitiveFailureData }) {
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
             {t("cognitiveFailure.title")}
           </span>
+          <HudTooltip content={t("cognitiveFailure.tooltip")} />
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
           {data.insufficient_data
@@ -93,6 +95,7 @@ export function CognitiveFailureCard({ data }: { data: CognitiveFailureData }) {
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
             {t("cognitiveFailure.title")}
           </span>
+          <HudTooltip content={t("cognitiveFailure.tooltip")} />
         </div>
         <span className="font-mono text-[10px] text-muted-foreground">
           {t("cognitiveFailure.decisions", { count: data.total_decisions })}

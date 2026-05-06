@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { DrillStats, DrillSpot } from "@/lib/api";
+import { HudTooltip } from "./HudTooltip";
 
 interface Props {
   stats: DrillStats | null;
@@ -28,6 +29,7 @@ export function GhostDrillCard({ stats, pendingSpots }: Props) {
         >
           <Swords className="size-3" aria-hidden />
           {t("ghost.title")}
+          <HudTooltip content={t("ghost.tooltip")} />
         </h2>
         <div className="flex items-center gap-2">
           {overdueCount > 0 && (

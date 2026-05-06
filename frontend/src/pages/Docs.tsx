@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight } from "lucide-react";
 
-const SECTION_IDS = ["scoring", "indicators", "mstacks", "dna", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
+const SECTION_IDS = ["scoring", "indicators", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -160,6 +160,87 @@ export default function Docs() {
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("dna.p2") }} />
+            </Section>
+
+            {/* Top Leaks */}
+            <Section id="leaks" title={t("leaks.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("leaks.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("leaks.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("leaks.p3") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("leaks.p4") }} />
+            </Section>
+
+            {/* Causal Map */}
+            <Section id="causal_map" title={t("causal_map.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("causal_map.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("causal_map.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("causal_map.p3") }} />
+            </Section>
+
+            {/* Recent Form */}
+            <Section id="form" title={t("form.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("form.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("form.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("form.p3") }} />
+            </Section>
+
+            {/* Decision Quality */}
+            <Section id="decisions" title={t("decisions.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("decisions.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("decisions.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("decisions.p3") }} />
+            </Section>
+
+            {/* Performance by Street */}
+            <Section id="streets" title={t("streets.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("streets.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("streets.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("streets.p3") }} />
+            </Section>
+
+            {/* Performance by Position */}
+            <Section id="positions" title={t("positions.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("positions.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("positions.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("positions.p3") }} />
+            </Section>
+
+            {/* Pressure Collapse */}
+            <Section id="pressure" title={t("pressure.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("pressure.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("pressure.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("pressure.p3") }} />
+              <Table
+                headers={[t("pressure.table.col_term"), t("pressure.table.col_meaning")]}
+                rows={[
+                  [t("pressure.table.none_term"), t("pressure.table.none_meaning")],
+                  [t("pressure.table.low_term"),  t("pressure.table.low_meaning")],
+                  [t("pressure.table.medium_term"), t("pressure.table.medium_meaning")],
+                  [t("pressure.table.high_term"), t("pressure.table.high_meaning")],
+                ]}
+              />
+            </Section>
+
+            {/* ICM Pressure */}
+            <Section id="icm" title={t("icm.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("icm.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("icm.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("icm.p3") }} />
+            </Section>
+
+            {/* Bankroll */}
+            <Section id="bankroll" title={t("bankroll.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("bankroll.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("bankroll.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("bankroll.p3") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("bankroll.p4") }} />
+            </Section>
+
+            {/* My Level */}
+            <Section id="level" title={t("level.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("level.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("level.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("level.p3") }} />
             </Section>
 
             {/* Ghost Table */}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { GitFork, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { HudTooltip } from "./HudTooltip";
 import { cn } from "@/lib/utils";
 
 export interface LeakNode {
@@ -81,6 +82,7 @@ export function LeakCausalMap({ nodes, edges, narrative }: Props) {
         <h2 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
           <GitFork className="size-3" aria-hidden />
           {t("leakCausalMap.title")}
+          <HudTooltip content={t("leakCausalMap.tooltip")} />
         </h2>
         <span className="font-mono text-[10px] text-muted-foreground">90d</span>
       </div>

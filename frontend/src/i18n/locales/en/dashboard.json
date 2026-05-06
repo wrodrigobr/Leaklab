@@ -37,6 +37,7 @@
     "empty": "Import tournaments to activate AI confidence analysis."
   },
   "leaks": {
+    "tooltip": "The most frequent and costly mistakes detected in your history. Each leak represents a recurring sub-optimal decision pattern — fixing them has a direct impact on your ROI.",
     "title": "Top Leaks Detected",
     "study": "Study",
     "studyLabel": "Study leak {{spot}}",
@@ -50,6 +51,7 @@
     "drillMastering": "Mastering"
   },
   "ghost": {
+    "tooltip": "Summary of your drill activity in the last 30 days. Overdue drills (red) indicate spots that need review — skipping them increases the chance of repeating the same mistake in live play.",
     "title": "Ghost Table",
     "spots": "Spots",
     "accuracy": "Accuracy",
@@ -58,6 +60,7 @@
     "startNow": "Start drill"
   },
   "bankroll": {
+    "tooltip": "Cumulative financial result curve tournament by tournament. Shows real variance and long-term trend — not just isolated results. Useful for deciding stake adjustments.",
     "title": "Bankroll evolution",
     "demo": "Demo • import tournaments to see your data",
     "lastN": "Last {{n}} tournaments",
@@ -143,6 +146,7 @@
     "dismiss": "Dismiss"
   },
   "level": {
+    "tooltip": "Your current level based on your average Standard% across recent tournaments. Each level requires a higher threshold of correct decisions — advancing means your mistakes have consistently decreased.",
     "title": "My Level",
     "noData": "Import at least 5 tournaments to calculate your level.",
     "tournament_one": "{{count}} tournament",
@@ -221,6 +225,7 @@
     "m3desc": "Conversational AI analysis with your real data: ranges, ICM, leaks and personalized study plan."
   },
   "leakCausalMap": {
+    "tooltip": "Visualizes which leaks co-occur in the same hands or sessions. Thicker lines indicate stronger correlation — when two leaks appear together, they usually share a common root cause.",
     "title": "Leak Causal Map",
     "aria": "Leak causal graph",
     "coOccurs": "Co-occurs with",
@@ -233,6 +238,7 @@
     }
   },
   "career": {
+    "tooltip": "Projects when you will reach each level based on your real improvement curve. The dotted line is an estimate — not a guarantee. The main value is seeing which leak is blocking your next level.",
     "title": "Career Trajectory",
     "eyebrow": "Career Projection",
     "noData": "Import at least 5 tournaments to generate your career projection.",
@@ -253,6 +259,7 @@
     "projection": "Projection"
   }
   ,"cognitiveFailure": {
+    "tooltip": "Detects emotional patterns that affect sequential decision quality — for example, becoming overly aggressive right after folding several hands in a row. Identifying the trigger is the first step to correcting it.",
     "title": "Cognitive Patterns",
     "noData": "Insufficient data. Import more tournaments to detect cognitive patterns.",
     "noPatterns": "No cognitive patterns detected. Your game is cognitively consistent.",
@@ -278,7 +285,8 @@
     }
   },
   "strategicTwin": {
-    "title": "Strategic Profile",
+    "title": "Strategic Patterns",
+    "tooltip": "Identifies spots (street + action + ICM pressure combinations) where your error rate exceeds your personal average by at least 10%. Reveals costly habits invisible when looking at individual decisions.",
     "noData": "Import more tournaments to build your strategic profile. Minimum: 30 analysed decisions.",
     "noPatterns": "No costly spots detected. Keep playing to refine your analysis.",
     "avgLabel": "Avg error:",

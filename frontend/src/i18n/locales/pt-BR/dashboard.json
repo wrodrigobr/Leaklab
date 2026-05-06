@@ -37,6 +37,7 @@
     "empty": "Importe torneios para ativar a análise de confiança da IA."
   },
   "leaks": {
+    "tooltip": "Os erros mais frequentes e custosos detectados no seu histórico. Cada leak representa um padrão de decisão abaixo do ideal que se repete — corrigi-los tem impacto direto no seu ROI.",
     "title": "Top Leaks detectados",
     "study": "Estudar",
     "studyLabel": "Estudar leak {{spot}}",
@@ -50,6 +51,7 @@
     "drillMastering": "Dominando"
   },
   "ghost": {
+    "tooltip": "Resumo da sua atividade de drill nos últimos 30 dias. Drills em atraso (vermelho) indicam spots que precisam de revisão — ignorá-los aumenta a chance de repetir o mesmo erro em jogo real.",
     "title": "Ghost Table",
     "spots": "Spots",
     "accuracy": "Acerto",
@@ -58,6 +60,7 @@
     "startNow": "Iniciar drill"
   },
   "bankroll": {
+    "tooltip": "Curva acumulada do seu resultado financeiro torneio a torneio. Mostra variância real e tendência de longo prazo — não apenas resultados isolados. Útil para decidir ajustes de stake.",
     "title": "Evolução do bankroll",
     "demo": "Demo • importe torneios para ver seus dados",
     "lastN": "Últimos {{n}} torneios",
@@ -143,6 +146,7 @@
     "dismiss": "Fechar alerta"
   },
   "level": {
+    "tooltip": "Seu nível atual baseado na média de Standard% dos últimos torneios. Cada nível exige um patamar maior de decisões corretas — avançar significa que seus erros diminuíram de forma consistente.",
     "title": "Meu Nível",
     "noData": "Importe pelo menos 5 torneios para calcular seu nível.",
     "tournament_one": "{{count}} torneio",
@@ -221,6 +225,7 @@
     "m3desc": "Análise conversacional da IA com seus dados reais: ranges, ICM, leaks e plano de estudo personalizado."
   },
   "leakCausalMap": {
+    "tooltip": "Visualiza quais leaks co-ocorrem nas mesmas mãos ou sessões. Linhas mais espessas indicam correlação mais forte — quando dois leaks aparecem juntos, geralmente têm uma causa raiz comum.",
     "title": "Mapa Causal de Leaks",
     "aria": "Grafo causal de leaks",
     "coOccurs": "Co-ocorre com",
@@ -233,6 +238,7 @@
     }
   },
   "career": {
+    "tooltip": "Projeta quando você atingirá cada nível com base na sua curva real de melhora. A linha pontilhada é uma estimativa — não uma garantia. O principal valor é ver qual leak está travando o próximo nível.",
     "title": "Trajetória de Carreira",
     "eyebrow": "Projeção de Carreira",
     "noData": "Importe pelo menos 5 torneios para gerar sua projeção de carreira.",
@@ -253,6 +259,7 @@
     "projection": "Projeção"
   }
   ,"cognitiveFailure": {
+    "tooltip": "Detecta padrões emocionais que afetam a qualidade das suas decisões em sequência — por exemplo, jogar agressivamente demais logo após dobrar várias mãos seguidas. Identificar o gatilho é o primeiro passo para corrigi-lo.",
     "title": "Padrões Cognitivos",
     "noData": "Dados insuficientes. Importe mais torneios para detectar padrões cognitivos.",
     "noPatterns": "Nenhum padrão cognitivo detectado. Seu jogo está cognitivamente consistente.",
@@ -278,7 +285,8 @@
     }
   },
   "strategicTwin": {
-    "title": "Perfil Estratégico",
+    "title": "Tendências Estratégicas",
+    "tooltip": "Identifica os spots (combinações de street + ação + pressão ICM) onde sua taxa de erro supera em pelo menos 10% a sua média pessoal. Revela padrões custosos que passam despercebidos olhando decisões isoladas.",
     "noData": "Importe mais torneios para gerar seu perfil estratégico. Mínimo: 30 decisões analisadas.",
     "noPatterns": "Nenhum spot custoso identificado. Continue jogando para refinar sua análise.",
     "avgLabel": "Avg erro:",

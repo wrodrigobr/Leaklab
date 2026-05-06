@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { TrendingUp, ChevronRight, AlertCircle } from "lucide-react";
+import { HudTooltip } from "./HudTooltip";
 import { PlayerLevel } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
@@ -50,6 +51,7 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
       <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-2">
         <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1.5">
           <TrendingUp className="size-3" /> {t("level.title")}
+          <HudTooltip content={t("level.tooltip")} />
         </p>
         <p className="text-xs text-muted-foreground">
           {t("level.noData")}
@@ -71,6 +73,7 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
       <div className="flex items-center justify-between">
         <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1.5">
           <TrendingUp className="size-3" /> {t("level.title")}
+          <HudTooltip content={t("level.tooltip")} />
         </p>
         <span className="font-mono text-[10px] text-muted-foreground">
           {t("level.tournament", { count: data.tournament_count })}
