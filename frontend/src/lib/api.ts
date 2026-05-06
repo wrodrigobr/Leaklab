@@ -927,6 +927,7 @@ export interface CoachProfile {
   social_youtube: string | null;
   social_twitch: string | null;
   social_twitter: string | null;
+  social_instagram: string | null;
 }
 
 export interface CoachReview {

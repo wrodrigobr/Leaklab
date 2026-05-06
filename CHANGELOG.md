@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.85.4] — 2026-05-06 — feat: campo Instagram no perfil público do coach
+
+### Added
+- **`coach_profiles`**: nova coluna `social_instagram TEXT` — schema criado com a coluna e migration (`ALTER TABLE ... ADD COLUMN`) adicionada para Postgres e SQLite
+- **`upsert_coach_profile`** (repositories.py): parâmetro `social_instagram` adicionado ao INSERT/ON CONFLICT UPDATE
+- **`/coach/profile` POST** (app.py): passa `social_instagram` do payload para o repositório
+- **`CoachProfile` interface** (api.ts): campo `social_instagram: string | null`
+- **`CoachProfile.tsx`** (editor do coach): campo "Instagram" com ícone `<Instagram />` após o campo Twitter/X — exibição e edição
+- **`PublicCoachProfile.tsx`** (perfil público): ícone `<Instagram />` clicável na seção de redes sociais, ao lado de YouTube/Twitch/Twitter
+
+---
+
 ## [v0.85.3] — 2026-05-06 — fix: admin Users tab não mostrava display_name dos coaches
 
 ### Fixed

@@ -173,6 +173,7 @@ def _init_postgres(conn):
             social_youtube      TEXT,
             social_twitch       TEXT,
             social_twitter      TEXT,
+            social_instagram    TEXT,
             created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
             updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
         );
@@ -338,6 +339,7 @@ def _init_sqlite(conn):
             social_youtube      TEXT,
             social_twitch       TEXT,
             social_twitter      TEXT,
+            social_instagram    TEXT,
             created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
             updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))
         );
@@ -447,6 +449,7 @@ def _run_migrations(conn):
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS social_youtube    TEXT",
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS social_twitch     TEXT",
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS social_twitter    TEXT",
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS social_instagram  TEXT",
             # Sprint 12 — BACK-011 pt.2: content moderation
             "ALTER TABLE coach_profiles          ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'approved'",
             "ALTER TABLE coach_reviews            ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'approved'",
@@ -762,6 +765,7 @@ def _run_migrations(conn):
             ("social_youtube",    "ALTER TABLE coach_profiles ADD COLUMN social_youtube    TEXT"),
             ("social_twitch",     "ALTER TABLE coach_profiles ADD COLUMN social_twitch     TEXT"),
             ("social_twitter",    "ALTER TABLE coach_profiles ADD COLUMN social_twitter    TEXT"),
+            ("social_instagram",  "ALTER TABLE coach_profiles ADD COLUMN social_instagram  TEXT"),
             # Sprint 12 — BACK-011 pt.2: content moderation
             ("moderation_status", "ALTER TABLE coach_profiles ADD COLUMN moderation_status TEXT NOT NULL DEFAULT 'approved'"),
         ]:

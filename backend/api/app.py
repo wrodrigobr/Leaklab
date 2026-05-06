@@ -949,17 +949,18 @@ def player_sparring_hand():
 @require_auth
 def academy_math_question():
     from leaklab.academy import generate_math_question
-    return jsonify(generate_math_question(g.user_id))
+    level = request.args.get('level', 'beginner')
+    return jsonify(generate_math_question(g.user_id, level=level))
 
 
 @app.route('/academy/math/submit', methods=['POST'])
 @require_auth
 def academy_math_submit():
-    body          = request.get_json(force=True) or {}
-    selected      = body.get('selected_index')
-    correct       = body.get('correct_index')
-    xp_value      = int(body.get('xp_value', 15))
-    is_correct    = selected == correct
+    body       = request.get_json(force=True) or {}
+    selected   = body.get('selected_index')
+    correct    = body.get('correct_index')
+    xp_value   = int(body.get('xp_value', 15))
+    is_correct = selected == correct
     if is_correct:
         add_xp(g.user_id, 'academy_math_correct', xp_value)
     return jsonify({'is_correct': is_correct})
@@ -975,13 +976,33 @@ def academy_board_strength_question():
 @app.route('/academy/board-strength/submit', methods=['POST'])
 @require_auth
 def academy_board_strength_submit():
-    body          = request.get_json(force=True) or {}
-    selected      = body.get('selected_index')
-    correct       = body.get('correct_index')
-    xp_value      = int(body.get('xp_value', 20))
-    is_correct    = selected == correct
+    body       = request.get_json(force=True) or {}
+    selected   = body.get('selected_index')
+    correct    = body.get('correct_index')
+    xp_value   = int(body.get('xp_value', 20))
+    is_correct = selected == correct
     if is_correct:
         add_xp(g.user_id, 'academy_board_correct', xp_value)
+    return jsonify({'is_correct': is_correct})
+
+
+@app.route('/academy/tournament/question', methods=['GET'])
+@require_auth
+def academy_tournament_question():
+    from leaklab.academy import generate_tournament_question
+    return jsonify(generate_tournament_question(g.user_id))
+
+
+@app.route('/academy/tournament/submit', methods=['POST'])
+@require_auth
+def academy_tournament_submit():
+    body       = request.get_json(force=True) or {}
+    selected   = body.get('selected_index')
+    correct    = body.get('correct_index')
+    xp_value   = int(body.get('xp_value', 25))
+    is_correct = selected == correct
+    if is_correct:
+        add_xp(g.user_id, 'academy_tournament_correct', xp_value)
     return jsonify({'is_correct': is_correct})
 
 
@@ -1531,6 +1552,7 @@ def coach_profile():
         social_youtube=data.get('social_youtube'),
         social_twitch=data.get('social_twitch'),
         social_twitter=data.get('social_twitter'),
+        social_instagram=data.get('social_instagram'),
     )
     # Garantir que tem chave de convite
     key = assign_invite_key(g.user_id)

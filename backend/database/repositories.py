@@ -1665,7 +1665,8 @@ def upsert_coach_profile(user_id: int, display_name: str = '',
                           availability: str | None = None,
                           social_youtube: str | None = None,
                           social_twitch: str | None = None,
-                          social_twitter: str | None = None) -> dict:
+                          social_twitter: str | None = None,
+                          social_instagram: str | None = None) -> dict:
     """Cria ou atualiza perfil público do coach."""
     specs_json = _json.dumps(specialties or [])
     langs_json = _json.dumps(languages or ['pt'])
@@ -1679,9 +1680,9 @@ def upsert_coach_profile(user_id: int, display_name: str = '',
                photo_url, experience_years, stakes, coaching_style,
                languages, biggest_results, price_per_session, price_monthly,
                trial_available, availability,
-               social_youtube, social_twitch, social_twitter,
+               social_youtube, social_twitch, social_twitter, social_instagram,
                updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
             ON CONFLICT(user_id) DO UPDATE SET
               display_name      = excluded.display_name,
               bio               = excluded.bio,
@@ -1703,13 +1704,14 @@ def upsert_coach_profile(user_id: int, display_name: str = '',
               social_youtube    = excluded.social_youtube,
               social_twitch     = excluded.social_twitch,
               social_twitter    = excluded.social_twitter,
+              social_instagram  = excluded.social_instagram,
               updated_at        = datetime('now')
         """, (user_id, display_name, bio, specs_json,
               contact_email, contact_link, int(is_public), max_students,
               photo_url, experience_years, stakes, coaching_style,
               langs_json, results_json, price_per_session, price_monthly,
               int(trial_available), availability,
-              social_youtube, social_twitch, social_twitter))
+              social_youtube, social_twitch, social_twitter, social_instagram))
         conn.commit()
         return get_coach_profile(user_id)
     finally:

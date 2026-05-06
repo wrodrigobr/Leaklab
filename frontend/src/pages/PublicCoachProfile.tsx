@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Star, Users, DollarSign, Globe, GraduationCap,
-  CheckCircle2, Loader2, Youtube, Twitch, Twitter, ExternalLink,
+  CheckCircle2, Loader2, Youtube, Twitch, Twitter, Instagram, ExternalLink,
   Mail, Calendar, Zap, Trophy, MessageSquare, Trash2, TrendingUp,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -322,6 +322,12 @@ export default function PublicCoachProfile() {
                     <a href={c.social_twitter} target="_blank" rel="noopener noreferrer"
                       className="text-muted-foreground hover:text-foreground transition-colors">
                       <Twitter className="size-4" />
+                    </a>
+                  )}
+                  {c.social_instagram && (
+                    <a href={c.social_instagram} target="_blank" rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-foreground transition-colors">
+                      <Instagram className="size-4" />
                     </a>
                   )}
                 </div>

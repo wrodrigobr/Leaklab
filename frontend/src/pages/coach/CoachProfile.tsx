@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   UserCircle, Star, Loader2, Check, X, Plus, Trash2,
-  Youtube, Twitch, Twitter, Globe, DollarSign, Clock,
+  Youtube, Twitch, Twitter, Instagram, Globe, DollarSign, Clock,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import {
@@ -236,6 +236,12 @@ function ProfileSection() {
           {editing
             ? <input value={p.social_twitter ?? ""} onChange={e => set("social_twitter", e.target.value)} placeholder="https://x.com/…" className={inputCls} />
             : p.social_twitter ? <a href={p.social_twitter} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-primary text-sm"><Twitter className="size-3.5" />{p.social_twitter}</a> : <em className="text-muted-foreground text-sm">—</em>}
+        </Field>
+
+        <Field label="Instagram" editing={editing}>
+          {editing
+            ? <input value={p.social_instagram ?? ""} onChange={e => set("social_instagram", e.target.value)} placeholder="https://instagram.com/…" className={inputCls} />
+            : p.social_instagram ? <a href={p.social_instagram} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-primary text-sm"><Instagram className="size-3.5" />{p.social_instagram}</a> : <em className="text-muted-foreground text-sm">—</em>}
         </Field>
 
         <Field label="Email / Link de contato" editing={editing}>
