@@ -75,7 +75,6 @@ const Index = () => {
 
   useEffect(() => {
     setLoading(true);
-    setTournsLoaded(false);
     setDriftDismissed(false);
     Promise.all([
       metrics.evolution(90).then(setEvo).catch(() => null),
