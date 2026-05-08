@@ -3617,6 +3617,94 @@ def admin_support_reply(ticket_id):
     return jsonify({'ok': True})
 
 
+# ── GTO Integration ───────────────────────────────────────────────────────────
+
+@app.route('/replay/<int:decision_id>/gto', methods=['GET'])
+@require_auth
+def get_decision_gto(decision_id):
+    """Retorna a recomendação GTO para uma decisão específica, se disponível."""
+    from database.repositories import get_decision_spot, get_gto_node
+    from leaklab.gto_utils import compute_spot_hash
+    import json as _json
+
+    dec = get_decision_spot(decision_id)
+    if not dec:
+        return jsonify({'error': 'Decisão não encontrada'}), 404
+
+    street   = dec.get('street') or ''
+    position = dec.get('position') or ''
+    board_raw = dec.get('board') or '[]'
+    hand_raw  = dec.get('hero_cards') or ''
+    stack_bb  = float(dec.get('stack_bb') or 30.0)
+
+    try:
+        board = _json.loads(board_raw) if isinstance(board_raw, str) else board_raw
+    except Exception:
+        board = []
+
+    hero_hand = hand_raw.split() if isinstance(hand_raw, str) else []
+
+    if not street or not position or not hero_hand:
+        return jsonify({'found': False, 'reason': 'spot_incomplete'}), 404
+
+    spot_hash = compute_spot_hash(street, position, board, hero_hand, stack_bb)
+    node = get_gto_node(spot_hash)
+
+    if not node:
+        return jsonify({'found': False, 'spot_hash': spot_hash}), 404
+
+    engine_action = dec.get('action_taken') or ''
+    agreement = engine_action.lower() == node['gto_action'].lower() if engine_action else None
+
+    return jsonify({
+        'found':         True,
+        'spot_hash':     spot_hash,
+        'gto_action':    node['gto_action'],
+        'gto_freq':      node['gto_freq'],
+        'ev_diff':       node['ev_diff'],
+        'source':        node['source'],
+        'engine_action': engine_action,
+        'agreement':     agreement,
+    })
+
+
+@app.route('/admin/gto/nodes', methods=['POST'])
+@require_admin
+def admin_gto_insert():
+    """Bulk insert de nós GTO pelo bot. Requer token admin."""
+    from database.repositories import insert_gto_nodes
+    body  = request.get_json(force=True) or {}
+    nodes = body.get('nodes', [])
+    if not isinstance(nodes, list) or not nodes:
+        return jsonify({'error': 'nodes deve ser uma lista não vazia'}), 400
+    if len(nodes) > 500:
+        return jsonify({'error': 'Máximo de 500 nós por request'}), 400
+    try:
+        inserted = insert_gto_nodes(nodes)
+        return jsonify({'inserted': inserted})
+    except Exception as e:
+        log.exception('admin_gto_insert error')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/gto/stats', methods=['GET'])
+@require_admin
+def admin_gto_stats():
+    """Estatísticas da base gto_nodes."""
+    from database.repositories import get_gto_stats
+    return jsonify(get_gto_stats())
+
+
+@app.route('/admin/gto/missing-spots', methods=['GET'])
+@require_admin
+def admin_gto_missing_spots():
+    """Spots com maior frequência de erro que ainda não têm nó GTO."""
+    from database.repositories import get_missing_gto_spots
+    limit = request.args.get('limit', 100, type=int)
+    limit = min(limit, 500)
+    return jsonify({'spots': get_missing_gto_spots(limit)})
+
+
 @app.route('/support/contact', methods=['POST'])
 @require_auth
 def support_contact():

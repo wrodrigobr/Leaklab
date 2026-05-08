@@ -69,5 +69,14 @@
     "step": "Decisão {{n}}",
     "correct_label": "Correto",
     "wrong_label": "Incorreto"
+  },
+  "gto": {
+    "loading": "consultando GTO...",
+    "notFound": "spot não encontrado na base GTO",
+    "confirms": "GTO confirma",
+    "divergence": "divergência GTO",
+    "recommendsLabel": "GTO recomenda",
+    "freqLabel": "frequência",
+    "evDiff": "EV diff: {{n}} BB vs. 2ª ação"
   }
 }

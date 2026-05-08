@@ -4027,3 +4027,137 @@ def save_session_goal_review(goal_id: int, review: str) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+# ── GTO Integration ───────────────────────────────────────────────────────────
+
+def get_decision_spot(decision_id: int) -> Optional[dict]:
+    """Retorna campos necessários para computar o spot_hash de uma decisão."""
+    conn = get_conn()
+    try:
+        return _fetchone(conn,
+            "SELECT street, position, board, hero_cards, stack_bb, action_taken FROM decisions WHERE id = ?",
+            (decision_id,))
+    finally:
+        conn.close()
+
+
+def get_gto_node(spot_hash: str) -> Optional[dict]:
+    """Lookup de nó GTO pelo hash. Retorna dict ou None se não encontrado."""
+    conn = get_conn()
+    try:
+        return _fetchone(conn,
+            "SELECT spot_hash, street, position, board, hero_hand, stack_bucket, gto_action, gto_freq, ev_diff, source FROM gto_nodes WHERE spot_hash = ?",
+            (spot_hash,))
+    finally:
+        conn.close()
+
+
+def insert_gto_nodes(nodes: list[dict]) -> int:
+    """Insere ou substitui nós GTO em lote. Retorna o número de rows inseridas."""
+    if not nodes:
+        return 0
+    conn = get_conn()
+    try:
+        count = 0
+        for n in nodes:
+            from leaklab.gto_utils import compute_spot_hash
+            spot_hash = compute_spot_hash(
+                street=n['street'],
+                position=n['position'],
+                board=n.get('board', []),
+                hero_hand=n.get('hero_hand', []),
+                hero_stack_bb=float(n.get('hero_stack_bb', 30.0)),
+            )
+            from leaklab.gto_utils import stack_bucket
+            conn.execute(_adapt("""
+                INSERT OR REPLACE INTO gto_nodes
+                    (spot_hash, street, position, board, hero_hand, stack_bucket, gto_action, gto_freq, ev_diff, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """), (
+                spot_hash,
+                n['street'].lower(),
+                n['position'].upper(),
+                json.dumps(sorted(n.get('board', []))),
+                json.dumps(sorted(n.get('hero_hand', []))),
+                stack_bucket(float(n.get('hero_stack_bb', 30.0))),
+                n['gto_action'],
+                float(n['gto_freq']),
+                float(n['ev_diff']) if n.get('ev_diff') is not None else None,
+                n.get('source', 'gto_wizard'),
+            ))
+            count += 1
+        conn.commit()
+        return count
+    finally:
+        conn.close()
+
+
+def get_gto_stats() -> dict:
+    """Retorna estatísticas da base gto_nodes."""
+    conn = get_conn()
+    try:
+        total_row = _fetchone(conn, "SELECT COUNT(*) AS n FROM gto_nodes")
+        total = total_row['n'] if total_row else 0
+        by_street = {}
+        for row in _fetchall(conn, "SELECT street, COUNT(*) AS n FROM gto_nodes GROUP BY street"):
+            by_street[row['street']] = row['n']
+        by_position = {}
+        for row in _fetchall(conn, "SELECT position, COUNT(*) AS n FROM gto_nodes GROUP BY position"):
+            by_position[row['position']] = row['n']
+        return {'total': total, 'by_street': by_street, 'by_position': by_position}
+    finally:
+        conn.close()
+
+
+def get_missing_gto_spots(limit: int = 100) -> list[dict]:
+    """Retorna spots únicos de decisions que não têm nó GTO — para o bot priorizar."""
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt("""
+            SELECT d.street, d.position, d.board, d.hero_cards, d.stack_bb,
+                   COUNT(*) AS frequency
+            FROM decisions d
+            WHERE d.street IS NOT NULL
+              AND d.position IS NOT NULL
+              AND d.hero_cards IS NOT NULL
+              AND d.stack_bb IS NOT NULL
+            GROUP BY d.street, d.position, d.board, d.hero_cards, d.stack_bb
+            ORDER BY frequency DESC
+            LIMIT ?
+        """), (limit,))
+        from leaklab.gto_utils import compute_spot_hash
+        result = []
+        seen_hashes: set[str] = set()
+        for row in rows:
+            try:
+                board = json.loads(row['board']) if row['board'] else []
+                hand  = row['hero_cards'].split() if row['hero_cards'] else []
+                bb    = float(row['stack_bb']) if row['stack_bb'] else 30.0
+                h = compute_spot_hash(
+                    street=row['street'],
+                    position=row['position'],
+                    board=board,
+                    hero_hand=hand,
+                    hero_stack_bb=bb,
+                )
+                if h in seen_hashes:
+                    continue
+                seen_hashes.add(h)
+                # check if already populated
+                exists = _fetchone(conn, "SELECT 1 FROM gto_nodes WHERE spot_hash = ?", (h,))
+                if not exists:
+                    result.append({
+                        'spot_hash':    h,
+                        'street':       row['street'],
+                        'position':     row['position'],
+                        'board':        board,
+                        'hero_hand':    hand,
+                        'stack_bb':     bb,
+                        'frequency':    row['frequency'],
+                    })
+            except Exception:
+                continue
+        return result
+    finally:
+        conn.close()

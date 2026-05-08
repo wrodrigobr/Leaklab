@@ -651,6 +651,26 @@ def _run_migrations(conn):
         ]:
             try: conn.execute(sql)
             except Exception: pass
+        # Sprint GTO — gto_nodes table (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS gto_nodes (
+                    id           SERIAL PRIMARY KEY,
+                    spot_hash    TEXT NOT NULL UNIQUE,
+                    street       TEXT NOT NULL,
+                    position     TEXT NOT NULL,
+                    board        TEXT NOT NULL,
+                    hero_hand    TEXT NOT NULL,
+                    stack_bucket TEXT NOT NULL,
+                    gto_action   TEXT NOT NULL,
+                    gto_freq     REAL NOT NULL,
+                    ev_diff      REAL,
+                    source       TEXT DEFAULT 'gto_wizard',
+                    created_at   TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_nodes_hash ON gto_nodes(spot_hash)")
+        except Exception: pass
         # session_goals table (Postgres) — FEAT-08
         try:
             conn.execute("""
@@ -975,6 +995,24 @@ def _run_migrations(conn):
             if col not in st_existing:
                 try: conn.execute(sql)
                 except Exception: pass
+        # gto_nodes (SQLite) — Sprint GTO
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS gto_nodes (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                spot_hash    TEXT NOT NULL UNIQUE,
+                street       TEXT NOT NULL,
+                position     TEXT NOT NULL,
+                board        TEXT NOT NULL,
+                hero_hand    TEXT NOT NULL,
+                stack_bucket TEXT NOT NULL,
+                gto_action   TEXT NOT NULL,
+                gto_freq     REAL NOT NULL,
+                ev_diff      REAL,
+                source       TEXT DEFAULT 'gto_wizard',
+                created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_nodes_hash ON gto_nodes(spot_hash)")
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────

@@ -17,6 +17,7 @@ import { PokerTable } from "@/components/hud/PokerTable";
 import type { Seat } from "@/components/hud/PokerTable";
 import { sparring, drill, tournaments } from "@/lib/api";
 import type { SparringHand, SparringStep, DrillSubmitResult, ReplayStep } from "@/lib/api";
+import { GtoPanel } from "@/components/hud/GtoPanel";
 import { cn, formatAction } from "@/lib/utils";
 
 type Phase = "idle" | "loading" | "playing" | "feedback" | "summary";
@@ -753,6 +754,9 @@ export default function Sparring() {
                   }
                 </button>
               )}
+
+              {/* GTO second opinion */}
+              <GtoPanel decisionId={current.decision_id} />
 
               {/* Next / Summary */}
               <button

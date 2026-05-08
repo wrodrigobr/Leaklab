@@ -69,5 +69,14 @@
     "step": "Decision {{n}}",
     "correct_label": "Correct",
     "wrong_label": "Incorrect"
+  },
+  "gto": {
+    "loading": "querying GTO...",
+    "notFound": "spot not found in GTO database",
+    "confirms": "GTO confirms",
+    "divergence": "GTO divergence",
+    "recommendsLabel": "GTO recommends",
+    "freqLabel": "frequency",
+    "evDiff": "EV diff: {{n}} BB vs. 2nd best"
   }
 }

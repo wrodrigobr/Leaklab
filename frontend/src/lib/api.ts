@@ -1664,6 +1664,25 @@ export interface MyTicket {
   created_at: string;
 }
 
+// ── GTO Integration ─────────────────────────────────────────────────────────
+
+export interface GtoDecisionResult {
+  found: boolean;
+  spot_hash?: string;
+  gto_action?: string;
+  gto_freq?: number;
+  ev_diff?: number | null;
+  source?: string;
+  engine_action?: string;
+  agreement?: boolean | null;
+  reason?: string;
+}
+
+export const gto = {
+  decisionLookup: (decisionId: number) =>
+    request<GtoDecisionResult>(`/replay/${decisionId}/gto`),
+};
+
 export const support = {
   contact: (payload: { category: string; subject: string; message: string }) =>
     request<{ ok: boolean }>("/support/contact", {
