@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.86.0] — 2026-05-08 — fix(UX): dashboard sem flash ao navegar de volta — cache de módulo
+
+### Fixed
+- **`Index.tsx`**: variável `_cachedTourns` no escopo de módulo (fora do componente) persiste o resultado de `tournaments.list()` entre navegações — na remontagem, `tourns` e `tournsLoaded` são inicializados a partir do cache, eliminando o flash de KPI cards com dashes antes do EmptyDashboard
+- **`Index.tsx`**: condição para EmptyDashboard simplificada para `tournsLoaded && !hasData` (sem `!loading`) — o cache garante estado correto desde o primeiro render após navegação
+
+---
+
 ## [v0.85.9] — 2026-05-08 — fix(UX): dashboard não pisca EmptyDashboard ao navegar de volta
 
 ### Fixed

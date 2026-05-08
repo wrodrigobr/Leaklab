@@ -33,6 +33,9 @@ import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDash
 import { metrics, drill, tournaments, digest, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
+// Module-level cache — survives unmount/remount during SPA navigation
+let _cachedTourns: Tournament[] | null = null;
+
 const Index = () => {
   const { user, refreshUser } = useAuth();
   const { t, i18n } = useTranslation("dashboard");
@@ -52,7 +55,7 @@ const Index = () => {
   const [evo, setEvo]                     = useState<EvolutionResponse | null>(null);
   const [breakdown, setBreakdown]         = useState<BreakdownResponse | null>(null);
   const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
-  const [tourns, setTourns]               = useState<Tournament[]>([]);
+  const [tourns, setTourns]               = useState<Tournament[]>(_cachedTourns ?? []);
   const [leakRoi, setLeakRoi]             = useState<LeakRoiData[]>([]);
   const [pressureData, setPressureData]   = useState<PressureProfile | null>(null);
   const [driftData, setDriftData]         = useState<ConfidenceDrift | null>(null);
@@ -65,7 +68,7 @@ const Index = () => {
   const [cognitiveData, setCognitiveData] = useState<CognitiveFailureData | null>(null);
   const [twinData, setTwinData]           = useState<StrategicTwinProfile | null>(null);
   const [loading, setLoading]             = useState(true);
-  const [tournsLoaded, setTournsLoaded]   = useState(false);
+  const [tournsLoaded, setTournsLoaded]   = useState(_cachedTourns !== null);
   const [refreshKey, setRefreshKey]       = useState(0);
   const [digestDismissed, setDigestDismissed] = useState(false);
   const [digestSubscribing, setDigestSubscribing] = useState(false);
@@ -81,7 +84,7 @@ const Index = () => {
       metrics.leakRoi(90).then((r) => setLeakRoi(r.leaks)).catch(() => null),
       metrics.pressureProfile(90).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30).then(setDriftData).catch(() => null),
-      tournaments.list().then((r) => { setTourns(r.tournaments); setTournsLoaded(true); }).catch(() => null),
+      tournaments.list().then((r) => { _cachedTourns = r.tournaments; setTourns(r.tournaments); setTournsLoaded(true); }).catch(() => null),
       metrics.drillStats(30).then(setDrillStats).catch(() => null),
       metrics.dna(90).then(setDnaData).catch(() => null),
       drill.spots({ limit: 20 }).then((r) => setDrillSpots(r.spots)).catch(() => null),
@@ -301,7 +304,7 @@ const Index = () => {
           </div>
         )}
 
-        {!loading && tournsLoaded && !hasData ? (
+        {tournsLoaded && !hasData ? (
           <EmptyDashboard onComplete={handleUpload} />
         ) : (
           <>
