@@ -1138,7 +1138,7 @@ def get_player_action_frequencies(user_id: int, days: int = 90) -> dict:
     """
     from datetime import datetime, timedelta
     since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-    conn  = _conn()
+    conn  = get_conn()
     try:
         # ── Frequências por street ─────────────────────────────────────────────
         rows = conn.execute("""
