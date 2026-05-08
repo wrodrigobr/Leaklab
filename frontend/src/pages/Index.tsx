@@ -65,12 +65,14 @@ const Index = () => {
   const [cognitiveData, setCognitiveData] = useState<CognitiveFailureData | null>(null);
   const [twinData, setTwinData]           = useState<StrategicTwinProfile | null>(null);
   const [loading, setLoading]             = useState(true);
+  const [tournsLoaded, setTournsLoaded]   = useState(false);
   const [refreshKey, setRefreshKey]       = useState(0);
   const [digestDismissed, setDigestDismissed] = useState(false);
   const [digestSubscribing, setDigestSubscribing] = useState(false);
 
   useEffect(() => {
     setLoading(true);
+    setTournsLoaded(false);
     setDriftDismissed(false);
     Promise.all([
       metrics.evolution(90).then(setEvo).catch(() => null),
@@ -79,7 +81,7 @@ const Index = () => {
       metrics.leakRoi(90).then((r) => setLeakRoi(r.leaks)).catch(() => null),
       metrics.pressureProfile(90).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30).then(setDriftData).catch(() => null),
-      tournaments.list().then((r) => setTourns(r.tournaments)).catch(() => null),
+      tournaments.list().then((r) => { setTourns(r.tournaments); setTournsLoaded(true); }).catch(() => null),
       metrics.drillStats(30).then(setDrillStats).catch(() => null),
       metrics.dna(90).then(setDnaData).catch(() => null),
       drill.spots({ limit: 20 }).then((r) => setDrillSpots(r.spots)).catch(() => null),
@@ -299,7 +301,7 @@ const Index = () => {
           </div>
         )}
 
-        {!loading && !hasData ? (
+        {!loading && tournsLoaded && !hasData ? (
           <EmptyDashboard onComplete={handleUpload} />
         ) : (
           <>

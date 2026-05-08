@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.85.9] — 2026-05-08 — fix(UX): dashboard não pisca EmptyDashboard ao navegar de volta
+
+### Fixed
+- **`Index.tsx`**: adicionado flag `tournsLoaded` (boolean) que só vira `true` quando `tournaments.list()` retorna com sucesso — EmptyDashboard só aparece quando `!loading && tournsLoaded && !hasData`, evitando que uma falha silenciosa da API (catch → null) cause EmptyDashboard mesmo que o usuário tenha dados
+
+---
+
 ## [v0.85.8] — 2026-05-08 — fix(UX): dashboard vazio exibe EmptyDashboard em vez dos KPI cards
 
 ### Changed
