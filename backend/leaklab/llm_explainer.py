@@ -1469,7 +1469,7 @@ def _template_twin(profile: dict, lang: str = 'pt-BR') -> str:
 # ── AI Coach conversacional ────────────────────────────────────────────────────
 
 def coach_chat_reply(message: str, leaks: list, evolution: list,
-                     hero: str = 'Jogador') -> str:
+                     hero: str = 'Jogador', frequencies: dict | None = None) -> str:
     """Responde pergunta do usuário com contexto real de desempenho."""
     import requests as _req
 
@@ -1493,20 +1493,50 @@ def coach_chat_reply(message: str, leaks: list, evolution: list,
         )
         ctx_parts.append(f"Últimos {len(recent)} torneios:\n{ev_txt}")
 
+    if frequencies:
+        freq_lines: list[str] = []
+        by_street = frequencies.get('by_street', {})
+        for street in ['preflop', 'flop', 'turn', 'river']:
+            data = by_street.get(street)
+            if not data:
+                continue
+            parts = ', '.join(
+                f"{a} {pct:.0f}%"
+                for a, pct in data['pcts'].items()
+            )
+            freq_lines.append(f"  {street} ({data['total']} decisões): {parts}")
+
+        by_pos = frequencies.get('by_position', {})
+        if by_pos:
+            pos_lines: list[str] = []
+            for pos, data in by_pos.items():
+                parts = ', '.join(
+                    f"{a} {pct:.0f}%"
+                    for a, pct in list(data['pcts'].items())[:3]
+                )
+                pos_lines.append(f"  {pos} ({data['total']}m): {parts}")
+            if pos_lines:
+                freq_lines.append("Preflop por posição:\n" + '\n'.join(pos_lines))
+
+        if freq_lines:
+            ctx_parts.append("Frequências de ação:\n" + '\n'.join(freq_lines))
+
     context = '\n\n'.join(ctx_parts) if ctx_parts else 'Nenhum dado de desempenho disponível ainda.'
 
     system = (
         f"Você é o Coach IA do PokerLeaks, assistente tático de poker MTT de elite. "
         f"Seu aluno é {hero}.\n\n"
         f"Dados reais de desempenho atual:\n{context}\n\n"
-        "Use esses dados para personalizar cada resposta. Seja direto e técnico. "
-        f"Português do Brasil. {_POKER_TERMS_EN} Máximo 300 palavras."
+        "Use esses dados para personalizar cada resposta. Quando perguntado sobre "
+        "frequências (ex: 3-bet%, fold%, VPIP), use os dados de frequência acima. "
+        "Seja direto e técnico. "
+        f"Português do Brasil. {_POKER_TERMS_EN} Máximo 350 palavras."
     )
 
     safe_message = sanitize_llm_input(message, max_len=1000)
     payload = {
         'model':      'claude-haiku-4-5-20251001',
-        'max_tokens': 600,
+        'max_tokens': 700,
         'system':     system,
         'messages':   [{'role': 'user', 'content': safe_message}],
     }

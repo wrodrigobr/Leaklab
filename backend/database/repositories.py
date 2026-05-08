@@ -1131,6 +1131,75 @@ def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> 
         conn.close()
 
 
+def get_player_action_frequencies(user_id: int, days: int = 90) -> dict:
+    """
+    Agrega frequências de ação por street e por posição (preflop).
+    Retorna dicionário com percentuais prontos para injetar no contexto do AI Coach.
+    """
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    conn  = _conn()
+    try:
+        # ── Frequências por street ─────────────────────────────────────────────
+        rows = conn.execute("""
+            SELECT d.street, d.action_taken, COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON d.tournament_id = t.id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+              AND d.action_taken IS NOT NULL AND d.action_taken != ''
+            GROUP BY d.street, d.action_taken
+        """, (user_id, since)).fetchall()
+
+        by_street: dict = {}
+        for r in rows:
+            s = r['street'] or 'preflop'
+            a = r['action_taken']
+            by_street.setdefault(s, {})[a] = r['n']
+
+        street_freqs: dict = {}
+        for street in ['preflop', 'flop', 'turn', 'river']:
+            acts = by_street.get(street, {})
+            total = sum(acts.values())
+            if total == 0:
+                continue
+            street_freqs[street] = {
+                'total': total,
+                'pcts': {a: round(n / total * 100, 1) for a, n in sorted(acts.items(), key=lambda x: -x[1])},
+            }
+
+        # ── Frequências preflop por posição ───────────────────────────────────
+        pos_rows = conn.execute("""
+            SELECT d.position, d.action_taken, COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON d.tournament_id = t.id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+              AND d.street = 'preflop'
+              AND d.action_taken IS NOT NULL AND d.action_taken != ''
+              AND d.position IS NOT NULL AND d.position != ''
+            GROUP BY d.position, d.action_taken
+        """, (user_id, since)).fetchall()
+
+        by_pos: dict = {}
+        for r in pos_rows:
+            by_pos.setdefault(r['position'], {})[r['action_taken']] = r['n']
+
+        pos_freqs: dict = {}
+        priority = ['BTN', 'CO', 'MP', 'UTG', 'SB', 'BB']
+        for pos in priority:
+            acts = by_pos.get(pos, {})
+            total = sum(acts.values())
+            if total < 10:  # skip positions with too few samples
+                continue
+            pos_freqs[pos] = {
+                'total': total,
+                'pcts': {a: round(n / total * 100, 1) for a, n in sorted(acts.items(), key=lambda x: -x[1])},
+            }
+
+        return {'by_street': street_freqs, 'by_position': pos_freqs}
+    finally:
+        conn.close()
+
+
 def get_career_projection(user_id: int) -> dict:
     """
     Sprint AP — Projeta a trajetória de carreira do jogador.

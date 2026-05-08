@@ -82,7 +82,7 @@ from database.repositories import (
     get_drill_spots, save_drill_session, get_drill_stats, get_decision_for_drill,
     get_player_dna,
     get_icm_performance, get_breakdown, get_player_stats,
-    get_player_level,
+    get_player_level, get_player_action_frequencies,
     get_students,
     # Coach system
     assign_invite_key, get_coach_by_invite_key, link_student_to_coach,
@@ -1193,13 +1193,14 @@ def coach_chat():
 
     message = sanitize_llm_input(message, max_len=1000)
 
-    days     = 90
-    leaks    = get_leak_summary(g.user_id, days) or []
+    days      = 90
+    leaks     = get_leak_summary(g.user_id, days) or []
     evolution = get_evolution_metrics(g.user_id, days) or []
-    hero     = g.user.get('username', 'Jogador')
+    freqs     = get_player_action_frequencies(g.user_id, days)
+    hero      = g.user.get('username', 'Jogador')
 
     try:
-        reply = coach_chat_reply(message, leaks, evolution, hero=hero)
+        reply = coach_chat_reply(message, leaks, evolution, hero=hero, frequencies=freqs)
         return jsonify({'reply': reply})
     except Exception as e:
         log.exception("coach_chat error")
