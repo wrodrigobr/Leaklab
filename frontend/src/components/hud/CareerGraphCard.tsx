@@ -178,6 +178,7 @@ export function CareerGraphCard({ data }: Props) {
             <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("career.currentLevel")}</p>
             <p className={cn("font-mono text-sm font-bold", colorCls)}>{levelName}</p>
             <p className="font-mono text-[10px] text-muted-foreground">{data.current_avg?.toFixed(1)}%</p>
+            <p className="font-mono text-[9px] text-muted-foreground/50">{t("career.currentWindow")}</p>
           </div>
           {nm && nm.reachable ? (
             <div className="rounded-lg border border-border bg-background p-3 space-y-1">

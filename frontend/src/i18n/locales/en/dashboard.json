@@ -243,6 +243,7 @@
     "eyebrow": "Career Projection",
     "noData": "Import at least 5 tournaments to generate your career projection.",
     "currentLevel": "Current level",
+    "currentWindow": "last 5 tournaments",
     "nextLevel": "Next level",
     "monthsAway": "~{{n}} months",
     "tournamentsAway": "{{n}} tournaments",

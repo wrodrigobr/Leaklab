@@ -243,6 +243,7 @@
     "eyebrow": "Proyección de Carrera",
     "noData": "Importa al menos 5 torneos para generar tu proyección de carrera.",
     "currentLevel": "Nivel actual",
+    "currentWindow": "últimos 5 torneos",
     "nextLevel": "Próximo nivel",
     "monthsAway": "~{{n}} meses",
     "tournamentsAway": "{{n}} torneos",

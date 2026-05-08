@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.85.7] — 2026-05-08 — fix(UX): CareerGraphCard — contexto da janela de cálculo no nível atual
+
+### Changed
+- **`CareerGraphCard.tsx`**: adicionado rótulo "últimos 5 torneios" abaixo do percentual do nível atual para deixar claro que o valor é a média dos 5 torneios mais recentes (não o histórico completo)
+- **i18n** (PT-BR/EN/ES `dashboard.json`): nova chave `career.currentWindow`
+
+---
+
 ## [v0.85.6] — 2026-05-06 — fix(UX): LeakCausalMap — texto legível + tooltip no hover
 
 ### Changed
