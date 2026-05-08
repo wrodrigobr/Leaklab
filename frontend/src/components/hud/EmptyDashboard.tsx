@@ -35,9 +35,9 @@ export function EmptyDashboard({ onComplete }: Props) {
   return (
     <>
     {panel}
-    <div className="space-y-16">
+    <div className="space-y-4">
       <section className="relative">
-        <div className="absolute -top-7 left-0 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+        <div className="absolute -top-5 left-0 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
           {t("empty.phase")}
         </div>
 
@@ -52,29 +52,29 @@ export function EmptyDashboard({ onComplete }: Props) {
         >
           <div
             className={cn(
-              "border border-dashed border-border rounded-lg py-20 px-6 text-center transition-colors",
+              "border border-dashed border-border rounded-lg py-8 px-6 text-center transition-colors",
               isDragging && "border-primary/40 bg-primary/5",
             )}
           >
-            <div className="mb-8 flex justify-center">
-              <div className="size-16 rounded-full border border-border flex items-center justify-center bg-background">
-                <div className="size-8 bg-primary/10 rounded-sm flex items-center justify-center">
-                  <UploadCloud className="size-4 text-primary" aria-hidden />
+            <div className="mb-4 flex justify-center">
+              <div className="size-11 rounded-full border border-border flex items-center justify-center bg-background">
+                <div className="size-6 bg-primary/10 rounded-sm flex items-center justify-center">
+                  <UploadCloud className="size-3.5 text-primary" aria-hidden />
                 </div>
               </div>
             </div>
 
-            <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-foreground mb-3">
+            <h1 className="text-2xl md:text-3xl font-medium tracking-tight text-foreground mb-2">
               {t("empty.title")}
             </h1>
-            <p className="text-muted-foreground max-w-md mx-auto mb-10 text-sm leading-relaxed">
+            <p className="text-muted-foreground max-w-md mx-auto mb-5 text-sm leading-relaxed">
               {t("empty.desc")}
             </p>
 
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 font-mono text-xs font-bold uppercase tracking-widest-2 transition-colors hover:bg-primary-glow rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 font-mono text-xs font-bold uppercase tracking-widest-2 transition-colors hover:bg-primary-glow rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <FileUp className="size-3.5" aria-hidden />
               {t("empty.import")}
@@ -90,7 +90,7 @@ export function EmptyDashboard({ onComplete }: Props) {
               aria-label={t("empty.fileLabel")}
             />
 
-            <div className="mt-8 flex flex-wrap justify-center items-center gap-3 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+            <div className="mt-5 flex flex-wrap justify-center items-center gap-3 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
               {SUPPORTED.map((ext, i) => (
                 <span key={ext} className="flex items-center gap-3">
                   {i > 0 && <span className="h-3 w-px bg-border" aria-hidden />}
@@ -107,7 +107,7 @@ export function EmptyDashboard({ onComplete }: Props) {
       </section>
 
       <section>
-        <div className="mb-6 flex items-baseline justify-between">
+        <div className="mb-3 flex items-baseline justify-between">
           <h2 className="text-sm font-bold uppercase tracking-widest-2 text-foreground">
             {t("empty.unlocks")}
           </h2>
@@ -115,22 +115,22 @@ export function EmptyDashboard({ onComplete }: Props) {
             {t("empty.modules")}
           </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {MODULES.map((m) => {
             const Icon = m.icon;
             return (
               <article
                 key={m.code}
-                className="tactical-corners relative bg-hud-surface border border-border p-6 transition-transform hover:-translate-y-1 rounded-lg"
+                className="tactical-corners relative bg-hud-surface border border-border p-4 transition-transform hover:-translate-y-1 rounded-lg"
               >
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-4">
                   <span className="font-mono text-[10px] tracking-widest-2 text-primary uppercase">
                     {m.code}
                   </span>
                   <Icon className="size-4 text-primary/60" aria-hidden />
                 </div>
-                <h3 className="text-lg font-medium text-foreground mb-2">{m.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-6">{m.description}</p>
+                <h3 className="text-base font-medium text-foreground mb-1">{m.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-4">{m.description}</p>
                 <div className="flex items-center gap-3">
                   <div className="h-1 flex-1 bg-border overflow-hidden rounded-full">
                     <div className="h-full w-0 bg-primary" />
