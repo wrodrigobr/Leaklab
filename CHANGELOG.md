@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.85.6] — 2026-05-06 — fix(UX): LeakCausalMap — texto legível + tooltip no hover
+
+### Changed
+- **`LeakCausalMap.tsx`**: texto dentro dos círculos substituído por abreviação de 3-4 letras maiúsculas (`abbrev()`) com `fontSize=11` em vez do label completo ilegível em `fontSize=9`
+- **`LeakCausalMap.tsx`**: raio mínimo dos círculos aumentado de 16 para 18px para acomodar melhor o texto
+- **`LeakCausalMap.tsx`**: tooltip de hover adicionado — exibe label completo, contagem (n×), avg_score e severity badge; posicionamento inteligente (acima/abaixo) baseado na posição vertical do nó
+- **`LeakCausalMap.tsx`**: hit area invisível (`r+6`) adicionado para facilitar o hover em círculos menores
+- **`LeakCausalMap.tsx`**: painel de detalhe ao clicar agora exibe `node.label` completo em vez de `node.id`
+
+---
+
 ## [v0.85.5] — 2026-05-06 — feat: Replayer redesign — full-screen, sem scroll, Range flutuante
 
 ### Changed
