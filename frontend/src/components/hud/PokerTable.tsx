@@ -55,11 +55,14 @@ export function PokerTable({ seats, community, pot, street, bb = 100, betUnit = 
   const positions = seatPositions(seats.length);
 
   return (
-    <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-border bg-hud-surface ring-hud">
+    <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl bg-[#1a0a04] ring-hud shadow-[inset_0_0_0_6px_#3d1a08,inset_0_0_0_8px_#6b2f0f]">
+      {/* Rail — wood brown gradient ring */}
+      <div className="absolute inset-0 rounded-2xl bg-[radial-gradient(ellipse_at_50%_50%,#5a2510_0%,#2d1005_100%)] opacity-100" />
+
       {/* Felt */}
-      <div className="absolute inset-6 rounded-[40%] bg-gradient-to-br from-[hsl(172_40%_18%)] via-[hsl(172_45%_12%)] to-[hsl(217_40%_8%)] ring-2 ring-primary/20 shadow-[inset_0_0_60px_rgba(0,0,0,0.6)]">
-        <div className="absolute inset-2 rounded-[40%] border border-primary/15" />
-        <div className="absolute inset-0 rounded-[40%] bg-[radial-gradient(ellipse_at_center,transparent_40%,hsl(0_0%_0%/0.5))]" />
+      <div className="absolute inset-[10%] rounded-[50%] bg-[radial-gradient(ellipse_at_40%_35%,#2e7d46_0%,#1a5230_100%)] shadow-[inset_0_0_60px_rgba(0,0,0,0.55)]">
+        <div className="absolute inset-2 rounded-[50%] border border-white/10" />
+        <div className="absolute inset-0 rounded-[50%] bg-[radial-gradient(ellipse_at_center,transparent_38%,rgba(0,0,0,0.42))]" />
       </div>
 
       {/* Community cards + pot (center) */}
@@ -136,7 +139,7 @@ function SeatBubble({ seat }: { seat: Seat }) {
         seat.active  && !seat.winner && "border-primary ring-2 ring-primary/40 shadow-glow",
         seat.folded  && !seat.active && !seat.winner && "border-border opacity-50",
         !seat.active && !seat.folded && !seat.winner && "border-border",
-        seat.hero    && !seat.winner && "border-primary/50",
+        seat.hero    && !seat.winner && "border-primary/50 ring-2 ring-white/40 shadow-[0_0_12px_rgba(255,255,255,0.18)]",
       )}>
         <div className="flex items-center justify-center gap-1.5">
           {seat.hero && (

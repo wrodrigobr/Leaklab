@@ -9,6 +9,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.87.0] — 2026-05-08 — feat(UX): Replayer premium — redesign visual PokerStars-quality
+
+### Changed
+- **`leaklab-replayer-v3.html`**: redesign completo
+  - Mesa SVG com feltro verde (`#2e7d46 → #1a5230`) e rail marrom/madeira via radial gradient
+  - Hero sempre posicionado na parte inferior da mesa (rotOffset formula)
+  - Nomes reais de todos os jogadores (removida anonimização "Villain")
+  - Card backs com padrão X (linhas diagonais + losango), substituindo "?"
+  - Hero ring: borda branca semitransparente ao redor do seat box do hero
+  - Abas de street (`Pre-flop | Flop | Turn | River | Showdown`) substituindo dots de timeline
+  - Slider de velocidade (`0.5× → 3×`) substituindo dropdown
+  - Botão BB/chips para alternar unidade de exibição
+  - Cartas posicionadas entre o seat e o centro da mesa (não mais flutuando para fora)
+- **`frontend/src/components/hud/PokerTable.tsx`**: alinhado com novo estilo
+  - Feltro: radial gradient verde (`#2e7d46 → #1a5230`) em vez do teal anterior
+  - Rail: fundo marrom escuro (`#1a0a04`) com overlay radial (`#5a2510 → #2d1005`)
+  - Feltro oval com `inset-[10%]` e `rounded-[50%]` para melhor proporção
+  - Hero nameplate: `ring-2 ring-white/40 shadow-[0_0_12px_rgba(255,255,255,0.18)]` (hero ring branca)
+
+---
+
 ## [v0.86.0] — 2026-05-08 — fix(UX): dashboard sem flash ao navegar de volta — cache de módulo
 
 ### Fixed
