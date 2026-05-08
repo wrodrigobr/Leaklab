@@ -56,13 +56,6 @@ function HeroSection() {
       <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[500px] rounded-full bg-primary/8 blur-3xl" />
 
       <div className="relative space-y-6 max-w-3xl">
-        <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1">
-          <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
-            {t("hero.badge")}
-          </span>
-        </div>
-
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">
           {t("hero.title1")}<br />
           <span className="text-primary">{t("hero.title2")}</span>
