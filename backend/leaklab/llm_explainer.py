@@ -1488,7 +1488,7 @@ def coach_chat_reply(message: str, leaks: list, evolution: list,
         ev_txt = '\n'.join(
             f"  - {e.get('tournament_id','?')}: "
             f"score médio={e.get('avg_score',0):.3f}, "
-            f"Standard%={e.get('standard_pct',0)*100:.0f}%"
+            f"Standard%={e.get('standard_pct',0):.1f}%"
             for e in recent
         )
         ctx_parts.append(f"Últimos {len(recent)} torneios:\n{ev_txt}")
