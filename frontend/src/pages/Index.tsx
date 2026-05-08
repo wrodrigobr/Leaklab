@@ -299,70 +299,70 @@ const Index = () => {
           </div>
         )}
 
-        <section
-          aria-label="KPIs"
-          className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-4 shadow-elevated"
-        >
-          <KpiCard
-            index="01"
-            label={t("kpis.roi")}
-            value={roi != null ? (roi >= 0 ? `+${roi.toFixed(2)}` : roi.toFixed(2)) : tc("labels.noData")}
-            delta={roi != null ? { value: t("kpis.roiDelta", { value: `${roi >= 0 ? "+" : ""}${roi.toFixed(1)}` }), trend: roi >= 0 ? "up" : "down" } : undefined}
-            icon={Percent}
-            highlight
-            tooltip={t("kpis.roiTooltip")}
-          />
-          <KpiCard
-            index="02"
-            label={t("kpis.itm")}
-            value={itmPct != null ? `${itmPct.toFixed(1)}%` : tc("labels.noData")}
-            hint={hasData ? t("kpis.itmHint") : t("kpis.noData")}
-            icon={Target}
-            tooltip={t("kpis.itmTooltip")}
-          />
-          <KpiCard
-            index="03"
-            label={t("kpis.standard")}
-            value={avgStdPct != null ? `${avgStdPct.toFixed(1)}%` : tc("labels.noData")}
-            hint={hasData ? t("kpis.standardHint") : t("kpis.noData")}
-            icon={Coins}
-            tooltip={t("kpis.standardTooltip")}
-          />
-          <KpiCard
-            index="04"
-            label={t("kpis.events")}
-            value={totalEvents > 0 ? totalEvents.toLocaleString() : tc("labels.noData")}
-            hint={hasData ? t("kpis.eventsHint", { hands: totalHands.toLocaleString() }) : t("kpis.eventsHintEmpty")}
-            icon={Layers}
-            tooltip={t("kpis.eventsTooltip")}
-          />
-        </section>
-
-        {driftData?.drift_detected && !driftDismissed && hasData && (
-          <div className="flex items-start justify-between gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
-            <div className="flex items-start gap-2">
-              <Brain className="size-4 text-yellow-400 shrink-0 mt-0.5" aria-hidden />
-              <div>
-                <p className="text-sm font-medium text-foreground">{t("drift.alertTitle")}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t("drift.alertDesc", { n: driftData.affected_sessions })}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setDriftDismissed(true)}
-              className="shrink-0 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={t("drift.dismiss")}
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
         {!loading && !hasData ? (
           <EmptyDashboard onComplete={handleUpload} />
         ) : (
           <>
+            <section
+              aria-label="KPIs"
+              className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-4 shadow-elevated"
+            >
+              <KpiCard
+                index="01"
+                label={t("kpis.roi")}
+                value={roi != null ? (roi >= 0 ? `+${roi.toFixed(2)}` : roi.toFixed(2)) : tc("labels.noData")}
+                delta={roi != null ? { value: t("kpis.roiDelta", { value: `${roi >= 0 ? "+" : ""}${roi.toFixed(1)}` }), trend: roi >= 0 ? "up" : "down" } : undefined}
+                icon={Percent}
+                highlight
+                tooltip={t("kpis.roiTooltip")}
+              />
+              <KpiCard
+                index="02"
+                label={t("kpis.itm")}
+                value={itmPct != null ? `${itmPct.toFixed(1)}%` : tc("labels.noData")}
+                hint={t("kpis.itmHint")}
+                icon={Target}
+                tooltip={t("kpis.itmTooltip")}
+              />
+              <KpiCard
+                index="03"
+                label={t("kpis.standard")}
+                value={avgStdPct != null ? `${avgStdPct.toFixed(1)}%` : tc("labels.noData")}
+                hint={t("kpis.standardHint")}
+                icon={Coins}
+                tooltip={t("kpis.standardTooltip")}
+              />
+              <KpiCard
+                index="04"
+                label={t("kpis.events")}
+                value={totalEvents > 0 ? totalEvents.toLocaleString() : tc("labels.noData")}
+                hint={t("kpis.eventsHint", { hands: totalHands.toLocaleString() })}
+                icon={Layers}
+                tooltip={t("kpis.eventsTooltip")}
+              />
+            </section>
+
+            {driftData?.drift_detected && !driftDismissed && (
+              <div className="flex items-start justify-between gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <Brain className="size-4 text-yellow-400 shrink-0 mt-0.5" aria-hidden />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{t("drift.alertTitle")}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {t("drift.alertDesc", { n: driftData.affected_sessions })}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDriftDismissed(true)}
+                  className="shrink-0 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={t("drift.dismiss")}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             <PlayerStatsCard stats={playerStats} />
 
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">

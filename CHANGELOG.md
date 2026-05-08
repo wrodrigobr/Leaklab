@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.85.8] — 2026-05-08 — fix(UX): dashboard vazio exibe EmptyDashboard em vez dos KPI cards
+
+### Changed
+- **`Index.tsx`**: KPI cards e drift alert movidos para dentro do branch `hasData` — sem torneios importados, o dashboard exibe diretamente o `EmptyDashboard` com a área de upload, sem mostrar os cards com "—" e "Sem dados"
+- **`Index.tsx`**: hints dos KPI cards simplificados (removidos fallbacks `t("kpis.noData")` e `t("kpis.eventsHintEmpty")` agora desnecessários)
+
+---
+
 ## [v0.85.7] — 2026-05-08 — fix(UX): CareerGraphCard — contexto da janela de cálculo no nível atual
 
 ### Changed
