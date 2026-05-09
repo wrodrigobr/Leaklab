@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.89.0] — 2026-05-08 — feat(UX-010): Replayer — fichas por denominação real + cards com naipe central vívido
+
+### Changed
+- **`leaklab-replayer-v3.html`**: fichas e cartas redesenhadas com fidelidade PokerStars
+  - **Fichas por denominação real**: sistema `breakChips(amount)` decompõe o valor em denominações (1000=ouro, 500=roxo, 100=preto, 25=verde, 5=vermelho, 1=branco); badge no topo mostra o valor da denominação da ficha mais alta (e.g. 25 para verde)
+  - **Remoção de `potToChips`/`betToChips`**: call sites agora passam o valor real direto para `chipStackSVG`
+  - **Cartas com naipe central vívido**: símbolo de naipe único e dominante no centro do card (opacidade plena); fonte escalada por largura do card (`fCenter = w*0.78`); rank em negrito com símbolo menor no canto topo-esquerdo; cores mais vívidas (#e50a0a para copas/ouros, #111 para espadas/paus)
+  - **Verso das cartas**: padrão azul marinho limpo (remoção dos efeitos de diamante anteriores)
+  - **Ficha Dealer premium**: botão D dourado/marfim posicionado geometricamente entre o pod e o centro da mesa (via atan2); badges de posição (BTN/BB/SB) removidos dos pods
+  - **Perspectiva isolada**: apenas o SVG de background inclina (`rotateX(9deg)`); pods, fichas e cartas permanecem flat (dois SVGs em camadas separadas)
+
+---
+
 ## [v0.88.0] — 2026-05-08 — feat(UX-009): Replayer v3 — fidelidade visual PokerStars
 
 ### Changed

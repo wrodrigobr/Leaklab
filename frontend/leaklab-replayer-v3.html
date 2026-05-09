@@ -233,23 +233,38 @@ const RX_SEAT=448, RY_SEAT=246; // seat pod center radius (on rail edge)
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const SUIT_SYM={s:'♠',h:'♥',d:'♦',c:'♣'};
-const SUIT_COL={s:'#111',h:'#cc1818',d:'#cc1818',c:'#111'};
+const SUIT_COL={s:'#111111',h:'#e50a0a',d:'#e50a0a',c:'#111111'};
 const SPEED_MAP=[2200,1500,1000,550,200];
 const SPEED_LABELS=['0.5×','0.8×','1×','1.5×','3×'];
 const AC_COLORS={folds:'#e52020',calls:'#3aaa52',raises:'#c9a840',bets:'#c9a840',checks:'#5580aa','all-in':'#ff4040'};
 const POS_COLORS={BTN:'#c9a840',BB:'#e52020',SB:'#d47030'};
 
-// 8 chip denominations: [topFace, sideBody, bottomEdge]
-const CHIPS=[
-  ['#2464e8','#163cae','#0e2880'],   // blue  (low)
-  ['#e82424','#a01414','#780e0e'],   // red
-  ['#2a2a2a','#181818','#0e0e0e'],   // black (high)
-  ['#28b038','#168024','#0e5818'],   // green
-  ['#d4aa40','#9c7c1c','#705810'],   // gold
-  ['#9840d8','#6420a8','#48147c'],   // purple
-  ['#e07818','#a04c08','#703406'],   // orange
-  ['#1898d4','#0e60a0','#0a4070'],   // sky blue
+// Chip denominations — standard casino colors (black=100, green=25, red=5, white=1)
+const DENOM=[
+  {val:1000, top:'#d4aa40', side:'#a08020', text:'#fff'},  // gold
+  {val:500,  top:'#9030e0', side:'#6820a0', text:'#fff'},  // purple
+  {val:100,  top:'#383838', side:'#1c1c1c', text:'#eee'},  // black
+  {val:25,   top:'#25a550', side:'#1a7838', text:'#fff'},  // green
+  {val:5,    top:'#e52020', side:'#a81010', text:'#fff'},  // red
+  {val:1,    top:'#f0f0f0', side:'#b0b0b0', text:'#333'},  // white
 ];
+
+// Decompose amount into visual chips (max 7, correct denominations, largest at bottom)
+function breakChips(amount){
+  amount=Math.round(amount);
+  const chips=[];
+  for(const d of DENOM){
+    const n=Math.floor(amount/d.val);
+    if(n>0){
+      const show=Math.min(n,4);
+      for(let i=0;i<show;i++) chips.push(d);
+      amount-=n*d.val;
+    }
+    if(chips.length>=7) break;
+  }
+  if(chips.length===0) chips.push(DENOM[DENOM.length-1]);
+  return chips.slice(0,7);
+}
 
 // ── State ────────────────────────────────────────────────────────────────────
 let REPLAY=null,rpStep=0,rpPlaying=false,rpTimer=null,rpSpeed=1000;
@@ -261,70 +276,67 @@ function fmtAmt(v,bb){
   return v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+'';
 }
 
-// ── 3D Chip stack (real casino cylinder style) ────────────────────────────────
-// cx, bottomY = base of stack. Stack grows upward (y decreasing).
-// RX/RY = chip ellipse radii. CH = cylinder height per chip.
-function chipStackSVG(cx, bottomY, count, RX, RY, CH){
-  RX=RX||20; RY=RY||7; CH=CH||10;
-  count=Math.max(1,Math.min(CHIPS.length,count));
+// ── Chip stack — denomination-accurate cylinders ──────────────────────────────
+// cx, bottomY = base center. Stack grows upward.
+// Badge on top shows denomination value of topmost chip (e.g. 5, 25, 100).
+function chipStackSVG(cx, bottomY, amount){
+  const RX=12, RY=4, CH=6;
+  const chips=breakChips(amount);
   let h='';
-
-  // Render from bottom chip (i=0) to top chip (i=count-1)
-  // Bottom chips rendered first so top chips paint over them (correct z-order)
-  for(let i=0;i<count;i++){
-    const [topCol,sideCol,darkCol]=CHIPS[i%CHIPS.length];
-    const chipTopY   = bottomY - (i+1)*CH;  // y of top face of this chip
-    const chipBotY   = bottomY - i*CH;      // y of bottom face of this chip
-
-    // Cylinder side (rectangle between bottom and top ellipses)
-    h+=`<rect x="${cx-RX}" y="${chipTopY}" width="${RX*2}" height="${CH}" fill="${sideCol}" rx="2"/>`;
-
-    // Bottom cap ellipse (darker — facing down, barely visible)
-    h+=`<ellipse cx="${cx}" cy="${chipBotY}" rx="${RX}" ry="${RY}" fill="${darkCol}"/>`;
-
-    // Top face (full color)
-    h+=`<ellipse cx="${cx}" cy="${chipTopY}" rx="${RX}" ry="${RY}" fill="${topCol}"/>`;
-
-    // Inner ring detail on top face
-    h+=`<ellipse cx="${cx}" cy="${chipTopY}" rx="${RX-5}" ry="${RY-2.2}" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.3"/>`;
-
-    // Highlight spot (off-center — simulates point light from above-left)
-    h+=`<ellipse cx="${cx-RX*0.28}" cy="${chipTopY-RY*0.35}" rx="${RX*0.42}" ry="${RY*0.38}" fill="rgba(255,255,255,0.22)"/>`;
+  for(let i=0;i<chips.length;i++){
+    const {top:topCol,side:sideCol}=chips[i];
+    const ty=bottomY-(i+1)*CH;
+    const by2=bottomY-i*CH;
+    h+=`<rect x="${cx-RX}" y="${ty}" width="${RX*2}" height="${CH}" fill="${sideCol}"/>`;
+    h+=`<ellipse cx="${cx}" cy="${by2}" rx="${RX}" ry="${RY}" fill="${sideCol}"/>`;
+    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"/>`;
   }
+  // Badge: colored like the topmost chip, text = denomination value
+  const top=chips[chips.length-1];
+  const label=top.val>=1000?(top.val/1000)+'k':top.val+'';
+  const topY=bottomY-chips.length*CH;
+  h+=`<circle cx="${cx}" cy="${topY-7}" r="8" fill="${top.top}" stroke="rgba(255,255,255,0.45)" stroke-width="1"/>`;
+  h+=`<text x="${cx}" y="${topY-3.5}" text-anchor="middle" fill="${top.text}"
+            font-family="Inter,sans-serif" font-size="7" font-weight="800">${label}</text>`;
   return h;
 }
 
-function potToChips(pot,bb){
-  const x=pot/bb;
-  if(x<5) return 1; if(x<12) return 2; if(x<25) return 3;
-  if(x<50) return 4; if(x<100) return 5; if(x<200) return 6; return 7;
-}
-function betToChips(bet,bb){
-  const x=bet/bb;
-  if(x<3) return 1; if(x<8) return 2; if(x<18) return 3; return 4;
-}
-
 // ── Card SVG ─────────────────────────────────────────────────────────────────
+// Face cards: one large central suit symbol + rank/suit in both corners (vivid colors).
 function cardSVG(code,x,y,w,h,faceDown){
   w=w||50;h=h||68;
+  const rx=Math.round(w*0.09);
   if(!code||faceDown){
-    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#12243e" stroke="#1c3660" stroke-width="1"/>
-            <rect x="${x+3}" y="${y+3}" width="${w-6}" height="${h-6}" rx="3" fill="none" stroke="#1a325a" stroke-width=".7"/>
-            <line x1="${x+7}" y1="${y+7}" x2="${x+w-7}" y2="${y+h-7}" stroke="#1d3860" stroke-width="1.1"/>
-            <line x1="${x+w-7}" y1="${y+7}" x2="${x+7}" y2="${y+h-7}" stroke="#1d3860" stroke-width="1.1"/>
-            <rect x="${x+w/2-5}" y="${y+h/2-5}" width="10" height="10" fill="none" stroke="#253f68" stroke-width=".8"
-                  transform="rotate(45,${x+w/2},${y+h/2})"/>`;
+    // Card back — dark blue diagonal pattern
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#0e1e3a" stroke="#1c3a6a" stroke-width="1"/>
+            <rect x="${x+3}" y="${y+3}" width="${w-6}" height="${h-6}" rx="${rx-1}" fill="none" stroke="#1e3c6e" stroke-width=".8"/>
+            <line x1="${x+6}" y1="${y+6}" x2="${x+w-6}" y2="${y+h-6}" stroke="#1d3860" stroke-width="1.2"/>
+            <line x1="${x+w-6}" y1="${y+6}" x2="${x+6}" y2="${y+h-6}" stroke="#1d3860" stroke-width="1.2"/>`;
   }
   const rank=code.slice(0,-1).toUpperCase();
   const suit=code.slice(-1).toLowerCase();
   const col=SUIT_COL[suit]||'#111';
   const sym=SUIT_SYM[suit]||suit;
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#f8f4ea" stroke="#ddd4be" stroke-width=".5" filter="url(#rp-cshadow)"/>
-          <text x="${x+5}" y="${y+16}" fill="${col}" font-family="Inter,sans-serif" font-size="15" font-weight="700">${rank}</text>
-          <text x="${x+5}" y="${y+30}" fill="${col}" font-family="Inter,sans-serif" font-size="13">${sym}</text>
-          <text x="${x+w/2}" y="${y+h/2+14}" text-anchor="middle" fill="${col}" font-family="Inter,sans-serif" font-size="30" opacity=".1">${sym}</text>
-          <text x="${x+w-5}" y="${y+h-7}" text-anchor="end" fill="${col}" font-family="Inter,sans-serif" font-size="15" font-weight="700">${rank}</text>
-          <text x="${x+w-5}" y="${y+h-22}" text-anchor="end" fill="${col}" font-family="Inter,sans-serif" font-size="12">${sym}</text>`;
+
+  // Font sizes scale with card width
+  const fRank=Math.round(w*0.36);   // corner rank
+  const fSuit=Math.round(w*0.26);   // corner suit symbol
+  const fCenter=Math.round(w*0.78); // dominant center symbol
+
+  // Corner offsets
+  const cx=x+w/2, cy=y+h/2;
+  const pad=Math.round(w*0.12);
+
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#ffffff" stroke="#ccc" stroke-width=".8" filter="url(#rp-cshadow)"/>
+          <text x="${x+pad}" y="${y+fRank+1}" fill="${col}"
+                font-family="Inter,sans-serif" font-size="${fRank}" font-weight="800" dominant-baseline="auto">${rank}</text>
+          <text x="${x+pad}" y="${y+fRank+fSuit+3}" fill="${col}"
+                font-family="Inter,sans-serif" font-size="${fSuit}">${sym}</text>
+          <text x="${cx}" y="${cy+fCenter*0.35}" text-anchor="middle" fill="${col}"
+                font-family="Inter,sans-serif" font-size="${fCenter}" opacity="0.92">${sym}</text>
+          <text x="${x+w-pad}" y="${y+h-3}" text-anchor="end" fill="${col}"
+                font-family="Inter,sans-serif" font-size="${fRank}" font-weight="800"
+                transform="rotate(180,${x+w-pad},${y+h-3-fRank*0.5})">${rank}</text>`;
 }
 
 // ── Seat layout — hero always bottom ─────────────────────────────────────────
@@ -380,8 +392,7 @@ function rpRenderPot(pot,bb){
 
   // Chip stack (bottomY = just below cards)
   const chipBottomY=cardBottom+58;
-  const chipCount=potToChips(pot,bb);
-  g.innerHTML+=chipStackSVG(CX,chipBottomY,chipCount,19,7,9);
+  g.innerHTML+=chipStackSVG(CX,chipBottomY,pot);
 
   // Amount below stack
   g.innerHTML+=`<text x="${CX}" y="${chipBottomY+16}" text-anchor="middle"
@@ -436,13 +447,7 @@ function rpRenderSeats(ev,bb){
                    fill="rgba(201,168,64,0.07)"/>`;
     }
 
-    // Position badge
-    if(d.pos){
-      const pc=POS_COLORS[d.pos]||'#3a6aaa';
-      html+=`<rect x="${bx+bw-44}" y="${by+5}" width="40" height="16" rx="8" fill="${pc}" opacity=".95"/>
-             <text x="${bx+bw-24}" y="${by+16.5}" text-anchor="middle"
-                   fill="#fff" font-family="Inter,sans-serif" font-size="9.5" font-weight="700">${d.pos}</text>`;
-    }
+    // (position badge removed — positions shown only via dealer chip)
 
     // Player name (truncated)
     const name=d.player.length>14?d.player.slice(0,14)+'…':d.player;
@@ -455,11 +460,21 @@ function rpRenderSeats(ev,bb){
     html+=`<text x="${pos.x}" y="${by+41}" text-anchor="middle"
                  fill="#777" font-family="Share Tech Mono,monospace" font-size="10">${fmtAmt(sv,bb)}</text>`;
 
-    // Dealer button
+    // Premium dealer button — positioned near the seat, between pod and table center
     if(isBtn){
-      html+=`<circle cx="${bx-10}" cy="${by+bh/2}" r="11" fill="#dd1818"/>
-             <text x="${bx-10}" y="${by+bh/2+4.5}" text-anchor="middle"
-                   fill="#fff" font-family="Inter,sans-serif" font-size="9.5" font-weight="800">D</text>`;
+      const dbAngle=Math.atan2(CY-pos.y,CX-pos.x);
+      const dbX=Math.round(pos.x+Math.cos(dbAngle)*52);
+      const dbY=Math.round(pos.y+Math.sin(dbAngle)*30);
+      const R=13;
+      // Outer rim (gold ring)
+      html+=`<circle cx="${dbX}" cy="${dbY}" r="${R}" fill="#d4aa40"/>`;
+      // Inner body (white ivory)
+      html+=`<circle cx="${dbX}" cy="${dbY}" r="${R-3}" fill="#f5f0e0"/>`;
+      // Inner ring detail
+      html+=`<circle cx="${dbX}" cy="${dbY}" r="${R-5}" fill="none" stroke="#c9a040" stroke-width="1"/>`;
+      // "D" text
+      html+=`<text x="${dbX}" y="${dbY+4.5}" text-anchor="middle"
+                   fill="#2a1a00" font-family="Inter,sans-serif" font-size="11" font-weight="800">D</text>`;
     }
 
     // Action label
@@ -495,8 +510,7 @@ function rpRenderSeats(ev,bb){
       const t=0.36;
       const cx2=Math.round(pos.x+(CX-pos.x)*t);
       const cy2=Math.round(pos.y+(CY-pos.y)*t);
-      const cnt=betToChips(bet,bb);
-      chipsG.innerHTML+=chipStackSVG(cx2,cy2,cnt,19,7,9);
+      chipsG.innerHTML+=chipStackSVG(cx2,cy2,bet);
       const betStr=fmtAmt(bet,bb);
       chipsG.innerHTML+=`<rect x="${cx2-22}" y="${cy2+10}" width="44" height="14" rx="7"
         fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.14)" stroke-width=".7"/>
