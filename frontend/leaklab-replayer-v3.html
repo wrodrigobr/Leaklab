@@ -277,45 +277,46 @@ function fmtAmt(v,bb){
   return v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+'';
 }
 
-// ── Chip stack — tilted cylinders, denomination printed on the side ───────────
-// RY=3 (flat top face) + CH=10 gives ~4px visible side band below the top face.
-// The denomination label is drawn last (topmost layer) inside that band.
+// ── Chip stack — tilted discs, denomination on the TOP FACE ──────────────────
+// RY=7 > CH=5: top faces are large and visible (like coins tilted toward the camera).
+// Each chip peeks CH=5px below the one above — colored "ring" effect.
+// Denomination is printed directly on the topmost chip's face.
 function chipStackSVG(cx, bottomY, amount){
-  const RX=13, RY=3, CH=10;
+  const RX=14, RY=7, CH=5;
   const chips=breakChips(amount);
   if(!chips.length) return '';
   let h='';
 
-  // Draw all chips (rect body + bottom cap + top face)
   for(let i=0;i<chips.length;i++){
     const {top:topCol,side:sideCol}=chips[i];
-    const ty=bottomY-(i+1)*CH;
-    const by2=bottomY-i*CH;
+    const ty  = bottomY-(i+1)*CH;   // top face center
+    const by2 = bottomY-i*CH;       // bottom cap center
+    // Thin side band (mostly hidden by ellipses — gives shadow/depth)
     h+=`<rect x="${cx-RX}" y="${ty}" width="${RX*2}" height="${CH}" fill="${sideCol}"/>`;
+    // Bottom cap (darkens the gap between chips)
     h+=`<ellipse cx="${cx}" cy="${by2}" rx="${RX}" ry="${RY}" fill="${sideCol}"/>`;
-    // Top face — slight edge highlight for depth illusion
+    // Top face — dominant, bright, with subtle edge shine
     h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"
-                 stroke="rgba(255,255,255,0.22)" stroke-width=".8"/>`;
+                 stroke="rgba(255,255,255,0.28)" stroke-width=".9"/>`;
   }
 
-  // Denomination text printed on the SIDE of the topmost chip
-  // Placed just below the top ellipse (ty+RY+2) — looks engraved on the chip edge
+  // Denomination text centered on the TOP FACE of the topmost chip
   const top=chips[chips.length-1];
   const label=top.val>=1000?(top.val/1000)+'k':top.val+'';
-  const topChipTopY=bottomY-chips.length*CH;
-  h+=`<text x="${cx}" y="${topChipTopY+RY+5.5}" text-anchor="middle" dominant-baseline="middle"
-            fill="${top.text}" font-family="Inter,sans-serif" font-size="6.5" font-weight="800"
-            letter-spacing=".3">${label}</text>`;
+  const topFaceY=bottomY-chips.length*CH;   // center of topmost top-face ellipse
+  h+=`<text x="${cx}" y="${topFaceY}" text-anchor="middle" dominant-baseline="middle"
+            fill="${top.text}" font-family="Inter,sans-serif" font-size="7.5" font-weight="900"
+            letter-spacing=".4">${label}</text>`;
   return h;
 }
 
 // ── Card SVG ─────────────────────────────────────────────────────────────────
-// Face cards: one large central suit symbol + rank/suit in both corners (vivid colors).
+// Top-left: rank + suit (small, within card bounds).
+// Center: one large vivid suit symbol, positioned below corner labels.
 function cardSVG(code,x,y,w,h,faceDown){
   w=w||50;h=h||68;
   const rx=Math.round(w*0.09);
   if(!code||faceDown){
-    // Card back — dark blue diagonal pattern
     return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#0e1e3a" stroke="#1c3a6a" stroke-width="1"/>
             <rect x="${x+3}" y="${y+3}" width="${w-6}" height="${h-6}" rx="${rx-1}" fill="none" stroke="#1e3c6e" stroke-width=".8"/>
             <line x1="${x+6}" y1="${y+6}" x2="${x+w-6}" y2="${y+h-6}" stroke="#1d3860" stroke-width="1.2"/>
@@ -326,25 +327,21 @@ function cardSVG(code,x,y,w,h,faceDown){
   const col=SUIT_COL[suit]||'#111';
   const sym=SUIT_SYM[suit]||suit;
 
-  // Font sizes scale with card width
-  const fRank=Math.round(w*0.36);   // corner rank
-  const fSuit=Math.round(w*0.26);   // corner suit symbol
-  const fCenter=Math.round(w*0.78); // dominant center symbol
+  // Proportional sizes, capped so nothing overflows the card
+  const fR=Math.min(13, Math.round(w*0.27));  // corner rank  (~11px at w=42)
+  const fS=Math.min(10, Math.round(w*0.20));  // corner suit  (~8px  at w=42)
+  const fC=Math.min(28, Math.round(w*0.56));  // center sym   (~23px at w=42)
+  const pad=4;
+  // Center symbol baseline: well below the corner suit label
+  const symY=Math.round(y + fR + fS + fC*0.86 + pad + 4);
 
-  // Corner offsets
-  const cx=x+w/2, cy=y+h/2;
-  const pad=Math.round(w*0.12);
-
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#ffffff" stroke="#ccc" stroke-width=".8" filter="url(#rp-cshadow)"/>
-          <text x="${x+pad}" y="${y+fRank+1}" fill="${col}"
-                font-family="Inter,sans-serif" font-size="${fRank}" font-weight="800" dominant-baseline="auto">${rank}</text>
-          <text x="${x+pad}" y="${y+fRank+fSuit+3}" fill="${col}"
-                font-family="Inter,sans-serif" font-size="${fSuit}">${sym}</text>
-          <text x="${cx}" y="${cy+fCenter*0.35}" text-anchor="middle" fill="${col}"
-                font-family="Inter,sans-serif" font-size="${fCenter}" opacity="0.92">${sym}</text>
-          <text x="${x+w-pad}" y="${y+h-3}" text-anchor="end" fill="${col}"
-                font-family="Inter,sans-serif" font-size="${fRank}" font-weight="800"
-                transform="rotate(180,${x+w-pad},${y+h-3-fRank*0.5})">${rank}</text>`;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#fff" stroke="#ccc" stroke-width=".8" filter="url(#rp-cshadow)"/>
+          <text x="${x+pad}" y="${y+fR+pad-1}" fill="${col}"
+                font-family="Inter,sans-serif" font-size="${fR}" font-weight="800">${rank}</text>
+          <text x="${x+pad}" y="${y+fR+fS+pad+1}" fill="${col}"
+                font-family="Inter,sans-serif" font-size="${fS}">${sym}</text>
+          <text x="${x+Math.round(w/2)}" y="${symY}" text-anchor="middle" fill="${col}"
+                font-family="Inter,sans-serif" font-size="${fC}">${sym}</text>`;
 }
 
 // ── Seat layout — hero always bottom ─────────────────────────────────────────
@@ -468,21 +465,17 @@ function rpRenderSeats(ev,bb){
     html+=`<text x="${pos.x}" y="${by+41}" text-anchor="middle"
                  fill="#777" font-family="Share Tech Mono,monospace" font-size="10">${fmtAmt(sv,bb)}</text>`;
 
-    // Premium dealer button — positioned near the seat, between pod and table center
+    // Dealer button — ON THE TABLE (felt), 25% of the way from seat toward center
     if(isBtn){
-      const dbAngle=Math.atan2(CY-pos.y,CX-pos.x);
-      const dbX=Math.round(pos.x+Math.cos(dbAngle)*52);
-      const dbY=Math.round(pos.y+Math.sin(dbAngle)*30);
-      const R=13;
-      // Outer rim (gold ring)
+      const t=0.25;
+      const dbX=Math.round(pos.x+(CX-pos.x)*t);
+      const dbY=Math.round(pos.y+(CY-pos.y)*t);
+      const R=12;
       html+=`<circle cx="${dbX}" cy="${dbY}" r="${R}" fill="#d4aa40"/>`;
-      // Inner body (white ivory)
       html+=`<circle cx="${dbX}" cy="${dbY}" r="${R-3}" fill="#f5f0e0"/>`;
-      // Inner ring detail
       html+=`<circle cx="${dbX}" cy="${dbY}" r="${R-5}" fill="none" stroke="#c9a040" stroke-width="1"/>`;
-      // "D" text
-      html+=`<text x="${dbX}" y="${dbY+4.5}" text-anchor="middle"
-                   fill="#2a1a00" font-family="Inter,sans-serif" font-size="11" font-weight="800">D</text>`;
+      html+=`<text x="${dbX}" y="${dbY+4}" text-anchor="middle" dominant-baseline="middle"
+                   fill="#2a1a00" font-family="Inter,sans-serif" font-size="10" font-weight="800">D</text>`;
     }
 
     // Action label
