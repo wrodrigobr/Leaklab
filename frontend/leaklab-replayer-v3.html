@@ -330,8 +330,9 @@ function chipStackSVG(cx, bottomY, amount){
 }
 
 // ── Card SVG ─────────────────────────────────────────────────────────────────
-// Maps our internal suit code → filename suffix used by notpeter/Vector-Playing-Cards
+// Maps our internal suit/rank codes → filename used by notpeter/Vector-Playing-Cards
 const SUIT_FILE={s:'S',h:'H',d:'D',c:'C'};
+const RANK_FILE={T:'10'};  // poker uses 'T' for ten; SVG files use '10'
 
 function cardSVG(code,x,y,w,h,faceDown){
   w=w||58; h=h||84;
@@ -355,8 +356,9 @@ function cardSVG(code,x,y,w,h,faceDown){
 
   // Face-up card — use pre-made SVG from /cards/{rank}{SUIT}.svg
   // Each SVG already includes white background, rounded corners, pips and face art.
-  const rank=code.slice(0,-1).toUpperCase();
+  const r=code.slice(0,-1).toUpperCase();
   const suit=code.slice(-1).toLowerCase();
+  const rank=RANK_FILE[r]||r;
   const file=`/cards/${rank}${SUIT_FILE[suit]||suit.toUpperCase()}.svg`;
   return `<image href="${file}" x="${x}" y="${y}" width="${w}" height="${h}" filter="url(#rp-cshadow)" preserveAspectRatio="xMidYMid meet"/>`;
 }
