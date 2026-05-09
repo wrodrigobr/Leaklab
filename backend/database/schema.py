@@ -671,26 +671,44 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_nodes_hash ON gto_nodes(spot_hash)")
         except Exception: pass
+        # exploitability_pct em gto_nodes (Postgres) — GTO-002: garantia de qualidade
+        for sql in [
+            "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS exploitability_pct REAL",
+            "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS iterations INTEGER",
+        ]:
+            try: conn.execute(sql)
+            except Exception: pass
         # gto_preflop_ranges (Postgres)
         try:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS gto_preflop_ranges (
-                    id          SERIAL PRIMARY KEY,
-                    position    TEXT NOT NULL,
-                    vs_position TEXT NOT NULL DEFAULT '',
-                    action_seq  TEXT NOT NULL,
-                    hand_type   TEXT NOT NULL,
-                    action      TEXT NOT NULL,
-                    frequency   REAL NOT NULL,
-                    ev_bb       REAL,
-                    stack_bucket TEXT NOT NULL DEFAULT '35-60bb',
-                    source      TEXT NOT NULL DEFAULT 'gto_charts',
-                    created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+                    id               SERIAL PRIMARY KEY,
+                    position         TEXT NOT NULL,
+                    vs_position      TEXT NOT NULL DEFAULT '',
+                    action_seq       TEXT NOT NULL,
+                    hand_type        TEXT NOT NULL,
+                    action           TEXT NOT NULL,
+                    frequency        REAL NOT NULL,
+                    ev_bb            REAL,
+                    exploitability_pct REAL,
+                    stack_bucket     TEXT NOT NULL DEFAULT '35-60bb',
+                    source           TEXT NOT NULL DEFAULT 'solver',
+                    solver_config    TEXT,
+                    created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
                     UNIQUE(position, vs_position, action_seq, hand_type, action, stack_bucket)
                 )
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_preflop_lookup ON gto_preflop_ranges(position, vs_position, action_seq, hand_type)")
         except Exception: pass
+        # exploitability_pct em gto_preflop_ranges existente (Postgres)
+        for sql in [
+            "ALTER TABLE gto_preflop_ranges ADD COLUMN IF NOT EXISTS exploitability_pct REAL",
+            "ALTER TABLE gto_preflop_ranges ADD COLUMN IF NOT EXISTS solver_config TEXT",
+            # Remove dados estimados: qualquer row sem exploitability confirmada é deletada
+            "DELETE FROM gto_preflop_ranges WHERE exploitability_pct IS NULL",
+        ]:
+            try: conn.execute(sql)
+            except Exception: pass
         # gto_solver_queue (Postgres)
         try:
             conn.execute("""
@@ -1033,39 +1051,64 @@ def _run_migrations(conn):
         # gto_nodes (SQLite) — Sprint GTO
         conn.execute("""
             CREATE TABLE IF NOT EXISTS gto_nodes (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                spot_hash    TEXT NOT NULL UNIQUE,
-                street       TEXT NOT NULL,
-                position     TEXT NOT NULL,
-                board        TEXT NOT NULL,
-                hero_hand    TEXT NOT NULL,
-                stack_bucket TEXT NOT NULL,
-                gto_action   TEXT NOT NULL,
-                gto_freq     REAL NOT NULL,
-                ev_diff      REAL,
-                source       TEXT DEFAULT 'gto_wizard',
-                created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                spot_hash          TEXT NOT NULL UNIQUE,
+                street             TEXT NOT NULL,
+                position           TEXT NOT NULL,
+                board              TEXT NOT NULL,
+                hero_hand          TEXT NOT NULL,
+                stack_bucket       TEXT NOT NULL,
+                gto_action         TEXT NOT NULL,
+                gto_freq           REAL NOT NULL,
+                ev_diff            REAL,
+                exploitability_pct REAL,
+                iterations         INTEGER,
+                source             TEXT DEFAULT 'solver',
+                created_at         TEXT NOT NULL DEFAULT (datetime('now'))
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_nodes_hash ON gto_nodes(spot_hash)")
-        # gto_preflop_ranges (SQLite) — base pré-computada por tipo de mão
+        # migrate gto_nodes: adicionar campos de qualidade
+        gto_existing = {r[1] for r in conn.execute('PRAGMA table_info(gto_nodes)').fetchall()}
+        for col, sql in [
+            ("exploitability_pct", "ALTER TABLE gto_nodes ADD COLUMN exploitability_pct REAL"),
+            ("iterations",         "ALTER TABLE gto_nodes ADD COLUMN iterations INTEGER"),
+        ]:
+            if col not in gto_existing:
+                try: conn.execute(sql)
+                except Exception: pass
+        # gto_preflop_ranges (SQLite) — populada APENAS por solver verificado
         conn.execute("""
             CREATE TABLE IF NOT EXISTS gto_preflop_ranges (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                position    TEXT NOT NULL,
-                vs_position TEXT NOT NULL DEFAULT '',
-                action_seq  TEXT NOT NULL,
-                hand_type   TEXT NOT NULL,
-                action      TEXT NOT NULL,
-                frequency   REAL NOT NULL,
-                ev_bb       REAL,
-                stack_bucket TEXT NOT NULL DEFAULT '35-60bb',
-                source      TEXT NOT NULL DEFAULT 'gto_charts',
-                created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                position           TEXT NOT NULL,
+                vs_position        TEXT NOT NULL DEFAULT '',
+                action_seq         TEXT NOT NULL,
+                hand_type          TEXT NOT NULL,
+                action             TEXT NOT NULL,
+                frequency          REAL NOT NULL,
+                ev_bb              REAL,
+                exploitability_pct REAL,
+                stack_bucket       TEXT NOT NULL DEFAULT '35-60bb',
+                source             TEXT NOT NULL DEFAULT 'solver',
+                solver_config      TEXT,
+                created_at         TEXT NOT NULL DEFAULT (datetime('now')),
                 UNIQUE(position, vs_position, action_seq, hand_type, action, stack_bucket)
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_preflop_lookup ON gto_preflop_ranges(position, vs_position, action_seq, hand_type)")
+        # migrate gto_preflop_ranges e limpar estimativas
+        pfr_existing = {r[1] for r in conn.execute('PRAGMA table_info(gto_preflop_ranges)').fetchall()}
+        for col, sql in [
+            ("exploitability_pct", "ALTER TABLE gto_preflop_ranges ADD COLUMN exploitability_pct REAL"),
+            ("solver_config",      "ALTER TABLE gto_preflop_ranges ADD COLUMN solver_config TEXT"),
+        ]:
+            if col not in pfr_existing:
+                try: conn.execute(sql)
+                except Exception: pass
+        # Purge: remove qualquer linha sem exploitability confirmada (dados estimados)
+        try: conn.execute("DELETE FROM gto_preflop_ranges WHERE exploitability_pct IS NULL")
+        except Exception: pass
         # gto_solver_queue (SQLite) — spots pendentes de solve on-demand
         conn.execute("""
             CREATE TABLE IF NOT EXISTS gto_solver_queue (

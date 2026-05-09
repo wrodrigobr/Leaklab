@@ -3709,14 +3709,14 @@ def admin_gto_missing_spots():
 @require_auth
 def gto_strategy():
     """
-    Lookup GTO para um spot específico.
+    Lookup GTO verificado para um spot específico.
+    Só retorna dados com exploitability_pct confirmada pelo solver.
 
-    Body:
-      street, position, board[], hero_hand[], hero_stack_bb,
-      action_seq (default 'rfi'), vs_position (default '')
+    Body: street, position, board[], hero_hand[], hero_stack_bb,
+          action_seq (default 'rfi'), vs_position (default '')
 
-    Resposta:
-      { found, source, strategy[], spot_hash, queued }
+    200 → found=True, dados verificados com exploitability_pct
+    202 → found=False, spot enfileirado para solve
     """
     from leaklab.gto_solver import lookup_gto
     d             = request.get_json(force=True) or {}
@@ -3732,31 +3732,72 @@ def gto_strategy():
         return jsonify({'error': 'position e hero_hand são obrigatórios'}), 400
 
     result = lookup_gto(
-        street=street,
-        position=position,
-        board=board,
-        hero_hand=hero_hand,
-        hero_stack_bb=hero_stack_bb,
-        action_seq=action_seq,
-        vs_position=vs_position,
+        street=street, position=position, board=board,
+        hero_hand=hero_hand, hero_stack_bb=hero_stack_bb,
+        action_seq=action_seq, vs_position=vs_position,
     )
-    status_code = 200 if result.get('found') else 202
-    return jsonify(result), status_code
+    return jsonify(result), 200 if result.get('found') else 202
 
 
-@app.route('/admin/gto/seed-preflop', methods=['POST'])
+@app.route('/admin/gto/import-verified', methods=['POST'])
 @require_admin
-def admin_gto_seed_preflop():
-    """Popula gto_preflop_ranges com as ranges base (idempotente)."""
-    from leaklab.gto_preflop_seeder import seed
-    inserted = seed(dry_run=False)
-    return jsonify({'inserted': inserted})
+def admin_gto_import_verified():
+    """
+    Importa ranges verificadas de solver externo (PioSOLVER, GTO Wizard export, etc.).
+    Exige exploitability_pct no payload — rejeita importações sem garantia de qualidade.
+
+    Body:
+    {
+      "solver": "piosolver_3.0",
+      "game_tree": "6max_100bb_2.5x_ante",
+      "exploitability_pct": 0.3,
+      "ranges": [
+        { "position":"BTN", "vs_position":"", "action_seq":"rfi",
+          "hand_type":"AKs", "action":"raise", "frequency":1.0, "ev_bb":1.63 }
+      ]
+    }
+    """
+    from database.repositories import upsert_preflop_ranges
+    body = request.get_json(force=True) or {}
+
+    global_exploit = body.get('exploitability_pct')
+    if global_exploit is None:
+        return jsonify({'error': 'exploitability_pct obrigatório — importação sem garantia não é permitida'}), 400
+    if float(global_exploit) > 1.0:
+        return jsonify({'error': f'exploitability_pct={global_exploit}% > 1.0% — solve não convergiu o suficiente'}), 400
+
+    ranges = body.get('ranges', [])
+    if not ranges:
+        return jsonify({'error': 'ranges[] obrigatório e não pode ser vazio'}), 400
+    if len(ranges) > 10000:
+        return jsonify({'error': 'Máximo de 10.000 ranges por importação'}), 400
+
+    solver_config = _json.dumps({
+        'solver':       body.get('solver', 'unknown'),
+        'game_tree':    body.get('game_tree', ''),
+        'imported_at':  _json.dumps(None),  # preenchido pelo banco via default
+    })
+
+    rows = []
+    for r in ranges:
+        rows.append({**r,
+            'exploitability_pct': float(global_exploit),
+            'source':             f"import:{body.get('solver', 'external')}",
+            'solver_config':      solver_config,
+        })
+
+    inserted = upsert_preflop_ranges(rows)
+    return jsonify({
+        'inserted':            inserted,
+        'exploitability_pct':  global_exploit,
+        'solver':              body.get('solver'),
+    })
 
 
 @app.route('/admin/gto/preflop-stats', methods=['GET'])
 @require_admin
 def admin_gto_preflop_stats():
-    """Estatísticas da base preflop."""
+    """Estatísticas da base preflop verificada."""
     from database.repositories import get_preflop_stats
     return jsonify(get_preflop_stats())
 
@@ -3764,28 +3805,35 @@ def admin_gto_preflop_stats():
 @app.route('/admin/gto/run-solver', methods=['POST'])
 @require_admin
 def admin_gto_run_solver():
-    """Processa até N spots da fila do solver on-demand."""
+    """
+    Processa até N spots da fila do solver.
+    Só armazena solves com exploitability <= 1.0%.
+    Retorna {solved, rejected, failed}.
+    """
     from leaklab.gto_solver import run_solver_worker
     max_jobs = min(int((request.get_json(force=True) or {}).get('max_jobs', 5)), 20)
-    solved   = run_solver_worker(max_jobs=max_jobs)
-    return jsonify({'solved': solved})
+    result   = run_solver_worker(max_jobs=max_jobs)
+    return jsonify(result)
 
 
 @app.route('/admin/gto/queue', methods=['GET'])
 @require_admin
 def admin_gto_queue():
-    """Lista spots pendentes na fila do solver."""
+    """Lista spots na fila do solver com status."""
     from database.schema import get_conn as _gc
+    from database.repositories import _fetchall, _adapt
     conn = _gc()
     try:
-        from database.repositories import _fetchall, _adapt
         rows = _fetchall(conn, _adapt("""
             SELECT spot_hash, status, priority, requested_at, solved_at
             FROM gto_solver_queue
             ORDER BY priority DESC, requested_at ASC
-            LIMIT 100
+            LIMIT 200
         """))
-        return jsonify({'queue': [dict(r) for r in rows]})
+        counts = {}
+        for r in rows:
+            counts[r['status']] = counts.get(r['status'], 0) + 1
+        return jsonify({'queue': [dict(r) for r in rows], 'counts': counts})
     finally:
         conn.close()
 

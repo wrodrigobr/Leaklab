@@ -4042,26 +4042,48 @@ def get_decision_spot(decision_id: int) -> Optional[dict]:
         conn.close()
 
 
+# Exploitability máxima aceitável para um nó ser considerado GTO confiável
+GTO_EXPLOITABILITY_THRESHOLD = 1.0  # % do pot — abaixo disso é considerado "solved"
+
+
 def get_gto_node(spot_hash: str) -> Optional[dict]:
-    """Lookup de nó GTO pelo hash. Retorna dict ou None se não encontrado."""
+    """
+    Lookup de nó GTO pelo hash.
+    Retorna apenas nós com exploitability_pct confirmada abaixo do threshold.
+    Nós sem exploitability (dados legados não verificados) são ignorados.
+    """
     conn = get_conn()
     try:
-        return _fetchone(conn,
-            "SELECT spot_hash, street, position, board, hero_hand, stack_bucket, gto_action, gto_freq, ev_diff, source FROM gto_nodes WHERE spot_hash = ?",
-            (spot_hash,))
+        return _fetchone(conn, _adapt("""
+            SELECT spot_hash, street, position, board, hero_hand, stack_bucket,
+                   gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source
+            FROM gto_nodes
+            WHERE spot_hash = ?
+              AND exploitability_pct IS NOT NULL
+              AND exploitability_pct <= ?
+        """), (spot_hash, GTO_EXPLOITABILITY_THRESHOLD))
     finally:
         conn.close()
 
 
 def insert_gto_nodes(nodes: list[dict]) -> int:
-    """Insere ou substitui nós GTO em lote. Retorna o número de rows inseridas."""
+    """
+    Insere nós GTO verificados pelo solver. Exige exploitability_pct.
+    Rejeita silenciosamente nós sem exploitability ou acima do threshold.
+    """
     if not nodes:
         return 0
     conn = get_conn()
     try:
         count = 0
         for n in nodes:
-            from leaklab.gto_utils import compute_spot_hash
+            exploitability = n.get('exploitability_pct')
+            if exploitability is None:
+                continue  # nunca armazena sem garantia de qualidade
+            if float(exploitability) > GTO_EXPLOITABILITY_THRESHOLD:
+                continue  # solve não convergiu o suficiente
+
+            from leaklab.gto_utils import compute_spot_hash, stack_bucket
             spot_hash = compute_spot_hash(
                 street=n['street'],
                 position=n['position'],
@@ -4069,11 +4091,11 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 hero_hand=n.get('hero_hand', []),
                 hero_stack_bb=float(n.get('hero_stack_bb', 30.0)),
             )
-            from leaklab.gto_utils import stack_bucket
             conn.execute(_adapt("""
                 INSERT OR REPLACE INTO gto_nodes
-                    (spot_hash, street, position, board, hero_hand, stack_bucket, gto_action, gto_freq, ev_diff, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (spot_hash, street, position, board, hero_hand, stack_bucket,
+                     gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """), (
                 spot_hash,
                 n['street'].lower(),
@@ -4084,7 +4106,9 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 n['gto_action'],
                 float(n['gto_freq']),
                 float(n['ev_diff']) if n.get('ev_diff') is not None else None,
-                n.get('source', 'gto_wizard'),
+                float(exploitability),
+                int(n['iterations']) if n.get('iterations') else None,
+                'solver_cli',
             ))
             count += 1
         conn.commit()
@@ -4166,19 +4190,34 @@ def get_missing_gto_spots(limit: int = 100) -> list[dict]:
 # ── GTO Preflop Ranges ────────────────────────────────────────────────────────
 
 def upsert_preflop_ranges(rows: list[dict]) -> int:
-    """Insere ou atualiza ranges preflop em lote. Retorna número de rows."""
+    """
+    Insere ranges preflop verificadas por solver.
+    Exige exploitability_pct — rejeita rows sem garantia de qualidade.
+    """
     if not rows:
         return 0
     conn = get_conn()
     try:
         count = 0
         for r in rows:
+            exploitability = r.get('exploitability_pct')
+            if exploitability is None:
+                continue  # nunca armazena sem garantia
+            if float(exploitability) > GTO_EXPLOITABILITY_THRESHOLD:
+                continue  # solve não convergiu o suficiente
+
             conn.execute(_adapt("""
                 INSERT INTO gto_preflop_ranges
-                    (position, vs_position, action_seq, hand_type, action, frequency, ev_bb, stack_bucket, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (position, vs_position, action_seq, hand_type, action,
+                     frequency, ev_bb, exploitability_pct, stack_bucket, source, solver_config)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(position, vs_position, action_seq, hand_type, action, stack_bucket)
-                DO UPDATE SET frequency=excluded.frequency, ev_bb=excluded.ev_bb, source=excluded.source
+                DO UPDATE SET
+                    frequency=excluded.frequency,
+                    ev_bb=excluded.ev_bb,
+                    exploitability_pct=excluded.exploitability_pct,
+                    source=excluded.source,
+                    solver_config=excluded.solver_config
             """), (
                 r['position'].upper(),
                 (r.get('vs_position') or '').upper(),
@@ -4187,8 +4226,10 @@ def upsert_preflop_ranges(rows: list[dict]) -> int:
                 r['action'],
                 float(r['frequency']),
                 float(r['ev_bb']) if r.get('ev_bb') is not None else None,
+                float(exploitability),
                 r.get('stack_bucket', '35-60bb'),
-                r.get('source', 'gto_charts'),
+                r.get('source', 'solver'),
+                r.get('solver_config'),
             ))
             count += 1
         conn.commit()
@@ -4205,19 +4246,21 @@ def get_preflop_gto(
     stack_bucket: str = '35-60bb',
 ) -> list[dict]:
     """
-    Retorna a estratégia GTO preflop para uma mão/posição.
-    Retorna lista de {action, frequency, ev_bb} ordenada por frequency desc.
+    Retorna estratégia GTO preflop verificada por solver.
+    Só retorna rows com exploitability_pct confirmada abaixo do threshold.
     """
     conn = get_conn()
     try:
         rows = _fetchall(conn, _adapt("""
-            SELECT action, frequency, ev_bb
+            SELECT action, frequency, ev_bb, exploitability_pct, source
             FROM gto_preflop_ranges
-            WHERE position    = ?
-              AND vs_position = ?
-              AND action_seq  = ?
-              AND hand_type   = ?
-              AND stack_bucket = ?
+            WHERE position         = ?
+              AND vs_position      = ?
+              AND action_seq       = ?
+              AND hand_type        = ?
+              AND stack_bucket     = ?
+              AND exploitability_pct IS NOT NULL
+              AND exploitability_pct <= ?
             ORDER BY frequency DESC
         """), (
             position.upper(),
@@ -4225,6 +4268,7 @@ def get_preflop_gto(
             action_seq,
             hand_type,
             stack_bucket,
+            GTO_EXPLOITABILITY_THRESHOLD,
         ))
         return [dict(r) for r in rows]
     finally:
@@ -4232,14 +4276,25 @@ def get_preflop_gto(
 
 
 def get_preflop_stats() -> dict:
-    """Estatísticas da base preflop."""
+    """Estatísticas da base preflop — só dados verificados."""
     conn = get_conn()
     try:
-        total = (_fetchone(conn, "SELECT COUNT(*) AS n FROM gto_preflop_ranges") or {}).get('n', 0)
+        total = (_fetchone(conn, _adapt("""
+            SELECT COUNT(*) AS n FROM gto_preflop_ranges
+            WHERE exploitability_pct IS NOT NULL AND exploitability_pct <= ?
+        """), (GTO_EXPLOITABILITY_THRESHOLD,)) or {}).get('n', 0)
         by_pos = {}
-        for r in _fetchall(conn, "SELECT position, COUNT(*) AS n FROM gto_preflop_ranges GROUP BY position"):
+        for r in _fetchall(conn, _adapt("""
+            SELECT position, COUNT(*) AS n FROM gto_preflop_ranges
+            WHERE exploitability_pct IS NOT NULL AND exploitability_pct <= ?
+            GROUP BY position
+        """), (GTO_EXPLOITABILITY_THRESHOLD,)):
             by_pos[r['position']] = r['n']
-        return {'total': total, 'by_position': by_pos}
+        return {
+            'total': total,
+            'by_position': by_pos,
+            'exploitability_threshold_pct': GTO_EXPLOITABILITY_THRESHOLD,
+        }
     finally:
         conn.close()
 
