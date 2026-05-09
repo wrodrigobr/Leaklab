@@ -301,19 +301,6 @@ function chipStackSVG(cx, bottomY, amount){
     // ── Top face ───────────────────────────────────────────────────────────
     h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"/>`;
 
-    // ── Side notches — drawn AFTER face so they sit at the visible rim ─────
-    // Only a=0° and a=180° have nW>0 (cos=±1); top/bottom filtered out (cos=0).
-    for(let s=0;s<N;s++){
-      const a=(s/N)*Math.PI*2;
-      const nx=cx+Math.cos(a)*(RX-0.5);
-      const nW=3.8*Math.abs(Math.cos(a));
-      if(nW>0.7){
-        h+=`<rect x="${(nx-nW/2).toFixed(1)}" y="${(ty+1).toFixed(1)}"
-                 width="${nW.toFixed(1)}" height="${CH-2}" rx=".7"
-                 fill="rgba(255,255,255,0.70)"/>`;
-      }
-    }
-
     // ── 4 edge spots on face ───────────────────────────────────────────────
     for(let s=0;s<N;s++){
       const a=(s/N)*Math.PI*2;
@@ -545,17 +532,6 @@ function rpRenderSeats(ev,bb){
       html+=`<ellipse cx="${dbX}" cy="${dBy2}" rx="${dRX}" ry="${dRY}" fill="#b4b4b4"/>`;
       // Top face (ivory white)
       html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${dRX}" ry="${dRY}" fill="#f4f0ec"/>`;
-      // Side notches — drawn AFTER face, dark on silver, only at left/right rim
-      for(let s=0;s<dN;s++){
-        const a=(s/dN)*Math.PI*2;
-        const nx=dbX+Math.cos(a)*(dRX-0.5);
-        const nW=3.8*Math.abs(Math.cos(a));
-        if(nW>0.7){
-          html+=`<rect x="${(nx-nW/2).toFixed(1)}" y="${(dTy+1).toFixed(1)}"
-                      width="${nW.toFixed(1)}" height="${dCH-2}" rx=".7"
-                      fill="rgba(50,50,50,0.50)"/>`;
-        }
-      }
       // 4 edge spots (dark gray tangential ellipses)
       for(let s=0;s<dN;s++){
         const a=(s/dN)*Math.PI*2;
