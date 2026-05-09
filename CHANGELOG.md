@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.88.0] — 2026-05-08 — feat(UX-009): Replayer v3 — fidelidade visual PokerStars
+
+### Changed
+- **`leaklab-replayer-v3.html`**: rewrite completo com qualidade PokerStars
+  - **Perspectiva 3D real**: CSS `perspective:1100px` + `rotateX(9deg)` no container SVG — mesa inclina visualmente como nos softwares comerciais
+  - **Mesa**: feltro verde vibrante (`#40b558→#1d6430`) + rail grafite escuro (`#252525→#0e0e0e`) substituindo o rail marrom anterior
+  - **Seat pods**: pill-shaped (borda arredondada `rx=26`), 128×52px, posicionados no perímetro do rail (fora do feltro) — idêntico ao PokerStars
+  - **Hero ring**: oval branca (`rgba(255,255,255,0.88)` stroke-width=3.5) ao redor do pod do hero
+  - **Fichas 3D** (`chipStackSVG`): discos empilhados com 8 cores distintas, sombra, borda interna e highlight de luz — aplicado no pot e nas apostas individuais
+  - **Cartas maiores**: board cards 50×68px com rank+suit topo-esquerdo e baixo-direito, suit central translúcido
+  - **Dealer button**: círculo vermelho com "D" branco no canto do pod
+  - **Badge de posição**: pill colorida (BTN=dourado, BB=vermelho, SB=laranja) sobreposta ao pod
+  - **Fonte**: migração de Rajdhani → Inter para leitura mais nítida dos nomes e stacks
+  - **Controles**: barra preta flat, abas de street sem bordas internas, botões circulares, aba ativa vermelha
+
+---
+
 ## [v0.87.0] — 2026-05-08 — feat(UX): Replayer premium — redesign visual PokerStars-quality
 
 ### Changed
