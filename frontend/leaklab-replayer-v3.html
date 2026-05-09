@@ -239,14 +239,15 @@ const SPEED_LABELS=['0.5×','0.8×','1×','1.5×','3×'];
 const AC_COLORS={folds:'#e52020',calls:'#3aaa52',raises:'#c9a840',bets:'#c9a840',checks:'#5580aa','all-in':'#ff4040'};
 const POS_COLORS={BTN:'#c9a840',BB:'#e52020',SB:'#d47030'};
 
-// Chip denominations — standard casino colors (black=100, green=25, red=5, white=1)
+// Chip denominations — colors chosen to contrast against green felt
+// (25=blue instead of green, which would blend into the table)
 const DENOM=[
-  {val:1000, top:'#d4aa40', side:'#a08020', text:'#fff'},  // gold
-  {val:500,  top:'#9030e0', side:'#6820a0', text:'#fff'},  // purple
-  {val:100,  top:'#383838', side:'#1c1c1c', text:'#eee'},  // black
-  {val:25,   top:'#25a550', side:'#1a7838', text:'#fff'},  // green
-  {val:5,    top:'#e52020', side:'#a81010', text:'#fff'},  // red
-  {val:1,    top:'#f0f0f0', side:'#b0b0b0', text:'#333'},  // white
+  {val:1000, top:'#d4aa40', side:'#a08020', text:'#1a0a00'}, // gold
+  {val:500,  top:'#c040f0', side:'#8020b0', text:'#fff'},    // purple
+  {val:100,  top:'#303030', side:'#181818', text:'#eee'},    // black
+  {val:25,   top:'#2060e8', side:'#1040a8', text:'#fff'},    // blue
+  {val:5,    top:'#e52020', side:'#a01010', text:'#fff'},    // red
+  {val:1,    top:'#f0f0f0', side:'#b0b0b0', text:'#333'},    // white
 ];
 
 // Decompose amount into visual chips (max 7, correct denominations, largest at bottom)
@@ -276,28 +277,35 @@ function fmtAmt(v,bb){
   return v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+'';
 }
 
-// ── Chip stack — denomination-accurate cylinders ──────────────────────────────
-// cx, bottomY = base center. Stack grows upward.
-// Badge on top shows denomination value of topmost chip (e.g. 5, 25, 100).
+// ── Chip stack — tilted cylinders, denomination printed on the side ───────────
+// RY=3 (flat top face) + CH=10 gives ~4px visible side band below the top face.
+// The denomination label is drawn last (topmost layer) inside that band.
 function chipStackSVG(cx, bottomY, amount){
-  const RX=12, RY=4, CH=6;
+  const RX=13, RY=3, CH=10;
   const chips=breakChips(amount);
+  if(!chips.length) return '';
   let h='';
+
+  // Draw all chips (rect body + bottom cap + top face)
   for(let i=0;i<chips.length;i++){
     const {top:topCol,side:sideCol}=chips[i];
     const ty=bottomY-(i+1)*CH;
     const by2=bottomY-i*CH;
     h+=`<rect x="${cx-RX}" y="${ty}" width="${RX*2}" height="${CH}" fill="${sideCol}"/>`;
     h+=`<ellipse cx="${cx}" cy="${by2}" rx="${RX}" ry="${RY}" fill="${sideCol}"/>`;
-    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"/>`;
+    // Top face — slight edge highlight for depth illusion
+    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"
+                 stroke="rgba(255,255,255,0.22)" stroke-width=".8"/>`;
   }
-  // Badge: colored like the topmost chip, text = denomination value
+
+  // Denomination text printed on the SIDE of the topmost chip
+  // Placed just below the top ellipse (ty+RY+2) — looks engraved on the chip edge
   const top=chips[chips.length-1];
   const label=top.val>=1000?(top.val/1000)+'k':top.val+'';
-  const topY=bottomY-chips.length*CH;
-  h+=`<circle cx="${cx}" cy="${topY-7}" r="8" fill="${top.top}" stroke="rgba(255,255,255,0.45)" stroke-width="1"/>`;
-  h+=`<text x="${cx}" y="${topY-3.5}" text-anchor="middle" fill="${top.text}"
-            font-family="Inter,sans-serif" font-size="7" font-weight="800">${label}</text>`;
+  const topChipTopY=bottomY-chips.length*CH;
+  h+=`<text x="${cx}" y="${topChipTopY+RY+5.5}" text-anchor="middle" dominant-baseline="middle"
+            fill="${top.text}" font-family="Inter,sans-serif" font-size="6.5" font-weight="800"
+            letter-spacing=".3">${label}</text>`;
   return h;
 }
 
