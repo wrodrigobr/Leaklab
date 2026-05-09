@@ -277,36 +277,67 @@ function fmtAmt(v,bb){
   return v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+'';
 }
 
-// ── Chip stack — tilted discs, denomination on the TOP FACE ──────────────────
-// RY=7 > CH=5: top faces are large and visible (like coins tilted toward the camera).
-// Each chip peeks CH=5px below the one above — colored "ring" effect.
-// Denomination is printed directly on the topmost chip's face.
+// ── Chip stack — casino-style: edge spots, inner ring, center inlay ───────────
+// RY=9 > CH=6 → top face dominates. Each chip "peeks" below the one above.
+// Side band has white notches like real casino chip inserts.
+// Top face has 8 tangential white spots + inner ring + darker center + denomination.
 function chipStackSVG(cx, bottomY, amount){
-  const RX=14, RY=7, CH=5;
+  const RX=15, RY=9, CH=6;
   const chips=breakChips(amount);
   if(!chips.length) return '';
   let h='';
 
+  // Side notch geometry (4 white rectangles, centered in the band)
+  const N_SIDE=4, sW=3.5, sG=2.2;
+  const sTotal=N_SIDE*sW+(N_SIDE-1)*sG;
+  const sX0=cx-sTotal/2;
+
   for(let i=0;i<chips.length;i++){
     const {top:topCol,side:sideCol}=chips[i];
-    const ty  = bottomY-(i+1)*CH;   // top face center
-    const by2 = bottomY-i*CH;       // bottom cap center
-    // Thin side band (mostly hidden by ellipses — gives shadow/depth)
+    const ty  =bottomY-(i+1)*CH;
+    const by2 =bottomY-i*CH;
+
+    // ── Side band + white notches ──────────────────────────────────────────
     h+=`<rect x="${cx-RX}" y="${ty}" width="${RX*2}" height="${CH}" fill="${sideCol}"/>`;
-    // Bottom cap (darkens the gap between chips)
+    for(let s=0;s<N_SIDE;s++){
+      const sx=(sX0+s*(sW+sG)).toFixed(1);
+      h+=`<rect x="${sx}" y="${(ty+1).toFixed(1)}" width="${sW}" height="${CH-2}" rx=".8"
+               fill="rgba(255,255,255,0.62)"/>`;
+    }
+
+    // ── Bottom cap (darkens the gap between chips) ─────────────────────────
     h+=`<ellipse cx="${cx}" cy="${by2}" rx="${RX}" ry="${RY}" fill="${sideCol}"/>`;
-    // Top face — dominant, bright, with subtle edge shine
-    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"
-                 stroke="rgba(255,255,255,0.28)" stroke-width=".9"/>`;
+
+    // ── Top face ───────────────────────────────────────────────────────────
+    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"/>`;
+
+    // 8 edge spots — small white ellipses tangentially placed around the rim
+    for(let s=0;s<8;s++){
+      const a=(s/8)*Math.PI*2;
+      const ex=(cx+Math.cos(a)*(RX-3.5)).toFixed(1);
+      const ey=(ty+Math.sin(a)*(RY-2.8)).toFixed(1);
+      const rot=((a*180/Math.PI)+90).toFixed(1);
+      h+=`<ellipse cx="${ex}" cy="${ey}" rx="2.4" ry="1.2"
+                   fill="rgba(255,255,255,0.80)"
+                   transform="rotate(${rot},${ex},${ey})"/>`;
+    }
+
+    // Inner ring
+    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${(RX*0.62).toFixed(1)}" ry="${(RY*0.62).toFixed(1)}"
+                 fill="none" stroke="rgba(255,255,255,0.40)" stroke-width=".9"/>`;
+
+    // Center inlay (darker circle — background for denomination text)
+    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${(RX*0.42).toFixed(1)}" ry="${(RY*0.42).toFixed(1)}"
+                 fill="${sideCol}" opacity=".52"/>`;
   }
 
-  // Denomination text centered on the TOP FACE of the topmost chip
+  // Denomination on the CENTER INLAY of the topmost chip — drawn last (on top)
   const top=chips[chips.length-1];
-  const label=top.val>=1000?(top.val/1000)+'k':top.val+'';
-  const topFaceY=bottomY-chips.length*CH;   // center of topmost top-face ellipse
-  h+=`<text x="${cx}" y="${topFaceY}" text-anchor="middle" dominant-baseline="middle"
-            fill="${top.text}" font-family="Inter,sans-serif" font-size="7.5" font-weight="900"
-            letter-spacing=".4">${label}</text>`;
+  const label=top.val>=1000?(top.val/1000)+'K':top.val+'';
+  const topY=bottomY-chips.length*CH;
+  h+=`<text x="${cx}" y="${topY}" text-anchor="middle" dominant-baseline="middle"
+            fill="${top.text}" font-family="Inter,sans-serif" font-size="6.5" font-weight="900"
+            letter-spacing=".15">${label}</text>`;
   return h;
 }
 
