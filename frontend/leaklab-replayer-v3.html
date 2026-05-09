@@ -282,7 +282,7 @@ function fmtAmt(v,bb){
 // spots (width ∝ |cos(a)|), so when chips stack, white stripes align vertically.
 function chipStackSVG(cx, bottomY, amount){
   const RX=15, RY=9, CH=6;
-  const N=12;  // spots per chip (every 30°)
+  const N=4;  // 4 spots at cardinal positions (3/6/9/12 o'clock)
   const chips=breakChips(amount);
   if(!chips.length) return '';
   let h='';
@@ -294,24 +294,27 @@ function chipStackSVG(cx, bottomY, amount){
 
     // ── Side band ──────────────────────────────────────────────────────────
     h+=`<rect x="${cx-RX}" y="${ty}" width="${RX*2}" height="${CH}" fill="${sideCol}"/>`;
-    // Side notches: same x as face spots, width ∝ |cos(a)| (perspective foreshortening)
-    for(let s=0;s<N;s++){
-      const a=(s/N)*Math.PI*2;
-      const nx=cx+Math.cos(a)*(RX-3.5);
-      const nW=3.6*Math.abs(Math.cos(a));
-      if(nW>0.7){
-        h+=`<rect x="${(nx-nW/2).toFixed(1)}" y="${(ty+1).toFixed(1)}"
-                 width="${nW.toFixed(1)}" height="${CH-2}" rx=".7"
-                 fill="rgba(255,255,255,0.64)"/>`;
-      }
-    }
 
     // ── Bottom cap ─────────────────────────────────────────────────────────
     h+=`<ellipse cx="${cx}" cy="${by2}" rx="${RX}" ry="${RY}" fill="${sideCol}"/>`;
 
     // ── Top face ───────────────────────────────────────────────────────────
     h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"/>`;
-    // 12 edge spots — tangential white ellipses at rim
+
+    // ── Side notches — drawn AFTER face so they sit at the visible rim ─────
+    // Only a=0° and a=180° have nW>0 (cos=±1); top/bottom filtered out (cos=0).
+    for(let s=0;s<N;s++){
+      const a=(s/N)*Math.PI*2;
+      const nx=cx+Math.cos(a)*(RX-0.5);
+      const nW=3.8*Math.abs(Math.cos(a));
+      if(nW>0.7){
+        h+=`<rect x="${(nx-nW/2).toFixed(1)}" y="${(ty+1).toFixed(1)}"
+                 width="${nW.toFixed(1)}" height="${CH-2}" rx=".7"
+                 fill="rgba(255,255,255,0.70)"/>`;
+      }
+    }
+
+    // ── 4 edge spots on face ───────────────────────────────────────────────
     for(let s=0;s<N;s++){
       const a=(s/N)*Math.PI*2;
       const ex=(cx+Math.cos(a)*(RX-3.5)).toFixed(1);
@@ -321,6 +324,7 @@ function chipStackSVG(cx, bottomY, amount){
                    fill="rgba(255,255,255,0.82)"
                    transform="rotate(${rot},${ex},${ey})"/>`;
     }
+
     // Inner ring + center inlay (white circle — denomination printed inside)
     h+=`<ellipse cx="${cx}" cy="${ty}" rx="${(RX*0.62).toFixed(1)}" ry="${(RY*0.62).toFixed(1)}"
                  fill="none" stroke="rgba(255,255,255,0.38)" stroke-width=".9"/>`;
@@ -533,26 +537,26 @@ function rpRenderSeats(ev,bb){
       const dbX=Math.round(pos.x+(CX-pos.x)*t);
       const dbY=Math.round(pos.y+(CY-pos.y)*t);
       const dRX=16,dRY=9,dCH=6;
-      const dN=12; // 12 edge spots — same as regular chips
+      const dN=4; // 4 edge spots at cardinal positions
       const dTy=dbY,dBy2=dbY+dCH;
       // Side band (silver)
       html+=`<rect x="${dbX-dRX}" y="${dTy}" width="${dRX*2}" height="${dCH}" fill="#b4b4b4"/>`;
-      // Side notches — aligned with face spots, dark on silver (perspective width)
-      for(let s=0;s<dN;s++){
-        const a=(s/dN)*Math.PI*2;
-        const nx=dbX+Math.cos(a)*(dRX-3.5);
-        const nW=3.6*Math.abs(Math.cos(a));
-        if(nW>0.7){
-          html+=`<rect x="${(nx-nW/2).toFixed(1)}" y="${(dTy+1).toFixed(1)}"
-                      width="${nW.toFixed(1)}" height="${dCH-2}" rx=".7"
-                      fill="rgba(50,50,50,0.42)"/>`;
-        }
-      }
       // Bottom cap
       html+=`<ellipse cx="${dbX}" cy="${dBy2}" rx="${dRX}" ry="${dRY}" fill="#b4b4b4"/>`;
       // Top face (ivory white)
       html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${dRX}" ry="${dRY}" fill="#f4f0ec"/>`;
-      // 12 edge spots (dark gray tangential ellipses)
+      // Side notches — drawn AFTER face, dark on silver, only at left/right rim
+      for(let s=0;s<dN;s++){
+        const a=(s/dN)*Math.PI*2;
+        const nx=dbX+Math.cos(a)*(dRX-0.5);
+        const nW=3.8*Math.abs(Math.cos(a));
+        if(nW>0.7){
+          html+=`<rect x="${(nx-nW/2).toFixed(1)}" y="${(dTy+1).toFixed(1)}"
+                      width="${nW.toFixed(1)}" height="${dCH-2}" rx=".7"
+                      fill="rgba(50,50,50,0.50)"/>`;
+        }
+      }
+      // 4 edge spots (dark gray tangential ellipses)
       for(let s=0;s<dN;s++){
         const a=(s/dN)*Math.PI*2;
         const ex=(dbX+Math.cos(a)*(dRX-3.5)).toFixed(1);
