@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LeakLab Replayer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Share+Tech+Mono&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -330,137 +330,15 @@ function chipStackSVG(cx, bottomY, amount){
 }
 
 // ── Card SVG ─────────────────────────────────────────────────────────────────
-// Pip positions [x_frac, y_frac] within the safe pip zone (0–1).
-const PIP_LAYOUTS={
-  '2': [[.5,.15],[.5,.85]],
-  '3': [[.5,.12],[.5,.50],[.5,.88]],
-  '4': [[.24,.15],[.76,.15],[.24,.85],[.76,.85]],
-  '5': [[.24,.12],[.76,.12],[.5,.50],[.24,.88],[.76,.88]],
-  '6': [[.24,.12],[.76,.12],[.24,.50],[.76,.50],[.24,.88],[.76,.88]],
-  '7': [[.24,.10],[.76,.10],[.5,.30],[.24,.54],[.76,.54],[.24,.82],[.76,.82]],
-  '8': [[.24,.08],[.76,.08],[.5,.26],[.24,.47],[.76,.47],[.5,.68],[.24,.88],[.76,.88]],
-  '9': [[.24,.07],[.76,.07],[.24,.30],[.76,.30],[.5,.50],[.24,.70],[.76,.70],[.24,.93],[.76,.93]],
-  '10':[[.24,.06],[.76,.06],[.5,.22],[.24,.40],[.76,.40],[.24,.60],[.76,.60],[.5,.78],[.24,.94],[.76,.94]],
-};
-// Approximate row counts per rank (for pip font auto-scaling)
-const PIP_ROWS={'2':2,'3':3,'4':2,'5':3,'6':3,'7':4,'8':5,'9':5,'10':6};
-
-// cH = corner height (px) — pip area starts and ends at this offset from card edges
-function _pipLayout(rank,col,sym,x,y,w,h,cH){
-  const pips=PIP_LAYOUTS[rank];
-  if(!pips||cH*2>=h) return '';
-  const aX=x+w*0.14, aY=y+cH, aW=w*0.72, aH=h-cH*2;
-  const rows=PIP_ROWS[rank]||2;
-  const fP=Math.max(6,Math.min(11,Math.floor(aH/(rows+0.6))));
-  let s='';
-  for(const [fx,fy] of pips){
-    const px=(aX+fx*aW).toFixed(1);
-    const py=(aY+fy*aH).toFixed(1);
-    s+=`<text x="${px}" y="${py}" text-anchor="middle" dominant-baseline="central" fill="${col}" font-family="sans-serif" font-size="${fP}">${sym}</text>`;
-  }
-  return s;
-}
-
-// Face card art — all proportions relative to the safe art zone [ay, ay+ah]
-function _faceArt(rank,col,sym,x,y,w,h,cH){
-  const ax=x+w*0.08, ay=y+cH, aw=w*0.84, ah=h-cH*2, cx=ax+aw*0.5;
-  if(ah<6) return '';
-  let s=`<rect x="${ax.toFixed(1)}" y="${ay.toFixed(1)}" width="${aw.toFixed(1)}" height="${ah.toFixed(1)}" rx="2" fill="${col}" opacity=".07"/>`;
-
-  if(rank==='K'){
-    const crH=Math.min(ah*0.30,10), crW=aw*0.72, crX=cx-crW*0.5, crY=ay+1, crBase=crY+crH;
-    s+=`<polygon points="${crX},${crBase} ${crX},${crY+crH*0.42} ${crX+crW*0.22},${crY} ${crX+crW*0.5},${crY+crH*0.28} ${crX+crW*0.78},${crY} ${crX+crW},${crY+crH*0.42} ${crX+crW},${crBase}" fill="${col}"/>`;
-    s+=`<rect x="${crX.toFixed(1)}" y="${(crBase-crH*0.28).toFixed(1)}" width="${crW.toFixed(1)}" height="${(crH*0.28).toFixed(1)}" fill="${col}" opacity=".5"/>`;
-    if(crH>4) s+=`<circle cx="${cx}" cy="${(crY+crH*0.18).toFixed(1)}" r="${Math.min(aw*0.05,2.5).toFixed(1)}" fill="#e8c040"/>`;
-    // Face — radius capped to fit remaining vertical space
-    const fR=Math.min(aw*0.20,(ah-crH-1)*0.40), fY=crBase+fR*0.95;
-    if(fR>=2){
-      s+=`<ellipse cx="${cx}" cy="${fY.toFixed(1)}" rx="${fR.toFixed(1)}" ry="${(fR*1.12).toFixed(1)}" fill="#f5d5b0"/>`;
-      s+=`<ellipse cx="${cx}" cy="${fY.toFixed(1)}" rx="${fR.toFixed(1)}" ry="${(fR*1.12).toFixed(1)}" fill="none" stroke="${col}" stroke-width=".3" opacity=".4"/>`;
-      const eR=Math.max(0.9,fR*0.13);
-      s+=`<circle cx="${(cx-fR*0.38).toFixed(1)}" cy="${(fY-fR*0.15).toFixed(1)}" r="${eR.toFixed(1)}" fill="${col}"/>`;
-      s+=`<circle cx="${(cx+fR*0.38).toFixed(1)}" cy="${(fY-fR*0.15).toFixed(1)}" r="${eR.toFixed(1)}" fill="${col}"/>`;
-      if(fR>3){
-        s+=`<path d="M${(cx-fR*0.50)} ${(fY+fR*0.27)} Q${(cx-fR*0.22)} ${(fY+fR*0.50)} ${cx} ${(fY+fR*0.31)} Q${(cx+fR*0.22)} ${(fY+fR*0.50)} ${(cx+fR*0.50)} ${(fY+fR*0.27)}" fill="${col}" opacity=".65"/>`;
-        s+=`<ellipse cx="${cx}" cy="${(fY+fR*0.78).toFixed(1)}" rx="${(fR*0.58).toFixed(1)}" ry="${(fR*0.35).toFixed(1)}" fill="${col}" opacity=".50"/>`;
-      }
-      const robeTop=fY+fR*1.12, robeBot=ay+ah;
-      if(robeTop<robeBot-2){
-        s+=`<path d="M${(cx-aw*0.40)} ${robeBot} L${(cx-aw*0.22)} ${robeTop} L${cx} ${robeTop+2} L${(cx+aw*0.22)} ${robeTop} L${(cx+aw*0.40)} ${robeBot} Z" fill="${col}" opacity=".15"/>`;
-        s+=`<line x1="${cx}" y1="${robeTop.toFixed(1)}" x2="${cx}" y2="${robeBot.toFixed(1)}" stroke="${col}" stroke-width=".6" opacity=".30"/>`;
-        if(robeBot-robeTop>5){
-          const symSz=Math.min(aw*0.22,robeBot-robeTop-3);
-          s+=`<text x="${cx}" y="${(robeTop+(robeBot-robeTop)*0.60).toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="${col}" font-size="${symSz.toFixed(1)}" opacity=".35">${sym}</text>`;
-        }
-      }
-    }
-
-  }else if(rank==='Q'){
-    const trH=Math.min(ah*0.22,8), trW=aw*0.68, trX=cx-trW*0.5, trY=ay+1, trBase=trY+trH;
-    s+=`<polygon points="${trX},${trBase} ${(trX+trW*0.20).toFixed(1)},${(trY+trH*0.30).toFixed(1)} ${cx},${trY} ${(trX+trW*0.80).toFixed(1)},${(trY+trH*0.30).toFixed(1)} ${(trX+trW).toFixed(1)},${trBase}" fill="${col}"/>`;
-    if(trH>3){
-      s+=`<circle cx="${cx}" cy="${(trY+1).toFixed(1)}" r="${Math.min(aw*0.045,2.2).toFixed(1)}" fill="#e040b0"/>`;
-      s+=`<circle cx="${(cx-trW*0.27).toFixed(1)}" cy="${(trY+trH*0.33).toFixed(1)}" r="${Math.min(aw*0.028,1.4).toFixed(1)}" fill="#40b0e8"/>`;
-      s+=`<circle cx="${(cx+trW*0.27).toFixed(1)}" cy="${(trY+trH*0.33).toFixed(1)}" r="${Math.min(aw*0.028,1.4).toFixed(1)}" fill="#40b0e8"/>`;
-    }
-    const fR=Math.min(aw*0.19,(ah-trH-1)*0.40), fY=trBase+fR*0.95;
-    if(fR>=2){
-      if(fR>3){
-        s+=`<ellipse cx="${(cx-fR*0.72).toFixed(1)}" cy="${(fY+fR*0.45).toFixed(1)}" rx="${(fR*0.36).toFixed(1)}" ry="${(fR*1.28).toFixed(1)}" fill="${col}" opacity=".40"/>`;
-        s+=`<ellipse cx="${(cx+fR*0.72).toFixed(1)}" cy="${(fY+fR*0.45).toFixed(1)}" rx="${(fR*0.36).toFixed(1)}" ry="${(fR*1.28).toFixed(1)}" fill="${col}" opacity=".40"/>`;
-      }
-      s+=`<ellipse cx="${cx}" cy="${fY.toFixed(1)}" rx="${fR.toFixed(1)}" ry="${(fR*1.08).toFixed(1)}" fill="#f5d5b0"/>`;
-      s+=`<ellipse cx="${cx}" cy="${fY.toFixed(1)}" rx="${fR.toFixed(1)}" ry="${(fR*1.08).toFixed(1)}" fill="none" stroke="${col}" stroke-width=".3" opacity=".35"/>`;
-      const eR=Math.max(0.9,fR*0.11);
-      s+=`<circle cx="${(cx-fR*0.38).toFixed(1)}" cy="${(fY-fR*0.15).toFixed(1)}" r="${eR.toFixed(1)}" fill="${col}"/>`;
-      s+=`<circle cx="${(cx+fR*0.38).toFixed(1)}" cy="${(fY-fR*0.15).toFixed(1)}" r="${eR.toFixed(1)}" fill="${col}"/>`;
-      if(fR>3) s+=`<path d="M${(cx-fR*0.28)} ${(fY+fR*0.32)} Q${cx} ${(fY+fR*0.55)} ${(cx+fR*0.28)} ${(fY+fR*0.32)}" fill="none" stroke="${col}" stroke-width=".5" opacity=".58"/>`;
-      const robeTop=fY+fR*1.08, robeBot=ay+ah;
-      if(robeTop<robeBot-2){
-        s+=`<path d="M${(cx-aw*0.36)} ${robeBot} L${(cx-aw*0.20)} ${robeTop} L${cx} ${robeTop+2} L${(cx+aw*0.20)} ${robeTop} L${(cx+aw*0.36)} ${robeBot} Z" fill="${col}" opacity=".12"/>`;
-        if(robeBot-robeTop>5){
-          s+=`<path d="M${(cx-aw*0.20)} ${robeTop} L${cx} ${(robeTop+5).toFixed(1)} L${(cx+aw*0.20)} ${robeTop}" fill="none" stroke="${col}" stroke-width=".7" opacity=".36"/>`;
-          const symSz=Math.min(aw*0.20,robeBot-robeTop-4);
-          s+=`<text x="${cx}" y="${(robeTop+(robeBot-robeTop)*0.60).toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="${col}" font-size="${symSz.toFixed(1)}" opacity=".30">${sym}</text>`;
-        }
-      }
-    }
-
-  }else{ // J
-    const capH=Math.min(ah*0.26,9), capW=aw*0.68, capX=cx-capW*0.38, capY=ay+1, capBase=capY+capH;
-    s+=`<path d="M${capX} ${capBase} L${(capX+capW*0.10).toFixed(1)} ${capY} L${(capX+capW).toFixed(1)} ${capY} L${(capX+capW*0.88).toFixed(1)} ${capBase} Z" fill="${col}" opacity=".82"/>`;
-    s+=`<line x1="${(capX-3).toFixed(1)}" y1="${capBase.toFixed(1)}" x2="${(capX+capW+1).toFixed(1)}" y2="${capBase.toFixed(1)}" stroke="${col}" stroke-width="1.0"/>`;
-    if(capH>4){
-      const fthX=capX-3,fthY=capY;
-      s+=`<path d="M${fthX} ${fthY} C${fthX-6} ${fthY-8} ${fthX+4} ${fthY-12} ${fthX+2} ${fthY+capH*0.35}" fill="none" stroke="${col}" stroke-width="1.2" opacity=".58"/>`;
-    }
-    const fR=Math.min(aw*0.185,(ah-capH-1)*0.42), fY=capBase+fR*0.90;
-    if(fR>=2){
-      s+=`<ellipse cx="${cx}" cy="${fY.toFixed(1)}" rx="${fR.toFixed(1)}" ry="${(fR*1.08).toFixed(1)}" fill="#f5d5b0"/>`;
-      s+=`<ellipse cx="${cx}" cy="${fY.toFixed(1)}" rx="${fR.toFixed(1)}" ry="${(fR*1.08).toFixed(1)}" fill="none" stroke="${col}" stroke-width=".3" opacity=".35"/>`;
-      const eR=Math.max(0.9,fR*0.12);
-      s+=`<circle cx="${(cx-fR*0.36).toFixed(1)}" cy="${(fY-fR*0.15).toFixed(1)}" r="${eR.toFixed(1)}" fill="${col}"/>`;
-      s+=`<circle cx="${(cx+fR*0.36).toFixed(1)}" cy="${(fY-fR*0.15).toFixed(1)}" r="${eR.toFixed(1)}" fill="${col}"/>`;
-      if(fR>3) s+=`<path d="M${cx} ${(fY+fR*0.30)} Q${(cx+fR*0.40)} ${(fY+fR*0.52)} ${(cx+fR*0.36)} ${(fY+fR*0.37)}" fill="none" stroke="${col}" stroke-width=".5" opacity=".55"/>`;
-      const shTop=fY+fR*1.05, shBot=ay+ah;
-      if(shTop<shBot-2){
-        const shMid=shTop+(shBot-shTop)*0.55, shW=aw*0.54, shX=cx-shW*0.5;
-        s+=`<path d="M${shX} ${shTop+2} L${shX} ${shMid} Q${cx} ${shBot} ${shX+shW} ${shMid} L${shX+shW} ${shTop+2} Q${cx} ${shTop-1} ${shX} ${shTop+2} Z" fill="${col}" opacity=".16"/>`;
-        if(shBot-shTop>5){
-          s+=`<line x1="${cx}" y1="${(shTop+1).toFixed(1)}" x2="${cx}" y2="${shMid.toFixed(1)}" stroke="${col}" stroke-width=".5" opacity=".26"/>`;
-          const symSz=Math.min(aw*0.18,shBot-shTop-4);
-          s+=`<text x="${cx}" y="${(shTop+(shBot-shTop)*0.65).toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="${col}" font-size="${symSz.toFixed(1)}" opacity=".38">${sym}</text>`;
-        }
-      }
-    }
-  }
-  return s;
-}
+// Maps our internal suit code → filename suffix used by notpeter/Vector-Playing-Cards
+const SUIT_FILE={s:'S',h:'H',d:'D',c:'C'};
 
 function cardSVG(code,x,y,w,h,faceDown){
-  w=w||58; h=h||100;
+  w=w||58; h=h||84;
   const rx=Math.round(w*0.09);
+
   if(!code||faceDown){
+    // Premium card back — dark navy + diamond trellis
     const p=4, ds=Math.round(w*0.28);
     let trellis='';
     for(let ty=y+p-ds;ty<y+h;ty+=ds)
@@ -471,48 +349,16 @@ function cardSVG(code,x,y,w,h,faceDown){
     <rect x="${x+p}" y="${y+p}" width="${w-p*2}" height="${h-p*2}" rx="${rx-2}" fill="none" stroke="rgba(140,175,255,0.22)" stroke-width=".9"/>
     <rect x="${x+ri}" y="${y+ri}" width="${w-ri*2}" height="${h-ri*2}" rx="${rx-3}" fill="none" stroke="rgba(140,175,255,0.09)" stroke-width=".5"/>
     ${trellis}
-    <text x="${x+w/2}" y="${y+h*0.38}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.15)" font-family="sans-serif" font-size="${Math.round(w*0.42)}">♠</text>
-    <text x="${x+w/2}" y="${y+h*0.68}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.10)" font-family="sans-serif" font-size="${Math.round(w*0.28)}">♦</text>`;
+    <text x="${x+w/2}" y="${y+h*0.40}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.14)" font-family="sans-serif" font-size="${Math.round(w*0.40)}">♠</text>
+    <text x="${x+w/2}" y="${y+h*0.68}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.08)" font-family="sans-serif" font-size="${Math.round(w*0.26)}">♦</text>`;
   }
+
+  // Face-up card — use pre-made SVG from /cards/{rank}{SUIT}.svg
+  // Each SVG already includes white background, rounded corners, pips and face art.
   const rank=code.slice(0,-1).toUpperCase();
   const suit=code.slice(-1).toLowerCase();
-  const col=SUIT_COL[suit]||'#111';
-  const sym=SUIT_SYM[suit]||suit;
-
-  // Corner font sizes — Oswald condensed makes these feel large without consuming too much vertical space
-  const fR=Math.min(15,Math.round(w*0.27));  // rank (Oswald 700)
-  const fS=Math.min(14,Math.round(w*0.26));  // suit symbol below rank
-  const pad=2;
-  // cornerH: vertical space consumed by rank + suit + padding → defines pip/art safe zone
-  const cornerH=fR+fS+pad+5;
-  const mcx=x+w/2, mcy=y+h/2;
-
-  // Card body
-  let out=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#fafaf8" stroke="#d0ccc4" stroke-width=".8" filter="url(#rp-cshadow)"/>`;
-  out+=`<rect x="${x+2}" y="${y+2}" width="${w-4}" height="${h-4}" rx="${rx-1}" fill="none" stroke="${col}" stroke-width=".3" opacity=".26"/>`;
-
-  // Center content (pips/art) — rendered before corners so corners always read clearly
-  if(['J','Q','K'].includes(rank)){
-    out+=_faceArt(rank,col,sym,x,y,w,h,cornerH);
-  }else if(rank==='A'){
-    const fA=Math.min(40,Math.round(w*0.72));
-    out+=`<text x="${mcx}" y="${mcy+fA*0.36}" text-anchor="middle" fill="${col}" font-family="sans-serif" font-size="${fA}">${sym}</text>`;
-  }else{
-    out+=_pipLayout(rank,col,sym,x,y,w,h,cornerH);
-  }
-
-  // Corner labels — drawn last, always on top
-  const rFont=`font-family="Oswald,Georgia,serif" font-size="${fR}" font-weight="700"`;
-  const sFont=`font-family="sans-serif" font-size="${fS}" font-weight="700"`;
-  // Top-left
-  out+=`<text x="${x+pad}" y="${y+fR+pad}" fill="${col}" ${rFont} letter-spacing="-.3">${rank}</text>`;
-  out+=`<text x="${x+pad+1}" y="${y+fR+fS+pad+2}" fill="${col}" ${sFont}>${sym}</text>`;
-  // Bottom-right (rotate 180° around card center)
-  out+=`<g transform="rotate(180 ${mcx} ${mcy})">`;
-  out+=`<text x="${x+pad}" y="${y+fR+pad}" fill="${col}" ${rFont} letter-spacing="-.3">${rank}</text>`;
-  out+=`<text x="${x+pad+1}" y="${y+fR+fS+pad+2}" fill="${col}" ${sFont}>${sym}</text>`;
-  out+=`</g>`;
-  return out;
+  const file=`/cards/${rank}${SUIT_FILE[suit]||suit.toUpperCase()}.svg`;
+  return `<image href="${file}" x="${x}" y="${y}" width="${w}" height="${h}" filter="url(#rp-cshadow)" preserveAspectRatio="xMidYMid meet"/>`;
 }
 
 // ── Seat layout — hero always bottom ─────────────────────────────────────────
