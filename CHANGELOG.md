@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.90.0] — 2026-05-08 — feat(UX-011): Replayer — fichas casino com inlay branco + botão dealer redesenhado
+
+### Changed
+- **`leaklab-replayer-v3.html`**: refinamentos visuais premium nas fichas e botão dealer
+  - **Inlay branco nas fichas**: elipse central agora branca (`rgba(255,255,255,0.92)`) em todas as denominações, com texto de valor sempre em preto `#111` — fidelidade a fichas de casino reais
+  - **Botão dealer maior**: dimensões aumentadas de 13×7 para 16×9 (mesmo tamanho das fichas regulares); lado agora com 12 notches alinhados (técnica coseno, igual às demais fichas)
+  - **Símbolo ★ no botão dealer**: substituição da letra "D" por estrela de 5 pontas desenhada em SVG path (`M0,-5 L1.18,-1.62 ...`), posicionada sobre inlay branco
+  - **Fichas amarelas (denom 1)**: denominação 1 permanece amarela (`#f0d020`) — branca reservada exclusivamente para o chip dealer
+
+---
+
 ## [v0.89.0] — 2026-05-08 — feat(UX-010): Replayer — fichas por denominação real + cards com naipe central vívido
 
 ### Changed

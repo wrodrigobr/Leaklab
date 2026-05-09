@@ -277,66 +277,63 @@ function fmtAmt(v,bb){
   return v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+'';
 }
 
-// ── Chip stack — casino-style: edge spots, inner ring, center inlay ───────────
-// RY=9 > CH=6 → top face dominates. Each chip "peeks" below the one above.
-// Side band has white notches like real casino chip inserts.
-// Top face has 8 tangential white spots + inner ring + darker center + denomination.
+// ── Chip stack — casino-style with ALIGNED side+face spots ───────────────────
+// 12 edge spots (every 30°). Side notches are at the SAME x positions as face
+// spots (width ∝ |cos(a)|), so when chips stack, white stripes align vertically.
 function chipStackSVG(cx, bottomY, amount){
   const RX=15, RY=9, CH=6;
+  const N=12;  // spots per chip (every 30°)
   const chips=breakChips(amount);
   if(!chips.length) return '';
   let h='';
-
-  // Side notch geometry (4 white rectangles, centered in the band)
-  const N_SIDE=4, sW=3.5, sG=2.2;
-  const sTotal=N_SIDE*sW+(N_SIDE-1)*sG;
-  const sX0=cx-sTotal/2;
 
   for(let i=0;i<chips.length;i++){
     const {top:topCol,side:sideCol}=chips[i];
     const ty  =bottomY-(i+1)*CH;
     const by2 =bottomY-i*CH;
 
-    // ── Side band + white notches ──────────────────────────────────────────
+    // ── Side band ──────────────────────────────────────────────────────────
     h+=`<rect x="${cx-RX}" y="${ty}" width="${RX*2}" height="${CH}" fill="${sideCol}"/>`;
-    for(let s=0;s<N_SIDE;s++){
-      const sx=(sX0+s*(sW+sG)).toFixed(1);
-      h+=`<rect x="${sx}" y="${(ty+1).toFixed(1)}" width="${sW}" height="${CH-2}" rx=".8"
-               fill="rgba(255,255,255,0.62)"/>`;
+    // Side notches: same x as face spots, width ∝ |cos(a)| (perspective foreshortening)
+    for(let s=0;s<N;s++){
+      const a=(s/N)*Math.PI*2;
+      const nx=cx+Math.cos(a)*(RX-3.5);
+      const nW=3.6*Math.abs(Math.cos(a));
+      if(nW>0.7){
+        h+=`<rect x="${(nx-nW/2).toFixed(1)}" y="${(ty+1).toFixed(1)}"
+                 width="${nW.toFixed(1)}" height="${CH-2}" rx=".7"
+                 fill="rgba(255,255,255,0.64)"/>`;
+      }
     }
 
-    // ── Bottom cap (darkens the gap between chips) ─────────────────────────
+    // ── Bottom cap ─────────────────────────────────────────────────────────
     h+=`<ellipse cx="${cx}" cy="${by2}" rx="${RX}" ry="${RY}" fill="${sideCol}"/>`;
 
     // ── Top face ───────────────────────────────────────────────────────────
     h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"/>`;
-
-    // 8 edge spots — small white ellipses tangentially placed around the rim
-    for(let s=0;s<8;s++){
-      const a=(s/8)*Math.PI*2;
+    // 12 edge spots — tangential white ellipses at rim
+    for(let s=0;s<N;s++){
+      const a=(s/N)*Math.PI*2;
       const ex=(cx+Math.cos(a)*(RX-3.5)).toFixed(1);
       const ey=(ty+Math.sin(a)*(RY-2.8)).toFixed(1);
       const rot=((a*180/Math.PI)+90).toFixed(1);
-      h+=`<ellipse cx="${ex}" cy="${ey}" rx="2.4" ry="1.2"
-                   fill="rgba(255,255,255,0.80)"
+      h+=`<ellipse cx="${ex}" cy="${ey}" rx="2.0" ry="1.0"
+                   fill="rgba(255,255,255,0.82)"
                    transform="rotate(${rot},${ex},${ey})"/>`;
     }
-
-    // Inner ring
+    // Inner ring + center inlay (white circle — denomination printed inside)
     h+=`<ellipse cx="${cx}" cy="${ty}" rx="${(RX*0.62).toFixed(1)}" ry="${(RY*0.62).toFixed(1)}"
-                 fill="none" stroke="rgba(255,255,255,0.40)" stroke-width=".9"/>`;
-
-    // Center inlay (darker circle — background for denomination text)
+                 fill="none" stroke="rgba(255,255,255,0.38)" stroke-width=".9"/>`;
     h+=`<ellipse cx="${cx}" cy="${ty}" rx="${(RX*0.42).toFixed(1)}" ry="${(RY*0.42).toFixed(1)}"
-                 fill="${sideCol}" opacity=".52"/>`;
+                 fill="rgba(255,255,255,0.92)"/>`;
   }
 
-  // Denomination on the CENTER INLAY of the topmost chip — drawn last (on top)
+  // Denomination on white inlay of topmost chip — always black text
   const top=chips[chips.length-1];
   const label=top.val>=1000?(top.val/1000)+'K':top.val+'';
   const topY=bottomY-chips.length*CH;
   h+=`<text x="${cx}" y="${topY}" text-anchor="middle" dominant-baseline="middle"
-            fill="${top.text}" font-family="Inter,sans-serif" font-size="6.5" font-weight="900"
+            fill="#111" font-family="Inter,sans-serif" font-size="6.5" font-weight="900"
             letter-spacing=".15">${label}</text>`;
   return h;
 }
@@ -509,8 +506,8 @@ function rpRenderSeats(ev,bb){
                    fill="rgba(6,5,4,0.92)" stroke="rgba(100,78,12,0.70)" stroke-width=".8"/>`;
       html+=`<text x="${bBadgeX+11}" y="${bBadgeY+bH/2}" dominant-baseline="middle" text-anchor="middle"
                    fill="#c9a840" font-family="Inter,sans-serif" font-size="11">⊕</text>`;
-      html+=`<text x="${bBadgeX+20}" y="${bBadgeY+bH/2}" dominant-baseline="middle"
-                   fill="#e8d090" font-family="Share Tech Mono,monospace" font-size="9" font-weight="700">$${bountyStr}</text>`;
+      html+=`<text x="${bBadgeX+21}" y="${bBadgeY+bH/2}" dominant-baseline="middle"
+                   fill="#e8d090" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700">$${bountyStr}</text>`;
     }
 
     // Dealer button — white casino chip on the felt, 25% toward table center
@@ -518,39 +515,45 @@ function rpRenderSeats(ev,bb){
       const t=0.25;
       const dbX=Math.round(pos.x+(CX-pos.x)*t);
       const dbY=Math.round(pos.y+(CY-pos.y)*t);
-      const dRX=13,dRY=7,dCH=5;
+      const dRX=16,dRY=9,dCH=6;
+      const dN=12; // 12 edge spots — same as regular chips
       const dTy=dbY,dBy2=dbY+dCH;
-      // Side band
+      // Side band (silver)
       html+=`<rect x="${dbX-dRX}" y="${dTy}" width="${dRX*2}" height="${dCH}" fill="#b4b4b4"/>`;
-      // Side notches (dark on white chip)
-      const dsN=3,dsW=3,dsG=2.5,dsTot=dsN*dsW+(dsN-1)*dsG,dsX0=dbX-dsTot/2;
-      for(let s=0;s<dsN;s++){
-        const sx=(dsX0+s*(dsW+dsG)).toFixed(1);
-        html+=`<rect x="${sx}" y="${(dTy+1).toFixed(1)}" width="${dsW}" height="${dCH-2}" rx=".7"
-                    fill="rgba(50,50,50,0.35)"/>`;
+      // Side notches — aligned with face spots, dark on silver (perspective width)
+      for(let s=0;s<dN;s++){
+        const a=(s/dN)*Math.PI*2;
+        const nx=dbX+Math.cos(a)*(dRX-3.5);
+        const nW=3.6*Math.abs(Math.cos(a));
+        if(nW>0.7){
+          html+=`<rect x="${(nx-nW/2).toFixed(1)}" y="${(dTy+1).toFixed(1)}"
+                      width="${nW.toFixed(1)}" height="${dCH-2}" rx=".7"
+                      fill="rgba(50,50,50,0.42)"/>`;
+        }
       }
       // Bottom cap
       html+=`<ellipse cx="${dbX}" cy="${dBy2}" rx="${dRX}" ry="${dRY}" fill="#b4b4b4"/>`;
-      // Top face (white/ivory)
-      html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${dRX}" ry="${dRY}" fill="#f2eeea"/>`;
-      // 8 edge spots (dark gray on white)
-      for(let s=0;s<8;s++){
-        const a=(s/8)*Math.PI*2;
+      // Top face (ivory white)
+      html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${dRX}" ry="${dRY}" fill="#f4f0ec"/>`;
+      // 12 edge spots (dark gray tangential ellipses)
+      for(let s=0;s<dN;s++){
+        const a=(s/dN)*Math.PI*2;
         const ex=(dbX+Math.cos(a)*(dRX-3.5)).toFixed(1);
         const ey=(dTy+Math.sin(a)*(dRY-2.8)).toFixed(1);
         const rot=((a*180/Math.PI)+90).toFixed(1);
-        html+=`<ellipse cx="${ex}" cy="${ey}" rx="2.2" ry="1.1" fill="rgba(55,55,55,0.50)"
+        html+=`<ellipse cx="${ex}" cy="${ey}" rx="2.0" ry="1.0" fill="rgba(55,55,55,0.50)"
                        transform="rotate(${rot},${ex},${ey})"/>`;
       }
-      // Inner ring + center inlay
+      // Inner ring
       html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX*0.62).toFixed(1)}" ry="${(dRY*0.62).toFixed(1)}"
                      fill="none" stroke="rgba(55,55,55,0.28)" stroke-width=".9"/>`;
-      html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX*0.42).toFixed(1)}" ry="${(dRY*0.42).toFixed(1)}"
-                     fill="rgba(70,70,70,0.18)"/>`;
-      // "D" label — premium serif-style
-      html+=`<text x="${dbX}" y="${dTy}" text-anchor="middle" dominant-baseline="middle"
-                   fill="#111" font-family="Inter,sans-serif" font-size="8" font-weight="900"
-                   letter-spacing=".5">D</text>`;
+      // White center inlay
+      html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX*0.44).toFixed(1)}" ry="${(dRY*0.44).toFixed(1)}"
+                     fill="rgba(255,255,255,0.90)"/>`;
+      // 5-pointed star — drawn with transform so it auto-centers on (dbX,dTy)
+      html+=`<path d="M0,-5 L1.18,-1.62 L4.76,-1.55 L1.90,0.62 L2.94,4.05
+                      L0,2 L-2.94,4.05 L-1.90,0.62 L-4.76,-1.55 L-1.18,-1.62 Z"
+                   fill="#222" transform="translate(${dbX},${dTy})"/>`;
     }
 
     // Action label
