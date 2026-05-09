@@ -99,12 +99,13 @@ fn run(inp: &Input) -> Result<Output, String> {
     // Parse board
     let board = parse_board(&inp.board, &inp.street)?;
 
-    // Bet sizes padrão por street (OOP e IP iguais, simplificação razoável)
-    let flop_bets  = BetSizeOptions::try_from(("33%, 50%, 75%, 100%", "2.5x"))
+    // 1 bet size por street — mantém a árvore compacta o suficiente para caber em RAM
+    // (4+ tamanhos por street × ranges largas = dezenas de GB de memória)
+    let flop_bets  = BetSizeOptions::try_from(("50%", "2.5x"))
         .map_err(|e| format!("bet sizes inválidas: {e}"))?;
-    let turn_bets  = BetSizeOptions::try_from(("50%, 75%, 100%", "2.5x"))
+    let turn_bets  = BetSizeOptions::try_from(("75%", "2.5x"))
         .map_err(|e| format!("bet sizes inválidas: {e}"))?;
-    let river_bets = BetSizeOptions::try_from(("50%, 75%, 100%, 125%", "2x"))
+    let river_bets = BetSizeOptions::try_from(("75%", "2x"))
         .map_err(|e| format!("bet sizes inválidas: {e}"))?;
 
     let initial_state = match inp.street.to_lowercase().as_str() {
@@ -148,7 +149,18 @@ fn run(inp: &Input) -> Result<Output, String> {
     // Target em chips absolutos (pot * pct/100)
     let target_chips = pot_chips as f32 * (inp.target_exploitability_pct as f32 / 100.0);
 
-    game.allocate_memory(false);
+    // Verifica uso de memória antes de alocar — retorna erro cedo se spot é grande demais
+    let (mem_32bit, mem_16bit) = game.memory_usage();
+    const MEM_LIMIT: u64 = 6 * 1024 * 1024 * 1024; // 6 GB
+    if mem_16bit > MEM_LIMIT {
+        return Err(format!(
+            "spot requer {:.1}GB (16-bit) — excede limite de 6GB. Reduza as ranges.",
+            mem_16bit as f64 / 1_073_741_824.0
+        ));
+    }
+    // Usa 16-bit comprimido se > 1 GB; 32-bit caso contrário (melhor precisão)
+    let use_compression = mem_32bit > 1_073_741_824;
+    game.allocate_memory(use_compression);
 
     let final_exploit = solve(&mut game, inp.max_iterations, target_chips, false);
     let exploit_pct   = (final_exploit as f64 / pot_chips as f64) * 100.0;
