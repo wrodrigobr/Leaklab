@@ -346,8 +346,9 @@ const PIP_LAYOUTS={
 function _pipLayout(rank,col,sym,x,y,w,h){
   const pips=PIP_LAYOUTS[rank];
   if(!pips) return '';
-  const aX=x+w*0.12, aY=y+h*0.20, aW=w*0.76, aH=h*0.60;
-  const fP=Math.min(11,Math.round(w*0.19));
+  // Pips occupy the full card body; corner labels (drawn after) cover any overlap
+  const aX=x+w*0.13, aY=y+h*0.18, aW=w*0.74, aH=h*0.64;
+  const fP=Math.min(13,Math.round(w*0.22));
   let s='';
   for(const [fx,fy] of pips){
     const px=(aX+fx*aW).toFixed(1);
@@ -458,34 +459,34 @@ function cardSVG(code,x,y,w,h,faceDown){
   const col=SUIT_COL[suit]||'#111';
   const sym=SUIT_SYM[suit]||suit;
 
-  const fR=Math.min(13,Math.round(w*0.27));
-  const fS=Math.min(10,Math.round(w*0.20));
-  const pad=3;
+  const fR=Math.min(17,Math.round(w*0.33));  // corner rank — prominent
+  const fS=Math.min(14,Math.round(w*0.27));  // corner suit — equally prominent
+  const pad=2;
   const mcx=x+w/2, mcy=y+h/2;
 
-  // Card body with inner border accent
+  // Card body + inner border accent
   let out=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#fafaf8" stroke="#d0ccc4" stroke-width=".8" filter="url(#rp-cshadow)"/>`;
   out+=`<rect x="${x+2}" y="${y+2}" width="${w-4}" height="${h-4}" rx="${rx-1}" fill="none" stroke="${col}" stroke-width=".3" opacity=".28"/>`;
 
-  // Top-left corner
-  out+=`<text x="${x+pad}" y="${y+fR+pad}" fill="${col}" font-family="Georgia,'Times New Roman',serif" font-size="${fR}" font-weight="900" letter-spacing="-.5">${rank}</text>`;
-  out+=`<text x="${x+pad}" y="${y+fR+fS+pad+1}" fill="${col}" font-family="sans-serif" font-size="${fS}">${sym}</text>`;
-
-  // Bottom-right corner (rotated 180° around card center)
-  out+=`<g transform="rotate(180 ${mcx} ${mcy})">`;
-  out+=`<text x="${x+pad}" y="${y+fR+pad}" fill="${col}" font-family="Georgia,'Times New Roman',serif" font-size="${fR}" font-weight="900" letter-spacing="-.5">${rank}</text>`;
-  out+=`<text x="${x+pad}" y="${y+fR+fS+pad+1}" fill="${col}" font-family="sans-serif" font-size="${fS}">${sym}</text>`;
-  out+=`</g>`;
-
-  // Main content
+  // Main content drawn first (corners rendered on top → always readable)
   if(['J','Q','K'].includes(rank)){
     out+=_faceArt(rank,col,sym,x,y,w,h);
   }else if(rank==='A'){
-    const fA=Math.min(36,Math.round(w*0.68));
+    const fA=Math.min(38,Math.round(w*0.70));
     out+=`<text x="${mcx}" y="${mcy+fA*0.38}" text-anchor="middle" fill="${col}" font-family="sans-serif" font-size="${fA}">${sym}</text>`;
   }else{
     out+=_pipLayout(rank,col,sym,x,y,w,h);
   }
+
+  // Corner labels drawn last — always on top of pips/art
+  // Top-left
+  out+=`<text x="${x+pad}" y="${y+fR+pad}" fill="${col}" font-family="Georgia,'Times New Roman',serif" font-size="${fR}" font-weight="900" letter-spacing="-.5">${rank}</text>`;
+  out+=`<text x="${x+pad+1}" y="${y+fR+fS+pad+2}" fill="${col}" font-family="sans-serif" font-size="${fS}" font-weight="700">${sym}</text>`;
+  // Bottom-right (rotate 180° around card center)
+  out+=`<g transform="rotate(180 ${mcx} ${mcy})">`;
+  out+=`<text x="${x+pad}" y="${y+fR+pad}" fill="${col}" font-family="Georgia,'Times New Roman',serif" font-size="${fR}" font-weight="900" letter-spacing="-.5">${rank}</text>`;
+  out+=`<text x="${x+pad+1}" y="${y+fR+fS+pad+2}" fill="${col}" font-family="sans-serif" font-size="${fS}" font-weight="700">${sym}</text>`;
+  out+=`</g>`;
   return out;
 }
 
@@ -511,7 +512,7 @@ function rpBuildLayout(seatNums,heroSeat){
 function rpRenderBoard(cards){
   const g=document.getElementById('rp-board');
   g.innerHTML='';
-  const W=50,H=68,GAP=8;
+  const W=58,H=82,GAP=8;
   const totalW=5*W+4*GAP;
   const sx=CX-totalW/2;
   const y=CY-H/2-6;  // slightly above center
@@ -587,13 +588,13 @@ function rpRenderSeats(ev,bb){
     // Bottom seats (dir!='top'): top of card is visible, bottom tucked behind pod top.
     // Top seats (dir==='top'):   bottom of card is visible, top tucked behind pod bottom.
     {
-      const cw=42,ch=58,cg=4;
+      const cw=50,ch=70,cg=4;
       if(isHero&&ev.hero_cards&&ev.hero_cards.length===2){
         const cardY=by-Math.round(ch*0.70);
         html+=cardSVG(ev.hero_cards[0],pos.x-cw-cg/2,cardY,cw,ch);
         html+=cardSVG(ev.hero_cards[1],pos.x+cg/2,   cardY,cw,ch);
       } else if(!isHero&&!isFolded){
-        const vw=30,vh=42;
+        const vw=34,vh=48;
         const vcY=by-Math.round(vh*0.70);
         html+=cardSVG(null,pos.x-vw-2,vcY,vw,vh,true);
         html+=cardSVG(null,pos.x+2,   vcY,vw,vh,true);
