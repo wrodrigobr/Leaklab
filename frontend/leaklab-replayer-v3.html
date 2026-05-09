@@ -247,7 +247,7 @@ const DENOM=[
   {val:100,  top:'#303030', side:'#181818', text:'#eee'},    // black
   {val:25,   top:'#2060e8', side:'#1040a8', text:'#fff'},    // blue
   {val:5,    top:'#e52020', side:'#a01010', text:'#fff'},    // red
-  {val:1,    top:'#f0f0f0', side:'#b0b0b0', text:'#333'},    // white
+  {val:1,    top:'#f0d020', side:'#b8a010', text:'#333'},    // yellow (white reserved for dealer chip)
 ];
 
 // Decompose amount into visual chips (max 7, correct denominations, largest at bottom)
@@ -485,28 +485,72 @@ function rpRenderSeats(ev,bb){
 
     // (position badge removed — positions shown only via dealer chip)
 
-    // Player name (truncated)
-    const name=d.player.length>14?d.player.slice(0,14)+'…':d.player;
-    html+=`<text x="${pos.x}" y="${by+26}" text-anchor="middle"
-                 fill="${isHero?'#fff':'#e0dbd4'}"
-                 font-family="Inter,sans-serif" font-size="${isHero?14:12.5}" font-weight="${isHero?700:500}">${name}</text>`;
+    // Player name — prominent, PokerStars-quality
+    const name=d.player.length>13?d.player.slice(0,13)+'…':d.player;
+    html+=`<text x="${pos.x}" y="${by+24}" text-anchor="middle"
+                 fill="${isHero?'#ffffff':'#ddd8d0'}"
+                 font-family="Inter,sans-serif" font-size="${isHero?14:13}" font-weight="${isHero?700:600}"
+                 letter-spacing=".1">${name}</text>`;
 
-    // Stack
+    // Stack — large, bright, easily readable
     const sv=(ev.stacks&&ev.stacks[sn]!=null)?ev.stacks[sn]:d.stack;
-    html+=`<text x="${pos.x}" y="${by+41}" text-anchor="middle"
-                 fill="#777" font-family="Share Tech Mono,monospace" font-size="10">${fmtAmt(sv,bb)}</text>`;
+    html+=`<text x="${pos.x}" y="${by+40}" text-anchor="middle"
+                 fill="${isHero?'#c9e8ff':'#c0bab0'}"
+                 font-family="Share Tech Mono,monospace" font-size="12" font-weight="600"
+                 letter-spacing=".05">${fmtAmt(sv,bb)}</text>`;
 
-    // Dealer button — ON THE TABLE (felt), 25% of the way from seat toward center
+    // Bounty badge — shown in PKO/Bounty tournaments when d.bounty is set
+    if(d.bounty && d.bounty>0){
+      const bn=d.bounty;
+      const bountyStr=bn<1?bn.toFixed(2):(bn<10?bn.toFixed(2):(bn<100?bn.toFixed(2):Math.round(bn)+''));
+      const bW=58, bH=17;
+      const bBadgeX=bx+bw-bW, bBadgeY=by+bh+3;
+      html+=`<rect x="${bBadgeX}" y="${bBadgeY}" width="${bW}" height="${bH}" rx="8.5"
+                   fill="rgba(6,5,4,0.92)" stroke="rgba(100,78,12,0.70)" stroke-width=".8"/>`;
+      html+=`<text x="${bBadgeX+11}" y="${bBadgeY+bH/2}" dominant-baseline="middle" text-anchor="middle"
+                   fill="#c9a840" font-family="Inter,sans-serif" font-size="11">⊕</text>`;
+      html+=`<text x="${bBadgeX+20}" y="${bBadgeY+bH/2}" dominant-baseline="middle"
+                   fill="#e8d090" font-family="Share Tech Mono,monospace" font-size="9" font-weight="700">$${bountyStr}</text>`;
+    }
+
+    // Dealer button — white casino chip on the felt, 25% toward table center
     if(isBtn){
       const t=0.25;
       const dbX=Math.round(pos.x+(CX-pos.x)*t);
       const dbY=Math.round(pos.y+(CY-pos.y)*t);
-      const R=12;
-      html+=`<circle cx="${dbX}" cy="${dbY}" r="${R}" fill="#d4aa40"/>`;
-      html+=`<circle cx="${dbX}" cy="${dbY}" r="${R-3}" fill="#f5f0e0"/>`;
-      html+=`<circle cx="${dbX}" cy="${dbY}" r="${R-5}" fill="none" stroke="#c9a040" stroke-width="1"/>`;
-      html+=`<text x="${dbX}" y="${dbY+4}" text-anchor="middle" dominant-baseline="middle"
-                   fill="#2a1a00" font-family="Inter,sans-serif" font-size="10" font-weight="800">D</text>`;
+      const dRX=13,dRY=7,dCH=5;
+      const dTy=dbY,dBy2=dbY+dCH;
+      // Side band
+      html+=`<rect x="${dbX-dRX}" y="${dTy}" width="${dRX*2}" height="${dCH}" fill="#b4b4b4"/>`;
+      // Side notches (dark on white chip)
+      const dsN=3,dsW=3,dsG=2.5,dsTot=dsN*dsW+(dsN-1)*dsG,dsX0=dbX-dsTot/2;
+      for(let s=0;s<dsN;s++){
+        const sx=(dsX0+s*(dsW+dsG)).toFixed(1);
+        html+=`<rect x="${sx}" y="${(dTy+1).toFixed(1)}" width="${dsW}" height="${dCH-2}" rx=".7"
+                    fill="rgba(50,50,50,0.35)"/>`;
+      }
+      // Bottom cap
+      html+=`<ellipse cx="${dbX}" cy="${dBy2}" rx="${dRX}" ry="${dRY}" fill="#b4b4b4"/>`;
+      // Top face (white/ivory)
+      html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${dRX}" ry="${dRY}" fill="#f2eeea"/>`;
+      // 8 edge spots (dark gray on white)
+      for(let s=0;s<8;s++){
+        const a=(s/8)*Math.PI*2;
+        const ex=(dbX+Math.cos(a)*(dRX-3.5)).toFixed(1);
+        const ey=(dTy+Math.sin(a)*(dRY-2.8)).toFixed(1);
+        const rot=((a*180/Math.PI)+90).toFixed(1);
+        html+=`<ellipse cx="${ex}" cy="${ey}" rx="2.2" ry="1.1" fill="rgba(55,55,55,0.50)"
+                       transform="rotate(${rot},${ex},${ey})"/>`;
+      }
+      // Inner ring + center inlay
+      html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX*0.62).toFixed(1)}" ry="${(dRY*0.62).toFixed(1)}"
+                     fill="none" stroke="rgba(55,55,55,0.28)" stroke-width=".9"/>`;
+      html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX*0.42).toFixed(1)}" ry="${(dRY*0.42).toFixed(1)}"
+                     fill="rgba(70,70,70,0.18)"/>`;
+      // "D" label — premium serif-style
+      html+=`<text x="${dbX}" y="${dTy}" text-anchor="middle" dominant-baseline="middle"
+                   fill="#111" font-family="Inter,sans-serif" font-size="8" font-weight="900"
+                   letter-spacing=".5">D</text>`;
     }
 
     // Action label
@@ -644,6 +688,15 @@ function initReplayer(data){
 
 // ── Demo ─────────────────────────────────────────────────────────────────────
 const DEMO={"hand_id":"257045940964","tournament_id":"3910307458","hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"button":3,"sb":50.0,"bb":100.0,"seats":{"1":{"player":"jojosetubal","stack":7431,"stack_bb":74.3,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8135,"stack_bb":81.3,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1447,"stack_bb":14.5,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5078,"stack_bb":50.8,"pos":"SB"},"5":{"player":"SuKKinho","stack":5253,"stack_bb":52.5,"pos":"BB"},"6":{"player":"martelli1990","stack":3398,"stack_bb":34.0,"pos":"UTG"},"7":{"player":"varen1k322","stack":3200,"stack_bb":32.0,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6419,"stack_bb":64.2,"pos":"UTG+2"},"9":{"player":"phpro","stack":2242,"stack_bb":22.4,"pos":"MP"}},"timeline":[{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3386,"stack_bb":33.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3386,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":258,"pot_bb":2.6,"bets":{"4":50,"5":100},"street":"preflop","folded":[],"bb":100.0,"type":"deal","desc":"Início da mão"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":458,"pot_bb":4.6,"bets":{"4":50,"5":100,"6":200},"street":"preflop","folded":[],"bb":100.0,"type":"action","player":"martelli1990","seat":6,"action":"raises","amount":100.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"martelli1990: raises 100"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":658,"pot_bb":6.6,"bets":{"4":50,"5":100,"6":200,"9":200},"street":"preflop","folded":["varen1k322","Cyan Diogenes"],"bb":100.0,"type":"action","player":"phpro","seat":9,"action":"calls","amount":200.0,"is_hero":true,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"phpro: calls 200"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":4411,"stack_bb":44.1,"pos":"BB"},"6":{"player":"martelli1990","stack":2556,"stack_bb":25.6,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":4411,"6":2556,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":2018,"pot_bb":20.2,"bets":{"5":830,"6":830},"street":"preflop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":730.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 730"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"street","desc":"FLOP"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":3745.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 3745"}]};
+// Inject demo bounty values — simulates a PKO tournament (3 players with bounties)
+(()=>{
+  const bountySample={1:12.50,5:3.14,9:7.25};
+  DEMO.timeline.forEach(ev=>{
+    Object.entries(bountySample).forEach(([sn,val])=>{
+      if(ev.seats[sn]) ev.seats[sn].bounty=val;
+    });
+  });
+})();
 initReplayer(DEMO);
 </script>
 </body>
