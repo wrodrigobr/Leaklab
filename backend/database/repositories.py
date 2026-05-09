@@ -4161,3 +4161,131 @@ def get_missing_gto_spots(limit: int = 100) -> list[dict]:
         return result
     finally:
         conn.close()
+
+
+# ── GTO Preflop Ranges ────────────────────────────────────────────────────────
+
+def upsert_preflop_ranges(rows: list[dict]) -> int:
+    """Insere ou atualiza ranges preflop em lote. Retorna número de rows."""
+    if not rows:
+        return 0
+    conn = get_conn()
+    try:
+        count = 0
+        for r in rows:
+            conn.execute(_adapt("""
+                INSERT INTO gto_preflop_ranges
+                    (position, vs_position, action_seq, hand_type, action, frequency, ev_bb, stack_bucket, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(position, vs_position, action_seq, hand_type, action, stack_bucket)
+                DO UPDATE SET frequency=excluded.frequency, ev_bb=excluded.ev_bb, source=excluded.source
+            """), (
+                r['position'].upper(),
+                (r.get('vs_position') or '').upper(),
+                r['action_seq'],
+                r['hand_type'],
+                r['action'],
+                float(r['frequency']),
+                float(r['ev_bb']) if r.get('ev_bb') is not None else None,
+                r.get('stack_bucket', '35-60bb'),
+                r.get('source', 'gto_charts'),
+            ))
+            count += 1
+        conn.commit()
+        return count
+    finally:
+        conn.close()
+
+
+def get_preflop_gto(
+    position: str,
+    hand_type: str,
+    action_seq: str = 'rfi',
+    vs_position: str = '',
+    stack_bucket: str = '35-60bb',
+) -> list[dict]:
+    """
+    Retorna a estratégia GTO preflop para uma mão/posição.
+    Retorna lista de {action, frequency, ev_bb} ordenada por frequency desc.
+    """
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt("""
+            SELECT action, frequency, ev_bb
+            FROM gto_preflop_ranges
+            WHERE position    = ?
+              AND vs_position = ?
+              AND action_seq  = ?
+              AND hand_type   = ?
+              AND stack_bucket = ?
+            ORDER BY frequency DESC
+        """), (
+            position.upper(),
+            vs_position.upper(),
+            action_seq,
+            hand_type,
+            stack_bucket,
+        ))
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_preflop_stats() -> dict:
+    """Estatísticas da base preflop."""
+    conn = get_conn()
+    try:
+        total = (_fetchone(conn, "SELECT COUNT(*) AS n FROM gto_preflop_ranges") or {}).get('n', 0)
+        by_pos = {}
+        for r in _fetchall(conn, "SELECT position, COUNT(*) AS n FROM gto_preflop_ranges GROUP BY position"):
+            by_pos[r['position']] = r['n']
+        return {'total': total, 'by_position': by_pos}
+    finally:
+        conn.close()
+
+
+# ── GTO Solver Queue ──────────────────────────────────────────────────────────
+
+def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5) -> bool:
+    """Adiciona spot à fila do solver. Retorna True se inserido (False se já existia)."""
+    conn = get_conn()
+    try:
+        existing = _fetchone(conn, "SELECT id FROM gto_solver_queue WHERE spot_hash = ?", (spot_hash,))
+        if existing:
+            return False
+        conn.execute(_adapt("""
+            INSERT INTO gto_solver_queue (spot_hash, spot_json, status, priority)
+            VALUES (?, ?, 'pending', ?)
+        """), (spot_hash, spot_json, priority))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def get_next_solver_job() -> Optional[dict]:
+    """Retorna o próximo spot pendente de solve (maior prioridade)."""
+    conn = get_conn()
+    try:
+        return _fetchone(conn, _adapt("""
+            SELECT id, spot_hash, spot_json
+            FROM gto_solver_queue
+            WHERE status = 'pending'
+            ORDER BY priority DESC, requested_at ASC
+            LIMIT 1
+        """))
+    finally:
+        conn.close()
+
+
+def mark_solver_job_done(spot_hash: str, status: str = 'done') -> None:
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("""
+            UPDATE gto_solver_queue
+            SET status = ?, solved_at = datetime('now')
+            WHERE spot_hash = ?
+        """), (status, spot_hash))
+        conn.commit()
+    finally:
+        conn.close()

@@ -3705,6 +3705,91 @@ def admin_gto_missing_spots():
     return jsonify({'spots': get_missing_gto_spots(limit)})
 
 
+@app.route('/gto/strategy', methods=['POST'])
+@require_auth
+def gto_strategy():
+    """
+    Lookup GTO para um spot específico.
+
+    Body:
+      street, position, board[], hero_hand[], hero_stack_bb,
+      action_seq (default 'rfi'), vs_position (default '')
+
+    Resposta:
+      { found, source, strategy[], spot_hash, queued }
+    """
+    from leaklab.gto_solver import lookup_gto
+    d             = request.get_json(force=True) or {}
+    street        = str(d.get('street', 'preflop')).lower()
+    position      = str(d.get('position', '')).upper()
+    board         = d.get('board', [])
+    hero_hand     = d.get('hero_hand', [])
+    hero_stack_bb = float(d.get('hero_stack_bb', 30.0))
+    action_seq    = str(d.get('action_seq', 'rfi'))
+    vs_position   = str(d.get('vs_position', ''))
+
+    if not position or not hero_hand:
+        return jsonify({'error': 'position e hero_hand são obrigatórios'}), 400
+
+    result = lookup_gto(
+        street=street,
+        position=position,
+        board=board,
+        hero_hand=hero_hand,
+        hero_stack_bb=hero_stack_bb,
+        action_seq=action_seq,
+        vs_position=vs_position,
+    )
+    status_code = 200 if result.get('found') else 202
+    return jsonify(result), status_code
+
+
+@app.route('/admin/gto/seed-preflop', methods=['POST'])
+@require_admin
+def admin_gto_seed_preflop():
+    """Popula gto_preflop_ranges com as ranges base (idempotente)."""
+    from leaklab.gto_preflop_seeder import seed
+    inserted = seed(dry_run=False)
+    return jsonify({'inserted': inserted})
+
+
+@app.route('/admin/gto/preflop-stats', methods=['GET'])
+@require_admin
+def admin_gto_preflop_stats():
+    """Estatísticas da base preflop."""
+    from database.repositories import get_preflop_stats
+    return jsonify(get_preflop_stats())
+
+
+@app.route('/admin/gto/run-solver', methods=['POST'])
+@require_admin
+def admin_gto_run_solver():
+    """Processa até N spots da fila do solver on-demand."""
+    from leaklab.gto_solver import run_solver_worker
+    max_jobs = min(int((request.get_json(force=True) or {}).get('max_jobs', 5)), 20)
+    solved   = run_solver_worker(max_jobs=max_jobs)
+    return jsonify({'solved': solved})
+
+
+@app.route('/admin/gto/queue', methods=['GET'])
+@require_admin
+def admin_gto_queue():
+    """Lista spots pendentes na fila do solver."""
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        from database.repositories import _fetchall, _adapt
+        rows = _fetchall(conn, _adapt("""
+            SELECT spot_hash, status, priority, requested_at, solved_at
+            FROM gto_solver_queue
+            ORDER BY priority DESC, requested_at ASC
+            LIMIT 100
+        """))
+        return jsonify({'queue': [dict(r) for r in rows]})
+    finally:
+        conn.close()
+
+
 @app.route('/support/contact', methods=['POST'])
 @require_auth
 def support_contact():

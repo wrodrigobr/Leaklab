@@ -671,6 +671,41 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_nodes_hash ON gto_nodes(spot_hash)")
         except Exception: pass
+        # gto_preflop_ranges (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS gto_preflop_ranges (
+                    id          SERIAL PRIMARY KEY,
+                    position    TEXT NOT NULL,
+                    vs_position TEXT NOT NULL DEFAULT '',
+                    action_seq  TEXT NOT NULL,
+                    hand_type   TEXT NOT NULL,
+                    action      TEXT NOT NULL,
+                    frequency   REAL NOT NULL,
+                    ev_bb       REAL,
+                    stack_bucket TEXT NOT NULL DEFAULT '35-60bb',
+                    source      TEXT NOT NULL DEFAULT 'gto_charts',
+                    created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+                    UNIQUE(position, vs_position, action_seq, hand_type, action, stack_bucket)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_preflop_lookup ON gto_preflop_ranges(position, vs_position, action_seq, hand_type)")
+        except Exception: pass
+        # gto_solver_queue (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS gto_solver_queue (
+                    id           SERIAL PRIMARY KEY,
+                    spot_hash    TEXT NOT NULL UNIQUE,
+                    spot_json    TEXT NOT NULL,
+                    status       TEXT NOT NULL DEFAULT 'pending',
+                    priority     INTEGER NOT NULL DEFAULT 5,
+                    requested_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    solved_at    TIMESTAMP
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_queue_status ON gto_solver_queue(status, priority)")
+        except Exception: pass
         # session_goals table (Postgres) — FEAT-08
         try:
             conn.execute("""
@@ -1013,6 +1048,37 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_nodes_hash ON gto_nodes(spot_hash)")
+        # gto_preflop_ranges (SQLite) — base pré-computada por tipo de mão
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS gto_preflop_ranges (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                position    TEXT NOT NULL,
+                vs_position TEXT NOT NULL DEFAULT '',
+                action_seq  TEXT NOT NULL,
+                hand_type   TEXT NOT NULL,
+                action      TEXT NOT NULL,
+                frequency   REAL NOT NULL,
+                ev_bb       REAL,
+                stack_bucket TEXT NOT NULL DEFAULT '35-60bb',
+                source      TEXT NOT NULL DEFAULT 'gto_charts',
+                created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(position, vs_position, action_seq, hand_type, action, stack_bucket)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_preflop_lookup ON gto_preflop_ranges(position, vs_position, action_seq, hand_type)")
+        # gto_solver_queue (SQLite) — spots pendentes de solve on-demand
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS gto_solver_queue (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                spot_hash   TEXT NOT NULL UNIQUE,
+                spot_json   TEXT NOT NULL,
+                status      TEXT NOT NULL DEFAULT 'pending',
+                priority    INTEGER NOT NULL DEFAULT 5,
+                requested_at TEXT NOT NULL DEFAULT (datetime('now')),
+                solved_at   TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_queue_status ON gto_solver_queue(status, priority)")
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────
