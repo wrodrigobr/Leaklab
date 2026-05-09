@@ -10,11 +10,11 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --rp-red:#e52020;--rp-green:#3aaa52;--rp-gold:#c9a840;
-  --rp-muted:#777;--rp-ctrl:#090909;
+  --rp-muted:#666;--rp-ctrl:#090909;
 }
 html,body{
   width:100%;height:100%;
-  background:radial-gradient(ellipse at 50% 38%,#14213a 0%,#060d18 100%);
+  background:#0a1118;
   color:#f0ede8;font-family:'Inter',sans-serif;overflow:hidden
 }
 .rp-wrap{display:flex;flex-direction:column;height:100vh}
@@ -22,47 +22,54 @@ html,body{
 /* ── Header ── */
 .rp-hdr{
   display:flex;align-items:center;gap:10px;padding:7px 16px;
-  background:rgba(0,0,0,.6);border-bottom:1px solid rgba(255,255,255,.06);
-  flex-shrink:0;z-index:10
+  background:rgba(0,0,0,.65);border-bottom:1px solid rgba(255,255,255,.06);
+  flex-shrink:0;z-index:10;height:40px
 }
 .rp-logo{font-size:.72rem;font-weight:800;color:#f0f0f0;letter-spacing:.2em;
   font-family:'Share Tech Mono',monospace}
 .rp-logo span{color:var(--rp-green)}
 .rp-hand{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--rp-muted)}
-.rp-close{margin-left:auto;background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.12);color:var(--rp-muted);
-  padding:4px 14px;border-radius:4px;cursor:pointer;
-  font-size:.65rem;font-family:'Share Tech Mono',monospace;transition:.15s}
+.rp-close{margin-left:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  color:var(--rp-muted);padding:3px 12px;border-radius:4px;cursor:pointer;
+  font-size:.62rem;font-family:'Share Tech Mono',monospace;transition:.15s}
 .rp-close:hover{border-color:#fff;color:#fff}
 
-/* ── Table area with 3D perspective ── */
+/* ── Table container ── */
 .rp-table{
-  flex:1;min-height:0;position:relative;
-  perspective:1100px;perspective-origin:50% -5%;
-  overflow:hidden
+  flex:1;min-height:0;position:relative;overflow:hidden;
+  /* dark space background */
+  background:radial-gradient(ellipse at 50% 45%,#14223a 0%,#080f1c 100%)
 }
-.rp-persp{
-  position:absolute;inset:-8% -4%;
-  transform:rotateX(9deg);
-  transform-origin:50% 60%;
-}
-#rp-svg{width:100%;height:100%;display:block}
 
-/* Street badge */
+/* Layer 1 — tilted table background (felt + rail only) */
+.rp-bg-layer{
+  position:absolute;inset:0;
+  perspective:1100px;perspective-origin:50% 0%
+}
+.rp-bg-layer>svg{
+  width:100%;height:100%;display:block;
+  transform:rotateX(9deg);
+  transform-origin:50% 60%
+}
+
+/* Layer 2 — flat content SVG (seats, board, pot, chips) */
+#rp-svg{
+  position:absolute;inset:0;
+  width:100%;height:100%;display:block
+}
+
+/* Overlays (no tilt) */
 .rp-badge{
   position:absolute;top:8px;left:50%;transform:translateX(-50%);
-  background:rgba(0,0,0,.75);border:1px solid var(--rp-gold);border-radius:20px;
+  background:rgba(0,0,0,.78);border:1px solid var(--rp-gold);border-radius:20px;
   padding:3px 18px;font-family:'Share Tech Mono',monospace;font-size:.65rem;
   color:var(--rp-gold);letter-spacing:.16em;pointer-events:none;
   opacity:0;transition:.3s;z-index:20
 }
 .rp-badge.show{opacity:1}
-
-/* Error popup */
 .rp-err-pop{
-  position:absolute;bottom:8px;left:50%;
-  transform:translateX(-50%);background:#160606;
-  border:1px solid var(--rp-red);border-radius:10px;
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  background:#160606;border:1px solid var(--rp-red);border-radius:10px;
   padding:12px 16px;width:270px;z-index:30;display:none;font-size:.76rem
 }
 .rp-err-pop.show{display:block;animation:rpPop .2s ease}
@@ -71,53 +78,47 @@ html,body{
 .rp-err-best{margin-top:7px;color:var(--rp-green);font-weight:600}
 @keyframes rpPop{from{opacity:0;transform:translateX(-50%) scale(.92)}to{opacity:1;transform:translateX(-50%) scale(1)}}
 
-/* ── Bottom controls ── */
+/* ── Controls (black bar) ── */
 .rp-ctrl{flex-shrink:0;background:var(--rp-ctrl);border-top:1px solid rgba(255,255,255,.07)}
-.rp-streets{display:flex}
+.rp-streets{display:flex;border-bottom:1px solid rgba(255,255,255,.06)}
 .rp-street-btn{
-  flex:1;padding:11px 4px;
-  background:transparent;border:none;border-right:1px solid rgba(255,255,255,.07);
+  flex:1;padding:10px 4px;
+  background:transparent;border:none;border-right:1px solid rgba(255,255,255,.06);
   color:#555;font-family:'Inter',sans-serif;font-weight:600;font-size:.78rem;
-  letter-spacing:.03em;cursor:pointer;transition:.15s;white-space:nowrap
+  cursor:pointer;transition:.15s;white-space:nowrap
 }
 .rp-street-btn:last-child{border-right:none}
 .rp-street-btn.rp-st-available{color:#999}
 .rp-street-btn.rp-st-available:hover:not(.rp-st-active){background:#181818;color:#fff}
 .rp-street-btn.rp-st-active{background:var(--rp-red);color:#fff;font-weight:700}
 .rp-street-btn.rp-st-disabled{opacity:.2;cursor:default;pointer-events:none}
-.rp-btns{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid rgba(255,255,255,.05)}
+.rp-btns{display:flex;align-items:center;gap:10px;padding:8px 16px}
 .rp-cbtn{
   width:34px;height:34px;border-radius:50%;
-  background:#1c1c1c;border:1px solid #303030;color:#bbb;font-size:.78rem;
+  background:#1c1c1c;border:1px solid #303030;color:#bbb;font-size:.76rem;
   display:flex;align-items:center;justify-content:center;
   cursor:pointer;transition:.15s;flex-shrink:0
 }
-.rp-cbtn:hover{background:#282828;color:#fff;border-color:#555}
-.rp-cbtn.play{width:42px;height:42px;font-size:.95rem;border-color:#666}
-.rp-cbtn.play:hover{background:#2a2a2a;border-color:#fff}
-.rp-speed-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:2px}
-.rp-speed-lbl{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--rp-muted);min-width:28px}
+.rp-cbtn:hover{background:#2a2a2a;color:#fff;border-color:#555}
+.rp-cbtn.play{width:40px;height:40px;border-color:#555}
+.rp-cbtn.play:hover{background:#282828;border-color:#fff}
+.rp-speed-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.rp-speed-lbl{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--rp-muted);min-width:26px}
 .rp-speed-range{
   -webkit-appearance:none;appearance:none;
-  width:88px;height:3px;background:#2a2a2a;border-radius:2px;outline:none;cursor:pointer
+  width:80px;height:3px;background:#252525;border-radius:2px;outline:none;cursor:pointer
 }
-.rp-speed-range::-webkit-slider-thumb{
-  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
-  background:#3b82f6;cursor:pointer;border:2px solid #111
-}
-.rp-speed-range::-moz-range-thumb{
-  width:14px;height:14px;border-radius:50%;background:#3b82f6;
-  cursor:pointer;border:2px solid #111
-}
-.rp-unit-btn{
-  background:#181818;border:1px solid #333;color:var(--rp-muted);
-  padding:5px 10px;border-radius:5px;font-family:'Share Tech Mono',monospace;
-  font-size:.6rem;cursor:pointer;transition:.15s;flex-shrink:0
-}
+.rp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;
+  border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid #111}
+.rp-speed-range::-moz-range-thumb{width:13px;height:13px;border-radius:50%;
+  background:#3b82f6;cursor:pointer;border:2px solid #111}
+.rp-unit-btn{background:#181818;border:1px solid #333;color:var(--rp-muted);
+  padding:4px 10px;border-radius:5px;font-family:'Share Tech Mono',monospace;
+  font-size:.6rem;cursor:pointer;transition:.15s;flex-shrink:0}
 .rp-unit-btn:hover,.rp-unit-btn.active{border-color:var(--rp-gold);color:var(--rp-gold)}
 .rp-log{margin-left:auto;text-align:right;font-family:'Share Tech Mono',monospace;font-size:.6rem}
-.rp-log-street{color:var(--rp-gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
-.rp-log-action{color:#999}
+.rp-log-street{color:var(--rp-gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.rp-log-action{color:#888}
 .rp-log-action.err{color:var(--rp-red);font-weight:700}
 </style>
 </head>
@@ -130,74 +131,73 @@ html,body{
   </div>
 
   <div class="rp-table" id="rp-table">
+    <!-- Layer 1: TILTED background (mesa apenas) -->
+    <div class="rp-bg-layer">
+      <svg id="rp-bg-svg" viewBox="0 0 1120 630"
+           xmlns="http://www.w3.org/2000/svg"
+           preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <radialGradient id="bg-felt" cx="48%" cy="38%" r="60%">
+            <stop offset="0%" stop-color="#42b85a"/>
+            <stop offset="48%" stop-color="#2d9242"/>
+            <stop offset="100%" stop-color="#1c6028"/>
+          </radialGradient>
+          <radialGradient id="bg-rail" cx="50%" cy="25%" r="64%">
+            <stop offset="0%" stop-color="#252525"/>
+            <stop offset="100%" stop-color="#0c0c0c"/>
+          </radialGradient>
+          <radialGradient id="bg-vig" cx="50%" cy="50%" r="62%">
+            <stop offset="36%" stop-color="rgba(0,0,0,0)"/>
+            <stop offset="100%" stop-color="rgba(0,0,0,0.55)"/>
+          </radialGradient>
+          <filter id="bg-shadow" x="-25%" y="-25%" width="150%" height="150%">
+            <feDropShadow dx="0" dy="16" stdDeviation="28" flood-color="#000" flood-opacity=".95"/>
+          </filter>
+        </defs>
+        <!-- Outer glow/shadow -->
+        <ellipse cx="562" cy="328" rx="445" ry="245" fill="#000" filter="url(#bg-shadow)"/>
+        <!-- Rail outer body -->
+        <ellipse cx="560" cy="315" rx="442" ry="240" fill="url(#bg-rail)"/>
+        <!-- Rail outer highlight (top arc brighter = light from above) -->
+        <ellipse cx="560" cy="315" rx="442" ry="240" fill="none" stroke="#2c2c2c" stroke-width="1.2"/>
+        <ellipse cx="560" cy="315" rx="441" ry="239" fill="none" stroke="#080808" stroke-width="2.5"/>
+        <!-- Rail inner edge -->
+        <ellipse cx="560" cy="315" rx="418" ry="222" fill="none" stroke="#1a1a1a" stroke-width="5"/>
+        <ellipse cx="560" cy="315" rx="418" ry="222" fill="none" stroke="#2a2a2a" stroke-width=".8"/>
+        <!-- Felt -->
+        <ellipse cx="560" cy="315" rx="414" ry="218" fill="url(#bg-felt)"/>
+        <!-- Felt inner ring (subtle rim) -->
+        <ellipse cx="560" cy="315" rx="403" ry="207" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1.5"/>
+        <!-- Vignette -->
+        <ellipse cx="560" cy="315" rx="414" ry="218" fill="url(#bg-vig)"/>
+        <!-- Watermark -->
+        <text x="560" y="326" text-anchor="middle" fill="rgba(255,255,255,0.022)"
+              font-family="Inter,sans-serif" font-size="58" font-weight="800" letter-spacing="16">LEAKLAB</text>
+      </svg>
+    </div>
+
+    <!-- Layer 2: FLAT content (seats, board, pot, chips) -->
+    <svg id="rp-svg" viewBox="0 0 1120 630"
+         xmlns="http://www.w3.org/2000/svg"
+         preserveAspectRatio="xMidYMid meet"
+         style="overflow:visible">
+      <defs>
+        <filter id="rp-cshadow" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="1" dy="2" stdDeviation="3" flood-color="#000" flood-opacity=".55"/>
+        </filter>
+      </defs>
+      <g id="rp-board"></g>
+      <g id="rp-pot"></g>
+      <g id="rp-seats"></g>
+      <g id="rp-chips"></g>
+    </svg>
+
+    <!-- HTML overlays (flat) -->
     <div class="rp-badge" id="rp-badge"></div>
     <div class="rp-err-pop" id="rp-err-pop">
       <div class="rp-err-title">⚠ Erro detectado</div>
       <div class="rp-err-body" id="rp-err-body"></div>
       <div class="rp-err-best" id="rp-err-best"></div>
-    </div>
-
-    <div class="rp-persp">
-      <svg id="rp-svg" viewBox="0 0 1060 600"
-           xmlns="http://www.w3.org/2000/svg"
-           preserveAspectRatio="xMidYMid meet">
-        <defs>
-          <radialGradient id="rp-bg-g" cx="50%" cy="42%" r="66%">
-            <stop offset="0%" stop-color="#162238"/>
-            <stop offset="100%" stop-color="#070f1c"/>
-          </radialGradient>
-          <radialGradient id="rp-felt-g" cx="48%" cy="40%" r="58%">
-            <stop offset="0%" stop-color="#40b558"/>
-            <stop offset="50%" stop-color="#2e9244"/>
-            <stop offset="100%" stop-color="#1d6430"/>
-          </radialGradient>
-          <radialGradient id="rp-rail-g" cx="50%" cy="28%" r="62%">
-            <stop offset="0%" stop-color="#252525"/>
-            <stop offset="100%" stop-color="#0e0e0e"/>
-          </radialGradient>
-          <radialGradient id="rp-vig" cx="50%" cy="50%" r="64%">
-            <stop offset="38%" stop-color="rgba(0,0,0,0)"/>
-            <stop offset="100%" stop-color="rgba(0,0,0,0.52)"/>
-          </radialGradient>
-          <filter id="rp-tshadow" x="-22%" y="-22%" width="144%" height="144%">
-            <feDropShadow dx="0" dy="14" stdDeviation="26" flood-color="#000" flood-opacity=".9"/>
-          </filter>
-          <filter id="rp-cshadow" x="-8%" y="-8%" width="116%" height="116%">
-            <feDropShadow dx="1" dy="2" stdDeviation="3" flood-color="#000" flood-opacity=".55"/>
-          </filter>
-        </defs>
-
-        <!-- Background -->
-        <rect width="1060" height="600" fill="url(#rp-bg-g)"/>
-
-        <!-- Table drop shadow -->
-        <ellipse cx="533" cy="312" rx="455" ry="252" fill="#000" filter="url(#rp-tshadow)"/>
-        <!-- Rail outer -->
-        <ellipse cx="530" cy="297" rx="452" ry="248" fill="url(#rp-rail-g)"/>
-        <ellipse cx="530" cy="297" rx="452" ry="248" fill="none" stroke="#2e2e2e" stroke-width="1.2"/>
-        <ellipse cx="530" cy="297" rx="451" ry="247" fill="none" stroke="#090909" stroke-width="2.5"/>
-        <!-- Rail inner border -->
-        <ellipse cx="530" cy="297" rx="428" ry="232" fill="none" stroke="#1c1c1c" stroke-width="5"/>
-        <ellipse cx="530" cy="297" rx="428" ry="232" fill="none" stroke="#2c2c2c" stroke-width="1"/>
-        <!-- Felt -->
-        <ellipse cx="530" cy="297" rx="424" ry="228" fill="url(#rp-felt-g)"/>
-        <!-- Felt inner highlight ring -->
-        <ellipse cx="530" cy="297" rx="414" ry="218" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1.5"/>
-        <!-- Vignette -->
-        <ellipse cx="530" cy="297" rx="424" ry="228" fill="url(#rp-vig)"/>
-        <!-- Watermark -->
-        <text x="530" y="308" text-anchor="middle" fill="rgba(255,255,255,0.022)"
-              font-family="Inter,sans-serif" font-size="54" font-weight="800" letter-spacing="14">LEAKLAB</text>
-
-        <!-- Board cards -->
-        <g id="rp-board"></g>
-        <!-- Pot + chips -->
-        <g id="rp-pot"></g>
-        <!-- Seats -->
-        <g id="rp-seats"></g>
-        <!-- Bet chips -->
-        <g id="rp-chips"></g>
-      </svg>
     </div>
   </div>
 
@@ -227,87 +227,122 @@ html,body{
 </div>
 
 <script>
+// ── Table geometry (flat SVG, viewBox 1120×630) ───────────────────────────────
+const CX=560, CY=315;         // table center
+const RX_SEAT=448, RY_SEAT=246; // seat pod center radius (on rail edge)
+
 // ── Constants ────────────────────────────────────────────────────────────────
-const CX=530, CY=297;
-const RX_SEAT=455, RY_SEAT=252;
 const SUIT_SYM={s:'♠',h:'♥',d:'♦',c:'♣'};
-const SUIT_COL={s:'#111',h:'#cc1f1f',d:'#cc1f1f',c:'#111'};
+const SUIT_COL={s:'#111',h:'#cc1818',d:'#cc1818',c:'#111'};
 const SPEED_MAP=[2200,1500,1000,550,200];
 const SPEED_LABELS=['0.5×','0.8×','1×','1.5×','3×'];
 const AC_COLORS={folds:'#e52020',calls:'#3aaa52',raises:'#c9a840',bets:'#c9a840',checks:'#5580aa','all-in':'#ff4040'};
 const POS_COLORS={BTN:'#c9a840',BB:'#e52020',SB:'#d47030'};
-const CHIP_PALETTE=['#1a55d4','#cc2020','#282828','#1e8c30','#c9a840','#7c3acd','#d47010','#0e7090'];
+
+// 8 chip denominations: [topFace, sideBody, bottomEdge]
+const CHIPS=[
+  ['#2464e8','#163cae','#0e2880'],   // blue  (low)
+  ['#e82424','#a01414','#780e0e'],   // red
+  ['#2a2a2a','#181818','#0e0e0e'],   // black (high)
+  ['#28b038','#168024','#0e5818'],   // green
+  ['#d4aa40','#9c7c1c','#705810'],   // gold
+  ['#9840d8','#6420a8','#48147c'],   // purple
+  ['#e07818','#a04c08','#703406'],   // orange
+  ['#1898d4','#0e60a0','#0a4070'],   // sky blue
+];
 
 // ── State ────────────────────────────────────────────────────────────────────
-let REPLAY=null, rpStep=0, rpPlaying=false, rpTimer=null, rpSpeed=1000;
-let rpShowBB=true, _rpLayout=null, _rpStreetMap={};
+let REPLAY=null,rpStep=0,rpPlaying=false,rpTimer=null,rpSpeed=1000;
+let rpShowBB=true,_rpLayout=null,_rpStreetMap={};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function fmtAmt(v, bb){
-  if(rpShowBB){ const x=v/bb; return (x<1?x.toFixed(1):Math.round(x))+'BB'; }
+function fmtAmt(v,bb){
+  if(rpShowBB){const x=v/bb;return (x<1?x.toFixed(1):Math.round(x))+'BB';}
   return v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+'';
 }
 
-// ── 3D chip stack ─────────────────────────────────────────────────────────────
-// cx,cy = center/bottom of stack; stack grows upward. count = number of chips.
-function chipStackSVG(cx, cy, count){
-  count=Math.max(1,Math.min(9,count));
-  const H=10, RX=20, RY=7;
-  // drop shadow
-  let h=`<ellipse cx="${cx+4}" cy="${cy+6}" rx="${RX+4}" ry="${RY+3}" fill="rgba(0,0,0,0.4)"/>`;
-  // render bottom chips first so top chips paint over them
-  for(let i=count-1;i>=0;i--){
-    const ty=cy-i*H;
-    const col=CHIP_PALETTE[i%CHIP_PALETTE.length];
-    // chip side (depth illusion)
-    h+=`<ellipse cx="${cx}" cy="${ty+H*0.38}" rx="${RX}" ry="${RY}" fill="${col}" opacity="0.5"/>`;
-    // chip top face
-    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${col}"/>`;
-    // inner ring detail
-    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX-6}" ry="${RY-2.5}" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.2"/>`;
-    // highlight
-    h+=`<ellipse cx="${cx-4}" cy="${ty-2}" rx="${RX-9}" ry="${RY-3.5}" fill="rgba(255,255,255,0.16)"/>`;
+// ── 3D Chip stack (real casino cylinder style) ────────────────────────────────
+// cx, bottomY = base of stack. Stack grows upward (y decreasing).
+// RX/RY = chip ellipse radii. CH = cylinder height per chip.
+function chipStackSVG(cx, bottomY, count, RX, RY, CH){
+  RX=RX||20; RY=RY||7; CH=CH||10;
+  count=Math.max(1,Math.min(CHIPS.length,count));
+  let h='';
+
+  // Ground shadow
+  h+=`<ellipse cx="${cx+4}" cy="${bottomY+5}" rx="${RX+6}" ry="${RY+3}" fill="rgba(0,0,0,0.45)"/>`;
+
+  // Render from bottom chip (i=0) to top chip (i=count-1)
+  // Bottom chips rendered first so top chips paint over them (correct z-order)
+  for(let i=0;i<count;i++){
+    const [topCol,sideCol,darkCol]=CHIPS[i%CHIPS.length];
+    const chipTopY   = bottomY - (i+1)*CH;  // y of top face of this chip
+    const chipBotY   = bottomY - i*CH;      // y of bottom face of this chip
+
+    // Cylinder side (rectangle between bottom and top ellipses)
+    h+=`<rect x="${cx-RX}" y="${chipTopY}" width="${RX*2}" height="${CH}" fill="${sideCol}" rx="2"/>`;
+
+    // Bottom cap ellipse (darker — facing down, barely visible)
+    h+=`<ellipse cx="${cx}" cy="${chipBotY}" rx="${RX}" ry="${RY}" fill="${darkCol}"/>`;
+
+    // Top face (full color)
+    h+=`<ellipse cx="${cx}" cy="${chipTopY}" rx="${RX}" ry="${RY}" fill="${topCol}"/>`;
+
+    // Inner ring detail on top face
+    h+=`<ellipse cx="${cx}" cy="${chipTopY}" rx="${RX-5}" ry="${RY-2.2}" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.3"/>`;
+
+    // Highlight spot (off-center — simulates point light from above-left)
+    h+=`<ellipse cx="${cx-RX*0.28}" cy="${chipTopY-RY*0.35}" rx="${RX*0.42}" ry="${RY*0.38}" fill="rgba(255,255,255,0.22)"/>`;
   }
   return h;
 }
 
+function potToChips(pot,bb){
+  const x=pot/bb;
+  if(x<5) return 1; if(x<12) return 2; if(x<25) return 3;
+  if(x<50) return 4; if(x<100) return 5; if(x<200) return 6; return 7;
+}
+function betToChips(bet,bb){
+  const x=bet/bb;
+  if(x<3) return 1; if(x<8) return 2; if(x<18) return 3; return 4;
+}
+
 // ── Card SVG ─────────────────────────────────────────────────────────────────
-function cardSVG(code, x, y, w=50, h=68, faceDown=false){
+function cardSVG(code,x,y,w,h,faceDown){
+  w=w||50;h=h||68;
   if(!code||faceDown){
     return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#12243e" stroke="#1c3660" stroke-width="1"/>
-            <rect x="${x+2.5}" y="${y+2.5}" width="${w-5}" height="${h-5}" rx="3" fill="none" stroke="#1a325a" stroke-width=".7"/>
-            <line x1="${x+6}" y1="${y+6}" x2="${x+w-6}" y2="${y+h-6}" stroke="#1d3860" stroke-width="1"/>
-            <line x1="${x+w-6}" y1="${y+6}" x2="${x+6}" y2="${y+h-6}" stroke="#1d3860" stroke-width="1"/>
-            <rect x="${x+w/2-4.5}" y="${y+h/2-4.5}" width="9" height="9" fill="none" stroke="#243e6a" stroke-width=".8"
+            <rect x="${x+3}" y="${y+3}" width="${w-6}" height="${h-6}" rx="3" fill="none" stroke="#1a325a" stroke-width=".7"/>
+            <line x1="${x+7}" y1="${y+7}" x2="${x+w-7}" y2="${y+h-7}" stroke="#1d3860" stroke-width="1.1"/>
+            <line x1="${x+w-7}" y1="${y+7}" x2="${x+7}" y2="${y+h-7}" stroke="#1d3860" stroke-width="1.1"/>
+            <rect x="${x+w/2-5}" y="${y+h/2-5}" width="10" height="10" fill="none" stroke="#253f68" stroke-width=".8"
                   transform="rotate(45,${x+w/2},${y+h/2})"/>`;
   }
   const rank=code.slice(0,-1).toUpperCase();
   const suit=code.slice(-1).toLowerCase();
   const col=SUIT_COL[suit]||'#111';
   const sym=SUIT_SYM[suit]||suit;
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#f8f4ea" stroke="#ddd5c0" stroke-width=".5" filter="url(#rp-cshadow)"/>
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#f8f4ea" stroke="#ddd4be" stroke-width=".5" filter="url(#rp-cshadow)"/>
           <text x="${x+5}" y="${y+16}" fill="${col}" font-family="Inter,sans-serif" font-size="15" font-weight="700">${rank}</text>
           <text x="${x+5}" y="${y+30}" fill="${col}" font-family="Inter,sans-serif" font-size="13">${sym}</text>
-          <text x="${x+w/2}" y="${y+h/2+14}" text-anchor="middle" fill="${col}" font-family="Inter,sans-serif" font-size="28" opacity=".11">${sym}</text>
+          <text x="${x+w/2}" y="${y+h/2+14}" text-anchor="middle" fill="${col}" font-family="Inter,sans-serif" font-size="30" opacity=".1">${sym}</text>
           <text x="${x+w-5}" y="${y+h-7}" text-anchor="end" fill="${col}" font-family="Inter,sans-serif" font-size="15" font-weight="700">${rank}</text>
           <text x="${x+w-5}" y="${y+h-22}" text-anchor="end" fill="${col}" font-family="Inter,sans-serif" font-size="12">${sym}</text>`;
 }
 
-// ── Seat layout — hero always at bottom ──────────────────────────────────────
-function rpBuildLayout(seatNums, heroSeat){
+// ── Seat layout — hero always bottom ─────────────────────────────────────────
+function rpBuildLayout(seatNums,heroSeat){
   if(_rpLayout) return _rpLayout;
   const n=seatNums.length;
-  const heroIdx=heroSeat!==undefined ? seatNums.indexOf(heroSeat) : n-1;
-  const rotOffset=heroIdx>=0 ? (180-(360/n)*heroIdx) : 0;
+  const heroIdx=heroSeat!==undefined?seatNums.indexOf(heroSeat):n-1;
+  const rotOffset=heroIdx>=0?(180-(360/n)*heroIdx):0;
   _rpLayout={};
   seatNums.forEach((s,i)=>{
     const baseAng=-90+(360/n)*i+rotOffset;
     const ang=baseAng*Math.PI/180;
     const x=Math.round(CX+RX_SEAT*Math.cos(ang));
     const y=Math.round(CY+RY_SEAT*Math.sin(ang));
-    // dir: 'top' = seat above table center (cards rendered below seat, toward center)
-    //      'bottom' = seat below table center (cards rendered above seat, toward center)
-    const dir=y<CY ? 'top' : 'bottom';
+    const dir=y<CY?'top':'bottom';
     _rpLayout[s]={x,y,dir};
   });
   return _rpLayout;
@@ -320,7 +355,7 @@ function rpRenderBoard(cards){
   const W=50,H=68,GAP=8;
   const totalW=5*W+4*GAP;
   const sx=CX-totalW/2;
-  const y=CY-H/2-8;   // cards vertically centered slightly above CY
+  const y=CY-H/2-6;  // slightly above center
   for(let i=0;i<5;i++){
     const x=sx+i*(W+GAP);
     if(i<cards.length){
@@ -332,36 +367,36 @@ function rpRenderBoard(cards){
   }
 }
 
-// ── Pot + chips ───────────────────────────────────────────────────────────────
-function rpRenderPot(pot, bb){
+// ── Pot + chip stack ──────────────────────────────────────────────────────────
+function rpRenderPot(pot,bb){
   const g=document.getElementById('rp-pot');
   g.innerHTML='';
-  const H=68, y=CY-H/2-8;  // sync with board
-  const cardBottom=y+H;     // bottom of cards = CY-8+34 = CY+26 roughly
+  if(pot<=0) return;
 
-  // "Pot: X" text above cards
-  if(pot>0){
-    const potStr=fmtAmt(pot,bb);
-    g.innerHTML+=`<text x="${CX}" y="${y-14}" text-anchor="middle"
-      fill="rgba(255,255,255,0.82)" font-family="Inter,sans-serif" font-size="14" font-weight="600">Pot: ${potStr}</text>`;
+  const cardH=68, cardY=CY-cardH/2-6;
+  const cardBottom=cardY+cardH;   // ~= CY+28
+  const potStr=fmtAmt(pot,bb);
 
-    // Chip stack below cards
-    const chipCY=cardBottom+52;
-    const chipCnt=Math.max(1,Math.min(9,Math.ceil(pot/(bb*4))));
-    g.innerHTML+=chipStackSVG(CX,chipCY,chipCnt);
+  // "Pot: X" above board
+  g.innerHTML+=`<text x="${CX}" y="${cardY-13}" text-anchor="middle"
+    fill="rgba(255,255,255,0.82)" font-family="Inter,sans-serif" font-size="15" font-weight="600">Pot: ${potStr}</text>`;
 
-    // Pot amount below chips
-    g.innerHTML+=`<text x="${CX}" y="${chipCY+18}" text-anchor="middle"
-      fill="rgba(255,255,255,0.88)" font-family="Share Tech Mono,monospace" font-size="13" font-weight="700">${potStr}</text>`;
+  // Chip stack (bottomY = just below cards)
+  const chipBottomY=cardBottom+58;
+  const chipCount=potToChips(pot,bb);
+  g.innerHTML+=chipStackSVG(CX,chipBottomY,chipCount,21,7.5,10);
 
-    // Game type label
-    g.innerHTML+=`<text x="${CX}" y="${chipCY+34}" text-anchor="middle"
-      fill="rgba(255,255,255,0.2)" font-family="Inter,sans-serif" font-size="11">NL Hold'em</text>`;
-  }
+  // Amount below stack
+  g.innerHTML+=`<text x="${CX}" y="${chipBottomY+16}" text-anchor="middle"
+    fill="rgba(255,255,255,0.88)" font-family="Share Tech Mono,monospace" font-size="13" font-weight="700">${potStr}</text>`;
+
+  // Game label
+  g.innerHTML+=`<text x="${CX}" y="${chipBottomY+32}" text-anchor="middle"
+    fill="rgba(255,255,255,0.2)" font-family="Inter,sans-serif" font-size="11">NL Hold'em</text>`;
 }
 
 // ── Seats ─────────────────────────────────────────────────────────────────────
-function rpRenderSeats(ev, bb){
+function rpRenderSeats(ev,bb){
   const seatsG=document.getElementById('rp-seats');
   const chipsG=document.getElementById('rp-chips');
   seatsG.innerHTML=''; chipsG.innerHTML='';
@@ -369,7 +404,7 @@ function rpRenderSeats(ev, bb){
   const seatNums=Object.keys(ev.seats).map(Number).sort((a,b)=>a-b);
   const heroSeat=seatNums.find(sn=>ev.seats[sn].player===ev.hero);
   const layout=rpBuildLayout(seatNums,heroSeat);
-  const bw=128, bh=52, brad=26;
+  const bw=128,bh=52,brad=26;
 
   seatNums.forEach(sn=>{
     const d=ev.seats[sn];
@@ -380,23 +415,23 @@ function rpRenderSeats(ev, bb){
     const isBtn   =sn===ev.button;
     const isFolded=(ev.folded||[]).includes(d.player);
     const isActive=ev.type==='action'&&ev.seat===sn;
-    const bx=pos.x-bw/2, by=pos.y-bh/2;
+    const bx=pos.x-bw/2,by=pos.y-bh/2;
     const dir=pos.dir;
     const opacity=isFolded?0.28:1;
 
-    let bg='#1c1c1c', bd='#323232', bdW=1.5;
-    if(isActive)                              {bd='#c9a840';bdW=2.5;}
-    if(isActive&&ev.is_error&&ev.is_hero)     {bg='#250808';bd='#e52020';bdW=2.5;}
+    let bg='#1c1c1c',bd='#323232',bdW=1.5;
+    if(isActive)                           {bd='#c9a840';bdW=2.5;}
+    if(isActive&&ev.is_error&&ev.is_hero)  {bg='#250808';bd='#e52020';bdW=2.5;}
 
     let html=`<g opacity="${opacity}">`;
 
-    // ── Hero ring ──
+    // Hero outer ring
     if(isHero){
       html+=`<rect x="${bx-7}" y="${by-7}" width="${bw+14}" height="${bh+14}" rx="${brad+7}"
-                   fill="none" stroke="rgba(255,255,255,0.88)" stroke-width="3.5"/>`;
+                   fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="3.5"/>`;
     }
 
-    // ── Seat pod ──
+    // Seat pod
     html+=`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${brad}"
                  fill="${bg}" stroke="${bd}" stroke-width="${bdW}"/>`;
     if(isActive){
@@ -404,53 +439,52 @@ function rpRenderSeats(ev, bb){
                    fill="rgba(201,168,64,0.07)"/>`;
     }
 
-    // ── Position badge ──
+    // Position badge
     if(d.pos){
       const pc=POS_COLORS[d.pos]||'#3a6aaa';
-      html+=`<rect x="${bx+bw-44}" y="${by+5}" width="40" height="16" rx="8" fill="${pc}" opacity="0.95"/>
+      html+=`<rect x="${bx+bw-44}" y="${by+5}" width="40" height="16" rx="8" fill="${pc}" opacity=".95"/>
              <text x="${bx+bw-24}" y="${by+16.5}" text-anchor="middle"
                    fill="#fff" font-family="Inter,sans-serif" font-size="9.5" font-weight="700">${d.pos}</text>`;
     }
 
-    // ── Player name ──
-    const maxC=14;
-    const name=d.player.length>maxC?d.player.slice(0,maxC)+'…':d.player;
+    // Player name (truncated)
+    const name=d.player.length>14?d.player.slice(0,14)+'…':d.player;
     html+=`<text x="${pos.x}" y="${by+26}" text-anchor="middle"
                  fill="${isHero?'#fff':'#e0dbd4'}"
                  font-family="Inter,sans-serif" font-size="${isHero?14:12.5}" font-weight="${isHero?700:500}">${name}</text>`;
 
-    // ── Stack ──
+    // Stack
     const sv=(ev.stacks&&ev.stacks[sn]!=null)?ev.stacks[sn]:d.stack;
     html+=`<text x="${pos.x}" y="${by+41}" text-anchor="middle"
                  fill="#777" font-family="Share Tech Mono,monospace" font-size="10">${fmtAmt(sv,bb)}</text>`;
 
-    // ── Dealer button ──
+    // Dealer button
     if(isBtn){
-      html+=`<circle cx="${bx-8}" cy="${by+bh/2}" r="11" fill="#dd1c1c"/>
-             <text x="${bx-8}" y="${by+bh/2+4.5}" text-anchor="middle"
+      html+=`<circle cx="${bx-10}" cy="${by+bh/2}" r="11" fill="#dd1818"/>
+             <text x="${bx-10}" y="${by+bh/2+4.5}" text-anchor="middle"
                    fill="#fff" font-family="Inter,sans-serif" font-size="9.5" font-weight="800">D</text>`;
     }
 
-    // ── Action label ──
+    // Action label
     if(isActive&&ev.action){
       const ac=AC_COLORS[ev.action]||'#888';
       const amtStr=ev.amount>0?(' '+fmtAmt(ev.amount,bb)):'';
       const actLabel=ev.action.toUpperCase()+amtStr;
       const labY=dir==='top'?by+bh+20:by-10;
-      html+=`<rect x="${pos.x-42}" y="${labY-13}" width="84" height="19" rx="9.5" fill="${ac}" opacity=".96"/>
+      html+=`<rect x="${pos.x-44}" y="${labY-13}" width="88" height="19" rx="9.5" fill="${ac}" opacity=".96"/>
              <text x="${pos.x}" y="${labY}" text-anchor="middle"
                    fill="#fff" font-family="Inter,sans-serif" font-size="10.5" font-weight="700">${actLabel}</text>`;
     }
 
-    // ── Cards ──
-    const cw=42, ch=58, cg=4;
-    const cardY=dir==='top' ? by+bh+8 : by-ch-10;
+    // Cards — always above the seat pod (never below)
+    const cw=42,ch=58,cg=4;
+    const cardY=by-ch-10;
     if(isHero&&ev.hero_cards&&ev.hero_cards.length===2){
       html+=cardSVG(ev.hero_cards[0],pos.x-cw-cg/2,cardY,cw,ch);
       html+=cardSVG(ev.hero_cards[1],pos.x+cg/2,   cardY,cw,ch);
     } else if(!isHero&&!isFolded){
       const vw=30,vh=42;
-      const vcY=dir==='top'?by+bh+6:by-vh-8;
+      const vcY=by-vh-8;
       html+=cardSVG(null,pos.x-vw-2,vcY,vw,vh,true);
       html+=cardSVG(null,pos.x+2,   vcY,vw,vh,true);
     }
@@ -458,28 +492,18 @@ function rpRenderSeats(ev, bb){
     html+='</g>';
     seatsG.innerHTML+=html;
 
-    // ── Bet chips on table ──
+    // Bet chips on table
     const bet=ev.bets&&ev.bets[sn]>0?ev.bets[sn]:0;
     if(bet>0){
       const t=0.36;
       const cx2=Math.round(pos.x+(CX-pos.x)*t);
       const cy2=Math.round(pos.y+(CY-pos.y)*t);
-      const cnt=Math.max(1,Math.min(5,Math.ceil(bet/(bb*2))));
-      // small bet chip stack
-      const H=8,RX=14,RY=5;
-      let cs=`<ellipse cx="${cx2+3}" cy="${cy2+5}" rx="${RX+3}" ry="${RY+2}" fill="rgba(0,0,0,0.38)"/>`;
-      for(let i=cnt-1;i>=0;i--){
-        const ty=cy2-i*H;
-        const col=CHIP_PALETTE[i%CHIP_PALETTE.length];
-        cs+=`<ellipse cx="${cx2}" cy="${ty+H*0.38}" rx="${RX}" ry="${RY}" fill="${col}" opacity="0.5"/>`;
-        cs+=`<ellipse cx="${cx2}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${col}"/>`;
-        cs+=`<ellipse cx="${cx2}" cy="${ty}" rx="${RX-4}" ry="${RY-1.8}" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>`;
-      }
-      chipsG.innerHTML+=cs;
+      const cnt=betToChips(bet,bb);
+      chipsG.innerHTML+=chipStackSVG(cx2,cy2,cnt,14,5,8);
       const betStr=fmtAmt(bet,bb);
-      chipsG.innerHTML+=`<rect x="${cx2-20}" y="${cy2+12}" width="40" height="14" rx="7"
-        fill="rgba(0,0,0,0.72)" stroke="rgba(255,255,255,0.14)" stroke-width=".7"/>
-      <text x="${cx2}" y="${cy2+22}" text-anchor="middle"
+      chipsG.innerHTML+=`<rect x="${cx2-22}" y="${cy2+10}" width="44" height="14" rx="7"
+        fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.14)" stroke-width=".7"/>
+      <text x="${cx2}" y="${cy2+21}" text-anchor="middle"
             fill="#fff" font-family="Share Tech Mono,monospace" font-size="8.5">${betStr}</text>`;
     }
   });
@@ -498,13 +522,11 @@ function rpRender(step){
     setTimeout(()=>badge.className='rp-badge',1600);
   }
 
-  // Street tabs
   document.querySelectorAll('.rp-street-btn').forEach(btn=>{
     btn.classList.remove('rp-st-active');
     if(btn.dataset.street===(ev.street||'preflop')) btn.classList.add('rp-st-active');
   });
 
-  // Log
   document.getElementById('rp-log-st').textContent=(ev.street||'preflop').toUpperCase();
   const logAc=document.getElementById('rp-log-ac');
   if(ev.is_error){logAc.textContent='⚠ '+ev.desc;logAc.className='rp-log-action err';}
@@ -514,7 +536,6 @@ function rpRender(step){
   rpRenderPot(ev.pot||0,bb);
   rpRenderSeats(ev,bb);
 
-  // Error popup
   const popup=document.getElementById('rp-err-pop');
   if(ev.is_error&&ev.is_hero){
     const labels={clear_mistake:'ERRO GRAVE',small_mistake:'Erro',marginal:'Marginal'};
@@ -527,10 +548,7 @@ function rpRender(step){
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────────
-function rpSetSpeed(v){
-  rpSpeed=SPEED_MAP[v]||1000;
-  document.getElementById('rp-spd-lbl').textContent=SPEED_LABELS[v]||'1×';
-}
+function rpSetSpeed(v){rpSpeed=SPEED_MAP[v]||1000;document.getElementById('rp-spd-lbl').textContent=SPEED_LABELS[v]||'1×';}
 function rpToggleBB(){
   rpShowBB=!rpShowBB;
   const btn=document.getElementById('rp-unit-btn');
@@ -538,17 +556,14 @@ function rpToggleBB(){
   btn.classList.toggle('active',rpShowBB);
   rpRender(rpStep);
 }
-function rpJumpToStreet(street){
-  const idx=_rpStreetMap[street];
-  if(idx!==undefined) rpSeekTo(idx);
-}
+function rpJumpToStreet(s){const idx=_rpStreetMap[s];if(idx!==undefined)rpSeekTo(idx);}
 function rpToggle(){
   rpPlaying=!rpPlaying;
   document.getElementById('rp-play').textContent=rpPlaying?'⏸':'▶';
-  if(rpPlaying) rpPlayNext(); else clearTimeout(rpTimer);
+  if(rpPlaying)rpPlayNext();else clearTimeout(rpTimer);
 }
 function rpPlayNext(){
-  if(!rpPlaying) return;
+  if(!rpPlaying)return;
   if(rpStep>=REPLAY.timeline.length-1){rpPlaying=false;document.getElementById('rp-play').textContent='▶';return;}
   rpStep++;rpRender(rpStep);
   rpTimer=setTimeout(rpPlayNext,REPLAY.timeline[rpStep].is_error?rpSpeed*2.5:rpSpeed);
@@ -558,39 +573,34 @@ function rpBack(){clearTimeout(rpTimer);rpPlaying=false;document.getElementById(
 function rpSeekTo(s){clearTimeout(rpTimer);rpPlaying=false;document.getElementById('rp-play').textContent='▶';rpStep=s;rpRender(s);}
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight') rpFwd();
-  if(e.key==='ArrowLeft')  rpBack();
+  if(e.key==='ArrowRight')rpFwd();
+  if(e.key==='ArrowLeft') rpBack();
   if(e.key===' '){e.preventDefault();rpToggle();}
-  if(e.key==='b') rpToggleBB();
+  if(e.key==='b')rpToggleBB();
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 function initReplayer(data){
   REPLAY=data;rpStep=0;_rpLayout=null;_rpStreetMap={};
   document.getElementById('rp-hand-id').textContent='Mão #'+String(data.hand_id).slice(-8);
-
   const ev0=data.timeline[0];
   const sn0=Object.keys(ev0.seats).map(Number).sort((a,b)=>a-b);
   rpBuildLayout(sn0,sn0.find(s=>ev0.seats[s].player===data.hero));
-
   data.timeline.forEach((ev,i)=>{
     const s=ev.street||'preflop';
-    if(_rpStreetMap[s]===undefined) _rpStreetMap[s]=i;
-    if(ev.type==='showdown'&&_rpStreetMap['showdown']===undefined) _rpStreetMap['showdown']=i;
+    if(_rpStreetMap[s]===undefined)_rpStreetMap[s]=i;
+    if(ev.type==='showdown'&&_rpStreetMap['showdown']===undefined)_rpStreetMap['showdown']=i;
   });
-
   document.querySelectorAll('.rp-street-btn').forEach(btn=>{
     if(_rpStreetMap[btn.dataset.street]!==undefined){
-      btn.classList.remove('rp-st-disabled');
-      btn.classList.add('rp-st-available');
+      btn.classList.remove('rp-st-disabled');btn.classList.add('rp-st-available');
     }
   });
-
   rpRender(0);
 }
 
-// ── Demo data ─────────────────────────────────────────────────────────────────
-const DEMO={"hand_id": "257045940964", "tournament_id": "3910307458", "hero": "phpro", "hero_cards": ["Qs", "Kd"], "board": ["5d", "6h", "Ad"], "button": 3, "sb": 50.0, "bb": 100.0, "seats": {"1": {"player": "jojosetubal", "stack": 7431, "stack_bb": 74.3, "pos": "HJ"}, "2": {"player": "Kaptahh", "stack": 8135, "stack_bb": 81.3, "pos": "CO"}, "3": {"player": "Andrew Willian", "stack": 1447, "stack_bb": 14.5, "pos": "BTN"}, "4": {"player": "Maks19111979", "stack": 5078, "stack_bb": 50.8, "pos": "SB"}, "5": {"player": "SuKKinho", "stack": 5253, "stack_bb": 52.5, "pos": "BB"}, "6": {"player": "martelli1990", "stack": 3398, "stack_bb": 34.0, "pos": "UTG"}, "7": {"player": "varen1k322", "stack": 3200, "stack_bb": 32.0, "pos": "UTG+1"}, "8": {"player": "Cyan Diogenes", "stack": 6419, "stack_bb": 64.2, "pos": "UTG+2"}, "9": {"player": "phpro", "stack": 2242, "stack_bb": 22.4, "pos": "MP"}}, "timeline": [{"seats": {"1": {"player": "jojosetubal", "stack": 7419, "stack_bb": 74.2, "pos": "HJ"}, "2": {"player": "Kaptahh", "stack": 8123, "stack_bb": 81.2, "pos": "CO"}, "3": {"player": "Andrew Willian", "stack": 1435, "stack_bb": 14.3, "pos": "BTN"}, "4": {"player": "Maks19111979", "stack": 5016, "stack_bb": 50.2, "pos": "SB"}, "5": {"player": "SuKKinho", "stack": 5141, "stack_bb": 51.4, "pos": "BB"}, "6": {"player": "martelli1990", "stack": 3386, "stack_bb": 33.9, "pos": "UTG"}, "7": {"player": "varen1k322", "stack": 3188, "stack_bb": 31.9, "pos": "UTG+1"}, "8": {"player": "Cyan Diogenes", "stack": 6407, "stack_bb": 64.1, "pos": "UTG+2"}, "9": {"player": "phpro", "stack": 2230, "stack_bb": 22.3, "pos": "MP"}}, "stacks": {"1": 7419, "2": 8123, "3": 1435, "4": 5016, "5": 5141, "6": 3386, "7": 3188, "8": 6407, "9": 2230}, "button": 3, "hero": "phpro", "hero_cards": ["Qs", "Kd"], "board": [], "pot": 258, "pot_bb": 2.6, "bets": {"1": 0, "2": 0, "3": 0, "4": 50, "5": 100, "6": 0, "7": 0, "8": 0, "9": 0}, "street": "preflop", "folded": [], "bb": 100.0, "type": "deal", "desc": "Início da mão", "antes_total": 108, "antes_desc": "9×12 ante = 108", "blinds_total": 150}, {"seats": {"1": {"player": "jojosetubal", "stack": 7419, "stack_bb": 74.2, "pos": "HJ"}, "2": {"player": "Kaptahh", "stack": 8123, "stack_bb": 81.2, "pos": "CO"}, "3": {"player": "Andrew Willian", "stack": 1435, "stack_bb": 14.3, "pos": "BTN"}, "4": {"player": "Maks19111979", "stack": 5016, "stack_bb": 50.2, "pos": "SB"}, "5": {"player": "SuKKinho", "stack": 5141, "stack_bb": 51.4, "pos": "BB"}, "6": {"player": "martelli1990", "stack": 3186, "stack_bb": 31.9, "pos": "UTG"}, "7": {"player": "varen1k322", "stack": 3188, "stack_bb": 31.9, "pos": "UTG+1"}, "8": {"player": "Cyan Diogenes", "stack": 6407, "stack_bb": 64.1, "pos": "UTG+2"}, "9": {"player": "phpro", "stack": 2230, "stack_bb": 22.3, "pos": "MP"}}, "stacks": {"1": 7419, "2": 8123, "3": 1435, "4": 5016, "5": 5141, "6": 3186, "7": 3188, "8": 6407, "9": 2230}, "button": 3, "hero": "phpro", "hero_cards": ["Qs", "Kd"], "board": [], "pot": 458, "pot_bb": 4.6, "bets": {"1": 0, "2": 0, "3": 0, "4": 50, "5": 100, "6": 200, "7": 0, "8": 0, "9": 0}, "street": "preflop", "folded": [], "bb": 100.0, "type": "action", "player": "martelli1990", "seat": 6, "action": "raises", "amount": 100.0, "is_hero": false, "is_error": false, "error_label": null, "error_score": null, "best_action": null, "desc": "martelli1990: raises 100", "antes_total": 0, "antes_desc": "", "blinds_total": 0, "pot_odds_equity": null, "hand_equity": null, "m_ratio": null, "icm_pressure": null, "math_penalty": 0, "range_penalty": 0, "context_penalty": 0}, {"seats": {"1": {"player": "jojosetubal", "stack": 7419, "stack_bb": 74.2, "pos": "HJ"}, "2": {"player": "Kaptahh", "stack": 8123, "stack_bb": 81.2, "pos": "CO"}, "3": {"player": "Andrew Willian", "stack": 1435, "stack_bb": 14.3, "pos": "BTN"}, "4": {"player": "Maks19111979", "stack": 5016, "stack_bb": 50.2, "pos": "SB"}, "5": {"player": "SuKKinho", "stack": 5141, "stack_bb": 51.4, "pos": "BB"}, "6": {"player": "martelli1990", "stack": 3186, "stack_bb": 31.9, "pos": "UTG"}, "7": {"player": "varen1k322", "stack": 3188, "stack_bb": 31.9, "pos": "UTG+1"}, "8": {"player": "Cyan Diogenes", "stack": 6407, "stack_bb": 64.1, "pos": "UTG+2"}, "9": {"player": "phpro", "stack": 2230, "stack_bb": 22.3, "pos": "MP"}}, "stacks": {"1": 7419, "2": 8123, "3": 1435, "4": 5016, "5": 5141, "6": 3186, "7": 3188, "8": 6407, "9": 2230}, "button": 3, "hero": "phpro", "hero_cards": ["Qs", "Kd"], "board": [], "pot": 458, "pot_bb": 4.6, "bets": {"1": 0, "2": 0, "3": 0, "4": 50, "5": 100, "6": 200, "7": 0, "8": 0, "9": 0}, "street": "preflop", "folded": ["varen1k322"], "bb": 100.0, "type": "action", "player": "varen1k322", "seat": 7, "action": "folds", "amount": 0, "is_hero": false, "is_error": false, "error_label": null, "error_score": null, "best_action": null, "desc": "varen1k322: folds", "antes_total": 0, "antes_desc": "", "blinds_total": 0, "pot_odds_equity": null, "hand_equity": null, "m_ratio": null, "icm_pressure": null, "math_penalty": 0, "range_penalty": 0, "context_penalty": 0}, {"seats": {"1": {"player": "jojosetubal", "stack": 7419, "stack_bb": 74.2, "pos": "HJ"}, "2": {"player": "Kaptahh", "stack": 8123, "stack_bb": 81.2, "pos": "CO"}, "3": {"player": "Andrew Willian", "stack": 1435, "stack_bb": 14.3, "pos": "BTN"}, "4": {"player": "Maks19111979", "stack": 5016, "stack_bb": 50.2, "pos": "SB"}, "5": {"player": "SuKKinho", "stack": 5141, "stack_bb": 51.4, "pos": "BB"}, "6": {"player": "martelli1990", "stack": 3186, "stack_bb": 31.9, "pos": "UTG"}, "7": {"player": "varen1k322", "stack": 3188, "stack_bb": 31.9, "pos": "UTG+1"}, "8": {"player": "Cyan Diogenes", "stack": 6407, "stack_bb": 64.1, "pos": "UTG+2"}, "9": {"player": "phpro", "stack": 2030.0, "stack_bb": 20.3, "pos": "MP"}}, "stacks": {"1": 7419, "2": 8123, "3": 1435, "4": 5016, "5": 5141, "6": 3186, "7": 3188, "8": 6407, "9": 2030.0}, "button": 3, "hero": "phpro", "hero_cards": ["Qs", "Kd"], "board": [], "pot": 658.0, "pot_bb": 6.6, "bets": {"1": 0, "2": 0, "3": 0, "4": 50, "5": 100, "6": 200, "7": 0, "8": 0, "9": 200.0}, "street": "preflop", "folded": ["varen1k322", "Cyan Diogenes"], "bb": 100.0, "type": "action", "player": "phpro", "seat": 9, "action": "calls", "amount": 200.0, "is_hero": true, "is_error": false, "error_label": null, "error_score": null, "best_action": null, "desc": "phpro: calls 200", "antes_total": 0, "antes_desc": "", "blinds_total": 0}, {"seats": {"1": {"player": "jojosetubal", "stack": 7419, "stack_bb": 74.2, "pos": "HJ"}, "2": {"player": "Kaptahh", "stack": 8123, "stack_bb": 81.2, "pos": "CO"}, "3": {"player": "Andrew Willian", "stack": 1435, "stack_bb": 14.3, "pos": "BTN"}, "4": {"player": "Maks19111979", "stack": 5016, "stack_bb": 50.2, "pos": "SB"}, "5": {"player": "SuKKinho", "stack": 4411, "stack_bb": 44.1, "pos": "BB"}, "6": {"player": "martelli1990", "stack": 2556.0, "stack_bb": 25.6, "pos": "UTG"}, "7": {"player": "varen1k322", "stack": 3188, "stack_bb": 31.9, "pos": "UTG+1"}, "8": {"player": "Cyan Diogenes", "stack": 6407, "stack_bb": 64.1, "pos": "UTG+2"}, "9": {"player": "phpro", "stack": 2030.0, "stack_bb": 20.3, "pos": "MP"}}, "stacks": {"1": 7419, "2": 8123, "3": 1435, "4": 5016, "5": 4411, "6": 2556.0, "7": 3188, "8": 6407, "9": 2030.0}, "button": 3, "hero": "phpro", "hero_cards": ["Qs", "Kd"], "board": [], "pot": 2018.0, "pot_bb": 20.2, "bets": {"1": 0, "2": 0, "3": 0, "4": 50, "5": 830, "6": 830.0, "7": 0, "8": 0, "9": 200.0}, "street": "preflop", "folded": ["varen1k322", "Cyan Diogenes", "jojosetubal", "Kaptahh", "Andrew Willian", "Maks19111979"], "bb": 100.0, "type": "action", "player": "martelli1990", "seat": 6, "action": "calls", "amount": 630.0, "is_hero": false, "is_error": false, "error_label": null, "error_score": null, "best_action": null, "desc": "martelli1990: calls 630", "antes_total": 0, "antes_desc": "", "blinds_total": 0}, {"seats": {"1": {"player": "jojosetubal", "stack": 7419, "stack_bb": 74.2, "pos": "HJ"}, "2": {"player": "Kaptahh", "stack": 8123, "stack_bb": 81.2, "pos": "CO"}, "3": {"player": "Andrew Willian", "stack": 1435, "stack_bb": 14.3, "pos": "BTN"}, "4": {"player": "Maks19111979", "stack": 5016, "stack_bb": 50.2, "pos": "SB"}, "5": {"player": "SuKKinho", "stack": 4411, "stack_bb": 44.1, "pos": "BB"}, "6": {"player": "martelli1990", "stack": 2556.0, "stack_bb": 25.6, "pos": "UTG"}, "7": {"player": "varen1k322", "stack": 3188, "stack_bb": 31.9, "pos": "UTG+1"}, "8": {"player": "Cyan Diogenes", "stack": 6407, "stack_bb": 64.1, "pos": "UTG+2"}, "9": {"player": "phpro", "stack": 2030.0, "stack_bb": 20.3, "pos": "MP"}}, "stacks": {"1": 7419, "2": 8123, "3": 1435, "4": 5016, "5": 4411, "6": 2556.0, "7": 3188, "8": 6407, "9": 2030.0}, "button": 3, "hero": "phpro", "hero_cards": ["Qs", "Kd"], "board": ["5d", "6h", "Ad"], "pot": 2018.0, "pot_bb": 20.2, "bets": {}, "street": "flop", "folded": ["varen1k322", "Cyan Diogenes", "jojosetubal", "Kaptahh", "Andrew Willian", "Maks19111979", "phpro"], "bb": 100.0, "type": "street", "desc": "FLOP", "antes_total": 0, "antes_desc": "", "blinds_total": 0}, {"seats": {"1": {"player": "jojosetubal", "stack": 7419, "stack_bb": 74.2, "pos": "HJ"}, "2": {"player": "Kaptahh", "stack": 8123, "stack_bb": 81.2, "pos": "CO"}, "3": {"player": "Andrew Willian", "stack": 1435, "stack_bb": 14.3, "pos": "BTN"}, "4": {"player": "Maks19111979", "stack": 5016, "stack_bb": 50.2, "pos": "SB"}, "5": {"player": "SuKKinho", "stack": 0, "stack_bb": 0.0, "pos": "BB"}, "6": {"player": "martelli1990", "stack": 1890.0, "stack_bb": 18.9, "pos": "UTG"}, "7": {"player": "varen1k322", "stack": 3188, "stack_bb": 31.9, "pos": "UTG+1"}, "8": {"player": "Cyan Diogenes", "stack": 6407, "stack_bb": 64.1, "pos": "UTG+2"}, "9": {"player": "phpro", "stack": 2030.0, "stack_bb": 20.3, "pos": "MP"}}, "stacks": {"1": 7419, "2": 8123, "3": 1435, "4": 5016, "5": 0, "6": 1890.0, "7": 3188, "8": 6407, "9": 2030.0}, "button": 3, "hero": "phpro", "hero_cards": ["Qs", "Kd"], "board": ["5d", "6h", "Ad"], "pot": 7095.0, "pot_bb": 71.0, "bets": {"5": 4411, "6": 666.0}, "street": "flop", "folded": ["varen1k322", "Cyan Diogenes", "jojosetubal", "Kaptahh", "Andrew Willian", "Maks19111979", "phpro", "martelli1990"], "bb": 100.0, "type": "action", "player": "SuKKinho", "seat": 5, "action": "raises", "amount": 3745.0, "is_hero": false, "is_error": false, "error_label": null, "error_score": null, "best_action": null, "desc": "SuKKinho: raises 3745", "antes_total": 0, "antes_desc": "", "blinds_total": 0}]};
+// ── Demo ─────────────────────────────────────────────────────────────────────
+const DEMO={"hand_id":"257045940964","tournament_id":"3910307458","hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"button":3,"sb":50.0,"bb":100.0,"seats":{"1":{"player":"jojosetubal","stack":7431,"stack_bb":74.3,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8135,"stack_bb":81.3,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1447,"stack_bb":14.5,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5078,"stack_bb":50.8,"pos":"SB"},"5":{"player":"SuKKinho","stack":5253,"stack_bb":52.5,"pos":"BB"},"6":{"player":"martelli1990","stack":3398,"stack_bb":34.0,"pos":"UTG"},"7":{"player":"varen1k322","stack":3200,"stack_bb":32.0,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6419,"stack_bb":64.2,"pos":"UTG+2"},"9":{"player":"phpro","stack":2242,"stack_bb":22.4,"pos":"MP"}},"timeline":[{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3386,"stack_bb":33.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3386,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":258,"pot_bb":2.6,"bets":{"4":50,"5":100},"street":"preflop","folded":[],"bb":100.0,"type":"deal","desc":"Início da mão"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":458,"pot_bb":4.6,"bets":{"4":50,"5":100,"6":200},"street":"preflop","folded":[],"bb":100.0,"type":"action","player":"martelli1990","seat":6,"action":"raises","amount":100.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"martelli1990: raises 100"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":658,"pot_bb":6.6,"bets":{"4":50,"5":100,"6":200,"9":200},"street":"preflop","folded":["varen1k322","Cyan Diogenes"],"bb":100.0,"type":"action","player":"phpro","seat":9,"action":"calls","amount":200.0,"is_hero":true,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"phpro: calls 200"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":4411,"stack_bb":44.1,"pos":"BB"},"6":{"player":"martelli1990","stack":2556,"stack_bb":25.6,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":4411,"6":2556,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":2018,"pot_bb":20.2,"bets":{"5":830,"6":830},"street":"preflop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":730.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 730"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"street","desc":"FLOP"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":3745.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 3745"}]};
 initReplayer(DEMO);
 </script>
 </body>
