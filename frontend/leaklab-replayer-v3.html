@@ -269,9 +269,6 @@ function chipStackSVG(cx, bottomY, count, RX, RY, CH){
   count=Math.max(1,Math.min(CHIPS.length,count));
   let h='';
 
-  // Ground shadow
-  h+=`<ellipse cx="${cx+4}" cy="${bottomY+5}" rx="${RX+6}" ry="${RY+3}" fill="rgba(0,0,0,0.45)"/>`;
-
   // Render from bottom chip (i=0) to top chip (i=count-1)
   // Bottom chips rendered first so top chips paint over them (correct z-order)
   for(let i=0;i<count;i++){
@@ -384,7 +381,7 @@ function rpRenderPot(pot,bb){
   // Chip stack (bottomY = just below cards)
   const chipBottomY=cardBottom+58;
   const chipCount=potToChips(pot,bb);
-  g.innerHTML+=chipStackSVG(CX,chipBottomY,chipCount,21,7.5,10);
+  g.innerHTML+=chipStackSVG(CX,chipBottomY,chipCount,19,7,9);
 
   // Amount below stack
   g.innerHTML+=`<text x="${CX}" y="${chipBottomY+16}" text-anchor="middle"
@@ -499,7 +496,7 @@ function rpRenderSeats(ev,bb){
       const cx2=Math.round(pos.x+(CX-pos.x)*t);
       const cy2=Math.round(pos.y+(CY-pos.y)*t);
       const cnt=betToChips(bet,bb);
-      chipsG.innerHTML+=chipStackSVG(cx2,cy2,cnt,14,5,8);
+      chipsG.innerHTML+=chipStackSVG(cx2,cy2,cnt,19,7,9);
       const betStr=fmtAmt(bet,bb);
       chipsG.innerHTML+=`<rect x="${cx2-22}" y="${cy2+10}" width="44" height="14" rx="7"
         fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.14)" stroke-width=".7"/>
