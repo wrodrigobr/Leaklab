@@ -23,7 +23,10 @@ log = logging.getLogger(__name__)
 
 _SOLVER_BIN = os.environ.get(
     'GTO_SOLVER_BIN',
-    os.path.join(os.path.dirname(__file__), '..', 'gto_bot', 'solver_cli', 'target', 'release', 'solver_cli')
+    os.path.join(
+        os.path.dirname(__file__), '..', 'gto_bot', 'solver_cli', 'target', 'release',
+        'solver_cli.exe' if os.name == 'nt' else 'solver_cli',
+    )
 )
 _SOLVER_AVAILABLE: Optional[bool] = None
 
@@ -245,6 +248,7 @@ def _call_solver(bin_path: str, spot: dict, timeout: int = 300) -> Optional[dict
             input=json.dumps(spot),
             capture_output=True,
             text=True,
+            encoding='utf-8',
             timeout=timeout,
         )
         if proc.returncode != 0:

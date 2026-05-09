@@ -28,3 +28,5 @@ backend/torneio_ingles.txt
 frontend/node_modules/
 frontend/dist/
 !frontend/.env
+backend/gto_bot/solver_cli/target/
+backend/gto_bot/solver_cli/Cargo.lock
