@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.91.0] — 2026-05-08 — feat(UX-012): Replayer — cartas inseridas no pod + inlay branco maior
+
+### Changed
+- **`leaklab-replayer-v3.html`**: refinamentos visuais nas cartas e fichas
+  - **Cartas 30% atrás do pod**: cartas são renderizadas antes do pod (z-order atrás) e posicionadas para 70% visível / 30% tucked atrás do bloco do jogador; direction-aware (top seats: cartas abaixo do pod, bottom seats: acima)
+  - **Inlay branco maior**: elipse central das fichas aumentada de `RX*0.42` para `RX*0.58` — dá espaço confortável para "100" (3 dígitos) sem truncamento
+
+---
+
 ## [v0.90.0] — 2026-05-08 — feat(UX-011): Replayer — fichas casino com inlay branco + botão dealer redesenhado
 
 ### Changed
