@@ -472,12 +472,12 @@ function rpRenderSeats(ev,bb){
     {
       const cw=42,ch=58,cg=4;
       if(isHero&&ev.hero_cards&&ev.hero_cards.length===2){
-        const cardY=dir==='top'?(by+bh)-Math.round(ch*0.30):by-Math.round(ch*0.70);
+        const cardY=by-Math.round(ch*0.70);
         html+=cardSVG(ev.hero_cards[0],pos.x-cw-cg/2,cardY,cw,ch);
         html+=cardSVG(ev.hero_cards[1],pos.x+cg/2,   cardY,cw,ch);
       } else if(!isHero&&!isFolded){
         const vw=30,vh=42;
-        const vcY=dir==='top'?(by+bh)-Math.round(vh*0.30):by-Math.round(vh*0.70);
+        const vcY=by-Math.round(vh*0.70);
         html+=cardSVG(null,pos.x-vw-2,vcY,vw,vh,true);
         html+=cardSVG(null,pos.x+2,   vcY,vw,vh,true);
       }
