@@ -3838,6 +3838,74 @@ def admin_gto_queue():
         conn.close()
 
 
+@app.route('/admin/gto/reprocess-decisions', methods=['POST'])
+@require_admin
+def admin_gto_reprocess_decisions():
+    """
+    Reprocessa todas as decisões de todos os torneios, re-avaliando com GTO.
+    Atualiza gto_label, gto_action e label (se GTO suavizar o score).
+    """
+    from database.repositories import get_all_tournaments_raw, save_decisions
+    from leaklab.parser import parse_pokerstars_file_from_text
+    parse_ggpoker_file_from_text = parse_pokerstars_file_from_text  # GGPoker usa mesmo parser
+    from leaklab.pipeline import build_decision_inputs_for_hand
+    from leaklab.decision_engine_v11 import evaluate_decision
+
+    tournaments = get_all_tournaments_raw()
+    processed = errors = decisions_updated = 0
+
+    for t in tournaments:
+        raw_text = t.get('raw_text')
+        if not raw_text:
+            continue
+        try:
+            site = _detect_site(raw_text)
+            if site == 'ggpoker':
+                hands = parse_ggpoker_file_from_text(raw_text)
+            else:
+                hands = parse_pokerstars_file_from_text(raw_text)
+
+            results = []
+            for hand in hands:
+                hero = hand.hero or t.get('hero', 'Hero')
+                sd_result = _detect_showdown(hand.raw_text or '', hero)
+                for di in build_decision_inputs_for_hand(hand):
+                    r = evaluate_decision(di)
+                    interp = r.get('interpretation', {})
+                    enriched = {
+                        **r,
+                        'street':          di['street'],
+                        'context':         di['context'],
+                        'math':            di['math'],
+                        'spot':            di['spot'],
+                        'hero_cards':      hand.hero_cards,
+                        'board':           hand.board or [],
+                        'draw_profile':    di['math'].get('drawProfile', ''),
+                        'position':        di['spot'].get('position', ''),
+                        'num_players':     di['context'].get('activePlayers', 0),
+                        'level_sb':        di['context'].get('levelSb', 0),
+                        'level_bb':        di['context'].get('levelBb', 0),
+                        'level_num':       di['context'].get('levelNum', 0),
+                        'note':            interp.get('strategicExplanation', '') or interp.get('mathExplanation', ''),
+                        'is_3bet':         di.get('is_3bet', False),
+                        'showdown_result': sd_result,
+                    }
+                    results.append(enriched)
+
+            save_decisions(t['id'], results)
+            decisions_updated += len(results)
+            processed += 1
+        except Exception as e:
+            log.warning('reprocess error tournament %s: %s', t.get('id'), e)
+            errors += 1
+
+    return jsonify({
+        'processed': processed,
+        'errors': errors,
+        'decisions_updated': decisions_updated,
+    })
+
+
 @app.route('/support/contact', methods=['POST'])
 @require_auth
 def support_contact():

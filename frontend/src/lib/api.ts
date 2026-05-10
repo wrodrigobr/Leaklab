@@ -198,6 +198,8 @@ export interface TournamentDecision {
   level_num: number | null;
   note: string | null;
   has_annotation?: boolean;
+  gto_label: "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical" | null;
+  gto_action: string | null;
 }
 
 export interface ReplaySeat {

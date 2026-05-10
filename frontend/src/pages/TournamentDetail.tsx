@@ -20,6 +20,7 @@ import {
   GraduationCap,
   FileDown,
   Target,
+  Sigma,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
@@ -53,6 +54,8 @@ interface Hand {
   levelBb?: number | null;
   levelNum?: number | null;
   hasAnnotation?: boolean;
+  gtoLabel?: string | null;
+  gtoAction?: string | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -157,6 +160,8 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
       levelBb: worst.level_bb,
       levelNum: worst.level_num,
       hasAnnotation: decs.some((d) => d.has_annotation),
+      gtoLabel: worst.gto_label ?? null,
+      gtoAction: worst.gto_action ?? null,
     });
   });
   return hands;
@@ -682,6 +687,23 @@ const TournamentDetail = () => {
                           <span className="inline-flex items-center gap-1 rounded-sm bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-violet-400 ring-1 ring-violet-400/30">
                             <GraduationCap className="size-3" aria-hidden />
                             {tc("status.coach")}
+                          </span>
+                        )}
+                        {h.gtoLabel && (
+                          <span className={cn(
+                            "inline-flex items-center gap-1 rounded-sm px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider",
+                            h.gtoLabel === "gto_correct"         && "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-400/30",
+                            h.gtoLabel === "gto_mixed"           && "bg-sky-500/10 text-sky-400 ring-1 ring-sky-400/30",
+                            h.gtoLabel === "gto_minor_deviation" && "bg-amber-500/10 text-amber-400 ring-1 ring-amber-400/30",
+                            h.gtoLabel === "gto_critical"        && "bg-red-500/10 text-red-400 ring-1 ring-red-400/30",
+                          )}
+                          title={h.gtoAction ? `GTO: ${h.gtoAction}` : undefined}
+                          >
+                            <Sigma className="size-3" aria-hidden />
+                            {h.gtoLabel === "gto_correct"         && "GTO ✓"}
+                            {h.gtoLabel === "gto_mixed"           && "GTO misto"}
+                            {h.gtoLabel === "gto_minor_deviation" && "GTO ~ok"}
+                            {h.gtoLabel === "gto_critical"        && "GTO erro"}
                           </span>
                         )}
                         {h.position && h.position !== "—" && (

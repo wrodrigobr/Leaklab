@@ -258,6 +258,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
             raw_face = spot_ctx.get('facingSize') or 0
             pot_size_bb   = round(raw_pot  / level_bb_val, 1) if raw_pot  else None
             facing_bet_bb = round(raw_face / level_bb_val, 1) if raw_face else None
+            gto = r.get('gto', {})
             rows.append((
                 tournament_db_id,
                 r.get('handId', ''),
@@ -284,6 +285,8 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 r.get('showdown_result'),
                 pot_size_bb,
                 facing_bet_bb,
+                gto.get('gto_label') if gto.get('available') else None,
+                gto.get('gto_action') if gto.get('available') else None,
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -292,10 +295,20 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                math_penalty, range_penalty, m_ratio, icm_pressure,
                stack_bb, draw_profile, position, num_players,
                level_sb, level_bb, level_num, note, is_3bet, showdown_result,
-               pot_size, facing_bet)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               pot_size, facing_bet, gto_label, gto_action)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
+    finally:
+        conn.close()
+
+
+def get_all_tournaments_raw() -> List[dict]:
+    """Retorna todos os torneios com raw_text para reprocessamento admin."""
+    conn = get_conn()
+    try:
+        rows = conn.execute("SELECT id, hero, raw_text, site FROM tournaments WHERE raw_text IS NOT NULL").fetchall()
+        return [dict(r) for r in rows]
     finally:
         conn.close()
 

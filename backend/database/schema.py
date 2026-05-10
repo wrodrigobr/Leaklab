@@ -474,6 +474,9 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS dashboard_layout         TEXT",
             # Sprint AX — FEAT-17: onboarding para novos usuários
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed     BOOLEAN NOT NULL DEFAULT FALSE",
+            # GTO-005: integração solver → decisions
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_label  TEXT",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_action TEXT",
         ]:
             try: conn.execute(sql)
             except Exception: pass
