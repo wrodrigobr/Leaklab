@@ -9,7 +9,7 @@ Garantia de qualidade:
 Fluxo:
   1. Preflop → gto_preflop_ranges (só rows com exploitability confirmada)
   2. Postflop → gto_nodes (só rows com exploitability confirmada)
-  3. Miss → enfileira na gto_solver_queue → retorna 'queued'
+  3. Miss → tenta solver remoto (Oracle Cloud) → fallback local → enfileira
   4. Worker chama solver_cli (Rust CFR) → armazena com exploitability real
 """
 from __future__ import annotations
@@ -18,6 +18,21 @@ import logging
 import os
 import subprocess
 from typing import Optional
+
+# ── Solver remoto (Oracle Cloud) ──────────────────────────────────────────────
+_REMOTE_URL = os.environ.get('GTO_SOLVER_URL', '').rstrip('/')
+_REMOTE_KEY = os.environ.get('GTO_SOLVER_API_KEY', '')
+
+# Ranges padrão por posição (6-max, 100bb, RFI / call). Simplificadas para convergência rápida.
+_DEFAULT_RANGES: dict[str, str] = {
+    'BTN': '22+,A2s+,K2s+,Q4s+,J6s+,T7s+,97s+,87s,76s,65s,54s,A2o+,K8o+,Q9o+,J9o+,T9o',
+    'CO':  '22+,A2s+,K6s+,Q8s+,J8s+,T8s+,98s,87s,76s,A4o+,K9o+,Q9o+,J9o+',
+    'HJ':  '44+,A2s+,K9s+,Q9s+,J9s+,T9s,A9o+,KTo+,QTo+,JTo',
+    'UTG': '55+,A9s+,KTs+,QTs+,JTs,AJo+,KQo',
+    'SB':  '22+,A2s+,K2s+,Q4s+,J6s+,T7s+,97s+,87s,76s,65s,A2o+,K7o+,Q9o+',
+    'BB':  '22+,A2s+,K2s+,Q2s+,J4s+,T6s+,96s+,86s+,75s+,65s,54s,A2o+,K4o+,Q7o+,J8o+,T8o+',
+}
+_DEFAULT_RANGE_WIDE = '22+,A2s+,K2s+,Q2s+,J4s+,T6s+,96s+,86s+,75s+,65s,54s,A2o+,K8o+,Q9o+,J9o+'
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +70,8 @@ def lookup_gto(
     hero_stack_bb: float,
     action_seq: str = 'rfi',
     vs_position: str = '',
+    facing_size_bb: float = 0.0,
+    pot_bb: float = 0.0,
 ) -> dict:
     """
     Ponto de entrada único para consultas GTO.
@@ -72,14 +89,14 @@ def lookup_gto(
     """
     from leaklab.gto_utils import compute_spot_hash, hand_to_type, stack_bucket
     from database.repositories import (
-        get_preflop_gto, get_gto_node, enqueue_solver_spot,
+        get_preflop_gto, get_gto_node, enqueue_solver_spot, insert_gto_nodes,
     )
 
     street_l   = street.lower()
     position_u = position.upper()
     sb         = stack_bucket(hero_stack_bb)
     hand_type  = hand_to_type(hero_hand)
-    spot_hash  = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb)
+    spot_hash  = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, facing_size_bb)
 
     # 1. Preflop — só retorna se houver dados verificados
     if street_l == 'preflop' and hand_type:
@@ -119,17 +136,66 @@ def lookup_gto(
             'queued':             False,
         }
 
-    # 3. Miss — enfileira para solve
-    spot_payload = json.dumps({
-        'street':        street_l,
-        'position':      position_u,
-        'board':         board,
-        'hero_hand':     hero_hand,
-        'hero_stack_bb': hero_stack_bb,
-        'vs_position':   vs_position,
-        'action_seq':    action_seq,
-    }, sort_keys=True)
+    # 3. Miss — tenta solver remoto primeiro
+    # Monta payload no formato que o solver_cli Rust espera
+    oop_range = _DEFAULT_RANGES.get(vs_position.upper(), _DEFAULT_RANGE_WIDE)
+    ip_range  = _DEFAULT_RANGES.get(position_u, _DEFAULT_RANGE_WIDE)
+    effective_pot = pot_bb if pot_bb > 0 else max(facing_size_bb * 2 + 2, 4.0)
 
+    solver_payload = {
+        'street':                    street_l,
+        'board':                     board,
+        'oop_range':                 oop_range,
+        'ip_range':                  ip_range,
+        'pot_bb':                    effective_pot,
+        'effective_stack_bb':        hero_stack_bb,
+        'target_exploitability_pct': MAX_EXPLOITABILITY_PCT,
+    }
+
+    # Metadados extras para armazenar no DB após o solve
+    spot_dict = {
+        **solver_payload,
+        'position':       position_u,
+        'hero_hand':      hero_hand,
+        'vs_position':    vs_position,
+        'action_seq':     action_seq,
+        'facing_size_bb': facing_size_bb,
+    }
+    spot_payload = json.dumps(spot_dict, sort_keys=True)
+
+    remote = _call_remote_solver(solver_payload)
+    if remote:
+        exploit = remote.get('exploitability_pct')
+        insert_gto_nodes([{
+            'street':             street_l,
+            'position':           position_u,
+            'board':              board,
+            'hero_hand':          hero_hand,
+            'hero_stack_bb':      hero_stack_bb,
+            'gto_action':         remote['primary_action'],
+            'gto_freq':           remote['primary_freq'],
+            'ev_diff':            remote.get('ev'),
+            'exploitability_pct': float(exploit) if exploit else None,
+            'iterations':         remote.get('iterations'),
+        }])
+        log.info("GTO remote solve: %s → %s %.0f%% (exploit=%.2f%%)",
+                 spot_hash, remote['primary_action'],
+                 remote['primary_freq'] * 100, exploit or 0)
+        return {
+            'found':              True,
+            'source':             'remote_solver',
+            'strategy':           remote.get('strategy', [{
+                'action':    remote['primary_action'],
+                'frequency': remote['primary_freq'],
+                'ev_bb':     remote.get('ev'),
+                'exploitability_pct': exploit,
+            }]),
+            'exploitability_pct': float(exploit) if exploit else None,
+            'spot_hash':          spot_hash,
+            'queued':             False,
+        }
+
+    # 4. Fallback — enfileira para solve local
     bin_path = _solver_binary()
     enqueued = enqueue_solver_spot(spot_hash, spot_payload, priority=_priority(street_l))
 
@@ -145,6 +211,27 @@ def lookup_gto(
 
 def _priority(street: str) -> int:
     return {'preflop': 8, 'flop': 6, 'turn': 5, 'river': 4}.get(street, 5)
+
+
+def _call_remote_solver(spot: dict, timeout: int = 300) -> Optional[dict]:
+    """Chama o solver remoto (Oracle Cloud). Retorna resultado ou None em caso de falha."""
+    if not _REMOTE_URL or not _REMOTE_KEY:
+        return None
+    try:
+        import requests
+        resp = requests.post(
+            f"{_REMOTE_URL}/solve",
+            json=spot,
+            headers={"x-api-key": _REMOTE_KEY},
+            timeout=timeout,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        log.warning("Remote solver HTTP %d: %s", resp.status_code, resp.text[:200])
+        return None
+    except Exception as e:
+        log.warning("Remote solver indisponível: %s", e)
+        return None
 
 
 # ── Worker — consume fila, valida exploitability ──────────────────────────────

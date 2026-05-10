@@ -224,6 +224,7 @@ const TournamentDetail = () => {
   const [query, setQuery] = useState("");
   const [severity, setSeverity] = useState<Severity | "all">("all");
   const [street, setStreet] = useState<Street | "all">("all");
+  const [gtoFilter, setGtoFilter] = useState<"all" | "with_gto" | "no_gto" | "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical">("all");
   const [analyses, setAnalyses] = useState<Record<number, string>>({});
   const [analysisLoading, setAnalysisLoading] = useState<Record<number, boolean>>({});
   const [phaseAnalysis, setPhaseAnalysis] = useState<PhaseData[]>([]);
@@ -275,6 +276,9 @@ const TournamentDetail = () => {
       hands.filter((h) => {
         if (severity !== "all" && h.category !== severity) return false;
         if (street !== "all" && h.street !== street) return false;
+        if (gtoFilter === "with_gto"  && !h.gtoLabel) return false;
+        if (gtoFilter === "no_gto"    && h.gtoLabel)  return false;
+        if (gtoFilter !== "all" && gtoFilter !== "with_gto" && gtoFilter !== "no_gto" && h.gtoLabel !== gtoFilter) return false;
         if (query) {
           const q = query.toLowerCase();
           return (
@@ -285,7 +289,7 @@ const TournamentDetail = () => {
         }
         return true;
       }),
-    [hands, query, severity, street]
+    [hands, query, severity, street, gtoFilter]
   );
 
   const stats = useMemo(() => ({
@@ -633,10 +637,45 @@ const TournamentDetail = () => {
                   {s === "all" ? t("detail.streets.all") : s}
                 </button>
               ))}
-              <span className="ml-auto font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-                {t(filtered.length === 1 ? "detail.handCount" : "detail.handCount_plural", { count: filtered.length })}
-              </span>
             </div>
+
+            {/* GTO filter row */}
+            {(() => {
+              const withGto = hands.filter((h) => h.gtoLabel).length;
+              const noGto   = hands.length - withGto;
+              type GtoKey = typeof gtoFilter;
+              const GTO_FILTERS: { key: GtoKey; label: string; cls?: string }[] = [
+                { key: "all",                 label: `GTO: todos (${hands.length})` },
+                { key: "with_gto",            label: `com análise (${withGto})` },
+                { key: "no_gto",              label: `sem análise (${noGto})`,       cls: "text-muted-foreground/60" },
+                { key: "gto_correct",         label: "GTO ✓",    cls: "text-emerald-400" },
+                { key: "gto_mixed",           label: "misto",     cls: "text-sky-400" },
+                { key: "gto_minor_deviation", label: "~desvio",   cls: "text-amber-400" },
+                { key: "gto_critical",        label: "GTO erro",  cls: "text-red-400" },
+              ];
+              return (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Sigma className="size-3 text-muted-foreground" aria-hidden />
+                  {GTO_FILTERS.map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => setGtoFilter(f.key)}
+                      className={cn(
+                        "rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        gtoFilter === f.key
+                          ? "bg-primary/10 text-primary ring-1 ring-primary/30"
+                          : cn("hover:bg-secondary hover:text-foreground", f.cls ?? "text-muted-foreground")
+                      )}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                  <span className="ml-auto font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
+                    {t(filtered.length === 1 ? "detail.handCount" : "detail.handCount_plural", { count: filtered.length })}
+                  </span>
+                </div>
+              );
+            })()}
           </section>
 
           <section className="grid grid-cols-1 gap-3">

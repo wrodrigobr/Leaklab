@@ -2,7 +2,7 @@
 PokerLeakLab API v2 — com persistência SQLite e autenticação JWT.
 """
 from __future__ import annotations
-import sys, os, re, uuid, time, json, logging
+import sys, os, re, uuid, time, json, logging, threading
 from pathlib import Path
 
 _BASE = Path(__file__).resolve().parent.parent  # backend/
@@ -2053,26 +2053,36 @@ def coach_student_replay(student_id, tournament_id, hand_id):
     target = next((h for h in hands if str(h.hand_id) == str(hand_id)), None)
     if not target:
         return jsonify({'error': f'Mão {hand_id} não encontrada'}), 404
+    _db_all_c  = get_decisions(t['id'])
+    _db_hand_c = [d for d in _db_all_c if str(d.get('hand_id')) == str(hand_id)]
+    _gto_idx_c = {
+        (d.get('street',''), (d.get('action_taken','') or '').rstrip('s') or d.get('action_taken','')):
+        {'gto_label': d.get('gto_label'), 'gto_action': d.get('gto_action')}
+        for d in _db_hand_c if d.get('gto_label')
+    }
     try:
         from leaklab.pipeline import build_decision_inputs_for_hand
         from leaklab.decision_engine_v11 import evaluate_decision as _eval
         live_decisions = []
         for di in build_decision_inputs_for_hand(target):
             r = _eval(di)
+            action_norm = (r.get('actionTaken','') or '').rstrip('s') or r.get('actionTaken','')
+            gto_data = _gto_idx_c.get((di['street'], action_norm), {})
             live_decisions.append({
                 'hand_id': str(target.hand_id), 'street': di['street'],
                 'action_taken': r.get('actionTaken', ''), 'best_action': r.get('bestAction', ''),
                 'label': r['evaluation']['label'], 'score': r['evaluation']['mistakeScore'],
                 'context': di.get('context', {}), 'math': di.get('math', {}),
                 'breakdown': r['evaluation'].get('scoreBreakdown', {}),
+                'gto_label':  gto_data.get('gto_label'),
+                'gto_action': gto_data.get('gto_action'),
             })
         hand_decisions = live_decisions
     except Exception:
-        decisions_db = get_decisions(t['id'])
-        hand_decisions = [d for d in decisions_db if str(d.get('hand_id')) == str(hand_id)]
+        hand_decisions = _db_hand_c
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
     # Attach coach annotations for decisions in this hand
-    db_decisions = get_decisions(t['id'])
+    db_decisions = _db_all_c
     hand_db_decisions = [d for d in db_decisions if str(d.get('hand_id')) == str(hand_id)]
     if hand_db_decisions:
         ann_list = get_annotations_for_decisions([d['id'] for d in hand_db_decisions])
@@ -2695,6 +2705,16 @@ def get_replay(tournament_id, hand_id):
     if not target:
         return jsonify({'error': f'Mão {hand_id} não encontrada no torneio'}), 404
 
+    # Buscar decisões do banco para enriquecer com gto_label/gto_action
+    _db_all      = get_decisions(t['id'])
+    _db_hand     = [d for d in _db_all if str(d.get('hand_id')) == str(hand_id)]
+    # Índice (street, action_taken) → dados GTO do banco
+    _gto_index   = {
+        (d.get('street',''), (d.get('action_taken','') or '').rstrip('s') or d.get('action_taken','')):
+        {'gto_label': d.get('gto_label'), 'gto_action': d.get('gto_action')}
+        for d in _db_hand if d.get('gto_label')
+    }
+
     # Re-executar o engine ao vivo para garantir scores/labels atualizados
     # O banco pode ter dados de versões antigas do engine com bugs corrigidos
     try:
@@ -2703,6 +2723,8 @@ def get_replay(tournament_id, hand_id):
         live_decisions = []
         for di in build_decision_inputs_for_hand(target):
             r = _eval(di)
+            action_norm = (r.get('actionTaken','') or '').rstrip('s') or r.get('actionTaken','')
+            gto_data = _gto_index.get((di['street'], action_norm), {})
             live_decisions.append({
                 'hand_id':      str(target.hand_id),
                 'street':       di['street'],
@@ -2713,12 +2735,13 @@ def get_replay(tournament_id, hand_id):
                 'context':      di.get('context', {}),
                 'math':         di.get('math', {}),
                 'breakdown':    r['evaluation'].get('scoreBreakdown', {}),
+                'gto_label':    gto_data.get('gto_label'),
+                'gto_action':   gto_data.get('gto_action'),
             })
         hand_decisions = live_decisions
     except Exception:
         # Fallback para dados do banco se engine falhar
-        decisions_db   = get_decisions(t['id'])
-        hand_decisions = [d for d in decisions_db if str(d.get('hand_id')) == str(hand_id)]
+        hand_decisions = _db_hand
 
     # Construir replay data
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
@@ -2801,14 +2824,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     # Normalizar: banco usa 'fold','call','raise'; parser usa 'folds','calls','raises'
     def _norm(a): return a.rstrip('s') if a and a.endswith('s') else (a or '')
 
-    error_map = {}
+    # Mapa unificado: todas as decisões do hero, indexadas por (street, action)
+    all_decisions = {}
     for d in decisions_db:
-        # Só marcar como erro se realmente é um erro — ignorar 'standard'
-        if d.get('label', 'standard') in ('clear_mistake', 'small_mistake', 'marginal'):
-            key = (d.get('street', ''), _norm(d.get('action_taken', '')))
-            error_map[key] = d
+        key = (d.get('street', ''), _norm(d.get('action_taken', '')))
+        all_decisions[key] = d
 
-    # Re-rodar o engine para pegar contexto completo (pot odds, equity, ICM)
+    # Re-rodar o engine para enriquecer TODAS as decisões hero com dados matemáticos
     try:
         from leaklab.pipeline import build_decision_inputs_for_hand
         from leaklab.decision_engine_v11 import evaluate_decision
@@ -2816,12 +2838,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         for di in engine_inputs:
             r   = evaluate_decision(di)
             key = (di['street'], _norm(r.get('actionTaken', '')))
-            if key in error_map:
-                ctx  = di.get('context', {})
-                math = di.get('math', {})
-                error_map[key]['context'] = ctx
-                error_map[key]['math']    = math
-                error_map[key]['breakdown'] = r['evaluation'].get('scoreBreakdown', {})
+            if key in all_decisions:
+                all_decisions[key]['context']   = di.get('context', {})
+                all_decisions[key]['math']      = di.get('math', {})
+                all_decisions[key]['breakdown'] = r['evaluation'].get('scoreBreakdown', {})
     except Exception:
         pass  # fallback gracioso — continua sem dados extras
 
@@ -2949,15 +2969,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 current_revealed[str(pseat)] = shows_map[action.player]
 
         err_key  = (action.street, _norm(action.action))
-        decision = error_map.get(err_key) if action.player == hero else None
+        decision = all_decisions.get(err_key) if action.player == hero else None
 
-        # Dados extras do erro para o popup do replayer
-        err_extra = {}
+        # Dados técnicos para QUALQUER ação do hero (não só erros)
+        tech = {}
         if decision:
-            ctx   = decision.get('context', {})
-            math  = decision.get('math', {})
-            bd    = decision.get('breakdown', {})
-            err_extra = {
+            ctx  = decision.get('context', {})
+            math = decision.get('math', {})
+            bd   = decision.get('breakdown', {})
+            tech = {
                 'pot_odds_equity': math.get('potOddsEquity'),
                 'hand_equity':     math.get('estimatedHandEquity'),
                 'draw_profile':    math.get('drawProfile', 'none'),
@@ -2969,21 +2989,72 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 'context_penalty': bd.get('contextPenalty', 0),
             }
 
+        # GTO reconciliation — solver é fonte autoritativa quando disponível
+        gto_label   = decision.get('gto_label')  if decision else None
+        gto_action  = decision.get('gto_action') if decision else None
+        engine_best = decision.get('best_action') if decision else None
+
+        # Detectar incompatibilidade de spot GTO:
+        # "check" não é ação válida quando o hero enfrenta uma aposta (engine diz "call")
+        # "call" não é ação válida quando não há aposta (engine diz "check"/"bet")
+        _FACING_BET  = {'call', 'calls'}
+        _NO_BET      = {'check', 'checks', 'bet', 'bets'}
+        gto_spot_mismatch = False
+        if gto_action and engine_best:
+            gto_n = _norm(gto_action)
+            eng_n = _norm(engine_best)
+            if eng_n in _FACING_BET and gto_n in _NO_BET:
+                gto_spot_mismatch = True   # GTO diz check/bet mas hero enfrenta aposta
+            elif eng_n in _NO_BET and gto_n in _FACING_BET:
+                gto_spot_mismatch = True   # GTO diz call mas hero não enfrenta aposta
+
+        # Calcular best_action e is_error reconciliados
+        if gto_spot_mismatch:
+            # Spot incompatível: ignora recomendação de ação do GTO, usa apenas o engine
+            is_error        = (decision is not None and
+                               decision.get('label', 'standard') in ('clear_mistake', 'small_mistake', 'marginal'))
+            reconciled_best = engine_best
+        elif gto_label in ('gto_correct', 'gto_mixed'):
+            # GTO confirma ação jogada como válida — engine pode ter dado alarme falso
+            is_error        = False
+            reconciled_best = _norm(action.action)
+        elif gto_label in ('gto_minor_deviation', 'gto_critical') and gto_action:
+            # GTO aponta desvio — usa sua recomendação como "ideal"
+            is_error        = True
+            reconciled_best = gto_action
+        else:
+            # Sem dados GTO — confia apenas no engine
+            is_error = (decision is not None and
+                        decision.get('label', 'standard') in ('clear_mistake', 'small_mistake', 'marginal'))
+            reconciled_best = engine_best
+
+        # Detectar conflito engine vs GTO (quando não há mismatch de spot)
+        gto_engine_conflict = (
+            not gto_spot_mismatch
+            and gto_label is not None
+            and engine_best is not None
+            and _norm(engine_best) != _norm(reconciled_best or '')
+        )
+
         timeline.append(snap({
-            'type':           'action',
-            'player':         action.player,
-            'seat':           pseat,
-            'action':         _normalize_action(action.action),
-            'amount':         amt,
-            'is_hero':        action.player == hero,
-            'is_error':       decision is not None and decision.get('label','standard') in ('clear_mistake','small_mistake','marginal'),
-            'error_label':    decision.get('label')       if decision else None,
-            'error_score':    round(float(decision.get('score', 0)), 3) if decision else None,
-            'best_action':    decision.get('best_action')  if decision else None,
+            'type':               'action',
+            'player':             action.player,
+            'seat':               pseat,
+            'action':             _normalize_action(action.action),
+            'amount':             amt,
+            'is_hero':            action.player == hero,
+            'is_error':           is_error,
+            'error_label':        decision.get('label')                             if decision else None,
+            'error_score':        round(float(decision.get('score', 0)), 3)         if decision else None,
+            'best_action':        reconciled_best                                    if decision else None,
+            'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
+            'gto_label':          gto_label,
+            'gto_action':         gto_action,
+            'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
             'desc':           f"{action.player}: {_normalize_action(action.action)}"
                                 + (f' {int(amt)}' if amt else ''),
             'revealed_cards': dict(current_revealed) if current_revealed else None,
-            **err_extra,
+            **tech,
         }))
 
     # Adicionar frame de conclusão com resultado da mão
@@ -3719,14 +3790,15 @@ def gto_strategy():
     202 → found=False, spot enfileirado para solve
     """
     from leaklab.gto_solver import lookup_gto
-    d             = request.get_json(force=True) or {}
-    street        = str(d.get('street', 'preflop')).lower()
-    position      = str(d.get('position', '')).upper()
-    board         = d.get('board', [])
-    hero_hand     = d.get('hero_hand', [])
-    hero_stack_bb = float(d.get('hero_stack_bb', 30.0))
-    action_seq    = str(d.get('action_seq', 'rfi'))
-    vs_position   = str(d.get('vs_position', ''))
+    d               = request.get_json(force=True) or {}
+    street          = str(d.get('street', 'preflop')).lower()
+    position        = str(d.get('position', '')).upper()
+    board           = d.get('board', [])
+    hero_hand       = d.get('hero_hand', [])
+    hero_stack_bb   = float(d.get('hero_stack_bb', 30.0))
+    action_seq      = str(d.get('action_seq', 'rfi'))
+    vs_position     = str(d.get('vs_position', ''))
+    facing_size_bb  = float(d.get('facing_size_bb', 0.0) or 0.0)
 
     if not position or not hero_hand:
         return jsonify({'error': 'position e hero_hand são obrigatórios'}), 400
@@ -3735,6 +3807,7 @@ def gto_strategy():
         street=street, position=position, board=board,
         hero_hand=hero_hand, hero_stack_bb=hero_stack_bb,
         action_seq=action_seq, vs_position=vs_position,
+        facing_size_bb=facing_size_bb,
     )
     return jsonify(result), 200 if result.get('found') else 202
 
@@ -3836,6 +3909,61 @@ def admin_gto_queue():
         return jsonify({'queue': [dict(r) for r in rows], 'counts': counts})
     finally:
         conn.close()
+
+
+@app.route('/player/hands/<hand_id>/request-gto', methods=['POST'])
+@require_auth
+def player_request_gto(hand_id):
+    """Usuário solicita análise GTO para uma mão específica."""
+    from database.repositories import request_gto_for_hand, get_decisions
+    user_id = g.current_user['id']
+    body = request.get_json(force=True) or {}
+    tournament_id = body.get('tournament_id')
+    if not tournament_id:
+        return jsonify({'error': 'tournament_id obrigatório'}), 400
+
+    # Verificar acesso
+    t = get_tournament(user_id, str(tournament_id))
+    if not t:
+        return jsonify({'error': 'Torneio não encontrado'}), 404
+
+    result = request_gto_for_hand(t['id'], hand_id, user_id)
+    status_map = {
+        'pending':    'Na fila — análise será processada em breve.',
+        'processing': 'Processando agora...',
+        'done':       'Análise já concluída.',
+        'error':      'Ocorreu um erro no processamento anterior.',
+    }
+    return jsonify({
+        'queued':  result['inserted'],
+        'status':  result['status'],
+        'id':      result['id'],
+        'message': status_map.get(result['status'], 'Na fila.'),
+    })
+
+
+@app.route('/player/hands/<hand_id>/gto-status', methods=['GET'])
+@require_auth
+def player_gto_status(hand_id):
+    """Retorna status da solicitação GTO para uma mão."""
+    from database.repositories import get_gto_hand_request_status
+    user_id = g.current_user['id']
+    row = get_gto_hand_request_status(hand_id, user_id)
+    if not row:
+        return jsonify({'status': 'not_requested'})
+    return jsonify(dict(row))
+
+
+@app.route('/admin/gto/hand-queue', methods=['GET'])
+@require_admin
+def admin_gto_hand_queue():
+    """Lista fila de solicitações GTO por mão (admin)."""
+    from database.repositories import get_gto_hand_request_queue
+    rows = get_gto_hand_request_queue(limit=100)
+    counts = {}
+    for r in rows:
+        counts[r['status']] = counts.get(r['status'], 0) + 1
+    return jsonify({'queue': [dict(r) for r in rows], 'counts': counts})
 
 
 @app.route('/admin/gto/reprocess-decisions', methods=['POST'])
@@ -3990,5 +4118,142 @@ def method_not_allowed(_): return jsonify({'error': 'Método não permitido'}), 
 def not_found(_): return jsonify({'error': 'Rota não encontrada'}), 404
 
 
+def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
+    """
+    Processa um item da gto_hand_requests: busca decisões da mão, roda lookup_gto
+    em cada uma, salva gto_label/gto_action no banco.
+    Retorna (status, error_msg).
+    """
+    from database.repositories import (
+        get_decisions, update_decision_gto, update_gto_hand_request,
+    )
+    from leaklab.gto_solver import lookup_gto
+    from leaklab.pipeline import build_decision_inputs_for_hand
+    from leaklab.decision_engine_v11 import evaluate_decision
+
+    request_id    = req['id']
+    tournament_id = req['tournament_id']
+    hand_id       = req['hand_id']
+
+    try:
+        from database.repositories import get_tournament_by_db_id as _get_t_by_id
+        # tournament_id aqui é o DB int (t['id']), não o hash string
+        t = _get_t_by_id(req.get('requested_by', 0), tournament_id)
+        if not t:
+            # fallback: buscar sem filtro de user (admin worker)
+            from database.schema import get_conn as _gc
+            from database.repositories import _fetchone, _adapt
+            _conn = _gc()
+            try:
+                t = _fetchone(_conn, _adapt("SELECT * FROM tournaments WHERE id = ?"), (tournament_id,))
+            finally:
+                _conn.close()
+        if not t or not t.get('raw_text'):
+            return 'error', 'Torneio sem raw_text no banco'
+
+        raw_text = t['raw_text']
+        site = _detect_site(raw_text)
+        if site == 'ggpoker':
+            from leaklab.parser import parse_pokerstars_file_from_text as _parse_gg
+            hands = _parse_gg(raw_text)
+        else:
+            from leaklab.parser import parse_pokerstars_file_from_text as _parse_ps
+            hands = _parse_ps(raw_text)
+
+        target = next((h for h in hands if str(h.hand_id) == str(hand_id)), None)
+        if not target:
+            return 'error', f'Mão {hand_id} não encontrada no raw_text'
+
+        hero = target.hero or t.get('hero', 'Hero')
+        db_decisions = [d for d in get_decisions(tournament_id)
+                        if str(d.get('hand_id')) == str(hand_id)]
+
+        # Índice rápido: (street, action_taken) → decision_id
+        def _norm(a): return a.rstrip('s') if a and a.endswith('s') else (a or '')
+        db_index = {(_norm(d.get('street', '')), _norm(d.get('action_taken', ''))): d
+                    for d in db_decisions}
+
+        update_gto_hand_request(request_id, 'processing',
+                                decisions_found=len(db_decisions))
+
+        done = 0
+        for di in build_decision_inputs_for_hand(target):
+            ctx = di.get('context', {})
+            key = (_norm(di['street']), _norm(di.get('actionTaken', '') or ''))
+            db_dec = db_index.get(key)
+            if not db_dec:
+                continue
+            if db_dec.get('gto_label'):
+                done += 1
+                continue  # já tem análise
+
+            spot = di.get('spot', {})
+            gto = lookup_gto(
+                street          = di['street'],
+                position        = spot.get('position', ctx.get('position', '')),
+                board           = spot.get('board', di.get('board', [])),
+                hero_hand       = di.get('heroCards', []),
+                hero_stack_bb   = spot.get('effectiveStackBb', ctx.get('heroStackBb', 20.0)),
+                action_seq      = ctx.get('actionSeq', 'rfi'),
+                vs_position     = spot.get('villainPosition', ctx.get('vsPosition', '')),
+                facing_size_bb  = float(spot.get('facingSize', 0) or 0),
+                pot_bb          = float(spot.get('potSize', 0) or 0),
+            )
+
+            if gto.get('found') and gto.get('strategy'):
+                r   = evaluate_decision(di)
+                acted = _norm(r.get('actionTaken', '') or di.get('actionTaken', ''))
+                # Determinar label com base na frequência GTO da ação jogada
+                played_freq = next(
+                    (s['frequency'] for s in gto['strategy']
+                     if _norm(str(s.get('action', ''))) == acted),
+                    0.0
+                )
+                top_action = max(gto['strategy'], key=lambda s: s['frequency'])
+                gto_action = _norm(str(top_action.get('action', '')))
+
+                if played_freq >= 0.40:
+                    gto_label = 'gto_correct'
+                elif played_freq >= 0.15:
+                    gto_label = 'gto_mixed'
+                elif played_freq >= 0.05:
+                    gto_label = 'gto_minor_deviation'
+                else:
+                    gto_label = 'gto_critical'
+
+                update_decision_gto(db_dec['id'], gto_label, gto_action)
+                done += 1
+
+        return 'done', None
+
+    except Exception as exc:
+        log.exception("GTO hand worker error req_id=%s", request_id)
+        return 'error', str(exc)
+
+
+def _gto_hand_worker_loop():
+    """Worker em background: processa gto_hand_requests pendentes a cada 30s."""
+    from database.repositories import (
+        get_pending_gto_hand_requests, update_gto_hand_request,
+    )
+    time.sleep(10)  # aguardar app inicializar
+    while True:
+        try:
+            pending = get_pending_gto_hand_requests(limit=3)
+            for req in pending:
+                log.info("GTO hand worker: processando req_id=%s hand=%s", req['id'], req['hand_id'])
+                status, err = _process_gto_hand_request(dict(req))
+                update_gto_hand_request(
+                    req['id'], status,
+                    error_msg=err,
+                )
+                log.info("GTO hand worker: req_id=%s → %s", req['id'], status)
+        except Exception:
+            log.exception("GTO hand worker loop error")
+        time.sleep(30)
+
+
 if __name__ == '__main__':
+    _worker = threading.Thread(target=_gto_hand_worker_loop, daemon=True, name='gto-hand-worker')
+    _worker.start()
     app.run(debug=True, port=5000)

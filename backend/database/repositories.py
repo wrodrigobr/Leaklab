@@ -4367,3 +4367,100 @@ def mark_solver_job_done(spot_hash: str, status: str = 'done') -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+# ── GTO Hand Requests ─────────────────────────────────────────────────────────
+
+def request_gto_for_hand(tournament_id: int, hand_id: str, user_id: int) -> dict:
+    """Enfileira análise GTO para uma mão. Retorna {'status': ..., 'id': ...}."""
+    conn = get_conn()
+    try:
+        existing = _fetchone(conn, _adapt(
+            "SELECT id, status FROM gto_hand_requests WHERE hand_id = ? AND requested_by = ?"
+        ), (hand_id, user_id))
+        if existing:
+            return {'inserted': False, 'id': existing['id'], 'status': existing['status']}
+        conn.execute(_adapt("""
+            INSERT INTO gto_hand_requests (tournament_id, hand_id, requested_by, status)
+            VALUES (?, ?, ?, 'pending')
+        """), (tournament_id, hand_id, user_id))
+        conn.commit()
+        row = _fetchone(conn, _adapt(
+            "SELECT id FROM gto_hand_requests WHERE hand_id = ? AND requested_by = ?"
+        ), (hand_id, user_id))
+        return {'inserted': True, 'id': row['id'] if row else None, 'status': 'pending'}
+    finally:
+        conn.close()
+
+
+def get_gto_hand_request_status(hand_id: str, user_id: int) -> Optional[dict]:
+    conn = get_conn()
+    try:
+        return _fetchone(conn, _adapt("""
+            SELECT id, status, decisions_found, decisions_done, error_msg, created_at, processed_at
+            FROM gto_hand_requests WHERE hand_id = ? AND requested_by = ?
+        """), (hand_id, user_id))
+    finally:
+        conn.close()
+
+
+def get_pending_gto_hand_requests(limit: int = 5) -> list:
+    conn = get_conn()
+    try:
+        return _fetchall(conn, _adapt("""
+            SELECT id, tournament_id, hand_id, requested_by
+            FROM gto_hand_requests
+            WHERE status = 'pending'
+            ORDER BY created_at ASC
+            LIMIT ?
+        """), (limit,))
+    finally:
+        conn.close()
+
+
+def update_gto_hand_request(request_id: int, status: str,
+                             decisions_found: int = None, decisions_done: int = None,
+                             error_msg: str = None) -> None:
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("""
+            UPDATE gto_hand_requests
+            SET status = ?,
+                decisions_found = COALESCE(?, decisions_found),
+                decisions_done  = COALESCE(?, decisions_done),
+                error_msg       = COALESCE(?, error_msg),
+                processed_at    = CASE WHEN ? IN ('done', 'error') THEN datetime('now') ELSE processed_at END
+            WHERE id = ?
+        """), (status, decisions_found, decisions_done, error_msg, status, request_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_gto_hand_request_queue(limit: int = 50) -> list:
+    """Lista fila completa (admin view)."""
+    conn = get_conn()
+    try:
+        return _fetchall(conn, _adapt("""
+            SELECT r.id, r.tournament_id, r.hand_id, r.status,
+                   r.decisions_found, r.decisions_done, r.error_msg,
+                   r.created_at, r.processed_at, u.username
+            FROM gto_hand_requests r
+            JOIN users u ON u.id = r.requested_by
+            ORDER BY r.created_at DESC
+            LIMIT ?
+        """), (limit,))
+    finally:
+        conn.close()
+
+
+def update_decision_gto(decision_id: int, gto_label: str, gto_action: str) -> None:
+    """Atualiza gto_label e gto_action de uma decisão existente."""
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("""
+            UPDATE decisions SET gto_label = ?, gto_action = ? WHERE id = ?
+        """), (gto_label, gto_action, decision_id))
+        conn.commit()
+    finally:
+        conn.close()

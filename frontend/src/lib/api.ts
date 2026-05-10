@@ -248,6 +248,16 @@ export interface ReplayStep {
   m_ratio?: number;
   icm_pressure?: string;
   hero_stack_bb?: number;
+  // GTO analysis (postflop hero actions only)
+  gto_label?: "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical" | null;
+  gto_action?: string | null;
+  engine_best?: string | null;  // engine suggestion when it conflicts with GTO reconciliation
+  gto_spot_mismatch?: boolean | null;  // GTO action incompatible with game state (e.g. check when facing a bet)
+  // Score breakdown (all hero actions)
+  draw_profile?: string | null;
+  math_penalty?: number | null;
+  range_penalty?: number | null;
+  context_penalty?: number | null;
   // showdown-specific
   revealed_cards?: Record<string, string[]>; // seat_num → ["Ah","Kd"]
   summary?: {
@@ -352,6 +362,17 @@ export const tournaments = {
 
   replay: (tournamentId: string, handId: string) =>
     request<ReplayData>(`/replay/${tournamentId}/${handId}`),
+
+  requestGtoAnalysis: (tournamentId: string, handId: string) =>
+    request<{ queued: boolean; status: string; message: string; id: number | null }>(
+      `/player/hands/${handId}/request-gto`,
+      { method: "POST", body: JSON.stringify({ tournament_id: tournamentId }) }
+    ),
+
+  getGtoRequestStatus: (handId: string) =>
+    request<{ status: "not_requested" | "pending" | "processing" | "done" | "error"; decisions_found?: number; decisions_done?: number }>(
+      `/player/hands/${handId}/gto-status`
+    ),
 
   analyzeDecision: (decisionId: number) =>
     request<{ analysis: string; cached: boolean }>("/analyze/decision", {

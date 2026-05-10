@@ -31,16 +31,38 @@ def stack_bucket(bb: float) -> str:
     return "100bb+"
 
 
+BET_BUCKETS = [
+    (0,    0,    "no_bet"),
+    (0,    3,    "0-3bb"),
+    (3,    8,    "3-8bb"),
+    (8,    20,   "8-20bb"),
+    (20,   40,   "20-40bb"),
+    (40,   float("inf"), "40bb+"),
+]
+
+
+def bet_bucket(facing_size_bb: float) -> str:
+    """Converte aposta enfrentada em bucket discreto. 0 = spot sem aposta."""
+    if facing_size_bb <= 0:
+        return "no_bet"
+    for lo, hi, label in BET_BUCKETS[1:]:
+        if lo < facing_size_bb <= hi:
+            return label
+    return "40bb+"
+
+
 def compute_spot_hash(
     street: str,
     position: str,
     board: list[str],
     hero_hand: list[str],
     hero_stack_bb: float,
+    facing_size_bb: float = 0.0,
 ) -> str:
     """
     Retorna hash SHA256[:16] determinístico do spot.
     Normalização: street minúsculo, position maiúsculo, listas ordenadas.
+    facing_size_bb distingue spots "sem aposta" de "facing bet" e seus tamanhos.
     """
     canonical = {
         "street":       street.lower(),
@@ -48,6 +70,7 @@ def compute_spot_hash(
         "board":        sorted(board),
         "hand":         sorted(hero_hand),
         "stack_bucket": stack_bucket(hero_stack_bb),
+        "bet_bucket":   bet_bucket(facing_size_bb),
     }
     return hashlib.sha256(
         json.dumps(canonical, sort_keys=True).encode()
