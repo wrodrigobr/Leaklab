@@ -70,6 +70,7 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'potSize':          state.pot_size,
             'facingSize':       state.facing_size,
             'raiseSizeBb':      state.facing_size,
+            'board':            state.board or [],
         },
         'hand_profile': hand_profile,
         'math': {

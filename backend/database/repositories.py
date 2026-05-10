@@ -4066,6 +4066,16 @@ def get_gto_node(spot_hash: str) -> Optional[dict]:
         conn.close()
 
 
+def get_gto_node_by_spot(street: str, board: list, position: str) -> Optional[dict]:
+    """Lookup GTO usando street + board (ordenado) + posição do hero."""
+    import hashlib
+    n = {'flop': 3, 'turn': 4, 'river': 5}.get(street, 3)
+    relevant = sorted(board[:n])
+    key = f"{street}|{','.join(relevant)}|{position}"
+    spot_hash = hashlib.sha256(key.encode()).hexdigest()[:16]
+    return get_gto_node(spot_hash)
+
+
 def insert_gto_nodes(nodes: list[dict]) -> int:
     """
     Insere nós GTO verificados pelo solver. Exige exploitability_pct.

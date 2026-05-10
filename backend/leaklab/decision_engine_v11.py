@@ -2,6 +2,87 @@ from __future__ import annotations
 from typing import Dict, Any
 
 
+# ── GTO helpers ───────────────────────────────────────────────────────────────
+
+def _gto_action_matches(player_action: str, gto_action: str) -> bool:
+    """Verifica se a ação do jogador corresponde à ação GTO primária."""
+    aggressive = {'bet', 'raise', 'jam'}
+    gto_lower  = gto_action.lower()
+    if gto_lower.startswith('bet') or gto_lower.startswith('raise'):
+        return player_action in aggressive
+    return player_action == gto_lower
+
+
+def _gto_classify(player_action: str, gto_action: str, gto_freq: float, hero_equity: float | None) -> str:
+    """
+    Classifica o desvio em relação ao GTO usando três dimensões:
+      - Frequência GTO da ação primária (inversamente, frequência da alternativa)
+      - Equity do hero no spot
+    Retorna: gto_correct | gto_mixed | gto_minor_deviation | gto_critical
+    """
+    if _gto_action_matches(player_action, gto_action):
+        return 'gto_correct'
+
+    alt_freq = 1.0 - gto_freq  # frequência aproximada da ação alternativa
+
+    if alt_freq >= 0.40:
+        return 'gto_mixed'  # alternativa jogada ≥40%: parte da estratégia mista
+
+    if alt_freq >= 0.15:
+        # Zona limiar: considera equity do hero
+        if hero_equity is not None and hero_equity >= 0.60:
+            return 'gto_mixed'
+        return 'gto_minor_deviation'
+
+    return 'gto_critical'  # alternativa < 15%: desvio claro
+
+
+def _gto_label_cap(label: str, gto_label: str) -> str:
+    """
+    Se GTO confirma que a ação era válida (correct/mixed), nunca classifica
+    como erro crítico — máximo 'marginal'.
+    """
+    if gto_label in ('gto_correct', 'gto_mixed'):
+        if label in ('small_mistake', 'clear_mistake'):
+            return 'marginal'
+    return label
+
+
+def _enrich_gto(input_data: Dict[str, Any]) -> dict:
+    """Faz lookup GTO e retorna dict com classificação. Silencioso em caso de erro."""
+    street = input_data.get('street', '')
+    if street not in ('flop', 'turn', 'river'):
+        return {'available': False}
+
+    spot     = input_data.get('spot', {})
+    board    = spot.get('board', [])
+    position = spot.get('position', '')
+    equity   = input_data.get('math', {}).get('estimatedHandEquity')
+    player_action = input_data.get('player_action', '')
+
+    if not board or not position:
+        return {'available': False}
+
+    try:
+        from database.repositories import get_gto_node_by_spot
+        node = get_gto_node_by_spot(street, board, position)
+    except Exception:
+        return {'available': False}
+
+    if not node:
+        return {'available': False}
+
+    gto_label = _gto_classify(player_action, node['gto_action'], node['gto_freq'], equity)
+
+    return {
+        'available':       True,
+        'gto_action':      node['gto_action'],
+        'gto_freq':        node['gto_freq'],
+        'exploitability':  node.get('exploitability_pct'),
+        'gto_label':       gto_label,
+    }
+
+
 def clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
@@ -223,6 +304,12 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         label,
         best_action=_best_action,
     )
+
+    # GTO enrichment: consulta gto_nodes e ajusta label se necessário
+    gto = _enrich_gto(input_data)
+    if gto.get('available'):
+        label = _gto_label_cap(label, gto['gto_label'])
+
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
     return {
         "handId": input_data["hand_id"],
@@ -248,6 +335,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             "streetCapApplied": threshold_pack["streetCapApplied"],
         },
         "interpretation": interpretation,
+        "gto": gto,
         "debug": {
             "rangeZone": range_eval.get("rangeZone"),
             "alternativeActions": range_eval.get("alternativeActions") or [],
