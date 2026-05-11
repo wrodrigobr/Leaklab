@@ -235,9 +235,9 @@ function SidePanels({
           )}
           {gtoRequestStatus === "queued" && (
             <div className="flex items-center gap-2 rounded-lg bg-sky-500/5 border border-sky-500/20 px-2.5 py-2">
-              <Clock className="size-3.5 text-sky-400 shrink-0" />
+              <Loader2 className="size-3.5 text-sky-400 shrink-0 animate-spin" />
               <p className="text-[11px] text-sky-400">
-                Na fila — o solver irá processar esta mão em breve. Reabra o replayer após alguns minutos.
+                Na fila — verificando a cada 4s. Os resultados aparecerão automaticamente.
               </p>
             </div>
           )}
@@ -662,6 +662,36 @@ const Replayer = () => {
       setGtoRequestStatus("error");
     }
   };
+
+  // Polling: enquanto status é "queued"/"processing", verifica a cada 4s
+  // Quando "done", recarrega o replay para exibir os dados GTO recém-calculados
+  useEffect(() => {
+    if (gtoRequestStatus !== "queued") return;
+    if (!tournamentId || !handId) return;
+
+    const poll = setInterval(async () => {
+      try {
+        const s = await tournamentsApi.getGtoRequestStatus(handId);
+        if (s.status === "done") {
+          clearInterval(poll);
+          // Recarrega replay com os novos gto_label/gto_action do banco
+          const replayFn = studentId
+            ? coachDashboard.studentReplay(studentId, tournamentId, handId)
+            : tournamentsApi.replay(tournamentId, handId);
+          const fresh = await replayFn;
+          setReplayData(fresh);
+          setGtoRequestStatus("done");
+        } else if (s.status === "error") {
+          clearInterval(poll);
+          setGtoRequestStatus("error");
+        }
+      } catch {
+        // ignora erros transitórios de rede
+      }
+    }, 4000);
+
+    return () => clearInterval(poll);
+  }, [gtoRequestStatus, tournamentId, handId, studentId]);
 
   // ── No params: show placeholder ──────────────────────────────────────────────
   if (!tournamentId || !handId) {

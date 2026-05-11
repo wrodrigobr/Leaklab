@@ -3916,7 +3916,7 @@ def admin_gto_queue():
 def player_request_gto(hand_id):
     """Usuário solicita análise GTO para uma mão específica."""
     from database.repositories import request_gto_for_hand, get_decisions
-    user_id = g.current_user['id']
+    user_id = g.user_id
     body = request.get_json(force=True) or {}
     tournament_id = body.get('tournament_id')
     if not tournament_id:
@@ -3947,7 +3947,7 @@ def player_request_gto(hand_id):
 def player_gto_status(hand_id):
     """Retorna status da solicitação GTO para uma mão."""
     from database.repositories import get_gto_hand_request_status
-    user_id = g.current_user['id']
+    user_id = g.user_id
     row = get_gto_hand_request_status(hand_id, user_id)
     if not row:
         return jsonify({'status': 'not_requested'})
