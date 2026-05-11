@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.97.0] — 2026-05-11 — feat(UX-020): stacks BB com precisão decimal + C-bet real no HUD
+
+### Changed
+- **Stacks sem arredondamento** (`PokerTableV3`): `fmtAmt` agora exibe 1 decimal quando necessário (`1.8 BB`), inteiros sem decimal (`4 BB`), espaço antes de "BB"
+- **C-Bet substituiu Flop Bet** no HUD principal e em `StudentDetail`: indicador passa a medir apenas bets no flop como agressor pré-flop (denominator = oportunidades de c-bet, não total de decisões no flop)
+
+### Fixed
+- Backend `get_player_stats`: nova query SQL calcula `cbet_pct` via subquery que filtra hands onde hero raised/jammed preflop e viu o flop; campo `flop_bet_pct` removido
+- Interface `PlayerStatsResponse` e `PlayerStats` atualizadas para `cbet_pct`
+
+---
+
 ## [v0.96.0] — 2026-05-10 — feat(range-panel): contexto GTO integrado no painel de ranges
 
 ### Added
