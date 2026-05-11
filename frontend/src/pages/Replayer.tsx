@@ -467,9 +467,12 @@ function SidePanels({
             <div className="flex items-start gap-1.5 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
               <span className="text-amber-400 text-[10px] mt-px shrink-0">⚠</span>
               <p className="text-[10px] text-muted-foreground leading-relaxed">
-                O motor heurístico sugeriu{" "}
-                <span className="font-mono font-bold text-foreground">{fmtAction(step.engine_best)}</span>{" "}
-                com base em equity e posição. O solver GTO é a fonte mais autoritativa.
+                Heurística e GTO divergem na alternativa:{" "}
+                heurística recomendou{" "}
+                <span className="font-mono font-bold text-foreground">{fmtAction(step.engine_best)}</span>
+                , solver GTO recomenda{" "}
+                <span className="font-mono font-bold text-foreground">{fmtAction(step.gto_action)}</span>
+                . Priorizando GTO.
               </p>
             </div>
           )}
