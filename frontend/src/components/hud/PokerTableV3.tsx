@@ -146,12 +146,37 @@ function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
   const cardH = 110, cardY = CY - cardH / 2 - 6;
   const cardBottom = cardY + cardH;
   const potStr = fmtAmt(pot, bb, unit);
+
+  // pill dimensions
+  const pillH = 32;
+  const pillW = Math.max(110, potStr.length * 12 + 82);
+  const pillX = CX - pillW / 2;
+  const pillY = cardY - 16 - pillH;
+  const textY  = pillY + pillH * 0.66;
+  const labelX = CX - pillW / 2 + 14;
+  const valueX = CX - pillW / 2 + 50;
+
   let h = "";
-  h += `<text x="${CX}" y="${cardY - 16}" text-anchor="middle" fill="rgba(255,255,255,0.88)" font-family="Inter,sans-serif" font-size="22" font-weight="700">Pot: ${potStr}</text>`;
+  h += `<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}"
+    fill="rgba(6,12,28,0.76)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>`;
+  h += `<text x="${labelX}" y="${textY}"
+    fill="#c9a84c" font-family="Space Grotesk,sans-serif" font-size="10" font-weight="600" letter-spacing="1.8">POT</text>`;
+  h += `<text x="${valueX}" y="${textY}"
+    fill="rgba(255,255,255,0.96)" font-family="Space Grotesk,sans-serif" font-size="16" font-weight="700">${potStr}</text>`;
+
   const chipBottomY = cardBottom + 38;
-  const potChipX = CX - 36;  // deslocado levemente para esquerda, longe das apostas do hero
+  const potChipX = CX - 36;
   h += chipStackSVG(potChipX, chipBottomY, pot);
-  h += `<text x="${potChipX}" y="${chipBottomY + 20}" text-anchor="middle" fill="#fff" font-family="Share Tech Mono,monospace" font-size="13" font-weight="700">${potStr}</text>`;
+
+  // chip label pill
+  const cpW = Math.max(72, potStr.length * 9 + 20);
+  const cpX = potChipX - cpW / 2;
+  const cpY = chipBottomY + 8;
+  h += `<rect x="${cpX}" y="${cpY}" width="${cpW}" height="20" rx="10"
+    fill="rgba(6,12,28,0.68)" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>`;
+  h += `<text x="${potChipX}" y="${cpY + 14}" text-anchor="middle"
+    fill="rgba(255,255,255,0.90)" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">${potStr}</text>`;
+
   return h;
 }
 
