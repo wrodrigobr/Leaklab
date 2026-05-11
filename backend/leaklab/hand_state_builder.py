@@ -4,19 +4,30 @@ from typing import Optional, List
 from .models import ParsedHand, HandState, ParsedAction
 
 # ── Board por street ──────────────────────────────────────────────────────────
+# PokerStars format:
+#   FLOP:  *** FLOP ***  [7s 6s 2c]
+#   TURN:  *** TURN ***  [7s 6s 2c] [Jd]
+#   RIVER: *** RIVER *** [7s 6s 2c Jd] [Kh]
+# Each regex captures the previous board (group 1) and the new card (group 2).
 _BOARD_STREET_RE = {
     'flop':  re.compile(r'\*\*\* FLOP \*\*\* \[([^\]]+)\]'),
-    'turn':  re.compile(r'\*\*\* TURN \*\*\* \[([^\]]+)\]'),
-    'river': re.compile(r'\*\*\* RIVER \*\*\* \[([^\]]+)\]'),
+    'turn':  re.compile(r'\*\*\* TURN \*\*\* \[([^\]]+)\] \[([^\]]+)\]'),
+    'river': re.compile(r'\*\*\* RIVER \*\*\* \[([^\]]+)\] \[([^\]]+)\]'),
 }
 
 def _board_for_street(raw_text: str, street: str) -> list:
-    """Retorna o board acumulado até aquela street."""
+    """Retorna o board acumulado até aquela street (inclusivo)."""
     pattern = _BOARD_STREET_RE.get(street)
     if not pattern or not raw_text:
         return []
     m = pattern.search(raw_text)
-    return m.group(1).split() if m else []
+    if not m:
+        return []
+    if m.lastindex == 1:
+        # Flop: apenas um grupo
+        return m.group(1).split()
+    # Turn/River: combina cartas anteriores + nova carta da street
+    return m.group(1).split() + m.group(2).split()
 
 
 
