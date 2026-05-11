@@ -125,6 +125,35 @@ def _call_llm_batch(decisions: List[dict]) -> List[str]:
     return _parse_llm_response(raw_text, len(decisions))
 
 
+_ICM_MULTIPLIER = {"low": 1.00, "medium": 1.15, "high": 1.30, "bubble": 1.50}
+_REV_IMPL_ADJ_PP = {"low": 0.0, "medium": 3.0, "high": 6.0}
+
+
+def _rev_impl_tier(pct: float) -> str:
+    if pct <= 10: return "low"
+    if pct <= 20: return "medium"
+    return "high"
+
+
+def _m_zone(m_ratio) -> str:
+    try:
+        m = float(m_ratio)
+        if m < 6:   return "push_fold"
+        if m <= 12: return "pressure"
+        return "normal"
+    except (TypeError, ValueError):
+        return "normal"
+
+
+def _action_warning(action: str, zone: str) -> str:
+    act = action.lower()
+    if zone == "push_fold" and any(x in act for x in ["call", "minraise", "raise"]):
+        return "⚠️ AÇÃO INVÁLIDA PARA M<6 — apenas jam ou fold são válidos"
+    if zone == "pressure" and "call" in act and "allin" not in act:
+        return "⚠️ CALL ESPECULATIVO COM M 6-12 — risco estrutural"
+    return ""
+
+
 def _build_payload(decisions: List[dict]) -> dict:
     """Monta payload para análise profunda. Retorna Markdown estruturado."""
 
@@ -145,58 +174,143 @@ def _build_payload(decisions: List[dict]) -> dict:
 
     system_prompt = """Você é um coach de poker MTT de elite. Analise as decisões e escreva em TEXTO CORRIDO estruturado — NÃO retorne JSON, NÃO use chaves {}, NÃO use colchetes [].
 
+════════════════════════════════════════
+BLOCO 1 — FILTRO OBRIGATÓRIO DE M-RATIO
+════════════════════════════════════════
+
+ANTES de qualquer análise, aplique este filtro baseado no M-Ratio:
+
+- M < 6  → Modo push/fold puro. Qualquer raise convencional ou call sem ser all-in é erro estrutural.
+           A análise deve começar com: "⚠️ Com M=[valor], o único jogo válido é push/fold."
+           Pule a seção Range GTO de RFI/vs RFI — substitua por análise de push/fold range.
+
+- M 6–12 → Zona de pressão. Raise/fold ou jam são as únicas opções válidas. Calls especulativos
+           são erros por definição. Mencione isso explicitamente no contexto.
+
+- M > 12 → Jogo normal. Todas as ações são válidas. Análise padrão completa.
+
+════════════════════════════════════════
+BLOCO 2 — CÁLCULO DE EQUITY AJUSTADA
+════════════════════════════════════════
+
+Os dados já incluem os cálculos completos — use os números EXATOS fornecidos:
+
+1. Equity real ajustada = equity bruta − ajuste de reverse implied odds (já calculado)
+2. Equity mínima ICM = pot odds × fator ICM (já calculado)
+3. Déficit final = equity mínima ICM − equity real ajustada (já calculado)
+4. Se déficit > 0: continuar era matematicamente incorreto. Se déficit < 0: correto.
+
+Mostre a sequência completa na seção 📐 A Matemática.
+
+════════════════════════════════════════
+BLOCO 3 — FORMATO DE SAÍDA POR DECISÃO
+════════════════════════════════════════
+
 Para cada decisão use EXATAMENTE este formato Markdown:
 
 ---
-## [número]. [Street] — [ação tomada] era errado, o correto era [ação correta]
+## [número]. [Street] — [ação tomada] era [correto/incorreto], o correto era [ação correta]
+
+### ⚠️ Alerta de Stack (apenas se M < 12)
+M-Ratio [valor] — [consequência direta para esta decisão]
 
 ### ❌ O Erro
-Explique em 3-4 frases o que foi feito de errado e por que é um erro estratégico neste contexto específico.
+Explique em 3-4 frases o que foi feito de errado e por que é um erro estratégico neste contexto específico. Seja cirúrgico: mencione posição, stack, contexto do torneio e o que o oponente representa.
 
-### 📊 Range GTO (apenas preflop — pule esta seção para flop/turn/river)
-- **Cenário:** [RFI | vs RFI | vs 3bet]
-- **Mão no range GTO?** [Sim — range de X% das mãos | Não — fora do top X%]
+### 📊 Range GTO (apenas preflop — pule completamente para flop/turn/river)
+- **Cenário:** [RFI | vs RFI | vs 3bet | Push/Fold]
+- **Mão no range GTO?** [Sim — dentro do top X% | Não — fora do top X%]
 - **Ação GTO recomendada:** [raise/fold/call/jam]
-- **Análise de range:** [1-2 frases profissionais explicando o que o range GTO diz sobre esta mão e posição]
+- **Análise de range:** [1-2 frases sobre o que o range GTO diz sobre esta mão e posição]
+(Se M < 6, substitua por: "Push/fold range: esta mão [está / não está] no range de jam")
 
 ### 📐 A Matemática
-- **Equity estimada:** X% (o que sua mão vale contra o range do oponente)
-- **Pot odds exigidas:** Y% (equity mínima para breakeven)
-- **Equity ajustada pelo contexto:** Z% (após ICM, posição e implied odds)
-- **Déficit/Superávit:** ±N pontos percentuais — [call/raise/fold] era [correto/incorreto]
-- **EV estimado:** ação tomada ≈ -X BB | ação correta ≈ +Y BB por 100 mãos
+- **Equity estimada:** X% (mão vs range do oponente)
+- **Ajuste rev. implied odds:** −Ypp ([sem impacto / leve / relevante])
+- **Equity real ajustada:** Z%
+- **Pot odds brutas exigem:** W%
+- **Fator ICM ([low/medium/high/bubble]):** ×[fator] → equity mínima real: V%
+- **Déficit/Superávit:** ±Npp → [fold/call/raise] era [correto/incorreto]
+- **EV estimado:** ação tomada ≈ −X BB | ação correta ≈ +Y BB por 100 mãos
 
 ### 🧭 O Contexto
-- **M Ratio [valor]:** [o que significa — M<6=push/fold puro, M6-12=zona de pressão, M>12=jogo normal]
-- **Stack ([valor] BB):** [implicação prática para este spot]
-- **ICM [nível]:** [como afeta os thresholds de call/fold/raise nesta situação]
+- **M Ratio [valor]:** [push/fold puro M<6 | zona de pressão M6-12 | jogo normal M>12] — implicação direta
+- **Stack ([valor] BB):** [como este stack afeta as opções disponíveis]
+- **ICM [nível] (×[fator]):** [como o ICM inflaciona o custo de erros neste momento]
 - **Posição ([posição]):** [como IP/OOP afeta equity realizada e linha correta]
+- **Padrão detectado:** [se este erro se repete nesta sessão, mencione aqui]
 
 ### ✅ A Ação Correta
-**[AÇÃO]** — [explicação completa em 4-5 frases: por que é superior matematicamente, qual o objetivo estratégico, o que acontece contra os diferentes ranges do oponente]
+**[AÇÃO]** — [explicação completa em 4-5 frases: por que é superior matematicamente, qual o objetivo estratégico, o que acontece contra os diferentes sub-ranges do oponente, como o ICM afeta a escolha]
 
 ### 💡 A Lição
-[Uma regra prática memorável. Use **negrito** para o conceito-chave.]
+[Regra prática memorável e ESPECÍFICA para o padrão deste jogador nesta sessão.
+NÃO use conselhos genéricos. USE o contexto real desta sessão.
+Use **negrito** para o conceito-chave.]
 
 ---
 
-REGRAS OBRIGATÓRIAS:
-1. Escreva SOMENTE texto Markdown — zero JSON, zero chaves, zero colchetes
-2. Use os números exatos dos dados fornecidos
-3. Para preflop: use os dados de range GTO fornecidos na seção "📊 Range GTO"
-4. Para flop/turn/river: pule a seção Range GTO completamente
-5. Separe cada decisão com ---
-6. Seja específico: "33% de equity vs 54% exigidos = -21pp" não "equity insuficiente"
-7. Português do Brasil, tom técnico e direto
-8. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP"""
+════════════════════════════════════════
+BLOCO 4 — SÍNTESE FINAL (após todas as decisões)
+════════════════════════════════════════
+
+---
+## 📈 Relatório de Padrões — Sessão Completa
+
+### Resumo Executivo
+- **Decisões analisadas:** N (X preflop | Y postflop)
+- **Erros confirmados:** N (X% das decisões)
+- **Custo total estimado:** −Z BB nesta sessão
+
+### Leak Dominante
+[Tipo de erro mais frequente com nome técnico e impacto em BB]
+
+### Stack Depth Crítico
+[Em qual range de M-Ratio o jogador mais erra e por quê]
+
+### Padrão Posicional
+[Em quais posições os erros se concentram — IP vs OOP]
+
+### ICM — Sensibilidade ao Risco
+[O jogador ajusta adequadamente ao ICM ou sub/super-ajusta?]
+
+### Top 3 Prioridades de Estudo
+1. [Tema mais urgente com exemplo específico desta sessão]
+2. [Segundo tema com exemplo]
+3. [Terceiro tema com exemplo]
+
+### Estimativa de EV Recuperável
+Se corrigir os padrões identificados: **+X BB/torneio estimado**
+
+---
+
+════════════════════════════════════════
+REGRAS OBRIGATÓRIAS — NÃO VIOLE
+════════════════════════════════════════
+
+1. Escreva SOMENTE texto Markdown — zero JSON, zero chaves {}, zero colchetes []
+2. Use os números EXATOS dos dados fornecidos — não arredonde sem indicar
+3. Aplique o filtro de M-Ratio ANTES de qualquer análise — nunca ignore
+4. Mostre o cálculo ICM como multiplicador matemático — não como label qualitativo
+5. Para preflop: use os dados de range GTO fornecidos
+6. Para flop/turn/river: pule a seção Range GTO completamente — sem exceção
+7. A seção "💡 A Lição" DEVE referenciar padrão específico desta sessão — nunca genérica
+8. A síntese "📈 Relatório de Padrões" é obrigatória — não omita mesmo com poucos erros
+9. Português do Brasil, tom técnico e direto
+10. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river,
+    hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP,
+    push/fold, reverse implied odds, fold equity, EV, +EV, -EV, bluff, value bet
+11. Separe cada decisão com ---
+12. Seja cirúrgico: "déficit de 18.4pp com ICM high = fold obrigatório" não "equity insuficiente\""""
 
     decisions_data = []
+    error_pattern_tracker: dict = {}
+
     for i, d in enumerate(decisions):
         ev    = d.get('evaluation', {})
         bd    = ev.get('scoreBreakdown', {})
         ctx   = d.get('context', {})
         mt    = d.get('math', {})
-        th    = d.get('thresholds', {})
         spot  = d.get('spot', {})
         hp    = d.get('hand_profile', {})
         rng   = d.get('range_evaluation', {})
@@ -208,53 +322,98 @@ REGRAS OBRIGATÓRIAS:
         hero_cards = d.get('hero_cards', '??')
         action     = d.get('actionTaken', d.get('action_taken', '?'))
         best       = d.get('bestAction',  d.get('best_action',  '?'))
-        eq_est     = round((mt.get('estimatedHandEquity') or 0) * 100, 1)
-        pot_odds   = round((mt.get('potOddsEquity') or 0) * 100, 1)
-        eq_min     = round((th.get('adjustedRequiredEquity') or mt.get('potOddsEquity') or 0) * 100, 1)
-        deficit    = round(eq_min - eq_est, 1)
-        m_ratio    = ctx.get('mRatio') or ctx.get('m_ratio', '?')
-        stack_bb   = ctx.get('heroStackBb') or ctx.get('stack_bb', '?')
-        icm        = ctx.get('icmPressure', ctx.get('icm_pressure', 'low'))
+
+        # Equity pipeline com ICM e reverse implied odds
+        eq_est    = round((mt.get('estimatedHandEquity') or 0) * 100, 1)
+        pot_odds  = round((mt.get('potOddsEquity') or 0) * 100, 1)
+        rev_impl  = round((mt.get('reverseImpliedOddsFactor') or 0) * 100, 1)
+        icm       = ctx.get('icmPressure', ctx.get('icm_pressure', 'low'))
+
+        icm_factor   = _ICM_MULTIPLIER.get(icm, 1.00)
+        eq_min_icm   = round(pot_odds * icm_factor, 1)
+        rev_tier     = _rev_impl_tier(rev_impl)
+        rev_adj_pp   = _REV_IMPL_ADJ_PP[rev_tier]
+        eq_real      = round(eq_est - rev_adj_pp, 1)
+        deficit      = round(eq_min_icm - eq_real, 1)
+
+        # M-Ratio e validação
+        m_ratio  = ctx.get('mRatio') or ctx.get('m_ratio', '?')
+        stack_bb = ctx.get('heroStackBb') or ctx.get('stack_bb', '?')
+        zone     = _m_zone(m_ratio)
+        warning  = _action_warning(action, zone)
+
         position   = spot.get('position') or ctx.get('position', '?')
         hand_class = hp.get('handClass', '?')
         range_zone = rng.get('rangeZone', '?')
-        rev_impl   = round((mt.get('reverseImpliedOddsFactor') or 0) * 100, 1)
         draw       = mt.get('drawProfile', 'none')
 
-        cards_fmt  = _fmt_cards([hero_cards[:2], hero_cards[2:]]) if len(hero_cards) >= 4 else hero_cards
-        board_fmt  = _fmt_cards(board_now) if board_now else '(preflop — sem board)'
+        cards_fmt = _fmt_cards([hero_cards[:2], hero_cards[2:]]) if len(hero_cards) >= 4 else hero_cards
+        board_fmt = _fmt_cards(board_now) if board_now else '(preflop — sem board)'
 
-        # Bloco de range GTO preflop
+        # Rastreamento de padrões recorrentes
+        leak_type = rng.get('rangeZone', ev.get('label', 'unknown'))
+        error_pattern_tracker[leak_type] = error_pattern_tracker.get(leak_type, 0) + 1
+        pattern_note = ''
+        if error_pattern_tracker[leak_type] > 1:
+            pattern_note = (
+                f"\nPadrão recorrente: {leak_type} apareceu "
+                f"{error_pattern_tracker[leak_type]}x nesta sessão."
+            )
+
+        # Bloco Range GTO preflop
         pfgto_block = ''
         if street == 'preflop' and pfgto.get('available'):
-            scenario_label = {'rfi': 'RFI (Raise First In)', 'vs_rfi': 'vs RFI (defendendo abertura)',
-                              'vs_3bet': 'vs 3bet (respondendo re-raise)'}.get(pfgto.get('scenario',''), '')
-            in_rng     = pfgto.get('in_range', False)
-            rng_pct    = pfgto.get('range_pct', 0)
-            rec_acts   = '/'.join(pfgto.get('recommended_actions', []))
-            pro_notes  = ' | '.join(pfgto.get('pro_notes', []))
-            pfgto_block = (
-                f"\nRange GTO preflop:\n"
-                f"  Cenário: {scenario_label}\n"
-                f"  Mão no range: {'SIM' if in_rng else 'NÃO'} (range top {rng_pct*100:.0f}% das mãos)\n"
-                f"  Ação GTO recomendada: {rec_acts}\n"
-                f"  Notas profissionais: {pro_notes}\n"
-            )
+            scenario_label = {
+                'rfi':     'RFI (Raise First In)',
+                'vs_rfi':  'vs RFI (defendendo abertura)',
+                'vs_3bet': 'vs 3bet (respondendo re-raise)',
+            }.get(pfgto.get('scenario', ''), pfgto.get('scenario', ''))
+            in_rng    = pfgto.get('in_range', False)
+            rng_pct   = pfgto.get('range_pct', 0)
+            rec_acts  = '/'.join(pfgto.get('recommended_actions', []))
+            pro_notes = ' | '.join(pfgto.get('pro_notes', []))
+            if zone == 'push_fold':
+                pfgto_block = (
+                    f"\nRange GTO preflop (Push/Fold M<6):\n"
+                    f"  Mão no range de jam: {'SIM' if in_rng else 'NÃO'} "
+                    f"(top {rng_pct*100:.0f}% da posição)\n"
+                    f"  Ação correta: {'JAM' if in_rng else 'FOLD'}\n"
+                    f"  Notas: {pro_notes}\n"
+                )
+            else:
+                pfgto_block = (
+                    f"\nRange GTO preflop:\n"
+                    f"  Cenário: {scenario_label}\n"
+                    f"  Mão no range: {'SIM' if in_rng else 'NÃO'} "
+                    f"(top {rng_pct*100:.0f}% das mãos)\n"
+                    f"  Ação GTO recomendada: {rec_acts}\n"
+                    f"  Notas profissionais: {pro_notes}\n"
+                )
 
         decisions_data.append(
             f"DECISÃO {i+1} de {len(decisions)}:\n"
             f"Cartas: {cards_fmt} | Board no momento: {board_fmt}\n"
             f"Street: {street} | Tomou: {action} | Correto: {best}\n"
+            f"{warning}\n"
             f"Label: {ev.get('label','?')} | Score: {ev.get('mistakeScore',0):.3f}\n"
-            f"Equity estimada: {eq_est}% | Pot odds exigidas: {pot_odds}% | "
-            f"Equity mínima ajustada: {eq_min}% | Déficit: {deficit:+.1f}pp\n"
-            f"Draw: {draw} | Reverse implied odds: {rev_impl}%\n"
-            f"M ratio: {m_ratio} | Stack: {stack_bb} BB | ICM: {icm} | Posição: {position}\n"
-            f"Classe da mão: {hand_class} | Zona do range: {range_zone}\n"
-            f"Penalidades — gap_base: {bd.get('baseActionGap',0):.3f} | "
+            f"\n── CÁLCULO DE EQUITY ──\n"
+            f"Equity bruta estimada: {eq_est}%\n"
+            f"Reverse implied odds: {rev_impl}% (tier: {rev_tier}, ajuste: −{rev_adj_pp:.0f}pp)\n"
+            f"Equity real ajustada: {eq_real}%\n"
+            f"Pot odds brutas exigem: {pot_odds}%\n"
+            f"ICM: {icm} → fator ×{icm_factor:.2f} → equity mínima real: {eq_min_icm}%\n"
+            f"Déficit final: {deficit:+.1f}pp "
+            f"({'fold/pass correto' if deficit > 0 else 'continuar correto'})\n"
+            f"\n── CONTEXTO ──\n"
+            f"M ratio: {m_ratio} (zona: {zone}) | Stack: {stack_bb} BB | "
+            f"ICM: {icm} | Posição: {position}\n"
+            f"Draw: {draw} | Classe da mão: {hand_class} | Zona do range: {range_zone}\n"
+            f"\n── PENALIDADES ──\n"
+            f"gap_base: {bd.get('baseActionGap',0):.3f} | "
             f"math: {bd.get('mathPenalty',0):.3f} | "
             f"range: {bd.get('rangePenalty',0):.3f} | "
             f"contexto: {bd.get('contextPenalty',0):.3f}"
+            + pattern_note
             + pfgto_block
         )
 
@@ -262,12 +421,12 @@ REGRAS OBRIGATÓRIAS:
         "Analise estas " + str(len(decisions)) + " decisão(ões) com erro no poker MTT:\n\n"
         + "\n\n".join(decisions_data)
         + "\n\nEscreva a análise completa em Markdown seguindo o formato especificado. "
-        + "Lembre: APENAS texto Markdown, NUNCA JSON."
+        + "Inclua o Relatório de Padrões ao final. APENAS texto Markdown, NUNCA JSON."
     )
 
     return {
         'model':      'claude-haiku-4-5-20251001',
-        'max_tokens': max(900 * len(decisions), 2500),
+        'max_tokens': max(1200 * len(decisions), 3000),
         'system':     system_prompt,
         'messages':   [{'role': 'user', 'content': user_message}],
     }
