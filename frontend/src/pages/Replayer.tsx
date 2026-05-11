@@ -320,6 +320,14 @@ function SidePanels({
               </p>
             </div>
           )}
+          {gtoRequestStatus === "solver_queued" && (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
+              <Loader2 className="size-3.5 text-amber-400 shrink-0 mt-px animate-spin" />
+              <p className="text-[11px] text-amber-400 leading-relaxed">
+                Spot enfileirado para o solver — ainda não temos dados GTO para este cenário. O cálculo pode levar alguns minutos. Volte mais tarde para ver os resultados.
+              </p>
+            </div>
+          )}
           {gtoRequestStatus === "error" && (
             <div className="flex items-center gap-2 rounded-lg bg-destructive/5 border border-destructive/20 px-2.5 py-2">
               <AlertOctagon className="size-3.5 text-destructive shrink-0" />
@@ -564,7 +572,7 @@ const Replayer = () => {
   const [annMode, setAnnMode]               = useState<"complement" | "replace">("complement");
   const [annAction, setAnnAction]           = useState("");
   const [annOverride, setAnnOverride]       = useState<CoachOverrideLabel>(null);
-  const [gtoRequestStatus, setGtoRequestStatus] = useState<"idle" | "requesting" | "queued" | "done" | "error">("idle");
+  const [gtoRequestStatus, setGtoRequestStatus] = useState<"idle" | "requesting" | "queued" | "solver_queued" | "done" | "error">("idle");
 
   // Floating Range panel drag state
   const [rangePos, setRangePos]         = useState({ x: 24, y: 96 });
@@ -752,8 +760,8 @@ const Replayer = () => {
     }
   };
 
-  // Polling: enquanto status é "queued"/"processing", verifica a cada 4s
-  // Quando "done", recarrega o replay para exibir os dados GTO recém-calculados
+  // Polling: enquanto status é "queued", verifica a cada 4s
+  // Quando "done" ou "solver_queued", recarrega o replay
   useEffect(() => {
     if (gtoRequestStatus !== "queued") return;
     if (!tournamentId || !handId) return;
@@ -761,15 +769,14 @@ const Replayer = () => {
     const poll = setInterval(async () => {
       try {
         const s = await tournamentsApi.getGtoRequestStatus(handId);
-        if (s.status === "done") {
+        if (s.status === "done" || s.status === "solver_queued") {
           clearInterval(poll);
-          // Recarrega replay com os novos gto_label/gto_action do banco
           const replayFn = studentId
             ? coachDashboard.studentReplay(studentId, tournamentId, handId)
             : tournamentsApi.replay(tournamentId, handId);
           const fresh = await replayFn;
           setReplayData(fresh);
-          setGtoRequestStatus("done");
+          setGtoRequestStatus(s.status === "solver_queued" ? "solver_queued" : "done");
         } else if (s.status === "error") {
           clearInterval(poll);
           setGtoRequestStatus("error");

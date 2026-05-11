@@ -4292,9 +4292,10 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                                 decisions_found=len(db_decisions))
 
         done = 0
+        queued = 0
         for di in build_decision_inputs_for_hand(target):
-            if di['street'] != 'flop':
-                continue  # solver remoto suporta apenas Flop por enquanto
+            if di['street'] not in ('flop', 'turn', 'river'):
+                continue
             ctx = di.get('context', {})
             key = (_norm(di['street']), _norm(di.get('player_action', '') or ''))
             db_dec = db_index.get(key)
@@ -4320,7 +4321,6 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
             if gto.get('found') and gto.get('strategy'):
                 r   = evaluate_decision(di)
                 acted = _norm(r.get('player_action', '') or di.get('player_action', ''))
-                # Determinar label com base na frequência GTO da ação jogada
                 played_freq = next(
                     (s['frequency'] for s in gto['strategy']
                      if _norm(str(s.get('action', ''))) == acted),
@@ -4340,8 +4340,13 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
 
                 update_decision_gto(db_dec['id'], gto_label, gto_action)
                 done += 1
+            else:
+                # Spot não está na base — lookup_gto já enfileirou para o solver
+                queued += 1
 
-        return 'done', None
+        # Se algum spot foi enfileirado mas nenhum resolvido, sinaliza para o frontend
+        final_status = 'done' if done > 0 or queued == 0 else 'solver_queued'
+        return final_status, None
 
     except Exception as exc:
         log.exception("GTO hand worker error req_id=%s", request_id)
