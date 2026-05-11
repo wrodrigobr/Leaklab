@@ -551,11 +551,13 @@ function SidePanels({
                 sd.outcome === "won" ? "bg-primary/10 ring-primary/30 text-primary font-semibold" : "ring-border/30 text-muted-foreground opacity-60")}>
                 {sd.outcome === "won" && <span>🏆</span>}
                 <span className="truncate flex-1">{playerAliases[sd.player] ?? sd.player}</span>
-                {sd.cards?.length > 0 && (
+                {sd.hand_desc === "mucked" ? (
+                  <span className="font-mono text-[10px] shrink-0 opacity-40 italic">{t("decision.mucked")}</span>
+                ) : sd.cards?.length > 0 ? (
                   <div className="flex gap-0.5 shrink-0">
                     {parseCards(sd.cards).map((c, j) => <PlayingCard key={j} card={c} size="sm" />)}
                   </div>
-                )}
+                ) : null}
                 {sd.hand_desc && sd.hand_desc !== "mucked" && sd.hand_desc !== "collected" && (
                   <span className="font-mono text-[10px] shrink-0">{sd.hand_desc}</span>
                 )}
@@ -654,6 +656,27 @@ const Replayer = () => {
     });
     return aliases;
   }, [replayData]);
+
+  // Cartas reveladas na mesa: mid-hand all-in shows + showdown
+  // seat_str → cards (array vazio = muck, sem cartas exibidas)
+  const revealedCards = useMemo<Record<string, string[]>>(() => {
+    if (!step) return {};
+    const rc: Record<string, string[]> = { ...(step.revealed_cards ?? {}) };
+    if (step.type === "showdown" && step.summary?.seats) {
+      for (const sd of step.summary.seats) {
+        const seatKey = Object.keys(step.seats ?? {}).find(
+          (k) => (step.seats as Record<string, { player: string }>)[k]?.player === sd.player
+        );
+        if (!seatKey) continue;
+        if (sd.hand_desc === "mucked") {
+          rc[seatKey] = [];         // muck: assento existe mas sem cartas
+        } else if (sd.cards?.length >= 2) {
+          rc[seatKey] = sd.cards;   // mostrou cartas
+        }
+      }
+    }
+    return rc;
+  }, [step]);
 
   // Auto-play
   useEffect(() => {
@@ -916,6 +939,7 @@ const Replayer = () => {
                   bb={replayData.bb}
                   betUnit={betUnit}
                   playerAliases={playerAliases}
+                  revealedCards={revealedCards}
                 />
               </div>
             </div>

@@ -156,6 +156,7 @@ function renderSeatsAndChips(
   hero: string,
   aliases: Record<string, string>,
   heroCards: string[],
+  revealedCards: Record<string, string[]> = {},
 ): { seats: string; chips: string } {
   const seatNums = Object.keys(ev.seats).map(Number).sort((a, b) => a - b);
   const heroSeatNum = seatNums.find((sn) => ev.seats[sn]?.player === hero);
@@ -191,8 +192,21 @@ function renderSeatsAndChips(
     } else if (!isHero && !isFolded) {
       const vw = 44, vh = 68;
       const vcY = by - Math.round(vh * 0.67);
-      html += cardSVG(null, pos.x - vw - 3, vcY, vw, vh, true);
-      html += cardSVG(null, pos.x + 3, vcY, vw, vh, true);
+      const seatKey = String(sn);
+      if (seatKey in revealedCards) {
+        // Showdown: cards known for this seat
+        const shown = revealedCards[seatKey];
+        if (shown.length >= 2) {
+          // Show face-up
+          html += cardSVG(shown[0], pos.x - vw - 3, vcY, vw, vh);
+          html += cardSVG(shown[1], pos.x + 3, vcY, vw, vh);
+        }
+        // empty array = mucked: render nothing (player hid their cards)
+      } else {
+        // Unknown: face-down
+        html += cardSVG(null, pos.x - vw - 3, vcY, vw, vh, true);
+        html += cardSVG(null, pos.x + 3, vcY, vw, vh, true);
+      }
     }
 
     // Pod
@@ -274,15 +288,17 @@ function renderSeatsAndChips(
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
-  step:         ReplayStep;
-  hero:         string;
-  heroCards:    string[];
-  bb:           number;
-  betUnit?:     "chips" | "bb";
+  step:           ReplayStep;
+  hero:           string;
+  heroCards:      string[];
+  bb:             number;
+  betUnit?:       "chips" | "bb";
   playerAliases?: Record<string, string>;
+  /** seat_str → cards shown at showdown; empty array = mucked (no cards rendered) */
+  revealedCards?: Record<string, string[]>;
 }
 
-export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {} }: Props) {
+export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {} }: Props) {
   const boardRef = useRef<SVGGElement>(null);
   const potRef   = useRef<SVGGElement>(null);
   const seatsRef = useRef<SVGGElement>(null);
@@ -292,10 +308,10 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
     if (!boardRef.current) return;
     boardRef.current.innerHTML = renderBoard(step.board ?? []);
     potRef.current!.innerHTML  = renderPot(step.pot ?? 0, bb, betUnit);
-    const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards);
+    const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards, revealedCards);
     seatsRef.current!.innerHTML = seats;
     chipsRef.current!.innerHTML = chips;
-  }, [step, bb, betUnit, hero, heroCards, playerAliases]);
+  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards]);
 
   return (
     <div

@@ -51,6 +51,7 @@
     "mRatioLine": "M ratio: {{m}} · ICM: {{icm}}",
     "handResult": "Resultado de la mano",
     "totalPot": "Pot total",
+    "mucked": "muck",
     "won": "ganó {{amount}}",
     "aiCoach": "IA Coach"
   },
