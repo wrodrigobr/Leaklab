@@ -7,7 +7,7 @@ interface PlayerStats {
   vpip: number | null;
   pfr: number | null;
   af: number | null;
-  flop_bet_pct: number | null;
+  cbet_pct: number | null;
   fold_to_3bet: number | null;
   wtsd: number | null;
   three_bet: number | null;
@@ -51,11 +51,11 @@ const ROW1: StatDef[] = [
     tooltip: "Aggression Factor — razão entre ações agressivas (bet/raise) e passivas (call) no pós-flop. MTT ideal: 2.0–4.0x. Abaixo de 1.5 = passivo demais; acima de 6 = overaggressive.",
   },
   {
-    key: "flop_bet_pct",
-    label: "Flop Bet",
+    key: "cbet_pct",
+    label: "C-Bet",
     unit: "%",
-    range: { min: 40, max: 65, label: "40–65%" },
-    tooltip: "Frequência de aposta no flop (bet/raise/all-in como % das decisões no flop). Inclui c-bets e raises. MTT ideal: 40–65% dependendo da posição e range.",
+    range: { min: 50, max: 75, label: "50–75%" },
+    tooltip: "Continuation Bet — % de vezes que apostou no flop como agressor pré-flop (opener/raiser). Denominador: mãos em que abriu ou 3-betou pré e viu o flop. MTT ideal: 50–75%.",
   },
 ];
 

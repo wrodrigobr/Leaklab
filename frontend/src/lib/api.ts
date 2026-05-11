@@ -461,7 +461,7 @@ export interface PlayerStatsResponse {
   vpip: number | null;
   pfr: number | null;
   af: number | null;
-  flop_bet_pct: number | null;
+  cbet_pct: number | null;
   fold_to_3bet: number | null;
   wtsd: number | null;
   three_bet: number | null;

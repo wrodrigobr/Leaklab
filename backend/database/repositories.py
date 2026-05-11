@@ -952,14 +952,22 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
             WHERE t.user_id = ? AND t.imported_at >= ? AND d.street != 'preflop'
         """, (user_id, since)).fetchone()
 
-        # ── Flop bet frequency ───────────────────────────────────────────────
-        flop_row = conn.execute("""
+        # ── C-bet: first flop bet as preflop aggressor / PFA hands seeing flop ─
+        cbet_row = conn.execute("""
             SELECT
-                COUNT(*) AS total_flop,
-                COUNT(CASE WHEN d.action_taken IN ('bet','raise','jam') THEN 1 END) AS flop_bets
-            FROM decisions d
-            JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ? AND d.street = 'flop'
+                COUNT(DISTINCT CASE WHEN flop_d.action_taken = 'bet' THEN sub.hand_id END) AS cbet_n,
+                COUNT(DISTINCT sub.hand_id) AS cbet_opp
+            FROM (
+                SELECT d.hand_id,
+                       MIN(CASE WHEN d.street = 'flop' THEN d.id END) AS first_flop_id
+                FROM decisions d
+                JOIN tournaments t ON t.id = d.tournament_id
+                WHERE t.user_id = ? AND t.imported_at >= ?
+                GROUP BY d.hand_id
+                HAVING MAX(CASE WHEN d.street = 'preflop' AND d.action_taken IN ('raise','jam') THEN 1 ELSE 0 END) = 1
+                   AND MIN(CASE WHEN d.street = 'flop' THEN d.id END) IS NOT NULL
+            ) sub
+            JOIN decisions flop_d ON flop_d.id = sub.first_flop_id
         """, (user_id, since)).fetchone()
 
         # ── Fold-to-3BET: hands where hero raised preflop THEN folded ────────
@@ -1016,21 +1024,21 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
         """, (user_id, since)).fetchone()
 
         # ── Compute stats ────────────────────────────────────────────────────
-        pf   = dict(preflop)  if preflop  else {}
-        po   = dict(postflop) if postflop else {}
-        fb   = dict(flop_row) if flop_row else {}
-        f3b  = dict(f3b_row)  if f3b_row  else {}
-        wt   = dict(wtsd_row) if wtsd_row else {}
-        tb   = dict(tbet_row) if tbet_row else {}
-        wsd  = dict(wsd_row)  if wsd_row  else {}
+        pf   = dict(preflop)   if preflop   else {}
+        po   = dict(postflop)  if postflop  else {}
+        cb   = dict(cbet_row)  if cbet_row  else {}
+        f3b  = dict(f3b_row)   if f3b_row   else {}
+        wt   = dict(wtsd_row)  if wtsd_row  else {}
+        tb   = dict(tbet_row)  if tbet_row  else {}
+        wsd  = dict(wsd_row)   if wsd_row   else {}
 
         total       = pf.get('total_hands', 0) or 0
         vpip_h      = pf.get('vpip_hands', 0) or 0
         pfr_h       = pf.get('pfr_hands', 0) or 0
         aggressive  = po.get('aggressive', 0) or 0
         passive     = po.get('passive', 0) or 0
-        flop_total  = fb.get('total_flop', 0) or 0
-        flop_bets_n = fb.get('flop_bets', 0) or 0
+        cbet_n      = cb.get('cbet_n', 0) or 0
+        cbet_opp    = cb.get('cbet_opp', 0) or 0
         f3b_n       = f3b.get('fold_to_3bet_n', 0) or 0
         faced_3b_n  = f3b.get('faced_3bet_n', 0) or 0
         saw_flop    = wt.get('saw_flop', 0) or 0
@@ -1042,14 +1050,14 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
 
         return {
             'total_hands':  total,
-            'vpip':         round(vpip_h / total * 100, 1)           if total > 0      else None,
-            'pfr':          round(pfr_h  / total * 100, 1)           if total > 0      else None,
-            'af':           round(aggressive / passive, 2)            if passive > 0    else None,
-            'flop_bet_pct': round(flop_bets_n / flop_total * 100, 1) if flop_total > 0 else None,
-            'fold_to_3bet': round(f3b_n / faced_3b_n * 100, 1)      if faced_3b_n > 0 else None,
-            'wtsd':         round(saw_river / saw_flop * 100, 1)     if saw_flop > 0   else None,
-            'three_bet':    round(three_bet_n / pf_total * 100, 1)   if pf_total > 0   else None,
-            'w_at_sd':      round(sd_won / sd_total * 100, 1)        if sd_total > 0   else None,
+            'vpip':         round(vpip_h / total * 100, 1)        if total > 0      else None,
+            'pfr':          round(pfr_h  / total * 100, 1)        if total > 0      else None,
+            'af':           round(aggressive / passive, 2)         if passive > 0    else None,
+            'cbet_pct':     round(cbet_n / cbet_opp * 100, 1)     if cbet_opp > 0   else None,
+            'fold_to_3bet': round(f3b_n / faced_3b_n * 100, 1)   if faced_3b_n > 0 else None,
+            'wtsd':         round(saw_river / saw_flop * 100, 1)  if saw_flop > 0   else None,
+            'three_bet':    round(three_bet_n / pf_total * 100, 1) if pf_total > 0  else None,
+            'w_at_sd':      round(sd_won / sd_total * 100, 1)     if sd_total > 0   else None,
         }
     finally:
         conn.close()

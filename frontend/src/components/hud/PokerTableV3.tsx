@@ -42,8 +42,8 @@ const SUIT_FILE: Record<string, string> = { s: "S", h: "H", d: "D", c: "C" };
 
 function fmtAmt(v: number, bb: number, unit: "chips" | "bb"): string {
   if (unit === "bb") {
-    const x = v / bb;
-    return (x < 1 ? x.toFixed(1) : Math.round(x)) + "BB";
+    const x = Math.round(v / bb * 10) / 10;
+    return (x % 1 === 0 ? x.toFixed(0) : x.toFixed(1)) + " BB";
   }
   return v >= 1000 ? (v / 1000).toFixed(1) + "k" : String(Math.round(v));
 }

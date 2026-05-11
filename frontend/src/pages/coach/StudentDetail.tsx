@@ -135,7 +135,7 @@ function OverviewTab({ studentId }: { studentId: number }) {
             <StatPill label="AF"    value={s.af     != null ? `${s.af}x`    : "—"} sub="Agressão" />
             <StatPill label="3BET"  value={s.three_bet != null ? `${s.three_bet}%` : "—"} sub="Re-raise PF" />
             <StatPill label="F3B"   value={s.fold_to_3bet != null ? `${s.fold_to_3bet}%` : "—"} sub="Fold to 3bet" />
-            <StatPill label="Flop%" value={s.flop_bet_pct != null ? `${s.flop_bet_pct}%` : "—"} sub="Bet flop" />
+            <StatPill label="C-Bet" value={s.cbet_pct != null ? `${s.cbet_pct}%` : "—"} sub="C-bet flop" />
             <StatPill label="WTSD"  value={s.wtsd   != null ? `${s.wtsd}%`  : "—"} sub="Vai a SD" />
             <StatPill label="W$SD"  value={s.w_at_sd != null ? `${s.w_at_sd}%` : "—"} sub="Ganha SD" />
           </div>
