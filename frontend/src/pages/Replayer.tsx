@@ -36,6 +36,20 @@ function anonymizeDesc(desc: string, aliases: Record<string, string>): string {
   return result;
 }
 
+function fmtAction(a: string): string {
+  if (!a) return a;
+  const s = a.toLowerCase();
+  if (s === "fold")    return "Fold";
+  if (s === "call")    return "Call";
+  if (s === "check")   return "Check";
+  if (s === "allin" || s === "all-in") return "All-in";
+  if (s === "bet")     return "Bet";
+  if (s === "raise")   return "Raise";
+  if (s.startsWith("bet_"))   return `Bet ${s.replace("bet_", "").replace("pct", "%")}`;
+  if (s.startsWith("raise_")) return `Raise ${s.replace("raise_", "").replace("pct", "%")}`;
+  return a.toUpperCase();
+}
+
 // ── SidePanels — AI Coach + GTO + Coach annotation + Showdown ────────────────
 
 interface SidePanelsProps {
@@ -138,7 +152,7 @@ function SidePanels({
               {step.best_action && (
                 <div className="rounded-lg bg-primary/5 px-2.5 py-2 ring-1 ring-primary/20">
                   <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Ideal</div>
-                  <div className="font-mono text-sm font-bold text-primary uppercase">{step.best_action}</div>
+                  <div className="font-mono text-sm font-bold text-primary">{fmtAction(step.best_action)}</div>
                 </div>
               )}
             </div>
@@ -370,15 +384,6 @@ function SidePanels({
               if (a === "check")                       return { bg: "#1e2d40", border: "#475569", text: "#94a3b8" };
               return { bg: "#1e2535", border: "#374151", text: "#9ca3af" };
             };
-            const fmtAction = (a: string) => {
-              if (a === "fold")  return "Fold";
-              if (a === "call")  return "Call";
-              if (a === "check") return "Check";
-              if (a === "allin") return "All-in";
-              if (a.startsWith("bet_"))    return `Bet ${a.replace("bet_",  "").replace("pct", "%")}`;
-              if (a.startsWith("raise_"))  return `Raise ${a.replace("raise_","").replace("pct", "%")}`;
-              return a.toUpperCase();
-            };
             return (
               <div className="flex gap-1.5 flex-wrap">
                 {sorted.map((s) => {
@@ -424,7 +429,7 @@ function SidePanels({
                 step.gto_label === "gto_correct" ? "bg-emerald-500/10 ring-emerald-500/30"
                 : "bg-background/60 ring-border/50")}>
                 <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">GTO</div>
-                <div className={cn("font-mono text-sm font-bold uppercase", gto?.cls)}>{step.gto_action}</div>
+                <div className={cn("font-mono text-sm font-bold", gto?.cls)}>{fmtAction(step.gto_action)}</div>
               </div>
             </div>
           )}
@@ -463,7 +468,7 @@ function SidePanels({
               <span className="text-amber-400 text-[10px] mt-px shrink-0">⚠</span>
               <p className="text-[10px] text-muted-foreground leading-relaxed">
                 O motor heurístico sugeriu{" "}
-                <span className="font-mono font-bold text-foreground uppercase">{step.engine_best}</span>{" "}
+                <span className="font-mono font-bold text-foreground">{fmtAction(step.engine_best)}</span>{" "}
                 com base em equity e posição. O solver GTO é a fonte mais autoritativa.
               </p>
             </div>
@@ -475,7 +480,7 @@ function SidePanels({
               <span className="text-emerald-400 text-[10px] mt-px shrink-0">✓</span>
               <p className="text-[10px] text-muted-foreground leading-relaxed">
                 Motor heurístico e solver GTO concordam:{" "}
-                <span className="font-mono font-bold text-foreground uppercase">{step.gto_action}</span>{" "}
+                <span className="font-mono font-bold text-foreground">{fmtAction(step.gto_action)}</span>{" "}
                 era a jogada correta neste spot.
               </p>
             </div>

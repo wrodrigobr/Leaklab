@@ -252,9 +252,11 @@ function renderSeatsAndChips(
       const t = 0.25;
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
-      // Counterclockwise perpendicular = (dvy/len, -dvx/len) → "left" from each player's view
-      const perpX = Math.round((dvy / dlen) * 38);
-      const perpY = Math.round((-dvx / dlen) * 38);
+      // Hero is at bottom-center — clockwise perp goes right, away from cards
+      // Other seats use counterclockwise perp (left from player's view)
+      const perpSign = isHero ? -1 : 1;
+      const perpX = Math.round(perpSign * (dvy / dlen) * 38);
+      const perpY = Math.round(perpSign * (-dvx / dlen) * 38);
       const dbX = Math.round(pos.x + dvx * t) + perpX;
       const dbY = Math.round(pos.y + dvy * t) + perpY;
       const dRX = 20, dRY = 12, dCH = 7, dN = 4;
