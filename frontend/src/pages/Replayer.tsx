@@ -294,9 +294,11 @@ function SidePanels({
             </span>
             <span className="font-mono text-[9px] text-muted-foreground/60 uppercase">Não disponível</span>
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Esta ação ainda não possui análise GTO. Solicite para que o solver calcule a estratégia ótima para este spot.
-          </p>
+          {gtoRequestStatus === "idle" && (
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Esta ação ainda não possui análise GTO. Solicite para que o solver calcule a estratégia ótima para este spot.
+            </p>
+          )}
           {gtoRequestStatus === "idle" && (
             <button
               onClick={onRequestGto}
