@@ -9,6 +9,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.95.0] — 2026-05-10 — feat(range-panel): ranges dinâmicos do JSON por posição e stack depth
+
+### Added
+- **`GET /preflop-ranges`** — novo endpoint que serve ranges GTO preflop do `leaklab_gto_ranges.json` por posição e stack depth:
+  - Parâmetros: `position` (ex: BTN) e `stack_bb` (float)
+  - Retorna: `rfi` (mãos expandidas + %), `vs_rfi` (por opener), `vs_3bet` (4bet/call separados)
+  - Stack bucket resolvido automaticamente pelo `_stack_bucket()` existente
+  - Posições normalizadas via `_norm_pos()` (suporta UTG+1, MP1, etc.)
+
+### Changed
+- **`frontend/src/components/replayer/RangePanel.tsx`** — painel de ranges agora consome o endpoint `/preflop-ranges` em vez dos dados estáticos de `ranges.ts`:
+  - Usa `step.hero_stack_bb` como stack depth da mão atual (coerente com a análise)
+  - Mostra indicador de loading (`Loader2`) enquanto aguarda a API
+  - Exibe `stack_bucket` no header para confirmação visual (ex: `50bb`)
+  - Fallback automático para dados estáticos de `ranges.ts` se a API falhar
+  - Label e description dinâmicos com % do range por stack depth
+  - vs_RFI usa primeiro opener disponível no JSON para a posição selecionada
+
+---
+
 ## [v0.94.0] — 2026-05-10 — feat(engine): preflop GTO range integrado no decision_engine
 
 ### Changed

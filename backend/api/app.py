@@ -3817,6 +3817,80 @@ def admin_gto_missing_spots():
     return jsonify({'spots': get_missing_gto_spots(limit)})
 
 
+@app.route('/preflop-ranges', methods=['GET'])
+@require_auth
+def preflop_ranges():
+    """
+    Retorna ranges GTO de preflop por posição e stack depth.
+    Query params: position (ex: BTN), stack_bb (float, default 30)
+
+    Response:
+      { position, stack_bb, stack_bucket,
+        rfi: { hands: [str], pct: float } | null,
+        vs_rfi: { [opener]: { call: [str], raise3bet: [str], pct_play: float } },
+        vs_3bet: { hands_4bet: [str], hands_call: [str], pct_continua: float } | null }
+    """
+    from leaklab.preflop_gto_ranges import _load, _stack_bucket, _expand_range, _norm_pos
+
+    position = request.args.get('position', 'BTN')
+    stack_bb = float(request.args.get('stack_bb', 30.0))
+
+    pos    = _norm_pos(position)
+    bucket = _stack_bucket(stack_bb)
+    data   = _load()
+    bk     = data.get('ranges', {}).get(bucket, {})
+
+    # RFI
+    rfi_raw = bk.get('RFI', {}).get(pos)
+    rfi = None
+    if rfi_raw:
+        rfi = {
+            'hands': sorted(_expand_range(rfi_raw.get('hands', ''))),
+            'pct':   float(rfi_raw.get('pct', 0)),
+        }
+
+    # vs_RFI — return all openers available for this defender position
+    vs_rfi_raw = bk.get('vs_RFI', {})
+    vs_rfi = {}
+    for opener_key, defenders in vs_rfi_raw.items():
+        defender = defenders.get(pos)
+        if not defender:
+            continue
+        opener_label = opener_key.replace('_open', '')
+        all_hands = _expand_range(defender.get('hands', ''))
+        acoes     = defender.get('acoes', [])
+        is_3bet   = 'THREBET' in acoes or '3BET' in [a.upper() for a in acoes]
+        vs_rfi[opener_label] = {
+            'raise3bet': sorted(all_hands) if is_3bet else [],
+            'call':      sorted(all_hands) if not is_3bet else [],
+            'pct_play':  float(defender.get('pct_play', 0)),
+            'acoes':     acoes,
+            'hands':     sorted(all_hands),
+        }
+
+    # vs_3bet
+    vs3_raw = bk.get('vs_3bet', {})
+    spot    = vs3_raw.get(f'{pos}_RFI_vs_3bet') or next(
+        (v for k, v in vs3_raw.items() if k.endswith('_RFI_vs_3bet')), None
+    )
+    vs_3bet = None
+    if spot:
+        vs_3bet = {
+            'hands_4bet':    sorted(_expand_range(spot.get('hands_4bet', ''))),
+            'hands_call':    sorted(_expand_range(spot.get('hands_call', ''))),
+            'pct_continua':  float(spot.get('pct_continua', 0)),
+        }
+
+    return jsonify({
+        'position':     pos,
+        'stack_bb':     round(stack_bb, 1),
+        'stack_bucket': bucket,
+        'rfi':          rfi,
+        'vs_rfi':       vs_rfi,
+        'vs_3bet':      vs_3bet,
+    })
+
+
 @app.route('/gto/strategy', methods=['POST'])
 @require_auth
 def gto_strategy():
