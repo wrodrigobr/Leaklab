@@ -285,7 +285,7 @@ function SidePanels({
       })()}
 
       {/* ── GTO não disponível — solicitar análise (apenas postflop) ── */}
-      {step.is_hero && step.type === "action" && isPostflop && !hasGto && !handHasAnyGto && handHasPostflopAction && (
+      {step.is_hero && step.type === "action" && isPostflop && !hasGto && handHasPostflopAction && (
         <section className="rounded-xl border border-border bg-hud-surface p-3 space-y-2.5">
           <div className="flex items-center gap-2">
             <FlaskConical className="size-4 shrink-0 text-muted-foreground" />
