@@ -740,12 +740,16 @@ const Replayer = () => {
   };
 
   const handleRequestGto = async () => {
-    if (!tournamentId || !handId) return;
+    if (!tournamentId || !handId) {
+      console.warn("[GTO] handId ou tournamentId vazio", { tournamentId, handId });
+      return;
+    }
+    console.log("[GTO] solicitando análise", { tournamentId, handId });
     setGtoRequestStatus("requesting");
     try {
       const res = await tournamentsApi.requestGtoAnalysis(tournamentId, handId);
+      console.log("[GTO] resposta:", res);
       if (res.status === "done") {
-        // Análise já existe — recarregar replay imediatamente para exibir dados GTO
         const replayFn = studentId
           ? coachDashboard.studentReplay(studentId, tournamentId, handId)
           : tournamentsApi.replay(tournamentId, handId);
@@ -755,7 +759,8 @@ const Replayer = () => {
       } else {
         setGtoRequestStatus("queued");
       }
-    } catch {
+    } catch (err) {
+      console.error("[GTO] erro na solicitação:", err);
       setGtoRequestStatus("error");
     }
   };
