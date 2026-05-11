@@ -657,7 +657,17 @@ const Replayer = () => {
     setGtoRequestStatus("requesting");
     try {
       const res = await tournamentsApi.requestGtoAnalysis(tournamentId, handId);
-      setGtoRequestStatus(res.status === "done" ? "done" : "queued");
+      if (res.status === "done") {
+        // Análise já existe — recarregar replay imediatamente para exibir dados GTO
+        const replayFn = studentId
+          ? coachDashboard.studentReplay(studentId, tournamentId, handId)
+          : tournamentsApi.replay(tournamentId, handId);
+        const fresh = await replayFn;
+        setReplayData(fresh);
+        setGtoRequestStatus("done");
+      } else {
+        setGtoRequestStatus("queued");
+      }
     } catch {
       setGtoRequestStatus("error");
     }
