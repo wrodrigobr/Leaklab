@@ -96,16 +96,11 @@ function chipStackSVG(cx: number, bottomY: number, amount: number): string {
 function cardSVG(code: string | null, x: number, y: number, w = 58, h = 84, faceDown = false): string {
   const rx = Math.round(w * 0.09);
   if (!code || faceDown) {
-    const p = 4, ds = Math.round(w * 0.28);
-    let trellis = "";
-    for (let ty = y + p - ds; ty < y + h; ty += ds)
-      for (let tx = x + p - ds; tx < x + w; tx += ds)
-        trellis += `<polygon points="${(tx + ds / 2).toFixed(1)},${ty.toFixed(1)} ${(tx + ds).toFixed(1)},${(ty + ds / 2).toFixed(1)} ${(tx + ds / 2).toFixed(1)},${(ty + ds).toFixed(1)} ${tx.toFixed(1)},${(ty + ds / 2).toFixed(1)}" fill="none" stroke="rgba(255,255,255,0.13)" stroke-width=".7"/>`;
-    const ri = p + 2;
-    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#0c1b36" stroke="#1a3260" stroke-width="1" filter="url(#rp-cshadow)"/>
-    <rect x="${x + p}" y="${y + p}" width="${w - p * 2}" height="${h - p * 2}" rx="${rx - 2}" fill="none" stroke="rgba(140,175,255,0.22)" stroke-width=".9"/>
-    ${trellis}
-    <text x="${x + w / 2}" y="${y + h * 0.45}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.14)" font-family="sans-serif" font-size="${Math.round(w * 0.40)}">♠</text>`;
+    const p = 4, id = `cd${x}${y}`;
+    return `<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}"/></clipPath>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#0c1b36" stroke="#1a3260" stroke-width="1" filter="url(#rp-cshadow)"/>
+    <rect x="${x + p}" y="${y + p}" width="${w - p * 2}" height="${h - p * 2}" rx="${rx - 2}" fill="none" stroke="rgba(140,175,255,0.22)" stroke-width=".9" clip-path="url(#${id})"/>
+    <text x="${x + w / 2}" y="${y + h * 0.45}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.14)" font-family="sans-serif" font-size="${Math.round(w * 0.40)}" clip-path="url(#${id})">♠</text>`;
   }
   const r = code.slice(0, -1).toUpperCase();
   const suit = code.slice(-1).toLowerCase();
