@@ -9,6 +9,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.94.0] — 2026-05-10 — feat(engine): preflop GTO range integrado no decision_engine
+
+### Changed
+- **`backend/leaklab/decision_engine_v11.py`** — `evaluate_decision()` agora aplica range GTO preflop após scoring de equity:
+  - `_enrich_preflop_gto()`: chama `analyze_preflop()` para cada decisão preflop com posição, stack e cenário (RFI/vs RFI/vs 3bet)
+  - `_preflop_gto_label_adjust()`: matriz completa de ajuste de label por `action_quality`:
+    - `correct` → sempre `standard` (GTO confirma a ação do jogador)
+    - `acceptable` → cap em `marginal` (subótimo mas defensável)
+    - `leak` / `major_leak` → floor em `small_mistake` (não capeia `clear_mistake` para baixo)
+  - `_best_action` sobrescrito com `recommended_actions[0]` do range quando GTO disponível
+  - `preflop_gto` adicionado ao dict de retorno de `evaluate_decision()`
+
+### Fixed
+- Decisões preflop historicamente avaliadas só por equity threshold agora recebem classificação baseada em ranges GTO por posição e stack depth
+- `bestAction` para preflop agora reflete a ação GTO recomendada, não apenas a heurística de equity
+
+### Tests
+- 32 testes existentes do engine: todos passando (sem regressão)
+- 8 novos cenários preflop validados: `correct`, `acceptable`, `leak`, `major_leak` × RFI e vs_rfi
+
+---
+
 ## [v0.93.0] — 2026-05-10 — feat(LLM-002): prompt de análise v2 — ICM como multiplicador, reverse implied odds e síntese de padrões
 
 ### Changed
