@@ -48,6 +48,58 @@ def _gto_label_cap(label: str, gto_label: str) -> str:
     return label
 
 
+def _enrich_preflop_gto(input_data: Dict[str, Any]) -> dict:
+    """Range GTO preflop — lookup por posição, stack e cenário. Silencioso em caso de erro."""
+    if input_data.get('street') != 'preflop':
+        return {'available': False}
+
+    spot       = input_data.get('spot', {})
+    ctx        = input_data.get('context', {})
+    hero_cards = input_data.get('hero_cards', [])
+    if not hero_cards:
+        return {'available': False}
+
+    try:
+        from leaklab.gto_utils import hand_to_type
+        from leaklab.preflop_gto_ranges import analyze_preflop
+        h_type = hand_to_type(hero_cards)
+        if not h_type:
+            return {'available': False}
+        return analyze_preflop(
+            position       = spot.get('position', ''),
+            hero_hand_type = h_type,
+            stack_bb       = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20),
+            action_taken   = input_data.get('player_action', ''),
+            facing_size    = float(spot.get('facingSize') or 0),
+            vs_position    = spot.get('villainPosition', ''),
+        )
+    except Exception:
+        return {'available': False}
+
+
+_LABEL_SEV = {'standard': 0, 'marginal': 1, 'small_mistake': 2, 'clear_mistake': 3}
+_SEV_LABEL = {0: 'standard', 1: 'marginal', 2: 'small_mistake', 3: 'clear_mistake'}
+
+
+def _preflop_gto_label_adjust(label: str, quality: str) -> str:
+    """
+    Ajusta label preflop pelo range GTO.
+
+    correct    → sempre 'standard'  (ação confirmada pelo GTO)
+    acceptable → cap em 'marginal'  (subótimo mas defensável)
+    leak       → floor em 'small_mistake' (não capeia clear_mistake)
+    major_leak → floor em 'small_mistake' (não capeia clear_mistake)
+    """
+    cur = _LABEL_SEV.get(label, 1)
+    if quality == 'correct':
+        return 'standard'
+    if quality == 'acceptable':
+        return _SEV_LABEL[min(cur, _LABEL_SEV['marginal'])]
+    if quality in ('leak', 'major_leak'):
+        return _SEV_LABEL[max(cur, _LABEL_SEV['small_mistake'])]
+    return label
+
+
 def _enrich_gto(input_data: Dict[str, Any]) -> dict:
     """Faz lookup GTO e retorna dict com classificação. Silencioso em caso de erro."""
     street = input_data.get('street', '')
@@ -305,15 +357,24 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         best_action=_best_action,
     )
 
-    # GTO enrichment: consulta gto_nodes e ajusta label se necessário
+    # GTO enrichment postflop: consulta gto_nodes e ajusta label se necessário
     gto = _enrich_gto(input_data)
     if gto.get('available'):
         label = _gto_label_cap(label, gto['gto_label'])
 
+    # GTO enrichment preflop: range GTO por posição/stack — ajusta label e best_action
+    preflop_gto = _enrich_preflop_gto(input_data)
+    if preflop_gto.get('available'):
+        quality = preflop_gto.get('action_quality', 'unknown')
+        label   = _preflop_gto_label_adjust(label, quality)
+        rec     = preflop_gto.get('recommended_actions', [])
+        if rec:
+            _best_action = rec[0]   # sobrescreve com ação GTO recomendada
+
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
     return {
         "handId": input_data["hand_id"],
-        "bestAction": range_eval.get("recommendedPrimaryAction"),
+        "bestAction": _best_action,
         "actionTaken": input_data["player_action"],
         "evaluation": {
             "mistakeScore": round4(final_score),
@@ -336,6 +397,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         },
         "interpretation": interpretation,
         "gto": gto,
+        "preflop_gto": preflop_gto if preflop_gto.get('available') else None,
         "debug": {
             "rangeZone": range_eval.get("rangeZone"),
             "alternativeActions": range_eval.get("alternativeActions") or [],
