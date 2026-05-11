@@ -13,8 +13,19 @@ const CX = 560, CY = 315;
 const RX_SEAT = 452, RY_SEAT = 272;
 const CARDS_BASE = "/cards/";
 const AC_COLORS: Record<string, string> = {
-  folds: "#e52020", calls: "#3aaa52", raises: "#c9a840",
-  bets: "#c9a840", checks: "#5580aa", "all-in": "#ff4040",
+  fold: "#e52020", folds: "#e52020",
+  call: "#3aaa52", calls: "#3aaa52",
+  raise: "#c9a840", raises: "#c9a840",
+  bet: "#c9a840", bets: "#c9a840",
+  check: "#5580aa", checks: "#5580aa",
+  "all-in": "#ff4040", jam: "#ff4040",
+  muck: "#888888", mucks: "#888888",
+  show: "#3aaa52", shows: "#3aaa52",
+};
+// Display label — normalizes plural parser forms to singular
+const ACTION_LABEL: Record<string, string> = {
+  folds: "fold", checks: "check", calls: "call",
+  bets: "bet", raises: "raise", mucks: "muck", shows: "show",
 };
 const DENOM = [
   { val: 1000, top: "#c9a84c", side: "#957a34" },
@@ -174,8 +185,11 @@ function renderSeatsAndChips(
     const isFolded = (ev.folded ?? []).includes(d.player);
     const isActive = ev.type === "action" && ev.seat === sn;
     const bx = pos.x - bw / 2, by = pos.y - bh / 2;
-    const dir = pos.dir;
-    const opacity = isFolded ? 0.28 : 1;
+    // Hero loses at showdown (muck or beat) → same visual fade as fold
+    const heroLost = isHero &&
+      ev.type === "showdown" &&
+      (ev.summary?.seats?.some(s => s.player === d.player && s.outcome === "lost") ?? false);
+    const opacity = (isFolded || heroLost) ? 0.28 : 1;
 
     let bg = "#1c1c1c", bd = "#323232", bdW = 1.5;
     if (isActive) { bd = "#c9a840"; bdW = 3; }
@@ -217,8 +231,9 @@ function renderSeatsAndChips(
 
     // Name — substituído pela ação quando o jogador está atuando
     const displayName = (aliases[d.player] ?? d.player);
-    const actText = isActive && ev.action ? ev.action.toUpperCase() : null;
-    const ac = isActive && ev.action ? (AC_COLORS[ev.action] ?? "#888") : null;
+    const rawAction = isActive ? (ev.action ?? null) : null;
+    const actText = rawAction ? (ACTION_LABEL[rawAction] ?? rawAction).toUpperCase() : null;
+    const ac = rawAction ? (AC_COLORS[rawAction] ?? "#888") : null;
     if (actText) {
       // Linha 1: ação com cor
       html += `<text x="${pos.x}" y="${by + 27}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="${isHero ? 17 : 15}" font-weight="700" letter-spacing=".05">${actText}</text>`;
@@ -282,6 +297,28 @@ function renderSeatsAndChips(
     }
   });
 
+  // Winner pot chips — displaced toward each winner at showdown
+  if (ev.type === "showdown" && ev.summary?.winners?.length) {
+    for (const winner of ev.summary.winners) {
+      if (winner.won <= 0) continue;
+      const wpos = layout[winner.seat];
+      if (!wpos) continue;
+      const isWinnerHero = ev.seats[winner.seat]?.player === hero;
+      const dvx = CX - wpos.x, dvy = CY - wpos.y;
+      const blen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
+      const isSide = !isWinnerHero && Math.abs(wpos.x - CX) > 80;
+      const t2 = isWinnerHero ? 0.46 : isSide ? 0.26 : 0.36;
+      const offX = isWinnerHero ? Math.round((-dvy / blen) * 28) : 0;
+      const offY = isWinnerHero ? Math.round((dvx / blen) * 28) : 0;
+      const cx2 = Math.round(wpos.x + dvx * t2) + offX;
+      const cy2 = Math.round(wpos.y + dvy * t2) + offY;
+      chipsHtml += chipStackSVG(cx2, cy2, winner.won);
+      const wonStr = fmtAmt(winner.won, bb, unit);
+      chipsHtml += `<rect x="${cx2 - 32}" y="${cy2 + 10}" width="64" height="18" rx="9" fill="rgba(0,0,0,0.80)" stroke="rgba(201,168,64,0.35)" stroke-width=".8"/>
+                    <text x="${cx2}" y="${cy2 + 23}" text-anchor="middle" fill="#c9a840" font-family="Share Tech Mono,monospace" font-size="13" font-weight="700">+${wonStr}</text>`;
+    }
+  }
+
   return { seats: seatsHtml, chips: chipsHtml };
 }
 
@@ -307,7 +344,9 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
   useEffect(() => {
     if (!boardRef.current) return;
     boardRef.current.innerHTML = renderBoard(step.board ?? []);
-    potRef.current!.innerHTML  = renderPot(step.pot ?? 0, bb, betUnit);
+    // Suppress center pot when chips are being displaced to winners
+    const hasWinners = step.type === "showdown" && (step.summary?.winners?.length ?? 0) > 0;
+    potRef.current!.innerHTML  = hasWinners ? "" : renderPot(step.pot ?? 0, bb, betUnit);
     const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards, revealedCards);
     seatsRef.current!.innerHTML = seats;
     chipsRef.current!.innerHTML = chips;
