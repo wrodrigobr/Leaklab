@@ -4291,8 +4291,8 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
         update_gto_hand_request(request_id, 'processing',
                                 decisions_found=len(db_decisions))
 
-        done = 0
-        queued = 0
+        done = 0      # resolvidos agora pela primeira vez
+        queued = 0    # enfileirados para o solver (não estavam na base)
         for di in build_decision_inputs_for_hand(target):
             if di['street'] not in ('flop', 'turn', 'river'):
                 continue
@@ -4302,8 +4302,7 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
             if not db_dec:
                 continue
             if db_dec.get('gto_label'):
-                done += 1
-                continue  # já tem análise
+                continue  # já tem análise — não conta como done para o status
 
             spot = di.get('spot', {})
             gto = lookup_gto(
@@ -4344,13 +4343,15 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                 # Spot não está na base — lookup_gto já enfileirou para o solver
                 queued += 1
 
-        # Se algum spot foi enfileirado mas nenhum resolvido, sinaliza para o frontend
-        final_status = 'done' if done > 0 or queued == 0 else 'solver_queued'
-        return final_status, None
+        # done>0: resolveu novos spots agora → done
+        # queued>0 e done=0: spots enfileirados, sem resolução imediata → solver_queued
+        # ambos zero: nada para processar (todos já tinham label ou sem match) → done
+        final_status = 'solver_queued' if queued > 0 and done == 0 else 'done'
+        return final_status, None, done, queued
 
     except Exception as exc:
         log.exception("GTO hand worker error req_id=%s", request_id)
-        return 'error', str(exc)
+        return 'error', str(exc), 0, 0
 
 
 def _gto_hand_worker_loop():
@@ -4364,12 +4365,13 @@ def _gto_hand_worker_loop():
             pending = get_pending_gto_hand_requests(limit=3)
             for req in pending:
                 log.info("GTO hand worker: processando req_id=%s hand=%s", req['id'], req['hand_id'])
-                status, err = _process_gto_hand_request(dict(req))
+                status, err, n_done, n_queued = _process_gto_hand_request(dict(req))
                 update_gto_hand_request(
                     req['id'], status,
+                    decisions_done=n_done,
                     error_msg=err,
                 )
-                log.info("GTO hand worker: req_id=%s → %s", req['id'], status)
+                log.info("GTO hand worker: req_id=%s → %s (done=%s queued=%s)", req['id'], status, n_done, n_queued)
         except Exception:
             log.exception("GTO hand worker loop error")
         time.sleep(30)
