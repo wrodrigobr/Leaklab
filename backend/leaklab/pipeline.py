@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 from typing import List
 from .models import HandState, ParsedHand
 from .hand_state_builder import extract_decision_points, build_hand_state
@@ -8,6 +9,18 @@ from .preflop_range_evaluator import evaluate_preflop_range
 from .mtt_context import build_mtt_context, context_to_dict
 from .postflop_range_evaluator import evaluate_postflop_range
 from .draw_detector import adjust_equity_for_draws
+
+
+def _parse_cards(raw) -> list:
+    """Converte hero_cards para lista de strings de 2 chars: '7s4s' → ['7s','4s']."""
+    if not raw:
+        return []
+    if isinstance(raw, (list, tuple)):
+        # já é lista — garante que cada item é 2 chars
+        return [str(c).strip() for c in raw if str(c).strip()]
+    s = str(raw).replace(' ', '')
+    # Padrão: rank (A,K,Q,J,T,2-9) + suit (s,h,d,c)
+    return re.findall(r'[2-9TJQKAakqjt][shdcSHDC]', s)
 
 
 def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> dict:
@@ -59,6 +72,7 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
         'hand_id':       state.hand_id,
         'street':        state.street,
         'player_action': state.player_action,
+        'hero_cards':    _parse_cards(state.hero_cards),
         'is_3bet':       is_3bet,
         'spot': {
             'spotType':         spot.spot_type,

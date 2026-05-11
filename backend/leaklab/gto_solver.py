@@ -20,8 +20,12 @@ import subprocess
 from typing import Optional
 
 # ── Solver remoto (Oracle Cloud) ──────────────────────────────────────────────
-_REMOTE_URL = os.environ.get('GTO_SOLVER_URL', '').rstrip('/')
-_REMOTE_KEY = os.environ.get('GTO_SOLVER_API_KEY', '')
+# Lidas em runtime (não no import) para garantir que o .env já foi carregado
+def _remote_url() -> str:
+    return os.environ.get('GTO_SOLVER_URL', '').rstrip('/')
+
+def _remote_key() -> str:
+    return os.environ.get('GTO_SOLVER_API_KEY', '')
 
 # Ranges padrão por posição (6-max, 100bb, RFI / call). Simplificadas para convergência rápida.
 _DEFAULT_RANGES: dict[str, str] = {
@@ -166,6 +170,22 @@ def lookup_gto(
     remote = _call_remote_solver(solver_payload)
     if remote:
         exploit = remote.get('exploitability_pct')
+        # Normalize strategy: Oracle returns dict {action: freq}, worker expects list of dicts
+        strategy_raw = remote.get('strategy')
+        if isinstance(strategy_raw, dict):
+            strategy_list = [
+                {'action': k, 'frequency': v, 'ev_bb': None, 'exploitability_pct': exploit}
+                for k, v in strategy_raw.items()
+            ]
+        elif isinstance(strategy_raw, list):
+            strategy_list = strategy_raw
+        else:
+            strategy_list = [{
+                'action':             remote['primary_action'],
+                'frequency':          remote['primary_freq'],
+                'ev_bb':              remote.get('ev'),
+                'exploitability_pct': exploit,
+            }]
         insert_gto_nodes([{
             'street':             street_l,
             'position':           position_u,
@@ -184,12 +204,7 @@ def lookup_gto(
         return {
             'found':              True,
             'source':             'remote_solver',
-            'strategy':           remote.get('strategy', [{
-                'action':    remote['primary_action'],
-                'frequency': remote['primary_freq'],
-                'ev_bb':     remote.get('ev'),
-                'exploitability_pct': exploit,
-            }]),
+            'strategy':           strategy_list,
             'exploitability_pct': float(exploit) if exploit else None,
             'spot_hash':          spot_hash,
             'queued':             False,
@@ -215,14 +230,16 @@ def _priority(street: str) -> int:
 
 def _call_remote_solver(spot: dict, timeout: int = 300) -> Optional[dict]:
     """Chama o solver remoto (Oracle Cloud). Retorna resultado ou None em caso de falha."""
-    if not _REMOTE_URL or not _REMOTE_KEY:
+    url = _remote_url()
+    key = _remote_key()
+    if not url or not key:
         return None
     try:
         import requests
         resp = requests.post(
-            f"{_REMOTE_URL}/solve",
+            f"{url}/solve",
             json=spot,
-            headers={"x-api-key": _REMOTE_KEY},
+            headers={"x-api-key": key},
             timeout=timeout,
         )
         if resp.status_code == 200:

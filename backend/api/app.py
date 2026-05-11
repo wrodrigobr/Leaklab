@@ -4178,8 +4178,10 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
 
         done = 0
         for di in build_decision_inputs_for_hand(target):
+            if di['street'] != 'flop':
+                continue  # solver remoto suporta apenas Flop por enquanto
             ctx = di.get('context', {})
-            key = (_norm(di['street']), _norm(di.get('actionTaken', '') or ''))
+            key = (_norm(di['street']), _norm(di.get('player_action', '') or ''))
             db_dec = db_index.get(key)
             if not db_dec:
                 continue
@@ -4191,8 +4193,8 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
             gto = lookup_gto(
                 street          = di['street'],
                 position        = spot.get('position', ctx.get('position', '')),
-                board           = spot.get('board', di.get('board', [])),
-                hero_hand       = di.get('heroCards', []),
+                board           = spot.get('board', []),
+                hero_hand       = di.get('hero_cards', []),
                 hero_stack_bb   = spot.get('effectiveStackBb', ctx.get('heroStackBb', 20.0)),
                 action_seq      = ctx.get('actionSeq', 'rfi'),
                 vs_position     = spot.get('villainPosition', ctx.get('vsPosition', '')),
@@ -4202,7 +4204,7 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
 
             if gto.get('found') and gto.get('strategy'):
                 r   = evaluate_decision(di)
-                acted = _norm(r.get('actionTaken', '') or di.get('actionTaken', ''))
+                acted = _norm(r.get('player_action', '') or di.get('player_action', ''))
                 # Determinar label com base na frequência GTO da ação jogada
                 played_freq = next(
                     (s['frequency'] for s in gto['strategy']
