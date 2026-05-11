@@ -169,15 +169,31 @@ def lookup_gto(
         get_gto_node(hash_no_facing) if facing_size_bb > 0 else None
     )
     if node:
+        # Prefer full strategy_json (stored by new solver); fallback to primary only
+        strategy_detail = None
+        if node.get('strategy_json'):
+            try:
+                strategy_detail = json.loads(node['strategy_json'])
+            except Exception:
+                pass
+        if strategy_detail:
+            strategy_list = [
+                {'action': k, 'frequency': v['frequency'], 'combos': v.get('combos'),
+                 'ev_bb': node.get('ev_diff'), 'exploitability_pct': node.get('exploitability_pct')}
+                for k, v in strategy_detail.items()
+            ]
+        else:
+            strategy_list = [{
+                'action':             node['gto_action'],
+                'frequency':          node['gto_freq'],
+                'combos':             None,
+                'ev_bb':              node.get('ev_diff'),
+                'exploitability_pct': node.get('exploitability_pct'),
+            }]
         return {
             'found':    True,
             'source':   'postflop_db',
-            'strategy': [{
-                'action':              node['gto_action'],
-                'frequency':           node['gto_freq'],
-                'ev_bb':               node.get('ev_diff'),
-                'exploitability_pct':  node.get('exploitability_pct'),
-            }],
+            'strategy': strategy_list,
             'exploitability_pct': node.get('exploitability_pct'),
             'spot_hash':          spot_hash,
             'queued':             False,
@@ -215,33 +231,44 @@ def lookup_gto(
     remote = _call_remote_solver(solver_payload)
     if remote:
         exploit = remote.get('exploitability_pct')
-        # Normalize strategy: Oracle returns dict {action: freq}, worker expects list of dicts
-        strategy_raw = remote.get('strategy')
-        if isinstance(strategy_raw, dict):
+        strategy_detail = remote.get('strategy_detail')  # {action: {frequency, combos}}
+        # Normalize strategy: prefer strategy_detail, fallback to strategy dict/list
+        if strategy_detail and isinstance(strategy_detail, dict):
             strategy_list = [
-                {'action': k, 'frequency': v, 'ev_bb': None, 'exploitability_pct': exploit}
-                for k, v in strategy_raw.items()
+                {'action': k, 'frequency': v['frequency'], 'combos': v.get('combos'),
+                 'ev_bb': None, 'exploitability_pct': exploit}
+                for k, v in strategy_detail.items()
             ]
-        elif isinstance(strategy_raw, list):
-            strategy_list = strategy_raw
         else:
-            strategy_list = [{
-                'action':             remote['primary_action'],
-                'frequency':          remote['primary_freq'],
-                'ev_bb':              remote.get('ev'),
-                'exploitability_pct': exploit,
-            }]
+            strategy_raw = remote.get('strategy')
+            if isinstance(strategy_raw, dict):
+                strategy_list = [
+                    {'action': k, 'frequency': v, 'combos': None,
+                     'ev_bb': None, 'exploitability_pct': exploit}
+                    for k, v in strategy_raw.items()
+                ]
+            elif isinstance(strategy_raw, list):
+                strategy_list = strategy_raw
+            else:
+                strategy_list = [{
+                    'action':             remote['primary_action'],
+                    'frequency':          remote['primary_freq'],
+                    'combos':             None,
+                    'ev_bb':              remote.get('ev'),
+                    'exploitability_pct': exploit,
+                }]
         insert_gto_nodes([{
-            'street':             street_l,
-            'position':           position_u,
-            'board':              board,
-            'hero_hand':          hero_hand,
-            'hero_stack_bb':      hero_stack_bb,
-            'gto_action':         remote['primary_action'],
-            'gto_freq':           remote['primary_freq'],
-            'ev_diff':            remote.get('ev'),
+            'street':          street_l,
+            'position':        position_u,
+            'board':           board,
+            'hero_hand':       hero_hand,
+            'hero_stack_bb':   hero_stack_bb,
+            'gto_action':      remote['primary_action'],
+            'gto_freq':        remote['primary_freq'],
+            'ev_diff':         remote.get('ev'),
             'exploitability_pct': float(exploit) if exploit else None,
-            'iterations':         remote.get('iterations'),
+            'iterations':      remote.get('iterations'),
+            'strategy_detail': strategy_detail,
         }])
         log.info("GTO remote solve: %s → %s %.0f%% (exploit=%.2f%%)",
                  spot_hash, remote['primary_action'],
@@ -352,7 +379,7 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
             hero_hand    = spot.get('hero_hand') or meta.get('hero_hand', [])
             hero_stack   = spot.get('hero_stack_bb') or meta.get('hero_stack_bb', 30.0)
             inserted = insert_gto_nodes([{
-                'spot_hash':         spot_hash,           # hash pré-computado da fila
+                'spot_hash':         spot_hash,
                 'street':            spot['street'],
                 'position':          position,
                 'board':             spot.get('board', []),
@@ -364,6 +391,7 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
                 'ev_diff':           result.get('ev'),
                 'exploitability_pct': float(exploit),
                 'iterations':        result.get('iterations'),
+                'strategy_detail':   result.get('strategy_detail'),
             }])
 
             if inserted:

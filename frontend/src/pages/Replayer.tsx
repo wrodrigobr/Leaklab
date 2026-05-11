@@ -357,8 +357,64 @@ function SidePanels({
             </span>
           </div>
 
-          {/* Cards Jogou/GTO — ocultos quando o spot GTO não corresponde ao contexto */}
-          {step.gto_action && !step.gto_spot_mismatch && (
+          {/* Strategy breakdown cards — all actions sorted by frequency desc */}
+          {!step.gto_spot_mismatch && step.gto_strategy && step.gto_strategy.length > 0 ? (() => {
+            const played = (step.action ?? "").toLowerCase();
+            const sorted = [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0));
+            const getColor = (action: string) => {
+              const a = action.toLowerCase();
+              if (a === "fold")                        return { bg: "#1e3a6e", border: "#2563eb", text: "#93c5fd" };
+              if (a === "call")                        return { bg: "#14401f", border: "#16a34a", text: "#86efac" };
+              if (a.startsWith("bet") || a.startsWith("raise")) return { bg: "#4a1919", border: "#dc2626", text: "#fca5a5" };
+              if (a === "allin" || a.startsWith("allin")) return { bg: "#5a1a1a", border: "#ef4444", text: "#fca5a5" };
+              if (a === "check")                       return { bg: "#1e2d40", border: "#475569", text: "#94a3b8" };
+              return { bg: "#1e2535", border: "#374151", text: "#9ca3af" };
+            };
+            const fmtAction = (a: string) => {
+              if (a === "fold")  return "Fold";
+              if (a === "call")  return "Call";
+              if (a === "check") return "Check";
+              if (a === "allin") return "All-in";
+              if (a.startsWith("bet_"))    return `Bet ${a.replace("bet_",  "").replace("pct", "%")}`;
+              if (a.startsWith("raise_"))  return `Raise ${a.replace("raise_","").replace("pct", "%")}`;
+              return a.toUpperCase();
+            };
+            return (
+              <div className="flex gap-1.5 flex-wrap">
+                {sorted.map((s) => {
+                  const c = getColor(s.action);
+                  const isPlayed = s.action.toLowerCase() === played ||
+                                   played.startsWith(s.action.toLowerCase());
+                  return (
+                    <div
+                      key={s.action}
+                      className="relative flex flex-col rounded-lg px-2.5 pt-2 pb-2.5 min-w-[60px] flex-1"
+                      style={{
+                        background: c.bg,
+                        border: `1px solid ${isPlayed ? "#c9a840" : c.border}`,
+                        boxShadow: isPlayed ? "0 0 0 1px rgba(201,168,64,0.4)" : undefined,
+                      }}
+                    >
+                      {isPlayed && (
+                        <div className="absolute top-1 right-1.5 font-mono text-[8px] text-amber-400 font-bold uppercase">Jogou</div>
+                      )}
+                      <div className="font-mono text-[10px] font-bold truncate" style={{ color: c.text }}>
+                        {fmtAction(s.action)}
+                      </div>
+                      <div className="font-mono text-lg font-bold leading-tight" style={{ color: c.text }}>
+                        {((s.frequency ?? 0) * 100).toFixed(1)}%
+                      </div>
+                      {s.combos != null && (
+                        <div className="font-mono text-[9px] text-right mt-0.5" style={{ color: c.text, opacity: 0.7 }}>
+                          {s.combos.toFixed(1)} combos
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })() : step.gto_action && !step.gto_spot_mismatch && (
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-lg bg-background/60 px-2.5 py-2 ring-1 ring-border/50">
                 <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Jogou</div>

@@ -2871,6 +2871,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 all_decisions[key]['context']   = di.get('context', {})
                 all_decisions[key]['math']      = di.get('math', {})
                 all_decisions[key]['breakdown'] = r['evaluation'].get('scoreBreakdown', {})
+                all_decisions[key]['_di']       = di  # spot params for GTO strategy lookup
                 # Análise de range preflop — só para preflop hero actions
                 if di['street'] == 'preflop':
                     try:
@@ -3092,6 +3093,30 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             and _norm(engine_best) != _norm(reconciled_best or '')
         )
 
+        # Fetch full GTO strategy for display (all actions with freq + combos)
+        gto_strategy = None
+        if decision and gto_label and not gto_spot_mismatch:
+            try:
+                from leaklab.gto_solver import lookup_gto as _lookup_gto
+                _di   = decision.get('_di', {})
+                _spot = _di.get('spot', {})
+                _ctx  = _di.get('context', {})
+                _gto_result = _lookup_gto(
+                    street         = action.street,
+                    position       = _spot.get('position', _ctx.get('position', '')),
+                    board          = _spot.get('board', []),
+                    hero_hand      = _di.get('hero_cards', []),
+                    hero_stack_bb  = float(_spot.get('effectiveStackBb', _ctx.get('heroStackBb', 20.0)) or 20.0),
+                    action_seq     = _ctx.get('actionSeq', 'rfi'),
+                    vs_position    = _spot.get('villainPosition', _ctx.get('vsPosition', '')),
+                    facing_size_bb = float(_spot.get('facingSize', 0) or 0),
+                    pot_bb         = float(_spot.get('potSize', 0) or 0),
+                )
+                if _gto_result.get('found') and _gto_result.get('strategy'):
+                    gto_strategy = _gto_result['strategy']
+            except Exception:
+                pass
+
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,
@@ -3106,6 +3131,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          gto_label,
             'gto_action':         gto_action,
+            'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
             'preflop_gto':        decision.get('preflop_gto') if decision else None,
             'desc':           f"{action.player}: {_normalize_action(action.action)}"

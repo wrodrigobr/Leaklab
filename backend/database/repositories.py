@@ -4074,7 +4074,8 @@ def get_gto_node(spot_hash: str) -> Optional[dict]:
     try:
         return _fetchone(conn, _adapt("""
             SELECT spot_hash, street, position, board, hero_hand, stack_bucket,
-                   gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source
+                   gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
+                   strategy_json
             FROM gto_nodes
             WHERE spot_hash = ?
               AND exploitability_pct IS NOT NULL
@@ -4121,11 +4122,13 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 hero_stack_bb=float(n.get('hero_stack_bb', 30.0)),
                 facing_size_bb=float(n.get('facing_size_bb', 0.0)),
             )
+            strategy_json = json.dumps(n['strategy_detail']) if n.get('strategy_detail') else None
             conn.execute(_adapt("""
                 INSERT OR REPLACE INTO gto_nodes
                     (spot_hash, street, position, board, hero_hand, stack_bucket,
-                     gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
+                     strategy_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """), (
                 spot_hash,
                 n['street'].lower(),
@@ -4139,6 +4142,7 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 float(exploitability),
                 int(n['iterations']) if n.get('iterations') else None,
                 'solver_cli',
+                strategy_json,
             ))
             count += 1
         conn.commit()

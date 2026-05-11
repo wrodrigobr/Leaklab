@@ -678,6 +678,7 @@ def _run_migrations(conn):
         for sql in [
             "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS exploitability_pct REAL",
             "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS iterations INTEGER",
+            "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS strategy_json TEXT",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -1090,11 +1091,12 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_nodes_hash ON gto_nodes(spot_hash)")
-        # migrate gto_nodes: adicionar campos de qualidade
+        # migrate gto_nodes: adicionar campos de qualidade + strategy_json
         gto_existing = {r[1] for r in conn.execute('PRAGMA table_info(gto_nodes)').fetchall()}
         for col, sql in [
             ("exploitability_pct", "ALTER TABLE gto_nodes ADD COLUMN exploitability_pct REAL"),
             ("iterations",         "ALTER TABLE gto_nodes ADD COLUMN iterations INTEGER"),
+            ("strategy_json",      "ALTER TABLE gto_nodes ADD COLUMN strategy_json TEXT"),
         ]:
             if col not in gto_existing:
                 try: conn.execute(sql)

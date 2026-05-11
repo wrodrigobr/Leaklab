@@ -49,14 +49,22 @@ struct Input {
 fn default_iters()  -> u32 { 1500 }
 fn default_target() -> f64 { 1.0  }
 
+#[derive(Serialize, Clone)]
+struct ActionDetail {
+    frequency: f64,
+    combos:    f64,
+}
+
 #[derive(Serialize)]
 struct Output {
-    primary_action: String,
-    primary_freq:   f64,
-    ev:             f64,
-    exploitability: f64,    // % do pot
-    iterations:     u32,
-    strategy:       HashMap<String, f64>,
+    primary_action:   String,
+    primary_freq:     f64,
+    ev:               f64,
+    exploitability:   f64,    // % do pot
+    iterations:       u32,
+    strategy:         HashMap<String, f64>,
+    strategy_detail:  HashMap<String, ActionDetail>,
+    total_combos:     f64,
 }
 
 #[derive(Serialize)]
@@ -202,30 +210,45 @@ fn run(inp: &Input) -> Result<Output, String> {
         ev_sum / (total_weight * 100.0)  // converte chips → BBs
     } else { 0.0 };
 
+    // Combo counts: total_weight = sum of normalized_weights = effective range combos
+    // combos_i = total_weight * freq_i  (unnormalized weight contribution per action)
+    let mut combo_counts = vec![0.0f64; num_actions];
+    for hand_idx in 0..num_hands {
+        let w = weights[hand_idx] as f64;
+        for action_idx in 0..num_actions {
+            combo_counts[action_idx] += w * strategy[hand_idx + action_idx * num_hands] as f64;
+        }
+    }
+
     // Monta mapa e identifica ação primária
-    let mut strategy_map: HashMap<String, f64> = HashMap::new();
+    let mut strategy_map:        HashMap<String, f64>          = HashMap::new();
+    let mut strategy_detail_map: HashMap<String, ActionDetail> = HashMap::new();
     let mut primary_action = String::from("check");
     let mut primary_freq   = 0.0f64;
 
     for (i, action) in actions.iter().enumerate() {
-        let label = action_label(action, pot_chips);
-        let freq  = (freqs[i] * 1000.0).round() / 1000.0;
+        let label  = action_label(action, pot_chips);
+        let freq   = (freqs[i] * 1000.0).round() / 1000.0;
+        let combos = (combo_counts[i] * 100.0).round() / 100.0;
         if freq > primary_freq {
             primary_freq   = freq;
             primary_action = label.clone();
         }
         if freq > 0.001 {
-            strategy_map.insert(label, freq);
+            strategy_map.insert(label.clone(), freq);
+            strategy_detail_map.insert(label, ActionDetail { frequency: freq, combos });
         }
     }
 
     Ok(Output {
         primary_action,
-        primary_freq: (primary_freq * 1000.0).round() / 1000.0,
-        ev:           (avg_ev * 100.0).round() / 100.0,
-        exploitability: (exploit_pct * 100.0).round() / 100.0,
-        iterations: inp.max_iterations,
-        strategy: strategy_map,
+        primary_freq:    (primary_freq * 1000.0).round() / 1000.0,
+        ev:              (avg_ev * 100.0).round() / 100.0,
+        exploitability:  (exploit_pct * 100.0).round() / 100.0,
+        iterations:      inp.max_iterations,
+        strategy:        strategy_map,
+        strategy_detail: strategy_detail_map,
+        total_combos:    (total_weight * 100.0).round() / 100.0,
     })
 }
 
