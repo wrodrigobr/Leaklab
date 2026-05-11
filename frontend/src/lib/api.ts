@@ -253,6 +253,26 @@ export interface ReplayStep {
   gto_action?: string | null;
   engine_best?: string | null;  // engine suggestion when it conflicts with GTO reconciliation
   gto_spot_mismatch?: boolean | null;  // GTO action incompatible with game state (e.g. check when facing a bet)
+  // Preflop range analysis (preflop hero actions only)
+  preflop_gto?: {
+    available: boolean;
+    scenario: "rfi" | "vs_rfi" | "vs_3bet";
+    hand_type: string;
+    stack_bucket: string;
+    stack_bb: number;
+    position: string;
+    vs_position: string | null;
+    in_range: boolean;
+    range_pct: number;
+    range_hands: string;
+    recommended_actions: string[];
+    action_quality: "correct" | "acceptable" | "leak" | "major_leak" | "unknown";
+    action_taken: string;
+    pro_notes: string[];
+    rfi_pct?: number;
+    hands_4bet?: string;
+    hands_call?: string;
+  } | null;
   // Score breakdown (all hero actions)
   draw_profile?: string | null;
   math_penalty?: number | null;

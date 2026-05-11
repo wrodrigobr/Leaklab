@@ -210,6 +210,80 @@ function SidePanels({
         </section>
       )}
 
+      {/* ── Preflop Range GTO — aparece apenas para hero actions preflop ── */}
+      {step.is_hero && step.type === "action" && !isPostflop && step.preflop_gto?.available && (() => {
+        const pg = step.preflop_gto!;
+        const scenarioLabel: Record<string, string> = {
+          rfi: "RFI — Raise First In",
+          vs_rfi: "vs RFI — Defendendo",
+          vs_3bet: "vs 3bet — Respondendo",
+        };
+        const qualityMeta: Record<string, { label: string; cls: string; border: string }> = {
+          correct:    { label: "Correto",       cls: "text-emerald-400", border: "border-emerald-500/30 bg-emerald-500/5" },
+          acceptable: { label: "Aceitável",     cls: "text-sky-400",     border: "border-sky-500/30 bg-sky-500/5" },
+          leak:       { label: "Leak",          cls: "text-amber-400",   border: "border-amber-500/30 bg-amber-500/5" },
+          major_leak: { label: "Leak Grave",    cls: "text-red-400",     border: "border-red-500/30 bg-red-500/5" },
+          unknown:    { label: "Desconhecido",  cls: "text-muted-foreground", border: "border-border bg-hud-surface" },
+        };
+        const qm = qualityMeta[pg.action_quality] ?? qualityMeta.unknown;
+        return (
+          <section className={cn("rounded-xl border p-3 space-y-3", qm.border)}>
+            {/* Header */}
+            <div className="flex items-center gap-2">
+              <Sigma className="size-4 shrink-0" />
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 flex-1 text-muted-foreground">
+                Range GTO · Preflop
+              </span>
+              <span className={cn("font-mono text-[9px] font-bold uppercase", qm.cls)}>{qm.label}</span>
+            </div>
+
+            {/* Scenario + In Range */}
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] text-muted-foreground">{scenarioLabel[pg.scenario] ?? pg.scenario}</span>
+              <span className={cn("font-mono text-[10px] font-bold", pg.in_range ? "text-emerald-400" : "text-red-400")}>
+                {pg.in_range ? "✓ No range" : "✗ Fora do range"}
+              </span>
+            </div>
+
+            {/* Jogou / Recomendado */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-background/60 px-2.5 py-2 ring-1 ring-border/50">
+                <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Jogou</div>
+                <div className="font-mono text-sm font-bold text-foreground uppercase">{pg.action_taken}</div>
+              </div>
+              <div className={cn("rounded-lg px-2.5 py-2 ring-1",
+                pg.action_quality === "correct" ? "bg-emerald-500/10 ring-emerald-500/30" : "bg-background/60 ring-border/50")}>
+                <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">GTO</div>
+                <div className={cn("font-mono text-sm font-bold uppercase", qm.cls)}>
+                  {pg.recommended_actions.join(" / ")}
+                </div>
+              </div>
+            </div>
+
+            {/* Range % */}
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Range abertura</span>
+              <span className="font-mono font-medium text-foreground">{(pg.range_pct * 100).toFixed(0)}% das mãos</span>
+            </div>
+
+            {/* Stack bucket */}
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Stack depth</span>
+              <span className="font-mono font-medium text-foreground">{pg.stack_bb} BB ({pg.stack_bucket})</span>
+            </div>
+
+            {/* Professional notes */}
+            {pg.pro_notes.length > 0 && (
+              <div className="space-y-1.5 pt-1 border-t border-border/40">
+                {pg.pro_notes.map((note, i) => (
+                  <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })()}
+
       {/* ── GTO não disponível — solicitar análise (apenas postflop) ── */}
       {step.is_hero && step.type === "action" && isPostflop && !hasGto && !handHasAnyGto && handHasPostflopAction && (
         <section className="rounded-xl border border-border bg-hud-surface p-3 space-y-2.5">

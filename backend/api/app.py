@@ -2831,9 +2831,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         all_decisions[key] = d
 
     # Re-rodar o engine para enriquecer TODAS as decisões hero com dados matemáticos
+    # e análise de range preflop GTO
     try:
         from leaklab.pipeline import build_decision_inputs_for_hand
         from leaklab.decision_engine_v11 import evaluate_decision
+        from leaklab.gto_utils import hand_to_type
+        from leaklab.preflop_gto_ranges import analyze_preflop
         engine_inputs = build_decision_inputs_for_hand(hand)
         for di in engine_inputs:
             r   = evaluate_decision(di)
@@ -2842,6 +2845,24 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 all_decisions[key]['context']   = di.get('context', {})
                 all_decisions[key]['math']      = di.get('math', {})
                 all_decisions[key]['breakdown'] = r['evaluation'].get('scoreBreakdown', {})
+                # Análise de range preflop — só para preflop hero actions
+                if di['street'] == 'preflop':
+                    try:
+                        spot     = di.get('spot', {})
+                        ctx      = di.get('context', {})
+                        h_cards  = di.get('hero_cards', [])
+                        h_type   = hand_to_type(h_cards) if h_cards else None
+                        if h_type:
+                            all_decisions[key]['preflop_gto'] = analyze_preflop(
+                                position    = spot.get('position', ''),
+                                hero_hand_type = h_type,
+                                stack_bb    = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20),
+                                action_taken= di.get('player_action', ''),
+                                facing_size = float(spot.get('facingSize') or 0),
+                                vs_position = spot.get('villainPosition', ''),
+                            )
+                    except Exception:
+                        pass
     except Exception:
         pass  # fallback gracioso — continua sem dados extras
 
@@ -3051,6 +3072,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'gto_label':          gto_label,
             'gto_action':         gto_action,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
+            'preflop_gto':        decision.get('preflop_gto') if decision else None,
             'desc':           f"{action.player}: {_normalize_action(action.action)}"
                                 + (f' {int(amt)}' if amt else ''),
             'revealed_cards': dict(current_revealed) if current_revealed else None,

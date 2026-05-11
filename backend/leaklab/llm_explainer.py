@@ -153,6 +153,12 @@ Para cada decisão use EXATAMENTE este formato Markdown:
 ### ❌ O Erro
 Explique em 3-4 frases o que foi feito de errado e por que é um erro estratégico neste contexto específico.
 
+### 📊 Range GTO (apenas preflop — pule esta seção para flop/turn/river)
+- **Cenário:** [RFI | vs RFI | vs 3bet]
+- **Mão no range GTO?** [Sim — range de X% das mãos | Não — fora do top X%]
+- **Ação GTO recomendada:** [raise/fold/call/jam]
+- **Análise de range:** [1-2 frases profissionais explicando o que o range GTO diz sobre esta mão e posição]
+
 ### 📐 A Matemática
 - **Equity estimada:** X% (o que sua mão vale contra o range do oponente)
 - **Pot odds exigidas:** Y% (equity mínima para breakeven)
@@ -177,22 +183,24 @@ Explique em 3-4 frases o que foi feito de errado e por que é um erro estratégi
 REGRAS OBRIGATÓRIAS:
 1. Escreva SOMENTE texto Markdown — zero JSON, zero chaves, zero colchetes
 2. Use os números exatos dos dados fornecidos
-3. Para preflop sem board: não mencione cartas comunitárias
-4. Separe cada decisão com ---
-5. Seja específico: "33% de equity vs 54% exigidos = -21pp" não "equity insuficiente"
-6. Português do Brasil, tom técnico e direto
-7. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP"""
+3. Para preflop: use os dados de range GTO fornecidos na seção "📊 Range GTO"
+4. Para flop/turn/river: pule a seção Range GTO completamente
+5. Separe cada decisão com ---
+6. Seja específico: "33% de equity vs 54% exigidos = -21pp" não "equity insuficiente"
+7. Português do Brasil, tom técnico e direto
+8. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP"""
 
     decisions_data = []
     for i, d in enumerate(decisions):
-        ev   = d.get('evaluation', {})
-        bd   = ev.get('scoreBreakdown', {})
-        ctx  = d.get('context', {})
-        mt   = d.get('math', {})
-        th   = d.get('thresholds', {})
-        spot = d.get('spot', {})
-        hp   = d.get('hand_profile', {})
-        rng  = d.get('range_evaluation', {})
+        ev    = d.get('evaluation', {})
+        bd    = ev.get('scoreBreakdown', {})
+        ctx   = d.get('context', {})
+        mt    = d.get('math', {})
+        th    = d.get('thresholds', {})
+        spot  = d.get('spot', {})
+        hp    = d.get('hand_profile', {})
+        rng   = d.get('range_evaluation', {})
+        pfgto = d.get('preflop_gto', {}) or {}
 
         street     = d.get('street', 'preflop')
         full_board = d.get('board', [])
@@ -216,6 +224,23 @@ REGRAS OBRIGATÓRIAS:
         cards_fmt  = _fmt_cards([hero_cards[:2], hero_cards[2:]]) if len(hero_cards) >= 4 else hero_cards
         board_fmt  = _fmt_cards(board_now) if board_now else '(preflop — sem board)'
 
+        # Bloco de range GTO preflop
+        pfgto_block = ''
+        if street == 'preflop' and pfgto.get('available'):
+            scenario_label = {'rfi': 'RFI (Raise First In)', 'vs_rfi': 'vs RFI (defendendo abertura)',
+                              'vs_3bet': 'vs 3bet (respondendo re-raise)'}.get(pfgto.get('scenario',''), '')
+            in_rng     = pfgto.get('in_range', False)
+            rng_pct    = pfgto.get('range_pct', 0)
+            rec_acts   = '/'.join(pfgto.get('recommended_actions', []))
+            pro_notes  = ' | '.join(pfgto.get('pro_notes', []))
+            pfgto_block = (
+                f"\nRange GTO preflop:\n"
+                f"  Cenário: {scenario_label}\n"
+                f"  Mão no range: {'SIM' if in_rng else 'NÃO'} (range top {rng_pct*100:.0f}% das mãos)\n"
+                f"  Ação GTO recomendada: {rec_acts}\n"
+                f"  Notas profissionais: {pro_notes}\n"
+            )
+
         decisions_data.append(
             f"DECISÃO {i+1} de {len(decisions)}:\n"
             f"Cartas: {cards_fmt} | Board no momento: {board_fmt}\n"
@@ -230,6 +255,7 @@ REGRAS OBRIGATÓRIAS:
             f"math: {bd.get('mathPenalty',0):.3f} | "
             f"range: {bd.get('rangePenalty',0):.3f} | "
             f"contexto: {bd.get('contextPenalty',0):.3f}"
+            + pfgto_block
         )
 
     user_message = (
