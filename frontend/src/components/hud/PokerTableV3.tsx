@@ -45,7 +45,7 @@ function fmtAmt(v: number, bb: number, unit: "chips" | "bb"): string {
     const x = Math.round(v / bb * 10) / 10;
     return (x % 1 === 0 ? x.toFixed(0) : x.toFixed(1)) + " BB";
   }
-  return v >= 1000 ? (v / 1000).toFixed(1) + "k" : String(Math.round(v));
+  return Math.round(v).toLocaleString("pt-BR");
 }
 
 function breakChips(amount: number) {
