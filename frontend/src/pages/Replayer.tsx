@@ -400,14 +400,27 @@ function SidePanels({
             </div>
           )}
 
-          {/* Conflito engine vs GTO — só exibe quando a jogada foi um erro */}
-          {!step.gto_spot_mismatch && step.engine_best && isError && (
+          {/* Conflito engine vs GTO — só exibe quando heurístico diverge do GTO */}
+          {!step.gto_spot_mismatch && step.engine_best && step.gto_action &&
+           step.engine_best !== step.gto_action && isError && (
             <div className="flex items-start gap-1.5 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
               <span className="text-amber-400 text-[10px] mt-px shrink-0">⚠</span>
               <p className="text-[10px] text-muted-foreground leading-relaxed">
                 O motor heurístico sugeriu{" "}
                 <span className="font-mono font-bold text-foreground uppercase">{step.engine_best}</span>{" "}
                 com base em equity e posição. O solver GTO é a fonte mais autoritativa.
+              </p>
+            </div>
+          )}
+          {/* Consenso engine + GTO — reforça a recomendação quando ambos concordam */}
+          {!step.gto_spot_mismatch && step.engine_best && step.gto_action &&
+           step.engine_best === step.gto_action && isError && (
+            <div className="flex items-start gap-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 px-2.5 py-2">
+              <span className="text-emerald-400 text-[10px] mt-px shrink-0">✓</span>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Motor heurístico e solver GTO concordam:{" "}
+                <span className="font-mono font-bold text-foreground uppercase">{step.gto_action}</span>{" "}
+                era a jogada correta neste spot.
               </p>
             </div>
           )}
