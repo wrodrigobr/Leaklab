@@ -2909,6 +2909,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         if _player not in shows_map:
             shows_map[_player] = _m.group(2).split()
 
+    # Pre-scan for "Uncalled bet (X) returned to Player" lines
+    # These appear after all actions when an all-in isn't fully called
+    UNCALLED_RE = _re.compile(r'Uncalled bet \((\d+)\) returned to (.+)')
+    uncalled_returns = []
+    for line in (hand.raw_text or '').split('\n'):
+        _mu = UNCALLED_RE.match(line.strip())
+        if _mu:
+            uncalled_returns.append({'amount': int(_mu.group(1)), 'player': _mu.group(2).strip()})
+
     current_revealed = {}  # seat_str -> [cards], accumulates as shows happen
 
     # Extrair antes e blinds do raw_text (parser não os captura em hand.actions)
@@ -3103,6 +3112,23 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 + (f' {int(amt)}' if amt else ''),
             'revealed_cards': dict(current_revealed) if current_revealed else None,
             **tech,
+        }))
+
+    # Apply uncalled bet returns — correct pot/stacks/bets before showdown
+    for ur in uncalled_returns:
+        ur_player = ur['player']
+        ur_amount = ur['amount']
+        ur_pseat  = next((s for s, d in seats.items() if d['player'] == ur_player), None)
+        pot                    = max(0, pot - ur_amount)
+        if ur_pseat is not None:
+            stacks[ur_pseat]   = stacks[ur_pseat] + ur_amount
+            bets_r[ur_pseat]   = max(0, bets_r.get(ur_pseat, 0) - ur_amount)
+        timeline.append(snap({
+            'type':   'return',
+            'player': ur_player,
+            'seat':   ur_pseat,
+            'amount': ur_amount,
+            'desc':   f"Uncalled bet ({ur_amount}) returned to {ur_player}",
         }))
 
     # Adicionar frame de conclusão com resultado da mão

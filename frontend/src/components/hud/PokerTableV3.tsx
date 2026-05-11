@@ -204,7 +204,7 @@ function renderSeatsAndChips(
       html += cardSVG(heroCards[0], pos.x - cw - cg / 2, cardY, cw, ch);
       html += cardSVG(heroCards[1], pos.x + cg / 2, cardY, cw, ch);
     } else if (!isHero && !isFolded) {
-      const vw = 44, vh = 68;
+      const vw = cw, vh = ch;
       const vcY = by - Math.round(vh * 0.67);
       const seatKey = String(sn);
       if (seatKey in revealedCards) {
@@ -212,14 +212,14 @@ function renderSeatsAndChips(
         const shown = revealedCards[seatKey];
         if (shown.length >= 2) {
           // Show face-up
-          html += cardSVG(shown[0], pos.x - vw - 3, vcY, vw, vh);
-          html += cardSVG(shown[1], pos.x + 3, vcY, vw, vh);
+          html += cardSVG(shown[0], pos.x - vw - cg / 2, vcY, vw, vh);
+          html += cardSVG(shown[1], pos.x + cg / 2, vcY, vw, vh);
         }
         // empty array = mucked: render nothing (player hid their cards)
       } else {
         // Unknown: face-down
-        html += cardSVG(null, pos.x - vw - 3, vcY, vw, vh, true);
-        html += cardSVG(null, pos.x + 3, vcY, vw, vh, true);
+        html += cardSVG(null, pos.x - vw - cg / 2, vcY, vw, vh, true);
+        html += cardSVG(null, pos.x + cg / 2, vcY, vw, vh, true);
       }
     }
 
