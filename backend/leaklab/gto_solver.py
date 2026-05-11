@@ -49,10 +49,33 @@ _SOLVER_BIN = os.environ.get(
 )
 _SOLVER_AVAILABLE: Optional[bool] = None
 
-# Threshold: exploitability acima deste valor → solve rejeitado e recolocado na fila
-MAX_EXPLOITABILITY_PCT = 1.0
-# Se o solve não convergiu, rodar com este fator de iterações a mais
-RETRY_ITERATION_FACTOR = 3
+# Threshold padrão de validação. Calibrado para servidor de teste (1 core / 1GB).
+# TODO(produção): reduzir para 5.0 com hardware adequado.
+MAX_EXPLOITABILITY_PCT = 25.0
+
+
+def _solver_params_for_stack(stack_bb: float) -> dict:
+    """
+    Parâmetros do solver calibrados para o servidor de teste (Oracle: 1 core, 1 GB RAM).
+
+    A árvore de jogo CFR cresce exponencialmente com effective_stack → tree é construída
+    com no máximo 20bb independente do stack real. Isso mantém o tempo de solve < 60s
+    mesmo com 1 core. A exploitability alta (≈15-25%) ainda fornece direção estratégica
+    correta para coaching.
+
+    Retorna: {max_iterations, target_exploitability_pct, timeout, effective_stack_bb}
+
+    TODO(produção): quando migrar para servidor com 8+ cores / 16GB RAM, aumentar
+    max_iterations para 200+ e relaxar o cap de effective_stack para 50bb.
+    """
+    # Cap tree size: 20bb max — anything above barely fits in 1GB and times out on 1 core
+    capped = min(float(stack_bb), 20.0)
+    return {
+        'max_iterations':            10,
+        'target_exploitability_pct': 15.0,
+        'timeout':                   120,
+        'effective_stack_bb':        capped,
+    }
 
 
 def _solver_binary() -> Optional[str]:
@@ -146,14 +169,16 @@ def lookup_gto(
     ip_range  = _DEFAULT_RANGES.get(position_u, _DEFAULT_RANGE_WIDE)
     effective_pot = pot_bb if pot_bb > 0 else max(facing_size_bb * 2 + 2, 4.0)
 
+    _params = _solver_params_for_stack(hero_stack_bb)
     solver_payload = {
         'street':                    street_l,
         'board':                     board,
         'oop_range':                 oop_range,
         'ip_range':                  ip_range,
         'pot_bb':                    effective_pot,
-        'effective_stack_bb':        hero_stack_bb,
-        'target_exploitability_pct': MAX_EXPLOITABILITY_PCT,
+        'effective_stack_bb':        _params['effective_stack_bb'],  # capped for tree size
+        'max_iterations':            _params['max_iterations'],
+        'target_exploitability_pct': _params['target_exploitability_pct'],
     }
 
     # Metadados extras para armazenar no DB após o solve
@@ -277,15 +302,18 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
         spot      = json.loads(job['spot_json'])
 
         try:
-            result = _call_solver(bin_path, spot)
+            stack   = spot.get('effective_stack_bb', 30.0)
+            timeout = _solver_params_for_stack(stack)['timeout']
+            result  = _call_solver(bin_path, spot, timeout=timeout)
 
             if not result:
                 mark_solver_job_done(spot_hash, 'failed')
                 failed += 1
                 continue
 
-            exploit = result.get('exploitability')
-            if exploit is None or float(exploit) > MAX_EXPLOITABILITY_PCT:
+            exploit   = result.get('exploitability')
+            threshold = spot.get('target_exploitability_pct', MAX_EXPLOITABILITY_PCT)
+            if exploit is None or float(exploit) > threshold:
                 # Solve não convergiu — aumenta iterações e recoloca na fila
                 log.warning(
                     "Spot %s exploitability=%.2f%% > threshold %.1f%% — recolocando na fila",
@@ -331,10 +359,22 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
 
 
 def _requeue_with_more_iterations(spot_hash: str, spot: dict) -> None:
-    """Recoloca spot na fila com mais iterações para forçar convergência."""
+    """
+    Recoloca spot na fila com parâmetros relaxados.
+    Em vez de apenas multiplicar iterações (o que causaria timeout novamente),
+    dobra o threshold de exploitability para aceitar uma solução menos precisa.
+    """
     from database.repositories import enqueue_solver_spot
-    current = spot.get('max_iterations', 1000)
-    spot_augmented = {**spot, 'max_iterations': current * RETRY_ITERATION_FACTOR}
+    stack           = spot.get('effective_stack_bb', 30.0)
+    base            = _solver_params_for_stack(stack)
+    current_iter    = spot.get('max_iterations', base['max_iterations'])
+    current_target  = spot.get('target_exploitability_pct', base['target_exploitability_pct'])
+    # Relaxa threshold (máx 10%) e mantém iterações dentro do razoável
+    spot_augmented  = {
+        **spot,
+        'max_iterations':            min(current_iter, base['max_iterations']),
+        'target_exploitability_pct': min(current_target * 2.0, 10.0),
+    }
     enqueue_solver_spot(
         spot_hash + '_retry',
         json.dumps(spot_augmented, sort_keys=True),

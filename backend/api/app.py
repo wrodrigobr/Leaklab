@@ -4412,17 +4412,19 @@ def _enqueue_postflop_spots(results: list) -> None:
                 already += 1
                 continue
 
-            from leaklab.gto_solver import _DEFAULT_RANGES, _DEFAULT_RANGE_WIDE, MAX_EXPLOITABILITY_PCT, _priority
+            from leaklab.gto_solver import _DEFAULT_RANGES, _DEFAULT_RANGE_WIDE, _priority, _solver_params_for_stack
             vs_pos   = spot.get('villainPosition', ctx.get('vsPosition', '')).upper()
             pot_bb   = float(spot.get('potSize') or facing * 2 + 2 or 4.0)
+            _params  = _solver_params_for_stack(stack)
             payload  = _json.dumps({
                 'street':                    d['street'],
                 'board':                     board,
                 'oop_range':                 _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
                 'ip_range':                  _DEFAULT_RANGES.get(pos,    _DEFAULT_RANGE_WIDE),
                 'pot_bb':                    pot_bb,
-                'effective_stack_bb':        stack,
-                'target_exploitability_pct': MAX_EXPLOITABILITY_PCT,
+                'effective_stack_bb':        _params['effective_stack_bb'],  # capped for tree size
+                'max_iterations':            _params['max_iterations'],
+                'target_exploitability_pct': _params['target_exploitability_pct'],
                 '_meta': {'position': pos, 'vs_position': vs_pos, 'hero_hand': hero_h,
                           'hero_stack_bb': stack, 'facing_size_bb': facing,
                           'street': d['street'], 'board': board},
