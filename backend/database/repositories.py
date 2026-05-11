@@ -4329,12 +4329,25 @@ def get_preflop_stats() -> dict:
 # ── GTO Solver Queue ──────────────────────────────────────────────────────────
 
 def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5) -> bool:
-    """Adiciona spot à fila do solver. Retorna True se inserido (False se já existia)."""
+    """
+    Adiciona spot à fila do solver. Retorna True se inserido ou reenfileirado.
+    Spots com status done/failed/requeued são resetados para pending (permite
+    reprocessamento após fixes de hash ou mudança de parâmetros).
+    Spots pending/running não são alterados.
+    """
     conn = get_conn()
     try:
-        existing = _fetchone(conn, "SELECT id FROM gto_solver_queue WHERE spot_hash = ?", (spot_hash,))
+        existing = _fetchone(conn, _adapt("SELECT id, status FROM gto_solver_queue WHERE spot_hash = ?"), (spot_hash,))
         if existing:
-            return False
+            if existing['status'] in ('done', 'failed', 'requeued'):
+                conn.execute(_adapt("""
+                    UPDATE gto_solver_queue
+                    SET status='pending', spot_json=?, priority=?
+                    WHERE spot_hash=?
+                """), (spot_json, priority, spot_hash))
+                conn.commit()
+                return True
+            return False  # pending ou running — não reprocessar
         conn.execute(_adapt("""
             INSERT INTO gto_solver_queue (spot_hash, spot_json, status, priority)
             VALUES (?, ?, 'pending', ?)

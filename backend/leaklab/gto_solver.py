@@ -149,7 +149,12 @@ def lookup_gto(
             }
 
     # 2. Postflop — gto_nodes verificados
-    node = get_gto_node(spot_hash)
+    # Fallback: nós antigos foram armazenados sem facing_size_bb no hash.
+    # Tenta primeiro com facing, depois sem (compatibilidade retroativa).
+    hash_no_facing = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, 0.0)
+    node = get_gto_node(spot_hash) or (
+        get_gto_node(hash_no_facing) if facing_size_bb > 0 else None
+    )
     if node:
         return {
             'found':    True,
