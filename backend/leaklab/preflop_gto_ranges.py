@@ -65,6 +65,23 @@ _POS = {
     'UTG': 'UTG', 'UTG1': 'UTG+1', 'SB': 'Small Blind', 'BB': 'Big Blind',
 }
 
+# Pipeline e banco usam nomes distintos do JSON — normalizamos antes do lookup
+_POS_NORM = {
+    'UTG+1': 'UTG1',   # 2º a agir pós-BB (8-max)
+    'UTG+2': 'LJ',     # 3º a agir = LoJack
+    'LJ':    'LJ',
+    'MP':    'LJ',     # Middle Position genérico → LoJack
+    'MP1':   'LJ',
+    'MP2':   'HJ',
+    'HJ':    'HJ',
+}
+
+
+def _norm_pos(position: str) -> str:
+    """Normaliza nome de posição do pipeline/banco para chave do JSON."""
+    p = position.upper()
+    return _POS_NORM.get(p, p)
+
 
 def analyze_preflop(
     position: str,
@@ -87,8 +104,8 @@ def analyze_preflop(
     data    = _load()
     bucket  = _stack_bucket(stack_bb)
     bk_data = data.get('ranges', {}).get(bucket, {})
-    pos     = position.upper()
-    vs_pos  = vs_position.upper()
+    pos     = _norm_pos(position)
+    vs_pos  = _norm_pos(vs_position) if vs_position else ''
 
     base = {
         'available': False, 'scenario': 'rfi',
