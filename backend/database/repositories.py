@@ -4055,10 +4055,13 @@ def get_decision_spot(decision_id: int) -> Optional[dict]:
         conn.close()
 
 
-# Exploitability máxima aceitável para um nó ser considerado GTO confiável.
-# 50% garante que qualquer resultado do test server (1 core / 1GB, 10 iters) seja aceito.
-# TODO(produção): reduzir para 5% com hardware melhor.
-GTO_EXPLOITABILITY_THRESHOLD = 50.0  # % do pot
+# Exploitability máxima para um nó ser considerado GTO confiável.
+# production (Google VM 4vCPU/16GB): 10%  |  test (Oracle 1core/1GB): 50%
+import os as _os
+GTO_EXPLOITABILITY_THRESHOLD = (
+    10.0 if (_os.environ.get('SOLVER_TIER') == 'production' or _os.environ.get('GTO_SOLVER_URL'))
+    else 50.0
+)
 
 
 def get_gto_node(spot_hash: str) -> Optional[dict]:

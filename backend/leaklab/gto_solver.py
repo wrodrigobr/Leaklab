@@ -49,35 +49,48 @@ _SOLVER_BIN = os.environ.get(
 )
 _SOLVER_AVAILABLE: Optional[bool] = None
 
-# Threshold de validação. Em test server (1 core / 1GB) com 10 iters, o solver
-# tipicamente retorna 25-35% de exploitability — aceitamos qualquer resultado.
-# Exploitability é armazenada apenas como indicador de qualidade para o usuário.
-# TODO(produção): reduzir para 5.0 com hardware adequado.
-MAX_EXPLOITABILITY_PCT = 50.0
+# Threshold de validação.
+# production (Google VM): converge para 2-3% → aceita até 10%
+# test (Oracle 1 core): pode chegar a 30% → aceita até 50%
+# Definido dinamicamente em run_solver_worker baseado em SOLVER_TIER.
+MAX_EXPLOITABILITY_PCT = 50.0  # fallback conservador; sobrescrito abaixo
 
 
 def _solver_params_for_stack(stack_bb: float) -> dict:
     """
-    Parâmetros do solver calibrados para o servidor de teste (Oracle: 1 core, 1 GB RAM).
+    Parâmetros do solver escalonados por stack e nível de hardware disponível.
 
-    A árvore de jogo CFR cresce exponencialmente com effective_stack → tree é construída
-    com no máximo 20bb independente do stack real. Isso mantém o tempo de solve < 60s
-    mesmo com 1 core. A exploitability alta (≈15-25%) ainda fornece direção estratégica
-    correta para coaching.
+    SOLVER_TIER (env var):
+      'production' — Google Cloud VM 4 vCPU / 16 GB (padrão quando GTO_SOLVER_URL definido)
+      'test'       — Oracle 1 core / 1 GB (fallback local)
 
     Retorna: {max_iterations, target_exploitability_pct, timeout, effective_stack_bb}
-
-    TODO(produção): quando migrar para servidor com 8+ cores / 16GB RAM, aumentar
-    max_iterations para 200+ e relaxar o cap de effective_stack para 50bb.
     """
-    # Cap tree size: 20bb max — anything above barely fits in 1GB and times out on 1 core
-    capped = min(float(stack_bb), 20.0)
-    return {
-        'max_iterations':            10,
-        'target_exploitability_pct': 15.0,
-        'timeout':                   120,
-        'effective_stack_bb':        capped,
-    }
+    tier = os.environ.get('SOLVER_TIER', '')
+    # Auto-detecta tier: se tem URL remoto configurado assume produção
+    if not tier:
+        tier = 'production' if os.environ.get('GTO_SOLVER_URL') else 'test'
+
+    if tier == 'production':
+        # Google VM 4 vCPU / 16GB — árvore real, alta qualidade
+        capped = min(float(stack_bb), 60.0)   # cap 60bb: acima disso a árvore > 8GB
+        if stack_bb < 20:
+            return {'max_iterations': 500,  'target_exploitability_pct': 2.0,  'timeout': 120, 'effective_stack_bb': capped}
+        elif stack_bb < 40:
+            return {'max_iterations': 800,  'target_exploitability_pct': 2.0,  'timeout': 180, 'effective_stack_bb': capped}
+        elif stack_bb < 60:
+            return {'max_iterations': 600,  'target_exploitability_pct': 3.0,  'timeout': 240, 'effective_stack_bb': capped}
+        else:  # deep stack — capped em 60bb
+            return {'max_iterations': 400,  'target_exploitability_pct': 3.0,  'timeout': 240, 'effective_stack_bb': capped}
+    else:
+        # Oracle test server 1 core / 1GB — cap agressivo para não travar
+        capped = min(float(stack_bb), 20.0)
+        return {
+            'max_iterations':            10,
+            'target_exploitability_pct': 15.0,
+            'timeout':                   120,
+            'effective_stack_bb':        capped,
+        }
 
 
 def _solver_binary() -> Optional[str]:
@@ -288,10 +301,14 @@ def _call_remote_solver(spot: dict, timeout: int = 300) -> Optional[dict]:
 def run_solver_worker(max_jobs: int = 10) -> dict:
     """
     Processa até max_jobs spots da fila.
-    Só armazena solves com exploitability <= MAX_EXPLOITABILITY_PCT.
+    Threshold de aceitação varia por tier: production=10%, test=50%.
 
     Retorna {solved, rejected, failed}
     """
+    tier = os.environ.get('SOLVER_TIER', '')
+    if not tier:
+        tier = 'production' if os.environ.get('GTO_SOLVER_URL') else 'test'
+    acceptance_threshold = 10.0 if tier == 'production' else 50.0
     from database.repositories import get_next_solver_job, mark_solver_job_done, insert_gto_nodes
 
     bin_path = _solver_binary()
@@ -319,10 +336,7 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
                 continue
 
             exploit = result.get('exploitability')
-            # Aceita qualquer resultado abaixo do threshold global de aceitação.
-            # spot['target_exploitability_pct'] é apenas o hint de parada antecipada
-            # para o solver — não o critério de aceitação.
-            if exploit is None or float(exploit) > MAX_EXPLOITABILITY_PCT:
+            if exploit is None or float(exploit) > acceptance_threshold:
                 log.warning(
                     "Spot %s exploitability=%.2f%% > MAX %.1f%% — descartando",
                     spot_hash, exploit or 999, MAX_EXPLOITABILITY_PCT
