@@ -4381,16 +4381,23 @@ def _solver_queue_worker_loop():
     """Worker em background: roda o solver Rust nos spots pendentes da gto_solver_queue a cada 60s."""
     from leaklab.gto_solver import run_solver_worker
     time.sleep(15)  # aguardar app inicializar
+    tick = 0
     while True:
         try:
             from database.schema import get_conn as _gc
             conn = _gc()
-            pending = conn.execute("SELECT COUNT(*) FROM gto_solver_queue WHERE status='pending'").fetchone()[0]
+            # Reseta spots que ficaram em 'running' > 10 min (backend restart, crash, etc.)
+            conn.execute("UPDATE gto_solver_queue SET status='pending' WHERE status='running' AND requested_at < datetime('now', '-10 minutes')")
+            conn.commit()
+            stats = {r[0]: r[1] for r in conn.execute("SELECT status, COUNT(*) FROM gto_solver_queue GROUP BY status").fetchall()}
             conn.close()
+            pending = stats.get('pending', 0)
+            tick += 1
+            log.info("Solver queue [tick %s]: pending=%s running=%s done=%s failed=%s",
+                     tick, pending, stats.get('running', 0), stats.get('done', 0), stats.get('failed', 0))
             if pending > 0:
-                log.info("Solver queue worker: %s spots pendentes — executando solver", pending)
                 result = run_solver_worker(max_jobs=5)
-                log.info("Solver queue worker: %s", result)
+                log.info("Solver queue worker resultado: %s", result)
         except Exception:
             log.exception("Solver queue worker loop error")
         time.sleep(60)
