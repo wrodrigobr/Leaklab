@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.93.0] — 2026-05-10 — feat(LLM-002): prompt de análise v2 — ICM como multiplicador, reverse implied odds e síntese de padrões
+
+### Changed
+- **`backend/leaklab/llm_explainer.py`** — `_build_payload()` e `system_prompt` completamente reescritos:
+  - **ICM como multiplicador matemático**: equity mínima = pot odds × fator (×1.00 low / ×1.15 medium / ×1.30 high / ×1.50 bubble) — calculado em Python antes de enviar ao LLM, não estimado pelo modelo
+  - **Reverse implied odds**: tier low/medium/high → subtrai 0/3/6pp da equity estimada; déficit final = equity mínima ICM − equity real ajustada
+  - **Filtro M-Ratio obrigatório**: M<6 = push/fold puro (ações inválidas sinalizadas), M 6-12 = zona de pressão, M>12 = jogo normal; lógica integrada na construção do input
+  - **Rastreamento de padrões recorrentes**: `error_pattern_tracker` conta ocorrências por tipo de erro na sessão; nota automática quando mesmo leak aparece N vezes
+  - **BLOCO 4 — Síntese Final obrigatória**: Relatório de Padrões ao final de cada análise (leak dominante, stack depth crítico, padrão posicional, ICM sensibilidade, top 3 prioridades, EV recuperável)
+  - **pfgto_block push/fold**: branch separado para M<6 com range de jam em vez de range de abertura padrão
+  - **`max_tokens`** aumentado: `max(1200 × N, 3000)` para acomodar síntese final
+
+### Added
+- Constantes e helpers de módulo: `_ICM_MULTIPLIER`, `_REV_IMPL_ADJ_PP`, `_rev_impl_tier()`, `_m_zone()`, `_action_warning()`
+
+---
+
 ## [v0.92.0] — 2026-05-10 — feat(GTO-004): preflop range GTO — análise completa por posição e stack depth
 
 ### Added
