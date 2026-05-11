@@ -65,6 +65,8 @@ from leaklab.parser import parse_pokerstars_file_from_text
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision
 from leaklab.mtt_context import build_mtt_context
+from leaklab.gto_utils import hand_to_type as _hand_to_type
+from leaklab.preflop_gto_ranges import analyze_preflop as _analyze_preflop
 from leaklab.session_metrics import build_session_metrics
 from leaklab.leak_correlator import correlate_leaks
 from leaklab.llm_explainer import explain_decisions, generate_tournament_summary, generate_tournament_narrative, generate_comparison_narrative, coach_chat_reply
@@ -1466,6 +1468,23 @@ def _analyze_hands(hands):
                     'is_3bet':          di.get('is_3bet', False),
                     'showdown_result':  sd_result,
                 }
+                # Enriquecer decisões preflop com análise de range GTO
+                if di['street'] == 'preflop':
+                    try:
+                        h_type = _hand_to_type(hand.hero_cards) if hand.hero_cards else None
+                        if h_type:
+                            _spot = di.get('spot', {})
+                            _ctx  = di.get('context', {})
+                            enriched['preflop_gto'] = _analyze_preflop(
+                                position       = _spot.get('position', ''),
+                                hero_hand_type = h_type,
+                                stack_bb       = float(_spot.get('effectiveStackBb') or _ctx.get('heroStackBb') or 20),
+                                action_taken   = di.get('player_action', ''),
+                                facing_size    = float(_spot.get('facingSize') or 0),
+                                vs_position    = _spot.get('villainPosition', ''),
+                            )
+                    except Exception:
+                        pass
                 results.append(enriched)
                 decisions.append(enriched)
             if decisions:
