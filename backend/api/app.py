@@ -507,6 +507,13 @@ def _analyze_impl():
     except Exception:
         pass
 
+    # Enfileirar spots postflop novos para o solver GTO em background
+    threading.Thread(
+        target=_enqueue_postflop_spots,
+        args=(results,),
+        daemon=True,
+        name='gto-upload-enqueue',
+    ).start()
 
     # Explicações LLM se solicitado
     if request.args.get('explain', '').lower() == 'true':
@@ -4375,6 +4382,58 @@ def _gto_hand_worker_loop():
         except Exception:
             log.exception("GTO hand worker loop error")
         time.sleep(30)
+
+
+def _enqueue_postflop_spots(results: list) -> None:
+    """
+    Enfileira na gto_solver_queue todos os spots postflop do upload que ainda
+    não existam em gto_nodes. Roda em background — não bloqueia a resposta ao usuário.
+    """
+    from leaklab.gto_utils import compute_spot_hash
+    from database.repositories import get_gto_node, enqueue_solver_spot
+    import json as _json
+
+    enqueued = 0
+    already  = 0
+    for d in results:
+        if d.get('street') not in ('flop', 'turn', 'river'):
+            continue
+        try:
+            spot   = d.get('spot', {})
+            ctx    = d.get('context', {})
+            board  = d.get('board', [])
+            hero_h = d.get('hero_cards', [])
+            pos    = spot.get('position', ctx.get('position', '')).upper()
+            stack  = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)
+            facing = float(spot.get('facingSize') or 0)
+
+            spot_hash = compute_spot_hash(d['street'], pos, board, hero_h, stack, facing)
+            if get_gto_node(spot_hash):
+                already += 1
+                continue
+
+            from leaklab.gto_solver import _DEFAULT_RANGES, _DEFAULT_RANGE_WIDE, MAX_EXPLOITABILITY_PCT, _priority
+            vs_pos   = spot.get('villainPosition', ctx.get('vsPosition', '')).upper()
+            pot_bb   = float(spot.get('potSize') or facing * 2 + 2 or 4.0)
+            payload  = _json.dumps({
+                'street':                    d['street'],
+                'board':                     board,
+                'oop_range':                 _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
+                'ip_range':                  _DEFAULT_RANGES.get(pos,    _DEFAULT_RANGE_WIDE),
+                'pot_bb':                    pot_bb,
+                'effective_stack_bb':        stack,
+                'target_exploitability_pct': MAX_EXPLOITABILITY_PCT,
+                '_meta': {'position': pos, 'vs_position': vs_pos, 'hero_hand': hero_h,
+                          'hero_stack_bb': stack, 'facing_size_bb': facing,
+                          'street': d['street'], 'board': board},
+            }, sort_keys=True)
+
+            if enqueue_solver_spot(spot_hash, payload, priority=_priority(d['street'])):
+                enqueued += 1
+        except Exception:
+            pass
+
+    log.info("Upload GTO enqueue: %s novos spots enfileirados, %s já resolvidos", enqueued, already)
 
 
 def _solver_queue_worker_loop():
