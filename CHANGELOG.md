@@ -9,6 +9,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.92.0] — 2026-05-10 — feat(GTO-004): preflop range GTO — análise completa por posição e stack depth
+
+### Added
+- **`backend/leaklab/preflop_gto_ranges.py`** (novo módulo): lê `leaklab_gto_ranges.json` e analisa decisões preflop cobrindo três cenários — RFI, vs RFI e vs 3bet — com classificador de qualidade (`correct/acceptable/leak/major_leak`) e notas profissionais por posição e stack depth
+- **`backend/docs/leaklab_gto_ranges.json`**: ranges MTT 8-max validados (RFI por posição, vs RFI por abridor+defensor, vs 3bet) para buckets de stack 10bb–100bb
+- **Frontend — painel Range GTO preflop** (`Replayer.tsx`): exibido para hero actions preflop com badge de qualidade, cenário (RFI/vs RFI/vs 3bet), indicador in-range (✓/✗), ação jogada vs recomendada, range %, stack depth e notas profissionais
+
+### Changed
+- **`backend/api/app.py`**: `_build_replay_data()` injeta `preflop_gto` em cada hero action preflop via `analyze_preflop()`
+- **`backend/leaklab/llm_explainer.py`**: prompt do LLM inclui bloco `📊 Range GTO` para decisões preflop, com cenário, in-range, ação recomendada e notas profissionais
+- **`frontend/src/lib/api.ts`**: `ReplayStep.preflop_gto` adicionado com interface tipada completa
+- Painel GTO solver (Oracle) ocultado para hero actions preflop — preflop usa range tables; solver apenas para postflop
+
+---
+
 ## [v0.91.0] — 2026-05-08 — feat(UX-012): Replayer — cartas inseridas no pod + inlay branco maior
 
 ### Changed
