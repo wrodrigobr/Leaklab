@@ -4377,7 +4377,28 @@ def _gto_hand_worker_loop():
         time.sleep(30)
 
 
+def _solver_queue_worker_loop():
+    """Worker em background: roda o solver Rust nos spots pendentes da gto_solver_queue a cada 60s."""
+    from leaklab.gto_solver import run_solver_worker
+    time.sleep(15)  # aguardar app inicializar
+    while True:
+        try:
+            from database.schema import get_conn as _gc
+            conn = _gc()
+            pending = conn.execute("SELECT COUNT(*) FROM gto_solver_queue WHERE status='pending'").fetchone()[0]
+            conn.close()
+            if pending > 0:
+                log.info("Solver queue worker: %s spots pendentes — executando solver", pending)
+                result = run_solver_worker(max_jobs=5)
+                log.info("Solver queue worker: %s", result)
+        except Exception:
+            log.exception("Solver queue worker loop error")
+        time.sleep(60)
+
+
 if __name__ == '__main__':
     _worker = threading.Thread(target=_gto_hand_worker_loop, daemon=True, name='gto-hand-worker')
     _worker.start()
+    _solver_worker = threading.Thread(target=_solver_queue_worker_loop, daemon=True, name='gto-solver-worker')
+    _solver_worker.start()
     app.run(debug=True, port=5000)
