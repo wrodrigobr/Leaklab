@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.96.0] — 2026-05-10 — feat(range-panel): contexto GTO integrado no painel de ranges
+
+### Added
+- **Banner de contexto GTO** no RangePanel: quando a mão é do hero, exibe:
+  - Cenário detectado (RFI / vs Open / vs 3-Bet)
+  - Badge in-range/fora do range com ícone e cor (verde/âmbar)
+  - Quality badge: Correto / Aceitável / Leak / Leak grave
+  - Ação recomendada pelo GTO e % do range
+- **Seção "Análise GTO"** abaixo do grid: exibe as `pro_notes` da engine como bullet points explicativos
+- **Auto-seleção de tab**: o tab correto (Open / Call / 3-Bet) é selecionado automaticamente com base no `scenario` da decisão (`rfi`→Open, `vs_rfi`→Call, `vs_3bet`→3-Bet)
+- **vs_RFI usa opener correto**: quando disponível, usa `vs_position` do preflop_gto para selecionar o opener certo no JSON
+
+---
+
 ## [v0.95.0] — 2026-05-10 — feat(range-panel): ranges dinâmicos do JSON por posição e stack depth
 
 ### Added
