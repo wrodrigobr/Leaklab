@@ -4419,6 +4419,10 @@ def _enqueue_postflop_spots(results: list) -> None:
             payload  = _json.dumps({
                 'street':                    d['street'],
                 'board':                     board,
+                'position':                  pos,
+                'hero_hand':                 hero_h,
+                'hero_stack_bb':             stack,
+                'facing_size_bb':            facing,
                 'oop_range':                 _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
                 'ip_range':                  _DEFAULT_RANGES.get(pos,    _DEFAULT_RANGE_WIDE),
                 'pot_bb':                    pot_bb,

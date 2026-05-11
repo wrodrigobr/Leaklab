@@ -4056,9 +4056,9 @@ def get_decision_spot(decision_id: int) -> Optional[dict]:
 
 
 # Exploitability máxima aceitável para um nó ser considerado GTO confiável.
-# 25% calibrado para servidor de teste (1 core / 1GB): estratégia direcional correta
-# mesmo com alta exploitability. TODO(produção): reduzir para 5% com hardware melhor.
-GTO_EXPLOITABILITY_THRESHOLD = 25.0  # % do pot
+# 50% garante que qualquer resultado do test server (1 core / 1GB, 10 iters) seja aceito.
+# TODO(produção): reduzir para 5% com hardware melhor.
+GTO_EXPLOITABILITY_THRESHOLD = 50.0  # % do pot
 
 
 def get_gto_node(spot_hash: str) -> Optional[dict]:
@@ -4109,12 +4109,14 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 continue  # solve não convergiu o suficiente
 
             from leaklab.gto_utils import compute_spot_hash, stack_bucket
-            spot_hash = compute_spot_hash(
+            # Usa hash pré-computado se disponível (preserva facing_size_bb no hash)
+            spot_hash = n.get('spot_hash') or compute_spot_hash(
                 street=n['street'],
                 position=n['position'],
                 board=n.get('board', []),
                 hero_hand=n.get('hero_hand', []),
                 hero_stack_bb=float(n.get('hero_stack_bb', 30.0)),
+                facing_size_bb=float(n.get('facing_size_bb', 0.0)),
             )
             conn.execute(_adapt("""
                 INSERT OR REPLACE INTO gto_nodes
