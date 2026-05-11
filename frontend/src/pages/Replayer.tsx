@@ -328,6 +328,14 @@ function SidePanels({
               </p>
             </div>
           )}
+          {gtoRequestStatus === "done" && (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
+              <Loader2 className="size-3.5 text-amber-400 shrink-0 mt-px animate-spin" />
+              <p className="text-[11px] text-amber-400 leading-relaxed">
+                Spot enfileirado para o solver — o cálculo pode levar alguns minutos. Volte mais tarde ou recarregue a página para ver os resultados.
+              </p>
+            </div>
+          )}
           {gtoRequestStatus === "error" && (
             <div className="flex items-center gap-2 rounded-lg bg-destructive/5 border border-destructive/20 px-2.5 py-2">
               <AlertOctagon className="size-3.5 text-destructive shrink-0" />

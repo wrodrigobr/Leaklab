@@ -4376,10 +4376,16 @@ def request_gto_for_hand(tournament_id: int, hand_id: str, user_id: int) -> dict
     conn = get_conn()
     try:
         existing = _fetchone(conn, _adapt(
-            "SELECT id, status FROM gto_hand_requests WHERE hand_id = ? AND requested_by = ?"
+            "SELECT id, status, decisions_done FROM gto_hand_requests WHERE hand_id = ? AND requested_by = ?"
         ), (hand_id, user_id))
         if existing:
-            return {'inserted': False, 'id': existing['id'], 'status': existing['status']}
+            # Se já foi processado mas não achou dados GTO (decisions_done=0 ou null),
+            # apaga e re-enfileira para que o worker tente novamente com o código atual
+            if existing['status'] in ('done', 'solver_queued') and not existing.get('decisions_done'):
+                conn.execute(_adapt("DELETE FROM gto_hand_requests WHERE id = ?"), (existing['id'],))
+                conn.commit()
+            else:
+                return {'inserted': False, 'id': existing['id'], 'status': existing['status']}
         conn.execute(_adapt("""
             INSERT INTO gto_hand_requests (tournament_id, hand_id, requested_by, status)
             VALUES (?, ?, ?, 'pending')
