@@ -78,12 +78,14 @@ function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?:
     const key   = openerPos && resp.vs_rfi[openerPos] ? openerPos : openers[0];
     const def   = resp.vs_rfi[key];
     const acoes = def.acoes.map(a => a.toUpperCase());
-    const has3bet = acoes.includes('THREBET') || acoes.includes('3BET');
+    const sbOnly = acoes.includes('THREBET') && !acoes.includes('CALL');
     return {
       label: `vs ${key} open · ${resp.position} (${resp.stack_bucket})`,
-      description: `${(def.pct_play * 100).toFixed(0)}% das mãos — ${has3bet ? 'Verde: 3-bet · Azul: call' : 'Azul: call'}`,
-      raise: new Set(has3bet ? def.raise3bet : []),
-      call:  new Set(has3bet ? def.call : def.hands),
+      description: sbOnly
+        ? `${(def.pct_play * 100).toFixed(0)}% das mãos — Verde: 3-bet ou fold (sem call)`
+        : `${(def.pct_play * 100).toFixed(0)}% das mãos — Azul: continuar (GTO mistura 3-bet/call)`,
+      raise: new Set(sbOnly ? def.hands : []),
+      call:  new Set(sbOnly ? [] : def.hands),
     };
   }
   return null;
