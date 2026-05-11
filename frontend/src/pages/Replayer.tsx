@@ -76,9 +76,14 @@ function SidePanels({
   gtoRequestStatus, onRequestGto,
 }: SidePanelsProps) {
   const hasGto    = !!step.gto_label;
-  // True if the hand already has GTO analysis on at least one hero action
+  const isPostflop = step.street !== 'preflop';
+  // True if the hand already has GTO analysis on at least one postflop hero action
   const handHasAnyGto = replayData.timeline.some(
-    (s) => s.is_hero && s.type === "action" && !!s.gto_label
+    (s) => s.is_hero && s.type === "action" && s.street !== 'preflop' && !!s.gto_label
+  );
+  // True if this hand has at least one postflop hero action (GTO is applicable)
+  const handHasPostflopAction = replayData.timeline.some(
+    (s) => s.is_hero && s.type === "action" && s.street !== 'preflop'
   );
   const hasTech   = step.is_hero && step.type === "action" &&
                     (isError || hasGto || step.hand_equity != null);
@@ -205,8 +210,8 @@ function SidePanels({
         </section>
       )}
 
-      {/* ── GTO não disponível — solicitar análise ── */}
-      {step.is_hero && step.type === "action" && !hasGto && !handHasAnyGto && (
+      {/* ── GTO não disponível — solicitar análise (apenas postflop) ── */}
+      {step.is_hero && step.type === "action" && isPostflop && !hasGto && !handHasAnyGto && handHasPostflopAction && (
         <section className="rounded-xl border border-border bg-hud-surface p-3 space-y-2.5">
           <div className="flex items-center gap-2">
             <FlaskConical className="size-4 shrink-0 text-muted-foreground" />
