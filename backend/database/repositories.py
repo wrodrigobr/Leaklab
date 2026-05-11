@@ -4342,16 +4342,22 @@ def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5) -> bo
 
 
 def get_next_solver_job() -> Optional[dict]:
-    """Retorna o próximo spot pendente de solve (maior prioridade)."""
+    """Retorna o próximo spot pendente e marca como running atomicamente."""
     conn = get_conn()
     try:
-        return _fetchone(conn, _adapt("""
+        row = _fetchone(conn, _adapt("""
             SELECT id, spot_hash, spot_json
             FROM gto_solver_queue
             WHERE status = 'pending'
             ORDER BY priority DESC, requested_at ASC
             LIMIT 1
         """))
+        if row:
+            conn.execute(_adapt(
+                "UPDATE gto_solver_queue SET status='running' WHERE spot_hash=?"
+            ), (row['spot_hash'],))
+            conn.commit()
+        return row
     finally:
         conn.close()
 
