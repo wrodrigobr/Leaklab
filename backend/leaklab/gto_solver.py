@@ -162,11 +162,20 @@ def lookup_gto(
             }
 
     # 2. Postflop — gto_nodes verificados
-    # Fallback: nós antigos foram armazenados sem facing_size_bb no hash.
-    # Tenta primeiro com facing, depois sem (compatibilidade retroativa).
-    hash_no_facing = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, 0.0)
-    node = get_gto_node(spot_hash) or (
-        get_gto_node(hash_no_facing) if facing_size_bb > 0 else None
+    # Fallbacks em ordem de precisão decrescente:
+    #   a) hash exato (com hero_hand + facing_size_bb)
+    #   b) sem facing — só retrocompat para nós antigos (facing > 0)
+    #   c) sem hero_hand mas com mesmo facing bucket (precompute genérico)
+    #   d) sem hero_hand e sem facing — SOMENTE quando facing == 0
+    #      (evita retornar nó de "sem aposta" quando hero enfrenta aposta → gto_spot_mismatch)
+    hash_no_facing  = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, 0.0)
+    hash_generic    = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, facing_size_bb)
+    hash_generic_nf = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, 0.0)
+    node = (
+        get_gto_node(spot_hash)
+        or (get_gto_node(hash_no_facing) if facing_size_bb > 0 else None)
+        or get_gto_node(hash_generic)
+        or (get_gto_node(hash_generic_nf) if facing_size_bb == 0 else None)
     )
     if node:
         # Prefer full strategy_json (stored by new solver); fallback to primary only
@@ -199,8 +208,9 @@ def lookup_gto(
             'queued':             False,
         }
 
-    # 3. Miss — tenta solver remoto primeiro
-    # Monta payload no formato que o solver_cli Rust espera
+    # 3. Miss — decide sync vs async com base na complexidade do spot
+    # Spots simples: chama solver remoto sincronamente (< 15s)
+    # Spots complexos: enfileira diretamente para não bloquear o request
     oop_range = _DEFAULT_RANGES.get(vs_position.upper(), _DEFAULT_RANGE_WIDE)
     ip_range  = _DEFAULT_RANGES.get(position_u, _DEFAULT_RANGE_WIDE)
     effective_pot = pot_bb if pot_bb > 0 else max(facing_size_bb * 2 + 2, 4.0)
@@ -227,6 +237,19 @@ def lookup_gto(
         'facing_size_bb': facing_size_bb,
     }
     spot_payload = json.dumps(spot_dict, sort_keys=True)
+
+    # Spots complexos: pula chamada síncrona, vai direto para a fila
+    if not is_simple_spot(street_l, board, hero_stack_bb, facing_size_bb):
+        enqueued = enqueue_solver_spot(spot_hash, spot_payload, priority=_priority(street_l))
+        log.debug("GTO complex spot %s enqueued async (stack=%.1f, street=%s)", spot_hash, hero_stack_bb, street_l)
+        return {
+            'found':              False,
+            'source':             'queued',
+            'strategy':           [],
+            'exploitability_pct': None,
+            'spot_hash':          spot_hash,
+            'queued':             True,
+        }
 
     remote = _call_remote_solver(solver_payload)
     if remote:
@@ -300,6 +323,29 @@ def _priority(street: str) -> int:
     return {'preflop': 8, 'flop': 6, 'turn': 5, 'river': 4}.get(street, 5)
 
 
+def is_simple_spot(street: str, board: list[str], stack_bb: float, facing_size_bb: float = 0.0) -> bool:
+    """
+    Retorna True para spots que podem ser resolvidos sincronamente (< 15s no remote solver).
+    False → enfileira imediatamente sem bloquear o request.
+
+    Critérios de simplicidade:
+      - Somente flop (turn/river têm árvores maiores)
+      - Stack ≤ 20bb (árvore pequena independente do board)
+      - OU: stack ≤ 30bb + board rainbow (simetria de naipe reduz árvore ~4x)
+      - Aposta enfrentada não é grande relative ao stack (evita sub-árvores de raise/3bet)
+    """
+    if street != 'flop':
+        return False
+    if stack_bb <= 20:
+        return True
+    if stack_bb > 35:
+        return False
+    suits = [c[1].lower() for c in board if len(c) >= 2]
+    is_rainbow = len(set(suits)) == 3 and len(suits) >= 3
+    bet_is_small = facing_size_bb <= stack_bb * 0.35
+    return is_rainbow and bet_is_small
+
+
 def _call_remote_solver(spot: dict, timeout: int = 300) -> Optional[dict]:
     """Chama o solver remoto (Oracle Cloud). Retorna resultado ou None em caso de falha."""
     url = _remote_url()
@@ -328,7 +374,8 @@ def _call_remote_solver(spot: dict, timeout: int = 300) -> Optional[dict]:
 def run_solver_worker(max_jobs: int = 10) -> dict:
     """
     Processa até max_jobs spots da fila.
-    Threshold de aceitação varia por tier: production=10%, test=50%.
+    Prioridade: solver remoto (GTO_SOLVER_URL) → solver local (Rust binário).
+    Threshold de aceitação: production=10%, test=50%.
 
     Retorna {solved, rejected, failed}
     """
@@ -338,9 +385,16 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
     acceptance_threshold = 10.0 if tier == 'production' else 50.0
     from database.repositories import get_next_solver_job, mark_solver_job_done, insert_gto_nodes
 
-    bin_path = _solver_binary()
-    if not bin_path:
+    use_remote = bool(_remote_url() and _remote_key())
+    bin_path   = _solver_binary()
+
+    if not use_remote and not bin_path:
         return {'solved': 0, 'rejected': 0, 'failed': 0, 'error': 'solver_unavailable'}
+
+    if use_remote:
+        log.info("run_solver_worker: usando solver REMOTO (%s)", _remote_url())
+    else:
+        log.info("run_solver_worker: usando solver LOCAL (%s)", bin_path)
 
     solved = rejected = failed = 0
 
@@ -355,18 +409,27 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
         try:
             stack   = spot.get('effective_stack_bb', 30.0)
             timeout = _solver_params_for_stack(stack)['timeout']
-            result  = _call_solver(bin_path, spot, timeout=timeout)
+
+            # Prefere solver remoto; cai para local se remoto indisponível
+            if use_remote:
+                result = _call_remote_solver(spot, timeout=timeout)
+                if result is None and bin_path:
+                    log.warning("Remoto falhou para %s — tentando local", spot_hash)
+                    result = _call_solver(bin_path, spot, timeout=timeout)
+            else:
+                result = _call_solver(bin_path, spot, timeout=timeout)
 
             if not result:
                 mark_solver_job_done(spot_hash, 'failed')
                 failed += 1
                 continue
 
-            exploit = result.get('exploitability')
+            # Normaliza chave: solver local usa 'exploitability', remoto usa 'exploitability_pct'
+            exploit = result.get('exploitability') or result.get('exploitability_pct')
             if exploit is None or float(exploit) > acceptance_threshold:
                 log.warning(
                     "Spot %s exploitability=%.2f%% > MAX %.1f%% — descartando",
-                    spot_hash, exploit or 999, MAX_EXPLOITABILITY_PCT
+                    spot_hash, exploit or 999, acceptance_threshold
                 )
                 mark_solver_job_done(spot_hash, 'failed')
                 failed += 1

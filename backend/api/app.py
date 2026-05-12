@@ -3109,7 +3109,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     hero_stack_bb  = float(_spot.get('effectiveStackBb', _ctx.get('heroStackBb', 20.0)) or 20.0),
                     action_seq     = _ctx.get('actionSeq', 'rfi'),
                     vs_position    = _spot.get('villainPosition', _ctx.get('vsPosition', '')),
-                    facing_size_bb = float(_spot.get('facingSize', 0) or 0),
+                    facing_size_bb = float(decision.get('facing_bet', 0) or 0),
                     pot_bb         = float(_spot.get('potSize', 0) or 0),
                 )
                 if _gto_result.get('found') and _gto_result.get('strategy'):
@@ -4372,7 +4372,7 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                 hero_stack_bb   = spot.get('effectiveStackBb', ctx.get('heroStackBb', 20.0)),
                 action_seq      = ctx.get('actionSeq', 'rfi'),
                 vs_position     = spot.get('villainPosition', ctx.get('vsPosition', '')),
-                facing_size_bb  = float(spot.get('facingSize', 0) or 0),
+                facing_size_bb  = float(db_dec.get('facing_bet', 0) or 0),
                 pot_bb          = float(spot.get('potSize', 0) or 0),
             )
 
@@ -4386,6 +4386,22 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                 )
                 top_action = max(gto['strategy'], key=lambda s: s['frequency'])
                 gto_action = _norm(str(top_action.get('action', '')))
+
+                # Guarda de contexto: não salva se o nó GTO for incompatível
+                # com a situação real (facing bet vs sem aposta).
+                engine_best = _norm(db_dec.get('best_action', '') or '')
+                _facing     = float(db_dec.get('facing_bet', 0) or 0)
+                _is_mismatch = (
+                    (engine_best == 'call' and gto_action in ('check', 'bet'))
+                    or (engine_best != 'call' and gto_action == 'call' and _facing == 0)
+                )
+                if _is_mismatch:
+                    log.warning(
+                        "GTO mismatch descartado: dec=%s engine=%s gto=%s facing=%.1f",
+                        db_dec['id'], engine_best, gto_action, _facing,
+                    )
+                    queued += 1  # trata como pendente — spot correto ainda não resolvido
+                    continue
 
                 if played_freq >= 0.40:
                     gto_label = 'gto_correct'
@@ -4457,7 +4473,8 @@ def _enqueue_postflop_spots(results: list) -> None:
             hero_h = d.get('hero_cards', [])
             pos    = spot.get('position', ctx.get('position', '')).upper()
             stack  = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)
-            facing = float(spot.get('facingSize') or 0)
+            _level_bb = float(d.get('level_bb') or 1) or 1
+            facing = round(float(spot.get('facingSize') or 0) / _level_bb, 2)
 
             spot_hash = compute_spot_hash(d['street'], pos, board, hero_h, stack, facing)
             if get_gto_node(spot_hash):
