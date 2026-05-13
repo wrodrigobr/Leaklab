@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.98.4] — 2026-05-12 — feat(UX-018): novo design de painéis no /replayer React
+
+### Changed
+- **Preflop Range GTO panel**: header banner colorido (ok/leak/grave) + badges em linha (in_range, hand_type, stack+bucket) + barra de range% com progress bar; remove layout de 2 colunas com ícone solto
+- **GTO Analysis panel**: substitui grid de cards por barras horizontais de frequência — sorted desc, player action marcada com `←` em âmbar; verdict banner no topo (ok/mixed/bad) com background colorido por label; fallback para `gto_action` sem strategy preservado
+- `isPlayedAction`: lógica de match flexível (prefixo bidirecional) para `bet_50pct`, `allin`, etc.
+
+---
+
 ## [v0.98.3] — 2026-05-12 — feat(GTO-008): Replayer standalone com dados reais da API
 
 ### Added

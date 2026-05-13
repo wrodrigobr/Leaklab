@@ -228,72 +228,88 @@ function SidePanels({
       {step.is_hero && step.type === "action" && !isPostflop && step.preflop_gto?.available && (() => {
         const pg = step.preflop_gto!;
         const scenarioLabel: Record<string, string> = {
-          rfi: "RFI — Raise First In",
-          vs_rfi: "vs RFI — Defendendo",
-          vs_3bet: "vs 3bet — Respondendo",
+          rfi: "RFI",
+          vs_rfi: "vs RFI",
+          vs_3bet: "vs 3bet",
         };
-        const qualityMeta: Record<string, { label: string; cls: string; border: string }> = {
-          correct:    { label: "Correto",       cls: "text-emerald-400", border: "border-emerald-500/30 bg-emerald-500/5" },
-          acceptable: { label: "Aceitável",     cls: "text-sky-400",     border: "border-sky-500/30 bg-sky-500/5" },
-          leak:       { label: "Leak",          cls: "text-amber-400",   border: "border-amber-500/30 bg-amber-500/5" },
-          major_leak: { label: "Leak Grave",    cls: "text-red-400",     border: "border-red-500/30 bg-red-500/5" },
-          unknown:    { label: "Desconhecido",  cls: "text-muted-foreground", border: "border-border bg-hud-surface" },
+        const qualityMeta: Record<string, { label: string; cls: string; border: string; hdr: string }> = {
+          correct:    { label: "Correto",      cls: "text-emerald-400", border: "border-emerald-500/30", hdr: "bg-emerald-500/8" },
+          acceptable: { label: "Aceitável",    cls: "text-sky-400",     border: "border-sky-500/30",     hdr: "bg-sky-500/8" },
+          leak:       { label: "Leak",         cls: "text-amber-400",   border: "border-amber-500/30",   hdr: "bg-amber-500/8" },
+          major_leak: { label: "Leak Grave",   cls: "text-red-400",     border: "border-red-500/30",     hdr: "bg-red-500/8" },
+          unknown:    { label: "Desconhecido", cls: "text-muted-foreground", border: "border-border",    hdr: "bg-hud-surface" },
         };
         const qm = qualityMeta[pg.action_quality] ?? qualityMeta.unknown;
         return (
-          <section className={cn("rounded-xl border p-3 space-y-3", qm.border)}>
-            {/* Header */}
-            <div className="flex items-center gap-2">
-              <Sigma className="size-4 shrink-0" />
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 flex-1 text-muted-foreground">
-                Range GTO · Preflop
-              </span>
-              <span className={cn("font-mono text-[9px] font-bold uppercase", qm.cls)}>{qm.label}</span>
-            </div>
-
-            {/* Scenario + In Range */}
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] text-muted-foreground">{scenarioLabel[pg.scenario] ?? pg.scenario}</span>
-              <span className={cn("font-mono text-[10px] font-bold", pg.in_range ? "text-emerald-400" : "text-red-400")}>
-                {pg.in_range ? "✓ No range" : "✗ Fora do range"}
-              </span>
-            </div>
-
-            {/* Jogou / Recomendado */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg bg-background/60 px-2.5 py-2 ring-1 ring-border/50">
-                <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Jogou</div>
-                <div className="font-mono text-sm font-bold text-foreground uppercase">{pg.action_taken}</div>
+          <section className={cn("rounded-xl border overflow-hidden", qm.border)}>
+            {/* Banner */}
+            <div className={cn("flex items-center justify-between px-3 py-2", qm.hdr)}>
+              <div className="flex items-center gap-1.5">
+                <Sigma className="size-3.5 shrink-0 text-muted-foreground/50" />
+                <span className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-wider">
+                  Range · {scenarioLabel[pg.scenario] ?? pg.scenario}
+                </span>
               </div>
-              <div className={cn("rounded-lg px-2.5 py-2 ring-1",
-                pg.action_quality === "correct" ? "bg-emerald-500/10 ring-emerald-500/30" : "bg-background/60 ring-border/50")}>
-                <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">GTO</div>
-                <div className={cn("font-mono text-sm font-bold uppercase", qm.cls)}>
-                  {pg.recommended_actions.join(" / ")}
+              <span className={cn("font-mono text-[10px] font-bold uppercase", qm.cls)}>{qm.label}</span>
+            </div>
+
+            <div className="p-3 space-y-3">
+              {/* Badges */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={cn(
+                  "inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase ring-1",
+                  pg.in_range
+                    ? "text-emerald-400 ring-emerald-500/30 bg-emerald-500/8"
+                    : "text-red-400 ring-red-500/30 bg-red-500/8"
+                )}>
+                  {pg.in_range ? "✓ No range" : "✗ Fora do range"}
+                </span>
+                {pg.hand_type && (
+                  <span className="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-bold text-foreground bg-background/60 ring-1 ring-border">
+                    {pg.hand_type}
+                  </span>
+                )}
+                <span className="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] text-muted-foreground bg-background/40 ring-1 ring-border/50">
+                  {pg.stack_bb}BB · {pg.stack_bucket}
+                </span>
+              </div>
+
+              {/* Jogou / Recomendado */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg bg-background/60 px-2.5 py-2 ring-1 ring-border/50">
+                  <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Jogou</div>
+                  <div className="font-mono text-sm font-bold text-foreground uppercase">{pg.action_taken}</div>
+                </div>
+                <div className={cn("rounded-lg px-2.5 py-2 ring-1",
+                  pg.action_quality === "correct" ? "bg-emerald-500/10 ring-emerald-500/30" : "bg-background/60 ring-border/50")}>
+                  <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">GTO</div>
+                  <div className={cn("font-mono text-sm font-bold uppercase", qm.cls)}>
+                    {pg.recommended_actions.join(" / ")}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Range % */}
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Range abertura</span>
-              <span className="font-mono font-medium text-foreground">{(pg.range_pct * 100).toFixed(0)}% das mãos</span>
-            </div>
-
-            {/* Stack bucket */}
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Stack depth</span>
-              <span className="font-mono font-medium text-foreground">{pg.stack_bb} BB ({pg.stack_bucket})</span>
-            </div>
-
-            {/* Professional notes */}
-            {pg.pro_notes.length > 0 && (
-              <div className="space-y-1.5 pt-1 border-t border-border/40">
-                {pg.pro_notes.map((note, i) => (
-                  <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>
-                ))}
+              {/* Range % bar */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Range de abertura</span>
+                  <span className="font-mono text-[11px] font-bold text-foreground tabular-nums">{(pg.range_pct * 100).toFixed(0)}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-border/50 overflow-hidden">
+                  <div className="h-full rounded-full bg-primary/70 transition-all duration-500"
+                    style={{ width: `${(pg.range_pct * 100).toFixed(0)}%` }} />
+                </div>
               </div>
-            )}
+
+              {/* Pro notes */}
+              {pg.pro_notes.length > 0 && (
+                <div className="space-y-1 pt-1 border-t border-border/40">
+                  {pg.pro_notes.map((note, i) => (
+                    <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         );
       })()}
@@ -362,134 +378,156 @@ function SidePanels({
       )}
 
       {/* ── GTO Analysis — seção dedicada ── */}
-      {step.is_hero && step.type === "action" && hasGto && (
-        <section className={cn("rounded-xl border p-3 space-y-3", gto?.border ?? "border-border bg-hud-surface")}>
-          <div className="flex items-center gap-2">
-            <Sigma className="size-4 shrink-0" style={{ color: gto?.cls?.replace("text-", "") }} />
-            <span className={cn("font-mono text-[10px] font-bold uppercase tracking-widest-2 flex-1", gto?.cls)}>
-              Análise GTO · {gto?.label}
-            </span>
-          </div>
+      {step.is_hero && step.type === "action" && hasGto && (() => {
+        const played = (step.action ?? "").toLowerCase();
+        const isPlayedAction = (action: string) => {
+          const a = action.toLowerCase();
+          return a === played || played.startsWith(a) || a.startsWith(played);
+        };
+        const barColor = (action: string) => {
+          const a = action.toLowerCase();
+          if (a === "fold")                              return "bg-blue-500";
+          if (a === "check")                             return "bg-sky-400";
+          if (a === "call")                              return "bg-emerald-500";
+          if (a.startsWith("bet") || a.startsWith("raise")) return "bg-red-500";
+          if (a === "allin" || a.startsWith("allin"))   return "bg-red-600";
+          return "bg-purple-500";
+        };
+        const textColor = (action: string) => {
+          const a = action.toLowerCase();
+          if (a === "fold")                              return "text-blue-400";
+          if (a === "check")                             return "text-sky-400";
+          if (a === "call")                              return "text-emerald-400";
+          if (a.startsWith("bet") || a.startsWith("raise")) return "text-red-400";
+          if (a === "allin" || a.startsWith("allin"))   return "text-red-400";
+          return "text-purple-400";
+        };
+        const hdrBg = step.gto_label === "gto_correct" ? "bg-emerald-500/8"
+          : step.gto_label === "gto_mixed" ? "bg-sky-500/8"
+          : step.gto_label === "gto_minor_deviation" ? "bg-amber-500/8"
+          : "bg-red-500/8";
 
-          {/* Strategy breakdown cards — all actions sorted by frequency desc */}
-          {!step.gto_spot_mismatch && step.gto_strategy && step.gto_strategy.length > 0 ? (() => {
-            const played = (step.action ?? "").toLowerCase();
-            const sorted = [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0));
-            const getColor = (action: string) => {
-              const a = action.toLowerCase();
-              if (a === "fold")                        return { bg: "#1e3a6e", border: "#2563eb", text: "#93c5fd" };
-              if (a === "call")                        return { bg: "#14401f", border: "#16a34a", text: "#86efac" };
-              if (a.startsWith("bet") || a.startsWith("raise")) return { bg: "#4a1919", border: "#dc2626", text: "#fca5a5" };
-              if (a === "allin" || a.startsWith("allin")) return { bg: "#5a1a1a", border: "#ef4444", text: "#fca5a5" };
-              if (a === "check")                       return { bg: "#1e2d40", border: "#475569", text: "#94a3b8" };
-              return { bg: "#1e2535", border: "#374151", text: "#9ca3af" };
-            };
-            return (
-              <div className="flex gap-1.5 flex-wrap">
-                {sorted.map((s) => {
-                  const c = getColor(s.action);
-                  const isPlayed = s.action.toLowerCase() === played ||
-                                   played.startsWith(s.action.toLowerCase());
-                  return (
-                    <div
-                      key={s.action}
-                      className="relative flex flex-col rounded-lg px-2.5 pt-2 pb-2.5 min-w-[60px] flex-1"
-                      style={{
-                        background: c.bg,
-                        border: `1px solid ${isPlayed ? "#c9a840" : c.border}`,
-                        boxShadow: isPlayed ? "0 0 0 1px rgba(201,168,64,0.4)" : undefined,
-                      }}
-                    >
-                      {isPlayed && (
-                        <div className="absolute top-1 right-1.5 font-mono text-[8px] text-amber-400 font-bold uppercase">Jogou</div>
-                      )}
-                      <div className="font-mono text-[10px] font-bold truncate" style={{ color: c.text }}>
-                        {fmtAction(s.action)}
-                      </div>
-                      <div className="font-mono text-lg font-bold leading-tight" style={{ color: c.text }}>
-                        {((s.frequency ?? 0) * 100).toFixed(1)}%
-                      </div>
-                      {s.combos != null && (
-                        <div className="font-mono text-[9px] text-right mt-0.5" style={{ color: c.text, opacity: 0.7 }}>
-                          {s.combos.toFixed(1)} combos
+        return (
+          <section className={cn("rounded-xl border overflow-hidden", gto?.border ?? "border-border")}>
+            {/* Verdict banner */}
+            <div className={cn("flex items-center justify-between px-3 py-2", hdrBg)}>
+              <div className="flex items-center gap-1.5">
+                <Sigma className="size-3.5 shrink-0 text-muted-foreground/50" />
+                <span className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-wider">GTO</span>
+              </div>
+              <span className={cn("font-mono text-[10px] font-bold uppercase tracking-wider", gto?.cls)}>
+                {gto?.label}
+              </span>
+            </div>
+
+            <div className="p-3 space-y-3">
+              {/* Frequency bars */}
+              {!step.gto_spot_mismatch && step.gto_strategy && step.gto_strategy.length > 0 && (() => {
+                const sorted = [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0));
+                return (
+                  <div className="space-y-2.5">
+                    {sorted.map((s) => {
+                      const isP = isPlayedAction(s.action);
+                      const freq = (s.frequency ?? 0) * 100;
+                      return (
+                        <div key={s.action} className="flex items-center gap-2">
+                          <span className={cn(
+                            "font-mono text-[11px] font-bold w-14 shrink-0 uppercase truncate",
+                            isP ? "text-amber-400" : textColor(s.action)
+                          )}>
+                            {fmtAction(s.action)}
+                          </span>
+                          <div className="flex-1 h-[5px] rounded-full bg-border/50 overflow-hidden">
+                            <div
+                              className={cn("h-full rounded-full transition-all duration-500",
+                                isP ? "bg-amber-400" : barColor(s.action))}
+                              style={{ width: `${freq}%` }}
+                            />
+                          </div>
+                          <span className={cn(
+                            "font-mono text-[11px] font-bold w-8 text-right tabular-nums shrink-0",
+                            isP ? "text-amber-400" : "text-muted-foreground"
+                          )}>
+                            {freq.toFixed(0)}%
+                          </span>
+                          <span className={cn("font-mono text-[9px] w-2 shrink-0 select-none",
+                            isP ? "text-amber-400" : "invisible")}>←</span>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })() : step.gto_action && !step.gto_spot_mismatch && (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg bg-background/60 px-2.5 py-2 ring-1 ring-border/50">
-                <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Jogou</div>
-                <div className="font-mono text-sm font-bold text-foreground uppercase">{step.action ?? "—"}</div>
-              </div>
-              <div className={cn("rounded-lg px-2.5 py-2 ring-1",
-                step.gto_label === "gto_correct" ? "bg-emerald-500/10 ring-emerald-500/30"
-                : "bg-background/60 ring-border/50")}>
-                <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">GTO</div>
-                <div className={cn("font-mono text-sm font-bold", gto?.cls)}>{fmtAction(step.gto_action)}</div>
-              </div>
-            </div>
-          )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
-          {!step.gto_spot_mismatch && (
-            <div className="text-xs text-muted-foreground leading-relaxed">
-              {step.gto_label === "gto_correct" &&
-                "Sua ação está alinhada com a estratégia GTO — frequência primária do solver."}
-              {step.gto_label === "gto_mixed" &&
-                "O solver mistura esta ação com outras opções. Não é um erro — ambas são válidas neste spot."}
-              {step.gto_label === "gto_minor_deviation" &&
-                "Desvio leve do GTO. Ação alternativa tem frequência baixa mas não é negligenciável."}
-              {step.gto_label === "gto_critical" &&
-                "Desvio crítico do GTO. O solver raramente (ou nunca) toma esta ação neste spot."}
-            </div>
-          )}
+              {/* Fallback: apenas gto_action sem strategy */}
+              {!step.gto_spot_mismatch && step.gto_action && (!step.gto_strategy || step.gto_strategy.length === 0) && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-background/60 px-2.5 py-2 ring-1 ring-border/50">
+                    <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Jogou</div>
+                    <div className="font-mono text-sm font-bold text-foreground uppercase">{step.action ?? "—"}</div>
+                  </div>
+                  <div className={cn("rounded-lg px-2.5 py-2 ring-1",
+                    step.gto_label === "gto_correct" ? "bg-emerald-500/10 ring-emerald-500/30" : "bg-background/60 ring-border/50")}>
+                    <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">GTO</div>
+                    <div className={cn("font-mono text-sm font-bold", gto?.cls)}>{fmtAction(step.gto_action)}</div>
+                  </div>
+                </div>
+              )}
 
-          {/* Spot incompatível — ação do GTO não faz sentido no contexto */}
-          {step.gto_spot_mismatch && (
-            <div className="flex items-start gap-1.5 rounded-lg bg-orange-500/5 border border-orange-500/25 px-2.5 py-2">
-              <span className="text-orange-400 text-[10px] mt-px shrink-0">⚠</span>
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                Spot GTO incompatível com esta situação:{" "}
-                {step.engine_best === "call"
-                  ? "você enfrentava uma aposta, mas o solver foi consultado para um spot sem aposta."
-                  : "não havia aposta a enfrentar, mas o solver foi consultado para um spot com aposta."}
-                {" "}A análise GTO desta mão precisa ser reprocessada para o contexto correto.
-              </p>
-            </div>
-          )}
+              {/* Verdict description */}
+              {!step.gto_spot_mismatch && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {step.gto_label === "gto_correct" && "Sua ação está alinhada com a estratégia GTO — frequência primária do solver."}
+                  {step.gto_label === "gto_mixed" && "O solver mistura esta ação com outras opções. Não é um erro — ambas são válidas neste spot."}
+                  {step.gto_label === "gto_minor_deviation" && "Desvio leve do GTO. Ação alternativa tem frequência baixa mas não é negligenciável."}
+                  {step.gto_label === "gto_critical" && "Desvio crítico do GTO. O solver raramente (ou nunca) toma esta ação neste spot."}
+                </p>
+              )}
 
-          {/* Conflito engine vs GTO — só exibe quando heurístico diverge do GTO */}
-          {!step.gto_spot_mismatch && step.engine_best && step.gto_action &&
-           step.engine_best !== step.gto_action && isError && (
-            <div className="flex items-start gap-1.5 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
-              <span className="text-amber-400 text-[10px] mt-px shrink-0">⚠</span>
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                Heurística e GTO divergem na alternativa:{" "}
-                heurística recomendou{" "}
-                <span className="font-mono font-bold text-foreground">{fmtAction(step.engine_best)}</span>
-                , solver GTO recomenda{" "}
-                <span className="font-mono font-bold text-foreground">{fmtAction(step.gto_action)}</span>
-                . Priorizando GTO.
-              </p>
+              {/* Spot incompatível */}
+              {step.gto_spot_mismatch && (
+                <div className="flex items-start gap-1.5 rounded-lg bg-orange-500/5 border border-orange-500/25 px-2.5 py-2">
+                  <span className="text-orange-400 text-[10px] mt-px shrink-0">⚠</span>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    Spot GTO incompatível com esta situação:{" "}
+                    {step.engine_best === "call"
+                      ? "você enfrentava uma aposta, mas o solver foi consultado para um spot sem aposta."
+                      : "não havia aposta a enfrentar, mas o solver foi consultado para um spot com aposta."}
+                    {" "}A análise GTO desta mão precisa ser reprocessada para o contexto correto.
+                  </p>
+                </div>
+              )}
+
+              {/* Conflito engine vs GTO */}
+              {!step.gto_spot_mismatch && step.engine_best && step.gto_action &&
+               step.engine_best !== step.gto_action && isError && (
+                <div className="flex items-start gap-1.5 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
+                  <span className="text-amber-400 text-[10px] mt-px shrink-0">⚠</span>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    Heurística e GTO divergem:{" "}
+                    heurística → <span className="font-mono font-bold text-foreground">{fmtAction(step.engine_best)}</span>
+                    , solver → <span className="font-mono font-bold text-foreground">{fmtAction(step.gto_action)}</span>.
+                    {" "}Priorizando GTO.
+                  </p>
+                </div>
+              )}
+
+              {/* Consenso engine + GTO */}
+              {!step.gto_spot_mismatch && step.engine_best && step.gto_action &&
+               step.engine_best === step.gto_action && isError && (
+                <div className="flex items-start gap-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 px-2.5 py-2">
+                  <span className="text-emerald-400 text-[10px] mt-px shrink-0">✓</span>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    Heurística e solver GTO concordam:{" "}
+                    <span className="font-mono font-bold text-foreground">{fmtAction(step.gto_action)}</span>{" "}
+                    era a jogada correta neste spot.
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-          {/* Consenso engine + GTO — reforça a recomendação quando ambos concordam */}
-          {!step.gto_spot_mismatch && step.engine_best && step.gto_action &&
-           step.engine_best === step.gto_action && isError && (
-            <div className="flex items-start gap-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 px-2.5 py-2">
-              <span className="text-emerald-400 text-[10px] mt-px shrink-0">✓</span>
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                Motor heurístico e solver GTO concordam:{" "}
-                <span className="font-mono font-bold text-foreground">{fmtAction(step.gto_action)}</span>{" "}
-                era a jogada correta neste spot.
-              </p>
-            </div>
-          )}
-        </section>
-      )}
+          </section>
+        );
+      })()}
 
       {/* ── Coach annotation (coach editing student hand) ── */}
       {studentId && step?.is_hero && step?.is_error && currentDecisionId && (
