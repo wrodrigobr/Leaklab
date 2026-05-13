@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.98.6] — 2026-05-12 — fix(UX-020): BB free play não gera análise de range preflop
+
+### Fixed
+- **BB check em pot não contestado**: `analyze_preflop` retornava `available=True` com `action_quality="acceptable"` e nota "Fold correto" quando o BB simplesmente checkava seu free play. Corrigido: BB + scenario `rfi` + `action_taken="check"` retorna `available=False` imediatamente — painel de análise não aparece
+- **`_rfi_notes` default incorreto**: o else que gerava "Fold correto" disparava para qualquer ação não-raise/jam fora do range (incluindo check/call). Corrigido para verificar explicitamente `act == 'fold'` antes de emitir essa nota
+
+---
+
 ## [v0.98.5] — 2026-05-12 — feat(UX-019): DecisionCard unificado no /replayer React
 
 ### Changed

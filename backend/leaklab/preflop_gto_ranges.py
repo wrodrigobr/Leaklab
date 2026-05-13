@@ -125,6 +125,10 @@ def analyze_preflop(
         scenario = 'rfi'
     base['scenario'] = scenario
 
+    # BB checando em pot não contestado = free play, não é decisão de range
+    if scenario == 'rfi' and pos == 'BB' and action_taken.lower() == 'check':
+        return base  # available=False — sem análise
+
     # ── RFI ──────────────────────────────────────────────────────────────────
     if scenario == 'rfi':
         rfi = bk_data.get('RFI', {}).get(pos)
@@ -248,8 +252,9 @@ def _rfi_notes(pos, hand, stack, pct, in_rng, action) -> list[str]:
                 notes.append(f"Com {stack:.0f}bb o jogo é push/fold — {hand} não tem equity suficiente para shove aqui.")
             else:
                 notes.append(f"Abrir {hand} do {label} é loose: perde EV contra os ranges de defesa dos oponentes.")
-        else:
+        elif act == 'fold':
             notes.append(f"Fold correto. {hand} não justifica entrada desta posição neste stack.")
+        # check/call em limped pot — sem julgamento negativo
     if stack <= 15:
         notes.append(f"Com {stack:.0f}bb: jogo essencialmente push/fold — use tabelas ICM para decisões marginais.")
     elif stack <= 25:
