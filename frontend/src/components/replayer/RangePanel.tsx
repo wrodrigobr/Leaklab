@@ -249,7 +249,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
           </div>
           <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">
             {pos === 'BB'
-              ? 'Verde = call · Fold o resto. Sem call no SB, re-raise é shove.'
+              ? 'Azul = call · Fold o resto. Sem call no SB, re-raise é shove.'
               : 'Verde = shove all-in · Fold o resto. Sem open pequeno nessa profundidade.'}
           </p>
           {hand && nashRange && (
