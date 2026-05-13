@@ -181,8 +181,18 @@ function buildDrillStep(spot: DrillSpot): { step: ReplayStep; hero: string; hero
   }
 
   const boardLimit = ({ preflop: 0, flop: 3, turn: 4, river: 5 } as Record<string, number>)[spot.street ?? 'preflop'] ?? 0;
-  const board      = spot.board ? (spot.board.match(/.{2}/g) ?? []).slice(0, boardLimit) : [];
-  const heroCards  = spot.hero_cards ? (spot.hero_cards.match(/.{2}/g) ?? []) : [];
+  const boardRaw: string[] = (() => {
+    if (!spot.board) return [];
+    const s = spot.board.trim();
+    if (s.startsWith('[')) { try { return JSON.parse(s) as string[]; } catch { return []; } }
+    return s.split(/\s+/).filter(Boolean);
+  })();
+  const board     = boardRaw.slice(0, boardLimit);
+  const heroCards = spot.hero_cards
+    ? (spot.hero_cards.trim().startsWith('[')
+        ? (() => { try { return JSON.parse(spot.hero_cards!) as string[]; } catch { return []; } })()
+        : (spot.hero_cards.match(/[2-9TJQKAakqjt][shdcSHDC]/g) ?? []))
+    : [];
   const potChips   = Math.round((spot.pot_size ?? 2) * bb);
 
   const step = {
