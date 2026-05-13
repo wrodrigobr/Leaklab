@@ -9,7 +9,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-## [v0.99.0] — 2026-05-13 — feat(GTO-009): solver_cli suporta facing_size_bb — estratégia completa por nó de decisão
+## [v0.99.0] — 2026-05-13 — feat(GTO-009): solver_cli facing_size_bb + deploy VM — estratégia completa por nó de decisão
 
 ### Added
 - **`solver_cli` (`main.rs`)**: novo campo opcional `facing_size_bb` (padrão 0.0). Quando > 0, após resolver o game tree completo, navega internamente para o nó onde OOP enfrenta a aposta do IP (`OOP check → IP bet closest_to(facing_size_bb) → OOP to act`) e retorna a estratégia de resposta (fold/call/raise/allin com frequências). Campo `facing_node: bool` na saída indica se a navegação foi bem-sucedida
