@@ -1709,12 +1709,33 @@ export interface MyTicket {
 
 // ── GTO Integration ─────────────────────────────────────────────────────────
 
+export interface GtoStrategyAction {
+  action: string;
+  label: string;
+  frequency: number;
+  combos?: number | null;
+}
+
 export interface GtoDecisionResult {
   found: boolean;
   spot_hash?: string;
+  street?: string;
+  position?: string;
+  stack_bb?: number;
+  facing_bb?: number;
+  // Top GTO action
   gto_action?: string;
+  gto_action_label?: string;
   gto_freq?: number;
+  // Player
+  player_action?: string;
+  player_action_label?: string;
+  player_action_freq?: number;
+  // Full strategy
+  strategy?: GtoStrategyAction[];
+  // Metadata
   ev_diff?: number | null;
+  exploitability_pct?: number | null;
   source?: string;
   engine_action?: string;
   agreement?: boolean | null;

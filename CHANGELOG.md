@@ -9,6 +9,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.98.0] — 2026-05-12 — feat(GTO-004/005): GTO panel redesign + fixes chips→BB + solver stuck
+
+### Added
+- **GTO Panel redesign** (3 layers): Verdict banner (green/amber/red por `player_action_freq`), Full Strategy bars com barra da ação do jogador marcada (`←`), Context collapsível (position, street, stack, facing, exploitability)
+- **`GtoStrategyAction` interface** em `api.ts`; `GtoDecisionResult` expandido com `strategy[]`, `player_action_freq`, `player_action_label`, `gto_action_label`, `ev_diff`, `exploitability_pct`
+- **i18n**: novas chaves `gto.verdict.*`, `gto.ctx.*`, `gto.youPlayedLabel`, `gto.evDiffLabel`, `gto.exploitability`, `gto.strategyLabel`, `gto.contextLabel` nos 3 locales (PT/EN/ES)
+
+### Fixed
+- **GTO-004 chips→BB**: `facing_size_bb` em 3 locais do `app.py` usava `spot.get('facingSize')` (chips raw) em vez de `db_dec.get('facing_bet')` (BB normalizado da tabela `decisions`) — hashes errados corrigidos
+- **GTO-005 solver stuck**: `hash_no_facing` fallback retornava nós sem aposta quando hero enfrentava bet → removido; nós corrompidos (`gto_action=NULL`) voltavam `found=True` com `strategy=[]` → fallback para enqueue corrigido
+- **Endpoint `/player/decisions/<id>/gto`** reescrito: retorna `strategy` completa do nó, `player_action_freq` (fuzzy match), `ev_diff`, `exploitability_pct`, labels human-readable
+- **`get_decision_spot`** em `repositories.py`: adicionado `facing_bet` ao SELECT
+
+---
+
 ## [v0.97.0] — 2026-05-11 — feat(UX-020): stacks BB com precisão decimal + C-bet real no HUD
 
 ### Changed

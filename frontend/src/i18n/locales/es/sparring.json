@@ -76,7 +76,24 @@
     "confirms": "GTO confirma",
     "divergence": "divergencia GTO",
     "recommendsLabel": "GTO recomienda",
+    "youPlayedLabel": "jugaste",
     "freqLabel": "frecuencia",
-    "evDiff": "EV diff: {{n}} BB vs. 2ª acción"
+    "evDiff": "EV diff: {{n}} BB vs. 2ª acción",
+    "evDiffLabel": "bb vs. GTO",
+    "exploitability": "exploit",
+    "strategyLabel": "estrategia completa",
+    "contextLabel": "contexto",
+    "verdict": {
+      "correct": "✓ dentro de la estrategia GTO",
+      "mixed": "~ acción marginal",
+      "critical": "✗ desviación crítica del GTO"
+    },
+    "ctx": {
+      "position": "pos",
+      "street": "street",
+      "stack": "stack",
+      "facing": "apuesta",
+      "solved": "exploit"
+    }
   }
 }

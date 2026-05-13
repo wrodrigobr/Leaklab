@@ -3793,7 +3793,7 @@ def admin_support_reply(ticket_id):
 @app.route('/replay/<int:decision_id>/gto', methods=['GET'])
 @require_auth
 def get_decision_gto(decision_id):
-    """Retorna a recomendação GTO para uma decisão específica, se disponível."""
+    """Retorna análise GTO completa para uma decisão: estratégia, exploitability, frequência da jogada."""
     from database.repositories import get_decision_spot, get_gto_node
     from leaklab.gto_utils import compute_spot_hash
     import json as _json
@@ -3802,11 +3802,12 @@ def get_decision_gto(decision_id):
     if not dec:
         return jsonify({'error': 'Decisão não encontrada'}), 404
 
-    street   = dec.get('street') or ''
-    position = dec.get('position') or ''
+    street    = dec.get('street') or ''
+    position  = dec.get('position') or ''
     board_raw = dec.get('board') or '[]'
     hand_raw  = dec.get('hero_cards') or ''
     stack_bb  = float(dec.get('stack_bb') or 30.0)
+    facing_bb = float(dec.get('facing_bet') or 0.0)
 
     try:
         board = _json.loads(board_raw) if isinstance(board_raw, str) else board_raw
@@ -3824,19 +3825,116 @@ def get_decision_gto(decision_id):
     if not node:
         return jsonify({'found': False, 'spot_hash': spot_hash}), 404
 
-    engine_action = dec.get('action_taken') or ''
-    agreement = engine_action.lower() == node['gto_action'].lower() if engine_action else None
+    player_action = (dec.get('action_taken') or '').lower()
+
+    # ── Estratégia completa ──────────────────────────────────────────────────
+    strategy = []
+    strategy_raw = {}
+    if node.get('strategy_json'):
+        try:
+            strategy_raw = _json.loads(node['strategy_json'])
+        except Exception:
+            pass
+
+    if strategy_raw:
+        for action_key, data in strategy_raw.items():
+            strategy.append({
+                'action':    action_key,
+                'label':     _gto_action_label(action_key),
+                'frequency': round(float(data.get('frequency', 0)), 4),
+                'combos':    data.get('combos'),
+            })
+        strategy.sort(key=lambda x: x['frequency'], reverse=True)
+    else:
+        # Fallback: apenas ação primária
+        if node.get('gto_action'):
+            strategy = [{
+                'action':    node['gto_action'],
+                'label':     _gto_action_label(node['gto_action']),
+                'frequency': float(node.get('gto_freq') or 1.0),
+                'combos':    None,
+            }]
+
+    # ── Frequência GTO da jogada do herói ────────────────────────────────────
+    player_freq = _player_action_freq(player_action, strategy)
+
+    # ── Agreement: jogada está na estratégia com ≥ 15% de frequência ────────
+    top_action   = strategy[0]['action'] if strategy else (node.get('gto_action') or '')
+    agreement    = player_freq >= 0.15 if player_action else None
 
     return jsonify({
-        'found':         True,
-        'spot_hash':     spot_hash,
-        'gto_action':    node['gto_action'],
-        'gto_freq':      node['gto_freq'],
-        'ev_diff':       node['ev_diff'],
-        'source':        node['source'],
-        'engine_action': engine_action,
-        'agreement':     agreement,
+        'found':               True,
+        'spot_hash':           spot_hash,
+        'street':              street,
+        'position':            position,
+        'stack_bb':            stack_bb,
+        'facing_bb':           facing_bb,
+        'gto_action':          top_action,
+        'gto_action_label':    _gto_action_label(top_action),
+        'gto_freq':            float(node.get('gto_freq') or 0.0),
+        'ev_diff':             node.get('ev_diff'),
+        'exploitability_pct':  node.get('exploitability_pct'),
+        'source':              node.get('source'),
+        'player_action':       player_action,
+        'player_action_label': _gto_action_label(player_action) if player_action else None,
+        'player_action_freq':  player_freq,
+        'agreement':           agreement,
+        'strategy':            strategy,
     })
+
+
+def _gto_action_label(action_key: str) -> str:
+    """Converte chave interna do solver para label legível."""
+    if not action_key:
+        return ''
+    _MAP = {
+        'check':       'CHECK',
+        'call':        'CALL',
+        'fold':        'FOLD',
+        'allin':       'ALL-IN',
+        'all-in':      'ALL-IN',
+        'bet_33pct':   'BET 33%',
+        'bet_50pct':   'BET 50%',
+        'bet_66pct':   'BET 66%',
+        'bet_75pct':   'BET 75%',
+        'bet_100pct':  'BET POT',
+        'bet_125pct':  'BET 125%',
+        'raise_2x':    'RAISE 2×',
+        'raise_3x':    'RAISE 3×',
+        'raise_4x':    'RAISE 4×',
+        'jam':         'ALL-IN',
+        'bet':         'BET',
+        'raise':       'RAISE',
+    }
+    key = action_key.lower().strip()
+    if key in _MAP:
+        return _MAP[key]
+    # Genérico: capitaliza e substitui underscores
+    return key.replace('_', ' ').upper()
+
+
+def _player_action_freq(player_action: str, strategy: list) -> float:
+    """Retorna a frequência GTO da ação jogada pelo herói (fuzzy match)."""
+    if not player_action or not strategy:
+        return 0.0
+    pa = player_action.lower()
+    # Match exato
+    for s in strategy:
+        if s['action'].lower() == pa:
+            return s['frequency']
+    # Fuzzy: fold/call/check direto
+    for s in strategy:
+        skey = s['action'].lower()
+        if pa in ('fold',)  and skey == 'fold':  return s['frequency']
+        if pa in ('call',)  and skey == 'call':  return s['frequency']
+        if pa in ('check',) and skey == 'check': return s['frequency']
+    # Fuzzy: qualquer aposta/raise quando player apostou
+    if pa in ('bet', 'raise', 'jam', 'allin', 'all-in'):
+        bet_freqs = [s['frequency'] for s in strategy if any(
+            k in s['action'].lower() for k in ('bet', 'raise', 'allin', 'jam')
+        )]
+        return sum(bet_freqs) if bet_freqs else 0.0
+    return 0.0
 
 
 @app.route('/admin/gto/nodes', methods=['POST'])
