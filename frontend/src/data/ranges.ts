@@ -252,7 +252,7 @@ const BB_DEFEND: RangeSet = {
 // ── Lookup ────────────────────────────────────────────────────────────────────
 
 export type Position = 'UTG' | 'MP' | 'HJ' | 'CO' | 'BTN' | 'SB' | 'BB';
-export type RangeType = 'open' | 'call' | '3bet';
+export type RangeType = 'open' | 'call' | '3bet' | 'shove';
 
 export const RANGES: Record<Position, Partial<Record<RangeType, RangeSet>>> = {
   UTG: { open: UTG_OPEN, '3bet': THREEBET_OOP },
@@ -267,10 +267,91 @@ export const RANGES: Record<Position, Partial<Record<RangeType, RangeSet>>> = {
 export const POSITIONS: Position[] = ['UTG', 'MP', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
 
 export const RANGE_TYPES: { id: RangeType; label: string }[] = [
-  { id: 'open', label: 'Open' },
-  { id: 'call', label: 'Call' },
-  { id: '3bet', label: '3-Bet' },
+  { id: 'shove', label: 'Shove' },
+  { id: 'open',  label: 'Open'  },
+  { id: 'call',  label: 'Call'  },
+  { id: '3bet',  label: '3-Bet' },
 ];
+
+// ── Nash Push/Fold Ranges (6-max, approximate) ───────────────────────────────
+// BB entry uses `call` field (call vs shove). All other positions use `raise` (shove range).
+
+export type StackBucket = '≤8bb' | '≤10bb' | '≤15bb' | '≤20bb';
+
+export function getPushFoldBucket(stackBb: number): StackBucket | null {
+  if (stackBb <= 8)  return '≤8bb';
+  if (stackBb <= 10) return '≤10bb';
+  if (stackBb <= 15) return '≤15bb';
+  if (stackBb <= 20) return '≤20bb';
+  return null;
+}
+
+export const PUSH_FOLD: Record<StackBucket, Partial<Record<Position, RangeSet>>> = {
+  '≤8bb': {
+    UTG: { label: 'Shove UTG (≤8bb)', description: 'Nash ~46% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A2s','AKo-A5o','KQs-K5s','KQo-K9o','QJs-Q7s','QJo-Q9o','JTs-J7s','JTo','T9s-T6s','T9o','98s-96s','87s-86s','76s','65s','54s') },
+    MP:  { label: 'Shove MP (≤8bb)', description: 'Nash ~52% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A2s','AKo-A4o','KQs-K4s','KQo-K8o','QJs-Q5s','QJo-Q8o','JTs-J5s','JTo-J9o','T9s-T4s','T9o-T8o','98s-95s','98o','87s-83s','87o','76s-73s','65s-63s','54s-53s','43s') },
+    HJ:  { label: 'Shove HJ (≤8bb)', description: 'Nash ~59% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A2s','AKo-A3o','KQs-K3s','KQo-K7o','QJs-Q3s','QJo-Q7o','JTs-J3s','JTo-J8o','T9s-T2s','T9o-T7o','98s-92s','98o-96o','87s-82s','87o-85o','76s-72s','76o-74o','65s-62s','65o','54s-52s','43s-42s','32s') },
+    CO:  { label: 'Shove CO (≤8bb)', description: 'Nash ~66% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K5o','QJs-Q2s','QJo-Q5o','JTs-J2s','JTo-J6o','T9s-T2s','T9o-T4o','98s-92s','98o-93o','87s-82s','87o-83o','76s-72s','76o-72o','65s-62s','65o-63o','54s-52s','54o','43s-42s','32s') },
+    BTN: { label: 'Shove BTN (≤8bb)', description: 'Nash ~74% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K2o','QJs-Q2s','QJo-Q3o','JTs-J2s','JTo-J4o','T9s-T2s','T9o-T2o','98s-92s','98o-92o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
+    SB:  { label: 'Shove SB (≤8bb)', description: 'Nash ~81% · Shove ou Fold (vs BB)',
+      raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K2o','QJs-Q2s','QJo-Q2o','JTs-J2s','JTo-J2o','T9s-T2s','T9o-T2o','98s-92s','98o-92o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
+    BB:  { label: 'Call vs Shove BB (≤8bb)', description: '~46% — Call ou Fold vs shove',
+      raise: mk(), call: mk('AA-22','AKs-A3s','AKo-A6o','KQs-K7s','KQo-KTo','QJs-Q7s','QJo-Q9o','JTs-J7s','JTo','T9s-T7s','T9o','98s-97s','87s-86s','76s') },
+  },
+  '≤10bb': {
+    UTG: { label: 'Shove UTG (≤10bb)', description: 'Nash ~36% · Shove ou Fold',
+      raise: mk('AA-33','AKs-A5s','AKo-A8o','KQs-K7s','KQo-KJo','QJs-Q8s','QJo','JTs-J7s','JTo','T9s-T6s','T9o','98s-95s','87s-85s','76s-74s','65s-63s','54s') },
+    MP:  { label: 'Shove MP (≤10bb)', description: 'Nash ~41% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A3s','AKo-A6o','KQs-K5s','KQo-K9o','QJs-Q6s','QJo-Q9o','JTs-J5s','JTo','T9s-T4s','T9o-T8o','98s-93s','98o','87s-82s','87o','76s-72s','65s-62s','54s-52s','43s') },
+    HJ:  { label: 'Shove HJ (≤10bb)', description: 'Nash ~48% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A2s','AKo-A4o','KQs-K4s','KQo-K7o','QJs-Q4s','QJo-Q7o','JTs-J3s','JTo-J8o','T9s-T2s','T9o-T6o','98s-92s','98o-95o','87s-82s','87o-84o','76s-72s','76o-73o','65s-62s','65o','54s-52s','43s-42s','32s') },
+    CO:  { label: 'Shove CO (≤10bb)', description: 'Nash ~56% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K5o','QJs-Q2s','QJo-Q4o','JTs-J2s','JTo-J6o','T9s-T2s','T9o-T3o','98s-92s','98o-93o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o','43s-42s','32s') },
+    BTN: { label: 'Shove BTN (≤10bb)', description: 'Nash ~65% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K2o','QJs-Q2s','QJo-Q2o','JTs-J2s','JTo-J5o','T9s-T2s','T9o-T2o','98s-92s','98o-92o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
+    SB:  { label: 'Shove SB (≤10bb)', description: 'Nash ~72% · Shove ou Fold (vs BB)',
+      raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K2o','QJs-Q2s','QJo-Q2o','JTs-J2s','JTo-J2o','T9s-T2s','T9o-T2o','98s-92s','98o-92o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
+    BB:  { label: 'Call vs Shove BB (≤10bb)', description: '~40% — Call ou Fold vs shove',
+      raise: mk(), call: mk('AA-55','AKs-A7s','AKo-A9o','KQs-K8s','KQo-KJo','QJs-Q8s','QJo','JTs-J8s','T9s-T7s','98s-97s','87s') },
+  },
+  '≤15bb': {
+    UTG: { label: 'Shove UTG (≤15bb)', description: 'Nash ~20% · Shove ou Fold',
+      raise: mk('AA-55','AKs-A9s','AKo-ATo','KQs-K9s','KQo','QJs-QTs','JTs-J9s','T9s','98s-97s') },
+    MP:  { label: 'Shove MP (≤15bb)', description: 'Nash ~25% · Shove ou Fold',
+      raise: mk('AA-44','AKs-A7s','AKo-A9o','KQs-K7s','KQo-KJo','QJs-Q8s','QJo','JTs-J7s','JTo','T9s-T7s','T9o','98s-96s','87s-86s','76s','65s') },
+    HJ:  { label: 'Shove HJ (≤15bb)', description: 'Nash ~32% · Shove ou Fold',
+      raise: mk('AA-33','AKs-A5s','AKo-A7o','KQs-K5s','KQo-K9o','QJs-Q7s','QJo-Q9o','JTs-J5s','JTo-J9o','T9s-T5s','T9o','98s-95s','98o','87s-83s','87o','76s-73s','65s-63s','54s-53s') },
+    CO:  { label: 'Shove CO (≤15bb)', description: 'Nash ~40% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A3s','AKo-A5o','KQs-K3s','KQo-K8o','QJs-Q3s','QJo-Q7o','JTs-J3s','JTo-J8o','T9s-T2s','T9o-T7o','98s-92s','98o-95o','87s-82s','87o-84o','76s-72s','76o-73o','65s-62s','65o','54s-52s','43s-42s','32s') },
+    BTN: { label: 'Shove BTN (≤15bb)', description: 'Nash ~50% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K5o','QJs-Q2s','QJo-Q5o','JTs-J2s','JTo-J6o','T9s-T2s','T9o-T4o','98s-92s','98o-93o','87s-82s','87o-83o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
+    SB:  { label: 'Shove SB (≤15bb)', description: 'Nash ~58% · Shove ou Fold (vs BB)',
+      raise: mk('AA-22','AKs-A2s','AKo-A2o','KQs-K2s','KQo-K3o','QJs-Q2s','QJo-Q2o','JTs-J2s','JTo-J3o','T9s-T2s','T9o-T2o','98s-92s','98o-92o','87s-82s','87o-82o','76s-72s','76o-72o','65s-62s','65o-62o','54s-52s','54o-52o','43s-42s','32s') },
+    BB:  { label: 'Call vs Shove BB (≤15bb)', description: '~33% — Call ou Fold vs shove',
+      raise: mk(), call: mk('AA-66','AKs-A7s','AKo-A9o','KQs-K8s','KQo-KJo','QJs-Q8s','QJo','JTs-J8s','T9s-T7s','98s-97s','87s') },
+  },
+  '≤20bb': {
+    UTG: { label: 'Shove UTG (≤20bb)', description: 'Nash ~14% · Shove ou Fold',
+      raise: mk('AA-77','AKs-A4s','AKo-AJo','KQs-K9s','KQo-KJo','QJs-QTs','JTs','T9s') },
+    MP:  { label: 'Shove MP (≤20bb)', description: 'Nash ~18% · Shove ou Fold',
+      raise: mk('AA-55','AKs-A9s','AKo-ATo','KQs-K9s','KQo','QJs-QTs','JTs-J9s','T9s','98s') },
+    HJ:  { label: 'Shove HJ (≤20bb)', description: 'Nash ~23% · Shove ou Fold',
+      raise: mk('AA-44','AKs-A7s','AKo-A9o','KQs-K8s','KQo-KJo','QJs-Q9s','QJo','JTs-J8s','T9s-T8s','98s-97s','87s') },
+    CO:  { label: 'Shove CO (≤20bb)', description: 'Nash ~30% · Shove ou Fold',
+      raise: mk('AA-33','AKs-A5s','AKo-A7o','KQs-K6s','KQo-KTo','QJs-Q7s','QJo-Q9o','JTs-J6s','JTo','T9s-T6s','T9o','98s-96s','87s-85s','76s-74s','65s-63s','54s') },
+    BTN: { label: 'Shove BTN (≤20bb)', description: 'Nash ~40% · Shove ou Fold',
+      raise: mk('AA-22','AKs-A3s','AKo-A5o','KQs-K5s','KQo-K8o','QJs-Q5s','QJo-Q8o','JTs-J5s','JTo-J9o','T9s-T4s','T9o-T8o','98s-93s','98o','87s-82s','87o','76s-72s','76o','65s-62s','54s-52s','43s-42s') },
+    SB:  { label: 'Shove SB (≤20bb)', description: 'Nash ~48% · Shove ou Fold (vs BB)',
+      raise: mk('AA-22','AKs-A2s','AKo-A3o','KQs-K3s','KQo-K7o','QJs-Q3s','QJo-Q6o','JTs-J2s','JTo-J8o','T9s-T2s','T9o-T6o','98s-92s','98o-95o','87s-82s','87o-84o','76s-72s','76o-73o','65s-62s','65o','54s-52s','43s-42s','32s') },
+    BB:  { label: 'Call vs Shove BB (≤20bb)', description: '~27% — Call ou Fold vs shove',
+      raise: mk(), call: mk('AA-77','AKs-A9s','AKo-ATo','KQs-KTs','KQo','QJs-QTs','JTs','T9s') },
+  },
+};
 
 export function normalizePosition(pos: string): Position | null {
   const p = pos.toUpperCase();

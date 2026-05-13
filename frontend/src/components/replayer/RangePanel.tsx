@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { LayoutGrid, X, Loader2, CheckCircle2, XCircle, AlertTriangle, Info } from "lucide-react";
 import { RangeGrid } from "./RangeGrid";
 import {
-  heroHand, RANGES, normalizePosition,
+  heroHand, RANGES, normalizePosition, PUSH_FOLD, getPushFoldBucket,
   Position, RangeType, POSITIONS, RANGE_TYPES, RangeSet,
 } from "@/data/ranges";
 import { ReplayStep } from "@/lib/api";
@@ -107,21 +107,25 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
   const detectedPos = heroSeat ? normalizePosition(heroSeat[1].pos) : null;
   const gto         = step.preflop_gto;
 
-  // Auto-select scenario tab from GTO data, fallback to raise detection
-  const defaultType: RangeType = gto?.scenario
-    ? (SCENARIO_TO_TYPE[gto.scenario] ?? 'open')
-    : (Object.entries(step.bets ?? {}).some(([seat, bet]) =>
-        step.seats?.[seat]?.player !== hero && bet > (step.bb ?? 0))
-      ? 'call' : 'open');
-
   const [pos,  setPos]  = useState<Position>(detectedPos ?? 'BTN');
-  const [type, setType] = useState<RangeType>(defaultType);
 
   const [apiData, setApiData] = useState<PreflopRangesResp | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const stackBb   = step.hero_stack_bb ?? 30;
-  const openerPos = gto?.vs_position ?? undefined;
+  const stackBb    = step.hero_stack_bb ?? 30;
+  const openerPos  = gto?.vs_position ?? undefined;
+  const pushBucket = getPushFoldBucket(stackBb);
+  const isPushZone = pushBucket !== null;
+
+  // Default to 'shove' in push/fold zone; otherwise auto-select from GTO/raise context
+  const defaultType: RangeType = isPushZone
+    ? 'shove'
+    : (gto?.scenario ? (SCENARIO_TO_TYPE[gto.scenario] ?? 'open')
+      : (Object.entries(step.bets ?? {}).some(([seat, bet]) =>
+          step.seats?.[seat]?.player !== hero && bet > (step.bb ?? 0))
+        ? 'call' : 'open'));
+
+  const [type, setType] = useState<RangeType>(defaultType);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,7 +140,10 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
   }, [pos, stackBb]);
 
   const staticRange    = RANGES[pos];
+  const nashRange      = pushBucket ? PUSH_FOLD[pushBucket]?.[pos] : null;
+
   const availableTypes = RANGE_TYPES.filter(t => {
+    if (t.id === 'shove') return isPushZone && !!nashRange;
     if (apiData) {
       if (t.id === 'open')  return !!apiData.rfi;
       if (t.id === '3bet')  return !!apiData.vs_3bet;
@@ -148,9 +155,9 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
   const effectiveType: RangeType = availableTypes.some(t => t.id === type)
     ? type : (availableTypes[0]?.id ?? 'open');
 
-  const displayRange: RangeSet | null | undefined = apiData
-    ? buildRangeFromApi(apiData, effectiveType, openerPos)
-    : staticRange?.[effectiveType];
+  const displayRange: RangeSet | null | undefined = effectiveType === 'shove'
+    ? nashRange
+    : (apiData ? buildRangeFromApi(apiData, effectiveType, openerPos) : staticRange?.[effectiveType]);
 
   const hand = heroHand(heroCards);
 
@@ -222,6 +229,33 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Push/Fold zone banner */}
+      {isPushZone && effectiveType === 'shove' && (
+        <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 px-3 py-2 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[9px] font-bold uppercase tracking-wide text-violet-400">
+              Push/Fold Zone · {stackBb.toFixed(0)}bb
+            </span>
+            {pos === 'BB' && (
+              <span className="font-mono text-[8px] text-muted-foreground">(call vs shove)</span>
+            )}
+          </div>
+          <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">
+            {pos === 'BB'
+              ? 'Verde = call · Fold o resto. Sem call no SB, re-raise é shove.'
+              : 'Verde = shove all-in · Fold o resto. Sem open pequeno nessa profundidade.'}
+          </p>
+          {hand && nashRange && (
+            <p className={cn(
+              "font-mono text-[10px] font-bold",
+              (nashRange.raise.has(hand) || nashRange.call?.has(hand)) ? "text-emerald-400" : "text-amber-400"
+            )}>
+              {hand}: {(nashRange.raise.has(hand) || nashRange.call?.has(hand)) ? '✓ no range' : '✗ fora do range'}
+            </p>
+          )}
         </div>
       )}
 
