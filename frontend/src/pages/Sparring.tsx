@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  ChevronLeft,
   Flame,
   Loader2,
   Swords,
@@ -11,10 +13,9 @@ import {
   XCircle,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
+import { HudHeader } from "@/components/hud/HudHeader";
+import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { AiText } from "@/components/ui/AiText";
-import type { CardData } from "@/components/hud/PlayingCard";
-import { PokerTable } from "@/components/hud/PokerTable";
-import type { Seat } from "@/components/hud/PokerTable";
 import { sparring, drill, tournaments } from "@/lib/api";
 import type { SparringHand, SparringStep, DrillSubmitResult, ReplayStep } from "@/lib/api";
 import { GtoPanel } from "@/components/hud/GtoPanel";
@@ -68,86 +69,76 @@ function parseCards(raw: string | null): CardData[] {
   });
 }
 
-// ── Poker table builder ───────────────────────────────────────────────────────
-// Hero is index 0 → bottom-center of PokerTable geometry (angle = π/2)
-// Villain stacks are estimated at 100 BB (we only have hero's stack from the API)
+// ── Poker table adapter (SparringStep → ReplayStep for PokerTableV3) ─────────
 
-const DUMMY_CARD: CardData = { rank: "A", suit: "s" };
-
-interface TableState { seats: Seat[]; pot: number; bb: number }
-
-
-function buildSparringTable(
+function buildSparringStep(
   step: SparringStep,
-  heroCards: CardData[],
   replayStep: ReplayStep | null,
-): TableState {
-  // ── Real data path: replay step available ────────────────────────────────
+): { tableStep: ReplayStep; hero: string; heroCards: string[]; bb: number } {
+  const heroCardsStr: string[] = step.hero_cards
+    ? (step.hero_cards.trim().startsWith('[')
+        ? (() => { try { return JSON.parse(step.hero_cards!) as string[]; } catch { return []; } })()
+        : (step.hero_cards.match(/[2-9TJQKAakqjt][shdcSHDC]/g) ?? []))
+    : [];
+
   if (replayStep) {
-    const foldedSet = new Set(replayStep.folded ?? []);
-    const heroName  = replayStep.hero;
-    const entries   = Object.entries(replayStep.seats)
-      .sort(([a], [b]) => parseInt(a) - parseInt(b));
-    const heroEntry = entries.find(([, sd]) => sd.player === heroName);
-
-    if (heroEntry) {
-      const [heroSeatNum] = heroEntry;
-      const seats: Seat[] = [];
-
-      // Hero always first → bottom-center of PokerTable geometry
-      seats.push({
-        id: 0,
-        name: step.position ? `You (${step.position})` : "You",
-        stack: heroEntry[1].stack_bb,
-        hero: true,
-        active: true,
-        cards: heroCards.length >= 2 ? heroCards : undefined,
-      });
-
-      // Villains in seat-number order (clockwise from hero perspective)
-      let idx = 1;
-      for (const [seatNum, sd] of entries) {
-        if (seatNum === heroSeatNum) continue;
-        const betChips = replayStep.bets?.[seatNum];
-        seats.push({
-          id: idx++,
-          name: sd.pos || `V${idx}`,
-          stack: sd.stack_bb,
-          cards: [DUMMY_CARD, DUMMY_CARD],
-          revealed: false,
-          folded: foldedSet.has(sd.player),
-          bet: betChips ? betChips / replayStep.bb : undefined,
-        });
-      }
-
-      // pot_bb is already in BB; bb=1 so PokerTable fmt works correctly
-      return { seats, pot: replayStep.pot_bb ?? replayStep.pot / replayStep.bb, bb: 1 };
-    }
+    return { tableStep: replayStep, hero: replayStep.hero, heroCards: heroCardsStr, bb: replayStep.bb };
   }
 
-  // ── Fallback: approximation from sparring step only ──────────────────────
-  const numPlayers  = Math.max(2, step.num_players ?? 6);
-  const aggressorIdx = Math.floor(numPlayers / 2);
-  const facingBet   = step.facing_bet && step.facing_bet > 0 ? step.facing_bet : undefined;
-  const seats: Seat[] = [
-    {
-      id: 0,
-      name: step.position ? `You (${step.position})` : "You",
-      stack: step.stack_bb ?? 100,
-      hero: true,
-      active: true,
-      cards: heroCards.length >= 2 ? heroCards : undefined,
-    },
-    ...Array.from({ length: numPlayers - 1 }, (_, i) => ({
-      id: i + 1,
-      name: `V${i + 1}`,
-      stack: 100,
-      cards: [DUMMY_CARD, DUMMY_CARD] as CardData[],
-      revealed: false,
-      bet: i + 1 === aggressorIdx ? facingBet : undefined,
-    })),
-  ];
-  return { seats, pot: step.pot_size ?? 0, bb: 1 };
+  // Synthetic fallback from SparringStep fields only
+  const HERO = 'Hero';
+  const bb   = 100;
+  const heroStack = Math.round((step.stack_bb ?? 20) * bb);
+  const numP = Math.max(2, Math.min(6, step.num_players ?? 6));
+  const heroPos = (step.position ?? 'BTN').toUpperCase();
+  const layouts: Record<number, string[]> = {
+    2: ['BTN', 'BB'], 3: ['BTN', 'SB', 'BB'],
+    4: ['CO', 'BTN', 'SB', 'BB'], 5: ['UTG', 'CO', 'BTN', 'SB', 'BB'],
+    6: ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+  };
+  const positions = layouts[numP] ?? layouts[6];
+  const btnSeat   = positions.indexOf('BTN') + 1;
+  let heroSeatIdx = positions.indexOf(heroPos);
+  if (heroSeatIdx < 0) heroSeatIdx = 0;
+  const heroSeatNum = heroSeatIdx + 1;
+
+  const seats: Record<string, { player: string; stack: number; pos: string }> = {};
+  const bets:  Record<string, number> = {};
+  positions.forEach((pos, i) => {
+    const sn = String(i + 1);
+    const isHero = (i + 1) === heroSeatNum;
+    seats[sn] = { player: isHero ? HERO : `V${i + 1}`, stack: heroStack, pos };
+    if (pos === 'SB') bets[sn] = Math.round(bb * 0.5);
+    else if (pos === 'BB') bets[sn] = bb;
+  });
+  if (step.facing_bet && step.facing_bet > 0) {
+    const facingChips = Math.round(step.facing_bet * bb);
+    let agSeat = heroSeatNum - 1;
+    if (agSeat < 1) agSeat = numP;
+    if (agSeat !== heroSeatNum) bets[String(agSeat)] = facingChips;
+  }
+
+  const boardLimit = ({ preflop: 0, flop: 3, turn: 4, river: 5 } as Record<string, number>)[step.street ?? 'preflop'] ?? 0;
+  const boardRaw: string[] = (() => {
+    if (!step.board) return [];
+    const s = step.board.trim();
+    if (s.startsWith('[')) { try { return JSON.parse(s) as string[]; } catch { return []; } }
+    return s.split(/\s+/).filter(Boolean);
+  })();
+  const potChips = Math.round((step.pot_size ?? 2) * bb);
+
+  return {
+    tableStep: {
+      type: 'action', street: step.street ?? 'preflop',
+      seats, bets, folded: [],
+      pot_bb: step.pot_size ?? 2, pot: potChips,
+      bb, button: btnSeat, board: boardRaw.slice(0, boardLimit),
+      player: HERO, seat: heroSeatNum, is_hero: true,
+    } as unknown as ReplayStep,
+    hero: HERO,
+    heroCards: heroCardsStr,
+    bb,
+  };
 }
 
 // ── Street timeline ───────────────────────────────────────────────────────────
@@ -438,6 +429,179 @@ export default function Sparring() {
     finally { setAnalysisLoading(false); }
   };
 
+  // ── PLAYING / FEEDBACK — full-screen layout ──────────────────────────────
+  if ((phase === "playing" || phase === "feedback") && current) {
+    const replayStep = replayHeroSteps[stepIndex] ?? null;
+    const { tableStep, hero: tableHero, heroCards: tableHeroCards, bb: tableBb } = buildSparringStep(current, replayStep);
+    const actionKeys = getActionKeys(current);
+    const cols = actionKeys.length === 4 ? "grid-cols-2" : "grid-cols-3";
+
+    return (
+      <div className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
+        <HudHeader />
+
+        {/* Identity bar */}
+        <div className="shrink-0 border-b border-border/30 px-3 md:px-5 py-1.5 flex items-center gap-3">
+          <Link to="/training" className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronLeft className="size-3.5" />
+            <span className="font-mono text-[10px] uppercase tracking-wide">{t("backToTraining")}</span>
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <Swords className="size-3 text-amber-400" aria-hidden />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">Sparring</span>
+          </div>
+          <div className="ml-auto">
+            <StreetTimeline steps={steps} history={history} currentIndex={phase === "playing" ? stepIndex : -1} t={t} />
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 flex gap-3 px-3 md:px-5 pt-1 pb-3 mx-auto w-full max-w-[1600px]">
+
+          {/* Table column */}
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
+            {/* Table — pt-10 gives room for top-player cards that overflow above SVG viewBox */}
+            <div className="flex-1 min-h-0 overflow-visible pt-10">
+              <div className="mx-auto aspect-[16/10] max-w-[90%]" style={{ maxHeight: 'calc(100% - 2.5rem)' }}>
+                <PokerTableV3 step={tableStep} hero={tableHero} heroCards={tableHeroCards} bb={tableBb} betUnit="bb" />
+              </div>
+            </div>
+            {/* Mobile: actions / next */}
+            <div className="lg:hidden shrink-0 space-y-2">
+              {phase === "playing" && (
+                <div className={`grid gap-2 ${cols}`}>
+                  {actionKeys.map((action) => (
+                    <button key={action} onClick={() => submitAction(action)} disabled={submitting}
+                      className="min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 disabled:opacity-60 transition-all active:scale-95">
+                      {t(`actions.${action}`)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {phase === "feedback" && (
+                <button onClick={nextStep}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-black hover:bg-amber-400 transition-colors">
+                  {isLastStep ? t("viewSummary") : t("next")} <ArrowRight className="size-4" aria-hidden />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Side panel — desktop only */}
+          <aside className="hidden lg:flex w-72 shrink-0 flex-col gap-3 overflow-y-auto pb-2 pt-10">
+
+            {phase === "playing" && (
+              <>
+                {history.length > 0 && <HandRecap history={history} t={t} />}
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-2 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Flame className="size-3.5 shrink-0 text-amber-400" aria-hidden />
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
+                      {t(`street.${current.street}`)}
+                    </p>
+                    {hand?.tournament_name && (
+                      <span className="ml-auto font-mono text-[9px] text-muted-foreground truncate">{hand.tournament_name}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-amber-500/20 pt-2">
+                    {current.position    && <span className="font-mono text-[10px] text-muted-foreground">{t("context.position")}: <span className="text-foreground font-semibold">{current.position}</span></span>}
+                    {current.stack_bb != null && <span className="font-mono text-[10px] text-muted-foreground">Stack: <span className="text-foreground font-semibold">{t("context.bb", { n: current.stack_bb.toFixed(0) })}</span></span>}
+                    {current.m_ratio != null  && <span className="font-mono text-[10px] text-muted-foreground">M: <span className="text-foreground font-semibold">{current.m_ratio.toFixed(1)}</span></span>}
+                    {current.num_players != null && <span className="font-mono text-[10px] text-muted-foreground">{t("context.players", { n: current.num_players })}</span>}
+                    {current.is_3bet && <span className="font-mono text-[10px] font-semibold text-amber-400">{t("context.is3bet")}</span>}
+                    {current.pot_size != null && current.pot_size > 0 && <span className="font-mono text-[10px] text-muted-foreground">{t("context.pot")}: <span className="text-foreground font-semibold">{t("context.bb", { n: current.pot_size.toFixed(1) })}</span></span>}
+                    {current.facing_bet != null && current.facing_bet > 0 && <span className="font-mono text-[10px] text-amber-400 font-semibold">{t("context.facing")}: {t("context.bb", { n: current.facing_bet.toFixed(1) })}</span>}
+                    {current.icm_pressure && current.icm_pressure !== "none" && (
+                      <span className="font-mono text-[10px] text-muted-foreground">ICM: <span className={cn("font-semibold", { "text-destructive": current.icm_pressure === "high", "text-amber-400": current.icm_pressure === "medium", "text-emerald-400": current.icm_pressure === "low" })}>{t(`icmLabel.${current.icm_pressure}`)}</span></span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-center text-sm font-semibold text-foreground shrink-0">{t("question")}</p>
+                <div className={`grid gap-2 shrink-0 ${cols}`}>
+                  {actionKeys.map((action) => (
+                    <button key={action} onClick={() => submitAction(action)} disabled={submitting}
+                      className="min-h-[48px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 hover:ring-amber-500/40 disabled:opacity-60 transition-all active:scale-95">
+                      {t(`actions.${action}`)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {phase === "feedback" && currentResult && (
+              <div className="flex flex-col gap-3 min-h-0 overflow-y-auto">
+                <div className={cn("flex items-center gap-3 rounded-xl border p-4 shrink-0", currentResult.is_correct ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5")}>
+                  {currentResult.is_correct
+                    ? <CheckCircle2 className="size-8 shrink-0 text-emerald-400" aria-hidden />
+                    : <XCircle      className="size-8 shrink-0 text-destructive" aria-hidden />}
+                  <div>
+                    <p className={cn("text-base font-bold", currentResult.is_correct ? "text-emerald-400" : "text-destructive")}>
+                      {currentResult.is_correct ? t("result.correct") : t("result.wrong")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t("result.bestAction", { action: formatAction(currentResult.best_action).toUpperCase() })}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 shrink-0">
+                  <div className="rounded-lg border border-border bg-hud-surface p-3">
+                    <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("result.yourAction", { action: "" }).split(":")[0]}</p>
+                    <p className="mt-1 font-mono text-lg font-bold text-foreground">{formatAction(currentResult.new_action).toUpperCase()}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-hud-surface p-3">
+                    <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
+                    <p className="mt-1 font-mono text-lg font-bold text-foreground">{formatAction(currentResult.best_action).toUpperCase()}</p>
+                  </div>
+                </div>
+
+                <div className={cn("flex items-center justify-between rounded-lg border p-3 shrink-0", currentResult.delta < 0 || currentResult.is_correct ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-hud-surface")}>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="size-3.5 text-muted-foreground" aria-hidden />
+                    <span className="text-xs text-muted-foreground">
+                      {currentResult.delta < 0 ? t("result.improvement", { delta: Math.abs(currentResult.delta).toFixed(3) }) : currentResult.is_correct ? t("result.residualScore") : t("result.noImprovement")}
+                    </span>
+                  </div>
+                  <span className={cn("font-mono text-sm font-bold tabular-nums", currentResult.delta < 0 || currentResult.is_correct ? "text-emerald-400" : "text-destructive")}>
+                    {currentResult.delta > 0 ? "+" : ""}{currentResult.delta.toFixed(3)}
+                  </span>
+                </div>
+
+                {currentResult.srs_interval_days && (
+                  <div className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 shrink-0", currentResult.is_correct ? "border-amber-500/30 bg-amber-500/5 text-amber-400" : "border-warning/30 bg-warning/5 text-warning")}>
+                    <span className="font-mono text-[10px]">
+                      {currentResult.is_correct ? t("result.srsCorrect", { n: currentResult.srs_interval_days }) : t("result.srsReset", { n: currentResult.srs_interval_days })}
+                    </span>
+                  </div>
+                )}
+
+                {analysis ? (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-amber-400">{t("result.engineNote")}</p>
+                    <AiText>{analysis}</AiText>
+                  </div>
+                ) : (
+                  <button onClick={requestAnalysis} disabled={analysisLoading}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-hud-surface px-5 py-2.5 font-mono text-sm font-semibold text-muted-foreground hover:border-amber-500/40 hover:text-amber-400 hover:bg-amber-500/5 disabled:opacity-60 transition-colors shrink-0">
+                    {analysisLoading
+                      ? <><Loader2 className="size-4 animate-spin" aria-hidden /> {t("result.analysisLoading")}</>
+                      : <><BookOpen className="size-4" aria-hidden /> {t("result.requestAnalysis")}</>}
+                  </button>
+                )}
+
+                <GtoPanel decisionId={current.decision_id} />
+
+                <button onClick={nextStep}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-black hover:bg-amber-400 transition-colors shrink-0">
+                  {isLastStep ? t("viewSummary") : t("next")} <ArrowRight className="size-4" aria-hidden />
+                </button>
+              </div>
+            )}
+
+          </aside>
+        </div>
+      </div>
+    );
+  }
+
+  // ── IDLE / LOADING / SUMMARY ──────────────────────────────────────────────
   return (
     <HudLayout eyebrow="Sparring Mode" title={t("title")} description={t("subtitle")}>
 
@@ -487,287 +651,6 @@ export default function Sparring() {
             }
           </button>
 
-        </div>
-      )}
-
-      {/* ── PLAYING ──────────────────────────────────────────────────────────── */}
-      {phase === "playing" && current && (
-        <div className="mx-auto max-w-7xl space-y-4">
-
-          {/* Street timeline — full width above the 2-col grid */}
-          <div className="flex items-start justify-between gap-4">
-            <StreetTimeline steps={steps} history={history} currentIndex={stepIndex} t={t} />
-            <span className="font-mono text-[10px] text-muted-foreground shrink-0 mt-1">
-              {t("stepOf", { n: stepIndex + 1, total: steps.length })}
-            </span>
-          </div>
-
-          {/* 2-col on lg: Table LEFT | Context + Actions RIGHT */}
-          <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
-
-            {/* ── Left: PokerTable ── */}
-            <div className="lg:flex-1 space-y-3">
-              {/* Previous decisions recap — shown on mobile above the table */}
-              {history.length > 0 && (
-                <div className="lg:hidden"><HandRecap history={history} t={t} /></div>
-              )}
-              {(() => {
-                const boardLimit = { preflop: 0, flop: 3, turn: 4, river: 5 }[current.street] ?? 5;
-                const communityCards = parseCards(current.board).slice(0, boardLimit);
-                const heroCards      = parseCards(current.hero_cards);
-                const replayStep     = replayHeroSteps[stepIndex] ?? null;
-                const { seats, pot, bb } = buildSparringTable(current, heroCards, replayStep);
-                return (
-                  <PokerTable
-                    seats={seats}
-                    community={communityCards}
-                    pot={pot}
-                    street={current.street}
-                    bb={bb}
-                    betUnit="bb"
-                  />
-                );
-              })()}
-            </div>
-
-            {/* ── Right: Context card + Actions ── */}
-            <div className="space-y-3 lg:w-[360px] lg:shrink-0">
-              {/* Previous decisions recap — shown on desktop in the right column */}
-              {history.length > 0 && (
-                <div className="hidden lg:block"><HandRecap history={history} t={t} /></div>
-              )}
-
-              {/* Current situation — amber scheme to distinguish from Ghost Table */}
-              <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Flame className="size-4 shrink-0 text-amber-400" aria-hidden />
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
-                    {t(`street.${current.street}`)}
-                  </p>
-                  {hand?.tournament_name && (
-                    <span className="ml-auto font-mono text-[9px] text-muted-foreground truncate">
-                      {hand.tournament_name}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-amber-500/20 pt-2">
-                  {current.position && (
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      {t("context.position")}: <span className="text-foreground font-semibold">{current.position}</span>
-                    </span>
-                  )}
-                  {current.stack_bb !== null && (
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      Stack: <span className="text-foreground font-semibold">{t("context.bb", { n: current.stack_bb.toFixed(0) })}</span>
-                    </span>
-                  )}
-                  {current.m_ratio !== null && (
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      M: <span className="text-foreground font-semibold">{current.m_ratio.toFixed(1)}</span>
-                    </span>
-                  )}
-                  {current.num_players !== null && (
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      {t("context.players", { n: current.num_players })}
-                    </span>
-                  )}
-                  {current.is_3bet && (
-                    <span className="font-mono text-[11px] font-semibold text-amber-400">{t("context.is3bet")}</span>
-                  )}
-                  {current.pot_size !== null && current.pot_size > 0 && (
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      {t("context.pot")}: <span className="text-foreground font-semibold">{t("context.bb", { n: current.pot_size.toFixed(1) })}</span>
-                    </span>
-                  )}
-                  {current.facing_bet !== null && current.facing_bet > 0 && (
-                    <span className="font-mono text-[11px] text-amber-400 font-semibold">
-                      {t("context.facing")}: {t("context.bb", { n: current.facing_bet.toFixed(1) })}
-                    </span>
-                  )}
-                  {current.icm_pressure && current.icm_pressure !== "none" && (
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      ICM: <span className={cn("font-semibold", {
-                        "text-destructive": current.icm_pressure === "high",
-                        "text-amber-400":   current.icm_pressure === "medium",
-                        "text-emerald-400": current.icm_pressure === "low",
-                      })}>{t(`icmLabel.${current.icm_pressure}`)}</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Question */}
-              <p className="text-center text-sm font-semibold text-foreground">{t("question")}</p>
-
-              {/* Action buttons — context-aware set derived from facing_bet or best_action */}
-              {(() => {
-                const actionKeys = getActionKeys(current);
-                const cols = actionKeys.length === 4 ? "grid-cols-2" : "grid-cols-3";
-                return (
-                  <div className={`grid gap-3 ${cols}`}>
-                    {actionKeys.map((action) => (
-                      <button
-                        key={action}
-                        onClick={() => submitAction(action)}
-                        disabled={submitting}
-                        className="min-h-[52px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 hover:ring-amber-500/40 disabled:opacity-60 transition-all active:scale-95"
-                      >
-                        {t(`actions.${action}`)}
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── FEEDBACK ─────────────────────────────────────────────────────────── */}
-      {phase === "feedback" && currentResult && current && (
-        <div className="mx-auto max-w-7xl space-y-4">
-
-          {/* 2-col on lg: Frozen Table LEFT | Feedback RIGHT */}
-          <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
-
-            {/* ── Left: Frozen PokerTable ── */}
-            <div className="lg:flex-1">
-              {(() => {
-                const boardLimit = { preflop: 0, flop: 3, turn: 4, river: 5 }[current.street] ?? 5;
-                const communityCards = parseCards(current.board).slice(0, boardLimit);
-                const heroCards      = parseCards(current.hero_cards);
-                const replayStep     = replayHeroSteps[stepIndex] ?? null;
-                const { seats, pot, bb } = buildSparringTable(current, heroCards, replayStep);
-                return (
-                  <PokerTable
-                    seats={seats}
-                    community={communityCards}
-                    pot={pot}
-                    street={current.street}
-                    bb={bb}
-                    betUnit="bb"
-                  />
-                );
-              })()}
-            </div>
-
-            {/* ── Right: Feedback content ── */}
-            <div className="space-y-3 lg:w-[360px] lg:shrink-0">
-
-              {/* Timeline */}
-              <div className="flex justify-start">
-                <StreetTimeline steps={steps} history={history} currentIndex={-1} t={t} />
-              </div>
-
-              {/* Result banner */}
-              <div className={cn(
-                "flex items-center gap-3 rounded-xl border p-4",
-                currentResult.is_correct
-                  ? "border-emerald-500/40 bg-emerald-500/5"
-                  : "border-destructive/40 bg-destructive/5"
-              )}>
-                {currentResult.is_correct
-                  ? <CheckCircle2 className="size-8 shrink-0 text-emerald-400" aria-hidden />
-                  : <XCircle      className="size-8 shrink-0 text-destructive" aria-hidden />
-                }
-                <div>
-                  <p className={cn("text-base font-bold", currentResult.is_correct ? "text-emerald-400" : "text-destructive")}>
-                    {currentResult.is_correct ? t("result.correct") : t("result.wrong")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("result.bestAction", { action: formatAction(currentResult.best_action).toUpperCase() })}
-                  </p>
-                </div>
-              </div>
-
-              {/* Your vs best */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-border bg-hud-surface p-3">
-                  <p className="font-mono text-[10px] uppercase text-muted-foreground">{t("result.yourAction", { action: "" }).split(":")[0]}</p>
-                  <p className="mt-1 font-mono text-xl font-bold text-foreground">{formatAction(currentResult.new_action).toUpperCase()}</p>
-                </div>
-                <div className="rounded-lg border border-border bg-hud-surface p-3">
-                  <p className="font-mono text-[10px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
-                  <p className="mt-1 font-mono text-xl font-bold text-foreground">{formatAction(currentResult.best_action).toUpperCase()}</p>
-                </div>
-              </div>
-
-              {/* Delta — label cruzado com is_correct para evitar "Erro mantido" em acertos */}
-              <div className={cn(
-                "flex items-center justify-between rounded-lg border p-3",
-                currentResult.delta < 0 || currentResult.is_correct
-                  ? "border-emerald-500/30 bg-emerald-500/5"
-                  : "border-border bg-hud-surface"
-              )}>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="size-4 text-muted-foreground" aria-hidden />
-                  <span className="text-xs text-muted-foreground">
-                    {currentResult.delta < 0
-                      ? t("result.improvement", { delta: Math.abs(currentResult.delta).toFixed(3) })
-                      : currentResult.is_correct
-                      ? t("result.residualScore")
-                      : t("result.noImprovement")
-                    }
-                  </span>
-                </div>
-                <span className={cn(
-                  "font-mono text-sm font-bold tabular-nums",
-                  currentResult.delta < 0 || currentResult.is_correct ? "text-emerald-400" : "text-destructive"
-                )}>
-                  {currentResult.delta > 0 ? "+" : ""}{currentResult.delta.toFixed(3)}
-                </span>
-              </div>
-
-              {/* SRS */}
-              {currentResult.srs_interval_days && (
-                <div className={cn(
-                  "flex items-center gap-2 rounded-lg border px-3 py-2",
-                  currentResult.is_correct
-                    ? "border-amber-500/30 bg-amber-500/5 text-amber-400"
-                    : "border-warning/30 bg-warning/5 text-warning"
-                )}>
-                  <span className="font-mono text-[11px]">
-                    {currentResult.is_correct
-                      ? t("result.srsCorrect", { n: currentResult.srs_interval_days })
-                      : t("result.srsReset",   { n: currentResult.srs_interval_days })
-                    }
-                  </span>
-                </div>
-              )}
-
-              {/* Analysis */}
-              {analysis ? (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
-                  <p className="font-mono text-[9px] uppercase tracking-widest text-amber-400">{t("result.engineNote")}</p>
-                  <AiText>{analysis}</AiText>
-                </div>
-              ) : (
-                <button
-                  onClick={requestAnalysis}
-                  disabled={analysisLoading}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-hud-surface px-5 py-2.5 font-mono text-sm font-semibold text-muted-foreground hover:border-amber-500/40 hover:text-amber-400 hover:bg-amber-500/5 disabled:opacity-60 transition-colors"
-                >
-                  {analysisLoading
-                    ? <><Loader2 className="size-4 animate-spin" aria-hidden /> {t("result.analysisLoading")}</>
-                    : <><BookOpen className="size-4" aria-hidden /> {t("result.requestAnalysis")}</>
-                  }
-                </button>
-              )}
-
-              {/* GTO second opinion */}
-              <GtoPanel decisionId={current.decision_id} />
-
-              {/* Next / Summary */}
-              <button
-                onClick={nextStep}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-black hover:bg-amber-400 transition-colors"
-              >
-                {isLastStep ? t("viewSummary") : t("next")}
-                <ArrowRight className="size-4" aria-hidden />
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

@@ -38,12 +38,12 @@
   "heroCards": "Your cards",
   "board": "Board",
   "actions": {
-    "fold":  "Fold",
+    "fold": "Fold",
     "check": "Check",
-    "call":  "Call",
-    "bet":   "Bet",
+    "call": "Call",
+    "bet": "Bet",
     "raise": "Raise",
-    "jam":   "Shove"
+    "jam": "Shove"
   },
   "result": {
     "correct": "Correct!",
@@ -95,6 +95,6 @@
       "facing": "bet",
       "solved": "exploit"
     }
-  }
+  },
+  "backToTraining": "Training"
 }
-
