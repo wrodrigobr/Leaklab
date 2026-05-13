@@ -219,7 +219,6 @@ function SidePanels({
                   </div>
                   <div className={cn("font-mono text-sm font-bold uppercase", verdict.cls)}>
                     {fmtAction(idealAction!)}
-                    {topFreqPct && <span className="ml-1 font-normal text-[10px] opacity-60"> {topFreqPct}%</span>}
                   </div>
                 </div>
               )}
@@ -302,7 +301,7 @@ function SidePanels({
             )}
 
             {/* Estratégia do Solver */}
-            {!step.gto_spot_mismatch && stratSorted.length >= 2 && (
+            {!step.gto_spot_mismatch && stratSorted.length >= 1 && (
               <div className="space-y-2">
                 <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/50 border-t border-border/30 pt-2">
                   Estratégia do Solver
