@@ -336,19 +336,19 @@ def _priority(street: str) -> int:
 
 def is_simple_spot(street: str, board: list[str], stack_bb: float, facing_size_bb: float = 0.0) -> bool:
     """
-    Retorna True para spots que podem ser resolvidos sincronamente (< 15s no remote solver).
+    Retorna True para spots que podem ser resolvidos sincronamente (< 30s no remote solver).
     False → enfileira imediatamente sem bloquear o request.
 
     Critérios de simplicidade:
-      - Somente flop (turn/river têm árvores maiores)
-      - Stack ≤ 25bb (cobre spots MTT comuns de 15-25bb, threshold anterior era 20)
-      - OU: stack ≤ 35bb + board rainbow (simetria de naipe reduz árvore ~4x)
-      - Aposta enfrentada não é grande relative ao stack (evita sub-árvores de raise/3bet)
+      - Stack ≤ 25bb: qualquer street resolve síncronamente (árvore pequena com stack curto)
+      - Flop + stack ≤ 35bb + board rainbow: resolve síncronamente
+      - Turn/River com stack > 25bb: sempre async (árvore grande)
     """
-    if street != 'flop':
-        return False
+    street_l = street.lower()
     if stack_bb <= 25:
-        return True
+        return True   # short stack: flop/turn/river são rápidos em qualquer street
+    if street_l != 'flop':
+        return False  # turn/river com stack > 25bb: árvore grande → async
     if stack_bb > 35:
         return False
     suits = [c[1].lower() for c in board if len(c) >= 2]
