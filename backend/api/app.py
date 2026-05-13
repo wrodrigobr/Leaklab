@@ -3109,7 +3109,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     hero_stack_bb  = float(_spot.get('effectiveStackBb', _ctx.get('heroStackBb', 20.0)) or 20.0),
                     action_seq     = _ctx.get('actionSeq', 'rfi'),
                     vs_position    = _spot.get('villainPosition', _ctx.get('vsPosition', '')),
-                    facing_size_bb = float(decision.get('facing_bet', 0) or 0),
+                    facing_size_bb = float(_spot.get('facingSize', 0) or 0),
                     pot_bb         = float(_spot.get('potSize', 0) or 0),
                 )
                 if _gto_result.get('found') and _gto_result.get('strategy'):

@@ -296,6 +296,7 @@ def lookup_gto(
             'board':           board,
             'hero_hand':       hero_hand,
             'hero_stack_bb':   hero_stack_bb,
+            'facing_size_bb':  facing_size_bb,
             'gto_action':      remote['primary_action'],
             'gto_freq':        remote['primary_freq'],
             'ev_diff':         remote.get('ev'),
