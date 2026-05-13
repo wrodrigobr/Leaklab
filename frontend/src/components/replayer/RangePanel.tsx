@@ -34,6 +34,17 @@ interface PreflopRangesResp {
   vs_3bet: { hands_4bet: string[]; hands_call: string[]; pct_continua: number } | null;
 }
 
+function fmtAction(a: string): string {
+  const s = (a ?? "").toLowerCase();
+  if (s === "jam")  return "Shove";
+  if (s === "fold") return "Fold";
+  if (s === "call") return "Call";
+  if (s === "raise") return "Raise";
+  if (s === "bet")  return "Bet";
+  if (s === "check") return "Check";
+  return a;
+}
+
 const SCENARIO_TO_TYPE: Record<string, RangeType> = {
   rfi: 'open',
   vs_rfi: 'call',
@@ -202,7 +213,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
             )}
             {gto.recommended_actions.length > 0 && (
               <span className="font-mono text-[9px] text-muted-foreground">
-                GTO: <span className="text-primary font-bold">{gto.recommended_actions.join(' / ')}</span>
+                GTO: <span className="text-primary font-bold">{gto.recommended_actions.map(fmtAction).join(' / ')}</span>
               </span>
             )}
             {gto.range_pct > 0 && (

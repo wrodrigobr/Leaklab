@@ -1,17 +1,17 @@
-{
+﻿{
   "title": "Sparring Mode",
-  "subtitle": "Juega una mano real pausando en cada decisión. El engine evalúa cada elección y la registra en el SRS.",
+  "subtitle": "Juega una mano real pausando en cada decisiÃ³n. El engine evalÃºa cada elecciÃ³n y la registra en el SRS.",
   "arenaLabel": "Arena de Entrenamiento",
-  "arenaDesc": "Juega manos reales de tu historial. Pausa en cada decisión, elige tu acción, y el engine evalúa cada elección en tiempo real.",
+  "arenaDesc": "Juega manos reales de tu historial. Pausa en cada decisiÃ³n, elige tu acciÃ³n, y el engine evalÃºa cada elecciÃ³n en tiempo real.",
   "startBtn": "Iniciar Sparring",
   "loading": "Cargando mano...",
   "noData": "No hay mano disponible para Sparring. Importa torneos para comenzar.",
   "hand": "Mano",
   "tournament": "Torneo",
-  "stepOf": "Decisión {{n}} de {{total}}",
+  "stepOf": "DecisiÃ³n {{n}} de {{total}}",
   "historyLabel": "Historial de la mano",
-  "question": "¿Cuál sería tu acción?",
-  "next": "Siguiente Decisión",
+  "question": "Â¿CuÃ¡l serÃ­a tu acciÃ³n?",
+  "next": "Siguiente DecisiÃ³n",
   "viewSummary": "Ver Resumen de la Mano",
   "newHand": "Nueva Mano",
   "backGhost": "Volver al Ghost Table",
@@ -22,7 +22,7 @@
     "river": "River"
   },
   "context": {
-    "position": "Posición",
+    "position": "PosiciÃ³n",
     "players": "{{n}} jugadores",
     "bb": "{{n}}bb",
     "pot": "Bote",
@@ -33,7 +33,7 @@
     "low": "ICM Bajo",
     "medium": "ICM Medio",
     "high": "ICM Alto",
-    "critical": "ICM Crítico"
+    "critical": "ICM CrÃ­tico"
   },
   "heroCards": "Tus cartas",
   "board": "Board",
@@ -43,30 +43,30 @@
     "call":  "Call",
     "bet":   "Bet",
     "raise": "Raise",
-    "jam":   "Jam"
+    "jam":   "Shove"
   },
   "result": {
-    "correct": "¡Correcto!",
+    "correct": "Â¡Correcto!",
     "wrong": "Incorrecto",
-    "bestAction": "Acción correcta: {{action}}",
-    "yourAction": "Tu acción: {{action}}",
-    "improvement": "Mejora: −{{delta}} score",
+    "bestAction": "AcciÃ³n correcta: {{action}}",
+    "yourAction": "Tu acciÃ³n: {{action}}",
+    "improvement": "Mejora: âˆ’{{delta}} score",
     "noImprovement": "Error mantenido",
-    "residualScore": "Correcto · score residual",
-    "requestAnalysis": "Ver análisis del engine",
+    "residualScore": "Correcto Â· score residual",
+    "requestAnalysis": "Ver anÃ¡lisis del engine",
     "analysisLoading": "Analizando...",
-    "analysisError": "No se pudo cargar el análisis.",
-    "engineNote": "Análisis del engine",
-    "srsCorrect": "Próxima revisión en {{n}} días",
-    "srsReset": "Reiniciado — revisión en {{n}} días"
+    "analysisError": "No se pudo cargar el anÃ¡lisis.",
+    "engineNote": "AnÃ¡lisis del engine",
+    "srsCorrect": "PrÃ³xima revisiÃ³n en {{n}} dÃ­as",
+    "srsReset": "Reiniciado â€” revisiÃ³n en {{n}} dÃ­as"
   },
   "summary": {
     "title": "Resumen de la Mano",
     "subtitle": "Completaste todas las decisiones de esta mano.",
-    "accuracy": "Precisión",
+    "accuracy": "PrecisiÃ³n",
     "correct": "{{correct}} de {{total}} correctas",
     "decisions": "decisiones",
-    "step": "Decisión {{n}}",
+    "step": "DecisiÃ³n {{n}}",
     "correct_label": "Correcto",
     "wrong_label": "Incorrecto"
   },
@@ -78,15 +78,15 @@
     "recommendsLabel": "GTO recomienda",
     "youPlayedLabel": "jugaste",
     "freqLabel": "frecuencia",
-    "evDiff": "EV diff: {{n}} BB vs. 2ª acción",
+    "evDiff": "EV diff: {{n}} BB vs. 2Âª acciÃ³n",
     "evDiffLabel": "bb vs. GTO",
     "exploitability": "exploit",
     "strategyLabel": "estrategia completa",
     "contextLabel": "contexto",
     "verdict": {
-      "correct": "✓ dentro de la estrategia GTO",
-      "mixed": "~ acción marginal",
-      "critical": "✗ desviación crítica del GTO"
+      "correct": "âœ“ dentro de la estrategia GTO",
+      "mixed": "~ acciÃ³n marginal",
+      "critical": "âœ— desviaciÃ³n crÃ­tica del GTO"
     },
     "ctx": {
       "position": "pos",
@@ -97,3 +97,4 @@
     }
   }
 }
+

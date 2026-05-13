@@ -1,4 +1,4 @@
-{
+﻿{
   "title": "Sparring Mode",
   "subtitle": "Play a real hand, pausing at each decision point. The engine evaluates every choice and registers it in SRS.",
   "arenaLabel": "Training Arena",
@@ -43,22 +43,22 @@
     "call":  "Call",
     "bet":   "Bet",
     "raise": "Raise",
-    "jam":   "Jam"
+    "jam":   "Shove"
   },
   "result": {
     "correct": "Correct!",
     "wrong": "Incorrect",
     "bestAction": "Correct action: {{action}}",
     "yourAction": "Your action: {{action}}",
-    "improvement": "Improvement: −{{delta}} score",
+    "improvement": "Improvement: âˆ’{{delta}} score",
     "noImprovement": "Error maintained",
-    "residualScore": "Correct · residual score",
+    "residualScore": "Correct Â· residual score",
     "requestAnalysis": "View engine analysis",
     "analysisLoading": "Analysing...",
     "analysisError": "Could not load analysis.",
     "engineNote": "Engine analysis",
     "srsCorrect": "Next review in {{n}} days",
-    "srsReset": "Reset — review in {{n}} days"
+    "srsReset": "Reset â€” review in {{n}} days"
   },
   "summary": {
     "title": "Hand Summary",
@@ -84,9 +84,9 @@
     "strategyLabel": "full strategy",
     "contextLabel": "context",
     "verdict": {
-      "correct": "✓ within GTO strategy",
+      "correct": "âœ“ within GTO strategy",
       "mixed": "~ marginal action",
-      "critical": "✗ critical GTO deviation"
+      "critical": "âœ— critical GTO deviation"
     },
     "ctx": {
       "position": "pos",
@@ -97,3 +97,4 @@
     }
   }
 }
+

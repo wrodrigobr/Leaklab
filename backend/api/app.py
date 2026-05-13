@@ -3040,7 +3040,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 'draw_profile':    math.get('drawProfile', 'none'),
                 'm_ratio':         ctx.get('mRatio'),
                 'icm_pressure':    ctx.get('icmPressure'),
-                'hero_stack_bb':   ctx.get('heroStackBb'),
+                'hero_stack_bb':   ctx.get('heroStackBb') or float((decision.get('_di') or {}).get('spot', {}).get('effectiveStackBb') or 0) or None,
                 'math_penalty':    bd.get('mathPenalty', 0),
                 'range_penalty':   bd.get('rangePenalty', 0),
                 'context_penalty': bd.get('contextPenalty', 0),

@@ -43,6 +43,7 @@ function fmtAction(a: string): string {
   if (s === "call")    return "Call";
   if (s === "check")   return "Check";
   if (s === "allin" || s === "all-in") return "All-in";
+  if (s === "jam")     return "Shove";
   if (s === "bet")     return "Bet";
   if (s === "raise")   return "Raise";
   if (s.startsWith("bet_"))   return `Bet ${s.replace("bet_", "").replace("pct", "%")}`;
@@ -135,7 +136,7 @@ function SidePanels({
         : isCorrect);
   const idealAction   = hasGto
     ? (step.gto_action ?? null)
-    : (!isPostflop && pg?.available ? pg.recommended_actions.join(" / ") : (step.best_action ?? null));
+    : (!isPostflop && pg?.available ? pg.recommended_actions.map(fmtAction).join(" / ") : (step.best_action ? fmtAction(step.best_action) : null));
   const showTwoCols   = !isActionOk && !!idealAction &&
     idealAction.toLowerCase() !== playedAction.toLowerCase();
 
