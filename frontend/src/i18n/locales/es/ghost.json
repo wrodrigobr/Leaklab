@@ -1,11 +1,11 @@
-{
+﻿{
   "title": "Ghost Table",
-  "subtitle": "Modo Drill — Revisa tus spots de error y entrena la decisión correcta",
+  "subtitle": "Modo Drill â€” Revisa tus spots de error y entrena la decisiÃ³n correcta",
   "startBtn": "Iniciar Drill",
-  "noSpots": "No hay spots disponibles para drill en este momento. Importa más torneos o espera 7 días para revisar los spots ya entrenados.",
-  "done": "Sesión completada",
-  "doneSub": "Has terminado todos los spots de esta sesión.",
-  "doneAccuracy": "Precisión: {{pct}}%",
+  "noSpots": "No hay spots disponibles para drill en este momento. Importa mÃ¡s torneos o espera 7 dÃ­as para revisar los spots ya entrenados.",
+  "done": "SesiÃ³n completada",
+  "doneSub": "Has terminado todos los spots de esta sesiÃ³n.",
+  "doneAccuracy": "PrecisiÃ³n: {{pct}}%",
   "doneCorrect": "{{correct}} / {{total}} correctos",
   "backDashboard": "Volver al Dashboard",
   "drillAgain": "Nuevo Drill",
@@ -17,7 +17,7 @@
     "river": "River"
   },
   "context": {
-    "position": "Posición",
+    "position": "PosiciÃ³n",
     "stack": "Stack",
     "mRatio": "M-Ratio",
     "icm": "ICM",
@@ -28,64 +28,65 @@
     "facing": "Apuesta"
   },
   "icmLabel": {
-    "high": "Alta presión",
+    "high": "Alta presiÃ³n",
     "medium": "Media",
     "low": "Baja",
     "none": "Sin ICM"
   },
-  "question": "¿Cuál es la acción correcta?",
+  "question": "Â¿CuÃ¡l es la acciÃ³n correcta?",
   "actions": {
     "fold":  "Fold",
     "check": "Check",
     "call":  "Call",
     "bet":   "Bet",
     "raise": "Raise",
-    "jam":   "All-In"
+    "jam":   "Shove"
   },
   "result": {
-    "correct": "¡Correcto!",
+    "correct": "Â¡Correcto!",
     "wrong": "Incorrecto",
-    "bestAction": "Acción correcta: {{action}}",
+    "bestAction": "AcciÃ³n correcta: {{action}}",
     "yourAction": "Elegiste: {{action}}",
     "originalMistake": "Error original: {{action}} (score {{score}})",
     "improvement": "Mejora de {{delta}} pts",
     "noImprovement": "Error repetido",
-    "engineNote": "Análisis del Motor",
-    "requestAnalysis": "Ver análisis de esta mano",
-    "analysisLoading": "Generando análisis…",
-    "analysisError": "Análisis no disponible en este momento. Inténtalo de nuevo."
+    "engineNote": "AnÃ¡lisis del Motor",
+    "requestAnalysis": "Ver anÃ¡lisis de esta mano",
+    "analysisLoading": "Generando anÃ¡lisisâ€¦",
+    "analysisError": "AnÃ¡lisis no disponible en este momento. IntÃ©ntalo de nuevo."
   },
-  "next": "Siguiente →",
+  "next": "Siguiente â†’",
   "stats": {
-    "title": "Tu historial de drill (30 días)",
+    "title": "Tu historial de drill (30 dÃ­as)",
     "total": "{{n}} spots entrenados",
-    "accuracy": "{{pct}}% de precisión",
-    "noStats": "Aún no has completado ningún drill."
+    "accuracy": "{{pct}}% de precisiÃ³n",
+    "noStats": "AÃºn no has completado ningÃºn drill."
   },
-  "loading": "Cargando spots…",
-  "errorLoad": "Error al cargar spots. Inténtalo de nuevo.",
+  "loading": "Cargando spotsâ€¦",
+  "errorLoad": "Error al cargar spots. IntÃ©ntalo de nuevo.",
   "situation": {
-    "label": "Situación de la Mano",
-    "openingHand": "Estás abriendo la mano",
-    "facingRaise": "Estás enfrentando un raise preflop",
-    "facing3bet": "Estás enfrentando un 3-Bet",
-    "defendingBB": "Estás defendiendo el Big Blind",
-    "defendingSB": "Estás en el Small Blind, enfrentando raise",
-    "completeSB": "Estás completando el Small Blind",
-    "openBB": "Estás abriendo desde el Big Blind",
-    "facingBet": "Estás enfrentando una apuesta",
-    "checkBet": "Tu turno — apuesta o check",
-    "betting": "Estás apostando en el bote",
-    "actingFirst": "Estás actuando primero",
-    "aiNote": "Análisis de IA"
+    "label": "SituaciÃ³n de la Mano",
+    "openingHand": "EstÃ¡s abriendo la mano",
+    "facingRaise": "EstÃ¡s enfrentando un raise preflop",
+    "facing3bet": "EstÃ¡s enfrentando un 3-Bet",
+    "defendingBB": "EstÃ¡s defendiendo el Big Blind",
+    "defendingSB": "EstÃ¡s en el Small Blind, enfrentando raise",
+    "completeSB": "EstÃ¡s completando el Small Blind",
+    "openBB": "EstÃ¡s abriendo desde el Big Blind",
+    "facingBet": "EstÃ¡s enfrentando una apuesta",
+    "checkBet": "Tu turno â€” apuesta o check",
+    "betting": "EstÃ¡s apostando en el bote",
+    "actingFirst": "EstÃ¡s actuando primero",
+    "aiNote": "AnÃ¡lisis de IA"
   },
   "heroCards": "Tus cartas",
   "board": "Board",
   "noCards": "Cartas no disponibles",
   "pressure": {
-    "toggle": "Modo Presión",
-    "desc": "30 segundos por decisión. Error o timeout reinicia tu racha.",
-    "timedOut": "Tiempo agotado — fold automático",
+    "toggle": "Modo PresiÃ³n",
+    "desc": "30 segundos por decisiÃ³n. Error o timeout reinicia tu racha.",
+    "timedOut": "Tiempo agotado â€” fold automÃ¡tico",
     "streakLabel": "Racha final"
   }
 }
+

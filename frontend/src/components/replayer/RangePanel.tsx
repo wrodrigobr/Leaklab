@@ -36,7 +36,7 @@ interface PreflopRangesResp {
 
 function fmtAction(a: string): string {
   const s = (a ?? "").toLowerCase();
-  if (s === "jam")  return "Shove";
+  if (s === "jam" || s === "allin" || s === "all-in") return "Shove";
   if (s === "fold") return "Fold";
   if (s === "call") return "Call";
   if (s === "raise") return "Raise";

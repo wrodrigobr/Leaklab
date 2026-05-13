@@ -42,8 +42,7 @@ function fmtAction(a: string): string {
   if (s === "fold")    return "Fold";
   if (s === "call")    return "Call";
   if (s === "check")   return "Check";
-  if (s === "allin" || s === "all-in") return "All-in";
-  if (s === "jam")     return "Shove";
+  if (s === "allin" || s === "all-in" || s === "jam") return "Shove";
   if (s === "bet")     return "Bet";
   if (s === "raise")   return "Raise";
   if (s.startsWith("bet_"))   return `Bet ${s.replace("bet_", "").replace("pct", "%")}`;
