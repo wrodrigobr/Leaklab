@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.98.3] — 2026-05-12 — feat(GTO-008): Replayer standalone com dados reais da API
+
+### Added
+- **Carregamento real de dados**: replayer lê `?t=<tournament_id>&h=<hand_id>` da URL, busca `ll_token` do `sessionStorage`, e chama `/replay/<t>/<h>` (ou `/coach/student/<student>/replay/<t>/<h>` com `?student=`)
+- **Loading overlay**: spinner enquanto busca a API; sem travar a UI
+- **Error overlay**: exibe mensagem de erro + botão "Carregar demo" como fallback
+- **Fallback demo**: sem params → DEMO data (comportamento anterior preservado)
+- **Vite multi-page build**: `leaklab-replayer-v3.html` adicionado como entry point do rollup → copiado para `dist/` no build de produção
+- **Vercel**: rewrite explícito para `/leaklab-replayer-v3.html` antes do catch-all → servido como arquivo estático em produção
+
+---
+
 ## [v0.98.2] — 2026-05-12 — feat(GTO-007): painel lateral no Replayer — heurística + GTO
 
 ### Added

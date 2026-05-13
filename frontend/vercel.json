@@ -3,6 +3,7 @@
   "buildCommand": "npm ci && npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/leaklab-replayer-v3.html", "destination": "/leaklab-replayer-v3.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

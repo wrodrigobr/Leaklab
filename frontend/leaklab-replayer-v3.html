@@ -233,6 +233,34 @@ html,body{
 .rp-log-street{color:var(--rp-gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
 .rp-log-action{color:#888}
 .rp-log-action.err{color:var(--rp-red);font-weight:700}
+
+/* ── Loading / Error overlay ── */
+.rp-overlay{
+  position:absolute;inset:0;z-index:50;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(8,15,28,.88);backdrop-filter:blur(4px)
+}
+.rp-overlay-box{
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+  padding:32px 40px;border-radius:12px;
+  background:#0d1520;border:1px solid rgba(255,255,255,.1);
+  font-family:'Share Tech Mono',monospace
+}
+.rp-overlay-title{font-size:.78rem;color:#ccc;letter-spacing:.12em;text-transform:uppercase}
+.rp-overlay-sub{font-size:.64rem;color:#555;letter-spacing:.06em;text-align:center;max-width:240px;line-height:1.5}
+.rp-spinner{
+  width:28px;height:28px;border:2.5px solid rgba(255,255,255,.08);
+  border-top-color:#3b82f6;border-radius:50%;
+  animation:rp-spin .7s linear infinite
+}
+@keyframes rp-spin{to{transform:rotate(360deg)}}
+.rp-overlay-btn{
+  margin-top:4px;padding:6px 20px;border-radius:6px;
+  background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.35);
+  color:#60a5fa;font-family:'Share Tech Mono',monospace;font-size:.65rem;
+  cursor:pointer;letter-spacing:.06em;transition:.15s
+}
+.rp-overlay-btn:hover{background:rgba(59,130,246,.22);border-color:#60a5fa}
 </style>
 </head>
 <body>
@@ -301,6 +329,23 @@ html,body{
 
       <!-- Street badge -->
       <div class="rp-badge" id="rp-badge"></div>
+
+      <!-- Loading overlay -->
+      <div class="rp-overlay" id="rp-loading" style="display:none">
+        <div class="rp-overlay-box">
+          <div class="rp-spinner"></div>
+          <div class="rp-overlay-title">Carregando mão...</div>
+        </div>
+      </div>
+
+      <!-- Error overlay -->
+      <div class="rp-overlay" id="rp-error" style="display:none">
+        <div class="rp-overlay-box">
+          <div class="rp-overlay-title">Erro ao carregar</div>
+          <div class="rp-overlay-sub" id="rp-error-msg">Mão não encontrada.</div>
+          <button class="rp-overlay-btn" onclick="rpLoadDemo()">Carregar demo</button>
+        </div>
+      </div>
     </div>
 
     <!-- Painel lateral: heurística + GTO -->
@@ -1013,15 +1058,61 @@ function initReplayer(data){
 
 // ── Demo ─────────────────────────────────────────────────────────────────────
 const DEMO={"hand_id":"257045940964","tournament_id":"3910307458","hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"button":3,"sb":50.0,"bb":100.0,"seats":{"1":{"player":"jojosetubal","stack":7431,"stack_bb":74.3,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8135,"stack_bb":81.3,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1447,"stack_bb":14.5,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5078,"stack_bb":50.8,"pos":"SB"},"5":{"player":"SuKKinho","stack":5253,"stack_bb":52.5,"pos":"BB"},"6":{"player":"martelli1990","stack":3398,"stack_bb":34.0,"pos":"UTG"},"7":{"player":"varen1k322","stack":3200,"stack_bb":32.0,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6419,"stack_bb":64.2,"pos":"UTG+2"},"9":{"player":"phpro","stack":2242,"stack_bb":22.4,"pos":"MP"}},"timeline":[{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3386,"stack_bb":33.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3386,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":258,"pot_bb":2.6,"bets":{"4":50,"5":100},"street":"preflop","folded":[],"bb":100.0,"type":"deal","desc":"Início da mão"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":458,"pot_bb":4.6,"bets":{"4":50,"5":100,"6":200},"street":"preflop","folded":[],"bb":100.0,"type":"action","player":"martelli1990","seat":6,"action":"raises","amount":100.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"martelli1990: raises 100"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":658,"pot_bb":6.6,"bets":{"4":50,"5":100,"6":200,"9":200},"street":"preflop","folded":["varen1k322","Cyan Diogenes"],"bb":100.0,"type":"action","player":"phpro","seat":9,"action":"calls","amount":200.0,"is_hero":true,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"preflop_gto":{"available":true,"scenario":"vs_rfi","hand_type":"KQo","stack_bucket":"20-35bb","stack_bb":22.3,"position":"MP","vs_position":"UTG","in_range":true,"range_pct":14.2,"range_hands":"QQ+,AKs,AQs,AJs,KQs,AKo","recommended_actions":["call","raise"],"action_quality":"correct","pro_notes":["KQo está no range de call/3bet vs UTG open","Stack de 22bb: call é razoável, jam também é opção"]},"hand_equity":null,"pot_odds_equity":0.23,"draw_profile":"none","m_ratio":18.6,"icm_pressure":0.12,"desc":"phpro: calls 200"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":4411,"stack_bb":44.1,"pos":"BB"},"6":{"player":"martelli1990","stack":2556,"stack_bb":25.6,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":4411,"6":2556,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":2018,"pot_bb":20.2,"bets":{"5":830,"6":830},"street":"preflop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":730.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 730"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"street","desc":"FLOP"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":3745.0,"gto_label":"gto_critical","gto_action":"check","gto_strategy":[{"action":"check","frequency":0.72,"combos":96.4,"ev_bb":2.1,"exploitability_pct":18.5},{"action":"bet_50pct","frequency":0.19,"combos":25.4,"ev_bb":1.8,"exploitability_pct":18.5},{"action":"fold","frequency":0.09,"combos":12.0,"ev_bb":0.0,"exploitability_pct":18.5}],"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 3745"}]};
-(()=>{
+function rpLoadDemo(){
+  document.getElementById('rp-loading').style.display='none';
+  document.getElementById('rp-error').style.display='none';
   const bountySample={1:12.50,5:3.14,9:7.25};
   DEMO.timeline.forEach(ev=>{
     Object.entries(bountySample).forEach(([sn,val])=>{
       if(ev.seats[sn]) ev.seats[sn].bounty=val;
     });
   });
-})();
-initReplayer(DEMO);
+  initReplayer(DEMO);
+}
+
+async function rpLoadReal(){
+  const p=new URLSearchParams(location.search);
+  const t=p.get('t');
+  const h=p.get('h');
+  const student=p.get('student');
+
+  if(!t||!h){ rpLoadDemo(); return; }
+
+  document.getElementById('rp-loading').style.display='flex';
+  document.getElementById('rp-error').style.display='none';
+
+  const token=sessionStorage.getItem('ll_token');
+  if(!token){
+    document.getElementById('rp-loading').style.display='none';
+    document.getElementById('rp-error').style.display='flex';
+    document.getElementById('rp-error-msg').textContent='Sessão expirada. Faça login novamente.';
+    return;
+  }
+
+  try{
+    const url=student
+      ?`/coach/student/${student}/replay/${t}/${h}`
+      :`/replay/${t}/${h}`;
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
+    if(!resp.ok){
+      let msg=`Erro ${resp.status}`;
+      try{const j=await resp.json();if(j.error)msg=j.error;}catch(_){}
+      document.getElementById('rp-loading').style.display='none';
+      document.getElementById('rp-error').style.display='flex';
+      document.getElementById('rp-error-msg').textContent=msg;
+      return;
+    }
+    const data=await resp.json();
+    document.getElementById('rp-loading').style.display='none';
+    initReplayer(data);
+  }catch(e){
+    document.getElementById('rp-loading').style.display='none';
+    document.getElementById('rp-error').style.display='flex';
+    document.getElementById('rp-error-msg').textContent='Erro de rede: '+(e.message||e);
+  }
+}
+
+rpLoadReal();
 </script>
 </body>
 </html>

@@ -30,6 +30,14 @@ export default defineConfig(({ mode }) => ({
       "/profile":     { target: "http://127.0.0.1:5000", changeOrigin: true },
     },
   },
+  build: {
+    rollupOptions: {
+      input: {
+        main:     path.resolve(__dirname, "index.html"),
+        replayer: path.resolve(__dirname, "leaklab-replayer-v3.html"),
+      },
+    },
+  },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
