@@ -112,7 +112,11 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
   const [apiData, setApiData] = useState<PreflopRangesResp | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const stackBb    = step.hero_stack_bb ?? 30;
+  // hero_stack_bb só existe em steps de decisão do hero; fallback via seats + bb
+  const heroSeatStack = heroSeat ? heroSeat[1].stack : null;
+  const stackBb = step.hero_stack_bb
+    ?? (heroSeatStack && step.bb ? Math.round(heroSeatStack / step.bb) : null)
+    ?? 30;
   const openerPos  = gto?.vs_position ?? undefined;
   const pushBucket = getPushFoldBucket(stackBb);
   const isPushZone = pushBucket !== null;
