@@ -89,230 +89,305 @@ function SidePanels({
   openAnnotationForm, t,
   gtoRequestStatus, onRequestGto,
 }: SidePanelsProps) {
-  const hasGto    = !!step.gto_label;
+  const hasGto     = !!step.gto_label;
   const isPostflop = step.street !== 'preflop';
-  // True if the hand already has GTO analysis on at least one postflop hero action
-  const handHasAnyGto = replayData.timeline.some(
-    (s) => s.is_hero && s.type === "action" && s.street !== 'preflop' && !!s.gto_label
-  );
-  // True if this hand has at least one postflop hero action (GTO is applicable)
   const handHasPostflopAction = replayData.timeline.some(
     (s) => s.is_hero && s.type === "action" && s.street !== 'preflop'
   );
-  const hasTech   = step.is_hero && step.type === "action" &&
-                    (isError || hasGto || step.hand_equity != null);
-  const totalPenalty = (step.math_penalty ?? 0) + (step.range_penalty ?? 0) + (step.context_penalty ?? 0);
+  const pg = step.preflop_gto ?? null;
 
-  // GTO label display helpers
-  const gtoMeta: Record<string, { label: string; cls: string; border: string }> = {
-    gto_correct:         { label: "GTO Correto",      cls: "text-emerald-400", border: "border-emerald-500/30 bg-emerald-500/5" },
-    gto_mixed:           { label: "GTO Misto",        cls: "text-sky-400",     border: "border-sky-500/30 bg-sky-500/5" },
-    gto_minor_deviation: { label: "Desvio Leve",      cls: "text-amber-400",   border: "border-amber-500/30 bg-amber-500/5" },
-    gto_critical:        { label: "Desvio Crítico",   cls: "text-red-400",     border: "border-red-500/30 bg-red-500/5" },
+  // ── Unified verdict: GTO Solver > Range > Engine ────────────────────────────
+  type VInfo = { icon: string; label: string; cls: string; borderCls: string; hdrCls: string; source: string };
+  const verdict = ((): VInfo | null => {
+    if (!step.is_hero || step.type !== "action") return null;
+    if (hasGto) {
+      const m: Record<string, VInfo> = {
+        gto_correct:         { icon: "✓", label: "Correto",        cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "GTO Solver" },
+        gto_mixed:           { icon: "◎", label: "Misto",          cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "GTO Solver" },
+        gto_minor_deviation: { icon: "⚠", label: "Desvio Leve",   cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "GTO Solver" },
+        gto_critical:        { icon: "✗", label: "Desvio Crítico", cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "GTO Solver" },
+      };
+      if (step.gto_label && m[step.gto_label]) return m[step.gto_label];
+    }
+    if (!isPostflop && pg?.available) {
+      const m: Record<string, VInfo> = {
+        correct:    { icon: "✓", label: "Correto",      cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Range" },
+        acceptable: { icon: "◎", label: "Aceitável",    cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "Range" },
+        leak:       { icon: "⚠", label: "Leak",         cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Range" },
+        major_leak: { icon: "✗", label: "Leak Grave",   cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "Range" },
+        unknown:    { icon: "·", label: "Sem dados",    cls: "text-muted-foreground", borderCls: "border-border",   hdrCls: "bg-hud-surface",   source: "Range" },
+      };
+      return m[pg.action_quality] ?? m.unknown;
+    }
+    if (isError) return { icon: "✗", label: "Erro", cls: "text-destructive", borderCls: "border-destructive/40", hdrCls: "bg-destructive/5", source: "Análise" };
+    if (isCorrect || step.hand_equity != null || step.pot_odds_equity != null)
+      return { icon: "✓", label: "Correto", cls: "text-primary", borderCls: "border-primary/30", hdrCls: "bg-primary/5", source: "Análise" };
+    return null;
+  })();
+  const showDecision = !!verdict && (studentId !== null || coachAnnotation?.mode !== "replace");
+
+  // Action comparison
+  const playedAction  = (!isPostflop && pg?.available) ? pg.action_taken : (step.action ?? "—");
+  const isActionOk    = hasGto
+    ? (step.gto_label === "gto_correct" || step.gto_label === "gto_mixed")
+    : (!isPostflop && pg?.available
+        ? (pg.action_quality === "correct" || pg.action_quality === "acceptable")
+        : isCorrect);
+  const idealAction   = hasGto
+    ? (step.gto_action ?? null)
+    : (!isPostflop && pg?.available ? pg.recommended_actions.join(" / ") : (step.best_action ?? null));
+  const showTwoCols   = !isActionOk && !!idealAction &&
+    idealAction.toLowerCase() !== playedAction.toLowerCase();
+
+  // GTO strategy
+  const stratSorted = step.gto_strategy
+    ? [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0))
+    : [];
+  const isPlayedAct = (action: string) => {
+    const a = action.toLowerCase(); const p = playedAction.toLowerCase();
+    return a === p || p.startsWith(a) || a.startsWith(p);
   };
-  const gto = step.gto_label ? gtoMeta[step.gto_label] : null;
+  const topFreqPct = stratSorted.length > 0
+    ? ((stratSorted[0].frequency ?? 0) * 100).toFixed(0) : null;
+  const evDiff = (() => {
+    if (!stratSorted.length) return null;
+    const top = stratSorted[0].ev_bb;
+    if (top == null) return null;
+    const playerEv = stratSorted.find(s => isPlayedAct(s.action))?.ev_bb ?? null;
+    if (playerEv == null) return null;
+    const d = top - playerEv;
+    return Math.abs(d) >= 0.05 ? d : null;
+  })();
+  const actionBarColor = (action: string) => {
+    const a = action.toLowerCase();
+    if (a === "fold")                                  return "bg-blue-500";
+    if (a === "check")                                 return "bg-sky-400";
+    if (a === "call")                                  return "bg-emerald-500";
+    if (a.startsWith("bet") || a.startsWith("raise")) return "bg-red-500";
+    if (a === "allin" || a.startsWith("allin"))        return "bg-red-600";
+    return "bg-purple-500";
+  };
+  const actionTextColor = (action: string) => {
+    const a = action.toLowerCase();
+    if (a === "fold")                                  return "text-blue-400";
+    if (a === "check")                                 return "text-sky-400";
+    if (a === "call")                                  return "text-emerald-400";
+    if (a.startsWith("bet") || a.startsWith("raise")) return "text-red-400";
+    if (a === "allin" || a.startsWith("allin"))        return "text-red-400";
+    return "text-purple-400";
+  };
+  const scenarioLabel: Record<string, string> = { rfi: "RFI", vs_rfi: "vs Open", vs_3bet: "vs 3-Bet" };
+  const DRAW_LABELS: Record<string, string> = {
+    flush_draw: "Flush Draw", straight_draw: "Straight Draw",
+    combo_draw: "Combo Draw", gutshot: "Gutshot",
+  };
 
   return (
     <div className="flex flex-col gap-2">
 
-      {/* ── Análise técnica — aparece para qualquer ação hero com dados ── */}
-      {hasTech && (studentId !== null || coachAnnotation?.mode !== "replace") && (
-        <section className={cn(
-          "rounded-xl border p-3 space-y-3",
-          isError ? "border-destructive/40 bg-destructive/5"
-          : hasGto && step.gto_label === "gto_critical" ? "border-red-500/30 bg-red-500/5"
-          : isCorrect ? "border-primary/30 bg-primary/5"
-          : "border-border bg-hud-surface"
-        )}>
+      {/* ── Decision Card — painel unificado por ação do hero ── */}
+      {showDecision && verdict && (
+        <section className={cn("rounded-xl border overflow-hidden", verdict.borderCls)}>
 
-          {/* Header: veredito engine */}
-          <div className="flex items-center gap-2">
-            {isError
-              ? <AlertOctagon className="size-4 shrink-0 text-destructive" />
-              : <CheckCircle2 className="size-4 shrink-0 text-primary" />}
-            <span className={cn("font-mono text-[10px] font-bold uppercase tracking-widest-2 flex-1",
-              isError ? "text-destructive" : "text-primary")}>
-              {isError ? (step.error_label?.replace(/_/g," ") ?? "erro") : "decisão ok"}
+          {/* Banner: veredito + fonte */}
+          <div className={cn("flex items-center justify-between px-3 py-2.5", verdict.hdrCls)}>
+            <span className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls)}>
+              {verdict.icon} {verdict.label}
             </span>
-            {step.error_score != null && (
-              <span className={cn("font-mono text-xs font-bold tabular-nums",
-                step.error_score > 0.25 ? "text-destructive" : step.error_score > 0.08 ? "text-amber-400" : "text-primary")}>
-                score {step.error_score.toFixed(3)}
-              </span>
-            )}
+            <span className="font-mono text-[9px] text-muted-foreground/45 uppercase tracking-wider">
+              {verdict.source}
+            </span>
           </div>
 
-          {/* Ação jogada vs recomendada */}
-          {(step.action || step.best_action) && (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg bg-background/60 px-2.5 py-2 ring-1 ring-border/50">
-                <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Jogou</div>
-                <div className="font-mono text-sm font-bold text-foreground uppercase">{step.action ?? "—"}</div>
-              </div>
-              {step.best_action && (
-                <div className="rounded-lg bg-primary/5 px-2.5 py-2 ring-1 ring-primary/20">
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Ideal</div>
-                  <div className="font-mono text-sm font-bold text-primary">{fmtAction(step.best_action)}</div>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="p-3 space-y-3">
 
-          {/* Equity */}
-          {step.hand_equity != null && (
-            <div className="space-y-1.5">
-              <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Equity</div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 rounded-full bg-border overflow-hidden">
-                  <div
-                    className={cn("h-full rounded-full transition-all",
-                      step.hand_equity >= (step.pot_odds_equity ?? 0) ? "bg-primary" : "bg-destructive")}
-                    style={{ width: `${(step.hand_equity * 100).toFixed(1)}%` }}
-                  />
+            {/* Comparação: Você vs Ideal */}
+            <div className={cn("grid gap-2", showTwoCols ? "grid-cols-2" : "grid-cols-1")}>
+              <div className={cn("rounded-lg px-2.5 py-2 ring-1",
+                isActionOk ? "bg-background/60 ring-border/50" : "bg-background/60 ring-border/50")}>
+                <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Você jogou</div>
+                <div className={cn("font-mono text-sm font-bold uppercase",
+                  isActionOk ? verdict.cls : "text-foreground")}>
+                  {fmtAction(playedAction)}
+                  {isActionOk && <span className="ml-1.5 opacity-80">✓</span>}
                 </div>
-                <span className={cn("font-mono text-sm font-bold tabular-nums shrink-0",
-                  step.hand_equity >= (step.pot_odds_equity ?? 0) ? "text-primary" : "text-destructive")}>
-                  {(step.hand_equity * 100).toFixed(1)}%
-                </span>
               </div>
-              {step.pot_odds_equity != null && (
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Equity necessária para call</span>
-                  <span className="font-mono font-medium text-foreground">{(step.pot_odds_equity * 100).toFixed(1)}%</span>
-                </div>
-              )}
-              {step.draw_profile && step.draw_profile !== "none" && (
-                <div className="font-mono text-[10px] text-amber-400 uppercase tracking-wider">
-                  Draw: {step.draw_profile.replace(/_/g, " ")}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Score breakdown */}
-          {totalPenalty > 0 && (
-            <div className="space-y-1.5">
-              <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Breakdown do score</div>
-              {[
-                { label: "Matemática", val: step.math_penalty ?? 0, color: "bg-red-500" },
-                { label: "Range",      val: step.range_penalty ?? 0, color: "bg-amber-500" },
-                { label: "Contexto",   val: step.context_penalty ?? 0, color: "bg-orange-500" },
-              ].filter(r => r.val > 0).map((row) => (
-                <div key={row.label} className="flex items-center gap-2">
-                  <span className="w-16 font-mono text-[10px] text-muted-foreground">{row.label}</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
-                    <div className={cn("h-full rounded-full", row.color)}
-                      style={{ width: `${Math.min(100, row.val * 400).toFixed(0)}%` }} />
+              {showTwoCols && (
+                <div className="rounded-lg px-2.5 py-2 ring-1 bg-background/60 ring-border/50">
+                  <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">
+                    {hasGto ? "GTO recomenda" : "Ideal"}
                   </div>
-                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground w-10 text-right">
-                    {row.val.toFixed(3)}
+                  <div className={cn("font-mono text-sm font-bold uppercase", verdict.cls)}>
+                    {fmtAction(idealAction!)}
+                    {topFreqPct && <span className="ml-1 font-normal text-[10px] opacity-60"> {topFreqPct}%</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Preflop: badges + range% + pro notes */}
+            {!isPostflop && pg?.available && (
+              <>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] text-muted-foreground bg-background/40 ring-1 ring-border/50">
+                    {scenarioLabel[pg.scenario] ?? pg.scenario}
+                  </span>
+                  <span className={cn(
+                    "inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-bold ring-1",
+                    pg.in_range
+                      ? "text-emerald-400 ring-emerald-500/30 bg-emerald-500/8"
+                      : "text-red-400 ring-red-500/30 bg-red-500/8"
+                  )}>
+                    {pg.in_range ? "✓ No range" : "✗ Fora do range"}
+                  </span>
+                  {pg.hand_type && (
+                    <span className="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-bold text-foreground bg-background/60 ring-1 ring-border">
+                      {pg.hand_type}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] text-muted-foreground bg-background/40 ring-1 ring-border/50">
+                    {pg.stack_bb}BB
                   </span>
                 </div>
-              ))}
-            </div>
-          )}
+                {pg.range_pct > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Range de abertura</span>
+                      <span className="font-mono text-[11px] font-bold tabular-nums text-foreground">{(pg.range_pct * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-border/50 overflow-hidden">
+                      <div className="h-full rounded-full bg-primary/60 transition-all duration-500"
+                        style={{ width: `${Math.min(100, pg.range_pct * 100).toFixed(0)}%` }} />
+                    </div>
+                  </div>
+                )}
+                {pg.pro_notes.length > 0 && (
+                  <div className="space-y-1 pt-1 border-t border-border/30">
+                    {pg.pro_notes.map((note, i) => (
+                      <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
 
-          {/* M-Ratio / ICM */}
-          {step.m_ratio != null && (
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span>M-Ratio: <span className="font-mono text-foreground font-medium">{step.m_ratio}</span></span>
-              {step.icm_pressure && step.icm_pressure !== "low" && (
-                <span className="text-amber-400 font-medium">ICM {step.icm_pressure}</span>
-              )}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* ── Preflop Range GTO — aparece apenas para hero actions preflop ── */}
-      {step.is_hero && step.type === "action" && !isPostflop && step.preflop_gto?.available && (() => {
-        const pg = step.preflop_gto!;
-        const scenarioLabel: Record<string, string> = {
-          rfi: "RFI",
-          vs_rfi: "vs RFI",
-          vs_3bet: "vs 3bet",
-        };
-        const qualityMeta: Record<string, { label: string; cls: string; border: string; hdr: string }> = {
-          correct:    { label: "Correto",      cls: "text-emerald-400", border: "border-emerald-500/30", hdr: "bg-emerald-500/8" },
-          acceptable: { label: "Aceitável",    cls: "text-sky-400",     border: "border-sky-500/30",     hdr: "bg-sky-500/8" },
-          leak:       { label: "Leak",         cls: "text-amber-400",   border: "border-amber-500/30",   hdr: "bg-amber-500/8" },
-          major_leak: { label: "Leak Grave",   cls: "text-red-400",     border: "border-red-500/30",     hdr: "bg-red-500/8" },
-          unknown:    { label: "Desconhecido", cls: "text-muted-foreground", border: "border-border",    hdr: "bg-hud-surface" },
-        };
-        const qm = qualityMeta[pg.action_quality] ?? qualityMeta.unknown;
-        return (
-          <section className={cn("rounded-xl border overflow-hidden", qm.border)}>
-            {/* Banner */}
-            <div className={cn("flex items-center justify-between px-3 py-2", qm.hdr)}>
-              <div className="flex items-center gap-1.5">
-                <Sigma className="size-3.5 shrink-0 text-muted-foreground/50" />
-                <span className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-wider">
-                  Range · {scenarioLabel[pg.scenario] ?? pg.scenario}
-                </span>
-              </div>
-              <span className={cn("font-mono text-[10px] font-bold uppercase", qm.cls)}>{qm.label}</span>
-            </div>
-
-            <div className="p-3 space-y-3">
-              {/* Badges */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className={cn(
-                  "inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase ring-1",
-                  pg.in_range
-                    ? "text-emerald-400 ring-emerald-500/30 bg-emerald-500/8"
-                    : "text-red-400 ring-red-500/30 bg-red-500/8"
-                )}>
-                  {pg.in_range ? "✓ No range" : "✗ Fora do range"}
-                </span>
-                {pg.hand_type && (
-                  <span className="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-bold text-foreground bg-background/60 ring-1 ring-border">
-                    {pg.hand_type}
+            {/* Postflop: equity bar + pot odds + draw */}
+            {isPostflop && step.hand_equity != null && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground w-12 shrink-0">Equity</span>
+                  <div className="flex-1 h-1.5 rounded-full bg-border/50 overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all",
+                        step.hand_equity >= (step.pot_odds_equity ?? 0) ? "bg-emerald-500" : "bg-destructive")}
+                      style={{ width: `${(step.hand_equity * 100).toFixed(1)}%` }}
+                    />
+                  </div>
+                  <span className={cn("font-mono text-sm font-bold tabular-nums shrink-0",
+                    step.hand_equity >= (step.pot_odds_equity ?? 0) ? "text-emerald-400" : "text-destructive")}>
+                    {(step.hand_equity * 100).toFixed(0)}%
+                  </span>
+                  {step.pot_odds_equity != null && (
+                    <span className="font-mono text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                      / {(step.pot_odds_equity * 100).toFixed(0)}%
+                    </span>
+                  )}
+                </div>
+                {step.draw_profile && step.draw_profile !== "none" && step.draw_profile !== "made_hand" && (
+                  <span className="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-bold ring-1 text-amber-400 ring-amber-500/30 bg-amber-500/8">
+                    {DRAW_LABELS[step.draw_profile] ?? step.draw_profile.replace(/_/g, " ")}
                   </span>
                 )}
-                <span className="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] text-muted-foreground bg-background/40 ring-1 ring-border/50">
-                  {pg.stack_bb}BB · {pg.stack_bucket}
-                </span>
               </div>
+            )}
 
-              {/* Jogou / Recomendado */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg bg-background/60 px-2.5 py-2 ring-1 ring-border/50">
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">Jogou</div>
-                  <div className="font-mono text-sm font-bold text-foreground uppercase">{pg.action_taken}</div>
+            {/* Estratégia do Solver */}
+            {!step.gto_spot_mismatch && stratSorted.length >= 2 && (
+              <div className="space-y-2">
+                <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/50 border-t border-border/30 pt-2">
+                  Estratégia do Solver
                 </div>
-                <div className={cn("rounded-lg px-2.5 py-2 ring-1",
-                  pg.action_quality === "correct" ? "bg-emerald-500/10 ring-emerald-500/30" : "bg-background/60 ring-border/50")}>
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">GTO</div>
-                  <div className={cn("font-mono text-sm font-bold uppercase", qm.cls)}>
-                    {pg.recommended_actions.join(" / ")}
-                  </div>
-                </div>
+                {stratSorted.map((s) => {
+                  const isP = isPlayedAct(s.action);
+                  const freq = (s.frequency ?? 0) * 100;
+                  return (
+                    <div key={s.action} className="flex items-center gap-2">
+                      <span className={cn("font-mono text-[11px] font-bold w-14 shrink-0 uppercase truncate",
+                        isP ? "text-amber-400" : actionTextColor(s.action))}>
+                        {fmtAction(s.action)}
+                      </span>
+                      <div className="flex-1 h-[5px] rounded-full bg-border/50 overflow-hidden">
+                        <div className={cn("h-full rounded-full transition-all duration-500",
+                          isP ? "bg-amber-400" : actionBarColor(s.action))}
+                          style={{ width: `${freq}%` }} />
+                      </div>
+                      <span className={cn("font-mono text-[11px] font-bold w-8 text-right tabular-nums shrink-0",
+                        isP ? "text-amber-400" : "text-muted-foreground")}>
+                        {freq.toFixed(0)}%
+                      </span>
+                      <span className={cn("font-mono text-[9px] w-2 shrink-0 select-none",
+                        isP ? "text-amber-400" : "invisible")}>←</span>
+                    </div>
+                  );
+                })}
+                {evDiff !== null && (
+                  <p className={cn("font-mono text-[10px] tabular-nums pt-0.5",
+                    evDiff > 0 ? "text-destructive/70" : "text-emerald-400/70")}>
+                    {evDiff > 0
+                      ? `EV perdida: −${evDiff.toFixed(2)} BB vs ótimo`
+                      : `EV acima do ótimo: +${Math.abs(evDiff).toFixed(2)} BB`}
+                  </p>
+                )}
               </div>
+            )}
 
-              {/* Range % bar */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Range de abertura</span>
-                  <span className="font-mono text-[11px] font-bold text-foreground tabular-nums">{(pg.range_pct * 100).toFixed(0)}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-border/50 overflow-hidden">
-                  <div className="h-full rounded-full bg-primary/70 transition-all duration-500"
-                    style={{ width: `${(pg.range_pct * 100).toFixed(0)}%` }} />
-                </div>
+            {/* Spot incompatível */}
+            {step.gto_spot_mismatch && (
+              <div className="flex items-start gap-1.5 rounded-lg bg-orange-500/5 border border-orange-500/25 px-2.5 py-2">
+                <span className="text-orange-400 text-[10px] mt-px shrink-0">⚠</span>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  {step.engine_best === "call"
+                    ? "Spot GTO incompatível: você enfrentava uma aposta, mas o solver foi consultado para um spot sem aposta."
+                    : "Spot GTO incompatível: não havia aposta a enfrentar, mas o solver foi consultado para um spot com aposta."}
+                </p>
               </div>
+            )}
 
-              {/* Pro notes */}
-              {pg.pro_notes.length > 0 && (
-                <div className="space-y-1 pt-1 border-t border-border/40">
-                  {pg.pro_notes.map((note, i) => (
-                    <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        );
-      })()}
+            {/* Conflito engine vs GTO — footnote compacto */}
+            {!step.gto_spot_mismatch && step.engine_best && step.gto_action &&
+             step.engine_best !== step.gto_action && isError && (
+              <p className="text-[10px] text-muted-foreground/55 leading-relaxed">
+                Engine→ <span className="font-mono text-foreground/65">{fmtAction(step.engine_best)}</span>
+                {" · "}Solver→ <span className="font-mono text-foreground/65">{fmtAction(step.gto_action)}</span>
+                {" · "}Priorizando GTO.
+              </p>
+            )}
+
+            {/* Rodapé: M-Ratio + ICM */}
+            {(step.m_ratio != null || (step.icm_pressure && step.icm_pressure !== "low")) && (
+              <div className="flex items-center gap-3 pt-1 border-t border-border/30">
+                {step.m_ratio != null && (
+                  <span className="font-mono text-[10px]">
+                    <span className="text-muted-foreground/50">M </span>
+                    <span className={cn("font-bold tabular-nums",
+                      step.m_ratio <= 5 ? "text-destructive" : step.m_ratio <= 10 ? "text-amber-400" : "text-muted-foreground")}>
+                      {step.m_ratio.toFixed(1)}
+                    </span>
+                  </span>
+                )}
+                {step.icm_pressure && step.icm_pressure !== "low" && (
+                  <span className={cn("font-mono text-[10px] font-bold uppercase",
+                    step.icm_pressure === "critical" ? "text-destructive" :
+                    step.icm_pressure === "high" ? "text-amber-400" : "text-sky-400")}>
+                    ICM {step.icm_pressure}
+                  </span>
+                )}
+              </div>
+            )}
+
+          </div>
+        </section>
+      )}
 
       {/* ── GTO não disponível — solicitar análise (apenas postflop) ── */}
       {step.is_hero && step.type === "action" && isPostflop && !hasGto && handHasPostflopAction && (

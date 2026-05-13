@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.98.5] — 2026-05-12 — feat(UX-019): DecisionCard unificado no /replayer React
+
+### Changed
+- **Painel lateral do Replayer React**: três seções separadas (Análise técnica, Preflop Range GTO, GTO Analysis) substituídas por um único `DecisionCard` por ação do hero
+- **Hierarquia de veredito**: GTO Solver > Range preflop > Engine — `[GTO Solver]` / `[Range]` / `[Análise]` exibidos como tag discreta no banner, resolvendo ambiguidade de qual fonte priorizar
+- **Banner unificado**: colorido por severidade (emerald/sky/amber/red), ícone + label em português sem jargão técnico ("Desvio Crítico" em vez de "gto_critical", "Leak Grave" em vez de "major_leak")
+- **Comparação de ações**: "Você jogou / GTO recomenda" em 1 ou 2 colunas conforme discrepância; frequência top inline quando `gto_strategy` disponível
+- **Barras de frequência do solver**: integradas no mesmo card, ação do jogador marcada com `←` em âmbar; EV diff `−0.18 BB vs ótimo` exibido quando `ev_bb` disponível
+- **Rodapé contextual compacto**: M-ratio + ICM como grid 2 colunas, visível só quando campos presentes
+- **Conflito engine vs GTO**: substituiu caixa âmbar separada por 1 linha footnote discreta (`Engine → FOLD / Solver → CHECK — priorizando GTO`)
+- **Removido**: score breakdown (`math_penalty`, `range_penalty`, `context_penalty`) — debug output, não coaching; `error_score` com 3 casas decimais; palavra "Heurística" completamente eliminada da UI
+
+---
+
 ## [v0.98.4] — 2026-05-12 — feat(UX-018): novo design de painéis no /replayer React
 
 ### Changed
