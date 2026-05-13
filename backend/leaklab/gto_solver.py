@@ -164,16 +164,15 @@ def lookup_gto(
     # 2. Postflop — gto_nodes verificados
     # Fallbacks em ordem de precisão decrescente:
     #   a) hash exato (com hero_hand + facing_size_bb)
-    #   b) sem facing — só retrocompat para nós antigos (facing > 0)
-    #   c) sem hero_hand mas com mesmo facing bucket (precompute genérico)
-    #   d) sem hero_hand e sem facing — SOMENTE quando facing == 0
+    #   b) sem hero_hand mas com mesmo facing bucket (precompute genérico)
+    #   c) sem hero_hand e sem facing — SOMENTE quando facing == 0
     #      (evita retornar nó de "sem aposta" quando hero enfrenta aposta → gto_spot_mismatch)
-    hash_no_facing  = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, 0.0)
+    # NOTA: fallback hash_no_facing (facing=0 com hero_hand) foi removido — causava mismatches
+    #       quando hero enfrentava aposta mas só havia nó sem-aposta para aquela mão específica.
     hash_generic    = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, facing_size_bb)
     hash_generic_nf = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, 0.0)
     node = (
         get_gto_node(spot_hash)
-        or (get_gto_node(hash_no_facing) if facing_size_bb > 0 else None)
         or get_gto_node(hash_generic)
         or (get_gto_node(hash_generic_nf) if facing_size_bb == 0 else None)
     )
@@ -192,21 +191,31 @@ def lookup_gto(
                 for k, v in strategy_detail.items()
             ]
         else:
-            strategy_list = [{
-                'action':             node['gto_action'],
-                'frequency':          node['gto_freq'],
-                'combos':             None,
-                'ev_bb':              node.get('ev_diff'),
+            action = node.get('gto_action')
+            freq   = node.get('gto_freq') or 1.0
+            if action:
+                strategy_list = [{
+                    'action':             action,
+                    'frequency':          freq,
+                    'combos':             None,
+                    'ev_bb':              node.get('ev_diff'),
+                    'exploitability_pct': node.get('exploitability_pct'),
+                }]
+            else:
+                strategy_list = []
+
+        if not strategy_list:
+            # Nó corrompido (sem strategy e sem primary_action) — ignora e re-enfileira
+            log.debug("GTO node corrompido ignorado: hash=%s, prosseguindo para enqueue", spot_hash)
+        else:
+            return {
+                'found':    True,
+                'source':   'postflop_db',
+                'strategy': strategy_list,
                 'exploitability_pct': node.get('exploitability_pct'),
-            }]
-        return {
-            'found':    True,
-            'source':   'postflop_db',
-            'strategy': strategy_list,
-            'exploitability_pct': node.get('exploitability_pct'),
-            'spot_hash':          spot_hash,
-            'queued':             False,
-        }
+                'spot_hash':          spot_hash,
+                'queued':             False,
+            }
 
     # 3. Miss — decide sync vs async com base na complexidade do spot
     # Spots simples: chama solver remoto sincronamente (< 15s)

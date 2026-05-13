@@ -4400,7 +4400,35 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                         "GTO mismatch descartado: dec=%s engine=%s gto=%s facing=%.1f",
                         db_dec['id'], engine_best, gto_action, _facing,
                     )
-                    queued += 1  # trata como pendente — spot correto ainda não resolvido
+                    # Enfileira o spot correto (com facing real) para o solver resolver
+                    try:
+                        from leaklab.gto_utils import compute_spot_hash as _csh
+                        from leaklab.gto_solver import _DEFAULT_RANGES, _DEFAULT_RANGE_WIDE, _priority, _solver_params_for_stack
+                        import json as _json2
+                        _spot2 = di.get('spot', {})
+                        _ctx2  = di.get('context', {})
+                        _board2 = di.get('board', []) or _spot2.get('board', [])
+                        _pos2   = (_spot2.get('position') or _ctx2.get('position') or '').upper()
+                        _vs2    = (_spot2.get('villainPosition') or _ctx2.get('vsPosition') or '').upper()
+                        _stack2 = float(_spot2.get('effectiveStackBb') or _ctx2.get('heroStackBb') or 20)
+                        _hand2  = di.get('hero_cards', [])
+                        _hash2  = _csh(di['street'], _pos2, _board2, _hand2, _stack2, _facing)
+                        _params2 = _solver_params_for_stack(_stack2)
+                        _payload2 = _json2.dumps({
+                            'street': di['street'], 'board': _board2, 'position': _pos2,
+                            'hero_hand': _hand2, 'hero_stack_bb': _stack2, 'facing_size_bb': _facing,
+                            'oop_range': _DEFAULT_RANGES.get(_vs2, _DEFAULT_RANGE_WIDE),
+                            'ip_range':  _DEFAULT_RANGES.get(_pos2, _DEFAULT_RANGE_WIDE),
+                            'pot_bb': float(_spot2.get('potSize') or _facing * 2 + 2 or 4.0),
+                            'effective_stack_bb':        _params2['effective_stack_bb'],
+                            'max_iterations':            _params2['max_iterations'],
+                            'target_exploitability_pct': _params2['target_exploitability_pct'],
+                        }, sort_keys=True)
+                        from database.repositories import enqueue_solver_spot as _enq2
+                        _enq2(_hash2, _payload2, priority=_priority(di['street']))
+                    except Exception:
+                        pass
+                    queued += 1  # trata como pendente — spot correto enfileirado para o solver
                     continue
 
                 if played_freq >= 0.40:
