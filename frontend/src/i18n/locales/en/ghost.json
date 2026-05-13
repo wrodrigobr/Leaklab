@@ -1,6 +1,6 @@
-﻿{
+{
   "title": "Ghost Table",
-  "subtitle": "Drill Mode â€” Review your mistake spots and train the correct decision",
+  "subtitle": "Drill Mode — Review your mistake spots and train the correct decision",
   "startBtn": "Start Drilling",
   "noSpots": "No spots available for drill right now. Import more tournaments or wait 7 days to review already-drilled spots.",
   "done": "Session complete",
@@ -52,17 +52,17 @@
     "noImprovement": "Mistake repeated",
     "engineNote": "Engine Analysis",
     "requestAnalysis": "View hand analysis",
-    "analysisLoading": "Generating analysisâ€¦",
+    "analysisLoading": "Generating analysis…",
     "analysisError": "Analysis unavailable right now. Try again."
   },
-  "next": "Next â†’",
+  "next": "Next →",
   "stats": {
     "title": "Your drill history (30 days)",
     "total": "{{n}} spots drilled",
     "accuracy": "{{pct}}% accuracy",
     "noStats": "No drills completed yet."
   },
-  "loading": "Loading spotsâ€¦",
+  "loading": "Loading spots…",
   "errorLoad": "Error loading spots. Please try again.",
   "situation": {
     "label": "Hand Situation",
@@ -74,7 +74,7 @@
     "completeSB": "You are completing the Small Blind",
     "openBB": "You are opening from the Big Blind",
     "facingBet": "You are facing a bet",
-    "checkBet": "Your turn â€” bet or check",
+    "checkBet": "Your turn — bet or check",
     "betting": "You are betting into the pot",
     "actingFirst": "You are acting first",
     "aiNote": "AI Analysis"
@@ -85,7 +85,7 @@
   "pressure": {
     "toggle": "Pressure Mode",
     "desc": "30 seconds per decision. Wrong answer or timeout resets your streak.",
-    "timedOut": "Time's up â€” auto-fold",
+    "timedOut": "Time's up — auto-fold",
     "streakLabel": "Final streak"
   }
 }

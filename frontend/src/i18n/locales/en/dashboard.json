@@ -1,4 +1,4 @@
-﻿{
+{
   "eyebrow": "Session synced",
   "eyebrowEmpty": "Import tournaments to get started",
   "title": "Dashboard",
@@ -13,7 +13,7 @@
     "itmTooltip": "Percentage of tournaments where you finished in the money. Field average is ~18%. Above 22% suggests solid or conservative play; below may indicate early bust-outs.",
     "standard": "Standard %",
     "standardHint": "decisions within range",
-    "standardTooltip": "Average percentage of decisions classified as 'standard' (score â‰¤ 0.08). Goal: above 70%. Below 60% indicates significant errors costing real EV.",
+    "standardTooltip": "Average percentage of decisions classified as 'standard' (score ≤ 0.08). Goal: above 70%. Below 60% indicates significant errors costing real EV.",
     "events": "Tournaments",
     "eventsHint": "{{hands}} hands",
     "eventsHintEmpty": "Import tournaments",
@@ -22,7 +22,7 @@
   },
   "recentTournaments": {
     "title": "Recent tournaments",
-    "viewAll": "View all â†’"
+    "viewAll": "View all →"
   },
   "linkCoach": {
     "message": "Have a coach? Link your profile to share your history.",
@@ -37,11 +37,11 @@
     "empty": "Import tournaments to activate AI confidence analysis."
   },
   "leaks": {
-    "tooltip": "The most frequent and costly mistakes detected in your history. Each leak represents a recurring sub-optimal decision pattern â€” fixing them has a direct impact on your ROI.",
+    "tooltip": "The most frequent and costly mistakes detected in your history. Each leak represents a recurring sub-optimal decision pattern — fixing them has a direct impact on your ROI.",
     "title": "Top Leaks Detected",
     "study": "Study",
     "studyLabel": "Study leak {{spot}}",
-    "doing": "{{street}} â€” doing {{action}} when you shouldn't",
+    "doing": "{{street}} — doing {{action}} when you shouldn't",
     "critical": "Critical",
     "evLoss": "{{amount}}/mo",
     "trendImproving": "Improving",
@@ -51,7 +51,7 @@
     "drillMastering": "Mastering"
   },
   "ghost": {
-    "tooltip": "Summary of your drill activity in the last 30 days. Overdue drills (red) indicate spots that need review â€” skipping them increases the chance of repeating the same mistake in live play.",
+    "tooltip": "Summary of your drill activity in the last 30 days. Overdue drills (red) indicate spots that need review — skipping them increases the chance of repeating the same mistake in live play.",
     "title": "Ghost Table",
     "spots": "Spots",
     "accuracy": "Accuracy",
@@ -60,9 +60,9 @@
     "startNow": "Start drill"
   },
   "bankroll": {
-    "tooltip": "Cumulative financial result curve tournament by tournament. Shows real variance and long-term trend â€” not just isolated results. Useful for deciding stake adjustments.",
+    "tooltip": "Cumulative financial result curve tournament by tournament. Shows real variance and long-term trend — not just isolated results. Useful for deciding stake adjustments.",
     "title": "Bankroll evolution",
-    "demo": "Demo â€¢ import tournaments to see your data",
+    "demo": "Demo • import tournaments to see your data",
     "lastN": "Last {{n}} tournaments",
     "ariaLabel": "Bankroll evolution chart",
     "p1m": "1M",
@@ -72,7 +72,7 @@
   },
   "table": {
     "title": "Recent tournaments",
-    "viewAll": "View all â†’",
+    "viewAll": "View all →",
     "demo": "(demo)",
     "hands": "{{n}} hands",
     "analyzed": "Analyzed",
@@ -90,7 +90,7 @@
     "title": "Decision Quality",
     "total": "{{n}} decisions",
     "noData": "Not enough data.",
-    "tooltip": "Distribution of all your decisions by quality. Standard = within expected range (score â‰¤ 0.08). Marginal = acceptable but suboptimal. Mistakes reduce your long-term ROI.",
+    "tooltip": "Distribution of all your decisions by quality. Standard = within expected range (score ≤ 0.08). Marginal = acceptable but suboptimal. Mistakes reduce your long-term ROI.",
     "standard": "Standard",
     "marginal": "Marginal",
     "smallMistake": "Small mistake",
@@ -99,7 +99,7 @@
   "streets": {
     "title": "Performance by Street",
     "noData": "Not enough data.",
-    "tooltip": "Standard decision rate (score â‰¤ 0.08) per street. Streets in orange or red indicate where your leaks are concentrated."
+    "tooltip": "Standard decision rate (score ≤ 0.08) per street. Streets in orange or red indicate where your leaks are concentrated."
   },
   "positions": {
     "title": "Performance by Position",
@@ -137,16 +137,16 @@
     "high": "High ICM",
     "collapseDetected": "Collapse",
     "solid": "Solid",
-    "collapseSummary": "Score +{{delta}}pts worse under high ICM pressure â€” focus on bubble and FT spots.",
-    "stableSummary": "Stable performance â€” only {{delta}}pts variation between high pressure and no pressure."
+    "collapseSummary": "Score +{{delta}}pts worse under high ICM pressure — focus on bubble and FT spots.",
+    "stableSummary": "Stable performance — only {{delta}}pts variation between high pressure and no pressure."
   },
   "drift": {
     "alertTitle": "Possible confidence drift detected",
-    "alertDesc": "{{n}} recent sessions with technical quality below your baseline â€” possible tilt or fatigue.",
+    "alertDesc": "{{n}} recent sessions with technical quality below your baseline — possible tilt or fatigue.",
     "dismiss": "Dismiss"
   },
   "level": {
-    "tooltip": "Your current level based on your average Standard% across recent tournaments. Each level requires a higher threshold of correct decisions â€” advancing means your mistakes have consistently decreased.",
+    "tooltip": "Your current level based on your average Standard% across recent tournaments. Each level requires a higher threshold of correct decisions — advancing means your mistakes have consistently decreased.",
     "title": "My Level",
     "noData": "Import at least 5 tournaments to calculate your level.",
     "tournament_one": "{{count}} tournament",
@@ -194,16 +194,16 @@
       "Balanced": "Balanced"
     },
     "archetypeDesc": {
-      "TAG": "Selective and aggressive when entering â€” winning profile in regular MTTs.",
-      "LAG": "Plays many pots and applies pressure â€” effective, but requires range calibration.",
-      "Nit": "Folds too much â€” loses passive equity and gets exploited by regulars.",
-      "Calling Station": "Calls too much â€” makes it easy for opponents to extract EV.",
-      "Balanced": "Well-rounded profile â€” good range control across multiple positions."
+      "TAG": "Selective and aggressive when entering — winning profile in regular MTTs.",
+      "LAG": "Plays many pots and applies pressure — effective, but requires range calibration.",
+      "Nit": "Folds too much — loses passive equity and gets exploited by regulars.",
+      "Calling Station": "Calls too much — makes it easy for opponents to extract EV.",
+      "Balanced": "Well-rounded profile — good range control across multiple positions."
     }
   },
   "empty": {
     "phase": "Phase 01 // Data acquisition",
-    "loading": "Analyzing tournamentâ€¦",
+    "loading": "Analyzing tournament…",
     "errorTitle": "Import error",
     "title": "Initialize your tactical base",
     "loadingDesc": "The HUD will be populated once the scan is complete.",
@@ -225,7 +225,7 @@
     "m3desc": "Conversational AI analysis with your real data: ranges, ICM, leaks and personalized study plan."
   },
   "leakCausalMap": {
-    "tooltip": "Visualizes which leaks co-occur in the same hands or sessions. Thicker lines indicate stronger correlation â€” when two leaks appear together, they usually share a common root cause.",
+    "tooltip": "Visualizes which leaks co-occur in the same hands or sessions. Thicker lines indicate stronger correlation — when two leaks appear together, they usually share a common root cause.",
     "title": "Leak Causal Map",
     "aria": "Leak causal graph",
     "coOccurs": "Co-occurs with",
@@ -238,7 +238,7 @@
     }
   },
   "career": {
-    "tooltip": "Projects when you will reach each level based on your real improvement curve. The dotted line is an estimate â€” not a guarantee. The main value is seeing which leak is blocking your next level.",
+    "tooltip": "Projects when you will reach each level based on your real improvement curve. The dotted line is an estimate — not a guarantee. The main value is seeing which leak is blocking your next level.",
     "title": "Career Trajectory",
     "eyebrow": "Career Projection",
     "noData": "Import at least 5 tournaments to generate your career projection.",
@@ -254,13 +254,13 @@
     "blockingLeaks": "Main blockers",
     "milestones": "Projected milestones",
     "reachable": "Reachable",
-    "notReachable": "Stagnant â€” no growth trend",
+    "notReachable": "Stagnant — no growth trend",
     "already": "Already reached",
     "perMonth": "{{n}} tournaments/month",
     "projection": "Projection"
   }
   ,"cognitiveFailure": {
-    "tooltip": "Detects emotional patterns that affect sequential decision quality â€” for example, becoming overly aggressive right after folding several hands in a row. Identifying the trigger is the first step to correcting it.",
+    "tooltip": "Detects emotional patterns that affect sequential decision quality — for example, becoming overly aggressive right after folding several hands in a row. Identifying the trigger is the first step to correcting it.",
     "title": "Cognitive Patterns",
     "noData": "Insufficient data. Import more tournaments to detect cognitive patterns.",
     "noPatterns": "No cognitive patterns detected. Your game is cognitively consistent.",

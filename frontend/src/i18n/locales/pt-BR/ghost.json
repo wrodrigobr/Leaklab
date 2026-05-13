@@ -1,23 +1,23 @@
-﻿{
+{
   "title": "Ghost Table",
-  "subtitle": "Modo Drill â€” Revise seus spots de erro e treine a decisÃ£o correta",
+  "subtitle": "Modo Drill — Revise seus spots de erro e treine a decisão correta",
   "startBtn": "Iniciar Drill",
-  "noSpots": "Nenhum spot disponÃ­vel para drill no momento. Importe mais torneios ou aguarde 7 dias para rever os spots jÃ¡ treinados.",
-  "done": "SessÃ£o concluÃ­da",
-  "doneSub": "VocÃª completou todos os spots desta sessÃ£o.",
-  "doneAccuracy": "PrecisÃ£o: {{pct}}%",
+  "noSpots": "Nenhum spot disponível para drill no momento. Importe mais torneios ou aguarde 7 dias para rever os spots já treinados.",
+  "done": "Sessão concluída",
+  "doneSub": "Você completou todos os spots desta sessão.",
+  "doneAccuracy": "Precisão: {{pct}}%",
   "doneCorrect": "{{correct}} / {{total}} corretos",
   "backDashboard": "Voltar ao Dashboard",
   "drillAgain": "Novo Drill",
   "spot": "Spot {{n}} de {{total}}",
   "street": {
-    "preflop": "PrÃ©-Flop",
+    "preflop": "Pré-Flop",
     "flop": "Flop",
     "turn": "Turn",
     "river": "River"
   },
   "context": {
-    "position": "PosiÃ§Ã£o",
+    "position": "Posição",
     "stack": "Stack",
     "mRatio": "M-Ratio",
     "icm": "ICM",
@@ -28,12 +28,12 @@
     "facing": "Aposta"
   },
   "icmLabel": {
-    "high": "Alta pressÃ£o",
-    "medium": "MÃ©dia",
+    "high": "Alta pressão",
+    "medium": "Média",
     "low": "Baixa",
     "none": "Sem ICM"
   },
-  "question": "Qual Ã© a aÃ§Ã£o correta?",
+  "question": "Qual é a ação correta?",
   "actions": {
     "fold":  "Fold",
     "check": "Check",
@@ -45,47 +45,47 @@
   "result": {
     "correct": "Correto!",
     "wrong": "Errado",
-    "bestAction": "AÃ§Ã£o correta: {{action}}",
-    "yourAction": "VocÃª escolheu: {{action}}",
+    "bestAction": "Ação correta: {{action}}",
+    "yourAction": "Você escolheu: {{action}}",
     "originalMistake": "Erro original: {{action}} (score {{score}})",
     "improvement": "Melhora de {{delta}} pts",
     "noImprovement": "Erro repetido",
-    "engineNote": "AnÃ¡lise do Motor",
-    "requestAnalysis": "Ver anÃ¡lise desta mÃ£o",
-    "analysisLoading": "Gerando anÃ¡liseâ€¦",
-    "analysisError": "AnÃ¡lise indisponÃ­vel no momento. Tente novamente."
+    "engineNote": "Análise do Motor",
+    "requestAnalysis": "Ver análise desta mão",
+    "analysisLoading": "Gerando análise…",
+    "analysisError": "Análise indisponível no momento. Tente novamente."
   },
-  "next": "PrÃ³ximo â†’",
+  "next": "Próximo →",
   "stats": {
-    "title": "Seu histÃ³rico de drill (30 dias)",
+    "title": "Seu histórico de drill (30 dias)",
     "total": "{{n}} spots treinados",
-    "accuracy": "{{pct}}% de precisÃ£o",
+    "accuracy": "{{pct}}% de precisão",
     "noStats": "Nenhum drill realizado ainda."
   },
-  "loading": "Carregando spotsâ€¦",
+  "loading": "Carregando spots…",
   "errorLoad": "Erro ao carregar spots. Tente novamente.",
   "situation": {
-    "label": "SituaÃ§Ã£o da MÃ£o",
-    "openingHand": "VocÃª estÃ¡ abrindo a mÃ£o",
-    "facingRaise": "VocÃª estÃ¡ enfrentando um raise prÃ©-flop",
-    "facing3bet": "VocÃª estÃ¡ enfrentando um 3-Bet",
-    "defendingBB": "VocÃª estÃ¡ defendendo o Big Blind",
-    "defendingSB": "VocÃª estÃ¡ no Small Blind, enfrentando raise",
-    "completeSB": "VocÃª estÃ¡ completando o Small Blind",
-    "openBB": "VocÃª estÃ¡ abrindo do Big Blind",
-    "facingBet": "VocÃª estÃ¡ enfrentando uma aposta",
-    "checkBet": "Sua vez â€” bet ou check",
-    "betting": "VocÃª estÃ¡ apostando no pote",
-    "actingFirst": "VocÃª estÃ¡ atuando primeiro",
-    "aiNote": "AnÃ¡lise da IA"
+    "label": "Situação da Mão",
+    "openingHand": "Você está abrindo a mão",
+    "facingRaise": "Você está enfrentando um raise pré-flop",
+    "facing3bet": "Você está enfrentando um 3-Bet",
+    "defendingBB": "Você está defendendo o Big Blind",
+    "defendingSB": "Você está no Small Blind, enfrentando raise",
+    "completeSB": "Você está completando o Small Blind",
+    "openBB": "Você está abrindo do Big Blind",
+    "facingBet": "Você está enfrentando uma aposta",
+    "checkBet": "Sua vez — bet ou check",
+    "betting": "Você está apostando no pote",
+    "actingFirst": "Você está atuando primeiro",
+    "aiNote": "Análise da IA"
   },
   "heroCards": "Suas cartas",
   "board": "Board",
-  "noCards": "Cartas nÃ£o disponÃ­veis",
+  "noCards": "Cartas não disponíveis",
   "pressure": {
-    "toggle": "Modo PressÃ£o",
-    "desc": "30 segundos por decisÃ£o. Erro ou timeout zera o streak.",
-    "timedOut": "Tempo esgotado â€” fold automÃ¡tico",
+    "toggle": "Modo Pressão",
+    "desc": "30 segundos por decisão. Erro ou timeout zera o streak.",
+    "timedOut": "Tempo esgotado — fold automático",
     "streakLabel": "Streak final"
   }
 }

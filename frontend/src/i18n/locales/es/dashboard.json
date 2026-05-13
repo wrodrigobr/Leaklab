@@ -1,48 +1,48 @@
-﻿{
-  "eyebrow": "SesiÃ³n sincronizada",
+{
+  "eyebrow": "Sesión sincronizada",
   "eyebrowEmpty": "Importa torneos para comenzar",
   "title": "Dashboard",
   "titleDefault": "Dashboard",
-  "subtitle": "Monitorea el rendimiento, revisa leaks y sigue tu evoluciÃ³n tÃ©cnica torneo a torneo.",
+  "subtitle": "Monitorea el rendimiento, revisa leaks y sigue tu evolución técnica torneo a torneo.",
   "kpis": {
     "roi": "ROI Neto",
-    "roiTooltip": "Retorno acumulado sobre la inversiÃ³n. ROI positivo significa que estÃ¡s ganando por encima del buy-in promedio. Referencia: jugadores regulares consistentes se sitÃºan entre +20% y +80% en MTTs.",
+    "roiTooltip": "Retorno acumulado sobre la inversión. ROI positivo significa que estás ganando por encima del buy-in promedio. Referencia: jugadores regulares consistentes se sitúan entre +20% y +80% en MTTs.",
     "roiDelta": "{{value}}% total",
     "itm": "Frecuencia ITM",
     "itmHint": "Promedio del field ~18.5%",
-    "itmTooltip": "Porcentaje de torneos en los que terminaste en el dinero. El promedio del field es ~18%. Por encima del 22% sugiere juego sÃ³lido o conservador; por debajo puede indicar eliminaciones tempranas.",
-    "standard": "% EstÃ¡ndar",
+    "itmTooltip": "Porcentaje de torneos en los que terminaste en el dinero. El promedio del field es ~18%. Por encima del 22% sugiere juego sólido o conservador; por debajo puede indicar eliminaciones tempranas.",
+    "standard": "% Estándar",
     "standardHint": "decisiones dentro del rango",
-    "standardTooltip": "Porcentaje promedio de decisiones clasificadas como 'estÃ¡ndar' (score â‰¤ 0.08). Meta: por encima del 70%. Por debajo del 60% indica errores significativos que cuestan EV real.",
+    "standardTooltip": "Porcentaje promedio de decisiones clasificadas como 'estándar' (score ≤ 0.08). Meta: por encima del 70%. Por debajo del 60% indica errores significativos que cuestan EV real.",
     "events": "Torneos",
     "eventsHint": "{{hands}} manos",
     "eventsHintEmpty": "Importa torneos",
-    "eventsTooltip": "Volumen total de torneos analizados. Muestras menores a 30 torneos pueden tener resultados financieros distorsionados por varianza. El anÃ¡lisis de decisiones es confiable a partir de ~500 manos.",
+    "eventsTooltip": "Volumen total de torneos analizados. Muestras menores a 30 torneos pueden tener resultados financieros distorsionados por varianza. El análisis de decisiones es confiable a partir de ~500 manos.",
     "noData": "Sin datos"
   },
   "recentTournaments": {
     "title": "Torneos recientes",
-    "viewAll": "Ver todos â†’"
+    "viewAll": "Ver todos →"
   },
   "linkCoach": {
-    "message": "Â¿Tienes un coach? Vincula tu perfil para compartir tu historial.",
+    "message": "¿Tienes un coach? Vincula tu perfil para compartir tu historial.",
     "action": "Vincular"
   },
   "aiConfidence": {
     "title": "Confianza de la IA",
-    "tooltip": "Indica la fiabilidad de los anÃ¡lisis basados en el volumen de datos. Cuantos mÃ¡s torneos se importen, mÃ¡s precisas serÃ¡n las recomendaciones de leaks y el plan de estudio.",
+    "tooltip": "Indica la fiabilidad de los análisis basados en el volumen de datos. Cuantos más torneos se importen, más precisas serán las recomendaciones de leaks y el plan de estudio.",
     "active": "activo",
     "noData": "sin datos",
     "summary": "{{count}} torneos analizados. Volumen suficiente para sugerir ajustes confiables.",
-    "empty": "Importa torneos para activar el anÃ¡lisis de confianza de la IA."
+    "empty": "Importa torneos para activar el análisis de confianza de la IA."
   },
   "leaks": {
-    "tooltip": "Los errores mÃ¡s frecuentes y costosos detectados en tu historial. Cada leak representa un patrÃ³n de decisiÃ³n subÃ³ptimo recurrente â€” corregirlos tiene impacto directo en tu ROI.",
+    "tooltip": "Los errores más frecuentes y costosos detectados en tu historial. Cada leak representa un patrón de decisión subóptimo recurrente — corregirlos tiene impacto directo en tu ROI.",
     "title": "Top Leaks Detectados",
     "study": "Estudiar",
     "studyLabel": "Estudiar leak {{spot}}",
-    "doing": "{{street}} â€” haciendo {{action}} cuando no debÃ­a",
-    "critical": "CrÃ­tico",
+    "doing": "{{street}} — haciendo {{action}} cuando no debía",
+    "critical": "Crítico",
     "evLoss": "{{amount}}/mes",
     "trendImproving": "Mejorando",
     "trendRegressing": "Retrocediendo",
@@ -51,20 +51,20 @@
     "drillMastering": "Dominando"
   },
   "ghost": {
-    "tooltip": "Resumen de tu actividad de drill en los Ãºltimos 30 dÃ­as. Los drills vencidos (rojo) indican spots que necesitan revisiÃ³n â€” ignorarlos aumenta la probabilidad de repetir el mismo error en partidas reales.",
+    "tooltip": "Resumen de tu actividad de drill en los últimos 30 días. Los drills vencidos (rojo) indican spots que necesitan revisión — ignorarlos aumenta la probabilidad de repetir el mismo error en partidas reales.",
     "title": "Ghost Table",
     "spots": "Spots",
     "accuracy": "Acierto",
     "continueStudy": "Continuar entrenando",
-    "noActivity": "Sin entrenamientos en los Ãºltimos 30 dÃ­as.",
+    "noActivity": "Sin entrenamientos en los últimos 30 días.",
     "startNow": "Iniciar drill"
   },
   "bankroll": {
-    "tooltip": "Curva acumulada de tu resultado financiero torneo a torneo. Muestra varianza real y tendencia de largo plazo â€” no solo resultados aislados. Ãštil para decidir ajustes de stake.",
-    "title": "EvoluciÃ³n del bankroll",
-    "demo": "Demo â€¢ importa torneos para ver tus datos",
-    "lastN": "Ãšltimos {{n}} torneos",
-    "ariaLabel": "GrÃ¡fico de evoluciÃ³n del bankroll",
+    "tooltip": "Curva acumulada de tu resultado financiero torneo a torneo. Muestra varianza real y tendencia de largo plazo — no solo resultados aislados. Útil para decidir ajustes de stake.",
+    "title": "Evolución del bankroll",
+    "demo": "Demo • importa torneos para ver tus datos",
+    "lastN": "Últimos {{n}} torneos",
+    "ariaLabel": "Gráfico de evolución del bankroll",
     "p1m": "1M",
     "p3m": "3M",
     "p1y": "1A",
@@ -72,7 +72,7 @@
   },
   "table": {
     "title": "Torneos recientes",
-    "viewAll": "Ver todos â†’",
+    "viewAll": "Ver todos →",
     "demo": "(demo)",
     "hands": "{{n}} manos",
     "analyzed": "Analizado",
@@ -82,7 +82,7 @@
     "hDate": "Fecha",
     "hTournament": "Torneo",
     "hBuyin": "Buy-in",
-    "hPlace": "PosiciÃ³n",
+    "hPlace": "Posición",
     "hResult": "Resultado",
     "hStatus": "Estado"
   },
@@ -90,8 +90,8 @@
     "title": "Calidad de Decisiones",
     "total": "{{n}} decisiones",
     "noData": "Datos insuficientes.",
-    "tooltip": "DistribuciÃ³n de todas tus decisiones por calidad. EstÃ¡ndar = dentro del rango esperado (score â‰¤ 0.08). Marginal = aceptable pero subÃ³ptimo. Los errores reducen tu ROI a largo plazo.",
-    "standard": "EstÃ¡ndar",
+    "tooltip": "Distribución de todas tus decisiones por calidad. Estándar = dentro del rango esperado (score ≤ 0.08). Marginal = aceptable pero subóptimo. Los errores reducen tu ROI a largo plazo.",
+    "standard": "Estándar",
     "marginal": "Marginal",
     "smallMistake": "Error menor",
     "clearMistake": "Error claro"
@@ -99,60 +99,60 @@
   "streets": {
     "title": "Rendimiento por Calle",
     "noData": "Datos insuficientes.",
-    "tooltip": "Tasa de decisiones estÃ¡ndar (score â‰¤ 0.08) por calle. Calles en naranja o rojo indican dÃ³nde se concentran tus leaks."
+    "tooltip": "Tasa de decisiones estándar (score ≤ 0.08) por calle. Calles en naranja o rojo indican dónde se concentran tus leaks."
   },
   "positions": {
-    "title": "Rendimiento por PosiciÃ³n",
+    "title": "Rendimiento por Posición",
     "noData": "Datos insuficientes.",
-    "tooltip": "Tasa de decisiones estÃ¡ndar por posiciÃ³n en la mesa. BTN y CO suelen tener ventaja posicional. BB y SB defensivos son donde la mayorÃ­a de jugadores pierde mÃ¡s equity."
+    "tooltip": "Tasa de decisiones estándar por posición en la mesa. BTN y CO suelen tener ventaja posicional. BB y SB defensivos son donde la mayoría de jugadores pierde más equity."
   },
   "form": {
     "title": "Forma Reciente",
     "tournaments": "{{n}} torneos",
     "noData": "Datos insuficientes.",
     "now": "ahora",
-    "tooltip": "Calidad promedio de decisiones en torneos recientes. Verde = sesiÃ³n estÃ¡ndar, amarillo = marginal, naranja/rojo = sesiÃ³n con errores significativos.",
-    "standard": "EstÃ¡ndar",
+    "tooltip": "Calidad promedio de decisiones en torneos recientes. Verde = sesión estándar, amarillo = marginal, naranja/rojo = sesión con errores significativos.",
+    "standard": "Estándar",
     "marginal": "Marginal",
     "error": "Error",
     "clearError": "Error claro",
     "smallMistake": "Error menor"
   },
   "icm": {
-    "title": "PresiÃ³n ICM",
+    "title": "Presión ICM",
     "noData": "Sin datos ICM disponibles.",
-    "tooltip": "ICM (Independent Chip Model) mide el valor monetario de las fichas en MTTs. Bajo alta presiÃ³n (burbuja, mesa final), los errores cuestan mucho mÃ¡s que el valor nominal de las fichas.",
-    "high": "Alta presiÃ³n",
+    "tooltip": "ICM (Independent Chip Model) mide el valor monetario de las fichas en MTTs. Bajo alta presión (burbuja, mesa final), los errores cuestan mucho más que el valor nominal de las fichas.",
+    "high": "Alta presión",
     "medium": "Media",
     "low": "Baja",
     "none": "Sin ICM"
   },
   "pressure": {
-    "title": "Colapso bajo PresiÃ³n",
-    "tooltip": "Compara la calidad tÃ©cnica de tus decisiones en diferentes niveles de presiÃ³n ICM. Un jugador sÃ³lido mantiene el mismo score independientemente de la presiÃ³n. Delta superior a 8pts indica colapso.",
-    "noData": "Datos insuficientes para anÃ¡lisis de presiÃ³n.",
+    "title": "Colapso bajo Presión",
+    "tooltip": "Compara la calidad técnica de tus decisiones en diferentes niveles de presión ICM. Un jugador sólido mantiene el mismo score independientemente de la presión. Delta superior a 8pts indica colapso.",
+    "noData": "Datos insuficientes para análisis de presión.",
     "none": "Sin ICM",
     "low": "ICM bajo",
     "medium": "ICM medio",
     "high": "ICM alto",
     "collapseDetected": "Colapso",
-    "solid": "SÃ³lido",
-    "collapseSummary": "Score +{{delta}}pts peor bajo alta presiÃ³n ICM â€” enfÃ³cate en spots de burbuja y mesa final.",
-    "stableSummary": "Rendimiento estable â€” solo {{delta}}pts de variaciÃ³n entre presiÃ³n alta y sin presiÃ³n."
+    "solid": "Sólido",
+    "collapseSummary": "Score +{{delta}}pts peor bajo alta presión ICM — enfócate en spots de burbuja y mesa final.",
+    "stableSummary": "Rendimiento estable — solo {{delta}}pts de variación entre presión alta y sin presión."
   },
   "drift": {
     "alertTitle": "Posible drift de confianza detectado",
-    "alertDesc": "{{n}} sesiones recientes con calidad tÃ©cnica por debajo de tu baseline â€” posible tilt o fatiga.",
+    "alertDesc": "{{n}} sesiones recientes con calidad técnica por debajo de tu baseline — posible tilt o fatiga.",
     "dismiss": "Cerrar"
   },
   "level": {
-    "tooltip": "Tu nivel actual basado en el promedio de Standard% de tus torneos recientes. Cada nivel exige un umbral mÃ¡s alto de decisiones correctas â€” avanzar significa que tus errores han disminuido consistentemente.",
+    "tooltip": "Tu nivel actual basado en el promedio de Standard% de tus torneos recientes. Cada nivel exige un umbral más alto de decisiones correctas — avanzar significa que tus errores han disminuido consistentemente.",
     "title": "Mi Nivel",
     "noData": "Importa al menos 5 torneos para calcular tu nivel.",
     "tournament_one": "{{count}} torneo",
     "tournament_other": "{{count}} torneos",
     "progress": "{{pct}}% del camino a {{next}}",
-    "maxLevel": "Nivel mÃ¡ximo alcanzado",
+    "maxLevel": "Nivel máximo alcanzado",
     "blockingLeaks": "Leaks que bloquean tu avance",
     "studyLink": "Ver plan de estudio para avanzar",
     "nextAt": "{{next}} en {{pct}}%",
@@ -161,23 +161,23 @@
       "student":  "Estudiante",
       "grinder":  "Grinder",
       "regular":  "Regular",
-      "solid":    "SÃ³lido",
+      "solid":    "Sólido",
       "expert":   "Expert",
       "elite":    "Elite"
     }
   },
   "playerStats": {
     "hands": "{{n}} manos",
-    "soon": "prÃ³ximamente",
+    "soon": "próximamente",
     "noStats": "sin datos",
     "noData": "Importa torneos para calcular tu perfil de juego."
   },
   "dna": {
-    "title": "Perfil EstratÃ©gico",
-    "tooltip": "Firma estratÃ©gica basada en tus patrones de decisiÃ³n reales. Cada eje representa una dimensiÃ³n de tu estilo de juego.",
+    "title": "Perfil Estratégico",
+    "tooltip": "Firma estratégica basada en tus patrones de decisión reales. Cada eje representa una dimensión de tu estilo de juego.",
     "archetype": "Arquetipo detectado",
     "sampleSize": "{{n}} decisiones",
-    "noData": "Importa torneos para calcular tu perfil estratÃ©gico.",
+    "noData": "Importa torneos para calcular tu perfil estratégico.",
     "axes": {
       "aggression": "Agresividad",
       "foldFreq": "Frec. Fold",
@@ -194,88 +194,88 @@
       "Balanced": "Balanced"
     },
     "archetypeDesc": {
-      "TAG": "Selectivo y agresivo al entrar â€” perfil ganador en MTTs regulares.",
-      "LAG": "Juega muchos botes y aplica presiÃ³n â€” efectivo, pero requiere calibraciÃ³n de rango.",
-      "Nit": "Foldea demasiado â€” pierde equity pasivo y es explotado por regulares.",
-      "Calling Station": "Llama demasiado â€” facilita la extracciÃ³n de EV a los oponentes.",
-      "Balanced": "Perfil equilibrado â€” buen control de rango en mÃºltiples posiciones."
+      "TAG": "Selectivo y agresivo al entrar — perfil ganador en MTTs regulares.",
+      "LAG": "Juega muchos botes y aplica presión — efectivo, pero requiere calibración de rango.",
+      "Nit": "Foldea demasiado — pierde equity pasivo y es explotado por regulares.",
+      "Calling Station": "Llama demasiado — facilita la extracción de EV a los oponentes.",
+      "Balanced": "Perfil equilibrado — buen control de rango en múltiples posiciones."
     }
   },
   "empty": {
     "phase": "Phase 01 // Data acquisition",
-    "loading": "Analizando torneoâ€¦",
+    "loading": "Analizando torneo…",
     "errorTitle": "Error al importar",
-    "title": "Inicializa tu base tÃ¡ctica",
-    "loadingDesc": "El HUD se llenarÃ¡ cuando termine el anÃ¡lisis.",
+    "title": "Inicializa tu base táctica",
+    "loadingDesc": "El HUD se llenará cuando termine el análisis.",
     "desc": "Sube tu archivo de historial de manos (PokerStars .txt) para calibrar el HUD y exponer los leaks de tu mesa.",
     "retry": "Intentar de nuevo",
     "import": "Importar Hand History",
     "fileLabel": "Seleccionar archivo de historial de manos",
-    "unlocks": "QuÃ© se desbloquearÃ¡",
-    "modules": "03 mÃ³dulos // esperando datos",
+    "unlocks": "Qué se desbloqueará",
+    "modules": "03 módulos // esperando datos",
     "parseError": "Error al analizar archivo",
-    "m1code": "MÃ“DULO 01",
-    "m1title": "DetecciÃ³n de leaks",
-    "m1desc": "IdentificaciÃ³n automÃ¡tica de patrones sub-Ã³ptimos en tu Ã¡rbol de decisiones, con severidad y pÃ©rdida de EV calculadas mano a mano.",
-    "m2code": "MÃ“DULO 02",
+    "m1code": "MÓDULO 01",
+    "m1title": "Detección de leaks",
+    "m1desc": "Identificación automática de patrones sub-óptimos en tu árbol de decisiones, con severidad y pérdida de EV calculadas mano a mano.",
+    "m2code": "MÓDULO 02",
     "m2title": "Bankroll Guard",
-    "m2desc": "Seguimiento de varianza y grÃ¡fico de evoluciÃ³n del bankroll torneo a torneo, para decisiones de stake con confianza.",
-    "m3code": "MÃ“DULO 03",
+    "m2desc": "Seguimiento de varianza y gráfico de evolución del bankroll torneo a torneo, para decisiones de stake con confianza.",
+    "m3code": "MÓDULO 03",
     "m3title": "Coach Neural",
-    "m3desc": "AnÃ¡lisis conversacional de la IA con tus datos reales: rangos, ICM, leaks y plan de estudio personalizado."
+    "m3desc": "Análisis conversacional de la IA con tus datos reales: rangos, ICM, leaks y plan de estudio personalizado."
   },
   "leakCausalMap": {
-    "tooltip": "Visualiza quÃ© leaks co-ocurren en las mismas manos o sesiones. Las lÃ­neas mÃ¡s gruesas indican mayor correlaciÃ³n â€” cuando dos leaks aparecen juntos, generalmente comparten una causa raÃ­z comÃºn.",
+    "tooltip": "Visualiza qué leaks co-ocurren en las mismas manos o sesiones. Las líneas más gruesas indican mayor correlación — cuando dos leaks aparecen juntos, generalmente comparten una causa raíz común.",
     "title": "Mapa Causal de Leaks",
     "aria": "Grafo causal de leaks",
     "coOccurs": "Co-ocurre con",
-    "clearSelection": "limpiar selecciÃ³n",
-    "thicknessCorr": "grosor = correlaciÃ³n",
+    "clearSelection": "limpiar selección",
+    "thicknessCorr": "grosor = correlación",
     "severity": {
-      "critical": "crÃ­tico",
+      "critical": "crítico",
       "moderate": "moderado",
       "minor": "leve"
     }
   },
   "career": {
-    "tooltip": "Proyecta cuÃ¡ndo alcanzarÃ¡s cada nivel basÃ¡ndose en tu curva real de mejora. La lÃ­nea punteada es una estimaciÃ³n â€” no una garantÃ­a. El principal valor es ver quÃ© leak estÃ¡ bloqueando tu prÃ³ximo nivel.",
+    "tooltip": "Proyecta cuándo alcanzarás cada nivel basándose en tu curva real de mejora. La línea punteada es una estimación — no una garantía. El principal valor es ver qué leak está bloqueando tu próximo nivel.",
     "title": "Trayectoria de Carrera",
-    "eyebrow": "ProyecciÃ³n de Carrera",
-    "noData": "Importa al menos 5 torneos para generar tu proyecciÃ³n de carrera.",
+    "eyebrow": "Proyección de Carrera",
+    "noData": "Importa al menos 5 torneos para generar tu proyección de carrera.",
     "currentLevel": "Nivel actual",
-    "currentWindow": "Ãºltimos 5 torneos",
-    "nextLevel": "PrÃ³ximo nivel",
+    "currentWindow": "últimos 5 torneos",
+    "nextLevel": "Próximo nivel",
     "monthsAway": "~{{n}} meses",
     "tournamentsAway": "{{n}} torneos",
     "estimatedDate": "Est.: {{date}}",
     "stagnant": "Trayectoria plana",
-    "declining": "Trayectoria en caÃ­da",
+    "declining": "Trayectoria en caída",
     "improving": "+{{v}}% por torneo",
-    "blockingLeaks": "Principales obstÃ¡culos",
+    "blockingLeaks": "Principales obstáculos",
     "milestones": "Hitos proyectados",
     "reachable": "Alcanzable",
-    "notReachable": "Estancado â€” sin tendencia de crecimiento",
+    "notReachable": "Estancado — sin tendencia de crecimiento",
     "already": "Ya alcanzado",
     "perMonth": "{{n}} torneos/mes",
-    "projection": "ProyecciÃ³n"
+    "projection": "Proyección"
   }
   ,"cognitiveFailure": {
-    "tooltip": "Detecta patrones emocionales que afectan la calidad de decisiones en secuencia â€” por ejemplo, volverse demasiado agresivo justo despuÃ©s de doblar varias manos seguidas. Identificar el gatillo es el primer paso para corregirlo.",
+    "tooltip": "Detecta patrones emocionales que afectan la calidad de decisiones en secuencia — por ejemplo, volverse demasiado agresivo justo después de doblar varias manos seguidas. Identificar el gatillo es el primer paso para corregirlo.",
     "title": "Patrones Cognitivos",
-    "noData": "Datos insuficientes. Importa mÃ¡s torneos para detectar patrones cognitivos.",
-    "noPatterns": "NingÃºn patrÃ³n cognitivo detectado. Tu juego es cognitivamente consistente.",
+    "noData": "Datos insuficientes. Importa más torneos para detectar patrones cognitivos.",
+    "noPatterns": "Ningún patrón cognitivo detectado. Tu juego es cognitivamente consistente.",
     "decisions": "{{count}} decisiones",
     "patterns": {
       "revenge_aggression": "Agresividad Reactiva",
       "fear_folding": "Fold por Miedo",
       "sunk_cost": "Costo Hundido",
       "entitlement_tilt": "Tilt por Complacencia",
-      "compensation_call": "Call de CompensaciÃ³n"
+      "compensation_call": "Call de Compensación"
     },
     "descriptions": {
       "revenge_aggression": "Apuestas agresivas incorrectas tras una secuencia de folds correctos",
       "fear_folding": "Folds incorrectos tras sufrir errores agresivos consecutivos",
-      "sunk_cost": "Calls malos en mÃºltiples streets de la misma mano (persiguiendo el pot)",
+      "sunk_cost": "Calls malos en múltiples streets de la misma mano (persiguiendo el pot)",
       "entitlement_tilt": "Errores en cascada tras una larga racha de decisiones correctas",
       "compensation_call": "Calls incorrectos en las manos siguientes a un fold correcto de mano fuerte"
     },
@@ -286,15 +286,15 @@
     }
   },
   "strategicTwin": {
-    "title": "Tendencias EstratÃ©gicas",
-    "tooltip": "Identifica los spots (combinaciones de street + acciÃ³n + presiÃ³n ICM) donde tu tasa de error supera al menos un 10% tu promedio personal. Revela hÃ¡bitos costosos invisibles al analizar decisiones aisladas.",
-    "noData": "Importa mÃ¡s torneos para generar tu perfil estratÃ©gico. MÃ­nimo: 30 decisiones analizadas.",
-    "noPatterns": "No se detectaron spots costosos. Sigue jugando para refinar tu anÃ¡lisis.",
+    "title": "Tendencias Estratégicas",
+    "tooltip": "Identifica los spots (combinaciones de street + acción + presión ICM) donde tu tasa de error supera al menos un 10% tu promedio personal. Revela hábitos costosos invisibles al analizar decisiones aisladas.",
+    "noData": "Importa más torneos para generar tu perfil estratégico. Mínimo: 30 decisiones analizadas.",
+    "noPatterns": "No se detectaron spots costosos. Sigue jugando para refinar tu análisis.",
     "avgLabel": "Error avg:",
     "avgLine": "Tu promedio",
     "vsAvg": "vs promedio",
     "nDecisions": "{{n}} decisiones",
-    "costlyTitle": "Spots mÃ¡s costosos",
+    "costlyTitle": "Spots más costosos",
     "actions": {
       "jam":   "Shove",
       "fold":  "Fold",
@@ -313,7 +313,7 @@
       "low":      "ICM bajo",
       "medium":   "ICM medio",
       "high":     "ICM alto",
-      "critical": "ICM crÃ­tico"
+      "critical": "ICM crítico"
     }
   }
 }

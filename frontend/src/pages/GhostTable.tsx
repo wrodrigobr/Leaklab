@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
+import { HudHeader } from "@/components/hud/HudHeader";
 import { AiText } from "@/components/ui/AiText";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { drill } from "@/lib/api";
@@ -140,7 +141,7 @@ function StatTile({ value, label }: { value: string; label: string }) {
 // ── Drill → ReplayStep adapter ────────────────────────────────────────────────
 
 function buildDrillStep(spot: DrillSpot): { step: ReplayStep; hero: string; heroCards: string[]; bb: number } {
-  const HERO = 'Você';
+  const HERO = 'Hero';
   const bb   = spot.level_bb ?? 100;
   const heroStack = Math.round((spot.stack_bb ?? 20) * bb);
   const numP = Math.max(2, Math.min(6, spot.num_players ?? 6));
@@ -316,6 +317,205 @@ export default function GhostTable() {
 
   const accuracy = sessionTotal > 0 ? Math.round((sessionCorrect / sessionTotal) * 100) : 0;
 
+  // ── Full-screen layout: active + result ─────────────────────────────────────
+  if (current && (phase === "active" || (phase === "result" && lastResult))) {
+    const sit    = getSituation(current);
+    const style  = SIT_STYLES[sit.variant];
+    const SitIcon = style.icon;
+    const { step: drillStep, hero: drillHero, heroCards: drillCards, bb: drillBb } = buildDrillStep(current);
+    if (phase === "result") (drillStep as unknown as Record<string, unknown>).seat = undefined;
+
+    const progressBar = (
+      <div className="flex items-center gap-3 shrink-0">
+        <span className="font-mono text-xs text-muted-foreground shrink-0">{t("spot", { n: index + 1, total: spots.length })}</span>
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+          <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${((index + 1) / spots.length) * 100}%` }} />
+        </div>
+        {current.days_overdue != null && current.days_overdue > 0 && (
+          <span className={cn("flex items-center gap-1 font-mono text-[10px] shrink-0", current.days_overdue > 7 ? "text-destructive" : "text-warning")}>
+            <Clock className="size-3" aria-hidden />{current.days_overdue}d
+          </span>
+        )}
+        {pressureMode && streak > 0 && (
+          <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-amber-400 shrink-0">
+            <Flame className="size-3" aria-hidden />{streak}
+          </span>
+        )}
+        <span className="font-mono text-xs text-muted-foreground shrink-0">{sessionCorrect}/{sessionTotal}</span>
+        {pressureMode && <TimerRing timeLeft={timeLeft} />}
+      </div>
+    );
+
+    const sitStrip = (
+      <div className={cn("flex items-center gap-x-3 gap-y-1 flex-wrap rounded-lg border px-3 py-2 shrink-0", style.box)}>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <SitIcon className={cn("size-3.5", style.label)} aria-hidden />
+          <span className={cn("font-mono text-[10px] font-bold uppercase tracking-wide", style.label)}>{t(`situation.${sit.key}`)}</span>
+        </div>
+        <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap font-mono text-[10px] text-muted-foreground">
+          <span className="font-semibold text-foreground">{t(`street.${current.street}`)}</span>
+          {current.position    && <span>{current.position}</span>}
+          {current.stack_bb != null && <span>Stack: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
+          {current.m_ratio   != null && <span>M: <span className="text-foreground">{current.m_ratio.toFixed(1)}</span></span>}
+          {current.pot_size  != null && current.pot_size  > 0 && <span>Pot: <span className="text-foreground">{current.pot_size.toFixed(1)}bb</span></span>}
+          {current.facing_bet != null && current.facing_bet > 0 && (
+            <span className={sit.variant === "aggression" ? "text-warning font-semibold" : ""}>
+              Facing: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
+            </span>
+          )}
+          {!!current.is_3bet && <span className="font-semibold text-warning">{t("context.is3bet")}</span>}
+          {current.icm_pressure && current.icm_pressure !== "none" && (
+            <span className={cn({ "text-destructive font-semibold": current.icm_pressure === "high", "text-warning font-semibold": current.icm_pressure === "medium", "text-primary font-semibold": current.icm_pressure === "low" })}>
+              ICM {t(`icmLabel.${current.icm_pressure}`)}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
+        <HudHeader />
+        <div className="flex-1 min-h-0 flex gap-3 px-3 md:px-5 pt-2 pb-3 mx-auto w-full max-w-[1600px]">
+
+          {/* Table column */}
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
+            <div className="lg:hidden">{progressBar}</div>
+            {/* Table */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="h-full mx-auto aspect-[16/10] max-w-full">
+                <PokerTableV3 step={drillStep} hero={drillHero} heroCards={drillCards} bb={drillBb} betUnit="bb" />
+              </div>
+            </div>
+            {/* Mobile: actions/next below table */}
+            <div className="lg:hidden shrink-0 space-y-2">
+              {phase === "active" && (
+                <>
+                  {timedOut && (
+                    <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2">
+                      <Timer className="size-3.5 text-destructive shrink-0" /><span className="font-mono text-xs font-semibold text-destructive">{t("pressure.timedOut")}</span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-3 gap-2">
+                    {ACTION_KEYS.map(action => (
+                      <button key={action} onClick={() => submitAction(action)} disabled={submitting || timedOut}
+                        className="min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-60 transition-all active:scale-95">
+                        {t(`actions.${action}`)}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {phase === "result" && lastResult && (
+                <button onClick={nextSpot} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors">
+                  {t("next")} <ArrowRight className="size-4" aria-hidden />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Side panel — desktop only */}
+          <aside className="hidden lg:flex w-64 shrink-0 flex-col gap-3 overflow-y-auto pb-2">
+            {progressBar}
+            {sitStrip}
+            <p className="font-mono text-[10px] text-muted-foreground shrink-0">
+              {t("result.originalMistake", { action: formatAction(current.action_taken).toUpperCase(), score: current.score.toFixed(2) })}
+            </p>
+
+            {/* Active: action buttons */}
+            {phase === "active" && (
+              <>
+                {timedOut && (
+                  <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 shrink-0">
+                    <Timer className="size-3.5 text-destructive shrink-0" /><span className="font-mono text-xs font-semibold text-destructive">{t("pressure.timedOut")}</span>
+                  </div>
+                )}
+                <p className="text-center text-sm font-semibold text-foreground shrink-0">{t("question")}</p>
+                <div className="grid grid-cols-2 gap-2 shrink-0">
+                  {ACTION_KEYS.map(action => (
+                    <button key={action} onClick={() => submitAction(action)} disabled={submitting || timedOut}
+                      className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-60 transition-all active:scale-95">
+                      {t(`actions.${action}`)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Result: outcome panel */}
+            {phase === "result" && lastResult && (
+              <div className="flex flex-col gap-3 min-h-0 overflow-y-auto">
+                <div className={cn("flex items-center gap-3 rounded-xl border p-4 shrink-0", lastResult.is_correct ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5")}>
+                  {lastResult.is_correct ? <CheckCircle2 className="size-8 shrink-0 text-success" aria-hidden /> : <XCircle className="size-8 shrink-0 text-destructive" aria-hidden />}
+                  <div className="flex-1 min-w-0">
+                    <p className={cn("font-bold", lastResult.is_correct ? "text-success" : "text-destructive")}>
+                      {lastResult.is_correct ? t("result.correct") : t("result.wrong")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}</p>
+                  </div>
+                  {pressureMode && streak > 0 && (
+                    <div className="flex items-center gap-1 font-mono text-sm font-bold text-amber-400 shrink-0">
+                      <Flame className="size-4" aria-hidden />{streak}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 shrink-0">
+                  <div className="rounded-lg border border-border bg-hud-surface p-3">
+                    <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("result.yourAction", { action: "" }).split(":")[0]}</p>
+                    <p className="mt-1 font-mono text-lg font-bold text-foreground">{formatAction(lastResult.new_action).toUpperCase()}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-hud-surface p-3">
+                    <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
+                    <p className="mt-1 font-mono text-lg font-bold text-foreground">{formatAction(lastResult.best_action).toUpperCase()}</p>
+                  </div>
+                </div>
+
+                <div className={cn("flex items-center justify-between rounded-lg border p-3 shrink-0", lastResult.delta < 0 ? "border-success/30 bg-success/5" : "border-border bg-hud-surface")}>
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp className="size-3.5 text-muted-foreground" aria-hidden />
+                    <span className="text-xs text-muted-foreground">{lastResult.delta < 0 ? t("result.improvement", { delta: Math.abs(lastResult.delta).toFixed(3) }) : t("result.noImprovement")}</span>
+                  </div>
+                  <span className={cn("font-mono text-sm font-bold tabular-nums", lastResult.delta < 0 ? "text-success" : "text-destructive")}>
+                    {lastResult.delta > 0 ? "+" : ""}{lastResult.delta.toFixed(3)}
+                  </span>
+                </div>
+
+                {lastResult.srs_interval_days && (
+                  <div className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 shrink-0", lastResult.is_correct ? "border-primary/30 bg-primary/5 text-primary" : "border-warning/30 bg-warning/5 text-warning")}>
+                    <Clock className="size-3.5 shrink-0" aria-hidden />
+                    <span className="font-mono text-[10px]">
+                      {lastResult.is_correct ? `${t("next")} em ${lastResult.srs_interval_days}d` : `Resetado — em ${lastResult.srs_interval_days}d`}
+                    </span>
+                  </div>
+                )}
+
+                {analysis ? (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-primary">{t("result.engineNote")}</p>
+                    <AiText>{analysis}</AiText>
+                  </div>
+                ) : (
+                  <button onClick={requestAnalysis} disabled={analysisLoading}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-hud-surface px-4 py-2.5 font-mono text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 disabled:opacity-60 transition-colors shrink-0">
+                    {analysisLoading ? <><Loader2 className="size-3.5 animate-spin" aria-hidden />{t("result.analysisLoading")}</> : <><BookOpen className="size-3.5" aria-hidden />{t("result.requestAnalysis")}</>}
+                  </button>
+                )}
+
+                <button onClick={nextSpot}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors shrink-0">
+                  {t("next")} <ArrowRight className="size-4" aria-hidden />
+                </button>
+              </div>
+            )}
+          </aside>
+
+        </div>
+      </div>
+    );
+  }
+
+  // ── Normal layout: intro / loading / done ─────────────────────────────────
   return (
     <HudLayout eyebrow="Ghost Table" title={t("title")} description={t("subtitle")}>
 
