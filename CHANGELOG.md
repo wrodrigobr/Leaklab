@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.98.2] — 2026-05-12 — feat(GTO-007): painel lateral no Replayer — heurística + GTO
+
+### Added
+- **Painel lateral direito** no Replayer standalone (`leaklab-replayer-v3.html`): aparece em toda ação do herói, desliza com `transition: width .25s ease`
+- **Heuristic Card**: pré-flop mostra scenario/in-range/quality badges + range% + ações recomendadas; pós-flop mostra equity bar, pot odds, draw profile badge, M-ratio e ICM pressure
+- **GTO Card**: verdict banner colorido (ok/mixed/bad), GTO rec vs ação do jogador, EV diff, barras de frequência de estratégia com marcação `←` na ação do jogador
+- Funções JS: `gtoActionLabel`, `gtoVerdictClass`, `gtoVerdictText`, `isPlayerAct`, `stratFillClass`, `stratLblClass`, `rpRenderGtoCard`, `rpRenderHeuristicCard`, `rpRenderSidePanel`
+- Demo data atualizado para exibir os dois cards sem API real
+
+---
+
 ## [v0.98.1] — 2026-05-12 — fix(GTO-006): endpoint /decisions/<id>/gto — board truncation + hash fallbacks
 
 ### Fixed

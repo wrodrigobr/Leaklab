@@ -34,14 +34,18 @@ html,body{
   font-size:.62rem;font-family:'Share Tech Mono',monospace;transition:.15s}
 .rp-close:hover{border-color:#fff;color:#fff}
 
-/* ── Table container ── */
+/* ── Table row (mesa + painel lateral) ── */
 .rp-table{
-  flex:1;min-height:0;position:relative;overflow:hidden;
-  /* dark space background */
+  flex:1;min-height:0;display:flex;flex-direction:row;overflow:hidden
+}
+
+/* ── Canvas: mesa de poker (ocupa o espaço restante) ── */
+.rp-canvas{
+  flex:1;min-width:0;position:relative;overflow:hidden;
   background:radial-gradient(ellipse at 50% 45%,#14223a 0%,#080f1c 100%)
 }
 
-/* Layer 1 — tilted table background (felt + rail only) */
+/* Layer 1 — tilted table background */
 .rp-bg-layer{
   position:absolute;inset:0;
   perspective:1100px;perspective-origin:50% 0%
@@ -52,13 +56,13 @@ html,body{
   transform-origin:50% 60%
 }
 
-/* Layer 2 — flat content SVG (seats, board, pot, chips) */
+/* Layer 2 — flat content SVG */
 #rp-svg{
   position:absolute;inset:0;
   width:100%;height:100%;display:block
 }
 
-/* Overlays (no tilt) */
+/* Overlays */
 .rp-badge{
   position:absolute;top:8px;left:50%;transform:translateX(-50%);
   background:rgba(0,0,0,.78);border:1px solid var(--rp-gold);border-radius:20px;
@@ -67,16 +71,125 @@ html,body{
   opacity:0;transition:.3s;z-index:20
 }
 .rp-badge.show{opacity:1}
-.rp-err-pop{
-  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
-  background:#160606;border:1px solid var(--rp-red);border-radius:10px;
-  padding:12px 16px;width:270px;z-index:30;display:none;font-size:.76rem
+
+/* ── Painel lateral direito ── */
+.rp-side{
+  width:0;flex-shrink:0;overflow:hidden;
+  background:#0d1520;border-left:1px solid rgba(255,255,255,.06);
+  transition:width .25s ease;
+  display:flex;flex-direction:column;
 }
-.rp-err-pop.show{display:block;animation:rpPop .2s ease}
-.rp-err-title{color:var(--rp-red);font-weight:700;font-size:.82rem;margin-bottom:5px}
-.rp-err-body{color:#d4a0a0;line-height:1.5}
-.rp-err-best{margin-top:7px;color:var(--rp-green);font-weight:600}
-@keyframes rpPop{from{opacity:0;transform:translateX(-50%) scale(.92)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+.rp-side.visible{width:268px}
+.rp-side-inner{
+  width:268px;height:100%;overflow-y:auto;overflow-x:hidden;
+  padding:10px 10px 16px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.rp-side-inner::-webkit-scrollbar{width:4px}
+.rp-side-inner::-webkit-scrollbar-track{background:transparent}
+.rp-side-inner::-webkit-scrollbar-thumb{background:#1e2d40;border-radius:2px}
+
+/* ── Card base ── */
+.rp-card{
+  border-radius:8px;border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.03);overflow:hidden
+}
+.rp-card-hdr{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.06);
+}
+.rp-card-hdr-icon{font-size:.7rem;opacity:.5}
+.rp-card-hdr-lbl{
+  font-family:'Share Tech Mono',monospace;font-size:.62rem;
+  text-transform:uppercase;letter-spacing:.15em;color:rgba(255,255,255,.35)
+}
+.rp-card-hdr-sub{
+  margin-left:auto;font-family:'Share Tech Mono',monospace;
+  font-size:.56rem;color:rgba(255,255,255,.2)
+}
+.rp-card-body{padding:8px 10px;display:flex;flex-direction:column;gap:7px}
+
+/* ── Verdict badge ── */
+.rp-verdict{
+  border-radius:6px;border:1px solid;padding:7px 10px;
+  display:flex;flex-direction:column;gap:4px
+}
+.rp-verdict.ok   {background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.28);color:#34d399}
+.rp-verdict.mixed{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.28);color:#fbbf24}
+.rp-verdict.bad  {background:rgba(229,32,32,.08); border-color:rgba(229,32,32,.28); color:#f87171}
+.rp-verdict-label{font-family:'Share Tech Mono',monospace;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.rp-verdict-row{display:flex;align-items:flex-end;justify-content:space-between;gap:6px}
+.rp-verdict-col{}
+.rp-verdict-sub{font-family:'Share Tech Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.3);margin-bottom:2px}
+.rp-verdict-act{font-family:'Share Tech Mono',monospace;font-size:1.1rem;font-weight:700;color:#f0ede8;line-height:1.1}
+.rp-verdict-act.ok   {color:#34d399}
+.rp-verdict-act.mixed{color:#fbbf24}
+.rp-verdict-act.bad  {color:#f87171}
+.rp-verdict-evdiff{font-family:'Share Tech Mono',monospace;font-size:.65rem;margin-top:1px}
+.rp-verdict-evdiff.ok {color:rgba(52,211,153,.7)}
+.rp-verdict-evdiff.bad{color:rgba(248,113,113,.7)}
+
+/* ── Strategy bars ── */
+.rp-strat{display:flex;flex-direction:column;gap:3px}
+.rp-strat-row{display:flex;align-items:center;gap:5px}
+.rp-strat-lbl{
+  font-family:'Share Tech Mono',monospace;font-size:.62rem;
+  width:60px;flex-shrink:0;font-weight:600;color:rgba(255,255,255,.45)
+}
+.rp-strat-lbl.player{color:#f87171}
+.rp-strat-lbl.top   {color:#f0ede8}
+.rp-strat-lbl.both  {color:#34d399}
+.rp-strat-bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.rp-strat-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.rp-strat-fill.c-top   {background:#3b82f6}
+.rp-strat-fill.c-both  {background:#10b981}
+.rp-strat-fill.c-player{background:#e52020}
+.rp-strat-fill.c-fold  {background:#555}
+.rp-strat-fill.c-check {background:#38bdf8}
+.rp-strat-fill.c-call  {background:#0ea5e9}
+.rp-strat-fill.c-jam   {background:#dc2626}
+.rp-strat-fill.c-other {background:#7c3aed}
+.rp-strat-pct{
+  font-family:'Share Tech Mono',monospace;font-size:.62rem;
+  width:24px;text-align:right;flex-shrink:0;color:rgba(255,255,255,.35)
+}
+.rp-strat-pct.player{color:#f87171;font-weight:700}
+.rp-strat-pct.top   {color:#f0ede8;font-weight:700}
+.rp-strat-pct.both  {color:#34d399;font-weight:700}
+.rp-strat-arrow{font-size:.6rem;color:rgba(255,255,255,.2);width:8px;flex-shrink:0}
+
+/* ── Context rows ── */
+.rp-ctx-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+.rp-ctx-row{display:flex;align-items:center;gap:4px}
+.rp-ctx-lbl{font-family:'Share Tech Mono',monospace;font-size:.56rem;text-transform:uppercase;
+  letter-spacing:.08em;color:rgba(255,255,255,.25)}
+.rp-ctx-val{font-family:'Share Tech Mono',monospace;font-size:.62rem;color:rgba(255,255,255,.6)}
+
+/* ── Heuristic rows ── */
+.rp-metric-row{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.rp-metric-lbl{font-family:'Share Tech Mono',monospace;font-size:.6rem;
+  text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.3)}
+.rp-metric-val{font-family:'Share Tech Mono',monospace;font-size:.72rem;font-weight:700;color:#f0ede8}
+.rp-metric-bar{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.08);
+  overflow:hidden;margin:0 6px}
+.rp-metric-fill{height:100%;border-radius:2px}
+
+/* ── Inline badges ── */
+.rp-badge-inline{
+  display:inline-block;padding:2px 7px;border-radius:4px;border:1px solid;
+  font-family:'Share Tech Mono',monospace;font-size:.6rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em
+}
+.rp-badge-inline.green {background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:#34d399}
+.rp-badge-inline.amber {background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);color:#fbbf24}
+.rp-badge-inline.red   {background:rgba(229,32,32,.12); border-color:rgba(229,32,32,.35); color:#f87171}
+.rp-badge-inline.blue  {background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.35);color:#60a5fa}
+.rp-badge-inline.muted {background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.4)}
+.rp-section-lbl{
+  font-family:'Share Tech Mono',monospace;font-size:.56rem;text-transform:uppercase;
+  letter-spacing:.12em;color:rgba(255,255,255,.2);margin-bottom:3px
+}
+.rp-divider{height:1px;background:rgba(255,255,255,.05);margin:2px 0}
 
 /* ── Controls (black bar) ── */
 .rp-ctrl{flex-shrink:0;background:var(--rp-ctrl);border-top:1px solid rgba(255,255,255,.07)}
@@ -130,74 +243,71 @@ html,body{
     <button class="rp-close" onclick="window.close()">✕ Fechar</button>
   </div>
 
-  <div class="rp-table" id="rp-table">
-    <!-- Layer 1: TILTED background (mesa apenas) -->
-    <div class="rp-bg-layer">
-      <svg id="rp-bg-svg" viewBox="0 0 1120 630"
+  <div class="rp-table">
+    <!-- Mesa de poker -->
+    <div class="rp-canvas" id="rp-canvas">
+      <!-- Layer 1: TILTED background -->
+      <div class="rp-bg-layer">
+        <svg id="rp-bg-svg" viewBox="0 0 1120 630"
+             xmlns="http://www.w3.org/2000/svg"
+             preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <radialGradient id="bg-felt" cx="48%" cy="38%" r="60%">
+              <stop offset="0%" stop-color="#42b85a"/>
+              <stop offset="48%" stop-color="#2d9242"/>
+              <stop offset="100%" stop-color="#1c6028"/>
+            </radialGradient>
+            <radialGradient id="bg-rail" cx="50%" cy="25%" r="64%">
+              <stop offset="0%" stop-color="#252525"/>
+              <stop offset="100%" stop-color="#0c0c0c"/>
+            </radialGradient>
+            <radialGradient id="bg-vig" cx="50%" cy="50%" r="62%">
+              <stop offset="36%" stop-color="rgba(0,0,0,0)"/>
+              <stop offset="100%" stop-color="rgba(0,0,0,0.55)"/>
+            </radialGradient>
+            <filter id="bg-shadow" x="-25%" y="-25%" width="150%" height="150%">
+              <feDropShadow dx="0" dy="16" stdDeviation="28" flood-color="#000" flood-opacity=".95"/>
+            </filter>
+          </defs>
+          <ellipse cx="562" cy="328" rx="445" ry="245" fill="#000" filter="url(#bg-shadow)"/>
+          <ellipse cx="560" cy="315" rx="442" ry="240" fill="url(#bg-rail)"/>
+          <ellipse cx="560" cy="315" rx="442" ry="240" fill="none" stroke="#2c2c2c" stroke-width="1.2"/>
+          <ellipse cx="560" cy="315" rx="441" ry="239" fill="none" stroke="#080808" stroke-width="2.5"/>
+          <ellipse cx="560" cy="315" rx="418" ry="222" fill="none" stroke="#1a1a1a" stroke-width="5"/>
+          <ellipse cx="560" cy="315" rx="418" ry="222" fill="none" stroke="#2a2a2a" stroke-width=".8"/>
+          <ellipse cx="560" cy="315" rx="414" ry="218" fill="url(#bg-felt)"/>
+          <ellipse cx="560" cy="315" rx="403" ry="207" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1.5"/>
+          <ellipse cx="560" cy="315" rx="414" ry="218" fill="url(#bg-vig)"/>
+          <text x="560" y="326" text-anchor="middle" fill="rgba(255,255,255,0.022)"
+                font-family="Inter,sans-serif" font-size="58" font-weight="800" letter-spacing="16">LEAKLAB</text>
+        </svg>
+      </div>
+
+      <!-- Layer 2: FLAT content -->
+      <svg id="rp-svg" viewBox="0 0 1120 630"
            xmlns="http://www.w3.org/2000/svg"
-           preserveAspectRatio="xMidYMid meet">
+           preserveAspectRatio="xMidYMid meet"
+           style="overflow:visible">
         <defs>
-          <radialGradient id="bg-felt" cx="48%" cy="38%" r="60%">
-            <stop offset="0%" stop-color="#42b85a"/>
-            <stop offset="48%" stop-color="#2d9242"/>
-            <stop offset="100%" stop-color="#1c6028"/>
-          </radialGradient>
-          <radialGradient id="bg-rail" cx="50%" cy="25%" r="64%">
-            <stop offset="0%" stop-color="#252525"/>
-            <stop offset="100%" stop-color="#0c0c0c"/>
-          </radialGradient>
-          <radialGradient id="bg-vig" cx="50%" cy="50%" r="62%">
-            <stop offset="36%" stop-color="rgba(0,0,0,0)"/>
-            <stop offset="100%" stop-color="rgba(0,0,0,0.55)"/>
-          </radialGradient>
-          <filter id="bg-shadow" x="-25%" y="-25%" width="150%" height="150%">
-            <feDropShadow dx="0" dy="16" stdDeviation="28" flood-color="#000" flood-opacity=".95"/>
+          <filter id="rp-cshadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feDropShadow dx="1" dy="2" stdDeviation="3" flood-color="#000" flood-opacity=".55"/>
           </filter>
         </defs>
-        <!-- Outer glow/shadow -->
-        <ellipse cx="562" cy="328" rx="445" ry="245" fill="#000" filter="url(#bg-shadow)"/>
-        <!-- Rail outer body -->
-        <ellipse cx="560" cy="315" rx="442" ry="240" fill="url(#bg-rail)"/>
-        <!-- Rail outer highlight (top arc brighter = light from above) -->
-        <ellipse cx="560" cy="315" rx="442" ry="240" fill="none" stroke="#2c2c2c" stroke-width="1.2"/>
-        <ellipse cx="560" cy="315" rx="441" ry="239" fill="none" stroke="#080808" stroke-width="2.5"/>
-        <!-- Rail inner edge -->
-        <ellipse cx="560" cy="315" rx="418" ry="222" fill="none" stroke="#1a1a1a" stroke-width="5"/>
-        <ellipse cx="560" cy="315" rx="418" ry="222" fill="none" stroke="#2a2a2a" stroke-width=".8"/>
-        <!-- Felt -->
-        <ellipse cx="560" cy="315" rx="414" ry="218" fill="url(#bg-felt)"/>
-        <!-- Felt inner ring (subtle rim) -->
-        <ellipse cx="560" cy="315" rx="403" ry="207" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1.5"/>
-        <!-- Vignette -->
-        <ellipse cx="560" cy="315" rx="414" ry="218" fill="url(#bg-vig)"/>
-        <!-- Watermark -->
-        <text x="560" y="326" text-anchor="middle" fill="rgba(255,255,255,0.022)"
-              font-family="Inter,sans-serif" font-size="58" font-weight="800" letter-spacing="16">LEAKLAB</text>
+        <g id="rp-board"></g>
+        <g id="rp-pot"></g>
+        <g id="rp-seats"></g>
+        <g id="rp-chips"></g>
       </svg>
+
+      <!-- Street badge -->
+      <div class="rp-badge" id="rp-badge"></div>
     </div>
 
-    <!-- Layer 2: FLAT content (seats, board, pot, chips) -->
-    <svg id="rp-svg" viewBox="0 0 1120 630"
-         xmlns="http://www.w3.org/2000/svg"
-         preserveAspectRatio="xMidYMid meet"
-         style="overflow:visible">
-      <defs>
-        <filter id="rp-cshadow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="1" dy="2" stdDeviation="3" flood-color="#000" flood-opacity=".55"/>
-        </filter>
-      </defs>
-      <g id="rp-board"></g>
-      <g id="rp-pot"></g>
-      <g id="rp-seats"></g>
-      <g id="rp-chips"></g>
-    </svg>
-
-    <!-- HTML overlays (flat) -->
-    <div class="rp-badge" id="rp-badge"></div>
-    <div class="rp-err-pop" id="rp-err-pop">
-      <div class="rp-err-title">⚠ Erro detectado</div>
-      <div class="rp-err-body" id="rp-err-body"></div>
-      <div class="rp-err-best" id="rp-err-best"></div>
+    <!-- Painel lateral: heurística + GTO -->
+    <div class="rp-side" id="rp-side">
+      <div class="rp-side-inner" id="rp-side-inner">
+        <!-- preenchido dinamicamente pelo JS -->
+      </div>
     </div>
   </div>
 
@@ -227,11 +337,11 @@ html,body{
 </div>
 
 <script>
-// ── Table geometry (flat SVG, viewBox 1120×630) ───────────────────────────────
-const CX=560, CY=315;         // table center
-const RX_SEAT=448, RY_SEAT=246; // seat pod center radius (on rail edge)
+// ── Table geometry ────────────────────────────────────────────────────────────
+const CX=560, CY=315;
+const RX_SEAT=448, RY_SEAT=246;
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 const SUIT_SYM={s:'♠',h:'♥',d:'♦',c:'♣'};
 const SUIT_COL={s:'#111111',h:'#e50a0a',d:'#e50a0a',c:'#111111'};
 const SPEED_MAP=[2200,1500,1000,550,200];
@@ -239,69 +349,337 @@ const SPEED_LABELS=['0.5×','0.8×','1×','1.5×','3×'];
 const AC_COLORS={folds:'#e52020',calls:'#3aaa52',raises:'#c9a840',bets:'#c9a840',checks:'#5580aa','all-in':'#ff4040'};
 const POS_COLORS={BTN:'#c9a840',BB:'#e52020',SB:'#d47030'};
 
-// Chip denominations — colors chosen to contrast against green felt
-// (25=blue instead of green, which would blend into the table)
 const DENOM=[
-  {val:1000, top:'#c9a84c', side:'#957a34', text:'#1a0a00'}, // muted gold
-  {val:500,  top:'#9b72c0', side:'#70509a', text:'#fff'},    // muted purple
-  {val:100,  top:'#484848', side:'#2c2c2c', text:'#eee'},    // dark grey
-  {val:25,   top:'#5580c0', side:'#3d60a0', text:'#fff'},    // muted blue
-  {val:5,    top:'#b84040', side:'#8c2a2a', text:'#fff'},    // brick red
-  {val:1,    top:'#b0a040', side:'#887830', text:'#333'},    // muted khaki
+  {val:1000, top:'#c9a84c', side:'#957a34', text:'#1a0a00'},
+  {val:500,  top:'#9b72c0', side:'#70509a', text:'#fff'},
+  {val:100,  top:'#484848', side:'#2c2c2c', text:'#eee'},
+  {val:25,   top:'#5580c0', side:'#3d60a0', text:'#fff'},
+  {val:5,    top:'#b84040', side:'#8c2a2a', text:'#fff'},
+  {val:1,    top:'#b0a040', side:'#887830', text:'#333'},
 ];
 
-// Decompose amount into visual chips (max 7, correct denominations, largest at bottom)
 function breakChips(amount){
   amount=Math.round(amount);
   const chips=[];
   for(const d of DENOM){
     const n=Math.floor(amount/d.val);
-    if(n>0){
-      const show=Math.min(n,4);
-      for(let i=0;i<show;i++) chips.push(d);
-      amount-=n*d.val;
-    }
+    if(n>0){const show=Math.min(n,4);for(let i=0;i<show;i++) chips.push(d);amount-=n*d.val;}
     if(chips.length>=7) break;
   }
   if(chips.length===0) chips.push(DENOM[DENOM.length-1]);
   return chips.slice(0,7);
 }
 
-// ── State ────────────────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────────
 let REPLAY=null,rpStep=0,rpPlaying=false,rpTimer=null,rpSpeed=1000;
 let rpShowBB=true,_rpLayout=null,_rpStreetMap={};
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtAmt(v,bb){
   if(rpShowBB){const x=v/bb;return (x<1?x.toFixed(1):Math.round(x))+'BB';}
   return v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+'';
 }
 
-// ── Chip stack — casino-style with ALIGNED side+face spots ───────────────────
-// 12 edge spots (every 30°). Side notches are at the SAME x positions as face
-// spots (width ∝ |cos(a)|), so when chips stack, white stripes align vertically.
+// ── GTO helpers ───────────────────────────────────────────────────────────────
+function gtoActionLabel(k){
+  const MAP={
+    check:'CHECK',call:'CALL',fold:'FOLD',allin:'ALL-IN','all-in':'ALL-IN',
+    bet_33pct:'BET 33%',bet_50pct:'BET 50%',bet_66pct:'BET 66%',
+    bet_75pct:'BET 75%',bet_100pct:'BET POT',bet_125pct:'BET 125%',
+    raise_2x:'RAISE 2×',raise_3x:'RAISE 3×',raise_4x:'RAISE 4×',
+    jam:'ALL-IN',bet:'BET',raise:'RAISE'
+  };
+  if(!k) return '';
+  const key=k.toLowerCase().trim();
+  return MAP[key]||(key.replace(/_/g,' ').toUpperCase());
+}
+
+function gtoVerdictClass(label){
+  if(label==='gto_correct') return 'ok';
+  if(label==='gto_mixed'||label==='gto_minor_deviation') return 'mixed';
+  if(label==='gto_critical') return 'bad';
+  return 'mixed';
+}
+
+function gtoVerdictText(label){
+  if(label==='gto_correct')         return '✓ Dentro da estratégia GTO';
+  if(label==='gto_mixed')            return '~ Ação marginal';
+  if(label==='gto_minor_deviation')  return '~ Desvio menor';
+  if(label==='gto_critical')         return '✗ Desvio crítico do GTO';
+  return '';
+}
+
+// Verifica se uma action_key bate com o que o hero jogou
+function isPlayerAct(actionKey, playerAction){
+  if(!playerAction) return false;
+  const a=actionKey.toLowerCase();
+  const p=playerAction.toLowerCase().replace(/s$/,''); // normaliza 'calls'→'call'
+  if(a===p) return true;
+  if(['bet','raise','jam'].includes(p) &&
+     (a.includes('bet')||a.includes('raise')||a.includes('allin')||a.includes('jam'))) return true;
+  return false;
+}
+
+// Cor da barra de estratégia
+function stratFillClass(actionKey, playerAction, topAction){
+  const a=actionKey.toLowerCase();
+  const isPlayer=isPlayerAct(actionKey,playerAction);
+  const isTop=a===topAction.toLowerCase();
+  if(isPlayer&&isTop)  return 'c-both';
+  if(isTop)            return 'c-top';
+  if(isPlayer)         return 'c-player';
+  if(a.includes('fold')) return 'c-fold';
+  if(a.includes('check')) return 'c-check';
+  if(a==='call')          return 'c-call';
+  if(a.includes('allin')||a==='jam') return 'c-jam';
+  return 'c-other';
+}
+
+// Classe do texto label da barra
+function stratLblClass(actionKey, playerAction, topAction){
+  const a=actionKey.toLowerCase();
+  const isPlayer=isPlayerAct(actionKey,playerAction);
+  const isTop=a===topAction.toLowerCase();
+  if(isPlayer&&isTop) return 'both';
+  if(isTop)           return 'top';
+  if(isPlayer)        return 'player';
+  return '';
+}
+
+// ── Painel lateral: card GTO ──────────────────────────────────────────────────
+function rpRenderGtoCard(ev){
+  const label=ev.gto_label;
+  if(!label) return '';
+  const vc=gtoVerdictClass(label);
+  const vt=gtoVerdictText(label);
+  const gtoAct=ev.gto_action||'';
+  const playerAct=(ev.action||'').toLowerCase().replace(/s$/,'');
+  const strat=ev.gto_strategy||[];
+  const topAction=strat.length>0?strat[0].action:gtoAct;
+  const exploit=strat.length>0&&strat[0].exploitability_pct!=null?strat[0].exploitability_pct:null;
+
+  // ev_diff: diferença de EV entre top action e jogada do hero
+  let evDiff=null;
+  if(strat.length>0){
+    const topEv=strat[0].ev_bb;
+    if(topEv!=null){
+      const playerItem=strat.find(s=>isPlayerAct(s.action,playerAct));
+      const playerEv=playerItem&&playerItem.ev_bb!=null?playerItem.ev_bb:null;
+      if(playerEv!=null) evDiff=topEv-playerEv;
+    }
+  }
+
+  const gtoActLbl=gtoActionLabel(topAction)||gtoActionLabel(gtoAct)||'—';
+  const playerActLbl=gtoActionLabel(playerAct)||playerAct.toUpperCase()||'—';
+
+  let h=`<div class="rp-card">`;
+  h+=`<div class="rp-card-hdr">
+    <span class="rp-card-hdr-icon">⚖</span>
+    <span class="rp-card-hdr-lbl">GTO</span>`;
+  if(exploit!=null){
+    h+=`<span class="rp-card-hdr-sub">exploit ${exploit.toFixed(1)}%</span>`;
+  }
+  h+=`</div><div class="rp-card-body">`;
+
+  // Veredito
+  h+=`<div class="rp-verdict ${vc}">
+    <span class="rp-verdict-label">${vt}</span>
+    <div class="rp-verdict-row">
+      <div class="rp-verdict-col">
+        <div class="rp-verdict-sub">GTO recomenda</div>
+        <div class="rp-verdict-act">${gtoActLbl}</div>
+      </div>
+      <div class="rp-verdict-col" style="text-align:right">
+        <div class="rp-verdict-sub">você jogou</div>
+        <div class="rp-verdict-act ${vc}">${playerActLbl}</div>
+      </div>
+    </div>`;
+  if(evDiff!=null&&Math.abs(evDiff)>=0.05){
+    const sign=evDiff>0?'+':'';
+    const cls=evDiff<=0?'ok':'bad';
+    h+=`<div class="rp-verdict-evdiff ${cls}">${sign}${evDiff.toFixed(2)} bb vs. GTO</div>`;
+  }
+  h+=`</div>`;
+
+  // Barras de estratégia (apenas quando há >= 2 ações)
+  if(strat.length>=2){
+    h+=`<div class="rp-section-lbl">estratégia completa</div>
+        <div class="rp-strat">`;
+    for(const s of strat){
+      const pct=Math.round(s.frequency*100);
+      const fillCls=stratFillClass(s.action,playerAct,topAction);
+      const lblCls=stratLblClass(s.action,playerAct,topAction);
+      const isPlayer=isPlayerAct(s.action,playerAct);
+      h+=`<div class="rp-strat-row">
+        <span class="rp-strat-lbl ${lblCls}">${gtoActionLabel(s.action)||s.action}</span>
+        <div class="rp-strat-bar"><div class="rp-strat-fill ${fillCls}" style="width:${pct}%"></div></div>
+        <span class="rp-strat-pct ${lblCls}">${pct}%</span>
+        <span class="rp-strat-arrow">${isPlayer?'←':''}</span>
+      </div>`;
+    }
+    h+=`</div>`;
+  }
+
+  h+=`</div></div>`;
+  return h;
+}
+
+// ── Painel lateral: card heurística ──────────────────────────────────────────
+function rpRenderHeuristicCard(ev){
+  const pg=ev.preflop_gto;
+  const equity=ev.hand_equity;
+  const potOdds=ev.pot_odds_equity;
+  const draw=ev.draw_profile;
+  const mRatio=ev.m_ratio;
+  const icm=ev.icm_pressure;
+  const hasPreflop=pg&&pg.available;
+  const hasPostflop=equity!=null||potOdds!=null||draw||mRatio!=null;
+  if(!hasPreflop&&!hasPostflop) return '';
+
+  let h=`<div class="rp-card">
+    <div class="rp-card-hdr">
+      <span class="rp-card-hdr-icon">◎</span>
+      <span class="rp-card-hdr-lbl">Heurística</span>
+    </div>
+    <div class="rp-card-body">`;
+
+  if(hasPreflop){
+    // Cenário
+    const scenMap={rfi:'RFI',vs_rfi:'vs Open',vs_3bet:'vs 3-Bet'};
+    const scen=scenMap[pg.scenario]||pg.scenario||'';
+    // Quality badge
+    const qMap={correct:'green',acceptable:'amber',leak:'red',major_leak:'red',unknown:'muted'};
+    const qLblMap={correct:'Correto',acceptable:'Aceitável',leak:'Leak',major_leak:'Leak Grave',unknown:'—'};
+    const qCls=qMap[pg.action_quality]||'muted';
+    const qLbl=qLblMap[pg.action_quality]||pg.action_quality||'—';
+    // In-range badge
+    const inRangeLbl=pg.in_range?'In Range':'Fora do Range';
+    const inRangeCls=pg.in_range?'green':'amber';
+
+    h+=`<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+      <span class="rp-badge-inline blue">${scen}</span>
+      <span class="rp-badge-inline ${inRangeCls}">${inRangeLbl}</span>
+      <span class="rp-badge-inline ${qCls}">${qLbl}</span>
+    </div>`;
+
+    if(pg.hand_type){
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Mão</span>
+        <span class="rp-metric-val">${pg.hand_type}</span>
+      </div>`;
+    }
+    if(pg.range_pct>0){
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Range</span>
+        <div class="rp-metric-bar"><div class="rp-metric-fill" style="width:${Math.min(pg.range_pct,100)}%;background:#3b82f6"></div></div>
+        <span class="rp-metric-val">${pg.range_pct.toFixed(0)}%</span>
+      </div>`;
+    }
+    if(pg.recommended_actions&&pg.recommended_actions.length>0){
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Rec.</span>
+        <span class="rp-metric-val" style="font-size:.65rem">${pg.recommended_actions.join(' / ').toUpperCase()}</span>
+      </div>`;
+    }
+  }
+
+  if(hasPreflop&&hasPostflop){
+    h+=`<div class="rp-divider"></div>`;
+  }
+
+  if(hasPostflop){
+    if(equity!=null){
+      const eqPct=Math.round(equity*100);
+      const eqColor=eqPct>=50?'#10b981':eqPct>=33?'#f59e0b':'#e52020';
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Equity</span>
+        <div class="rp-metric-bar"><div class="rp-metric-fill" style="width:${eqPct}%;background:${eqColor}"></div></div>
+        <span class="rp-metric-val">${eqPct}%</span>
+      </div>`;
+    }
+    if(potOdds!=null&&potOdds>0){
+      const poPct=Math.round(potOdds*100);
+      const needEq=poPct;
+      const haveEq=equity!=null?Math.round(equity*100):null;
+      const profitable=haveEq!=null&&haveEq>=needEq;
+      const podColor=profitable?'#10b981':'#e52020';
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Pot odds</span>
+        <span class="rp-metric-val" style="color:${podColor}">${poPct}%</span>
+      </div>`;
+    }
+    if(draw&&draw!=='none'&&draw!=='made_hand'){
+      const drawMap={flush_draw:'Flush Draw',straight_draw:'Straight Draw',
+                     combo_draw:'Combo Draw',gutshot:'Gutshot'};
+      const drawLbl=drawMap[draw]||draw.replace(/_/g,' ');
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Draw</span>
+        <span class="rp-badge-inline blue" style="font-size:.58rem">${drawLbl}</span>
+      </div>`;
+    }
+
+    if(mRatio!=null||icm!=null){
+      h+=`<div class="rp-ctx-grid" style="margin-top:2px">`;
+      if(mRatio!=null){
+        const mCol=mRatio<=5?'#e52020':mRatio<=10?'#f59e0b':'rgba(255,255,255,.6)';
+        h+=`<div class="rp-ctx-row">
+          <span class="rp-ctx-lbl">M-Ratio</span>
+          <span class="rp-ctx-val" style="color:${mCol}">${mRatio.toFixed(1)}</span>
+        </div>`;
+      }
+      if(icm!=null){
+        const icmPct=Math.round(icm*100);
+        const icmLbl=icmPct>=60?'Crítico':icmPct>=35?'Alto':icmPct>=15?'Médio':'Baixo';
+        const icmCol=icmPct>=60?'#e52020':icmPct>=35?'#f59e0b':icmPct>=15?'#60a5fa':'rgba(255,255,255,.45)';
+        h+=`<div class="rp-ctx-row">
+          <span class="rp-ctx-lbl">ICM</span>
+          <span class="rp-ctx-val" style="color:${icmCol}">${icmLbl}</span>
+        </div>`;
+      }
+      h+=`</div>`;
+    }
+  }
+
+  h+=`</div></div>`;
+  return h;
+}
+
+// ── Render painel lateral ─────────────────────────────────────────────────────
+function rpRenderSidePanel(ev){
+  const side=document.getElementById('rp-side');
+  const inner=document.getElementById('rp-side-inner');
+
+  if(!ev||!ev.is_hero||(ev.type!=='action')){
+    side.classList.remove('visible');
+    return;
+  }
+
+  const heuristicHtml=rpRenderHeuristicCard(ev);
+  const gtoHtml=rpRenderGtoCard(ev);
+
+  if(!heuristicHtml&&!gtoHtml){
+    side.classList.remove('visible');
+    return;
+  }
+
+  inner.innerHTML=heuristicHtml+gtoHtml;
+  side.classList.add('visible');
+}
+
+// ── Chip stack ────────────────────────────────────────────────────────────────
 function chipStackSVG(cx, bottomY, amount){
   const RX=14, RY=8, CH=4;
-  const N=4;  // 4 spots at cardinal positions (3/6/9/12 o'clock)
+  const N=4;
   const chips=breakChips(amount);
   if(!chips.length) return '';
   let h='';
-
   for(let i=0;i<chips.length;i++){
     const {top:topCol,side:sideCol}=chips[i];
     const ty  =bottomY-(i+1)*CH;
     const by2 =bottomY-i*CH;
-
-    // ── Side band ──────────────────────────────────────────────────────────
     h+=`<rect x="${cx-RX}" y="${ty}" width="${RX*2}" height="${CH}" fill="${sideCol}"/>`;
-
-    // ── Bottom cap ─────────────────────────────────────────────────────────
     h+=`<ellipse cx="${cx}" cy="${by2}" rx="${RX}" ry="${RY}" fill="${sideCol}"/>`;
-
-    // ── Top face ───────────────────────────────────────────────────────────
     h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"/>`;
-
-    // ── 4 edge spots on face ───────────────────────────────────────────────
     for(let s=0;s<N;s++){
       const a=(s/N)*Math.PI*2;
       const ex=(cx+Math.cos(a)*(RX-3.5)).toFixed(1);
@@ -311,15 +689,11 @@ function chipStackSVG(cx, bottomY, amount){
                    fill="rgba(255,255,255,0.82)"
                    transform="rotate(${rot},${ex},${ey})"/>`;
     }
-
-    // Inner ring + center inlay (white circle — denomination printed inside)
     h+=`<ellipse cx="${cx}" cy="${ty}" rx="${(RX*0.62).toFixed(1)}" ry="${(RY*0.62).toFixed(1)}"
                  fill="none" stroke="rgba(255,255,255,0.38)" stroke-width=".9"/>`;
     h+=`<ellipse cx="${cx}" cy="${ty}" rx="${(RX*0.58).toFixed(1)}" ry="${(RY*0.58).toFixed(1)}"
                  fill="rgba(255,255,255,0.92)"/>`;
   }
-
-  // Denomination on white inlay of topmost chip — always black text
   const top=chips[chips.length-1];
   const label=top.val>=1000?(top.val/1000)+'K':top.val+'';
   const topY=bottomY-chips.length*CH;
@@ -329,19 +703,15 @@ function chipStackSVG(cx, bottomY, amount){
   return h;
 }
 
-// ── Card SVG ─────────────────────────────────────────────────────────────────
-// Maps our internal suit/rank codes → filename used by notpeter/Vector-Playing-Cards
+// ── Card SVG ──────────────────────────────────────────────────────────────────
 const SUIT_FILE={s:'S',h:'H',d:'D',c:'C'};
-const RANK_FILE={T:'10'};  // poker uses 'T' for ten; SVG files use '10'
-// file:// → relative path into public/; http(s):// → root-relative served by Vite/CDN
+const RANK_FILE={T:'10'};
 const CARDS_BASE=location.protocol==='file:'?'./public/cards/':'/cards/';
 
 function cardSVG(code,x,y,w,h,faceDown){
   w=w||58; h=h||84;
   const rx=Math.round(w*0.09);
-
   if(!code||faceDown){
-    // Premium card back — dark navy + diamond trellis
     const p=4, ds=Math.round(w*0.28);
     let trellis='';
     for(let ty=y+p-ds;ty<y+h;ty+=ds)
@@ -355,9 +725,6 @@ function cardSVG(code,x,y,w,h,faceDown){
     <text x="${x+w/2}" y="${y+h*0.40}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.14)" font-family="sans-serif" font-size="${Math.round(w*0.40)}">♠</text>
     <text x="${x+w/2}" y="${y+h*0.68}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.08)" font-family="sans-serif" font-size="${Math.round(w*0.26)}">♦</text>`;
   }
-
-  // Face-up card — use pre-made SVG from /cards/{rank}{SUIT}.svg
-  // Each SVG already includes white background, rounded corners, pips and face art.
   const r=code.slice(0,-1).toUpperCase();
   const suit=code.slice(-1).toLowerCase();
   const rank=RANK_FILE[r]||r;
@@ -365,7 +732,7 @@ function cardSVG(code,x,y,w,h,faceDown){
   return `<image href="${file}" x="${x}" y="${y}" width="${w}" height="${h}" filter="url(#rp-cshadow)" preserveAspectRatio="xMidYMid meet"/>`;
 }
 
-// ── Seat layout — hero always bottom ─────────────────────────────────────────
+// ── Seat layout ───────────────────────────────────────────────────────────────
 function rpBuildLayout(seatNums,heroSeat){
   if(_rpLayout) return _rpLayout;
   const n=seatNums.length;
@@ -390,7 +757,7 @@ function rpRenderBoard(cards){
   const W=58,H=100,GAP=8;
   const totalW=5*W+4*GAP;
   const sx=CX-totalW/2;
-  const y=CY-H/2-6;  // slightly above center
+  const y=CY-H/2-6;
   for(let i=0;i<5;i++){
     const x=sx+i*(W+GAP);
     if(i<cards.length){
@@ -402,29 +769,20 @@ function rpRenderBoard(cards){
   }
 }
 
-// ── Pot + chip stack ──────────────────────────────────────────────────────────
+// ── Pot ───────────────────────────────────────────────────────────────────────
 function rpRenderPot(pot,bb){
   const g=document.getElementById('rp-pot');
   g.innerHTML='';
   if(pot<=0) return;
-
   const cardH=68, cardY=CY-cardH/2-6;
-  const cardBottom=cardY+cardH;   // ~= CY+28
+  const cardBottom=cardY+cardH;
   const potStr=fmtAmt(pot,bb);
-
-  // "Pot: X" above board
   g.innerHTML+=`<text x="${CX}" y="${cardY-13}" text-anchor="middle"
     fill="rgba(255,255,255,0.82)" font-family="Inter,sans-serif" font-size="15" font-weight="600">Pot: ${potStr}</text>`;
-
-  // Chip stack (bottomY = just below cards)
   const chipBottomY=cardBottom+58;
   g.innerHTML+=chipStackSVG(CX,chipBottomY,pot);
-
-  // Amount below stack
   g.innerHTML+=`<text x="${CX}" y="${chipBottomY+16}" text-anchor="middle"
     fill="rgba(255,255,255,0.88)" font-family="Share Tech Mono,monospace" font-size="13" font-weight="700">${potStr}</text>`;
-
-  // Game label
   g.innerHTML+=`<text x="${CX}" y="${chipBottomY+32}" text-anchor="middle"
     fill="rgba(255,255,255,0.2)" font-family="Inter,sans-serif" font-size="11">NL Hold'em</text>`;
 }
@@ -459,9 +817,7 @@ function rpRenderSeats(ev,bb){
 
     let html=`<g opacity="${opacity}">`;
 
-    // ── Cards — rendered FIRST so pod overlaps the tucked 30% ────────────────
-    // Bottom seats (dir!='top'): top of card is visible, bottom tucked behind pod top.
-    // Top seats (dir==='top'):   bottom of card is visible, top tucked behind pod bottom.
+    // Cards
     {
       const cw=50,ch=86,cg=4;
       if(isHero&&ev.hero_cards&&ev.hero_cards.length===2){
@@ -476,37 +832,33 @@ function rpRenderSeats(ev,bb){
       }
     }
 
-    // Seat pod (drawn over cards — covers the tucked 30%)
+    // Seat pod
     html+=`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${brad}"
                  fill="${bg}" stroke="${bd}" stroke-width="${bdW}"/>`;
     if(isActive){
       html+=`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${brad}"
                    fill="rgba(201,168,64,0.07)"/>`;
     }
-
-    // Hero outer ring (stroke only — drawn over pod so it's always visible)
     if(isHero){
       html+=`<rect x="${bx-7}" y="${by-7}" width="${bw+14}" height="${bh+14}" rx="${brad+7}"
                    fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="3.5"/>`;
     }
 
-    // (position badge removed — positions shown only via dealer chip)
-
-    // Player name — prominent, PokerStars-quality
+    // Name
     const name=d.player.length>13?d.player.slice(0,13)+'…':d.player;
     html+=`<text x="${pos.x}" y="${by+24}" text-anchor="middle"
                  fill="${isHero?'#ffffff':'#ddd8d0'}"
                  font-family="Inter,sans-serif" font-size="${isHero?14:13}" font-weight="${isHero?700:600}"
                  letter-spacing=".1">${name}</text>`;
 
-    // Stack — large, bright, easily readable
+    // Stack
     const sv=(ev.stacks&&ev.stacks[sn]!=null)?ev.stacks[sn]:d.stack;
     html+=`<text x="${pos.x}" y="${by+40}" text-anchor="middle"
                  fill="${isHero?'#c9e8ff':'#c0bab0'}"
                  font-family="Share Tech Mono,monospace" font-size="12" font-weight="600"
                  letter-spacing=".05">${fmtAmt(sv,bb)}</text>`;
 
-    // Bounty badge — shown in PKO/Bounty tournaments when d.bounty is set
+    // Bounty badge
     if(d.bounty && d.bounty>0){
       const bn=d.bounty;
       const bountyStr=bn<1?bn.toFixed(2):(bn<10?bn.toFixed(2):(bn<100?bn.toFixed(2):Math.round(bn)+''));
@@ -520,21 +872,17 @@ function rpRenderSeats(ev,bb){
                    fill="#e8d090" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700">$${bountyStr}</text>`;
     }
 
-    // Dealer button — white casino chip on the felt, 25% toward table center
+    // Dealer button
     if(isBtn){
       const t=0.25;
       const dbX=Math.round(pos.x+(CX-pos.x)*t);
       const dbY=Math.round(pos.y+(CY-pos.y)*t);
       const dRX=16,dRY=9,dCH=6;
-      const dN=4; // 4 edge spots at cardinal positions
+      const dN=4;
       const dTy=dbY,dBy2=dbY+dCH;
-      // Side band (silver)
       html+=`<rect x="${dbX-dRX}" y="${dTy}" width="${dRX*2}" height="${dCH}" fill="#b4b4b4"/>`;
-      // Bottom cap
       html+=`<ellipse cx="${dbX}" cy="${dBy2}" rx="${dRX}" ry="${dRY}" fill="#b4b4b4"/>`;
-      // Top face (ivory white)
       html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${dRX}" ry="${dRY}" fill="#f4f0ec"/>`;
-      // 4 edge spots (dark gray tangential ellipses)
       for(let s=0;s<dN;s++){
         const a=(s/dN)*Math.PI*2;
         const ex=(dbX+Math.cos(a)*(dRX-3.5)).toFixed(1);
@@ -543,13 +891,10 @@ function rpRenderSeats(ev,bb){
         html+=`<ellipse cx="${ex}" cy="${ey}" rx="2.0" ry="1.0" fill="rgba(55,55,55,0.50)"
                        transform="rotate(${rot},${ex},${ey})"/>`;
       }
-      // Inner ring
       html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX*0.62).toFixed(1)}" ry="${(dRY*0.62).toFixed(1)}"
                      fill="none" stroke="rgba(55,55,55,0.28)" stroke-width=".9"/>`;
-      // White center inlay
       html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX*0.58).toFixed(1)}" ry="${(dRY*0.58).toFixed(1)}"
                      fill="rgba(255,255,255,0.90)"/>`;
-      // 5-pointed star — drawn with transform so it auto-centers on (dbX,dTy)
       html+=`<path d="M0,-5 L1.18,-1.62 L4.76,-1.55 L1.90,0.62 L2.94,4.05
                       L0,2 L-2.94,4.05 L-1.90,0.62 L-4.76,-1.55 L-1.18,-1.62 Z"
                    fill="#222" transform="translate(${dbX},${dTy})"/>`;
@@ -566,11 +911,10 @@ function rpRenderSeats(ev,bb){
                    fill="#fff" font-family="Inter,sans-serif" font-size="10.5" font-weight="700">${actLabel}</text>`;
     }
 
-
     html+='</g>';
     seatsG.innerHTML+=html;
 
-    // Bet chips on table
+    // Bet chips
     const bet=ev.bets&&ev.bets[sn]>0?ev.bets[sn]:0;
     if(bet>0){
       const t=0.36;
@@ -612,16 +956,7 @@ function rpRender(step){
   rpRenderBoard(ev.board||[]);
   rpRenderPot(ev.pot||0,bb);
   rpRenderSeats(ev,bb);
-
-  const popup=document.getElementById('rp-err-pop');
-  if(ev.is_error&&ev.is_hero){
-    const labels={clear_mistake:'ERRO GRAVE',small_mistake:'Erro',marginal:'Marginal'};
-    document.getElementById('rp-err-body').textContent='Você fez '+ev.action+' — penalidade: '+ev.error_score;
-    document.getElementById('rp-err-best').textContent='✓ Ação correta: '+ev.best_action;
-    popup.querySelector('.rp-err-title').textContent='⚠ '+(labels[ev.error_label]||'Atenção');
-    popup.classList.add('show');
-    setTimeout(()=>popup.classList.remove('show'),4500);
-  } else {popup.classList.remove('show');}
+  rpRenderSidePanel(ev);
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────────
@@ -677,8 +1012,7 @@ function initReplayer(data){
 }
 
 // ── Demo ─────────────────────────────────────────────────────────────────────
-const DEMO={"hand_id":"257045940964","tournament_id":"3910307458","hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"button":3,"sb":50.0,"bb":100.0,"seats":{"1":{"player":"jojosetubal","stack":7431,"stack_bb":74.3,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8135,"stack_bb":81.3,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1447,"stack_bb":14.5,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5078,"stack_bb":50.8,"pos":"SB"},"5":{"player":"SuKKinho","stack":5253,"stack_bb":52.5,"pos":"BB"},"6":{"player":"martelli1990","stack":3398,"stack_bb":34.0,"pos":"UTG"},"7":{"player":"varen1k322","stack":3200,"stack_bb":32.0,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6419,"stack_bb":64.2,"pos":"UTG+2"},"9":{"player":"phpro","stack":2242,"stack_bb":22.4,"pos":"MP"}},"timeline":[{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3386,"stack_bb":33.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3386,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":258,"pot_bb":2.6,"bets":{"4":50,"5":100},"street":"preflop","folded":[],"bb":100.0,"type":"deal","desc":"Início da mão"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":458,"pot_bb":4.6,"bets":{"4":50,"5":100,"6":200},"street":"preflop","folded":[],"bb":100.0,"type":"action","player":"martelli1990","seat":6,"action":"raises","amount":100.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"martelli1990: raises 100"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":658,"pot_bb":6.6,"bets":{"4":50,"5":100,"6":200,"9":200},"street":"preflop","folded":["varen1k322","Cyan Diogenes"],"bb":100.0,"type":"action","player":"phpro","seat":9,"action":"calls","amount":200.0,"is_hero":true,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"phpro: calls 200"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":4411,"stack_bb":44.1,"pos":"BB"},"6":{"player":"martelli1990","stack":2556,"stack_bb":25.6,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":4411,"6":2556,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":2018,"pot_bb":20.2,"bets":{"5":830,"6":830},"street":"preflop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":730.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 730"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"street","desc":"FLOP"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":3745.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 3745"}]};
-// Inject demo bounty values — simulates a PKO tournament (3 players with bounties)
+const DEMO={"hand_id":"257045940964","tournament_id":"3910307458","hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"button":3,"sb":50.0,"bb":100.0,"seats":{"1":{"player":"jojosetubal","stack":7431,"stack_bb":74.3,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8135,"stack_bb":81.3,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1447,"stack_bb":14.5,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5078,"stack_bb":50.8,"pos":"SB"},"5":{"player":"SuKKinho","stack":5253,"stack_bb":52.5,"pos":"BB"},"6":{"player":"martelli1990","stack":3398,"stack_bb":34.0,"pos":"UTG"},"7":{"player":"varen1k322","stack":3200,"stack_bb":32.0,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6419,"stack_bb":64.2,"pos":"UTG+2"},"9":{"player":"phpro","stack":2242,"stack_bb":22.4,"pos":"MP"}},"timeline":[{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3386,"stack_bb":33.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3386,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":258,"pot_bb":2.6,"bets":{"4":50,"5":100},"street":"preflop","folded":[],"bb":100.0,"type":"deal","desc":"Início da mão"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":458,"pot_bb":4.6,"bets":{"4":50,"5":100,"6":200},"street":"preflop","folded":[],"bb":100.0,"type":"action","player":"martelli1990","seat":6,"action":"raises","amount":100.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"martelli1990: raises 100"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":658,"pot_bb":6.6,"bets":{"4":50,"5":100,"6":200,"9":200},"street":"preflop","folded":["varen1k322","Cyan Diogenes"],"bb":100.0,"type":"action","player":"phpro","seat":9,"action":"calls","amount":200.0,"is_hero":true,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"preflop_gto":{"available":true,"scenario":"vs_rfi","hand_type":"KQo","stack_bucket":"20-35bb","stack_bb":22.3,"position":"MP","vs_position":"UTG","in_range":true,"range_pct":14.2,"range_hands":"QQ+,AKs,AQs,AJs,KQs,AKo","recommended_actions":["call","raise"],"action_quality":"correct","pro_notes":["KQo está no range de call/3bet vs UTG open","Stack de 22bb: call é razoável, jam também é opção"]},"hand_equity":null,"pot_odds_equity":0.23,"draw_profile":"none","m_ratio":18.6,"icm_pressure":0.12,"desc":"phpro: calls 200"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":4411,"stack_bb":44.1,"pos":"BB"},"6":{"player":"martelli1990","stack":2556,"stack_bb":25.6,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":4411,"6":2556,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":2018,"pot_bb":20.2,"bets":{"5":830,"6":830},"street":"preflop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":730.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 730"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"street","desc":"FLOP"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":3745.0,"gto_label":"gto_critical","gto_action":"check","gto_strategy":[{"action":"check","frequency":0.72,"combos":96.4,"ev_bb":2.1,"exploitability_pct":18.5},{"action":"bet_50pct","frequency":0.19,"combos":25.4,"ev_bb":1.8,"exploitability_pct":18.5},{"action":"fold","frequency":0.09,"combos":12.0,"ev_bb":0.0,"exploitability_pct":18.5}],"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 3745"}]};
 (()=>{
   const bountySample={1:12.50,5:3.14,9:7.25};
   DEMO.timeline.forEach(ev=>{
