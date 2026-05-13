@@ -18,10 +18,9 @@ import {
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { AiText } from "@/components/ui/AiText";
-import { PlayingCard } from "@/components/hud/PlayingCard";
-import type { CardData } from "@/components/hud/PlayingCard";
+import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { drill } from "@/lib/api";
-import type { DrillSpot, DrillStats, DrillSubmitResult } from "@/lib/api";
+import type { DrillSpot, DrillStats, DrillSubmitResult, ReplayStep } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
 type Phase = "intro" | "loading" | "active" | "result" | "done";
@@ -136,6 +135,64 @@ function StatTile({ value, label }: { value: string; label: string }) {
       <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>
   );
+}
+
+// ── Drill → ReplayStep adapter ────────────────────────────────────────────────
+
+function buildDrillStep(spot: DrillSpot): { step: ReplayStep; hero: string; heroCards: string[]; bb: number } {
+  const HERO = 'Você';
+  const bb   = spot.level_bb ?? 100;
+  const heroStack = Math.round((spot.stack_bb ?? 20) * bb);
+  const numP = Math.max(2, Math.min(6, spot.num_players ?? 6));
+  const heroPos = (spot.position ?? 'BTN').toUpperCase();
+
+  const layouts: Record<number, string[]> = {
+    2: ['BTN', 'BB'],
+    3: ['BTN', 'SB', 'BB'],
+    4: ['CO',  'BTN', 'SB', 'BB'],
+    5: ['UTG', 'CO',  'BTN', 'SB', 'BB'],
+    6: ['UTG', 'HJ',  'CO',  'BTN', 'SB', 'BB'],
+  };
+  const positions = layouts[numP] ?? layouts[6];
+  const btnSeat   = positions.indexOf('BTN') + 1;
+
+  let heroSeatIdx = positions.indexOf(heroPos);
+  if (heroSeatIdx < 0) heroSeatIdx = positions.indexOf('BTN');
+  const heroSeatNum = heroSeatIdx + 1;
+
+  const seats: Record<string, { player: string; stack: number; pos: string }> = {};
+  const bets:  Record<string, number> = {};
+
+  positions.forEach((pos, i) => {
+    const sn    = String(i + 1);
+    const isHero = (i + 1) === heroSeatNum;
+    seats[sn] = { player: isHero ? HERO : `V${i + 1}`, stack: heroStack, pos };
+    if (pos === 'SB') bets[sn] = Math.round(bb * 0.5);
+    else if (pos === 'BB') bets[sn] = bb;
+  });
+
+  // Facing bet → assign to villain seat immediately before hero
+  if (spot.facing_bet && spot.facing_bet > 0) {
+    const facingChips = Math.round(spot.facing_bet * bb);
+    let agSeat = heroSeatNum - 1;
+    if (agSeat < 1) agSeat = numP;
+    if (agSeat !== heroSeatNum) bets[String(agSeat)] = facingChips;
+  }
+
+  const boardLimit = ({ preflop: 0, flop: 3, turn: 4, river: 5 } as Record<string, number>)[spot.street ?? 'preflop'] ?? 0;
+  const board      = spot.board ? (spot.board.match(/.{2}/g) ?? []).slice(0, boardLimit) : [];
+  const heroCards  = spot.hero_cards ? (spot.hero_cards.match(/.{2}/g) ?? []) : [];
+  const potChips   = Math.round((spot.pot_size ?? 2) * bb);
+
+  const step = {
+    type: 'action', street: spot.street ?? 'preflop',
+    seats, bets, folded: [] as string[],
+    pot_bb: spot.pot_size ?? 2, pot: potChips,
+    bb, button: btnSeat, board,
+    player: HERO, seat: heroSeatNum, is_hero: true,
+  } as unknown as ReplayStep;
+
+  return { step, hero: HERO, heroCards, bb };
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -340,9 +397,10 @@ export default function GhostTable() {
         const sit = getSituation(current);
         const style = SIT_STYLES[sit.variant];
         const SitIcon = style.icon;
+        const { step: drillStep, hero: drillHero, heroCards: drillCards, bb: drillBb } = buildDrillStep(current);
 
         return (
-          <div className="mx-auto max-w-2xl space-y-4">
+          <div className="mx-auto max-w-3xl space-y-3">
 
             {/* Progress + streak + timer */}
             <div className="flex items-center gap-3">
@@ -364,7 +422,6 @@ export default function GhostTable() {
                   {current.days_overdue}d
                 </span>
               )}
-              {/* Streak badge */}
               {pressureMode && streak > 0 && (
                 <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-amber-400 shrink-0">
                   <Flame className="size-3" aria-hidden />
@@ -374,118 +431,53 @@ export default function GhostTable() {
               <span className="font-mono text-xs text-muted-foreground shrink-0">
                 {sessionCorrect}/{sessionTotal}
               </span>
-              {/* Timer ring */}
-              {pressureMode && (
-                <TimerRing timeLeft={timeLeft} />
-              )}
+              {pressureMode && <TimerRing timeLeft={timeLeft} />}
             </div>
 
-            {/* ── SITUATION BOX ── */}
-            <div className={cn("rounded-xl border p-4 space-y-3", style.box)}>
-              <div className="flex items-center gap-2">
-                <SitIcon className={cn("size-4 shrink-0", style.label)} aria-hidden />
-                <p className={cn("font-mono text-[10px] font-bold uppercase tracking-widest", style.label)}>
-                  {t("situation.label")}
-                </p>
-              </div>
-
-              <p className="text-base font-bold text-foreground leading-snug">
-                {t(`situation.${sit.key}`)}
-              </p>
-
-              {/* Context chips */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 border-t border-border/60">
-                <span className="font-mono text-[11px] text-foreground font-semibold">
-                  {t(`street.${current.street}`)}
+            {/* Situation + context strip (compact) */}
+            <div className={cn("flex items-center gap-x-3 gap-y-1 flex-wrap rounded-lg border px-3 py-2", style.box)}>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <SitIcon className={cn("size-3.5", style.label)} aria-hidden />
+                <span className={cn("font-mono text-[10px] font-bold uppercase tracking-wide", style.label)}>
+                  {t(`situation.${sit.key}`)}
                 </span>
-                {current.position && (
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {t("context.position")}: <span className="text-foreground font-semibold">{current.position}</span>
+              </div>
+              <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap font-mono text-[10px] text-muted-foreground">
+                <span className="font-semibold text-foreground">{t(`street.${current.street}`)}</span>
+                {current.position    && <span>{current.position}</span>}
+                {current.stack_bb != null && <span>Stack: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
+                {current.m_ratio   != null && <span>M: <span className="text-foreground">{current.m_ratio.toFixed(1)}</span></span>}
+                {current.pot_size  != null && current.pot_size  > 0 && <span>Pot: <span className="text-foreground">{current.pot_size.toFixed(1)}bb</span></span>}
+                {current.facing_bet!= null && current.facing_bet > 0 && (
+                  <span className={sit.variant === "aggression" ? "text-warning font-semibold" : ""}>
+                    Facing: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
                   </span>
                 )}
-                {current.num_players !== null && (
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {t("context.players", { n: current.num_players })}
-                  </span>
-                )}
-                {current.stack_bb !== null && (
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    Stack: <span className="text-foreground font-semibold">{t("context.bb", { n: current.stack_bb.toFixed(0) })}</span>
-                  </span>
-                )}
-                {current.m_ratio !== null && (
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    M-Ratio: <span className="text-foreground font-semibold">{current.m_ratio.toFixed(1)}</span>
-                  </span>
-                )}
-                {!!current.is_3bet && (
-                  <span className="font-mono text-[11px] font-semibold text-warning">{t("context.is3bet")}</span>
-                )}
-                {current.pot_size !== null && current.pot_size > 0 && (
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {t("context.pot")}: <span className="text-foreground font-semibold">{t("context.bb", { n: current.pot_size.toFixed(1) })}</span>
-                  </span>
-                )}
-                {current.facing_bet !== null && current.facing_bet > 0 && (
-                  <span className={cn("font-mono text-[11px]", sit.variant === "aggression" ? "text-warning font-semibold" : "text-muted-foreground")}>
-                    {t("context.facing")}: <span className="font-semibold">{t("context.bb", { n: current.facing_bet.toFixed(1) })}</span>
-                  </span>
-                )}
+                {!!current.is_3bet && <span className="font-semibold text-warning">{t("context.is3bet")}</span>}
                 {current.icm_pressure && current.icm_pressure !== "none" && (
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    ICM: <span className={cn("font-semibold", {
-                      "text-destructive": current.icm_pressure === "high",
-                      "text-warning":     current.icm_pressure === "medium",
-                      "text-primary":     current.icm_pressure === "low",
-                    })}>{t(`icmLabel.${current.icm_pressure}`)}</span>
-                  </span>
+                  <span className={cn({
+                    "text-destructive font-semibold": current.icm_pressure === "high",
+                    "text-warning font-semibold":     current.icm_pressure === "medium",
+                    "text-primary font-semibold":     current.icm_pressure === "low",
+                  })}>ICM {t(`icmLabel.${current.icm_pressure}`)}</span>
                 )}
               </div>
-
             </div>
 
-            {/* ── CARDS ── */}
-            <article className="rounded-xl border border-border bg-hud-surface p-4 space-y-4">
-              {(() => {
-                const boardLimit = { preflop: 0, flop: 3, turn: 4, river: 5 }[current.street] ?? 5;
-                const visibleBoard = current.board ? parseCards(current.board).slice(0, boardLimit) : [];
-                return (
-                  <div className="flex gap-6 flex-wrap">
-                    {current.hero_cards && (
-                      <div>
-                        <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {t("heroCards")}
-                        </p>
-                        <div className="flex gap-2">
-                          {parseCards(current.hero_cards).length > 0
-                            ? parseCards(current.hero_cards).map((card, i) => (
-                                <PlayingCard key={i} card={card} size="md" />
-                              ))
-                            : <span className="font-mono text-xs text-muted-foreground">{t("noCards")}</span>
-                          }
-                        </div>
-                      </div>
-                    )}
-                    {visibleBoard.length > 0 && (
-                      <div>
-                        <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {t("board")}
-                        </p>
-                        <div className="flex gap-2">
-                          {visibleBoard.map((card, i) => (
-                            <PlayingCard key={i} card={card} size="md" />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+            {/* Visual poker table */}
+            <div className="rounded-xl overflow-hidden ring-1 ring-border/60">
+              <PokerTableV3
+                step={drillStep}
+                hero={drillHero}
+                heroCards={drillCards}
+                bb={drillBb}
+                betUnit="bb"
+              />
+            </div>
 
-              <p className="font-mono text-[10px] text-muted-foreground border-t border-border pt-3">
-                {t("result.originalMistake", { action: formatAction(current.action_taken).toUpperCase(), score: current.score.toFixed(2) })}
-              </p>
-            </article>
+            <p className="font-mono text-[10px] text-muted-foreground text-center">
+              {t("result.originalMistake", { action: formatAction(current.action_taken).toUpperCase(), score: current.score.toFixed(2) })}
+            </p>
 
             {/* Timeout banner */}
             {timedOut && (
@@ -495,7 +487,7 @@ export default function GhostTable() {
               </div>
             )}
 
-            {/* ── QUESTION + ACTIONS ── */}
+            {/* Question + Actions */}
             <p className="text-center text-sm font-semibold text-foreground">{t("question")}</p>
 
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
