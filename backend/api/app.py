@@ -3794,7 +3794,7 @@ def admin_support_reply(ticket_id):
 @require_auth
 def get_decision_gto(decision_id):
     """Retorna análise GTO completa para uma decisão: estratégia, exploitability, frequência da jogada."""
-    from database.repositories import get_decision_spot, get_gto_node
+    from database.repositories import get_decision_spot, get_gto_node, get_gto_node_by_spot
     from leaklab.gto_utils import compute_spot_hash
     import json as _json
 
@@ -3808,46 +3808,77 @@ def get_decision_gto(decision_id):
     hand_raw  = dec.get('hero_cards') or ''
     stack_bb  = float(dec.get('stack_bb') or 30.0)
     facing_bb = float(dec.get('facing_bet') or 0.0)
+    # Stored GTO analysis (set by the hand worker)
+    stored_gto_action = dec.get('gto_action') or ''
+    stored_gto_label  = dec.get('gto_label') or ''
+
+    if not street or not position:
+        return jsonify({'found': False, 'reason': 'spot_incomplete'}), 404
 
     try:
-        board = _json.loads(board_raw) if isinstance(board_raw, str) else board_raw
+        board = _json.loads(board_raw) if isinstance(board_raw, str) else (board_raw or [])
     except Exception:
         board = []
 
-    hero_hand = hand_raw.split() if isinstance(hand_raw, str) else []
+    # Parse hero cards: "Jc Th" (space-sep) or "JcTh" (concatenated 2-char pairs)
+    if isinstance(hand_raw, str) and hand_raw.strip():
+        _raw = hand_raw.strip()
+        if ' ' in _raw:
+            hero_hand = _raw.split()
+        else:
+            hero_hand = [_raw[i:i+2] for i in range(0, len(_raw), 2)] if len(_raw) % 2 == 0 else []
+    else:
+        hero_hand = []
 
-    if not street or not position or not hero_hand:
-        return jsonify({'found': False, 'reason': 'spot_incomplete'}), 404
-
-    spot_hash = compute_spot_hash(street, position, board, hero_hand, stack_bb)
-    node = get_gto_node(spot_hash)
-
-    if not node:
-        return jsonify({'found': False, 'spot_hash': spot_hash}), 404
+    # Truncate board to street-appropriate length (DB stores full board; hashes use street slice)
+    _street_cards = {'flop': 3, 'turn': 4, 'river': 5}
+    board_for_hash = board[:_street_cards.get(street, len(board))]
 
     player_action = (dec.get('action_taken') or '').lower()
 
-    # ── Estratégia completa ──────────────────────────────────────────────────
-    strategy = []
-    strategy_raw = {}
-    if node.get('strategy_json'):
-        try:
-            strategy_raw = _json.loads(node['strategy_json'])
-        except Exception:
-            pass
+    # ── Node lookup: multiple fallback strategies ────────────────────────────
+    node = None
+    # a) Exact: with hero_hand + facing
+    if hero_hand:
+        _h = compute_spot_hash(street, position, board_for_hash, hero_hand, stack_bb, facing_bb)
+        node = get_gto_node(_h)
+    # b) Generic: no hero_hand, with facing
+    if not node:
+        _h = compute_spot_hash(street, position, board_for_hash, [], stack_bb, facing_bb)
+        node = get_gto_node(_h)
+    # c) Generic: no hero_hand, no facing (only when not facing a bet)
+    if not node and facing_bb == 0:
+        _h = compute_spot_hash(street, position, board_for_hash, [], stack_bb, 0.0)
+        node = get_gto_node(_h)
+    # d) Old hash scheme (board-only key, used by older test/import nodes)
+    if not node:
+        node = get_gto_node_by_spot(street, board_for_hash, position)
 
-    if strategy_raw:
-        for action_key, data in strategy_raw.items():
-            strategy.append({
-                'action':    action_key,
-                'label':     _gto_action_label(action_key),
-                'frequency': round(float(data.get('frequency', 0)), 4),
-                'combos':    data.get('combos'),
-            })
-        strategy.sort(key=lambda x: x['frequency'], reverse=True)
-    else:
-        # Fallback: apenas ação primária
-        if node.get('gto_action'):
+    # ── Build strategy from node (if found) ─────────────────────────────────
+    strategy = []
+    exploit  = None
+    top_action = stored_gto_action  # default to stored value
+    spot_hash_out = _h if '_h' in dir() else ''
+
+    if node:
+        exploit = node.get('exploitability_pct')
+        strategy_raw = {}
+        if node.get('strategy_json'):
+            try:
+                strategy_raw = _json.loads(node['strategy_json'])
+            except Exception:
+                pass
+
+        if strategy_raw:
+            for action_key, data in strategy_raw.items():
+                strategy.append({
+                    'action':    action_key,
+                    'label':     _gto_action_label(action_key),
+                    'frequency': round(float(data.get('frequency', 0)), 4),
+                    'combos':    data.get('combos'),
+                })
+            strategy.sort(key=lambda x: x['frequency'], reverse=True)
+        elif node.get('gto_action'):
             strategy = [{
                 'action':    node['gto_action'],
                 'label':     _gto_action_label(node['gto_action']),
@@ -3855,26 +3886,40 @@ def get_decision_gto(decision_id):
                 'combos':    None,
             }]
 
+        if strategy:
+            top_action = strategy[0]['action']
+        spot_hash_out = node.get('spot_hash', '')
+
+    # ── Fallback: use stored gto_action from decisions table (no node found) ─
+    if not strategy and stored_gto_action:
+        strategy = [{
+            'action':    stored_gto_action,
+            'label':     _gto_action_label(stored_gto_action),
+            'frequency': 1.0,
+            'combos':    None,
+        }]
+        top_action = stored_gto_action
+
+    if not strategy:
+        return jsonify({'found': False, 'spot_hash': spot_hash_out}), 404
+
     # ── Frequência GTO da jogada do herói ────────────────────────────────────
     player_freq = _player_action_freq(player_action, strategy)
-
-    # ── Agreement: jogada está na estratégia com ≥ 15% de frequência ────────
-    top_action   = strategy[0]['action'] if strategy else (node.get('gto_action') or '')
-    agreement    = player_freq >= 0.15 if player_action else None
+    agreement   = player_freq >= 0.15 if player_action else None
 
     return jsonify({
         'found':               True,
-        'spot_hash':           spot_hash,
+        'spot_hash':           spot_hash_out,
         'street':              street,
         'position':            position,
         'stack_bb':            stack_bb,
         'facing_bb':           facing_bb,
         'gto_action':          top_action,
         'gto_action_label':    _gto_action_label(top_action),
-        'gto_freq':            float(node.get('gto_freq') or 0.0),
-        'ev_diff':             node.get('ev_diff'),
-        'exploitability_pct':  node.get('exploitability_pct'),
-        'source':              node.get('source'),
+        'gto_freq':            float(node['gto_freq'] if node and node.get('gto_freq') else 0.0),
+        'ev_diff':             node.get('ev_diff') if node else None,
+        'exploitability_pct':  exploit,
+        'source':              node.get('source') if node else 'stored',
         'player_action':       player_action,
         'player_action_label': _gto_action_label(player_action) if player_action else None,
         'player_action_freq':  player_freq,

@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.98.1] — 2026-05-12 — fix(GTO-006): endpoint /decisions/<id>/gto — board truncation + hash fallbacks
+
+### Fixed
+- **Board truncation**: decisions table stores full board (4+ cards); endpoint now slices to street-appropriate length before hashing (flop→3, turn→4, river→5)
+- **`hero_hand` guard removed**: endpoint previously returned 404 when hero_cards was empty (most decisions); now hero_hand is optional
+- **`facing_bb` missing from hash**: `compute_spot_hash` call was missing the `facing_size_bb` arg — now passed correctly
+- **Multi-step hash fallback**: endpoint tries 4 strategies in order — exact (hero_hand+facing), generic (no hand+facing), generic_nf (no facing), `get_gto_node_by_spot` (old hash scheme for legacy nodes)
+- **Stored gto_action fallback**: if no node found at all but decision has `gto_label`/`gto_action` stored by worker, returns a synthetic single-action strategy so GTO panel always shows something
+- **`get_decision_spot`**: added `gto_action` and `gto_label` to SELECT query
+- **Hero card parsing**: handles both space-separated ("Jc Th") and concatenated ("JcTh") formats
+- Result: 11/11 labeled decisions now return `found=True` with strategy (was 0/11)
+
+---
+
 ## [v0.98.0] — 2026-05-12 — feat(GTO-004/005): GTO panel redesign + fixes chips→BB + solver stuck
 
 ### Added

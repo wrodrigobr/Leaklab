@@ -4057,7 +4057,7 @@ def get_decision_spot(decision_id: int) -> Optional[dict]:
     conn = get_conn()
     try:
         return _fetchone(conn,
-            "SELECT street, position, board, hero_cards, stack_bb, action_taken, facing_bet FROM decisions WHERE id = ?",
+            "SELECT street, position, board, hero_cards, stack_bb, action_taken, facing_bet, gto_action, gto_label FROM decisions WHERE id = ?",
             (decision_id,))
     finally:
         conn.close()
