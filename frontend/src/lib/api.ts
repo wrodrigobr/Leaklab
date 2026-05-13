@@ -286,6 +286,7 @@ export interface ReplayStep {
     seats:     ShowdownSeatInfo[];
     winners:   ShowdownSeatInfo[];
   };
+  knockout_events?: { winner: string; amount: number; eliminated: string }[];
 }
 
 export type CoachOverrideLabel = "standard" | "marginal" | "small_mistake" | "clear_mistake" | null;
@@ -313,7 +314,8 @@ export interface ReplayData {
   button: number;
   sb: number;
   bb: number;
-  seats: Record<string, { player: string; stack: number; pos: string }>;
+  seats: Record<string, { player: string; stack: number; pos: string; bounty?: number }>;
+  is_bounty?: boolean;
   timeline: ReplayStep[];
   coach_annotations?: Record<string, CoachAnnotation>;
 }

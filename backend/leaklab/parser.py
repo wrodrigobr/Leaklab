@@ -23,6 +23,18 @@ ACTION_LINE_RE  = re.compile(
     r"(?: .*?(?P<amount>\d+(?:\.\d+)?))?",
     re.IGNORECASE,
 )
+# PokerStars PKO: "Seat 3: phpro (1500 in chips) bounty $0.25"
+SEAT_BOUNTY_PS_RE = re.compile(
+    r"^Seat \d+: (.+?) \(\d+ in chips\) bounty \$([0-9.]+)", re.IGNORECASE
+)
+# GGPoker PKO: "Seat 3: phpro (1500 in chips, bounty $0.25)"
+SEAT_BOUNTY_GG_RE = re.compile(
+    r"^Seat \d+: (.+?) \(\d+ in chips, bounty \$([0-9.]+)\)", re.IGNORECASE
+)
+# PokerStars bounty collection: "phpro wins $0.25 bounty for eliminating villain"
+BOUNTY_WIN_RE = re.compile(
+    r"^(.+?) wins \$([0-9.]+) bounty for eliminating (.+)", re.IGNORECASE
+)
 
 
 def _detect_site(text: str) -> str:
@@ -82,6 +94,7 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
 
     players: List[str] = []
     actions: List[ParsedAction] = []
+    bounties: dict = {}
     street = "preflop"
     board  = []
 
@@ -104,6 +117,15 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
         if line.startswith("Seat ") and ":" in line and "(" in line and "in chips" in line:
             name = line.split(":", 1)[1].split("(", 1)[0].strip()
             players.append(name)
+            mb = SEAT_BOUNTY_PS_RE.match(line) or SEAT_BOUNTY_GG_RE.match(line)
+            if mb:
+                bounties[mb.group(1).strip()] = float(mb.group(2))
+        mw = BOUNTY_WIN_RE.match(line)
+        if mw:
+            # Track latest bounty value per player (bounty grows as they knock out others)
+            winner = mw.group(1).strip()
+            amount = float(mw.group(2))
+            bounties[winner] = bounties.get(winner, 0.0) + amount
         ma = ACTION_LINE_RE.match(line)
         if ma:
             amount = ma.group("amount")
@@ -127,6 +149,7 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
         players=players,
         actions=actions,
         raw_text=raw_text,
+        bounties=bounties,
     )
 
 

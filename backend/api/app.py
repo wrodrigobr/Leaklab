@@ -2825,17 +2825,31 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
     hero = hero_override or hand.hero
 
-    # Extrair seats e stacks do raw_text
+    # Extrair seats, stacks e bounties do raw_text
     seats = {}
+    _bounties = getattr(hand, 'bounties', {}) or {}
     for line in hand.raw_text.split('\n'):
-        m = _re.match(r'Seat (\d+): (.+) \((\d+) in chips\)', line)
+        m = _re.match(r'Seat (\d+): (.+?) \((\d+) in chips\)', line)
         if m:
-            seats[int(m.group(1))] = {
-                'player': m.group(2).strip(),
-                'stack':  int(m.group(3))
-            }
+            player = m.group(2).strip()
+            seat_d = {'player': player, 'stack': int(m.group(3))}
+            if player in _bounties:
+                seat_d['bounty'] = _bounties[player]
+            seats[int(m.group(1))] = seat_d
     if not seats:
         return {'error': 'Seats não encontrados'}
+
+    # Detectar eventos de knockout na mão (PokerStars/GGPoker)
+    _KO_RE = _re.compile(r'^(.+?) wins \$([0-9.]+) bounty for eliminating (.+)', _re.IGNORECASE)
+    knockout_events = []
+    for line in hand.raw_text.split('\n'):
+        mk = _KO_RE.match(line.strip())
+        if mk:
+            knockout_events.append({
+                'winner':    mk.group(1).strip(),
+                'amount':    float(mk.group(2)),
+                'eliminated': mk.group(3).strip(),
+            })
 
     seat_nums = sorted(seats.keys())
     n         = len(seat_nums)
@@ -3175,10 +3189,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     revealed[str(pseat)] = s_info['cards']
 
         timeline.append(snap({
-            'type':          'showdown',
-            'desc':          'Conclusão da mão',
-            'summary':        summary,
-            'revealed_cards': revealed,   # {seat_num_str: ["Ah","Kd"]}
+            'type':           'showdown',
+            'desc':           'Conclusão da mão',
+            'summary':         summary,
+            'revealed_cards':  revealed,   # {seat_num_str: ["Ah","Kd"]}
+            'knockout_events': knockout_events if knockout_events else [],
         }))
 
     return {
@@ -3191,9 +3206,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         'button':        hand.button_seat,
         'sb':            hand.sb,
         'bb':            bb,
-        'seats':         {s: {'player': seats[s]['player'],
+        'seats':         {s: {k: v for k, v in {
+                              'player': seats[s]['player'],
                               'stack':  seats[s]['stack'],
-                              'pos':    positions[s]} for s in seats},
+                              'pos':    positions[s],
+                              'bounty': seats[s].get('bounty'),
+                          }.items() if v is not None} for s in seats},
+        'is_bounty':     bool(_bounties),
         'timeline':      timeline,
     }
 

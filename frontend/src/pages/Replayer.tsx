@@ -602,6 +602,21 @@ function SidePanels({
               </div>
             ))}
           </div>
+
+          {/* Knockout events (PKO tournaments) */}
+          {step.knockout_events && step.knockout_events.length > 0 && (
+            <div className="border-t border-border/30 pt-2 flex flex-col gap-1">
+              {step.knockout_events.map((ko, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400/90">
+                  <span>💀</span>
+                  <span className="font-bold">{playerAliases[ko.winner] ?? ko.winner}</span>
+                  <span className="text-muted-foreground">eliminou</span>
+                  <span>{playerAliases[ko.eliminated] ?? ko.eliminated}</span>
+                  <span className="ml-auto font-bold text-emerald-400">+${ko.amount.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
