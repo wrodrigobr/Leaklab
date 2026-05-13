@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  ChevronLeft,
   Clock,
   Flame,
   Loader2,
@@ -386,14 +387,33 @@ export default function GhostTable() {
     return (
       <div className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
         <HudHeader />
-        <div className="flex-1 min-h-0 flex gap-3 px-3 md:px-5 pt-2 pb-3 mx-auto w-full max-w-[1600px]">
+
+        {/* Identity bar */}
+        <div className="shrink-0 border-b border-border/30 px-3 md:px-5 py-1.5 flex items-center gap-3">
+          <Link to="/training" className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronLeft className="size-3.5" />
+            <span className="font-mono text-[10px] uppercase tracking-wide">{t("backToTraining")}</span>
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <Swords className="size-3 text-primary" aria-hidden />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">Ghost Table</span>
+          </div>
+          {pressureMode && streak > 0 && (
+            <div className="flex items-center gap-1 ml-auto">
+              <Flame className="size-3 text-amber-400" aria-hidden />
+              <span className="font-mono text-[10px] font-bold text-amber-400">{streak}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-h-0 flex gap-3 px-3 md:px-5 pt-1 pb-3 mx-auto w-full max-w-[1600px]">
 
           {/* Table column */}
           <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
             <div className="lg:hidden">{progressBar}</div>
-            {/* Table */}
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <div className="h-full mx-auto aspect-[16/10] max-w-full">
+            {/* Table — pt-10 gives room for top-player cards that overflow above SVG viewBox */}
+            <div className="flex-1 min-h-0 overflow-visible pt-10">
+              <div className="mx-auto aspect-[16/10] max-w-[90%]" style={{ maxHeight: 'calc(100% - 2.5rem)' }}>
                 <PokerTableV3 step={drillStep} hero={drillHero} heroCards={drillCards} bb={drillBb} betUnit="bb" />
               </div>
             </div>

@@ -35,12 +35,12 @@
   },
   "question": "¿Cuál es la acción correcta?",
   "actions": {
-    "fold":  "Fold",
+    "fold": "Fold",
     "check": "Check",
-    "call":  "Call",
-    "bet":   "Bet",
+    "call": "Call",
+    "bet": "Bet",
     "raise": "Raise",
-    "jam":   "Shove"
+    "jam": "Shove"
   },
   "result": {
     "correct": "¡Correcto!",
@@ -87,6 +87,6 @@
     "desc": "30 segundos por decisión. Error o timeout reinicia tu racha.",
     "timedOut": "Tiempo agotado — fold automático",
     "streakLabel": "Racha final"
-  }
+  },
+  "backToTraining": "Entrenamiento"
 }
-

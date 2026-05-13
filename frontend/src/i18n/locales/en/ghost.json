@@ -35,12 +35,12 @@
   },
   "question": "What is the correct action?",
   "actions": {
-    "fold":  "Fold",
+    "fold": "Fold",
     "check": "Check",
-    "call":  "Call",
-    "bet":   "Bet",
+    "call": "Call",
+    "bet": "Bet",
     "raise": "Raise",
-    "jam":   "Shove"
+    "jam": "Shove"
   },
   "result": {
     "correct": "Correct!",
@@ -87,6 +87,6 @@
     "desc": "30 seconds per decision. Wrong answer or timeout resets your streak.",
     "timedOut": "Time's up — auto-fold",
     "streakLabel": "Final streak"
-  }
+  },
+  "backToTraining": "Training"
 }
-
