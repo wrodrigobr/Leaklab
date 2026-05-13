@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.99.1] — 2026-05-13 — fix(GTO-004): unidades facing_size_bb e threshold is_simple_spot
+
+### Fixed
+- **`api/app.py`**: revert `facing_size_bb` para `decision.get("facing_bet")` (BBs do DB). Estava usando `_spot.get("facingSize")` que retorna chips — `bet_bucket(6400)="40bb+"` em vez do correto `bet_bucket(1.0)="0-3bb"`, causando hash de lookup completamente errado
+- **`gto_solver.py`**: `is_simple_spot` threshold `stack_bb <= 20` → `<= 25` para cobrir stacks de ~20bb, comuns em MTT. Stack de 20.1bb antes causava resolução assíncrona que nunca retornava ao frontend
+- **`Replayer.tsx`**: indicador "⏳ Calculando…" exibido quando `gto_label` existe mas `stratSorted` ainda está vazio (solver ainda processando) — evita silêncio confuso para o usuário
+
+---
+
 ## [v0.99.0] — 2026-05-13 — feat(GTO-009): solver_cli facing_size_bb + deploy VM — estratégia completa por nó de decisão
 
 ### Added
