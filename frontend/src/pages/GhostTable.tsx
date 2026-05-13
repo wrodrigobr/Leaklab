@@ -445,7 +445,7 @@ export default function GhostTable() {
           </div>
 
           {/* Side panel — desktop only */}
-          <aside className="hidden lg:flex w-64 shrink-0 flex-col gap-3 overflow-y-auto pb-2">
+          <aside className="hidden lg:flex w-64 shrink-0 flex-col gap-3 overflow-y-auto pb-2 pt-10">
             {progressBar}
             {sitStrip}
             <p className="font-mono text-[10px] text-muted-foreground shrink-0">
