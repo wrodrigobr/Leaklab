@@ -341,13 +341,13 @@ def is_simple_spot(street: str, board: list[str], stack_bb: float, facing_size_b
 
     Critérios de simplicidade:
       - Somente flop (turn/river têm árvores maiores)
-      - Stack ≤ 20bb (árvore pequena independente do board)
-      - OU: stack ≤ 30bb + board rainbow (simetria de naipe reduz árvore ~4x)
+      - Stack ≤ 25bb (cobre spots MTT comuns de 15-25bb, threshold anterior era 20)
+      - OU: stack ≤ 35bb + board rainbow (simetria de naipe reduz árvore ~4x)
       - Aposta enfrentada não é grande relative ao stack (evita sub-árvores de raise/3bet)
     """
     if street != 'flop':
         return False
-    if stack_bb <= 20:
+    if stack_bb <= 25:
         return True
     if stack_bb > 35:
         return False
