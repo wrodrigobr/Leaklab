@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.98.7] — 2026-05-12 — fix(UX-021): engine não penaliza BB check em pot não contestado
+
+### Fixed
+- **`decision_engine_v11.py`**: BB + preflop + check + facingSize=0 retorna imediatamente `label="standard"`, `bestAction="check"` sem calcular penalidades. Resultado no frontend: `is_error=false`, card mostra `✓ Correto` (ou não aparece se não há dados adicionais) em vez de `✗ Erro / Ideal: Fold`
+- O fix de `preflop_gto_ranges.py` (v0.98.6) só eliminava o range analysis; a engine ainda calculava um erro independente baseado no `range_evaluation.recommendedPrimaryAction="fold"`
+
+---
+
 ## [v0.98.6] — 2026-05-12 — fix(UX-020): BB free play não gera análise de range preflop
 
 ### Fixed

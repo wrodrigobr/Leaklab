@@ -292,6 +292,23 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     range_eval = input_data["range_evaluation"]
     context = input_data.get("context", {})
 
+    # BB check em pot não contestado: ação obrigatória/trivial, sem análise de erro
+    if (street == 'preflop'
+            and spot.get('position') == 'BB'
+            and input_data.get('player_action', '').lower() == 'check'
+            and float(spot.get('facingSize') or 0) == 0):
+        return {
+            "handId": input_data["hand_id"],
+            "bestAction": "check",
+            "actionTaken": "check",
+            "evaluation": {"mistakeScore": 0.0, "label": "standard", "scoreBreakdown": {}},
+            "thresholds": {},
+            "interpretation": {"summary": "BB exerceu o free play — sem análise de range.", "details": []},
+            "gto": {"available": False},
+            "preflop_gto": None,
+            "debug": {"rangeZone": None, "alternativeActions": [], "rawFlags": []},
+        }
+
     realization_adjustment = calc_realization_adjustment(
         spot.get("isInPosition"),
         math.get("reverseImpliedOddsFactor"),
