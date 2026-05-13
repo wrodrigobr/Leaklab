@@ -9,6 +9,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.99.0] — 2026-05-13 — feat(GTO-009): solver_cli suporta facing_size_bb — estratégia completa por nó de decisão
+
+### Added
+- **`solver_cli` (`main.rs`)**: novo campo opcional `facing_size_bb` (padrão 0.0). Quando > 0, após resolver o game tree completo, navega internamente para o nó onde OOP enfrenta a aposta do IP (`OOP check → IP bet closest_to(facing_size_bb) → OOP to act`) e retorna a estratégia de resposta (fold/call/raise/allin com frequências). Campo `facing_node: bool` na saída indica se a navegação foi bem-sucedida
+- **`gto_solver.py`**: `solver_payload` agora inclui `facing_size_bb` → worker da fila e chamadas síncronas passam o campo automaticamente ao binary
+- **Nós turn/river populados** para mão t=3910307458 h=257048692293 com estratégia completa: turn fold 55% / call 30% / raise 15%; river fold 56% / call 33% / raise 8% / allin 2%
+- **Frontend** (`Replayer.tsx`): barras de frequência agora aparecem com qualquer número de ações (`>= 1` em vez de `>= 2`); `topFreqPct` inline removido da coluna "GTO recomenda" (frequência já visível nas barras)
+
+### Technical
+- Navegação no game tree: `navigate_to_facing_bet()` busca `Action::Check` no root (OOP) e depois o `Action::Bet/Raise/AllIn` mais próximo de `facing_chips` no nó IP; `game.back_to_root()` se o nó não existir
+- Pot de referência para labels de resposta: `pot_chips + facing_chips` (mais preciso para raise percentages)
+- Flop ainda sem multi-action strategy no servidor de teste (1 core/1GB): árvore de 3 streets excede 120s; produção (4 vCPU) suporta
+
+---
+
 ## [v0.98.7] — 2026-05-12 — fix(UX-021): engine não penaliza BB check em pot não contestado
 
 ### Fixed

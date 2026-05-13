@@ -12,8 +12,13 @@
 ///   "pot_bb":                   10.0,
 ///   "effective_stack_bb":       40.0,
 ///   "max_iterations":           1000,
-///   "target_exploitability_pct": 1.0
+///   "target_exploitability_pct": 1.0,
+///   "facing_size_bb":           3.0   // opcional: > 0 → estratégia de OOP enfrentando aposta do IP
 /// }
+///
+/// Quando facing_size_bb > 0 o solver navega internamente para o nó
+/// "OOP checked → IP bet closest_to(facing_size_bb) → OOP to act" e retorna
+/// a estratégia de resposta (fold/call/raise/allin) daquele nó.
 ///
 /// Saída (stdout):
 /// {
@@ -22,7 +27,8 @@
 ///   "ev":               1.43,
 ///   "exploitability":   0.41,     <- % do pot
 ///   "iterations":       450,
-///   "strategy": { "check": 0.28, "bet_50pct": 0.72 }
+///   "strategy": { "check": 0.28, "bet_50pct": 0.72 },
+///   "facing_node":      false     <- true quando facing_size_bb > 0 e navegação ok
 /// }
 
 use postflop_solver::*;
@@ -44,6 +50,10 @@ struct Input {
     max_iterations:            u32,
     #[serde(default = "default_target")]
     target_exploitability_pct: f64,
+    /// Quando > 0: resolve o game tree completo mas retorna a estratégia de OOP
+    /// no nó onde IP apostou closest_to(facing_size_bb) após OOP checar.
+    #[serde(default)]
+    facing_size_bb:            f64,
 }
 
 fn default_iters()  -> u32 { 1500 }
@@ -65,6 +75,7 @@ struct Output {
     strategy:         HashMap<String, f64>,
     strategy_detail:  HashMap<String, ActionDetail>,
     total_combos:     f64,
+    facing_node:      bool,   // true quando facing_size_bb navegou com sucesso
 }
 
 #[derive(Serialize)]
@@ -173,7 +184,21 @@ fn run(inp: &Input) -> Result<Output, String> {
     let final_exploit = solve(&mut game, inp.max_iterations, target_chips, false);
     let exploit_pct   = (final_exploit as f64 / pot_chips as f64) * 100.0;
 
-    // Estratégia no nó raiz (OOP = player 0)
+    // Se facing_size_bb > 0: navega para o nó onde OOP enfrenta aposta do IP
+    // Percurso: root (OOP check) → IP bet closest_to(facing_size_bb) → OOP to act
+    let facing_chips  = (inp.facing_size_bb * 100.0).round() as i32;
+    let facing_node   = inp.facing_size_bb > 0.0
+        && navigate_to_facing_bet(&mut game, facing_chips);
+
+    // Pot de referência para labels de ação:
+    // se navegamos para facing-bet, o pot aumentou com a aposta do IP
+    let label_pot = if facing_node {
+        pot_chips + facing_chips
+    } else {
+        pot_chips
+    };
+
+    // Estratégia no nó atual (OOP = player 0)
     game.cache_normalized_weights();
     let strategy = game.strategy();
     let actions  = game.available_actions();
@@ -210,8 +235,7 @@ fn run(inp: &Input) -> Result<Output, String> {
         ev_sum / (total_weight * 100.0)  // converte chips → BBs
     } else { 0.0 };
 
-    // Combo counts: total_weight = sum of normalized_weights = effective range combos
-    // combos_i = total_weight * freq_i  (unnormalized weight contribution per action)
+    // Combo counts
     let mut combo_counts = vec![0.0f64; num_actions];
     for hand_idx in 0..num_hands {
         let w = weights[hand_idx] as f64;
@@ -227,7 +251,7 @@ fn run(inp: &Input) -> Result<Output, String> {
     let mut primary_freq   = 0.0f64;
 
     for (i, action) in actions.iter().enumerate() {
-        let label  = action_label(action, pot_chips);
+        let label  = action_label(action, label_pot);
         let freq   = (freqs[i] * 1000.0).round() / 1000.0;
         let combos = (combo_counts[i] * 100.0).round() / 100.0;
         if freq > primary_freq {
@@ -249,7 +273,46 @@ fn run(inp: &Input) -> Result<Output, String> {
         strategy:        strategy_map,
         strategy_detail: strategy_detail_map,
         total_combos:    (total_weight * 100.0).round() / 100.0,
+        facing_node,
     })
+}
+
+// ── Navegação para nó facing-bet ──────────────────────────────────────────────
+
+/// Avança o game tree de OOP check → IP bet closest_to(facing_chips).
+/// Retorna true se conseguiu navegar, false se o nó não existe na árvore.
+fn navigate_to_facing_bet(game: &mut PostFlopGame, facing_chips: i32) -> bool {
+    // Passo 1: OOP precisa de uma ação Check disponível
+    let root_actions = game.available_actions();
+    let check_idx = match root_actions.iter().position(|a| matches!(a, Action::Check)) {
+        Some(i) => i,
+        None    => return false,
+    };
+    game.play(check_idx);
+
+    // Passo 2: encontra a aposta do IP mais próxima de facing_chips
+    let ip_actions = game.available_actions();
+    let best = ip_actions.iter().enumerate()
+        .filter_map(|(i, a)| {
+            let chips = match a {
+                Action::Bet(c) | Action::Raise(c) | Action::AllIn(c) => *c as i32,
+                _ => return None,
+            };
+            Some((i, (chips - facing_chips).abs()))
+        })
+        .min_by_key(|(_, diff)| *diff);
+
+    match best {
+        Some((bet_idx, _)) => {
+            game.play(bet_idx);
+            true
+        }
+        None => {
+            // IP não tem ação de aposta na árvore — volta para root
+            game.back_to_root();
+            false
+        }
+    }
 }
 
 // ── Board parsing ─────────────────────────────────────────────────────────────

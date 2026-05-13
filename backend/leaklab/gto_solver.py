@@ -234,6 +234,7 @@ def lookup_gto(
         'effective_stack_bb':        _params['effective_stack_bb'],  # capped for tree size
         'max_iterations':            _params['max_iterations'],
         'target_exploitability_pct': _params['target_exploitability_pct'],
+        'facing_size_bb':            facing_size_bb,   # > 0 → solver navega para nó facing-bet
     }
 
     # Metadados extras para armazenar no DB após o solve
