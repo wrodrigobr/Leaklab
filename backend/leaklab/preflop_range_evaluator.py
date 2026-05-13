@@ -5,10 +5,13 @@ from .models import HandState, SpotClassification, RangeEvaluation
 def evaluate_preflop_range(state: HandState, spot: SpotClassification) -> RangeEvaluation:
     cards = state.hero_cards or ""
     zone = _classify_range_zone(cards)
-    recommended = _recommended_action(cards, state.position)
+    facing_size = float(getattr(state, 'facing_size', 0) or 0)
+    recommended = _recommended_action(cards, state.position, facing_size)
     alternatives = []
     if zone == "borderline_range":
-        alternatives = ["call", "fold"] if recommended == "call" else ["raise", "fold"]
+        # Se não há bet a pagar, fold nunca é alternativa válida
+        base_alts = ["call", "fold"] if recommended == "call" else ["raise", "fold"]
+        alternatives = [a for a in base_alts if not (a == "fold" and facing_size == 0)]
     elif zone == "core_range":
         alternatives = [recommended]
     return RangeEvaluation(
@@ -38,10 +41,13 @@ def _classify_range_zone(cards: str) -> str:
     return "outside_range"
 
 
-def _recommended_action(cards: str, position: str) -> str:
+def _recommended_action(cards: str, position: str, facing_size: float = 0.0) -> str:
     zone = _classify_range_zone(cards)
     if zone == "core_range":
         return "raise" if position not in {"BB"} else "call"
     if zone == "borderline_range":
         return "call" if position in {"BB", "SB"} else "raise"
+    # Mão fraca: se não há aposta a pagar, check é sempre disponível — nunca fold
+    if facing_size == 0:
+        return "check"
     return "fold"

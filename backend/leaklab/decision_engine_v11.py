@@ -388,6 +388,11 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         if rec:
             _best_action = rec[0]   # sobrescreve com ação GTO recomendada
 
+    # Guard: se não há aposta a pagar, fold nunca é a ação correta — mínimo é check.
+    # Cobre BB vs limpers, SB complete grátis, qualquer posição sem bet preflop/postflop.
+    if float(spot.get('facingSize') or 0) == 0 and _best_action == 'fold':
+        _best_action = 'check'
+
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
     return {
         "handId": input_data["hand_id"],
