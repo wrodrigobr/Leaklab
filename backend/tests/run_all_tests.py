@@ -12,8 +12,8 @@ import sys, os, subprocess, time, argparse
 sys.path.insert(0, os.path.dirname(__file__))
 
 SUITES = {
-    'engine':    ['test_decision_engine.py', 'test_pipeline.py', 'test_draw_detector.py',
-                  'test_postflop_evaluator.py', 'test_mtt_context.py'],
+    'engine':    ['test_decision_engine.py', 'test_evaluators.py', 'test_pipeline.py',
+                  'test_draw_detector.py', 'test_postflop_evaluator.py', 'test_mtt_context.py'],
     'database':  ['test_database.py', 'test_coach_system.py'],
     'llm':       ['test_llm_explainer.py', 'test_study_plan.py'],
     'api':       ['test_api_endpoints.py', 'test_subscription.py'],
