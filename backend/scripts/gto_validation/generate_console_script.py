@@ -118,7 +118,13 @@ def build_spot_url_params(spot: dict) -> dict | None:
 
 
 def build_js_script(spots: list[dict], delay_ms: int = 600) -> str:
-    """Gera o script JavaScript completo para o console do browser."""
+    """
+    Gera script JavaScript com interceptor de token em duas fases:
+    Fase 1 — intercepta o fetch do app para capturar o Bearer token
+    Fase 2 — usa o token capturado para fazer nossas chamadas
+
+    O usuário precisa navegar para qualquer spot no GTO Wizard durante a Fase 1.
+    """
     params_list = []
     for spot in spots:
         p = build_spot_url_params(spot)
@@ -129,18 +135,63 @@ def build_js_script(spots: list[dict], delay_ms: int = 600) -> str:
 
     js = f"""
 // ============================================================
-// GTO Wizard Spot Comparison — Console Script
-// Gerado por generate_console_script.py
+// GTO Wizard Spot Comparison — Console Script (v2 — token interceptor)
 // Execute no console do browser em https://app.gtowizard.com
-// Aguarde a conclusão e copie o JSON exibido.
+//
+// INSTRUÇÕES:
+//  1. Cole este script no console e pressione Enter
+//  2. Aguarde: "[Phase 1] Aguardando token..."
+//  3. Navegue para QUALQUER spot no GTO Wizard (clique em qualquer flop)
+//  4. Quando aparecer "[Phase 1] Token capturado!", a comparação inicia automaticamente
+//  5. Ao final, o JSON é copiado para o clipboard
 // ============================================================
 
 (async function runComparison() {{
   const BASE = 'https://api.gtowizard.com';
   const SPOTS = {params_json};
   const DELAY = {delay_ms};
+  const TOKEN_TIMEOUT_MS = 90000;  // 90s para o usuário navegar
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // ── Phase 1: Interceptar token ──────────────────────────────────────────────
+  console.log('[Phase 1] Aguardando token... Navegue para qualquer spot no GTO Wizard.');
+  console.log('[Phase 1] (clique em qualquer flop na seção Study ou Solutions)');
+
+  let capturedToken = null;
+  const _origFetch = window.fetch.bind(window);
+
+  window.fetch = function(url, opts) {{
+    const urlStr = typeof url === 'string' ? url : (url?.url || String(url));
+    if (urlStr.includes('api.gtowizard.com')) {{
+      const headers = opts?.headers || {{}};
+      const auth = headers['Authorization'] || headers['authorization'] || '';
+      if (auth.startsWith('Bearer ') && !capturedToken) {{
+        capturedToken = auth.slice(7);
+        console.log('[Phase 1] ✓ Token capturado! Iniciando comparação em 1s...');
+      }}
+    }}
+    return _origFetch(url, opts);
+  }};
+
+  // Aguardar até ter o token
+  let waited = 0;
+  while (!capturedToken && waited < TOKEN_TIMEOUT_MS) {{
+    await sleep(300);
+    waited += 300;
+  }}
+
+  // Restaurar fetch original
+  window.fetch = _origFetch;
+
+  if (!capturedToken) {{
+    console.error('[Phase 1] TIMEOUT — token não capturado em ' + (TOKEN_TIMEOUT_MS/1000) + 's.');
+    console.error('Tente navegar para um spot no GTO Wizard ANTES de rodar o script.');
+    return;
+  }}
+
+  // ── Phase 2: Executar comparação ────────────────────────────────────────────
+  console.log(`[Phase 2] Comparando ${{SPOTS.length}} spots...`);
 
   function buildUrl(p) {{
     const q = new URLSearchParams({{
@@ -158,14 +209,13 @@ def build_js_script(spots: list[dict], delay_ms: int = 600) -> str:
 
   function parseStrategy(data) {{
     const actions = {{}};
-    let topAction = null;
-    let topFreq = -1;
+    let topAction = null, topFreq = -1;
     for (const item of (data.action_solutions || [])) {{
       const type = (item.action?.type || '').toLowerCase();
       const freq = parseFloat(item.total_frequency || 0);
       const name = {{
         'check': 'check', 'call': 'call', 'fold': 'fold',
-        'bet': 'bet', 'raise': 'bet', 'all_in': 'allin', 'allin': 'allin'
+        'bet': 'bet', 'raise': 'bet', 'all_in': 'allin', 'allin': 'allin',
       }}[type] || type;
       actions[name] = (actions[name] || 0) + freq;
       if (freq > topFreq) {{ topFreq = freq; topAction = name; }}
@@ -173,13 +223,21 @@ def build_js_script(spots: list[dict], delay_ms: int = 600) -> str:
     return {{ actions, topAction }};
   }}
 
+  const authHeaders = {{
+    'Authorization': `Bearer ${{capturedToken}}`,
+    'Accept': 'application/json, text/plain, */*',
+    'gwclientid': '790ab864-ed0c-4545-9e5a-97efe89672cd',
+    'Origin': 'https://app.gtowizard.com',
+    'Referer': 'https://app.gtowizard.com/',
+  }};
+
   const results = [];
-  console.log(`[GTO Compare] Starting ${{SPOTS.length}} spots...`);
 
   for (let i = 0; i < SPOTS.length; i++) {{
     const p = SPOTS[i];
     const meta = p.meta;
-    console.log(`[${{i+1}}/${{SPOTS.length}}] ${{meta.position}} vs ${{meta.villain_position}} | ${{p.board}} | ${{p.depth}}bb`);
+    process.stdout?.write?.(`[${{i+1}}/${{SPOTS.length}}]`);
+    console.log(`[${{i+1}}/${{SPOTS.length}}] ${{meta.position}} | ${{p.board}} | ${{p.depth}}bb | preflop: ${{p.preflop_actions}}`);
 
     let result = {{
       ...meta,
@@ -195,25 +253,30 @@ def build_js_script(spots: list[dict], delay_ms: int = 600) -> str:
 
     try {{
       const url = buildUrl(p);
-      const r = await fetch(url);
-      if (r.status === 404) {{
+      const r = await _origFetch(url, {{ headers: authHeaders }});
+      if (r.status === 401) {{
+        result.error = 'token_expired_401';
+        console.warn('  ✗ 401 — token expirou durante a execução. Reinicie o script.');
+        break;
+      }} else if (r.status === 404) {{
         result.error = 'not_found_404';
+        console.log('  ✗ 404 — spot não disponível no plano');
       }} else if (!r.ok) {{
         result.error = `http_${{r.status}}`;
+        console.log(`  ✗ ${{r.status}}`);
       }} else {{
         const data = await r.json();
         const {{ actions, topAction }} = parseStrategy(data);
         result.gto_found = true;
         result.gto_strategy = actions;
         result.gto_top_action = topAction;
-        // Verdict: frequency of our recommended action in GTO
         const ourAction = (meta.our_best_action || '').toLowerCase();
-        const mapAction = {{ 'raise': 'bet', 'all-in': 'allin', 'jam': 'allin' }};
-        const gtoKey = mapAction[ourAction] || ourAction;
+        const gtoKey = {{ 'raise': 'bet', 'all-in': 'allin', 'jam': 'allin' }}[ourAction] || ourAction;
         const freq = actions[gtoKey] || 0;
         result.our_action_gto_freq = freq;
         result.verdict = freq >= 0.40 ? 'agreement' : freq >= 0.15 ? 'mixed' : 'divergence';
-        console.log(`  → ${{result.verdict}} | our=${{ourAction}} gto_freq=${{(freq*100).toFixed(0)}}% | gto_top=${{topAction}}`);
+        const strat = Object.entries(actions).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${{k}} ${{(v*100).toFixed(0)}}%`).join(' | ');
+        console.log(`  ✓ ${{result.verdict.toUpperCase().padEnd(12)}} our=${{ourAction}}(${{(freq*100).toFixed(0)}}%)  GTO: ${{strat}}`);
       }}
     }} catch(e) {{
       result.error = e.message;
@@ -224,26 +287,25 @@ def build_js_script(spots: list[dict], delay_ms: int = 600) -> str:
     if (i < SPOTS.length - 1) await sleep(DELAY);
   }}
 
-  console.log('\\n[GTO Compare] DONE. Copying results to clipboard...');
-
-  // Summary
+  // ── Summary ─────────────────────────────────────────────────────────────────
   const found = results.filter(r => r.gto_found);
   const verdicts = {{}};
-  results.forEach(r => {{ verdicts[r.verdict || 'error'] = (verdicts[r.verdict || 'error'] || 0) + 1; }});
-  console.log(`Found: ${{found.length}}/${{results.length}}`);
-  console.log('Verdicts:', verdicts);
+  results.forEach(r => {{ verdicts[r.verdict || r.error || 'skip'] = (verdicts[r.verdict || r.error || 'skip'] || 0) + 1; }});
+  console.log('\\n' + '='.repeat(60));
+  console.log(`RESULTADO: ${{found.length}}/${{results.length}} spots encontrados`);
+  console.log('Verditos:', JSON.stringify(verdicts));
+  console.log('='.repeat(60));
 
   const jsonOutput = JSON.stringify(results, null, 2);
 
-  // Try to copy to clipboard
   try {{
     await navigator.clipboard.writeText(jsonOutput);
-    console.log('[GTO Compare] Results copied to clipboard! Paste into comparison_results_raw.json');
+    console.log('✓ JSON copiado para o clipboard! Cole em comparison_results_raw.json');
   }} catch(e) {{
-    console.log('[GTO Compare] Clipboard failed — printing JSON below:');
-    console.log('--- BEGIN JSON ---');
+    console.log('Clipboard indisponível — JSON abaixo:');
+    console.log('GTW_RESULTS_START');
     console.log(jsonOutput);
-    console.log('--- END JSON ---');
+    console.log('GTW_RESULTS_END');
   }}
 
   return results;
