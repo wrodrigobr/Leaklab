@@ -9,9 +9,9 @@ def evaluate_preflop_range(state: HandState, spot: SpotClassification) -> RangeE
     recommended = _recommended_action(cards, state.position, facing_size)
     alternatives = []
     if zone == "borderline_range":
-        # Se não há bet a pagar, fold nunca é alternativa válida
         base_alts = ["call", "fold"] if recommended == "call" else ["raise", "fold"]
-        alternatives = [a for a in base_alts if not (a == "fold" and facing_size == 0)]
+        # BB pode check grátis — fold não é alternativa válida sem aposta
+        alternatives = [a for a in base_alts if not (a == "fold" and facing_size == 0 and state.position == "BB")]
     elif zone == "core_range":
         alternatives = [recommended]
     return RangeEvaluation(
@@ -47,7 +47,7 @@ def _recommended_action(cards: str, position: str, facing_size: float = 0.0) -> 
         return "raise" if position not in {"BB"} else "call"
     if zone == "borderline_range":
         return "call" if position in {"BB", "SB"} else "raise"
-    # Mão fraca: se não há aposta a pagar, check é sempre disponível — nunca fold
-    if facing_size == 0:
+    # Mão fraca: BB pode check grátis; demais posições estão escolhendo não abrir — fold é correto.
+    if facing_size == 0 and position == "BB":
         return "check"
     return "fold"

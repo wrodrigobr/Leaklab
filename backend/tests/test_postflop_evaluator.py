@@ -217,19 +217,21 @@ def test_genuine_errors_preserved():
 
 
 def test_preflop_unaffected():
-    """Decisões preflop não devem ser alteradas pelo postflop evaluator."""
+    """Decisões preflop devem usar range zones do preflop evaluator, não do postflop."""
     from leaklab.parser import parse_pokerstars_file
     hands = parse_pokerstars_file(TOURNAMENT_FILE)
 
-    preflop_recs = set()
+    POSTFLOP_ZONES = {'strong', 'medium', 'weak', 'draw', 'air'}
+    bad_zones = []
     for hand in hands:
         for di in build_decision_inputs_for_hand(hand):
             if di['street'] == 'preflop':
-                preflop_recs.add(di['range_evaluation']['recommendedPrimaryAction'])
+                zone = di['range_evaluation'].get('rangeZone', '')
+                if zone in POSTFLOP_ZONES:
+                    bad_zones.append(zone)
 
-    # Preflop evaluator nunca recomenda 'check'
-    assert 'check' not in preflop_recs, "Preflop está usando postflop evaluator"
-    print(f"OK  test_preflop_unaffected | recs={preflop_recs}")
+    assert not bad_zones, f"Preflop usando postflop evaluator (zones: {set(bad_zones)})"
+    print(f"OK  test_preflop_unaffected | postflop zones em preflop: nenhuma")
 
 
 if __name__ == '__main__':

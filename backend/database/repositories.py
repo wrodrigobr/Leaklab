@@ -1581,8 +1581,8 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
     steps = []
     for i, r in enumerate(rows):
         best = r["best_action"]
-        # Guard: fold é impossível quando não há aposta a pagar — corrige decisões antigas no DB
-        if float(r["facing_bet"] or 0) == 0 and best == "fold":
+        # Guard: BB pode check grátis — fold impossível sem aposta. Outras posições: fold correto (não abrem).
+        if float(r["facing_bet"] or 0) == 0 and best == "fold" and r.get("position") == "BB":
             best = "check"
         steps.append({
             "step_index":   i,

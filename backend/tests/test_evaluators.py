@@ -147,13 +147,17 @@ def test_no_facing_bet_never_fold_borderline_range():
     print("OK  test_no_facing_bet_never_fold_borderline_range")
 
 
-def test_no_facing_bet_never_fold_outside_range():
-    for pos in POSITIONS_ALL:
+def test_no_facing_bet_outside_range_bb_checks_others_fold():
+    # BB pode check grátis — mínimo é check, não fold
+    for cards in ['2s7h', '3c8d', '4h9s']:
+        rec = _recommended_action(cards, 'BB', facing_size=0.0)
+        assert rec == 'check', f"outside_range {cards} BB sem aposta deveria ser check, got {rec}"
+    # Demais posições escolhem não abrir — fold é correto (perdem nada, saem do pot)
+    for pos in ['BTN', 'CO', 'HJ', 'MP', 'UTG']:
         for cards in ['2s7h', '3c8d', '4h9s']:
             rec = _recommended_action(cards, pos, facing_size=0.0)
-            assert rec != 'fold', f"outside_range {cards} {pos} sem aposta retornou fold (deveria ser check)"
-            assert rec == 'check', f"outside_range {cards} {pos} sem aposta deveria retornar check, retornou {rec}"
-    print("OK  test_no_facing_bet_never_fold_outside_range")
+            assert rec == 'fold', f"outside_range {cards} {pos} sem aposta deveria ser fold (não abre), got {rec}"
+    print("OK  test_no_facing_bet_outside_range_bb_checks_others_fold")
 
 
 def test_facing_bet_outside_range_can_fold():
@@ -181,29 +185,35 @@ def test_bb_vs_limpers_no_bet_trash():
     print("OK  test_bb_vs_limpers_no_bet_trash")
 
 
-def test_sb_complete_no_bet():
+def test_sb_no_bet_trash_folds():
+    # SB com mão fraca sem aposta deve fold (escolhe não completar com lixo OOP)
     rec = _recommended_action('2s7h', 'SB', facing_size=0.0)
-    assert rec == 'check', f"SB complete sem aposta mão fraca: deveria ser check, got {rec}"
-    print("OK  test_sb_complete_no_bet")
+    assert rec == 'fold', f"SB trash sem aposta deveria ser fold, got {rec}"
+    print("OK  test_sb_no_bet_trash_folds")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # evaluate_preflop_range — alternatives nunca incluem fold quando facing=0
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_evaluate_preflop_range_no_fold_in_alternatives_when_no_bet():
-    hands = [
-        ('AsAh', 'BB'), ('KsQh', 'BTN'), ('7s7h', 'CO'), ('2s7h', 'SB'),
-        ('JsJh', 'BB'), ('AhTh', 'HJ'), ('5s5h', 'BB'),
-    ]
-    for cards, pos in hands:
+def test_evaluate_preflop_range_bb_no_fold_when_no_bet():
+    # BB nunca deve ter fold como primary ou alternative quando não há aposta
+    hands_bb = [('AsAh', 'BB'), ('JsJh', 'BB'), ('5s5h', 'BB'), ('2s7h', 'BB')]
+    for cards, pos in hands_bb:
         state = _state(cards, pos, facing=0.0)
         result = evaluate_preflop_range(state, _spot())
         assert result.recommended_primary_action != 'fold', \
-            f"{cards} {pos} facing=0: recomendou fold"
+            f"{cards} {pos} facing=0: BB recomendou fold"
         assert 'fold' not in result.alternative_actions, \
-            f"{cards} {pos} facing=0: fold apareceu nas alternativas"
-    print("OK  test_evaluate_preflop_range_no_fold_in_alternatives_when_no_bet")
+            f"{cards} {pos} facing=0: fold nas alternativas do BB"
+    # Core/borderline para qualquer posição sem aposta: fold nunca como primary
+    hands_non_bb = [('KsQh', 'BTN'), ('7s7h', 'CO'), ('AhTh', 'HJ')]
+    for cards, pos in hands_non_bb:
+        state = _state(cards, pos, facing=0.0)
+        result = evaluate_preflop_range(state, _spot())
+        assert result.recommended_primary_action != 'fold', \
+            f"core/borderline {cards} {pos} facing=0: não deveria recomendar fold"
+    print("OK  test_evaluate_preflop_range_bb_no_fold_when_no_bet")
 
 
 def test_evaluate_preflop_range_fold_allowed_with_bet():
@@ -234,21 +244,19 @@ def test_evaluate_preflop_range_borderline_has_alternatives():
 # evaluate_decision — guard final: facingSize=0 → bestAction != fold
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_evaluate_decision_no_fold_when_facing_zero():
-    """evaluate_decision nunca deve retornar bestAction=fold quando facingSize=0."""
+def test_evaluate_decision_bb_no_fold_when_facing_zero():
+    """evaluate_decision não deve retornar bestAction=fold para BB quando facingSize=0."""
     cases = [
         ('fold', 'preflop', 0.20, 0.15, 'outside_range', 'fold', 0.0, 'BB'),
-        ('check', 'preflop', 0.20, 0.15, 'outside_range', 'fold', 0.0, 'BTN'),
         ('raise', 'preflop', 0.20, 0.50, 'core_range', 'fold', 0.0, 'BB'),
-        ('call', 'flop', 0.25, 0.30, 'borderline_range', 'fold', 0.0, 'SB'),
     ]
     for player_action, street, pot_odds, est_eq, zone, rec, facing, pos in cases:
         d = _decision(player_action, street, pot_odds, est_eq, zone, rec, facing_size=facing, position=pos)
         r = evaluate_decision(d)
         best = r.get('bestAction') or r.get('evaluation', {}).get('bestAction')
         assert best != 'fold', \
-            f"evaluate_decision com facingSize=0 retornou bestAction=fold ({player_action}/{street}/{pos})"
-    print("OK  test_evaluate_decision_no_fold_when_facing_zero")
+            f"BB com facingSize=0 retornou bestAction=fold ({player_action}/{street}/{pos})"
+    print("OK  test_evaluate_decision_bb_no_fold_when_facing_zero")
 
 
 def test_evaluate_decision_bb_limper_raise_is_not_mistake():
@@ -284,31 +292,54 @@ TRASH_HANDS = ['2s7h', '3c8d', '4h9s', '2d6c', '3h5d']
 ALL_HANDS = CORE_HANDS + BORDER_HANDS + TRASH_HANDS
 
 
-def test_mass_no_facing_never_fold():
-    """Para todo spot sem aposta, a recomendação nunca é fold."""
+def test_mass_bb_no_facing_never_fold():
+    """BB sem aposta nunca deve receber recomendação fold — mínimo é check."""
+    failures = []
+    for cards in ALL_HANDS:
+        rec = _recommended_action(cards, 'BB', facing_size=0.0)
+        if rec == 'fold':
+            failures.append(f"{cards} @ BB")
+    assert not failures, f"BB fold sem aposta em {len(failures)} spots: {failures}"
+    print(f"OK  test_mass_bb_no_facing_never_fold ({len(ALL_HANDS)} spots verificados)")
+
+
+def test_mass_non_bb_outside_range_folds_without_bet():
+    """UTG/HJ/CO/BTN/SB com mão fraca sem aposta devem fold (escolhem não abrir)."""
+    non_bb = ['BTN', 'CO', 'HJ', 'MP', 'UTG', 'SB']
+    failures = []
+    for pos in non_bb:
+        for cards in TRASH_HANDS:
+            rec = _recommended_action(cards, pos, facing_size=0.0)
+            if rec != 'fold':
+                failures.append(f"{cards} @ {pos} → {rec}")
+    assert not failures, f"fold esperado para non-BB trash sem aposta: {failures[:5]}"
+    print(f"OK  test_mass_non_bb_outside_range_folds_without_bet ({len(non_bb) * len(TRASH_HANDS)} spots)")
+
+
+def test_mass_core_borderline_never_fold_without_bet():
+    """Core/borderline range: nenhuma posição deve receber fold sem aposta."""
     failures = []
     for pos in POSITIONS_ALL:
-        for cards in ALL_HANDS:
+        for cards in CORE_HANDS + BORDER_HANDS:
             rec = _recommended_action(cards, pos, facing_size=0.0)
             if rec == 'fold':
                 failures.append(f"{cards} @ {pos}")
-    assert not failures, f"fold recomendado sem aposta em {len(failures)} spots: {failures[:5]}"
-    print(f"OK  test_mass_no_facing_never_fold ({len(POSITIONS_ALL) * len(ALL_HANDS)} spots verificados)")
+    assert not failures, f"core/borderline fold sem aposta: {failures[:5]}"
+    print(f"OK  test_mass_core_borderline_never_fold_without_bet ({len(POSITIONS_ALL) * len(CORE_HANDS + BORDER_HANDS)} spots)")
 
 
-def test_mass_evaluate_range_no_fold_alternatives_when_no_bet():
-    """evaluate_preflop_range nunca inclui fold em alternatives quando facing=0."""
+def test_mass_evaluate_range_bb_no_fold_when_no_bet():
+    """evaluate_preflop_range: BB nunca deve ter fold como primary ou alternative sem aposta."""
     failures = []
-    for pos in POSITIONS_ALL:
-        for cards in ALL_HANDS:
-            state = _state(cards, pos, facing=0.0)
-            result = evaluate_preflop_range(state, _spot())
-            if result.recommended_primary_action == 'fold':
-                failures.append(f"primary fold: {cards}@{pos}")
-            if 'fold' in result.alternative_actions:
-                failures.append(f"alt fold: {cards}@{pos}")
-    assert not failures, f"fold indevido em {len(failures)} spots: {failures[:5]}"
-    print(f"OK  test_mass_evaluate_range_no_fold_alternatives_when_no_bet ({len(POSITIONS_ALL) * len(ALL_HANDS)} spots)")
+    for cards in ALL_HANDS:
+        state = _state(cards, 'BB', facing=0.0)
+        result = evaluate_preflop_range(state, _spot())
+        if result.recommended_primary_action == 'fold':
+            failures.append(f"primary fold: {cards}@BB")
+        if 'fold' in result.alternative_actions:
+            failures.append(f"alt fold: {cards}@BB")
+    assert not failures, f"BB fold sem aposta em {len(failures)} spots: {failures}"
+    print(f"OK  test_mass_evaluate_range_bb_no_fold_when_no_bet ({len(ALL_HANDS)} spots)")
 
 
 def test_mass_zone_consistency():
