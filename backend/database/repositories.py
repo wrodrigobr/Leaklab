@@ -1578,15 +1578,20 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
         max(mistakes, key=lambda r: r["score"])["id"] if mistakes else rows[0]["id"]
     )
 
-    steps = [
-        {
+    steps = []
+    for i, r in enumerate(rows):
+        best = r["best_action"]
+        # Guard: fold é impossível quando não há aposta a pagar — corrige decisões antigas no DB
+        if float(r["facing_bet"] or 0) == 0 and best == "fold":
+            best = "check"
+        steps.append({
             "step_index":   i,
             "decision_id":  r["id"],
             "street":       r["street"],
             "hero_cards":   r["hero_cards"],
             "board":        r["board"] or "",
             "action_taken": r["action_taken"],
-            "best_action":  r["best_action"],
+            "best_action":  best,
             "label":        r["label"],
             "score":        r["score"],
             "m_ratio":      r["m_ratio"],
@@ -1597,9 +1602,7 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
             "pot_size":     r["pot_size"],
             "facing_bet":   r["facing_bet"],
             "is_3bet":      bool(r["is_3bet"]),
-        }
-        for i, r in enumerate(rows)
-    ]
+        })
 
     return {
         "insufficient_data":    False,

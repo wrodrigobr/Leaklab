@@ -872,6 +872,9 @@ def player_drill_submit():
         return jsonify({'error': 'Decisão não encontrada'}), 404
 
     best_action    = row['best_action']
+    # Guard: se não há aposta a pagar, fold é impossível — corrige decisões armazenadas antes do fix
+    if float(row.get('facing_bet') or 0) == 0 and best_action == 'fold':
+        best_action = 'check'
     original_score = row['score']
     # Evaluation: correct if new action matches best action
     is_correct = new_action == best_action
