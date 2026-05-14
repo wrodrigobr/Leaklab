@@ -16,57 +16,67 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { AiText } from "@/components/ui/AiText";
-import { sparring, drill, tournaments } from "@/lib/api";
-import type { SparringHand, SparringStep, DrillSubmitResult, ReplayStep } from "@/lib/api";
-import { GtoPanel } from "@/components/hud/GtoPanel";
+import { sparring, drill, tournaments, gto } from "@/lib/api";
+import type { SparringHand, SparringStep, DrillSubmitResult, ReplayStep, GtoDecisionResult } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
 type Phase = "idle" | "loading" | "playing" | "feedback" | "summary";
 
-const ACTION_KEYS_FACING    = ["fold", "call", "raise", "jam"] as const; // facing a bet
-const ACTION_KEYS_NO_FACING = ["fold", "check", "bet",  "jam"] as const; // no bet to face
+const ACTION_KEYS_FACING    = ["fold", "call", "raise", "jam"] as const;
+const ACTION_KEYS_NO_FACING = ["fold", "check", "bet",  "jam"] as const;
 const ACTION_KEYS_ALL       = ["fold", "check", "call", "bet", "raise", "jam"] as const;
 
 function getActionKeys(step: SparringStep): readonly string[] {
-  // Primary signal: facing_bet from the DB
   if (step.facing_bet !== null) {
     return step.facing_bet > 0 ? ACTION_KEYS_FACING : ACTION_KEYS_NO_FACING;
   }
-  // Fallback: infer from best_action — doesn't reveal which is correct,
-  // only mirrors the game reality the player already sees on the table
   if (["call", "raise"].includes(step.best_action)) return ACTION_KEYS_FACING;
   if (["check", "bet"].includes(step.best_action))  return ACTION_KEYS_NO_FACING;
   return ACTION_KEYS_ALL;
 }
+
 const STREETS = ["preflop", "flop", "turn", "river"] as const;
+
+// ── Action color helpers (same palette as Replayer) ───────────────────────────
+
+function actionBarColor(action: string): string {
+  const a = action.toLowerCase();
+  if (a === "fold")                                  return "bg-blue-500";
+  if (a === "check")                                 return "bg-sky-400";
+  if (a === "call")                                  return "bg-emerald-500";
+  if (a.startsWith("bet") || a.startsWith("raise")) return "bg-red-500";
+  if (a === "allin" || a.startsWith("allin"))        return "bg-red-600";
+  return "bg-purple-500";
+}
+
+function actionTextColor(action: string): string {
+  const a = action.toLowerCase();
+  if (a === "fold")                                  return "text-blue-400";
+  if (a === "check")                                 return "text-sky-400";
+  if (a === "call")                                  return "text-emerald-400";
+  if (a.startsWith("bet") || a.startsWith("raise")) return "text-red-400";
+  if (a === "allin" || a.startsWith("allin"))        return "text-red-400";
+  return "text-purple-400";
+}
+
+function isPlayerAct(action: string, played: string): boolean {
+  const a = action.toLowerCase();
+  const p = played.toLowerCase();
+  if (a === p) return true;
+  if (p === "allin" && (a === "all-in" || a === "jam")) return true;
+  if ((p === "jam" || p === "shove") && (a === "allin" || a === "all-in")) return true;
+  return false;
+}
 
 // ── Card parser ───────────────────────────────────────────────────────────────
 
-function parseCards(raw: string | null): CardData[] {
+function parseCardsRaw(raw: string | null): string[] {
   if (!raw) return [];
-  const SUITS = ["s", "h", "d", "c"];
-  if (raw.trim().startsWith("[")) {
-    try { return (JSON.parse(raw) as string[]).flatMap((t) => parseCards(t)); }
-    catch { return []; }
+  const s = raw.trim();
+  if (s.startsWith("[")) {
+    try { return JSON.parse(s) as string[]; } catch { return []; }
   }
-  const tokens: string[] = [];
-  const str = raw.replace(/\s+/g, "");
-  let i = 0;
-  while (i < str.length) {
-    const two = str.slice(i, i + 2);
-    const three = str.slice(i, i + 3);
-    if (three.length === 3 && SUITS.includes(three[2].toLowerCase()) && two === "10") {
-      tokens.push(three); i += 3;
-    } else if (two.length === 2 && SUITS.includes(two[1].toLowerCase())) {
-      tokens.push(two); i += 2;
-    } else { i++; }
-  }
-  return tokens.flatMap((token) => {
-    const suit = token.slice(-1).toLowerCase() as "s" | "h" | "d" | "c";
-    const rank = token.slice(0, -1).toUpperCase();
-    if (!SUITS.includes(suit) || !rank) return [];
-    return [{ rank, suit }];
-  });
+  return s.match(/[2-9TJQKAakqjt][shdcSHDC]/g) ?? [];
 }
 
 // ── Poker table adapter (SparringStep → ReplayStep for PokerTableV3) ─────────
@@ -75,29 +85,24 @@ function buildSparringStep(
   step: SparringStep,
   replayStep: ReplayStep | null,
 ): { tableStep: ReplayStep; hero: string; heroCards: string[]; bb: number } {
-  const heroCardsStr: string[] = step.hero_cards
-    ? (step.hero_cards.trim().startsWith('[')
-        ? (() => { try { return JSON.parse(step.hero_cards!) as string[]; } catch { return []; } })()
-        : (step.hero_cards.match(/[2-9TJQKAakqjt][shdcSHDC]/g) ?? []))
-    : [];
+  const heroCardsStr = parseCardsRaw(step.hero_cards);
 
   if (replayStep) {
     return { tableStep: replayStep, hero: replayStep.hero, heroCards: heroCardsStr, bb: replayStep.bb };
   }
 
-  // Synthetic fallback from SparringStep fields only
-  const HERO = 'Hero';
+  const HERO = "Hero";
   const bb   = 100;
   const heroStack = Math.round((step.stack_bb ?? 20) * bb);
   const numP = Math.max(2, Math.min(6, step.num_players ?? 6));
-  const heroPos = (step.position ?? 'BTN').toUpperCase();
+  const heroPos = (step.position ?? "BTN").toUpperCase();
   const layouts: Record<number, string[]> = {
-    2: ['BTN', 'BB'], 3: ['BTN', 'SB', 'BB'],
-    4: ['CO', 'BTN', 'SB', 'BB'], 5: ['UTG', 'CO', 'BTN', 'SB', 'BB'],
-    6: ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+    2: ["BTN", "BB"], 3: ["BTN", "SB", "BB"],
+    4: ["CO", "BTN", "SB", "BB"], 5: ["UTG", "CO", "BTN", "SB", "BB"],
+    6: ["UTG", "HJ", "CO", "BTN", "SB", "BB"],
   };
   const positions = layouts[numP] ?? layouts[6];
-  const btnSeat   = positions.indexOf('BTN') + 1;
+  const btnSeat   = positions.indexOf("BTN") + 1;
   let heroSeatIdx = positions.indexOf(heroPos);
   if (heroSeatIdx < 0) heroSeatIdx = 0;
   const heroSeatNum = heroSeatIdx + 1;
@@ -108,8 +113,8 @@ function buildSparringStep(
     const sn = String(i + 1);
     const isHero = (i + 1) === heroSeatNum;
     seats[sn] = { player: isHero ? HERO : `V${i + 1}`, stack: heroStack, pos };
-    if (pos === 'SB') bets[sn] = Math.round(bb * 0.5);
-    else if (pos === 'BB') bets[sn] = bb;
+    if (pos === "SB") bets[sn] = Math.round(bb * 0.5);
+    else if (pos === "BB") bets[sn] = bb;
   });
   if (step.facing_bet && step.facing_bet > 0) {
     const facingChips = Math.round(step.facing_bet * bb);
@@ -118,18 +123,13 @@ function buildSparringStep(
     if (agSeat !== heroSeatNum) bets[String(agSeat)] = facingChips;
   }
 
-  const boardLimit = ({ preflop: 0, flop: 3, turn: 4, river: 5 } as Record<string, number>)[step.street ?? 'preflop'] ?? 0;
-  const boardRaw: string[] = (() => {
-    if (!step.board) return [];
-    const s = step.board.trim();
-    if (s.startsWith('[')) { try { return JSON.parse(s) as string[]; } catch { return []; } }
-    return s.split(/\s+/).filter(Boolean);
-  })();
-  const potChips = Math.round((step.pot_size ?? 2) * bb);
+  const boardLimit = ({ preflop: 0, flop: 3, turn: 4, river: 5 } as Record<string, number>)[step.street ?? "preflop"] ?? 0;
+  const boardRaw   = parseCardsRaw(step.board);
+  const potChips   = Math.round((step.pot_size ?? 2) * bb);
 
   return {
     tableStep: {
-      type: 'action', street: step.street ?? 'preflop',
+      type: "action", street: step.street ?? "preflop",
       seats, bets, folded: [],
       pot_bb: step.pot_size ?? 2, pot: potChips,
       bb, button: btnSeat, board: boardRaw.slice(0, boardLimit),
@@ -146,43 +146,30 @@ function buildSparringStep(
 interface StepResult { step: SparringStep; result: DrillSubmitResult | null }
 
 function StreetTimeline({
-  steps,
-  history,
-  currentIndex,
-  t,
+  steps, history, currentIndex, t,
 }: {
   steps: SparringStep[];
   history: StepResult[];
   currentIndex: number;
   t: (k: string) => string;
 }) {
-  const stepStreets = steps.map((s) => s.street);
-
   return (
     <div className="flex items-center gap-0">
-      {stepStreets.map((street, i) => {
-        const done     = i < history.length;
-        const current  = i === currentIndex;
-        const correct  = done && history[i]?.result?.is_correct;
+      {steps.map((s, i) => {
+        const done      = i < history.length;
+        const current   = i === currentIndex;
+        const correct   = done && history[i]?.result?.is_correct;
         const incorrect = done && !history[i]?.result?.is_correct;
-
         return (
           <div key={i} className="flex items-center">
-            {/* connector */}
             {i > 0 && (
-              <div className={cn(
-                "h-px w-8",
-                done ? (correct ? "bg-emerald-500/60" : "bg-destructive/60") : "bg-border"
-              )} />
+              <div className={cn("h-px w-8", done ? (correct ? "bg-emerald-500/60" : "bg-destructive/60") : "bg-border")} />
             )}
-            {/* dot */}
-            <div className={cn(
-              "flex flex-col items-center gap-1",
-            )}>
+            <div className="flex flex-col items-center gap-1">
               <div className={cn(
                 "size-7 rounded-full border-2 flex items-center justify-center transition-all",
-                current  && "border-amber-400 bg-amber-400/20 ring-2 ring-amber-400/30",
-                correct  && "border-emerald-500 bg-emerald-500/20",
+                current   && "border-amber-400 bg-amber-400/20 ring-2 ring-amber-400/30",
+                correct   && "border-emerald-500 bg-emerald-500/20",
                 incorrect && "border-destructive bg-destructive/20",
                 !done && !current && "border-border bg-background",
               )}>
@@ -191,11 +178,8 @@ function StreetTimeline({
                 {current   && <Flame        className="size-3.5 text-amber-400 animate-pulse" />}
                 {!done && !current && <span className="size-1.5 rounded-full bg-border" />}
               </div>
-              <span className={cn(
-                "font-mono text-[8px] uppercase tracking-wider",
-                current   ? "text-amber-400 font-bold" : "text-muted-foreground"
-              )}>
-                {t(`street.${street}`).slice(0, 3)}
+              <span className={cn("font-mono text-[8px] uppercase tracking-wider", current ? "text-amber-400 font-bold" : "text-muted-foreground")}>
+                {t(`street.${s.street}`).slice(0, 3)}
               </span>
             </div>
           </div>
@@ -211,22 +195,16 @@ function HandRecap({ history, t }: { history: StepResult[]; t: (k: string) => st
   if (!history.length) return null;
   return (
     <div className="rounded-lg border border-border bg-hud-surface/60 px-3 py-2 space-y-1">
-      <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground/60">
-        {t("historyLabel")}
-      </p>
+      <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground/60">{t("historyLabel")}</p>
       <div className="space-y-0.5">
         {history.map(({ step, result }, i) => (
           <div key={i} className="flex items-center gap-2 font-mono text-[11px]">
-            <span className="text-muted-foreground w-12 shrink-0">
-              {t(`street.${step.street}`).slice(0, 3).toUpperCase()}
-            </span>
+            <span className="text-muted-foreground w-12 shrink-0">{t(`street.${step.street}`).slice(0, 3).toUpperCase()}</span>
             <span className={cn("font-bold", result?.is_correct ? "text-emerald-400" : "text-destructive")}>
               {formatAction(result?.new_action ?? step.action_taken).toUpperCase()}
             </span>
             {!result?.is_correct && (
-              <span className="text-muted-foreground/60">
-                → {formatAction(step.best_action).toUpperCase()}
-              </span>
+              <span className="text-muted-foreground/60">→ {formatAction(step.best_action).toUpperCase()}</span>
             )}
           </div>
         ))}
@@ -235,22 +213,216 @@ function HandRecap({ history, t }: { history: StepResult[]; t: (k: string) => st
   );
 }
 
+// ── Unified coach card (GTO > Engine) ─────────────────────────────────────────
+
+interface CoachCardProps {
+  result: DrillSubmitResult;
+  gtoData: GtoDecisionResult | null;
+  gtoLoading: boolean;
+  step: SparringStep;
+  t: (k: string, opts?: Record<string, unknown>) => string;
+}
+
+function CoachCard({ result, gtoData, gtoLoading, step, t }: CoachCardProps) {
+  const hasGto = !gtoLoading && (gtoData?.found ?? false);
+
+  // ── Unified verdict: GTO > Engine ────────────────────────────────────────
+  type Verdict = { icon: string; label: string; cls: string; borderCls: string; hdrCls: string; source: string };
+  let verdict: Verdict;
+
+  if (hasGto && gtoData) {
+    const freq = gtoData.player_action_freq ?? 0;
+    if (freq >= 0.40)
+      verdict = { icon: "✓", label: t("gto.verdict.correct"),  cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8",  source: "GTO Solver" };
+    else if (freq >= 0.15)
+      verdict = { icon: "◎", label: t("gto.verdict.mixed"),    cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",    source: "GTO Solver" };
+    else
+      verdict = { icon: "✗", label: t("gto.verdict.critical"), cls: "text-rose-400",    borderCls: "border-rose-500/30",    hdrCls: "bg-rose-500/8",     source: "GTO Solver" };
+  } else {
+    verdict = result.is_correct
+      ? { icon: "✓", label: t("result.correct"), cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8",  source: "Engine" }
+      : { icon: "✗", label: t("result.wrong"),   cls: "text-destructive", borderCls: "border-destructive/40", hdrCls: "bg-destructive/5",  source: "Engine" };
+  }
+
+  // ── Action comparison ─────────────────────────────────────────────────────
+  const playedAction = result.new_action;
+  const idealAction  = hasGto && gtoData
+    ? (gtoData.gto_action ?? result.best_action)
+    : result.best_action;
+  const isActionOk   = hasGto && gtoData
+    ? (gtoData.player_action_freq ?? 0) >= 0.40
+    : result.is_correct;
+  const showTwoCols  = idealAction.toLowerCase() !== playedAction.toLowerCase();
+
+  // ── Strategy bars ─────────────────────────────────────────────────────────
+  const strategy    = (hasGto && gtoData ? gtoData.strategy : []) ?? [];
+  const stratSorted = [...strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0));
+  const evDiff      = hasGto && gtoData ? gtoData.ev_diff : null;
+
+  // ── Engine/GTO conflict footnote ──────────────────────────────────────────
+  const showConflict = hasGto && gtoData && !result.is_correct &&
+    gtoData.gto_action &&
+    result.best_action &&
+    gtoData.gto_action.toLowerCase() !== result.best_action.toLowerCase();
+
+  return (
+    <section className={cn("rounded-xl border overflow-hidden shrink-0", verdict.borderCls)}>
+
+      {/* Header: verdict + source */}
+      <div className={cn("flex items-center justify-between px-3 py-2.5", verdict.hdrCls)}>
+        <span className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls)}>
+          {verdict.icon} {verdict.label}
+        </span>
+        <span className="font-mono text-[9px] text-muted-foreground/45 uppercase tracking-wider">
+          {verdict.source}
+        </span>
+      </div>
+
+      <div className="p-3 space-y-3">
+
+        {/* Você jogou / Ideal — 2 colunas se diferentes */}
+        <div className={cn("grid gap-2", showTwoCols ? "grid-cols-2" : "grid-cols-1")}>
+          <div className="rounded-lg px-2.5 py-2 ring-1 bg-background/60 ring-border/50">
+            <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">
+              {t("gto.youPlayedLabel")}
+            </div>
+            <div className={cn("font-mono text-sm font-bold uppercase",
+              isActionOk ? verdict.cls : "text-foreground")}>
+              {formatAction(playedAction)}
+              {isActionOk && <span className="ml-1.5 opacity-80">✓</span>}
+            </div>
+          </div>
+          {showTwoCols && (
+            <div className="rounded-lg px-2.5 py-2 ring-1 bg-background/60 ring-border/50">
+              <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-0.5">
+                {hasGto ? t("gto.recommendsLabel") : "Ideal"}
+              </div>
+              <div className={cn("font-mono text-sm font-bold uppercase", verdict.cls)}>
+                {formatAction(idealAction)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* GTO: loading inline */}
+        {gtoLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground border-t border-border/30 pt-2">
+            <Loader2 className="size-3 animate-spin shrink-0" />
+            <span className="font-mono text-[10px]">{t("gto.loading")}</span>
+          </div>
+        )}
+
+        {/* GTO: strategy bars */}
+        {hasGto && stratSorted.length > 0 && (
+          <div className="space-y-1.5 border-t border-border/30 pt-2">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">
+              {t("gto.strategyLabel")}
+            </p>
+            {stratSorted.map((s) => {
+              const isP = isPlayerAct(s.action, playedAction);
+              const freq = Math.round((s.frequency ?? 0) * 100);
+              return (
+                <div key={s.action} className="flex items-center gap-2">
+                  <span className={cn(
+                    "font-mono text-[11px] font-bold w-14 shrink-0 uppercase truncate",
+                    isP ? "text-amber-400" : actionTextColor(s.action)
+                  )}>
+                    {s.label ?? formatAction(s.action)}
+                  </span>
+                  <div className="flex-1 h-[5px] rounded-full bg-border/50 overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all duration-500",
+                        isP ? "bg-amber-400" : actionBarColor(s.action))}
+                      style={{ width: `${freq}%` }}
+                    />
+                  </div>
+                  <span className={cn(
+                    "font-mono text-[11px] font-bold w-8 text-right tabular-nums shrink-0",
+                    isP ? "text-amber-400" : "text-muted-foreground"
+                  )}>
+                    {freq}%
+                  </span>
+                  <span className={cn("font-mono text-[9px] w-2 shrink-0 select-none",
+                    isP ? "text-amber-400" : "invisible")}>←</span>
+                </div>
+              );
+            })}
+            {evDiff != null && Math.abs(evDiff) >= 0.05 && (
+              <p className={cn("font-mono text-[10px] tabular-nums pt-0.5",
+                evDiff > 0 ? "text-destructive/70" : "text-emerald-400/70")}>
+                {evDiff > 0
+                  ? `EV perdida: −${evDiff.toFixed(2)} bb vs GTO`
+                  : `+${Math.abs(evDiff).toFixed(2)} bb acima do GTO`}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* GTO: spot não encontrado — footnote sutil */}
+        {!gtoLoading && !hasGto && gtoData && !gtoData.found && (
+          <p className="font-mono text-[10px] text-muted-foreground/35 italic border-t border-border/30 pt-2">
+            {t("gto.notFound")}
+          </p>
+        )}
+
+        {/* Engine/GTO conflict footnote — apenas quando são diferentes */}
+        {showConflict && gtoData && (
+          <p className="text-[10px] text-muted-foreground/50 leading-relaxed border-t border-border/20 pt-2">
+            Engine→ <span className="font-mono text-foreground/60">{formatAction(result.best_action)}</span>
+            {" · "}Solver→ <span className="font-mono text-foreground/60">{formatAction(gtoData.gto_action ?? "")}</span>
+            {" · "}Priorizando GTO.
+          </p>
+        )}
+
+        {/* Context footer: posição, stack, M-ratio, ICM */}
+        {(step.m_ratio != null || (step.icm_pressure && step.icm_pressure !== "none") || step.position) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t border-border/30 pt-2">
+            {step.position && (
+              <span className="font-mono text-[9px] text-muted-foreground">{step.position}</span>
+            )}
+            {step.stack_bb != null && (
+              <span className="font-mono text-[9px] text-muted-foreground">{step.stack_bb.toFixed(0)}bb</span>
+            )}
+            {step.pot_size != null && step.pot_size > 0 && (
+              <span className="font-mono text-[9px] text-muted-foreground">Pote {step.pot_size.toFixed(1)}bb</span>
+            )}
+            {step.facing_bet != null && step.facing_bet > 0 && (
+              <span className="font-mono text-[9px] text-amber-400/80">vs {step.facing_bet.toFixed(1)}bb</span>
+            )}
+            {step.m_ratio != null && (
+              <span className={cn("font-mono text-[9px] font-semibold",
+                step.m_ratio <= 5 ? "text-destructive" : step.m_ratio <= 10 ? "text-amber-400" : "text-muted-foreground")}>
+                M {step.m_ratio.toFixed(1)}
+              </span>
+            )}
+            {step.icm_pressure && step.icm_pressure !== "low" && step.icm_pressure !== "none" && (
+              <span className={cn("font-mono text-[9px] font-semibold uppercase",
+                step.icm_pressure === "critical" ? "text-destructive" :
+                step.icm_pressure === "high" ? "text-amber-400" : "text-sky-400")}>
+                ICM {step.icm_pressure}
+              </span>
+            )}
+          </div>
+        )}
+
+      </div>
+    </section>
+  );
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 function Summary({
-  history,
-  hand,
-  onNewHand,
-  t,
+  history, hand, onNewHand, t,
 }: {
   history: StepResult[];
   hand: SparringHand;
   onNewHand: () => void;
   t: (k: string, opts?: Record<string, unknown>) => string;
 }) {
-  const correct = history.filter((h) => h.result?.is_correct).length;
-  const total   = history.length;
-  const pct     = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const correct    = history.filter((h) => h.result?.is_correct).length;
+  const total      = history.length;
+  const pct        = total > 0 ? Math.round((correct / total) * 100) : 0;
   const allCorrect = correct === total;
 
   return (
@@ -288,9 +460,7 @@ function Summary({
         {history.map(({ step, result }, i) => (
           <div key={i} className={cn(
             "flex items-center justify-between rounded-lg border px-4 py-2.5",
-            result?.is_correct
-              ? "border-emerald-500/20 bg-emerald-500/5"
-              : "border-destructive/20 bg-destructive/5"
+            result?.is_correct ? "border-emerald-500/20 bg-emerald-500/5" : "border-destructive/20 bg-destructive/5"
           )}>
             <div className="flex items-center gap-2">
               {result?.is_correct
@@ -313,15 +483,13 @@ function Summary({
         ))}
       </div>
 
-      <div className="flex flex-col gap-3">
-        <button
-          onClick={onNewHand}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-black hover:bg-amber-400 transition-colors"
-        >
-          <Swords className="size-4" aria-hidden />
-          {t("newHand")}
-        </button>
-      </div>
+      <button
+        onClick={onNewHand}
+        className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-black hover:bg-amber-400 transition-colors"
+      >
+        <Swords className="size-4" aria-hidden />
+        {t("newHand")}
+      </button>
     </div>
   );
 }
@@ -345,17 +513,20 @@ function resetSeenHandIds(firstHandId: string) {
 export default function Sparring() {
   const { t } = useTranslation("sparring");
 
-  const [phase, setPhase]           = useState<Phase>("idle");
-  const [hand, setHand]             = useState<SparringHand | null>(null);
-  const [stepIndex, setStepIndex]   = useState(0);
-  const [history, setHistory]       = useState<StepResult[]>([]);
-  const [currentResult, setCurrentResult] = useState<DrillSubmitResult | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [analysis, setAnalysis]     = useState<string | null>(null);
+  const [phase, setPhase]                   = useState<Phase>("idle");
+  const [hand, setHand]                     = useState<SparringHand | null>(null);
+  const [stepIndex, setStepIndex]           = useState(0);
+  const [history, setHistory]               = useState<StepResult[]>([]);
+  const [currentResult, setCurrentResult]   = useState<DrillSubmitResult | null>(null);
+  const [submitting, setSubmitting]         = useState(false);
+  const [analysis, setAnalysis]             = useState<string | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [error, setError]           = useState("");
-  // Hero-action steps from the full replay — loaded in parallel, non-blocking
+  const [error, setError]                   = useState("");
   const [replayHeroSteps, setReplayHeroSteps] = useState<ReplayStep[]>([]);
+
+  // GTO data — fetched in parallel immediately after each submit
+  const [gtoData, setGtoData]       = useState<GtoDecisionResult | null>(null);
+  const [gtoLoading, setGtoLoading] = useState(false);
 
   const steps   = hand?.steps ?? [];
   const current = steps[stepIndex] ?? null;
@@ -369,13 +540,14 @@ export default function Sparring() {
     setCurrentResult(null);
     setAnalysis(null);
     setReplayHeroSteps([]);
+    setGtoData(null);
+    setGtoLoading(false);
     try {
       const seen = getSeenHandIds();
       const data = await sparring.hand(undefined, undefined, seen);
       if (data.insufficient_data) { setError(t("noData")); setPhase("idle"); return; }
       if (data.hand_id) {
         if (seen.includes(data.hand_id)) {
-          // Backend cycled through all hands — start fresh with just this one
           resetSeenHandIds(data.hand_id);
         } else {
           saveSeenHandId(data.hand_id);
@@ -384,7 +556,6 @@ export default function Sparring() {
       setHand(data);
       setPhase("playing");
 
-      // Fetch full replay in parallel — non-blocking, enriches PokerTable when ready
       if (data.tournament_id && data.hand_id) {
         tournaments.replay(String(data.tournament_id), data.hand_id)
           .then((replay) => {
@@ -392,7 +563,7 @@ export default function Sparring() {
               replay.timeline.filter((s) => s.type === "action" && s.is_hero === true)
             );
           })
-          .catch(() => { /* replay failed — PokerTable stays in approximation mode */ });
+          .catch(() => {});
       }
     } catch {
       setError(t("noData"));
@@ -408,12 +579,25 @@ export default function Sparring() {
       setCurrentResult(result);
       setHistory((h) => [...h, { step: current, result }]);
       setPhase("feedback");
-    } catch { /* keep playing */ }
-    finally { setSubmitting(false); }
+
+      // Fetch GTO in parallel — non-blocking, enriches CoachCard when ready
+      setGtoData(null);
+      setGtoLoading(true);
+      gto.decisionLookup(current.decision_id)
+        .then((d) => setGtoData(d))
+        .catch(() => setGtoData(null))
+        .finally(() => setGtoLoading(false));
+    } catch {
+      // keep playing
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const nextStep = () => {
     setAnalysis(null);
+    setGtoData(null);
+    setGtoLoading(false);
     const next = stepIndex + 1;
     if (next >= steps.length) { setPhase("summary"); }
     else { setStepIndex(next); setCurrentResult(null); setPhase("playing"); }
@@ -459,12 +643,12 @@ export default function Sparring() {
 
           {/* Table column */}
           <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
-            {/* Table — pt-10 gives room for top-player cards that overflow above SVG viewBox */}
             <div className="flex-1 min-h-0 overflow-visible pt-10">
-              <div className="mx-auto aspect-[16/10] max-w-[90%]" style={{ maxHeight: 'calc(100% - 2.5rem)' }}>
+              <div className="mx-auto aspect-[16/10] max-w-[90%]" style={{ maxHeight: "calc(100% - 2.5rem)" }}>
                 <PokerTableV3 step={tableStep} hero={tableHero} heroCards={tableHeroCards} bb={tableBb} betUnit="bb" />
               </div>
             </div>
+
             {/* Mobile: actions / next */}
             <div className="lg:hidden shrink-0 space-y-2">
               {phase === "playing" && (
@@ -477,7 +661,7 @@ export default function Sparring() {
                   ))}
                 </div>
               )}
-              {phase === "feedback" && (
+              {phase === "feedback" && currentResult && (
                 <button onClick={nextStep}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-black hover:bg-amber-400 transition-colors">
                   {isLastStep ? t("viewSummary") : t("next")} <ArrowRight className="size-4" aria-hidden />
@@ -492,6 +676,8 @@ export default function Sparring() {
             {phase === "playing" && (
               <>
                 {history.length > 0 && <HandRecap history={history} t={t} />}
+
+                {/* Context card */}
                 <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-2 shrink-0">
                   <div className="flex items-center gap-2">
                     <Flame className="size-3.5 shrink-0 text-amber-400" aria-hidden />
@@ -515,6 +701,7 @@ export default function Sparring() {
                     )}
                   </div>
                 </div>
+
                 <p className="text-center text-sm font-semibold text-foreground shrink-0">{t("question")}</p>
                 <div className={`grid gap-2 shrink-0 ${cols}`}>
                   {actionKeys.map((action) => (
@@ -529,51 +716,51 @@ export default function Sparring() {
 
             {phase === "feedback" && currentResult && (
               <div className="flex flex-col gap-3 min-h-0 overflow-y-auto">
-                <div className={cn("flex items-center gap-3 rounded-xl border p-4 shrink-0", currentResult.is_correct ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5")}>
-                  {currentResult.is_correct
-                    ? <CheckCircle2 className="size-8 shrink-0 text-emerald-400" aria-hidden />
-                    : <XCircle      className="size-8 shrink-0 text-destructive" aria-hidden />}
-                  <div>
-                    <p className={cn("text-base font-bold", currentResult.is_correct ? "text-emerald-400" : "text-destructive")}>
-                      {currentResult.is_correct ? t("result.correct") : t("result.wrong")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{t("result.bestAction", { action: formatAction(currentResult.best_action).toUpperCase() })}</p>
-                  </div>
-                </div>
 
+                {/* ── Unified coach card ── */}
+                <CoachCard
+                  result={currentResult}
+                  gtoData={gtoData}
+                  gtoLoading={gtoLoading}
+                  step={current}
+                  t={t}
+                />
+
+                {/* ── SRS + delta compact row ── */}
                 <div className="grid grid-cols-2 gap-2 shrink-0">
-                  <div className="rounded-lg border border-border bg-hud-surface p-3">
-                    <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("result.yourAction", { action: "" }).split(":")[0]}</p>
-                    <p className="mt-1 font-mono text-lg font-bold text-foreground">{formatAction(currentResult.new_action).toUpperCase()}</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-hud-surface p-3">
-                    <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
-                    <p className="mt-1 font-mono text-lg font-bold text-foreground">{formatAction(currentResult.best_action).toUpperCase()}</p>
-                  </div>
-                </div>
-
-                <div className={cn("flex items-center justify-between rounded-lg border p-3 shrink-0", currentResult.delta < 0 || currentResult.is_correct ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-hud-surface")}>
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="size-3.5 text-muted-foreground" aria-hidden />
-                    <span className="text-xs text-muted-foreground">
-                      {currentResult.delta < 0 ? t("result.improvement", { delta: Math.abs(currentResult.delta).toFixed(3) }) : currentResult.is_correct ? t("result.residualScore") : t("result.noImprovement")}
+                  <div className={cn(
+                    "rounded-lg border p-2.5 flex items-center gap-2",
+                    currentResult.delta < 0 || currentResult.is_correct
+                      ? "border-emerald-500/30 bg-emerald-500/5"
+                      : "border-border bg-hud-surface"
+                  )}>
+                    <TrendingUp className="size-3.5 text-muted-foreground shrink-0" />
+                    <span className={cn(
+                      "font-mono text-xs font-bold tabular-nums",
+                      currentResult.delta < 0 || currentResult.is_correct ? "text-emerald-400" : "text-destructive"
+                    )}>
+                      {currentResult.delta > 0 ? "+" : ""}{currentResult.delta.toFixed(3)}
                     </span>
                   </div>
-                  <span className={cn("font-mono text-sm font-bold tabular-nums", currentResult.delta < 0 || currentResult.is_correct ? "text-emerald-400" : "text-destructive")}>
-                    {currentResult.delta > 0 ? "+" : ""}{currentResult.delta.toFixed(3)}
-                  </span>
+                  {currentResult.srs_interval_days != null && (
+                    <div className={cn(
+                      "rounded-lg border px-2.5 py-2 flex items-center",
+                      currentResult.is_correct
+                        ? "border-amber-500/30 bg-amber-500/5 text-amber-400"
+                        : "border-warning/30 bg-warning/5 text-warning"
+                    )}>
+                      <span className="font-mono text-[10px] leading-tight">
+                        {currentResult.is_correct
+                          ? t("result.srsCorrect", { n: currentResult.srs_interval_days })
+                          : t("result.srsReset",   { n: currentResult.srs_interval_days })}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {currentResult.srs_interval_days && (
-                  <div className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 shrink-0", currentResult.is_correct ? "border-amber-500/30 bg-amber-500/5 text-amber-400" : "border-warning/30 bg-warning/5 text-warning")}>
-                    <span className="font-mono text-[10px]">
-                      {currentResult.is_correct ? t("result.srsCorrect", { n: currentResult.srs_interval_days }) : t("result.srsReset", { n: currentResult.srs_interval_days })}
-                    </span>
-                  </div>
-                )}
-
+                {/* ── AI analysis ── */}
                 {analysis ? (
-                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2 shrink-0">
                     <p className="font-mono text-[9px] uppercase tracking-widest text-amber-400">{t("result.engineNote")}</p>
                     <AiText>{analysis}</AiText>
                   </div>
@@ -586,12 +773,12 @@ export default function Sparring() {
                   </button>
                 )}
 
-                <GtoPanel decisionId={current.decision_id} />
-
+                {/* ── Next button ── */}
                 <button onClick={nextStep}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-black hover:bg-amber-400 transition-colors shrink-0">
                   {isLastStep ? t("viewSummary") : t("next")} <ArrowRight className="size-4" aria-hidden />
                 </button>
+
               </div>
             )}
 
@@ -605,23 +792,15 @@ export default function Sparring() {
   return (
     <HudLayout eyebrow="Sparring Mode" title={t("title")} description={t("subtitle")}>
 
-      {/* ── IDLE / LOADING ───────────────────────────────────────────────────── */}
       {(phase === "idle" || phase === "loading") && (
         <div className="mx-auto max-w-lg space-y-6">
-
-          {/* Arena card */}
           <div className="relative overflow-hidden rounded-xl border border-amber-500/30 bg-amber-500/5 p-8 text-center space-y-4">
             <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 to-transparent pointer-events-none" />
             <Swords className="mx-auto size-12 text-amber-400" aria-hidden />
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-amber-400 mb-2">
-                {t("arenaLabel")}
-              </p>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-                {t("arenaDesc")}
-              </p>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-amber-400 mb-2">{t("arenaLabel")}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">{t("arenaDesc")}</p>
             </div>
-            {/* Street flow illustration */}
             <div className="flex items-center justify-center gap-2 pt-2">
               {STREETS.map((s, i) => (
                 <div key={s} className="flex items-center gap-2">
@@ -635,9 +814,7 @@ export default function Sparring() {
           </div>
 
           {error && (
-            <p className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-center text-sm text-destructive">
-              {error}
-            </p>
+            <p className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-center text-sm text-destructive">{error}</p>
           )}
 
           <button
@@ -650,11 +827,9 @@ export default function Sparring() {
               : <><Swords className="size-4" aria-hidden /> {t("startBtn")}</>
             }
           </button>
-
         </div>
       )}
 
-      {/* ── SUMMARY ──────────────────────────────────────────────────────────── */}
       {phase === "summary" && hand && (
         <Summary history={history} hand={hand} onNewHand={loadHand} t={t} />
       )}
