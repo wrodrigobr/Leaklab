@@ -9,6 +9,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.99.2] — 2026-05-13 — fix(AUD-001): guard fold→check restrito a BB — corrige regressão em 577 spots
+
+### Fixed
+- **`preflop_range_evaluator.py`**: `_recommended_action` retorna `'check'` apenas quando `position == 'BB'` e `facing_size == 0`. Demais posições (UTG/HJ/CO/BTN/SB) retornam `'fold'` para mãos fracas sem aposta — comportamento correto (escolha de não abrir)
+- **`preflop_range_evaluator.py`**: filtro de `alternatives` também restrito a `BB` — outros posições podem ter `'fold'` como alternativa em borderline spots sem aposta
+- **`decision_engine_v11.py`**: guard final `facingSize=0 → check` adicionado `and spot.get('position') == 'BB'`. Antes afetava 577 decisões de non-BB incorretamente
+- **`api/app.py`** (`player_drill_submit`): guard serve-time restrito a `position == 'BB'`
+- **`database/repositories.py`** (`get_sparring_hand`): guard serve-time restrito a `position == 'BB'`
+
+### Data Migration
+- **Phase 2 DB fix**: 20 decisões `BB + facing_bet IS NULL + best_action='fold'` atualizadas: `best_action → 'check'`. 13 dessas (action_taken='check') também tiveram `score → 0.02, label → 'standard'` (eram small_mistake/marginal por engano)
+
+### Tests
+- **`test_evaluators.py`**: 27 testes reescritos para comportamento correto por posição — BB check, non-BB fold para mãos fracas sem aposta
+- **`test_postflop_evaluator.py`**: `test_preflop_unaffected` agora verifica range zones do postflop evaluator (não presença de 'check'), já que BB legítimamente retorna 'check' preflop
+
+---
+
 ## [v0.99.1] — 2026-05-13 — fix(GTO-004): unidades facing_size_bb e threshold is_simple_spot
 
 ### Fixed
