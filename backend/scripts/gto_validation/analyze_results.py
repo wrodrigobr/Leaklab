@@ -7,6 +7,9 @@ Uso:
 from __future__ import annotations
 import os, sys, json, argparse
 
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf_8"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 SCRIPTS_DIR = os.path.dirname(__file__)
 
 
@@ -41,7 +44,7 @@ def analyze(results: list[dict]):
     print(f"\nVereditos (de {len(found)} spots com solução GTO):")
     for v, count in sorted(verdicts.items(), key=lambda x: -x[1]):
         pct = count / len(found) * 100
-        bar = "█" * int(pct / 4)
+        bar = "#" * int(pct / 4)
         print(f"  {v:<20} {count:>3} ({pct:5.1f}%)  {bar}")
 
     # Agreement rate
@@ -50,53 +53,80 @@ def analyze(results: list[dict]):
     diverg = verdicts.get("divergence", 0)
     print(f"\nAcordo geral: {(agreed+mixed)/len(found)*100:.0f}% (agreement + mixed)")
 
+    # Helper: format full GTO strategy with dominant action marked
+    def _gto_dist(gto_strat: dict, our_action: str) -> str:
+        """Exibe distribuição completa do GTO. Ação dominante marcada com ^."""
+        if not gto_strat:
+            return "(sem dados)"
+        top_freq = max(gto_strat.values())
+        parts = []
+        for k, v in sorted(gto_strat.items(), key=lambda x: -x[1]):
+            marker = "^" if v == top_freq else " "
+            ours   = "<nós" if k == our_action else ""
+            parts.append(f"{k}{marker}{v*100:.0f}%{ours}")
+        return "  ".join(parts)
+
     # Detailed divergences
     divergences = [r for r in found if r.get("verdict") == "divergence"]
     if divergences:
-        print(f"\n{'─'*65}")
-        print(f"DIVERGÊNCIAS ({len(divergences)} spots — nossa ação aparece < 15% no GTO):")
-        print(f"{'Pos':<5} {'Board':<12} {'Stack':>6} {'Nossa':<8} {'GTO top':<8} {'Freq':>6} {'Label':<14}")
-        print(f"{'─'*65}")
+        print(f"\n{'-'*65}")
+        print(f"DIVERGÊNCIAS ({len(divergences)} spots — nós recomendamos ação que GTO usa < 15%):")
+        print(f"  Nota: o GTO Wizard usa estratégias mistas (% = frequência).")
+        print(f"  Nosso solver é binário — recomenda apenas uma ação.")
+        print(f"{'-'*65}")
         for r in sorted(divergences, key=lambda x: x.get("our_action_gto_freq", 1)):
-            pos = r.get("position", "?")
-            board = r.get("board", "")[:10]
-            stack = r.get("stack", 0)
-            our = r.get("our_best_action", "?")
-            gto_top = r.get("gto_top_action", "?")
-            freq = r.get("our_action_gto_freq", 0) or 0
-            label = r.get("our_label", "")
+            pos     = r.get("position", "?")
+            board   = r.get("board", "")[:10]
+            stack   = r.get("stack", 0)
+            our     = r.get("our_best_action", "?")
+            label   = r.get("our_label", "")
             gto_strat = r.get("gto_strategy", {})
-            strat_str = " | ".join(f"{k} {v*100:.0f}%" for k, v in sorted(gto_strat.items(), key=lambda x: -x[1])[:3])
-            print(f"{pos:<5} {board:<12} {stack:>5.0f}bb {our:<8} {gto_top:<8} {freq*100:>5.0f}% {label:<14}")
-            print(f"       GTO: {strat_str}")
+            dist_str  = _gto_dist(gto_strat, our)
+            print(f"  {pos:<6} {board:<10} {stack:>5.0f}bb  nós={our:<6}  GTO: {dist_str}  [{label}]")
 
-    # Mixed spots (informational)
+    # Mixed spots
     mixed_spots = [r for r in found if r.get("verdict") == "mixed"]
     if mixed_spots:
-        print(f"\n{'─'*65}")
-        print(f"MIXED ({len(mixed_spots)} spots — nossa ação GTO 15-40%, estratégia mista):")
+        print(f"\n{'-'*65}")
+        print(f"MIXED ({len(mixed_spots)} spots — GTO usa nossa ação 15-40%, estratégia mista):")
         for r in mixed_spots:
-            pos = r.get("position", "?")
-            board = r.get("board", "")[:10]
-            stack = r.get("stack", 0)
-            our = r.get("our_best_action", "?")
-            freq = r.get("our_action_gto_freq", 0) or 0
+            pos     = r.get("position", "?")
+            board   = r.get("board", "")[:10]
+            stack   = r.get("stack", 0)
+            our     = r.get("our_best_action", "?")
             gto_strat = r.get("gto_strategy", {})
-            strat_str = " | ".join(f"{k} {v*100:.0f}%" for k, v in sorted(gto_strat.items(), key=lambda x: -x[1])[:3])
-            print(f"  {pos:<5} {board:<12} {stack:>5.0f}bb  our={our}({freq*100:.0f}%)  GTO: {strat_str}")
+            dist_str  = _gto_dist(gto_strat, our)
+            print(f"  {pos:<6} {board:<10} {stack:>5.0f}bb  nós={our:<6}  GTO: {dist_str}")
 
     # Agreements
     agreements = [r for r in found if r.get("verdict") == "agreement"]
     if agreements:
-        print(f"\n{'─'*65}")
-        print(f"AGREEMENT ({len(agreements)} spots — nossa ação GTO >= 40%): validados")
+        print(f"\n{'-'*65}")
+        print(f"AGREEMENT ({len(agreements)} spots — GTO usa nossa ação >= 40%): validados")
         for r in agreements[:10]:
-            pos = r.get("position", "?")
-            board = r.get("board", "")[:10]
-            stack = r.get("stack", 0)
-            our = r.get("our_best_action", "?")
-            freq = r.get("our_action_gto_freq", 0) or 0
-            print(f"  {pos:<5} {board:<12} {stack:>5.0f}bb  {our}({freq*100:.0f}%)")
+            pos     = r.get("position", "?")
+            board   = r.get("board", "")[:10]
+            stack   = r.get("stack", 0)
+            our     = r.get("our_best_action", "?")
+            gto_strat = r.get("gto_strategy", {})
+            dist_str  = _gto_dist(gto_strat, our)
+            print(f"  {pos:<6} {board:<10} {stack:>5.0f}bb  nós={our:<6}  GTO: {dist_str}")
+
+    # Error breakdown
+    if errors:
+        print(f"\n{'-'*65}")
+        print(f"ERROS ({len(errors)} spots — não comparados):")
+        err_types: dict[str, int] = {}
+        for r in errors:
+            e = r.get("error", "?")
+            err_types[e] = err_types.get(e, 0) + 1
+        for etype, count in sorted(err_types.items(), key=lambda x: -x[1]):
+            note = {
+                "http_422": "sequência de ações inválida (facing_bet — tamanho não existe na árvore GTO)",
+                "forbidden_403": "plano ou combinação posição/stack não disponível",
+                "http_401": "sessão expirou (renovar browser)",
+            }.get(etype, "")
+            print(f"  {etype:<18} {count}×  — {note}")
 
     print(f"\n{'='*65}")
     print(f"CONCLUSÃO:")

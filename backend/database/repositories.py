@@ -287,6 +287,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 facing_bet_bb,
                 gto.get('gto_label') if gto.get('available') else None,
                 gto.get('gto_action') if gto.get('available') else None,
+                r.get('math', {}).get('estimatedHandEquity'),
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -295,8 +296,8 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                math_penalty, range_penalty, m_ratio, icm_pressure,
                stack_bb, draw_profile, position, num_players,
                level_sb, level_bb, level_num, note, is_3bet, showdown_result,
-               pot_size, facing_bet, gto_label, gto_action)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               pot_size, facing_bet, gto_label, gto_action, estimated_equity)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:

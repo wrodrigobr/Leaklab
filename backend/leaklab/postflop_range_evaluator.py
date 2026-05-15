@@ -94,8 +94,18 @@ def _eval_no_bet(equity: float | None,
     Sem aposta na street atual. Hero pode check ou bet.
 
     Princípio: check é sempre defensável quando não há aposta.
-    Bet recomendado quando equity forte OU quando há draw presente
-    com equity ajustada suficiente para semi-bluff.
+    Bet recomendado apenas quando equity é suficientemente forte dado o contexto.
+
+    Calibrado contra GTO Wizard MTTGeneralV2: o threshold base 0.55 causava
+    over-betting sistemático (88% dos bets eram erros vs GTO). Os thresholds
+    corretos dependem de posição e profundidade de stack:
+
+    - OOP (BB/SB): range capado preflop (sem 3-bets), bet raramente lucrativo.
+      Threshold +0.06 vs IP.
+    - Stack curto (<= 35bb): SPR baixo → bet compromete stack.
+      Threshold +0.05 adicional.
+    - Semi-bluff: apenas draws fortes (FD/OESD, equity_adj >= 0.10) justificam
+      bet. Backdoors (BDFD/BDSD) não — eles são motivo para check-and-realize.
     """
     if equity is None:
         return RangeEvaluation(
@@ -106,13 +116,31 @@ def _eval_no_bet(equity: float | None,
             mix_weight=0.20,
         )
 
-    # Verificar se há draw presente e ajuste de equity
-    draw_profile  = state.metadata.get('draw_profile', 'none')
-    equity_adj    = state.metadata.get('equity_adjustment', 0.0)
-    has_draw      = draw_profile not in ('none', '', None)
+    draw_profile = state.metadata.get('draw_profile', 'none')
+    equity_adj   = float(state.metadata.get('equity_adjustment', 0.0) or 0.0)
+    stack_bb     = float(getattr(state, 'effective_stack_bb', 100.0) or 100.0)
+    position     = (getattr(state, 'position', '') or '').upper()
+    is_oop       = position in ('BB', 'SB')
 
-    # Mão forte: bet para construir pot / proteger
-    if equity >= 0.55:
+    # Threshold base para bet (GTO-calibrado)
+    # Deep (> 60bb): 0.65  |  Medium (35-60bb): 0.68  |  Short (<= 35bb): 0.72
+    if stack_bb <= 35:
+        bet_threshold  = 0.72
+        draw_threshold = 0.48
+    elif stack_bb <= 60:
+        bet_threshold  = 0.68
+        draw_threshold = 0.44
+    else:
+        bet_threshold  = 0.65
+        draw_threshold = 0.42
+
+    # OOP penalty: range capado → mais checking, menos betting
+    if is_oop:
+        bet_threshold  += 0.06
+        draw_threshold += 0.04
+
+    # Mão forte: bet justificado (top pair forte+, overpair, two pair+, draw combo)
+    if equity >= bet_threshold:
         return RangeEvaluation(
             recommended_primary_action='bet',
             alternative_actions=['check'],
@@ -121,8 +149,10 @@ def _eval_no_bet(equity: float | None,
             mix_weight=0.25,
         )
 
-    # Semi-bluff com draw: bet aceitável se equity ajustada >= 0.38
-    if has_draw and equity_adj > 0 and equity >= 0.38:
+    # Semi-bluff: apenas draws fortes (FD=0.15, OESD=0.17).
+    # GUT+BDFD (0.14), BDFD+BDSD (0.10) ficam abaixo — check.
+    has_strong_draw = equity_adj >= 0.15
+    if has_strong_draw and equity >= draw_threshold:
         return RangeEvaluation(
             recommended_primary_action='bet',
             alternative_actions=['check'],
@@ -131,8 +161,8 @@ def _eval_no_bet(equity: float | None,
             mix_weight=0.40,
         )
 
-    # Mão média sem draw forte: check defensável
-    if equity >= 0.40:
+    # Mão média ou draw fraco: check defensável
+    if equity >= 0.40 or (draw_profile not in ('none', '', None) and equity_adj > 0):
         return RangeEvaluation(
             recommended_primary_action='check',
             alternative_actions=['bet'],
@@ -141,17 +171,7 @@ def _eval_no_bet(equity: float | None,
             mix_weight=0.35,
         )
 
-    # Mão fraca com draw fraco (BDFD/BDSD apenas): check preferível
-    if has_draw and equity_adj > 0:
-        return RangeEvaluation(
-            recommended_primary_action='check',
-            alternative_actions=['bet'],
-            range_zone='borderline_range',
-            confidence=0.55,
-            mix_weight=0.45,
-        )
-
-    # Mão fraca sem draw: check é o padrão
+    # Mão fraca sem draw relevante: check puro
     return RangeEvaluation(
         recommended_primary_action='check',
         alternative_actions=[],

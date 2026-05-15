@@ -56,26 +56,69 @@ def test_no_bet_medium_hand_recommends_check():
 
 
 def test_no_bet_strong_hand_recommends_bet():
-    """Mão forte sem aposta → bet para construir pot."""
-    ev = evaluate_postflop_range(_state(facing=0, equity=0.62))
-    assert ev.recommended_primary_action == 'bet'
+    """
+    Mão forte sem aposta → bet.
+    BTN (IP) a 100bb: threshold = 0.65. Equity 0.70 → bet.
+    Calibrado contra GTO Wizard: o threshold antigo (0.55) causava over-betting
+    sistemático (88% de erro), thresholds corrigidos por posição + stack depth.
+    """
+    state = _state(facing=0, equity=0.70)
+    state = HandState(
+        hand_id='test', street='flop', hero='Hero', hero_cards='AsJs',
+        board=['Kh', '7d', '2c'], player_action='bet', pot_size=600.0,
+        facing_size=0.0, effective_stack_bb=100.0,  # deep stack → threshold 0.65
+        position='BTN', villain_position='BB', is_in_position=True,
+        is_multiway=False, actions=[],
+        metadata={'estimated_equity': 0.70},
+    )
+    ev = evaluate_postflop_range(state)
+    assert ev.recommended_primary_action == 'bet', \
+        f"BTN 100bb equity=0.70 deve recomendar bet (threshold=0.65), got: {ev.recommended_primary_action}"
     assert 'check' in ev.alternative_actions
     assert ev.range_zone == 'core_range'
     print("OK  test_no_bet_strong_hand_recommends_bet")
 
 
-def test_no_bet_equity_boundary_55():
-    """Exatamente no threshold 0.55 → bet."""
-    ev = evaluate_postflop_range(_state(facing=0, equity=0.55))
-    assert ev.recommended_primary_action == 'bet'
-    print("OK  test_no_bet_equity_boundary_55")
+def test_no_bet_gto_calibrated_thresholds():
+    """
+    Thresholds GTO-calibrados por posição e stack depth.
+    Validados contra GTO Wizard MTTGeneralV2: o threshold antigo (0.55) causava
+    88% de erro em bet-vs-check — corrigido com thresholds dependentes de contexto.
+    """
+    def make_state(equity, position, stack_bb):
+        return HandState(
+            hand_id='test', street='flop', hero='Hero', hero_cards='AsJs',
+            board=['Kh', '7d', '2c'], player_action='check', pot_size=600.0,
+            facing_size=0.0, effective_stack_bb=float(stack_bb),
+            position=position, villain_position='BB', is_in_position=(position != 'BB'),
+            is_multiway=False, actions=[],
+            metadata={'estimated_equity': equity},
+        )
+
+    # BTN (IP) deep (100bb): threshold=0.65
+    assert evaluate_postflop_range(make_state(0.65, 'BTN', 100)).recommended_primary_action == 'bet'
+    assert evaluate_postflop_range(make_state(0.64, 'BTN', 100)).recommended_primary_action == 'check'
+
+    # BB (OOP) deep (100bb): threshold=0.65+0.06=0.71
+    assert evaluate_postflop_range(make_state(0.71, 'BB', 100)).recommended_primary_action == 'bet'
+    assert evaluate_postflop_range(make_state(0.70, 'BB', 100)).recommended_primary_action == 'check'
+
+    # BTN (IP) short (20bb): threshold=0.72
+    assert evaluate_postflop_range(make_state(0.72, 'BTN', 20)).recommended_primary_action == 'bet'
+    assert evaluate_postflop_range(make_state(0.71, 'BTN', 20)).recommended_primary_action == 'check'
+
+    # O antigo threshold 0.55 agora corretamente → check (não mais over-betting)
+    assert evaluate_postflop_range(make_state(0.55, 'BTN', 20)).recommended_primary_action == 'check'
+    assert evaluate_postflop_range(make_state(0.62, 'BTN', 20)).recommended_primary_action == 'check'
+
+    print("OK  test_no_bet_gto_calibrated_thresholds")
 
 
-def test_no_bet_equity_below_55():
-    """Equity 0.54 (abaixo do threshold) → check."""
+def test_no_bet_equity_below_threshold_checks():
+    """Equity abaixo de qualquer threshold → check (independente de posição)."""
     ev = evaluate_postflop_range(_state(facing=0, equity=0.54))
     assert ev.recommended_primary_action == 'check'
-    print("OK  test_no_bet_equity_below_55")
+    print("OK  test_no_bet_equity_below_threshold_checks")
 
 
 def test_no_bet_no_equity_data_defaults_check():

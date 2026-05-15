@@ -145,8 +145,9 @@ def _init_postgres(conn):
             note            TEXT,
             is_3bet         BOOLEAN NOT NULL DEFAULT FALSE,
             showdown_result TEXT,
-            pot_size        REAL,
-            facing_bet      REAL,
+            pot_size         REAL,
+            facing_bet       REAL,
+            estimated_equity REAL,
             created_at      TIMESTAMP NOT NULL DEFAULT NOW()
         );
         CREATE TABLE IF NOT EXISTS coach_profiles (
@@ -311,8 +312,9 @@ def _init_sqlite(conn):
             note            TEXT,
             is_3bet         INTEGER NOT NULL DEFAULT 0,
             showdown_result TEXT,
-            pot_size        REAL,
-            facing_bet      REAL,
+            pot_size         REAL,
+            facing_bet       REAL,
+            estimated_equity REAL,
             created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS coach_profiles (
@@ -477,6 +479,8 @@ def _run_migrations(conn):
             # GTO-005: integração solver → decisions
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_label  TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_action TEXT",
+            # GTO-006: armazenar equity estimada para re-avaliação
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS estimated_equity REAL",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -840,7 +844,10 @@ def _run_migrations(conn):
             ("is_3bet",         "ALTER TABLE decisions ADD COLUMN is_3bet         INTEGER NOT NULL DEFAULT 0"),
             ("showdown_result", "ALTER TABLE decisions ADD COLUMN showdown_result TEXT"),
             ("pot_size",        "ALTER TABLE decisions ADD COLUMN pot_size        REAL"),
-            ("facing_bet",      "ALTER TABLE decisions ADD COLUMN facing_bet      REAL"),
+            ("facing_bet",       "ALTER TABLE decisions ADD COLUMN facing_bet       REAL"),
+            ("gto_label",        "ALTER TABLE decisions ADD COLUMN gto_label        TEXT"),
+            ("gto_action",       "ALTER TABLE decisions ADD COLUMN gto_action       TEXT"),
+            ("estimated_equity", "ALTER TABLE decisions ADD COLUMN estimated_equity REAL"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)

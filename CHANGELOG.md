@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.99.3] — 2026-05-15 — feat(GTO-005/006): estimated_equity no banco + validação GTO 98-100% + threshold draw fix
+
+### Added
+- **`database/schema.py`**: coluna `estimated_equity REAL` adicionada à tabela `decisions` — migrations automáticas para SQLite e PostgreSQL
+- **`database/repositories.py`**: `estimated_equity` incluído no INSERT de decisões (via `math.estimatedHandEquity` do pipeline)
+- **`scripts/reeval_postflop.py`**: novo script de re-avaliação postflop — detecta draws fracos (equity_adj < 0.15) e draws fortes com equity insuficiente dado posição/stack, converte `best_action='bet'→'check'` em lote com `--dry-run` para preview
+
+### Fixed
+- **`postflop_range_evaluator.py`**: semi-bluff threshold `equity_adj >= 0.10` → `>= 0.15`. GUT+BDFD (0.14) e BDFD+BDSD (0.10) não justificam bet — confirmado por validação GTO Wizard (98% flop, 100% turn/river)
+- **`scripts/gto_validation/playwright_compare.py`**: interceptor de headers registrado ANTES de `page.goto` — evitava race condition onde a página recarregava antes de capturar DPoP token; action format `B{size}` → `R{size}` (API GTO Wizard aceita apenas R, não B); parser `next-actions` corrigido para path real `next_actions.available_actions[].action.betsize`
+- **`scripts/gto_validation/analyze_results.py`**: output reformatado para mostrar distribuição completa GTO (`check^82%  bet 18%<nós` em vez de `our=bet(18%)`); adicionado breakdown de erros por tipo; encoding UTF-8 no Windows
+
+### Tests
+- **`tests/test_postflop_evaluator.py`**: testes atualizados para threshold 0.15 — GUT+BDFD agora espera `check`, FD e OESD ainda esperam `bet`
+
+---
+
 ## [v0.99.2] — 2026-05-13 — fix(AUD-001): guard fold→check restrito a BB — corrige regressão em 577 spots
 
 ### Fixed
