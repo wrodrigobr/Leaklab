@@ -4109,8 +4109,9 @@ def get_gto_node_by_spot(street: str, board: list, position: str) -> Optional[di
 
 def insert_gto_nodes(nodes: list[dict]) -> int:
     """
-    Insere nós GTO verificados pelo solver. Exige exploitability_pct.
-    Rejeita silenciosamente nós sem exploitability ou acima do threshold.
+    Insere nós GTO. Nós do solver_cli exigem exploitability_pct.
+    Nós do GTO Wizard (source='gto_wizard') podem ter exploitability=None mas devem ter strategy_json.
+    Nós do solver_cli sem exploitability ou acima do threshold são rejeitados.
     """
     if not nodes:
         return 0
@@ -4119,9 +4120,15 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
         count = 0
         for n in nodes:
             exploitability = n.get('exploitability_pct')
+            source = n.get('source', 'solver_cli')
+
+            # Nós do GTO Wizard: aceitar sem exploitability se tiver strategy_json
             if exploitability is None:
-                continue  # nunca armazena sem garantia de qualidade
-            if float(exploitability) > GTO_EXPLOITABILITY_THRESHOLD:
+                if source == 'gto_wizard' and n.get('strategy_json'):
+                    pass  # aceitar — GTO Wizard não fornece exploitability
+                else:
+                    continue  # solver_cli sem exploitability → rejeitar
+            elif float(exploitability) > GTO_EXPLOITABILITY_THRESHOLD:
                 continue  # solve não convergiu o suficiente
 
             from leaklab.gto_utils import compute_spot_hash, stack_bucket
@@ -4134,7 +4141,11 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 hero_stack_bb=float(n.get('hero_stack_bb', 30.0)),
                 facing_size_bb=float(n.get('facing_size_bb', 0.0)),
             )
-            strategy_json = json.dumps(n['strategy_detail']) if n.get('strategy_detail') else None
+            # Aceita strategy_json diretamente (GTO Wizard) ou via strategy_detail (solver_cli)
+            strategy_json = (
+                n.get('strategy_json')
+                or (json.dumps(n['strategy_detail']) if n.get('strategy_detail') else None)
+            )
             conn.execute(_adapt("""
                 INSERT OR REPLACE INTO gto_nodes
                     (spot_hash, street, position, board, hero_hand, stack_bucket,
@@ -4151,9 +4162,9 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 n['gto_action'],
                 float(n['gto_freq']),
                 float(n['ev_diff']) if n.get('ev_diff') is not None else None,
-                float(exploitability),
+                float(exploitability) if exploitability is not None else None,
                 int(n['iterations']) if n.get('iterations') else None,
-                n.get('source', 'solver_cli'),
+                source,
                 strategy_json,
             ))
             count += 1

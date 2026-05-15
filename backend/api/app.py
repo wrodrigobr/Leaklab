@@ -3155,10 +3155,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
         # Re-evaluate is_error/reconciled_best using LIVE strategy (overrides stored gto_label)
         # Stored label may come from a mismatched or stale node; live frequency is ground truth.
+        live_top_act = None
         if gto_strategy and not gto_spot_mismatch:
             acted_norm   = _norm(action.action)
             live_freq    = 0.0
-            live_top_act = None
             live_top_freq = 0.0
             for _gs in gto_strategy:
                 _gs_act  = _norm(_gs.get('action', ''))
@@ -3177,6 +3177,26 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 else:
                     is_error        = True
                     reconciled_best = live_top_act
+                # Corrigir gto_action no banco se diferente do live top action
+                if decision and gto_action and _norm(live_top_act) != _norm(gto_action):
+                    try:
+                        from database.repositories import update_decision_gto as _upd_gto
+                        _live_gto_label = (
+                            'gto_correct' if live_freq >= 0.40 else
+                            'gto_mixed'   if live_freq >= 0.15 else
+                            'gto_critical'
+                        )
+                        # Encontrar id da decision pelo street + action para atualizar
+                        _dec_id = next(
+                            (d.get('id') for d in _db_hand
+                             if _norm(d.get('street','')) == _norm(action.street)
+                             and _norm(d.get('action_taken','')) == acted_norm),
+                            None,
+                        )
+                        if _dec_id:
+                            _upd_gto(_dec_id, _live_gto_label, live_top_act)
+                    except Exception:
+                        pass
 
         timeline.append(snap({
             'type':               'action',
@@ -3191,7 +3211,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          gto_label,
-            'gto_action':         gto_action,
+            'gto_action':         live_top_act or gto_action,
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
             'preflop_gto':        decision.get('preflop_gto') if decision else None,
@@ -4572,8 +4592,8 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
             db_dec = db_index.get(key)
             if not db_dec:
                 continue
-            if db_dec.get('gto_label'):
-                continue  # já tem análise — não conta como done para o status
+            already_analyzed = bool(db_dec.get('gto_label'))
+            # Não pula: re-analisa sempre para corrigir gto_action de nós parciais antigos
 
             spot = di.get('spot', {})
             gto = lookup_gto(
@@ -4655,7 +4675,8 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                     gto_label = 'gto_critical'
 
                 update_decision_gto(db_dec['id'], gto_label, gto_action)
-                done += 1
+                if not already_analyzed:
+                    done += 1
             else:
                 # Spot não está na base — lookup_gto enfileirou para o solver local
                 # se is_simple_spot=False (stack alto, turn/river), marcar para

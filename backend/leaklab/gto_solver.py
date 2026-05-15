@@ -184,8 +184,10 @@ def lookup_gto(
         or (_n_nf      if _has_strategy(_n_nf)      else None)
         or _n_exact or _n_generic or _n_nf
     )
+    # Nó com estratégia completa (strategy_json) → retorna imediatamente
+    # Nó apenas com primary action (sem strategy_json) → salva como fallback e tenta GTO Wizard
+    _db_fallback_strategy = None
     if node:
-        # Prefer full strategy_json (stored by new solver); fallback to primary only
         strategy_detail = None
         if node.get('strategy_json'):
             try:
@@ -208,32 +210,27 @@ def lookup_gto(
                     'ev_bb':              node.get('ev_diff'),
                     'exploitability_pct': node.get('exploitability_pct'),
                 })
-        else:
-            action = node.get('gto_action')
-            freq   = node.get('gto_freq') or 1.0
-            if action:
-                strategy_list = [{
-                    'action':             action,
-                    'frequency':          freq,
-                    'combos':             None,
-                    'ev_bb':              node.get('ev_diff'),
+            if strategy_list:
+                strategy_list.sort(key=lambda s: s['frequency'], reverse=True)
+                return {
+                    'found':    True,
+                    'source':   'postflop_db',
+                    'strategy': strategy_list,
                     'exploitability_pct': node.get('exploitability_pct'),
-                }]
-            else:
-                strategy_list = []
-
-        if not strategy_list:
-            # Nó corrompido (sem strategy e sem primary_action) — ignora e re-enfileira
-            log.debug("GTO node corrompido ignorado: hash=%s, prosseguindo para enqueue", spot_hash)
-        else:
-            return {
-                'found':    True,
-                'source':   'postflop_db',
-                'strategy': strategy_list,
+                    'spot_hash':          spot_hash,
+                    'queued':             False,
+                }
+        # Nó parcial: sem strategy_json — salva como fallback, continua para GTO Wizard
+        action = node.get('gto_action')
+        if action:
+            _db_fallback_strategy = [{
+                'action':             action,
+                'frequency':          node.get('gto_freq') or 1.0,
+                'combos':             None,
+                'ev_bb':              node.get('ev_diff'),
                 'exploitability_pct': node.get('exploitability_pct'),
-                'spot_hash':          spot_hash,
-                'queued':             False,
-            }
+            }]
+        log.debug("Nó parcial (sem strategy_json) para hash=%s; consultando GTO Wizard", spot_hash)
 
     # 3. Miss — tenta GTO Wizard primeiro (se habilitado e auth disponível)
     try:
@@ -247,6 +244,7 @@ def lookup_gto(
             pot_bb         = pot_bb,
         )
         if _gw and _gw.get('found') and _gw.get('strategy'):
+            _gw_best = max(_gw['strategy'], key=lambda s: s['frequency'])
             # Armazena no cache local para não bater na API novamente para o mesmo spot
             insert_gto_nodes([{
                 'street':          street_l,
@@ -255,9 +253,10 @@ def lookup_gto(
                 'hero_hand':       hero_hand,
                 'hero_stack_bb':   hero_stack_bb,
                 'facing_size_bb':  facing_size_bb,
-                'gto_action':      _gw['strategy'][0]['action'],
-                'gto_freq':        _gw['strategy'][0]['frequency'],
+                'gto_action':      _gw_best['action'],
+                'gto_freq':        _gw_best['frequency'],
                 'exploitability_pct': None,
+                'source':          'gto_wizard',
                 'strategy_json':   json.dumps(
                     {s['action']: {'frequency': s['frequency'], 'combos': s.get('combos')}
                      for s in _gw['strategy']},
@@ -342,7 +341,17 @@ def lookup_gto(
             'queued':             False,
         }
 
-    # GTO Wizard e solver remoto indisponíveis — sem resultado
+    # GTO Wizard e solver remoto indisponíveis — usa nó parcial do DB como último recurso
+    if _db_fallback_strategy:
+        log.debug("GTO fallback parcial: %s (GW+solver indisponíveis, usando nó DB sem strategy_json)", spot_hash)
+        return {
+            'found':              True,
+            'source':             'postflop_db_partial',
+            'strategy':           _db_fallback_strategy,
+            'exploitability_pct': None,
+            'spot_hash':          spot_hash,
+            'queued':             False,
+        }
     log.debug("GTO miss: %s (GW indisponível + solver remoto sem resposta)", spot_hash)
     return {
         'found':              False,
