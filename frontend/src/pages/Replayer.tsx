@@ -96,18 +96,53 @@ function SidePanels({
   );
   const pg = step.preflop_gto ?? null;
 
+  // ── Compute these FIRST so verdict can reference live GTO data ───────────────
+
+  const playedAction = (!isPostflop && pg?.available) ? pg.action_taken : (step.action ?? "—");
+
+  const stratSorted = step.gto_strategy
+    ? [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0))
+    : [];
+
+  const isPlayedAct = (action: string) => {
+    const a = action.toLowerCase(); const p = playedAction.toLowerCase();
+    return a === p || p.startsWith(a) || a.startsWith(p);
+  };
+
+  // When live strategy is available, derive the label from actual frequencies.
+  // Stored gto_label may be stale if the solver node was updated after import.
+  const effectiveGtoLabel = (() => {
+    if (!hasGto) return null;
+    if (!stratSorted.length) return step.gto_label ?? null;
+    const playedFreq = stratSorted.find(s => isPlayedAct(s.action))?.frequency ?? 0;
+    if (playedFreq >= 0.60) return 'gto_correct';
+    if (playedFreq >= 0.30) return 'gto_mixed';
+    if (playedFreq >= 0.10) return 'gto_minor_deviation';
+    return 'gto_critical';
+  })();
+
   // ── Unified verdict: GTO Solver > Range > Engine ────────────────────────────
+  const GTO_LABEL_TOOLTIP: Record<string, string> = {
+    gto_correct:         "Ação ótima: frequência GTO ≥ 60% — jogada correta segundo o solver",
+    gto_mixed:           "Estratégia mista: frequência GTO 30–60% — ação válida, mas não dominante no range",
+    gto_minor_deviation: "Desvio leve: frequência GTO 10–30% — jogada infrequente no GTO, mas defensável",
+    gto_critical:        "Desvio crítico: frequência GTO < 10% — jogada raramente justificada pelo solver",
+  };
+
   type VInfo = { icon: string; label: string; cls: string; borderCls: string; hdrCls: string; source: string };
   const verdict = ((): VInfo | null => {
     if (!step.is_hero || step.type !== "action") return null;
-    if (hasGto) {
+    // Skip non-decision actions (shows, mucks, posts)
+    const _actLow = (step.action ?? '').toLowerCase();
+    if (_actLow === 'shows' || _actLow === 'show' || _actLow === 'mucks' || _actLow === 'muck' || _actLow === 'posts' || _actLow === 'post') return null;
+    if (effectiveGtoLabel) {
       const m: Record<string, VInfo> = {
         gto_correct:         { icon: "✓", label: "Correto",        cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "GTO Solver" },
         gto_mixed:           { icon: "◎", label: "Misto",          cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "GTO Solver" },
         gto_minor_deviation: { icon: "⚠", label: "Desvio Leve",   cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "GTO Solver" },
         gto_critical:        { icon: "✗", label: "Desvio Crítico", cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "GTO Solver" },
       };
-      if (step.gto_label && m[step.gto_label]) return m[step.gto_label];
+      if (m[effectiveGtoLabel]) return m[effectiveGtoLabel];
     }
     if (!isPostflop && pg?.available) {
       const m: Record<string, VInfo> = {
@@ -126,27 +161,19 @@ function SidePanels({
   })();
   const showDecision = !!verdict && (studentId !== null || coachAnnotation?.mode !== "replace");
 
-  // Action comparison
-  const playedAction  = (!isPostflop && pg?.available) ? pg.action_taken : (step.action ?? "—");
-  const isActionOk    = hasGto
-    ? (step.gto_label === "gto_correct" || step.gto_label === "gto_mixed")
+  // Action comparison (playedAction already computed above)
+  const isActionOk = effectiveGtoLabel
+    ? (effectiveGtoLabel === "gto_correct" || effectiveGtoLabel === "gto_mixed")
     : (!isPostflop && pg?.available
         ? (pg.action_quality === "correct" || pg.action_quality === "acceptable")
         : isCorrect);
-  const idealAction   = hasGto
-    ? (step.gto_action ?? null)
+  // idealAction: use live top action when available (overrides stored gto_action which may be stale)
+  const liveTopAction = stratSorted.length > 0 ? stratSorted[0].action : null;
+  const idealAction = hasGto
+    ? (liveTopAction ?? step.gto_action ?? null)
     : (!isPostflop && pg?.available ? pg.recommended_actions.map(fmtAction).join(" / ") : (step.best_action ? fmtAction(step.best_action) : null));
-  const showTwoCols   = !isActionOk && !!idealAction &&
+  const showTwoCols = !isActionOk && !!idealAction &&
     idealAction.toLowerCase() !== playedAction.toLowerCase();
-
-  // GTO strategy
-  const stratSorted = step.gto_strategy
-    ? [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0))
-    : [];
-  const isPlayedAct = (action: string) => {
-    const a = action.toLowerCase(); const p = playedAction.toLowerCase();
-    return a === p || p.startsWith(a) || a.startsWith(p);
-  };
   const topFreqPct = stratSorted.length > 0
     ? ((stratSorted[0].frequency ?? 0) * 100).toFixed(0) : null;
   const evDiff = (() => {
@@ -177,9 +204,22 @@ function SidePanels({
     return "text-purple-400";
   };
   const scenarioLabel: Record<string, string> = { rfi: "RFI", vs_rfi: "vs Open", vs_3bet: "vs 3-Bet" };
-  const DRAW_LABELS: Record<string, string> = {
-    flush_draw: "Flush Draw", straight_draw: "Straight Draw",
-    combo_draw: "Combo Draw", gutshot: "Gutshot",
+  const DRAW_COMPONENT_LABEL: Record<string, string> = {
+    FD:   "Flush Draw",
+    OESD: "Straight Draw",
+    GUT:  "Gutshot",
+    BDFD: "Backdoor FD",
+    BDSD: "Backdoor SD",
+  };
+  const DRAW_COMPONENT_TOOLTIP: Record<string, string> = {
+    FD:   "Flush Draw — 4 cartas para flush (~9 outs, ≈18% de completar no próximo street)",
+    OESD: "Open-Ended Straight Draw — 8 outs, ≈17% no próximo street",
+    GUT:  "Gutshot — straight draw interno, 4 outs, ≈8% no próximo street",
+    BDFD: "Backdoor Flush Draw (BDFD) — precisa de 2 cartas consecutivas do mesmo naipe (~6% para completar)",
+    BDSD: "Backdoor Straight Draw (BDSD) — precisa de uma carta específica no turn E outra no river para completar a sequência (~4%)",
+  };
+  const DRAW_EQUITY_BOOST: Record<string, number> = {
+    FD: 15, OESD: 17, GUT: 8, BDFD: 6, BDSD: 4,
   };
 
   return (
@@ -191,7 +231,10 @@ function SidePanels({
 
           {/* Banner: veredito + fonte */}
           <div className={cn("flex items-center justify-between px-3 py-2.5", verdict.hdrCls)}>
-            <span className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls)}>
+            <span
+              className={cn("font-mono text-sm font-bold uppercase tracking-wide cursor-help", verdict.cls)}
+              title={effectiveGtoLabel ? GTO_LABEL_TOOLTIP[effectiveGtoLabel] : undefined}
+            >
               {verdict.icon} {verdict.label}
             </span>
             <span className="font-mono text-[9px] text-muted-foreground/45 uppercase tracking-wider">
@@ -270,35 +313,95 @@ function SidePanels({
               </>
             )}
 
-            {/* Postflop: equity bar + pot odds + draw */}
-            {isPostflop && step.hand_equity != null && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground w-12 shrink-0">Equity</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-border/50 overflow-hidden">
-                    <div
-                      className={cn("h-full rounded-full transition-all",
-                        step.hand_equity >= (step.pot_odds_equity ?? 0) ? "bg-emerald-500" : "bg-destructive")}
-                      style={{ width: `${(step.hand_equity * 100).toFixed(1)}%` }}
-                    />
-                  </div>
-                  <span className={cn("font-mono text-sm font-bold tabular-nums shrink-0",
-                    step.hand_equity >= (step.pot_odds_equity ?? 0) ? "text-emerald-400" : "text-destructive")}>
-                    {(step.hand_equity * 100).toFixed(0)}%
-                  </span>
-                  {step.pot_odds_equity != null && (
-                    <span className="font-mono text-[10px] text-muted-foreground shrink-0 tabular-nums">
-                      / {(step.pot_odds_equity * 100).toFixed(0)}%
-                    </span>
+            {/* Postflop: indicadores estatísticos */}
+            {isPostflop && (step.hand_equity != null || (step.hero_stack_bb != null && step.pot_bb != null)) && (() => {
+              const eq    = step.hand_equity ?? null;
+              const po    = step.pot_odds_equity ?? null;
+              const profitable = eq != null && po != null && po > 0 ? eq >= po : null;
+              const spr   = (step.hero_stack_bb != null && step.pot_bb != null && step.pot_bb > 0)
+                            ? step.hero_stack_bb / step.pot_bb : null;
+              const sprLabel = spr == null ? null : spr < 2 ? "comprometido" : spr < 5 ? "médio" : "fundo";
+              const sprColor = spr == null ? "" : spr < 2 ? "text-amber-400" : spr < 5 ? "text-sky-400" : "text-muted-foreground";
+              const drawParts = (step.draw_profile && step.draw_profile !== "none" && step.draw_profile !== "made_hand")
+                                ? step.draw_profile.split('+') : [];
+              const drawBoost = drawParts.reduce((s, c) => s + (DRAW_EQUITY_BOOST[c] ?? 0), 0);
+              return (
+                <div className="space-y-2 border-t border-border/30 pt-2">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/40">Indicadores</span>
+
+                  {/* Equity */}
+                  {eq != null && (
+                    <div className="flex items-center gap-2" title="Equity estimada do hero contra o range do villain">
+                      <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">Equity</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-border/50 overflow-hidden">
+                        <div className={cn("h-full rounded-full transition-all",
+                          profitable === true ? "bg-emerald-500" : profitable === false ? "bg-destructive" : "bg-sky-500")}
+                          style={{ width: `${(eq * 100).toFixed(1)}%` }} />
+                      </div>
+                      <span className={cn("font-mono text-[11px] font-bold tabular-nums shrink-0 w-8 text-right",
+                        profitable === true ? "text-emerald-400" : profitable === false ? "text-destructive" : "text-sky-400")}>
+                        {(eq * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Pot Odds */}
+                  {po != null && po > 0 && (
+                    <div className="flex items-center gap-2" title="Pot odds: equity mínima para call ser matematicamente lucrativo">
+                      <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">Pot odds</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-border/50 overflow-hidden">
+                        <div className="h-full rounded-full bg-border transition-all"
+                          style={{ width: `${(po * 100).toFixed(1)}%` }} />
+                      </div>
+                      <span className="font-mono text-[11px] tabular-nums shrink-0 w-8 text-right text-muted-foreground">
+                        {(po * 100).toFixed(0)}%
+                      </span>
+                      {profitable != null && (
+                        <span className={cn("font-mono text-[9px] font-bold shrink-0",
+                          profitable ? "text-emerald-400" : "text-destructive")}
+                          title={profitable ? "Call matematicamente lucrativo" : "Call matematicamente negativo"}>
+                          {profitable ? "✓" : "✗"}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SPR */}
+                  {spr != null && (
+                    <div className="flex items-center gap-2"
+                      title="SPR (Stack-to-Pot Ratio): stack efetivo ÷ pot. SPR < 2 = pot-committed; 2–5 = médio; > 5 = fundo">
+                      <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">SPR</span>
+                      <span className={cn("font-mono text-[11px] font-bold tabular-nums", sprColor)}>
+                        {spr.toFixed(1)}
+                      </span>
+                      {sprLabel && (
+                        <span className={cn("font-mono text-[9px] uppercase", sprColor)}>{sprLabel}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Draw profile com tooltips por componente */}
+                  {drawParts.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">Draw</span>
+                      {drawParts.map((c) => (
+                        <span key={c}
+                          className="inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold ring-1 text-amber-400 ring-amber-500/30 bg-amber-500/8 cursor-help"
+                          title={DRAW_COMPONENT_TOOLTIP[c] ?? c}>
+                          {DRAW_COMPONENT_LABEL[c] ?? c}
+                        </span>
+                      ))}
+                      {drawBoost > 0 && (
+                        <span className="font-mono text-[9px] text-amber-400/50"
+                          title="Bônus de equity acumulado pelos draws detectados">
+                          +{drawBoost}% eq
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
-                {step.draw_profile && step.draw_profile !== "none" && step.draw_profile !== "made_hand" && (
-                  <span className="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-bold ring-1 text-amber-400 ring-amber-500/30 bg-amber-500/8">
-                    {DRAW_LABELS[step.draw_profile] ?? step.draw_profile.replace(/_/g, " ")}
-                  </span>
-                )}
-              </div>
-            )}
+              );
+            })()}
 
             {/* Estratégia pendente */}
             {!step.gto_spot_mismatch && !!step.gto_label && !stratSorted.length && (
@@ -374,11 +477,19 @@ function SidePanels({
               </p>
             )}
 
-            {/* Rodapé: M-Ratio + ICM */}
-            {(step.m_ratio != null || (step.icm_pressure && step.icm_pressure !== "low")) && (
-              <div className="flex items-center gap-3 pt-1 border-t border-border/30">
+            {/* Rodapé: Stack · M-Ratio · ICM */}
+            {(step.hero_stack_bb != null || step.m_ratio != null || step.icm_pressure != null) && (
+              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border/30">
+                {step.hero_stack_bb != null && (
+                  <span className="font-mono text-[10px]" title="Stack efetivo do hero em big blinds">
+                    <span className="text-muted-foreground/50">Stack </span>
+                    <span className="font-bold tabular-nums text-muted-foreground">
+                      {step.hero_stack_bb.toFixed(1)}bb
+                    </span>
+                  </span>
+                )}
                 {step.m_ratio != null && (
-                  <span className="font-mono text-[10px]">
+                  <span className="font-mono text-[10px]" title="M-Ratio: stack / custo médio de uma órbita. M < 10 = pressão, M < 5 = zona crítica">
                     <span className="text-muted-foreground/50">M </span>
                     <span className={cn("font-bold tabular-nums",
                       step.m_ratio <= 5 ? "text-destructive" : step.m_ratio <= 10 ? "text-amber-400" : "text-muted-foreground")}>
@@ -386,11 +497,15 @@ function SidePanels({
                     </span>
                   </span>
                 )}
-                {step.icm_pressure && step.icm_pressure !== "low" && (
-                  <span className={cn("font-mono text-[10px] font-bold uppercase",
-                    step.icm_pressure === "critical" ? "text-destructive" :
-                    step.icm_pressure === "high" ? "text-amber-400" : "text-sky-400")}>
-                    ICM {step.icm_pressure}
+                {step.icm_pressure != null && (
+                  <span
+                    className={cn("font-mono text-[10px] font-bold uppercase",
+                      step.icm_pressure === "critical" ? "text-destructive" :
+                      step.icm_pressure === "high"     ? "text-amber-400"   :
+                      step.icm_pressure === "medium"   ? "text-sky-400"     : "text-muted-foreground/50")}
+                    title="Pressão ICM: impacto das eliminações no valor esperado em torneio"
+                  >
+                    ICM {step.icm_pressure === "low" ? "baixo" : step.icm_pressure === "medium" ? "médio" : step.icm_pressure === "high" ? "alto" : step.icm_pressure}
                   </span>
                 )}
               </div>

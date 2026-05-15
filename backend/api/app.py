@@ -3134,6 +3134,31 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             except Exception:
                 pass
 
+        # Re-evaluate is_error/reconciled_best using LIVE strategy (overrides stored gto_label)
+        # Stored label may come from a mismatched or stale node; live frequency is ground truth.
+        if gto_strategy and not gto_spot_mismatch:
+            acted_norm   = _norm(action.action)
+            live_freq    = 0.0
+            live_top_act = None
+            live_top_freq = 0.0
+            for _gs in gto_strategy:
+                _gs_act  = _norm(_gs.get('action', ''))
+                _gs_freq = float(_gs.get('frequency') or 0)
+                if (_gs_act == acted_norm
+                        or acted_norm.startswith(_gs_act)
+                        or _gs_act.startswith(acted_norm)):
+                    live_freq = _gs_freq
+                if _gs_freq > live_top_freq:
+                    live_top_freq = _gs_freq
+                    live_top_act  = _gs.get('action')
+            if live_top_act:
+                if live_freq >= 0.30:
+                    is_error        = False
+                    reconciled_best = acted_norm
+                else:
+                    is_error        = True
+                    reconciled_best = live_top_act
+
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,

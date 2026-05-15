@@ -4158,9 +4158,29 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
             ))
             count += 1
         conn.commit()
-        return count
     finally:
         conn.close()
+
+    # Resync decisions labels for each newly saved node (best-effort, non-blocking)
+    if count > 0:
+        import threading
+        for _n in nodes:
+            try:
+                _hash = _n.get('spot_hash')
+                if not _hash:
+                    from leaklab.gto_utils import compute_spot_hash as _csh2
+                    _hash = _csh2(
+                        _n['street'], _n['position'], _n.get('board', []),
+                        _n.get('hero_hand', []),
+                        float(_n.get('hero_stack_bb', 30.0)),
+                        float(_n.get('facing_size_bb', 0.0)),
+                    )
+                threading.Thread(
+                    target=resync_gto_labels_for_node, args=(_hash,), daemon=True
+                ).start()
+            except Exception:
+                pass
+    return count
 
 
 def get_gto_stats() -> dict:
@@ -4510,5 +4530,96 @@ def update_decision_gto(decision_id: int, gto_label: str, gto_action: str) -> No
             UPDATE decisions SET gto_label = ?, gto_action = ? WHERE id = ?
         """), (gto_label, gto_action, decision_id))
         conn.commit()
+    finally:
+        conn.close()
+
+
+def resync_gto_labels_for_node(spot_hash: str) -> int:
+    """
+    Após um nó ser inserido/atualizado em gto_nodes, reclassifica todas as decisions
+    cujo spot_hash (calculado ao vivo) bate com este nó.
+
+    Retorna o número de decisions atualizadas.
+    Chamado automaticamente por insert_gto_nodes após cada REPLACE bem-sucedido.
+    """
+    conn = get_conn()
+    try:
+        node_row = _fetchone(conn, _adapt(
+            "SELECT street, position, board, gto_action, gto_freq, strategy_json "
+            "FROM gto_nodes WHERE spot_hash = ?"
+        ), (spot_hash,))
+        if not node_row:
+            return 0
+
+        try:
+            board_list = json.loads(node_row['board'] or '[]')
+        except Exception:
+            return 0
+
+        strategy: dict = {}
+        if node_row['strategy_json']:
+            try:
+                raw = json.loads(node_row['strategy_json'])
+                # format: {action: {frequency: float, ...}} or {action: float}
+                for k, v in raw.items():
+                    strategy[k] = v['frequency'] if isinstance(v, dict) else float(v)
+            except Exception:
+                pass
+        if not strategy and node_row['gto_action']:
+            strategy[node_row['gto_action']] = float(node_row['gto_freq'] or 1.0)
+        if not strategy:
+            return 0
+
+        top_action = max(strategy, key=lambda k: strategy[k])
+
+        from leaklab.gto_utils import compute_spot_hash as _csh, stack_bucket as _sb
+        street   = node_row['street']
+        position = node_row['position']
+
+        # Find candidate decisions that match street + position + rough board overlap.
+        # We recompute their hash and compare to spot_hash.
+        candidates = _fetchall(conn, _adapt("""
+            SELECT id, board, hero_cards, stack_bb, facing_bet, action_taken
+            FROM decisions
+            WHERE street = ? AND position = ?
+              AND gto_label IS NOT NULL
+        """), (street, position))
+
+        updated = 0
+        for d in candidates:
+            try:
+                d_board = json.loads(d['board'] or '[]') if d['board'] else []
+                d_hand  = json.loads(d['hero_cards'] or '[]') if d['hero_cards'] else []
+                d_stack = float(d['stack_bb'] or 20.0)
+                d_face  = float(d['facing_bet'] or 0.0)
+                d_hash  = _csh(street, position, d_board, d_hand, d_stack, d_face)
+                # Also check generic hash (no hero_hand)
+                d_hash_g = _csh(street, position, d_board, [], d_stack, d_face)
+                if d_hash != spot_hash and d_hash_g != spot_hash:
+                    continue
+
+                acted = (d['action_taken'] or '').lower().rstrip('s')
+                acted = {'raise': 'bet', 'all-in': 'allin', 'jam': 'allin'}.get(acted, acted)
+                freq  = strategy.get(acted, 0.0)
+
+                if freq >= 0.60:
+                    new_label = 'gto_correct'
+                elif freq >= 0.30:
+                    new_label = 'gto_mixed'
+                elif freq >= 0.10:
+                    new_label = 'gto_minor_deviation'
+                else:
+                    new_label = 'gto_critical'
+
+                conn.execute(_adapt(
+                    "UPDATE decisions SET gto_label=?, gto_action=? WHERE id=?"
+                ), (new_label, top_action, d['id']))
+                updated += 1
+            except Exception:
+                continue
+
+        if updated:
+            conn.commit()
+        return updated
     finally:
         conn.close()
