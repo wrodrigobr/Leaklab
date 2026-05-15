@@ -27,7 +27,7 @@ function barColor(action: string, playerAction: string, topAction: string): stri
   if (a.includes("fold")) return "bg-slate-500";
   if (a.includes("check")) return "bg-sky-500/70";
   if (a.includes("call")) return "bg-sky-500";
-  if (a.includes("allin") || a.includes("jam")) return "bg-rose-600";
+  if (a.includes("allin") || a.includes("shove") || a.includes("jam")) return "bg-rose-600";
   return "bg-violet-500";
 }
 
@@ -37,9 +37,10 @@ function isPlayerAction(action: string, playerAction: string): boolean {
   const a = action.toLowerCase();
   const p = playerAction.toLowerCase();
   if (a === p) return true;
-  if (p === "allin" && a === "all-in") return true;
-  if ((p === "bet" || p === "raise" || p === "jam") &&
-      (a.includes("bet") || a.includes("raise") || a.includes("allin") || a.includes("jam")))
+  const isAllin = (s: string) => s === "allin" || s === "all-in" || s === "shove" || s === "jam";
+  if (isAllin(p) && isAllin(a)) return true;
+  if ((p === "bet" || p === "raise" || isAllin(p)) &&
+      (a.includes("bet") || a.includes("raise") || isAllin(a)))
     return true;
   return false;
 }

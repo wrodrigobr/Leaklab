@@ -42,7 +42,7 @@ function fmtAction(a: string): string {
   if (s === "fold")    return "Fold";
   if (s === "call")    return "Call";
   if (s === "check")   return "Check";
-  if (s === "allin" || s === "all-in" || s === "jam") return "Shove";
+  if (s === "allin" || s === "all-in" || s === "shove" || s === "jam") return "Shove";
   if (s === "bet")     return "Bet";
   if (s === "raise")   return "Raise";
   if (s.startsWith("bet_"))   return `Bet ${s.replace("bet_", "").replace("pct", "%")}`;
@@ -192,7 +192,7 @@ function SidePanels({
     if (a === "check")                                 return "bg-sky-400";
     if (a === "call")                                  return "bg-emerald-500";
     if (a.startsWith("bet") || a.startsWith("raise")) return "bg-red-500";
-    if (a === "allin" || a.startsWith("allin"))        return "bg-red-600";
+    if (a === "allin" || a.startsWith("allin") || a === "shove") return "bg-red-600";
     return "bg-purple-500";
   };
   const actionTextColor = (action: string) => {
@@ -201,7 +201,7 @@ function SidePanels({
     if (a === "check")                                 return "text-sky-400";
     if (a === "call")                                  return "text-emerald-400";
     if (a.startsWith("bet") || a.startsWith("raise")) return "text-red-400";
-    if (a === "allin" || a.startsWith("allin"))        return "text-red-400";
+    if (a === "allin" || a.startsWith("allin") || a === "shove") return "text-red-400";
     return "text-purple-400";
   };
   const scenarioLabel: Record<string, string> = { rfi: "RFI", vs_rfi: "vs Open", vs_3bet: "vs 3-Bet" };

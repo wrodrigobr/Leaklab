@@ -2880,7 +2880,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
     # Mapear erros por (street, action_taken) — inclui dados matemáticos do engine
     # Normalizar: banco usa 'fold','call','raise'; parser usa 'folds','calls','raises'
-    def _norm(a): return a.rstrip('s') if a and a.endswith('s') else (a or '')
+    def _norm(a):
+        if not a:
+            return ''
+        a = a.rstrip('s') if a.endswith('s') else a
+        return 'allin' if a in ('all-in', 'allin', 'jam', 'shove') else a
 
     # Mapa unificado: todas as decisões do hero, indexadas por (street, action)
     all_decisions = {}
@@ -4548,7 +4552,10 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                         if str(d.get('hand_id')) == str(hand_id)]
 
         # Índice rápido: (street, action_taken) → decision_id
-        def _norm(a): return a.rstrip('s') if a and a.endswith('s') else (a or '')
+        def _norm(a):
+            if not a: return ''
+            a = a.rstrip('s') if a.endswith('s') else a
+            return 'allin' if a in ('all-in', 'allin', 'jam', 'shove') else a
         db_index = {(_norm(d.get('street', '')), _norm(d.get('action_taken', ''))): d
                     for d in db_decisions}
 

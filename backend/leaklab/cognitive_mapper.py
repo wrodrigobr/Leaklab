@@ -10,7 +10,7 @@ deviation in action quality following a trigger event.
 from collections import defaultdict
 from typing import List, Dict, Any
 
-_AGGRESSIVE = frozenset({"bet", "raise", "jam", "all-in", "all_in"})
+_AGGRESSIVE = frozenset({"bet", "raise", "shove", "jam", "all-in", "all_in"})
 _CALL       = frozenset({"call"})
 _FOLD       = frozenset({"fold"})
 _MISTAKES   = frozenset({"small_mistake", "clear_mistake"})

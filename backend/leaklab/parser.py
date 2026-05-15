@@ -129,10 +129,14 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
         ma = ACTION_LINE_RE.match(line)
         if ma:
             amount = ma.group("amount")
+            action_str = ma.group("action").lower()
+            # "bets X and is all-in" / "raises X and is all-in" → all-in
+            if action_str in ('bets', 'raises') and 'and is all-in' in line.lower():
+                action_str = 'all-in'
             actions.append(ParsedAction(
                 player=ma.group("player").strip(),
                 street=street,
-                action=ma.group("action").lower(),
+                action=action_str,
                 amount=float(amount) if amount else None,
                 raw=line,
             ))

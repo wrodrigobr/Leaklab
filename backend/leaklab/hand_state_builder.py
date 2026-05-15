@@ -43,7 +43,7 @@ def _normalize_action(action: Optional[str]) -> str:
         'calls':  'call',
         'bets':   'bet',
         'raises': 'raise',
-        'all-in': 'jam',
+        'all-in': 'shove',
     }
     return mapping.get(action, action or 'fold')
 

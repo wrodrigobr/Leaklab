@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 def _gto_action_matches(player_action: str, gto_action: str) -> bool:
     """Verifica se a ação do jogador corresponde à ação GTO primária."""
-    aggressive = {'bet', 'raise', 'jam'}
+    aggressive = {'bet', 'raise', 'shove', 'jam'}
     gto_lower  = gto_action.lower()
     if gto_lower.startswith('bet') or gto_lower.startswith('raise'):
         return player_action in aggressive
@@ -191,7 +191,7 @@ def calc_base_action_gap(player_action: str, recommended_primary_action: str, al
         return 0.0
     if player_action in alternatives:
         return 0.08
-    aggressive_mismatch = player_action in {"jam", "raise"} and recommended_primary_action == "fold"
+    aggressive_mismatch = player_action in {"shove", "jam", "raise"} and recommended_primary_action == "fold"
     if aggressive_mismatch:
         return 0.35
     if player_action == "fold" and recommended_primary_action == "call":
@@ -460,7 +460,7 @@ def build_interpretation(input_data: Dict[str, Any], label: str, adjusted_requir
     icm      = ctx.get("icmPressure", "low")
 
     _act = {"fold": "fold", "check": "check", "call": "call",
-            "bet": "bet", "raise": "raise", "jam": "all-in"}.get
+            "bet": "bet", "raise": "raise", "shove": "all-in", "jam": "all-in"}.get
     _str = {"preflop": "pré-flop", "flop": "flop",
             "turn": "turn", "river": "river"}.get
 
@@ -483,9 +483,9 @@ def build_interpretation(input_data: Dict[str, Any], label: str, adjusted_requir
                 parts.append(f"Equity de {eq_pct}% ficou {abs(diff)}pp abaixo dos {req_pct}% exigidos — sem valor para continuar no pot.")
             elif action == "fold" and best == "call":
                 parts.append(f"Com equity de {eq_pct}% vs {req_pct}% exigidos pelo pot, o call tinha valor positivo (+{abs(diff)}pp).")
-            elif action == "fold" and best in ("raise", "jam", "bet"):
+            elif action == "fold" and best in ("raise", "shove", "jam", "bet"):
                 parts.append(f"Equity de {eq_pct}% suporta {best_pt.upper()} neste spot — foldar deixou valor na mesa.")
-            elif action in ("raise", "bet", "jam") and best == "fold":
+            elif action in ("raise", "bet", "shove", "jam") and best == "fold":
                 parts.append(f"Equity de {eq_pct}% ficou {abs(diff)}pp abaixo dos {req_pct}% necessários — a agressão não tinha suporte matemático.")
             elif action in ("check", "call") and best in ("bet", "raise"):
                 parts.append(f"Com equity de {eq_pct}%, {best_pt.upper()} extrai mais valor e protege melhor do que {action_pt.upper()}.")

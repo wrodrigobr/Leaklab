@@ -12,7 +12,7 @@ def classify_spot(state: HandState) -> SpotClassification:
             spot_type = "preflop_flat"
         elif state.player_action == "fold":
             spot_type = "preflop_fold"
-        elif state.player_action == "jam":
+        elif state.player_action in ("shove", "jam"):
             spot_type = "preflop_jam"
     else:
         if state.player_action == "bet":
