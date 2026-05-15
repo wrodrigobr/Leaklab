@@ -4688,6 +4688,7 @@ def _mark_failed_solver_jobs_as_wizard_pending() -> int:
     correspondentes como wizard_pending para o fallback ao GTO Wizard.
     Retorna número de decisões marcadas.
     """
+    from database.schema import get_conn
     conn = get_conn()
     marked = 0
     try:
