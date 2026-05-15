@@ -93,6 +93,7 @@ function SidePanels({
   const isPostflop = step.street !== 'preflop';
   const handHasPostflopAction = replayData.timeline.some(
     (s) => s.is_hero && s.type === "action" && s.street !== 'preflop'
+      && s.action !== "shows" && s.action !== "mucks"
   );
   const pg = step.preflop_gto ?? null;
 
@@ -516,7 +517,8 @@ function SidePanels({
       )}
 
       {/* ── GTO não disponível — solicitar análise (apenas postflop) ── */}
-      {step.is_hero && step.type === "action" && isPostflop && !hasGto && handHasPostflopAction && (
+      {step.is_hero && step.type === "action" && isPostflop && !hasGto && handHasPostflopAction
+        && step.action !== "shows" && step.action !== "mucks" && (
         <section className="rounded-xl border border-border bg-hud-surface p-3 space-y-2.5">
           <div className="flex items-center gap-2">
             <FlaskConical className="size-4 shrink-0 text-muted-foreground" />
