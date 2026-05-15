@@ -4610,7 +4610,28 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                 update_decision_gto(db_dec['id'], gto_label, gto_action)
                 done += 1
             else:
-                # Spot não está na base — lookup_gto já enfileirou para o solver
+                # Spot não está na base — lookup_gto enfileirou para o solver local
+                # se is_simple_spot=False (stack alto, turn/river), marcar para
+                # fallback ao GTO Wizard (processado via fallback_gto_wizard.py)
+                _facing2  = float(db_dec.get('facing_bet', 0) or 0)
+                _stack2   = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)
+                _street2  = di.get('street', 'flop')
+                try:
+                    from leaklab.gto_solver import is_simple_spot as _is_simple
+                    _board2 = spot.get('board', [])
+                    if not _is_simple(_street2, _board2, _stack2, _facing2):
+                        # Solver local não vai resolver → marca para fallback wizard
+                        conn_flag = get_conn()
+                        try:
+                            conn_flag.execute(_adapt("""
+                                UPDATE decisions SET gto_label = 'wizard_pending'
+                                WHERE id = ?
+                            """), (db_dec['id'],))
+                            conn_flag.commit()
+                        finally:
+                            conn_flag.close()
+                except Exception:
+                    pass
                 queued += 1
 
         # done>0: resolveu novos spots agora → done
