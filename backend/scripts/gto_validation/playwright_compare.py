@@ -33,7 +33,7 @@ BACKEND_DIR = SCRIPTS_DIR.parent.parent
 COOKIES_FILE = SCRIPTS_DIR / "gto_cookies.json"
 GW_APP       = "https://app.gtowizard.com"
 GW_API       = "https://api.gtowizard.com"
-GAMETYPE      = "MTTGeneralV2"
+GAMETYPE      = "MTTGeneral"
 NUM_PLAYERS   = 9
 STACK_SNAPS   = [10, 13, 15, 17, 20, 25, 30, 40, 50, 75, 100]
 GW_CLIENT_ID  = "790ab864-ed0c-4545-9e5a-97efe89672cd"
@@ -43,19 +43,20 @@ GW_NEXT_ACTS  = "https://api.gtowizard.com/v4/game-points/next-actions/"
 # BB/SB act first post-flop (OOP); all other positions are IP post-flop
 OOP_POSITIONS = {"BB", "SB"}
 
-# Preflop sequences para 9-max (UTG, UTG+1, UTG+2, LJ, HJ, CO, BTN, SB, BB)
+# Preflop sequences para MTTGeneral 9-max (8 acoes por mao)
+# Raise size 2.3bb confirmado via API — BTN: F-F-F-F-F-R2.3-F-C ✓
 PREFLOP_BY_POS = {
-    "UTG":   "R2-F-F-F-F-F-F-F-C",
-    "UTG+1": "F-R2-F-F-F-F-F-F-C",
-    "UTG+2": "F-F-R2-F-F-F-F-F-C",
-    "LJ":    "F-F-F-R2-F-F-F-F-C",
-    "HJ":    "F-F-F-F-R2-F-F-F-C",
-    "CO":    "F-F-F-F-F-R2-F-F-C",
-    "BTN":   "F-F-F-F-F-F-R2-F-C",
-    "SB":    "F-F-F-F-F-F-F-R2-C",
-    "BB":    "F-F-F-F-F-F-R2-F-C",  # BTN opens, SB fold, BB call
-    "MP":    "F-F-F-R2-F-F-F-F-C",
-    "EP":    "F-F-R2-F-F-F-F-F-C",
+    "UTG":   "R2.3-F-F-F-F-F-F-C",
+    "UTG+1": "F-R2.3-F-F-F-F-F-C",
+    "UTG+2": "F-F-R2.3-F-F-F-F-C",  # alias LJ
+    "LJ":    "F-F-R2.3-F-F-F-F-C",
+    "HJ":    "F-F-F-R2.3-F-F-F-C",
+    "CO":    "F-F-F-F-R2.3-F-F-C",
+    "BTN":   "F-F-F-F-F-R2.3-F-C",  # confirmado via API
+    "SB":    "F-F-F-F-F-F-R2.3-C",
+    "BB":    "F-F-F-F-F-R2.3-F-C",  # BTN opens, SB fold, BB call (OOP hero)
+    "MP":    "F-F-R2.3-F-F-F-F-C",  # alias LJ
+    "EP":    "R2.3-F-F-F-F-F-F-C",  # alias UTG
 }
 
 
@@ -87,7 +88,7 @@ def build_params(spot: dict) -> dict | None:
 
     snap       = _nearest_snap(float(spot.get("stack_bucket", 20)))
     stack_frac = snap + 0.125
-    stacks_str = "-".join([str(stack_frac)] * NUM_PLAYERS)
+    stacks_str = ""  # arvore MTTGeneral usa depth= como referencia
 
     facing_bb  = float(spot.get("facing_bet", 0) or 0)
     hero_is_oop = position in OOP_POSITIONS

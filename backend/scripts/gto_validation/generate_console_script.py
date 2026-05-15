@@ -19,28 +19,25 @@ import os, sys, json, argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 SCRIPTS_DIR = os.path.dirname(__file__)
-GAMETYPE = "MTTGeneral_8m"
+GAMETYPE = "MTTGeneral"  # 9-max MTT (MTTGeneral_8m requer plano superior)
 
-# Stack snapshots disponíveis no GTO Wizard MTT (8-max)
+# Stack snapshots disponíveis no GTO Wizard MTT
 STACK_SNAPS = [10, 13, 15, 17, 20, 25, 30, 40, 50, 75, 100]
 
-# Preflop action sequences por posição do hero (assume HU no flop — cenário mais comum)
-# Formato: hero_position → preflop_actions quando hero IP ou OOP
+# Preflop action sequences para MTTGeneral 9-max (8 acoes)
+# Raise size 2.3bb confirmado via API — stacks="" (depth= e a referencia)
 PREFLOP_BY_POSITION = {
-    # Hero IP vs BB (hero abre, BB chama)
-    "BTN": "F-F-F-F-R2-F-C",    # UTG/LJ/HJ/CO fold, BTN raise, SB fold, BB call
-    "CO":  "F-F-F-R2-F-F-C",    # UTG/LJ/HJ fold, CO raise, BTN/SB fold, BB call
-    "HJ":  "F-F-R2-F-F-F-C",    # UTG/LJ fold, HJ raise, CO/BTN/SB fold, BB call
-    "LJ":  "F-R2-F-F-F-F-C",
-    "UTG": "R2-F-F-F-F-F-C",    # UTG raise, todos fold até BB, BB call
-    # Hero OOP — SB abre, BB chama; ou hero na BB, outro posição abriu
-    "SB":  "F-F-F-F-F-R2-C",    # todos fold, SB raise, BB call
-    "BB":  "F-F-F-F-R2-F-C",    # BTN raise, SB fold, BB call (caso mais comum p/ BB no flop)
-    # Posições com alias
-    "UTG+1": "F-R2-F-F-F-F-C",
-    "UTG+2": "F-F-R2-F-F-F-C",
-    "MP":    "F-F-R2-F-F-F-C",
-    "EP":    "R2-F-F-F-F-F-C",
+    "BTN":   "F-F-F-F-F-R2.3-F-C",  # confirmado via API
+    "CO":    "F-F-F-F-R2.3-F-F-C",
+    "HJ":    "F-F-F-R2.3-F-F-F-C",
+    "LJ":    "F-F-R2.3-F-F-F-F-C",
+    "UTG+1": "F-R2.3-F-F-F-F-F-C",
+    "UTG":   "R2.3-F-F-F-F-F-F-C",
+    "SB":    "F-F-F-F-F-F-R2.3-C",
+    "BB":    "F-F-F-F-F-R2.3-F-C",  # BTN abre, SB fold, BB call
+    "UTG+2": "F-F-R2.3-F-F-F-F-C",  # alias LJ
+    "MP":    "F-F-R2.3-F-F-F-F-C",  # alias LJ
+    "EP":    "R2.3-F-F-F-F-F-F-C",  # alias UTG
 }
 
 
@@ -79,14 +76,16 @@ def build_spot_url_params(spot: dict) -> dict | None:
         return None
 
     stack = nearest_stack(float(spot.get("stack_bucket", 20)))
-    stacks = "-".join([str(stack)] * 8)
+    # GTO Wizard requer stacks fracionados (representam estado real com antes)
+    stack_frac = stack + 0.125
+    stacks = ""  # arvore MTTGeneral usa depth= como referencia
 
-    # Flop actions: se havia aposta, reconstituir como "check → bet"
+    # Flop actions: se havia aposta, reconstituir como "check → raise"
+    # API usa R (raise) para bets, nao B (que da 422)
     facing_bb = float(spot.get("facing_bet", 0) or 0)
-    pot_bb = float(spot.get("pot_size", 1) or 1)
     if facing_bb > 0:
         bet_bb = round(facing_bb, 1)
-        flop_actions = f"X-B{bet_bb}"
+        flop_actions = f"X-R{bet_bb}"
     else:
         flop_actions = ""
 
@@ -97,7 +96,7 @@ def build_spot_url_params(spot: dict) -> dict | None:
 
     return {
         "gametype": GAMETYPE,
-        "depth": stack,
+        "depth": stack_frac,
         "stacks": stacks,
         "preflop_actions": preflop_actions,
         "flop_actions": flop_actions,
@@ -117,13 +116,18 @@ def build_spot_url_params(spot: dict) -> dict | None:
     }
 
 
-def build_js_script(spots: list[dict], delay_ms: int = 600) -> str:
+def build_js_script(spots: list[dict], delay_ms: int = 2500) -> str:
     """
-    Gera script JavaScript com interceptor de token em duas fases:
-    Fase 1 — intercepta o fetch do app para capturar o Bearer token
-    Fase 2 — usa o token capturado para fazer nossas chamadas
+    Gera script JavaScript que intercepta Response.prototype.json para capturar
+    as respostas spot-solution que o próprio GTO Wizard app faz — sem precisar
+    fazer requests diretos (que exigem DPoP assinado por chave não-exportável).
 
-    O usuário precisa navegar para qualquer spot no GTO Wizard durante a Fase 1.
+    Fluxo:
+    1. Instala interceptor em Response.prototype.json (não pode ser pre-capturado)
+    2. Tenta navegação programática via history.pushState + popstate para cada spot
+    3. Se o app React responder, captura a resposta automaticamente
+    4. Se não responder (SPA não detecta popstate), exibe URL para navegação manual
+    5. Usuário chama window.finishComparison() quando quiser ver os resultados
     """
     params_list = []
     for spot in spots:
@@ -135,77 +139,33 @@ def build_js_script(spots: list[dict], delay_ms: int = 600) -> str:
 
     js = f"""
 // ============================================================
-// GTO Wizard Spot Comparison — Console Script (v2 — token interceptor)
+// GTO Wizard Spot Comparison — Console Script (v4 — Response interceptor)
 // Execute no console do browser em https://app.gtowizard.com
+//
+// COMO FUNCIONA:
+//  Intercepta Response.prototype.json para capturar as respostas spot-solution
+//  que o app GTO Wizard faz — sem DPoP, sem token, sem requests diretos.
 //
 // INSTRUÇÕES:
 //  1. Cole este script no console e pressione Enter
-//  2. Aguarde: "[Phase 1] Aguardando token..."
-//  3. Navegue para QUALQUER spot no GTO Wizard (clique em qualquer flop)
-//  4. Quando aparecer "[Phase 1] Token capturado!", a comparação inicia automaticamente
-//  5. Ao final, o JSON é copiado para o clipboard
+//  2. Aguarde a tentativa de navegação automática (2-3s por spot)
+//  3. Se um spot nao carregar, navegue manualmente ate ele
+//  4. Quando todos estiverem capturados: window.finishComparison()
+//     (ou aguarde o timeout automatico de 3 min apos o ultimo spot)
 // ============================================================
 
 (async function runComparison() {{
-  const BASE = 'https://api.gtowizard.com';
   const SPOTS = {params_json};
-  const DELAY = {delay_ms};
-  const TOKEN_TIMEOUT_MS = 90000;  // 90s para o usuário navegar
+  const NAV_WAIT_MS = {delay_ms};   // espera por resposta apos navegacao
+  const MANUAL_TIMEOUT_MS = 180000; // 3 min para navegacao manual
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  // ── Phase 1: Interceptar token ──────────────────────────────────────────────
-  console.log('[Phase 1] Aguardando token... Navegue para qualquer spot no GTO Wizard.');
-  console.log('[Phase 1] (clique em qualquer flop na seção Study ou Solutions)');
-
-  let capturedToken = null;
-  const _origFetch = window.fetch.bind(window);
-
-  window.fetch = function(url, opts) {{
-    const urlStr = typeof url === 'string' ? url : (url?.url || String(url));
-    if (urlStr.includes('api.gtowizard.com')) {{
-      const headers = opts?.headers || {{}};
-      const auth = headers['Authorization'] || headers['authorization'] || '';
-      if (auth.startsWith('Bearer ') && !capturedToken) {{
-        capturedToken = auth.slice(7);
-        console.log('[Phase 1] ✓ Token capturado! Iniciando comparação em 1s...');
-      }}
-    }}
-    return _origFetch(url, opts);
-  }};
-
-  // Aguardar até ter o token
-  let waited = 0;
-  while (!capturedToken && waited < TOKEN_TIMEOUT_MS) {{
-    await sleep(300);
-    waited += 300;
-  }}
-
-  // Restaurar fetch original
-  window.fetch = _origFetch;
-
-  if (!capturedToken) {{
-    console.error('[Phase 1] TIMEOUT — token não capturado em ' + (TOKEN_TIMEOUT_MS/1000) + 's.');
-    console.error('Tente navegar para um spot no GTO Wizard ANTES de rodar o script.');
-    return;
-  }}
-
-  // ── Phase 2: Executar comparação ────────────────────────────────────────────
-  console.log(`[Phase 2] Comparando ${{SPOTS.length}} spots...`);
-
-  function buildUrl(p) {{
-    const q = new URLSearchParams({{
-      gametype: p.gametype,
-      depth: p.depth,
-      stacks: p.stacks,
-      preflop_actions: p.preflop_actions,
-      flop_actions: p.flop_actions,
-      turn_actions: p.turn_actions,
-      river_actions: p.river_actions,
-      board: p.board,
-    }});
-    return `${{BASE}}/v4/solutions/spot-solution/?${{q.toString()}}`;
-  }}
+  // ── Interceptar Response.prototype.json ────────────────────────────────────
+  // Prototype chain: nao pode ser pre-capturado pelo app. Captura qualquer
+  // chamada .json() em qualquer Response de spot-solution, seja do app ou nossa.
+  const capturedSolutions = new Map(); // spotKey → {{actions, topAction}}
+  const _origRespJson = Response.prototype.json;
 
   function parseStrategy(data) {{
     const actions = {{}};
@@ -223,92 +183,190 @@ def build_js_script(spots: list[dict], delay_ms: int = 600) -> str:
     return {{ actions, topAction }};
   }}
 
-  const authHeaders = {{
-    'Authorization': `Bearer ${{capturedToken}}`,
-    'Accept': 'application/json, text/plain, */*',
-    'gwclientid': '790ab864-ed0c-4545-9e5a-97efe89672cd',
-    'Origin': 'https://app.gtowizard.com',
-    'Referer': 'https://app.gtowizard.com/',
+  function spotKey(board, preflop, flop, depth) {{
+    return `${{board}}|${{preflop}}|${{flop}}|${{depth}}`;
+  }}
+
+  Response.prototype.json = function() {{
+    const url = this.url || '';
+    if (url.includes('/v4/solutions/spot-solution/')) {{
+      return _origRespJson.call(this).then(data => {{
+        try {{
+          const p = new URL(url).searchParams;
+          const key = spotKey(p.get('board'), p.get('preflop_actions'), p.get('flop_actions') || '', p.get('depth'));
+          if (!capturedSolutions.has(key)) {{
+            const {{actions, topAction}} = parseStrategy(data);
+            capturedSolutions.set(key, {{actions, topAction}});
+            const strat = Object.entries(actions).sort((a,b)=>b[1]-a[1])
+              .map(([k,v])=>`${{k}} ${{(v*100).toFixed(0)}}%`).join(' | ');
+            console.log(`[Captured ${{capturedSolutions.size}}/${{SPOTS.length}}] ${{p.get('board')}} ${{p.get('depth')}}bb — ${{strat}}`);
+          }}
+        }} catch(e) {{}}
+        return data;
+      }});
+    }}
+    return _origRespJson.call(this);
   }};
 
-  const results = [];
+  // ── Funcao para finalizar e gerar resultados ────────────────────────────────
+  let finishCalled = false;
+  function doFinish() {{
+    if (finishCalled) return;
+    finishCalled = true;
+    Response.prototype.json = _origRespJson;
+    delete window.finishComparison;
+
+    const results = [];
+    for (const p of SPOTS) {{
+      const key = spotKey(p.board, p.preflop_actions, p.flop_actions || '', String(p.depth));
+      const sol = capturedSolutions.get(key);
+      const meta = p.meta;
+      const result = {{
+        ...meta,
+        board: p.board,
+        stack: p.depth,
+        preflop_actions: p.preflop_actions,
+        flop_actions: p.flop_actions,
+        gto_found: !!sol,
+        gto_strategy: sol?.actions || {{}},
+        gto_top_action: sol?.topAction || null,
+        error: sol ? null : 'not_captured',
+      }};
+      if (sol) {{
+        const ourAction = (meta.our_best_action || '').toLowerCase();
+        const gtoKey = {{'raise': 'bet', 'all-in': 'allin', 'jam': 'allin'}}[ourAction] || ourAction;
+        const freq = sol.actions[gtoKey] || 0;
+        result.our_action_gto_freq = freq;
+        result.verdict = freq >= 0.40 ? 'agreement' : freq >= 0.15 ? 'mixed' : 'divergence';
+      }}
+      results.push(result);
+    }}
+
+    const found = results.filter(r => r.gto_found);
+    const verdicts = {{}};
+    results.forEach(r => {{ verdicts[r.verdict || r.error || 'skip'] = (verdicts[r.verdict || r.error || 'skip'] || 0) + 1; }});
+    console.log('\\n' + '='.repeat(60));
+    console.log(`RESULTADO: ${{found.length}}/${{results.length}} spots capturados`);
+    console.log('Verditos:', JSON.stringify(verdicts));
+    console.log('='.repeat(60));
+
+    const jsonOutput = JSON.stringify(results, null, 2);
+    navigator.clipboard.writeText(jsonOutput).then(() => {{
+      console.log('JSON copiado para o clipboard! Cole em comparison_results_raw.json');
+    }}).catch(() => {{
+      console.log('GTW_RESULTS_START');
+      console.log(jsonOutput);
+      console.log('GTW_RESULTS_END');
+    }});
+    return results;
+  }}
+
+  window.finishComparison = doFinish;
+
+  // ── Navegacao programatica ──────────────────────────────────────────────────
+  // O app usa MTTGeneralV2 como gametype na API de historico (game-points/history).
+  // Precisamos navegar com esse gametype para que o carregamento nao retorne 422.
+  // Apos a tabela carregar, tentamos clicar na linha que corresponde ao nosso board.
+  function buildAppUrl(p) {{
+    const q = new URLSearchParams({{
+      gametype: 'MTTGeneralV2',   // API historico so aceita este formato
+      depth: String(p.depth),
+      stacks: p.stacks,
+      preflop_actions: p.preflop_actions,
+      flop_actions: p.flop_actions || '',
+      turn_actions: '',
+      river_actions: '',
+      board: p.board,
+    }});
+    return '/solutions?' + q.toString();
+  }}
+
+  // Tenta clicar em um elemento do DOM que contenha o board (todas as 3 cartas)
+  async function tryClickBoard(board) {{
+    const cards = [board.slice(0,2), board.slice(2,4), board.slice(4,6)].filter(c => c.length === 2);
+    if (cards.length < 3) return false;
+    await sleep(1500); // aguarda DOM renderizar apos navegacao
+    // Busca em rows, cells e qualquer elemento clicavel
+    const candidates = document.querySelectorAll('tr, [role="row"], [class*="row"], [class*="board"], [class*="Board"], td');
+    for (const el of candidates) {{
+      const txt = el.textContent || '';
+      // Checa se todas as 3 cartas estao representadas no texto do elemento
+      const found = cards.every(c => {{
+        const r = c[0], s = c[1].toLowerCase();
+        return txt.includes(r + s) || txt.includes(r.toLowerCase() + s);
+      }});
+      if (found && el.offsetParent !== null) {{ // elemento visivel
+        el.click();
+        return true;
+      }}
+    }}
+    return false;
+  }}
+
+  async function tryNavigate(p) {{
+    const url = buildAppUrl(p);
+    // Tenta history API + popstate (React Router / VueRouter / SolidRouter)
+    try {{
+      window.history.pushState({{gtw: true}}, '', url);
+      window.dispatchEvent(new PopStateEvent('popstate', {{state: {{gtw: true}}}}));
+    }} catch(e) {{}}
+    // Apos URL mudar, tenta clicar no board na tabela que carregar
+    return await tryClickBoard(p.board);
+  }}
+
+  // ── Fase principal ──────────────────────────────────────────────────────────
+  console.log('%c[GTO Comparison v4]', 'color:#4ade80;font-weight:bold',
+    `${{SPOTS.length}} spots | interceptor ativo`);
+  console.log('Tentando navegacao automatica... Se falhar, navegue manualmente e chame:');
+  console.log('  window.finishComparison()');
 
   for (let i = 0; i < SPOTS.length; i++) {{
     const p = SPOTS[i];
-    const meta = p.meta;
-    process.stdout?.write?.(`[${{i+1}}/${{SPOTS.length}}]`);
-    console.log(`[${{i+1}}/${{SPOTS.length}}] ${{meta.position}} | ${{p.board}} | ${{p.depth}}bb | preflop: ${{p.preflop_actions}}`);
+    const key = spotKey(p.board, p.preflop_actions, p.flop_actions || '', String(p.depth));
 
-    let result = {{
-      ...meta,
-      board: p.board,
-      stack: p.depth,
-      preflop_actions: p.preflop_actions,
-      flop_actions: p.flop_actions,
-      gto_found: false,
-      gto_strategy: {{}},
-      gto_top_action: null,
-      error: null,
-    }};
-
-    try {{
-      const url = buildUrl(p);
-      const r = await _origFetch(url, {{ headers: authHeaders }});
-      if (r.status === 401) {{
-        result.error = 'token_expired_401';
-        console.warn('  ✗ 401 — token expirou durante a execução. Reinicie o script.');
-        break;
-      }} else if (r.status === 404) {{
-        result.error = 'not_found_404';
-        console.log('  ✗ 404 — spot não disponível no plano');
-      }} else if (!r.ok) {{
-        result.error = `http_${{r.status}}`;
-        console.log(`  ✗ ${{r.status}}`);
-      }} else {{
-        const data = await r.json();
-        const {{ actions, topAction }} = parseStrategy(data);
-        result.gto_found = true;
-        result.gto_strategy = actions;
-        result.gto_top_action = topAction;
-        const ourAction = (meta.our_best_action || '').toLowerCase();
-        const gtoKey = {{ 'raise': 'bet', 'all-in': 'allin', 'jam': 'allin' }}[ourAction] || ourAction;
-        const freq = actions[gtoKey] || 0;
-        result.our_action_gto_freq = freq;
-        result.verdict = freq >= 0.40 ? 'agreement' : freq >= 0.15 ? 'mixed' : 'divergence';
-        const strat = Object.entries(actions).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${{k}} ${{(v*100).toFixed(0)}}%`).join(' | ');
-        console.log(`  ✓ ${{result.verdict.toUpperCase().padEnd(12)}} our=${{ourAction}}(${{(freq*100).toFixed(0)}}%)  GTO: ${{strat}}`);
-      }}
-    }} catch(e) {{
-      result.error = e.message;
-      console.error(`  ERROR: ${{e.message}}`);
+    if (capturedSolutions.has(key)) {{
+      console.log(`[${{i+1}}/${{SPOTS.length}}] ja capturado: ${{p.board}}`);
+      continue;
     }}
 
-    results.push(result);
-    if (i < SPOTS.length - 1) await sleep(DELAY);
+    console.log(`[${{i+1}}/${{SPOTS.length}}] Navegando: ${{p.meta.position}} | ${{p.board}} | ${{p.depth}}bb`);
+    await tryNavigate(p);
+
+    // Aguarda a resposta ser capturada via Response.prototype.json
+    let waited = 0;
+    while (!capturedSolutions.has(key) && waited < NAV_WAIT_MS) {{
+      await sleep(200);
+      waited += 200;
+    }}
+
+    if (!capturedSolutions.has(key)) {{
+      const q = new URLSearchParams({{
+        gametype: p.gametype, depth: p.depth, stacks: p.stacks,
+        preflop_actions: p.preflop_actions, flop_actions: p.flop_actions || '',
+        turn_actions: '', river_actions: '', board: p.board,
+      }});
+      console.warn(`  ✗ Nao capturado. Navegue manualmente para este spot:`);
+      console.warn(`    ${{p.meta.position}} | ${{p.board}} | ${{p.depth}}bb | flop_actions=${{p.flop_actions || 'none'}}`);
+    }}
   }}
 
-  // ── Summary ─────────────────────────────────────────────────────────────────
-  const found = results.filter(r => r.gto_found);
-  const verdicts = {{}};
-  results.forEach(r => {{ verdicts[r.verdict || r.error || 'skip'] = (verdicts[r.verdict || r.error || 'skip'] || 0) + 1; }});
-  console.log('\\n' + '='.repeat(60));
-  console.log(`RESULTADO: ${{found.length}}/${{results.length}} spots encontrados`);
-  console.log('Verditos:', JSON.stringify(verdicts));
-  console.log('='.repeat(60));
+  // Aguarda navegacao manual para spots nao capturados
+  const missing = SPOTS.filter(p => {{
+    const key = spotKey(p.board, p.preflop_actions, p.flop_actions || '', String(p.depth));
+    return !capturedSolutions.has(key);
+  }});
 
-  const jsonOutput = JSON.stringify(results, null, 2);
-
-  try {{
-    await navigator.clipboard.writeText(jsonOutput);
-    console.log('✓ JSON copiado para o clipboard! Cole em comparison_results_raw.json');
-  }} catch(e) {{
-    console.log('Clipboard indisponível — JSON abaixo:');
-    console.log('GTW_RESULTS_START');
-    console.log(jsonOutput);
-    console.log('GTW_RESULTS_END');
+  if (missing.length > 0) {{
+    console.log(`\\n${{missing.length}} spots restantes. Navegue manualmente e chame window.finishComparison()`);
+    console.log('Timeout automatico em 3 minutos...');
+    let t = 0;
+    while (missing.some(p => !capturedSolutions.has(spotKey(p.board, p.preflop_actions, p.flop_actions || '', String(p.depth)))) && t < MANUAL_TIMEOUT_MS) {{
+      await sleep(1000);
+      t += 1000;
+    }}
   }}
 
-  return results;
+  doFinish();
 }})();
 """.strip()
 

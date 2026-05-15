@@ -29,8 +29,6 @@ import os
 import sqlite3
 import sys
 import time
-import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Optional
 
@@ -47,6 +45,31 @@ GW_API_BASE  = "https://api.gtowizard.com"
 POSITIONS_8MAX = ["UTG", "UTG+1", "LJ", "HJ", "CO", "BTN", "SB", "BB"]
 POS_IDX = {p: i for i, p in enumerate(POSITIONS_8MAX)}
 
+# Gametype MTT do GTO Wizard — 9-max (MTTGeneral)
+GW_GAMETYPE = "MTTGeneral"
+GW_NUM_PLAYERS = 9
+
+# Snapshots de stack disponíveis no GTO Wizard MTT
+GW_STACK_SNAPS = [10, 13, 15, 17, 20, 25, 30, 40, 50, 75, 100]
+
+# Preflop action sequences para MTTGeneral 9-max (8 acoes: posicoes antes do blinds)
+# Arvore usa 8 acoes preflop: UTG/UTG+1/LJ/HJ/CO/BTN/SB/BB
+# Raise size padrao: 2.3bb (tamanho do tree — confirmado via API)
+# Stacks: string vazia (arvore usa depth= como referencia)
+PREFLOP_BY_POS = {
+    "UTG":   "R2.3-F-F-F-F-F-F-C",   # UTG abre, 5 fold, SB fold, BB call
+    "UTG+1": "F-R2.3-F-F-F-F-F-C",   # UTG+1 abre
+    "UTG+2": "F-F-R2.3-F-F-F-F-C",   # alias LJ
+    "LJ":    "F-F-R2.3-F-F-F-F-C",   # LJ abre (3a posicao)
+    "HJ":    "F-F-F-R2.3-F-F-F-C",   # HJ abre
+    "CO":    "F-F-F-F-R2.3-F-F-C",   # CO abre
+    "BTN":   "F-F-F-F-F-R2.3-F-C",   # BTN abre — CONFIRMADO via API
+    "SB":    "F-F-F-F-F-F-R2.3-C",   # SB abre vs BB
+    "BB":    "F-F-F-F-F-R2.3-F-C",   # BTN abre, SB fold, BB call (OOP hero)
+    "MP":    "F-F-R2.3-F-F-F-F-C",   # alias LJ
+    "EP":    "R2.3-F-F-F-F-F-F-C",   # alias UTG
+}
+
 
 # ── Auth Manager ──────────────────────────────────────────────────────────────
 
@@ -59,18 +82,72 @@ class GWAuth:
         self._expires_at: float = 0.0
 
     @classmethod
-    def from_har(cls, har_path: Path) -> "GWAuth":
+    def anal_id_from_har(cls, har_path: Path) -> str:
+        """Extrai o google-anal-id mais recente do HAR (browser remove Authorization por seguranca)."""
+        try:
+            with open(har_path, encoding="utf-8") as f:
+                har = json.load(f)
+        except Exception:
+            return ""
+        best_anal = ""
+        best_time = 0.0
+        import datetime
+        for entry in har["log"]["entries"]:
+            if "api.gtowizard.com" not in entry["request"]["url"]:
+                continue
+            hdrs = {h["name"].lower(): h["value"] for h in entry["request"].get("headers", [])}
+            anal = hdrs.get("google-anal-id", "")
+            if not anal:
+                continue
+            try:
+                t = datetime.datetime.fromisoformat(
+                    entry["startedDateTime"].replace("Z", "+00:00")
+                ).timestamp()
+            except Exception:
+                t = 0.0
+            if t > best_time:
+                best_time = t
+                best_anal = anal
+        return best_anal
+
+    @classmethod
+    def from_har(cls, har_path: Path) -> "tuple[GWAuth, str]":
+        """Tenta extrair access token do HAR. Browser geralmente remove Authorization — use env var."""
         with open(har_path, encoding="utf-8") as f:
             har = json.load(f)
-        for entry in har["log"]["entries"]:
-            if "token/refresh" in entry["request"]["url"] and entry["request"]["method"] == "POST":
-                body = entry["request"].get("postData", {}).get("text", "")
-                if body:
-                    data = json.loads(body)
-                    if "refresh" in data:
-                        print(f"[auth] Refresh token extraido do HAR.")
-                        return cls(data["refresh"])
-        raise ValueError("Refresh token nao encontrado no HAR.")
+        entries = har["log"]["entries"]
+
+        # Tenta achar access token (raro — browser normalmente retira)
+        best_access = ""
+        best_time   = 0.0
+        import datetime
+        for entry in entries:
+            if "api.gtowizard.com" not in entry["request"]["url"]:
+                continue
+            hdrs = {h["name"].lower(): h["value"] for h in entry["request"].get("headers", [])}
+            auth = hdrs.get("authorization", "")
+            if not auth.startswith("Bearer "):
+                continue
+            try:
+                t = datetime.datetime.fromisoformat(
+                    entry["startedDateTime"].replace("Z", "+00:00")
+                ).timestamp()
+            except Exception:
+                t = 0.0
+            if t > best_time:
+                best_time   = t
+                best_access = auth.removeprefix("Bearer ").strip()
+
+        anal = cls.anal_id_from_har(har_path)
+        if best_access:
+            print(f"[auth] Access token extraido do HAR.")
+            return cls.from_access_token(best_access), anal
+
+        raise ValueError(
+            "O browser remove o header Authorization ao exportar HAR.\n"
+            "Use: $env:GW_ACCESS_TOKEN = 'eyJ...'  (copie do DevTools > Network > Headers)\n"
+            "O google-anal-id sera lido do HAR automaticamente."
+        )
 
     @classmethod
     def from_access_token(cls, token: str) -> "GWAuth":
@@ -79,8 +156,8 @@ class GWAuth:
         inst = cls(refresh_token="")
         inst._access_token = token
         parts = token.split(".")
-        pad   = parts[1] + "=" * (-len(parts[1]) % 4)
         try:
+            pad    = parts[1] + "=" * (-len(parts[1]) % 4)
             claims = json.loads(base64.b64decode(pad))
             inst._expires_at = float(claims.get("exp", time.time() + 900))
             remaining = int(inst._expires_at - time.time())
@@ -89,22 +166,41 @@ class GWAuth:
                 print("[auth] AVISO: token expirado ou prestes a expirar!")
         except Exception:
             inst._expires_at = time.time() + 900
+            print("[auth] Nao foi possivel decodificar o JWT — usando TTL de 15min.")
         return inst
 
     @classmethod
-    def from_env_or_har(cls, har_path: Path) -> "GWAuth":
-        # 1. Access token direto (mais simples, capturado do DevTools)
-        access = os.environ.get("GW_ACCESS_TOKEN", "")
-        if access:
-            print("[auth] Usando GW_ACCESS_TOKEN do ambiente.")
-            return cls.from_access_token(access)
-        # 2. Refresh token
-        token = os.environ.get("GW_REFRESH_TOKEN", "")
-        if token:
-            print("[auth] Usando GW_REFRESH_TOKEN do ambiente.")
-            return cls(token)
-        # 3. Extrai refresh token do HAR
-        return cls.from_har(har_path)
+    def from_env_or_har(cls, har_path: Path) -> "tuple[GWAuth, str]":
+        """Retorna (auth, anal_id).
+        - Bearer token: GW_ACCESS_TOKEN env var (obrigatorio)
+        - google-anal-id: GW_ANAL_ID env var OU extraido do HAR automaticamente
+        """
+        # 1. Access token (obrigatorio — browser retira do HAR)
+        access = os.environ.get("GW_ACCESS_TOKEN", "").strip()
+        if not access:
+            print(
+                "ERRO: GW_ACCESS_TOKEN nao definido.\n"
+                "Copie o Bearer token do DevTools (Network > qualquer request api.gtowizard.com > Headers > Authorization):\n"
+                "  $env:GW_ACCESS_TOKEN = 'eyJ...'"
+            )
+            sys.exit(1)
+        print("[auth] Usando GW_ACCESS_TOKEN do ambiente.")
+        auth = cls.from_access_token(access)
+
+        # 2. google-anal-id: env var tem prioridade, senao tenta HAR
+        anal = os.environ.get("GW_ANAL_ID", "").strip()
+        if anal:
+            print("[auth] google-anal-id do ambiente.")
+        elif har_path.is_file():
+            anal = cls.anal_id_from_har(har_path)
+            if anal:
+                print(f"[auth] google-anal-id extraido do HAR ({har_path.name}).")
+            else:
+                print("[auth] AVISO: google-anal-id nao encontrado no HAR — navegue ate Solutions antes de salvar o HAR.")
+        else:
+            print("[auth] AVISO: google-anal-id ausente — requests de Solutions podem falhar.")
+
+        return auth, anal
 
     def access_token(self) -> str:
         if self._access_token and time.time() < self._expires_at - 30:
@@ -118,16 +214,13 @@ class GWAuth:
         return self._access_token  # type: ignore
 
     def _refresh(self) -> None:
-        url     = f"{GW_API_BASE}/v1/token/refresh/"
-        payload = json.dumps({"refresh": self.refresh_token}).encode()
-        req     = urllib.request.Request(
-            url, data=payload,
-            headers={"Content-Type": "application/json", "Origin": "https://app.gtowizard.com"},
-            method="POST",
-        )
+        import requests as _req
+        url = f"{GW_API_BASE}/v1/token/refresh/"
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read())
+            r = _req.post(url, json={"refresh": self.refresh_token},
+                          headers={"Origin": "https://app.gtowizard.com"}, timeout=15)
+            r.raise_for_status()
+            data = r.json()
         except Exception as e:
             raise RuntimeError(f"Falha ao renovar token GTO Wizard: {e}") from e
 
@@ -144,39 +237,52 @@ class GWAuth:
 # ── GTO Wizard API Client ──────────────────────────────────────────────────────
 
 class GWClient:
-    def __init__(self, auth: GWAuth):
-        self.auth = auth
+    def __init__(self, auth: GWAuth, anal_id: str = ""):
+        self.auth    = auth
+        self.anal_id = anal_id or os.environ.get("GW_ANAL_ID", "")
 
     def _headers(self) -> dict:
-        return {
-            "Authorization":  f"Bearer {self.auth.access_token()}",
-            "Accept":         "application/json",
-            "Origin":         "https://app.gtowizard.com",
-            "Referer":        "https://app.gtowizard.com/",
-            "gwclientid":     GW_CLIENT_ID,
-            "User-Agent":     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        h = {
+            "authorization":      f"Bearer {self.auth.access_token()}",
+            "accept":             "application/json, text/plain, */*",
+            "origin":             "https://app.gtowizard.com",
+            "referer":            "https://app.gtowizard.com/",
+            "gwclientid":         GW_CLIENT_ID,
+            "user-agent":         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+            "sec-ch-ua":          '"Chromium";v="147", "Not/A)Brand";v="24"',
+            "sec-ch-ua-mobile":   "?0",
+            "sec-ch-ua-platform": '"Windows"',
         }
+        if self.anal_id:
+            h["google-anal-id"] = self.anal_id
+        return h
 
-    def _get(self, path: str, params: dict, retry: bool = True) -> Optional[dict]:
-        qs  = urllib.parse.urlencode(params)
-        url = f"{GW_API_BASE}{path}?{qs}"
-        req = urllib.request.Request(url, headers=self._headers())
+    def _get(self, path: str, params: dict) -> Optional[dict]:
         try:
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                return json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            if e.code == 401 and retry:
-                self.auth._refresh()
-                return self._get(path, params, retry=False)
-            body = e.read().decode(errors="replace")[:200]
-            print(f"  [!] HTTP {e.code} para {path}: {body}")
+            import requests as _req
+        except ImportError:
+            print("  [!] pip install requests")
+            return None
+        url = f"{GW_API_BASE}{path}"
+        try:
+            r = _req.get(url, params=params, headers=self._headers(), timeout=20)
+            if r.status_code == 204 or not r.content:
+                print(f"  [!] HTTP {r.status_code} body vazio para {path}")
+                return None
+            if not r.ok:
+                print(f"  [!] HTTP {r.status_code} para {path}: {r.text[:200]}")
+                return None
+            return r.json()
+        except RuntimeError as e:
+            print(f"  [!] Auth error: {e}")
             return None
         except Exception as e:
             print(f"  [!] Erro em {path}: {e}")
             return None
 
     def spot_solution(self, params: dict) -> Optional[dict]:
-        return self._get("/v4/solutions/spot-solution/", params)
+        api_params = {k: v for k, v in params.items() if not k.startswith("_")}
+        return self._get("/v4/solutions/spot-solution/", api_params)
 
     def board_usage(self) -> Optional[dict]:
         return self._get("/v4/solutions/board-usage/", {})
@@ -190,6 +296,7 @@ def fetch_decisions(
     street: str = "flop",
     mistakes_only: bool = False,
     limit: int = 10,
+    min_stack: float = 20.0,
 ) -> list[dict]:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -197,9 +304,10 @@ def fetch_decisions(
     wheres = [
         "d.street = ?",
         "d.board IS NOT NULL AND d.board != ''",
-        "d.stack_bb IS NOT NULL AND d.stack_bb > 3",
+        f"d.stack_bb IS NOT NULL AND d.stack_bb >= {min_stack}",  # min stack p/ ter solucao de flop no GTO Wizard
         "d.pot_size IS NOT NULL AND d.pot_size > 0.5",
         "d.position IS NOT NULL",
+        "d.is_3bet = 0",  # SRP apenas (mais facil de reconstruir preflop_actions)
     ]
     args: list = [street]
 
@@ -230,20 +338,13 @@ def fetch_decisions(
 
 # ── Reconstrucao do contexto preflop ──────────────────────────────────────────
 
-def _round_half(x: float) -> float:
-    """Arredonda para o 0.5 mais proximo."""
-    return round(x * 2) / 2
-
 
 def build_gw_params(dec: dict) -> Optional[dict]:
     """
     Converte uma decisao do nosso DB para os parametros do GTO Wizard.
 
-    Logica:
-    - depth = stack_bb + pot_bb/2  (aprox para pote HU)
-    - stacks = [depth] * 8  (todos iguais — simplificacao)
-    - preflop_actions: reconstruido a partir de posicao, is_3bet, pot_bb
-    - board: apenas as 3 cartas do flop para consulta inicial do flop
+    Usa os mesmos snapshots de stack e sequencias preflop do generate_console_script.py
+    para maximizar compatibilidade com a arvore de solucoes do GTO Wizard.
     """
     try:
         board = json.loads(dec["board"]) if isinstance(dec["board"], str) else dec["board"]
@@ -253,92 +354,43 @@ def build_gw_params(dec: dict) -> Optional[dict]:
     if not board or len(board) < 3:
         return None
 
-    position  = (dec.get("position") or "BTN").upper()
-    pot_bb    = float(dec["pot_size"])
-    stack_bb  = float(dec["stack_bb"])
-    is_3bet   = bool(dec.get("is_3bet"))
-    street    = dec.get("street", "flop").lower()
+    position = (dec.get("position") or "BTN").upper()
+    stack_bb = float(dec["stack_bb"])
 
-    # Depth estimado: stack actual + o que hero contribuiu preflop
-    depth = round(stack_bb + pot_bb / 2, 3)
+    # Snap para o snapshot mais proximo disponivel no GTO Wizard
+    snap = min(GW_STACK_SNAPS, key=lambda s: abs(s - stack_bb))
+    stack_frac = snap + 0.125   # fracional = estado MTT com antes
+    stacks_str = ""             # arvore MTTGeneral usa depth= como referencia
 
-    # Tamanhos padrao para reconstrucao
-    if is_3bet:
-        # 3-bet pot: 3-bet size ≈ pot/2
-        threebet_size = _round_half(max(6.0, pot_bb / 2))
-        open_size     = _round_half(max(2.0, threebet_size / 3))
-    else:
-        # SRP: open size ≈ pot/2.2 (inclui dead money dos blinds)
-        open_size = _round_half(max(2.0, pot_bb / 2.2))
+    # Sequencia preflop (SRP assumido — nao temos info de vilao no DB)
+    preflop_str = PREFLOP_BY_POS.get(position)
+    if not preflop_str:
+        return None  # posicao desconhecida
 
-    # Posicao do hero na tabela
-    pos_idx = POS_IDX.get(position, POS_IDX.get("BTN", 5))
-
-    # Constroi a sequencia de acoes preflop
-    actions: list[str] = []
-    if is_3bet:
-        # Abre em alguma posicao, BB (ou outro) 3-bets, hero calls
-        if position == "BB":
-            # BB 3-bettou e o IP chamou
-            # Assume IP = BTN abriu
-            for i in range(8):
-                if i < 5:    actions.append("F")   # UTG..CO folds
-                elif i == 5: actions.append(f"R{open_size}")  # BTN opens
-                elif i == 6: actions.append("F")   # SB folds
-                else:        actions.append(f"R{threebet_size}")  # BB 3-bets
-            actions.append("C")  # BTN calls
-        else:
-            # Hero abriu e foi 3-bettado (por BB)
-            for i in range(8):
-                if i < pos_idx:  actions.append("F")
-                elif i == pos_idx: actions.append(f"R{open_size}")
-                elif i < 7:      actions.append("F")
-                else:            actions.append(f"R{threebet_size}")  # BB 3-bets
-            actions.append("C")  # hero calls
-    else:
-        # SRP: hero abriu ou chamou uma abertura
-        if position in ("BB", "SB"):
-            # BB/SB chamou uma abertura (assume BTN abriu)
-            for i in range(8):
-                if i < 5:    actions.append("F")
-                elif i == 5: actions.append(f"R{open_size}")  # BTN opens
-                elif i == 6: actions.append("F")  # SB folds (se hero = BB)
-                else:        actions.append("C")  # BB calls
-        else:
-            # Hero abriu, BB chamou
-            for i in range(8):
-                if i < pos_idx:    actions.append("F")
-                elif i == pos_idx: actions.append(f"R{open_size}")
-                elif i < 7:        actions.append("F")
-                else:              actions.append("C")  # BB calls
-
-    preflop_str = "-".join(actions)
-
-    # Board: so o flop para consulta inicial
-    flop_cards = board[:3]
-    board_str  = "".join(flop_cards)
-
-    # Acoes de cada street (vazias para consulta do inicio da street)
-    flop_actions  = ""
-    turn_actions  = ""
-    river_actions = ""
-
-    stacks_str = "-".join([str(depth)] * 8)
+    # Board: apenas as 3 cartas do flop, rank uppercase + suit lowercase
+    flop = []
+    for c in board[:3]:
+        c = c.strip()
+        if len(c) >= 2:
+            flop.append(c[0].upper() + c[1].lower())
+    if len(flop) < 3:
+        return None
+    board_str = "".join(flop)
 
     return {
-        "gametype":        "MTTGeneral_8m",
-        "depth":           depth,
+        "gametype":        GW_GAMETYPE,
+        "depth":           stack_frac,
         "stacks":          stacks_str,
         "preflop_actions": preflop_str,
-        "flop_actions":    flop_actions,
-        "turn_actions":    turn_actions,
-        "river_actions":   river_actions,
+        "flop_actions":    "",
+        "turn_actions":    "",
+        "river_actions":   "",
         "board":           board_str,
-        # meta para display
+        # campos privados para display (filtrados antes de enviar para API)
         "_board_list":     board,
         "_position":       position,
-        "_is_3bet":        is_3bet,
-        "_open_size":      open_size,
+        "_snap_bb":        snap,
+        "_stack_bb":       stack_bb,
     }
 
 
@@ -400,13 +452,14 @@ def print_spot(dec: dict, params: dict, gw_result: Optional[dict]) -> None:
     is_3bet = bool(dec.get("is_3bet"))
     hand_id = dec.get("hand_id", "?")
 
+    snap    = params.get("_snap_bb", stack)
     spr     = round(stack / pot, 2) if pot else 0
     pot_type= "3BET" if is_3bet else "SRP"
 
     print()
     print("=" * 72)
     print(f"  {_color(street, BOLD)}  Board: {_color(b_str, CYAN)}  |  {pos} ({pot_type})")
-    print(f"  Pot: {pot:.1f} BB  Stack: {stack:.1f} BB  SPR: {spr}  Hand: {hand_id}")
+    print(f"  Pot: {pot:.1f} BB  Stack: {stack:.1f} BB (snap: {snap}bb)  SPR: {spr}  Hand: {hand_id}")
     print(f"  Preflop seq: {params['preflop_actions']}")
     print("-" * 72)
 
@@ -472,6 +525,8 @@ def main() -> None:
     parser.add_argument("--limit",        type=int,   default=10)
     parser.add_argument("--street",       default="flop", choices=["flop","turn","river"])
     parser.add_argument("--mistakes-only",action="store_true")
+    parser.add_argument("--min-stack",    type=float, default=20.0,
+                        help="Stack minimo em BB (default 20, GTO Wizard sem flop solutions < 20bb)")
     parser.add_argument("--db",           default=str(DB_DEFAULT))
     parser.add_argument("--har",          default=str(HAR_DEFAULT))
     args = parser.parse_args()
@@ -484,14 +539,19 @@ def main() -> None:
         sys.exit(1)
 
     # Auth
-    auth   = GWAuth.from_env_or_har(har_path)
-    client = GWClient(auth)
+    auth, anal_id = GWAuth.from_env_or_har(har_path)
+    if not anal_id:
+        print("[auth] AVISO: google-anal-id nao encontrado — requests de Solutions podem falhar.")
+    client = GWClient(auth, anal_id)
 
-    # Verifica quota antes de comecar
-    usage = client.board_usage()
-    if usage:
-        print(f"[quota] Gametype: {usage.get('gametype')}  "
-              f"Reset: {usage.get('reset_date','?')[:10]}")
+    # Verifica quota antes de comecar (opcional — falha silenciosamente)
+    try:
+        usage = client.board_usage()
+        if usage:
+            print(f"[quota] Gametype: {usage.get('gametype')}  "
+                  f"Reset: {usage.get('reset_date','?')[:10]}")
+    except Exception:
+        pass  # board_usage nao e essencial para o benchmark
 
     # Busca decisoes
     decisions = fetch_decisions(
@@ -500,6 +560,7 @@ def main() -> None:
         street       = args.street,
         mistakes_only= args.mistakes_only,
         limit        = args.limit,
+        min_stack    = args.min_stack,
     )
 
     print(f"\n{len(decisions)} decisao(oes) encontrada(s) para benchmark.\n")
@@ -518,7 +579,12 @@ def main() -> None:
         print(f"Consultando GTO Wizard: {' '.join(json.loads(dec['board']) if isinstance(dec['board'],str) else dec['board'])[:8]}... ", end="", flush=True)
 
         gw_result = client.spot_solution(params)
-        print("OK" if gw_result else "FALHOU")
+        if gw_result and gw_result.get("action_solutions"):
+            print(f"OK ({len(gw_result['action_solutions'])} acoes)")
+        elif gw_result is not None:
+            print("OK (sem action_solutions)")
+        else:
+            print("FALHOU")
 
         print_spot(dec, params, gw_result)
 
