@@ -4153,7 +4153,7 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 float(n['ev_diff']) if n.get('ev_diff') is not None else None,
                 float(exploitability),
                 int(n['iterations']) if n.get('iterations') else None,
-                'solver_cli',
+                n.get('source', 'solver_cli'),
                 strategy_json,
             ))
             count += 1

@@ -293,7 +293,9 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
 3. Aplique o filtro de M-Ratio ANTES de qualquer análise — nunca ignore
 4. Mostre o cálculo ICM como multiplicador matemático — não como label qualitativo
 5. Para preflop: use os dados de range GTO fornecidos
-6. Para flop/turn/river: pule a seção Range GTO completamente — sem exceção
+6. Para flop/turn/river: pule a seção Range GTO de range tables — use o bloco "── GTO SOLVER ──" quando presente
+7. Quando o bloco GTO SOLVER estiver presente, use-o como verdade objetiva na análise — não estime o que o solver diria
+8. Nunca mencione "GTO Wizard" — use sempre "GTO Solver"
 7. A seção "💡 A Lição" DEVE referenciar padrão específico desta sessão — nunca genérica
 8. A síntese "📈 Relatório de Padrões" é obrigatória — não omita mesmo com poucos erros
 9. Português do Brasil, tom técnico e direto
@@ -390,6 +392,20 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
                     f"  Notas profissionais: {pro_notes}\n"
                 )
 
+        # Bloco GTO Solver postflop (batch)
+        gto_solver_block = ''
+        gto_lbl = d.get('gto_label')
+        gto_act = d.get('gto_action')
+        if street != 'preflop' and (gto_lbl or gto_act):
+            hero_norm = (action or '').lower().rstrip('s')
+            gto_norm  = (gto_lbl or gto_act or '').lower()
+            aligned   = hero_norm and gto_norm and (hero_norm in gto_norm or gto_norm in hero_norm)
+            gto_solver_block = (
+                f"\n── GTO SOLVER ──\n"
+                f"Ação recomendada: {gto_lbl or gto_act}\n"
+                f"Hero vs Solver: {'ALINHADO' if aligned else 'DIVERGE'}\n"
+            )
+
         decisions_data.append(
             f"DECISÃO {i+1} de {len(decisions)}:\n"
             f"Cartas: {cards_fmt} | Board no momento: {board_fmt}\n"
@@ -415,6 +431,7 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
             f"contexto: {bd.get('contextPenalty',0):.3f}"
             + pattern_note
             + pfgto_block
+            + gto_solver_block
         )
 
     user_message = (
@@ -1738,8 +1755,10 @@ def analyze_single_decision(decision: dict) -> str:
     decision é um dict com os campos da tabela decisions:
     street, hero_cards, board, action_taken, best_action, label, score,
     m_ratio, icm_pressure, stack_bb, draw_profile, position, num_players,
-    level_sb, level_bb, level_num, note.
+    level_sb, level_bb, level_num, note, gto_label, gto_action.
     """
+    import json as _json
+
     street      = decision.get('street', 'preflop')
     hero_cards  = decision.get('hero_cards', '')
     board_raw   = decision.get('board', '[]')
@@ -1757,13 +1776,15 @@ def analyze_single_decision(decision: dict) -> str:
     level_bb    = decision.get('level_bb')
     level_num   = decision.get('level_num')
     note        = sanitize_llm_input(decision.get('note', '') or '', max_len=500)
+    gto_label   = decision.get('gto_label')
+    gto_action  = decision.get('gto_action')
 
     try:
-        import json as _json
         board_list = _json.loads(board_raw) if isinstance(board_raw, str) else board_raw
         board_str  = ' '.join(board_list) if board_list else '—'
     except Exception:
-        board_str = '—'
+        board_list = []
+        board_str  = '—'
 
     level_info = ''
     if level_num:
@@ -1797,6 +1818,41 @@ def analyze_single_decision(decision: dict) -> str:
     if note:
         hand_desc += f"Nota do engine: {note}\n"
 
+    # Bloco GTO Solver — apenas postflop (preflop usa range tables próprias)
+    if street != 'preflop' and (gto_label or gto_action):
+        strategy_dist = ''
+        try:
+            from leaklab.gto_utils import compute_spot_hash
+            from database.repositories import get_gto_node
+            board_for_hash = (board_list[:3] if street == 'flop'
+                              else board_list[:4] if street == 'turn'
+                              else board_list)
+            facing_bb  = float(decision.get('facing_bet') or 0)
+            stack_val  = float(stack_bb or 100)
+            node = get_gto_node(
+                compute_spot_hash(street, position or '', board_for_hash, [], stack_val, facing_bb)
+            )
+            if node and node.get('strategy_json'):
+                strat = (_json.loads(node['strategy_json'])
+                         if isinstance(node['strategy_json'], str)
+                         else node['strategy_json'])
+                if isinstance(strat, dict):
+                    parts = [f"{act} {int(freq * 100)}%"
+                             for act, freq in sorted(strat.items(), key=lambda x: -x[1])]
+                    strategy_dist = '  |  '.join(parts)
+        except Exception:
+            pass
+
+        hand_desc += f"\nGTO Solver:\n"
+        hand_desc += f"  Ação recomendada: {gto_label or gto_action}\n"
+        if strategy_dist:
+            hand_desc += f"  Distribuição: {strategy_dist}\n"
+        hero_norm = (action or '').lower().rstrip('s')
+        gto_norm  = (gto_label or gto_action or '').lower()
+        if hero_norm and gto_norm:
+            aligned = hero_norm in gto_norm or gto_norm in hero_norm
+            hand_desc += f"  Ação do hero: {'ALINHADA' if aligned else 'DIVERGE'} com GTO Solver\n"
+
     system = """Você é um coach de poker MTT de elite. Analise a decisão abaixo e escreva em TEXTO CORRIDO estruturado — NÃO retorne JSON, NÃO use chaves {}, NÃO use colchetes [].
 
 Use EXATAMENTE este formato Markdown:
@@ -1810,6 +1866,14 @@ Explique em 3-4 frases o que foi feito de errado e por que é um erro estratégi
 - **Equity ajustada pelo contexto:** Z% (após ICM, posição e draw profile)
 - **Déficit/Superávit:** ±N pp — [a ação tomada] era [correta/incorreta]
 - **EV estimado:** ação tomada ≈ [sinal] BB | ação correta ≈ [sinal] BB por 100 mãos
+
+### 🧠 GTO Solver (apenas postflop — omita esta seção para preflop)
+Se dados do GTO Solver estiverem presentes:
+- **Ação recomendada pelo solver:** [ação]
+- **Distribuição de frequências:** [fold X% | call Y% | raise Z%] (se disponível)
+- **Hero vs Solver:** [ALINHADO — hero jogou dentro da frequência ótima | DIVERGE — hero [ação] quando solver recomenda [ação] em [freq]% dos casos]
+- **Interpretação:** [1-2 frases explicando o que a frequência do solver revela sobre o equilíbrio deste spot]
+Se não houver dados do solver, omita esta seção completamente.
 
 ### 🧭 O Contexto
 - **M Ratio [valor]:** [o que significa — M<6=push/fold puro, M6-12=zona de pressão, M>12=jogo normal]
@@ -1829,7 +1893,9 @@ REGRAS OBRIGATÓRIAS:
 3. Para preflop sem board: não mencione cartas comunitárias
 4. Seja específico com números: "33% de equity vs 54% exigidos = -21pp" não "equity insuficiente"
 5. Português do Brasil, tom técnico e direto
-6. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP"""
+6. Quando dados do GTO Solver estiverem presentes, use-os como verdade objetiva — não estime o que o solver diria
+7. Nunca mencione "GTO Wizard" — use sempre "GTO Solver"
+8. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP"""
 
     payload = {
         'model':      'claude-haiku-4-5-20251001',
