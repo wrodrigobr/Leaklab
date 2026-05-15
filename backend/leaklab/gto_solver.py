@@ -217,7 +217,40 @@ def lookup_gto(
                 'queued':             False,
             }
 
-    # 3. Miss — decide sync vs async com base na complexidade do spot
+    # 3. Miss — tenta GTO Wizard primeiro (se habilitado e auth disponível)
+    try:
+        from leaklab.gto_wizard_client import query_spot as _gw_query
+        _gw = _gw_query(
+            street         = street_l,
+            position       = position_u,
+            board          = board,
+            hero_stack_bb  = hero_stack_bb,
+            facing_size_bb = facing_size_bb,
+            pot_bb         = pot_bb,
+        )
+        if _gw and _gw.get('found') and _gw.get('strategy'):
+            # Armazena no cache local para não bater na API novamente para o mesmo spot
+            insert_gto_nodes([{
+                'street':          street_l,
+                'position':        position_u,
+                'board':           board,
+                'hero_hand':       hero_hand,
+                'hero_stack_bb':   hero_stack_bb,
+                'facing_size_bb':  facing_size_bb,
+                'gto_action':      _gw['strategy'][0]['action'],
+                'gto_freq':        _gw['strategy'][0]['frequency'],
+                'exploitability_pct': None,
+                'strategy_json':   json.dumps(
+                    {s['action']: {'frequency': s['frequency'], 'combos': s.get('combos')}
+                     for s in _gw['strategy']},
+                    sort_keys=True,
+                ),
+            }])
+            return {**_gw, 'spot_hash': spot_hash}
+    except Exception as _gw_err:
+        log.debug("gto_wizard: query_spot exception — %s", _gw_err)
+
+    # 4. Fallback: solver local — decide sync vs async com base na complexidade do spot
     # Spots simples: chama solver remoto sincronamente (< 15s)
     # Spots complexos: enfileira diretamente para não bloquear o request
     oop_range = _DEFAULT_RANGES.get(vs_position.upper(), _DEFAULT_RANGE_WIDE)

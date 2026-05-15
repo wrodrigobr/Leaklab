@@ -1297,6 +1297,18 @@ def health():
     return jsonify({'status': status, 'version': '2.0', 'db': db_ok}), (200 if db_ok else 503)
 
 
+@app.route('/gto/status', methods=['GET'])
+def gto_status():
+    """Retorna estado do GTO Wizard client: auth ok/falhou, idade do token, etc."""
+    try:
+        from leaklab.gto_wizard_client import get_status as _gw_status
+        s = _gw_status()
+    except Exception as e:
+        s = {'enabled': False, 'error': str(e)}
+    http_code = 200 if s.get('auth_ok') else (503 if s.get('enabled') else 200)
+    return jsonify(s), http_code
+
+
 @app.route('/analyze/guest', methods=['POST'])
 @limiter.limit("10 per hour")
 def analyze_guest():
@@ -4831,4 +4843,9 @@ if __name__ == '__main__':
     _worker.start()
     _solver_worker = threading.Thread(target=_solver_queue_worker_loop, daemon=True, name='gto-solver-worker')
     _solver_worker.start()
+    try:
+        from leaklab.gto_wizard_client import start_background_refresher as _gw_start
+        _gw_start()
+    except Exception:
+        pass
     app.run(debug=True, port=5000)
