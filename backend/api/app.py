@@ -4552,7 +4552,7 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
             finally:
                 _conn.close()
         if not t or not t.get('raw_text'):
-            return 'error', 'Torneio sem raw_text no banco'
+            return 'error', 'Torneio sem raw_text no banco', 0, 0
 
         raw_text = t['raw_text']
         site = _detect_site(raw_text)
@@ -4565,7 +4565,7 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
 
         target = next((h for h in hands if str(h.hand_id) == str(hand_id)), None)
         if not target:
-            return 'error', f'Mão {hand_id} não encontrada no raw_text'
+            return 'error', f'Mão {hand_id} não encontrada no raw_text', 0, 0
 
         hero = target.hero or t.get('hero', 'Hero')
         db_decisions = [d for d in get_decisions(tournament_id)
