@@ -2752,7 +2752,8 @@ def get_replay(tournament_id, hand_id):
     # Índice (street, action_taken) → dados GTO do banco
     _gto_index   = {
         (d.get('street',''), (d.get('action_taken','') or '').rstrip('s') or d.get('action_taken','')):
-        {'gto_label': d.get('gto_label'), 'gto_action': d.get('gto_action')}
+        {'gto_label': d.get('gto_label'), 'gto_action': d.get('gto_action'),
+         'facing_bet': d.get('facing_bet')}
         for d in _db_hand if d.get('gto_label')
     }
 
@@ -2778,6 +2779,8 @@ def get_replay(tournament_id, hand_id):
                 'breakdown':    r['evaluation'].get('scoreBreakdown', {}),
                 'gto_label':    gto_data.get('gto_label'),
                 'gto_action':   gto_data.get('gto_action'),
+                'facing_bet':   gto_data.get('facing_bet'),
+                '_di':          di,
             })
         hand_decisions = live_decisions
     except Exception:

@@ -171,10 +171,18 @@ def lookup_gto(
     #       quando hero enfrentava aposta mas só havia nó sem-aposta para aquela mão específica.
     hash_generic    = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, facing_size_bb)
     hash_generic_nf = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, 0.0)
+    # Prefer nodes with full strategy_json; fall through if exact match has none
+    _n_exact   = get_gto_node(spot_hash)
+    _n_generic = get_gto_node(hash_generic) if hash_generic != spot_hash else None
+    _n_nf      = (get_gto_node(hash_generic_nf) if facing_size_bb == 0 and hash_generic_nf != hash_generic else None)
+    # Pick best node: prefer strategy_json > primary action only
+    def _has_strategy(n):
+        return n and n.get('strategy_json')
     node = (
-        get_gto_node(spot_hash)
-        or get_gto_node(hash_generic)
-        or (get_gto_node(hash_generic_nf) if facing_size_bb == 0 else None)
+        (_n_exact   if _has_strategy(_n_exact)   else None)
+        or (_n_generic if _has_strategy(_n_generic) else None)
+        or (_n_nf      if _has_strategy(_n_nf)      else None)
+        or _n_exact or _n_generic or _n_nf
     )
     if node:
         # Prefer full strategy_json (stored by new solver); fallback to primary only
@@ -185,11 +193,21 @@ def lookup_gto(
             except Exception:
                 pass
         if strategy_detail:
-            strategy_list = [
-                {'action': k, 'frequency': v['frequency'], 'combos': v.get('combos'),
-                 'ev_bb': node.get('ev_diff'), 'exploitability_pct': node.get('exploitability_pct')}
-                for k, v in strategy_detail.items()
-            ]
+            strategy_list = []
+            for k, v in strategy_detail.items():
+                if isinstance(v, dict):
+                    freq   = v.get('frequency', 0.0)
+                    combos = v.get('combos')
+                else:
+                    freq   = float(v)
+                    combos = None
+                strategy_list.append({
+                    'action':             k,
+                    'frequency':          freq,
+                    'combos':             combos,
+                    'ev_bb':              node.get('ev_diff'),
+                    'exploitability_pct': node.get('exploitability_pct'),
+                })
         else:
             action = node.get('gto_action')
             freq   = node.get('gto_freq') or 1.0
