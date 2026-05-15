@@ -250,9 +250,8 @@ def lookup_gto(
     except Exception as _gw_err:
         log.debug("gto_wizard: query_spot exception — %s", _gw_err)
 
-    # 4. Fallback: solver local — decide sync vs async com base na complexidade do spot
-    # Spots simples: chama solver remoto sincronamente (< 15s)
-    # Spots complexos: enfileira diretamente para não bloquear o request
+    # 4. Fallback: solver remoto (servidor Google Cloud /solve)
+    # Sem fila local — tudo vai direto para o servidor remoto
     oop_range = _DEFAULT_RANGES.get(vs_position.upper(), _DEFAULT_RANGE_WIDE)
     ip_range  = _DEFAULT_RANGES.get(position_u, _DEFAULT_RANGE_WIDE)
     effective_pot = pot_bb if pot_bb > 0 else max(facing_size_bb * 2 + 2, 4.0)
@@ -264,35 +263,11 @@ def lookup_gto(
         'oop_range':                 oop_range,
         'ip_range':                  ip_range,
         'pot_bb':                    effective_pot,
-        'effective_stack_bb':        _params['effective_stack_bb'],  # capped for tree size
+        'effective_stack_bb':        _params['effective_stack_bb'],
         'max_iterations':            _params['max_iterations'],
         'target_exploitability_pct': _params['target_exploitability_pct'],
-        'facing_size_bb':            facing_size_bb,   # > 0 → solver navega para nó facing-bet
+        'facing_size_bb':            facing_size_bb,
     }
-
-    # Metadados extras para armazenar no DB após o solve
-    spot_dict = {
-        **solver_payload,
-        'position':       position_u,
-        'hero_hand':      hero_hand,
-        'vs_position':    vs_position,
-        'action_seq':     action_seq,
-        'facing_size_bb': facing_size_bb,
-    }
-    spot_payload = json.dumps(spot_dict, sort_keys=True)
-
-    # Spots complexos: pula chamada síncrona, vai direto para a fila
-    if not is_simple_spot(street_l, board, hero_stack_bb, facing_size_bb):
-        enqueued = enqueue_solver_spot(spot_hash, spot_payload, priority=_priority(street_l))
-        log.debug("GTO complex spot %s enqueued async (stack=%.1f, street=%s)", spot_hash, hero_stack_bb, street_l)
-        return {
-            'found':              False,
-            'source':             'queued',
-            'strategy':           [],
-            'exploitability_pct': None,
-            'spot_hash':          spot_hash,
-            'queued':             True,
-        }
 
     remote = _call_remote_solver(solver_payload)
     if remote:
@@ -349,17 +324,15 @@ def lookup_gto(
             'queued':             False,
         }
 
-    # 4. Fallback — enfileira para solve local
-    bin_path = _solver_binary()
-    enqueued = enqueue_solver_spot(spot_hash, spot_payload, priority=_priority(street_l))
-
+    # GTO Wizard e solver remoto indisponíveis — sem resultado
+    log.debug("GTO miss: %s (GW indisponível + solver remoto sem resposta)", spot_hash)
     return {
         'found':              False,
-        'source':             'queued' if bin_path else 'solver_unavailable',
+        'source':             'solver_unavailable',
         'strategy':           [],
         'exploitability_pct': None,
         'spot_hash':          spot_hash,
-        'queued':             enqueued or True,
+        'queued':             False,
     }
 
 
