@@ -4556,8 +4556,10 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                 # com a situação real (facing bet vs sem aposta).
                 engine_best = _norm(db_dec.get('best_action', '') or '')
                 _facing     = float(db_dec.get('facing_bet', 0) or 0)
+                _NO_BET_ACTIONS = ('check', 'bet')
                 _is_mismatch = (
-                    (engine_best == 'call' and gto_action in ('check', 'bet'))
+                    # Qualquer facing_bet > 0 com nó de check/bet → sempre inválido
+                    (_facing > 0 and gto_action in _NO_BET_ACTIONS)
                     or (engine_best != 'call' and gto_action == 'call' and _facing == 0)
                 )
                 if _is_mismatch:
