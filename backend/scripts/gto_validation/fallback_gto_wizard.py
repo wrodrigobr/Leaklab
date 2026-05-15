@@ -22,11 +22,12 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPTS_DIR.parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
+sys.path.insert(0, str(SCRIPTS_DIR))  # para importar playwright_compare direto
 
 DB_PATH = BACKEND_DIR / "data" / "leaklab.db"
 
-# Reutiliza constantes e funções do playwright_compare
-from gto_validation.playwright_compare import (
+# Reutiliza constantes e funções do playwright_compare (mesmo diretório)
+from playwright_compare import (
     build_params, parse_strategy, run_comparison,
     _nearest_snap, _norm_board, GW_SPOT_SOL, GAMETYPE,
 )
