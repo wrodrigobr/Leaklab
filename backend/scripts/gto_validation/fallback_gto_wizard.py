@@ -61,6 +61,55 @@ def _classify(action_taken: str, strategy: dict) -> tuple[str, str]:
     return label, top_action
 
 
+# ── Busca spots dos jobs falhos na fila ───────────────────────────────────────
+
+def _load_failed_queue_spots() -> list[dict]:
+    """Converte jobs com status='failed' em gto_solver_queue para o formato de spot."""
+    import sqlite3
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT spot_hash, spot_json FROM gto_solver_queue WHERE status='failed' ORDER BY id"
+    ).fetchall()
+    conn.close()
+
+    spots = []
+    for r in rows:
+        try:
+            sp = json.loads(r['spot_json'] or '{}')
+            street   = sp.get('street')
+            position = sp.get('position')
+            board    = sp.get('board', [])
+            stack_bb = float(sp.get('hero_stack_bb') or sp.get('effective_stack_bb') or 0)
+            facing   = float(sp.get('facing_size_bb', 0) or 0)
+            pot      = float(sp.get('pot_bb', 0) or facing * 2 + 2)
+            if not street or not position or not board or stack_bb <= 0:
+                continue
+            board_str    = ' '.join(board) if isinstance(board, list) else board
+            stack_bucket = _nearest_snap(stack_bb)
+            spots.append({
+                'decision_id':        None,   # não associado a uma decisão específica
+                'action_taken':       None,
+                'best_action':        None,
+                'street':             street,
+                'position':           position,
+                'board':              board_str,
+                'board_list':         board if isinstance(board, list) else board_str.split(),
+                'stack_bb':           stack_bb,
+                'stack_bucket':       stack_bucket,
+                'facing_bet':         facing,
+                'pot_size':           pot,
+                'spot_id':            f"queue_{r['spot_hash'][:8]}",
+                'example_best_action': None,
+                'our_label':          None,
+                'occurrences':        1,
+                '_queue_hash':        r['spot_hash'],
+            })
+        except Exception:
+            continue
+    return spots
+
+
 # ── Busca decisões sem GTO ─────────────────────────────────────────────────────
 
 def _load_pending_decisions(limit: int = 0, street_filter: str = 'all') -> list[dict]:
@@ -156,6 +205,17 @@ def _save_result(result: dict, spot: dict) -> bool:
     top_action = result.get('gto_top_action') or max(strategy, key=lambda k: strategy[k])
     top_freq   = strategy.get(top_action, 0.0)
 
+    # Se veio da fila, marcar job como resolvido via wizard
+    queue_hash = spot.get('_queue_hash')
+    if queue_hash:
+        try:
+            import sqlite3 as _sq
+            _c = _sq.connect(str(DB_PATH))
+            _c.execute("UPDATE gto_solver_queue SET status='wizard_done' WHERE spot_hash=?", (queue_hash,))
+            _c.commit(); _c.close()
+        except Exception:
+            pass
+
     # Inserir em gto_nodes
     node = {
         'street':            street,
@@ -186,28 +246,34 @@ def _save_result(result: dict, spot: dict) -> bool:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--limit',   type=int, default=0,
+    parser.add_argument('--limit',      type=int, default=0,
                         help='Max decisoes a processar (0=todas)')
-    parser.add_argument('--street',  default='all',
+    parser.add_argument('--street',     default='all',
                         choices=['all', 'flop', 'turn', 'river'])
-    parser.add_argument('--delay',   type=float, default=1.5)
-    parser.add_argument('--timeout', type=int, default=12000)
-    parser.add_argument('--dry-run', action='store_true',
-                        help='Mostra spots sem chamar o GTO Wizard')
+    parser.add_argument('--delay',      type=float, default=1.5)
+    parser.add_argument('--timeout',    type=int, default=12000)
+    parser.add_argument('--dry-run',    action='store_true')
+    parser.add_argument('--from-queue', action='store_true',
+                        help='Processa jobs com status=failed em gto_solver_queue')
     parser.add_argument('--debug-next-actions', action='store_true')
     args = parser.parse_args()
 
-    decisions = _load_pending_decisions(limit=args.limit, street_filter=args.street)
-    print(f"\nDecisoes sem GTO encontradas: {len(decisions)}")
-
-    spots: list[dict] = []
-    skipped = 0
-    for d in decisions:
-        spot = _decision_to_spot(d)
-        if spot and build_params(spot) is not None:
-            spots.append(spot)
-        else:
-            skipped += 1
+    if args.from_queue:
+        raw_spots = _load_failed_queue_spots()
+        print(f"\nJobs falhos na fila: {len(raw_spots)}")
+        spots = [s for s in raw_spots if build_params(s) is not None]
+        skipped = len(raw_spots) - len(spots)
+    else:
+        decisions = _load_pending_decisions(limit=args.limit, street_filter=args.street)
+        print(f"\nDecisoes sem GTO encontradas: {len(decisions)}")
+        spots = []
+        skipped = 0
+        for d in decisions:
+            spot = _decision_to_spot(d)
+            if spot and build_params(spot) is not None:
+                spots.append(spot)
+            else:
+                skipped += 1
 
     print(f"Spots validos para GTO Wizard: {len(spots)}  |  Pulados (sem params): {skipped}")
 
