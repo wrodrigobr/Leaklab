@@ -4689,6 +4689,7 @@ def _mark_failed_solver_jobs_as_wizard_pending() -> int:
     Retorna número de decisões marcadas.
     """
     from database.schema import get_conn
+    from database.repositories import _fetchall, _adapt
     conn = get_conn()
     marked = 0
     try:
