@@ -515,6 +515,14 @@ def _analyze_impl():
         name='gto-upload-enqueue',
     ).start()
 
+    # Auto-enfileirar análise GTO para todas as mãos postflop do torneio
+    threading.Thread(
+        target=_auto_queue_gto_for_tournament,
+        args=(t_db_id, results, g.user_id),
+        daemon=True,
+        name='gto-hand-autoqueue',
+    ).start()
+
     # Explicações LLM se solicitado
     if request.args.get('explain', '').lower() == 'true':
         all_decisions = [d for h in hand_results.values() for d in h['decisions']]
@@ -4766,7 +4774,7 @@ def _gto_hand_worker_loop():
     time.sleep(10)  # aguardar app inicializar
     while True:
         try:
-            pending = get_pending_gto_hand_requests(limit=3)
+            pending = get_pending_gto_hand_requests(limit=10)
             for req in pending:
                 log.info("GTO hand worker: processando req_id=%s hand=%s", req['id'], req['hand_id'])
                 status, err, n_done, n_queued = _process_gto_hand_request(dict(req))
@@ -4781,9 +4789,31 @@ def _gto_hand_worker_loop():
             wizard_marked = _mark_failed_solver_jobs_as_wizard_pending()
             if wizard_marked:
                 log.info("GTO fallback: %d decisoes marcadas como wizard_pending", wizard_marked)
+
+            # Intervalo adaptativo: ciclo rápido se havia pendentes, normal se fila vazia
+            time.sleep(5 if pending else 30)
         except Exception:
             log.exception("GTO hand worker loop error")
-        time.sleep(30)
+            time.sleep(30)
+
+
+def _auto_queue_gto_for_tournament(t_db_id: int, results: list, user_id: int) -> None:
+    """
+    Cria gto_hand_requests para todas as mãos com decisões postflop.
+    INSERT OR IGNORE — seguro de chamar múltiplas vezes (reimport não duplica).
+    Roda em background thread após import de torneio.
+    """
+    try:
+        from database.repositories import bulk_request_gto_for_hands
+        hand_ids = list({
+            d['hand_id'] for d in results
+            if d.get('street') in ('flop', 'turn', 'river') and d.get('hand_id')
+        })
+        if hand_ids:
+            n = bulk_request_gto_for_hands(t_db_id, hand_ids, user_id)
+            log.info("GTO auto-queue: %d mãos enfileiradas para torneio t_db=%d", n, t_db_id)
+    except Exception:
+        log.exception("GTO auto-queue falhou para t_db=%d", t_db_id)
 
 
 def _enqueue_postflop_spots(results: list) -> None:

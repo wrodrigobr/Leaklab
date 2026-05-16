@@ -9,6 +9,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.99.4] — 2026-05-15 — feat(GTO-011): análise GTO proativa e automática no import
+
+### Added
+- **`api/app.py`** (`_auto_queue_gto_for_tournament`): nova função que enfileira automaticamente `gto_hand_requests` para todas as mãos postflop após o import de um torneio — sem necessidade de intervenção do usuário
+- **`api/app.py`** (`_analyze_impl`): dispara `_auto_queue_gto_for_tournament` em thread daemon imediatamente após `save_decisions()`
+- **`database/repositories.py`** (`bulk_request_gto_for_hands`): INSERT OR IGNORE em lote na `gto_hand_requests` — idempotente, safe para reimports
+- **`backend/scripts/migrate_gto_requests.py`**: script one-shot para enfileirar análise de torneios já importados
+
+### Changed
+- **`api/app.py`** (`_gto_hand_worker_loop`): batch aumentado de 3 → 10 requests por ciclo; intervalo adaptativo 5s (fila ocupada) / 30s (fila vazia)
+- **`frontend/src/pages/Replayer.tsx`**: botão "Solicitar Análise GTO" removido — spots sem GTO exibem indicador automático "Analisando este spot automaticamente"
+- **`leaklab/gto_solver.py`**: nós parciais (sem `strategy_json`) não retornam mais como definitivos — caem por para GTO Wizard; strategy retornada do DB ordenada por frequency desc
+- **`leaklab/gto_solver.py`**: `gto_action` agora reflete a ação de maior frequência no strategy_json (antes usava campo direto podendo divergir)
+- **`database/repositories.py`** (`insert_gto_nodes`): aceita nós do GTO Wizard sem `exploitability_pct`; aceita chave `strategy_json` diretamente além de `strategy_detail`
+
+### Fixed
+- **`api/app.py`** (`_process_gto_hand_request`): early returns corrigidos para retornar 4 valores (evitava `ValueError: not enough values to unpack`)
+- **`api/app.py`** (`_build_replay_data`): `live_top_act` propagado corretamente ao campo `gto_action` — antes, strategy DB com `check 97%` sobrepunha GTO Wizard `allin 96%`; DB atualizado automaticamente quando `live_top_act` difere do `gto_action` armazenado
+
+---
+
 ## [v0.99.3] â€” 2026-05-15 â€” feat(GTO-005/006): estimated_equity no banco + validaÃ§Ã£o GTO 98-100% + threshold draw fix
 
 ### Added

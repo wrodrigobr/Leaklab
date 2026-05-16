@@ -4472,6 +4472,31 @@ def request_gto_for_hand(tournament_id: int, hand_id: str, user_id: int) -> dict
         conn.close()
 
 
+def bulk_request_gto_for_hands(tournament_id: int, hand_ids: list, user_id: int) -> int:
+    """
+    Enfileira análise GTO para múltiplas mãos de uma vez.
+    INSERT OR IGNORE — seguro de chamar múltiplas vezes (reimport não duplica).
+    Retorna o número de novas entradas inseridas.
+    """
+    if not hand_ids:
+        return 0
+    conn = get_conn()
+    try:
+        count = 0
+        for hand_id in hand_ids:
+            cur = conn.execute(_adapt("""
+                INSERT OR IGNORE INTO gto_hand_requests
+                    (tournament_id, hand_id, requested_by, status, created_at)
+                VALUES (?, ?, ?, 'pending', datetime('now'))
+            """), (tournament_id, str(hand_id), user_id))
+            if cur.rowcount:
+                count += 1
+        conn.commit()
+        return count
+    finally:
+        conn.close()
+
+
 def get_gto_hand_request_status(hand_id: str, user_id: int) -> Optional[dict]:
     conn = get_conn()
     try:

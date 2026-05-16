@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, Sigma, FlaskConical, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -91,10 +91,6 @@ function SidePanels({
 }: SidePanelsProps) {
   const hasGto     = !!step.gto_label;
   const isPostflop = step.street !== 'preflop';
-  const handHasPostflopAction = replayData.timeline.some(
-    (s) => s.is_hero && s.type === "action" && s.street !== 'preflop'
-      && s.action !== "shows" && s.action !== "mucks"
-  );
   const pg = step.preflop_gto ?? null;
 
   // ── Compute these FIRST so verdict can reference live GTO data ───────────────
@@ -516,8 +512,8 @@ function SidePanels({
         </section>
       )}
 
-      {/* ── GTO não disponível — solicitar análise (apenas postflop) ── */}
-      {step.is_hero && step.type === "action" && isPostflop && !hasGto && handHasPostflopAction
+      {/* ── GTO em processamento automático (postflop, sem label ainda) ── */}
+      {step.is_hero && step.type === "action" && isPostflop && !hasGto
         && step.action !== "shows" && step.action !== "mucks" && (
         <section className="rounded-xl border border-border bg-hud-surface p-3 space-y-2.5">
           <div className="flex items-center gap-2">
@@ -525,26 +521,14 @@ function SidePanels({
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground flex-1">
               Análise GTO
             </span>
-            <span className="font-mono text-[9px] text-muted-foreground/60 uppercase">Não disponível</span>
+            <span className="font-mono text-[9px] text-muted-foreground/60 uppercase">Processando</span>
           </div>
-          {gtoRequestStatus === "idle" && (
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Esta ação ainda não possui análise GTO. Solicite para que o solver calcule a estratégia ótima para este spot.
-            </p>
-          )}
-          {gtoRequestStatus === "idle" && (
-            <button
-              onClick={onRequestGto}
-              className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/30 px-3 py-2 text-[11px] font-semibold text-primary transition-colors"
-            >
-              <Sigma className="size-3.5" />
-              Solicitar Análise GTO
-            </button>
-          )}
-          {gtoRequestStatus === "requesting" && (
-            <div className="flex items-center justify-center gap-2 py-1.5 text-[11px] text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" />
-              Enviando solicitação...
+          {(gtoRequestStatus === "idle" || gtoRequestStatus === "requesting") && (
+            <div className="flex items-center gap-2 rounded-lg bg-sky-500/5 border border-sky-500/20 px-2.5 py-2">
+              <Loader2 className="size-3.5 text-sky-400 shrink-0 animate-spin" />
+              <p className="text-[11px] text-sky-400">
+                Analisando este spot automaticamente. Recarregue a página em instantes para ver os resultados.
+              </p>
             </div>
           )}
           {gtoRequestStatus === "queued" && (
@@ -559,7 +543,7 @@ function SidePanels({
             <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
               <Loader2 className="size-3.5 text-amber-400 shrink-0 mt-px animate-spin" />
               <p className="text-[11px] text-amber-400 leading-relaxed">
-                Spot enfileirado para o solver — ainda não temos dados GTO para este cenário. O cálculo pode levar alguns minutos. Volte mais tarde para ver os resultados.
+                Spot enfileirado para o solver — ainda não temos dados GTO para este cenário. O cálculo pode levar alguns minutos.
               </p>
             </div>
           )}
@@ -567,14 +551,14 @@ function SidePanels({
             <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
               <Loader2 className="size-3.5 text-amber-400 shrink-0 mt-px animate-spin" />
               <p className="text-[11px] text-amber-400 leading-relaxed">
-                Spot enfileirado para o solver — o cálculo pode levar alguns minutos. Volte mais tarde ou recarregue a página para ver os resultados.
+                Processamento concluído — recarregue a página para ver os resultados GTO.
               </p>
             </div>
           )}
           {gtoRequestStatus === "error" && (
             <div className="flex items-center gap-2 rounded-lg bg-destructive/5 border border-destructive/20 px-2.5 py-2">
               <AlertOctagon className="size-3.5 text-destructive shrink-0" />
-              <p className="text-[11px] text-destructive">Erro ao solicitar. Tente novamente.</p>
+              <p className="text-[11px] text-destructive">Não foi possível calcular GTO para este spot.</p>
             </div>
           )}
         </section>
