@@ -4394,6 +4394,92 @@ def admin_gto_hand_queue():
     return jsonify({'queue': [dict(r) for r in rows], 'counts': counts})
 
 
+@app.route('/admin/gto/worker-status', methods=['GET'])
+@require_admin
+def admin_gto_worker_status():
+    """Status do GTO Hand Worker: saúde, filas, throughput, cobertura e erros recentes."""
+    from database.schema import get_conn as _gc
+    from database.repositories import _fetchall, _fetchone, _adapt
+
+    conn = _gc()
+    try:
+        # ── Queue counters — gto_hand_requests ───────────────────────────────
+        hand_counts_rows = _fetchall(conn, "SELECT status, COUNT(*) AS n FROM gto_hand_requests GROUP BY status")
+        hand_counts = {r['status']: r['n'] for r in hand_counts_rows}
+
+        # ── Queue counters — gto_solver_queue ────────────────────────────────
+        solver_counts_rows = _fetchall(conn, "SELECT status, COUNT(*) AS n FROM gto_solver_queue GROUP BY status")
+        solver_counts = {r['status']: r['n'] for r in solver_counts_rows}
+
+        # ── Worker health: last processed timestamp ───────────────────────────
+        last_done = _fetchone(conn, _adapt("""
+            SELECT updated_at FROM gto_hand_requests
+            WHERE status IN ('done','error')
+            ORDER BY updated_at DESC LIMIT 1
+        """))
+        last_heartbeat = last_done['updated_at'] if last_done else None
+
+        # ── Throughput: requests processed per hour (last 24h) ───────────────
+        throughput_rows = _fetchall(conn, _adapt("""
+            SELECT strftime('%Y-%m-%dT%H:00:00', updated_at) AS hour,
+                   COUNT(*) AS n
+            FROM gto_hand_requests
+            WHERE status IN ('done','error')
+              AND updated_at >= datetime('now', '-24 hours')
+            GROUP BY hour
+            ORDER BY hour ASC
+        """))
+        throughput = [{'hour': r['hour'], 'count': r['n']} for r in throughput_rows]
+
+        # ── gto_nodes coverage by source ─────────────────────────────────────
+        coverage_rows = _fetchall(conn, "SELECT source, COUNT(*) AS n FROM gto_nodes GROUP BY source")
+        coverage = {r['source']: r['n'] for r in coverage_rows}
+        coverage_total_row = _fetchone(conn, "SELECT COUNT(*) AS n FROM gto_nodes")
+        coverage['total'] = coverage_total_row['n'] if coverage_total_row else 0
+
+        # ── Recent errors ────────────────────────────────────────────────────
+        error_rows = _fetchall(conn, _adapt("""
+            SELECT r.id, r.hand_id, r.tournament_id, r.error_msg, r.updated_at,
+                   u.email AS user_email
+            FROM gto_hand_requests r
+            LEFT JOIN users u ON u.id = r.requested_by
+            WHERE r.status = 'error'
+            ORDER BY r.updated_at DESC
+            LIMIT 10
+        """))
+        recent_errors = [dict(r) for r in error_rows]
+
+        # ── Worker active heuristic: processed anything in last 2 minutes ────
+        is_active = False
+        if last_heartbeat:
+            active_row = _fetchone(conn, _adapt("""
+                SELECT 1 FROM gto_hand_requests
+                WHERE status IN ('done','error')
+                  AND updated_at >= datetime('now', '-2 minutes')
+                LIMIT 1
+            """))
+            is_active = active_row is not None
+
+        # Also check if there are running requests (worker picked them up)
+        if not is_active and hand_counts.get('running', 0) > 0:
+            is_active = True
+
+    finally:
+        conn.close()
+
+    return jsonify({
+        'worker': {
+            'active':         is_active,
+            'last_heartbeat': last_heartbeat,
+        },
+        'hand_queue':   hand_counts,
+        'solver_queue': solver_counts,
+        'throughput':   throughput,
+        'coverage':     coverage,
+        'recent_errors': recent_errors,
+    })
+
+
 @app.route('/admin/gto/reprocess-decisions', methods=['POST'])
 @require_admin
 def admin_gto_reprocess_decisions():

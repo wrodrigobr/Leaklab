@@ -3,8 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, BarChart2, CheckCircle2, ChevronRight, Clock,
   Download, LayoutDashboard, Loader2, Search, Shield, Users,
-  GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle
+  GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
+  Cpu, CircleDot
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { cn } from "@/lib/utils";
 import { adminDashboard, AdminUser, CoachPayout, CoachApplication, support } from "@/lib/api";
@@ -43,7 +45,7 @@ function KpiTile({ label, value, sub, icon: Icon, accent }: {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "users" | "finance" | "logs" | "candidaturas" | "support";
+type Tab = "overview" | "users" | "finance" | "logs" | "candidaturas" | "support" | "gto-worker";
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "overview",      label: "Visão Geral",   icon: LayoutDashboard },
   { id: "users",         label: "Usuários",      icon: Users },
@@ -51,6 +53,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "logs",          label: "Logs",          icon: Activity },
   { id: "candidaturas",  label: "Candidaturas",  icon: GraduationCap },
   { id: "support",       label: "Suporte",       icon: MessageSquarePlus },
+  { id: "gto-worker",    label: "GTO Worker",    icon: Cpu },
 ];
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
@@ -846,6 +849,177 @@ function SupportTab() {
   );
 }
 
+// ── GTO Worker Tab ───────────────────────────────────────────────────────────
+
+function GtoWorkerTab() {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["admin-gto-worker-status"],
+    queryFn: adminDashboard.gtoWorkerStatus,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  });
+
+  if (isLoading) return <Loading />;
+  if (!data) return null;
+
+  const hq = data.hand_queue ?? {};
+  const sq = data.solver_queue ?? {};
+  const cov = data.coverage ?? {};
+
+  const handTotal  = Object.values(hq).reduce((a, b) => a + b, 0);
+  const handDone   = hq['done']    ?? 0;
+  const handPend   = hq['pending'] ?? 0;
+  const handErr    = hq['error']   ?? 0;
+  const handRun    = hq['running'] ?? 0;
+
+  const solverPend = sq['pending'] ?? 0;
+  const solverDone = sq['done']    ?? 0;
+  const solverFail = sq['failed']  ?? 0;
+
+  const coverageTotal = cov['total'] ?? 0;
+  const coverageWizard = cov['gto_wizard'] ?? 0;
+  const coverageSolver = cov['solver'] ?? (cov['solver_cli'] ?? 0);
+  const coverageRemote = cov['remote_solver'] ?? 0;
+
+  const throughput = data.throughput ?? [];
+  const throughputMax = Math.max(...throughput.map(t => t.count), 1);
+
+  const lastHb = data.worker.last_heartbeat
+    ? new Date(data.worker.last_heartbeat).toLocaleString("pt-BR")
+    : "—";
+
+  return (
+    <div className="space-y-6">
+      {/* Worker health */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => refetch()}
+          className="ml-auto font-mono text-[10px] text-muted-foreground hover:text-foreground border border-border rounded px-2 py-1 transition-colors"
+        >
+          Atualizar
+        </button>
+      </div>
+
+      {/* KPIs row 1 — worker */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className={cn(
+          "rounded-xl border p-5 space-y-2 col-span-2 lg:col-span-1",
+          data.worker.active ? "border-green-500/30 bg-green-500/5" : "border-yellow-500/30 bg-yellow-500/5"
+        )}>
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Worker</span>
+            <CircleDot className={cn("size-4", data.worker.active ? "text-green-500" : "text-yellow-500")} />
+          </div>
+          <p className={cn("text-2xl font-bold", data.worker.active ? "text-green-500" : "text-yellow-500")}>
+            {data.worker.active ? "Ativo" : "Ocioso"}
+          </p>
+          <p className="font-mono text-[10px] text-muted-foreground">Último proc: {lastHb}</p>
+        </div>
+
+        <KpiTile label="Pendentes"  value={String(handPend)} sub="gto_hand_requests" icon={Clock}        />
+        <KpiTile label="Processados" value={String(handDone)} sub={`total: ${handTotal}`} icon={CheckCircle2} accent={handDone > 0} />
+        <KpiTile label="Erros"      value={String(handErr)}  sub={`em execução: ${handRun}`} icon={AlertTriangle} accent={handErr > 0} />
+      </div>
+
+      {/* KPIs row 2 — solver queue + coverage */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiTile label="Solver Pendentes" value={String(solverPend)} sub="gto_solver_queue" icon={Cpu} />
+        <KpiTile label="Solver Concluídos" value={String(solverDone)} sub={`falhos: ${solverFail}`} icon={CheckCircle2} accent={solverDone > 0} />
+        <KpiTile label="gto_nodes Total"  value={String(coverageTotal)} sub="base de conhecimento" icon={BarChart2} accent={coverageTotal > 0} />
+        <KpiTile label="GTO Wizard"  value={String(coverageWizard)} sub={`solver: ${coverageSolver} · remote: ${coverageRemote}`} icon={Activity} />
+      </div>
+
+      {/* Throughput chart */}
+      <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-3">
+        <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+          Throughput — últimas 24h
+        </h3>
+        {throughput.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum processamento nas últimas 24h.</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={throughput} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
+              <XAxis
+                dataKey="hour"
+                tickFormatter={v => v ? v.slice(11, 16) : ""}
+                tick={{ fontSize: 10, fontFamily: "monospace" }}
+                stroke="hsl(var(--border))"
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 10, fontFamily: "monospace" }}
+                stroke="hsl(var(--border))"
+              />
+              <Tooltip
+                formatter={(v: number) => [v, "requests"]}
+                labelFormatter={l => `${l?.toString().slice(0, 16)}`}
+                contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }}
+              />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                {throughput.map((entry, i) => (
+                  <Cell key={i} fill={entry.count === throughputMax ? "hsl(var(--primary))" : "hsl(var(--muted))"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Coverage breakdown */}
+      {coverageTotal > 0 && (
+        <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-3">
+          <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+            Cobertura por Fonte
+          </h3>
+          <div className="space-y-2">
+            {Object.entries(cov)
+              .filter(([k]) => k !== 'total')
+              .sort(([, a], [, b]) => b - a)
+              .map(([source, n]) => (
+                <div key={source} className="flex items-center gap-3">
+                  <span className="font-mono text-[11px] text-muted-foreground w-32 shrink-0">{source}</span>
+                  <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${coverageTotal > 0 ? Math.round((n / coverageTotal) * 100) : 0}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-[11px] tabular-nums text-foreground w-12 text-right">{n}</span>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      )}
+
+      {/* Recent errors */}
+      {data.recent_errors.length > 0 && (
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-5 space-y-3">
+          <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-destructive">
+            Erros Recentes
+          </h3>
+          <div className="space-y-2">
+            {data.recent_errors.map(e => (
+              <div key={e.id} className="rounded-lg border border-border bg-background p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] text-muted-foreground">hand {e.hand_id}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{e.updated_at?.slice(0, 16)}</span>
+                </div>
+                {e.error_msg && (
+                  <p className="text-xs text-destructive break-all">{e.error_msg}</p>
+                )}
+                {e.user_email && (
+                  <p className="font-mono text-[10px] text-muted-foreground">user: {e.user_email}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 const AdminDashboard = () => {
@@ -888,6 +1062,7 @@ const AdminDashboard = () => {
         {tab === "logs"         && <LogsTab />}
         {tab === "candidaturas" && <CandidaturasTab />}
         {tab === "support"      && <SupportTab />}
+        {tab === "gto-worker"   && <GtoWorkerTab />}
       </main>
     </div>
   );

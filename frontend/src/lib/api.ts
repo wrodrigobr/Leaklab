@@ -1483,6 +1483,25 @@ export interface CoachPaymentRecord {
   created_at: string;
 }
 
+export interface GtoWorkerStatus {
+  worker: {
+    active: boolean;
+    last_heartbeat: string | null;
+  };
+  hand_queue: Record<string, number>;
+  solver_queue: Record<string, number>;
+  throughput: Array<{ hour: string; count: number }>;
+  coverage: Record<string, number>;
+  recent_errors: Array<{
+    id: number;
+    hand_id: string;
+    tournament_id: number;
+    error_msg: string | null;
+    updated_at: string;
+    user_email: string | null;
+  }>;
+}
+
 export const adminDashboard = {
   stats: () => request<AdminStats>("/admin/dashboard"),
 
@@ -1541,6 +1560,8 @@ export const adminDashboard = {
     game_types: Array<{ main_game_type: string; n: number }>;
     buyin_ranges: Array<{ usual_buyin_range: string; n: number }>;
   }>("/admin/demographics"),
+
+  gtoWorkerStatus: () => request<GtoWorkerStatus>("/admin/gto/worker-status"),
 };
 
 export interface CoachApplication {

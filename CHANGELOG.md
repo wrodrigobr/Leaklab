@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.99.5] — 2026-05-16 — feat(admin): GTO Worker dashboard
+
+### Added
+- **`backend/api/app.py`** (`GET /admin/gto/worker-status`): novo endpoint admin que retorna saúde do worker, contadores de fila (`gto_hand_requests` + `gto_solver_queue`), throughput por hora (últimas 24h), cobertura de `gto_nodes` por fonte e lista dos últimos 10 erros
+- **`frontend/src/lib/api.ts`** (`GtoWorkerStatus`, `adminDashboard.gtoWorkerStatus()`): interface TypeScript e função de chamada para o novo endpoint
+- **`frontend/src/pages/admin/AdminDashboard.tsx`** (`GtoWorkerTab`): nova tab "GTO Worker" no painel admin com indicador de saúde (ativo/ocioso), KPIs de fila, gráfico de throughput (Recharts BarChart), barra de cobertura por fonte e painel de erros recentes
+
+---
+
 ## [v0.99.4] — 2026-05-15 — feat(GTO-011): análise GTO proativa e automática no import
 
 ### Added
