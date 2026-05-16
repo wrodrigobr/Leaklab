@@ -271,8 +271,8 @@ function renderSeatsAndChips(
     if (d.bounty && d.bounty > 0) {
       const bStr = `$${d.bounty.toFixed(2)}`;
       const bw2 = bStr.length * 6.5 + 14;
-      html += `<rect x="${pos.x - bw2 / 2}" y="${by - 22}" width="${bw2}" height="16" rx="8" fill="rgba(34,197,94,0.18)" stroke="rgba(34,197,94,0.55)" stroke-width="1"/>`;
-      html += `<text x="${pos.x}" y="${by - 10}" text-anchor="middle" fill="#4ade80" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700">🏆${bStr}</text>`;
+      html += `<rect x="${pos.x - bw2 / 2}" y="${by - 22}" width="${bw2}" height="16" rx="8" fill="rgba(245,158,11,0.15)" stroke="rgba(245,158,11,0.50)" stroke-width="1"/>`;
+      html += `<text x="${pos.x}" y="${by - 10}" text-anchor="middle" fill="#fbbf24" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700">💀${bStr}</text>`;
     }
 
     // Dealer button

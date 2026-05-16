@@ -21,8 +21,9 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { AiText } from "@/components/ui/AiText";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
-import { drill } from "@/lib/api";
-import type { DrillSpot, DrillStats, DrillSubmitResult, ReplayStep } from "@/lib/api";
+import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
+import { drill, gto } from "@/lib/api";
+import type { DrillSpot, DrillStats, DrillSubmitResult, ReplayStep, GtoStrategyAction } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
 type Phase = "intro" | "loading" | "active" | "result" | "done";
@@ -223,6 +224,7 @@ export default function GhostTable() {
   const [submitting, setSubmitting]         = useState(false);
   const [analysis, setAnalysis]             = useState<string | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [gtoStrategy, setGtoStrategy]       = useState<GtoStrategyAction[] | null>(null);
 
   // ── Pressure mode state ───────────────────────────────────────────────────
   const [pressureMode, setPressureMode] = useState(false);
@@ -249,6 +251,12 @@ export default function GhostTable() {
       setSessionTotal((n) => n + 1);
       setLastResult(result);
       setPhase("result");
+      // Fetch GTO strategy for result panel (postflop spots only)
+      if (current.street !== 'preflop') {
+        gto.decisionLookup(current.id).then(r => {
+          if (r.strategy && r.strategy.length > 0) setGtoStrategy(r.strategy);
+        }).catch(() => {});
+      }
     } catch {
       // keep active on error
     } finally {
@@ -303,6 +311,7 @@ export default function GhostTable() {
   const nextSpot = () => {
     const next = index + 1;
     setAnalysis(null);
+    setGtoStrategy(null);
     if (next >= spots.length) { setPhase("done"); }
     else { setIndex(next); setLastResult(null); setPhase("active"); }
   };
@@ -323,7 +332,7 @@ export default function GhostTable() {
   const resetDrill = () => {
     setPhase("intro"); setSpots([]); setIndex(0);
     setLastResult(null); setSessionCorrect(0); setSessionTotal(0);
-    setAnalysis(null); setStreak(0); setTimedOut(false);
+    setAnalysis(null); setStreak(0); setTimedOut(false); setGtoStrategy(null);
   };
 
   const accuracy = sessionTotal > 0 ? Math.round((sessionCorrect / sessionTotal) * 100) : 0;
@@ -426,6 +435,18 @@ export default function GhostTable() {
                       <Timer className="size-3.5 text-destructive shrink-0" /><span className="font-mono text-xs font-semibold text-destructive">{t("pressure.timedOut")}</span>
                     </div>
                   )}
+                  {/* Mobile pot odds context */}
+                  {current.facing_bet != null && current.facing_bet > 0 && current.pot_size != null && current.pot_size > 0 && (() => {
+                    const callAmt   = current.facing_bet;
+                    const potBefore = current.pot_size - current.facing_bet;
+                    const potOdds   = callAmt / (potBefore + 2 * callAmt);
+                    return (
+                      <div className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-2.5 py-1.5">
+                        <span className="font-mono text-[9px] text-muted-foreground/60 uppercase">Pot Odds</span>
+                        <span className="font-mono text-[11px] font-bold text-foreground">{(potOdds * 100).toFixed(1)}%</span>
+                      </div>
+                    );
+                  })()}
                   <div className="grid grid-cols-3 gap-2">
                     {ACTION_KEYS.map(action => (
                       <button key={action} onClick={() => submitAction(action)} disabled={submitting || timedOut}
@@ -437,9 +458,18 @@ export default function GhostTable() {
                 </>
               )}
               {phase === "result" && lastResult && (
-                <button onClick={nextSpot} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors">
-                  {t("next")} <ArrowRight className="size-4" aria-hidden />
-                </button>
+                <div className="space-y-2">
+                  {/* Mobile GTO strategy (compact) */}
+                  {gtoStrategy && gtoStrategy.length > 0 && (
+                    <div className="rounded-lg border border-border/40 bg-muted/5 px-3 py-2 space-y-2">
+                      <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">GTO</p>
+                      <GtoStrategyPanel strategy={gtoStrategy} playedAction={lastResult.new_action} compact />
+                    </div>
+                  )}
+                  <button onClick={nextSpot} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors">
+                    {t("next")} <ArrowRight className="size-4" aria-hidden />
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -460,6 +490,21 @@ export default function GhostTable() {
                     <Timer className="size-3.5 text-destructive shrink-0" /><span className="font-mono text-xs font-semibold text-destructive">{t("pressure.timedOut")}</span>
                   </div>
                 )}
+                {/* Pot odds context (when facing a bet) */}
+                {current.facing_bet != null && current.facing_bet > 0 && current.pot_size != null && current.pot_size > 0 && (() => {
+                  const callAmt   = current.facing_bet;
+                  const potBefore = current.pot_size - current.facing_bet;
+                  const potOdds   = callAmt / (potBefore + 2 * callAmt);
+                  return (
+                    <div className="rounded-lg border border-border/40 bg-muted/5 px-2.5 py-2 shrink-0 space-y-1">
+                      <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">Pot Odds</p>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] font-bold text-foreground">{(potOdds * 100).toFixed(1)}%</span>
+                        <span className="font-mono text-[8px] text-muted-foreground/60">necessário para call</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <p className="text-center text-sm font-semibold text-foreground shrink-0">{t("question")}</p>
                 <div className="grid grid-cols-2 gap-2 shrink-0">
                   {ACTION_KEYS.map(action => (
@@ -517,6 +562,14 @@ export default function GhostTable() {
                     <span className="font-mono text-[10px]">
                       {lastResult.is_correct ? `${t("next")} em ${lastResult.srs_interval_days}d` : `Resetado — em ${lastResult.srs_interval_days}d`}
                     </span>
+                  </div>
+                )}
+
+                {/* GTO Strategy (postflop spots) */}
+                {gtoStrategy && gtoStrategy.length > 0 && (
+                  <div className="rounded-lg border border-border/40 bg-muted/5 px-3 py-2 space-y-2 shrink-0">
+                    <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">Estratégia GTO</p>
+                    <GtoStrategyPanel strategy={gtoStrategy} playedAction={lastResult.new_action} compact />
                   </div>
                 )}
 

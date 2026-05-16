@@ -7,6 +7,7 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
+import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
@@ -437,6 +438,52 @@ function SidePanels({
               );
             })()}
 
+            {/* Call Math Card — equity vs pot odds em ações que envolvem chips */}
+            {isPostflop && step.is_hero && step.pot_odds_equity != null && step.pot_odds_equity > 0 && step.hand_equity != null && (() => {
+              const callPct  = step.pot_odds_equity * 100;
+              const eqPct    = step.hand_equity * 100;
+              const isPlusEv = eqPct >= callPct;
+              const actLabel = step.action ? fmtAction(step.action) : null;
+              const actEv    = step.gto_strategy?.find(s => {
+                const n = normalizeGtoAction(s.action);
+                const p = normalizeGtoAction(step.action ?? '');
+                return n === p || p.startsWith(n) || n.startsWith(p);
+              })?.ev_bb ?? null;
+              return (
+                <div className="rounded-lg border border-border/40 bg-muted/5 px-3 py-2 space-y-1.5">
+                  <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/50">
+                    Matemática da Decisão
+                  </p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="space-y-0.5">
+                      <p className="font-mono text-[8px] text-muted-foreground/50 uppercase">Pot Odds</p>
+                      <p className="font-mono text-[12px] font-bold text-muted-foreground tabular-nums">{callPct.toFixed(1)}%</p>
+                    </div>
+                    <div className="text-muted-foreground/30 font-mono text-[10px]">vs</div>
+                    <div className="space-y-0.5">
+                      <p className="font-mono text-[8px] text-muted-foreground/50 uppercase">Equity</p>
+                      <p className={cn("font-mono text-[12px] font-bold tabular-nums", isPlusEv ? "text-emerald-400" : "text-red-400")}>
+                        {eqPct.toFixed(1)}%
+                      </p>
+                    </div>
+                    <div className={cn(
+                      "ml-auto rounded-md px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wider",
+                      isPlusEv ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
+                    )}>
+                      {isPlusEv ? "+EV" : "−EV"}{actLabel ? ` · ${actLabel}` : ""}
+                    </div>
+                  </div>
+                  {actEv != null && (
+                    <p className="font-mono text-[8px] text-muted-foreground/50">
+                      EV estimado: <span className={cn("font-bold", actEv >= 0 ? "text-emerald-400/70" : "text-red-400/70")}>
+                        {actEv >= 0 ? "+" : ""}{actEv.toFixed(2)} BB
+                      </span>
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Estratégia pendente */}
             {!step.gto_spot_mismatch && !!step.gto_label && !stratSorted.length && (
               <div className="border-t border-border/30 pt-2 space-y-1">
@@ -451,41 +498,11 @@ function SidePanels({
 
             {/* Estratégia do Solver */}
             {!step.gto_spot_mismatch && stratSorted.length >= 1 && (
-              <div className="space-y-2">
-                <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/50 border-t border-border/30 pt-2">
+              <div className="space-y-2 border-t border-border/30 pt-2">
+                <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/50">
                   Estratégia do Solver
                 </div>
-                {stratSorted.map((s) => {
-                  const isP = isPlayedAct(s.action);
-                  const freq = (s.frequency ?? 0) * 100;
-                  return (
-                    <div key={s.action} className="flex items-center gap-2">
-                      <span className={cn("font-mono text-[11px] font-bold w-14 shrink-0 uppercase truncate",
-                        isP ? "text-amber-400" : actionTextColor(s.action))}>
-                        {fmtAction(s.action)}
-                      </span>
-                      <div className="flex-1 h-[5px] rounded-full bg-border/50 overflow-hidden">
-                        <div className={cn("h-full rounded-full transition-all duration-500",
-                          isP ? "bg-amber-400" : actionBarColor(s.action))}
-                          style={{ width: `${freq}%` }} />
-                      </div>
-                      <span className={cn("font-mono text-[11px] font-bold w-8 text-right tabular-nums shrink-0",
-                        isP ? "text-amber-400" : "text-muted-foreground")}>
-                        {freq.toFixed(0)}%
-                      </span>
-                      <span className={cn("font-mono text-[9px] w-2 shrink-0 select-none",
-                        isP ? "text-amber-400" : "invisible")}>←</span>
-                    </div>
-                  );
-                })}
-                {evDiff !== null && (
-                  <p className={cn("font-mono text-[10px] tabular-nums pt-0.5",
-                    evDiff > 0 ? "text-destructive/70" : "text-emerald-400/70")}>
-                    {evDiff > 0
-                      ? `EV perdida: −${evDiff.toFixed(2)} BB vs ótimo`
-                      : `EV acima do ótimo: +${Math.abs(evDiff).toFixed(2)} BB`}
-                  </p>
-                )}
+                <GtoStrategyPanel strategy={stratSorted} playedAction={playedAction} />
               </div>
             )}
 
@@ -731,6 +748,10 @@ function SidePanels({
             {step.summary.seats.map((sd, i) => {
               const isWinner = sd.outcome === "won";
               const wonBb    = sd.won ? (sd.won / (replayData?.bb ?? 100)).toFixed(1) : null;
+              // Bounty from seat data (PKO tournaments)
+              const seatEntry = Object.values(step.seats ?? {}).find(s => s.player === sd.player);
+              const bounty    = seatEntry?.bounty ?? null;
+              const koEvent   = step.knockout_events?.find(ko => ko.winner === sd.player);
               return (
                 <div key={i} className={cn(
                   "rounded-lg px-2.5 py-2 ring-1 space-y-1.5",
@@ -745,6 +766,16 @@ function SidePanels({
                     )}>
                       {playerAliases[sd.player] ?? sd.player}
                     </span>
+                    {bounty != null && bounty > 0 && (
+                      <span className="font-mono text-[9px] text-amber-400 shrink-0">
+                        💀${bounty.toFixed(2)}
+                      </span>
+                    )}
+                    {koEvent && (
+                      <span className="font-mono text-[9px] text-emerald-400 font-bold shrink-0">
+                        +💀${koEvent.amount.toFixed(2)}
+                      </span>
+                    )}
                     {isWinner && wonBb && (
                       <span className="font-mono text-xs font-bold text-primary shrink-0">
                         +{wonBb} BB

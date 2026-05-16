@@ -207,6 +207,7 @@ export interface ReplaySeat {
   stack: number;
   stack_bb: number;
   pos: string;
+  bounty?: number;
 }
 
 export interface ShowdownSeatInfo {
@@ -249,6 +250,7 @@ export interface ReplayStep {
   icm_pressure?: string;
   hero_stack_bb?: number;
   // GTO analysis (postflop hero actions only)
+  gto_strategy?: GtoStrategyAction[] | null;
   gto_label?: "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical" | null;
   gto_action?: string | null;
   engine_best?: string | null;  // engine suggestion when it conflicts with GTO reconciliation
@@ -1737,6 +1739,8 @@ export interface GtoStrategyAction {
   label: string;
   frequency: number;
   combos?: number | null;
+  ev_bb?: number | null;
+  exploitability_pct?: number | null;
 }
 
 export interface GtoDecisionResult {
