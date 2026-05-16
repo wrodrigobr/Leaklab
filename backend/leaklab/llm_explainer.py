@@ -224,6 +224,14 @@ Explique em 3-4 frases o que foi feito de errado e por que é um erro estratégi
 - **Análise de range:** [1-2 frases sobre o que o range GTO diz sobre esta mão e posição]
 (Se M < 6, substitua por: "Push/fold range: esta mão [está / não está] no range de jam")
 
+### 🎯 GTO Postflop (apenas flop/turn/river — use quando bloco GTO SOLVER presente)
+Quando o bloco "── GTO SOLVER ──" estiver presente, use OBRIGATORIAMENTE os dados exatos:
+- **Ação principal GTO:** [ação] ([frequência]% do range)
+- **Ação do hero:** [ação] ([frequência]% — classificação)
+- **Distribuição do range:** liste as ações com frequências exatas do bloco GTO SOLVER
+- **Interpretação:** o que a distribuição revela sobre o spot (polar vs merged, bluff catchers, etc.)
+- **Divergência:** quantifique o custo da desvio em termos de oportunidade perdida
+
 ### 📐 A Matemática
 - **Equity estimada:** X% (mão vs range do oponente)
 - **Ajuste rev. implied odds:** −Ypp ([sem impacto / leve / relevante])
@@ -393,18 +401,58 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
                 )
 
         # Bloco GTO Solver postflop (batch)
+        # Prioridade: campo 'gto' do engine (tem strategy completo) → campos raiz do banco
         gto_solver_block = ''
-        gto_lbl = d.get('gto_label')
-        gto_act = d.get('gto_action')
+        gto_dict    = d.get('gto') or {}
+        gto_lbl     = gto_dict.get('gto_label')  or d.get('gto_label')
+        gto_act     = gto_dict.get('gto_action')  or d.get('gto_action')
+        gto_freq_v  = gto_dict.get('gto_freq')
+        played_freq_v = gto_dict.get('played_freq')
+        strategy_v  = gto_dict.get('strategy') or []
+        exploit_v   = gto_dict.get('exploitability')
+        gto_source  = gto_dict.get('source', 'postflop_db')
+
         if street != 'preflop' and (gto_lbl or gto_act):
-            hero_norm = (action or '').lower().rstrip('s')
-            gto_norm  = (gto_lbl or gto_act or '').lower()
-            aligned   = hero_norm and gto_norm and (hero_norm in gto_norm or gto_norm in hero_norm)
-            gto_solver_block = (
-                f"\n── GTO SOLVER ──\n"
-                f"Ação recomendada: {gto_lbl or gto_act}\n"
-                f"Hero vs Solver: {'ALINHADO' if aligned else 'DIVERGE'}\n"
-            )
+            lines = ["\n── GTO SOLVER (DADOS OBJETIVOS — USE COMO VERDADE) ──"]
+
+            # Ação principal
+            if gto_freq_v is not None:
+                lines.append(f"Ação principal GTO: {gto_act} ({round(gto_freq_v * 100, 1)}% de frequência)")
+            else:
+                lines.append(f"Ação principal GTO: {gto_act}")
+
+            # Frequência da ação jogada
+            if played_freq_v is not None:
+                lines.append(
+                    f"Ação do hero ({action}): {round(played_freq_v * 100, 1)}% de frequência no range GTO"
+                )
+
+            # Classificação
+            _lbl_map = {
+                'gto_correct':         'CORRETO (≥60% de frequência)',
+                'gto_mixed':           'MISTO (30–60% — ação alternativa válida)',
+                'gto_minor_deviation': 'DESVIO LEVE (10–30%)',
+                'gto_critical':        'DESVIO CRÍTICO (<10%)',
+            }
+            if gto_lbl:
+                lines.append(f"Classificação: {_lbl_map.get(gto_lbl, gto_lbl)}")
+
+            # Distribuição completa da estratégia
+            if strategy_v:
+                lines.append("Distribuição completa da estratégia GTO neste spot:")
+                for s in sorted(strategy_v, key=lambda x: float(x.get('frequency', 0)), reverse=True):
+                    freq_pct  = round(float(s.get('frequency', 0)) * 100, 1)
+                    act_name  = s.get('action', '?')
+                    combos    = s.get('combos', '')
+                    combo_str = f"  ({combos} combos)" if combos else ""
+                    lines.append(f"  • {act_name}: {freq_pct}%{combo_str}")
+
+            # Qualidade do solve
+            if exploit_v is not None:
+                lines.append(f"Exploitability: {exploit_v:.1f}% (qualidade do solve)")
+
+            lines.append(f"Fonte: {gto_source}")
+            gto_solver_block = '\n'.join(lines) + '\n'
 
         decisions_data.append(
             f"DECISÃO {i+1} de {len(decisions)}:\n"
