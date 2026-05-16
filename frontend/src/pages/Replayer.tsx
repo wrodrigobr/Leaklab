@@ -101,8 +101,13 @@ function SidePanels({
     ? [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0))
     : [];
 
+  const normalizeGtoAction = (s: string) => {
+    const l = s.toLowerCase();
+    if (l === 'shove' || l === 'jam' || l === 'allin' || l === 'all-in' || l === 'all in') return 'allin';
+    return l;
+  };
   const isPlayedAct = (action: string) => {
-    const a = action.toLowerCase(); const p = playedAction.toLowerCase();
+    const a = normalizeGtoAction(action); const p = normalizeGtoAction(playedAction);
     return a === p || p.startsWith(a) || a.startsWith(p);
   };
 
@@ -201,24 +206,6 @@ function SidePanels({
     return "text-purple-400";
   };
   const scenarioLabel: Record<string, string> = { rfi: "RFI", vs_rfi: "vs Open", vs_3bet: "vs 3-Bet" };
-  const DRAW_COMPONENT_LABEL: Record<string, string> = {
-    FD:   "Flush Draw",
-    OESD: "Straight Draw",
-    GUT:  "Gutshot",
-    BDFD: "Backdoor FD",
-    BDSD: "Backdoor SD",
-  };
-  const DRAW_COMPONENT_TOOLTIP: Record<string, string> = {
-    FD:   "Flush Draw — 4 cartas para flush (~9 outs, ≈18% de completar no próximo street)",
-    OESD: "Open-Ended Straight Draw — 8 outs, ≈17% no próximo street",
-    GUT:  "Gutshot — straight draw interno, 4 outs, ≈8% no próximo street",
-    BDFD: "Backdoor Flush Draw (BDFD) — precisa de 2 cartas consecutivas do mesmo naipe (~6% para completar)",
-    BDSD: "Backdoor Straight Draw (BDSD) — precisa de uma carta específica no turn E outra no river para completar a sequência (~4%)",
-  };
-  const DRAW_EQUITY_BOOST: Record<string, number> = {
-    FD: 15, OESD: 17, GUT: 8, BDFD: 6, BDSD: 4,
-  };
-
   return (
     <div className="flex flex-col gap-2">
 
@@ -319,9 +306,6 @@ function SidePanels({
                             ? step.hero_stack_bb / step.pot_bb : null;
               const sprLabel = spr == null ? null : spr < 2 ? "comprometido" : spr < 5 ? "médio" : "fundo";
               const sprColor = spr == null ? "" : spr < 2 ? "text-amber-400" : spr < 5 ? "text-sky-400" : "text-muted-foreground";
-              const drawParts = (step.draw_profile && step.draw_profile !== "none" && step.draw_profile !== "made_hand")
-                                ? step.draw_profile.split('+') : [];
-              const drawBoost = drawParts.reduce((s, c) => s + (DRAW_EQUITY_BOOST[c] ?? 0), 0);
               return (
                 <div className="space-y-2 border-t border-border/30 pt-2">
                   <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/40">Indicadores</span>
@@ -377,25 +361,6 @@ function SidePanels({
                     </div>
                   )}
 
-                  {/* Draw profile com tooltips por componente */}
-                  {drawParts.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">Draw</span>
-                      {drawParts.map((c) => (
-                        <span key={c}
-                          className="inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold ring-1 text-amber-400 ring-amber-500/30 bg-amber-500/8 cursor-help"
-                          title={DRAW_COMPONENT_TOOLTIP[c] ?? c}>
-                          {DRAW_COMPONENT_LABEL[c] ?? c}
-                        </span>
-                      ))}
-                      {drawBoost > 0 && (
-                        <span className="font-mono text-[9px] text-amber-400/50"
-                          title="Bônus de equity acumulado pelos draws detectados">
-                          +{drawBoost}% eq
-                        </span>
-                      )}
-                    </div>
-                  )}
                 </div>
               );
             })()}
