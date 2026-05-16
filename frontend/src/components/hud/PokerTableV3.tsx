@@ -277,7 +277,7 @@ function renderSeatsAndChips(
 
     // Dealer button
     if (isBtn) {
-      const t = 0.25;
+      const t = 0.38;
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
       // Hero is at bottom-center — clockwise perp goes right, clear of both cards (64px wide + gap)
