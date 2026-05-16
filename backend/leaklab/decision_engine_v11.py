@@ -4,37 +4,66 @@ from typing import Dict, Any
 
 # ── GTO helpers ───────────────────────────────────────────────────────────────
 
+def _norm_gto_action(a: str) -> str:
+    """Normaliza ação para comparação: shove/jam/allin → 'allin'."""
+    a = (a or '').lower()
+    if a in ('shove', 'jam', 'allin', 'all-in', 'all in'):
+        return 'allin'
+    return a
+
+
 def _gto_action_matches(player_action: str, gto_action: str) -> bool:
     """Verifica se a ação do jogador corresponde à ação GTO primária."""
-    aggressive = {'bet', 'raise', 'shove', 'jam'}
-    gto_lower  = gto_action.lower()
-    if gto_lower.startswith('bet') or gto_lower.startswith('raise'):
-        return player_action in aggressive
-    return player_action == gto_lower
+    p = _norm_gto_action(player_action)
+    g = _norm_gto_action(gto_action)
+    if p == g:
+        return True
+    aggressive = {'bet', 'raise', 'shove', 'jam', 'allin'}
+    if g.startswith('bet') or g.startswith('raise'):
+        return p in aggressive
+    return p.startswith(g) or g.startswith(p)
+
+
+def _gto_classify_from_strategy(player_action: str, strategy: list) -> tuple:
+    """
+    Classifica usando a frequência REAL da ação jogada no strategy_json completo.
+    Mais preciso que _gto_classify: "call 45%" não é gto_critical só porque top é "fold 55%".
+    Retorna (gto_label, played_freq).
+    """
+    played_norm = _norm_gto_action(player_action)
+    played_freq = 0.0
+    for s in strategy:
+        act  = _norm_gto_action(s.get('action', ''))
+        freq = float(s.get('frequency') or 0.0)
+        if act == played_norm or played_norm.startswith(act) or act.startswith(played_norm):
+            played_freq = max(played_freq, freq)
+
+    if played_freq >= 0.60:
+        return 'gto_correct', played_freq
+    if played_freq >= 0.30:
+        return 'gto_mixed', played_freq
+    if played_freq >= 0.10:
+        return 'gto_minor_deviation', played_freq
+    return 'gto_critical', played_freq
 
 
 def _gto_classify(player_action: str, gto_action: str, gto_freq: float, hero_equity: float | None) -> str:
     """
-    Classifica o desvio em relação ao GTO usando três dimensões:
-      - Frequência GTO da ação primária (inversamente, frequência da alternativa)
-      - Equity do hero no spot
-    Retorna: gto_correct | gto_mixed | gto_minor_deviation | gto_critical
+    Classificação simplificada (fallback quando strategy_json não disponível).
+    Usa apenas top action + frequência estimada da alternativa.
     """
     if _gto_action_matches(player_action, gto_action):
         return 'gto_correct'
 
-    alt_freq = 1.0 - gto_freq  # frequência aproximada da ação alternativa
+    alt_freq = 1.0 - gto_freq
 
     if alt_freq >= 0.40:
-        return 'gto_mixed'  # alternativa jogada ≥40%: parte da estratégia mista
-
+        return 'gto_mixed'
     if alt_freq >= 0.15:
-        # Zona limiar: considera equity do hero
         if hero_equity is not None and hero_equity >= 0.60:
             return 'gto_mixed'
         return 'gto_minor_deviation'
-
-    return 'gto_critical'  # alternativa < 15%: desvio claro
+    return 'gto_critical'
 
 
 def _gto_label_cap(label: str, gto_label: str) -> str:
@@ -101,38 +130,97 @@ def _preflop_gto_label_adjust(label: str, quality: str) -> str:
 
 
 def _enrich_gto(input_data: Dict[str, Any]) -> dict:
-    """Faz lookup GTO e retorna dict com classificação. Silencioso em caso de erro."""
+    """
+    Lookup GTO postflop usando o mesmo hash que lookup_gto() — mesmos nós do banco.
+    Tenta 3 variantes (exact → sem hand → sem facing) para maximizar cobertura.
+    Usa strategy_json completo quando disponível para classificação precisa por frequência.
+    """
     street = input_data.get('street', '')
     if street not in ('flop', 'turn', 'river'):
         return {'available': False}
 
-    spot     = input_data.get('spot', {})
-    board    = spot.get('board', [])
-    position = spot.get('position', '')
-    equity   = input_data.get('math', {}).get('estimatedHandEquity')
+    spot          = input_data.get('spot', {})
+    board         = spot.get('board', [])
+    position      = spot.get('position', '')
+    hero_hand     = input_data.get('hero_cards', [])
+    stack_bb      = float(spot.get('effectiveStackBb') or 20.0)
+    facing_bb     = float(spot.get('facingSize') or 0.0)
     player_action = input_data.get('player_action', '')
+    equity        = input_data.get('math', {}).get('estimatedHandEquity')
 
     if not board or not position:
         return {'available': False}
 
     try:
-        from database.repositories import get_gto_node_by_spot
-        node = get_gto_node_by_spot(street, board, position)
+        import json as _json
+        from leaklab.gto_utils import compute_spot_hash
+        from database.repositories import get_gto_node
+
+        # Mesmas variantes de hash que lookup_gto() usa
+        hashes = [
+            compute_spot_hash(street, position, board, hero_hand, stack_bb, facing_bb),
+            compute_spot_hash(street, position, board, [],        stack_bb, facing_bb),
+        ]
+        if facing_bb == 0.0:
+            hashes.append(compute_spot_hash(street, position, board, [], stack_bb, 0.0))
+
+        # Prioridade 1: nó com strategy_json (dados completos)
+        node = None
+        for h in hashes:
+            n = get_gto_node(h)
+            if n and n.get('strategy_json'):
+                node = n
+                break
+
+        # Prioridade 2: nó parcial (só top action)
+        if not node:
+            for h in hashes:
+                n = get_gto_node(h)
+                if n:
+                    node = n
+                    break
+
+        if not node:
+            return {'available': False}
+
+        top_action = node['gto_action']
+        top_freq   = float(node.get('gto_freq') or 0.0)
+
+        # Desserializar strategy_json completo
+        strategy = []
+        if node.get('strategy_json'):
+            try:
+                raw = _json.loads(node['strategy_json'])
+                for k, v in raw.items():
+                    freq = float(v.get('frequency', 0.0) if isinstance(v, dict) else v)
+                    strategy.append({'action': k, 'frequency': freq})
+                strategy.sort(key=lambda s: s['frequency'], reverse=True)
+                if strategy:
+                    top_action = strategy[0]['action']
+                    top_freq   = strategy[0]['frequency']
+            except Exception:
+                strategy = []
+
+        # Classificação: usa frequência real da ação jogada quando possível
+        if strategy:
+            gto_label, played_freq = _gto_classify_from_strategy(player_action, strategy)
+        else:
+            gto_label  = _gto_classify(player_action, top_action, top_freq, equity)
+            played_freq = top_freq if _gto_action_matches(player_action, top_action) else (1.0 - top_freq)
+
+        return {
+            'available':    True,
+            'gto_action':   top_action,
+            'gto_freq':     top_freq,
+            'played_freq':  played_freq,
+            'strategy':     strategy,
+            'exploitability': node.get('exploitability_pct'),
+            'gto_label':    gto_label,
+            'source':       node.get('source', 'postflop_db'),
+        }
+
     except Exception:
         return {'available': False}
-
-    if not node:
-        return {'available': False}
-
-    gto_label = _gto_classify(player_action, node['gto_action'], node['gto_freq'], equity)
-
-    return {
-        'available':       True,
-        'gto_action':      node['gto_action'],
-        'gto_freq':        node['gto_freq'],
-        'exploitability':  node.get('exploitability_pct'),
-        'gto_label':       gto_label,
-    }
 
 
 def clamp(value: float, low: float, high: float) -> float:
@@ -374,10 +462,27 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         best_action=_best_action,
     )
 
-    # GTO enrichment postflop: consulta gto_nodes e ajusta label se necessário
+    # GTO enrichment postflop — fonte primária quando strategy_json disponível
     gto = _enrich_gto(input_data)
     if gto.get('available'):
-        label = _gto_label_cap(label, gto['gto_label'])
+        if gto.get('strategy'):
+            # Strategy completo: recomputar score e label a partir da frequência real
+            played_freq  = gto.get('played_freq', 0.0)
+            top_freq     = gto.get('gto_freq', 1.0)
+            gto_lbl      = gto['gto_label']
+            opp_cost     = max(0.0, top_freq - played_freq)
+            _score_mult  = {
+                'gto_correct':         0.10,
+                'gto_mixed':           0.30,
+                'gto_minor_deviation': 0.65,
+                'gto_critical':        0.90,
+            }
+            final_score  = clamp(round4(opp_cost * _score_mult.get(gto_lbl, 0.5)), 0.0, 1.0)
+            label        = classify_mistake_score(final_score)
+            _best_action = gto['gto_action']
+        else:
+            # Nó parcial (sem strategy_json): apenas capeia label, não muda score
+            label = _gto_label_cap(label, gto['gto_label'])
 
     # GTO enrichment preflop: range GTO por posição/stack — ajusta label e best_action
     preflop_gto = _enrich_preflop_gto(input_data)

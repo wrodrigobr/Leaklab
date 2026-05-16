@@ -4690,16 +4690,29 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                     queued += 1  # trata como pendente — spot correto enfileirado para o solver
                     continue
 
-                if played_freq >= 0.40:
+                if played_freq >= 0.60:
                     gto_label = 'gto_correct'
-                elif played_freq >= 0.15:
+                elif played_freq >= 0.30:
                     gto_label = 'gto_mixed'
-                elif played_freq >= 0.05:
+                elif played_freq >= 0.10:
                     gto_label = 'gto_minor_deviation'
                 else:
                     gto_label = 'gto_critical'
 
-                update_decision_gto(db_dec['id'], gto_label, gto_action)
+                # Score como opportunity cost da ação jogada vs ação ótima
+                top_freq_w    = max((s['frequency'] for s in gto['strategy']), default=1.0)
+                opp_cost_w    = max(0.0, top_freq_w - played_freq)
+                _score_mult_w = {
+                    'gto_correct': 0.10, 'gto_mixed': 0.30,
+                    'gto_minor_deviation': 0.65, 'gto_critical': 0.90,
+                }
+                gto_score_w = round(opp_cost_w * _score_mult_w.get(gto_label, 0.5), 4)
+                _lbl_thresholds = [(0.08, 'standard'), (0.18, 'marginal'),
+                                   (0.36, 'small_mistake'), (1.0, 'clear_mistake')]
+                engine_label_w = next(l for t, l in _lbl_thresholds if gto_score_w <= t)
+
+                update_decision_gto(db_dec['id'], gto_label, gto_action,
+                                    label=engine_label_w, score=gto_score_w)
                 if not already_analyzed:
                     done += 1
             else:

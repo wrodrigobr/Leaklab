@@ -4558,13 +4558,21 @@ def get_gto_hand_request_queue(limit: int = 50) -> list:
         conn.close()
 
 
-def update_decision_gto(decision_id: int, gto_label: str, gto_action: str) -> None:
-    """Atualiza gto_label e gto_action de uma decisão existente."""
+def update_decision_gto(decision_id: int, gto_label: str, gto_action: str,
+                        label: str | None = None, score: float | None = None) -> None:
+    """Atualiza gto_label/gto_action e, opcionalmente, label/score da decisão."""
     conn = get_conn()
     try:
-        conn.execute(_adapt("""
-            UPDATE decisions SET gto_label = ?, gto_action = ? WHERE id = ?
-        """), (gto_label, gto_action, decision_id))
+        if label is not None and score is not None:
+            conn.execute(_adapt("""
+                UPDATE decisions
+                SET gto_label = ?, gto_action = ?, label = ?, score = ?
+                WHERE id = ?
+            """), (gto_label, gto_action, label, round(score, 4), decision_id))
+        else:
+            conn.execute(_adapt("""
+                UPDATE decisions SET gto_label = ?, gto_action = ? WHERE id = ?
+            """), (gto_label, gto_action, decision_id))
         conn.commit()
     finally:
         conn.close()
