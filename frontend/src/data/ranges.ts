@@ -251,11 +251,12 @@ const BB_DEFEND: RangeSet = {
 
 // ── Lookup ────────────────────────────────────────────────────────────────────
 
-export type Position = 'UTG' | 'MP' | 'HJ' | 'CO' | 'BTN' | 'SB' | 'BB';
+export type Position = 'UTG' | 'LJ' | 'MP' | 'HJ' | 'CO' | 'BTN' | 'SB' | 'BB';
 export type RangeType = 'open' | 'call' | '3bet' | 'shove';
 
 export const RANGES: Record<Position, Partial<Record<RangeType, RangeSet>>> = {
   UTG: { open: UTG_OPEN, '3bet': THREEBET_OOP },
+  LJ:  { '3bet': THREEBET_OOP },  // open/call served by API
   MP:  { open: MP_OPEN,  '3bet': THREEBET_OOP },
   HJ:  { open: HJ_OPEN,  '3bet': THREEBET_IP,  call: CALL_IP },
   CO:  { open: CO_OPEN,  '3bet': THREEBET_IP,  call: CALL_IP },
@@ -264,7 +265,7 @@ export const RANGES: Record<Position, Partial<Record<RangeType, RangeSet>>> = {
   BB:  { call: BB_DEFEND, '3bet': THREEBET_OOP },
 };
 
-export const POSITIONS: Position[] = ['UTG', 'MP', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+export const POSITIONS: Position[] = ['UTG', 'LJ', 'MP', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
 
 export const RANGE_TYPES: { id: RangeType; label: string }[] = [
   { id: 'shove', label: 'Shove' },
@@ -324,6 +325,8 @@ export const PUSH_FOLD: Record<StackBucket, Partial<Record<Position, RangeSet>>>
       raise: mk('AA-55','AKs-A9s','AKo-ATo','KQs-K9s','KQo','QJs-QTs','JTs-J9s','T9s','98s-97s') },
     MP:  { label: 'Shove MP (≤15bb)', description: 'Nash ~25% · Shove ou Fold',
       raise: mk('AA-44','AKs-A7s','AKo-A9o','KQs-K7s','KQo-KJo','QJs-Q8s','QJo','JTs-J7s','JTo','T9s-T7s','T9o','98s-96s','87s-86s','76s','65s') },
+    LJ:  { label: 'Shove LJ (≤15bb)', description: 'Nash ~33% · Shove ou Fold',
+      raise: mk('AA-33','AKs-A4s','AKo-A7o','KQs-K5s','KQo-K9o','QJs-Q7s','QJo-Q9o','JTs-J5s','JTo-J9o','T9s-T5s','T9o','98s-95s','98o','87s-83s','87o','76s-73s','65s-63s','54s-52s','43s') },
     HJ:  { label: 'Shove HJ (≤15bb)', description: 'Nash ~32% · Shove ou Fold',
       raise: mk('AA-33','AKs-A5s','AKo-A7o','KQs-K5s','KQo-K9o','QJs-Q7s','QJo-Q9o','JTs-J5s','JTo-J9o','T9s-T5s','T9o','98s-95s','98o','87s-83s','87o','76s-73s','65s-63s','54s-53s') },
     CO:  { label: 'Shove CO (≤15bb)', description: 'Nash ~40% · Shove ou Fold',
@@ -340,6 +343,8 @@ export const PUSH_FOLD: Record<StackBucket, Partial<Record<Position, RangeSet>>>
       raise: mk('AA-77','AKs-A4s','AKo-AJo','KQs-K9s','KQo-KJo','QJs-QTs','JTs','T9s') },
     MP:  { label: 'Shove MP (≤20bb)', description: 'Nash ~18% · Shove ou Fold',
       raise: mk('AA-55','AKs-A9s','AKo-ATo','KQs-K9s','KQo','QJs-QTs','JTs-J9s','T9s','98s') },
+    LJ:  { label: 'Shove LJ (≤20bb)', description: 'Nash ~26% · Shove ou Fold',
+      raise: mk('AA-44','AKs-A6s','AKo-A8o','KQs-K7s','KQo-KTo','QJs-Q8s','QJo-Q9o','JTs-J7s','JTo','T9s-T7s','T9o','98s-96s','87s-85s','76s-74s','65s') },
     HJ:  { label: 'Shove HJ (≤20bb)', description: 'Nash ~23% · Shove ou Fold',
       raise: mk('AA-44','AKs-A7s','AKo-A9o','KQs-K8s','KQo-KJo','QJs-Q9s','QJo','JTs-J8s','T9s-T8s','98s-97s','87s') },
     CO:  { label: 'Shove CO (≤20bb)', description: 'Nash ~30% · Shove ou Fold',
@@ -358,8 +363,9 @@ export function normalizePosition(pos: string): Position | null {
   if (p === 'BTN') return 'BTN';
   if (p === 'CO') return 'CO';
   if (p === 'HJ') return 'HJ';
-  if (p === 'MP' || p.startsWith('UTG+') || p.startsWith('MP')) return 'MP';
-  if (p === 'UTG') return 'UTG';
+  if (p === 'LJ' || p === 'UTG+2') return 'LJ';
+  if (p === 'MP' || p === 'MP1' || p.startsWith('MP')) return 'MP';
+  if (p === 'UTG' || p === 'UTG+1') return 'UTG';
   if (p === 'SB') return 'SB';
   if (p === 'BB') return 'BB';
   return null;

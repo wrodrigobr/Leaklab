@@ -165,8 +165,9 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
 
   const hand = heroHand(heroCards);
 
-  // Show GTO context only when viewing hero's detected position
-  const showGtoCtx = gto?.available && pos === detectedPos;
+  // Show GTO context when data is available — detectedPos may be null for positions
+  // not yet in the static list (e.g. LJ before the fix), so we show it regardless
+  const showGtoCtx = gto?.available ?? false;
   const quality    = showGtoCtx ? QUALITY_META[gto!.action_quality ?? 'unknown'] : null;
   const QIcon      = quality?.icon ?? Info;
 
