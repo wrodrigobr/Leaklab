@@ -3042,14 +3042,31 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         pseat = next((s for s, d in seats.items() if d['player'] == action.player), None)
         amt   = action.amount or 0
 
-        if action.action in ('calls', 'bets', 'raises') and amt:
+        if action.action in ('calls', 'bets', 'raises', 'all-in') and amt:
             # Para raises: "raises X to Y" — X é o incremento, Y é o total colocado
             # O total que entra no pot é Y (não X), menos o que o jogador já tinha apostado
+            # Para all-in: parser converte "bets/raises ... and is all-in" para 'all-in';
+            #   se veio de raise ("raises X to Y"), extrair Y do raw; se de bet, amt é o total.
             if action.action == 'raises':
                 m_to = _re.search(r'raises \d+ to (\d+)', action.raw or '')
                 total_placed = int(m_to.group(1)) if m_to else amt
                 already_in   = bets_r.get(pseat, 0)
                 real_addition = total_placed - already_in
+                pot += real_addition
+                if pseat:
+                    stacks[pseat]  = max(0, stacks[pseat] - real_addition)
+                    bets_r[pseat]  = total_placed
+            elif action.action == 'all-in':
+                m_to = _re.search(r'raises \d+ to (\d+)', action.raw or '')
+                if m_to:
+                    # raise all-in: "raises X to Y and is all-in" — Y é o total colocado
+                    total_placed  = int(m_to.group(1))
+                    already_in    = bets_r.get(pseat, 0)
+                    real_addition = total_placed - already_in
+                else:
+                    # bet all-in: "bets X and is all-in" — amt é o total
+                    real_addition = amt
+                    total_placed  = bets_r.get(pseat, 0) + amt
                 pot += real_addition
                 if pseat:
                     stacks[pseat]  = max(0, stacks[pseat] - real_addition)
