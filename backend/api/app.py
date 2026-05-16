@@ -4413,19 +4413,19 @@ def admin_gto_worker_status():
 
         # ── Worker health: last processed timestamp ───────────────────────────
         last_done = _fetchone(conn, _adapt("""
-            SELECT updated_at FROM gto_hand_requests
+            SELECT processed_at FROM gto_hand_requests
             WHERE status IN ('done','error')
-            ORDER BY updated_at DESC LIMIT 1
+            ORDER BY processed_at DESC LIMIT 1
         """))
-        last_heartbeat = last_done['updated_at'] if last_done else None
+        last_heartbeat = last_done['processed_at'] if last_done else None
 
         # ── Throughput: requests processed per hour (last 24h) ───────────────
         throughput_rows = _fetchall(conn, _adapt("""
-            SELECT strftime('%Y-%m-%dT%H:00:00', updated_at) AS hour,
+            SELECT strftime('%Y-%m-%dT%H:00:00', processed_at) AS hour,
                    COUNT(*) AS n
             FROM gto_hand_requests
             WHERE status IN ('done','error')
-              AND updated_at >= datetime('now', '-24 hours')
+              AND processed_at >= datetime('now', '-24 hours')
             GROUP BY hour
             ORDER BY hour ASC
         """))
@@ -4439,12 +4439,12 @@ def admin_gto_worker_status():
 
         # ── Recent errors ────────────────────────────────────────────────────
         error_rows = _fetchall(conn, _adapt("""
-            SELECT r.id, r.hand_id, r.tournament_id, r.error_msg, r.updated_at,
+            SELECT r.id, r.hand_id, r.tournament_id, r.error_msg, r.processed_at,
                    u.email AS user_email
             FROM gto_hand_requests r
             LEFT JOIN users u ON u.id = r.requested_by
             WHERE r.status = 'error'
-            ORDER BY r.updated_at DESC
+            ORDER BY r.processed_at DESC
             LIMIT 10
         """))
         recent_errors = [dict(r) for r in error_rows]
@@ -4455,7 +4455,7 @@ def admin_gto_worker_status():
             active_row = _fetchone(conn, _adapt("""
                 SELECT 1 FROM gto_hand_requests
                 WHERE status IN ('done','error')
-                  AND updated_at >= datetime('now', '-2 minutes')
+                  AND processed_at >= datetime('now', '-2 minutes')
                 LIMIT 1
             """))
             is_active = active_row is not None

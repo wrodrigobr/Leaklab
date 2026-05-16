@@ -1497,7 +1497,7 @@ export interface GtoWorkerStatus {
     hand_id: string;
     tournament_id: number;
     error_msg: string | null;
-    updated_at: string;
+    processed_at: string;
     user_email: string | null;
   }>;
 }

@@ -1003,7 +1003,7 @@ function GtoWorkerTab() {
               <div key={e.id} className="rounded-lg border border-border bg-background p-3 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-[11px] text-muted-foreground">hand {e.hand_id}</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">{e.updated_at?.slice(0, 16)}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{e.processed_at?.slice(0, 16)}</span>
                 </div>
                 {e.error_msg && (
                   <p className="text-xs text-destructive break-all">{e.error_msg}</p>
