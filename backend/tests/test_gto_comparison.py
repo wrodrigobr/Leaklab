@@ -389,16 +389,18 @@ def test_gto_table_exists():
 def test_gto_insert_and_lookup():
     """Insert de nó GTO e lookup pelo hash."""
     from database.repositories import insert_gto_nodes, get_gto_node, get_gto_stats
+    h = compute_spot_hash('flop', 'BTN', ['Ah','Kd','2c'], ['As','Ks'], 25.0)
+    conn = get_conn()
     try:
         spot = {
             'street': 'flop', 'position': 'BTN',
             'board': ['Ah','Kd','2c'], 'hero_hand': ['As','Ks'],
             'hero_stack_bb': 25.0, 'gto_action': 'raise',
             'gto_freq': 0.67, 'ev_diff': 1.2, 'source': 'test',
+            'exploitability_pct': 0.95,
         }
         n = insert_gto_nodes([spot])
         assert n == 1
-        h = compute_spot_hash('flop', 'BTN', ['Ah','Kd','2c'], ['As','Ks'], 25.0)
         node = get_gto_node(h)
         assert node is not None
         assert node['gto_action'] == 'raise'
@@ -407,6 +409,13 @@ def test_gto_insert_and_lookup():
         _ok(f'test_gto_insert_and_lookup | hash={h}')
     except Exception as e:
         _fail('test_gto_insert_and_lookup', str(e))
+    finally:
+        try:
+            conn.execute("DELETE FROM gto_nodes WHERE source = 'test' AND spot_hash = ?", (h,))
+            conn.commit()
+        except Exception:
+            pass
+        conn.close()
 
 
 def test_gto_comparison_structure():
@@ -473,6 +482,7 @@ def test_comparison_agreement_detection():
             'board': ['Ah','Kd','2c'], 'hero_hand': ['As','Ks'],
             'hero_stack_bb': 25.0, 'gto_action': 'raise',
             'gto_freq': 0.72, 'ev_diff': 0.8, 'source': 'test',
+            'exploitability_pct': 0.95,
         }])
 
         result = compare_tournament(t_id)
@@ -486,6 +496,7 @@ def test_comparison_agreement_detection():
         try:
             conn.execute("DELETE FROM decisions WHERE hand_id = 'HH111'")
             conn.execute("DELETE FROM tournaments WHERE tournament_id = 'test_gto_cmp'")
+            conn.execute("DELETE FROM gto_nodes WHERE source = 'test'")
             conn.commit()
         except Exception:
             pass
@@ -517,6 +528,7 @@ def test_comparison_divergence_detection():
             'board': ['9d','8c','2s','As'], 'hero_hand': ['Jh','Th'],
             'hero_stack_bb': 15.0, 'gto_action': 'call',
             'gto_freq': 0.88, 'ev_diff': 1.5, 'source': 'test',
+            'exploitability_pct': 0.95,
         }])
 
         result = compare_tournament(t_id)
@@ -533,6 +545,7 @@ def test_comparison_divergence_detection():
         try:
             conn.execute("DELETE FROM decisions WHERE hand_id = 'HH222'")
             conn.execute("DELETE FROM tournaments WHERE tournament_id = 'test_gto_div'")
+            conn.execute("DELETE FROM gto_nodes WHERE source = 'test'")
             conn.commit()
         except Exception:
             pass
