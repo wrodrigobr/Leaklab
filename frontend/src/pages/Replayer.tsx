@@ -299,66 +299,138 @@ function SidePanels({
 
             {/* Postflop: indicadores estatísticos */}
             {isPostflop && (step.hand_equity != null || (step.hero_stack_bb != null && step.pot_bb != null)) && (() => {
-              const eq    = step.hand_equity ?? null;
-              const po    = step.pot_odds_equity ?? null;
+              const eq         = step.hand_equity ?? null;
+              const po         = step.pot_odds_equity ?? null;
               const profitable = eq != null && po != null && po > 0 ? eq >= po : null;
-              const spr   = (step.hero_stack_bb != null && step.pot_bb != null && step.pot_bb > 0)
-                            ? step.hero_stack_bb / step.pot_bb : null;
-              const sprLabel = spr == null ? null : spr < 2 ? "comprometido" : spr < 5 ? "médio" : "fundo";
-              const sprColor = spr == null ? "" : spr < 2 ? "text-amber-400" : spr < 5 ? "text-sky-400" : "text-muted-foreground";
+              const spr        = (step.hero_stack_bb != null && step.pot_bb != null && step.pot_bb > 0)
+                                 ? step.hero_stack_bb / step.pot_bb : null;
+              const sprLabel   = spr == null ? null : spr < 2 ? "comprometido" : spr < 5 ? "médio" : "fundo";
+              const sprColor   = spr == null ? "" : spr < 2 ? "text-amber-400" : spr < 5 ? "text-sky-400" : "text-muted-foreground";
+
+              // M-Ratio
+              const mRatio  = step.m_ratio ?? null;
+              const mColor  = mRatio == null ? "" : mRatio < 5 ? "text-red-400" : mRatio < 10 ? "text-amber-400" : mRatio < 20 ? "text-yellow-400" : "text-muted-foreground";
+              const mZone   = mRatio == null ? null : mRatio < 5 ? "crítico" : mRatio < 10 ? "push/fold" : mRatio < 20 ? "atenção" : "confortável";
+
+              // Sizing (apenas quando hero bets ou raises/shove)
+              const isBetAct = step.is_hero && (step.action === "bet" || step.action === "raise" || step.action === "shove");
+              const bb       = step.bb ?? (replayData?.bb ?? 100);
+              const amtBb    = (isBetAct && step.amount) ? step.amount / bb : null;
+              const potBeforeBb = (amtBb != null && step.pot_bb != null) ? step.pot_bb - amtBb : null;
+              const sizingPct   = (amtBb != null && potBeforeBb != null && potBeforeBb > 0)
+                                  ? Math.round(amtBb / potBeforeBb * 100) : null;
+
+              // Frases de contexto
+              const eqCtx  = eq == null ? null
+                           : eq >= 0.70 ? "Mão forte — vantagem clara de equity"
+                           : eq >= 0.50 ? "Equity ligeiramente favorável"
+                           : eq >= 0.35 ? "Equity desfavorável — jogue com cautela"
+                           : "Equity fraca — situação difícil";
+              const poCtx  = (profitable == null || eq == null || po == null) ? null
+                           : profitable
+                             ? `Call lucrativo — equity ${Math.round(eq*100)}% supera o necessário ${Math.round(po*100)}%`
+                             : `Call perdedor — equity ${Math.round(eq*100)}% abaixo do necessário ${Math.round(po*100)}%`;
+              const sprCtx = spr == null ? null
+                           : spr < 1   ? "Stack comprometido — foldar seria erro matemático"
+                           : spr < 2   ? "Pouco espaço — prefira push ou fold em vez de calls"
+                           : spr < 5   ? "Espaço médio — calls e raises ainda são viáveis"
+                           : "Stack fundo — jogue seu range completo com posição";
+              const mCtx   = mRatio == null ? null
+                           : mRatio < 5  ? "Sobrevivência crítica — push ou fold em quase tudo"
+                           : mRatio < 10 ? "Zona de push/fold — stack não suporta raises especulativos"
+                           : mRatio < 20 ? "Atenção ao stack — evite bluffs caros sem equity"
+                           : "Stack confortável — jogue seu range completo";
+              const sCtx   = sizingPct == null ? null
+                           : sizingPct < 33  ? "Aposta pequena — dá bons pot odds para draws do villain"
+                           : sizingPct < 67  ? "Aposta média — equilíbrio entre proteção e pot odds"
+                           : sizingPct < 100 ? "Aposta grande — pressiona draws e mãos medianas"
+                           : "Overbet — força decisões por toda a stack do villain";
+
+              const Row = ({ label, value, color, ctx, title, children }: {
+                label: string; value?: React.ReactNode; color?: string;
+                ctx?: string | null; title?: string; children?: React.ReactNode;
+              }) => (
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2" title={title}>
+                    <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">{label}</span>
+                    {value && <span className={cn("font-mono text-[11px] font-bold tabular-nums", color)}>{value}</span>}
+                    {children}
+                  </div>
+                  {ctx && <p className="text-[10px] text-muted-foreground/45 pl-[3.75rem] leading-snug">{ctx}</p>}
+                </div>
+              );
+
               return (
-                <div className="space-y-2 border-t border-border/30 pt-2">
+                <div className="space-y-3 border-t border-border/30 pt-2">
                   <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/40">Indicadores</span>
 
                   {/* Equity */}
                   {eq != null && (
-                    <div className="flex items-center gap-2" title="Equity estimada do hero contra o range do villain">
-                      <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">Equity</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-border/50 overflow-hidden">
-                        <div className={cn("h-full rounded-full transition-all",
-                          profitable === true ? "bg-emerald-500" : profitable === false ? "bg-destructive" : "bg-sky-500")}
-                          style={{ width: `${(eq * 100).toFixed(1)}%` }} />
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2" title="Equity estimada do hero contra o range do villain">
+                        <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">Equity</span>
+                        <div className="flex-1 h-1.5 rounded-full bg-border/50 overflow-hidden">
+                          <div className={cn("h-full rounded-full transition-all",
+                            profitable === true ? "bg-emerald-500" : profitable === false ? "bg-destructive" : "bg-sky-500")}
+                            style={{ width: `${(eq * 100).toFixed(1)}%` }} />
+                        </div>
+                        <span className={cn("font-mono text-[11px] font-bold tabular-nums shrink-0 w-8 text-right",
+                          profitable === true ? "text-emerald-400" : profitable === false ? "text-destructive" : "text-sky-400")}>
+                          {(eq * 100).toFixed(0)}%
+                        </span>
                       </div>
-                      <span className={cn("font-mono text-[11px] font-bold tabular-nums shrink-0 w-8 text-right",
-                        profitable === true ? "text-emerald-400" : profitable === false ? "text-destructive" : "text-sky-400")}>
-                        {(eq * 100).toFixed(0)}%
-                      </span>
+                      {eqCtx && <p className="text-[10px] text-muted-foreground/45 pl-[3.75rem] leading-snug">{eqCtx}</p>}
                     </div>
                   )}
 
                   {/* Pot Odds */}
                   {po != null && po > 0 && (
-                    <div className="flex items-center gap-2" title="Pot odds: equity mínima para call ser matematicamente lucrativo">
-                      <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">Pot odds</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-border/50 overflow-hidden">
-                        <div className="h-full rounded-full bg-border transition-all"
-                          style={{ width: `${(po * 100).toFixed(1)}%` }} />
-                      </div>
-                      <span className="font-mono text-[11px] tabular-nums shrink-0 w-8 text-right text-muted-foreground">
-                        {(po * 100).toFixed(0)}%
-                      </span>
-                      {profitable != null && (
-                        <span className={cn("font-mono text-[9px] font-bold shrink-0",
-                          profitable ? "text-emerald-400" : "text-destructive")}
-                          title={profitable ? "Call matematicamente lucrativo" : "Call matematicamente negativo"}>
-                          {profitable ? "✓" : "✗"}
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2" title="Pot odds: equity mínima para call ser matematicamente lucrativo">
+                        <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">Pot odds</span>
+                        <div className="flex-1 h-1.5 rounded-full bg-border/50 overflow-hidden">
+                          <div className="h-full rounded-full bg-border transition-all"
+                            style={{ width: `${(po * 100).toFixed(1)}%` }} />
+                        </div>
+                        <span className="font-mono text-[11px] tabular-nums shrink-0 w-8 text-right text-muted-foreground">
+                          {(po * 100).toFixed(0)}%
                         </span>
-                      )}
+                        {profitable != null && (
+                          <span className={cn("font-mono text-[9px] font-bold shrink-0",
+                            profitable ? "text-emerald-400" : "text-destructive")}>
+                            {profitable ? "✓" : "✗"}
+                          </span>
+                        )}
+                      </div>
+                      {poCtx && <p className="text-[10px] text-muted-foreground/45 pl-[3.75rem] leading-snug">{poCtx}</p>}
                     </div>
                   )}
 
                   {/* SPR */}
                   {spr != null && (
-                    <div className="flex items-center gap-2"
-                      title="SPR (Stack-to-Pot Ratio): stack efetivo ÷ pot. SPR < 2 = pot-committed; 2–5 = médio; > 5 = fundo">
-                      <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">SPR</span>
-                      <span className={cn("font-mono text-[11px] font-bold tabular-nums", sprColor)}>
-                        {spr.toFixed(1)}
-                      </span>
-                      {sprLabel && (
-                        <span className={cn("font-mono text-[9px] uppercase", sprColor)}>{sprLabel}</span>
-                      )}
-                    </div>
+                    <Row label="SPR" color={sprColor} ctx={sprCtx}
+                      title="SPR (Stack-to-Pot Ratio): stack efetivo ÷ pot. < 2 = comprometido; 2–5 = médio; > 5 = fundo">
+                      <span className={cn("font-mono text-[11px] font-bold tabular-nums", sprColor)}>{spr.toFixed(1)}</span>
+                      {sprLabel && <span className={cn("font-mono text-[9px] uppercase", sprColor)}>{sprLabel}</span>}
+                    </Row>
+                  )}
+
+                  {/* M-Ratio */}
+                  {mRatio != null && (
+                    <Row label="M" color={mColor} ctx={mCtx}
+                      title="M-Ratio: stack ÷ (blinds + antes). M < 5 = crítico; 5–10 = push/fold; 10–20 = atenção; > 20 = confortável">
+                      <span className={cn("font-mono text-[11px] font-bold tabular-nums", mColor)}>{mRatio.toFixed(1)}</span>
+                      {mZone && <span className={cn("font-mono text-[9px] uppercase", mColor)}>{mZone}</span>}
+                    </Row>
+                  )}
+
+                  {/* Sizing */}
+                  {sizingPct != null && (
+                    <Row label="Sizing" ctx={sCtx}
+                      title="Tamanho da sua aposta em relação ao pot antes da ação">
+                      <span className="font-mono text-[11px] font-bold text-foreground">{sizingPct}%</span>
+                      <span className="font-mono text-[9px] text-muted-foreground/60">do pot</span>
+                    </Row>
                   )}
 
                 </div>
