@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.99.9] — 2026-05-16 — feat(replayer): odds ao vivo, GTO strategy panel, bounty badges, Ghost Table melhorias
+
+### Added
+- **`frontend/src/components/replayer/GtoStrategyPanel.tsx`** (novo): componente compartilhado que exibe a estratégia do solver com barras de frequência por ação, EV em BB, marcador da ação jogada e custo de oportunidade no rodapé. Reutilizado no Replayer e no Ghost Table (compact mode).
+- **`frontend/src/pages/Replayer.tsx`** — Call Math Card: bloco compacto em steps de decisão postflop do hero exibindo pot odds vs equity com veredito +EV/-EV e EV estimado em BB.
+- **`frontend/src/pages/Replayer.tsx`** — Bounty no showdown: badge `💀 $X` por seat no painel de resultados mostrando o bounty na cabeça do jogador e o ganho de KO quando aplicável.
+- **`frontend/src/pages/GhostTable.tsx`** — indicador de pot odds na fase active (desktop sidebar + mobile), visível apenas quando há `facing_bet`.
+- **`frontend/src/pages/GhostTable.tsx`** — GtoStrategyPanel compact no painel de resultado: após submit de um spot postflop, busca estratégia via `/replay/{id}/gto` e exibe frequências GTO da decisão.
+
+### Changed
+- **`frontend/src/components/hud/PokerTableV3.tsx`**: badge de bounty no SVG alterado de 🏆 verde para 💀 âmbar — mais coerente com a notação padrão de bounty.
+- **`frontend/src/pages/Replayer.tsx`**: seção "Estratégia do Solver" agora usa `GtoStrategyPanel` em vez do rendering inline anterior.
+- **`frontend/src/lib/api.ts`**: `GtoStrategyAction` recebe `ev_bb` e `exploitability_pct`; `ReplayStep` recebe `gto_strategy`; `ReplaySeat` recebe `bounty`.
+
+---
+
 ## [v0.99.7] — 2026-05-16 — fix(replayer): LJ no RangePanel + jam→shove + GTO no prompt LLM
 
 ### Fixed
