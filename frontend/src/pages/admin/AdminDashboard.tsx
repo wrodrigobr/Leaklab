@@ -859,6 +859,13 @@ function GtoWorkerTab() {
     refetchInterval: 15_000,
   });
 
+  const { data: queueData } = useQuery({
+    queryKey: ["admin-gto-hand-queue"],
+    queryFn: adminDashboard.gtoHandQueue,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  });
+
   if (isLoading) return <Loading />;
   if (!data) return null;
 
@@ -1013,6 +1020,48 @@ function GtoWorkerTab() {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Request list */}
+      {queueData && queueData.queue.length > 0 && (
+        <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-3">
+          <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+            Requests por Mão ({queueData.queue.length})
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px] font-mono">
+              <thead>
+                <tr className="text-muted-foreground/60 uppercase tracking-wider text-[9px]">
+                  <th className="text-left pb-2 pr-3">Hand ID</th>
+                  <th className="text-left pb-2 pr-3">Status</th>
+                  <th className="text-left pb-2 pr-3">Decisões</th>
+                  <th className="text-left pb-2 pr-3">Criado em</th>
+                  <th className="text-left pb-2">Processado em</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/20">
+                {queueData.queue.slice(0, 50).map(r => {
+                  const statusCls =
+                    r.status === "done"       ? "text-emerald-400" :
+                    r.status === "pending"    ? "text-sky-400" :
+                    r.status === "processing" || r.status === "running" ? "text-amber-400" :
+                    r.status === "error"      ? "text-destructive" : "text-muted-foreground";
+                  return (
+                    <tr key={r.id} className="hover:bg-muted/10">
+                      <td className="py-1.5 pr-3 text-foreground/80">{r.hand_id}</td>
+                      <td className={`py-1.5 pr-3 font-bold ${statusCls}`}>{r.status}</td>
+                      <td className="py-1.5 pr-3 text-muted-foreground">
+                        {r.decisions_done ?? 0}/{r.decisions_found ?? "?"}
+                      </td>
+                      <td className="py-1.5 pr-3 text-muted-foreground/60">{r.created_at?.slice(11, 16)}</td>
+                      <td className="py-1.5 text-muted-foreground/60">{r.processed_at?.slice(11, 16) ?? "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

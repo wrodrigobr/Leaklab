@@ -1564,7 +1564,21 @@ export const adminDashboard = {
   }>("/admin/demographics"),
 
   gtoWorkerStatus: () => request<GtoWorkerStatus>("/admin/gto/worker-status"),
+  gtoHandQueue: () => request<{ queue: GtoHandRequest[]; counts: Record<string, number> }>("/admin/gto/hand-queue"),
 };
+
+export interface GtoHandRequest {
+  id: number;
+  tournament_id: number;
+  hand_id: string;
+  requested_by: number;
+  status: string;
+  decisions_found: number | null;
+  decisions_done: number | null;
+  error_msg: string | null;
+  created_at: string;
+  processed_at: string | null;
+}
 
 export interface CoachApplication {
   id: number;

@@ -858,6 +858,8 @@ const Replayer = () => {
   const [annAction, setAnnAction]           = useState("");
   const [annOverride, setAnnOverride]       = useState<CoachOverrideLabel>(null);
   const [gtoRequestStatus, setGtoRequestStatus] = useState<"idle" | "requesting" | "queued" | "solver_queued" | "done" | "error">("idle");
+  // Track which hand_id we already auto-requested so we don't spam on step navigation
+  const gtoAutoRequestedRef = useRef<string | null>(null);
 
   // Floating Range panel drag state
   const [rangePos, setRangePos]         = useState({ x: 24, y: 96 });
@@ -1099,6 +1101,22 @@ const Replayer = () => {
 
     return () => clearInterval(poll);
   }, [gtoRequestStatus, tournamentId, handId, studentId]);
+
+  // Auto-request GTO when navigating to a postflop hero step without GTO data
+  useEffect(() => {
+    if (!replayData || !handId) return;
+    const steps = replayData.timeline ?? [];
+    const hasPostflopHeroNoGto = steps.some(s =>
+      s.is_hero && s.type === "action" && s.street !== "preflop" && !s.gto_label &&
+      s.action !== "shows" && s.action !== "mucks"
+    );
+    if (!hasPostflopHeroNoGto) return;
+    if (gtoAutoRequestedRef.current === handId) return;
+    if (gtoRequestStatus !== "idle") return;
+    gtoAutoRequestedRef.current = handId;
+    handleRequestGto();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replayData, handId]);
 
   // ── No params: show placeholder ──────────────────────────────────────────────
   if (!tournamentId || !handId) {
