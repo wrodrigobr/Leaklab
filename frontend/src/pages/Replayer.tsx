@@ -640,45 +640,84 @@ function SidePanels({
       {/* ── Showdown result ── */}
       {step.type === "showdown" && step.summary && (
         <section className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">{t("decision.handResult")}</span>
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">
+              {t("decision.handResult")}
+            </span>
             {step.summary.total_pot != null && (
-              <span className="text-xs text-muted-foreground">
-                {t("decision.totalPot")}: <span className="font-mono font-medium text-foreground">{(step.summary.total_pot / (replayData?.bb ?? 100)).toFixed(1)} BB</span>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                Pot: <span className="text-foreground font-medium">
+                  {(step.summary.total_pot / (replayData?.bb ?? 100)).toFixed(1)} BB
+                </span>
               </span>
             )}
           </div>
+
+          {/* Seats — layout de 2 linhas por jogador */}
           <div className="flex flex-col gap-1.5">
-            {step.summary.seats.map((sd, i) => (
-              <div key={i} className={cn("flex items-center gap-2 text-xs rounded-lg px-2.5 py-1.5 ring-1",
-                sd.outcome === "won" ? "bg-primary/10 ring-primary/30 text-primary font-semibold" : "ring-border/30 text-muted-foreground opacity-60")}>
-                {sd.outcome === "won" && <span>🏆</span>}
-                <span className="truncate flex-1">{playerAliases[sd.player] ?? sd.player}</span>
-                {sd.hand_desc === "mucked" ? (
-                  <span className="font-mono text-[10px] shrink-0 opacity-40 italic">{t("decision.mucked")}</span>
-                ) : sd.cards?.length > 0 ? (
-                  <div className="flex gap-0.5 shrink-0">
-                    {parseCards(sd.cards).map((c, j) => <PlayingCard key={j} card={c} size="sm" />)}
+            {step.summary.seats.map((sd, i) => {
+              const isWinner = sd.outcome === "won";
+              const wonBb    = sd.won ? (sd.won / (replayData?.bb ?? 100)).toFixed(1) : null;
+              return (
+                <div key={i} className={cn(
+                  "rounded-lg px-2.5 py-2 ring-1 space-y-1.5",
+                  isWinner ? "bg-primary/10 ring-primary/30" : "ring-border/20 opacity-50"
+                )}>
+                  {/* Linha 1: nome + ganho */}
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {isWinner && <span className="shrink-0 text-sm leading-none">🏆</span>}
+                    <span className={cn(
+                      "text-xs font-semibold flex-1 min-w-0 truncate",
+                      isWinner ? "text-primary" : "text-muted-foreground"
+                    )}>
+                      {playerAliases[sd.player] ?? sd.player}
+                    </span>
+                    {isWinner && wonBb && (
+                      <span className="font-mono text-xs font-bold text-primary shrink-0">
+                        +{wonBb} BB
+                      </span>
+                    )}
                   </div>
-                ) : null}
-                {sd.hand_desc && sd.hand_desc !== "mucked" && sd.hand_desc !== "collected" && (
-                  <span className="font-mono text-[10px] shrink-0">{sd.hand_desc}</span>
-                )}
-                {sd.outcome === "won" && <span className="font-mono font-bold shrink-0">+{sd.won}</span>}
-              </div>
-            ))}
+                  {/* Linha 2: cartas + descrição da mão */}
+                  {(sd.cards?.length > 0 || sd.hand_desc) && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {sd.cards?.length > 0 && (
+                        <div className="flex gap-0.5 shrink-0">
+                          {parseCards(sd.cards).map((c, j) => (
+                            <PlayingCard key={j} card={c} size="sm" />
+                          ))}
+                        </div>
+                      )}
+                      {sd.hand_desc === "mucked" ? (
+                        <span className="font-mono text-[10px] italic text-muted-foreground/40">
+                          {t("decision.mucked")}
+                        </span>
+                      ) : sd.hand_desc && sd.hand_desc !== "collected" ? (
+                        <span className={cn(
+                          "font-mono text-[10px] leading-snug",
+                          isWinner ? "text-primary/70" : "text-muted-foreground/60"
+                        )}>
+                          {sd.hand_desc}
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Knockout events (PKO tournaments) */}
           {step.knockout_events && step.knockout_events.length > 0 && (
             <div className="border-t border-border/30 pt-2 flex flex-col gap-1">
               {step.knockout_events.map((ko, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400/90">
-                  <span>💀</span>
-                  <span className="font-bold">{playerAliases[ko.winner] ?? ko.winner}</span>
-                  <span className="text-muted-foreground">eliminou</span>
-                  <span>{playerAliases[ko.eliminated] ?? ko.eliminated}</span>
-                  <span className="ml-auto font-bold text-emerald-400">+${ko.amount.toFixed(2)}</span>
+                <div key={i} className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400/90 min-w-0">
+                  <span className="shrink-0">💀</span>
+                  <span className="font-bold shrink-0">{playerAliases[ko.winner] ?? ko.winner}</span>
+                  <span className="text-muted-foreground shrink-0">eliminou</span>
+                  <span className="truncate">{playerAliases[ko.eliminated] ?? ko.eliminated}</span>
+                  <span className="ml-auto font-bold text-emerald-400 shrink-0">+${ko.amount.toFixed(2)}</span>
                 </div>
               ))}
             </div>
