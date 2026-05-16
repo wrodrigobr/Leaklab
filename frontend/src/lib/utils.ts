@@ -7,6 +7,6 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatAction(a: string): string {
   if (!a) return a;
-  if (a.toLowerCase() === "jam") return "All In";
+  if (a.toLowerCase() === "jam") return "Shove";
   return a.charAt(0).toUpperCase() + a.slice(1);
 }

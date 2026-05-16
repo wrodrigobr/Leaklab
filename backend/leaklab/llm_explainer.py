@@ -148,7 +148,7 @@ def _m_zone(m_ratio) -> str:
 def _action_warning(action: str, zone: str) -> str:
     act = action.lower()
     if zone == "push_fold" and any(x in act for x in ["call", "minraise", "raise"]):
-        return "⚠️ AÇÃO INVÁLIDA PARA M<6 — apenas jam ou fold são válidos"
+        return "⚠️ AÇÃO INVÁLIDA PARA M<6 — apenas shove ou fold são válidos"
     if zone == "pressure" and "call" in act and "allin" not in act:
         return "⚠️ CALL ESPECULATIVO COM M 6-12 — risco estrutural"
     return ""
@@ -184,7 +184,7 @@ ANTES de qualquer análise, aplique este filtro baseado no M-Ratio:
            A análise deve começar com: "⚠️ Com M=[valor], o único jogo válido é push/fold."
            Pule a seção Range GTO de RFI/vs RFI — substitua por análise de push/fold range.
 
-- M 6–12 → Zona de pressão. Raise/fold ou jam são as únicas opções válidas. Calls especulativos
+- M 6–12 → Zona de pressão. Raise/fold ou shove são as únicas opções válidas. Calls especulativos
            são erros por definição. Mencione isso explicitamente no contexto.
 
 - M > 12 → Jogo normal. Todas as ações são válidas. Análise padrão completa.
@@ -220,9 +220,9 @@ Explique em 3-4 frases o que foi feito de errado e por que é um erro estratégi
 ### 📊 Range GTO (apenas preflop — pule completamente para flop/turn/river)
 - **Cenário:** [RFI | vs RFI | vs 3bet | Push/Fold]
 - **Mão no range GTO?** [Sim — dentro do top X% | Não — fora do top X%]
-- **Ação GTO recomendada:** [raise/fold/call/jam]
+- **Ação GTO recomendada:** [raise/fold/call/shove]
 - **Análise de range:** [1-2 frases sobre o que o range GTO diz sobre esta mão e posição]
-(Se M < 6, substitua por: "Push/fold range: esta mão [está / não está] no range de jam")
+(Se M < 6, substitua por: "Push/fold range: esta mão [está / não está] no range de shove")
 
 ### 🎯 GTO Postflop (apenas flop/turn/river — use quando bloco GTO SOLVER presente)
 Quando o bloco "── GTO SOLVER ──" estiver presente, use OBRIGATORIAMENTE os dados exatos:
@@ -307,7 +307,7 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
 7. A seção "💡 A Lição" DEVE referenciar padrão específico desta sessão — nunca genérica
 8. A síntese "📈 Relatório de Padrões" é obrigatória — não omita mesmo com poucos erros
 9. Português do Brasil, tom técnico e direto
-10. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river,
+10. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, shove, preflop, flop, turn, river,
     hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP,
     push/fold, reverse implied odds, fold equity, EV, +EV, -EV, bluff, value bet
 11. Separe cada decisão com ---
@@ -385,9 +385,9 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
             if zone == 'push_fold':
                 pfgto_block = (
                     f"\nRange GTO preflop (Push/Fold M<6):\n"
-                    f"  Mão no range de jam: {'SIM' if in_rng else 'NÃO'} "
+                    f"  Mão no range de shove: {'SIM' if in_rng else 'NÃO'} "
                     f"(top {rng_pct*100:.0f}% da posição)\n"
-                    f"  Ação correta: {'JAM' if in_rng else 'FOLD'}\n"
+                    f"  Ação correta: {'SHOVE' if in_rng else 'FOLD'}\n"
                     f"  Notas: {pro_notes}\n"
                 )
             else:
@@ -566,7 +566,7 @@ def _street_pt(street: str) -> str:
 
 def _action_pt(action: str) -> str:
     return {'fold': 'fold', 'check': 'check', 'call': 'call',
-            'bet': 'bet', 'raise': 'raise', 'jam': 'all-in'}.get(action, action)
+            'bet': 'bet', 'raise': 'raise', 'jam': 'shove'}.get(action, action)
 
 
 def _key(d: dict) -> str:
@@ -670,7 +670,7 @@ def _call_llm_summary(ctx: dict, hero: str) -> str:
         "(4) um conselho concreto de foco para a próxima sessão. "
         "É obrigatório terminar o parágrafo 4 com uma frase de encerramento completa. "
         "NÃO use bullet points. Escreva em prosa fluida. "
-        "Termos técnicos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position. "
+        "Termos técnicos de poker SEMPRE em inglês: fold, call, raise, bet, check, shove, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position. "
         "Retorne APENAS o texto do resumo, sem título ou formatação extra."
     )
 
@@ -1185,7 +1185,7 @@ def explain_leak_causality(edges: list, hero: str = 'você', lang: str = 'pt-BR'
 
 _POKER_TERMS_EN = (
     "Termos técnicos de poker SEMPRE em inglês: "
-    "fold, call, raise, bet, check, jam, preflop, flop, turn, river, "
+    "fold, call, raise, bet, check, shove, preflop, flop, turn, river, "
     "hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, "
     "board, position, IP, OOP, shove, reshove, open, limp, squeeze. "
     "NUNCA use 'rua' ou 'ruas' — sempre 'street' ou 'streets'."
@@ -1589,7 +1589,7 @@ _LANG_TWIN = {
 }
 
 _ACTION_LABEL_EN = {
-    "jam":   "jam/all-in",
+    "jam":   "shove",
     "fold":  "fold",
     "call":  "call",
     "raise": "raise",
@@ -1679,8 +1679,8 @@ def _template_twin(profile: dict, lang: str = 'pt-BR') -> str:
     avg_pct = int(profile["player_avg_error_rate"] * 100)
     err_pct = int(top["error_rate"] * 100)
     delta   = int(top["delta_from_avg"] * 100)
-    action_pt = {"jam": "reshove", "fold": "fold", "call": "call", "raise": "raise", "bet": "bet", "check": "check"}
-    action_es = {"jam": "reshove", "fold": "fold", "call": "call", "raise": "raise", "bet": "bet", "check": "check"}
+    action_pt = {"jam": "shove", "fold": "fold", "call": "call", "raise": "raise", "bet": "bet", "check": "check"}
+    action_es = {"jam": "shove", "fold": "fold", "call": "call", "raise": "raise", "bet": "bet", "check": "check"}
     icm_pt    = {"low": "ICM baixo", "medium": "ICM moderado", "high": "ICM alto", "critical": "ICM crítico"}
     icm_es    = {"low": "ICM bajo", "medium": "ICM moderado", "high": "ICM alto", "critical": "ICM crítico"}
     street_pt = {"preflop": "preflop", "flop": "no flop", "turn": "no turn", "river": "no river"}
@@ -1943,7 +1943,7 @@ REGRAS OBRIGATÓRIAS:
 5. Português do Brasil, tom técnico e direto
 6. Quando dados do GTO Solver estiverem presentes, use-os como verdade objetiva — não estime o que o solver diria
 7. Nunca mencione "GTO Wizard" — use sempre "GTO Solver"
-8. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, jam, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP"""
+8. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, shove, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP"""
 
     payload = {
         'model':      'claude-haiku-4-5-20251001',

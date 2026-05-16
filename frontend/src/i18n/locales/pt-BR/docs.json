@@ -212,8 +212,8 @@
   },
   "twin": {
     "title": "Tendências Estratégicas",
-    "p1": "O <strong>Strategic Twin</strong> transforma os dados de frequência de erro por spot em linguagem preditiva. Em vez de listar erros passados, o sistema diz: <em>\"em spots de jam preflop sob ICM alto, você erra 63% das vezes — bem acima da sua média de 28%\"</em>.",
-    "p2": "Cada <strong>spot</strong> é definido pela combinação de <em>street</em> (preflop/flop/turn/river), <em>best_action</em> (a ação correta: fold/call/raise/bet/check/jam) e <em>ICM pressure</em> (baixo/médio/alto/crítico). O sistema filtra spots com mínimo 5 decisões e error_rate pelo menos 10% acima da sua média pessoal.",
+    "p1": "O <strong>Strategic Twin</strong> transforma os dados de frequência de erro por spot em linguagem preditiva. Em vez de listar erros passados, o sistema diz: <em>\"em spots de shove preflop sob ICM alto, você erra 63% das vezes — bem acima da sua média de 28%\"</em>.",
+    "p2": "Cada <strong>spot</strong> é definido pela combinação de <em>street</em> (preflop/flop/turn/river), <em>best_action</em> (a ação correta: fold/call/raise/bet/check/shove) e <em>ICM pressure</em> (baixo/médio/alto/crítico). O sistema filtra spots com mínimo 5 decisões e error_rate pelo menos 10% acima da sua média pessoal.",
     "table": {
       "col_term": "Conceito",
       "col_meaning": "Significado",

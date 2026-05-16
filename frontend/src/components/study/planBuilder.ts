@@ -57,7 +57,7 @@ const EXERCISE_BANK: Omit<Exercise, "leakId">[] = [
     ],
     correctChoiceId: "b",
     explanation:
-      "Call é correto. Check-raise range de regular em board seco inclui sets, dois pares e também bluffs (gutshots, A-high sem equity). Com TPTK e SPR ~3, você tem equity forte. Avalie turn: se blank, pode all-in ou call jam. Fold seria excessivamente tight.",
+      "Call é correto. Check-raise range de regular em board seco inclui sets, dois pares e também bluffs (gutshots, A-high sem equity). Com TPTK e SPR ~3, você tem equity forte. Avalie turn: se blank, pode all-in ou call shove. Fold seria excessivamente tight.",
   },
   {
     id: "ex_icm_01",
