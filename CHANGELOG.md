@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.99.7] — 2026-05-16 — fix(replayer): LJ no RangePanel + jam→shove + GTO no prompt LLM
+
+### Fixed
+- **`frontend/src/data/ranges.ts`**: `LJ` adicionado ao `Position` type, `POSITIONS` e `normalizePosition` — antes retornava `null`, causando fallback para BTN e exibindo ranges errados
+- **`frontend/src/data/ranges.ts`**: `PUSH_FOLD` agora tem entrada `LJ` em `≤15bb` (~33%) e `≤20bb` (~26%) com ranges Nash MTT interpoladas entre HJ e CO — inclui A8o em ambos os buckets
+- **`frontend/src/components/replayer/RangePanel.tsx`**: `showGtoCtx` não depende mais de `pos === detectedPos`; banner GTO aparece sempre que `gto.available`, evitando inconsistência entre texto do engine e grid visual
+- **`backend/leaklab/llm_explainer.py`**: `gto_solver_block` agora usa o campo `gto{}` completo do engine (strategy, frequências, exploitability) com fallback para campos raiz do banco — IA recebe dados objetivos do solver para análise postflop
+
+### Changed
+- **`frontend/src/lib/utils.ts`**, **`llm_explainer.py`**, **`i18n/locales/*/docs.json`**: "jam" substituído por "shove" em todo texto visível ao usuário (labels, prompts LLM, documentação, templates)
+
+---
+
 ## [v0.99.5] — 2026-05-16 — feat(admin): GTO Worker dashboard
 
 ### Added
