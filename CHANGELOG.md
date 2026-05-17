@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.101.8] — 2026-05-17 — feat(admin): painel de re-análise de labels preflop
+
+### Added
+- **`POST /admin/reanalyze-preflop-labels`**: endpoint admin que roda o pipeline completo server-side — re-parseia raw_text de todos os torneios, reconstrói decision inputs (com `facingSize`, `villainPosition`, `is_3bet`), re-executa `evaluate_decision` e corrige `decisions.label` onde difere. Recalcula `tournaments.standard_pct` nos torneios afetados. Idempotente.
+- **AdminDashboard aba "GTO Worker"**: painel "Re-análise de Labels Preflop" com botão Executar, 3 KPIs (decisões verificadas / atualizadas / torneios afetados) e tabela de changes (hand_id · ação · label antes → depois)
+
+---
+
 ## [v0.101.7] — 2026-05-17 — fix(gto): correção contradições GTO + re-análise labels preflop
 
 ### Fixed
