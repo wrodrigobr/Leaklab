@@ -149,6 +149,16 @@
     "notice": "{{n}} spot GTO en análisis — los indicadores del Replayer se actualizarán al completarse.",
     "notice_plural": "{{n}} spots GTO en análisis — los indicadores del Replayer se actualizarán al completarse."
   },
+  "gtoQuality": {
+    "title": "Alineamiento GTO",
+    "tooltip": "Distribución de calidad de las decisiones evaluadas por el solver GTO en los últimos 90 días. Solo se cuentan decisiones con datos GTO disponibles.",
+    "coverage": "{{n}} decisiones ({{pct}}% cobertura)",
+    "alignedLabel": "alineado con GTO",
+    "correct": "Correcto (≥60%)",
+    "mixed": "Mixto (25–60%)",
+    "minor": "Desviación menor",
+    "critical": "Desviación crítica"
+  },
   "level": {
     "tooltip": "Tu nivel actual basado en el promedio de Standard% de tus torneos recientes. Cada nivel exige un umbral más alto de decisiones correctas — avanzar significa que tus errores han disminuido consistentemente.",
     "title": "Mi Nivel",

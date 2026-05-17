@@ -860,6 +860,14 @@ def player_pending_gto_count():
     return jsonify({'pending': get_user_pending_gto_count(g.user_id)})
 
 
+@app.route('/player/gto-quality', methods=['GET'])
+@require_auth
+def player_gto_quality():
+    """Distribuição de gto_label para o jogador nos últimos 90 dias."""
+    from database.repositories import get_gto_quality_breakdown
+    return jsonify(get_gto_quality_breakdown(g.user_id))
+
+
 @app.route('/player/spots/drill', methods=['GET'])
 @require_auth
 def player_drill_spots():

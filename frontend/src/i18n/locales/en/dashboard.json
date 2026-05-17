@@ -149,6 +149,16 @@
     "notice": "{{n}} GTO spot being analyzed by the solver — Replayer indicators will update when done.",
     "notice_plural": "{{n}} GTO spots being analyzed by the solver — Replayer indicators will update when done."
   },
+  "gtoQuality": {
+    "title": "GTO Alignment",
+    "tooltip": "Distribution of decision quality evaluated by the GTO solver over the last 90 days. Only decisions with available GTO data are counted.",
+    "coverage": "{{n}} decisions ({{pct}}% coverage)",
+    "alignedLabel": "aligned with GTO",
+    "correct": "Correct (≥60%)",
+    "mixed": "Mixed (25–60%)",
+    "minor": "Minor deviation",
+    "critical": "Critical deviation"
+  },
   "level": {
     "tooltip": "Your current level based on your average Standard% across recent tournaments. Each level requires a higher threshold of correct decisions — advancing means your mistakes have consistently decreased.",
     "title": "My Level",

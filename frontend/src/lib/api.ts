@@ -460,6 +460,16 @@ export interface BreakdownResponse {
   by_label:    Record<string, number>;
 }
 
+export interface GtoQualityData {
+  total_with_gto: number;
+  coverage_pct: number;
+  gto_correct_pct: number;
+  gto_mixed_pct: number;
+  gto_minor_pct: number;
+  gto_critical_pct: number;
+  aligned_pct: number;
+}
+
 export interface PlayerStatsResponse {
   total_hands: number;
   vpip: number | null;
@@ -680,6 +690,9 @@ export const metrics = {
 
   pendingGtoCount: () =>
     request<{ pending: number }>(`/player/pending-gto-count`),
+
+  gtoQuality: () =>
+    request<GtoQualityData>(`/player/gto-quality`),
 
   dna: (days = 90) =>
     request<PlayerDnaResponse>(`/player/dna?days=${days}`),

@@ -26,23 +26,51 @@ def _gto_action_matches(player_action: str, gto_action: str) -> bool:
 
 def _gto_classify_from_strategy(player_action: str, strategy: list) -> tuple:
     """
-    Classifica usando a frequência REAL da ação jogada no strategy_json completo.
-    Mais preciso que _gto_classify: "call 45%" não é gto_critical só porque top é "fold 55%".
+    Classifica usando frequência real + EV diff da ação jogada.
+
+    Frequência isolada penaliza estratégias mistas legítimas (ex: call 15% com
+    ev_diff = 0.02bb não é desvio crítico). A combinação freq + ev_diff evita
+    isso: só sobe a severidade quando o custo de EV é significativo.
+
     Retorna (gto_label, played_freq).
     """
     played_norm = _norm_gto_action(player_action)
     played_freq = 0.0
+    played_ev: float | None = None
+
     for s in strategy:
         act  = _norm_gto_action(s.get('action', ''))
         freq = float(s.get('frequency') or 0.0)
         if act == played_norm or played_norm.startswith(act) or act.startswith(played_norm):
-            played_freq = max(played_freq, freq)
+            if freq > played_freq:
+                played_freq = freq
+                ev = s.get('ev_bb')
+                played_ev = float(ev) if ev is not None else None
 
+    # EV diff vs top action (positivo = jogador perdeu EV)
+    ev_diff: float | None = None
+    if strategy and played_ev is not None:
+        top_ev = strategy[0].get('ev_bb')
+        if top_ev is not None:
+            ev_diff = float(top_ev) - played_ev
+
+    # Tier 1: GTO joga isso a maioria do tempo → correto
     if played_freq >= 0.60:
         return 'gto_correct', played_freq
-    if played_freq >= 0.30:
+
+    # Tier 2: parte significativa do range GTO → misto por definição
+    if played_freq >= 0.25:
         return 'gto_mixed', played_freq
+
+    # Tier 3: 10-25% — decide pelo custo de EV
     if played_freq >= 0.10:
+        # EV diff < 0.15bb: dentro do ruído de estratégia mista
+        if ev_diff is None or ev_diff < 0.15:
+            return 'gto_mixed', played_freq
+        return 'gto_minor_deviation', played_freq
+
+    # Tier 4: < 10% — frequência muito baixa, severidade pelo custo real
+    if ev_diff is not None and ev_diff < 0.30:
         return 'gto_minor_deviation', played_freq
     return 'gto_critical', played_freq
 
@@ -192,8 +220,13 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
             try:
                 raw = _json.loads(node['strategy_json'])
                 for k, v in raw.items():
-                    freq = float(v.get('frequency', 0.0) if isinstance(v, dict) else v)
-                    strategy.append({'action': k, 'frequency': freq})
+                    if isinstance(v, dict):
+                        freq  = float(v.get('frequency', 0.0))
+                        ev_bb = v.get('ev_bb')
+                        ev_bb = float(ev_bb) if ev_bb is not None else None
+                    else:
+                        freq, ev_bb = float(v), None
+                    strategy.append({'action': k, 'frequency': freq, 'ev_bb': ev_bb})
                 strategy.sort(key=lambda s: s['frequency'], reverse=True)
                 if strategy:
                     top_action = strategy[0]['action']
@@ -356,7 +389,7 @@ def classify_mistake_score(score: float) -> str:
 
 def apply_anti_rules(player_action: str, estimated_hand_equity: float | None, adjusted_required_equity: float | None, provisional_label: str, best_action: str | None = None) -> str:
     # Se o jogador fez exatamente a ação recomendada, não há anti-rule a aplicar
-    if best_action is not None and player_action == best_action:
+    if best_action is not None and _norm_gto_action(player_action) == _norm_gto_action(best_action):
         return provisional_label
     if estimated_hand_equity is None or adjusted_required_equity is None:
         return provisional_label
@@ -428,7 +461,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         input_data["player_action"],
         math.get("estimatedHandEquity"),
         threshold_pack["adjustedRequiredEquity"],
-    ) if input_data["player_action"] != _best_action else 0.0
+    ) if _norm_gto_action(input_data["player_action"]) != _norm_gto_action(_best_action or '') else 0.0
     range_penalty = calc_range_penalty(
         range_eval.get("rangeZone"),
         input_data["player_action"],

@@ -4274,6 +4274,51 @@ def get_gto_stats() -> dict:
         conn.close()
 
 
+def get_gto_quality_breakdown(user_id: int, since_days: int = 90) -> dict:
+    """Distribuição de gto_label para o usuário nos últimos since_days dias."""
+    from datetime import datetime, timedelta
+    conn = get_conn()
+    try:
+        since = (datetime.utcnow() - timedelta(days=since_days)).strftime('%Y-%m-%d %H:%M:%S')
+
+        label_rows = _fetchall(conn, _adapt("""
+            SELECT d.gto_label, COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND t.imported_at >= ?
+              AND d.gto_label IS NOT NULL
+            GROUP BY d.gto_label
+        """), (user_id, since))
+
+        total_row = _fetchone(conn, _adapt("""
+            SELECT COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+        """), (user_id, since))
+
+        counts = {r['gto_label']: r['n'] for r in label_rows}
+        total_gto = sum(counts.values())
+        total_dec = total_row['n'] if total_row else 0
+
+        def pct(k: str) -> float:
+            return round(counts.get(k, 0) * 100.0 / total_gto, 1) if total_gto else 0.0
+
+        aligned = counts.get('gto_correct', 0) + counts.get('gto_mixed', 0)
+        return {
+            'total_with_gto': total_gto,
+            'coverage_pct': round(total_gto * 100.0 / total_dec, 1) if total_dec else 0.0,
+            'gto_correct_pct':  pct('gto_correct'),
+            'gto_mixed_pct':    pct('gto_mixed'),
+            'gto_minor_pct':    pct('gto_minor_deviation'),
+            'gto_critical_pct': pct('gto_critical'),
+            'aligned_pct': round(aligned * 100.0 / total_gto, 1) if total_gto else 0.0,
+        }
+    finally:
+        conn.close()
+
+
 def get_missing_gto_spots(limit: int = 100) -> list[dict]:
     """Retorna spots únicos de decisions que não têm nó GTO — para o bot priorizar."""
     conn = get_conn()

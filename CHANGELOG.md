@@ -9,6 +9,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.101.9] — 2026-05-17 — feat(gto): classificação inteligente + GTO Alignment Card no dashboard
+
+### Changed
+- **`backend/leaklab/decision_engine_v11.py`** — `_gto_classify_from_strategy` reescrita com lógica inteligente:
+  - Extrai `ev_bb` de cada ação do `strategy_json` durante desserialização
+  - Calcula `ev_diff` (custo real em BBs vs top action GTO)
+  - Novos tiers: `≥60%` → correct; `≥25%` → mixed; `10-25%` → mixed se ev_diff < 0.15bb, senão minor_deviation; `<10%` → minor_deviation se ev_diff < 0.30bb, senão critical
+  - Evita punir estratégias mistas legítimas (ex: call 15% com ev_diff 0.02bb deixa de ser `gto_critical`)
+
+### Added
+- **`GET /player/gto-quality`**: endpoint que retorna distribuição de `gto_label` nos últimos 90 dias (`gto_correct_pct`, `gto_mixed_pct`, `gto_minor_pct`, `gto_critical_pct`, `aligned_pct`, `coverage_pct`, `total_with_gto`)
+- **`database/repositories.py`** — `get_gto_quality_breakdown(user_id, since_days=90)`
+- **`frontend/src/components/hud/GtoQualityCard.tsx`** — card "Alinhamento GTO" no dashboard:
+  - Barra empilhada com 4 segmentos coloridos (verde/azul/âmbar/vermelho)
+  - Big number: % alinhado ao GTO (correct + mixed) com cor por desempenho
+  - Legenda com percentuais por categoria
+  - Oculto quando `total_with_gto < 10`
+- **i18n** — chaves `gtoQuality.*` adicionadas em PT-BR, EN e ES
+
+---
+
 ## [v0.101.8] — 2026-05-17 — feat(admin): painel de re-análise de labels preflop
 
 ### Added
