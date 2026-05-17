@@ -312,65 +312,61 @@ function SidePanels({
                     </div>
                   </div>
                 )}
-                {showDetails && (
-                  <div className="space-y-2.5 pt-2 border-t border-border/30">
-                    {/* Audit trail — 4-step classification chain */}
-                    <div>
-                      <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-1.5">Raciocínio do sistema</p>
-                      <div className="flex flex-wrap gap-1 items-center">
-                        <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[9px]">
-                          <span className="text-muted-foreground/50 mr-1">Cenário</span>
-                          <span className="text-foreground font-bold">{scenarioLabel[pg.scenario] ?? pg.scenario}</span>
-                        </span>
-                        <span className="text-muted-foreground/30 text-[8px]">›</span>
-                        <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[9px]">
-                          <span className="text-muted-foreground/50 mr-1">Range</span>
-                          <span className="text-foreground font-bold">
-                            {pg.vs_position ? `${pg.vs_position} · ` : ''}{pg.stack_bucket}
-                          </span>
-                        </span>
-                        <span className="text-muted-foreground/30 text-[8px]">›</span>
-                        <span className={cn(
-                          "rounded-md ring-1 px-2 py-1 font-mono text-[9px]",
-                          pg.in_range ? "bg-emerald-500/8 ring-emerald-500/30" : "bg-red-500/8 ring-red-500/30"
-                        )}>
-                          <span className="text-muted-foreground/50 mr-1">Mão</span>
-                          <span className={cn("font-bold", pg.in_range ? "text-emerald-400" : "text-red-400")}>
-                            {pg.hand_type} {pg.in_range ? '✓' : '✗'}
-                          </span>
-                        </span>
-                        <span className="text-muted-foreground/30 text-[8px]">›</span>
-                        <span className={cn(
-                          "rounded-md ring-1 px-2 py-1 font-mono text-[9px]",
-                          pg.action_quality === 'correct'    ? "bg-emerald-500/8 ring-emerald-500/30" :
-                          pg.action_quality === 'acceptable' ? "bg-sky-500/8 ring-sky-500/30" :
-                          pg.action_quality === 'leak'       ? "bg-amber-500/8 ring-amber-500/30" :
-                          pg.action_quality === 'major_leak' ? "bg-destructive/8 ring-destructive/30" :
-                          "bg-background/60 ring-border/50"
-                        )}>
-                          <span className="text-muted-foreground/50 mr-1">Qualidade</span>
-                          <span className={cn("font-bold",
-                            pg.action_quality === 'correct'    ? "text-emerald-400" :
-                            pg.action_quality === 'acceptable' ? "text-sky-400" :
-                            pg.action_quality === 'leak'       ? "text-amber-400" :
-                            pg.action_quality === 'major_leak' ? "text-destructive" :
-                            "text-muted-foreground"
-                          )}>
-                            {pg.action_quality === 'correct'    ? 'Correto (GTO)' :
-                             pg.action_quality === 'acceptable' ? 'Aceitável' :
-                             pg.action_quality === 'leak'       ? 'Leak' :
-                             pg.action_quality === 'major_leak' ? 'Leak Grave' : 'Sem dados'}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                    {pg.pro_notes.length > 0 && (
-                      <div className="space-y-1">
-                        {pg.pro_notes.map((note, i) => (
-                          <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>
-                        ))}
-                      </div>
-                    )}
+                {/* Audit trail — always visible, 4-step classification chain */}
+                <div className="space-y-1.5 pt-1.5 border-t border-border/30">
+                  <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground/40">Raciocínio do sistema</p>
+                  <div className="flex flex-wrap gap-1 items-center">
+                    <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[9px]">
+                      <span className="text-muted-foreground/50 mr-1">Cenário</span>
+                      <span className="text-foreground font-bold">{scenarioLabel[pg.scenario] ?? pg.scenario}</span>
+                    </span>
+                    <span className="text-muted-foreground/30 text-[8px]">›</span>
+                    <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[9px]">
+                      <span className="text-muted-foreground/50 mr-1">Range</span>
+                      <span className="text-foreground font-bold">
+                        {pg.vs_position ? `${pg.vs_position} · ` : ''}{pg.stack_bucket}
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground/30 text-[8px]">›</span>
+                    <span className={cn(
+                      "rounded-md ring-1 px-2 py-1 font-mono text-[9px]",
+                      pg.in_range ? "bg-emerald-500/8 ring-emerald-500/30" : "bg-red-500/8 ring-red-500/30"
+                    )}>
+                      <span className="text-muted-foreground/50 mr-1">Mão</span>
+                      <span className={cn("font-bold", pg.in_range ? "text-emerald-400" : "text-red-400")}>
+                        {pg.hand_type} {pg.in_range ? '✓' : '✗'}
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground/30 text-[8px]">›</span>
+                    <span className={cn(
+                      "rounded-md ring-1 px-2 py-1 font-mono text-[9px]",
+                      pg.action_quality === 'correct'    ? "bg-emerald-500/8 ring-emerald-500/30" :
+                      pg.action_quality === 'acceptable' ? "bg-sky-500/8 ring-sky-500/30" :
+                      pg.action_quality === 'leak'       ? "bg-amber-500/8 ring-amber-500/30" :
+                      pg.action_quality === 'major_leak' ? "bg-destructive/8 ring-destructive/30" :
+                      "bg-background/60 ring-border/50"
+                    )}>
+                      <span className="text-muted-foreground/50 mr-1">Qualidade</span>
+                      <span className={cn("font-bold",
+                        pg.action_quality === 'correct'    ? "text-emerald-400" :
+                        pg.action_quality === 'acceptable' ? "text-sky-400" :
+                        pg.action_quality === 'leak'       ? "text-amber-400" :
+                        pg.action_quality === 'major_leak' ? "text-destructive" :
+                        "text-muted-foreground"
+                      )}>
+                        {pg.action_quality === 'correct'    ? 'Correto (GTO)' :
+                         pg.action_quality === 'acceptable' ? 'Aceitável' :
+                         pg.action_quality === 'leak'       ? 'Leak' :
+                         pg.action_quality === 'major_leak' ? 'Leak Grave' : 'Sem dados'}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                {showDetails && pg.pro_notes.length > 0 && (
+                  <div className="space-y-1 pt-1 border-t border-border/30">
+                    {pg.pro_notes.map((note, i) => (
+                      <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>
+                    ))}
                   </div>
                 )}
               </>
