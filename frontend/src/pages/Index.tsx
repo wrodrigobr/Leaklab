@@ -20,7 +20,6 @@ import { OnboardingModal } from "@/components/hud/OnboardingModal";
 import { SupportModal } from "@/components/hud/SupportModal";
 import { LevelCard } from "@/components/hud/LevelCard";
 import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
-import { GhostDrillCard } from "@/components/hud/GhostDrillCard";
 import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
 import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
 import { ProfileCompletionCard } from "@/components/hud/ProfileCompletionCard";
@@ -30,7 +29,7 @@ import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, drill, tournaments, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // Module-level cache — survives unmount/remount during SPA navigation
@@ -59,10 +58,16 @@ const Index = () => {
   const [leakRoi, setLeakRoi]             = useState<LeakRoiData[]>([]);
   const [pressureData, setPressureData]   = useState<PressureProfile | null>(null);
   const [driftData, setDriftData]         = useState<ConfidenceDrift | null>(null);
-  const [driftDismissed, setDriftDismissed] = useState(false);
-  const [drillStats, setDrillStats]       = useState<DrillStats | null>(null);
+
+  // Persist drift dismiss in localStorage keyed by user+data fingerprint so it
+  // auto-resets whenever a new tournament is uploaded and affected_sessions changes.
+  const driftKey = user?.id && driftData?.drift_detected
+    ? `leaklab_drift_dismissed_${user.id}_${driftData.affected_sessions}`
+    : null;
+  const [driftDismissed, setDriftDismissed] = useState(
+    () => driftKey ? localStorage.getItem(driftKey) === "1" : false
+  );
   const [dnaData, setDnaData]             = useState<PlayerDnaResponse | null>(null);
-  const [drillSpots, setDrillSpots]       = useState<DrillSpot[]>([]);
   const [leakGraph, setLeakGraph]         = useState<LeakGraphResponse | null>(null);
   const [careerData, setCareerData]       = useState<CareerProjection | null>(null);
   const [cognitiveData, setCognitiveData] = useState<CognitiveFailureData | null>(null);
@@ -71,9 +76,14 @@ const Index = () => {
   const [tournsLoaded, setTournsLoaded]   = useState(_cachedTourns !== null);
   const [refreshKey, setRefreshKey]       = useState(0);
 
+  // Reset dismiss state whenever fresh data arrives (new upload)
+  useEffect(() => {
+    if (!driftKey) return;
+    setDriftDismissed(localStorage.getItem(driftKey) === "1");
+  }, [driftKey]);
+
   useEffect(() => {
     setLoading(true);
-    setDriftDismissed(false);
     Promise.all([
       metrics.evolution(90).then(setEvo).catch(() => null),
       metrics.breakdown(90).then(setBreakdown).catch(() => null),
@@ -82,9 +92,7 @@ const Index = () => {
       metrics.pressureProfile(90).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30).then(setDriftData).catch(() => null),
       tournaments.list().then((r) => { _cachedTourns = r.tournaments; setTourns(r.tournaments); setTournsLoaded(true); }).catch(() => null),
-      metrics.drillStats(30).then(setDrillStats).catch(() => null),
       metrics.dna(90).then(setDnaData).catch(() => null),
-      drill.spots({ limit: 20 }).then((r) => setDrillSpots(r.spots)).catch(() => null),
       metrics.leakGraph(90, i18n.language).then(setLeakGraph).catch(() => null),
       metrics.career(i18n.language).then(setCareerData).catch(() => null),
       metrics.cognitiveFailures(i18n.language).then(setCognitiveData).catch(() => null),
@@ -162,8 +170,7 @@ const Index = () => {
     );
     if (id === "dna_row") return <PlayerDnaCard data={dnaData} />;
     if (id === "drill_row") return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <GhostDrillCard stats={drillStats} pendingSpots={drillSpots} />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <PressureProfileCard data={pressureData} />
         <IcmBreakdown icm={evo?.icm} />
       </div>
@@ -261,11 +268,33 @@ const Index = () => {
           )}
         </section>
 
+        {driftData?.drift_detected && !driftDismissed && (
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <Brain className="size-4 text-yellow-400 shrink-0 mt-0.5" aria-hidden />
+              <div>
+                <p className="text-sm font-medium text-foreground">{t("drift.alertTitle")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t("drift.alertDesc", { n: driftData.affected_sessions })}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (driftKey) localStorage.setItem(driftKey, "1");
+                setDriftDismissed(true);
+              }}
+              className="shrink-0 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={t("drift.dismiss")}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {hasData && <DailyFocusCard />}
 
         {user?.role === "player" && <ProfileCompletionCard />}
-
-
 
         {tournsLoaded && !hasData ? (
           <EmptyDashboard onComplete={handleUpload} />
@@ -309,27 +338,6 @@ const Index = () => {
                 tooltip={t("kpis.eventsTooltip")}
               />
             </section>
-
-            {driftData?.drift_detected && !driftDismissed && (
-              <div className="flex items-start justify-between gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
-                <div className="flex items-start gap-2">
-                  <Brain className="size-4 text-yellow-400 shrink-0 mt-0.5" aria-hidden />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{t("drift.alertTitle")}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("drift.alertDesc", { n: driftData.affected_sessions })}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setDriftDismissed(true)}
-                  className="shrink-0 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={t("drift.dismiss")}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
 
             <PlayerStatsCard stats={playerStats} />
 
