@@ -74,9 +74,9 @@
     "completeSB": "Você está completando o Small Blind",
     "openBB": "Você está abrindo do Big Blind",
     "facingBet": "Você está enfrentando uma aposta",
-    "checkBet": "Sua vez — bet ou check",
-    "betting": "Você está apostando no pote",
-    "actingFirst": "Você está atuando primeiro",
+    "checkBet": "Você está primeiro a agir",
+    "betting": "Você tinha iniciativa no pote",
+    "actingFirst": "Você está primeiro a agir",
     "aiNote": "Análise da IA"
   },
   "heroCards": "Suas cartas",
