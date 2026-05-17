@@ -9,6 +9,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.101.5] — 2026-05-17 — fix(i18n): textos hardcoded no dashboard
+
+### Fixed
+- **`CareerGraphCard.tsx`**: `"torneos"` hardcoded (espanhol) substituído por `t("career.analyzedCount")` — seguia o idioma errado independente da locale do usuário
+- **`PlayerStatsCard.tsx`**: `"Ref MTT"` hardcoded substituído por `t("playerStats.refMtt")` — agora respeita o idioma
+- Chaves adicionadas nas 3 locales (pt-BR, en, es)
+
+---
+
+## [v0.101.4] — 2026-05-17 — feat(hud): Pending GTO Notice + Open Limp% + fix StrategicTwin
+
+### Added
+- **`GET /player/pending-gto-count`**: endpoint que conta spots `wizard_pending` + `gto_hand_requests` pendentes para o usuário
+- **Dashboard**: linha informativa com spinner `⏳ N spots GTO em análise no solver` entre os KPIs e PlayerStatsCard — visível apenas quando > 0; polling automático a cada 30s enquanto houver spots pendentes. Mensagem contextualmente correta: os HUD stats comportamentais (VPIP, PFR, etc.) NÃO são afetados pelo solver — só os indicadores do Replayer atualizam.
+- **Open Limp%**: 4° stat da Row 3 do Player HUD Stats — % de limps preflop de posições non-BB sem aposta em frente (ref MTT ideal: 0–5%; acima de 8% = leak sério de fold equity). Row 3 agora 4 colunas simétricas com as demais rows.
+- **`StrategicTwinCard`**: adicionado `"allin"` como alias de `"jam"` → "Shove" nas 3 locales; fallback gracioso para ações não mapeadas (exibe valor raw sem mostrar chave i18n)
+
+---
+
 ## [v0.101.2] — 2026-05-17 — feat(dashboard): Confidence Drift Alert no topo + dismiss persistente
 
 ### Changed
