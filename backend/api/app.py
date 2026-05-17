@@ -2077,16 +2077,19 @@ def coach_student_study_plan(student_id):
         return jsonify({'error': 'Aluno não encontrado'}), 404
     try:
         from leaklab.llm_explainer import generate_study_plan
+        from database.repositories import get_player_stats as _get_player_stats
         days = int(request.args.get('days', 90))
-        leaks    = get_leak_summary(student_id, days)    or []
-        evolution = get_evolution_metrics(student_id, days) or []
-        icm      = get_icm_performance(student_id, days)  or {}
+        leaks        = get_leak_summary(student_id, days)    or []
+        evolution    = get_evolution_metrics(student_id, days) or []
+        icm          = get_icm_performance(student_id, days)  or {}
+        player_stats = _get_player_stats(student_id, days)
         if not leaks and not evolution:
             return jsonify({'error': 'Aluno sem dados suficientes'}), 400
         tourns = get_tournaments(student_id, limit=1)
         hero = tourns[0]['hero'] if tourns else 'Aluno'
         force_new = request.args.get('new') == '1'
-        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=student_id, force_new=force_new)
+        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=student_id,
+                                   force_new=force_new, player_stats=player_stats)
         return jsonify(plan)
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -2546,9 +2549,11 @@ def study_plan():
 
         days = int(request.args.get('days', 90))
 
-        leaks     = get_leak_summary(g.user_id, days)     or []
-        evolution = get_evolution_metrics(g.user_id, days) or []
-        icm       = get_icm_performance(g.user_id, days)   or {}
+        leaks        = get_leak_summary(g.user_id, days)     or []
+        evolution    = get_evolution_metrics(g.user_id, days) or []
+        icm          = get_icm_performance(g.user_id, days)   or {}
+        from database.repositories import get_player_stats as _get_player_stats
+        player_stats = _get_player_stats(g.user_id, days)
 
         if not leaks and not evolution:
             return jsonify({'error': 'Sem dados suficientes — importe torneios primeiro'}), 400
@@ -2570,7 +2575,8 @@ def study_plan():
         # Aluno com coach não pode forçar regerar — plano é gerenciado pelo coach
         force_new = request.args.get('new') == '1' and not coach_id_val
 
-        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id, force_new=force_new)
+        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id,
+                                   force_new=force_new, player_stats=player_stats)
 
         # Aplicar overrides do coach nos cards para que o aluno veja o mesmo conteúdo
         coach_managed = False

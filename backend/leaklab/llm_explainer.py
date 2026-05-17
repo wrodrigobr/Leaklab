@@ -903,10 +903,57 @@ def _template_comparison(items: list) -> str:
     )
 
 
+def _format_hud_stats_for_prompt(stats: dict) -> str:
+    """Formata HUD stats como texto interpretado para o prompt do LLM."""
+    if not stats or stats.get('total_hands', 0) == 0:
+        return ''
+
+    def _line(label: str, value, lo: float, hi: float, unit: str = '%', invert: bool = False) -> str:
+        if value is None:
+            return f'  - {label}: sem dados'
+        margin = (hi - lo) * 0.35
+        if value >= lo and value <= hi:
+            status = '✓'
+            note = 'dentro do range ideal'
+        elif (not invert and value < lo - margin) or (invert and value > hi + margin):
+            status = '⚠'
+            note = f'abaixo do ideal ({lo:.0f}–{hi:.0f}{unit})' if not invert else f'acima do ideal ({lo:.0f}–{hi:.0f}{unit})'
+        elif (not invert and value > hi + margin) or (invert and value < lo - margin):
+            status = '⚠'
+            note = f'acima do ideal ({lo:.0f}–{hi:.0f}{unit})' if not invert else f'abaixo do ideal ({lo:.0f}–{hi:.0f}{unit})'
+        else:
+            status = '~'
+            note = f'próximo do limite (ideal: {lo:.0f}–{hi:.0f}{unit})'
+        fmt = f'{value:.1f}{unit}' if unit != 'x' else f'{value:.1f}x'
+        return f'  - {label}: {fmt} {status} {note}'
+
+    lines = [
+        '\n**Perfil de Jogo — HUD Stats comportamentais:**',
+        _line('VPIP',            stats.get('vpip'),            12,  22),
+        _line('PFR',             stats.get('pfr'),              9,  18),
+        _line('AF (postflop)',   stats.get('af'),             2.0, 4.0, unit='x'),
+        _line('C-Bet%',          stats.get('cbet_pct'),        50,  75),
+        _line('Fold to 3BET',    stats.get('fold_to_3bet'),    55,  72),
+        _line('WTSD',            stats.get('wtsd'),            25,  35),
+        _line('3BET%',           stats.get('three_bet'),        4,   8),
+        _line('W$SD',            stats.get('w_at_sd'),         50,  60),
+        _line('Fold vs Flop Bet',stats.get('fold_to_flop_bet'),40,  55),
+        _line('BB Defense',      stats.get('bb_defense'),      35,  55),
+        _line('Steal%',          stats.get('steal_pct'),       25,  45),
+        _line('Open Limp%',      stats.get('open_limp_pct'),    0,   5),
+    ]
+    lines.append(
+        f'  (baseado em {stats.get("total_hands", 0)} mãos — stats comportamentais, '
+        'independentes da análise GTO)'
+    )
+    return '\n'.join(lines) + '\n'
+
+
 def generate_study_plan(leaks: list, evolution: list, icm: dict,
                         hero: str = 'Jogador',
                         user_id: int | None = None,
-                        force_new: bool = False) -> dict:
+                        force_new: bool = False,
+                        player_stats: dict | None = None) -> dict:
     """
     Gera plano de estudos personalizado baseado nos leaks reais do jogador.
     Retorna dict com cards[], resumo, e nível identificado.
@@ -915,8 +962,12 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
     import hashlib, json, os, requests
 
     # Chave em memória (por snapshot de dados — evita regerar na mesma sessão)
-    mem_key = 'study_plan_v2:' + hashlib.md5(
-        json.dumps({'leaks': leaks, 'evo_len': len(evolution)},
+    stats_fingerprint = {
+        k: v for k, v in (player_stats or {}).items()
+        if k != 'total_hands' and v is not None
+    } if player_stats else {}
+    mem_key = 'study_plan_v3:' + hashlib.md5(
+        json.dumps({'leaks': leaks, 'evo_len': len(evolution), 'stats': stats_fingerprint},
                    sort_keys=True).encode()
     ).hexdigest()
     # Chave DB estável — plano canônico único por aluno
@@ -959,6 +1010,9 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
         for l in leaks[:8]
     )
 
+    # --- HUD stats section (se disponível) ---
+    hud_txt = _format_hud_stats_for_prompt(player_stats) if player_stats else ''
+
     prompt = f"""Você é um coach profissional de poker MTT com mais de 15 anos de experiência, especialista em identificar e corrigir leaks em torneios.
 Analise os dados de performance abaixo e gere um plano de estudos DETALHADO e PERSONALIZADO.
 
@@ -969,11 +1023,13 @@ Analise os dados de performance abaixo e gere um plano de estudos DETALHADO e PE
 - Standard% (decisões corretas): {avg_std:.1f}% (meta: acima de 80%)
 - Erros claros: {avg_clear:.1f}% (meta: abaixo de 5%)
 - Pior fase ICM: pressão {icm_weak}
-
+{hud_txt}
 **Leaks identificados (por frequência de erro):**
 {leaks_txt}
 
 ## Instrução de Coach
+
+Use os HUD Stats comportamentais para enriquecer o diagnóstico: se VPIP alto + PFR baixo, o jogador é loose-passive; se AF abaixo de 2x, o postflop é passivo demais; se Open Limp% acima de 5%, há problema de fold equity pré-flop; se BB Defense baixa, o jogador está sendo exploitado no big blind. Cruze os HUD Stats com os Leaks identificados para gerar módulos muito mais específicos e personalizados.
 
 Gere um plano de estudos com exatamente 6 itens, do leak mais crítico ao menos crítico.
 Cada item deve ser um módulo de estudo completo com:

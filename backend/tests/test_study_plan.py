@@ -112,10 +112,10 @@ def test_study_plan_no_double_braces_in_prompt():
 
 
 def test_study_plan_cache_key_v2():
-    """O cache key deve usar prefixo v2 para invalidar caches antigos."""
+    """O cache key deve usar prefixo v3 (inclui HUD stats) para invalidar caches antigos."""
     import inspect
     src = inspect.getsource(generate_study_plan)
-    assert 'study_plan_v2:' in src, "Cache key deve usar prefixo 'study_plan_v2:'"
+    assert 'study_plan_v3:' in src, "Cache key deve usar prefixo 'study_plan_v3:'"
     print("OK  test_study_plan_cache_key_v2")
 
 
