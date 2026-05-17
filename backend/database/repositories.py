@@ -1024,14 +1024,51 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
             WHERE t.user_id = ? AND t.imported_at >= ?
         """, (user_id, since)).fetchone()
 
+        # ── Fold to Flop Bet (proxy for Fold to C-Bet) ────────────────────────
+        ftfb_row = conn.execute("""
+            SELECT
+                COUNT(CASE WHEN d.action_taken = 'fold' THEN 1 END) AS ftfb_n,
+                COUNT(*) AS ftfb_total
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+              AND d.street = 'flop' AND d.facing_bet > 0
+        """, (user_id, since)).fetchone()
+
+        # ── BB Defense Rate: BB call+3bet vs preflop open ─────────────────────
+        bb_def_row = conn.execute("""
+            SELECT
+                COUNT(CASE WHEN d.action_taken IN ('call','raise','jam') THEN 1 END) AS bb_def_n,
+                COUNT(*) AS bb_def_total
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+              AND d.street = 'preflop' AND d.position = 'BB' AND d.facing_bet > 0
+        """, (user_id, since)).fetchone()
+
+        # ── Steal%: raise/shove from BTN/CO/SB when not facing a raise ────────
+        steal_row = conn.execute("""
+            SELECT
+                COUNT(CASE WHEN d.action_taken IN ('raise','jam') THEN 1 END) AS steal_n,
+                COUNT(*) AS steal_total
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+              AND d.street = 'preflop' AND d.position IN ('BTN','CO','SB')
+              AND (d.facing_bet IS NULL OR d.facing_bet = 0)
+        """, (user_id, since)).fetchone()
+
         # ── Compute stats ────────────────────────────────────────────────────
-        pf   = dict(preflop)   if preflop   else {}
-        po   = dict(postflop)  if postflop  else {}
-        cb   = dict(cbet_row)  if cbet_row  else {}
-        f3b  = dict(f3b_row)   if f3b_row   else {}
-        wt   = dict(wtsd_row)  if wtsd_row  else {}
-        tb   = dict(tbet_row)  if tbet_row  else {}
-        wsd  = dict(wsd_row)   if wsd_row   else {}
+        pf    = dict(preflop)    if preflop    else {}
+        po    = dict(postflop)   if postflop   else {}
+        cb    = dict(cbet_row)   if cbet_row   else {}
+        f3b   = dict(f3b_row)    if f3b_row    else {}
+        wt    = dict(wtsd_row)   if wtsd_row   else {}
+        tb    = dict(tbet_row)   if tbet_row   else {}
+        wsd   = dict(wsd_row)    if wsd_row    else {}
+        ftfb  = dict(ftfb_row)   if ftfb_row   else {}
+        bb_d  = dict(bb_def_row) if bb_def_row else {}
+        st    = dict(steal_row)  if steal_row  else {}
 
         total       = pf.get('total_hands', 0) or 0
         vpip_h      = pf.get('vpip_hands', 0) or 0
@@ -1048,17 +1085,26 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
         pf_total    = tb.get('total_n', 0) or 0
         sd_won      = wsd.get('sd_won', 0) or 0
         sd_total    = wsd.get('sd_total', 0) or 0
+        ftfb_n      = ftfb.get('ftfb_n', 0) or 0
+        ftfb_total  = ftfb.get('ftfb_total', 0) or 0
+        bb_def_n    = bb_d.get('bb_def_n', 0) or 0
+        bb_def_t    = bb_d.get('bb_def_total', 0) or 0
+        steal_n     = st.get('steal_n', 0) or 0
+        steal_t     = st.get('steal_total', 0) or 0
 
         return {
-            'total_hands':  total,
-            'vpip':         round(vpip_h / total * 100, 1)        if total > 0      else None,
-            'pfr':          round(pfr_h  / total * 100, 1)        if total > 0      else None,
-            'af':           round(aggressive / passive, 2)         if passive > 0    else None,
-            'cbet_pct':     round(cbet_n / cbet_opp * 100, 1)     if cbet_opp > 0   else None,
-            'fold_to_3bet': round(f3b_n / faced_3b_n * 100, 1)   if faced_3b_n > 0 else None,
-            'wtsd':         round(saw_river / saw_flop * 100, 1)  if saw_flop > 0   else None,
-            'three_bet':    round(three_bet_n / pf_total * 100, 1) if pf_total > 0  else None,
-            'w_at_sd':      round(sd_won / sd_total * 100, 1)     if sd_total > 0   else None,
+            'total_hands':      total,
+            'vpip':             round(vpip_h / total * 100, 1)         if total > 0       else None,
+            'pfr':              round(pfr_h  / total * 100, 1)         if total > 0       else None,
+            'af':               round(aggressive / passive, 2)          if passive > 0     else None,
+            'cbet_pct':         round(cbet_n / cbet_opp * 100, 1)      if cbet_opp > 0    else None,
+            'fold_to_3bet':     round(f3b_n / faced_3b_n * 100, 1)    if faced_3b_n > 0  else None,
+            'wtsd':             round(saw_river / saw_flop * 100, 1)   if saw_flop > 0    else None,
+            'three_bet':        round(three_bet_n / pf_total * 100, 1) if pf_total > 0    else None,
+            'w_at_sd':          round(sd_won / sd_total * 100, 1)      if sd_total > 0    else None,
+            'fold_to_flop_bet': round(ftfb_n / ftfb_total * 100, 1)   if ftfb_total > 0  else None,
+            'bb_defense':       round(bb_def_n / bb_def_t * 100, 1)   if bb_def_t > 0    else None,
+            'steal_pct':        round(steal_n / steal_t * 100, 1)     if steal_t > 0     else None,
         }
     finally:
         conn.close()

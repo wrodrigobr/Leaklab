@@ -470,6 +470,9 @@ export interface PlayerStatsResponse {
   wtsd: number | null;
   three_bet: number | null;
   w_at_sd: number | null;
+  fold_to_flop_bet: number | null;
+  bb_defense: number | null;
+  steal_pct: number | null;
 }
 
 export interface LeakRoiData {

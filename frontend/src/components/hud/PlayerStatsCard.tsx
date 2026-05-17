@@ -12,6 +12,9 @@ interface PlayerStats {
   wtsd: number | null;
   three_bet: number | null;
   w_at_sd: number | null;
+  fold_to_flop_bet: number | null;
+  bb_defense: number | null;
+  steal_pct: number | null;
 }
 
 interface Props {
@@ -56,6 +59,31 @@ const ROW1: StatDef[] = [
     unit: "%",
     range: { min: 50, max: 75, label: "50–75%" },
     tooltip: "Continuation Bet — % de vezes que apostou no flop como agressor pré-flop (opener/raiser). Denominador: mãos em que abriu ou 3-betou pré e viu o flop. MTT ideal: 50–75%.",
+  },
+];
+
+// Row 3 — postflop defense stats
+const ROW3: StatDef[] = [
+  {
+    key: "fold_to_flop_bet",
+    label: "Fold vs Bet",
+    unit: "%",
+    range: { min: 40, max: 55, label: "40–55%" },
+    tooltip: "Fold to Flop Bet — proxy para Fold to C-Bet. % de vezes que deu fold no flop ao enfrentar uma aposta. MTT ideal: 40–55%. Acima de 65% = passivo demais (desiste muito cedo); abaixo de 35% = too sticky (chama sem equity suficiente).",
+  },
+  {
+    key: "bb_defense",
+    label: "BB Defense",
+    unit: "%",
+    range: { min: 35, max: 55, label: "35–55%" },
+    tooltip: "BB Defense Rate — % de vezes que defendeu a Big Blind (call ou 3-bet) ao enfrentar uma abertura pré-flop. MTT ideal: 35–55%. Abaixo de 30% = folda BB em excesso, dando fold equity gratuita aos opponents.",
+  },
+  {
+    key: "steal_pct",
+    label: "Steal",
+    unit: "%",
+    range: { min: 25, max: 45, label: "25–45%" },
+    tooltip: "Steal% — % de vezes que abriu (raise/shove) do BTN, CO ou SB quando a ação chegou sem aposta anterior. MTT ideal: 25–45%. Abaixo de 20% = perde vantagem posicional e deixa equity no pote; acima de 50% = overaggression exploitável.",
   },
 ];
 
@@ -197,7 +225,7 @@ export function PlayerStatsCard({ stats }: Props) {
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
             Player HUD Stats
           </span>
-          <HudTooltip content="Indicadores táticos do seu perfil de jogo. Row 1: VPIP, PFR, AF, Flop Bet — calculados diretamente. Row 2: Fold to 3BET e WTSD (aproximados), 3BET e W$SD (em breve)." />
+          <HudTooltip content="Indicadores táticos do seu perfil de jogo. Row 1: VPIP, PFR, AF, C-Bet. Row 2: Fold to 3BET, WTSD, 3BET%, W$SD. Row 3: Fold vs Flop Bet (proxy FtCB), BB Defense, Steal%." />
         </div>
         <span className="font-mono text-[10px] text-primary">
           {stats && stats.total_hands > 0 ? t("playerStats.hands", { n: stats.total_hands }) : t("playerStats.noStats")}
@@ -217,9 +245,16 @@ export function PlayerStatsCard({ stats }: Props) {
             ))}
           </div>
 
-          {/* Row 2 — 2 derived + 2 upcoming */}
+          {/* Row 2 — fold to 3bet, wtsd, 3bet, w$sd */}
           <div className="grid grid-cols-2 divide-x divide-border/60 border-t border-border/60 md:grid-cols-4">
             {ROW2.map((def) => (
+              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} compact />
+            ))}
+          </div>
+
+          {/* Row 3 — defense & positional stats */}
+          <div className="grid grid-cols-3 divide-x divide-border/40 border-t border-border/40 md:grid-cols-3">
+            {ROW3.map((def) => (
               <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} compact />
             ))}
           </div>
