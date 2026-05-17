@@ -731,6 +731,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
             WHERE t.user_id = ?
               AND d.label IN ('small_mistake','clear_mistake')
               AND (ds_last.next_drill_at IS NULL OR ds_last.next_drill_at <= ?)
+              AND (d.street = 'preflop' OR COALESCE(d.num_players, 2) <= 2)
               {street_filter}
               {spot_filter}
             ORDER BY
