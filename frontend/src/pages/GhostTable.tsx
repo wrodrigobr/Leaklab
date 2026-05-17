@@ -166,12 +166,17 @@ function buildDrillStep(spot: DrillSpot): { step: ReplayStep; hero: string; hero
   const seats: Record<string, { player: string; stack: number; pos: string }> = {};
   const bets:  Record<string, number> = {};
 
+  const isPreflop = (spot.street ?? 'preflop') === 'preflop';
+
   positions.forEach((pos, i) => {
     const sn    = String(i + 1);
     const isHero = (i + 1) === heroSeatNum;
     seats[sn] = { player: isHero ? HERO : `V${i + 1}`, stack: heroStack, pos };
-    if (pos === 'SB') bets[sn] = Math.round(bb * 0.5);
-    else if (pos === 'BB') bets[sn] = bb;
+    // Blinds só fazem sentido como bets no preflop; postflop já estão no pot_size
+    if (isPreflop) {
+      if (pos === 'SB') bets[sn] = Math.round(bb * 0.5);
+      else if (pos === 'BB') bets[sn] = bb;
+    }
   });
 
   // Facing bet → assign to villain seat immediately before hero
