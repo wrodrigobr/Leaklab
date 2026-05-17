@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Coins, Layers, Percent, Target, GraduationCap, Brain, Mail, X, RotateCcw } from "lucide-react";
+import { Coins, Layers, Percent, Target, GraduationCap, Brain, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -30,7 +30,7 @@ import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, drill, tournaments, digest, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile } from "@/lib/api";
+import { metrics, drill, tournaments, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, DrillStats, PlayerDnaResponse, DrillSpot, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // Module-level cache — survives unmount/remount during SPA navigation
@@ -70,8 +70,6 @@ const Index = () => {
   const [loading, setLoading]             = useState(true);
   const [tournsLoaded, setTournsLoaded]   = useState(_cachedTourns !== null);
   const [refreshKey, setRefreshKey]       = useState(0);
-  const [digestDismissed, setDigestDismissed] = useState(false);
-  const [digestSubscribing, setDigestSubscribing] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -127,16 +125,6 @@ const Index = () => {
     const from = layout.sidebar.indexOf(active.id as SidebarSection);
     const to   = layout.sidebar.indexOf(over.id   as SidebarSection);
     if (from !== -1 && to !== -1) updateSidebar(arrayMove(layout.sidebar, from, to));
-  };
-
-  const handleDigestSubscribe = async () => {
-    setDigestSubscribing(true);
-    try {
-      await digest.subscribe();
-      await refreshUser();
-    } finally {
-      setDigestSubscribing(false);
-    }
   };
 
   const totalInvested = tourns.reduce((s, t) => s + (t.buy_in ?? 0), 0);
@@ -278,30 +266,6 @@ const Index = () => {
         {user?.role === "player" && <ProfileCompletionCard />}
 
 
-        {user?.role === "player" && hasData && !user.digest_subscribed && !digestDismissed && (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-            <div className="flex items-center gap-2 text-sm text-foreground">
-              <Mail className="size-4 text-primary shrink-0" />
-              <span>Receba um resumo semanal dos seus leaks e drills por email.</span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={handleDigestSubscribe}
-                disabled={digestSubscribing}
-                className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:underline disabled:opacity-50"
-              >
-                {digestSubscribing ? "Ativando…" : "Ativar"}
-              </button>
-              <button
-                onClick={() => setDigestDismissed(true)}
-                className="text-muted-foreground hover:text-foreground"
-                aria-label="Fechar"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {tournsLoaded && !hasData ? (
           <EmptyDashboard onComplete={handleUpload} />
