@@ -145,6 +145,10 @@
     "alertDesc": "{{n}} sessões recentes com qualidade técnica abaixo do seu baseline — possível tilt ou fadiga.",
     "dismiss": "Fechar alerta"
   },
+  "pendingGto": {
+    "notice": "{{n}} spot GTO em análise no solver — indicadores do Replayer atualizam quando concluído.",
+    "notice_plural": "{{n}} spots GTO em análise no solver — indicadores do Replayer atualizam quando concluídos."
+  },
   "level": {
     "tooltip": "Seu nível atual baseado na média de Standard% dos últimos torneios. Cada nível exige um patamar maior de decisões corretas — avançar significa que seus erros diminuíram de forma consistente.",
     "title": "Meu Nível",
@@ -297,6 +301,7 @@
     "costlyTitle": "Spots mais custosos",
     "actions": {
       "jam":   "Shove",
+      "allin": "Shove",
       "fold":  "Fold",
       "call":  "Call",
       "raise": "Raise",

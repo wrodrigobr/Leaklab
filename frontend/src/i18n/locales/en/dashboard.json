@@ -145,6 +145,10 @@
     "alertDesc": "{{n}} recent sessions with technical quality below your baseline — possible tilt or fatigue.",
     "dismiss": "Dismiss"
   },
+  "pendingGto": {
+    "notice": "{{n}} GTO spot being analyzed by the solver — Replayer indicators will update when done.",
+    "notice_plural": "{{n}} GTO spots being analyzed by the solver — Replayer indicators will update when done."
+  },
   "level": {
     "tooltip": "Your current level based on your average Standard% across recent tournaments. Each level requires a higher threshold of correct decisions — advancing means your mistakes have consistently decreased.",
     "title": "My Level",
@@ -297,6 +301,7 @@
     "costlyTitle": "Costliest spots",
     "actions": {
       "jam":   "Shove",
+      "allin": "Shove",
       "fold":  "Fold",
       "call":  "Call",
       "raise": "Raise",

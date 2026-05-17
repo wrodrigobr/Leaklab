@@ -473,6 +473,7 @@ export interface PlayerStatsResponse {
   fold_to_flop_bet: number | null;
   bb_defense: number | null;
   steal_pct: number | null;
+  open_limp_pct: number | null;
 }
 
 export interface LeakRoiData {
@@ -676,6 +677,9 @@ export const metrics = {
 
   confidenceDrift: (days = 30) =>
     request<ConfidenceDrift>(`/player/confidence-drift?days=${days}`),
+
+  pendingGtoCount: () =>
+    request<{ pending: number }>(`/player/pending-gto-count`),
 
   dna: (days = 90) =>
     request<PlayerDnaResponse>(`/player/dna?days=${days}`),

@@ -852,6 +852,14 @@ def player_confidence_drift():
     return jsonify(get_confidence_drift(g.user_id, days))
 
 
+@app.route('/player/pending-gto-count', methods=['GET'])
+@require_auth
+def player_pending_gto_count():
+    """Retorna contagem de spots com análise GTO ainda pendente para o usuário."""
+    from database.repositories import get_user_pending_gto_count
+    return jsonify({'pending': get_user_pending_gto_count(g.user_id)})
+
+
 @app.route('/player/spots/drill', methods=['GET'])
 @require_auth
 def player_drill_spots():

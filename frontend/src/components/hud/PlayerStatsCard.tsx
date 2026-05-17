@@ -15,6 +15,7 @@ interface PlayerStats {
   fold_to_flop_bet: number | null;
   bb_defense: number | null;
   steal_pct: number | null;
+  open_limp_pct: number | null;
 }
 
 interface Props {
@@ -62,7 +63,7 @@ const ROW1: StatDef[] = [
   },
 ];
 
-// Row 3 — postflop defense stats
+// Row 3 — defense & positional stats
 const ROW3: StatDef[] = [
   {
     key: "fold_to_flop_bet",
@@ -84,6 +85,13 @@ const ROW3: StatDef[] = [
     unit: "%",
     range: { min: 25, max: 45, label: "25–45%" },
     tooltip: "Steal% — % de vezes que abriu (raise/shove) do BTN, CO ou SB quando a ação chegou sem aposta anterior. MTT ideal: 25–45%. Abaixo de 20% = perde vantagem posicional e deixa equity no pote; acima de 50% = overaggression exploitável.",
+  },
+  {
+    key: "open_limp_pct",
+    label: "Open Limp",
+    unit: "%",
+    range: { min: 0, max: 5, label: "0–5%" },
+    tooltip: "Open Limp% — % de vezes que entrou no pote com call (sem raise em frente) de posição non-BB. MTT ideal: 0–5%. Limp preflop remove fold equity, cria potes multiway fora de posição e é exploitável por qualquer squeeze do BTN/BB. Acima de 8% = leak sério.",
   },
 ];
 
@@ -225,7 +233,7 @@ export function PlayerStatsCard({ stats }: Props) {
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
             Player HUD Stats
           </span>
-          <HudTooltip content="Indicadores táticos do seu perfil de jogo. Row 1: VPIP, PFR, AF, C-Bet. Row 2: Fold to 3BET, WTSD, 3BET%, W$SD. Row 3: Fold vs Flop Bet (proxy FtCB), BB Defense, Steal%." />
+          <HudTooltip content="Indicadores táticos do seu perfil de jogo. Row 1: VPIP, PFR, AF, C-Bet. Row 2: Fold to 3BET, WTSD, 3BET%, W$SD. Row 3: Fold vs Flop Bet (proxy FtCB), BB Defense, Steal%, Open Limp%." />
         </div>
         <span className="font-mono text-[10px] text-primary">
           {stats && stats.total_hands > 0 ? t("playerStats.hands", { n: stats.total_hands }) : t("playerStats.noStats")}
@@ -253,7 +261,7 @@ export function PlayerStatsCard({ stats }: Props) {
           </div>
 
           {/* Row 3 — defense & positional stats */}
-          <div className="grid grid-cols-3 divide-x divide-border/40 border-t border-border/40 md:grid-cols-3">
+          <div className="grid grid-cols-2 divide-x divide-border/40 border-t border-border/40 md:grid-cols-4">
             {ROW3.map((def) => (
               <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} compact />
             ))}

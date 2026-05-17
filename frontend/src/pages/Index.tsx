@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Coins, Layers, Percent, Target, GraduationCap, Brain, RotateCcw } from "lucide-react";
+import { Coins, Layers, Percent, Target, GraduationCap, Brain, RotateCcw, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -153,6 +153,14 @@ const Index = () => {
     queryFn: metrics.level,
     staleTime: 60_000,
   });
+
+  const { data: pendingGtoData } = useQuery({
+    queryKey: ["pending-gto", refreshKey],
+    queryFn: metrics.pendingGtoCount,
+    staleTime: 30_000,
+    refetchInterval: (query) => (query.state.data?.pending ?? 0) > 0 ? 30_000 : false,
+  });
+  const pendingGto = pendingGtoData?.pending ?? 0;
 
   const renderMainRow = (id: MainSection) => {
     if (id === "quality_row") return (
@@ -338,6 +346,13 @@ const Index = () => {
                 tooltip={t("kpis.eventsTooltip")}
               />
             </section>
+
+            {pendingGto > 0 && (
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                <Loader2 className="size-3 animate-spin shrink-0 text-primary/60" />
+                <span>{t(pendingGto === 1 ? "pendingGto.notice" : "pendingGto.notice_plural", { n: pendingGto })}</span>
+              </div>
+            )}
 
             <PlayerStatsCard stats={playerStats} />
 

@@ -8,9 +8,10 @@ function spotLabel(
   spot: TwinSpot,
   t: (key: string) => string
 ): string {
-  const action = t(`strategicTwin.actions.${spot.best_action}`);
-  const street = t(`strategicTwin.streets.${spot.street}`);
-  const icm    = t(`strategicTwin.icm.${spot.icm_pressure}`);
+  const raw    = (k: string, fb: string) => { const v = t(k); return v === k ? fb : v; };
+  const action = raw(`strategicTwin.actions.${spot.best_action}`, spot.best_action);
+  const street = raw(`strategicTwin.streets.${spot.street}`,     spot.street);
+  const icm    = raw(`strategicTwin.icm.${spot.icm_pressure}`,   spot.icm_pressure);
   return `${action} ${street} · ${icm}`;
 }
 

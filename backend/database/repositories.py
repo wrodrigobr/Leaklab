@@ -1058,6 +1058,19 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
               AND (d.facing_bet IS NULL OR d.facing_bet = 0)
         """, (user_id, since)).fetchone()
 
+        # ── Open Limp%: preflop calls without a raise in front (non-BB) ────────
+        limp_row = conn.execute("""
+            SELECT
+                COUNT(CASE WHEN d.action_taken = 'call' THEN 1 END) AS limp_n,
+                COUNT(*) AS limp_total
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+              AND d.street = 'preflop'
+              AND d.position NOT IN ('BB')
+              AND (d.facing_bet IS NULL OR d.facing_bet = 0)
+        """, (user_id, since)).fetchone()
+
         # ── Compute stats ────────────────────────────────────────────────────
         pf    = dict(preflop)    if preflop    else {}
         po    = dict(postflop)   if postflop   else {}
@@ -1069,6 +1082,7 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
         ftfb  = dict(ftfb_row)   if ftfb_row   else {}
         bb_d  = dict(bb_def_row) if bb_def_row else {}
         st    = dict(steal_row)  if steal_row  else {}
+        lp    = dict(limp_row)   if limp_row   else {}
 
         total       = pf.get('total_hands', 0) or 0
         vpip_h      = pf.get('vpip_hands', 0) or 0
@@ -1091,6 +1105,8 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
         bb_def_t    = bb_d.get('bb_def_total', 0) or 0
         steal_n     = st.get('steal_n', 0) or 0
         steal_t     = st.get('steal_total', 0) or 0
+        limp_n      = lp.get('limp_n', 0) or 0
+        limp_t      = lp.get('limp_total', 0) or 0
 
         return {
             'total_hands':      total,
@@ -1105,6 +1121,7 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
             'fold_to_flop_bet': round(ftfb_n / ftfb_total * 100, 1)   if ftfb_total > 0  else None,
             'bb_defense':       round(bb_def_n / bb_def_t * 100, 1)   if bb_def_t > 0    else None,
             'steal_pct':        round(steal_n / steal_t * 100, 1)     if steal_t > 0     else None,
+            'open_limp_pct':    round(limp_n / limp_t * 100, 1)       if limp_t > 0      else None,
         }
     finally:
         conn.close()
@@ -4583,6 +4600,30 @@ def update_gto_hand_request(request_id: int, status: str,
             WHERE id = ?
         """), (status, decisions_found, decisions_done, error_msg, status, request_id))
         conn.commit()
+    finally:
+        conn.close()
+
+
+def get_user_pending_gto_count(user_id: int) -> int:
+    """Retorna quantos spots GTO ainda estão pendentes para o usuário.
+
+    Conta duas fontes:
+    - gto_hand_requests com status='pending' para o usuário
+    - decisions com gto_label='wizard_pending' nos torneios do usuário
+    """
+    conn = get_conn()
+    try:
+        req_row = _fetchone(conn, _adapt("""
+            SELECT COUNT(*) AS n FROM gto_hand_requests
+            WHERE requested_by = ? AND status = 'pending'
+        """), (user_id,))
+        wizard_row = _fetchone(conn, _adapt("""
+            SELECT COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND d.gto_label = 'wizard_pending'
+        """), (user_id,))
+        return (req_row['n'] if req_row else 0) + (wizard_row['n'] if wizard_row else 0)
     finally:
         conn.close()
 
