@@ -119,7 +119,8 @@ def analyze_preflop(
 
     if is_3bet_pot and vs_pos:
         scenario = 'vs_3bet'
-    elif facing_size > 0 and vs_pos:
+    elif facing_size > 0:
+        # vs_pos pode ser '' quando opener não foi detectado — lookup retornará None → available=False
         scenario = 'vs_rfi'
     else:
         scenario = 'rfi'
@@ -208,16 +209,19 @@ def _rfi_quality(action: str, in_rng: bool, stack_bb: float) -> str:
     if not in_rng and act == 'fold':          return 'correct'
     if not in_rng and act in ('raise', 'jam'):
         return 'major_leak' if stack_bb > 25 else 'leak'
+    if not in_rng and act == 'call':          return 'leak'
     return 'acceptable'
 
 
 def _vs_rfi_quality(action: str, in_rng: bool, acoes: list) -> str:
     act  = action.lower()
     acts = {_ACT.get(a, a.lower()) for a in acoes}
-    if in_rng and act in acts:             return 'correct'
-    if in_rng and act == 'fold':           return 'leak'
-    if not in_rng and act == 'fold':       return 'correct'
-    if not in_rng and act in ('raise', 'jam'): return 'major_leak'
+    if in_rng and act in acts:                  return 'correct'
+    if in_rng and act == 'fold':                return 'leak'
+    if in_rng and act not in acts:              return 'leak'   # desvio dentro do range
+    if not in_rng and act == 'fold':            return 'correct'
+    if not in_rng and act in ('raise', 'jam'):  return 'major_leak'
+    if not in_rng and act == 'call':            return 'leak'
     return 'acceptable'
 
 
@@ -303,11 +307,7 @@ def _vs_3bet_notes(pos, hand, stack, pct, in_4b, in_cl, action) -> list[str]:
 
 
 def _find_opener_key(vs_rfi: dict, opener_pos: str) -> Optional[str]:
-    target = f"{opener_pos}_open"
-    if target in vs_rfi:
-        return target
-    for fb in ['BTN_open', 'CO_open', 'HJ_open', 'UTG_open', 'UTG1_open', 'LJ_open']:
-        if fb in vs_rfi:
-            return fb
-    keys = [k for k in vs_rfi if k.endswith('_open')]
-    return keys[0] if keys else None
+    if not opener_pos:
+        return None
+    key = f"{opener_pos}_open"
+    return key if key in vs_rfi else None

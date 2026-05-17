@@ -28,6 +28,7 @@ export default defineConfig(({ mode }) => ({
       "/support":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/academy":     { target: "http://127.0.0.1:5000", changeOrigin: true },
       "/profile":     { target: "http://127.0.0.1:5000", changeOrigin: true },
+      "/preflop-ranges": { target: "http://127.0.0.1:5000", changeOrigin: true },
     },
   },
   build: {

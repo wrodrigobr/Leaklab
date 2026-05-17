@@ -1512,6 +1512,7 @@ def _analyze_hands(hands):
                                 action_taken   = di.get('player_action', ''),
                                 facing_size    = float(_spot.get('facingSize') or 0),
                                 vs_position    = _spot.get('villainPosition', ''),
+                                is_3bet_pot    = bool(_spot.get('is3betPot') or di.get('is_3bet', False)),
                             )
                     except Exception:
                         pass
@@ -2925,12 +2926,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                         h_type   = hand_to_type(h_cards) if h_cards else None
                         if h_type:
                             all_decisions[key]['preflop_gto'] = analyze_preflop(
-                                position    = spot.get('position', ''),
+                                position     = spot.get('position', ''),
                                 hero_hand_type = h_type,
-                                stack_bb    = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20),
-                                action_taken= di.get('player_action', ''),
-                                facing_size = float(spot.get('facingSize') or 0),
-                                vs_position = spot.get('villainPosition', ''),
+                                stack_bb     = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20),
+                                action_taken = di.get('player_action', ''),
+                                facing_size  = float(spot.get('facingSize') or 0),
+                                vs_position  = spot.get('villainPosition', ''),
+                                is_3bet_pot  = bool(spot.get('is3betPot') or di.get('is_3bet', False)),
                             )
                     except Exception:
                         pass

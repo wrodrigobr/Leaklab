@@ -8,11 +8,10 @@ import {
 import { ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
-
 function authFetch(path: string): Promise<Response> {
   const t = sessionStorage.getItem("ll_token");
-  return fetch(`${API_BASE}${path}`, {
+  const base = import.meta.env.VITE_API_URL ?? "";
+  return fetch(`${base}${path}`, {
     headers: t ? { Authorization: `Bearer ${t}` } : {},
   });
 }
@@ -86,17 +85,27 @@ function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?:
   if (type === 'call') {
     const openers = Object.keys(resp.vs_rfi);
     if (!openers.length) return null;
-    const key   = openerPos && resp.vs_rfi[openerPos] ? openerPos : openers[0];
-    const def   = resp.vs_rfi[key];
-    const acoes = def.acoes.map(a => a.toUpperCase());
-    const sbOnly = acoes.includes('THREBET') && !acoes.includes('CALL');
+    // API returns keys as "UTG_open", but openerPos may arrive as "UTG" — try both
+    const resolvedKey = openerPos
+      ? (resp.vs_rfi[openerPos] ? openerPos
+        : resp.vs_rfi[openerPos + '_open'] ? openerPos + '_open'
+        : null)
+      : null;
+    const key = resolvedKey ?? openers[0];
+    const def = resp.vs_rfi[key];
+    const has3bet = def.raise3bet?.length > 0;
+    const hasCall = def.call?.length > 0;
+    const description = [
+      `${(def.pct_play * 100).toFixed(0)}% continuam vs ${key.replace('_open', '')} open`,
+      has3bet ? 'Verde: 3-bet' : '',
+      hasCall ? 'Azul: call' : '',
+      'Branco: fold',
+    ].filter(Boolean).join(' · ');
     return {
-      label: `vs ${key} open · ${resp.position} (${resp.stack_bucket})`,
-      description: sbOnly
-        ? `${(def.pct_play * 100).toFixed(0)}% das mãos — Verde: 3-bet ou fold (sem call)`
-        : `${(def.pct_play * 100).toFixed(0)}% das mãos — Azul: continuar (GTO mistura 3-bet/call)`,
-      raise: new Set(sbOnly ? def.hands : []),
-      call:  new Set(sbOnly ? [] : def.hands),
+      label: `vs ${key.replace('_open', '')} open · ${resp.position} (${resp.stack_bucket})`,
+      description,
+      raise: new Set(def.raise3bet ?? []),
+      call:  new Set(def.call ?? def.hands ?? []),
     };
   }
   return null;
@@ -291,6 +300,16 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
           </button>
         ))}
       </div>
+
+      {/* Aviso quando a aba ativa não corresponde ao cenário da decisão */}
+      {showGtoCtx && gto?.scenario && SCENARIO_TO_TYPE[gto.scenario] && effectiveType !== SCENARIO_TO_TYPE[gto.scenario] && (
+        <div className="rounded-md border border-amber-500/25 bg-amber-500/5 px-3 py-1.5">
+          <p className="font-mono text-[9px] text-amber-400/80 leading-snug">
+            Esta grade mostra referência ({effectiveType === 'open' ? 'abertura RFI' : effectiveType === '3bet' ? '3-bet' : 'defesa'}).
+            {" "}A decisão desta mão ({SCENARIO_TO_TYPE[gto.scenario] === 'call' ? 'defesa vs open' : SCENARIO_TO_TYPE[gto.scenario] === '3bet' ? 'resposta ao 3-bet' : 'abertura'}) está na aba <strong className="text-amber-400">{availableTypes.find(t => t.id === SCENARIO_TO_TYPE[gto!.scenario])?.label ?? SCENARIO_TO_TYPE[gto.scenario]}</strong>.
+          </p>
+        </div>
+      )}
 
       {/* Range grid */}
       {displayRange ? (

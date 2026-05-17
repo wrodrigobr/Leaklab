@@ -9,6 +9,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.100.1] — 2026-05-17 — fix(gto): corrigir contradições no sistema de classificação preflop + testes de regressão
+
+### Fixed
+- **`backend/leaklab/preflop_gto_ranges.py`** — `_rfi_quality`: limp/call com mão **fora do range de abertura** classificava como `acceptable` em vez de `leak` — corrigido
+- **`backend/leaklab/preflop_gto_ranges.py`** — `_vs_rfi_quality`: mão **in-range mas com ação diferente da recomendada** (ex: range recomenda call, hero 3-beta) classificava como `acceptable` em vez de `leak` — corrigido
+- **`backend/leaklab/preflop_gto_ranges.py`** — `_find_opener_key`: fallback silencioso para `BTN_open` quando opener não encontrado causava análise com dados do **opener errado** (`available=True` falso); agora retorna `None` se não há correspondência exata — corrigido
+- **`backend/leaklab/preflop_gto_ranges.py`** — `analyze_preflop`: `facing_size > 0` sem `vs_position` definia `scenario='rfi'` (abertura) em vez de `vs_rfi` (defesa), gerando recomendações invertidas — corrigido
+- **`backend/api/app.py`** — linhas ~1508 e ~2927: `is_3bet_pot` nunca era passado para `analyze_preflop`; spots de 4-bet eram analisados como `vs_rfi` em vez de `vs_3bet` — corrigido
+- **`frontend/vite.config.ts`** + **`frontend/src/components/replayer/RangePanel.tsx`**: `/preflop-ranges` não estava no proxy Vite, causando erro CORS silencioso; `apiData` ficava `null` e o componente exibia o range estático genérico (`CALL_IP`, 264 combos) em vez dos dados reais da API — corrigido
+
+### Added
+- **`backend/tests/test_preflop_gto_quality.py`** (novo): 76 testes de regressão cobrindo todos os classificadores de qualidade GTO (`_rfi_quality`, `_vs_rfi_quality`, `_vs_3bet_quality`), o lookup de opener (`_find_opener_key`), o ajuste de labels (`_preflop_gto_label_adjust`) e integração com dados reais via `analyze_preflop`
+
+### Migration
+- **`backend/scripts/reanalyze_preflop_labels.py`** (reescrito): re-analisa decisões preflop de todos os torneios importados usando o pipeline completo (`parse_hand_history` → `build_decision_inputs_for_hand` → `evaluate_decision`) — 40 decisions corrigidas no banco
+
+---
+
 ## [v0.99.9] — 2026-05-16 — feat(replayer): odds ao vivo, GTO strategy panel, bounty badges, Ghost Table melhorias
 
 ### Added
