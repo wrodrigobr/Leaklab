@@ -337,12 +337,13 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
         </div>
       )}
 
-      {/* Footer */}
-      {detectedPos && (
-        <p className="font-mono text-[8px] text-muted-foreground/50 text-center">
-          Posição: {detectedPos} · {stackBb.toFixed(0)}bb{openerPos ? ` · opener: ${openerPos}` : ''}
-        </p>
-      )}
+      {/* Footer — data source + context */}
+      <p className="font-mono text-[8px] text-muted-foreground/40 text-center leading-relaxed">
+        {detectedPos ? `Posição: ${detectedPos} · ` : ''}{stackBb.toFixed(0)}bb
+        {openerPos ? ` · opener: ${openerPos}` : ''}
+        {' · '}Fonte: {apiData ? 'Nash MTT (local)' : 'tabelas estáticas'}
+        {!showGtoCtx && gto && !gto.available && ' · análise GTO indisponível neste spot'}
+      </p>
     </section>
   );
 }

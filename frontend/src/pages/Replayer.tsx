@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -90,6 +90,15 @@ function SidePanels({
   openAnnotationForm, t,
   gtoRequestStatus, onRequestGto,
 }: SidePanelsProps) {
+  const [showDetails, setShowDetails] = useState<boolean>(
+    () => localStorage.getItem('replayer_show_details') === 'true'
+  );
+  const toggleDetails = () => setShowDetails(prev => {
+    const next = !prev;
+    localStorage.setItem('replayer_show_details', String(next));
+    return next;
+  });
+
   const hasGto     = !!step.gto_label;
   const isPostflop = step.street !== 'preflop';
   const pg = step.preflop_gto ?? null;
@@ -132,34 +141,37 @@ function SidePanels({
     gto_critical:        "Desvio crítico: frequência GTO < 10% — jogada raramente justificada pelo solver",
   };
 
-  type VInfo = { icon: string; label: string; cls: string; borderCls: string; hdrCls: string; source: string };
+  type VInfo = { icon: string; label: string; cls: string; borderCls: string; hdrCls: string; source: string; sourceTooltip: string };
   const verdict = ((): VInfo | null => {
     if (!step.is_hero || step.type !== "action") return null;
     // Skip non-decision actions (shows, mucks, posts)
     const _actLow = (step.action ?? '').toLowerCase();
     if (_actLow === 'shows' || _actLow === 'show' || _actLow === 'mucks' || _actLow === 'muck' || _actLow === 'posts' || _actLow === 'post') return null;
     if (effectiveGtoLabel) {
+      const gtoTooltip = "GTO Solver — frequências de Nash equilibrium calculadas para este spot específico";
       const m: Record<string, VInfo> = {
-        gto_correct:         { icon: "✓", label: "Correto",        cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "GTO Solver" },
-        gto_mixed:           { icon: "◎", label: "Misto",          cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "GTO Solver" },
-        gto_minor_deviation: { icon: "⚠", label: "Desvio Leve",   cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "GTO Solver" },
-        gto_critical:        { icon: "✗", label: "Desvio Crítico", cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "GTO Solver" },
+        gto_correct:         { icon: "✓", label: "Correto",        cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Solver", sourceTooltip: gtoTooltip },
+        gto_mixed:           { icon: "◎", label: "Misto",          cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "Solver", sourceTooltip: gtoTooltip },
+        gto_minor_deviation: { icon: "⚠", label: "Desvio Leve",   cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Solver", sourceTooltip: gtoTooltip },
+        gto_critical:        { icon: "✗", label: "Desvio Crítico", cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "Solver", sourceTooltip: gtoTooltip },
       };
       if (m[effectiveGtoLabel]) return m[effectiveGtoLabel];
     }
     if (!isPostflop && pg?.available) {
+      const rangeTooltip = "Preflop — ranges de abertura GTO por posição e stack depth";
       const m: Record<string, VInfo> = {
-        correct:    { icon: "✓", label: "Correto",      cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Range" },
-        acceptable: { icon: "◎", label: "Aceitável",    cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "Range" },
-        leak:       { icon: "⚠", label: "Leak",         cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Range" },
-        major_leak: { icon: "✗", label: "Leak Grave",   cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "Range" },
-        unknown:    { icon: "·", label: "Sem dados",    cls: "text-muted-foreground", borderCls: "border-border",   hdrCls: "bg-hud-surface",   source: "Range" },
+        correct:    { icon: "✓", label: "Correto",      cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Preflop", sourceTooltip: rangeTooltip },
+        acceptable: { icon: "◎", label: "Aceitável",    cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "Preflop", sourceTooltip: rangeTooltip },
+        leak:       { icon: "⚠", label: "Leak",         cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Preflop", sourceTooltip: rangeTooltip },
+        major_leak: { icon: "✗", label: "Leak Grave",   cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "Preflop", sourceTooltip: rangeTooltip },
+        unknown:    { icon: "·", label: "Sem dados",    cls: "text-muted-foreground", borderCls: "border-border",   hdrCls: "bg-hud-surface",   source: "Preflop", sourceTooltip: rangeTooltip },
       };
       return m[pg.action_quality] ?? m.unknown;
     }
-    if (isError) return { icon: "✗", label: "Erro", cls: "text-destructive", borderCls: "border-destructive/40", hdrCls: "bg-destructive/5", source: "Análise" };
+    const engineTooltip = "Engine — equity estimada, M-Ratio, pressão ICM e contexto de torneio";
+    if (isError) return { icon: "✗", label: "Erro", cls: "text-destructive", borderCls: "border-destructive/40", hdrCls: "bg-destructive/5", source: "Engine", sourceTooltip: engineTooltip };
     if (isCorrect || step.hand_equity != null || step.pot_odds_equity != null)
-      return { icon: "✓", label: "Correto", cls: "text-primary", borderCls: "border-primary/30", hdrCls: "bg-primary/5", source: "Análise" };
+      return { icon: "✓", label: "Correto", cls: "text-primary", borderCls: "border-primary/30", hdrCls: "bg-primary/5", source: "Engine", sourceTooltip: engineTooltip };
     return null;
   })();
   const showDecision = !!verdict && (studentId !== null || coachAnnotation?.mode !== "replace");
@@ -214,17 +226,29 @@ function SidePanels({
       {showDecision && verdict && (
         <section className={cn("rounded-xl border overflow-hidden", verdict.borderCls)}>
 
-          {/* Banner: veredito + fonte */}
+          {/* Banner: veredito + fonte + toggle detalhes */}
           <div className={cn("flex items-center justify-between px-3 py-2.5", verdict.hdrCls)}>
             <span
-              className={cn("font-mono text-sm font-bold uppercase tracking-wide cursor-help", verdict.cls)}
+              className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls, effectiveGtoLabel && "cursor-help")}
               title={effectiveGtoLabel ? GTO_LABEL_TOOLTIP[effectiveGtoLabel] : undefined}
             >
               {verdict.icon} {verdict.label}
             </span>
-            <span className="font-mono text-[9px] text-muted-foreground/45 uppercase tracking-wider">
-              {verdict.source}
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className="font-mono text-[9px] text-muted-foreground/45 uppercase tracking-wider cursor-help"
+                title={verdict.sourceTooltip}
+              >
+                {verdict.source}
+              </span>
+              <button
+                onClick={toggleDetails}
+                title={showDetails ? "Ocultar detalhes" : "Mostrar detalhes"}
+                className="text-muted-foreground/40 hover:text-muted-foreground/80 transition-colors"
+              >
+                {showDetails ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+              </button>
+            </div>
           </div>
 
           <div className="p-3 space-y-3">
@@ -288,11 +312,65 @@ function SidePanels({
                     </div>
                   </div>
                 )}
-                {pg.pro_notes.length > 0 && (
-                  <div className="space-y-1 pt-1 border-t border-border/30">
-                    {pg.pro_notes.map((note, i) => (
-                      <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>
-                    ))}
+                {showDetails && (
+                  <div className="space-y-2.5 pt-2 border-t border-border/30">
+                    {/* Audit trail — 4-step classification chain */}
+                    <div>
+                      <p className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-1.5">Raciocínio do sistema</p>
+                      <div className="flex flex-wrap gap-1 items-center">
+                        <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[9px]">
+                          <span className="text-muted-foreground/50 mr-1">Cenário</span>
+                          <span className="text-foreground font-bold">{scenarioLabel[pg.scenario] ?? pg.scenario}</span>
+                        </span>
+                        <span className="text-muted-foreground/30 text-[8px]">›</span>
+                        <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[9px]">
+                          <span className="text-muted-foreground/50 mr-1">Range</span>
+                          <span className="text-foreground font-bold">
+                            {pg.vs_position ? `${pg.vs_position} · ` : ''}{pg.stack_bucket}
+                          </span>
+                        </span>
+                        <span className="text-muted-foreground/30 text-[8px]">›</span>
+                        <span className={cn(
+                          "rounded-md ring-1 px-2 py-1 font-mono text-[9px]",
+                          pg.in_range ? "bg-emerald-500/8 ring-emerald-500/30" : "bg-red-500/8 ring-red-500/30"
+                        )}>
+                          <span className="text-muted-foreground/50 mr-1">Mão</span>
+                          <span className={cn("font-bold", pg.in_range ? "text-emerald-400" : "text-red-400")}>
+                            {pg.hand_type} {pg.in_range ? '✓' : '✗'}
+                          </span>
+                        </span>
+                        <span className="text-muted-foreground/30 text-[8px]">›</span>
+                        <span className={cn(
+                          "rounded-md ring-1 px-2 py-1 font-mono text-[9px]",
+                          pg.action_quality === 'correct'    ? "bg-emerald-500/8 ring-emerald-500/30" :
+                          pg.action_quality === 'acceptable' ? "bg-sky-500/8 ring-sky-500/30" :
+                          pg.action_quality === 'leak'       ? "bg-amber-500/8 ring-amber-500/30" :
+                          pg.action_quality === 'major_leak' ? "bg-destructive/8 ring-destructive/30" :
+                          "bg-background/60 ring-border/50"
+                        )}>
+                          <span className="text-muted-foreground/50 mr-1">Qualidade</span>
+                          <span className={cn("font-bold",
+                            pg.action_quality === 'correct'    ? "text-emerald-400" :
+                            pg.action_quality === 'acceptable' ? "text-sky-400" :
+                            pg.action_quality === 'leak'       ? "text-amber-400" :
+                            pg.action_quality === 'major_leak' ? "text-destructive" :
+                            "text-muted-foreground"
+                          )}>
+                            {pg.action_quality === 'correct'    ? 'Correto (GTO)' :
+                             pg.action_quality === 'acceptable' ? 'Aceitável' :
+                             pg.action_quality === 'leak'       ? 'Leak' :
+                             pg.action_quality === 'major_leak' ? 'Leak Grave' : 'Sem dados'}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                    {pg.pro_notes.length > 0 && (
+                      <div className="space-y-1">
+                        {pg.pro_notes.map((note, i) => (
+                          <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </>
@@ -357,53 +435,76 @@ function SidePanels({
                     {value && <span className={cn("font-mono text-[11px] font-bold tabular-nums", color)}>{value}</span>}
                     {children}
                   </div>
-                  {ctx && <p className="text-[10px] text-muted-foreground/45 pl-[3.75rem] leading-snug">{ctx}</p>}
+                  {showDetails && ctx && <p className="text-[10px] text-muted-foreground/45 pl-[3.75rem] leading-snug">{ctx}</p>}
                 </div>
               );
+
+              // Math card inline (equity vs pot odds) — só quando há pot odds
+              const hasMathCard = eq != null && po != null && po > 0;
+              const mathCallIsEv  = hasMathCard ? eq! >= po! : false;
+              const mathIsFolding = (step.action ?? '').toLowerCase() === 'fold';
+              const mathActionIsEv = mathIsFolding ? !mathCallIsEv : mathCallIsEv;
+              const mathActLabel  = step.action ? fmtAction(step.action) : null;
+              const mathBadgeCls  = mathActionIsEv
+                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                : "bg-red-500/10 text-red-400 border border-red-500/20";
+              const mathBadgeLabel = `${mathActLabel ?? ''} ${mathActionIsEv ? "+EV" : "−EV"}`.trim();
+              const mathActEv = step.gto_strategy?.find(s => {
+                const n = normalizeGtoAction(s.action);
+                const p = normalizeGtoAction(step.action ?? '');
+                return n === p || p.startsWith(n) || n.startsWith(p);
+              })?.ev_bb ?? null;
 
               return (
                 <div className="space-y-3 border-t border-border/30 pt-2">
                   <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/40">Indicadores</span>
 
-                  {/* Equity */}
-                  {eq != null && (
+                  {/* Equity somente quando não há pot odds (sem Math card) */}
+                  {eq != null && !hasMathCard && (
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-2" title="Equity estimada do hero contra o range do villain">
                         <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">Equity</span>
                         <div className="flex-1 h-1.5 rounded-full bg-border/50 overflow-hidden">
-                          <div className={cn("h-full rounded-full transition-all",
-                            profitable === true ? "bg-emerald-500" : profitable === false ? "bg-destructive" : "bg-sky-500")}
+                          <div className={cn("h-full rounded-full transition-all bg-sky-500")}
                             style={{ width: `${(eq * 100).toFixed(1)}%` }} />
                         </div>
-                        <span className={cn("font-mono text-[11px] font-bold tabular-nums shrink-0 w-8 text-right",
-                          profitable === true ? "text-emerald-400" : profitable === false ? "text-destructive" : "text-sky-400")}>
+                        <span className="font-mono text-[11px] font-bold tabular-nums shrink-0 w-8 text-right text-sky-400">
                           {(eq * 100).toFixed(0)}%
                         </span>
                       </div>
-                      {eqCtx && <p className="text-[10px] text-muted-foreground/45 pl-[3.75rem] leading-snug">{eqCtx}</p>}
+                      {showDetails && eqCtx && <p className="text-[10px] text-muted-foreground/45 pl-[3.75rem] leading-snug">{eqCtx}</p>}
                     </div>
                   )}
 
-                  {/* Pot Odds */}
-                  {po != null && po > 0 && (
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2" title="Pot odds: equity mínima para call ser matematicamente lucrativo">
-                        <span className="font-mono text-[9px] w-14 shrink-0 text-muted-foreground/60 uppercase tracking-wide">Pot odds</span>
-                        <div className="flex-1 h-1.5 rounded-full bg-border/50 overflow-hidden">
-                          <div className="h-full rounded-full bg-border transition-all"
-                            style={{ width: `${(po * 100).toFixed(1)}%` }} />
+                  {/* Math card — substitui Equity + Pot odds quando há pot odds */}
+                  {hasMathCard && (
+                    <div className="rounded-lg border border-border/40 bg-muted/5 px-3 py-2 space-y-1.5">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="space-y-0.5">
+                          <p className="font-mono text-[8px] text-muted-foreground/50 uppercase">Pot Odds</p>
+                          <p className="font-mono text-[12px] font-bold text-muted-foreground tabular-nums">{(po! * 100).toFixed(1)}%</p>
                         </div>
-                        <span className="font-mono text-[11px] tabular-nums shrink-0 w-8 text-right text-muted-foreground">
-                          {(po * 100).toFixed(0)}%
-                        </span>
-                        {profitable != null && (
-                          <span className={cn("font-mono text-[9px] font-bold shrink-0",
-                            profitable ? "text-emerald-400" : "text-destructive")}>
-                            {profitable ? "✓" : "✗"}
-                          </span>
-                        )}
+                        <div className="text-muted-foreground/30 font-mono text-[10px]">vs</div>
+                        <div className="space-y-0.5">
+                          <p className="font-mono text-[8px] text-muted-foreground/50 uppercase">Equity</p>
+                          <p className={cn("font-mono text-[12px] font-bold tabular-nums", mathCallIsEv ? "text-emerald-400" : "text-red-400")}>
+                            {(eq! * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                        <div className={cn("ml-auto rounded-md px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wider", mathBadgeCls)}>
+                          {mathBadgeLabel}
+                        </div>
                       </div>
-                      {poCtx && <p className="text-[10px] text-muted-foreground/45 pl-[3.75rem] leading-snug">{poCtx}</p>}
+                      {showDetails && (poCtx || eqCtx) && (
+                        <p className="text-[10px] text-muted-foreground/45 leading-snug">{poCtx ?? eqCtx}</p>
+                      )}
+                      {mathActEv != null && (
+                        <p className="font-mono text-[8px] text-muted-foreground/50">
+                          EV estimado: <span className={cn("font-bold", mathActEv >= 0 ? "text-emerald-400/70" : "text-red-400/70")}>
+                            {mathActEv >= 0 ? "+" : ""}{mathActEv.toFixed(2)} BB
+                          </span>
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -438,51 +539,6 @@ function SidePanels({
               );
             })()}
 
-            {/* Call Math Card — equity vs pot odds em ações que envolvem chips */}
-            {isPostflop && step.is_hero && step.pot_odds_equity != null && step.pot_odds_equity > 0 && step.hand_equity != null && (() => {
-              const callPct  = step.pot_odds_equity * 100;
-              const eqPct    = step.hand_equity * 100;
-              const isPlusEv = eqPct >= callPct;
-              const actLabel = step.action ? fmtAction(step.action) : null;
-              const actEv    = step.gto_strategy?.find(s => {
-                const n = normalizeGtoAction(s.action);
-                const p = normalizeGtoAction(step.action ?? '');
-                return n === p || p.startsWith(n) || n.startsWith(p);
-              })?.ev_bb ?? null;
-              return (
-                <div className="rounded-lg border border-border/40 bg-muted/5 px-3 py-2 space-y-1.5">
-                  <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/50">
-                    Matemática da Decisão
-                  </p>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="space-y-0.5">
-                      <p className="font-mono text-[8px] text-muted-foreground/50 uppercase">Pot Odds</p>
-                      <p className="font-mono text-[12px] font-bold text-muted-foreground tabular-nums">{callPct.toFixed(1)}%</p>
-                    </div>
-                    <div className="text-muted-foreground/30 font-mono text-[10px]">vs</div>
-                    <div className="space-y-0.5">
-                      <p className="font-mono text-[8px] text-muted-foreground/50 uppercase">Equity</p>
-                      <p className={cn("font-mono text-[12px] font-bold tabular-nums", isPlusEv ? "text-emerald-400" : "text-red-400")}>
-                        {eqPct.toFixed(1)}%
-                      </p>
-                    </div>
-                    <div className={cn(
-                      "ml-auto rounded-md px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wider",
-                      isPlusEv ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
-                    )}>
-                      {isPlusEv ? "+EV" : "−EV"}{actLabel ? ` · ${actLabel}` : ""}
-                    </div>
-                  </div>
-                  {actEv != null && (
-                    <p className="font-mono text-[8px] text-muted-foreground/50">
-                      EV estimado: <span className={cn("font-bold", actEv >= 0 ? "text-emerald-400/70" : "text-red-400/70")}>
-                        {actEv >= 0 ? "+" : ""}{actEv.toFixed(2)} BB
-                      </span>
-                    </p>
-                  )}
-                </div>
-              );
-            })()}
 
             {/* Estratégia pendente */}
             {!step.gto_spot_mismatch && !!step.gto_label && !stratSorted.length && (

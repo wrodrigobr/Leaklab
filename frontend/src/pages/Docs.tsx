@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight } from "lucide-react";
 
-const SECTION_IDS = ["scoring", "indicators", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
+const SECTION_IDS = ["scoring", "indicators", "gto_method", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -217,6 +217,46 @@ export default function Docs() {
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("indicators.p1") }} />
+            </Section>
+
+            {/* GTO Classification Methodology */}
+            <Section id="gto_method" title={t("gto_method.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("gto_method.p1") }} />
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-foreground/70">{t("gto_method.scenarios_title")}</p>
+              <Table
+                headers={[t("gto_method.col_scenario"), t("gto_method.col_condition"), t("gto_method.col_range_used")]}
+                rows={[
+                  [t("gto_method.rfi_scenario"),     t("gto_method.rfi_condition"),     t("gto_method.rfi_range")],
+                  [t("gto_method.vs_rfi_scenario"),  t("gto_method.vs_rfi_condition"),  t("gto_method.vs_rfi_range")],
+                  [t("gto_method.vs_3bet_scenario"), t("gto_method.vs_3bet_condition"), t("gto_method.vs_3bet_range")],
+                ]}
+              />
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-foreground/70">{t("gto_method.quality_title")}</p>
+              <Table
+                headers={[t("gto_method.col_quality"), t("gto_method.col_quality_meaning"), t("gto_method.col_label_impact")]}
+                rows={[
+                  [<Badge color="bg-emerald-500/15 text-emerald-400">correct</Badge>,    t("gto_method.correct_meaning"),    t("gto_method.correct_impact")],
+                  [<Badge color="bg-sky-500/15 text-sky-400">acceptable</Badge>,         t("gto_method.acceptable_meaning"), t("gto_method.acceptable_impact")],
+                  [<Badge color="bg-amber-500/15 text-amber-400">leak</Badge>,           t("gto_method.leak_meaning"),       t("gto_method.leak_impact")],
+                  [<Badge color="bg-destructive/15 text-destructive">major_leak</Badge>, t("gto_method.major_leak_meaning"), t("gto_method.major_leak_impact")],
+                ]}
+              />
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-foreground/70">{t("gto_method.buckets_title")}</p>
+              <Table
+                headers={[t("gto_method.col_bucket"), t("gto_method.col_bb_range")]}
+                rows={[
+                  ["10bb", "≤ 12bb"],
+                  ["14bb", "13 – 16bb"],
+                  ["20bb", "17 – 24bb"],
+                  ["30bb", "25 – 35bb"],
+                  ["40bb", "36 – 45bb"],
+                  ["50bb", "46 – 62bb"],
+                  ["75bb", "63 – 87bb"],
+                  ["100bb", "> 87bb"],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("gto_method.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("gto_method.p3") }} />
             </Section>
 
             {/* M-Ratio Phases */}

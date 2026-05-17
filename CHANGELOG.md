@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.101.0] — 2026-05-17 — feat(docs): transparência GTO para coaches + audit trail no replayer
+
+### Added
+- **`frontend/src/pages/Docs.tsx`** + **`i18n/locales/*/docs.json`**: nova seção **"Metodologia de Classificação GTO"** (PT/EN/ES) explicando: os 3 cenários pré-flop (RFI, vs Open, vs 3-Bet), o pipeline de 4 etapas, a tabela de `action_quality` → impacto no label, os 8 buckets de stack (10bb–100bb com ranges exatos), quando `available=false` e a garantia de ausência de contradições — informação necessária para que coaches e professores entendam e recomendem o sistema com segurança
+- **`frontend/src/pages/Replayer.tsx`**: **"Raciocínio do sistema"** — audit trail colapsável na Decision Card (botão 👁) mostrando o caminho de 4 etapas que gerou a classificação: Cenário → Range consultada (ex. UTG · 30bb) → Mão in/out (88 ✗) → Qualidade da ação (leak/correct/etc.). Disponível em todas as decisões pré-flop com `available=true`
+- **`frontend/src/components/replayer/RangePanel.tsx`**: rodapé de metadados exibindo a fonte do range (`Nash MTT (local)` ou `tabelas estáticas`) e indicador quando análise GTO está indisponível — dá aos coaches clareza sobre qual dataset está sendo usado
+
+---
+
 ## [v0.100.1] — 2026-05-17 — fix(gto): corrigir contradições no sistema de classificação preflop + testes de regressão
 
 ### Fixed
