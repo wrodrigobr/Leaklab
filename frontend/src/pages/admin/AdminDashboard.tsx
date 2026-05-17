@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, BarChart2, CheckCircle2, ChevronRight, Clock,
-  Download, LayoutDashboard, Loader2, Search, Shield, Users,
+  Download, LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
   Cpu, CircleDot
 } from "lucide-react";
@@ -1063,6 +1063,116 @@ function GtoWorkerTab() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Manutenção de labels */}
+      <ReanalyzeLabelsPanel />
+    </div>
+  );
+}
+
+// ── Reanalyze Labels Panel ────────────────────────────────────────────────────
+
+function ReanalyzeLabelsPanel() {
+  const [running, setRunning] = React.useState(false);
+  const [result, setResult]   = React.useState<{
+    checked: number; updated: number; affected_tournaments: number;
+    changes: Array<{ tid: number; hand_id: string; action: string; old: string; new: string }>;
+  } | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleRun = async () => {
+    setRunning(true);
+    setResult(null);
+    setError(null);
+    try {
+      const data = await adminDashboard.reanalyzeGtoLabels();
+      setResult(data);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro desconhecido");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+            Re-análise de Labels Preflop
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Corrige labels calculados com bugs antigos (vs_rfi / limp fora de range).
+            Idempotente — seguro rodar múltiplas vezes.
+          </p>
+        </div>
+        <button
+          onClick={handleRun}
+          disabled={running}
+          className="flex items-center gap-2 rounded-md bg-primary/10 border border-primary/30 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/20 disabled:opacity-40 transition-colors"
+        >
+          {running ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+          {running ? "Processando..." : "Executar"}
+        </button>
+      </div>
+
+      {error && (
+        <p className="text-xs text-destructive font-mono">{error}</p>
+      )}
+
+      {result && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg bg-background/60 border border-border/60 p-3 text-center">
+              <p className="font-mono text-xl font-bold text-foreground">{result.checked}</p>
+              <p className="font-mono text-[9px] text-muted-foreground uppercase">verificadas</p>
+            </div>
+            <div className={cn("rounded-lg border p-3 text-center",
+              result.updated > 0 ? "bg-yellow-500/5 border-yellow-500/30" : "bg-background/60 border-border/60"
+            )}>
+              <p className={cn("font-mono text-xl font-bold", result.updated > 0 ? "text-yellow-400" : "text-foreground")}>
+                {result.updated}
+              </p>
+              <p className="font-mono text-[9px] text-muted-foreground uppercase">atualizadas</p>
+            </div>
+            <div className="rounded-lg bg-background/60 border border-border/60 p-3 text-center">
+              <p className="font-mono text-xl font-bold text-foreground">{result.affected_tournaments}</p>
+              <p className="font-mono text-[9px] text-muted-foreground uppercase">torneios</p>
+            </div>
+          </div>
+
+          {result.changes.length > 0 && (
+            <div className="rounded-lg border border-border/40 overflow-hidden">
+              <table className="w-full font-mono text-[10px]">
+                <thead className="bg-muted/20">
+                  <tr>
+                    <th className="text-left px-3 py-2 text-muted-foreground">Hand</th>
+                    <th className="text-left px-3 py-2 text-muted-foreground">Ação</th>
+                    <th className="text-left px-3 py-2 text-muted-foreground">Antes</th>
+                    <th className="text-left px-3 py-2 text-muted-foreground">Depois</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {result.changes.map((c, i) => (
+                    <tr key={i} className="hover:bg-muted/10">
+                      <td className="px-3 py-1.5 text-foreground/70">{c.hand_id}</td>
+                      <td className="px-3 py-1.5 text-foreground">{c.action}</td>
+                      <td className="px-3 py-1.5 text-yellow-400/80">{c.old}</td>
+                      <td className="px-3 py-1.5 text-primary">{c.new}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {result.updated === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-2">
+              Todos os labels já estão corretos.
+            </p>
+          )}
         </div>
       )}
     </div>

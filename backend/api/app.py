@@ -4564,6 +4564,117 @@ def admin_gto_reprocess_decisions():
     })
 
 
+@app.route('/admin/reanalyze-preflop-labels', methods=['POST'])
+@require_admin
+def admin_reanalyze_preflop_labels():
+    """
+    Re-analisa labels preflop usando o pipeline completo (parse → evaluate).
+    Corrige decisões que receberam label errado devido aos bugs corrigidos em
+    preflop_gto_ranges.py (v0.101.x). Idempotente — seguro rodar múltiplas vezes.
+    """
+    from database.schema import get_conn as _gc
+    from leaklab.parser import parse_hand_history
+    from leaklab.pipeline import build_decision_inputs_for_hand
+    from leaklab.decision_engine_v11 import evaluate_decision
+
+    conn = _gc()
+    try:
+        tournaments = conn.execute(
+            "SELECT id FROM tournaments WHERE raw_text IS NOT NULL ORDER BY id"
+        ).fetchall()
+
+        total_checked = 0
+        total_updated = 0
+        affected_ids  = set()
+        changes       = []
+
+        for row in tournaments:
+            tid = row['id']
+            raw_row = conn.execute(
+                "SELECT raw_text FROM tournaments WHERE id = ?", (tid,)
+            ).fetchone()
+            if not raw_row or not raw_row[0]:
+                continue
+
+            try:
+                hands = parse_hand_history(raw_row[0])
+            except Exception:
+                continue
+
+            seen: set = set()
+            for hand in hands:
+                try:
+                    dis = build_decision_inputs_for_hand(hand)
+                except Exception:
+                    continue
+
+                for di in dis:
+                    if di.get('street') != 'preflop':
+                        continue
+                    hand_id = di.get('hand_id', '')
+                    spot    = di.get('spot', {})
+                    act     = (spot.get('actionTaken') or di.get('player_action', '')).lower()
+                    pos     = (di.get('position') or spot.get('position') or '').upper()
+                    if not hand_id or not act:
+                        continue
+                    dedup = (hand_id, pos, act)
+                    if dedup in seen:
+                        continue
+                    seen.add(dedup)
+
+                    db_row = conn.execute(
+                        "SELECT id, label FROM decisions "
+                        "WHERE hand_id = ? AND street = 'preflop' AND action_taken = ? LIMIT 1",
+                        (hand_id, act)
+                    ).fetchone()
+                    if not db_row:
+                        continue
+
+                    did, old_label = db_row['id'], db_row['label']
+                    total_checked += 1
+
+                    try:
+                        result    = evaluate_decision(di)
+                        new_label = (result.get('evaluation') or {}).get('label') or old_label
+                    except Exception:
+                        continue
+
+                    if new_label != old_label:
+                        conn.execute(
+                            "UPDATE decisions SET label = ? WHERE id = ?",
+                            (new_label, did)
+                        )
+                        total_updated += 1
+                        affected_ids.add(tid)
+                        changes.append({
+                            'tid': tid, 'hand_id': hand_id,
+                            'action': act, 'old': old_label, 'new': new_label
+                        })
+
+        if affected_ids:
+            conn.commit()
+            for tid in affected_ids:
+                std_row = conn.execute(
+                    "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
+                    "AVG(score) AS a FROM decisions WHERE tournament_id = ?", (tid,)
+                ).fetchone()
+                if std_row:
+                    conn.execute(
+                        "UPDATE tournaments SET standard_pct=?, avg_score=? WHERE id=?",
+                        (round(std_row[0], 2), round(std_row[1] or 0, 4), tid)
+                    )
+            conn.commit()
+
+        return jsonify({
+            'checked':  total_checked,
+            'updated':  total_updated,
+            'affected_tournaments': len(affected_ids),
+            'changes':  changes,
+        })
+    finally:
+        conn.close()
+
+
 @app.route('/support/contact', methods=['POST'])
 @require_auth
 def support_contact():

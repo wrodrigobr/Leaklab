@@ -1572,6 +1572,12 @@ export const adminDashboard = {
 
   gtoWorkerStatus: () => request<GtoWorkerStatus>("/admin/gto/worker-status"),
   gtoHandQueue: () => request<{ queue: GtoHandRequest[]; counts: Record<string, number> }>("/admin/gto/hand-queue"),
+  reanalyzeGtoLabels: () => request<{
+    checked: number;
+    updated: number;
+    affected_tournaments: number;
+    changes: Array<{ tid: number; hand_id: string; action: string; old: string; new: string }>;
+  }>("/admin/reanalyze-preflop-labels", { method: "POST" }),
 };
 
 export interface GtoHandRequest {
