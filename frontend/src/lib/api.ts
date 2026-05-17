@@ -543,6 +543,9 @@ export interface DrillSpot {
   next_drill_at: string | null;
   srs_interval_days: number | null;
   days_overdue: number | null;
+  // GTO
+  gto_action: string | null;
+  gto_label: string | null;
 }
 
 export interface DrillStats {

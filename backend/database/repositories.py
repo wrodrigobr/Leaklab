@@ -714,6 +714,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
                 d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
                 d.num_players, d.is_3bet, d.level_bb, d.note, d.draw_profile,
                 d.pot_size, d.facing_bet,
+                d.gto_action, d.gto_label,
                 t.tournament_name, t.played_at, t.buy_in,
                 ds_last.next_drill_at, ds_last.srs_interval_days
             FROM decisions d
@@ -849,7 +850,8 @@ def get_decision_for_drill(user_id: int, decision_id: int) -> dict | None:
                    d.street, d.hero_cards, d.board, d.action_taken,
                    d.m_ratio, d.icm_pressure, d.stack_bb, d.draw_profile,
                    d.position, d.num_players, d.level_sb, d.level_bb,
-                   d.level_num, d.note, d.is_3bet, d.pot_size, d.facing_bet
+                   d.level_num, d.note, d.is_3bet, d.pot_size, d.facing_bet,
+                   d.gto_action, d.gto_label
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE d.id = ? AND t.user_id = ?

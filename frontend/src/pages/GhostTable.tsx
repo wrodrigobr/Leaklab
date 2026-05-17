@@ -541,7 +541,12 @@ export default function GhostTable() {
                     <p className="mt-1 font-mono text-lg font-bold text-foreground">{formatAction(lastResult.new_action).toUpperCase()}</p>
                   </div>
                   <div className="rounded-lg border border-border bg-hud-surface p-3">
-                    <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
+                      {current?.gto_action && current?.gto_label !== 'wizard_pending' && (
+                        <span className="font-mono text-[8px] text-primary/60 bg-primary/10 rounded px-1">⚖ GTO</span>
+                      )}
+                    </div>
                     <p className="mt-1 font-mono text-lg font-bold text-foreground">{formatAction(lastResult.best_action).toUpperCase()}</p>
                   </div>
                 </div>
@@ -823,7 +828,12 @@ export default function GhostTable() {
               <p className="mt-1 font-mono text-xl font-bold text-foreground">{formatAction(lastResult.new_action).toUpperCase()}</p>
             </div>
             <div className="rounded-lg border border-border bg-hud-surface p-4">
-              <p className="font-mono text-[10px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-mono text-[10px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
+                {current?.gto_action && current?.gto_label !== 'wizard_pending' && (
+                  <span className="font-mono text-[8px] text-primary/60 bg-primary/10 rounded px-1">⚖ GTO</span>
+                )}
+              </div>
               <p className="mt-1 font-mono text-xl font-bold text-foreground">{formatAction(lastResult.best_action).toUpperCase()}</p>
             </div>
           </div>

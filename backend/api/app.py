@@ -895,13 +895,32 @@ def player_drill_submit():
     if not row:
         return jsonify({'error': 'Decisão não encontrada'}), 404
 
-    best_action    = row['best_action']
-    # Guard: BB pode check grátis — fold é impossível sem aposta. Outras posições: fold correto (não estão abrindo).
+    def _norm_drill(a: str) -> str:
+        """Mapeia ação GTO para os 6 botões do Ghost Table (fold/check/call/bet/raise/jam)."""
+        a = (a or '').strip().lower()
+        if a in ('shove', 'jam', 'allin', 'all-in', 'all_in'):
+            return 'jam'
+        if a.startswith('bet'):
+            return 'bet'
+        if a.startswith('raise'):
+            return 'raise'
+        return a
+
+    best_action = row['best_action']
+    gto_action  = row.get('gto_action') or ''
+    gto_label   = row.get('gto_label') or ''
+
+    # GTO tem precedência sobre heurística quando disponível e não pendente.
+    # Evita que o drill diga "errado" quando o jogador seguiu corretamente a recomendação GTO.
+    if gto_action and gto_label not in ('wizard_pending', ''):
+        best_action = _norm_drill(gto_action)
+
+    # Guard: BB pode check grátis — fold sem aposta é impossível.
     if float(row.get('facing_bet') or 0) == 0 and best_action == 'fold' and row.get('position') == 'BB':
         best_action = 'check'
+
     original_score = row['score']
-    # Evaluation: correct if new action matches best action
-    is_correct = new_action == best_action
+    is_correct = _norm_drill(new_action) == best_action
     new_score  = 0.02 if is_correct else original_score
 
     result = save_drill_session(
