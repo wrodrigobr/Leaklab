@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.101.7] — 2026-05-17 — fix(gto): correção contradições GTO + re-análise labels preflop
+
+### Fixed
+- **`backend/leaklab/preflop_gto_ranges.py`** — todos os 5 bugs de contradição já corrigidos em versões anteriores:
+  - BUG 1 (`_rfi_quality`): limp/call fora do range agora retorna `leak` em vez de `acceptable`
+  - BUG 2 (`_vs_rfi_quality`): desvio de ação dentro do range agora retorna `leak` em vez de `acceptable`
+  - BUG 3 (`_find_opener_key`): fallback silencioso para BTN_open removido — retorna `None` se sem match exato
+  - BUG 4 (`analyze_preflop`): `facing_size > 0` → `vs_rfi` independente de `vs_position`
+  - BUG 5 (`app.py`): `is_3bet_pot` passado corretamente para `analyze_preflop` em ambas as chamadas
+- **`backend/scripts/reanalyze_preflop_labels.py`** — reescrito com pipeline completo:
+  - Deduplicação por `(hand_id, position, action)` — evita double-update de DIs duplicados do pipeline
+  - Recalcula `tournaments.standard_pct` nos torneios afetados (KPIs e RecentForm também atualizam)
+  - Resultado: 700 decisões verificadas, 3 labels corrigidas em 3 torneios
+
+---
+
 ## [v0.101.6] — 2026-05-17 — feat(study-plan): roteiro tático enriquecido com HUD stats
 
 ### Changed
