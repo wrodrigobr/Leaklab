@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.101.2] — 2026-05-17 — feat(dashboard): Confidence Drift Alert no topo + dismiss persistente
+
+### Changed
+- **`frontend/src/pages/Index.tsx`**: Confidence Drift Alert movido para o **topo absoluto** do dashboard (antes dos KPIs e do DailyFocusCard) — primeira informação visível quando há drift detectado
+- **Dismiss persistente via `localStorage`**: ao fechar o alerta, ele não reaparece mesmo após recarregar a página; chave baseada em `userId + affected_sessions` — reseta automaticamente quando novos torneios são importados e o alerta muda de baseline
+- **`GhostDrillCard` removido do dashboard**: drill_row agora exibe apenas `PressureProfileCard + IcmBreakdown` (grid-cols-2); o Ghost Table continua acessível via `/training`
+
+---
+
 ## [v0.101.1] — 2026-05-17 — feat(hud): Fold to Flop Bet + BB Defense + Steal% no Player HUD Stats
 
 ### Added
