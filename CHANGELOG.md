@@ -9,6 +9,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.101.6] — 2026-05-17 — feat(study-plan): roteiro tático enriquecido com HUD stats
+
+### Changed
+- **`backend/leaklab/llm_explainer.py`**: `generate_study_plan` recebe agora `player_stats: dict` com todos os 12 HUD stats comportamentais
+- **`_format_hud_stats_for_prompt()`**: nova função auxiliar que formata os stats com interpretação automática (`✓ dentro do range` / `⚠ acima/abaixo do ideal`) — o LLM recebe o contexto em linguagem de coach, não só números
+- **Instrução de coaching**: novo parágrafo guia o LLM a cruzar VPIP/AF/BB Defense/Open Limp com os leaks para gerar módulos específicos de comportamento (ex: "VPIP alto + PFR baixo → loose-passive; AF abaixo de 2x → postflop passivo")
+- Cache key atualizado para `v3` — invalida planos gerados sem HUD stats automaticamente na próxima chamada
+- Ambos os endpoints `/study/plan` e `/coach/student/{id}/study-plan` passam os HUD stats
+
+### Analysis
+- Antes: LLM só recebia "frequência de erros por spot" — módulos eram genéricos
+- Depois: LLM recebe perfil comportamental completo (12 stats + interpretação) — pode gerar módulos como "Você open limpa 8% das vezes (ideal 0-5%) — este módulo foca em eliminar limps e converter em opens ou folds"
+
+---
+
 ## [v0.101.5] — 2026-05-17 — fix(i18n): textos hardcoded no dashboard
 
 ### Fixed
