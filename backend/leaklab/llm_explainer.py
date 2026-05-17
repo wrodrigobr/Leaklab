@@ -966,7 +966,7 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
         k: v for k, v in (player_stats or {}).items()
         if k != 'total_hands' and v is not None
     } if player_stats else {}
-    mem_key = 'study_plan_v3:' + hashlib.md5(
+    mem_key = 'study_plan_v4:' + hashlib.md5(
         json.dumps({'leaks': leaks, 'evo_len': len(evolution), 'stats': stats_fingerprint},
                    sort_keys=True).encode()
     ).hexdigest()
@@ -1244,7 +1244,9 @@ _POKER_TERMS_EN = (
     "fold, call, raise, bet, check, shove, preflop, flop, turn, river, "
     "hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, "
     "board, position, IP, OOP, shove, reshove, open, limp, squeeze. "
-    "NUNCA use 'rua' ou 'ruas' — sempre 'street' ou 'streets'."
+    "NUNCA use 'rua' ou 'ruas' — sempre 'street' ou 'streets'. "
+    "Para conjugar ações em português, use a forma 'dando raise', 'dando bet', 'dando fold' — "
+    "NUNCA 'raisando', 'bettando', 'foldando' ou qualquer aportuguesamento de termos ingleses."
 )
 
 _LANG_INSTRUCTIONS = {
