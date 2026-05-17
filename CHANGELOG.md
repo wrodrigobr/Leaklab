@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.101.1] — 2026-05-17 — feat(hud): Fold to Flop Bet + BB Defense + Steal% no Player HUD Stats
+
+### Added
+- **`backend/database/repositories.py`** (`get_player_stats`): 3 novos stats calculados a partir do banco:
+  - `fold_to_flop_bet`: % de folds no flop quando enfrenta aposta — proxy para **Fold to C-Bet** (o stat mais solicitado por coaches; ref MTT: 40–55%)
+  - `bb_defense`: % de defesas da BB (call + 3-bet) ao enfrentar abertura pré-flop (ref MTT: 35–55%)
+  - `steal_pct`: % de raises/shoves do BTN/CO/SB quando não há aposta anterior (ref MTT: 25–45%)
+- **`frontend/src/components/hud/PlayerStatsCard.tsx`**: Row 3 com os 3 novos indicadores, cada um com barra de referência colorida (verde/amarelo/vermelho) e tooltip explicativo
+- **`frontend/src/lib/api.ts`** (`PlayerStatsResponse`): 3 novos campos adicionados à interface
+
+### Analysis
+- Auditoria completa do HUD revelou: C-Bet% já existia (hero como aggressor); o que faltava era **Fold to C-Bet** (hero como caller/defender) — statísticas distintas e igualmente críticas. BB Defense e Steal% completam o perfil de jogo posicional.
+- Stats não implementáveis com schema atual: Double Barrel (requer tracking cross-street), Check-Raise% (requer sequência intra-street), AF por street (sample muito pequeno no dataset atual)
+
+---
+
 ## [v0.101.0] — 2026-05-17 — feat(docs): transparência GTO para coaches + audit trail no replayer
 
 ### Added
