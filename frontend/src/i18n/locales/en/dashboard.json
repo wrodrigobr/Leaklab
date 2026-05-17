@@ -174,7 +174,8 @@
     "hands": "{{n}} hands",
     "soon": "coming soon",
     "noStats": "no data",
-    "noData": "Import tournaments to calculate your playing profile."
+    "noData": "Import tournaments to calculate your playing profile.",
+    "refMtt": "MTT Ref {{range}}"
   },
   "dna": {
     "title": "Strategic Profile",
@@ -261,6 +262,7 @@
     "notReachable": "Stagnant — no growth trend",
     "already": "Already reached",
     "perMonth": "{{n}} tournaments/month",
+    "analyzedCount": "{{n}} tournaments analyzed",
     "projection": "Projection"
   }
   ,"cognitiveFailure": {

@@ -217,7 +217,7 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
         "font-mono text-[9px] uppercase tracking-widest",
         def.soon ? "text-muted-foreground/50" : "text-muted-foreground/60"
       )}>
-        Ref MTT {def.range.label}
+        {t("playerStats.refMtt", { range: def.range.label })}
       </span>
     </div>
   );

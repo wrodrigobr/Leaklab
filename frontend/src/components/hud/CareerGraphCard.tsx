@@ -162,7 +162,7 @@ export function CareerGraphCard({ data }: Props) {
             />
             <div className="flex items-center justify-between">
               <span className="font-mono text-[9px] text-muted-foreground">
-                {data.tournament_count} torneos
+                {t("career.analyzedCount", { n: data.tournament_count })}
               </span>
               <span className="flex items-center gap-1 font-mono text-[9px] text-muted-foreground">
                 <span className="inline-block w-4 border-t border-dashed border-muted-foreground/40" />

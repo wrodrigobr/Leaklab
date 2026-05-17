@@ -174,7 +174,8 @@
     "hands": "{{n}} manos",
     "soon": "próximamente",
     "noStats": "sin datos",
-    "noData": "Importa torneos para calcular tu perfil de juego."
+    "noData": "Importa torneos para calcular tu perfil de juego.",
+    "refMtt": "Ref MTT {{range}}"
   },
   "dna": {
     "title": "Perfil Estratégico",
@@ -261,6 +262,7 @@
     "notReachable": "Estancado — sin tendencia de crecimiento",
     "already": "Ya alcanzado",
     "perMonth": "{{n}} torneos/mes",
+    "analyzedCount": "{{n}} torneos analizados",
     "projection": "Proyección"
   }
   ,"cognitiveFailure": {
