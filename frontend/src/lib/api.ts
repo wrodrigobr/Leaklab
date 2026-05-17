@@ -546,6 +546,9 @@ export interface DrillSpot {
   // GTO
   gto_action: string | null;
   gto_label: string | null;
+  // Contexto enriquecido
+  facing_desc: string | null;
+  context_note: string | null;
 }
 
 export interface DrillStats {

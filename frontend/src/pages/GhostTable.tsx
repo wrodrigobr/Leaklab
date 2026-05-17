@@ -146,7 +146,11 @@ function buildDrillStep(spot: DrillSpot): { step: ReplayStep; hero: string; hero
   const HERO = 'Hero';
   const bb   = spot.level_bb ?? 100;
   const heroStack = Math.round((spot.stack_bb ?? 20) * bb);
-  const numP = Math.max(2, Math.min(6, spot.num_players ?? 6));
+  const isPreflop = (spot.street ?? 'preflop') === 'preflop';
+  // Postflop spots são garantidamente HU pelo filtro num_players<=2 — usar 2 seats para clareza visual
+  const numP = isPreflop
+    ? Math.max(2, Math.min(6, spot.num_players ?? 6))
+    : 2;
   const heroPos = (spot.position ?? 'BTN').toUpperCase();
 
   const layouts: Record<number, string[]> = {
@@ -165,8 +169,6 @@ function buildDrillStep(spot: DrillSpot): { step: ReplayStep; hero: string; hero
 
   const seats: Record<string, { player: string; stack: number; pos: string }> = {};
   const bets:  Record<string, number> = {};
-
-  const isPreflop = (spot.street ?? 'preflop') === 'preflop';
 
   positions.forEach((pos, i) => {
     const sn    = String(i + 1);
@@ -383,12 +385,20 @@ export default function GhostTable() {
           {current.stack_bb != null && <span>Stack: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
           {current.m_ratio   != null && <span>M: <span className="text-foreground">{current.m_ratio.toFixed(1)}</span></span>}
           {current.pot_size  != null && current.pot_size  > 0 && <span>Pot: <span className="text-foreground">{current.pot_size.toFixed(1)}bb</span></span>}
-          {current.facing_bet != null && current.facing_bet > 0 && (
-            <span className={sit.variant === "aggression" ? "text-warning font-semibold" : ""}>
-              Facing: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
+          {current.facing_desc
+            ? <span className={cn("font-semibold", sit.variant === "aggression" ? "text-warning" : "text-foreground")}>{current.facing_desc}</span>
+            : current.facing_bet != null && current.facing_bet > 0 && (
+                <span className={sit.variant === "aggression" ? "text-warning font-semibold" : ""}>
+                  Facing: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
+                </span>
+              )
+          }
+          {!!current.is_3bet && <span className="font-semibold text-warning">{t("context.is3bet")}</span>}
+          {current.context_note === 'hu_postflop' && (
+            <span className="px-1.5 py-0.5 rounded border border-border bg-hud-surface text-muted-foreground">
+              {t('context.huPostflop')}
             </span>
           )}
-          {!!current.is_3bet && <span className="font-semibold text-warning">{t("context.is3bet")}</span>}
           {current.icm_pressure && current.icm_pressure !== "none" && (
             <span className={cn({ "text-destructive font-semibold": current.icm_pressure === "high", "text-warning font-semibold": current.icm_pressure === "medium", "text-primary font-semibold": current.icm_pressure === "low" })}>
               ICM {t(`icmLabel.${current.icm_pressure}`)}
@@ -741,12 +751,20 @@ export default function GhostTable() {
                 {current.stack_bb != null && <span>Stack: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
                 {current.m_ratio   != null && <span>M: <span className="text-foreground">{current.m_ratio.toFixed(1)}</span></span>}
                 {current.pot_size  != null && current.pot_size  > 0 && <span>Pot: <span className="text-foreground">{current.pot_size.toFixed(1)}bb</span></span>}
-                {current.facing_bet!= null && current.facing_bet > 0 && (
-                  <span className={sit.variant === "aggression" ? "text-warning font-semibold" : ""}>
-                    Facing: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
+                {current.facing_desc
+                  ? <span className={cn("font-semibold", sit.variant === "aggression" ? "text-warning" : "text-foreground")}>{current.facing_desc}</span>
+                  : current.facing_bet != null && current.facing_bet > 0 && (
+                      <span className={sit.variant === "aggression" ? "text-warning font-semibold" : ""}>
+                        Facing: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
+                      </span>
+                    )
+                }
+                {!!current.is_3bet && <span className="font-semibold text-warning">{t("context.is3bet")}</span>}
+                {current.context_note === 'hu_postflop' && (
+                  <span className="px-1.5 py-0.5 rounded border border-border bg-hud-surface text-muted-foreground">
+                    {t('context.huPostflop')}
                   </span>
                 )}
-                {!!current.is_3bet && <span className="font-semibold text-warning">{t("context.is3bet")}</span>}
                 {current.icm_pressure && current.icm_pressure !== "none" && (
                   <span className={cn({
                     "text-destructive font-semibold": current.icm_pressure === "high",

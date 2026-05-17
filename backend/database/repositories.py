@@ -694,6 +694,31 @@ def get_confidence_drift(user_id: int, days: int = 30) -> dict:
         conn.close()
 
 
+def _drill_context(r: dict) -> dict:
+    """Computa facing_desc e context_note a partir dos campos existentes de um spot de drill."""
+    pos      = (r.get('position') or '').upper()
+    street   = r.get('street', 'preflop')
+    facing   = float(r.get('facing_bet') or 0)
+    level_bb = float(r.get('level_bb') or 100)
+    is_3bet  = bool(r.get('is_3bet'))
+
+    facing_desc = None
+    if facing > 0 and level_bb > 0:
+        bb_size = round(facing / level_bb, 1)
+        if is_3bet:
+            facing_desc = f"3-Bet {bb_size}bb"
+        elif street == 'preflop':
+            facing_desc = f"Raise {bb_size}bb"
+        else:
+            facing_desc = f"Bet {bb_size}bb"
+    elif facing == 0 and pos == 'BB' and street == 'preflop':
+        facing_desc = "SB completou"
+
+    context_note = 'hu_postflop' if street != 'preflop' else None
+
+    return {'facing_desc': facing_desc, 'context_note': context_note}
+
+
 def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str = None) -> list:
     """Sprint R — Retorna spots disponíveis para drill respeitando SRS (next_drill_at <= now)."""
     from datetime import datetime
@@ -732,6 +757,9 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
               AND d.label IN ('small_mistake','clear_mistake')
               AND (ds_last.next_drill_at IS NULL OR ds_last.next_drill_at <= ?)
               AND (d.street = 'preflop' OR COALESCE(d.num_players, 2) <= 2)
+              AND NOT (d.position = 'BB' AND COALESCE(d.facing_bet, 0) = 0 AND d.best_action = 'fold')
+              AND d.position IS NOT NULL AND d.position != ''
+              AND d.hero_cards IS NOT NULL AND d.hero_cards != ''
               {street_filter}
               {spot_filter}
             ORDER BY
@@ -754,6 +782,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
                     r['days_overdue'] = 0
             else:
                 r['days_overdue'] = None  # never drilled
+            r.update(_drill_context(r))
             result.append(r)
         return result
     finally:

@@ -25,7 +25,9 @@
     "is3bet": "3-Bet pot",
     "bb": "{{n}}bb",
     "pot": "Pot",
-    "facing": "Bet"
+    "facing": "Bet",
+    "huPostflop": "Heads-up",
+    "freePlay": "BB free play"
   },
   "icmLabel": {
     "high": "High pressure",
