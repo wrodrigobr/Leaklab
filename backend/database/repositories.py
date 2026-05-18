@@ -756,7 +756,6 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
             WHERE t.user_id = ?
               AND d.label IN ('small_mistake','clear_mistake')
               AND (ds_last.next_drill_at IS NULL OR ds_last.next_drill_at <= ?)
-              AND (d.street = 'preflop' OR COALESCE(d.num_players, 2) <= 2)
               AND NOT (d.position = 'BB' AND COALESCE(d.facing_bet, 0) = 0 AND d.best_action = 'fold')
               AND d.position IS NOT NULL AND d.position != ''
               AND d.hero_cards IS NOT NULL AND d.hero_cards != ''
