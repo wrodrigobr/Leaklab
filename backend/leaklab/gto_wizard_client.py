@@ -79,10 +79,6 @@ def query_spot(
     if not base:
         return None
 
-    # Por ora apenas flop
-    if street.lower() != "flop":
-        return None
-
     try:
         import requests
         r = requests.post(
@@ -103,11 +99,11 @@ def query_spot(
         return None
 
     if r.status_code == 503:
-        log.debug("gto_wizard: auth indisponível no servidor")
+        log.info("gto_wizard: auth indisponível no servidor (503)")
         return None
 
     if not r.ok:
-        log.debug("gto_wizard: HTTP %d", r.status_code)
+        log.info("gto_wizard: HTTP %d — %s", r.status_code, r.text[:200])
         return None
 
     try:

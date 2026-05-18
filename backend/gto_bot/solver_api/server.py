@@ -289,6 +289,58 @@ def _nearest_valid_bet(session, api_params: dict, flop_before: str,
         return None
 
 
+_POSITIONS_ORDER = ["UTG", "UTG+1", "LJ", "HJ", "CO", "BTN", "SB", "BB"]
+_GW_OPEN_SIZE    = 2.3
+
+
+def _preflop_decision_point(position: str, facing_size_bb: float) -> Optional[str]:
+    """
+    Constrói a string de ações preflop até (não incluindo) a ação do hero.
+    Retorna None se a posição for desconhecida.
+
+    Exemplos:
+      BTN RFI (facing=0)          -> "F-F-F-F-F"
+      BB vs BTN raise (facing>0)  -> "F-F-F-F-F-R2.3-F"
+      SB vs BTN raise (facing>0)  -> "F-F-F-F-F-R2.3"
+    """
+    if position not in _POSITIONS_ORDER:
+        return None
+    hero_idx = _POSITIONS_ORDER.index(position)
+
+    if facing_size_bb == 0 and position != "BB":
+        # RFI: todos antes foldaram
+        return "-".join(["F"] * hero_idx) if hero_idx else ""
+
+    if facing_size_bb == 0 and position == "BB":
+        # BB free play: assume SB completou
+        return "-".join(["F"] * (hero_idx - 1) + ["C"])
+
+    # Facing raise
+    if position == "BB":
+        # Assume BTN abriu, SB foldou
+        btn_idx = _POSITIONS_ORDER.index("BTN")
+        sb_idx  = _POSITIONS_ORDER.index("SB")
+        actions = []
+        for i in range(hero_idx):
+            if i < btn_idx:
+                actions.append("F")
+            elif i == btn_idx:
+                actions.append(f"R{_GW_OPEN_SIZE}")
+            elif i == sb_idx:
+                actions.append("F")
+        return "-".join(actions)
+
+    if position == "SB":
+        # Assume BTN abriu
+        btn_idx = _POSITIONS_ORDER.index("BTN")
+        actions = ["F" if i != btn_idx else f"R{_GW_OPEN_SIZE}" for i in range(hero_idx)]
+        return "-".join(actions)
+
+    # IP vs raise de UTG (assumido)
+    actions = [f"R{_GW_OPEN_SIZE}" if i == 0 else "F" for i in range(hero_idx)]
+    return "-".join(actions)
+
+
 def query_gto_wizard(spot: dict) -> dict:
     """
     Recebe parâmetros do spot e retorna estratégia do GTO Wizard.
@@ -306,14 +358,81 @@ def query_gto_wizard(spot: dict) -> dict:
             return {"found": False, "error": "auth_unavailable"}
         headers = dict(_auth_headers)
 
-    street        = str(spot.get("street", "flop")).lower()
-    position      = str(spot.get("position", "")).upper().strip()
-    board         = spot.get("board", [])
-    hero_stack_bb = float(spot.get("hero_stack_bb", 20))
+    street         = str(spot.get("street", "flop")).lower()
+    position       = str(spot.get("position", "")).upper().strip()
+    board          = spot.get("board", [])
+    hero_stack_bb  = float(spot.get("hero_stack_bb", 20))
     facing_size_bb = float(spot.get("facing_size_bb", 0) or 0)
 
-    if street != "flop":
-        return {"found": False, "error": "only_flop_supported"}
+    # Normaliza aliases de posição
+    _pos_alias = {"UTG+2": "LJ", "MP1": "LJ", "MP2": "HJ", "MP": "LJ", "EP": "UTG"}
+    position   = _pos_alias.get(position, position)
+
+    snap       = _nearest_snap(hero_stack_bb)
+    stack_frac = snap + 0.125
+
+    try:
+        session = _make_session(headers)
+    except ImportError:
+        return {"found": False, "error": "requests_not_installed"}
+
+    # ── Preflop ────────────────────────────────────────────────────────────────
+    if street == "preflop":
+        decision_point = _preflop_decision_point(position, facing_size_bb)
+        if decision_point is None:
+            return {"found": False, "error": f"preflop_unknown_position:{position}"}
+
+        api_params = {
+            "gametype":        GAMETYPE,
+            "depth":           stack_frac,
+            "stacks":          "",
+            "preflop_actions": decision_point,
+            "flop_actions":    "",
+            "turn_actions":    "",
+            "river_actions":   "",
+            "board":           "",
+        }
+        try:
+            r = session.get(GW_SPOT_SOL, params=api_params, timeout=15)
+        except Exception as e:
+            return {"found": False, "error": str(e)}
+
+        if r.status_code == 401:
+            _set_auth_failed("Token expirado (HTTP 401)")
+            return {"found": False, "error": "auth_expired"}
+        if r.status_code in (204, 404) or not r.content:
+            return {"found": False, "error": f"no_preflop_solution_{r.status_code}"}
+        if not r.ok:
+            log.warning("gto_wizard preflop: HTTP %d pos=%s stack=%.0f facing=%.1f — %s",
+                        r.status_code, position, hero_stack_bb, facing_size_bb, r.text[:200])
+            return {"found": False, "error": f"http_{r.status_code}"}
+
+        try:
+            data = r.json()
+        except Exception:
+            return {"found": False, "error": "invalid_json"}
+
+        strategy = []
+        for item in data.get("action_solutions", []):
+            atype = (item.get("action", {}).get("type") or "").lower()
+            freq  = float(item.get("total_frequency") or 0)
+            name  = {"check": "check", "call": "call", "fold": "fold",
+                     "bet": "raise", "raise": "raise",
+                     "all_in": "allin", "allin": "allin"}.get(atype, atype)
+            if item.get("action", {}).get("allin"):
+                name = "allin"
+            strategy.append({"action": name, "frequency": freq, "betsize_bb": None})
+
+        if not strategy:
+            return {"found": False, "error": "empty_preflop_strategy"}
+
+        log.info("gto_wizard preflop: OK %s %.0fbb facing=%.1f dp=%s → %d acoes",
+                 position, hero_stack_bb, facing_size_bb, decision_point, len(strategy))
+        return {"found": True, "strategy": strategy, "source": "gtowizard_preflop"}
+
+    # ── Postflop (flop/turn/river) ─────────────────────────────────────────────
+    if street not in ("flop", "turn", "river"):
+        return {"found": False, "error": f"unsupported_street:{street}"}
 
     preflop = PREFLOP_BY_POS.get(position)
     if not preflop:
@@ -322,9 +441,6 @@ def query_gto_wizard(spot: dict) -> dict:
     board_str = _norm_board(board)
     if not board_str:
         return {"found": False, "error": "invalid_board"}
-
-    snap       = _nearest_snap(hero_stack_bb)
-    stack_frac = snap + 0.125
 
     api_params = {
         "gametype":        GAMETYPE,
@@ -336,11 +452,6 @@ def query_gto_wizard(spot: dict) -> dict:
         "river_actions":   "",
         "board":           board_str,
     }
-
-    try:
-        session = _make_session(headers)
-    except ImportError:
-        return {"found": False, "error": "requests_not_installed"}
 
     if facing_size_bb > 0:
         hero_is_oop = position in OOP_POSITIONS

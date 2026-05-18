@@ -268,7 +268,16 @@ def lookup_gto(
         log.debug("gto_wizard: query_spot exception — %s", _gw_err)
 
     # 4. Fallback: solver remoto (servidor Google Cloud /solve)
-    # Sem fila local — tudo vai direto para o servidor remoto
+    # O solver CFR só suporta postflop — preflop sem board causaria HTTP 500
+    if street_l == 'preflop':
+        if _db_fallback_strategy:
+            return {'found': True, 'source': 'postflop_db_partial',
+                    'strategy': _db_fallback_strategy,
+                    'exploitability_pct': None, 'spot_hash': spot_hash, 'queued': False}
+        return {'found': False, 'source': 'solver_unavailable',
+                'strategy': [], 'exploitability_pct': None,
+                'spot_hash': spot_hash, 'queued': False}
+
     oop_range = _DEFAULT_RANGES.get(vs_position.upper(), _DEFAULT_RANGE_WIDE)
     ip_range  = _DEFAULT_RANGES.get(position_u, _DEFAULT_RANGE_WIDE)
     effective_pot = pot_bb if pot_bb > 0 else max(facing_size_bb * 2 + 2, 4.0)
