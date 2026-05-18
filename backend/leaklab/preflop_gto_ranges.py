@@ -135,18 +135,32 @@ def analyze_preflop(
         rfi = bk_data.get('RFI', {}).get(pos)
         if not rfi:
             return base
-        pct       = float(rfi.get('pct', 0))
-        hands_str = rfi.get('hands', '')
-        acoes     = rfi.get('acoes', [])
-        in_rng    = _in_range(hero_hand_type, hands_str)
-        rec       = [_ACT.get(a, a.lower()) for a in acoes] if in_rng else ['fold']
-        quality   = _rfi_quality(action_taken, in_rng, stack_bb)
+        pct         = float(rfi.get('pct', 0))
+        hands_str   = rfi.get('hands', '')
+        acoes       = rfi.get('acoes', [])
+        limp_str    = rfi.get('limp_hands', '')   # SB limp range (quando presente)
+        limp_pct    = float(rfi.get('limp_pct', 0))
+        in_rng      = _in_range(hero_hand_type, hands_str)
+        in_limp     = bool(limp_str) and _in_range(hero_hand_type, limp_str)
+
+        # Recomendação: raise se no raise range, call/limp se no limp range, fold caso contrário
+        if in_rng:
+            rec = [_ACT.get(a, a.lower()) for a in acoes]
+        elif in_limp:
+            rec = ['call']   # limp from SB
+        else:
+            rec = ['fold']
+
+        quality = _rfi_quality(action_taken, in_rng, stack_bb, in_limp=in_limp)
         base.update({
-            'available': True, 'in_range': in_rng,
+            'available': True, 'in_range': in_rng or in_limp,
             'range_pct': pct, 'range_hands': hands_str,
             'recommended_actions': rec, 'rfi_pct': pct,
             'action_quality': quality,
-            'pro_notes': _rfi_notes(pos, hero_hand_type, stack_bb, pct, in_rng, action_taken),
+            'in_limp_range': in_limp,
+            'limp_pct': limp_pct,
+            'pro_notes': _rfi_notes(pos, hero_hand_type, stack_bb, pct, in_rng, action_taken,
+                                     in_limp=in_limp),
         })
 
     # ── vs RFI ───────────────────────────────────────────────────────────────
@@ -201,15 +215,19 @@ def analyze_preflop(
 
 # ── Quality classifiers ──────────────────────────────────────────────────────
 
-def _rfi_quality(action: str, in_rng: bool, stack_bb: float) -> str:
+def _rfi_quality(action: str, in_rng: bool, stack_bb: float, *, in_limp: bool = False) -> str:
     act = action.lower()
     if in_rng and act in ('raise', 'jam'):    return 'correct'
-    if in_rng and act == 'call':              return 'acceptable'
+    if in_rng and act == 'call':              return 'acceptable'   # raise preferred but call ok
     if in_rng and act == 'fold':              return 'leak'
-    if not in_rng and act == 'fold':          return 'correct'
-    if not in_rng and act in ('raise', 'jam'):
+    # SB limp range
+    if in_limp and act == 'call':             return 'correct'
+    if in_limp and act in ('raise', 'jam'):   return 'acceptable'   # raise not optimal but ok
+    if in_limp and act == 'fold':             return 'leak'
+    if not in_rng and not in_limp and act == 'fold':          return 'correct'
+    if not in_rng and not in_limp and act in ('raise', 'jam'):
         return 'major_leak' if stack_bb > 25 else 'leak'
-    if not in_rng and act == 'call':          return 'leak'
+    if not in_rng and not in_limp and act == 'call':          return 'leak'
     return 'acceptable'
 
 
@@ -236,7 +254,7 @@ def _vs_3bet_quality(action: str, in_4b: bool, in_cl: bool) -> str:
 
 # ── Professional notes ────────────────────────────────────────────────────────
 
-def _rfi_notes(pos, hand, stack, pct, in_rng, action) -> list[str]:
+def _rfi_notes(pos, hand, stack, pct, in_rng, action, *, in_limp: bool = False) -> list[str]:
     notes = []
     label = _POS.get(pos, pos)
     pct_s = f"{pct*100:.0f}%"
@@ -249,6 +267,14 @@ def _rfi_notes(pos, hand, stack, pct, in_rng, action) -> list[str]:
             notes.append("Limp desperdiça vantagem posicional. Raise/jam é a linha mais lucrativa aqui.")
         else:
             notes.append(f"Raise correto. {hand} é uma abertura sólida do {label} neste stack.")
+    elif in_limp:
+        notes.append(f"{hand} do {label} a {stack:.0f}bb — mão no range de limp (call) da small blind.")
+        if act == 'call':
+            notes.append(f"Limp correto. {hand} se beneficia de ver flop barato antes de agir após o BB.")
+        elif act in ('raise', 'jam'):
+            notes.append(f"Raise com {hand} é aceitável mas não optimal — o GTO prefere limp para explorar posição pós-flop.")
+        elif act == 'fold':
+            notes.append(f"Foldar {hand} do SB é um leak: a mão tem equity para limp e ver flop barato.")
     else:
         notes.append(f"{hand} está fora do range GTO do {label} a {stack:.0f}bb (range: top {pct_s}).")
         if act in ('raise', 'jam'):
@@ -258,7 +284,6 @@ def _rfi_notes(pos, hand, stack, pct, in_rng, action) -> list[str]:
                 notes.append(f"Abrir {hand} do {label} é loose: perde EV contra os ranges de defesa dos oponentes.")
         elif act == 'fold':
             notes.append(f"Fold correto. {hand} não justifica entrada desta posição neste stack.")
-        # check/call em limped pot — sem julgamento negativo
     if stack <= 15:
         notes.append(f"Com {stack:.0f}bb: jogo essencialmente push/fold — use tabelas ICM para decisões marginais.")
     elif stack <= 25:

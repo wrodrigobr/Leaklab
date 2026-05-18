@@ -9,6 +9,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.102.0] — 2026-05-18 — feat(ranges): atualiza leaklab_gto_ranges.json com dados RegLife via pixel analysis
+
+### Added
+- **`backend/scripts/extract_reglife_ranges.py`** — extrai ranges RFI dos 42 PNGs do PDF RegLife via análise de pixels:
+  - Detecta bounds da grade 13×13 automaticamente por imagem (top vs bottom half pages)
+  - Classifica cada célula por cor: raise (vermelho), fold (azul), limp/call (verde), shove (vermelho escuro)
+  - Amostragem 5×5 por célula com filtro de pixels de texto/borda
+  - Captura range de limp separado para SB em todos os stacks
+  - Compressão de hands para notação poker padrão (ex: `44+,A4s+,K9s+`)
+- **`backend/scripts/update_gto_ranges.py`** — atualiza `leaklab_gto_ranges.json` com dados RegLife preservando estrutura existente
+- **`backend/scripts/probe_grid.py`** — utilitário de calibração para debug de imagens
+
+### Changed
+- **`backend/docs/leaklab_gto_ranges.json`** — versão 2.0.0 com dados RegLife solver-generated:
+  - RFI ranges atualizados para 5 stacks: 14bb, 20bb, 30bb, 50bb, 100bb (todos os 7 posições)
+  - 10bb, 40bb, 75bb preservados (push/fold e interpolações)
+  - SB agora tem `limp_hands` e `limp_pct` separados (ex: SB 100bb: raise 3.6%, limp 88.2%)
+  - Fonte marcada por entrada: `_fonte: "reglife_pdf/Xbb"` vs `"original"`
+- **`backend/leaklab/preflop_gto_ranges.py`** — suporte ao limp range da SB:
+  - `analyze_preflop`: lê `limp_hands`/`limp_pct` da SB e inclui `in_limp_range` na resposta
+  - `_rfi_quality`: novos casos para limp correto, raise aceitável, fold leak da SB
+  - `_rfi_notes`: mensagens contextualizadas para limp SB (range de limp, fold leak, raise aceitável)
+
+---
+
 ## [v0.101.9] — 2026-05-17 — feat(gto): classificação inteligente + GTO Alignment Card no dashboard
 
 ### Changed
