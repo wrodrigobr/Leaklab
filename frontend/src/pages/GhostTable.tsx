@@ -228,6 +228,7 @@ export default function GhostTable() {
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [sessionTotal, setSessionTotal]     = useState(0);
   const [loadError, setLoadError]           = useState("");
+  const [noSpotsFound, setNoSpotsFound]     = useState(false);
   const [submitting, setSubmitting]         = useState(false);
   const [analysis, setAnalysis]             = useState<string | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -297,11 +298,12 @@ export default function GhostTable() {
   const startDrill = async () => {
     setPhase("loading");
     setLoadError("");
+    setNoSpotsFound(false);
     setStreak(0);
     try {
       const data = await drill.spots({ limit: 10 });
       setStats(data.stats);
-      if (!data.spots.length) { setPhase("intro"); return; }
+      if (!data.spots.length) { setNoSpotsFound(true); setPhase("intro"); return; }
       setSpots(data.spots);
       setIndex(0);
       setSessionCorrect(0);
@@ -340,6 +342,7 @@ export default function GhostTable() {
     setPhase("intro"); setSpots([]); setIndex(0);
     setLastResult(null); setSessionCorrect(0); setSessionTotal(0);
     setAnalysis(null); setStreak(0); setTimedOut(false); setGtoStrategy(null);
+    setNoSpotsFound(false);
   };
 
   const accuracy = sessionTotal > 0 ? Math.round((sessionCorrect / sessionTotal) * 100) : 0;
@@ -638,7 +641,7 @@ export default function GhostTable() {
               />
             </div>
           )}
-          {stats && stats.total === 0 && !loadError && (
+          {(noSpotsFound || (stats && stats.total === 0)) && !loadError && (
             <p className="rounded-lg border border-border bg-hud-surface p-5 text-center text-sm text-muted-foreground">
               {t("noSpots")}
             </p>
