@@ -39,9 +39,10 @@ def check_server():
 
 # ── Busca decisões preflop ─────────────────────────────────────────────────────
 
-def fetch_decisions(limit: int) -> list[dict]:
+def fetch_decisions(limit: int, rfi_only: bool = False) -> list[dict]:
     conn = get_conn()
-    rows = conn.execute("""
+    extra = "AND (COALESCE(d.facing_bet, 0) = 0 OR d.facing_bet >= 2.0)" if rfi_only else ""
+    rows = conn.execute(f"""
         SELECT d.id, d.position, d.stack_bb, d.facing_bet, d.is_3bet,
                d.action_taken, d.best_action, d.label, d.gto_label, d.hero_cards,
                d.pot_size, d.level_bb
@@ -50,6 +51,8 @@ def fetch_decisions(limit: int) -> list[dict]:
           AND d.label IN ('small_mistake','clear_mistake')
           AND d.position IS NOT NULL AND d.position != ''
           AND d.hero_cards IS NOT NULL AND d.hero_cards != ''
+          AND d.is_3bet = 0
+          {extra}
         ORDER BY d.id DESC
         LIMIT ?
     """, (limit,)).fetchall()
@@ -106,8 +109,9 @@ def classify(action_taken: str, strategy: list[dict]) -> tuple[str, str]:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--limit", type=int, default=10)
-    parser.add_argument("--save",  action="store_true", help="Grava gto_label/gto_action no DB")
+    parser.add_argument("--limit",    type=int, default=200)
+    parser.add_argument("--save",     action="store_true", help="Grava gto_label/gto_action no DB")
+    parser.add_argument("--rfi-only", action="store_true", help="Apenas spots RFI (facing=0) e facing>=2bb — pula limps")
     args = parser.parse_args()
 
     print("=" * 70)
@@ -115,7 +119,7 @@ def main():
     print("=" * 70)
     print()
 
-    decisions = fetch_decisions(args.limit)
+    decisions = fetch_decisions(args.limit, rfi_only=args.rfi_only)
     print(f"Decisoes preflop carregadas: {len(decisions)}\n")
 
     if not decisions:

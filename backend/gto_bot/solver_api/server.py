@@ -296,10 +296,13 @@ _GW_OPEN_SIZE    = 2.3
 def _preflop_decision_point(position: str, facing_size_bb: float) -> Optional[str]:
     """
     Constrói a string de ações preflop até (não incluindo) a ação do hero.
-    Retorna None se a posição for desconhecida.
+
+    Retorna None para posição desconhecida ou situação fora da árvore MTT
+    (limp: facing entre 0 e 1.5bb, ou jam > 6bb que não mapeamos).
 
     Exemplos:
       BTN RFI (facing=0)          -> "F-F-F-F-F"
+      BB free play (facing=0)     -> "F-F-F-F-F-C"
       BB vs BTN raise (facing>0)  -> "F-F-F-F-F-R2.3-F"
       SB vs BTN raise (facing>0)  -> "F-F-F-F-F-R2.3"
     """
@@ -312,10 +315,18 @@ def _preflop_decision_point(position: str, facing_size_bb: float) -> Optional[st
         return "-".join(["F"] * hero_idx) if hero_idx else ""
 
     if facing_size_bb == 0 and position == "BB":
-        # BB free play: assume SB completou
+        # BB free play: assume SB completou (limp)
         return "-".join(["F"] * (hero_idx - 1) + ["C"])
 
-    # Facing raise
+    # Limp: facing < 1.5bb mas > 0 — fora da árvore MTT (não há nó de limp)
+    if 0 < facing_size_bb < 1.5:
+        return None
+
+    # Jam preflop: facing > 6bb — ação é all-in, não modelamos ainda
+    if facing_size_bb > 6.0:
+        return None
+
+    # Facing raise padrão (1.5–6bb): snapa para 2.3bb (open padrão MTTGeneral)
     if position == "BB":
         # Assume BTN abriu, SB foldou
         btn_idx = _POSITIONS_ORDER.index("BTN")
@@ -336,7 +347,7 @@ def _preflop_decision_point(position: str, facing_size_bb: float) -> Optional[st
         actions = ["F" if i != btn_idx else f"R{_GW_OPEN_SIZE}" for i in range(hero_idx)]
         return "-".join(actions)
 
-    # IP vs raise de UTG (assumido)
+    # IP (CO/HJ/LJ etc.) vs raise: assume UTG abriu
     actions = [f"R{_GW_OPEN_SIZE}" if i == 0 else "F" for i in range(hero_idx)]
     return "-".join(actions)
 
