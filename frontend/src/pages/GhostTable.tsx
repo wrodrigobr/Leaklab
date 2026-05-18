@@ -86,6 +86,12 @@ function getSituation(spot: DrillSpot): SituationInfo {
     return                          { key: "openingHand",  variant: "opening" };
   }
 
+  // HU postflop: SB = dealer = IP (age por último). Se não há aposta, BB checou e hero age em posição.
+  if (pos === "SB" && spot.context_note === "hu_postflop") {
+    if (facingPassive) return { key: "facingBet", variant: "aggression" };
+    return                   { key: "betting",    variant: "opening" };
+  }
+
   if (facingPassive)                                           return { key: "facingBet",   variant: "aggression" };
   if (spot.action_taken === "check")                          return { key: "checkBet",    variant: "neutral" };
   if (["bet", "raise", "jam"].includes(spot.action_taken))   return { key: "betting",     variant: "opening" };

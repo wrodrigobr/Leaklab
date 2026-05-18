@@ -759,7 +759,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
               AND NOT (d.position = 'BB' AND COALESCE(d.facing_bet, 0) = 0 AND d.best_action = 'fold')
               AND d.position IS NOT NULL AND d.position != ''
               AND d.hero_cards IS NOT NULL AND d.hero_cards != ''
-              AND d.gto_label IN ('gto_correct','gto_mixed','gto_minor_deviation','gto_critical')
+              AND d.gto_label IN ('gto_minor_deviation','gto_critical')
               {street_filter}
               {spot_filter}
             ORDER BY
