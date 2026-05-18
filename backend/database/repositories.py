@@ -760,6 +760,7 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
               AND NOT (d.position = 'BB' AND COALESCE(d.facing_bet, 0) = 0 AND d.best_action = 'fold')
               AND d.position IS NOT NULL AND d.position != ''
               AND d.hero_cards IS NOT NULL AND d.hero_cards != ''
+              AND d.gto_label IN ('gto_correct','gto_mixed','gto_minor_deviation','gto_critical')
               {street_filter}
               {spot_filter}
             ORDER BY
@@ -1622,6 +1623,7 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
                     WHERE t.user_id = ? AND t.imported_at >= ? {excl_clause}
                     GROUP BY d.hand_id, d.tournament_id
                     HAVING SUM(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN 1 ELSE 0 END) > 0
+                      AND SUM(CASE WHEN d.gto_label IN ('gto_correct','gto_mixed','gto_minor_deviation','gto_critical') THEN 1 ELSE 0 END) > 0
                 ) sub
                 ORDER BY sub.total_decisions DESC, sub.max_err DESC
                 LIMIT 1
@@ -1641,6 +1643,7 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
                         WHERE t.user_id = ? AND t.imported_at >= ?
                         GROUP BY d.hand_id, d.tournament_id
                         HAVING SUM(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN 1 ELSE 0 END) > 0
+                          AND SUM(CASE WHEN d.gto_label IN ('gto_correct','gto_mixed','gto_minor_deviation','gto_critical') THEN 1 ELSE 0 END) > 0
                     ) sub
                     ORDER BY sub.total_decisions DESC, sub.max_err DESC
                     LIMIT 1
