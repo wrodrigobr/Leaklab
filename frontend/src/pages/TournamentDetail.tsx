@@ -21,13 +21,15 @@ import {
   FileDown,
   Target,
   Sigma,
+  Clock,
+  Cpu,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { TournamentAiReport } from "@/components/hud/TournamentAiReport";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AiText } from "@/components/ui/AiText";
-import { cn } from "@/lib/utils";
+import { cn, formatAction } from "@/lib/utils";
 import { tournaments, metrics, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse } from "@/lib/api";
 
 type Severity = "critical" | "major" | "minor" | "ok";
@@ -56,6 +58,7 @@ interface Hand {
   hasAnnotation?: boolean;
   gtoLabel?: string | null;
   gtoAction?: string | null;
+  hasPostflop?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -137,7 +140,11 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
           : worst.label.replace(/_/g, " ")
         : undefined;
 
-    const actionLine = `${street}: ${worst.action_taken} — ${worst.best_action}`;
+    const played = formatAction(worst.action_taken);
+    const ideal  = formatAction(worst.best_action);
+    const actionLine = played.toLowerCase() === ideal.toLowerCase()
+      ? `${street}: ${played}`
+      : `${street}: ${played} — ${ideal}`;
 
     hands.push({
       id: handId,
@@ -162,6 +169,7 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
       hasAnnotation: decs.some((d) => d.has_annotation),
       gtoLabel: worst.gto_label ?? null,
       gtoAction: worst.gto_action ?? null,
+      hasPostflop: decs.some((d) => d.street === "flop" || d.street === "turn" || d.street === "river"),
     });
   });
   return hands;
@@ -203,13 +211,6 @@ const TournamentDetail = () => {
     ok:       { label: t("detail.severity.ok"),       cls: "text-primary",     chipCls: "bg-primary/10 text-primary ring-1 ring-primary/30",         icon: CheckCircle2 },
   };
 
-  const FILTERS: { key: Severity | "all"; label: string }[] = [
-    { key: "all",      label: t("detail.severity.all")      },
-    { key: "critical", label: t("detail.severity.criticals") },
-    { key: "major",    label: t("detail.severity.majors")   },
-    { key: "minor",    label: t("detail.severity.minors")   },
-    { key: "ok",       label: t("detail.severity.oks")      },
-  ];
 
   const scoreLabel = (score: number) => score < 0.08
     ? { label: t("detail.score.great"), cls: "text-primary" }
@@ -222,9 +223,8 @@ const TournamentDetail = () => {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [hands, setHands] = useState<Hand[]>([]);
   const [query, setQuery] = useState("");
-  const [severity, setSeverity] = useState<Severity | "all">("all");
   const [street, setStreet] = useState<Street | "all">("all");
-  const [gtoFilter, setGtoFilter] = useState<"all" | "with_gto" | "no_gto" | "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical">("all");
+  const [resultFilter, setResultFilter] = useState<"all" | "correct" | "attention" | "error" | "pending">("all");
   const [analyses, setAnalyses] = useState<Record<number, string>>({});
   const [analysisLoading, setAnalysisLoading] = useState<Record<number, boolean>>({});
   const [phaseAnalysis, setPhaseAnalysis] = useState<PhaseData[]>([]);
@@ -274,11 +274,21 @@ const TournamentDetail = () => {
   const filtered = useMemo(
     () =>
       hands.filter((h) => {
-        if (severity !== "all" && h.category !== severity) return false;
         if (street !== "all" && h.street !== street) return false;
-        if (gtoFilter === "with_gto"  && !h.gtoLabel) return false;
-        if (gtoFilter === "no_gto"    && h.gtoLabel)  return false;
-        if (gtoFilter !== "all" && gtoFilter !== "with_gto" && gtoFilter !== "no_gto" && h.gtoLabel !== gtoFilter) return false;
+        if (resultFilter !== "all") {
+          // Usa GTO quando disponível, engine como fallback
+          const isCorrect  = h.gtoLabel ? h.gtoLabel === "gto_correct"
+                           : h.category === "ok";
+          const isAttention = h.gtoLabel ? (h.gtoLabel === "gto_mixed" || h.gtoLabel === "gto_minor_deviation")
+                            : (h.category === "minor");
+          const isError    = h.gtoLabel ? h.gtoLabel === "gto_critical"
+                           : (h.category === "critical" || h.category === "major");
+          const isPending  = h.hasPostflop && !h.gtoLabel;
+          if (resultFilter === "correct"   && !isCorrect)   return false;
+          if (resultFilter === "attention" && !isAttention) return false;
+          if (resultFilter === "error"     && !isError)     return false;
+          if (resultFilter === "pending"   && !isPending)   return false;
+        }
         if (query) {
           const q = query.toLowerCase();
           return (
@@ -289,7 +299,7 @@ const TournamentDetail = () => {
         }
         return true;
       }),
-    [hands, query, severity, street, gtoFilter]
+    [hands, query, resultFilter, street]
   );
 
   const stats = useMemo(() => ({
@@ -606,21 +616,6 @@ const TournamentDetail = () => {
                   aria-label={t("detail.searchAriaLabel")}
                 />
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Filter className="size-3.5 text-muted-foreground" aria-hidden />
-                {FILTERS.map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setSeverity(f.key)}
-                    className={cn(
-                      "rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      severity === f.key ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    )}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -639,32 +634,35 @@ const TournamentDetail = () => {
               ))}
             </div>
 
-            {/* GTO filter row */}
+            {/* Resultado unificado — GTO quando disponível, engine como fallback */}
             {(() => {
-              const withGto = hands.filter((h) => h.gtoLabel).length;
-              const noGto   = hands.length - withGto;
-              type GtoKey = typeof gtoFilter;
-              const GTO_FILTERS: { key: GtoKey; label: string; cls?: string }[] = [
-                { key: "all",                 label: `GTO: todos (${hands.length})` },
-                { key: "with_gto",            label: `com análise (${withGto})` },
-                { key: "no_gto",              label: `sem análise (${noGto})`,       cls: "text-muted-foreground/60" },
-                { key: "gto_correct",         label: "GTO ✓",    cls: "text-emerald-400" },
-                { key: "gto_mixed",           label: "misto",     cls: "text-sky-400" },
-                { key: "gto_minor_deviation", label: "~desvio",   cls: "text-amber-400" },
-                { key: "gto_critical",        label: "GTO erro",  cls: "text-red-400" },
+              const pendingGto = hands.filter((h) => h.hasPostflop && !h.gtoLabel).length;
+              type RKey = typeof resultFilter;
+              const RESULT_FILTERS: { key: RKey; label: string; cls: string; title?: string }[] = [
+                { key: "all",       label: "Todas",       cls: "text-muted-foreground" },
+                { key: "correct",   label: "✓ Correto",   cls: "text-emerald-400" },
+                { key: "attention", label: "⚠ Atenção",   cls: "text-amber-400" },
+                { key: "error",     label: "✗ Erro",      cls: "text-red-400" },
+                ...(pendingGto > 0 ? [{
+                  key: "pending" as RKey,
+                  label: `⏱ Pendente (${pendingGto})`,
+                  cls: "text-muted-foreground/50",
+                  title: "Mãos postflop aguardando solver — análise atual pelo engine",
+                }] : []),
               ];
               return (
                 <div className="flex flex-wrap items-center gap-2">
-                  <Sigma className="size-3 text-muted-foreground" aria-hidden />
-                  {GTO_FILTERS.map((f) => (
+                  <Filter className="size-3 text-muted-foreground shrink-0" aria-hidden />
+                  {RESULT_FILTERS.map((f) => (
                     <button
                       key={f.key}
-                      onClick={() => setGtoFilter(f.key)}
+                      onClick={() => setResultFilter(f.key)}
+                      title={f.title}
                       className={cn(
                         "rounded-sm px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        gtoFilter === f.key
+                        resultFilter === f.key
                           ? "bg-primary/10 text-primary ring-1 ring-primary/30"
-                          : cn("hover:bg-secondary hover:text-foreground", f.cls ?? "text-muted-foreground")
+                          : cn("hover:bg-secondary hover:text-foreground", f.cls)
                       )}
                     >
                       {f.label}
@@ -689,12 +687,21 @@ const TournamentDetail = () => {
                   key={h.id}
                   className={cn(
                     "group relative grid grid-cols-1 gap-4 overflow-hidden rounded-xl border bg-hud-surface p-4 transition-colors md:grid-cols-[auto,1fr,auto] md:items-center md:p-5",
+                    // GTO sobrescreve engine quando disponível
+                    h.gtoLabel === "gto_critical"                                                          ? "border-destructive/40 hover:border-destructive/70" :
+                    (h.gtoLabel === "gto_mixed" || h.gtoLabel === "gto_minor_deviation")                   ? "border-amber-500/20 hover:border-amber-500/40" :
+                    (h.gtoLabel === "gto_correct")                                                         ? "border-border hover:border-primary/40" :
                     h.category === "critical" ? "border-destructive/40 hover:border-destructive/70" :
                     h.category === "major"    ? "border-warning/30 hover:border-warning/60" :
                     "border-border hover:border-primary/40"
                   )}
                 >
                   <span aria-hidden className={cn("absolute inset-y-0 left-0 w-0.5",
+                    // GTO prevalece sobre engine quando disponível
+                    h.gtoLabel === "gto_critical"        ? "bg-destructive" :
+                    h.gtoLabel === "gto_minor_deviation" ? "bg-amber-500" :
+                    h.gtoLabel === "gto_mixed"           ? "bg-sky-500" :
+                    h.gtoLabel === "gto_correct"         ? "bg-emerald-500" :
                     h.category === "critical" ? "bg-destructive" :
                     h.category === "major"    ? "bg-warning" :
                     h.category === "ok"       ? "bg-primary" : "bg-border"
@@ -718,17 +725,20 @@ const TournamentDetail = () => {
 
                     <div className="flex flex-col gap-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={cn("inline-flex items-center gap-1 rounded-sm px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider", meta.chipCls)}>
-                          <Icon className="size-3" aria-hidden />
-                          {meta.label}
-                        </span>
+                        {/* Engine badge: só exibe quando não há GTO (solver prevalece) */}
+                        {!h.gtoLabel && (
+                          <span className={cn("inline-flex items-center gap-1 rounded-sm px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider", meta.chipCls)}>
+                            <Icon className="size-3" aria-hidden />
+                            {meta.label}
+                          </span>
+                        )}
                         {h.hasAnnotation && (
                           <span className="inline-flex items-center gap-1 rounded-sm bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-violet-400 ring-1 ring-violet-400/30">
                             <GraduationCap className="size-3" aria-hidden />
                             {tc("status.coach")}
                           </span>
                         )}
-                        {h.gtoLabel && (
+                        {h.gtoLabel ? (
                           <span className={cn(
                             "inline-flex items-center gap-1 rounded-sm px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider",
                             h.gtoLabel === "gto_correct"         && "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-400/30",
@@ -736,7 +746,7 @@ const TournamentDetail = () => {
                             h.gtoLabel === "gto_minor_deviation" && "bg-amber-500/10 text-amber-400 ring-1 ring-amber-400/30",
                             h.gtoLabel === "gto_critical"        && "bg-red-500/10 text-red-400 ring-1 ring-red-400/30",
                           )}
-                          title={h.gtoAction ? `GTO: ${h.gtoAction}` : undefined}
+                          title={h.gtoAction ? `GTO: ${formatAction(h.gtoAction)}` : undefined}
                           >
                             <Sigma className="size-3" aria-hidden />
                             {h.gtoLabel === "gto_correct"         && "GTO ✓"}
@@ -744,7 +754,15 @@ const TournamentDetail = () => {
                             {h.gtoLabel === "gto_minor_deviation" && "GTO ~ok"}
                             {h.gtoLabel === "gto_critical"        && "GTO erro"}
                           </span>
-                        )}
+                        ) : h.hasPostflop ? (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-sm bg-muted/30 px-2 py-0.5 font-mono text-[10px] text-muted-foreground/50 ring-1 ring-border/30"
+                            title="GTO ainda não calculado — análise baseada no engine (equity, M-Ratio, ICM)"
+                          >
+                            <Clock className="size-3" aria-hidden />
+                            Engine
+                          </span>
+                        ) : null}
                         {h.position && h.position !== "—" && (
                           <span className="rounded-sm bg-secondary px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground">
                             {h.position}
@@ -761,7 +779,7 @@ const TournamentDetail = () => {
                           {h.numPlayers ? ` · vs ${h.numPlayers - 1}` : ""}
                         </div>
                       )}
-                      {h.leakTag && (
+                      {h.leakTag && !['gto_correct','gto_mixed','gto_minor_deviation'].includes(h.gtoLabel ?? '') && (
                         <div className={cn("font-mono text-[11px] font-semibold uppercase tracking-wider", meta.cls)}>
                           ▸ {h.leakTag}
                         </div>
