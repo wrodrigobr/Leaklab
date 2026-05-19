@@ -76,6 +76,13 @@ _POS_NORM = {
     'HJ':    'HJ',
 }
 
+# Push/fold bucket → lista de pf_stack keys (em ordem de preferência)
+_PUSHFOLD_BUCKET_STACK = {
+    '10bb': ['12bb', '10bb'],   # 12bb é o máximo do bucket; fallback 10bb
+    '14bb': ['15bb'],
+    '20bb': ['20bb_pf'],        # só como último fallback para 20bb
+}
+
 
 def _norm_pos(position: str) -> str:
     """Normaliza nome de posição do pipeline/banco para chave do JSON."""
@@ -134,6 +141,30 @@ def analyze_preflop(
     if scenario == 'rfi':
         rfi = bk_data.get('RFI', {}).get(pos)
         if not rfi:
+            # Push/fold fallback para stacks curtos (10bb, 14bb; 20bb como último recurso)
+            pf_section = bk_data.get('push_fold', {}).get(pos)
+            if pf_section:
+                pf_entry = None
+                for pf_key in _PUSHFOLD_BUCKET_STACK.get(bucket, []):
+                    pf_entry = pf_section.get(pf_key)
+                    if pf_entry:
+                        break
+                if pf_entry:
+                    shove_hands = pf_entry.get('shove_hands', '')
+                    shove_pct   = float(pf_entry.get('shove_pct', 0))
+                    in_shove    = _in_range(hero_hand_type, shove_hands)
+                    rec         = ['jam'] if in_shove else ['fold']
+                    quality     = _pushfold_quality(action_taken, in_shove)
+                    base.update({
+                        'available': True, 'in_range': in_shove,
+                        'range_pct': shove_pct, 'range_hands': shove_hands,
+                        'range_grid_pct': shove_pct,
+                        'recommended_actions': rec, 'action_quality': quality,
+                        'source': pf_entry.get('_source', 'pushfold_gto'),
+                        'pro_notes': _pushfold_notes(pos, hero_hand_type, stack_bb,
+                                                     shove_pct, in_shove, action_taken),
+                    })
+                    return base
             return base
         pct         = float(rfi.get('combo_pct') or rfi.get('pct', 0))
         grid_pct    = float(rfi.get('grid_pct') or rfi.get('pct', 0))
@@ -185,6 +216,31 @@ def analyze_preflop(
         if defender is None and def_key != pos and isinstance(opener_data, dict):
             defender = opener_data.get(pos)
         if not defender or not isinstance(defender, dict):
+            # Push/fold reshove fallback para stacks curtos sem dados RegLife vs_RFI
+            pf_section = bk_data.get('push_fold', {}).get(pos)
+            if pf_section:
+                pf_entry = None
+                for pf_key in _PUSHFOLD_BUCKET_STACK.get(bucket, []):
+                    pf_entry = pf_section.get(pf_key)
+                    if pf_entry:
+                        break
+                if pf_entry:
+                    shove_hands = pf_entry.get('shove_hands', '')
+                    shove_pct   = float(pf_entry.get('shove_pct', 0))
+                    in_shove    = _in_range(hero_hand_type, shove_hands)
+                    # vs raise: reshove com o range de shove; fold o restante
+                    rec     = ['jam'] if in_shove else ['fold']
+                    quality = _pushfold_quality(action_taken, in_shove)
+                    base.update({
+                        'available': True, 'in_range': in_shove,
+                        'range_pct': shove_pct, 'range_hands': shove_hands,
+                        'recommended_actions': rec, 'action_quality': quality,
+                        'source': pf_entry.get('_source', 'pushfold_gto') + '_reshove',
+                        'pro_notes': _pushfold_notes(pos, hero_hand_type, stack_bb,
+                                                     shove_pct, in_shove, action_taken,
+                                                     is_reshove=True),
+                    })
+                    return base
             return base
 
         if 'fold_pct' in defender:
@@ -426,6 +482,39 @@ def _vs_3bet_notes(pos, hand, stack, pct, in_4b, in_cl, action) -> list[str]:
         notes.append(f"{hand} do {label} deve foldar vs 3bet — fora do range de continuação ({pct_s} continuam).")
         if act in ('raise', 'jam', 'call'):
             notes.append(f"Continuar com {hand} vs 3bet perde EV: a mão não tem equity vs o range de 3bet do oponente.")
+    return notes
+
+
+def _pushfold_quality(action: str, in_shove: bool) -> str:
+    act = action.lower()
+    if in_shove and act in ('jam', 'raise'):   return 'correct'
+    if in_shove and act == 'fold':             return 'leak'
+    if in_shove and act == 'call':             return 'acceptable'
+    if not in_shove and act == 'fold':         return 'correct'
+    if not in_shove and act in ('jam', 'raise'): return 'major_leak'
+    if not in_shove and act == 'call':         return 'leak'
+    return 'acceptable'
+
+
+def _pushfold_notes(pos, hand, stack, shove_pct, in_shove, action, *, is_reshove=False) -> list[str]:
+    notes = []
+    label  = _POS.get(pos, pos)
+    pct_s  = f"{shove_pct*100:.0f}%"
+    act    = action.lower()
+    verb   = "reshove" if is_reshove else "shove"
+    if in_shove:
+        notes.append(f"{label} faz {verb} com {pct_s} das mãos a {stack:.0f}bb (GTO push/fold) — {hand} está no range.")
+        if act == 'fold':
+            notes.append(f"Foldar {hand} a {stack:.0f}bb é um leak: a mão tem equity suficiente para {verb}.")
+        elif act == 'call':
+            notes.append(f"Call a {stack:.0f}bb é passivo — {verb}/jam maximiza fold equity e EV esperado.")
+    else:
+        notes.append(f"{hand} está fora do range de {verb} do {label} a {stack:.0f}bb (range: top {pct_s}).")
+        if act in ('jam', 'raise'):
+            notes.append(f"{verb.capitalize()} com {hand} não é lucrativo neste stack — a mão não tem equity vs calls dos oponentes.")
+        elif act == 'fold':
+            notes.append(f"Fold correto. {hand} não justifica {verb} desta posição a {stack:.0f}bb.")
+    notes.append(f"Stack de {stack:.0f}bb: jogo é essencialmente push/fold — ranges baseados em GTO sem ICM.")
     return notes
 
 

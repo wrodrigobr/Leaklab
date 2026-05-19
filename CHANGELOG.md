@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.108.0] — 2026-05-19 — feat(gto): ranges push/fold para stacks curtos (10/14/20bb)
+
+### Added
+- **`backend/scripts/add_pushfold_ranges.py`**: script que integra ranges GTO push/fold (sem ICM, MTT full ring) ao JSON para stacks 10bb, 12bb, 15bb, 20bb; estrutura `push_fold[pos][stack] = {shove_hands, shove_pct, _source}`
+- **`leaklab/preflop_gto_ranges.py`**: fallback push/fold em `analyze_preflop` para cenários RFI e vs_RFI quando não há dados RegLife (buckets 10bb/14bb); constante `_PUSHFOLD_BUCKET_STACK` mapeia bucket → stack keys; novas funções `_pushfold_quality` e `_pushfold_notes`
+- **`docs/leaklab_gto_ranges.json` v2.4.0**: 20 entradas push/fold adicionadas — UTG/UTG1/CO/BTN/SB para stacks 10bb, 12bb, 15bb, 20bb_pf nos buckets correspondentes
+
+### Changed
+- `analyze_preflop`: ao não encontrar dados RegLife em RFI, consulta `push_fold[pos]` do bucket; em vs_RFI short-stack sem dados, usa shove range como reshove heurística
+
+### Result
+- Stacks curtos (10–15bb): análise disponível para todas as posições via push/fold GTO
+- Spots classificados como leak/major_leak quando ação diverge do shove/fold GTO
+
+---
+
 ## [v0.107.0] — 2026-05-19 — fix(gto): alias UTG1→MP no lookup vs_RFI + filtro facing_bet
 
 ### Fixed

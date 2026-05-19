@@ -1,7 +1,7 @@
 {
   "_metadata": {
     "projeto": "LeakLab",
-    "versao": "2.3.0",
+    "versao": "2.4.0",
     "descricao": "Ranges GTO preflop para MTT 8-max com ante de 1bb. RFI atualizado com dados RegLife (solver-generated) via pixel analysis. vs_RFI preservado da versÃ£o anterior.",
     "formato": "MTT 8-max com ante de 1bb",
     "fontes": [
@@ -38,7 +38,8 @@
     "ultima_atualizacao": "2026-05-19",
     "nota_pct": "pct = combo_pct (combos reais / 1326). grid_pct = celulas do grid 13x13 / 169 (sempre maior que combo_pct). Use pct/combo_pct para comparar com GTO Wizard e documentos externos.",
     "nota_vsrfi": "vs_RFI[opener][defender]: fold/call/raise(3bet-size)/allin(3bet-push). Todos os pct sao combo_pct (/ 1326).",
-    "nota_vsrfi_interp": "40bb e 75bb vs_RFI interpolados como media 50/50 dos stacks RegLife vizinhos. 40bb=(30bb+50bb)/2, 75bb=(50bb+100bb)/2. Handstrings omitidas (sem interpolacao de texto). Spots marcados com _source='interpolated_reglife'."
+    "nota_vsrfi_interp": "40bb e 75bb vs_RFI interpolados como media 50/50 dos stacks RegLife vizinhos. 40bb=(30bb+50bb)/2, 75bb=(50bb+100bb)/2. Handstrings omitidas (sem interpolacao de texto). Spots marcados com _source='interpolated_reglife'.",
+    "nota_pushfold": "push_fold[pos][stack] = ranges de shove GTO sem ICM para 10/12/15/20bb. Usados como fallback em analyze_preflop para stacks curtos sem dados RegLife."
   },
   "stack_buckets": {
     "10bb": {
@@ -205,6 +206,68 @@
             "acoes": [
               "ALLIN"
             ]
+          }
+        }
+      },
+      "push_fold": {
+        "UTG": {
+          "10bb": {
+            "shove_hands": "22+, A2s+, A8o+, KTs+, KJo+, QTs+, JTs",
+            "shove_pct": 0.2836,
+            "_source": "pushfold_gto_10bb"
+          },
+          "12bb": {
+            "shove_hands": "33+, A2s+, A9o+, KTs+, KQo, QJs",
+            "shove_pct": 0.2474,
+            "_source": "pushfold_gto_12bb"
+          }
+        },
+        "UTG1": {
+          "10bb": {
+            "shove_hands": "22+, A2s+, A5o+, K9s+, KTo+, QTs+, JTs, T9s",
+            "shove_pct": 0.3258,
+            "_source": "pushfold_gto_10bb"
+          },
+          "12bb": {
+            "shove_hands": "22+, A2s+, A7o+, K9s+, KJo+, QTs+, JTs, T9s",
+            "shove_pct": 0.2986,
+            "_source": "pushfold_gto_12bb"
+          }
+        },
+        "CO": {
+          "10bb": {
+            "shove_hands": "22+, A2s+, A2o+, K8s+, K9o+, Q9s+, QTo+, J9s+, T9s, 98s",
+            "shove_pct": 0.3922,
+            "_source": "pushfold_gto_10bb"
+          },
+          "12bb": {
+            "shove_hands": "22+, A2s+, A5o+, K8s+, KTo+, Q9s+, J9s+, T9s, 98s",
+            "shove_pct": 0.3379,
+            "_source": "pushfold_gto_12bb"
+          }
+        },
+        "BTN": {
+          "10bb": {
+            "shove_hands": "22+, A2s+, A2o+, K2s+, K7o+, Q8s+, Q9o+, J8s+, J9o+, T8s+, T9o, 98s, 87s",
+            "shove_pct": 0.4766,
+            "_source": "pushfold_gto_10bb"
+          },
+          "12bb": {
+            "shove_hands": "22+, A2s+, A2o+, K2s+, K6o+, Q7s+, Q9o+, J7s+, J9o+, T8s+, T9o, 98s, 87s",
+            "shove_pct": 0.4917,
+            "_source": "pushfold_gto_12bb"
+          }
+        },
+        "SB": {
+          "10bb": {
+            "shove_hands": "22+, A2s+, A2o+, K2s+, K7o+, Q2s+, Q7o+, J4s+, J8o+, T6s+, T8o+, 97s+, 65s+",
+            "shove_pct": 0.552,
+            "_source": "pushfold_gto_10bb"
+          },
+          "12bb": {
+            "shove_hands": "22+, A2s+, A2o+, K2s+, K7o+, Q2s+, Q6o+, J4s+, J7o+, T6s+, T8o+, 97s+, 65s+",
+            "shove_pct": 0.5701,
+            "_source": "pushfold_gto_12bb"
           }
         }
       }
@@ -597,6 +660,43 @@
             "call_hands": "55,44,33,22,AQs,A3s+,KQs,K2s+,Q5s,Q3s,J9s,J5s,J3s,T5s,T3s,63s+,52s+,42s+,32s,A2o+,K4o+,Q4o+,J5o+,T3o+,92o+,82o+,72o+,62o+,52o+,42o+,32o",
             "raise_hands": "AA,KK,66,AKs,A5s+,K5s+,QJs,Q6s,Q4s,Q2s,J6s,J4s,J2s,T6s,T4s,T2s,65s,J4o",
             "allin_hands": ""
+          }
+        }
+      },
+      "push_fold": {
+        "UTG": {
+          "15bb": {
+            "shove_hands": "44+, A2s+, ATo+, KJs+, KQo, QJs",
+            "shove_pct": 0.2232,
+            "_source": "pushfold_gto_15bb"
+          }
+        },
+        "UTG1": {
+          "15bb": {
+            "shove_hands": "33+, A2s+, A8o+, KTs+, KJo+, QTs+, JTs, T9s",
+            "shove_pct": 0.2745,
+            "_source": "pushfold_gto_15bb"
+          }
+        },
+        "CO": {
+          "15bb": {
+            "shove_hands": "22+, A2s+, A5o+, K9s+, KTo+, Q9s+, J9s+, T9s, 98s",
+            "shove_pct": 0.3348,
+            "_source": "pushfold_gto_15bb"
+          }
+        },
+        "BTN": {
+          "15bb": {
+            "shove_hands": "22+, A2s+, A2o+, K2s+, K5o+, Q6s+, Q8o+, J7s+, J9o+, T8s+, T9o, 98s, 87s",
+            "shove_pct": 0.5128,
+            "_source": "pushfold_gto_15bb"
+          }
+        },
+        "SB": {
+          "15bb": {
+            "shove_hands": "22+, A2s+, A2o+, K2s+, K6o+, Q2s+, Q5o+, J3s+, J7o+, T6s+, T8o+, 97s+, 65s+",
+            "shove_pct": 0.5913,
+            "_source": "pushfold_gto_15bb"
           }
         }
       }
@@ -1000,6 +1100,43 @@
             "call_hands": "55,33,ATs+,A3s+,KJs,K3s+,Q5s,Q3s,J5s,J3s,T5s,T3s,63s+,53s+,43s,AKo,A2o+,K2o+,Q6o,Q4o,J5o+,J3o,T3o+,94o+,92o,82o+,72o+,62o+,52o+,32o",
             "raise_hands": "AA,KK,66,44,22,AQs+,A5s+,KQs,K5s+,QJs,Q6s,Q4s,Q2s,J6s,J4s,J2s,T8s,T6s,T4s,T2s,65s,52s,42s,32s,A6o,Q5o,J4o,93o,42o+",
             "allin_hands": ""
+          }
+        }
+      },
+      "push_fold": {
+        "UTG": {
+          "20bb_pf": {
+            "shove_hands": "55+, AJs+, AQo+, KQs",
+            "shove_pct": 0.1508,
+            "_source": "pushfold_gto_20bb_pf"
+          }
+        },
+        "UTG1": {
+          "20bb_pf": {
+            "shove_hands": "44+, A2s+, ATo+, KJs+, KQo, QJs",
+            "shove_pct": 0.2232,
+            "_source": "pushfold_gto_20bb_pf"
+          }
+        },
+        "CO": {
+          "20bb_pf": {
+            "shove_hands": "33+, A2s+, A8o+, KTs+, KJo+, QTs+, JTs",
+            "shove_pct": 0.2715,
+            "_source": "pushfold_gto_20bb_pf"
+          }
+        },
+        "BTN": {
+          "20bb_pf": {
+            "shove_hands": "22+, A2s+, A5o+, K9s+, KTo+, Q9s+, J9s+, T9s, 98s",
+            "shove_pct": 0.3348,
+            "_source": "pushfold_gto_20bb_pf"
+          }
+        },
+        "SB": {
+          "20bb_pf": {
+            "shove_hands": "22+, A2s+, A2o+, K2s+, K7o+, Q6s+, Q9o+, J7s+, J9o+, T8s+, 98s, 87s",
+            "shove_pct": 0.4766,
+            "_source": "pushfold_gto_20bb_pf"
           }
         }
       }
