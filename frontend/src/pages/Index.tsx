@@ -9,7 +9,6 @@ import { KpiCard } from "@/components/hud/KpiCard";
 import { LeaksPanel } from "@/components/hud/LeaksPanel";
 import { BankrollChart } from "@/components/hud/BankrollChart";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
-import { DecisionQualityCard } from "@/components/hud/DecisionQualityCard";
 import { GtoPositionCard } from "@/components/hud/GtoPositionCard";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
@@ -28,7 +27,7 @@ import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // Module-level cache — survives unmount/remount during SPA navigation
@@ -51,7 +50,6 @@ const Index = () => {
   const openTickets = supportCount?.open ?? 0;
 
   const [evo, setEvo]                     = useState<EvolutionResponse | null>(null);
-  const [breakdown, setBreakdown]         = useState<BreakdownResponse | null>(null);
   const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
   const [tourns, setTourns]               = useState<Tournament[]>(_cachedTourns ?? []);
   const [leakRoi, setLeakRoi]             = useState<LeakRoiData[]>([]);
@@ -85,7 +83,6 @@ const Index = () => {
     setLoading(true);
     Promise.all([
       metrics.evolution(90).then(setEvo).catch(() => null),
-      metrics.breakdown(90).then(setBreakdown).catch(() => null),
       metrics.playerStats(90).then(setPlayerStats).catch(() => null),
       metrics.leakRoi(90).then((r) => setLeakRoi(r.leaks)).catch(() => null),
       metrics.pressureProfile(90).then(setPressureData).catch(() => null),
@@ -174,12 +171,7 @@ const Index = () => {
   });
 
   const renderMainRow = (id: MainSection) => {
-    if (id === "quality_row") return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <DecisionQualityCard byLabel={breakdown?.by_label} />
-        <GtoQualityCard data={gtoQualityData} />
-      </div>
-    );
+    if (id === "quality_row") return <GtoQualityCard data={gtoQualityData} />;
     if (id === "bankroll_row") return <BankrollChart />;
     if (id === "street_row") return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
