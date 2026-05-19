@@ -382,7 +382,7 @@
             "aggr_pct": 0.4012,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T7o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "K3s+,Q3s+,J3s+",
-            "raise_hands": "AA,KK,QQ,66,55,44,33,22,A7s+,KTs+,K5s+,Q5s+,J5s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AJo+,KJo+,Q9o+,J8o,T6o,95o,84o,72o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,QQ,66,55,44,33,22,A7s+,KTs+,K5s+,Q5s+,J5s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AJo+,KJo+,Q9o+,J8o,T6o,95o,84o,72o",
             "allin_hands": ""
           }
         },
@@ -428,7 +428,7 @@
             "aggr_pct": 0.3861,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,55,33,ATs,K3s+,Q3s+,T5s,T3s,95s,93s,85s,83s,75s,73s,65s,63s,53s,43s,AJo,QTo+,52o+,32o",
-            "raise_hands": "AA,KK,66,44,22,AJs+,A7s+,KQs,K5s+,Q5s+,J6s,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo+,KJo+,Q9o,J8o,T7o,95o,84o,72o,62o+,42o+",
+            "raise_hands": "AA,KK,66,44,22,AJs+,A7s+,KQs,K5s+,Q5s+,J6s,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo+,KJo+,Q9o,J8o,T7o,95o,84o,72o",
             "allin_hands": ""
           }
         },
@@ -485,7 +485,7 @@
             "aggr_pct": 0.4132,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o,J2o+,T9o,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,55,33,ATs,A7s,KQs,K3s+,Q3s+,T5s,T3s,95s,93s,85s,83s,75s,73s,65s,63s,53s,43s,AJo,QTo+,JTo,T8o,96o,84o,52o+,32o",
-            "raise_hands": "AA,KK,66,44,22,AJs+,A8s+,K5s+,Q5s+,J6s,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo+,KJo+,Q9o,J8o,T7o,95o,72o,62o+,42o+",
+            "raise_hands": "AA,KK,66,44,22,AJs+,A8s+,K5s+,Q5s+,J6s,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo+,KJo+,Q9o,J8o,T7o,95o,72o",
             "allin_hands": ""
           }
         },
@@ -542,7 +542,7 @@
             "aggr_pct": 0.2941,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs+,A2s+,K7s+,K2s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QTo+,Q2o+,J9o+,J2o+,T2o+,92o+,82o+,72o+",
             "call_hands": "",
-            "raise_hands": "AA,KK,66,55,44,33,22,AKs,A9s,K4s+,Q4s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AKs,A9s,K4s+,Q4s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o",
             "allin_hands": ""
           },
           "SB": {
@@ -553,7 +553,7 @@
             "aggr_pct": 0.4223,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,55,33,ATs+,A7s+,KQs,K3s+,Q3s+,T5s,T3s,95s,93s,85s,83s,75s,73s,65s,63s,53s,43s,AJo,QTo+,J9o+,T7o,95o+,84o,72o,52o+,32o",
-            "raise_hands": "AA,KK,66,44,22,AKs,A9s,K5s+,Q5s+,J6s,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo+,KJo+,Q9o,J8o,T6o,62o+,42o+",
+            "raise_hands": "AA,KK,66,44,22,AKs,A9s,K5s+,Q5s+,J6s,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo+,KJo+,Q9o,J8o,T6o",
             "allin_hands": ""
           }
         },
@@ -566,7 +566,7 @@
             "aggr_pct": 0.7406,
             "fold_hands": "TT,99,88,77,A2s,K2s,92s+,82s+,72s+,A7o+,K7o+,Q7o+,J7o+,T7o+,97o+,87o",
             "call_hands": "AA,KK,QQ,JJ,A8s+,A3s+,K7s+,K3s+,Q2s+,J2s+,T9s,T2s+,AJo+,A3o+,KTo+,K3o+,QJo,Q4o,Q2o,J5o+,J2o+,T2o+,94o+,92o,82o+,72o+",
-            "raise_hands": "55,44,33,22,A5s+,K5s+,T8s,62s+,52s+,42s+,32s,ATo,A6o,K6o,K2o,Q5o+,Q3o,J4o,62o+,52o+,42o+,32o",
+            "raise_hands": "55,44,33,22,A5s+,K5s+,T8s,62s+,52s+,42s+,32s,ATo,A6o,K6o,K2o,Q5o+,Q3o,J4o",
             "allin_hands": "66,64s+,A2o,93o"
           }
         },
@@ -636,7 +636,7 @@
             "aggr_pct": 0.2971,
             "fold_hands": "QQ,JJ,TT,99,88,77,A2s+,K7s+,K2s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QTo+,Q2o+,J9o+,J2o+,T2o+,92o+,82o+,72o+",
             "call_hands": "",
-            "raise_hands": "AA,KK,66,55,44,33,22,AKs,K4s+,Q4s+,J4s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AKs,K4s+,Q4s+,J4s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o",
             "allin_hands": ""
           },
           "MP": {
@@ -647,7 +647,7 @@
             "aggr_pct": 0.2941,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs+,A2s+,K7s+,K2s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QTo+,Q2o+,J9o+,J2o+,T2o+,92o+,82o+,72o+",
             "call_hands": "",
-            "raise_hands": "AA,KK,66,55,44,33,22,AKs,A9s,K4s+,Q4s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AKs,A9s,K4s+,Q4s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o",
             "allin_hands": ""
           },
           "SB": {
@@ -800,7 +800,7 @@
             "aggr_pct": 0.8794,
             "fold_hands": "A2s+,Q2s+,Q2o+,J2o+,T2o+,92o,82o",
             "call_hands": "KK,QQ,TT,99,88,77,A7s+,KJs+,K7s+,Q4s+,J7s+,J2s+,T7s+,97s+,87s,AKo,A2o+,KQo,K2o+,QJo,Q6o+,J5o+,T7o+,T4o+,96o+,93o+,85o+,83o,73o+",
-            "raise_hands": "AA,JJ,66,55,44,33,22,AKs,K9s+,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o+,J8o+,T6o,95o,84o,72o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,JJ,66,55,44,33,22,AKs,K9s+,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o+,J8o+,T6o,95o,84o,72o",
             "allin_hands": ""
           },
           "SB": {
@@ -811,7 +811,7 @@
             "aggr_pct": 0.4449,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,JJ,55,33,KTs+,K3s+,Q3s+,T5s,T3s,95s,93s,85s,83s,75s,73s,65s,63s,53s,43s,ATo,J9o,52o+,32o",
-            "raise_hands": "AA,KK,66,44,22,A7s+,K5s+,Q5s+,J5s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AJo+,KTo+,Q9o+,JTo,J8o,T6o+,95o,84o,72o,62o+,42o+",
+            "raise_hands": "AA,KK,66,44,22,A7s+,K5s+,Q5s+,J5s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AJo+,KTo+,Q9o+,JTo,J8o,T6o+,95o,84o,72o",
             "allin_hands": ""
           }
         },
@@ -870,7 +870,7 @@
             "aggr_pct": 0.8642,
             "fold_hands": "A2s+,Q2s+,J2s+,K2o+,Q2o+,J2o+,T2o,82o",
             "call_hands": "KK,QQ,JJ,TT,99,88,77,55,33,A9s+,A7s,K7s+,Q4s+,J4s+,T7s+,T5s,T3s,97s+,95s,93s,87s,85s,83s,75s,73s,65s,63s,53s,43s,AKo,A2o+,KQo,K5o+,QTo+,Q6o+,J9o+,J5o+,T7o+,T3o+,96o+,92o+,85o+,83o,72o+,52o+,32o",
-            "raise_hands": "AA,66,44,22,A8s,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo,Q9o,J8o,T6o,95o,84o,62o+,42o+",
+            "raise_hands": "AA,66,44,22,A8s,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo,Q9o,J8o,T6o,95o,84o",
             "allin_hands": ""
           },
           "BTN": {
@@ -903,7 +903,7 @@
             "aggr_pct": 0.3183,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QJo,Q2o+,J9o+,J2o+,T2o+,92o+,82o+,72o+",
             "call_hands": "66,55,33,AJs+,A9s,KQs,Q4s+,J6s,T3s+,95s+,93s,85s+,83s,75s+,72s+,63s+,53s,43s,32s,62o+,52o+,32o",
-            "raise_hands": "AA,KK,44,22,K2s+,T2s,94s,92s,84s,82s,74s,62s,54s,52s,42s,AQo+,KJo+,Q9o+,J8o,42o+",
+            "raise_hands": "AA,KK,44,22,K2s+,T2s,94s,92s,84s,82s,74s,62s,54s,52s,42s,AQo+,KJo+,Q9o+,J8o",
             "allin_hands": ""
           },
           "SB": {
@@ -914,7 +914,7 @@
             "aggr_pct": 0.4721,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "QQ,JJ,55,33,A9s+,A7s,K9s+,QJs,Q4s+,J4s+,T5s,T3s,95s,93s,85s,83s,75s,73s,65s,63s,53s,43s,ATo+,QJo,J9o+,T7o+,95o+,85o,72o,52o+,32o",
-            "raise_hands": "AA,KK,66,44,22,AQs+,A8s,KQs,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo+,KJo+,Q9o+,J8o,T6o,84o,62o+,42o+",
+            "raise_hands": "AA,KK,66,44,22,AQs+,A8s,KQs,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo+,KJo+,Q9o+,J8o,T6o,84o",
             "allin_hands": ""
           }
         },
@@ -927,7 +927,7 @@
             "aggr_pct": 0.8492,
             "fold_hands": "A3s+,Q2s+,J2s+,K2o+,Q2o+,J2o+,T2o,92o,82o",
             "call_hands": "KK,QQ,JJ,TT,99,88,77,55,33,ATs+,A7s,A2s,K7s+,Q4s+,J4s+,T7s+,T5s,T3s,97s+,95s,93s,87s,85s,83s,75s,73s,65s,63s,53s,43s,AKo,A2o+,KQo,K6o+,QTo+,Q6o+,J9o+,J5o+,T3o+,96o+,93o+,83o+,72o+,52o+,32o",
-            "raise_hands": "AA,66,44,22,A8s+,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo,Q9o,J8o,95o,62o+,42o+",
+            "raise_hands": "AA,66,44,22,A8s+,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo,Q9o,J8o,95o",
             "allin_hands": ""
           },
           "BTN": {
@@ -960,7 +960,7 @@
             "aggr_pct": 0.3273,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs,A5s+,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QTo+,Q2o+,J9o+,J2o+,T7o+,T2o+,92o+,82o+,72o+",
             "call_hands": "66,55,33,AJs+,A9s,A4s,KQs,Q4s+,J4s+,T5s,T3s,95s,93s,85s,83s,75s+,73s,65s,63s,53s,43s,J8o,T6o,52o+,32o",
-            "raise_hands": "AA,KK,44,22,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,74s,72s,64s,62s,54s,52s,42s,32s,AQo+,KJo+,Q9o,62o+,42o+",
+            "raise_hands": "AA,KK,44,22,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,74s,72s,64s,62s,54s,52s,42s,32s,AQo+,KJo+,Q9o",
             "allin_hands": ""
           },
           "LJ": {
@@ -971,7 +971,7 @@
             "aggr_pct": 0.3002,
             "fold_hands": "QQ,JJ,TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QTo+,Q2o+,J9o+,J2o+,T2o+,92o+,82o+,72o+",
             "call_hands": "",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K3s+,Q3s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K3s+,Q3s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o",
             "allin_hands": ""
           },
           "SB": {
@@ -982,7 +982,7 @@
             "aggr_pct": 0.4268,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,82o+,73o+",
             "call_hands": "QQ,JJ,A7s+,KTs+,QJs,Q4s+,J6s,AJo,QTo+,J9o+,T7o+,96o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AKs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,95o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AKs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,95o",
             "allin_hands": ""
           }
         },
@@ -995,7 +995,7 @@
             "aggr_pct": 0.6999,
             "fold_hands": "JJ,TT,99,88,77,K2s,T9s,92s+,82s+,72s+,A7o+,K7o+,Q7o+,J7o+,T7o+,97o+,87o",
             "call_hands": "AA,KK,QQ,A7s+,K3s+,Q2s+,J2s+,T2s+,AJo+,A5o,A2o+,KQo,K3o+,Q4o+,Q2o,J5o+,J2o+,T2o+,94o+,92o,82o+,72o+",
-            "raise_hands": "55,44,33,22,A2s+,T8s,62s,52s+,42s+,32s,A6o,A4o,K6o,K2o,Q6o,Q3o,J4o,62o+,52o+,42o+,32o",
+            "raise_hands": "55,44,33,22,A2s+,T8s,62s,52s+,42s+,32s,A6o,A4o,K6o,K2o,Q6o,Q3o,J4o",
             "allin_hands": "66,63s+,93o"
           }
         },
@@ -1008,7 +1008,7 @@
             "aggr_pct": 0.8039,
             "fold_hands": "A2s+,Q2s+,J2s,A2o+,K2o+,Q2o+,J2o+,T2o+,92o,82o",
             "call_hands": "KK,QQ,JJ,TT,99,88,77,ATs+,A7s,K7s+,Q4s+,J3s+,T7s+,97s+,87s,AKo,A4o+,KQo,K7o+,QTo+,Q6o+,J9o+,J6o+,T4o+,96o+,93o+,83o+,72o+",
-            "raise_hands": "AA,66,55,44,33,22,A8s+,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o,J8o,95o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,A8s+,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o,J8o,95o",
             "allin_hands": ""
           },
           "BTN": {
@@ -1041,7 +1041,7 @@
             "aggr_pct": 0.3002,
             "fold_hands": "QQ,JJ,TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QTo+,Q2o+,J9o+,J2o+,T2o+,92o+,82o+,72o+",
             "call_hands": "",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K3s+,Q3s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K3s+,Q3s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o",
             "allin_hands": ""
           },
           "LJ": {
@@ -1052,7 +1052,7 @@
             "aggr_pct": 0.3002,
             "fold_hands": "QQ,JJ,TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QTo+,Q2o+,J9o+,J2o+,T2o+,92o+,82o+,72o+",
             "call_hands": "",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K3s+,Q3s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K3s+,Q3s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o",
             "allin_hands": ""
           },
           "MP": {
@@ -1063,7 +1063,7 @@
             "aggr_pct": 0.2851,
             "fold_hands": "QQ,JJ,TT,99,88,77,A6s+,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,KQo,K2o+,QTo+,Q2o+,J2o+,T2o+,92o+,82o+,72o+",
             "call_hands": "A5s",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K3s+,Q3s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,Q9o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K3s+,Q3s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,Q9o",
             "allin_hands": ""
           },
           "SB": {
@@ -1074,7 +1074,7 @@
             "aggr_pct": 0.4449,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "QQ,JJ,ATs+,A7s+,KTs+,QJs,Q4s+,J6s,AJo,QTo+,J9o+,T7o+,96o,84o+,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,95o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,95o",
             "allin_hands": ""
           }
         },
@@ -1098,7 +1098,7 @@
             "aggr_pct": 0.5777,
             "fold_hands": "QQ,JJ,TT,99,88,77,A7s+,A2s,K7s+,K2s,Q7s+,J7s+,T9s,T7s,92s+,82s+,72s+,62s,A7o+,K7o+,Q7o+,Q2o+,J7o+,J2o,T7o+,T2o,97o+,87o",
             "call_hands": "55,33,ATs+,A3s+,KJs,K3s+,Q5s,Q3s,J5s,J3s,T5s,T3s,63s+,53s+,43s,AKo,A2o+,K2o+,Q6o,Q4o,J5o+,J3o,T3o+,94o+,92o,82o+,72o+,62o+,52o+,32o",
-            "raise_hands": "AA,KK,66,44,22,AQs+,A5s+,KQs,K5s+,QJs,Q6s,Q4s,Q2s,J6s,J4s,J2s,T8s,T6s,T4s,T2s,65s,52s,42s,32s,A6o,Q5o,J4o,93o,42o+",
+            "raise_hands": "AA,KK,66,44,22,AQs+,A5s+,KQs,K5s+,QJs,Q6s,Q4s,Q2s,J6s,J4s,J2s,T8s,T6s,T4s,T2s,65s,52s,42s,32s,A6o,Q5o,J4o,93o",
             "allin_hands": ""
           }
         }
@@ -1240,7 +1240,7 @@
             "aggr_pct": 0.8823,
             "fold_hands": "A3s+,Q2s+,K2o,Q2o+,J2o+,T2o+,92o,82o",
             "call_hands": "KK,QQ,JJ,TT,99,88,77,A7s+,A2s,KJs+,K7s+,Q4s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,KQo,K3o+,QJo,Q5o+,JTo,J5o+,T7o+,T4o+,96o+,93o+,85o+,83o,73o+",
-            "raise_hands": "AA,66,55,44,33,22,AKs,KTs,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,Q9o+,J8o+,T6o,95o,84o,72o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,AKs,KTs,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,Q9o+,J8o+,T6o,95o,84o,72o",
             "allin_hands": ""
           },
           "SB": {
@@ -1251,7 +1251,7 @@
             "aggr_pct": 0.4419,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "KK,QQ,JJ,55,AJs+,A7s+,K9s+,QJs,Q4s+,J5s,T5s,95s,85s,75s,65s,62s,ATo,KTo,J9o+,T7o,52o+",
-            "raise_hands": "AA,66,44,33,22,AKs,A9s+,K2s+,T6s,T2s+,96s,92s+,86s,82s+,76s,72s+,63s+,52s+,42s+,32s,AJo+,KJo+,Q9o+,J8o,95o,84o,72o,62o+,42o+,32o",
+            "raise_hands": "AA,66,44,33,22,AKs,A9s+,K2s+,T6s,T2s+,96s,92s+,86s,82s+,76s,72s+,63s+,52s+,42s+,32s,AJo+,KJo+,Q9o+,J8o,95o,84o,72o",
             "allin_hands": "J6s"
           }
         },
@@ -1264,7 +1264,7 @@
             "aggr_pct": 0.8461,
             "fold_hands": "A3s+,Q2s+,K2o+,Q2o+,J2o+,T2o+,92o,82o",
             "call_hands": "KK,QQ,JJ,TT,99,88,77,A7s+,A2s,KQs,K7s+,Q4s+,J7s+,J2s+,T7s+,97s+,87s,A6o+,A2o+,KQo,K5o+,QJo,Q6o+,J9o+,J6o+,T7o+,T4o+,96o+,93o+,85o+,83o,73o+",
-            "raise_hands": "AA,66,55,44,33,22,AKs,KJs,K2s+,QJs,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,A5o,KJo,Q9o+,J8o,T6o,95o,84o,72o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,AKs,KJs,K2s+,QJs,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,A5o,KJo,Q9o+,J8o,T6o,95o,84o,72o",
             "allin_hands": ""
           },
           "BTN": {
@@ -1286,7 +1286,7 @@
             "aggr_pct": 0.454,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "KK,QQ,JJ,AQs,ATs,A7s+,K9s+,QJs,Q4s+,J5s,AJo,KTo,QTo+,J9o+,T7o,95o+,72o",
-            "raise_hands": "AA,66,55,44,33,22,AKs,AJs,A9s,K2s+,QTs,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,ATo,KJo+,Q9o,J8o,84o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,AKs,AJs,A9s,K2s+,QTs,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,ATo,KJo+,Q9o,J8o,84o",
             "allin_hands": ""
           }
         },
@@ -1299,7 +1299,7 @@
             "aggr_pct": 0.813,
             "fold_hands": "A2s+,Q2s+,J2s,A2o,K2o+,Q2o+,J2o+,T2o+,92o,82o+",
             "call_hands": "KK,QQ,JJ,TT,99,88,77,A7s+,K7s+,Q4s+,J7s+,J3s+,T7s+,97s+,87s,AKo,A3o+,KQo,K6o+,QJo,Q6o+,J9o+,J6o+,T7o+,T4o+,93o+,84o+,72o+",
-            "raise_hands": "AA,66,55,44,33,22,KQs,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o+,J8o,T6o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,KQs,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o+,J8o,T6o",
             "allin_hands": ""
           },
           "BTN": {
@@ -1310,7 +1310,7 @@
             "aggr_pct": 0.454,
             "fold_hands": "TT,99,88,77,A4s+,A2s,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,JJ,55,33,A8s+,A3s,K9s+,QJs,Q4s+,J5s+,T5s,T3s,95s,93s,85s,83s,75s,73s,65s,63s,53s,43s,ATo+,KQo,QTo+,J8o+,T7o+,95o+,84o,72o,52o+,32o",
-            "raise_hands": "AA,KK,66,44,22,A7s,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,54s,52s,42s,32s,KJo,Q9o,62o+,42o+",
+            "raise_hands": "AA,KK,66,44,22,A7s,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,54s,52s,42s,32s,KJo,Q9o",
             "allin_hands": "62s"
           },
           "CO": {
@@ -1321,7 +1321,7 @@
             "aggr_pct": 0.3952,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,72o+",
             "call_hands": "55,33,A8s+,KJs+,Q4s+,J6s,T5s,T3s,95s,93s,85s,83s,75s,73s,65s,62s+,53s,43s,AKo,AJo,KJo,QTo+,J8o+,T7o,95o,84o,52o+,32o",
-            "raise_hands": "AA,KK,QQ,66,44,22,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,54s,52s,42s,32s,AQo,KQo,Q9o,62o+,42o+",
+            "raise_hands": "AA,KK,QQ,66,44,22,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,54s,52s,42s,32s,AQo,KQo,Q9o",
             "allin_hands": ""
           },
           "SB": {
@@ -1332,7 +1332,7 @@
             "aggr_pct": 0.451,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,JJ,A7s+,K9s+,QJs,Q4s+,J5s,ATo+,QJo,J9o+,T7o,95o+,84o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AKs,KQs,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o+,J8o,T6o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AKs,KQs,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o+,J8o,T6o",
             "allin_hands": ""
           }
         },
@@ -1345,7 +1345,7 @@
             "aggr_pct": 0.7979,
             "fold_hands": "A3s+,Q2s+,J2s,A2o+,K2o+,Q2o+,J2o+,T2o+,92o,82o+",
             "call_hands": "KK,QQ,JJ,TT,99,88,77,A7s+,A2s,K7s+,Q4s+,J3s+,T7s+,97s+,87s,AKo,A4o+,KQo,K7o+,QTo+,Q6o+,J9o+,J6o+,T4o+,96o+,93o+,84o+,72o+",
-            "raise_hands": "AA,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o,J8o,95o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o,J8o,95o",
             "allin_hands": ""
           },
           "BTN": {
@@ -1356,7 +1356,7 @@
             "aggr_pct": 0.4178,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,JJ,55,33,A7s+,KTs+,QJs,Q4s+,J6s,T5s,T3s,95s,93s,85s,83s,75s,73s,65s,63s,53s,43s,AKo,AJo,KJo,QTo+,J8o+,T7o,95o,84o,72o,52o+,32o",
-            "raise_hands": "AA,KK,66,44,22,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KQo,Q9o,62o+,42o+",
+            "raise_hands": "AA,KK,66,44,22,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KQo,Q9o",
             "allin_hands": ""
           },
           "CO": {
@@ -1367,7 +1367,7 @@
             "aggr_pct": 0.3681,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,JTo,J2o+,T7o+,T2o+,96o+,92o+,85o+,82o+,72o+",
             "call_hands": "KK,55,33,A8s+,KJs,Q4s+,J6s,T5s,T3s,95s,93s,85s,83s,75s,73s,65s,63s,53s,43s,AKo,QTo+,J8o+,T6o,95o,84o,52o+,32o",
-            "raise_hands": "AA,QQ,66,44,22,KQs,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo+,62o+,42o+",
+            "raise_hands": "AA,QQ,66,44,22,KQs,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo+",
             "allin_hands": ""
           },
           "HJ": {
@@ -1378,7 +1378,7 @@
             "aggr_pct": 0.3409,
             "fold_hands": "JJ,TT,99,88,77,ATs,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T7o+,T2o+,96o+,92o+,82o+,72o+",
             "call_hands": "KK,QQ,AKs,AJs,A9s,Q4s+,J6s,AKo,QTo+,J8o,T6o,95o",
-            "raise_hands": "AA,66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+",
             "allin_hands": ""
           },
           "SB": {
@@ -1389,7 +1389,7 @@
             "aggr_pct": 0.451,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,JJ,A7s+,K9s+,QJs,Q4s+,J5s+,ATo+,QTo+,J9o+,T7o+,95o+,84o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o",
             "allin_hands": ""
           }
         },
@@ -1402,7 +1402,7 @@
             "aggr_pct": 0.7708,
             "fold_hands": "A3s+,Q2s+,J2s,A2o+,K2o+,Q2o+,J2o+,T2o+,92o,82o+",
             "call_hands": "AA,KK,QQ,JJ,TT,99,88,77,A7s+,A2s,K7s+,Q4s+,J3s+,T7s+,97s+,87s,AKo,A5o+,KQo,K8o+,QTo+,Q7o+,J9o+,J6o+,T4o+,96o+,93o+,84o+,72o+",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o,J8o,95o,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o,J8o,95o",
             "allin_hands": ""
           },
           "BTN": {
@@ -1413,7 +1413,7 @@
             "aggr_pct": 0.4298,
             "fold_hands": "TT,99,88,77,A4s+,A2s,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,KK,QQ,JJ,55,A7s+,A3s,KTs+,QJs,Q4s+,J6s,T5s,95s,85s,75s,65s,AKo,AJo,KJo,QTo+,J8o+,T6o+,95o+,84o,72o,52o+",
-            "raise_hands": "66,44,33,22,K2s+,T6s,T2s+,96s,92s+,86s,82s+,76s,72s+,62s+,52s+,42s+,32s,AQo,KQo,62o+,42o+,32o",
+            "raise_hands": "66,44,33,22,K2s+,T6s,T2s+,96s,92s+,86s,82s+,76s,72s+,62s+,52s+,42s+,32s,AQo,KQo",
             "allin_hands": ""
           },
           "CO": {
@@ -1424,7 +1424,7 @@
             "aggr_pct": 0.3952,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,KK,QQ,A8s+,KJs+,Q4s+,J6s,AKo,KJo+,QTo+,J8o+,T6o+,95o,84o,72o",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "HJ": {
@@ -1435,7 +1435,7 @@
             "aggr_pct": 0.3409,
             "fold_hands": "JJ,TT,99,88,77,ATs,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T7o+,T2o+,96o+,92o+,82o+,72o+",
             "call_hands": "AA,KK,QQ,AJs+,A9s,KQs,Q4s+,J6s,AKo,KQo,QTo+,J8o,T6o,95o",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo",
             "allin_hands": ""
           },
           "LJ": {
@@ -1446,7 +1446,7 @@
             "aggr_pct": 0.3273,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T7o+,T2o+,92o+,82o+,72o+",
             "call_hands": "AA,KK,AJs+,A9s,Q4s+,J6s,AKo,KQo,QTo+,J8o,T6o",
-            "raise_hands": "66,55,44,33,22,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo",
             "allin_hands": ""
           },
           "SB": {
@@ -1457,7 +1457,7 @@
             "aggr_pct": 0.4224,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,A7s+,KTs+,QJs,Q4s+,J6s,AKo,AJo,QTo+,J8o+,T7o,95o+,84o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+,Q9o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+,Q9o",
             "allin_hands": ""
           }
         },
@@ -1470,7 +1470,7 @@
             "aggr_pct": 0.6938,
             "fold_hands": "JJ,TT,99,88,77,K2s,Q7s,JTs,T9s,92s+,82s+,72s+,A7o+,K7o+,Q7o+,J7o+,T7o+,97o+,87o",
             "call_hands": "AA,KK,QQ,A7s+,K3s+,Q8s+,Q2s+,J2s+,T2s+,AJo+,A5o,A3o,KQo,K3o+,Q4o+,J5o+,J2o,T3o+,94o+,92o,82o+,74o+,72o",
-            "raise_hands": "55,44,33,22,A2s+,T8s,62s,52s+,42s+,32s,A6o,A4o,A2o,K6o,K2o,Q2o+,J3o+,T2o,93o,73o,62o+,52o+,42o+,32o",
+            "raise_hands": "55,44,33,22,A2s+,T8s,62s,52s+,42s+,32s,A6o,A4o,A2o,K6o,K2o,Q2o+,J3o+,T2o,93o,73o",
             "allin_hands": "66,63s+"
           }
         },
@@ -1483,7 +1483,7 @@
             "aggr_pct": 0.8069,
             "fold_hands": "A3s+,Q2s+,J2s,A2o+,K2o+,Q2o+,J2o+,T2o+,92o,82o",
             "call_hands": "AA,KK,QQ,JJ,TT,99,88,77,A7s+,A2s,K7s+,Q4s+,J3s+,T7s+,97s+,87s,AKo,A4o+,KQo,K7o+,Q6o+,J6o+,T4o+,93o+,83o+,72o+",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo",
             "allin_hands": ""
           },
           "BTN": {
@@ -1494,7 +1494,7 @@
             "aggr_pct": 0.3982,
             "fold_hands": "JJ,TT,99,88,77,A4s+,A2s,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,KK,QQ,A8s+,A3s,KJs+,Q4s+,J6s,AKo,KJo,QTo+,J8o+,T6o+,95o,84o,72o",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KQo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KQo",
             "allin_hands": ""
           },
           "CO": {
@@ -1505,7 +1505,7 @@
             "aggr_pct": 0.3711,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,JTo,J2o+,T7o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,KK,QQ,A9s+,KQs,Q4s+,J6s,AKo,KJo+,QTo+,J8o+,T6o,95o,84o,72o",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "HJ": {
@@ -1516,7 +1516,7 @@
             "aggr_pct": 0.3363,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T7o+,T2o+,96o+,92o+,82o+,72o+",
             "call_hands": "AA,KK,AJs+,A9s,KQs,Q4s+,J6s,AKo,KQo,QTo+,J8o,T6o,95o",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo",
             "allin_hands": ""
           },
           "LJ": {
@@ -1527,7 +1527,7 @@
             "aggr_pct": 0.3122,
             "fold_hands": "QQ,JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QJo,Q2o+,J9o+,J2o+,T7o+,T2o+,92o+,82o+,72o+",
             "call_hands": "AA,KK,AQs+,KQs,Q4s+,J6s,AKo,KQo,QTo,J8o,T6o",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo",
             "allin_hands": ""
           },
           "MP": {
@@ -1538,7 +1538,7 @@
             "aggr_pct": 0.2911,
             "fold_hands": "QQ,JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T2o+,92o+,82o+,72o+",
             "call_hands": "AA,KK,AQs+,Q4s+,J6s,AKo,KQo,J8o",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo",
             "allin_hands": ""
           },
           "SB": {
@@ -1549,7 +1549,7 @@
             "aggr_pct": 0.4359,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,JJ,A7s+,KTs+,QJs,Q4s+,J6s,AKo,AJo,QTo+,J8o+,T6o+,95o+,84o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+,Q9o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+,Q9o",
             "allin_hands": ""
           }
         }
@@ -1984,7 +1984,7 @@
             "aggr_pct": 0.8371,
             "fold_hands": "A3s+,Q2s+,K2o+,Q2o+,J2o+,T2o+,92o,82o+",
             "call_hands": "QQ,JJ,99,88,77,A7s+,A2s,K7s+,QTs+,Q4s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,KQo,K5o+,QTo+,Q6o+,JTo,J6o+,T4o+,93o+,84o+,73o+",
-            "raise_hands": "AA,KK,TT,66,55,44,33,22,AKs,K2s+,Q9s,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,Q9o,J8o+,T6o+,72o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,TT,66,55,44,33,22,AKs,K2s+,Q9s,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,Q9o,J8o+,T6o+,72o",
             "allin_hands": ""
           },
           "SB": {
@@ -1995,7 +1995,7 @@
             "aggr_pct": 0.4721,
             "fold_hands": "TT,99,88,77,A2s+,K7s,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,JJ,A7s+,KJs+,K8s+,QJs,Q9s,Q4s+,J4s+,KQo,KTo,QJo,JTo,T7o+,95o+,84o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AKs,KTs,K2s+,QTs,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,ATo+,KJo,Q9o+,J8o+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AKs,KTs,K2s+,QTs,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,ATo+,KJo,Q9o+,J8o+",
             "allin_hands": ""
           }
         },
@@ -2008,7 +2008,7 @@
             "aggr_pct": 0.7859,
             "fold_hands": "A2s+,Q2s+,J2s,A2o+,K2o+,Q2o+,J2o+,T2o+,92o,82o+",
             "call_hands": "KK,QQ,TT,99,88,77,A7s+,K7s+,Q4s+,J7s+,J3s+,T7s+,97s+,87s,AKo,A4o+,KQo,K7o+,QJo,Q7o+,JTo,J6o+,T4o+,93o+,84o+,72o+",
-            "raise_hands": "AA,JJ,66,55,44,33,22,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o+,J8o+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,JJ,66,55,44,33,22,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o+,J8o+",
             "allin_hands": ""
           },
           "BTN": {
@@ -2019,7 +2019,7 @@
             "aggr_pct": 0.4601,
             "fold_hands": "TT,99,88,77,A4s+,A2s,K7s,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "KK,QQ,JJ,AJs+,A7s+,A3s,K8s+,Q4s+,J5s+,AKo,KQo,KTo,QTo+,J8o+,T7o+,95o+,84o,72o",
-            "raise_hands": "AA,66,55,44,33,22,ATs,K2s+,QTs+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,ATo+,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,ATs,K2s+,QTs+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,ATo+,KJo",
             "allin_hands": ""
           },
           "SB": {
@@ -2030,7 +2030,7 @@
             "aggr_pct": 0.4631,
             "fold_hands": "TT,99,88,77,A2s+,K7s,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "KK,QQ,JJ,A7s+,K8s+,QJs,Q4s+,J5s,ATo+,KQo,KTo,QJo,JTo,J8o,T7o+,95o+,84o,72o",
-            "raise_hands": "AA,66,55,44,33,22,KQs,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,Q9o+,J9o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,KQs,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,Q9o+,J9o",
             "allin_hands": ""
           }
         },
@@ -2043,7 +2043,7 @@
             "aggr_pct": 0.7496,
             "fold_hands": "A2s+,Q2s+,J2s,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+",
             "call_hands": "KK,JJ,TT,99,88,77,A7s+,K7s+,Q4s+,J3s+,T7s+,97s+,87s,AKo,A6o+,KQo,K7o+,QJo,Q7o+,JTo,J6o+,T5o+,94o+,84o+,72o+",
-            "raise_hands": "AA,QQ,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o+,J9o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,QQ,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o+,J9o",
             "allin_hands": ""
           },
           "BTN": {
@@ -2054,7 +2054,7 @@
             "aggr_pct": 0.454,
             "fold_hands": "TT,99,88,77,A4s+,A2s,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "KK,JJ,AQs+,A7s+,A3s,K9s+,QJs,Q4s+,J5s+,AKo,AJo,KQo,QTo+,J8o+,T7o+,95o+,84o+,72o",
-            "raise_hands": "AA,QQ,66,55,44,33,22,A9s+,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,ATo,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,QQ,66,55,44,33,22,A9s+,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,ATo,KJo",
             "allin_hands": ""
           },
           "CO": {
@@ -2065,7 +2065,7 @@
             "aggr_pct": 0.3891,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "KK,AQs+,A8s+,KTs+,Q4s+,J6s,AKo,KQo,QTo+,J8o+,T7o,95o,84o,72o",
-            "raise_hands": "AA,QQ,66,55,44,33,22,ATs+,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,QQ,66,55,44,33,22,ATs+,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo",
             "allin_hands": ""
           },
           "SB": {
@@ -2076,7 +2076,7 @@
             "aggr_pct": 0.4509,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,JJ,AKs,A7s+,K9s+,QJs,Q4s+,J5s+,AKo,ATo+,J8o+,T6o+,95o+,84o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+,QTo+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+,QTo+",
             "allin_hands": ""
           }
         },
@@ -2089,7 +2089,7 @@
             "aggr_pct": 0.7315,
             "fold_hands": "A2s+,Q2s+,J2s,A7o,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+",
             "call_hands": "AA,KK,QQ,JJ,TT,99,88,77,A7s+,KJs,K7s+,Q4s+,J3s+,T7s+,97s+,87s,AKo,A8o+,A6o,KQo,K8o+,QJo,Q7o+,J6o+,T5o+,94o+,84o+,72o+",
-            "raise_hands": "66,55,44,33,22,KQs,KTs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QTo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,KQs,KTs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QTo",
             "allin_hands": ""
           },
           "BTN": {
@@ -2100,7 +2100,7 @@
             "aggr_pct": 0.445,
             "fold_hands": "TT,99,88,77,A4s+,A2s,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "KK,QQ,JJ,ATs+,A7s+,A3s,K9s+,QJs,Q4s+,J5s+,AKo,AJo,KQo,QTo+,J8o+,T7o+,95o+,84o+,72o",
-            "raise_hands": "AA,66,55,44,33,22,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo",
             "allin_hands": ""
           },
           "CO": {
@@ -2111,7 +2111,7 @@
             "aggr_pct": 0.3921,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "KK,QQ,A8s+,KJs,Q4s+,J4s+,AKo,KQo,QTo+,J8o+,T7o,95o,84o,72o",
-            "raise_hands": "AA,66,55,44,33,22,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo",
             "allin_hands": ""
           },
           "HJ": {
@@ -2122,7 +2122,7 @@
             "aggr_pct": 0.3469,
             "fold_hands": "JJ,TT,99,88,77,A5s+,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T2o+,96o+,92o+,82o+,73o+",
             "call_hands": "KK,QQ,AKs,ATs+,A4s,Q4s+,J6s,AKo,KQo,QTo,J8o,95o,72o",
-            "raise_hands": "AA,66,55,44,33,22,AQs,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QJo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,AQs,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QJo",
             "allin_hands": ""
           },
           "SB": {
@@ -2133,7 +2133,7 @@
             "aggr_pct": 0.4479,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,QQ,JJ,A7s+,K9s+,QJs,Q4s+,J6s,AKo,AJo,KQo,QJo,J8o+,T6o+,95o+,84o,72o",
-            "raise_hands": "KK,66,55,44,33,22,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o+,62o+,52o+,42o+,32o",
+            "raise_hands": "KK,66,55,44,33,22,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,Q9o+",
             "allin_hands": ""
           }
         },
@@ -2146,7 +2146,7 @@
             "aggr_pct": 0.6878,
             "fold_hands": "77,A2s+,Q2s+,J2s+,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+",
             "call_hands": "AA,KK,QQ,JJ,TT,99,88,AKs,A7s+,K7s+,Q4s+,J4s+,T7s+,97s+,87s,AKo,A9o+,KQo,K9o+,QJo,Q7o+,J7o+,T5o+,94o+,84o+,72o+",
-            "raise_hands": "66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QTo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QTo",
             "allin_hands": ""
           },
           "BTN": {
@@ -2157,7 +2157,7 @@
             "aggr_pct": 0.451,
             "fold_hands": "TT,99,88,77,A4s+,A2s,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "KK,QQ,JJ,AKs,A7s+,A3s,K9s+,QJs,Q4s+,J6s,AKo,AJo,KJo+,QTo+,J8o+,T6o+,95o+,84o+,72o",
-            "raise_hands": "AA,66,55,44,33,22,AQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,AQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "CO": {
@@ -2168,7 +2168,7 @@
             "aggr_pct": 0.3861,
             "fold_hands": "JJ,TT,99,88,77,A2s+,KJs,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,KK,QQ,AJs+,A8s+,KTs,Q4s+,J6s,AKo,KJo+,QTo+,J8o+,T7o,95o,84o,72o",
-            "raise_hands": "66,55,44,33,22,ATs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,ATs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "HJ": {
@@ -2179,7 +2179,7 @@
             "aggr_pct": 0.353,
             "fold_hands": "JJ,TT,99,88,77,ATs,A5s+,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,KK,QQ,AKs,AJs,A9s,A4s,KQs,Q4s+,J6s,AKo,KJo+,QTo+,J8o,95o,84o,72o",
-            "raise_hands": "66,55,44,33,22,AQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,AQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "LJ": {
@@ -2190,7 +2190,7 @@
             "aggr_pct": 0.3183,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QJo,Q2o+,J9o+,J2o+,T2o+,96o+,92o+,82o+,72o+",
             "call_hands": "AA,KK,AKs,AJs,A9s,Q4s+,J6s,AKo,KJo+,QTo,J8o,95o",
-            "raise_hands": "66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "SB": {
@@ -2201,7 +2201,7 @@
             "aggr_pct": 0.4253,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,QQ,A7s+,KTs+,Q4s+,J4s+,QTo+,J8o+,T6o+,95o+,84o,72o",
-            "raise_hands": "KK,66,55,44,33,22,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,62o+,52o+,42o+,32o",
+            "raise_hands": "KK,66,55,44,33,22,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o",
             "allin_hands": ""
           }
         },
@@ -2214,7 +2214,7 @@
             "aggr_pct": 0.6999,
             "fold_hands": "JJ,TT,99,88,77,K2s,T9s,92s+,82s+,72s+,A7o+,K7o+,Q7o+,J7o+,T7o+,97o+,87o",
             "call_hands": "QQ,A7s+,K7s+,K3s+,Q7s+,J7s+,T7s+,AQo+,A3o+,KQo,K3o+,Q4o,J5o,J2o,T5o+,T2o+,94o+,92o,84o+,82o,72o+",
-            "raise_hands": "AA,KK,55,44,33,22,AKs,A2s+,K6s,Q2s+,J2s+,T2s+,62s,52s+,42s+,32s,AJo,A6o,A2o,K6o,K2o,Q5o+,Q2o+,J6o,J3o+,T4o,93o,83o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,55,44,33,22,AKs,A2s+,K6s,Q2s+,J2s+,T2s+,62s,52s+,42s+,32s,AJo,A6o,A2o,K6o,K2o,Q5o+,Q2o+,J6o,J3o+,T4o,93o,83o",
             "allin_hands": "66,63s+"
           }
         },
@@ -2227,7 +2227,7 @@
             "aggr_pct": 0.6787,
             "fold_hands": "77,A2s+,Q2s+,J2s+,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+",
             "call_hands": "AA,QQ,JJ,TT,99,88,ATs+,A7s+,K7s+,Q4s+,J4s+,T7s+,97s+,87s,AKo,A9o+,K9o+,Q8o+,J7o+,T5o+,94o+,84o+,72o+",
-            "raise_hands": "KK,66,55,44,33,22,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "KK,66,55,44,33,22,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "BTN": {
@@ -2238,7 +2238,7 @@
             "aggr_pct": 0.448,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "KK,QQ,JJ,A7s+,K9s+,QJs,Q4s+,J6s,AKo,AJo,KJo+,QTo+,J8o+,T6o+,95o+,84o+,72o",
-            "raise_hands": "AA,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "CO": {
@@ -2249,7 +2249,7 @@
             "aggr_pct": 0.4013,
             "fold_hands": "JJ,TT,99,88,77,A2s+,KJs,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,KK,QQ,A8s+,KQs,KTs,Q4s+,J4s+,AKo,KJo+,QTo+,J8o+,T7o,95o+,84o,72o",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "HJ": {
@@ -2260,7 +2260,7 @@
             "aggr_pct": 0.3575,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs,A5s+,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,KK,AKs,AJs,A9s,A4s,KQs,Q4s+,J6s,AKo,KJo+,QTo+,J8o,T7o,95o,84o,72o",
-            "raise_hands": "66,55,44,33,22,AQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,AQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "LJ": {
@@ -2271,7 +2271,7 @@
             "aggr_pct": 0.3334,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QJo,Q2o+,J9o+,J2o+,T2o+,96o+,92o+,82o+,73o+",
             "call_hands": "AA,KK,AKs,AJs,A9s,KQs,Q4s+,J4s+,AKo,KJo+,QTo,J8o,95o,72o",
-            "raise_hands": "66,55,44,33,22,AQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,AQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "MP": {
@@ -2282,7 +2282,7 @@
             "aggr_pct": 0.3393,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs,A6s+,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T2o+,96o+,92o+,82o+,73o+",
             "call_hands": "AA,KK,AJs+,A9s,A5s,Q4s+,J6s,AQo+,KJo+,QTo+,J8o,95o,72o",
-            "raise_hands": "66,55,44,33,22,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s",
             "allin_hands": ""
           },
           "SB": {
@@ -2293,7 +2293,7 @@
             "aggr_pct": 0.4072,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "AA,QQ,A8s+,KTs+,Q4s+,J6s,KQo,QTo+,J8o+,T6o+,95o+,84o,72o",
-            "raise_hands": "KK,66,55,44,33,22,AKs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "KK,66,55,44,33,22,AKs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo",
             "allin_hands": ""
           }
         }
@@ -2742,7 +2742,7 @@
             "aggr_pct": 0.8552,
             "fold_hands": "A3s+,Q2s+,K2o+,Q2o+,J2o+,T2o+,92o,82o",
             "call_hands": "QQ,JJ,99,88,77,ATs+,A7s+,A2s,K7s+,Q4s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,KQo,K4o+,QJo,Q6o+,J6o+,T4o+,98o,93o+,83o+,72o+",
-            "raise_hands": "AA,KK,TT,66,55,44,33,22,AKs,A9s,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,Q9o+,J9o+,T7o+,96o+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,TT,66,55,44,33,22,AKs,A9s,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,Q9o+,J9o+,T7o+,96o+",
             "allin_hands": ""
           },
           "SB": {
@@ -2753,7 +2753,7 @@
             "aggr_pct": 0.5263,
             "fold_hands": "TT,99,88,77,A4s+,A2s,Q8s,Q2s+,J7s+,J2s+,T7s+,98s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,96o+,92o+,84o+,82o,76o",
             "call_hands": "QQ,JJ,ATs,A7s+,A3s,KJs,K8s+,Q9s+,Q4s+,J6s,ATo+,J9o+,T8o,T6o,94o+,83o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AJs+,A9s,KQs,KTs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KTo+,Q9o+,J7o+,T7o,72o+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AJs+,A9s,KQs,KTs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KTo+,Q9o+,J7o+,T7o,72o+",
             "allin_hands": ""
           }
         },
@@ -2766,7 +2766,7 @@
             "aggr_pct": 0.7768,
             "fold_hands": "A2s+,Q2s+,J2s,A2o+,K2o+,Q2o+,J2o+,T2o+,92o,82o+",
             "call_hands": "KK,QQ,TT,99,88,77,A7s+,K7s+,Q4s+,J3s+,T7s+,97s+,87s,A5o+,KQo,K7o+,Q7o+,J6o+,T9o,T4o+,97o+,93o+,84o+,72o+",
-            "raise_hands": "AA,JJ,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,QTo+,JTo,T7o+,96o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,JJ,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,QTo+,JTo,T7o+,96o",
             "allin_hands": ""
           },
           "BTN": {
@@ -2777,7 +2777,7 @@
             "aggr_pct": 0.531,
             "fold_hands": "TT,99,88,A2s+,K7s,Q8s+,Q2s+,J7s+,J2s+,T7s+,98s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,84o+,82o,76o",
             "call_hands": "KK,QQ,A7s+,K8s+,QTs+,Q4s+,J6s,AKo,ATo+,KQo,KTo,QJo,Q9o,J7o+,T6o+,94o+,83o",
-            "raise_hands": "AA,JJ,77,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QTo,72o+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,JJ,77,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QTo,72o+",
             "allin_hands": ""
           },
           "SB": {
@@ -2788,7 +2788,7 @@
             "aggr_pct": 0.4812,
             "fold_hands": "TT,99,88,77,A2s+,K7s,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "JJ,ATs+,A7s+,K8s+,QJs,Q4s+,J5s,ATo+,KTo,J8o+,T8o+,95o+,84o+,72o",
-            "raise_hands": "AA,KK,QQ,66,55,44,33,22,AQs+,A9s,KQs,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o+,T7o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,QQ,66,55,44,33,22,AQs+,A9s,KQs,K2s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o+,T7o",
             "allin_hands": ""
           }
         },
@@ -2801,7 +2801,7 @@
             "aggr_pct": 0.7496,
             "fold_hands": "A2s+,Q2s+,J2s,A2o+,K2o+,Q2o+,J2o+,T2o+,92o,82o+",
             "call_hands": "KK,QQ,JJ,TT,99,88,77,A7s+,KJs+,K7s+,Q4s+,J3s+,T7s+,97s+,87s,AKo,A6o+,KQo,K8o+,Q7o+,J6o+,T8o+,T5o+,97o+,93o+,84o+,72o+",
-            "raise_hands": "AA,66,55,44,33,22,KTs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QTo+,T7o,96o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,KTs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QTo+,T7o,96o",
             "allin_hands": ""
           },
           "BTN": {
@@ -2812,7 +2812,7 @@
             "aggr_pct": 0.4871,
             "fold_hands": "TT,99,88,77,A4s+,A2s,K7s,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T2o+,98o,92o+,86o+,82o+,73o+",
             "call_hands": "KK,QQ,JJ,A7s+,A3s,K8s+,QJs,Q4s+,J5s+,ATo,KTo+,QTo+,J8o+,T8o+,95o+,84o+,72o",
-            "raise_hands": "AA,66,55,44,33,22,K2s+,QTs,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AJo+,T7o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,K2s+,QTs,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AJo+,T7o",
             "allin_hands": ""
           },
           "CO": {
@@ -2823,7 +2823,7 @@
             "aggr_pct": 0.4254,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "KK,AJs+,A7s+,KTs+,Q4s+,J4s+,KJo+,QTo,J8o+,T7o+,95o+,84o,72o",
-            "raise_hands": "AA,QQ,66,55,44,33,22,ATs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AJo+,QJo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,QQ,66,55,44,33,22,ATs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AJo+,QJo",
             "allin_hands": ""
           },
           "SB": {
@@ -2834,7 +2834,7 @@
             "aggr_pct": 0.4601,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "QQ,JJ,ATs+,A7s+,KJs+,K9s,QJs,Q4s+,J5s+,AJo,J8o+,T8o+,T6o,95o+,84o+,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,A9s,KTs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,QTo+,T7o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,A9s,KTs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,QTo+,T7o",
             "allin_hands": ""
           }
         },
@@ -2847,7 +2847,7 @@
             "aggr_pct": 0.7089,
             "fold_hands": "77,A3s+,Q2s+,J2s+,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+",
             "call_hands": "KK,QQ,JJ,TT,99,88,A7s+,A2s,KJs+,K7s+,Q4s+,J4s+,T7s+,97s+,87s,AKo,A8o+,K8o+,QJo,Q7o+,J7o+,T5o+,97o+,94o+,84o+,72o+",
-            "raise_hands": "AA,66,55,44,33,22,KTs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KQo,QTo,96o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,KTs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KQo,QTo,96o",
             "allin_hands": ""
           },
           "BTN": {
@@ -2858,7 +2858,7 @@
             "aggr_pct": 0.46,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "QQ,JJ,ATs+,A7s+,K9s+,QJs,Q4s+,J5s+,AKo,ATo+,KJo+,QTo+,J8o+,T8o+,95o,84o+,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,T7o,96o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,T7o,96o",
             "allin_hands": ""
           },
           "CO": {
@@ -2869,7 +2869,7 @@
             "aggr_pct": 0.4072,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "AKs,A7s+,KJs,Q4s+,J6s,AKo,KJo+,QTo+,J8o+,T7o,95o+,84o,72o",
-            "raise_hands": "AA,KK,QQ,66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,Q9o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,QQ,66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,Q9o",
             "allin_hands": ""
           },
           "HJ": {
@@ -2880,7 +2880,7 @@
             "aggr_pct": 0.3922,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,JTo,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,AKs,ATs+,A8s,Q4s+,J6s,KJo+,QTo+,J8o+,T7o,95o+,84o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,Q9o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,Q9o",
             "allin_hands": ""
           },
           "SB": {
@@ -2891,7 +2891,7 @@
             "aggr_pct": 0.4374,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "QQ,ATs+,A7s+,KTs+,Q4s+,J6s,AJo,QTo+,J8o+,T6o+,95o+,84o+,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+",
             "allin_hands": ""
           }
         },
@@ -2904,7 +2904,7 @@
             "aggr_pct": 0.7647,
             "fold_hands": "JJ,TT,99,88,K2s,Q7s,T9s,92s+,82s+,72s+,A8o+,K8o+,Q8o+,J8o+,T8o+,98o",
             "call_hands": "QQ,77,A7s+,K4s+,Q8s+,J7s+,T7s+,AJo+,A3o+,KQo,K3o+,Q4o,Q2o,J6o,J2o+,T5o,T2o+,94o+,92o,84o+,82o,72o+",
-            "raise_hands": "AA,KK,55,44,33,22,AKs,A2s+,K3s,Q2s+,J2s+,T2s+,62s,52s+,42s+,32s,A6o+,A2o,K6o+,K2o,Q5o+,Q3o,J7o,J4o+,T6o+,T4o,97o,93o,87o,83o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,55,44,33,22,AKs,A2s+,K3s,Q2s+,J2s+,T2s+,62s,52s+,42s+,32s,A6o+,A2o,K6o+,K2o,Q5o+,Q3o,J7o,J4o+,T6o+,T4o,97o,93o,87o,83o",
             "allin_hands": "66,63s+"
           }
         },
@@ -2917,7 +2917,7 @@
             "aggr_pct": 0.6817,
             "fold_hands": "77,A3s+,Q2s+,J2s+,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+",
             "call_hands": "AA,KK,QQ,JJ,TT,99,88,A7s+,A2s,K7s+,Q4s+,J4s+,T7s+,97s+,87s,A9o+,K9o+,Q8o+,J7o+,T8o+,T5o+,94o+,84o+,72o+",
-            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KQo,T7o,62o+,52o+,42o+,32o",
+            "raise_hands": "66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KQo,T7o",
             "allin_hands": ""
           },
           "BTN": {
@@ -2928,7 +2928,7 @@
             "aggr_pct": 0.4449,
             "fold_hands": "TT,99,88,77,A4s+,A2s,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,98o,92o+,86o+,82o+,73o+",
             "call_hands": "KK,QQ,JJ,A7s+,A3s,K9s+,QJs,Q4s+,J5s+,AQo+,KJo+,QTo+,J8o+,T7o+,95o+,84o+,72o",
-            "raise_hands": "AA,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s",
             "allin_hands": ""
           },
           "CO": {
@@ -2939,7 +2939,7 @@
             "aggr_pct": 0.4103,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "KK,QQ,A8s+,KQs,Q4s+,J6s,AKo,KJo+,QTo+,J8o+,T7o+,95o+,84o+,72o",
-            "raise_hands": "AA,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "HJ": {
@@ -2950,7 +2950,7 @@
             "aggr_pct": 0.3846,
             "fold_hands": "QQ,JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "KK,A8s+,KQs,Q4s+,J4s+,AKo,KJo+,QTo+,JTo,J8o,T7o,95o+,84o,72o",
-            "raise_hands": "AA,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "LJ": {
@@ -2961,7 +2961,7 @@
             "aggr_pct": 0.3544,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T8o+,T2o+,96o+,92o+,82o+,73o+",
             "call_hands": "AKs,AJs,A8s+,KQs,Q4s+,J4s+,AKo,QTo+,J8o,T7o,95o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+",
             "allin_hands": ""
           },
           "MP": {
@@ -2972,7 +2972,7 @@
             "aggr_pct": 0.3303,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs+,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QJo,Q2o+,J9o+,J2o+,T8o+,T2o+,92o+,82o+,73o+",
             "call_hands": "A9s,KQs,Q4s+,J4s+,AKo,QTo,J8o,T7o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo+",
             "allin_hands": ""
           },
           "SB": {
@@ -2983,7 +2983,7 @@
             "aggr_pct": 0.4253,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "QQ,A7s+,KJs+,Q4s+,J6s,KQo,QTo+,J8o+,T6o+,95o+,84o+,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AKs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AKs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo",
             "allin_hands": ""
           }
         },
@@ -2996,7 +2996,7 @@
             "aggr_pct": 0.46,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T2o+,98o,92o+,86o+,82o+,73o+",
             "call_hands": "KK,QQ,JJ,ATs+,A7s+,K9s+,QJs,Q4s+,J5s+,AJo+,KJo+,QTo+,J8o+,T7o+,95o+,84o+,72o",
-            "raise_hands": "AA,66,55,44,33,22,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s",
             "allin_hands": ""
           },
           "CO": {
@@ -3007,7 +3007,7 @@
             "aggr_pct": 0.4103,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "QQ,ATs+,A8s,KQs,Q4s+,J6s,AQo+,KJo+,QTo+,J8o+,T7o+,95o+,84o+,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s",
             "allin_hands": ""
           },
           "HJ": {
@@ -3018,7 +3018,7 @@
             "aggr_pct": 0.3816,
             "fold_hands": "QQ,JJ,TT,99,88,77,A5s+,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,JTo,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "KK,AKs,ATs+,A8s,A4s,Q4s+,J6s,AKo,KJo+,QTo+,J8o+,T7o,95o+,84o,72o",
-            "raise_hands": "AA,66,55,44,33,22,AQs,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,66,55,44,33,22,AQs,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo",
             "allin_hands": ""
           },
           "LJ": {
@@ -3029,7 +3029,7 @@
             "aggr_pct": 0.3484,
             "fold_hands": "QQ,JJ,TT,99,88,77,ATs,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T8o+,T2o+,96o+,92o+,82o+,73o+",
             "call_hands": "AKs,AJs,A8s,Q4s+,J6s,QTo+,J8o,T7o,95o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs,A9s,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+",
             "allin_hands": ""
           },
           "SB": {
@@ -3040,7 +3040,7 @@
             "aggr_pct": 0.4284,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "QQ,ATs+,A7s+,KTs+,Q4s+,J6s,QTo+,J8o+,T6o+,95o+,84o+,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AKs,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AKs,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+",
             "allin_hands": ""
           }
         }
@@ -3198,7 +3198,7 @@
             "aggr_pct": 0.8733,
             "fold_hands": "A3s+,Q2s+,K2o,Q2o+,J2o+,T2o+,92o,82o",
             "call_hands": "KK,QQ,JJ,TT,99,88,77,55,33,A7s+,A2s,K9s+,K7s,Q4s+,J7s+,J2s+,T7s+,T5s,T3s,97s+,95s,93s,87s,85s,83s,75s,73s,65s,63s,53s,43s,AKo,A2o+,KQo,K3o+,Q6o+,JTo,J5o+,T7o+,T4o+,96o+,93o+,85o+,83o,73o+,52o+,32o",
-            "raise_hands": "AA,66,44,22,AKs,K8s,K2s+,J6s,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo,Q9o+,J8o+,T6o,95o,84o,72o,62o+,42o+",
+            "raise_hands": "AA,66,44,22,AKs,K8s,K2s+,J6s,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo,Q9o+,J8o+,T6o,95o,84o,72o",
             "allin_hands": ""
           },
           "SB": {
@@ -3222,7 +3222,7 @@
             "aggr_pct": 0.8854,
             "fold_hands": "A3s+,Q2s+,J2s+,Q2o+,J2o+,T2o,92o,82o",
             "call_hands": "KK,QQ,JJ,TT,99,88,77,55,33,A9s+,A7s,A2s,K7s+,Q4s+,J4s+,T7s+,T5s,T3s,97s+,95s,93s,87s,85s,83s,75s,73s,65s,63s,53s,43s,AKo,A2o+,KQo,K2o+,Q6o+,J9o+,J5o+,T7o+,T3o+,96o+,93o+,85o+,83o,73o+,52o+,32o",
-            "raise_hands": "AA,66,44,22,AKs,A8s,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo,Q9o+,J8o,T6o,95o,84o,72o,62o+,42o+",
+            "raise_hands": "AA,66,44,22,AKs,A8s,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo,Q9o+,J8o,T6o,95o,84o,72o",
             "allin_hands": ""
           },
           "BTN": {
@@ -3244,7 +3244,7 @@
             "aggr_pct": 0.3952,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J9o+,J2o+,T8o+,T2o+,96o+,92o+,85o+,82o+,73o+",
             "call_hands": "KQs,K3s+,Q3s+",
-            "raise_hands": "AA,KK,QQ,66,55,44,33,22,A7s+,K5s+,Q5s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AJo+,KJo+,Q9o+,J8o,T6o+,95o,84o,72o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,QQ,66,55,44,33,22,A7s+,K5s+,Q5s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AJo+,KJo+,Q9o+,J8o,T6o+,95o,84o,72o",
             "allin_hands": ""
           }
         },
@@ -3290,7 +3290,7 @@
             "aggr_pct": 0.4042,
             "fold_hands": "JJ,TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,JTo,J2o+,T8o+,T2o+,97o+,92o+,82o+,73o+",
             "call_hands": "QQ,55,A7s,KQs,K3s+,Q3s+,T5s,95s,85s,75s,65s,AJo,QTo,J9o,T7o,96o,52o+",
-            "raise_hands": "AA,KK,66,44,33,22,A8s+,K5s+,Q5s+,J6s,T6s,T2s+,96s,92s+,86s,82s+,76s,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,QJo,Q9o,J8o,T6o,95o,72o,62o+,42o+,32o",
+            "raise_hands": "AA,KK,66,44,33,22,A8s+,K5s+,Q5s+,J6s,T6s,T2s+,96s,92s+,86s,82s+,76s,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,QJo,Q9o,J8o,T6o,95o,72o",
             "allin_hands": ""
           }
         },
@@ -3358,7 +3358,7 @@
             "aggr_pct": 0.4449,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "QQ,JJ,A7s+,KTs+,K3s+,QJs,Q3s+,AJo,QTo+,J9o+,T7o+,95o+,85o,72o",
-            "raise_hands": "AA,KK,66,55,44,33,22,AKs,K5s+,Q5s+,J6s,T2s+,92s+,82s+,72s+,63s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,T6o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AKs,K5s+,Q5s+,J6s,T2s+,92s+,82s+,72s+,63s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,T6o",
             "allin_hands": "62s"
           }
         },
@@ -3371,7 +3371,7 @@
             "aggr_pct": 0.7255,
             "fold_hands": "TT,99,88,77,K2s,92s+,82s+,72s+,A7o+,K7o+,Q7o+,J7o+,T7o+,97o+,87o",
             "call_hands": "AA,KK,QQ,JJ,A7s+,K3s+,Q2s+,J2s+,T9s,T2s+,ATo+,A5o,A3o,KQo,K3o+,QJo,Q4o,Q2o,J5o+,J2o+,T3o+,94o+,92o,82o+,72o+",
-            "raise_hands": "55,44,33,22,A2s+,T8s,62s+,52s+,42s+,32s,A6o,A4o,A2o,K6o,K2o,Q5o+,Q3o,J4o,T2o,62o+,52o+,42o+,32o",
+            "raise_hands": "55,44,33,22,A2s+,T8s,62s+,52s+,42s+,32s,A6o,A4o,A2o,K6o,K2o,Q5o+,Q3o,J4o,T2o",
             "allin_hands": "66,64s+,93o"
           }
         },
@@ -3417,7 +3417,7 @@
             "aggr_pct": 0.2609,
             "fold_hands": "QQ,JJ,TT,99,88,77,A7s+,A2s,K7s+,K4s,K2s,Q7s+,J7s+,T7s+,92s+,82s+,72s+,62s,A7o+,A2o+,K7o+,K2o+,Q2o+,J5o+,J2o+,T2o+,94o+,92o,82o+,72o+",
             "call_hands": "",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,A3s+,K5s+,K3s,QJs,Q2s+,J2s+,T2s+,63s+,52s+,42s+,32s,A6o,K6o,J4o,93o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,A3s+,K5s+,K3s,QJs,Q2s+,J2s+,T2s+,63s+,52s+,42s+,32s,A6o,K6o,J4o,93o",
             "allin_hands": ""
           },
           "LJ": {
@@ -3439,7 +3439,7 @@
             "aggr_pct": 0.3002,
             "fold_hands": "QQ,JJ,TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,QTo+,Q2o+,J9o+,J2o+,T2o+,92o+,82o+,72o+",
             "call_hands": "",
-            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K3s+,Q3s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,KK,66,55,44,33,22,AQs+,K3s+,Q3s+,J6s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o",
             "allin_hands": ""
           },
           "SB": {
@@ -3450,7 +3450,7 @@
             "aggr_pct": 0.4449,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,Q7s+,Q2s+,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T9o,T2o+,97o+,92o+,86o+,82o+,73o+",
             "call_hands": "QQ,JJ,55,33,A7s+,KTs+,QJs,Q4s+,J6s,T5s,T3s,95s,93s,85s,83s,75s,73s,65s,63s,53s,43s,AJo,QTo+,J9o+,T7o+,96o,85o,72o,52o+,32o",
-            "raise_hands": "AA,KK,66,44,22,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,54s,52s,42s,32s,AQo+,KJo+,Q9o,J8o,95o,84o,62o+,42o+",
+            "raise_hands": "AA,KK,66,44,22,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,54s,52s,42s,32s,AQo+,KJo+,Q9o,J8o,95o,84o",
             "allin_hands": "62s"
           }
         },
@@ -3496,7 +3496,7 @@
             "aggr_pct": 0.4359,
             "fold_hands": "TT,99,88,77,A2s+,K7s+,K2s,Q7s+,Q2s,J7s+,J2s+,T7s+,97s+,87s,A2o+,K2o+,Q2o+,J2o+,T8o+,T2o+,97o+,92o+,85o+,82o+,73o+",
             "call_hands": "QQ,JJ,55,A7s+,KTs+,K3s+,QJs,Q3s+,T5s,95s,85s,75s,65s,AJo,QTo+,J9o+,T7o,96o,84o,72o,52o+",
-            "raise_hands": "AA,KK,66,44,33,22,AKs,K5s+,Q5s+,J6s,T6s,T2s+,96s,92s+,86s,82s+,76s,72s+,63s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,T6o,95o,62o+,42o+,32o",
+            "raise_hands": "AA,KK,66,44,33,22,AKs,K5s+,Q5s+,J6s,T6s,T2s+,96s,92s+,86s,82s+,76s,72s+,63s+,52s+,42s+,32s,AQo+,KJo+,Q9o,J8o,T6o,95o",
             "allin_hands": "62s"
           }
         }
