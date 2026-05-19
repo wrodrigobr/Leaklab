@@ -167,24 +167,71 @@ def analyze_preflop(
 
     # ── vs RFI ───────────────────────────────────────────────────────────────
     elif scenario == 'vs_rfi':
-        vs_rfi     = bk_data.get('vs_RFI', {})
-        opener_key = _find_opener_key(vs_rfi, vs_pos)
-        defender   = vs_rfi.get(opener_key, {}).get(pos) if opener_key else None
-        if not defender:
+        vs_rfi = bk_data.get('vs_RFI', {})
+        # Try new format (RegLife): vs_RFI[opener][defender]
+        # Then fall back to old format: vs_RFI["{opener}_open"][defender]
+        opener_data = vs_rfi.get(vs_pos)
+        if not isinstance(opener_data, dict):
+            opener_data = vs_rfi.get(f"{vs_pos}_open")
+        defender = opener_data.get(pos) if isinstance(opener_data, dict) else None
+        if not defender or not isinstance(defender, dict):
             return base
-        pct_play  = float(defender.get('pct_play', 0))
-        hands_str = defender.get('hands', '')
-        acoes     = defender.get('acoes', [])
-        in_rng    = _in_range(hero_hand_type, hands_str)
-        rec       = [_ACT.get(a, a.lower()) for a in acoes] if in_rng else ['fold']
-        quality   = _vs_rfi_quality(action_taken, in_rng, acoes)
-        base.update({
-            'available': True, 'in_range': in_rng,
-            'range_pct': pct_play, 'range_hands': hands_str,
-            'recommended_actions': rec, 'action_quality': quality,
-            'pro_notes': _vs_rfi_notes(pos, vs_pos, hero_hand_type, stack_bb,
-                                        pct_play, in_rng, action_taken, acoes),
-        })
+
+        if 'fold_pct' in defender:
+            # New RegLife format: fold_pct / call_pct / raise_pct / allin_pct
+            aggr_pct    = float(defender.get('aggr_pct', 0))
+            call_pct    = float(defender.get('call_pct', 0))
+            raise_pct   = float(defender.get('raise_pct', 0))
+            allin_pct   = float(defender.get('allin_pct', 0))
+            fold_hands  = defender.get('fold_hands', '')
+            call_hands  = defender.get('call_hands', '')
+            raise_hands = defender.get('raise_hands', '')
+            allin_hands = defender.get('allin_hands', '')
+
+            in_call  = bool(call_hands)  and _in_range(hero_hand_type, call_hands)
+            in_raise = bool(raise_hands) and _in_range(hero_hand_type, raise_hands)
+            in_allin = bool(allin_hands) and _in_range(hero_hand_type, allin_hands)
+            in_rng   = in_call or in_raise or in_allin
+
+            if in_allin:
+                rec = ['jam']
+            elif in_raise:
+                rec = ['raise']
+            elif in_call:
+                rec = ['call']
+            else:
+                rec = ['fold']
+
+            quality = _vs_rfi_quality_new(action_taken, in_rng, rec)
+            base.update({
+                'available': True, 'in_range': in_rng,
+                'range_pct':    aggr_pct,
+                'range_hands':  allin_hands or raise_hands or call_hands,
+                'recommended_actions': rec, 'action_quality': quality,
+                'fold_pct':   float(defender.get('fold_pct', 0)),
+                'call_pct':   call_pct,
+                'raise_pct':  raise_pct,
+                'allin_pct':  allin_pct,
+                'fold_hands': fold_hands, 'call_hands': call_hands,
+                'raise_hands': raise_hands, 'allin_hands': allin_hands,
+                'pro_notes':  _vs_rfi_notes_new(pos, vs_pos, hero_hand_type, stack_bb,
+                                                 aggr_pct, in_rng, rec, action_taken),
+            })
+        else:
+            # Old format: pct_play / hands / acoes
+            pct_play  = float(defender.get('pct_play', 0))
+            hands_str = defender.get('hands', '')
+            acoes     = defender.get('acoes', [])
+            in_rng    = _in_range(hero_hand_type, hands_str)
+            rec       = [_ACT.get(a, a.lower()) for a in acoes] if in_rng else ['fold']
+            quality   = _vs_rfi_quality(action_taken, in_rng, acoes)
+            base.update({
+                'available': True, 'in_range': in_rng,
+                'range_pct': pct_play, 'range_hands': hands_str,
+                'recommended_actions': rec, 'action_quality': quality,
+                'pro_notes': _vs_rfi_notes(pos, vs_pos, hero_hand_type, stack_bb,
+                                            pct_play, in_rng, action_taken, acoes),
+            })
 
     # ── vs 3bet ───────────────────────────────────────────────────────────────
     elif scenario == 'vs_3bet':
@@ -230,6 +277,18 @@ def _rfi_quality(action: str, in_rng: bool, stack_bb: float, *, in_limp: bool = 
     if not in_rng and not in_limp and act in ('raise', 'jam'):
         return 'major_leak' if stack_bb > 25 else 'leak'
     if not in_rng and not in_limp and act == 'call':          return 'leak'
+    return 'acceptable'
+
+
+def _vs_rfi_quality_new(action: str, in_rng: bool, rec: list) -> str:
+    """Quality classifier for new RegLife vs_RFI format."""
+    act = action.lower()
+    if in_rng and act in rec:                     return 'correct'
+    if in_rng and act == 'fold':                  return 'leak'
+    if in_rng and act not in rec:                 return 'leak'
+    if not in_rng and act == 'fold':              return 'correct'
+    if not in_rng and act in ('raise', 'jam'):    return 'major_leak'
+    if not in_rng and act == 'call':              return 'leak'
     return 'acceptable'
 
 
@@ -293,6 +352,33 @@ def _rfi_notes(pos, hand, stack, pct, in_rng, action, *, in_limp: bool = False) 
     return notes
 
 
+def _vs_rfi_notes_new(pos, vs_pos, hand, stack, aggr_pct, in_rng, rec, action) -> list[str]:
+    """Pro notes for RegLife vs_RFI format."""
+    notes  = []
+    label  = _POS.get(pos, pos)
+    vs_lbl = _POS.get(vs_pos, vs_pos)
+    aggr_s = f"{aggr_pct*100:.0f}%"
+    act    = action.lower()
+    rec_s  = '/'.join(r.title() for r in rec if r != 'fold')
+    if in_rng:
+        notes.append(f"{label} continua com {aggr_s} das mãos vs open do {vs_lbl} a {stack:.0f}bb — {hand} está no range de {rec_s or 'defesa'}.")
+        if act == 'fold':
+            notes.append(f"Foldar {hand} vs {vs_lbl} open é excessivamente tight e perde EV no longo prazo.")
+        elif act in ('raise', 'jam') and rec == ['call']:
+            notes.append(f"3bet com {hand} aqui não é optimal: GTO preconiza call (flat) neste spot.")
+        elif act == 'call' and rec in (['raise'], ['jam']):
+            notes.append(f"Call com {hand} é passivo: GTO preconiza 3bet neste spot.")
+    else:
+        notes.append(f"{hand} está fora do range de defesa do {label} vs {vs_lbl} open a {stack:.0f}bb (defende {aggr_s}).")
+        if act == 'fold':
+            notes.append(f"Fold correto. {hand} não tem equity suficiente para continuar vs range do {vs_lbl}.")
+        elif act in ('raise', 'jam'):
+            notes.append(f"3bet com {hand} não é sustentado pelo GTO: range de 3bet do {label} vs {vs_lbl} é mais apertado.")
+        elif act == 'call':
+            notes.append(f"Flat com {hand} fora do range perde EV no longo prazo.")
+    return notes
+
+
 def _vs_rfi_notes(pos, vs_pos, hand, stack, pct, in_rng, action, acoes) -> list[str]:
     notes  = []
     label  = _POS.get(pos, pos)
@@ -336,5 +422,9 @@ def _vs_3bet_notes(pos, hand, stack, pct, in_4b, in_cl, action) -> list[str]:
 def _find_opener_key(vs_rfi: dict, opener_pos: str) -> Optional[str]:
     if not opener_pos:
         return None
+    # New format: direct position key
+    if opener_pos in vs_rfi and isinstance(vs_rfi[opener_pos], dict):
+        return opener_pos
+    # Old format: "{pos}_open"
     key = f"{opener_pos}_open"
     return key if key in vs_rfi else None

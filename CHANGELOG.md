@@ -9,6 +9,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.103.0] — 2026-05-19 — feat(ranges): extrai vs_RFI do PDF RegLife e adiciona lookup completo
+
+### Added
+- **`backend/scripts/render_reglife_pages.py`** (reescrito) — renderiza todas as 205 tabelas do PDF RegLife como PNG:
+  - Detecta múltiplos títulos por página (1, 2 ou 3 tabelas) via posição Y, sem limite de half-page
+  - Threshold de fonte baixado para 12pt (captura tabelas com título menor como `vsrfi_50bb_MP_vs_UTG`)
+  - Override de página específica para corrigir typo no PDF (p071: "50 bbs" → 30bb)
+  - Clip dinâmico por intervalo entre títulos consecutivos
+- **`backend/scripts/extract_vsrfi_ranges.py`** — extrai ranges vs_RFI (3bet/call/fold) de 163 imagens:
+  - Reutiliza classificador de pixels da RFI com 4 ações: fold (azul), call (verde), raise/3bet-size (vermelho claro), allin/3bet-push (vermelho escuro)
+  - Estrutura: `ranges.[stack].vs_RFI.[opener].[defender]`
+  - Campos: `fold_pct`, `call_pct`, `raise_pct`, `allin_pct`, `aggr_pct` (todos combo_pct / 1326)
+  - Handstrings por ação: `fold_hands`, `call_hands`, `raise_hands`, `allin_hands`
+- **`backend/scripts/add_combo_pct.py`** — adiciona `combo_pct` e `grid_pct` ao leaklab_gto_ranges.json
+
+### Changed
+- **`backend/docs/leaklab_gto_ranges.json`** — versão 2.2.0:
+  - Adicionado bucket `17bb` com dados RegLife RFI + vs_RFI
+  - 163 spots vs_RFI em 6 stacks (14bb, 17bb, 20bb, 30bb, 50bb, 100bb)
+  - `pct` = `combo_pct` (combos reais / 1326); `grid_pct` preservado como backup
+- **`backend/leaklab/preflop_gto_ranges.py`** — lookup vs_RFI atualizado para novo formato RegLife:
+  - Suporte ao novo formato (chave direta de posição) e fallback ao formato antigo
+  - `_vs_rfi_quality_new()` e `_vs_rfi_notes_new()` com base em fold/call/raise/allin por mão
+  - Retorna `fold_pct`, `call_pct`, `raise_pct`, `allin_pct`, `fold_hands`, etc.
+- **`backend/tests/test_preflop_gto_quality.py`** — teste `vs_rfi_AKo_fold_quality` atualizado para novo dado RegLife (CO AKo vs UTG 30bb é call, fold=leak)
+- **`backend/docs/range_pages/`** — 205 imagens PNG (42 RFI + 163 vs_RFI) extraídas do PDF
+
+---
+
 ## [v0.102.0] — 2026-05-18 — feat(ranges): atualiza leaklab_gto_ranges.json com dados RegLife via pixel analysis
 
 ### Added

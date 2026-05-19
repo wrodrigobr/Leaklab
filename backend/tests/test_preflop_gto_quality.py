@@ -292,11 +292,11 @@ def test_vs_rfi_out_of_range_call_is_leak():
     _check("vs_rfi_88_call_quality", r['action_quality'], 'leak')
 
 def test_vs_rfi_in_range_fold_mixed_strategy():
-    # CO com AKo vs UTG open @ 30bb — AKo no range, acoes inclui FOLD (GTO mix)
-    # fold é parte do mix GTO → quality='correct'
+    # CO com AKo vs UTG open @ 30bb — RegLife: AKo esta no call range (flat)
+    # foldar mao no range e leak
     r = analyze_preflop('CO', 'AKo', 30, 'fold', facing_size=2.5, vs_position='UTG')
     if r['available']:
-        _check("vs_rfi_AKo_fold_quality", r['action_quality'], 'correct')
+        _check("vs_rfi_AKo_fold_quality", r['action_quality'], 'leak')
     else:
         _check("vs_rfi_AKo_fold_available", r['available'], True)
 
