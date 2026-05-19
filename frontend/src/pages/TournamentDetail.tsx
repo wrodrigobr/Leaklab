@@ -685,27 +685,8 @@ const TournamentDetail = () => {
               return (
                 <article
                   key={h.id}
-                  className={cn(
-                    "group relative grid grid-cols-1 gap-4 overflow-hidden rounded-xl border bg-hud-surface p-4 transition-colors md:grid-cols-[auto,1fr,auto] md:items-center md:p-5",
-                    // GTO sobrescreve engine quando disponível
-                    h.gtoLabel === "gto_critical"                                                          ? "border-destructive/40 hover:border-destructive/70" :
-                    (h.gtoLabel === "gto_mixed" || h.gtoLabel === "gto_minor_deviation")                   ? "border-amber-500/20 hover:border-amber-500/40" :
-                    (h.gtoLabel === "gto_correct")                                                         ? "border-border hover:border-primary/40" :
-                    h.category === "critical" ? "border-destructive/40 hover:border-destructive/70" :
-                    h.category === "major"    ? "border-warning/30 hover:border-warning/60" :
-                    "border-border hover:border-primary/40"
-                  )}
+                  className="group relative grid grid-cols-1 gap-4 overflow-hidden rounded-xl border border-border bg-hud-surface p-4 transition-colors hover:border-primary/40 md:grid-cols-[auto,1fr,auto] md:items-center md:p-5"
                 >
-                  <span aria-hidden className={cn("absolute inset-y-0 left-0 w-0.5",
-                    // GTO prevalece sobre engine quando disponível
-                    h.gtoLabel === "gto_critical"        ? "bg-destructive" :
-                    h.gtoLabel === "gto_minor_deviation" ? "bg-amber-500" :
-                    h.gtoLabel === "gto_mixed"           ? "bg-sky-500" :
-                    h.gtoLabel === "gto_correct"         ? "bg-emerald-500" :
-                    h.category === "critical" ? "bg-destructive" :
-                    h.category === "major"    ? "bg-warning" :
-                    h.category === "ok"       ? "bg-primary" : "bg-border"
-                  )} />
 
                   <div className="flex items-center gap-4">
                     <div className="flex flex-col items-center gap-1.5">
@@ -779,7 +760,7 @@ const TournamentDetail = () => {
                           {h.numPlayers ? ` · vs ${h.numPlayers - 1}` : ""}
                         </div>
                       )}
-                      {h.leakTag && !['gto_correct','gto_mixed','gto_minor_deviation'].includes(h.gtoLabel ?? '') && (
+                      {h.leakTag && !h.gtoLabel && (
                         <div className={cn("font-mono text-[11px] font-semibold uppercase tracking-wider", meta.cls)}>
                           ▸ {h.leakTag}
                         </div>
