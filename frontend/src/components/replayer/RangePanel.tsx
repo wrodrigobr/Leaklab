@@ -195,7 +195,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
   })();
   const solverOverridesRegLife =
     !!effectiveGtoLabel &&
-    ['gto_correct', 'gto_mixed'].includes(effectiveGtoLabel) &&
+    ['gto_correct', 'gto_mixed', 'gto_minor_deviation'].includes(effectiveGtoLabel) &&
     ['leak', 'major_leak'].includes(gto?.action_quality ?? '');
 
   const quality = showGtoCtx && !solverOverridesRegLife

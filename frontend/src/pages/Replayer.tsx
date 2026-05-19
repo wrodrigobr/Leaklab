@@ -177,8 +177,9 @@ function SidePanels({
   const showDecision = !!verdict && (studentId !== null || coachAnnotation?.mode !== "replace");
 
   // Action comparison (playedAction already computed above)
+  // gto_minor_deviation (10-30%) = ação válida na estratégia mista do solver — não é erro
   const isActionOk = effectiveGtoLabel
-    ? (effectiveGtoLabel === "gto_correct" || effectiveGtoLabel === "gto_mixed")
+    ? (effectiveGtoLabel === "gto_correct" || effectiveGtoLabel === "gto_mixed" || effectiveGtoLabel === "gto_minor_deviation")
     : (!isPostflop && pg?.available
         ? (pg.action_quality === "correct" || pg.action_quality === "acceptable")
         : isCorrect);
@@ -339,7 +340,7 @@ function SidePanels({
                     </span>
                     {/* Chip Qualidade — omitido quando solver contradiz RegLife */}
                     {!(effectiveGtoLabel &&
-                       ['gto_correct','gto_mixed'].includes(effectiveGtoLabel) &&
+                       ['gto_correct','gto_mixed','gto_minor_deviation'].includes(effectiveGtoLabel) &&
                        ['leak','major_leak'].includes(pg.action_quality)) && (<>
                       <span className="text-muted-foreground/30 text-[8px]">›</span>
                       <span className={cn(
@@ -369,7 +370,7 @@ function SidePanels({
                 </div>
                 {showDetails && pg.pro_notes.length > 0 &&
                  !(effectiveGtoLabel &&
-                   ['gto_correct','gto_mixed'].includes(effectiveGtoLabel) &&
+                   ['gto_correct','gto_mixed','gto_minor_deviation'].includes(effectiveGtoLabel) &&
                    ['leak','major_leak'].includes(pg.action_quality)) && (
                   <div className="space-y-1 pt-1 border-t border-border/30">
                     {pg.pro_notes.map((note, i) => (
