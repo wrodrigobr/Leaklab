@@ -9,6 +9,71 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.113.0] — 2026-05-19 — fix(ranges): remover bluff-shoves trash offsuit de vs_RFI
+
+### Fixed
+- **`docs/leaklab_gto_ranges.json`**: removidos `32o, 42o+, 52o+, 62o+` das `raise_hands` de vs_RFI em todos os buckets e spots (116 entradas). Esses trash offsuits eram artefatos de solver de cash game que não se aplicam a MTT — causavam classificação incorreta de folds corretos como `gto_critical`
+- Identificado via consulta manual no solver: SB 43o 28bb vs MP1 fold = correto; sistema marcava como erro
+- 18 decisões revertidas para NULL e reprocessadas → 11 passaram para `gto_correct`
+
+### Result
+- `analyze_preflop` agora classifica folds de trash offsuit em spots vs_RFI como `correct` em vez de `gto_critical`
+
+---
+
+## [v0.112.0] — 2026-05-19 — feat(backend): sync_gto_labels_from_ranges
+
+### Added
+- **`backend/scripts/sync_gto_labels_from_ranges.py`**: preenche `gto_label`/`gto_action` para decisões preflop sem veredicto de solver, usando `analyze_preflop` com o range estático. Solver (gto_nodes) tem prioridade absoluta; este script só atua onde não há nó de solver
+- Resultado: 146 de 201 decisões preflop sem gto_label classificadas — 101 `gto_correct`, 3 `gto_mixed`, 42 `gto_critical`
+
+### Changed
+- Quando range estático preflop confirma a ação do jogador, o badge "GTO ✓" passa a aparecer na lista de mãos em vez de nenhum indicador
+
+---
+
+## [v0.111.0] — 2026-05-19 — refactor(ui): simplificar indicadores de veredicto
+
+### Changed
+- **`TournamentDetail.tsx`**: removida linha lateral colorida (stripe esquerdo) e borda codificada por severidade — card tem borda neutra única. Eliminado visual duplicado de 3 indicadores para o mesmo veredicto
+- **`TournamentDetail.tsx`**: badge engine (`Linha sólida`, `Atenção`, etc.) suprimido quando `category === "ok"` sem gtoLabel — ausência de badge comunica correção
+- **`TournamentDetail.tsx`**: `leakTag` (texto `▸ small mistake`) suprimido sempre que `gtoLabel` existe — GTO já fala tudo
+- **`Replayer.tsx`**: removido `GtoMixedBadge` do banner do solution card — label colorido já comunica o veredicto sem duplicar
+
+### Principle
+Uma fonte, um indicador: quando GTO existe → só o badge GTO fala; quando não existe → engine fala; badge ausente = jogada ok
+
+---
+
+## [v0.110.0] — 2026-05-19 — feat(replayer): badge GTO Misto com tooltip
+
+### Added
+- **`frontend/src/components/replayer/GtoMixedBadge.tsx`**: componente reutilizável com Radix Tooltip para três variantes:
+  - `gto_mixed` → `◎ GTO Misto` (sky-400): ação do jogador tem 30–60% de frequência no equilíbrio
+  - `gto_minor_deviation` → `◎ Defensável` (amber-400): ação com 10–30% de frequência, incomum mas defensável
+  - `spot_mixed` → `◎ Spot Misto` (sky-400 suave): o spot em si tem ≥2 ações com ≥10% de frequência
+- **`GtoStrategyPanel.tsx`**: badge `◎ Spot Misto` substitui parágrafo de texto pouco visível quando solver usa estratégia mista — tooltip explica o conceito ao hover
+
+---
+
+## [v0.109.0] — 2026-05-19 — fix(replayer): solver priority + UI cleanup
+
+### Fixed
+- **`Replayer.tsx`**: `gto_minor_deviation` reclassificado como não-erro — `isActionOk` e supressores de chips/notas agora incluem esta categoria
+- **`Replayer.tsx`**: "⏳ Calculando…" substituído por mensagem honesta quando não há frequências de solver disponíveis
+- **`Replayer.tsx`**: chip `Qualidade` e `pro_notes` suprimidos quando solver contradiz análise de range estático
+- **`Replayer.tsx`**: `vs_position === 'UNKNOWN'` não exibe mais o chip de range
+- **`RangePanel.tsx`**: banner neutralizado e conteúdo suprimido quando solver override ativo; texto "Veredicto do solver substitui análise de range estática"
+- **`GtoStrategyPanel.tsx`**: nota de estratégia mista quando ≥2 ações têm ≥10% de frequência
+- **`app.py`**: solver sempre persiste `gto_label`/`gto_action` no banco ao consultar — garante prioridade absoluta do solver sobre range estático
+- **`sync_gto_labels_from_solver.py`**: batch sync que re-calcula gto_label a partir de gto_nodes via spot_hash
+
+### Changed
+- Thresholds `effectiveGtoLabel` alinhados entre frontend e backend: ≥60% → correct, ≥30% → mixed, ≥10% → minor_deviation, <10% → critical
+- Nomes de marcas externas removidos de todo texto visível ao usuário: "RegLife" → "análise estática", "GTO Wizard" → "Solver GTO" / "solver"
+
+---
+
 ## [v0.108.0] — 2026-05-19 — feat(gto): ranges push/fold para stacks curtos (10/14/20bb)
 
 ### Added
