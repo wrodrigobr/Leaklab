@@ -481,6 +481,8 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_action TEXT",
             # GTO-006: armazenar equity estimada para re-avaliação
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS estimated_equity REAL",
+            # GTO-007: posição do opener para spots vs_RFI
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS vs_position TEXT",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -848,6 +850,7 @@ def _run_migrations(conn):
             ("gto_label",        "ALTER TABLE decisions ADD COLUMN gto_label        TEXT"),
             ("gto_action",       "ALTER TABLE decisions ADD COLUMN gto_action       TEXT"),
             ("estimated_equity", "ALTER TABLE decisions ADD COLUMN estimated_equity REAL"),
+            ("vs_position",      "ALTER TABLE decisions ADD COLUMN vs_position      TEXT"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)

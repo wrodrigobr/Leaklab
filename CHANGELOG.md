@@ -9,6 +9,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.104.0] — 2026-05-19 — feat(gto): vs_position em decisions + comparação RFI+vs_RFI com RegLife
+
+### Added
+- **`decisions.vs_position`** — nova coluna para armazenar a posição do opener em spots vs_RFI:
+  - Migração automática em `schema.py` (PostgreSQL + SQLite)
+  - `save_decisions` em `repositories.py` salva `spot.villainPosition` neste campo para novos uploads
+- **`backend/scripts/populate_vs_position.py`** — script retroativo que popula `vs_position` para as 346 decisões vs_RFI existentes re-parseando `tournaments.raw_text`:
+  - Agrupa por torneio para evitar re-parse desnecessário
+  - Usa `_infer_position` do `hand_state_builder` para mapear nome → posição
+  - Resultado: 346 decisions atualizadas (UTG: 84, UTG+1: 57, HJ: 48, CO: 48, etc.)
+
+### Changed
+- **`backend/scripts/compare_reglife_spots.py`** — reescrito para comparar RFI + vs_RFI:
+  - Passa `vs_position` para `analyze_preflop` em spots vs_RFI (facing_bet > 0, is_3bet=0)
+  - Exibe coluna `VS` na tabela (posição do opener)
+  - Seções separadas: "RFI Spots" e "vs_RFI Spots"
+  - Suporta `--type rfi/vsrfi/both` e `--all` (todos os labels, não só mistakes)
+  - Resumo geral com cobertura RegLife por tipo
+  - Resultado: 100% cobertura RFI, 53% cobertura vs_RFI (restante = combos ausentes no RegLife)
+
+---
+
 ## [v0.103.0] — 2026-05-19 — feat(ranges): extrai vs_RFI do PDF RegLife e adiciona lookup completo
 
 ### Added
