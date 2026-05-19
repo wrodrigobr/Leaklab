@@ -177,8 +177,30 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
   // Show GTO context when data is available — detectedPos may be null for positions
   // not yet in the static list (e.g. LJ before the fix), so we show it regardless
   const showGtoCtx = gto?.available ?? false;
-  const quality    = showGtoCtx ? QUALITY_META[gto!.action_quality ?? 'unknown'] : null;
-  const QIcon      = quality?.icon ?? Info;
+
+  // Solver overrides RegLife when available — same logic as effectiveGtoLabel in Replayer.tsx
+  const solverStratSorted = step.gto_strategy
+    ? [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0))
+    : [];
+  const effectiveGtoLabel = (() => {
+    if (!solverStratSorted.length) return step.gto_label ?? null;
+    const played = (step.action ?? '').toLowerCase().replace(/[-_ ]/g, '');
+    const playedFreq = solverStratSorted.find(s =>
+      (s.action ?? '').toLowerCase().replace(/[-_ ]/g, '') === played
+    )?.frequency ?? 0;
+    if (playedFreq >= 0.60) return 'gto_correct';
+    if (playedFreq >= 0.30) return 'gto_mixed';
+    if (playedFreq >= 0.10) return 'gto_minor_deviation';
+    return 'gto_critical';
+  })();
+  const solverOverridesRegLife =
+    !!effectiveGtoLabel &&
+    ['gto_correct', 'gto_mixed'].includes(effectiveGtoLabel) &&
+    ['leak', 'major_leak'].includes(gto?.action_quality ?? '');
+
+  const quality = showGtoCtx && !solverOverridesRegLife
+    ? QUALITY_META[gto!.action_quality ?? 'unknown'] : null;
+  const QIcon   = quality?.icon ?? Info;
 
   return (
     <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
@@ -325,8 +347,8 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
         <p className="text-xs text-muted-foreground text-center py-4">Range não disponível para esta posição.</p>
       )}
 
-      {/* Pro notes */}
-      {showGtoCtx && gto?.pro_notes && gto.pro_notes.length > 0 && (
+      {/* Pro notes — suprimidas quando solver contradiz RegLife */}
+      {showGtoCtx && !solverOverridesRegLife && gto?.pro_notes && gto.pro_notes.length > 0 && (
         <div className="rounded-lg border border-border bg-muted/10 px-3 py-2 space-y-1">
           <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">Análise GTO</p>
           {gto.pro_notes.map((note, i) => (

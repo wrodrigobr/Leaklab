@@ -337,29 +337,34 @@ function SidePanels({
                         {pg.hand_type} {pg.in_range ? '✓' : '✗'}
                       </span>
                     </span>
-                    <span className="text-muted-foreground/30 text-[8px]">›</span>
-                    <span className={cn(
-                      "rounded-md ring-1 px-2 py-1 font-mono text-[9px]",
-                      pg.action_quality === 'correct'    ? "bg-emerald-500/8 ring-emerald-500/30" :
-                      pg.action_quality === 'acceptable' ? "bg-sky-500/8 ring-sky-500/30" :
-                      pg.action_quality === 'leak'       ? "bg-amber-500/8 ring-amber-500/30" :
-                      pg.action_quality === 'major_leak' ? "bg-destructive/8 ring-destructive/30" :
-                      "bg-background/60 ring-border/50"
-                    )}>
-                      <span className="text-muted-foreground/50 mr-1">Qualidade</span>
-                      <span className={cn("font-bold",
-                        pg.action_quality === 'correct'    ? "text-emerald-400" :
-                        pg.action_quality === 'acceptable' ? "text-sky-400" :
-                        pg.action_quality === 'leak'       ? "text-amber-400" :
-                        pg.action_quality === 'major_leak' ? "text-destructive" :
-                        "text-muted-foreground"
+                    {/* Chip Qualidade — omitido quando solver contradiz RegLife */}
+                    {!(effectiveGtoLabel &&
+                       ['gto_correct','gto_mixed'].includes(effectiveGtoLabel) &&
+                       ['leak','major_leak'].includes(pg.action_quality)) && (<>
+                      <span className="text-muted-foreground/30 text-[8px]">›</span>
+                      <span className={cn(
+                        "rounded-md ring-1 px-2 py-1 font-mono text-[9px]",
+                        pg.action_quality === 'correct'    ? "bg-emerald-500/8 ring-emerald-500/30" :
+                        pg.action_quality === 'acceptable' ? "bg-sky-500/8 ring-sky-500/30" :
+                        pg.action_quality === 'leak'       ? "bg-amber-500/8 ring-amber-500/30" :
+                        pg.action_quality === 'major_leak' ? "bg-destructive/8 ring-destructive/30" :
+                        "bg-background/60 ring-border/50"
                       )}>
-                        {pg.action_quality === 'correct'    ? 'Correto (GTO)' :
-                         pg.action_quality === 'acceptable' ? 'Aceitável' :
-                         pg.action_quality === 'leak'       ? 'Leak' :
-                         pg.action_quality === 'major_leak' ? 'Leak Grave' : 'Sem dados'}
+                        <span className="text-muted-foreground/50 mr-1">Qualidade</span>
+                        <span className={cn("font-bold",
+                          pg.action_quality === 'correct'    ? "text-emerald-400" :
+                          pg.action_quality === 'acceptable' ? "text-sky-400" :
+                          pg.action_quality === 'leak'       ? "text-amber-400" :
+                          pg.action_quality === 'major_leak' ? "text-destructive" :
+                          "text-muted-foreground"
+                        )}>
+                          {pg.action_quality === 'correct'    ? 'Correto (GTO)' :
+                           pg.action_quality === 'acceptable' ? 'Aceitável' :
+                           pg.action_quality === 'leak'       ? 'Leak' :
+                           pg.action_quality === 'major_leak' ? 'Leak Grave' : 'Sem dados'}
+                        </span>
                       </span>
-                    </span>
+                    </>)}
                   </div>
                 </div>
                 {showDetails && pg.pro_notes.length > 0 &&
