@@ -135,11 +135,12 @@ def analyze_preflop(
         rfi = bk_data.get('RFI', {}).get(pos)
         if not rfi:
             return base
-        pct         = float(rfi.get('pct', 0))
+        pct         = float(rfi.get('combo_pct') or rfi.get('pct', 0))
+        grid_pct    = float(rfi.get('grid_pct') or rfi.get('pct', 0))
         hands_str   = rfi.get('hands', '')
         acoes       = rfi.get('acoes', [])
         limp_str    = rfi.get('limp_hands', '')   # SB limp range (quando presente)
-        limp_pct    = float(rfi.get('limp_pct', 0))
+        limp_pct    = float(rfi.get('limp_combo_pct') or rfi.get('limp_pct', 0))
         in_rng      = _in_range(hero_hand_type, hands_str)
         in_limp     = bool(limp_str) and _in_range(hero_hand_type, limp_str)
 
@@ -155,6 +156,7 @@ def analyze_preflop(
         base.update({
             'available': True, 'in_range': in_rng or in_limp,
             'range_pct': pct, 'range_hands': hands_str,
+            'range_grid_pct': grid_pct,
             'recommended_actions': rec, 'rfi_pct': pct,
             'action_quality': quality,
             'in_limp_range': in_limp,

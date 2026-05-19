@@ -1,7 +1,7 @@
 {
   "_metadata": {
     "projeto": "LeakLab",
-    "versao": "2.0.0",
+    "versao": "2.1.0",
     "descricao": "Ranges GTO preflop para MTT 8-max com ante de 1bb. RFI atualizado com dados RegLife (solver-generated) via pixel analysis. vs_RFI preservado da versão anterior.",
     "formato": "MTT 8-max com ante de 1bb",
     "fontes": [
@@ -35,7 +35,8 @@
       "acoes": "RFI=Raise First In, CALL=Flat Call, FOLD=Fold, ALLIN=All-In direto, THREBET=Re-raise/3bet"
     },
     "num_players": 8,
-    "ultima_atualizacao": "2026-05-18"
+    "ultima_atualizacao": "2026-05-19",
+    "nota_pct": "pct = combo_pct (combos reais / 1326). grid_pct = celulas do grid 13x13 / 169 (sempre maior que combo_pct). Use pct/combo_pct para comparar com GTO Wizard e documentos externos."
   },
   "stack_buckets": {
     "10bb": {
@@ -76,63 +77,79 @@
       "_nota": "Push/Fold quase exclusivo. Ranges baseados em PokerCoaching push-fold + RangeConverter 10bb sem limp.",
       "RFI": {
         "UTG": {
-          "pct": 0.169,
+          "pct": 0.1704,
           "hands": "44+,A4s+,K9s+,QTs+,J9s+,T9s,A9o+,KJo+",
           "acoes": [
             "ALLIN",
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.1704,
+          "combo_pct": 0.1704
         },
         "UTG1": {
-          "pct": 0.195,
+          "pct": 0.1931,
           "hands": "33+,A2s+,K9s+,Q9s+,J9s+,T9s,A9o+,KJo+,QJo",
           "acoes": [
             "ALLIN",
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.1931,
+          "combo_pct": 0.1931
         },
         "LJ": {
-          "pct": 0.226,
+          "pct": 0.2278,
           "hands": "22+,A2s+,K9s+,Q9s+,J9s+,T9s,98s,A7o+,KTo+,QJo",
           "acoes": [
             "ALLIN",
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.2278,
+          "combo_pct": 0.2278
         },
         "HJ": {
-          "pct": 0.277,
+          "pct": 0.276,
           "hands": "22+,A2s+,K9s+,Q9s+,J9s+,T8s+,98s,A3o+,KTo+,QJo,JTo",
           "acoes": [
             "ALLIN"
-          ]
+          ],
+          "grid_pct": 0.276,
+          "combo_pct": 0.276
         },
         "CO": {
-          "pct": 0.315,
+          "pct": 0.3092,
           "hands": "22+,A2s+,K6s+,Q8s+,J8s+,T8s+,98s,A2o+,KTo+,QTo+,JTo",
           "acoes": [
             "ALLIN"
-          ]
+          ],
+          "grid_pct": 0.3092,
+          "combo_pct": 0.3092
         },
         "BTN": {
-          "pct": 0.389,
+          "pct": 0.3756,
           "hands": "22+,A2s+,K2s+,Q5s+,J6s+,T6s+,97s+,87s,A2o+,K7o+,QTo+,JTo",
           "acoes": [
             "ALLIN",
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.3756,
+          "combo_pct": 0.3756
         },
         "SB": {
-          "pct": 0.52,
+          "pct": 0.4811,
           "hands": "22+,A2s+,K2s+,Q2s+,J4s+,T6s+,96s+,85s+,74s+,63s+,52s+,A2o+,K4o+,Q8o+,J9o+",
           "acoes": [
             "ALLIN",
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.4811,
+          "combo_pct": 0.4811
         },
         "BB": {
           "pct": 0.0,
           "hands": "N/A - BB nao tem RFI",
-          "acoes": []
+          "acoes": [],
+          "grid_pct": 0.0,
+          "combo_pct": 0.0
         }
       },
       "vs_RFI": {
@@ -194,71 +211,89 @@
       "_nota": "Stack curto com alguma jogabilidade. Baseado na Reg Life (14bb explicito) e interpolado com RangeConverter 10bb/20bb.",
       "RFI": {
         "UTG": {
-          "pct": 0.195,
+          "pct": 0.1493,
           "hands": "66+,A5s+,K9s+,Q9s+,JTs,T9s,ATo+,KJo+",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/14bb"
+          "_fonte": "reglife_pdf/14bb",
+          "grid_pct": 0.1493,
+          "combo_pct": 0.1493
         },
         "UTG1": {
-          "pct": 0.213,
+          "pct": 0.1719,
           "hands": "55+,A5s+,K9s+,Q9s+,JTs,T9s,A9o+,KJo+,QJo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/14bb"
+          "_fonte": "reglife_pdf/14bb",
+          "grid_pct": 0.1719,
+          "combo_pct": 0.1719
         },
         "LJ": {
-          "pct": 0.249,
+          "pct": 0.2036,
           "hands": "44+,A4s+,K8s+,Q9s+,J9s+,T9s,A9o+,KTo+,QTo+",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/14bb"
+          "_fonte": "reglife_pdf/14bb",
+          "grid_pct": 0.2036,
+          "combo_pct": 0.2036
         },
         "HJ": {
-          "pct": 0.29,
+          "pct": 0.2443,
           "hands": "33+,A2s+,K8s+,Q9s+,J9s+,T9s,98s,A7o+,KTo+,QTo+,JTo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/14bb"
+          "_fonte": "reglife_pdf/14bb",
+          "grid_pct": 0.2443,
+          "combo_pct": 0.2443
         },
         "CO": {
-          "pct": 0.343,
+          "pct": 0.2971,
           "hands": "22+,A2s+,K7s+,Q8s+,J8s+,T8s+,98s,A4o+,K9o+,QTo+,JTo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/14bb"
+          "_fonte": "reglife_pdf/14bb",
+          "grid_pct": 0.2971,
+          "combo_pct": 0.2971
         },
         "BTN": {
-          "pct": 0.438,
+          "pct": 0.3816,
           "hands": "22+,A2s+,K3s+,Q5s+,J7s+,T7s+,98s,87s,A2o+,K8o+,Q9o+,J9o+,T9o",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/14bb"
+          "_fonte": "reglife_pdf/14bb",
+          "grid_pct": 0.3816,
+          "combo_pct": 0.3816
         },
         "SB": {
-          "pct": 0.314,
+          "pct": 0.3846,
           "hands": "KK+,22+,A8s+,A2s+,KJs,QTs,Q4s+,J7s,J5s,T9s,T6s+,96s+,86s+,75s+,65s,54s,A2o+,K4o+,QJo,Q6o,87o",
           "acoes": [
             "RFI"
           ],
           "_fonte": "reglife_pdf/14bb",
-          "limp_pct": 0.574,
+          "limp_pct": 0.4434,
           "limp_hands": "77+,ATs+,A4s+,KQs,K2s+,QJs,Q7s+,Q2s+,J8s+,J6s,J2s+,T8s,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,KQo,K2o+,Q7o+,Q2o+,J2o+,T4o+,95o+,85o+,75o+,65o,54o",
           "acoes_limp": [
             "CALL"
-          ]
+          ],
+          "grid_pct": 0.3846,
+          "combo_pct": 0.3846,
+          "limp_grid_pct": 0.7934,
+          "limp_combo_pct": 0.4434
         },
         "BB": {
           "pct": 0.0,
           "hands": "N/A - BB nao tem RFI",
           "acoes": [],
-          "_fonte": "n/a"
+          "_fonte": "n/a",
+          "grid_pct": 0.0,
+          "combo_pct": 0.0
         }
       },
       "vs_RFI": {
@@ -305,71 +340,89 @@
       "_nota": "Stack medio-curto. Ainda ha jogabilidade limitada. Baseado em RangeConverter 20bb (sem limp) e Reg Life 20bb.",
       "RFI": {
         "UTG": {
-          "pct": 0.225,
+          "pct": 0.1644,
           "hands": "66+,A4s+,K8s+,Q8s+,J9s+,T9s,98s,ATo+,KJo+",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/20bb"
+          "_fonte": "reglife_pdf/20bb",
+          "grid_pct": 0.1644,
+          "combo_pct": 0.1644
         },
         "UTG1": {
-          "pct": 0.243,
+          "pct": 0.1855,
           "hands": "66+,A4s+,K8s+,Q8s+,J9s+,T8s+,98s,A9o+,KJo+,QJo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/20bb"
+          "_fonte": "reglife_pdf/20bb",
+          "grid_pct": 0.1855,
+          "combo_pct": 0.1855
         },
         "LJ": {
-          "pct": 0.284,
+          "pct": 0.2142,
           "hands": "55+,A3s+,K6s+,Q8s+,J8s+,T8s+,98s,87s,A9o+,KTo+,QJo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/20bb"
+          "_fonte": "reglife_pdf/20bb",
+          "grid_pct": 0.2142,
+          "combo_pct": 0.2142
         },
         "HJ": {
-          "pct": 0.331,
+          "pct": 0.2564,
           "hands": "55+,A2s+,K5s+,Q7s+,J8s+,T8s+,97s+,87s,76s,A8o+,KTo+,QTo+,JTo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/20bb"
+          "_fonte": "reglife_pdf/20bb",
+          "grid_pct": 0.2564,
+          "combo_pct": 0.2564
         },
         "CO": {
-          "pct": 0.396,
+          "pct": 0.3152,
           "hands": "44+,A2s+,K4s+,Q5s+,J7s+,T7s+,97s+,86s+,76s,A7o+,A5o,K9o+,Q9o+,JTo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/20bb"
+          "_fonte": "reglife_pdf/20bb",
+          "grid_pct": 0.3152,
+          "combo_pct": 0.3152
         },
         "BTN": {
-          "pct": 0.491,
+          "pct": 0.4087,
           "hands": "22+,A2s+,K3s+,Q4s+,J5s+,T6s+,96s+,86s+,76s,65s,A2o+,K8o+,Q9o+,J9o+,T9o",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/20bb"
+          "_fonte": "reglife_pdf/20bb",
+          "grid_pct": 0.4087,
+          "combo_pct": 0.4087
         },
         "SB": {
-          "pct": 0.32,
+          "pct": 0.4087,
           "hands": "77+,22+,A6s+,KQs,JTs,J2s+,T9s,T3s+,95s,87s,63s,52s,A2o+,K4o+,Q5o+,J7o",
           "acoes": [
             "RFI"
           ],
           "_fonte": "reglife_pdf/20bb",
-          "limp_pct": 0.58,
+          "limp_pct": 0.4374,
           "limp_hands": "55+,A2s+,K2s+,Q2s+,J5s+,T6s+,T2s,96s+,92s+,82s+,72s+,64s+,62s,53s+,42s+,32s,ATo+,K2o+,Q9o+,Q2o+,J8o+,J2o+,T3o+,95o+,85o+,75o+,64o+,54o",
           "acoes_limp": [
             "CALL"
-          ]
+          ],
+          "grid_pct": 0.4087,
+          "combo_pct": 0.4087,
+          "limp_grid_pct": 0.7994,
+          "limp_combo_pct": 0.4374
         },
         "BB": {
           "pct": 0.0,
           "hands": "N/A - BB nao tem RFI",
           "acoes": [],
-          "_fonte": "n/a"
+          "_fonte": "n/a",
+          "grid_pct": 0.0,
+          "combo_pct": 0.0
         }
       },
       "vs_RFI": {
@@ -457,71 +510,89 @@
       "_nota": "Stack medio. Jogabilidade razoavel. Baseado em RangeConverter 30bb, Reg Life 30bb e PokerCoaching LJ-equivalente.",
       "RFI": {
         "UTG": {
-          "pct": 0.26,
+          "pct": 0.1976,
           "hands": "44+,A3s+,K7s+,Q9s+,J9s+,T8s+,98s,ATo+,KTo+,QJo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/30bb"
+          "_fonte": "reglife_pdf/30bb",
+          "grid_pct": 0.1976,
+          "combo_pct": 0.1976
         },
         "UTG1": {
-          "pct": 0.296,
+          "pct": 0.2217,
           "hands": "44+,A2s+,K6s+,Q8s+,J8s+,T8s+,98s,87s,A9o+,KTo+,QJo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/30bb"
+          "_fonte": "reglife_pdf/30bb",
+          "grid_pct": 0.2217,
+          "combo_pct": 0.2217
         },
         "LJ": {
-          "pct": 0.325,
+          "pct": 0.2489,
           "hands": "44+,A2s+,K5s+,Q8s+,J8s+,T8s+,97s+,87s,76s,A9o+,KTo+,QTo+,JTo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/30bb"
+          "_fonte": "reglife_pdf/30bb",
+          "grid_pct": 0.2489,
+          "combo_pct": 0.2489
         },
         "HJ": {
-          "pct": 0.391,
+          "pct": 0.2956,
           "hands": "33+,A2s+,K4s+,Q5s+,J7s+,T7s+,97s+,86s+,76s,65s,A8o+,K9o+,QTo+,JTo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/30bb"
+          "_fonte": "reglife_pdf/30bb",
+          "grid_pct": 0.2956,
+          "combo_pct": 0.2956
         },
         "CO": {
-          "pct": 0.473,
+          "pct": 0.3801,
           "hands": "33+,A2s+,K2s+,Q4s+,J6s+,T6s+,96s+,86s+,75s+,65s,A5o+,K8o+,Q9o+,J9o+,T9o",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/30bb"
+          "_fonte": "reglife_pdf/30bb",
+          "grid_pct": 0.3801,
+          "combo_pct": 0.3801
         },
         "BTN": {
-          "pct": 0.58,
+          "pct": 0.4887,
           "hands": "33+,A2s+,K2s+,Q2s+,J4s+,T4s+,95s+,85s+,75s+,65s,54s,A2o+,K6o+,Q8o+,J8o+,T8o+,98o",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/30bb"
+          "_fonte": "reglife_pdf/30bb",
+          "grid_pct": 0.4887,
+          "combo_pct": 0.4887
         },
         "SB": {
-          "pct": 0.355,
+          "pct": 0.4314,
           "hands": "77+,A7s+,KTs+,JTs,J5s,J2s+,T9s,T2s+,94s+,84s,65s,63s,54s,52s,43s,AKo,A6o+,A4o,K5o+,Q6o+,J7o+,T7o+,97o",
           "acoes": [
             "RFI"
           ],
           "_fonte": "reglife_pdf/30bb",
-          "limp_pct": 0.533,
+          "limp_pct": 0.3967,
           "limp_hands": "22+,A2s+,K2s+,Q2s+,J6s+,J4s,T6s+,96s+,92s+,85s+,82s+,72s+,64s,62s,53s,42s,32s,ATo+,A5o,A2o+,KQo,K2o+,Q2o+,JTo,J2o+,T9o,T4o+,98o,95o+,85o+,75o+,65o,54o",
           "acoes_limp": [
             "CALL"
-          ]
+          ],
+          "grid_pct": 0.4314,
+          "combo_pct": 0.4314,
+          "limp_grid_pct": 0.8914,
+          "limp_combo_pct": 0.3967
         },
         "BB": {
           "pct": 0.0,
           "hands": "N/A - BB nao tem RFI",
           "acoes": [],
-          "_fonte": "n/a"
+          "_fonte": "n/a",
+          "grid_pct": 0.0,
+          "combo_pct": 0.0
         }
       },
       "vs_RFI": {
@@ -655,58 +726,74 @@
       "_nota": "Interpolado entre 30bb e 50bb. Reg Life nao cobre explicitamente, RangeConverter cobre. Confianca media-alta.",
       "RFI": {
         "UTG": {
-          "pct": 0.195,
+          "pct": 0.1538,
           "hands": "55+,A3s+,K8s+,QTs+,J9s+,T9s,AT+,KTo+",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.1538,
+          "combo_pct": 0.1538
         },
         "UTG1": {
-          "pct": 0.22,
+          "pct": 0.2066,
           "hands": "44+,A2s+,K7s+,Q9s+,J9s+,T9s,98s,A9o+,KTo+,QJo",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.2066,
+          "combo_pct": 0.2066
         },
         "LJ": {
-          "pct": 0.25,
+          "pct": 0.2353,
           "hands": "33+,A2s+,K6s+,Q9s+,J8s+,T8s+,98s,87s,76s,A9o+,KTo+,QTo+",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.2353,
+          "combo_pct": 0.2353
         },
         "HJ": {
-          "pct": 0.29,
+          "pct": 0.276,
           "hands": "22+,A2s+,K4s+,Q8s+,J8s+,T7s+,97s+,87s,76s,65s,A8o+,KTo+,QTo+,JTo",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.276,
+          "combo_pct": 0.276
         },
         "CO": {
-          "pct": 0.37,
+          "pct": 0.3967,
           "hands": "22+,A2s+,K2s+,Q5s+,J6s+,T6s+,96s+,86s+,75s+,64s+,54s,A4o+,K8o+,Q9o+,J9o+,T9o",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.3967,
+          "combo_pct": 0.3967
         },
         "BTN": {
-          "pct": 0.54,
+          "pct": 0.5626,
           "hands": "22+,A2s+,K2s+,Q2s+,J4s+,T4s+,94s+,84s+,73s+,63s+,53s+,43s,A2o+,K4o+,Q7o+,J8o+,T8o+,97o+,87o",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.5626,
+          "combo_pct": 0.5626
         },
         "SB": {
-          "pct": 0.64,
+          "pct": 0.7074,
           "hands": "22+,A2s+,K2s+,Q2s+,J2s+,T2s+,92s+,83s+,72s+,62s+,52s+,42s+,32s,A2o+,K2o+,Q4o+,J7o+,T7o+,96o+,86o+,75o+,65o",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.7074,
+          "combo_pct": 0.7074
         },
         "BB": {
           "pct": 0.0,
           "hands": "N/A",
-          "acoes": []
+          "acoes": [],
+          "grid_pct": 0.0,
+          "combo_pct": 0.0
         }
       },
       "vs_RFI": {
@@ -773,71 +860,89 @@
       "_nota": "Stack medio-profundo. Baseado em RangeConverter 50bb e Reg Life 50bb. Alta coerencia.",
       "RFI": {
         "UTG": {
-          "pct": 0.237,
+          "pct": 0.1719,
           "hands": "55+,A3s+,K8s+,Q9s+,J9s+,T8s+,98s,ATo+,KJo+",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/50bb"
+          "_fonte": "reglife_pdf/50bb",
+          "grid_pct": 0.1719,
+          "combo_pct": 0.1719
         },
         "UTG1": {
-          "pct": 0.272,
+          "pct": 0.1991,
           "hands": "33+,A3s+,K6s+,Q9s+,J9s+,T8s+,98s,87s,ATo+,KJo+,QJo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/50bb"
+          "_fonte": "reglife_pdf/50bb",
+          "grid_pct": 0.1991,
+          "combo_pct": 0.1991
         },
         "LJ": {
-          "pct": 0.337,
+          "pct": 0.2579,
           "hands": "22+,A2s+,K5s+,Q8s+,J8s+,T8s+,97s+,87s,76s,A9o+,KTo+,QTo+,JTo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/50bb"
+          "_fonte": "reglife_pdf/50bb",
+          "grid_pct": 0.2579,
+          "combo_pct": 0.2579
         },
         "HJ": {
-          "pct": 0.385,
+          "pct": 0.2881,
           "hands": "22+,A2s+,K4s+,Q6s+,J7s+,T7s+,97s+,86s+,76s,65s,A8o+,KTo+,QTo+,JTo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/50bb"
+          "_fonte": "reglife_pdf/50bb",
+          "grid_pct": 0.2881,
+          "combo_pct": 0.2881
         },
         "CO": {
-          "pct": 0.473,
+          "pct": 0.3695,
           "hands": "22+,A2s+,K2s+,Q4s+,J6s+,T6s+,96s+,86s+,75s+,65s,54s,A7o+,A5o,K9o+,Q9o+,J9o+,T9o",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/50bb"
+          "_fonte": "reglife_pdf/50bb",
+          "grid_pct": 0.3695,
+          "combo_pct": 0.3695
         },
         "BTN": {
-          "pct": 0.639,
+          "pct": 0.5385,
           "hands": "22+,A2s+,K2s+,Q2s+,J2s+,T3s+,95s+,85s+,74s+,64s+,53s+,A2o+,K6o+,Q7o+,J8o+,T8o+,97o+,87o",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/50bb"
+          "_fonte": "reglife_pdf/50bb",
+          "grid_pct": 0.5385,
+          "combo_pct": 0.5385
         },
         "SB": {
-          "pct": 0.225,
+          "pct": 0.2308,
           "hands": "JJ+,99,A7s+,A5s,KJs+,K7s+,Q9s+,J8s+,T8s+,T4s+,98s,94s,86s,63s+,54s,ATo,A6o,KJo,K5o+,Q7o,T7o",
           "acoes": [
             "RFI"
           ],
           "_fonte": "reglife_pdf/50bb",
-          "limp_pct": 0.669,
+          "limp_pct": 0.6063,
           "limp_hands": "TT,22+,AJs+,A6s,A2s+,K9s+,K2s+,Q2s+,J2s+,T6s+,T2s+,95s+,92s+,87s,82s+,72s+,62s,52s+,42s+,32s,AJo+,A7o+,A2o+,KQo,K7o+,K2o+,Q8o+,Q2o+,J2o+,T8o+,T4o+,95o+,85o+,75o+,64o+,54o",
           "acoes_limp": [
             "CALL"
-          ]
+          ],
+          "grid_pct": 0.2308,
+          "combo_pct": 0.2308,
+          "limp_grid_pct": 1.092,
+          "limp_combo_pct": 0.6063
         },
         "BB": {
           "pct": 0.0,
           "hands": "N/A - BB nao tem RFI",
           "acoes": [],
-          "_fonte": "n/a"
+          "_fonte": "n/a",
+          "grid_pct": 0.0,
+          "combo_pct": 0.0
         }
       },
       "vs_RFI": {
@@ -981,65 +1086,83 @@
       "_nota": "Stack profundo para torneio. Baseado principalmente em PokerCoaching 75bb GTO + RangeConverter 60bb/100bb interpolado. Confianca media.",
       "RFI": {
         "UTG": {
-          "pct": 0.137,
+          "pct": 0.1312,
           "hands": "66+,A3s+,K9s+,Q9s+,AJo+,KQo",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.1312,
+          "combo_pct": 0.1312
         },
         "UTG1": {
-          "pct": 0.163,
+          "pct": 0.1463,
           "hands": "66+,A3s+,K8s+,Q9s+,J9s+,T9s,98s,ATo+",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.1463,
+          "combo_pct": 0.1463
         },
         "UTG2": {
-          "pct": 0.192,
+          "pct": 0.1916,
           "hands": "44+,A2s+,K8s+,Q9s+,J9s+,T8s+,98s,76s,ATo+,KTo+",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.1916,
+          "combo_pct": 0.1916
         },
         "LJ": {
-          "pct": 0.235,
+          "pct": 0.2353,
           "hands": "33+,A2s+,K6s+,Q9s+,J8s+,T8s+,98s,87s,76s,A9o+,KTo+,QTo+",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.2353,
+          "combo_pct": 0.2353
         },
         "HJ": {
           "pct": 0.279,
           "hands": "22+,A2s+,K4s+,Q8s+,J8s+,T7s+,97s+,87s,76s,65s,54s,A8o+,KTo+,QTo+,JTo",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.279,
+          "combo_pct": 0.279
         },
         "CO": {
-          "pct": 0.373,
+          "pct": 0.3725,
           "hands": "22+,A2s+,K2s+,Q5s+,J7s+,T6s+,96s+,86s+,75s+,65s,54s,A5o+,K9o+,Q9o+,J9o+,T9o",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.3725,
+          "combo_pct": 0.3725
         },
         "BTN": {
-          "pct": 0.548,
+          "pct": 0.5475,
           "hands": "22+,A2s+,K2s+,Q2s+,J3s+,T3s+,95s+,85s+,74s+,64s+,53s+,43s,A2o+,K5o+,Q8o+,J8o+,T7o+,97o+,87o",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.5475,
+          "combo_pct": 0.5475
         },
         "SB": {
-          "pct": 0.7,
+          "pct": 0.8462,
           "hands": "22+,A2s+,K2s+,Q2s+,J2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,A2o+,K2o+,Q2o+,J2o+,T3o+,95o+,85o+,75o+,64o+,54o",
           "acoes": [
             "RFI"
-          ]
+          ],
+          "grid_pct": 0.8462,
+          "combo_pct": 0.8462
         },
         "BB": {
           "pct": 0.0,
           "hands": "N/A",
-          "acoes": []
+          "acoes": [],
+          "grid_pct": 0.0,
+          "combo_pct": 0.0
         }
       },
       "vs_RFI": {
@@ -1174,71 +1297,89 @@
       "_nota": "Stack profundo. Todas as fontes cobrem. Alta coerencia. Reg Life cobre 100bb explicitamente.",
       "RFI": {
         "UTG": {
-          "pct": 0.225,
+          "pct": 0.1569,
           "hands": "44+,22,A4s+,K9s+,Q9s+,J9s+,T8s+,98s,AJo+,KQo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/100bb"
+          "_fonte": "reglife_pdf/100bb",
+          "grid_pct": 0.1569,
+          "combo_pct": 0.1569
         },
         "UTG1": {
-          "pct": 0.26,
+          "pct": 0.1885,
           "hands": "22+,A3s+,K8s+,Q9s+,J9s+,T8s+,98s,87s,ATo+,KJo+",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/100bb"
+          "_fonte": "reglife_pdf/100bb",
+          "grid_pct": 0.1885,
+          "combo_pct": 0.1885
         },
         "LJ": {
-          "pct": 0.29,
+          "pct": 0.2157,
           "hands": "22+,A2s+,K7s+,Q9s+,J8s+,T8s+,98s,87s,ATo+,KTo+,QJo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/100bb"
+          "_fonte": "reglife_pdf/100bb",
+          "grid_pct": 0.2157,
+          "combo_pct": 0.2157
         },
         "HJ": {
-          "pct": 0.373,
+          "pct": 0.276,
           "hands": "22+,A2s+,K4s+,Q6s+,J8s+,T7s+,97s+,86s+,76s,65s,A9o+,KTo+,QTo+,JTo",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/100bb"
+          "_fonte": "reglife_pdf/100bb",
+          "grid_pct": 0.276,
+          "combo_pct": 0.276
         },
         "CO": {
-          "pct": 0.467,
+          "pct": 0.3605,
           "hands": "22+,A2s+,K2s+,Q4s+,J6s+,T6s+,96s+,86s+,75s+,65s,54s,A7o+,A5o,K9o+,QTo+,J9o+,T9o",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/100bb"
+          "_fonte": "reglife_pdf/100bb",
+          "grid_pct": 0.3605,
+          "combo_pct": 0.3605
         },
         "BTN": {
-          "pct": 0.669,
+          "pct": 0.5656,
           "hands": "22+,A2s+,K2s+,Q2s+,J2s+,T3s+,95s+,84s+,74s+,63s+,53s+,43s,A2o+,K5o+,Q7o+,J8o+,T7o+,97o+,87o",
           "acoes": [
             "RFI"
           ],
-          "_fonte": "reglife_pdf/100bb"
+          "_fonte": "reglife_pdf/100bb",
+          "grid_pct": 0.5656,
+          "combo_pct": 0.5656
         },
         "SB": {
-          "pct": 0.036,
+          "pct": 0.0241,
           "hands": "ATs+,KJs+,QJs,JTs",
           "acoes": [
             "RFI"
           ],
           "_fonte": "reglife_pdf/100bb",
-          "limp_pct": 0.882,
+          "limp_pct": 0.8492,
           "limp_hands": "22+,AQs+,A2s+,K2s+,Q2s+,J2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,A2o+,K2o+,Q2o+,J2o+,T3o+,95o+,84o+,74o+,64o+,53o+",
           "acoes_limp": [
             "CALL"
-          ]
+          ],
+          "grid_pct": 0.0241,
+          "combo_pct": 0.0241,
+          "limp_grid_pct": 0.8793,
+          "limp_combo_pct": 0.8492
         },
         "BB": {
           "pct": 0.0,
           "hands": "N/A - BB nao tem RFI",
           "acoes": [],
-          "_fonte": "n/a"
+          "_fonte": "n/a",
+          "grid_pct": 0.0,
+          "combo_pct": 0.0
         }
       },
       "vs_RFI": {
