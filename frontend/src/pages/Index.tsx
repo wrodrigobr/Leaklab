@@ -139,8 +139,9 @@ const Index = () => {
   const totalEvents   = tourns.length;
   const totalHands    = tourns.reduce((s, t) => s + (t.hands_count ?? 0), 0);
 
-  const stdPcts   = (evo?.evolution ?? []).map((e) => e.standard_pct).filter((v) => v != null) as number[];
-  const avgStdPct = stdPcts.length > 0 ? stdPcts.reduce((a, b) => a + b, 0) / stdPcts.length : null;
+  const gtoAligned = gtoAlignmentData && gtoAlignmentData.total_with_gto >= 10
+    ? gtoAlignmentData.overall_aligned_pct
+    : null;
 
   const hasData = tourns.length > 0;
 
@@ -331,8 +332,8 @@ const Index = () => {
               <KpiCard
                 index="03"
                 label={t("kpis.standard")}
-                value={avgStdPct != null ? `${avgStdPct.toFixed(1)}%` : tc("labels.noData")}
-                hint={t("kpis.standardHint")}
+                value={gtoAligned != null ? `${gtoAligned.toFixed(1)}%` : tc("labels.noData")}
+                hint={gtoAligned != null ? t("kpis.standardHint", { pct: gtoAlignmentData?.overall_coverage_pct ?? 0 }) : undefined}
                 icon={Coins}
                 tooltip={t("kpis.standardTooltip")}
               />
