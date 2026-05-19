@@ -269,6 +269,7 @@
     "noData": "Import at least 5 tournaments to generate your career projection.",
     "currentLevel": "Current level",
     "currentWindow": "last 5 tournaments",
+    "progressToNext": "of the way to {{next}}",
     "nextLevel": "Next level",
     "monthsAway": "~{{n}} months",
     "tournamentsAway": "{{n}} tournaments",

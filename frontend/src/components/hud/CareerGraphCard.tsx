@@ -27,6 +27,16 @@ const MILESTONE_COLOR: Record<string, string> = {
   elite:    "text-amber-300",
 };
 
+const PROGRESS_COLOR: Record<string, string> = {
+  beginner: "bg-muted-foreground",
+  student:  "bg-blue-400",
+  grinder:  "bg-amber-400",
+  regular:  "bg-emerald-400",
+  solid:    "bg-primary",
+  expert:   "bg-violet-400",
+  elite:    "bg-amber-300",
+};
+
 function Sparkline({ history, projection }: { history: number[]; projection: number[] }) {
   const all    = [...history, ...projection];
   const W      = 260;
@@ -174,10 +184,25 @@ export function CareerGraphCard({ data }: Props) {
 
         {/* Current + Next */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-border bg-background p-3 space-y-1">
+          <div className="rounded-lg border border-border bg-background p-3 space-y-1.5">
             <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("career.currentLevel")}</p>
             <p className={cn("font-mono text-sm font-bold", colorCls)}>{levelName}</p>
             <p className="font-mono text-[10px] text-muted-foreground">{data.current_avg?.toFixed(1)}%</p>
+            {data.level_progress !== undefined && data.next_milestone && (
+              <>
+                <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all duration-700", PROGRESS_COLOR[slug] ?? "bg-primary")}
+                    style={{ width: `${Math.round(data.level_progress * 100)}%` }}
+                  />
+                </div>
+                <p className="font-mono text-[9px] text-muted-foreground/70">
+                  {Math.round(data.level_progress * 100)}% {t("career.progressToNext", {
+                    next: t(`level.names.${data.next_milestone.level_slug}`, { defaultValue: data.next_milestone.level_name }),
+                  })}
+                </p>
+              </>
+            )}
             <p className="font-mono text-[9px] text-muted-foreground/50">{t("career.currentWindow")}</p>
           </div>
           {nm && nm.reachable ? (

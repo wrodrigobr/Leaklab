@@ -1197,10 +1197,8 @@ def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> 
         if not rows:
             return {"level": None, "tournament_count": 0}
 
-        # Garante mínimo de min_tournaments tourneys
-        recent_rows = [r for r in rows
-                       if (r['imported_at'] or '') >= since]
-        use = recent_rows if len(recent_rows) >= min_tournaments else list(rows[:max(min_tournaments, len(rows))])
+        # Usa sempre os últimos min_tournaments torneios (igual ao career projection)
+        use = list(rows[:min_tournaments]) if len(rows) >= min_tournaments else list(rows)
 
         std_values = [r['standard_pct'] for r in use if r['standard_pct'] is not None]
         if not std_values:
@@ -1458,19 +1456,26 @@ def get_career_projection(user_id: int) -> dict:
         for r in blocking_rows
     ]
 
+    lv_span     = current_level["max"] - current_level["min"]
+    lv_progress = round((current_avg - current_level["min"]) / lv_span, 3) if lv_span > 0 else 1.0
+    lv_progress = max(0.0, min(1.0, lv_progress))
+
     return {
-        "insufficient_data":   False,
-        "tournament_count":    n,
-        "current_level":       current_level["name"],
-        "current_level_slug":  current_level["slug"],
-        "current_avg":         current_avg,
+        "insufficient_data":    False,
+        "tournament_count":     n,
+        "current_level":        current_level["name"],
+        "current_level_slug":   current_level["slug"],
+        "current_avg":          current_avg,
+        "level_min":            current_level["min"],
+        "level_max":            current_level["max"],
+        "level_progress":       lv_progress,
         "slope_per_tournament": round(slope, 4),
-        "tourns_per_month":    round(tourns_per_month, 1),
-        "milestones":          milestones,
-        "next_milestone":      next_milestone,
-        "series_history":      series_history,
-        "series_projection":   series_projection,
-        "blocking_leaks":      blocking_leaks,
+        "tourns_per_month":     round(tourns_per_month, 1),
+        "milestones":           milestones,
+        "next_milestone":       next_milestone,
+        "series_history":       series_history,
+        "series_projection":    series_projection,
+        "blocking_leaks":       blocking_leaks,
     }
 
 
@@ -4353,6 +4358,82 @@ def get_gto_quality_breakdown(user_id: int, since_days: int = 90) -> dict:
             'gto_minor_pct':    pct('gto_minor_deviation'),
             'gto_critical_pct': pct('gto_critical'),
             'aligned_pct': round(aligned * 100.0 / total_gto, 1) if total_gto else 0.0,
+        }
+    finally:
+        conn.close()
+
+
+def get_gto_alignment_by_street(user_id: int, since_days: int = 90) -> dict:
+    """GTO alignment breakdown by street for dashboard card."""
+    from datetime import datetime, timedelta
+    conn = get_conn()
+    try:
+        since = (datetime.utcnow() - timedelta(days=since_days)).strftime('%Y-%m-%d %H:%M:%S')
+
+        rows = _fetchall(conn, _adapt("""
+            SELECT
+                d.street,
+                d.gto_label,
+                COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND t.imported_at >= ?
+            GROUP BY d.street, d.gto_label
+        """), (user_id, since))
+
+        total_row = _fetchone(conn, _adapt("""
+            SELECT COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+        """), (user_id, since))
+
+        total_dec = total_row['n'] if total_row else 0
+
+        # Build per-street counts
+        from collections import defaultdict
+        street_counts: dict = defaultdict(lambda: defaultdict(int))
+        for r in rows:
+            street_counts[r['street']][r['gto_label'] or ''] += r['n']
+
+        STREETS = ['preflop', 'flop', 'turn', 'river']
+        by_street = []
+        for s in STREETS:
+            counts = street_counts.get(s, {})
+            total_with_gto = sum(v for k, v in counts.items() if k and k != '')
+            total_street   = sum(counts.values())
+            if total_street == 0:
+                continue
+            correct = counts.get('gto_correct', 0)
+            mixed   = counts.get('gto_mixed', 0)
+            minor   = counts.get('gto_minor_deviation', 0)
+            critical = counts.get('gto_critical', 0)
+            aligned  = correct + mixed
+            by_street.append({
+                'street':        s,
+                'total':         total_street,
+                'with_gto':      total_with_gto,
+                'coverage_pct':  round(total_with_gto * 100.0 / total_street, 1) if total_street else 0.0,
+                'aligned_pct':   round(aligned * 100.0 / total_with_gto, 1) if total_with_gto else 0.0,
+                'correct_pct':   round(correct  * 100.0 / total_with_gto, 1) if total_with_gto else 0.0,
+                'mixed_pct':     round(mixed    * 100.0 / total_with_gto, 1) if total_with_gto else 0.0,
+                'minor_pct':     round(minor    * 100.0 / total_with_gto, 1) if total_with_gto else 0.0,
+                'critical_pct':  round(critical * 100.0 / total_with_gto, 1) if total_with_gto else 0.0,
+            })
+
+        # Overall totals across all streets with gto_label
+        all_gto = sum(s['with_gto'] for s in by_street)
+        all_aligned = sum(
+            street_counts[s].get('gto_correct', 0) + street_counts[s].get('gto_mixed', 0)
+            for s in STREETS
+        )
+        return {
+            'total_decisions': total_dec,
+            'total_with_gto':  all_gto,
+            'overall_coverage_pct': round(all_gto * 100.0 / total_dec, 1) if total_dec else 0.0,
+            'overall_aligned_pct':  round(all_aligned * 100.0 / all_gto, 1) if all_gto else 0.0,
+            'by_street': by_street,
         }
     finally:
         conn.close()

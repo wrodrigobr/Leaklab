@@ -269,6 +269,7 @@
     "noData": "Importa al menos 5 torneos para generar tu proyección de carrera.",
     "currentLevel": "Nivel actual",
     "currentWindow": "últimos 5 torneos",
+    "progressToNext": "del camino hacia {{next}}",
     "nextLevel": "Próximo nivel",
     "monthsAway": "~{{n}} meses",
     "tournamentsAway": "{{n}} torneos",

@@ -1327,7 +1327,7 @@ _LANG_CAREER = {
 def generate_career_narrative(projection: dict, lang: str = 'pt-BR') -> str:
     """2-3 sentences: current trajectory, next milestone, key blocker."""
     cache_key = (
-        f"career_{lang}_{projection.get('current_level_slug','?')}_"
+        f"career2_{lang}_{projection.get('current_level_slug','?')}_"
         f"{projection.get('current_avg', 0):.1f}_"
         + "_".join(lk['spot'] for lk in projection.get('blocking_leaks', [])[:2])
     )
@@ -1361,7 +1361,8 @@ def _call_career_narrative(projection: dict, lang: str) -> str:
         "Write EXACTLY 2-3 sentences summarizing: (1) the player's current trajectory "
         "(improving/flat/declining), (2) when they'll reach the next level if on track, "
         "(3) the single most important leak to fix to accelerate that. "
-        "Be direct and specific. No headers or bullets."
+        "CRITICAL: Use ONLY the exact level names provided in the context (e.g. Grinder, Regular, Sólido, Expert, Elite). "
+        "Never invent or substitute different level names. Be direct and specific. No headers or bullets."
     )
     user_content = (
         f"Current level: {projection['current_level']} ({projection['current_avg']:.1f}% standard). "

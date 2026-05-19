@@ -802,6 +802,9 @@ export interface CareerProjection {
   current_level?: string;
   current_level_slug?: string;
   current_avg?: number;
+  level_min?: number;
+  level_max?: number;
+  level_progress?: number;
   slope_per_tournament?: number;
   tourns_per_month?: number;
   milestones?: CareerMilestone[];

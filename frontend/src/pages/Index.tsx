@@ -19,7 +19,6 @@ import { GtoAlignmentCard } from "@/components/hud/GtoAlignmentCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { OnboardingModal } from "@/components/hud/OnboardingModal";
 import { SupportModal } from "@/components/hud/SupportModal";
-import { LevelCard } from "@/components/hud/LevelCard";
 import { PressureProfileCard } from "@/components/hud/PressureProfileCard";
 import { PlayerDnaCard } from "@/components/hud/PlayerDnaCard";
 import { DailyFocusCard } from "@/components/hud/DailyFocusCard";
@@ -149,12 +148,6 @@ const Index = () => {
 
   const hasData = tourns.length > 0;
 
-  const { data: levelData } = useQuery({
-    queryKey: ["player-level", refreshKey],
-    queryFn: metrics.level,
-    staleTime: 60_000,
-  });
-
   const { data: pendingGtoData } = useQuery({
     queryKey: ["pending-gto", refreshKey],
     queryFn: metrics.pendingGtoCount,
@@ -214,11 +207,7 @@ const Index = () => {
         />
       </DraggableCard>
     ) : <div key={id} />;
-    if (id === "level") return levelData?.level ? (
-      <DraggableCard key={id} id={id}>
-        <LevelCard data={levelData} showStudyLink />
-      </DraggableCard>
-    ) : <div key={id} />;
+    if (id === "level") return null;
     if (id === "twin") return (
       <DraggableCard key={id} id={id}>
         <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />
