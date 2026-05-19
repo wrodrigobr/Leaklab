@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.114.0] — 2026-05-19 — feat(data-quality): cobertura preflop 98% — LJ push/fold + BB free-play
+
+### Added
+- **`leaklab_gto_ranges.json`**: posição `LJ` adicionada ao `push_fold` nos buckets `10bb`, `14bb` e `20bb` (baseada em UTG1 — posição adjacente em 6-max). Cobre casos `UTG+2` vs `UTG+1` que falhavam por alias
+- **`sync_gto_labels_from_ranges.py`**: caso especial para BB free-play — quando BB checa sem facing bet, classifica automaticamente como `gto_correct` (ação trivialmente correta)
+
+### Result
+- Cobertura preflop: **696/704 (98%)** — antes ~79%, agora 8 restantes genuinamente irredutíveis
+- Distribuição final: 527 `gto_correct` · 138 `gto_critical` · 22 `gto_minor_deviation` · 9 `gto_mixed`
+- 8 casos irredutíveis documentados: 3x 3-bet sem `vs_position` (pipeline gap), 2x >100bb (sem dados), 1x BTN vs SB (ausente do RegLife), 2x outros
+
+---
+
 ## [v0.113.0] — 2026-05-19 — fix(ranges): remover bluff-shoves trash offsuit de vs_RFI
 
 ### Fixed

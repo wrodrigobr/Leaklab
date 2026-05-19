@@ -81,6 +81,12 @@ def main():
         vs_pos     = r["vs_position"] or ""
         is_3bet    = bool(r["is_3bet"])
         action     = (r["action_taken"] or "").lower()
+        best       = (r["best_action"] or "").lower()
+
+        # BB free play: no facing bet, BB checks — always correct
+        if pos.upper() == "BB" and facing_bb == 0 and action == "check":
+            updates.append(("gto_correct", "check", r["id"]))
+            continue
 
         try:
             result = analyze_preflop(

@@ -269,6 +269,30 @@
             "shove_pct": 0.5701,
             "_source": "pushfold_gto_12bb"
           }
+        },
+        "BB": {
+          "10bb": {
+            "shove_hands": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AKs,AQs,AJs,ATs,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s,KQs,KJs,KTs,K9s,K8s,K7s,K6s,K5s,K4s,K3s,K2s,QJs,QTs,Q9s,Q8s,Q7s,Q6s,J9s,JTs,T9s,98s,87s,76s,65s,54s,AKo,AQo,AJo,ATo,A9o,A8o,A7o,A6o,A5o,A4o,KQo,KJo,KTo,K9o,QJo,QTo,JTo",
+            "shove_pct": 0.55,
+            "_source": "push_fold_gto_bb_10bb"
+          },
+          "12bb": {
+            "shove_hands": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AKs,AQs,AJs,ATs,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s,KQs,KJs,KTs,K9s,K8s,K7s,K6s,K5s,KQo+,KJs+,K9s,AKo,AQo,AJo,ATo,A9o,A8o,A7o,KQo,KJo,QJo",
+            "shove_pct": 0.42,
+            "_source": "push_fold_gto_bb_10bb"
+          }
+        },
+        "LJ": {
+          "10bb": {
+            "shove_hands": "22+, A2s+, A5o+, K9s+, KTo+, QTs+, JTs, T9s",
+            "shove_pct": 0.3258,
+            "_source": "pushfold_gto_10bb"
+          },
+          "12bb": {
+            "shove_hands": "22+, A2s+, A7o+, K9s+, KJo+, QTs+, JTs, T9s",
+            "shove_pct": 0.2986,
+            "_source": "pushfold_gto_12bb"
+          }
         }
       }
     },
@@ -592,6 +616,18 @@
             "call_hands": "55,44,33,22,A3s+,K3s,Q5s,J5s,T5s,63s+,52s+,42s+,32s,A2o+,K3o+,Q4o+,J5o+,T3o+,94o+,92o,83o+,72o+,62o+,52o+,42o+,32o",
             "raise_hands": "AA,KK,66,AQs+,A5s+,KQs,K5s+,QJs,Q6s,Q2s+,J6s,J2s+,T6s,T2s+,65s,AKo,A6o,J4o,96o,93o",
             "allin_hands": ""
+          },
+          "BB": {
+            "fold_pct": 0.184,
+            "call_pct": 0.7149,
+            "raise_pct": 0.1011,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.816,
+            "fold_hands": "A3s+,K2s,Q2s,J2s,A2o,K2o+,Q2o+,J2o+,T2o+,92o,82o",
+            "call_hands": "KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,A9s+,A7s,A2s,K7s+,K3s+,Q7s+,Q3s+,J7s+,J3s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AKo,A3o+,KQo,K6o+,QTo+,Q6o+,J9o+,J6o+,T7o+,T4o+,96o+,93o+,85o+,83o,73o+,62o+,52o+,42o+,32o",
+            "raise_hands": "AA,AKs,A8s,K5s+,Q5s+,J5s+,AQo,KJo,Q9o,J8o,T6o,95o,84o,72o",
+            "allin_hands": "",
+            "_source": "interpolated_hj_btn_14bb"
           }
         },
         "UTG": {
@@ -696,6 +732,13 @@
           "15bb": {
             "shove_hands": "22+, A2s+, A2o+, K2s+, K6o+, Q2s+, Q5o+, J3s+, J7o+, T6s+, T8o+, 97s+, 65s+",
             "shove_pct": 0.5913,
+            "_source": "pushfold_gto_15bb"
+          }
+        },
+        "LJ": {
+          "15bb": {
+            "shove_hands": "33+, A2s+, A8o+, KTs+, KJo+, QTs+, JTs, T9s",
+            "shove_pct": 0.2745,
             "_source": "pushfold_gto_15bb"
           }
         }
@@ -1100,6 +1143,18 @@
             "call_hands": "55,33,ATs+,A3s+,KJs,K3s+,Q5s,Q3s,J5s,J3s,T5s,T3s,63s+,53s+,43s,AKo,A2o+,K2o+,Q6o,Q4o,J5o+,J3o,T3o+,94o+,92o,82o+,72o+,62o+,52o+,32o",
             "raise_hands": "AA,KK,66,44,22,AQs+,A5s+,KQs,K5s+,QJs,Q6s,Q4s,Q2s,J6s,J4s,J2s,T8s,T6s,T4s,T2s,65s,52s,42s,32s,A6o,Q5o,J4o,93o",
             "allin_hands": ""
+          },
+          "BB": {
+            "fold_pct": 0.1357,
+            "call_pct": 0.598,
+            "raise_pct": 0.2662,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.8643,
+            "fold_hands": "A3s+,Q2s+,J2s+,K2o+,Q2o+,J2o+,T2o,92o,82o",
+            "call_hands": "KK,QQ,JJ,TT,99,88,77,55,33,ATs+,A7s,A2s,K7s+,Q4s+,J4s+,T7s+,T5s,T3s,97s+,95s,93s,87s,85s,83s,75s,73s,65s,63s,53s,43s,AKo,A2o+,KQo,K6o+,QTo+,Q6o+,J9o+,J5o+,T3o+,96o+,93o+,83o+,72o+,52o+,32o",
+            "raise_hands": "AA,66,44,22,A8s+,K2s+,T6s,T4s,T2s,96s,94s,92s,86s,84s,82s,76s,74s,72s,64s,62s,54s,52s,42s,32s,AQo,KJo,Q9o,J8o,95o",
+            "allin_hands": "",
+            "_source": "interpolated_mp_btn_20bb"
           }
         }
       },
@@ -1136,6 +1191,13 @@
           "20bb_pf": {
             "shove_hands": "22+, A2s+, A2o+, K2s+, K7o+, Q6s+, Q9o+, J7s+, J9o+, T8s+, 98s, 87s",
             "shove_pct": 0.4766,
+            "_source": "pushfold_gto_20bb_pf"
+          }
+        },
+        "LJ": {
+          "20bb_pf": {
+            "shove_hands": "44+, A2s+, ATo+, KJs+, KQo, QJs",
+            "shove_pct": 0.2232,
             "_source": "pushfold_gto_20bb_pf"
           }
         }
@@ -2625,6 +2687,18 @@
             "allin_pct": 0.0,
             "aggr_pct": 0.4269,
             "_source": "interpolated_reglife"
+          },
+          "BB": {
+            "fold_pct": 0.2707,
+            "call_pct": 0.4714,
+            "raise_pct": 0.258,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.7293,
+            "fold_hands": "77,A2s+,Q2s+,J2s+,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+",
+            "call_hands": "AA,KK,QQ,JJ,TT,99,88,AKs,A7s+,K7s+,Q4s+,J4s+,T7s+,97s+,87s,AKo,A9o+,KQo,K9o+,QJo,Q7o+,J7o+,T5o+,94o+,84o+,72o+",
+            "raise_hands": "66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QTo",
+            "allin_hands": "",
+            "_source": "interpolated"
           }
         }
       },
@@ -3042,6 +3116,18 @@
             "call_hands": "QQ,ATs+,A7s+,KTs+,Q4s+,J6s,QTo+,J8o+,T6o+,95o+,84o+,72o",
             "raise_hands": "AA,KK,66,55,44,33,22,AKs,A9s,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo+,KJo+",
             "allin_hands": ""
+          },
+          "BB": {
+            "fold_pct": 0.3153,
+            "call_pct": 0.4314,
+            "raise_pct": 0.2534,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.6847,
+            "fold_hands": "77,A2s+,Q2s+,J2s+,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+",
+            "call_hands": "AA,KK,QQ,JJ,TT,99,88,AKs,A7s+,K7s+,Q4s+,J4s+,T7s+,97s+,87s,AKo,A9o+,KQo,K9o+,QJo,Q7o+,J7o+,T5o+,94o+,84o+,72o+",
+            "raise_hands": "66,55,44,33,22,AQs,KQs,K2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,AQo,KJo,QTo",
+            "allin_hands": "",
+            "_source": "interpolated"
           }
         }
       },
