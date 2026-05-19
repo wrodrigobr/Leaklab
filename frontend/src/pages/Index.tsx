@@ -11,10 +11,10 @@ import { BankrollChart } from "@/components/hud/BankrollChart";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { DecisionQualityCard } from "@/components/hud/DecisionQualityCard";
 import { GtoPositionCard } from "@/components/hud/GtoPositionCard";
-import { RecentForm } from "@/components/hud/RecentForm";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { GtoAlignmentCard } from "@/components/hud/GtoAlignmentCard";
+import { GtoQualityCard } from "@/components/hud/GtoQualityCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { OnboardingModal } from "@/components/hud/OnboardingModal";
 import { SupportModal } from "@/components/hud/SupportModal";
@@ -28,7 +28,7 @@ import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // Module-level cache — survives unmount/remount during SPA navigation
@@ -167,11 +167,17 @@ const Index = () => {
     staleTime: 120_000,
   });
 
+  const { data: gtoQualityData } = useQuery<GtoQualityData>({
+    queryKey: ["gto-quality", refreshKey],
+    queryFn: metrics.gtoQuality,
+    staleTime: 120_000,
+  });
+
   const renderMainRow = (id: MainSection) => {
     if (id === "quality_row") return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <RecentForm evolution={evo?.evolution} />
         <DecisionQualityCard byLabel={breakdown?.by_label} />
+        <GtoQualityCard data={gtoQualityData} />
       </div>
     );
     if (id === "bankroll_row") return <BankrollChart />;
