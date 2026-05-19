@@ -9,6 +9,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.115.0] — 2026-05-19 — fix(data): reconciliar label vs gto_label — zero conflitos
+
+### Fixed
+- **Desacordo `label`/`gto_label`**: dashboard dizia "Standard" enquanto Replayer mostrava erro GTO crítico. 173 decisões em 6 torneios reconciliadas usando regra de prioridade: GTO é autoritativo para direção (correto vs erro); quando ambos apontam erro, mantém o mais severo
+- **98 `standard → small_mistake`**: engine disse ok, GTO disse crítico
+- **61 upgrades** (43 `marginal→standard` + 18 `small_mistake→standard`): engine disse erro, GTO confirmou play correto
+- **3 `marginal → small_mistake`** + **11 `clear_mistake → standard`**: ajustes de severidade
+- `standard_pct` recalculado para todos os 6 torneios afetados
+- `scripts/reconcile_labels_with_gto.py` adicionado para re-execução futura após novos uploads
+
+### Result
+- Zero conflitos `label`/`gto_label` na base — o que o dashboard mostra é o que o Replayer confirma
+
+---
+
 ## [v0.114.0] — 2026-05-19 — feat(data-quality): cobertura preflop 98% — LJ push/fold + BB free-play
 
 ### Added
