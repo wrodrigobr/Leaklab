@@ -1,0 +1,542 @@
+[
+  {
+    "stack": "10bb",
+    "position": "UTG",
+    "our_raise_pct": 0.1704,
+    "gw_found": true,
+    "gw_raise_pct": 0.1306,
+    "diff": 0.0398,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "10bb",
+    "position": "LJ",
+    "our_raise_pct": 0.2278,
+    "gw_found": true,
+    "gw_raise_pct": 0.2075,
+    "diff": 0.0203,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "10bb",
+    "position": "HJ",
+    "our_raise_pct": 0.276,
+    "gw_found": true,
+    "gw_raise_pct": 0.2421,
+    "diff": 0.0339,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "10bb",
+    "position": "CO",
+    "our_raise_pct": 0.3092,
+    "gw_found": true,
+    "gw_raise_pct": 0.2824,
+    "diff": 0.0268,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "10bb",
+    "position": "BTN",
+    "our_raise_pct": 0.3756,
+    "gw_found": true,
+    "gw_raise_pct": 0.3268,
+    "diff": 0.0488,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "10bb",
+    "position": "SB",
+    "our_raise_pct": 0.4811,
+    "gw_found": true,
+    "gw_raise_pct": 0.4857,
+    "diff": -0.0046,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "14bb",
+    "position": "UTG",
+    "our_raise_pct": 0.1493,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "14bb",
+    "position": "LJ",
+    "our_raise_pct": 0.2036,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "14bb",
+    "position": "HJ",
+    "our_raise_pct": 0.2443,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "14bb",
+    "position": "CO",
+    "our_raise_pct": 0.2971,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "14bb",
+    "position": "BTN",
+    "our_raise_pct": 0.3816,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "14bb",
+    "position": "SB",
+    "our_raise_pct": 0.3846,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "20bb",
+    "position": "UTG",
+    "our_raise_pct": 0.1644,
+    "gw_found": true,
+    "gw_raise_pct": 0.1723,
+    "diff": -0.0079,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "20bb",
+    "position": "LJ",
+    "our_raise_pct": 0.2142,
+    "gw_found": true,
+    "gw_raise_pct": 0.2157,
+    "diff": -0.0015,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "20bb",
+    "position": "HJ",
+    "our_raise_pct": 0.2564,
+    "gw_found": true,
+    "gw_raise_pct": 0.2601,
+    "diff": -0.0037,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "20bb",
+    "position": "CO",
+    "our_raise_pct": 0.3152,
+    "gw_found": true,
+    "gw_raise_pct": 0.2942,
+    "diff": 0.021,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "20bb",
+    "position": "BTN",
+    "our_raise_pct": 0.4087,
+    "gw_found": true,
+    "gw_raise_pct": 0.3314,
+    "diff": 0.0773,
+    "verdict": "close",
+    "error": null
+  },
+  {
+    "stack": "20bb",
+    "position": "SB",
+    "our_raise_pct": 0.4087,
+    "gw_found": true,
+    "gw_raise_pct": 0.3113,
+    "diff": 0.0974,
+    "verdict": "close",
+    "error": null
+  },
+  {
+    "stack": "30bb",
+    "position": "UTG",
+    "our_raise_pct": 0.1976,
+    "gw_found": true,
+    "gw_raise_pct": 0.1902,
+    "diff": 0.0074,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "30bb",
+    "position": "LJ",
+    "our_raise_pct": 0.2489,
+    "gw_found": true,
+    "gw_raise_pct": 0.2534,
+    "diff": -0.0045,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "30bb",
+    "position": "HJ",
+    "our_raise_pct": 0.2956,
+    "gw_found": true,
+    "gw_raise_pct": 0.2958,
+    "diff": -0.0002,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "30bb",
+    "position": "CO",
+    "our_raise_pct": 0.3801,
+    "gw_found": true,
+    "gw_raise_pct": 0.3715,
+    "diff": 0.0086,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "30bb",
+    "position": "BTN",
+    "our_raise_pct": 0.4887,
+    "gw_found": true,
+    "gw_raise_pct": 0.4884,
+    "diff": 0.0003,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "30bb",
+    "position": "SB",
+    "our_raise_pct": 0.4314,
+    "gw_found": true,
+    "gw_raise_pct": 0.2982,
+    "diff": 0.1332,
+    "verdict": "divergence",
+    "error": null
+  },
+  {
+    "stack": "40bb",
+    "position": "UTG",
+    "our_raise_pct": 0.1538,
+    "gw_found": true,
+    "gw_raise_pct": 0.1906,
+    "diff": -0.0368,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "40bb",
+    "position": "LJ",
+    "our_raise_pct": 0.2353,
+    "gw_found": true,
+    "gw_raise_pct": 0.256,
+    "diff": -0.0207,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "40bb",
+    "position": "HJ",
+    "our_raise_pct": 0.276,
+    "gw_found": true,
+    "gw_raise_pct": 0.2936,
+    "diff": -0.0176,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "40bb",
+    "position": "CO",
+    "our_raise_pct": 0.3967,
+    "gw_found": true,
+    "gw_raise_pct": 0.3696,
+    "diff": 0.0271,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "40bb",
+    "position": "BTN",
+    "our_raise_pct": 0.5626,
+    "gw_found": true,
+    "gw_raise_pct": 0.5104,
+    "diff": 0.0522,
+    "verdict": "close",
+    "error": null
+  },
+  {
+    "stack": "40bb",
+    "position": "SB",
+    "our_raise_pct": 0.4314,
+    "gw_found": true,
+    "gw_raise_pct": 0.2925,
+    "diff": 0.1389,
+    "verdict": "divergence",
+    "error": null
+  },
+  {
+    "stack": "50bb",
+    "position": "UTG",
+    "our_raise_pct": 0.1719,
+    "gw_found": true,
+    "gw_raise_pct": 0.1774,
+    "diff": -0.0055,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "50bb",
+    "position": "LJ",
+    "our_raise_pct": 0.2579,
+    "gw_found": true,
+    "gw_raise_pct": 0.2493,
+    "diff": 0.0086,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "50bb",
+    "position": "HJ",
+    "our_raise_pct": 0.2881,
+    "gw_found": true,
+    "gw_raise_pct": 0.2963,
+    "diff": -0.0082,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "50bb",
+    "position": "CO",
+    "our_raise_pct": 0.3695,
+    "gw_found": true,
+    "gw_raise_pct": 0.3762,
+    "diff": -0.0067,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "50bb",
+    "position": "BTN",
+    "our_raise_pct": 0.5385,
+    "gw_found": true,
+    "gw_raise_pct": 0.5404,
+    "diff": -0.0019,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "50bb",
+    "position": "SB",
+    "our_raise_pct": 0.2308,
+    "gw_found": true,
+    "gw_raise_pct": 0.2169,
+    "diff": 0.0139,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "75bb",
+    "position": "UTG",
+    "our_raise_pct": 0.1312,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "75bb",
+    "position": "LJ",
+    "our_raise_pct": 0.2353,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "75bb",
+    "position": "HJ",
+    "our_raise_pct": 0.279,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "75bb",
+    "position": "CO",
+    "our_raise_pct": 0.3725,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "75bb",
+    "position": "BTN",
+    "our_raise_pct": 0.5475,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "75bb",
+    "position": "SB",
+    "our_raise_pct": 0.1282,
+    "gw_found": false,
+    "gw_raise_pct": null,
+    "diff": null,
+    "verdict": null,
+    "error": "http_404"
+  },
+  {
+    "stack": "100bb",
+    "position": "UTG",
+    "our_raise_pct": 0.1569,
+    "gw_found": true,
+    "gw_raise_pct": 0.1648,
+    "diff": -0.0079,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "100bb",
+    "position": "LJ",
+    "our_raise_pct": 0.2157,
+    "gw_found": true,
+    "gw_raise_pct": 0.2183,
+    "diff": -0.0026,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "100bb",
+    "position": "HJ",
+    "our_raise_pct": 0.276,
+    "gw_found": true,
+    "gw_raise_pct": 0.2786,
+    "diff": -0.0026,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "100bb",
+    "position": "CO",
+    "our_raise_pct": 0.3605,
+    "gw_found": true,
+    "gw_raise_pct": 0.3632,
+    "diff": -0.0027,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "100bb",
+    "position": "BTN",
+    "our_raise_pct": 0.5656,
+    "gw_found": true,
+    "gw_raise_pct": 0.5592,
+    "diff": 0.0064,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "100bb",
+    "position": "SB",
+    "our_raise_pct": 0.0241,
+    "gw_found": true,
+    "gw_raise_pct": 0.0994,
+    "diff": -0.0753,
+    "verdict": "close",
+    "error": null
+  },
+  {
+    "stack": "17bb",
+    "position": "UTG",
+    "our_raise_pct": 0.1508,
+    "gw_found": true,
+    "gw_raise_pct": 0.1578,
+    "diff": -0.007,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "17bb",
+    "position": "LJ",
+    "our_raise_pct": 0.2051,
+    "gw_found": true,
+    "gw_raise_pct": 0.157,
+    "diff": 0.0481,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "17bb",
+    "position": "HJ",
+    "our_raise_pct": 0.2413,
+    "gw_found": true,
+    "gw_raise_pct": 0.1762,
+    "diff": 0.0651,
+    "verdict": "close",
+    "error": null
+  },
+  {
+    "stack": "17bb",
+    "position": "CO",
+    "our_raise_pct": 0.3017,
+    "gw_found": true,
+    "gw_raise_pct": 0.2551,
+    "diff": 0.0466,
+    "verdict": "agreement",
+    "error": null
+  },
+  {
+    "stack": "17bb",
+    "position": "BTN",
+    "our_raise_pct": 0.3906,
+    "gw_found": true,
+    "gw_raise_pct": 0.2918,
+    "diff": 0.0988,
+    "verdict": "close",
+    "error": null
+  },
+  {
+    "stack": "17bb",
+    "position": "SB",
+    "our_raise_pct": 0.3997,
+    "gw_found": true,
+    "gw_raise_pct": 0.3384,
+    "diff": 0.0613,
+    "verdict": "close",
+    "error": null
+  }
+]

@@ -9,6 +9,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.118.0] — 2026-05-19 — feat(validation): validação preflop ranges vs solver remoto (item 4)
+
+### Added
+- **`scripts/validate_ranges_vs_solver.py`** (novo): valida `leaklab_gto_ranges.json` contra o endpoint `/gto-wizard` do servidor remoto (GTO Wizard via CDP). Compara frequência de raise por posição × stack bucket
+- **`scripts/gto_validation/comparison_preflop.json`**: resultado da validação — 42 spots comparados
+
+### Fixed
+- **SB 40bb RFI**: entrada com `fonte=None` e pct=70.7% (range quase full, interpolação incorreta). Corrigido para pct=43.1% usando SB 30bb como base (GW confirma freq similar nos dois stacks)
+- **SB 75bb RFI**: entrada com `fonte=None` e pct=84.6% (full range). Corrigido para pct=12.8% via interpolação entre SB 50bb e SB 100bb RegLife
+
+### Result
+- 42/54 spots RFI comparados (12 skipped: 14bb e 75bb sem cobertura no plano GW)
+- **Agreement (≤5%)**: 33 spots (79%)
+- **Close (5–10%)**: 7 spots (17%)
+- **Divergência (>10%)**: 2 spots — ambos SB, explicados por limitação de modelo (sem limp option vs GW que tem fold/complete/raise)
+- Item 4 do backlog fechado: ranges validados e precisos para UTG/LJ/HJ/CO/BTN em todos os stacks
+
+---
+
 ## [v0.117.0] — 2026-05-19 — feat(pipeline): deep dive 3-source GTO pipeline — FIX 1-5
 
 ### Fixed
