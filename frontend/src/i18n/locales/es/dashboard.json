@@ -159,6 +159,16 @@
     "minor": "Desviación menor",
     "critical": "Desviación crítica"
   },
+  "gtoAlignment": {
+    "title": "Alineamiento GTO por Street",
+    "tooltip": "Desglose del alineamiento GTO por preflop, flop, turn y river — identifica en qué fase del juego hay mayor divergencia del solver.",
+    "coverage": "{{n}} decisiones ({{pct}}% cobertura)",
+    "alignedLabel": "alineado con GTO (general)",
+    "street_preflop": "Preflop",
+    "street_flop": "Flop",
+    "street_turn": "Turn",
+    "street_river": "River"
+  },
   "level": {
     "tooltip": "Tu nivel actual basado en el promedio de Standard% de tus torneos recientes. Cada nivel exige un umbral más alto de decisiones correctas — avanzar significa que tus errores han disminuido consistentemente.",
     "title": "Mi Nivel",

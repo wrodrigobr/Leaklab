@@ -470,6 +470,26 @@ export interface GtoQualityData {
   aligned_pct: number;
 }
 
+export interface GtoAlignmentStreet {
+  street: string;
+  total: number;
+  with_gto: number;
+  coverage_pct: number;
+  aligned_pct: number;
+  correct_pct: number;
+  mixed_pct: number;
+  minor_pct: number;
+  critical_pct: number;
+}
+
+export interface GtoAlignmentData {
+  total_decisions: number;
+  total_with_gto: number;
+  overall_coverage_pct: number;
+  overall_aligned_pct: number;
+  by_street: GtoAlignmentStreet[];
+}
+
 export interface PlayerStatsResponse {
   total_hands: number;
   vpip: number | null;
@@ -699,6 +719,9 @@ export const metrics = {
 
   gtoQuality: () =>
     request<GtoQualityData>(`/player/gto-quality`),
+
+  gtoAlignment: () =>
+    request<GtoAlignmentData>(`/player/gto-alignment`),
 
   dna: (days = 90) =>
     request<PlayerDnaResponse>(`/player/dna?days=${days}`),

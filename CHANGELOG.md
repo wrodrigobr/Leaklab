@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.120.0] — 2026-05-19 — feat(dashboard): GtoAlignmentCard — breakdown GTO por street (item 5)
+
+### Added
+- **`GET /player/gto-alignment`**: novo endpoint que retorna breakdown de alinhamento GTO por preflop/flop/turn/river — total, cobertura%, aligned%, correct/mixed/minor/critical por street
+- **`repositories.get_gto_alignment_by_street()`**: query GROUP BY street com todas as métricas; janela de 90 dias
+- **`frontend/src/components/hud/GtoAlignmentCard.tsx`**: card no dashboard com overall aligned%, mini stacked bar por street e cobertura
+- **`frontend/src/lib/api.ts`**: interfaces `GtoAlignmentData` + `GtoAlignmentStreet`; função `metrics.gtoAlignment()`
+- **i18n** (`pt-BR`, `en`, `es`): chave `gtoAlignment.*` em `dashboard.json`
+
+### Backlog
+- Item 5a (heatmap posição × street) adicionado ao backlog futuro — requer volume suficiente por (street × posição) para ser útil
+
+---
+
 ## [v0.119.0] — 2026-05-19 — fix(preflop): SB complete aceitável em stacks sem limp_hands (Opção 2)
 
 ### Fixed

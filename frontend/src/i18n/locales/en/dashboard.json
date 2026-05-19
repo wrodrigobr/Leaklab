@@ -159,6 +159,16 @@
     "minor": "Minor deviation",
     "critical": "Critical deviation"
   },
+  "gtoAlignment": {
+    "title": "GTO Alignment by Street",
+    "tooltip": "GTO alignment breakdown by preflop, flop, turn, and river — identifies which phase of the game has the most solver divergence.",
+    "coverage": "{{n}} decisions ({{pct}}% coverage)",
+    "alignedLabel": "aligned with GTO (overall)",
+    "street_preflop": "Preflop",
+    "street_flop": "Flop",
+    "street_turn": "Turn",
+    "street_river": "River"
+  },
   "level": {
     "tooltip": "Your current level based on your average Standard% across recent tournaments. Each level requires a higher threshold of correct decisions — advancing means your mistakes have consistently decreased.",
     "title": "My Level",
