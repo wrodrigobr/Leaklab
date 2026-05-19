@@ -3245,26 +3245,26 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 else:
                     is_error        = True
                     reconciled_best = live_top_act
-                # Corrigir gto_action no banco se diferente do live top action
-                if decision and gto_action and _norm(live_top_act) != _norm(gto_action):
-                    try:
-                        from database.repositories import update_decision_gto as _upd_gto
-                        _live_gto_label = (
-                            'gto_correct' if live_freq >= 0.40 else
-                            'gto_mixed'   if live_freq >= 0.15 else
-                            'gto_critical'
-                        )
-                        # Encontrar id da decision pelo street + action para atualizar
-                        _dec_id = next(
-                            (d.get('id') for d in _db_hand
-                             if _norm(d.get('street','')) == _norm(action.street)
-                             and _norm(d.get('action_taken','')) == acted_norm),
-                            None,
-                        )
-                        if _dec_id:
-                            _upd_gto(_dec_id, _live_gto_label, live_top_act)
-                    except Exception:
-                        pass
+                # Sempre persiste o veredicto do solver — ele tem prioridade sobre RegLife
+                try:
+                    from database.repositories import update_decision_gto as _upd_gto
+                    # Thresholds alinhados com effectiveGtoLabel do frontend
+                    _live_gto_label = (
+                        'gto_correct'         if live_freq >= 0.60 else
+                        'gto_mixed'           if live_freq >= 0.30 else
+                        'gto_minor_deviation' if live_freq >= 0.10 else
+                        'gto_critical'
+                    )
+                    _dec_id = next(
+                        (d.get('id') for d in _db_hand
+                         if _norm(d.get('street','')) == _norm(action.street)
+                         and _norm(d.get('action_taken','')) == acted_norm),
+                        None,
+                    )
+                    if _dec_id:
+                        _upd_gto(_dec_id, _live_gto_label, live_top_act)
+                except Exception:
+                    pass
 
         timeline.append(snap({
             'type':               'action',
