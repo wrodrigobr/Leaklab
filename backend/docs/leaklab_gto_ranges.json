@@ -1,7 +1,7 @@
 {
   "_metadata": {
     "projeto": "LeakLab",
-    "versao": "2.2.0",
+    "versao": "2.3.0",
     "descricao": "Ranges GTO preflop para MTT 8-max com ante de 1bb. RFI atualizado com dados RegLife (solver-generated) via pixel analysis. vs_RFI preservado da versÃ£o anterior.",
     "formato": "MTT 8-max com ante de 1bb",
     "fontes": [
@@ -37,7 +37,8 @@
     "num_players": 8,
     "ultima_atualizacao": "2026-05-19",
     "nota_pct": "pct = combo_pct (combos reais / 1326). grid_pct = celulas do grid 13x13 / 169 (sempre maior que combo_pct). Use pct/combo_pct para comparar com GTO Wizard e documentos externos.",
-    "nota_vsrfi": "vs_RFI[opener][defender]: fold/call/raise(3bet-size)/allin(3bet-push). Todos os pct sao combo_pct (/ 1326)."
+    "nota_vsrfi": "vs_RFI[opener][defender]: fold/call/raise(3bet-size)/allin(3bet-push). Todos os pct sao combo_pct (/ 1326).",
+    "nota_vsrfi_interp": "40bb e 75bb vs_RFI interpolados como media 50/50 dos stacks RegLife vizinhos. 40bb=(30bb+50bb)/2, 75bb=(50bb+100bb)/2. Handstrings omitidas (sem interpolacao de texto). Spots marcados com _source='interpolated_reglife'."
   },
   "stack_buckets": {
     "10bb": {
@@ -1507,61 +1508,242 @@
         }
       },
       "vs_RFI": {
-        "UTG_open": {
-          "HJ": {
-            "pct_play": 0.11,
-            "hands": "JJ+,AQs+,AKo",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
-          },
-          "CO": {
-            "pct_play": 0.14,
-            "hands": "TT+,AJs+,AQo+,KQs",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
-          },
-          "BTN": {
-            "pct_play": 0.17,
-            "hands": "88+,ATs+,AJo+,KQs,QJs",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
-          },
+        "BTN": {
           "BB": {
-            "pct_play": 0.2,
-            "hands": "77+,ATs+,AJo+,KQs,QJs,JTs,T9s",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
+            "fold_pct": 0.1402,
+            "call_pct": 0.5233,
+            "raise_pct": 0.3363,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.8597,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.543,
+            "call_pct": 0.1508,
+            "raise_pct": 0.3047,
+            "allin_pct": 0.0015,
+            "aggr_pct": 0.457,
+            "_source": "interpolated_reglife"
           }
         },
-        "BTN_open": {
-          "SB": {
-            "pct_play": 0.27,
-            "hands": "66+,A2s+,K8s+,Q9s+,ATo+,KJo+",
-            "acoes": [
-              "THREBET",
-              "FOLD"
-            ]
+        "UTG": {
+          "BTN": {
+            "fold_pct": 0.5769,
+            "call_pct": 0.1885,
+            "raise_pct": 0.2346,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4231,
+            "_source": "interpolated_reglife"
+          },
+          "HJ": {
+            "fold_pct": 0.6531,
+            "call_pct": 0.1131,
+            "raise_pct": 0.2338,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3469,
+            "_source": "interpolated_reglife"
+          },
+          "CO": {
+            "fold_pct": 0.6139,
+            "call_pct": 0.1584,
+            "raise_pct": 0.2278,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3862,
+            "_source": "interpolated_reglife"
+          },
+          "LJ": {
+            "fold_pct": 0.6772,
+            "call_pct": 0.089,
+            "raise_pct": 0.2338,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3228,
+            "_source": "interpolated_reglife"
           },
           "BB": {
-            "pct_play": 0.42,
-            "hands": "22+,A2s+,K4s+,Q7s+,J8s+,T8s+,97s+,87s,A3o+,K9o+,Q9o+,JTo",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
+            "fold_pct": 0.2572,
+            "call_pct": 0.5052,
+            "raise_pct": 0.2376,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.7428,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.5785,
+            "call_pct": 0.1628,
+            "raise_pct": 0.2587,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4215,
+            "_source": "interpolated_reglife"
+          },
+          "MP": {
+            "fold_pct": 0.6847,
+            "call_pct": 0.0859,
+            "raise_pct": 0.2293,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3152,
+            "_source": "interpolated_reglife"
+          }
+        },
+        "HJ": {
+          "BTN": {
+            "fold_pct": 0.546,
+            "call_pct": 0.2383,
+            "raise_pct": 0.2142,
+            "allin_pct": 0.0015,
+            "aggr_pct": 0.454,
+            "_source": "interpolated_reglife"
+          },
+          "CO": {
+            "fold_pct": 0.6079,
+            "call_pct": 0.1772,
+            "raise_pct": 0.215,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3921,
+            "_source": "interpolated_reglife"
+          },
+          "BB": {
+            "fold_pct": 0.2187,
+            "call_pct": 0.503,
+            "raise_pct": 0.2783,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.7813,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.549,
+            "call_pct": 0.1568,
+            "raise_pct": 0.2941,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.451,
+            "_source": "interpolated_reglife"
+          }
+        },
+        "CO": {
+          "BTN": {
+            "fold_pct": 0.543,
+            "call_pct": 0.3085,
+            "raise_pct": 0.1486,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4571,
+            "_source": "interpolated_reglife"
+          },
+          "BB": {
+            "fold_pct": 0.184,
+            "call_pct": 0.506,
+            "raise_pct": 0.31,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.816,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.5415,
+            "call_pct": 0.1614,
+            "raise_pct": 0.2972,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4586,
+            "_source": "interpolated_reglife"
+          }
+        },
+        "LJ": {
+          "BTN": {
+            "fold_pct": 0.5687,
+            "call_pct": 0.2209,
+            "raise_pct": 0.2104,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4314,
+            "_source": "interpolated_reglife"
+          },
+          "HJ": {
+            "fold_pct": 0.6561,
+            "call_pct": 0.086,
+            "raise_pct": 0.2579,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3439,
+            "_source": "interpolated_reglife"
+          },
+          "CO": {
+            "fold_pct": 0.6199,
+            "call_pct": 0.1697,
+            "raise_pct": 0.2104,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3801,
+            "_source": "interpolated_reglife"
+          },
+          "BB": {
+            "fold_pct": 0.2353,
+            "call_pct": 0.5045,
+            "raise_pct": 0.2602,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.7647,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.5505,
+            "call_pct": 0.1772,
+            "raise_pct": 0.2722,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4495,
+            "_source": "interpolated_reglife"
+          }
+        },
+        "SB": {
+          "BB": {
+            "fold_pct": 0.3032,
+            "call_pct": 0.3846,
+            "raise_pct": 0.2986,
+            "allin_pct": 0.0136,
+            "aggr_pct": 0.6968,
+            "_source": "interpolated_reglife"
+          }
+        },
+        "MP": {
+          "BTN": {
+            "fold_pct": 0.5595,
+            "call_pct": 0.2278,
+            "raise_pct": 0.2127,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4404,
+            "_source": "interpolated_reglife"
+          },
+          "HJ": {
+            "fold_pct": 0.6531,
+            "call_pct": 0.1132,
+            "raise_pct": 0.2338,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3469,
+            "_source": "interpolated_reglife"
+          },
+          "CO": {
+            "fold_pct": 0.6094,
+            "call_pct": 0.1598,
+            "raise_pct": 0.2308,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3906,
+            "_source": "interpolated_reglife"
+          },
+          "LJ": {
+            "fold_pct": 0.6772,
+            "call_pct": 0.086,
+            "raise_pct": 0.2368,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3228,
+            "_source": "interpolated_reglife"
+          },
+          "BB": {
+            "fold_pct": 0.2707,
+            "call_pct": 0.4714,
+            "raise_pct": 0.258,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.7293,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.5762,
+            "call_pct": 0.1561,
+            "raise_pct": 0.2678,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4239,
+            "_source": "interpolated_reglife"
           }
         }
       }
@@ -2078,115 +2260,234 @@
         }
       },
       "vs_RFI": {
-        "UTG_open": {
-          "UTG1": {
-            "pct_play": 0.1,
-            "hands": "QQ+,AKs,AKo",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
+        "BTN": {
+          "BB": {
+            "fold_pct": 0.1538,
+            "call_pct": 0.5008,
+            "raise_pct": 0.3454,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.8461,
+            "_source": "interpolated_reglife"
           },
-          "LJ": {
-            "pct_play": 0.12,
-            "hands": "QQ+,AKs,AKo,JJ",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
+          "SB": {
+            "fold_pct": 0.5008,
+            "call_pct": 0.1447,
+            "raise_pct": 0.3545,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4992,
+            "_source": "interpolated_reglife"
+          }
+        },
+        "UTG": {
+          "BTN": {
+            "fold_pct": 0.5535,
+            "call_pct": 0.2187,
+            "raise_pct": 0.2278,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4465,
+            "_source": "interpolated_reglife"
           },
           "HJ": {
-            "pct_play": 0.14,
-            "hands": "JJ+,AQs+,AKo,KQs",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
+            "fold_pct": 0.6289,
+            "call_pct": 0.1395,
+            "raise_pct": 0.2316,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.371,
+            "_source": "interpolated_reglife"
           },
           "CO": {
-            "pct_play": 0.18,
-            "hands": "TT+,ATs+,AQo+,KQs,QJs,JTs",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
+            "fold_pct": 0.5942,
+            "call_pct": 0.1757,
+            "raise_pct": 0.2301,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4058,
+            "_source": "interpolated_reglife"
           },
-          "BTN": {
-            "pct_play": 0.22,
-            "hands": "99+,ATs+,AJo+,KQs,QJs,JTs,KJs,T9s",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
-          },
-          "SB": {
-            "pct_play": 0.14,
-            "hands": "JJ+,AQs+,AKo,KQs",
-            "acoes": [
-              "THREBET",
-              "FOLD"
-            ]
+          "LJ": {
+            "fold_pct": 0.6562,
+            "call_pct": 0.0995,
+            "raise_pct": 0.2444,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3439,
+            "_source": "interpolated_reglife"
           },
           "BB": {
-            "pct_play": 0.26,
-            "hands": "77+,ATs+,AJo+,KQs,QJs,JTs,T9s,98s",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
+            "fold_pct": 0.3198,
+            "call_pct": 0.4336,
+            "raise_pct": 0.2466,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.6802,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.5837,
+            "call_pct": 0.1606,
+            "raise_pct": 0.2557,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4163,
+            "_source": "interpolated_reglife"
+          },
+          "MP": {
+            "fold_pct": 0.6651,
+            "call_pct": 0.0935,
+            "raise_pct": 0.2413,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3348,
+            "_source": "interpolated_reglife"
           }
         },
-        "CO_open": {
+        "HJ": {
           "BTN": {
-            "pct_play": 0.32,
-            "hands": "44+,A2s+,K7s+,Q8s+,J9s+,T9s,98s,ATo+,KJo+,QJo",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
+            "fold_pct": 0.5294,
+            "call_pct": 0.2074,
+            "raise_pct": 0.2632,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4706,
+            "_source": "interpolated_reglife"
           },
-          "SB": {
-            "pct_play": 0.18,
-            "hands": "88+,A2s+,K9s+,Q9s+,AJo+,KQo",
-            "acoes": [
-              "THREBET",
-              "FOLD"
-            ]
+          "CO": {
+            "fold_pct": 0.5928,
+            "call_pct": 0.1448,
+            "raise_pct": 0.2625,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4073,
+            "_source": "interpolated_reglife"
           },
           "BB": {
-            "pct_play": 0.38,
-            "hands": "22+,A2s+,K4s+,Q7s+,J8s+,T8s+,97s+,87s,A5o+,K9o+,Q9o+,JTo",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
+            "fold_pct": 0.2504,
+            "call_pct": 0.4728,
+            "raise_pct": 0.2768,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.7496,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.5445,
+            "call_pct": 0.1644,
+            "raise_pct": 0.2911,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4555,
+            "_source": "interpolated_reglife"
           }
         },
-        "BTN_open": {
-          "SB": {
-            "pct_play": 0.3,
-            "hands": "55+,A2s+,K7s+,Q9s+,J9s+,ATo+,KJo+",
-            "acoes": [
-              "THREBET",
-              "FOLD"
-            ]
+        "CO": {
+          "BTN": {
+            "fold_pct": 0.5046,
+            "call_pct": 0.2104,
+            "raise_pct": 0.2851,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4956,
+            "_source": "interpolated_reglife"
           },
           "BB": {
-            "pct_play": 0.5,
-            "hands": "22+,A2s+,K2s+,Q5s+,J7s+,T8s+,97s+,87s,76s,A2o+,K7o+,Q9o+,J9o+,T9o",
-            "acoes": [
-              "THREBET",
-              "CALL",
-              "FOLD"
-            ]
+            "fold_pct": 0.2187,
+            "call_pct": 0.4842,
+            "raise_pct": 0.2972,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.7813,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.528,
+            "call_pct": 0.1704,
+            "raise_pct": 0.3017,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4722,
+            "_source": "interpolated_reglife"
+          }
+        },
+        "LJ": {
+          "BTN": {
+            "fold_pct": 0.5475,
+            "call_pct": 0.1998,
+            "raise_pct": 0.2527,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4525,
+            "_source": "interpolated_reglife"
+          },
+          "HJ": {
+            "fold_pct": 0.6304,
+            "call_pct": 0.1079,
+            "raise_pct": 0.2617,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3695,
+            "_source": "interpolated_reglife"
+          },
+          "CO": {
+            "fold_pct": 0.6003,
+            "call_pct": 0.1493,
+            "raise_pct": 0.2504,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3997,
+            "_source": "interpolated_reglife"
+          },
+          "BB": {
+            "fold_pct": 0.2798,
+            "call_pct": 0.4631,
+            "raise_pct": 0.2571,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.7202,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.5573,
+            "call_pct": 0.1749,
+            "raise_pct": 0.2677,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4426,
+            "_source": "interpolated_reglife"
+          }
+        },
+        "SB": {
+          "BB": {
+            "fold_pct": 0.2678,
+            "call_pct": 0.3552,
+            "raise_pct": 0.3635,
+            "allin_pct": 0.0136,
+            "aggr_pct": 0.7323,
+            "_source": "interpolated_reglife"
+          }
+        },
+        "MP": {
+          "BTN": {
+            "fold_pct": 0.5445,
+            "call_pct": 0.2248,
+            "raise_pct": 0.2308,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4555,
+            "_source": "interpolated_reglife"
+          },
+          "HJ": {
+            "fold_pct": 0.6327,
+            "call_pct": 0.1313,
+            "raise_pct": 0.236,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3673,
+            "_source": "interpolated_reglife"
+          },
+          "CO": {
+            "fold_pct": 0.6018,
+            "call_pct": 0.1659,
+            "raise_pct": 0.2323,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3982,
+            "_source": "interpolated_reglife"
+          },
+          "LJ": {
+            "fold_pct": 0.6666,
+            "call_pct": 0.0799,
+            "raise_pct": 0.2534,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.3334,
+            "_source": "interpolated_reglife"
+          },
+          "SB": {
+            "fold_pct": 0.5732,
+            "call_pct": 0.1561,
+            "raise_pct": 0.2708,
+            "allin_pct": 0.0,
+            "aggr_pct": 0.4269,
+            "_source": "interpolated_reglife"
           }
         }
       },

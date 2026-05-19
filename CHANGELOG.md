@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.105.0] — 2026-05-19 — feat(ranges): interpola vs_RFI 40bb e 75bb a partir de dados RegLife
+
+### Added
+- **`backend/scripts/interpolate_vsrfi.py`** — preenche vs_RFI de 40bb e 75bb por interpolação 50/50:
+  - 40bb = média(30bb, 50bb): 28 spots com fold/call/raise/allin/aggr_pct
+  - 75bb = média(50bb, 100bb): 27 spots com mesma estrutura
+  - Spots marcados com `_source: "interpolated_reglife"` para distinguir de dados extraídos direto do PDF
+
+### Changed
+- **`backend/docs/leaklab_gto_ranges.json`** — versão 2.3.0:
+  - 40bb e 75bb vs_RFI agora cobertos (antes: 6 e 12 spots em formato antigo)
+  - Todos os 9 stacks têm cobertura vs_RFI com 7 openers cada
+  - Cobertura total: 8 stacks com dados RegLife/interpolados + 10bb (push/fold legado)
+
+---
+
 ## [v0.104.0] — 2026-05-19 — feat(gto): vs_position em decisions + comparação RFI+vs_RFI com RegLife
 
 ### Added
