@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { LayoutGrid, X, Loader2, CheckCircle2, XCircle, AlertTriangle, Info } from "lucide-react";
+import { GtoMixedBadge } from "./GtoMixedBadge";
 import { RangeGrid } from "./RangeGrid";
 import {
   heroHand, RANGES, normalizePosition, PUSH_FOLD, getPushFoldBucket,
@@ -240,9 +241,14 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
 
           {/* Solver override notice */}
           {solverOverridesRegLife ? (
-            <p className="font-mono text-[9px] text-muted-foreground/60 italic">
-              Veredicto do solver substitui análise de range estática.
-            </p>
+            <div className="flex items-center flex-wrap gap-2">
+              <p className="font-mono text-[9px] text-muted-foreground/60 italic">
+                Veredicto do solver substitui análise de range estática.
+              </p>
+              {(effectiveGtoLabel === 'gto_mixed' || effectiveGtoLabel === 'gto_minor_deviation') && (
+                <GtoMixedBadge label={effectiveGtoLabel} size="xs" />
+              )}
+            </div>
           ) : (
             <>
               {/* In-range status */}

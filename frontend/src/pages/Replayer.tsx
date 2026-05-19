@@ -8,6 +8,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
+import { GtoMixedBadge } from "@/components/replayer/GtoMixedBadge";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
@@ -229,12 +230,17 @@ function SidePanels({
 
           {/* Banner: veredito + fonte + toggle detalhes */}
           <div className={cn("flex items-center justify-between px-3 py-2.5", verdict.hdrCls)}>
-            <span
-              className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls, effectiveGtoLabel && "cursor-help")}
-              title={effectiveGtoLabel ? GTO_LABEL_TOOLTIP[effectiveGtoLabel] : undefined}
-            >
-              {verdict.icon} {verdict.label}
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls)}
+                title={effectiveGtoLabel ? GTO_LABEL_TOOLTIP[effectiveGtoLabel] : undefined}
+              >
+                {verdict.icon} {verdict.label}
+              </span>
+              {(effectiveGtoLabel === 'gto_mixed' || effectiveGtoLabel === 'gto_minor_deviation') && (
+                <GtoMixedBadge label={effectiveGtoLabel} />
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <span
                 className="font-mono text-[9px] text-muted-foreground/45 uppercase tracking-wider cursor-help"
