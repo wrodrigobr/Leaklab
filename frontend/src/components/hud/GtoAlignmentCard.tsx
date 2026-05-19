@@ -94,6 +94,21 @@ export function GtoAlignmentCard({ data }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Legend */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-border/40">
+        {[
+          { color: COLORS.correct,  labelKey: "gtoQuality.correct"  },
+          { color: COLORS.mixed,    labelKey: "gtoQuality.mixed"    },
+          { color: COLORS.minor,    labelKey: "gtoQuality.minor"    },
+          { color: COLORS.critical, labelKey: "gtoQuality.critical" },
+        ].map(({ color, labelKey }) => (
+          <div key={labelKey} className="flex items-center gap-1.5 min-w-0">
+            <span className="size-2 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+            <span className="text-[10px] text-muted-foreground truncate">{t(labelKey)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

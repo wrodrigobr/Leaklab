@@ -15,7 +15,6 @@ import { PositionChart } from "@/components/hud/PositionChart";
 import { RecentForm } from "@/components/hud/RecentForm";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
-import { GtoQualityCard } from "@/components/hud/GtoQualityCard";
 import { GtoAlignmentCard } from "@/components/hud/GtoAlignmentCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { OnboardingModal } from "@/components/hud/OnboardingModal";
@@ -31,7 +30,7 @@ import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoQualityData, GtoAlignmentData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // Module-level cache — survives unmount/remount during SPA navigation
@@ -163,12 +162,6 @@ const Index = () => {
     refetchInterval: (query) => (query.state.data?.pending ?? 0) > 0 ? 30_000 : false,
   });
   const pendingGto = pendingGtoData?.pending ?? 0;
-
-  const { data: gtoQualityData } = useQuery<GtoQualityData>({
-    queryKey: ["gto-quality", refreshKey],
-    queryFn: metrics.gtoQuality,
-    staleTime: 120_000,
-  });
 
   const { data: gtoAlignmentData } = useQuery<GtoAlignmentData>({
     queryKey: ["gto-alignment", refreshKey],
@@ -369,7 +362,6 @@ const Index = () => {
             )}
 
             <PlayerStatsCard stats={playerStats} />
-            <GtoQualityCard data={gtoQualityData} />
             <GtoAlignmentCard data={gtoAlignmentData} />
 
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
