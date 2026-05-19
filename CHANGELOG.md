@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.116.0] — 2026-05-19 — feat(pipeline): reconciliação label/gto_label automática
+
+### Added
+- **`database/repositories.py`**: `_reconcile_label(label, gto_label)` — helper de reconciliação; `reconcile_tournament_labels(tournament_id)` — reconcilia + recalcula `standard_pct` para um torneio
+- **`api/app.py`**: background thread `label-reconcile` disparado após cada upload, aplica reconciliação automática para o novo torneio
+- **`update_decision_gto`**: quando chamado sem `label` explícito (ex: Replayer salva veredicto ao vivo), agora reconcilia o label existente com o novo `gto_label`
+- **`resync_gto_labels_for_node`**: quando solver atualiza `gto_label` via hash-match, agora também atualiza `label` via reconciliação
+- **`sync_gto_labels_from_ranges.py`**: ao final do `--save`, chama `reconcile_tournament_labels` para os torneios afetados
+
+### Result
+- Qualquer novo upload, atualização do solver ou sync de ranges mantém `label` e `gto_label` automaticamente consistentes — sem mais intervenção manual
+
+---
+
 ## [v0.115.0] — 2026-05-19 — fix(data): reconciliar label vs gto_label — zero conflitos
 
 ### Fixed

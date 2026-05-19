@@ -4729,9 +4729,24 @@ def get_gto_hand_request_queue(limit: int = 50) -> list:
         conn.close()
 
 
+_LABEL_SEVERITY = {'standard': 0, 'marginal': 1, 'small_mistake': 2, 'clear_mistake': 3}
+
+
+def _reconcile_label(label: str, gto_label: str) -> str:
+    """Reconcilia label heurístico com veredicto GTO. GTO é autoritativo para direção."""
+    if gto_label in ('gto_correct', 'gto_mixed'):
+        return 'standard'
+    if gto_label == 'gto_minor_deviation':
+        return label if _LABEL_SEVERITY.get(label, 0) >= 1 else 'marginal'
+    if gto_label == 'gto_critical':
+        return label if _LABEL_SEVERITY.get(label, 0) >= 2 else 'small_mistake'
+    return label
+
+
 def update_decision_gto(decision_id: int, gto_label: str, gto_action: str,
                         label: str | None = None, score: float | None = None) -> None:
-    """Atualiza gto_label/gto_action e, opcionalmente, label/score da decisão."""
+    """Atualiza gto_label/gto_action. Quando label não é fornecido, reconcilia o label
+    existente com o novo gto_label para manter consistência."""
     conn = get_conn()
     try:
         if label is not None and score is not None:
@@ -4741,9 +4756,14 @@ def update_decision_gto(decision_id: int, gto_label: str, gto_action: str,
                 WHERE id = ?
             """), (gto_label, gto_action, label, round(score, 4), decision_id))
         else:
+            # Reconcilia o label existente com o novo gto_label
+            row = _fetchone(conn, _adapt(
+                "SELECT label FROM decisions WHERE id = ?"
+            ), (decision_id,))
+            reconciled = _reconcile_label(row['label'] if row else 'standard', gto_label)
             conn.execute(_adapt("""
-                UPDATE decisions SET gto_label = ?, gto_action = ? WHERE id = ?
-            """), (gto_label, gto_action, decision_id))
+                UPDATE decisions SET gto_label = ?, gto_action = ?, label = ? WHERE id = ?
+            """), (gto_label, gto_action, reconciled, decision_id))
         conn.commit()
     finally:
         conn.close()
@@ -4794,7 +4814,7 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
         # Find candidate decisions that match street + position + rough board overlap.
         # We recompute their hash and compare to spot_hash.
         candidates = _fetchall(conn, _adapt("""
-            SELECT id, board, hero_cards, stack_bb, facing_bet, action_taken
+            SELECT id, board, hero_cards, stack_bb, facing_bet, action_taken, label
             FROM decisions
             WHERE street = ? AND position = ?
               AND gto_label IS NOT NULL
@@ -4826,9 +4846,10 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
                 else:
                     new_label = 'gto_critical'
 
+                reconciled = _reconcile_label(d.get('label', 'standard'), new_label)
                 conn.execute(_adapt(
-                    "UPDATE decisions SET gto_label=?, gto_action=? WHERE id=?"
-                ), (new_label, top_action, d['id']))
+                    "UPDATE decisions SET gto_label=?, gto_action=?, label=? WHERE id=?"
+                ), (new_label, top_action, reconciled, d['id']))
                 updated += 1
             except Exception:
                 continue
@@ -4836,5 +4857,52 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
         if updated:
             conn.commit()
         return updated
+    finally:
+        conn.close()
+
+
+def reconcile_tournament_labels(tournament_id: int) -> int:
+    """
+    Reconcilia label vs gto_label para todas as decisões de um torneio,
+    e recalcula standard_pct do torneio.
+    Chamado como background thread após upload e após sync de gto_labels.
+    Retorna o número de decisões atualizadas.
+    """
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt("""
+            SELECT id, label, gto_label
+            FROM decisions
+            WHERE tournament_id = ?
+              AND gto_label IS NOT NULL AND gto_label != ''
+              AND label IS NOT NULL AND label != ''
+        """), (tournament_id,))
+
+        changes = []
+        for r in rows:
+            new = _reconcile_label(r['label'], r['gto_label'])
+            if new != r['label']:
+                changes.append((new, r['id']))
+
+        for new_label, dec_id in changes:
+            conn.execute(_adapt(
+                "UPDATE decisions SET label=? WHERE id=?"
+            ), (new_label, dec_id))
+
+        # Recalcula standard_pct
+        pct_row = _fetchone(conn, _adapt(
+            "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
+            "AVG(score) AS a FROM decisions WHERE tournament_id=?"
+        ), (tournament_id,))
+        if pct_row:
+            conn.execute(_adapt(
+                "UPDATE tournaments SET standard_pct=?, avg_score=? WHERE id=?"
+            ), (round(pct_row['s'] or 0, 2), round(pct_row['a'] or 0, 4), tournament_id))
+
+        if changes or pct_row:
+            conn.commit()
+        return len(changes)
+    except Exception:
+        return 0
     finally:
         conn.close()

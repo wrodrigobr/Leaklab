@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 load_dotenv(BACKEND_DIR / ".env")
 
 from database.schema import get_conn
+from database.repositories import reconcile_tournament_labels
 from leaklab.preflop_gto_ranges import analyze_preflop
 from leaklab.gto_utils import hand_to_type
 
@@ -134,6 +135,10 @@ def main():
         conn.close()
         return
 
+    # Collect affected tournament IDs before updating
+    affected_tids = set()
+    id_to_tid = {r['id']: r for r in rows}
+
     for new_label, new_action, dec_id in updates:
         conn.execute(
             "UPDATE decisions SET gto_label=?, gto_action=? WHERE id=?",
@@ -141,7 +146,23 @@ def main():
         )
     conn.commit()
     conn.close()
-    print(f"\n{len(updates)} decisões preflop atualizadas com veredicto de range estático.")
+    print(f"\n{len(updates)} decisoes preflop atualizadas com veredicto de range estatico.")
+
+    # Reconciliar label vs gto_label para todos os torneios afetados
+    from database.schema import get_conn as _gc
+    conn2 = _gc()
+    tids = set(dict(r)['tournament_id'] for r in conn2.execute(
+        f"SELECT DISTINCT tournament_id FROM decisions WHERE id IN ({','.join('?' * len(updates))})",
+        [dec_id for _, _, dec_id in updates]
+    ).fetchall()) if updates else set()
+    conn2.close()
+
+    for tid in tids:
+        n = reconcile_tournament_labels(tid)
+        if n:
+            print(f"  Torneio {tid}: {n} labels reconciliados.")
+    if tids:
+        print(f"standard_pct recalculado para {len(tids)} torneios.")
 
 
 if __name__ == "__main__":

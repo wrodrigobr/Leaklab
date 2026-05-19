@@ -142,6 +142,7 @@ from database.repositories import (
     get_sparring_hand,
     # FEAT-08 — Session Goals
     get_session_goal_for_tournament, save_session_goal_review,
+    reconcile_tournament_labels,
 )
 from database.auth import generate_token, require_auth, require_coach, require_admin
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
@@ -506,6 +507,14 @@ def _analyze_impl():
         increment_tournament_count(g.user_id)
     except Exception:
         pass
+
+    # Reconciliar label vs gto_label para o torneio recém-salvo
+    threading.Thread(
+        target=reconcile_tournament_labels,
+        args=(t_db_id,),
+        daemon=True,
+        name='label-reconcile',
+    ).start()
 
     # Enfileirar spots postflop novos para o solver GTO em background
     threading.Thread(
