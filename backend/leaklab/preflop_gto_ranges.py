@@ -178,7 +178,12 @@ def analyze_preflop(
             opener_data = vs_rfi.get(f"{opener_key}_open")
         if not isinstance(opener_data, dict) and opener_key != vs_pos:
             opener_data = vs_rfi.get(vs_pos) or vs_rfi.get(f"{vs_pos}_open")
-        defender = opener_data.get(pos) if isinstance(opener_data, dict) else None
+        # Mesmo alias necessário para o lado do defender
+        _VSRFI_DEF_ALIAS = {'UTG1': 'MP', 'UTG+1': 'MP'}
+        def_key = _VSRFI_DEF_ALIAS.get(pos, pos)
+        defender = opener_data.get(def_key) if isinstance(opener_data, dict) else None
+        if defender is None and def_key != pos and isinstance(opener_data, dict):
+            defender = opener_data.get(pos)
         if not defender or not isinstance(defender, dict):
             return base
 
