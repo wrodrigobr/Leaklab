@@ -706,8 +706,8 @@ const TournamentDetail = () => {
 
                     <div className="flex flex-col gap-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        {/* Engine badge: só exibe quando não há GTO (solver prevalece) */}
-                        {!h.gtoLabel && (
+                        {/* Engine badge: só exibe quando não há GTO e há algo a sinalizar */}
+                        {!h.gtoLabel && h.category !== "ok" && (
                           <span className={cn("inline-flex items-center gap-1 rounded-sm px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider", meta.chipCls)}>
                             <Icon className="size-3" aria-hidden />
                             {meta.label}
