@@ -10,6 +10,7 @@ import { RangePanel } from "@/components/replayer/RangePanel";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
+import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
 // ── Card parsing ──────────────────────────────────────────────────────────────
@@ -123,15 +124,9 @@ function SidePanels({
 
   // When live strategy is available, derive the label from actual frequencies.
   // Stored gto_label may be stale if the solver node was updated after import.
-  const effectiveGtoLabel = (() => {
-    if (!hasGto) return null;
-    if (!stratSorted.length) return step.gto_label ?? null;
-    const playedFreq = stratSorted.find(s => isPlayedAct(s.action))?.frequency ?? 0;
-    if (playedFreq >= 0.60) return 'gto_correct';
-    if (playedFreq >= 0.30) return 'gto_mixed';
-    if (playedFreq >= 0.10) return 'gto_minor_deviation';
-    return 'gto_critical';
-  })();
+  const effectiveGtoLabel = hasGto
+    ? computeEffectiveGtoLabel(stratSorted, step.gto_label, step.action)
+    : null;
 
   // ── Unified verdict: GTO Solver > Range > Engine ────────────────────────────
   const GTO_LABEL_TOOLTIP: Record<string, string> = {

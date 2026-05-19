@@ -508,9 +508,22 @@ def _analyze_impl():
     except Exception:
         pass
 
-    # Reconciliar label vs gto_label para o torneio recém-salvo
+    # Preencher gto_label preflop via ranges estáticos + reconciliar label vs gto_label
+    def _preflop_sync_and_reconcile(tid: int) -> None:
+        try:
+            import sys as _sys
+            from pathlib import Path as _Path
+            _scripts = str(_Path(__file__).resolve().parent.parent / 'scripts')
+            if _scripts not in _sys.path:
+                _sys.path.insert(0, _scripts)
+            from sync_gto_labels_from_ranges import sync_tournament
+            sync_tournament(tid)
+        except Exception:
+            pass
+        reconcile_tournament_labels(tid)
+
     threading.Thread(
-        target=reconcile_tournament_labels,
+        target=_preflop_sync_and_reconcile,
         args=(t_db_id,),
         daemon=True,
         name='label-reconcile',

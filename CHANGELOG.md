@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.117.0] — 2026-05-19 — feat(pipeline): deep dive 3-source GTO pipeline — FIX 1-5
+
+### Fixed
+- **FIX 1 — `decision_engine_v11.py`**: `gto_label`/`gto_action` preflop agora é persistido no DB no momento do upload. `analyze_preflop` retorna `available=True` → `result['gto']` preenchido → `save_decisions` armazena no DB. Antes, o campo ficava NULL até rodar o batch script manualmente
+- **FIX 2 — `decision_engine_v11.py`**: `_enrich_preflop_gto()` agora passa `is_3bet_pot=bool(input_data.get('is_3bet', False))` para `analyze_preflop`. Spots de 3-bet são roteados para `scenario='vs_3bet'` em vez de `vs_rfi`
+- **FIX 3 — `frontend/src/lib/gtoUtils.ts`** (novo arquivo): `computeEffectiveGtoLabel()` extraída para utilidade compartilhada. `Replayer.tsx` e `RangePanel.tsx` importam desta fonte única — elimina duplicação e risco de divergência futura
+- **FIX 4 — `RangePanel.tsx`**: quando `solverOverridesRegLife=true`, o grid de ranges estático fica com `opacity-40 pointer-events-none` para indicar que é contexto, não o veredicto ativo. Elimina dois sinais contraditórios simultâneos
+- **FIX 5 — `sync_gto_labels_from_ranges.py`**: refatorado para expor `sync_tournament(tournament_id)` como API pública. `api/app.py` chama `sync_tournament` + `reconcile_tournament_labels` no background thread `label-reconcile` após cada upload
+
+### Result
+- Pipeline 3 fontes coerente do upload ao Replayer: ranges estáticos → gto_nodes → heurístico, com fonte única exibida por vez
+- `gto_label` preflop populado no momento do upload (antes: NULL até batch manual)
+- Spots 3-bet avaliados no cenário correto via `is_3bet_pot`
+
+---
+
 ## [v0.116.0] — 2026-05-19 — feat(pipeline): reconciliação label/gto_label automática
 
 ### Added

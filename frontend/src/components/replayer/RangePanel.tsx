@@ -8,6 +8,7 @@ import {
 } from "@/data/ranges";
 import { ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 
 function authFetch(path: string): Promise<Response> {
   const t = sessionStorage.getItem("ll_token");
@@ -183,17 +184,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
   const solverStratSorted = step.gto_strategy
     ? [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0))
     : [];
-  const effectiveGtoLabel = (() => {
-    if (!solverStratSorted.length) return step.gto_label ?? null;
-    const played = (step.action ?? '').toLowerCase().replace(/[-_ ]/g, '');
-    const playedFreq = solverStratSorted.find(s =>
-      (s.action ?? '').toLowerCase().replace(/[-_ ]/g, '') === played
-    )?.frequency ?? 0;
-    if (playedFreq >= 0.60) return 'gto_correct';
-    if (playedFreq >= 0.30) return 'gto_mixed';
-    if (playedFreq >= 0.10) return 'gto_minor_deviation';
-    return 'gto_critical';
-  })();
+  const effectiveGtoLabel = computeEffectiveGtoLabel(solverStratSorted, step.gto_label, step.action);
   const solverOverridesRegLife =
     !!effectiveGtoLabel &&
     ['gto_correct', 'gto_mixed', 'gto_minor_deviation'].includes(effectiveGtoLabel) &&
@@ -350,14 +341,14 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
         </div>
       )}
 
-      {/* Range grid */}
+      {/* Range grid — dimmed when solver verdict supersedes static ranges */}
       {displayRange ? (
-        <>
+        <div className={cn(solverOverridesRegLife && "opacity-40 pointer-events-none")}>
           {displayRange.description && (
             <p className="font-mono text-[9px] text-muted-foreground">{displayRange.description}</p>
           )}
           <RangeGrid range={displayRange} heroHand={hand} />
-        </>
+        </div>
       ) : loading ? (
         <p className="text-xs text-muted-foreground text-center py-4 animate-pulse">Carregando ranges…</p>
       ) : (

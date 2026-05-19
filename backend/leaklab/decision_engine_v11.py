@@ -129,6 +129,7 @@ def _enrich_preflop_gto(input_data: Dict[str, Any]) -> dict:
             action_taken   = input_data.get('player_action', ''),
             facing_size    = float(spot.get('facingSize') or 0),
             vs_position    = spot.get('villainPosition', ''),
+            is_3bet_pot    = bool(input_data.get('is_3bet', False)),
         )
     except Exception:
         return {'available': False}
@@ -525,6 +526,18 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         rec     = preflop_gto.get('recommended_actions', [])
         if rec:
             _best_action = rec[0]   # sobrescreve com ação GTO recomendada
+        # Persistir gto_label/gto_action preflop no DB (save_decisions lê result['gto'])
+        if quality and quality != 'unknown':
+            _QUALITY_TO_GTO_LABEL = {
+                'correct':             'gto_correct',
+                'acceptable':          'gto_mixed',
+                'gto_minor_deviation': 'gto_minor_deviation',
+                'minor_mistake':       'gto_minor_deviation',
+                'leak':                'gto_critical',
+                'major_leak':          'gto_critical',
+            }
+            _gto_lbl = _QUALITY_TO_GTO_LABEL.get(quality, 'gto_critical')
+            gto = {'available': True, 'gto_label': _gto_lbl, 'gto_action': rec[0] if rec else None}
 
     # Guard: BB pode check grátis quando não há aposta — fold é impossível.
     # Outras posições (UTG/HJ/CO/BTN/SB) estão escolhendo não abrir — fold é correto.
