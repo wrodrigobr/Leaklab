@@ -362,7 +362,10 @@ function SidePanels({
                     </span>
                   </div>
                 </div>
-                {showDetails && pg.pro_notes.length > 0 && (
+                {showDetails && pg.pro_notes.length > 0 &&
+                 !(effectiveGtoLabel &&
+                   ['gto_correct','gto_mixed'].includes(effectiveGtoLabel) &&
+                   ['leak','major_leak'].includes(pg.action_quality)) && (
                   <div className="space-y-1 pt-1 border-t border-border/30">
                     {pg.pro_notes.map((note, i) => (
                       <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>
