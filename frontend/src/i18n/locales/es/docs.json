@@ -72,7 +72,7 @@
   },
   "gto_method": {
     "title": "Metodología de Clasificación GTO",
-    "p1": "El sistema analiza decisiones preflop usando <strong>tablas de equilibrio Nash MTT</strong> organizadas por profundidad de stack. Cada decisión pasa por un pipeline de 4 pasos: (1) detección del escenario → (2) consulta del rango → (3) clasificación de calidad de la acción → (4) ajuste del label final.",
+    "p1": "El sistema evalúa cada decisión preflop con un <strong>pipeline de 3 fuentes con prioridad</strong>: (1) <strong>Rangos estáticos</strong> — tablas RegLife MTT 8-max validadas contra GTO Wizard (79% de concordancia en 42 spots RFI); (2) <strong>Solver nodes</strong> — spots postflop resueltos y almacenados con exploitability medida; (3) <strong>Motor heurístico</strong> — equity + tamaño de bet + contexto MTT como fallback. El <code>gto_label</code> se guarda al subir el archivo y se reconcilia automáticamente con el <code>label</code> del dashboard — garantizando que ambas pantallas nunca muestren veredictos contradictorios.",
     "scenarios_title": "Los 3 escenarios de análisis preflop",
     "col_scenario": "Escenario",
     "col_condition": "Condición detectada",
@@ -101,8 +101,8 @@
     "buckets_title": "Profundidades de stack soportadas",
     "col_bucket": "Bucket",
     "col_bb_range": "Stack efectivo cubierto",
-    "p2": "El sistema <strong>no muestra análisis GTO preflop</strong> (<em>available = false</em>) cuando: (1) la posición del opener no existe en los datos de ese bucket — ej. SB open a 30bb no está en el dataset; (2) la posición del villain no fue detectada en el historial. En estos casos el Replayer solo muestra análisis postflop (equity + pot odds) sin recomendación preflop — <strong>evitando mostrar datos incorrectos</strong>.",
-    "p3": "Garantía del sistema: <strong>nunca mostramos recomendaciones contradictorias</strong>. Una decisión marcada como ✗ Fuera del rango jamás recibirá label <em>Aceptable</em> o <em>Standard</em>. Los 5 bugs que causaban contradicciones fueron corregidos en la versión <strong>v0.100.1</strong> — mayo 2026."
+    "p2": "El sistema <strong>no muestra análisis GTO preflop</strong> (<em>available = false</em>) cuando la posición del villain no fue detectada en el historial, o cuando el spot es un 3-bet sin opener reconocido. En estos casos el Replayer solo muestra análisis postflop (equity + pot odds). <strong>Limitación conocida del SB</strong>: en algunos buckets de stack (10bb, 40bb, 75bb) el modelo solo cubre fold/raise para SB. En esos spots, completar (limp) con una mano fuera del rango de apertura se clasifica como <em>acceptable</em> — no como error — porque GTO Wizard modela ~53% de las manos del SB como complete, algo que nuestro modelo simplificado no representa.",
+    "p3": "Garantía del sistema: <strong>nunca mostramos recomendaciones contradictorias</strong>. El <code>label</code> del dashboard y el <code>gto_label</code> del Replayer se reconcilian automáticamente tras cada subida, actualización del solver o sync de rangos. Rangos preflop validados contra GTO Wizard con 79% de concordancia (42 spots RFI testados, v0.118.0 — mayo 2026)."
   },
   "mstacks": {
     "title": "Fases de M-Ratio",

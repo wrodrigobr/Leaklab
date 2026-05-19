@@ -72,7 +72,7 @@
   },
   "gto_method": {
     "title": "GTO Classification Methodology",
-    "p1": "The system analyzes preflop decisions using <strong>MTT Nash equilibrium range tables</strong> organized by stack depth. Each decision goes through a 4-step pipeline: (1) scenario detection → (2) range lookup → (3) action quality classification → (4) final label adjustment.",
+    "p1": "The system evaluates each preflop decision through a <strong>3-source priority pipeline</strong>: (1) <strong>Static ranges</strong> — RegLife MTT 8-max tables validated against GTO Wizard (79% agreement across 42 RFI spots); (2) <strong>Solver nodes</strong> — postflop spots solved and stored with measured exploitability; (3) <strong>Heuristic engine</strong> — equity + bet sizing + MTT context as fallback. The <code>gto_label</code> is saved at upload time and automatically reconciled with the dashboard <code>label</code> — ensuring the two views never show contradictory verdicts.",
     "scenarios_title": "The 3 preflop analysis scenarios",
     "col_scenario": "Scenario",
     "col_condition": "Detected condition",
@@ -101,8 +101,8 @@
     "buckets_title": "Supported stack depth buckets",
     "col_bucket": "Bucket",
     "col_bb_range": "Effective stack covered",
-    "p2": "The system <strong>does not display preflop GTO analysis</strong> (<em>available = false</em>) when: (1) the opener's position does not exist in that stack bucket's data — e.g. SB open at 30bb is not in the dataset; (2) the villain's position was not detected in the hand history. In these cases the Replayer shows only postflop analysis (equity + pot odds) with no preflop recommendation — <strong>preventing display of incorrect data</strong>.",
-    "p3": "System guarantee: <strong>we never display contradictory recommendations</strong>. A decision marked ✗ Outside range will never receive a <em>Acceptable</em> or <em>Standard</em> label. The 5 bugs that caused contradictions (calling outside range classified as acceptable, silent fallback to wrong opener, vs_rfi scenario detected as RFI) were fixed in version <strong>v0.100.1</strong> — May 2026."
+    "p2": "The system <strong>does not display preflop GTO analysis</strong> (<em>available = false</em>) when the villain's position was not detected in the hand history, or when the spot is a 3-bet without a recognized opener. In these cases the Replayer shows only postflop analysis (equity + pot odds). <strong>Known SB limitation</strong>: for some stack buckets (10bb, 40bb, 75bb) the model only covers fold/raise for SB. In those spots, completing (limping) with a hand outside the raise range is classified as <em>acceptable</em> — not a mistake — because GTO Wizard models ~53% of SB hands as complete, which our simplified model does not represent.",
+    "p3": "System guarantee: <strong>we never display contradictory recommendations</strong>. The dashboard <code>label</code> and Replayer <code>gto_label</code> are automatically reconciled after every upload, solver update, or range sync. Preflop ranges validated against GTO Wizard at 79% agreement (42 RFI spots tested, v0.118.0 — May 2026)."
   },
   "mstacks": {
     "title": "M-Ratio Phases",
