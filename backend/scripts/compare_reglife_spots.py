@@ -85,7 +85,7 @@ def fetch_spots(limit: int, spot_type: str = 'both', all_labels: bool = False) -
           AND d.position IS NOT NULL AND d.position != ''
           AND d.hero_cards IS NOT NULL AND d.hero_cards != ''
           {type_filter}
-          AND (COALESCE(d.facing_bet, 0) = 0 OR d.facing_bet >= 2.0)
+          AND (COALESCE(d.facing_bet, 0) = 0 OR d.facing_bet > 1.0)
         ORDER BY d.id DESC
         LIMIT ?
     """, (limit,)).fetchall()

@@ -170,9 +170,14 @@ def analyze_preflop(
         vs_rfi = bk_data.get('vs_RFI', {})
         # Try new format (RegLife): vs_RFI[opener][defender]
         # Then fall back to old format: vs_RFI["{opener}_open"][defender]
-        opener_data = vs_rfi.get(vs_pos)
+        # vs_RFI JSON usa 'MP' para UTG+1; RFI JSON usa 'UTG1' — alias necessário
+        _VSRFI_OPENER_ALIAS = {'UTG1': 'MP', 'UTG+1': 'MP'}
+        opener_key = _VSRFI_OPENER_ALIAS.get(vs_pos, vs_pos)
+        opener_data = vs_rfi.get(opener_key)
         if not isinstance(opener_data, dict):
-            opener_data = vs_rfi.get(f"{vs_pos}_open")
+            opener_data = vs_rfi.get(f"{opener_key}_open")
+        if not isinstance(opener_data, dict) and opener_key != vs_pos:
+            opener_data = vs_rfi.get(vs_pos) or vs_rfi.get(f"{vs_pos}_open")
         defender = opener_data.get(pos) if isinstance(opener_data, dict) else None
         if not defender or not isinstance(defender, dict):
             return base

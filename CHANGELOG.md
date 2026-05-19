@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.107.0] — 2026-05-19 — fix(gto): alias UTG1→MP no lookup vs_RFI + filtro facing_bet
+
+### Fixed
+- **`preflop_gto_ranges.py`**: opener `UTG+1` normalizava para `UTG1` mas JSON vs_RFI usa `MP` — adicionado alias `_VSRFI_OPENER_ALIAS = {'UTG1': 'MP'}` no lookup
+- **`compare_reglife_spots.py`**: filtro `facing_bet >= 2.0` excluía opens curtos (<2bb em stacks rasos) — relaxado para `> 1.0` (exclui apenas limps puros de 1bb)
+
+### Result
+- vs_RFI cobertura: 29% → **43%** (RFI mantém 98%)
+- Cobertura por stack: 40bb 90%, 50bb 74%, 30bb 55%, 100bb 55%, 14bb 41%
+- Teto atual determinado pelos combos ausentes no RegLife PDF (10bb legacy: apenas 2 openers)
+
+---
+
 ## [v0.106.0] — 2026-05-19 — chore(gto): recalcula gto_label com JSON v2.3.0 completo
 
 ### Changed
