@@ -588,6 +588,111 @@ def get_leak_roi_impact(user_id: int, days: int = 90) -> list:
         conn.close()
 
 
+def get_gto_leak_ranking(user_id: int, days: int = 90) -> list:
+    """
+    Leak ranking baseado em gto_label — substitui get_leak_roi_impact com fonte GTO.
+    Usa score proxy: gto_critical=0.45, gto_minor_deviation=0.15.
+    Mantém a mesma interface de saída (spot, n, avg_score, ev_loss_monthly,
+    priority_rank, trend, drill_count, drill_accuracy).
+    """
+    from datetime import datetime, timedelta
+    now          = datetime.utcnow()
+    since        = (now - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    recent_since = (now - timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    prev_since   = (now - timedelta(days=60)).strftime('%Y-%m-%d %H:%M:%S')
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt("""
+            SELECT
+                d.street || '/' || d.best_action AS spot,
+                COUNT(*) AS n,
+                AVG(CASE
+                    WHEN d.gto_label = 'gto_critical'          THEN 0.45
+                    WHEN d.gto_label = 'gto_minor_deviation'   THEN 0.15
+                    ELSE 0.0
+                END) AS avg_score,
+                AVG(COALESCE(t.buy_in, 0)) AS avg_buy_in,
+                COUNT(*) * AVG(CASE
+                    WHEN d.gto_label = 'gto_critical'          THEN 0.45
+                    WHEN d.gto_label = 'gto_minor_deviation'   THEN 0.15
+                    ELSE 0.0
+                END) AS priority_score
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND t.imported_at >= ?
+              AND d.gto_label IN ('gto_critical', 'gto_minor_deviation')
+            GROUP BY spot
+            HAVING COUNT(*) >= 2
+            ORDER BY priority_score DESC
+            LIMIT 10
+        """), (user_id, since)).fetchall()
+
+        def _proxy_rows(since_val, until_val=None):
+            q = """
+                SELECT d.street || '/' || d.best_action AS spot,
+                       AVG(CASE
+                           WHEN d.gto_label = 'gto_critical'        THEN 0.45
+                           WHEN d.gto_label = 'gto_minor_deviation' THEN 0.15
+                           ELSE 0.0
+                       END) AS avg_score
+                FROM decisions d
+                JOIN tournaments t ON t.id = d.tournament_id
+                WHERE t.user_id = ? AND t.imported_at >= ?
+                  AND d.gto_label IN ('gto_critical', 'gto_minor_deviation')
+            """
+            params = [user_id, since_val]
+            if until_val:
+                q += " AND t.imported_at < ?"
+                params.append(until_val)
+            q += " GROUP BY spot"
+            return {r['spot']: r['avg_score'] for r in conn.execute(_adapt(q), params).fetchall()}
+
+        recent_map = _proxy_rows(recent_since)
+        prev_map   = _proxy_rows(prev_since, recent_since)
+
+        drill_rows = conn.execute(_adapt("""
+            SELECT dec.street || '/' || dec.best_action AS spot,
+                   COUNT(*) AS drill_count,
+                   SUM(CASE WHEN ds.delta < 0 THEN 1 ELSE 0 END) AS drill_correct
+            FROM drill_sessions ds
+            JOIN decisions dec ON dec.id = ds.decision_id
+            WHERE ds.user_id = ? AND ds.drilled_at >= datetime('now', '-30 days')
+            GROUP BY spot
+        """), (user_id,)).fetchall()
+        drill_map = {
+            r['spot']: {
+                'count':    r['drill_count'],
+                'accuracy': round(r['drill_correct'] / r['drill_count'] * 100, 1) if r['drill_count'] else None,
+            }
+            for r in drill_rows
+        }
+
+        result = []
+        for rank, row in enumerate(rows, 1):
+            r = dict(row)
+            n_monthly = r['n'] * (30.0 / days)
+            r['ev_loss_monthly'] = round(n_monthly * r['avg_score'] * (r['avg_buy_in'] or 0) * 0.10, 2)
+            r['priority_rank']   = rank
+            s_recent = recent_map.get(r['spot'])
+            s_prev   = prev_map.get(r['spot'])
+            if s_recent is None or s_prev is None:
+                r['trend'] = 'new'
+            elif s_recent < s_prev * 0.85:
+                r['trend'] = 'improving'
+            elif s_recent > s_prev * 1.15:
+                r['trend'] = 'regressing'
+            else:
+                r['trend'] = 'stagnant'
+            d = drill_map.get(r['spot'], {})
+            r['drill_count']    = d.get('count', 0)
+            r['drill_accuracy'] = d.get('accuracy')
+            result.append(r)
+        return result
+    finally:
+        conn.close()
+
+
 def get_pressure_profile(user_id: int, days: int = 90) -> dict:
     """PERF-004 — Detecta colapso técnico sob pressão ICM."""
     from datetime import datetime, timedelta
@@ -3525,8 +3630,8 @@ def get_daily_focus(user_id: int) -> dict:
 
     actions: list = []
 
-    # 1. Top EV-loss leak → primary drill action
-    leaks = get_leak_roi_impact(user_id, days=90)
+    # 1. Top GTO leak → primary drill action (fallback to heuristic if no GTO data)
+    leaks = get_gto_leak_ranking(user_id, days=90) or get_leak_roi_impact(user_id, days=90)
     if leaks:
         top   = leaks[0]
         spot  = top.get('spot', '')
@@ -3536,7 +3641,7 @@ def get_daily_focus(user_id: int) -> dict:
             'type':        'leak',
             'priority':    'primary',
             'label':       f'Drill: {label}',
-            'description': f'{n} erros recentes — score médio {top.get("avg_score", 0):.3f}',
+            'description': f'{n} divergências GTO recentes',
             'link':        '/ghost',
         })
 

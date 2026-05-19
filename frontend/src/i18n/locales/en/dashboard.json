@@ -37,7 +37,7 @@
     "empty": "Import tournaments to activate AI confidence analysis."
   },
   "leaks": {
-    "tooltip": "The most frequent and costly mistakes detected in your history. Each leak represents a recurring sub-optimal decision pattern — fixing them has a direct impact on your ROI.",
+    "tooltip": "Spots with the most GTO solver divergence (gto_critical + gto_minor_deviation), ranked by frequency × severity. Source: gto_label from ranges and solver. Falls back to heuristic if no GTO coverage.",
     "title": "Top Leaks Detected",
     "study": "Study",
     "studyLabel": "Study leak {{spot}}",
@@ -110,6 +110,11 @@
     "title": "GTO Alignment by Position",
     "tooltip": "GTO alignment breakdown by position — identifies which seat has the most solver divergence over the last 90 days.",
     "coverage": "{{n}} decisions ({{pct}}% coverage)"
+  },
+  "gtoNotice": {
+    "needMoreData": "Import more tournaments to activate this analysis. At least 10 decisions with GTO coverage are required.",
+    "processing": "{{n}} spot being processed by the GTO solver — this card will update when analysis completes.",
+    "processing_plural": "{{n}} spots being processed by the GTO solver — this card will update when analysis completes."
   },
   "form": {
     "title": "Recent Form",

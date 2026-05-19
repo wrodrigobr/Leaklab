@@ -37,7 +37,7 @@
     "empty": "Importa torneos para activar el análisis de confianza de la IA."
   },
   "leaks": {
-    "tooltip": "Los errores más frecuentes y costosos detectados en tu historial. Cada leak representa un patrón de decisión subóptimo recurrente — corregirlos tiene impacto directo en tu ROI.",
+    "tooltip": "Spots con mayor divergencia del solver GTO (gto_critical + gto_minor_deviation), ordenados por frecuencia × severidad. Fuente: gto_label vía rangos y solver. Fallback heurístico si no hay cobertura GTO.",
     "title": "Top Leaks Detectados",
     "study": "Estudiar",
     "studyLabel": "Estudiar leak {{spot}}",
@@ -110,6 +110,11 @@
     "title": "Alineamiento GTO por Posición",
     "tooltip": "Desglose del alineamiento GTO por posición — identifica en qué asiento hay mayor divergencia del solver en los últimos 90 días.",
     "coverage": "{{n}} decisiones ({{pct}}% cobertura)"
+  },
+  "gtoNotice": {
+    "needMoreData": "Importe más torneos para activar este análisis. Se requieren al menos 10 decisiones con cobertura GTO.",
+    "processing": "{{n}} spot siendo procesado por el solver GTO — esta tarjeta se actualizará cuando el análisis concluya.",
+    "processing_plural": "{{n}} spots siendo procesados por el solver GTO — esta tarjeta se actualizará cuando los análisis concluyan."
   },
   "form": {
     "title": "Forma Reciente",

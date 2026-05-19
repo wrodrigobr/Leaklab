@@ -139,10 +139,6 @@ const Index = () => {
   const totalEvents   = tourns.length;
   const totalHands    = tourns.reduce((s, t) => s + (t.hands_count ?? 0), 0);
 
-  const gtoAligned = gtoAlignmentData && gtoAlignmentData.total_with_gto >= 10
-    ? gtoAlignmentData.overall_aligned_pct
-    : null;
-
   const hasData = tourns.length > 0;
 
   const { data: pendingGtoData } = useQuery({
@@ -159,6 +155,10 @@ const Index = () => {
     staleTime: 120_000,
   });
 
+  const gtoAligned = gtoAlignmentData && gtoAlignmentData.total_with_gto >= 10
+    ? gtoAlignmentData.overall_aligned_pct
+    : null;
+
   const { data: gtoPositionData } = useQuery<GtoPositionData>({
     queryKey: ["gto-position", refreshKey],
     queryFn: metrics.gtoPosition,
@@ -172,12 +172,12 @@ const Index = () => {
   });
 
   const renderMainRow = (id: MainSection) => {
-    if (id === "quality_row") return <GtoQualityCard data={gtoQualityData} />;
+    if (id === "quality_row") return <GtoQualityCard data={gtoQualityData} pendingGto={pendingGto} />;
     if (id === "bankroll_row") return <BankrollChart />;
     if (id === "street_row") return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <GtoAlignmentCard data={gtoAlignmentData} />
-        <GtoPositionCard data={gtoPositionData} />
+        <GtoAlignmentCard data={gtoAlignmentData} pendingGto={pendingGto} />
+        <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />
       </div>
     );
     if (id === "dna_row") return <PlayerDnaCard data={dnaData} />;

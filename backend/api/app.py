@@ -853,9 +853,13 @@ def player_level():
 @app.route('/player/leak-roi', methods=['GET'])
 @require_auth
 def player_leak_roi():
-    """PERF-001+002 — Leaks com ROI estimado, priority score e trend."""
+    """Leaks rankeados por gto_label (critical/minor_deviation). Fallback para heurístico se sem dados GTO."""
+    from database.repositories import get_gto_leak_ranking
     days = int(request.args.get('days', 90))
-    return jsonify({'leaks': get_leak_roi_impact(g.user_id, days)})
+    leaks = get_gto_leak_ranking(g.user_id, days)
+    if not leaks:
+        leaks = get_leak_roi_impact(g.user_id, days)
+    return jsonify({'leaks': leaks})
 
 
 @app.route('/player/pressure-profile', methods=['GET'])
