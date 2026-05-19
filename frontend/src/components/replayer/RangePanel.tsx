@@ -229,42 +229,53 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
       {showGtoCtx && gto && (
         <div className={cn(
           "rounded-lg border px-3 py-2 space-y-1.5",
-          gto.in_range ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"
+          solverOverridesRegLife
+            ? "border-border/40 bg-muted/10"
+            : gto.in_range ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"
         )}>
           {/* Scenario */}
           <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wide">
             Cenário: {SCENARIO_LABEL[gto.scenario] ?? gto.scenario}
           </p>
 
-          {/* In-range status */}
-          <div className="flex items-center gap-1.5">
-            {gto.in_range
-              ? <CheckCircle2 className="size-3 text-emerald-400 shrink-0" />
-              : <XCircle     className="size-3 text-amber-400 shrink-0" />}
-            <span className={cn("font-mono text-[10px] font-bold", gto.in_range ? "text-emerald-400" : "text-amber-400")}>
-              {hand} {gto.in_range ? "está no range GTO" : "fora do range GTO"}
-            </span>
-          </div>
-
-          {/* Quality + recommended */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {quality && (
-              <div className={cn("flex items-center gap-1", quality.color)}>
-                <QIcon className="size-3 shrink-0" />
-                <span className="font-mono text-[9px]">{quality.label}</span>
+          {/* Solver override notice */}
+          {solverOverridesRegLife ? (
+            <p className="font-mono text-[9px] text-muted-foreground/60 italic">
+              Veredicto do solver substitui análise de range (RegLife).
+            </p>
+          ) : (
+            <>
+              {/* In-range status */}
+              <div className="flex items-center gap-1.5">
+                {gto.in_range
+                  ? <CheckCircle2 className="size-3 text-emerald-400 shrink-0" />
+                  : <XCircle     className="size-3 text-amber-400 shrink-0" />}
+                <span className={cn("font-mono text-[10px] font-bold", gto.in_range ? "text-emerald-400" : "text-amber-400")}>
+                  {hand} {gto.in_range ? "está no range GTO" : "fora do range GTO"}
+                </span>
               </div>
-            )}
-            {gto.recommended_actions.length > 0 && (
-              <span className="font-mono text-[9px] text-muted-foreground">
-                GTO: <span className="text-primary font-bold">{gto.recommended_actions.map(fmtAction).join(' / ')}</span>
-              </span>
-            )}
-            {gto.range_pct > 0 && (
-              <span className="font-mono text-[9px] text-muted-foreground">
-                Range: top <span className="text-foreground">{(gto.range_pct * 100).toFixed(0)}%</span>
-              </span>
-            )}
-          </div>
+
+              {/* Quality + recommended */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {quality && (
+                  <div className={cn("flex items-center gap-1", quality.color)}>
+                    <QIcon className="size-3 shrink-0" />
+                    <span className="font-mono text-[9px]">{quality.label}</span>
+                  </div>
+                )}
+                {gto.recommended_actions.length > 0 && (
+                  <span className="font-mono text-[9px] text-muted-foreground">
+                    GTO: <span className="text-primary font-bold">{gto.recommended_actions.map(fmtAction).join(' / ')}</span>
+                  </span>
+                )}
+                {gto.range_pct > 0 && (
+                  <span className="font-mono text-[9px] text-muted-foreground">
+                    Range: top <span className="text-foreground">{(gto.range_pct * 100).toFixed(0)}%</span>
+                  </span>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 

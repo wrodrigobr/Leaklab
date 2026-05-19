@@ -324,7 +324,7 @@ function SidePanels({
                     <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[9px]">
                       <span className="text-muted-foreground/50 mr-1">Range</span>
                       <span className="text-foreground font-bold">
-                        {pg.vs_position ? `${pg.vs_position} · ` : ''}{pg.stack_bucket}
+                        {pg.vs_position && pg.vs_position !== 'UNKNOWN' ? `${pg.vs_position} · ` : ''}{pg.stack_bucket}
                       </span>
                     </span>
                     <span className="text-muted-foreground/30 text-[8px]">›</span>
