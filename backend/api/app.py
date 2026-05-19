@@ -890,6 +890,22 @@ def player_gto_quality():
     return jsonify(get_gto_quality_breakdown(g.user_id))
 
 
+@app.route('/player/gto-alignment', methods=['GET'])
+@require_auth
+def player_gto_alignment():
+    """GTO alignment breakdown by street — preflop/flop/turn/river."""
+    from database.repositories import get_gto_alignment_by_street
+    return jsonify(get_gto_alignment_by_street(g.user_id))
+
+
+@app.route('/player/gto-position', methods=['GET'])
+@require_auth
+def player_gto_position():
+    """GTO alignment breakdown by position — BTN/CO/HJ/MP/UTG/SB/BB."""
+    from database.repositories import get_gto_alignment_by_position
+    return jsonify(get_gto_alignment_by_position(g.user_id))
+
+
 @app.route('/player/spots/drill', methods=['GET'])
 @require_auth
 def player_drill_spots():

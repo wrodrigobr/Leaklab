@@ -10,8 +10,7 @@ import { LeaksPanel } from "@/components/hud/LeaksPanel";
 import { BankrollChart } from "@/components/hud/BankrollChart";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { DecisionQualityCard } from "@/components/hud/DecisionQualityCard";
-import { StreetBreakdown } from "@/components/hud/StreetBreakdown";
-import { PositionChart } from "@/components/hud/PositionChart";
+import { GtoPositionCard } from "@/components/hud/GtoPositionCard";
 import { RecentForm } from "@/components/hud/RecentForm";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
@@ -29,7 +28,7 @@ import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, BreakdownResponse, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // Module-level cache — survives unmount/remount during SPA navigation
@@ -162,6 +161,12 @@ const Index = () => {
     staleTime: 120_000,
   });
 
+  const { data: gtoPositionData } = useQuery<GtoPositionData>({
+    queryKey: ["gto-position", refreshKey],
+    queryFn: metrics.gtoPosition,
+    staleTime: 120_000,
+  });
+
   const renderMainRow = (id: MainSection) => {
     if (id === "quality_row") return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -172,8 +177,8 @@ const Index = () => {
     if (id === "bankroll_row") return <BankrollChart />;
     if (id === "street_row") return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <StreetBreakdown byStreet={breakdown?.by_street} />
-        <PositionChart byPosition={breakdown?.by_position} />
+        <GtoAlignmentCard data={gtoAlignmentData} />
+        <GtoPositionCard data={gtoPositionData} />
       </div>
     );
     if (id === "dna_row") return <PlayerDnaCard data={dnaData} />;
@@ -351,7 +356,6 @@ const Index = () => {
             )}
 
             <PlayerStatsCard stats={playerStats} />
-            <GtoAlignmentCard data={gtoAlignmentData} />
 
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
               {/* ── Main column (sortable rows) ──────────────────────────────── */}

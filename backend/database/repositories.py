@@ -4439,6 +4439,85 @@ def get_gto_alignment_by_street(user_id: int, since_days: int = 90) -> dict:
         conn.close()
 
 
+def get_gto_alignment_by_position(user_id: int, since_days: int = 90) -> dict:
+    """GTO alignment breakdown by position for dashboard card."""
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    conn = get_conn()
+    try:
+        since = (datetime.utcnow() - timedelta(days=since_days)).strftime('%Y-%m-%d %H:%M:%S')
+
+        rows = _fetchall(conn, _adapt("""
+            SELECT
+                d.position,
+                d.gto_label,
+                COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ?
+              AND t.imported_at >= ?
+              AND d.position IS NOT NULL
+            GROUP BY d.position, d.gto_label
+        """), (user_id, since))
+
+        total_row = _fetchone(conn, _adapt("""
+            SELECT COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id = ? AND t.imported_at >= ?
+              AND d.position IS NOT NULL
+        """), (user_id, since))
+
+        total_dec = total_row['n'] if total_row else 0
+
+        pos_counts: dict = defaultdict(lambda: defaultdict(int))
+        for r in rows:
+            pos_counts[r['position']][r['gto_label'] or ''] += r['n']
+
+        POS_ORDER = ['BTN', 'CO', 'HJ', 'MP', 'UTG+2', 'UTG+1', 'UTG', 'SB', 'BB']
+        found = set(pos_counts.keys())
+        ordered = [p for p in POS_ORDER if p in found] + [p for p in found if p not in POS_ORDER]
+
+        by_position = []
+        for pos in ordered:
+            counts = pos_counts[pos]
+            total_with_gto = sum(v for k, v in counts.items() if k and k != '')
+            total_pos       = sum(counts.values())
+            if total_pos == 0:
+                continue
+            correct  = counts.get('gto_correct', 0)
+            mixed    = counts.get('gto_mixed', 0)
+            minor    = counts.get('gto_minor_deviation', 0)
+            critical = counts.get('gto_critical', 0)
+            aligned  = correct + mixed
+            by_position.append({
+                'position':     pos,
+                'total':        total_pos,
+                'with_gto':     total_with_gto,
+                'coverage_pct': round(total_with_gto * 100.0 / total_pos, 1) if total_pos else 0.0,
+                'aligned_pct':  round(aligned  * 100.0 / total_with_gto, 1) if total_with_gto else 0.0,
+                'correct_pct':  round(correct  * 100.0 / total_with_gto, 1) if total_with_gto else 0.0,
+                'mixed_pct':    round(mixed     * 100.0 / total_with_gto, 1) if total_with_gto else 0.0,
+                'minor_pct':    round(minor     * 100.0 / total_with_gto, 1) if total_with_gto else 0.0,
+                'critical_pct': round(critical  * 100.0 / total_with_gto, 1) if total_with_gto else 0.0,
+            })
+
+        all_gto     = sum(p['with_gto'] for p in by_position)
+        all_aligned = sum(
+            pos_counts[p].get('gto_correct', 0) + pos_counts[p].get('gto_mixed', 0)
+            for p in found
+        )
+        return {
+            'total_decisions':      total_dec,
+            'total_with_gto':       all_gto,
+            'overall_coverage_pct': round(all_gto * 100.0 / total_dec, 1) if total_dec else 0.0,
+            'overall_aligned_pct':  round(all_aligned * 100.0 / all_gto, 1) if all_gto else 0.0,
+            'by_position':          by_position,
+        }
+    finally:
+        conn.close()
+
+
 def get_missing_gto_spots(limit: int = 100) -> list[dict]:
     """Retorna spots únicos de decisions que não têm nó GTO — para o bot priorizar."""
     conn = get_conn()

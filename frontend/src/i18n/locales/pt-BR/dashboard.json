@@ -106,6 +106,11 @@
     "noData": "Sem dados suficientes.",
     "tooltip": "Taxa de decisões standard por posição na mesa. BTN e CO costumam ter vantagem posicional. BB e SB defensivos são onde a maioria dos jogadores perde mais equity."
   },
+  "gtoPosition": {
+    "title": "Alinhamento GTO por Posição",
+    "tooltip": "Breakdown do alinhamento GTO por posição — identifica em qual posição há mais divergência do solver nos últimos 90 dias.",
+    "coverage": "{{n}} decisões ({{pct}}% cobertura)"
+  },
   "form": {
     "title": "Forma Recente",
     "tournaments": "{{n}} torneios",
