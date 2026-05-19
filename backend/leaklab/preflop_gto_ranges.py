@@ -183,7 +183,7 @@ def analyze_preflop(
         else:
             rec = ['fold']
 
-        quality = _rfi_quality(action_taken, in_rng, stack_bb, in_limp=in_limp)
+        quality = _rfi_quality(action_taken, in_rng, stack_bb, in_limp=in_limp, is_sb=(pos == 'SB'))
         base.update({
             'available': True, 'in_range': in_rng or in_limp,
             'range_pct': pct, 'range_hands': hands_str,
@@ -330,7 +330,8 @@ def analyze_preflop(
 
 # ── Quality classifiers ──────────────────────────────────────────────────────
 
-def _rfi_quality(action: str, in_rng: bool, stack_bb: float, *, in_limp: bool = False) -> str:
+def _rfi_quality(action: str, in_rng: bool, stack_bb: float, *,
+                 in_limp: bool = False, is_sb: bool = False) -> str:
     act = action.lower()
     if in_rng and act in ('raise', 'jam'):    return 'correct'
     if in_rng and act == 'call':              return 'acceptable'   # raise preferred but call ok
@@ -339,10 +340,16 @@ def _rfi_quality(action: str, in_rng: bool, stack_bb: float, *, in_limp: bool = 
     if in_limp and act == 'call':             return 'correct'
     if in_limp and act in ('raise', 'jam'):   return 'acceptable'   # raise not optimal but ok
     if in_limp and act == 'fold':             return 'leak'
-    if not in_rng and not in_limp and act == 'fold':          return 'correct'
-    if not in_rng and not in_limp and act in ('raise', 'jam'):
-        return 'major_leak' if stack_bb > 25 else 'leak'
-    if not in_rng and not in_limp and act == 'call':          return 'leak'
+    if not in_rng and not in_limp:
+        if act == 'fold':                     return 'correct'
+        if act in ('raise', 'jam'):
+            # SB raises a wide range; overplaying outside raise range is a leak but not major
+            return 'leak' if is_sb else ('major_leak' if stack_bb > 25 else 'leak')
+        if act == 'call':
+            # SB: completing non-raise hands is acceptable — GTO Wizard models ~53% of SB
+            # hands as complete/limp. Our static range only covers raises (no complete zone),
+            # so we cannot mark a SB complete as a leak without knowing if it's in complete zone.
+            return 'acceptable' if is_sb else 'leak'
     return 'acceptable'
 
 

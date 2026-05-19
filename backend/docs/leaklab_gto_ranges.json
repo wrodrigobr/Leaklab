@@ -2,7 +2,7 @@
   "_metadata": {
     "projeto": "LeakLab",
     "versao": "2.4.0",
-    "descricao": "Ranges GTO preflop para MTT 8-max com ante de 1bb. RFI atualizado com dados RegLife (solver-generated) via pixel analysis. vs_RFI preservado da versÃ£o anterior.",
+    "descricao": "Ranges GTO preflop para MTT 8-max com ante de 1bb. RFI atualizado com dados RegLife (solver-generated) via pixel analysis. vs_RFI preservado da versÃÂ£o anterior.",
     "formato": "MTT 8-max com ante de 1bb",
     "fontes": [
       "RangeConverter.com - 8max MTT GTO Ranges (resolvidas sem limp)",
@@ -12,25 +12,25 @@
       "RegLife PDF - Ranges RFI e vs RFI (pixel analysis)"
     ],
     "analise_coerencia": {
-      "conclusao": "As trÃªs fontes apresentam alta coerÃªncia entre si. As pequenas divergÃªncias ocorrem nas mÃ£os marginais das bordas de range (Â±2-3% de frequÃªncia) e sÃ£o esperadas dado que cada fonte usa simplificaÃ§Ãµes diferentes das estratÃ©gias mistas dos solvers. Onde as fontes divergem, foi usada a mediana como valor de referÃªncia.",
+      "conclusao": "As trÃÂªs fontes apresentam alta coerÃÂªncia entre si. As pequenas divergÃÂªncias ocorrem nas mÃÂ£os marginais das bordas de range (ÃÂ±2-3% de frequÃÂªncia) e sÃÂ£o esperadas dado que cada fonte usa simplificaÃÂ§ÃÂµes diferentes das estratÃÂ©gias mistas dos solvers. Onde as fontes divergem, foi usada a mediana como valor de referÃÂªncia.",
       "nivel_confianca": {
-        "10bb": "alto - todas as fontes concordam nas mÃ£os principais",
-        "20bb": "alto - convergÃªncia forte em RFI e vs RFI",
-        "30bb": "alto - base sÃ³lida com pequenas variaÃ§Ãµes nas mÃ£os marginais",
-        "40bb": "mÃ©dio-alto - Reg Life nÃ£o cobre este stack explicitamente, interpolado entre 30bb e 50bb",
-        "50bb": "alto - boa coerÃªncia entre RangeConverter e Reg Life",
-        "75bb": "mÃ©dio - baseado principalmente no PokerCoaching, validado com RangeConverter 60bb+100bb",
+        "10bb": "alto - todas as fontes concordam nas mÃÂ£os principais",
+        "20bb": "alto - convergÃÂªncia forte em RFI e vs RFI",
+        "30bb": "alto - base sÃÂ³lida com pequenas variaÃÂ§ÃÂµes nas mÃÂ£os marginais",
+        "40bb": "mÃÂ©dio-alto - Reg Life nÃÂ£o cobre este stack explicitamente, interpolado entre 30bb e 50bb",
+        "50bb": "alto - boa coerÃÂªncia entre RangeConverter e Reg Life",
+        "75bb": "mÃÂ©dio - baseado principalmente no PokerCoaching, validado com RangeConverter 60bb+100bb",
         "100bb": "alto - todas as fontes cobrem este stack"
       },
       "divergencias_notaveis": [
-        "SB a 75bb+: PokerCoaching inclui opÃ§Ã£o de limp em 81.6% das mÃ£os, RangeConverter sugere range de raise mais restrito. LeakLab usa raise range conservador.",
-        "BTN a 10bb: PokerCoaching sugere 38.9%, RangeConverter ligeiramente maior. Adotado valor mÃ©dio.",
-        "UTG a 30bb: Reg Life Ã© mais conservadora (18-20%) vs PokerCoaching (23.5% no LJ equivalente). Ajuste feito por posiÃ§Ã£o."
+        "SB a 75bb+: PokerCoaching inclui opÃÂ§ÃÂ£o de limp em 81.6% das mÃÂ£os, RangeConverter sugere range de raise mais restrito. LeakLab usa raise range conservador.",
+        "BTN a 10bb: PokerCoaching sugere 38.9%, RangeConverter ligeiramente maior. Adotado valor mÃÂ©dio.",
+        "UTG a 30bb: Reg Life ÃÂ© mais conservadora (18-20%) vs PokerCoaching (23.5% no LJ equivalente). Ajuste feito por posiÃÂ§ÃÂ£o."
       ]
     },
     "como_usar": {
       "stack_bucket": "Use a funcao get_stack_bucket() para mapear o stack efetivo do jogador para o bucket correto",
-      "tolerancia_leak": "Desvio de +/- 5% do RFI_pct Ã© considerado aceitÃ¡vel. Acima disso, flagrar como leak.",
+      "tolerancia_leak": "Desvio de +/- 5% do RFI_pct ÃÂ© considerado aceitÃÂ¡vel. Acima disso, flagrar como leak.",
       "posicoes": "UTG=Under The Gun, UTG1=UTG+1, LJ=LoJack/MP, HJ=HiJack, CO=Cutoff, BTN=Button, SB=Small Blind, BB=Big Blind",
       "acoes": "RFI=Raise First In, CALL=Flat Call, FOLD=Fold, ALLIN=All-In direto, THREBET=Re-raise/3bet"
     },
@@ -57,7 +57,7 @@
           "spot": "SB 30bb RFI",
           "our_pct": 0.431,
           "gw_pct": 0.298,
-          "explicacao": "Diferenca metodologica: GTO Wizard modela SB com fold/complete/raise. Nossa engine tem apenas fold/raise. Maos que GW destina a 'complete' ficam no raise em nosso modelo. Nao e um erro de range � e uma limitacao do modelo."
+          "explicacao": "Diferenca metodologica: GTO Wizard modela SB com fold/complete/raise. Nossa engine tem apenas fold/raise. Maos que GW destina a 'complete' ficam no raise em nosso modelo. Nao e um erro de range  e uma limitacao do modelo."
         },
         {
           "spot": "SB 40bb RFI",
@@ -66,7 +66,7 @@
           "explicacao": "Mesma limitacao metodologica do SB 30bb."
         }
       ],
-      "conclusao": "Ranges validados e precisos para UTG/LJ/HJ/CO/BTN em todos os stacks testados. SB diverge por limitacao de modelo (sem limp option) � comportamento esperado e documentado."
+      "conclusao": "Ranges validados e precisos para UTG/LJ/HJ/CO/BTN em todos os stacks testados. SB diverge por limitacao de modelo (sem limp option)  comportamento esperado e documentado."
     }
   },
   "stack_buckets": {

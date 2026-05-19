@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.119.0] — 2026-05-19 — fix(preflop): SB complete aceitável em stacks sem limp_hands (Opção 2)
+
+### Fixed
+- **`preflop_gto_ranges.py` — `_rfi_quality`**: para SB com `is_sb=True`, quando a mão não está no raise range e o jogador completa (call/limp), retorna `acceptable` em vez de `leak`. Nos 6/9 stack buckets que já têm `limp_hands` preenchido, o comportamento existente é preservado. O fix afeta apenas os 3 buckets sem limp range (10bb, 40bb, 75bb)
+- **`docs/leaklab_gto_ranges.json`**: reescrito em UTF-8 puro (encoding fix) — o metadata da validação introduziu um em-dash `\x97` que causava `UnicodeDecodeError` ao abrir no Linux/produção
+
+### Why
+GTO Wizard modela SB com fold/complete/raise. Nosso modelo tem apenas fold/raise. Para os stacks sem dados de complete zone, completar com uma mão fora do raise range não é um erro detectável — marcar como `leak` era um falso positivo.
+
+---
+
 ## [v0.118.0] — 2026-05-19 — feat(validation): validação preflop ranges vs solver remoto (item 4)
 
 ### Added
