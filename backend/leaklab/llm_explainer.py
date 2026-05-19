@@ -1039,7 +1039,7 @@ Cada item deve ser um módulo de estudo completo com:
 3. Conceitos-chave: lista de 2-4 conceitos teóricos que o jogador PRECISA dominar para corrigir este leak
 4. Recursos de estudo:
    - 1-2 livros ou capítulos específicos (ex: "The Mental Game of Poker cap. 3", "Applications of No-Limit Hold'em cap. 7")
-   - 1-2 tipos de vídeos/canais (ex: "solver study sessions no GTO Wizard", "hand history reviews de spots de 3bet")
+   - 1-2 tipos de vídeos/canais (ex: "solver study sessions focados em spots-chave", "hand history reviews de spots de 3bet")
    - 1 curso ou treinamento específico se relevante
 5. Exercício prático: uma rotina CONCRETA e mensurável que o jogador pode fazer HOJE (ex: "Revisar 20 mãos de fold no BB contra 3bet, marcar as que tinham +EV call e calcular os pot odds")
 6. Métrica de progresso: como saber que melhorou (ex: "Taxa de erro neste spot abaixo de 15% em 50 mãos")

@@ -933,7 +933,7 @@ function GtoWorkerTab() {
         <KpiTile label="Solver Pendentes" value={String(solverPend)} sub="gto_solver_queue" icon={Cpu} />
         <KpiTile label="Solver Concluídos" value={String(solverDone)} sub={`falhos: ${solverFail}`} icon={CheckCircle2} accent={solverDone > 0} />
         <KpiTile label="gto_nodes Total"  value={String(coverageTotal)} sub="base de conhecimento" icon={BarChart2} accent={coverageTotal > 0} />
-        <KpiTile label="GTO Wizard"  value={String(coverageWizard)} sub={`solver: ${coverageSolver} · remote: ${coverageRemote}`} icon={Activity} />
+        <KpiTile label="Solver API"  value={String(coverageWizard)} sub={`solver: ${coverageSolver} · remote: ${coverageRemote}`} icon={Activity} />
       </div>
 
       {/* Throughput chart */}

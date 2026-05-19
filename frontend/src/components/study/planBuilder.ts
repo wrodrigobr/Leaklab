@@ -124,7 +124,7 @@ function severityFromIndex(i: number): LeakSeverity {
 function resourcesFromCard(card: StudyCard): StudyResource[] {
   const out: StudyResource[] = [];
   const KNOWN_URLS: Record<string, string> = {
-    "GTO Wizard":       "https://gtowizard.com",
+    "Solver GTO":       "https://gtowizard.com",
     "Run It Once":      "https://www.runitonce.com",
     "PokerCoaching":    "https://www.pokercoaching.com",
     "Upswing Poker":    "https://www.upswingpoker.com",
@@ -182,7 +182,7 @@ function generateWeeks(cards: StudyCard[]): import("./types").StudyWeek[] {
         topic: primary?.exercicio ?? "Hand history review — filtre mãos perdidas neste spot",
         estimatedMinutes: 60,
         objectives: [
-          "Resolver ≥20 mãos no solver ou GTO Wizard focando neste padrão",
+          "Resolver ≥20 mãos no solver focando neste padrão",
           primary?.metrica ?? "Reduzir frequência de erro neste spot em ≥20%",
         ],
         leakIds: [primary?.prioridade ?? `p${w * 2 + 1}`],

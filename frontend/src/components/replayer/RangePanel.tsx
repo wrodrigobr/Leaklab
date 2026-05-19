@@ -241,7 +241,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
           {/* Solver override notice */}
           {solverOverridesRegLife ? (
             <p className="font-mono text-[9px] text-muted-foreground/60 italic">
-              Veredicto do solver substitui análise de range (RegLife).
+              Veredicto do solver substitui análise de range estática.
             </p>
           ) : (
             <>

@@ -79,7 +79,7 @@ export function GtoPanel({ decisionId }: GtoPanelProps) {
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/50">
         <Scale className="size-3 text-muted-foreground shrink-0" aria-hidden />
         <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground flex-1">
-          GTO Wizard
+          Solver GTO
         </p>
         {data?.found && data.exploitability_pct != null && (
           <span className="font-mono text-[8px] text-muted-foreground/60">
