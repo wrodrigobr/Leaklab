@@ -536,14 +536,11 @@ function SidePanels({
             })()}
 
 
-            {/* Estratégia pendente */}
+            {/* Frequências de solver não disponíveis para este spot */}
             {!step.gto_spot_mismatch && !!step.gto_label && !stratSorted.length && (
-              <div className="border-t border-border/30 pt-2 space-y-1">
-                <div className="font-mono text-[9px] uppercase tracking-wider text-amber-400/50">
-                  ⏳ Estratégia do Solver
-                </div>
-                <p className="text-[10px] text-muted-foreground/50">
-                  Calculando… recarregue em alguns segundos.
+              <div className="border-t border-border/30 pt-2">
+                <p className="text-[10px] text-muted-foreground/40">
+                  Frequências de solver não disponíveis para este spot.
                 </p>
               </div>
             )}
