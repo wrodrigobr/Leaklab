@@ -487,12 +487,12 @@ def _vs_3bet_notes(pos, hand, stack, pct, in_4b, in_cl, action) -> list[str]:
 
 def _pushfold_quality(action: str, in_shove: bool) -> str:
     act = action.lower()
-    if in_shove and act in ('jam', 'raise'):   return 'correct'
-    if in_shove and act == 'fold':             return 'leak'
-    if in_shove and act == 'call':             return 'acceptable'
-    if not in_shove and act == 'fold':         return 'correct'
+    if in_shove and act in ('jam', 'raise'):     return 'correct'
+    if in_shove and act == 'fold':               return 'major_leak'  # foldar mão shove = máxima perda de EV
+    if in_shove and act == 'call':               return 'acceptable'
+    if not in_shove and act == 'fold':           return 'correct'
     if not in_shove and act in ('jam', 'raise'): return 'major_leak'
-    if not in_shove and act == 'call':         return 'leak'
+    if not in_shove and act == 'call':           return 'leak'
     return 'acceptable'
 
 
