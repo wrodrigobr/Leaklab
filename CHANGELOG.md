@@ -9,6 +9,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.106.0] — 2026-05-19 — chore(gto): recalcula gto_label com JSON v2.3.0 completo
+
+### Changed
+- Rodou `compare_reglife_spots.py --all --save` para RFI e vs_RFI com o JSON atualizado:
+  - **RFI**: 340/347 decisões com gto_label (cobertura 98%)
+  - **vs_RFI**: 64/115 decisões com gto_label (cobertura 56% — limitado pelos combos ausentes no RegLife PDF)
+  - 40bb e 75bb agora cobertos via interpolação → 21 spots adicionais classificados
+
+---
+
 ## [v0.105.0] — 2026-05-19 — feat(ranges): interpola vs_RFI 40bb e 75bb a partir de dados RegLife
 
 ### Added
