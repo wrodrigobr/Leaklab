@@ -1,54 +1,61 @@
 """
-Ressincroniza decisions.gto_action e decisions.gto_label com os dados reais
-armazenados em gto_nodes.strategy_json.
+resync_gto_actions.py — Ressincroniza decisions.gto_action e gto_label.
 
-Causa raiz: o worker antigo gravava gto_action baseado em EV puro, sem considerar
-a frequência da estratégia. Nodes com check=85% eram classificados como gto_action='allin'.
+Para cada decisão com gto_label (minor_deviation/critical/mixed/correct):
+  1. Busca nó via compute_spot_hash com fallbacks a/b
+  2. Valida que o board do nó bate com o board da decisão
+  3. Aplica guard SPR: jam dominante com SPR > 8 e facing=0 → rejeita nó
+  4. Recalcula gto_action e gto_label a partir da estratégia do nó
+  5. Atualiza se diferente
+
+Uso:
+    python scripts/resync_gto_actions.py          # dry-run — apenas mostra mudanças
+    python scripts/resync_gto_actions.py --apply  # aplica mudanças
+    python scripts/resync_gto_actions.py --apply --user-id 5
 """
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+import sys, os, json, argparse
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
 
-import json as _json
 from database.schema import get_conn
+from database.repositories import get_gto_node
 from leaklab.gto_utils import compute_spot_hash
 
-GTO_LABELS = ('gto_correct', 'gto_mixed', 'gto_minor_deviation', 'gto_critical')
+_JAM_KEYS = {'shove', 'jam', 'allin', 'all-in', 'all_in'}
 
-def _norm(a: str) -> str:
+
+def _norm(a: str, facing_bb: float = 0.0) -> str:
     a = (a or '').strip().lower()
-    if a in ('shove', 'jam', 'allin', 'all-in', 'all_in'):
+    if a in _JAM_KEYS:
         return 'jam'
     if a.startswith('bet'):
         return 'bet'
     if a.startswith('raise'):
-        return 'raise'
+        return 'bet' if facing_bb == 0 else 'raise'
     return a
 
+
 def _freq(data) -> float:
-    """Extrai frequência de um item de strategy, suportando {frequency: f} ou float direto."""
     if isinstance(data, dict):
         return float(data.get('frequency', 0))
     return float(data)
 
 
-def _classify(played: str, strategy: dict) -> tuple[str, str]:
+def _classify(played: str, strategy: dict, facing_bb: float) -> tuple:
     """Retorna (gto_action, gto_label) baseado na estratégia e ação jogada."""
     if not strategy:
         return played, 'gto_correct'
 
-    # Ordena por frequência (desc)
     sorted_items = sorted(strategy.items(), key=lambda x: _freq(x[1]), reverse=True)
-    top_action = sorted_items[0][0]
+    top_action   = _norm(sorted_items[0][0], facing_bb)
 
-    # Frequência da ação jogada
-    played_norm = _norm(played)
-    played_freq = 0.0
+    played_norm  = _norm(played, facing_bb)
+    played_freq  = 0.0
     for action, data in strategy.items():
-        if _norm(action) == played_norm:
+        if _norm(action, facing_bb) == played_norm:
             played_freq = _freq(data)
             break
 
-    # Classificação
     if played_freq >= 0.60:
         gto_label = 'gto_correct'
     elif played_freq >= 0.25:
@@ -61,100 +68,178 @@ def _classify(played: str, strategy: dict) -> tuple[str, str]:
     return top_action, gto_label
 
 
-def resync():
+def _valid_node(n, street, board_for_hash):
+    """Rejeita nó com street ou board incorretos (colisão de hash SHA256[:16])."""
+    if not n:
+        return None
+    if n.get('street', '').lower() != street.lower():
+        return None
+    try:
+        node_board = sorted(json.loads(n.get('board') or '[]') if isinstance(n.get('board'), str) else (n.get('board') or []))
+        if board_for_hash and node_board and node_board != sorted(board_for_hash):
+            return None
+    except Exception:
+        pass
+    return n
+
+
+def resolve(r: dict):
+    """Retorna (gto_action, gto_label, node_found) para uma decisão."""
+    street    = r.get('street', '')
+    position  = r.get('position', '')
+    facing_bb = float(r.get('facing_bet') or 0.0)
+    stack_bb  = float(r.get('stack_bb') or 30.0)
+    pot_bb    = float(r.get('pot_size') or 0.0)
+
+    try:
+        board_raw = r.get('board') or '[]'
+        board = json.loads(board_raw) if isinstance(board_raw, str) else (board_raw or [])
+    except Exception:
+        board = []
+
+    _street_cards = {'flop': 3, 'turn': 4, 'river': 5}
+    board_for_hash = board[:_street_cards.get(street, len(board))]
+
+    hand_raw = r.get('hero_cards') or ''
+    if isinstance(hand_raw, str) and hand_raw.strip():
+        _raw = hand_raw.strip()
+        hero_hand = _raw.split() if ' ' in _raw else [_raw[i:i+2] for i in range(0, len(_raw), 2)]
+    else:
+        hero_hand = []
+
+    node = None
+    if hero_hand:
+        node = _valid_node(
+            get_gto_node(compute_spot_hash(street, position, board_for_hash, hero_hand, stack_bb, facing_bb)),
+            street, board_for_hash
+        )
+    if not node:
+        node = _valid_node(
+            get_gto_node(compute_spot_hash(street, position, board_for_hash, [], stack_bb, facing_bb)),
+            street, board_for_hash
+        )
+    if not node and facing_bb == 0:
+        node = _valid_node(
+            get_gto_node(compute_spot_hash(street, position, board_for_hash, [], stack_bb, 0.0)),
+            street, board_for_hash
+        )
+
+    if not node:
+        return r.get('gto_action'), r.get('gto_label'), False
+
+    strategy = {}
+    if node.get('strategy_json'):
+        try:
+            strategy = json.loads(node['strategy_json'])
+        except Exception:
+            pass
+
+    if strategy:
+        new_action, new_label = _classify(r.get('action_taken', ''), strategy, facing_bb)
+
+        # Guard SPR: jam dominante com SPR > 8 e sem aposta = nó suspeito, descartar
+        if new_action == 'jam' and facing_bb == 0 and pot_bb > 0 and stack_bb / pot_bb > 8:
+            return r.get('gto_action'), r.get('gto_label'), False
+    else:
+        # Sem strategy_json: usar gto_action do nó diretamente
+        node_action  = _norm(node.get('gto_action') or '', facing_bb)
+        played_norm  = _norm(r.get('action_taken', ''), facing_bb)
+        gf = float(node.get('gto_freq') or 0)
+        if played_norm == node_action or gf >= 0.60:
+            new_label = 'gto_correct'
+        elif gf >= 0.25:
+            new_label = 'gto_mixed'
+        else:
+            new_label = 'gto_critical'
+        new_action = node_action
+
+        if new_action == 'jam' and facing_bb == 0 and pot_bb > 0 and stack_bb / pot_bb > 8:
+            return r.get('gto_action'), r.get('gto_label'), False
+
+    return new_action, new_label, True
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--apply',   action='store_true', help='Aplica mudanças no banco')
+    parser.add_argument('--user-id', type=int, default=None)
+    args = parser.parse_args()
+
     conn = get_conn()
     try:
-        decisions = conn.execute("""
+        user_filter = "AND t.user_id = ?" if args.user_id else ""
+        params = [args.user_id] if args.user_id else []
+
+        rows = conn.execute(f"""
             SELECT d.id, d.action_taken, d.gto_action, d.gto_label,
                    d.street, d.position, d.stack_bb, d.facing_bet,
-                   d.hero_cards, d.board
+                   d.pot_size, d.hero_cards, d.board, d.best_action
             FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
             WHERE d.gto_label IN ('gto_correct','gto_mixed','gto_minor_deviation','gto_critical')
-        """).fetchall()
+              {user_filter}
+        """, params).fetchall()
 
-        print(f"Decisões com gto_label a verificar: {len(decisions)}")
-        updated = 0
-        not_found = 0
+        total     = len(rows)
+        changed   = []
+        unchanged = 0
+        no_node   = 0
 
-        for row in decisions:
+        print(f"\nAnalisando {total} decisões com cobertura GTO...")
+
+        for row in rows:
             r = dict(row)
+            new_action, new_label, found = resolve(r)
 
-            # Compute spot hash
-            board_raw = r['board'] or '[]'
-            try:
-                board = _json.loads(board_raw) if isinstance(board_raw, str) else []
-            except:
-                board = []
-            street_cards = {'flop': 3, 'turn': 4, 'river': 5}
-            board = board[:street_cards.get(r['street'], len(board))]
-
-            hero_raw = r['hero_cards'] or ''
-            if ' ' in hero_raw.strip():
-                hero_hand = hero_raw.strip().split()
-            elif len(hero_raw) % 2 == 0 and hero_raw:
-                hero_hand = [hero_raw[i:i+2] for i in range(0, len(hero_raw), 2)]
-            else:
-                hero_hand = []
-
-            stack_bb = float(r['stack_bb'] or 30.0)
-            facing_bb = float(r['facing_bet'] or 0.0)
-
-            # Try hashes with and without hero hand
-            node = None
-            for hero in ([hero_hand, []] if hero_hand else [[]]):
-                h = compute_spot_hash(r['street'], r['position'], board, hero, stack_bb, facing_bb)
-                n = conn.execute(
-                    "SELECT gto_action, gto_freq, strategy_json FROM gto_nodes WHERE spot_hash = ?", (h,)
-                ).fetchone()
-                if n:
-                    node = dict(n)
-                    break
-
-            if not node:
-                not_found += 1
+            if not found:
+                no_node += 1
                 continue
 
-            # Determine correct gto_action and gto_label from node
-            strategy = {}
-            if node.get('strategy_json'):
-                try:
-                    strategy = _json.loads(node['strategy_json'])
-                except:
-                    pass
+            old_action = (r.get('gto_action') or '').lower()
+            old_label  = r.get('gto_label') or ''
 
-            new_gto_action, new_gto_label = _classify(r['action_taken'], strategy)
-            if not strategy and node.get('gto_action'):
-                # No strategy_json: just use node.gto_action directly
-                new_gto_action = node['gto_action']
-                played_norm = _norm(r['action_taken'])
-                top_norm = _norm(node['gto_action'])
-                gf = float(node.get('gto_freq') or 0)
-                if played_norm == top_norm or gf >= 0.60:
-                    new_gto_label = 'gto_correct'
-                elif gf >= 0.25:
-                    new_gto_label = 'gto_mixed'
-                else:
-                    new_gto_label = 'gto_critical'
+            if new_action != old_action or new_label != old_label:
+                changed.append({
+                    'id':         r['id'],
+                    'street':     r.get('street', ''),
+                    'pos':        r.get('position', ''),
+                    'played':     r.get('action_taken', ''),
+                    'old_action': old_action,
+                    'new_action': new_action,
+                    'old_label':  old_label,
+                    'new_label':  new_label,
+                })
+            else:
+                unchanged += 1
 
-            old_action = r['gto_action']
-            old_label  = r['gto_label']
+        print(f"\n{'='*70}")
+        print(f"Total: {total} | Com nó: {total - no_node} | Sem nó: {no_node}")
+        print(f"Mudanças: {len(changed)} | Sem mudança: {unchanged}")
+        print(f"{'='*70}")
 
-            if new_gto_action != old_action or new_gto_label != old_label:
+        if changed:
+            print(f"\nMudanças {'(serão aplicadas)' if args.apply else '(dry-run — use --apply)'}:")
+            for c in changed:
+                flag = '🏷 ' if c['old_label'] != c['new_label'] else '   '
+                print(f"  {flag}#{c['id']:6d} {c['street']:6s} {c['pos']:4s} "
+                      f"played={c['played']:6s}  "
+                      f"action: {c['old_action']:6s}→{c['new_action']:6s}  "
+                      f"label: {c['old_label']}→{c['new_label']}")
+
+        if args.apply and changed:
+            for c in changed:
                 conn.execute(
                     "UPDATE decisions SET gto_action=?, gto_label=? WHERE id=?",
-                    (new_gto_action, new_gto_label, r['id'])
+                    (c['new_action'], c['new_label'], c['id'])
                 )
-                updated += 1
-                print(f"  id={r['id']} street={r['street']} pos={r['position']} "
-                      f"played={r['action_taken']}: "
-                      f"{old_action}/{old_label} -> {new_gto_action}/{new_gto_label}")
-
-        conn.commit()
-        print(f"\nAtualizado: {updated} | Sem node: {not_found} | Total: {len(decisions)}")
+            conn.commit()
+            print(f"\n✅ {len(changed)} decisões atualizadas no banco.")
+        elif not args.apply and changed:
+            print(f"\nUse --apply para salvar as {len(changed)} mudanças.")
 
     finally:
         conn.close()
 
 
 if __name__ == '__main__':
-    resync()
+    main()

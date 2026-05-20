@@ -957,8 +957,18 @@ def _resolve_best_action_from_node(row: dict) -> str:
         hero_hand = []
 
     def _valid_node(n):
-        """Rejeita nó se street não bate — evita falsos matches por colisão de hash."""
-        return n if n and n.get('street', '').lower() == street.lower() else None
+        """Rejeita nó se street ou board não batem — captura colisões de hash SHA256[:16]."""
+        if not n:
+            return None
+        if n.get('street', '').lower() != street.lower():
+            return None
+        try:
+            node_board = sorted(_j.loads(n.get('board') or '[]') if isinstance(n.get('board'), str) else (n.get('board') or []))
+            if board_for_hash and node_board and node_board != sorted(board_for_hash):
+                return None
+        except Exception:
+            pass
+        return n
 
     node = None
     if hero_hand:
@@ -4141,7 +4151,18 @@ def get_decision_gto(decision_id):
     player_action = (dec.get('action_taken') or '').lower()
 
     def _valid_node_replayer(n):
-        return n if n and n.get('street', '').lower() == street.lower() else None
+        """Rejeita nó se street ou board não batem — captura colisões de hash SHA256[:16]."""
+        if not n:
+            return None
+        if n.get('street', '').lower() != street.lower():
+            return None
+        try:
+            node_board = sorted(_json.loads(n.get('board') or '[]') if isinstance(n.get('board'), str) else (n.get('board') or []))
+            if board_for_hash and node_board and node_board != sorted(board_for_hash):
+                return None
+        except Exception:
+            pass
+        return n
 
     # ── Node lookup: multiple fallback strategies ────────────────────────────
     node = None

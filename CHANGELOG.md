@@ -9,6 +9,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.123.0] — 2026-05-20 — fix(data): limpeza e ressincronização de gto_nodes e decisions.gto_action
+
+### Fixed
+- **`gto_nodes` (93 entradas removidas)**: deletados todos os nós `source=solver_cli` com `strategy_json` recomendando jam ≥ 80% em flop/turn/river com stack_bucket ≥ 20-35bb. Eram resultado de runs incorretos do solver onde `allin` dominava spots que deveriam ter check/bet. Muitos tinham boards com número errado de cartas para o street indicado (ex: flop com 4-5 cartas)
+- **`decisions.gto_action` + `gto_label` (26 decisões corrigidas)**: ressincronizado contra `gto_nodes` limpos com board validation e guard SPR. Principais correções: normalização `allin → jam` e 2 mudanças de ação genuínas (ex: `allin → check` com reclassificação `gto_critical → gto_minor_deviation`)
+- **`_resolve_best_action_from_node()` + `_valid_node()`**: adicionada validação de board após lookup — rejeita nós onde `board` do nó ≠ board da decisão, capturando colisões de hash SHA256[:16]
+- **`get_decision_gto()` (Replayer)**: mesmo guard de board aplicado
+
+### Added
+- **`scripts/clean_gto_nodes.py`**: script de auditoria — lista nós suspeitos (board mismatch + jam implausível). `--delete --yes` para remover. Reutilizável em produção
+- **`scripts/resync_gto_actions.py`** (reescrito): ressincroniza `decisions.gto_action` + `gto_label` usando lookup ao vivo com board validation e SPR guard. Dry-run por padrão, `--apply` para salvar
+
+### Metrics
+- Taxa de erro postflop: 51% → 38% (melhoria imediata após limpeza dos nós corrompidos)
+- `gto_nodes`: 874 → 781 entradas válidas
+
+---
+
 ## [v0.122.0] — 2026-05-20 — fix(ghost-table): guard SPR para nós GTO incorretos (jam implausível)
 
 ### Fixed
