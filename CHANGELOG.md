@@ -9,6 +9,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.126.0] — 2026-05-20 — fix(data): revalidação completa preflop + limpeza de orphans postflop
+
+### Fixed
+- **Preflop — 84 decisions corrigidas**: `resync_preflop_all.py` revalidou TODAS as 708 decisions preflop contra os ranges JSON (não apenas as NULL). Principal padrão corrigido: shoves de short stack (5-15bb) classificados como `gto_correct` que deveriam ser `gto_mixed` (ação de frequência mista no push/fold correto). Também capturou inversões em spots vs_RFI e is_3bet
+- **Postflop orphans — 34 decisions limpas**: decisions postflop com `gto_label` setado mas cujo nó GTO foi deletado na limpeza anterior (93 nodes corrompidos removidos em v0.123.0) foram identificadas e tiveram `gto_label/gto_action` nulificados. Agora são candidatas a cobertura via `validate_nodes_vs_gw.py --new-decisions`
+
+### Added
+- **`scripts/resync_preflop_all.py`**: revalida TODAS as decisions preflop contra ranges JSON (diferente de `sync_gto_labels_from_ranges.py` que só preenche NULL). Dry-run por padrão, `--apply` para salvar. Suporta `--user-id` e `--tid`
+
+### Estado do banco após esta versão
+- Preflop: 708 decisions, todas validadas contra ranges JSON (source of truth)
+- Postflop com cobertura GTO: ~47 decisions com nó GTO válido encontrável
+- Postflop sem cobertura: ~96 decisions (34 orphans + 62 nunca cobertas) — aguardando `validate_nodes_vs_gw.py --new-decisions`
+
+---
+
 ## [v0.125.0] — 2026-05-20 — feat(gto): script de validação e enriquecimento de nós via GTO Wizard
 
 ### Added
