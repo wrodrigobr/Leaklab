@@ -9,6 +9,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.124.0] — 2026-05-20 — feat(ghost-table): exibe torneio e hand ID no contexto do spot
+
+### Added
+- **Ghost Table — `sitStrip`**: linha de referência discreta abaixo do contexto do spot mostrando nome do torneio, `#hand_id` e data. Permite identificar a mão original para busca manual quando necessário. Visível tanto no mobile quanto no desktop durante toda a sessão (fase active e result)
+
+---
+
 ## [v0.123.0] — 2026-05-20 — fix(data): limpeza e ressincronização de gto_nodes e decisions.gto_action
 
 ### Fixed

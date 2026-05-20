@@ -387,38 +387,59 @@ export default function GhostTable() {
       </div>
     );
 
+    const tournamentRef = current.tournament_name || current.hand_id ? (
+      <div className="flex items-center gap-2 font-mono text-[9px] text-muted-foreground/50 shrink-0 truncate">
+        {current.tournament_name && (
+          <span className="truncate max-w-[200px]" title={current.tournament_name}>
+            {current.tournament_name}
+          </span>
+        )}
+        {current.hand_id && (
+          <span className="text-muted-foreground/40 shrink-0">#{current.hand_id}</span>
+        )}
+        {current.played_at && (
+          <span className="shrink-0">
+            {new Date(current.played_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+          </span>
+        )}
+      </div>
+    ) : null;
+
     const sitStrip = (
-      <div className={cn("flex items-center gap-x-3 gap-y-1 flex-wrap rounded-lg border px-3 py-2 shrink-0", style.box)}>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <SitIcon className={cn("size-3.5", style.label)} aria-hidden />
-          <span className={cn("font-mono text-[10px] font-bold uppercase tracking-wide", style.label)}>{t(`situation.${sit.key}`)}</span>
+      <div className="space-y-1 shrink-0">
+        <div className={cn("flex items-center gap-x-3 gap-y-1 flex-wrap rounded-lg border px-3 py-2", style.box)}>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <SitIcon className={cn("size-3.5", style.label)} aria-hidden />
+            <span className={cn("font-mono text-[10px] font-bold uppercase tracking-wide", style.label)}>{t(`situation.${sit.key}`)}</span>
+          </div>
+          <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap font-mono text-[10px] text-muted-foreground">
+            <span className="font-semibold text-foreground">{t(`street.${current.street}`)}</span>
+            {current.position    && <span>{current.position}</span>}
+            {current.stack_bb != null && <span>Stack: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
+            {current.m_ratio   != null && <span>M: <span className="text-foreground">{current.m_ratio.toFixed(1)}</span></span>}
+            {current.pot_size  != null && current.pot_size  > 0 && <span>Pot: <span className="text-foreground">{current.pot_size.toFixed(1)}bb</span></span>}
+            {current.facing_desc
+              ? <span className={cn("font-semibold", sit.variant === "aggression" ? "text-warning" : "text-foreground")}>{current.facing_desc}</span>
+              : current.facing_bet != null && current.facing_bet > 0 && (
+                  <span className={sit.variant === "aggression" ? "text-warning font-semibold" : ""}>
+                    Facing: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
+                  </span>
+                )
+            }
+            {!!current.is_3bet && <span className="font-semibold text-warning">{t("context.is3bet")}</span>}
+            {current.context_note === 'hu_postflop' && (
+              <span className="px-1.5 py-0.5 rounded border border-border bg-hud-surface text-muted-foreground">
+                {t('context.huPostflop')}
+              </span>
+            )}
+            {current.icm_pressure && current.icm_pressure !== "none" && (
+              <span className={cn({ "text-destructive font-semibold": current.icm_pressure === "high", "text-warning font-semibold": current.icm_pressure === "medium", "text-primary font-semibold": current.icm_pressure === "low" })}>
+                ICM {t(`icmLabel.${current.icm_pressure}`)}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap font-mono text-[10px] text-muted-foreground">
-          <span className="font-semibold text-foreground">{t(`street.${current.street}`)}</span>
-          {current.position    && <span>{current.position}</span>}
-          {current.stack_bb != null && <span>Stack: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
-          {current.m_ratio   != null && <span>M: <span className="text-foreground">{current.m_ratio.toFixed(1)}</span></span>}
-          {current.pot_size  != null && current.pot_size  > 0 && <span>Pot: <span className="text-foreground">{current.pot_size.toFixed(1)}bb</span></span>}
-          {current.facing_desc
-            ? <span className={cn("font-semibold", sit.variant === "aggression" ? "text-warning" : "text-foreground")}>{current.facing_desc}</span>
-            : current.facing_bet != null && current.facing_bet > 0 && (
-                <span className={sit.variant === "aggression" ? "text-warning font-semibold" : ""}>
-                  Facing: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
-                </span>
-              )
-          }
-          {!!current.is_3bet && <span className="font-semibold text-warning">{t("context.is3bet")}</span>}
-          {current.context_note === 'hu_postflop' && (
-            <span className="px-1.5 py-0.5 rounded border border-border bg-hud-surface text-muted-foreground">
-              {t('context.huPostflop')}
-            </span>
-          )}
-          {current.icm_pressure && current.icm_pressure !== "none" && (
-            <span className={cn({ "text-destructive font-semibold": current.icm_pressure === "high", "text-warning font-semibold": current.icm_pressure === "medium", "text-primary font-semibold": current.icm_pressure === "low" })}>
-              ICM {t(`icmLabel.${current.icm_pressure}`)}
-            </span>
-          )}
-        </div>
+        {tournamentRef}
       </div>
     );
 
