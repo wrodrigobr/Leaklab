@@ -3654,8 +3654,12 @@ def get_daily_focus(user_id: int) -> dict:
         spot  = top.get('spot', '')
         label = spot.replace('/', ' / ').replace('_', ' ')
         n     = top.get('n', 0)
-        desc  = (f'{n} erros de alinhamento GTO nos últimos 90 dias'
-                 if gto_leaks else f'{n} situações identificadas (análise heurística)')
+        ev = top.get('ev_loss_monthly', 0) or 0
+        if gto_leaks:
+            desc = (f'~{ev:.1f} buy-ins/mês de impacto estimado · {n} ocorrências (90 dias)'
+                    if ev > 0 else f'{n} ocorrências com desvio GTO (90 dias)')
+        else:
+            desc = f'Spot mais frequente — {n} ocorrências nos últimos 90 dias'
         actions.append({
             'type':        'leak',
             'priority':    'primary',
