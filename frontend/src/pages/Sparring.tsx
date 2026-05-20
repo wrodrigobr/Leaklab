@@ -619,6 +619,10 @@ export default function Sparring() {
     const { tableStep, hero: tableHero, heroCards: tableHeroCards, bb: tableBb } = buildSparringStep(current, replayStep);
     const actionKeys = getActionKeys(current);
     const cols = actionKeys.length === 4 ? "grid-cols-2" : "grid-cols-3";
+    const isCallEqualToJam =
+      (current.facing_bet ?? 0) > 0 &&
+      (current.stack_bb ?? 0) > 0 &&
+      (current.facing_bet ?? 0) >= (current.stack_bb ?? 9999) * 0.95;
 
     return (
       <div className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
@@ -654,8 +658,10 @@ export default function Sparring() {
               {phase === "playing" && (
                 <div className={`grid gap-2 ${cols}`}>
                   {actionKeys.map((action) => (
-                    <button key={action} onClick={() => submitAction(action)} disabled={submitting}
-                      className="min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 disabled:opacity-60 transition-all active:scale-95">
+                    <button key={action} onClick={() => submitAction(action)}
+                      disabled={submitting || (action === 'jam' && isCallEqualToJam)}
+                      title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
+                      className="min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                       {t(`actions.${action}`)}
                     </button>
                   ))}
@@ -705,8 +711,10 @@ export default function Sparring() {
                 <p className="text-center text-sm font-semibold text-foreground shrink-0">{t("question")}</p>
                 <div className={`grid gap-2 shrink-0 ${cols}`}>
                   {actionKeys.map((action) => (
-                    <button key={action} onClick={() => submitAction(action)} disabled={submitting}
-                      className="min-h-[48px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 hover:ring-amber-500/40 disabled:opacity-60 transition-all active:scale-95">
+                    <button key={action} onClick={() => submitAction(action)}
+                      disabled={submitting || (action === 'jam' && isCallEqualToJam)}
+                      title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
+                      className="min-h-[48px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400 hover:ring-amber-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                       {t(`actions.${action}`)}
                     </button>
                   ))}

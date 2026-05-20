@@ -883,11 +883,8 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
               AND NOT (d.position = 'BB' AND COALESCE(d.facing_bet, 0) = 0 AND d.best_action = 'fold')
               AND d.position IS NOT NULL AND d.position != ''
               AND d.hero_cards IS NOT NULL AND d.hero_cards != ''
-              AND (
-                (d.street = 'preflop' AND d.label IN ('small_mistake','clear_mistake'))
-                OR
-                (d.street != 'preflop' AND d.gto_label IN ('gto_minor_deviation','gto_critical'))
-              )
+              AND d.gto_label IN ('gto_minor_deviation', 'gto_critical')
+              AND d.gto_action IS NOT NULL AND d.gto_action != ''
               {street_filter}
               {spot_filter}
             ORDER BY
@@ -1745,16 +1742,16 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
                 FROM (
                     SELECT d.hand_id, d.tournament_id,
                            COUNT(*) AS total_decisions,
-                           MAX(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN d.score ELSE 0 END) AS max_err,
-                           SUM(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN 1 ELSE 0 END) AS mistakes
+                           MAX(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical') THEN d.score ELSE 0 END) AS max_err,
+                           SUM(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical') THEN 1 ELSE 0 END) AS gto_mistakes
                     FROM decisions d
                     JOIN tournaments t ON t.id = d.tournament_id
                     WHERE t.user_id = ? AND t.imported_at >= ? {excl_clause}
                     GROUP BY d.hand_id, d.tournament_id
-                    HAVING SUM(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN 1 ELSE 0 END) > 0
-                      AND SUM(CASE WHEN d.gto_label IN ('gto_correct','gto_mixed','gto_minor_deviation','gto_critical') THEN 1 ELSE 0 END) > 0
+                    HAVING SUM(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical')
+                                     AND d.gto_action IS NOT NULL AND d.gto_action != '' THEN 1 ELSE 0 END) > 0
                 ) sub
-                ORDER BY sub.total_decisions DESC, sub.max_err DESC
+                ORDER BY sub.gto_mistakes DESC, sub.max_err DESC
                 LIMIT 1
             """), params).fetchone()
 
@@ -1765,16 +1762,16 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
                     FROM (
                         SELECT d.hand_id, d.tournament_id,
                                COUNT(*) AS total_decisions,
-                               MAX(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN d.score ELSE 0 END) AS max_err,
-                               SUM(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN 1 ELSE 0 END) AS mistakes
+                               MAX(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical') THEN d.score ELSE 0 END) AS max_err,
+                               SUM(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical') THEN 1 ELSE 0 END) AS gto_mistakes
                         FROM decisions d
                         JOIN tournaments t ON t.id = d.tournament_id
                         WHERE t.user_id = ? AND t.imported_at >= ?
                         GROUP BY d.hand_id, d.tournament_id
-                        HAVING SUM(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN 1 ELSE 0 END) > 0
-                          AND SUM(CASE WHEN d.gto_label IN ('gto_correct','gto_mixed','gto_minor_deviation','gto_critical') THEN 1 ELSE 0 END) > 0
+                        HAVING SUM(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical')
+                                         AND d.gto_action IS NOT NULL AND d.gto_action != '' THEN 1 ELSE 0 END) > 0
                     ) sub
-                    ORDER BY sub.total_decisions DESC, sub.max_err DESC
+                    ORDER BY sub.gto_mistakes DESC, sub.max_err DESC
                     LIMIT 1
                 """), (user_id, cutoff)).fetchone()
 
@@ -1789,6 +1786,7 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
                    d.action_taken, d.best_action, d.label, d.score,
                    d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
                    d.num_players, d.pot_size, d.facing_bet, d.is_3bet,
+                   d.gto_label, d.gto_action,
                    t.tournament_name, t.id AS tournament_id
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
@@ -1801,9 +1799,10 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
     if not rows:
         return {"insufficient_data": True}
 
-    mistakes = [r for r in rows if r["label"] in ("small_mistake", "clear_mistake")]
+    gto_mistakes = [r for r in rows if r.get("gto_label") in ("gto_minor_deviation", "gto_critical")
+                    and r.get("gto_action")]
     primary_id = (
-        max(mistakes, key=lambda r: r["score"])["id"] if mistakes else rows[0]["id"]
+        max(gto_mistakes, key=lambda r: r["score"])["id"] if gto_mistakes else rows[0]["id"]
     )
 
     steps = []
@@ -1812,6 +1811,11 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
         # Guard: BB pode check grátis — fold impossível sem aposta. Outras posições: fold correto (não abrem).
         if float(r["facing_bet"] or 0) == 0 and best == "fold" and r.get("position") == "BB":
             best = "check"
+        gto_lbl = r.get("gto_label") or ""
+        gto_act = r.get("gto_action") or ""
+        # GTO sobrescreve best_action quando disponível e confiável
+        if gto_act and gto_lbl not in ("wizard_pending", ""):
+            best = gto_act
         steps.append({
             "step_index":   i,
             "decision_id":  r["id"],
@@ -1820,6 +1824,8 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
             "board":        r["board"] or "",
             "action_taken": r["action_taken"],
             "best_action":  best,
+            "gto_label":    gto_lbl or None,
+            "gto_action":   gto_act or None,
             "label":        r["label"],
             "score":        r["score"],
             "m_ratio":      r["m_ratio"],
