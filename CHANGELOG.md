@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.127.0] — 2026-05-20 — refactor(gto): validate_nodes_vs_gw usa servidor GCP em vez de token de browser
+
+### Changed
+- **`scripts/validate_nodes_vs_gw.py`** reescrito para usar `gto_wizard_client.query_spot()` (POST /gto-wizard no servidor GCP). Não requer mais `GW_ACCESS_TOKEN` de browser. Requer `GTO_SOLVER_URL`, `GTO_SOLVER_API_KEY` e `GTO_WIZARD_ENABLED=true` no `.env`. Verifica status do servidor antes de iniciar (`/gw-status`)
+- Removida dependência de `GWAuth`/`GWClient`/`build_gw_params()` do benchmark script
+- Formato de resposta adaptado para `gw_query()` → `strategy_json` correto no banco
+
+---
+
 ## [v0.126.0] — 2026-05-20 — fix(data): revalidação completa preflop + limpeza de orphans postflop
 
 ### Fixed
