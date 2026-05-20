@@ -309,7 +309,7 @@ const TournamentDetail = () => {
                  : h.category === "critical"
     ).length,
     major: hands.filter((h) =>
-      h.gtoLabel ? h.gtoLabel === "gto_minor_deviation"
+      h.gtoLabel ? (h.gtoLabel === "gto_mixed" || h.gtoLabel === "gto_minor_deviation")
                  : h.category === "major"
     ).length,
     evLost:   hands.reduce((s, h) => s + Math.min(0, h.evDelta ?? 0), 0),
