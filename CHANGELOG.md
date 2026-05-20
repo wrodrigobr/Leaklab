@@ -9,6 +9,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.122.0] — 2026-05-20 — fix(ghost-table): guard SPR para nós GTO incorretos (jam implausível)
+
+### Fixed
+- **`_resolve_best_action_from_node()` (drill submit)**: se o nó retornar `jam` como ação dominante, `facing_bet = 0` e SPR (stack/pot) > 8, o nó é descartado como incorreto e o sistema usa `decisions.gto_action` como fallback. SPR > 8 sem aposta anterior torna jam como overbet de >8× o pote — GTO nunca recomenda jam como ação dominante nesse cenário
+- **`get_decision_gto()` (Replayer `/replay/<id>/gto`)**: mesmo guard SPR aplicado ao painel Estratégia GTO — evita que a UI mostre "Shove 96%" para um spot onde o GTO correto é check/bet
+
+### Root Cause
+Nós do GTO Wizard em `gto_nodes` estavam sendo associados a spots diferentes via hash match com dados inválidos (ex: `strategy_json` com shove 96% para turn de Q4o com 28bb/pot 1.5bb = SPR 18.7). O guard de SPR detecta esses matches impossíveis sem precisar auditar o banco.
+
+---
+
 ## [v0.121.0] — 2026-05-20 — fix(ghost-table): corrige lookup GTO Wizard no drill e replayer
 
 ### Fixed

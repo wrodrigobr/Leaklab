@@ -982,13 +982,28 @@ def _resolve_best_action_from_node(row: dict) -> str:
         elif node.get('gto_action'):
             top_action = node['gto_action']
 
-    a = (top_action or '').lower()
-    if a in ('shove', 'jam', 'allin', 'all-in', 'all_in'):
-        return 'jam'
-    if a.startswith('bet'):
-        return 'bet'
-    if a.startswith('raise'):
-        return 'bet' if facing_bb == 0 else 'raise'
+    def _norm_action(raw: str) -> str:
+        raw = (raw or '').lower()
+        if raw in ('shove', 'jam', 'allin', 'all-in', 'all_in'):
+            return 'jam'
+        if raw.startswith('bet'):
+            return 'bet'
+        if raw.startswith('raise'):
+            return 'bet' if facing_bb == 0 else 'raise'
+        return raw
+
+    a = _norm_action(top_action)
+
+    # Sanity: jam dominante com SPR > 8 e sem aposta anterior é implausível.
+    # SPR alto sem facing bet significa overbet de >8x o pote — GTO nunca recomenda jam como
+    # ação dominante nesse cenário. Indica hash match incorreto no gto_nodes.
+    # Fallback: decisions.gto_action (computado pelo worker, geralmente correto nesses casos).
+    if a == 'jam' and facing_bb == 0:
+        pot_bb_val = float(row.get('pot_size') or 0)
+        if pot_bb_val > 0 and stack_bb > 0 and stack_bb / pot_bb_val > 8:
+            stored = _norm_action(row.get('gto_action') or '')
+            a = stored if stored else 'check'
+
     return a
 
 
@@ -4179,6 +4194,18 @@ def get_decision_gto(decision_id):
         if strategy:
             top_action = strategy[0]['action']
         spot_hash_out = node.get('spot_hash', '')
+
+    # Sanity: jam dominante (>50%) com SPR > 8 e sem aposta = nó incorreto.
+    # Overbet de mais de 8x o pote nunca é ação dominante no GTO — descarta nó.
+    if strategy and facing_bb == 0:
+        top_freq_action = (strategy[0].get('action') or '').lower()
+        top_freq_val    = float(strategy[0].get('frequency') or 0)
+        if top_freq_action in ('shove', 'jam', 'allin', 'all-in', 'all_in') and top_freq_val > 0.5:
+            pot_bb_val = float(dec.get('pot_size') or 0)
+            if pot_bb_val > 0 and stack_bb > 0 and stack_bb / pot_bb_val > 8:
+                # Nó suspeito — ignorar strategy_json e usar stored_gto_action
+                strategy = []
+                node = None
 
     # ── Fallback: use stored gto_action from decisions table (no node found) ─
     if not strategy and stored_gto_action:
