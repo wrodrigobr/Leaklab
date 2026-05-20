@@ -544,6 +544,10 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if float(spot.get('facingSize') or 0) == 0 and _best_action == 'fold' and spot.get('position') == 'BB':
         _best_action = 'check'
 
+    # Guard: sem aposta anterior, "raise" não é ação válida — normalizar para "bet" (open).
+    if float(spot.get('facingSize') or 0) == 0 and _best_action == 'raise':
+        _best_action = 'bet'
+
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
     return {
         "handId": input_data["hand_id"],

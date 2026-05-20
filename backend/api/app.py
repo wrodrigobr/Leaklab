@@ -116,7 +116,7 @@ from database.repositories import (
     # Sprint D — BACK-016: WhatsApp
     get_user_by_phone, update_user_phone,
     # Sprint Q — FEAT-02 + FEAT-03: Daily Focus + XP Server-Side
-    get_daily_focus, mark_daily_focus_done,
+    get_daily_focus, mark_daily_focus_done, reset_drill_sessions,
     add_xp, get_xp_status, get_achievements,
     # Sprint S — FEAT-06: Leak Causal Graph
     get_leak_graph_data,
@@ -928,6 +928,66 @@ def player_drill_spots():
     return jsonify({'spots': spots, 'stats': stats})
 
 
+def _resolve_best_action_from_node(row: dict) -> str:
+    """Busca ação GTO ao vivo em gto_nodes (mesma lógica do /replay/<id>/gto).
+    Fallback para decisions.gto_action → best_action se nenhum nó for encontrado."""
+    from database.repositories import get_gto_node, get_gto_node_by_spot
+    from leaklab.gto_utils import compute_spot_hash
+    import json as _j
+
+    street    = row.get('street', '')
+    position  = row.get('position', '')
+    facing_bb = float(row.get('facing_bet') or 0.0)
+    stack_bb  = float(row.get('stack_bb') or 30.0)
+
+    try:
+        board_raw = row.get('board') or '[]'
+        board = _j.loads(board_raw) if isinstance(board_raw, str) else (board_raw or [])
+    except Exception:
+        board = []
+
+    _street_cards = {'flop': 3, 'turn': 4, 'river': 5}
+    board_for_hash = board[:_street_cards.get(street, len(board))]
+
+    hand_raw = row.get('hero_cards') or ''
+    if isinstance(hand_raw, str) and hand_raw.strip():
+        _raw = hand_raw.strip()
+        hero_hand = _raw.split() if ' ' in _raw else [_raw[i:i+2] for i in range(0, len(_raw), 2)]
+    else:
+        hero_hand = []
+
+    node = None
+    if hero_hand:
+        node = get_gto_node(compute_spot_hash(street, position, board_for_hash, hero_hand, stack_bb, facing_bb))
+    if not node:
+        node = get_gto_node(compute_spot_hash(street, position, board_for_hash, [], stack_bb, facing_bb))
+    if not node and facing_bb == 0:
+        node = get_gto_node(compute_spot_hash(street, position, board_for_hash, [], stack_bb, 0.0))
+    if not node:
+        node = get_gto_node_by_spot(street, board_for_hash, position)
+
+    top_action = row.get('gto_action') or row.get('best_action') or 'fold'
+    if node:
+        if node.get('strategy_json'):
+            try:
+                strat = _j.loads(node['strategy_json'])
+                top_action = max(strat, key=lambda k: strat[k].get('frequency', 0))
+            except Exception:
+                if node.get('gto_action'):
+                    top_action = node['gto_action']
+        elif node.get('gto_action'):
+            top_action = node['gto_action']
+
+    a = (top_action or '').lower()
+    if a in ('shove', 'jam', 'allin', 'all-in', 'all_in'):
+        return 'jam'
+    if a.startswith('bet'):
+        return 'bet'
+    if a.startswith('raise'):
+        return 'bet' if facing_bb == 0 else 'raise'
+    return a
+
+
 @app.route('/player/spots/drill/submit', methods=['POST'])
 @require_auth
 def player_drill_submit():
@@ -958,10 +1018,15 @@ def player_drill_submit():
     gto_action  = row.get('gto_action') or ''
     gto_label   = row.get('gto_label') or ''
 
-    # GTO tem precedência sobre heurística quando disponível e não pendente.
-    # Evita que o drill diga "errado" quando o jogador seguiu corretamente a recomendação GTO.
+    # Usa live GTO node lookup quando cobertura GTO disponível (mesmo pipeline do Replayer).
+    # Evita erros por decisions.gto_action desatualizado ou hash match incorreto.
     if gto_action and gto_label not in ('wizard_pending', ''):
-        best_action = _norm_drill(gto_action)
+        best_action = _resolve_best_action_from_node(row)
+    else:
+        best_action = _norm_drill(best_action)
+        # Guard: raise sem aposta anterior é semanticamente "bet"
+        if float(row.get('facing_bet') or 0) == 0 and best_action == 'raise':
+            best_action = 'bet'
 
     # Guard: BB pode check grátis — fold sem aposta é impossível.
     if float(row.get('facing_bet') or 0) == 0 and best_action == 'fold' and row.get('position') == 'BB':
@@ -1145,6 +1210,14 @@ def player_daily_focus():
 def player_daily_focus_complete():
     mark_daily_focus_done(g.user_id)
     return jsonify({'ok': True})
+
+
+@app.route('/player/drill-sessions/reset', methods=['DELETE'])
+@require_auth
+def player_drill_sessions_reset():
+    """Reseta histórico SRS do Ghost Table — todos os spots voltam para fila inicial."""
+    deleted = reset_drill_sessions(g.user_id)
+    return jsonify({'ok': True, 'deleted': deleted})
 
 
 @app.route('/player/xp', methods=['GET'])

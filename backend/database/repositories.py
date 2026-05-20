@@ -3734,6 +3734,17 @@ def mark_daily_focus_done(user_id: int) -> None:
         conn.close()
 
 
+def reset_drill_sessions(user_id: int) -> int:
+    """Deleta todo o histórico SRS de drill do usuário. Retorna quantidade deletada."""
+    conn = get_conn()
+    try:
+        cur = conn.execute("DELETE FROM drill_sessions WHERE user_id = ?", (user_id,))
+        conn.commit()
+        return cur.rowcount
+    finally:
+        conn.close()
+
+
 # ── Sprint Q — FEAT-03: XP Server-Side ───────────────────────────────────────
 
 _XP_AMOUNTS: dict = {

@@ -648,6 +648,9 @@ export const drill = {
 
   analysis: (decision_id: number) =>
     request<DrillAnalysisResult>(`/player/spots/drill/${decision_id}/analysis`),
+
+  resetSessions: () =>
+    request<{ ok: boolean; deleted: number }>("/player/drill-sessions/reset", { method: "DELETE" }),
 };
 
 // ── Academy ───────────────────────────────────────────────────────────────────

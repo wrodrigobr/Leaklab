@@ -153,10 +153,7 @@ function buildDrillStep(spot: DrillSpot): { step: ReplayStep; hero: string; hero
   const bb   = spot.level_bb ?? 100;
   const heroStack = Math.round((spot.stack_bb ?? 20) * bb);
   const isPreflop = (spot.street ?? 'preflop') === 'preflop';
-  // Postflop spots são garantidamente HU pelo filtro num_players<=2 — usar 2 seats para clareza visual
-  const numP = isPreflop
-    ? Math.max(2, Math.min(6, spot.num_players ?? 6))
-    : 2;
+  const numP = Math.max(2, Math.min(9, spot.num_players ?? 6));
   const heroPos = (spot.position ?? 'BTN').toUpperCase();
 
   const layouts: Record<number, string[]> = {
@@ -239,6 +236,8 @@ export default function GhostTable() {
   const [analysis, setAnalysis]             = useState<string | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [gtoStrategy, setGtoStrategy]       = useState<GtoStrategyAction[] | null>(null);
+  const [resetting, setResetting]           = useState(false);
+  const [resetConfirm, setResetConfirm]     = useState(false);
 
   // ── Pressure mode state ───────────────────────────────────────────────────
   const [pressureMode, setPressureMode] = useState(false);
@@ -700,6 +699,43 @@ export default function GhostTable() {
               )} />
             </div>
           </button>
+
+          {/* Reset histórico SRS */}
+          {!resetConfirm ? (
+            <button
+              onClick={() => setResetConfirm(true)}
+              className="w-full text-center font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors underline underline-offset-2"
+              type="button"
+            >
+              {t("resetHistory")}
+            </button>
+          ) : (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+              <p className="font-mono text-[11px] text-destructive text-center">{t("resetConfirm")}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    setResetting(true);
+                    try {
+                      await drill.resetSessions();
+                      setStats(null); setResetConfirm(false);
+                      window.location.reload();
+                    } finally { setResetting(false); }
+                  }}
+                  disabled={resetting}
+                  className="flex-1 rounded border border-destructive/50 bg-destructive/10 py-1.5 font-mono text-[10px] font-bold text-destructive hover:bg-destructive/20 disabled:opacity-60 transition-colors"
+                >
+                  {resetting ? <Loader2 className="size-3 animate-spin mx-auto" /> : t("resetConfirmYes")}
+                </button>
+                <button
+                  onClick={() => setResetConfirm(false)}
+                  className="flex-1 rounded border border-border py-1.5 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {t("resetConfirmNo")}
+                </button>
+              </div>
+            </div>
+          )}
 
           <button
             onClick={startDrill}
