@@ -361,6 +361,12 @@ export default function GhostTable() {
     const { step: drillStep, hero: drillHero, heroCards: drillCards, bb: drillBb } = buildDrillStep(current);
     if (phase === "result") (drillStep as unknown as Record<string, unknown>).seat = undefined;
 
+    // Quando facing_bet >= stack_bb, call e jam são equivalentes (all-in de qualquer forma).
+    const isCallEqualToJam =
+      (current.facing_bet ?? 0) > 0 &&
+      (current.stack_bb ?? 0) > 0 &&
+      (current.facing_bet ?? 0) >= (current.stack_bb ?? 9999) * 0.95;
+
     const progressBar = (
       <div className="flex items-center gap-3 shrink-0">
         <span className="font-mono text-xs text-muted-foreground shrink-0">{t("spot", { n: index + 1, total: spots.length })}</span>
@@ -473,8 +479,10 @@ export default function GhostTable() {
                   })()}
                   <div className="grid grid-cols-3 gap-2">
                     {ACTION_KEYS.map(action => (
-                      <button key={action} onClick={() => submitAction(action)} disabled={submitting || timedOut}
-                        className="min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-60 transition-all active:scale-95">
+                      <button key={action} onClick={() => submitAction(action)}
+                        disabled={submitting || timedOut || (action === 'jam' && isCallEqualToJam)}
+                        title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
+                        className="min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                         {t(`actions.${action}`)}
                       </button>
                     ))}
@@ -532,8 +540,10 @@ export default function GhostTable() {
                 <p className="text-center text-sm font-semibold text-foreground shrink-0">{t("question")}</p>
                 <div className="grid grid-cols-2 gap-2 shrink-0">
                   {ACTION_KEYS.map(action => (
-                    <button key={action} onClick={() => submitAction(action)} disabled={submitting || timedOut}
-                      className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-60 transition-all active:scale-95">
+                    <button key={action} onClick={() => submitAction(action)}
+                      disabled={submitting || timedOut || (action === 'jam' && isCallEqualToJam)}
+                      title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
+                      className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                       {t(`actions.${action}`)}
                     </button>
                   ))}
@@ -815,8 +825,9 @@ export default function GhostTable() {
                 <button
                   key={action}
                   onClick={() => submitAction(action)}
-                  disabled={submitting || timedOut}
-                  className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-60 transition-all active:scale-95"
+                  disabled={submitting || timedOut || (action === 'jam' && isCallEqualToJam)}
+                  title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
+                  className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
                 >
                   {t(`actions.${action}`)}
                 </button>

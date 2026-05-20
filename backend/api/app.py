@@ -968,7 +968,17 @@ def player_drill_submit():
         best_action = 'check'
 
     original_score = row['score']
-    is_correct = _norm_drill(new_action) == best_action
+    norm_new   = _norm_drill(new_action)
+    is_correct = norm_new == best_action
+
+    # Guard: quando facing_bet >= stack_bb, call e jam são mecanicamente equivalentes
+    # (chamar o raise já coloca todas as fichas — shove não adiciona chips extras).
+    facing_bet = float(row.get('facing_bet') or 0)
+    stack_bb   = float(row.get('stack_bb') or 9999)
+    if not is_correct and facing_bet > 0 and stack_bb > 0 and facing_bet >= stack_bb * 0.95:
+        call_jam_set = {'call', 'jam'}
+        if norm_new in call_jam_set and best_action in call_jam_set:
+            is_correct = True
     new_score  = 0.02 if is_correct else original_score
 
     result = save_drill_session(
