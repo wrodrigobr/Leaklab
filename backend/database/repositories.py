@@ -49,6 +49,23 @@ def _execute(conn, sql: str, params=None):
     return conn.execute(sql, params or ())
 
 
+def _build_tournament_filter(user_id: int, days: int = 90, last_n: int | None = None) -> tuple[str, tuple]:
+    """
+    Retorna (where_clause, params) para filtrar torneios por volume ou por data.
+
+    - last_n=N  → últimos N torneios do usuário (independente de data)
+    - last_n=None → torneios importados nos últimos `days` dias
+    """
+    if last_n is not None:
+        return (
+            "t.id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY imported_at DESC LIMIT ?)",
+            (user_id, last_n),
+        )
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    return "t.user_id = ? AND t.imported_at >= ?", (user_id, since)
+
+
 def _fetchall(conn, sql: str, params=None) -> list:
     """Executa query SELECT e retorna lista de dicts."""
     result = conn.execute(sql, params or ())
@@ -445,33 +462,39 @@ def _compute_comparison_leaks(decisions: list) -> list:
 
 # ── Evolution metrics (queries para o dashboard) ──────────────────────────────
 
-def get_evolution_metrics(user_id: int, days: int = 90) -> List[dict]:
+def get_evolution_metrics(user_id: int, days: int = 90, last_n: int | None = None) -> List[dict]:
     """Retorna métricas por torneio para o gráfico de evolução."""
-    from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    tourn_filter, tourn_params = _build_tournament_filter(user_id, days, last_n)
+    # Evolution query filters tournaments directly (no decisions join needed)
+    if last_n is not None:
+        where = "id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY imported_at DESC LIMIT ?)"
+        params = (user_id, last_n)
+    else:
+        from datetime import datetime, timedelta
+        since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+        where = "user_id = ? AND imported_at >= ?"
+        params = (user_id, since)
     conn = get_conn()
     try:
-        rows = conn.execute("""
+        rows = conn.execute(f"""
             SELECT tournament_id, site, played_at, imported_at,
                    hands_count, decisions_count, avg_score,
                    standard_pct, clear_pct,
                    buy_in, prize, profit, place, result
             FROM tournaments
-            WHERE user_id = ?
-              AND imported_at >= ?
+            WHERE {where}
             ORDER BY imported_at ASC
-        """, (user_id, since)).fetchall()
+        """, params).fetchall()
         return [dict(r) for r in rows]
     finally:
         conn.close()
 
-def get_leak_summary(user_id: int, days: int = 90) -> List[dict]:
+def get_leak_summary(user_id: int, days: int = 90, last_n: int | None = None) -> List[dict]:
     """Agrega leaks por street/ação no período."""
-    from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    tourn_filter, tourn_params = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
     try:
-        rows = conn.execute("""
+        rows = conn.execute(_adapt(f"""
             SELECT
                 d.street || '/' || d.best_action AS spot,
                 COUNT(*)                          AS n,
@@ -479,29 +502,27 @@ def get_leak_summary(user_id: int, days: int = 90) -> List[dict]:
                 SUM(d.score)                      AS total_score
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
-              AND t.imported_at >= ?
+            WHERE {tourn_filter}
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
             HAVING COUNT(*) >= 2
             ORDER BY avg_score DESC
             LIMIT 10
-        """, (user_id, since)).fetchall()
+        """), tourn_params).fetchall()
         return [dict(r) for r in rows]
     finally:
         conn.close()
 
-def get_leak_roi_impact(user_id: int, days: int = 90) -> list:
+def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None) -> list:
     """Leaks enriquecidos com ROI estimado, priority_score e trend de progressão."""
     from datetime import datetime, timedelta
-    now   = datetime.utcnow()
-    since = (now - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-    # Trend: compare last 30 days vs. previous 30 days
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
+    now          = datetime.utcnow()
     recent_since = (now - timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
     prev_since   = (now - timedelta(days=60)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
-        rows = conn.execute(_adapt("""
+        rows = conn.execute(_adapt(f"""
             SELECT
                 d.street || '/' || d.best_action  AS spot,
                 COUNT(*)                           AS n,
@@ -511,16 +532,15 @@ def get_leak_roi_impact(user_id: int, days: int = 90) -> list:
                 COUNT(*) * AVG(d.score)            AS priority_score
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
-              AND t.imported_at >= ?
+            WHERE {tf}
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
             HAVING COUNT(*) >= 2
             ORDER BY priority_score DESC
             LIMIT 10
-        """), (user_id, since)).fetchall()
+        """), tp).fetchall()
 
-        # Recent period scores for trend comparison
+        # Trend comparison uses fixed 30-day windows (independent of last_n)
         recent_rows = conn.execute(_adapt("""
             SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score
             FROM decisions d
@@ -531,7 +551,6 @@ def get_leak_roi_impact(user_id: int, days: int = 90) -> list:
         """), (user_id, recent_since)).fetchall()
         recent_map = {r['spot']: r['avg_score'] for r in recent_rows}
 
-        # Previous period scores
         prev_rows = conn.execute(_adapt("""
             SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score
             FROM decisions d
@@ -588,7 +607,7 @@ def get_leak_roi_impact(user_id: int, days: int = 90) -> list:
         conn.close()
 
 
-def get_gto_leak_ranking(user_id: int, days: int = 90) -> list:
+def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None) -> list:
     """
     Leak ranking baseado em gto_label — substitui get_leak_roi_impact com fonte GTO.
     Usa score proxy: gto_critical=0.45, gto_minor_deviation=0.15.
@@ -596,13 +615,13 @@ def get_gto_leak_ranking(user_id: int, days: int = 90) -> list:
     priority_rank, trend, drill_count, drill_accuracy).
     """
     from datetime import datetime, timedelta
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
     now          = datetime.utcnow()
-    since        = (now - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     recent_since = (now - timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
     prev_since   = (now - timedelta(days=60)).strftime('%Y-%m-%d %H:%M:%S')
     conn = get_conn()
     try:
-        rows = conn.execute(_adapt("""
+        rows = conn.execute(_adapt(f"""
             SELECT
                 d.street || '/' || d.best_action AS spot,
                 COUNT(*) AS n,
@@ -619,14 +638,13 @@ def get_gto_leak_ranking(user_id: int, days: int = 90) -> list:
                 END) AS priority_score
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
-              AND t.imported_at >= ?
+            WHERE {tf}
               AND d.gto_label IN ('gto_critical', 'gto_minor_deviation')
             GROUP BY spot
             HAVING COUNT(*) >= 2
             ORDER BY priority_score DESC
             LIMIT 10
-        """), (user_id, since)).fetchall()
+        """), tp).fetchall()
 
         def _proxy_rows(since_val, until_val=None):
             q = """
@@ -1068,35 +1086,34 @@ def get_breakdown(user_id: int, days: int = 90) -> dict:
         conn.close()
 
 
-def get_player_stats(user_id: int, days: int = 90) -> dict:
+def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) -> dict:
     """Computes poker HUD stats from stored decisions."""
-    from datetime import datetime, timedelta
-    since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
     conn = get_conn()
     try:
         # ── Preflop basics (VPIP, PFR) ───────────────────────────────────────
-        preflop = conn.execute("""
+        preflop = conn.execute(_adapt(f"""
             SELECT
                 COUNT(DISTINCT d.hand_id) AS total_hands,
                 COUNT(DISTINCT CASE WHEN d.action_taken IN ('call','raise','jam') THEN d.hand_id END) AS vpip_hands,
                 COUNT(DISTINCT CASE WHEN d.action_taken IN ('raise','jam') THEN d.hand_id END) AS pfr_hands
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ? AND d.street = 'preflop'
-        """, (user_id, since)).fetchone()
+            WHERE {tf} AND d.street = 'preflop'
+        """), tp).fetchone()
 
         # ── Postflop aggression (AF) ─────────────────────────────────────────
-        postflop = conn.execute("""
+        postflop = conn.execute(_adapt(f"""
             SELECT
                 COUNT(CASE WHEN d.action_taken IN ('bet','raise','jam') THEN 1 END) AS aggressive,
                 COUNT(CASE WHEN d.action_taken = 'call' THEN 1 END) AS passive
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ? AND d.street != 'preflop'
-        """, (user_id, since)).fetchone()
+            WHERE {tf} AND d.street != 'preflop'
+        """), tp).fetchone()
 
         # ── C-bet: first flop bet as preflop aggressor / PFA hands seeing flop ─
-        cbet_row = conn.execute("""
+        cbet_row = conn.execute(_adapt(f"""
             SELECT
                 COUNT(DISTINCT CASE WHEN flop_d.action_taken = 'bet' THEN sub.hand_id END) AS cbet_n,
                 COUNT(DISTINCT sub.hand_id) AS cbet_opp
@@ -1105,18 +1122,16 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
                        MIN(CASE WHEN d.street = 'flop' THEN d.id END) AS first_flop_id
                 FROM decisions d
                 JOIN tournaments t ON t.id = d.tournament_id
-                WHERE t.user_id = ? AND t.imported_at >= ?
+                WHERE {tf}
                 GROUP BY d.hand_id
                 HAVING MAX(CASE WHEN d.street = 'preflop' AND d.action_taken IN ('raise','jam') THEN 1 ELSE 0 END) = 1
                    AND MIN(CASE WHEN d.street = 'flop' THEN d.id END) IS NOT NULL
             ) sub
             JOIN decisions flop_d ON flop_d.id = sub.first_flop_id
-        """, (user_id, since)).fetchone()
+        """), tp).fetchone()
 
         # ── Fold-to-3BET: hands where hero raised preflop THEN folded ────────
-        # Pattern: 2 preflop decisions — first is raise/jam, second is fold (= faced 3-bet)
-        # faced_3bet_n = hands where hero raised AND had any second preflop action
-        f3b_row = conn.execute("""
+        f3b_row = conn.execute(_adapt(f"""
             SELECT
                 SUM(CASE WHEN sub.first_raise_id IS NOT NULL
                           AND sub.fold_after_raise_id IS NOT NULL
@@ -1129,89 +1144,89 @@ def get_player_stats(user_id: int, days: int = 90) -> dict:
                        MIN(CASE WHEN d.action_taken = 'fold' THEN d.id END)            AS fold_after_raise_id
                 FROM decisions d
                 JOIN tournaments t ON t.id = d.tournament_id
-                WHERE t.user_id = ? AND t.imported_at >= ? AND d.street = 'preflop'
+                WHERE {tf} AND d.street = 'preflop'
                 GROUP BY d.hand_id
                 HAVING COUNT(*) > 1
                    AND MIN(CASE WHEN d.action_taken IN ('raise','jam') THEN d.id END) IS NOT NULL
             ) sub
-        """, (user_id, since)).fetchone()
+        """), tp).fetchone()
 
         # ── WTSD approx: hands reaching river / hands seeing flop ────────────
-        wtsd_row = conn.execute("""
+        wtsd_row = conn.execute(_adapt(f"""
             SELECT
                 COUNT(DISTINCT CASE WHEN d.street = 'flop'  THEN d.hand_id END) AS saw_flop,
                 COUNT(DISTINCT CASE WHEN d.street = 'river' THEN d.hand_id END) AS saw_river
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
-        """, (user_id, since)).fetchone()
+            WHERE {tf}
+        """), tp).fetchone()
 
         # ── 3BET%: hands where hero 3-bet / total preflop hands ──────────────
-        tbet_row = conn.execute("""
+        tbet_row = conn.execute(_adapt(f"""
             SELECT
                 COUNT(DISTINCT CASE WHEN d.is_3bet = TRUE THEN d.hand_id END) AS three_bet_n,
                 COUNT(DISTINCT d.hand_id) AS total_n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ? AND d.street = 'preflop'
-        """, (user_id, since)).fetchone()
+            WHERE {tf} AND d.street = 'preflop'
+        """), tp).fetchone()
 
         # ── W$SD: hands won at showdown / total showdown hands ───────────────
-        wsd_row = conn.execute("""
+        wsd_row = conn.execute(_adapt(f"""
             SELECT
                 COUNT(DISTINCT CASE WHEN d.showdown_result = 'won'  THEN d.hand_id END) AS sd_won,
                 COUNT(DISTINCT CASE WHEN d.showdown_result IS NOT NULL THEN d.hand_id END) AS sd_total
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
-        """, (user_id, since)).fetchone()
+            WHERE {tf}
+        """), tp).fetchone()
 
         # ── Fold to Flop Bet (proxy for Fold to C-Bet) ────────────────────────
-        ftfb_row = conn.execute("""
+        ftfb_row = conn.execute(_adapt(f"""
             SELECT
                 COUNT(CASE WHEN d.action_taken = 'fold' THEN 1 END) AS ftfb_n,
                 COUNT(*) AS ftfb_total
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
               AND d.street = 'flop' AND d.facing_bet > 0
-        """, (user_id, since)).fetchone()
+        """), tp).fetchone()
 
         # ── BB Defense Rate: BB call+3bet vs preflop open ─────────────────────
-        bb_def_row = conn.execute("""
+        bb_def_row = conn.execute(_adapt(f"""
             SELECT
                 COUNT(CASE WHEN d.action_taken IN ('call','raise','jam') THEN 1 END) AS bb_def_n,
                 COUNT(*) AS bb_def_total
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
               AND d.street = 'preflop' AND d.position = 'BB' AND d.facing_bet > 0
-        """, (user_id, since)).fetchone()
+        """), tp).fetchone()
 
         # ── Steal%: raise/shove from BTN/CO/SB when not facing a raise ────────
-        steal_row = conn.execute("""
+        steal_row = conn.execute(_adapt(f"""
             SELECT
                 COUNT(CASE WHEN d.action_taken IN ('raise','jam') THEN 1 END) AS steal_n,
                 COUNT(*) AS steal_total
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
               AND d.street = 'preflop' AND d.position IN ('BTN','CO','SB')
               AND (d.facing_bet IS NULL OR d.facing_bet = 0)
-        """, (user_id, since)).fetchone()
+        """), tp).fetchone()
 
         # ── Open Limp%: preflop calls without a raise in front (non-BB) ────────
-        limp_row = conn.execute("""
+        limp_row = conn.execute(_adapt(f"""
             SELECT
                 COUNT(CASE WHEN d.action_taken = 'call' THEN 1 END) AS limp_n,
                 COUNT(*) AS limp_total
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
               AND d.street = 'preflop'
               AND d.position NOT IN ('BB')
               AND (d.facing_bet IS NULL OR d.facing_bet = 0)
-        """, (user_id, since)).fetchone()
+        """), tp).fetchone()
 
         # ── Compute stats ────────────────────────────────────────────────────
         pf    = dict(preflop)    if preflop    else {}
@@ -4423,29 +4438,26 @@ def get_gto_stats() -> dict:
         conn.close()
 
 
-def get_gto_quality_breakdown(user_id: int, since_days: int = 90) -> dict:
-    """Distribuição de gto_label para o usuário nos últimos since_days dias."""
-    from datetime import datetime, timedelta
+def get_gto_quality_breakdown(user_id: int, since_days: int = 90, last_n: int | None = None) -> dict:
+    """Distribuição de gto_label para o usuário nos últimos since_days dias (ou last_n torneios)."""
+    tf, tp = _build_tournament_filter(user_id, since_days, last_n)
     conn = get_conn()
     try:
-        since = (datetime.utcnow() - timedelta(days=since_days)).strftime('%Y-%m-%d %H:%M:%S')
-
-        label_rows = _fetchall(conn, _adapt("""
+        label_rows = _fetchall(conn, _adapt(f"""
             SELECT d.gto_label, COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
-              AND t.imported_at >= ?
+            WHERE {tf}
               AND d.gto_label IS NOT NULL
             GROUP BY d.gto_label
-        """), (user_id, since))
+        """), tp)
 
-        total_row = _fetchone(conn, _adapt("""
+        total_row = _fetchone(conn, _adapt(f"""
             SELECT COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
-        """), (user_id, since))
+            WHERE {tf}
+        """), tp)
 
         counts = {r['gto_label']: r['n'] for r in label_rows}
         total_gto = sum(counts.values())
@@ -4468,31 +4480,28 @@ def get_gto_quality_breakdown(user_id: int, since_days: int = 90) -> dict:
         conn.close()
 
 
-def get_gto_alignment_by_street(user_id: int, since_days: int = 90) -> dict:
+def get_gto_alignment_by_street(user_id: int, since_days: int = 90, last_n: int | None = None) -> dict:
     """GTO alignment breakdown by street for dashboard card."""
-    from datetime import datetime, timedelta
+    tf, tp = _build_tournament_filter(user_id, since_days, last_n)
     conn = get_conn()
     try:
-        since = (datetime.utcnow() - timedelta(days=since_days)).strftime('%Y-%m-%d %H:%M:%S')
-
-        rows = _fetchall(conn, _adapt("""
+        rows = _fetchall(conn, _adapt(f"""
             SELECT
                 d.street,
                 d.gto_label,
                 COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
-              AND t.imported_at >= ?
+            WHERE {tf}
             GROUP BY d.street, d.gto_label
-        """), (user_id, since))
+        """), tp)
 
-        total_row = _fetchone(conn, _adapt("""
+        total_row = _fetchone(conn, _adapt(f"""
             SELECT COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
-        """), (user_id, since))
+            WHERE {tf}
+        """), tp)
 
         total_dec = total_row['n'] if total_row else 0
 
@@ -4544,34 +4553,31 @@ def get_gto_alignment_by_street(user_id: int, since_days: int = 90) -> dict:
         conn.close()
 
 
-def get_gto_alignment_by_position(user_id: int, since_days: int = 90) -> dict:
+def get_gto_alignment_by_position(user_id: int, since_days: int = 90, last_n: int | None = None) -> dict:
     """GTO alignment breakdown by position for dashboard card."""
-    from datetime import datetime, timedelta
     from collections import defaultdict
+    tf, tp = _build_tournament_filter(user_id, since_days, last_n)
     conn = get_conn()
     try:
-        since = (datetime.utcnow() - timedelta(days=since_days)).strftime('%Y-%m-%d %H:%M:%S')
-
-        rows = _fetchall(conn, _adapt("""
+        rows = _fetchall(conn, _adapt(f"""
             SELECT
                 d.position,
                 d.gto_label,
                 COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
-              AND t.imported_at >= ?
+            WHERE {tf}
               AND d.position IS NOT NULL
             GROUP BY d.position, d.gto_label
-        """), (user_id, since))
+        """), tp)
 
-        total_row = _fetchone(conn, _adapt("""
+        total_row = _fetchone(conn, _adapt(f"""
             SELECT COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ? AND t.imported_at >= ?
+            WHERE {tf}
               AND d.position IS NOT NULL
-        """), (user_id, since))
+        """), tp)
 
         total_dec = total_row['n'] if total_row else 0
 

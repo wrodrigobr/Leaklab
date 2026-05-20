@@ -710,20 +710,20 @@ export const sparring = {
 };
 
 export const metrics = {
-  evolution: (days = 90) =>
-    request<EvolutionResponse>(`/history/evolution?days=${days}`),
+  evolution: (days = 90, lastN?: number) =>
+    request<EvolutionResponse>(`/history/evolution?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
   breakdown: (days = 90) =>
     request<BreakdownResponse>(`/history/breakdown?days=${days}`),
 
-  playerStats: (days = 90) =>
-    request<PlayerStatsResponse>(`/metrics/player-stats?days=${days}`),
+  playerStats: (days = 90, lastN?: number) =>
+    request<PlayerStatsResponse>(`/metrics/player-stats?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
   level: () =>
     request<PlayerLevel>(`/metrics/level`),
 
-  leakRoi: (days = 90) =>
-    request<{ leaks: LeakRoiData[] }>(`/player/leak-roi?days=${days}`),
+  leakRoi: (days = 90, lastN?: number) =>
+    request<{ leaks: LeakRoiData[] }>(`/player/leak-roi?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 
   drillStats: (days = 30) =>
     request<DrillStats>(`/player/drill-stats?days=${days}`),
@@ -737,14 +737,14 @@ export const metrics = {
   pendingGtoCount: () =>
     request<{ pending: number }>(`/player/pending-gto-count`),
 
-  gtoQuality: () =>
-    request<GtoQualityData>(`/player/gto-quality`),
+  gtoQuality: (lastN?: number) =>
+    request<GtoQualityData>(`/player/gto-quality${lastN != null ? `?last_n=${lastN}` : ""}`),
 
-  gtoAlignment: () =>
-    request<GtoAlignmentData>(`/player/gto-alignment`),
+  gtoAlignment: (lastN?: number) =>
+    request<GtoAlignmentData>(`/player/gto-alignment${lastN != null ? `?last_n=${lastN}` : ""}`),
 
-  gtoPosition: () =>
-    request<GtoPositionData>(`/player/gto-position`),
+  gtoPosition: (lastN?: number) =>
+    request<GtoPositionData>(`/player/gto-position${lastN != null ? `?last_n=${lastN}` : ""}`),
 
   dna: (days = 90) =>
     request<PlayerDnaResponse>(`/player/dna?days=${days}`),

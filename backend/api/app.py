@@ -822,10 +822,11 @@ def history_tournament_report_pdf(tournament_id):
 @app.route('/history/evolution', methods=['GET'])
 @require_auth
 def history_evolution():
-    days = int(request.args.get('days', 30))
+    days   = int(request.args.get('days', 30))
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
     return jsonify({
-        'evolution': get_evolution_metrics(g.user_id, days),
-        'leaks':     get_leak_summary(g.user_id, days),
+        'evolution': get_evolution_metrics(g.user_id, days, last_n=last_n),
+        'leaks':     get_leak_summary(g.user_id, days, last_n=last_n),
         'icm':       get_icm_performance(g.user_id, days),
     })
 
@@ -840,8 +841,9 @@ def history_breakdown():
 @app.route('/metrics/player-stats', methods=['GET'])
 @require_auth
 def player_stats():
-    days = int(request.args.get('days', 90))
-    return jsonify(get_player_stats(g.user_id, days))
+    days   = int(request.args.get('days', 90))
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    return jsonify(get_player_stats(g.user_id, days, last_n=last_n))
 
 
 @app.route('/metrics/level', methods=['GET'])
@@ -855,10 +857,11 @@ def player_level():
 def player_leak_roi():
     """Leaks rankeados por gto_label (critical/minor_deviation). Fallback para heurístico se sem dados GTO."""
     from database.repositories import get_gto_leak_ranking
-    days = int(request.args.get('days', 90))
-    leaks = get_gto_leak_ranking(g.user_id, days)
+    days   = int(request.args.get('days', 90))
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    leaks = get_gto_leak_ranking(g.user_id, days, last_n=last_n)
     if not leaks:
-        leaks = get_leak_roi_impact(g.user_id, days)
+        leaks = get_leak_roi_impact(g.user_id, days, last_n=last_n)
     return jsonify({'leaks': leaks})
 
 
@@ -891,7 +894,8 @@ def player_pending_gto_count():
 def player_gto_quality():
     """Distribuição de gto_label para o jogador nos últimos 90 dias."""
     from database.repositories import get_gto_quality_breakdown
-    return jsonify(get_gto_quality_breakdown(g.user_id))
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    return jsonify(get_gto_quality_breakdown(g.user_id, last_n=last_n))
 
 
 @app.route('/player/gto-alignment', methods=['GET'])
@@ -899,7 +903,8 @@ def player_gto_quality():
 def player_gto_alignment():
     """GTO alignment breakdown by street — preflop/flop/turn/river."""
     from database.repositories import get_gto_alignment_by_street
-    return jsonify(get_gto_alignment_by_street(g.user_id))
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    return jsonify(get_gto_alignment_by_street(g.user_id, last_n=last_n))
 
 
 @app.route('/player/gto-position', methods=['GET'])
@@ -907,7 +912,8 @@ def player_gto_alignment():
 def player_gto_position():
     """GTO alignment breakdown by position — BTN/CO/HJ/MP/UTG/SB/BB."""
     from database.repositories import get_gto_alignment_by_position
-    return jsonify(get_gto_alignment_by_position(g.user_id))
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    return jsonify(get_gto_alignment_by_position(g.user_id, last_n=last_n))
 
 
 @app.route('/player/spots/drill', methods=['GET'])

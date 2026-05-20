@@ -116,6 +116,13 @@
     "processing": "{{n}} spot sendo processado pelo solver GTO — este card será atualizado quando a análise concluir.",
     "processing_plural": "{{n}} spots sendo processados pelo solver GTO — este card será atualizado quando as análises concluírem."
   },
+  "volumeFilter": {
+    "label": "Analisando",
+    "last20": "Últimos 20",
+    "last50": "Últimos 50",
+    "last100": "Últimos 100",
+    "all": "Todos"
+  },
   "form": {
     "title": "Forma Recente",
     "tournaments": "{{n}} torneios",

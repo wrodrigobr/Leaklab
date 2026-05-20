@@ -72,6 +72,7 @@ const Index = () => {
   const [loading, setLoading]             = useState(true);
   const [tournsLoaded, setTournsLoaded]   = useState(_cachedTourns !== null);
   const [refreshKey, setRefreshKey]       = useState(0);
+  const [volumeLimit, setVolumeLimit]     = useState<number | null>(null); // null = Todos
 
   // Reset dismiss state whenever fresh data arrives (new upload)
   useEffect(() => {
@@ -81,10 +82,11 @@ const Index = () => {
 
   useEffect(() => {
     setLoading(true);
+    const ln = volumeLimit ?? undefined;
     Promise.all([
-      metrics.evolution(90).then(setEvo).catch(() => null),
-      metrics.playerStats(90).then(setPlayerStats).catch(() => null),
-      metrics.leakRoi(90).then((r) => setLeakRoi(r.leaks)).catch(() => null),
+      metrics.evolution(90, ln).then(setEvo).catch(() => null),
+      metrics.playerStats(90, ln).then(setPlayerStats).catch(() => null),
+      metrics.leakRoi(90, ln).then((r) => setLeakRoi(r.leaks)).catch(() => null),
       metrics.pressureProfile(90).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30).then(setDriftData).catch(() => null),
       tournaments.list().then((r) => { _cachedTourns = r.tournaments; setTourns(r.tournaments); setTournsLoaded(true); }).catch(() => null),
@@ -94,7 +96,7 @@ const Index = () => {
       metrics.cognitiveFailures(i18n.language).then(setCognitiveData).catch(() => null),
       metrics.strategicTwin(i18n.language).then(setTwinData).catch(() => null),
     ]).finally(() => setLoading(false));
-  }, [refreshKey]);
+  }, [refreshKey, volumeLimit]);
 
   // Re-fetch only language-sensitive AI narratives when locale changes
   const langMounted = useRef(false);
@@ -131,13 +133,15 @@ const Index = () => {
     if (from !== -1 && to !== -1) updateSidebar(arrayMove(layout.sidebar, from, to));
   };
 
-  const totalInvested = tourns.reduce((s, t) => s + (t.buy_in ?? 0), 0);
-  const totalProfit   = tourns.reduce((s, t) => s + (t.profit ?? 0), 0);
+  // KPIs derived from tourns — slice to last N when volumeLimit is set
+  const visibleTourns = volumeLimit ? tourns.slice(-volumeLimit) : tourns;
+  const totalInvested = visibleTourns.reduce((s, t) => s + (t.buy_in ?? 0), 0);
+  const totalProfit   = visibleTourns.reduce((s, t) => s + (t.profit ?? 0), 0);
   const roi           = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : null;
-  const itmCount      = tourns.filter((t) => (t.profit ?? 0) > 0).length;
-  const itmPct        = tourns.length > 0 ? (itmCount / tourns.length) * 100 : null;
-  const totalEvents   = tourns.length;
-  const totalHands    = tourns.reduce((s, t) => s + (t.hands_count ?? 0), 0);
+  const itmCount      = visibleTourns.filter((t) => (t.profit ?? 0) > 0).length;
+  const itmPct        = visibleTourns.length > 0 ? (itmCount / visibleTourns.length) * 100 : null;
+  const totalEvents   = visibleTourns.length;
+  const totalHands    = visibleTourns.reduce((s, t) => s + (t.hands_count ?? 0), 0);
 
   const hasData = tourns.length > 0;
 
@@ -150,8 +154,8 @@ const Index = () => {
   const pendingGto = pendingGtoData?.pending ?? 0;
 
   const { data: gtoAlignmentData } = useQuery<GtoAlignmentData>({
-    queryKey: ["gto-alignment", refreshKey],
-    queryFn: metrics.gtoAlignment,
+    queryKey: ["gto-alignment", refreshKey, volumeLimit],
+    queryFn: () => metrics.gtoAlignment(volumeLimit ?? undefined),
     staleTime: 120_000,
   });
 
@@ -160,14 +164,14 @@ const Index = () => {
     : null;
 
   const { data: gtoPositionData } = useQuery<GtoPositionData>({
-    queryKey: ["gto-position", refreshKey],
-    queryFn: metrics.gtoPosition,
+    queryKey: ["gto-position", refreshKey, volumeLimit],
+    queryFn: () => metrics.gtoPosition(volumeLimit ?? undefined),
     staleTime: 120_000,
   });
 
   const { data: gtoQualityData } = useQuery<GtoQualityData>({
-    queryKey: ["gto-quality", refreshKey],
-    queryFn: metrics.gtoQuality,
+    queryKey: ["gto-quality", refreshKey, volumeLimit],
+    queryFn: () => metrics.gtoQuality(volumeLimit ?? undefined),
     staleTime: 120_000,
   });
 
@@ -250,14 +254,38 @@ const Index = () => {
               {hasData ? t("eyebrow") : t("eyebrowEmpty")}
             </div>
             {hasData && (
-              <button
-                onClick={resetLayout}
-                title={tc("actions.resetLayout")}
-                className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground ring-1 ring-border hover:text-foreground hover:ring-primary/40 transition-colors"
-              >
-                <RotateCcw className="size-3" />
-                {tc("actions.resetLayout")}
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Volume filter */}
+                <div className="flex items-center gap-px rounded-md ring-1 ring-border overflow-hidden">
+                  {([null, 20, 50, 100] as (number | null)[]).map((val) => {
+                    const label = val === null ? t("volumeFilter.all")
+                      : val === 20 ? t("volumeFilter.last20")
+                      : val === 50 ? t("volumeFilter.last50")
+                      : t("volumeFilter.last100");
+                    return (
+                      <button
+                        key={String(val)}
+                        onClick={() => setVolumeLimit(val)}
+                        className={`px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-widest transition-colors ${
+                          volumeLimit === val
+                            ? "bg-primary/20 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={resetLayout}
+                  title={tc("actions.resetLayout")}
+                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground ring-1 ring-border hover:text-foreground hover:ring-primary/40 transition-colors"
+                >
+                  <RotateCcw className="size-3" />
+                  {tc("actions.resetLayout")}
+                </button>
+              </div>
             )}
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
