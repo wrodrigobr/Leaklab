@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.121.0] — 2026-05-20 — fix(ghost-table): corrige lookup GTO Wizard no drill e replayer
+
+### Fixed
+- **`repositories.get_gto_node()`**: query ampliada para incluir nós do GTO Wizard (`source='gto_wizard'`) que possuem `strategy_json` mas `exploitability_pct = NULL` — antes eram sempre ignorados, causando fallback para `decisions.gto_action` (potencialmente desatualizado)
+- **`_resolve_best_action_from_node()`** (drill submit): removido fallback d (`get_gto_node_by_spot`) que usava algoritmo de hash incompatível com `compute_spot_hash` e podia retornar nós aleatórios via colisão; adicionada validação pós-lookup (`node.street == street`)
+- **`get_decision_gto()`** (endpoint Replayer `/replay/<id>/gto`): mesmas correções — removido fallback d, adicionada validação de street
+
+### Why
+Ghost Table mostrava recomendações erradas (ex: "shove" em flop 4-9-7 com A7o 33.7bb onde GTO é check, "shove" em KQK com Q8s 73.7bb). A cadeia de lookup chamava `get_gto_node()` que filtrava `exploitability_pct IS NOT NULL` — excluindo todos os nós GTO Wizard (armazenados com exploitability=NULL). Sem nó, o sistema usava `decisions.gto_action` que foi salvo por um worker via hash match que pode ter sido incorreto.
+
+---
+
 ## [v0.120.0] — 2026-05-19 — feat(dashboard): GtoAlignmentCard — breakdown GTO por street (item 5)
 
 ### Added

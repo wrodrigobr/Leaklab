@@ -931,7 +931,7 @@ def player_drill_spots():
 def _resolve_best_action_from_node(row: dict) -> str:
     """Busca ação GTO ao vivo em gto_nodes (mesma lógica do /replay/<id>/gto).
     Fallback para decisions.gto_action → best_action se nenhum nó for encontrado."""
-    from database.repositories import get_gto_node, get_gto_node_by_spot
+    from database.repositories import get_gto_node
     from leaklab.gto_utils import compute_spot_hash
     import json as _j
 
@@ -956,15 +956,19 @@ def _resolve_best_action_from_node(row: dict) -> str:
     else:
         hero_hand = []
 
+    def _valid_node(n):
+        """Rejeita nó se street não bate — evita falsos matches por colisão de hash."""
+        return n if n and n.get('street', '').lower() == street.lower() else None
+
     node = None
     if hero_hand:
-        node = get_gto_node(compute_spot_hash(street, position, board_for_hash, hero_hand, stack_bb, facing_bb))
+        node = _valid_node(get_gto_node(compute_spot_hash(street, position, board_for_hash, hero_hand, stack_bb, facing_bb)))
     if not node:
-        node = get_gto_node(compute_spot_hash(street, position, board_for_hash, [], stack_bb, facing_bb))
+        node = _valid_node(get_gto_node(compute_spot_hash(street, position, board_for_hash, [], stack_bb, facing_bb)))
     if not node and facing_bb == 0:
-        node = get_gto_node(compute_spot_hash(street, position, board_for_hash, [], stack_bb, 0.0))
-    if not node:
-        node = get_gto_node_by_spot(street, board_for_hash, position)
+        node = _valid_node(get_gto_node(compute_spot_hash(street, position, board_for_hash, [], stack_bb, 0.0)))
+    # Fallback d (get_gto_node_by_spot) removido: usa algoritmo de hash diferente de compute_spot_hash,
+    # podendo retornar nós completamente errados via colisão acidental.
 
     top_action = row.get('gto_action') or row.get('best_action') or 'fold'
     if node:
@@ -4079,7 +4083,7 @@ def admin_support_reply(ticket_id):
 @require_auth
 def get_decision_gto(decision_id):
     """Retorna análise GTO completa para uma decisão: estratégia, exploitability, frequência da jogada."""
-    from database.repositories import get_decision_spot, get_gto_node, get_gto_node_by_spot
+    from database.repositories import get_decision_spot, get_gto_node
     from leaklab.gto_utils import compute_spot_hash
     import json as _json
 
@@ -4121,23 +4125,24 @@ def get_decision_gto(decision_id):
 
     player_action = (dec.get('action_taken') or '').lower()
 
+    def _valid_node_replayer(n):
+        return n if n and n.get('street', '').lower() == street.lower() else None
+
     # ── Node lookup: multiple fallback strategies ────────────────────────────
     node = None
     # a) Exact: with hero_hand + facing
     if hero_hand:
         _h = compute_spot_hash(street, position, board_for_hash, hero_hand, stack_bb, facing_bb)
-        node = get_gto_node(_h)
+        node = _valid_node_replayer(get_gto_node(_h))
     # b) Generic: no hero_hand, with facing
     if not node:
         _h = compute_spot_hash(street, position, board_for_hash, [], stack_bb, facing_bb)
-        node = get_gto_node(_h)
+        node = _valid_node_replayer(get_gto_node(_h))
     # c) Generic: no hero_hand, no facing (only when not facing a bet)
     if not node and facing_bb == 0:
         _h = compute_spot_hash(street, position, board_for_hash, [], stack_bb, 0.0)
-        node = get_gto_node(_h)
-    # d) Old hash scheme (board-only key, used by older test/import nodes)
-    if not node:
-        node = get_gto_node_by_spot(street, board_for_hash, position)
+        node = _valid_node_replayer(get_gto_node(_h))
+    # fallback d (get_gto_node_by_spot) removido: hash algorithm divergente → falsos matches
 
     # ── Build strategy from node (if found) ─────────────────────────────────
     strategy = []

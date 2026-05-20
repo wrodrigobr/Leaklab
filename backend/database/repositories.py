@@ -4331,8 +4331,7 @@ GTO_EXPLOITABILITY_THRESHOLD = (
 def get_gto_node(spot_hash: str) -> Optional[dict]:
     """
     Lookup de nó GTO pelo hash.
-    Retorna apenas nós com exploitability_pct confirmada abaixo do threshold.
-    Nós sem exploitability (dados legados não verificados) são ignorados.
+    Retorna nós do solver com exploitability confirmada OU nós do GTO Wizard (strategy_json obrigatório).
     """
     conn = get_conn()
     try:
@@ -4342,8 +4341,10 @@ def get_gto_node(spot_hash: str) -> Optional[dict]:
                    strategy_json
             FROM gto_nodes
             WHERE spot_hash = ?
-              AND exploitability_pct IS NOT NULL
-              AND exploitability_pct <= ?
+              AND (
+                (exploitability_pct IS NOT NULL AND exploitability_pct <= ?)
+                OR (source = 'gto_wizard' AND strategy_json IS NOT NULL)
+              )
         """), (spot_hash, GTO_EXPLOITABILITY_THRESHOLD))
     finally:
         conn.close()
