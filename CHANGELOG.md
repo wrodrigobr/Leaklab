@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.125.0] — 2026-05-20 — feat(gto): script de validação e enriquecimento de nós via GTO Wizard
+
+### Added
+- **`scripts/validate_nodes_vs_gw.py`**: script para validar e enriquecer nós `solver_cli` contra GTO Wizard.
+  - Modo padrão: prioriza (1) nós com exploitability > 5%, (2) 515 nós sem `strategy_json`, (3) amostra aleatória ~10% dos demais
+  - Modo `--new-decisions`: cobre decisões postflop sem nenhum nó GTO — consulta GW primeiro (GTO Wizard first pipeline), fallback para `run_gto_worker.py` (solver_cli)
+  - Flags: `--apply`, `--limit N`, `--street`, `--high-exploit-only`, `--no-strategy-only`, `--sample-pct`, `--dry-run`, `--new-decisions`
+  - Quando ação GW diverge da stored, atualiza `gto_action + gto_freq + source='gto_wizard'`
+  - Sempre enriquece `strategy_json` com frequências completas do GW (melhora painel Estratégia GTO no Ghost Table)
+
+---
+
 ## [v0.124.0] — 2026-05-20 — feat(ghost-table): exibe torneio e hand ID no contexto do spot
 
 ### Added
