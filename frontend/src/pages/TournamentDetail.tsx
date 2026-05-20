@@ -304,8 +304,14 @@ const TournamentDetail = () => {
 
   const stats = useMemo(() => ({
     total:    hands.length,
-    critical: hands.filter((h) => h.category === "critical").length,
-    major:    hands.filter((h) => h.category === "major").length,
+    critical: hands.filter((h) =>
+      h.gtoLabel ? h.gtoLabel === "gto_critical"
+                 : h.category === "critical"
+    ).length,
+    major: hands.filter((h) =>
+      h.gtoLabel ? h.gtoLabel === "gto_minor_deviation"
+                 : h.category === "major"
+    ).length,
     evLost:   hands.reduce((s, h) => s + Math.min(0, h.evDelta ?? 0), 0),
   }), [hands]);
 
