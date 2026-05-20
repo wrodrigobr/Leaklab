@@ -5078,14 +5078,16 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
 
         # Find candidate decisions that match street + position + rough board overlap.
         # We recompute their hash and compare to spot_hash.
+        # Note: no gto_label IS NOT NULL filter — this node may be arriving for the first
+        # time for decisions that had no GTO coverage at upload.
         candidates = _fetchall(conn, _adapt("""
-            SELECT id, board, hero_cards, stack_bb, facing_bet, action_taken, label
+            SELECT id, tournament_id, board, hero_cards, stack_bb, facing_bet, action_taken, label
             FROM decisions
             WHERE street = ? AND position = ?
-              AND gto_label IS NOT NULL
         """), (street, position))
 
         updated = 0
+        affected_tournaments: set = set()
         for d in candidates:
             try:
                 d_board = json.loads(d['board'] or '[]') if d['board'] else []
@@ -5103,23 +5105,40 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
                 freq  = strategy.get(acted, 0.0)
 
                 if freq >= 0.60:
-                    new_label = 'gto_correct'
+                    new_gto_label = 'gto_correct'
                 elif freq >= 0.30:
-                    new_label = 'gto_mixed'
+                    new_gto_label = 'gto_mixed'
                 elif freq >= 0.10:
-                    new_label = 'gto_minor_deviation'
+                    new_gto_label = 'gto_minor_deviation'
                 else:
-                    new_label = 'gto_critical'
+                    new_gto_label = 'gto_critical'
 
-                reconciled = _reconcile_label(d.get('label', 'standard'), new_label)
+                reconciled = _reconcile_label(d.get('label', 'standard'), new_gto_label)
                 conn.execute(_adapt(
                     "UPDATE decisions SET gto_label=?, gto_action=?, label=? WHERE id=?"
-                ), (new_label, top_action, reconciled, d['id']))
+                ), (new_gto_label, top_action, reconciled, d['id']))
                 updated += 1
+                if d.get('tournament_id'):
+                    affected_tournaments.add(d['tournament_id'])
             except Exception:
                 continue
 
         if updated:
+            conn.commit()
+            # Recalculate standard_pct for all affected tournaments so dashboard KPIs
+            # reflect the updated labels immediately — not just on next upload.
+            for tid in affected_tournaments:
+                try:
+                    pct_row = _fetchone(conn, _adapt(
+                        "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
+                        "AVG(score) AS a FROM decisions WHERE tournament_id=?"
+                    ), (tid,))
+                    if pct_row:
+                        conn.execute(_adapt(
+                            "UPDATE tournaments SET standard_pct=?, avg_score=? WHERE id=?"
+                        ), (round(pct_row['s'] or 0, 2), round(pct_row['a'] or 0, 4), tid))
+                except Exception:
+                    continue
             conn.commit()
         return updated
     finally:
