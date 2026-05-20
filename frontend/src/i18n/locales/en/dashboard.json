@@ -13,7 +13,7 @@
     "itmTooltip": "Percentage of tournaments where you finished in the money. Field average is ~18%. Above 22% suggests solid or conservative play; below may indicate early bust-outs.",
     "standard": "GTO Aligned",
     "standardHint": "{{pct}}% GTO coverage",
-    "standardTooltip": "Percentage of decisions aligned with the GTO solver (correct + mixed) over the last 90 days. Source: gto_label from static ranges and solver. Only decisions with GTO coverage are counted.",
+    "standardTooltip": "Percentage of decisions aligned with the GTO solver (correct + mixed) over the last 90 days. Calculated by comparing your plays against static ranges and solver data. Only decisions with available GTO coverage are counted.",
     "events": "Tournaments",
     "eventsHint": "{{hands}} hands",
     "eventsHintEmpty": "Import tournaments",
@@ -37,7 +37,7 @@
     "empty": "Import tournaments to activate AI confidence analysis."
   },
   "leaks": {
-    "tooltip": "Spots with the most GTO solver divergence (gto_critical + gto_minor_deviation), ranked by frequency × severity. Source: gto_label from ranges and solver. Falls back to heuristic if no GTO coverage.",
+    "tooltip": "Spots with the most GTO solver divergence, ranked by frequency × severity. Classifications are based on static ranges and solver data. Falls back to heuristic analysis if no GTO coverage is available.",
     "title": "Top Leaks Detected",
     "study": "Study",
     "studyLabel": "Study leak {{spot}}",

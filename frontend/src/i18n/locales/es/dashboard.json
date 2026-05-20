@@ -13,7 +13,7 @@
     "itmTooltip": "Porcentaje de torneos en los que terminaste en el dinero. El promedio del field es ~18%. Por encima del 22% sugiere juego sólido o conservador; por debajo puede indicar eliminaciones tempranas.",
     "standard": "GTO Alineado",
     "standardHint": "{{pct}}% cobertura GTO",
-    "standardTooltip": "Porcentaje de decisiones alineadas con el solver GTO (correct + mixed) en los últimos 90 días. Fuente: gto_label calculado vía rangos estáticos y solver. Solo se cuentan decisiones con cobertura GTO.",
+    "standardTooltip": "Porcentaje de decisiones alineadas con el solver GTO (correcto + mixto) en los últimos 90 días. Calculado comparando tus jugadas con rangos estáticos y datos del solver. Solo se cuentan decisiones con cobertura GTO disponible.",
     "events": "Torneos",
     "eventsHint": "{{hands}} manos",
     "eventsHintEmpty": "Importa torneos",
@@ -37,7 +37,7 @@
     "empty": "Importa torneos para activar el análisis de confianza de la IA."
   },
   "leaks": {
-    "tooltip": "Spots con mayor divergencia del solver GTO (gto_critical + gto_minor_deviation), ordenados por frecuencia × severidad. Fuente: gto_label vía rangos y solver. Fallback heurístico si no hay cobertura GTO.",
+    "tooltip": "Spots con mayor divergencia del solver GTO, ordenados por frecuencia × severidad. Las clasificaciones se basan en rangos estáticos y datos del solver. Usa análisis heurístico si no hay cobertura GTO disponible.",
     "title": "Top Leaks Detectados",
     "study": "Estudiar",
     "studyLabel": "Estudiar leak {{spot}}",

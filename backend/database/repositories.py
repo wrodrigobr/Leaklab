@@ -3646,17 +3646,21 @@ def get_daily_focus(user_id: int) -> dict:
     actions: list = []
 
     # 1. Top GTO leak → primary drill action (fallback to heuristic if no GTO data)
-    leaks = get_gto_leak_ranking(user_id, days=90) or get_leak_roi_impact(user_id, days=90)
+    gto_leaks  = get_gto_leak_ranking(user_id, days=90)
+    heur_leaks = get_leak_roi_impact(user_id, days=90) if not gto_leaks else None
+    leaks      = gto_leaks or heur_leaks or []
     if leaks:
         top   = leaks[0]
         spot  = top.get('spot', '')
         label = spot.replace('/', ' / ').replace('_', ' ')
         n     = top.get('n', 0)
+        desc  = (f'{n} erros de alinhamento GTO nos últimos 90 dias'
+                 if gto_leaks else f'{n} situações identificadas (análise heurística)')
         actions.append({
             'type':        'leak',
             'priority':    'primary',
             'label':       f'Drill: {label}',
-            'description': f'{n} divergências GTO recentes',
+            'description': desc,
             'link':        '/ghost',
         })
 
