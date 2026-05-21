@@ -449,6 +449,7 @@ export default function GhostTable() {
     );
 
     return (
+      <>
       <div className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
         <HudHeader />
 
@@ -642,6 +643,40 @@ export default function GhostTable() {
 
         </div>
       </div>
+
+      {/* ── AI Analysis Modal (full-screen layout) ────────────────────────────── */}
+      {analysisOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setAnalysisOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-xl space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <p className="font-mono text-xs uppercase tracking-widest text-primary">{t("result.engineNote")}</p>
+              <button onClick={() => setAnalysisOpen(false)} className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors">✕</button>
+            </div>
+            {analysis && <AiText>{analysis}</AiText>}
+            <div className="flex gap-3 pt-2 border-t border-border/40">
+              <button
+                onClick={() => { setAnalysisOpen(false); nextSpot(); }}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors"
+              >
+                {t("next")} <ArrowRight className="size-4" aria-hidden />
+              </button>
+              <button
+                onClick={() => setAnalysisOpen(false)}
+                className="rounded-lg border border-border px-4 py-2.5 font-mono text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {t("result.closeModal")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 
@@ -649,7 +684,7 @@ export default function GhostTable() {
   return (
     <HudLayout eyebrow="Ghost Table" title={t("title")} description={t("subtitle")}>
 
-      {/* ── AI Analysis Modal ─────────────────────────────────────────────────── */}
+      {/* ── AI Analysis Modal (normal layout) ─────────────────────────────────── */}
       {analysisOpen && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
