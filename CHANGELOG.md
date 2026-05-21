@@ -9,6 +9,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.130.0] — 2026-05-20 — fix(gto-server): turn/river enviavam apenas 3 cartas ao GW (tratados como flop)
+
+### Fixed
+- **`gto_bot/solver_api/server.py` — `_norm_board`**: recebia `max_cards` fixo em 3, enviando apenas o flop para GW em todos os streets. Turn e river agora enviam 4/5 cartas respectivamente, consultando o tree correto
+- **`query_gto_wizard` — action sequences**: turn agora usa `flop_actions="X-X"` (check-check no flop para chegar ao turn root); river usa `flop_actions="X-X" + turn_actions="X-X"`. Quando `facing_size_bb > 0`, modela a aposta no street correto
+- **`_nearest_valid_bet`**: generalizado para aceitar `street` e definir `{street}_actions` corretamente (antes sempre definia `flop_actions`)
+- **`resync_gto_actions.py`**: expandido para processar TODAS as decisions postflop (com e sem gto_label), não apenas as que já tinham label — permite propagar labels de nós recém-inseridos pelo GW
+
+### Impact
+- Turn e river de spots cobertas pelo GW agora retornam SEM RESPOSTA pela razão correta (board sem solução) vs. antes onde eram silenciados pela truncagem do board
+- Requer restart do servidor GCP (`gto_bot/solver_api/server.py`) para o fix entrar em vigor
+
+---
+
 ## [v0.129.0] — 2026-05-20 — fix(admin): cobertura GTO inclui preflop_ranges como terceiro source
 
 ### Fixed

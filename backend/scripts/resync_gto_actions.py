@@ -176,7 +176,7 @@ def main():
                    d.pot_size, d.hero_cards, d.board, d.best_action
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
-            WHERE d.gto_label IN ('gto_correct','gto_mixed','gto_minor_deviation','gto_critical')
+            WHERE d.street IN ('flop','turn','river')
               {user_filter}
         """, params).fetchall()
 
@@ -185,7 +185,7 @@ def main():
         unchanged = 0
         no_node   = 0
 
-        print(f"\nAnalisando {total} decisões com cobertura GTO...")
+        print(f"\nAnalisando {total} decisões postflop (com e sem label)...")
 
         for row in rows:
             r = dict(row)

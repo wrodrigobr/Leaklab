@@ -230,15 +230,19 @@ def _nearest_snap(stack_bb: float) -> int:
     return min(STACK_SNAPS, key=lambda s: abs(s - stack_bb))
 
 
-def _norm_board(board) -> str:
+def _norm_board(board, max_cards: int = 3) -> str:
+    """Normaliza board para string GW. max_cards: 3=flop, 4=turn, 5=river."""
     if isinstance(board, str):
         board = board.strip().split()
     result = []
-    for c in list(board)[:3]:
+    for c in list(board)[:max_cards]:
         c = str(c).strip()
         if len(c) >= 2:
             result.append(c[0].upper() + c[1].lower())
-    return "".join(result) if len(result) == 3 else ""
+    # Exige exatamente max_cards cartas válidas para flop (3), aceita menos para turn/river
+    if len(result) < 3:
+        return ""
+    return "".join(result)
 
 
 def _make_session(headers: dict):
@@ -260,10 +264,12 @@ def _make_session(headers: dict):
     return s
 
 
-def _nearest_valid_bet(session, api_params: dict, flop_before: str,
-                       target_bb: float) -> Optional[float]:
+def _nearest_valid_bet(session, api_params: dict, street_before: str,
+                       target_bb: float, street: str = "flop") -> Optional[float]:
+    """Consulta GW para encontrar o tamanho de bet válido mais próximo de target_bb."""
     params = dict(api_params)
-    params["flop_actions"] = flop_before
+    key = f"{street}_actions"
+    params[key] = street_before
     try:
         r = session.get(GW_NEXT_ACTS, params=params, timeout=10)
         if not r.ok or not r.content:
@@ -449,9 +455,13 @@ def query_gto_wizard(spot: dict) -> dict:
     if not preflop:
         return {"found": False, "error": f"unknown_position:{position}"}
 
-    board_str = _norm_board(board)
+    # Send correct number of board cards: 3=flop, 4=turn, 5=river
+    _street_cards = {"flop": 3, "turn": 4, "river": 5}
+    board_str = _norm_board(board, max_cards=_street_cards.get(street, 3))
     if not board_str:
         return {"found": False, "error": "invalid_board"}
+
+    hero_is_oop = position in OOP_POSITIONS
 
     api_params = {
         "gametype":        GAMETYPE,
@@ -464,12 +474,30 @@ def query_gto_wizard(spot: dict) -> dict:
         "board":           board_str,
     }
 
-    if facing_size_bb > 0:
-        hero_is_oop = position in OOP_POSITIONS
-        flop_before = "X" if hero_is_oop else ""
-        prefix      = "X-R" if hero_is_oop else "R"
-        valid_size  = _nearest_valid_bet(session, api_params, flop_before, facing_size_bb)
-        api_params["flop_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
+    # Build action context for the decision street.
+    # Heuristic: model flop/turn as check-check to reach subsequent street roots.
+    # facing_size_bb > 0 means hero faces a bet on the current street.
+    if street == "flop":
+        if facing_size_bb > 0:
+            flop_before = "X" if hero_is_oop else ""
+            prefix      = "X-R" if hero_is_oop else "R"
+            valid_size  = _nearest_valid_bet(session, api_params, flop_before, facing_size_bb, street="flop")
+            api_params["flop_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
+    elif street == "turn":
+        api_params["flop_actions"] = "X-X"
+        if facing_size_bb > 0:
+            turn_before = "X" if hero_is_oop else ""
+            prefix      = "X-R" if hero_is_oop else "R"
+            valid_size  = _nearest_valid_bet(session, api_params, turn_before, facing_size_bb, street="turn")
+            api_params["turn_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
+    elif street == "river":
+        api_params["flop_actions"] = "X-X"
+        api_params["turn_actions"] = "X-X"
+        if facing_size_bb > 0:
+            river_before = "X" if hero_is_oop else ""
+            prefix       = "X-R" if hero_is_oop else "R"
+            valid_size   = _nearest_valid_bet(session, api_params, river_before, facing_size_bb, street="river")
+            api_params["river_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
 
     try:
         r = session.get(GW_SPOT_SOL, params=api_params, timeout=15)
