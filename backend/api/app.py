@@ -1787,6 +1787,7 @@ def _extract_financials(raw: str, hero: str) -> dict:
                 result['buy_in'] = round(buyin + rake, 2)
 
     # ── Resultado hero PokerStars: "phpro finished the tournament in 3rd place and received $23.29"
+    #    Vencedor: "phpro wins the tournament and receives $3.83 - congratulations!"
     if hero:
         m = re.search(
             re.escape(hero) + r'.*?finished.*?(\d+)[a-z]{2} place.*?received \$(\d+\.?\d*)',
@@ -1796,13 +1797,22 @@ def _extract_financials(raw: str, hero: str) -> dict:
             result['place'] = int(m.group(1))
             result['prize'] = float(m.group(2))
         else:
+            # Vencedor PokerStars: "hero wins the tournament and receives $X"
             m = re.search(
-                re.escape(hero) + r'.*?finished.*?(\d+)[a-z]{2} place',
+                re.escape(hero) + r'.*?wins the tournament.*?receives \$(\d+\.?\d*)',
                 raw, re.IGNORECASE
             )
             if m:
-                result['place'] = int(m.group(1))
-                result['prize'] = 0.0
+                result['place'] = 1
+                result['prize'] = float(m.group(1))
+            else:
+                m = re.search(
+                    re.escape(hero) + r'.*?finished.*?(\d+)[a-z]{2} place',
+                    raw, re.IGNORECASE
+                )
+                if m:
+                    result['place'] = int(m.group(1))
+                    result['prize'] = 0.0
 
         # ── GGPoker resultado: "Hero finished in 3rd place" / "Hero wins $X"
         if result['place'] is None:
