@@ -390,22 +390,23 @@ def _postflop_preflop_seq(position: str, positions: list[str], open_size: float)
         return "-".join(actions)
 
     if position == "SB":
-        # BTN abriu, SB chamou HU
+        # BTN abriu, SB chamou HU (BB foldou)
         actions = ["F" if i != btn_idx else f"R{open_s}" for i in range(sb_idx)]
         actions.append("C")  # SB chama
+        actions.append("F")  # BB folda (SB vs BTN é HU)
         return "-".join(actions)
 
-    # IP (BTN, CO, HJ, LJ, UTG*): hero abriu, SB foldou, BB chamou
+    # IP (BTN, CO, HJ, LJ, UTG*): hero abriu, todos depois foldaram exceto BB que chamou
     actions = []
     for i in range(hero_idx):
         actions.append("F")
     actions.append(f"R{open_s}")   # hero abre
     for i in range(hero_idx + 1, n):
         p = positions[i]
-        if p == "SB":
-            actions.append("F")
-        elif p == "BB":
-            actions.append("C")
+        if p == "BB":
+            actions.append("C")   # BB chama
+        else:
+            actions.append("F")   # todos os outros foldaram (BTN, SB, outros IP)
     return "-".join(actions)
 
 
