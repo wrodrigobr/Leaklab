@@ -22,6 +22,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { AiText } from "@/components/ui/AiText";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { drill, gto } from "@/lib/api";
 import type { DrillSpot, DrillStats, DrillSubmitResult, ReplayStep, GtoStrategyAction } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
@@ -235,6 +236,7 @@ export default function GhostTable() {
   const [submitting, setSubmitting]         = useState(false);
   const [analysis, setAnalysis]             = useState<string | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisOpen, setAnalysisOpen]     = useState(false);
   const [gtoStrategy, setGtoStrategy]       = useState<GtoStrategyAction[] | null>(null);
   const [resetting, setResetting]           = useState(false);
   const [resetConfirm, setResetConfirm]     = useState(false);
@@ -325,6 +327,7 @@ export default function GhostTable() {
   const nextSpot = () => {
     const next = index + 1;
     setAnalysis(null);
+    setAnalysisOpen(false);
     setGtoStrategy(null);
     if (next >= spots.length) { setPhase("done"); }
     else { setIndex(next); setLastResult(null); setPhase("active"); }
@@ -332,12 +335,15 @@ export default function GhostTable() {
 
   const requestAnalysis = async () => {
     if (!current || analysisLoading) return;
+    if (analysis) { setAnalysisOpen(true); return; }
     setAnalysisLoading(true);
     try {
       const res = await drill.analysis(current.id);
       setAnalysis(res.analysis);
+      setAnalysisOpen(true);
     } catch {
       setAnalysis(t("result.analysisError"));
+      setAnalysisOpen(true);
     } finally {
       setAnalysisLoading(false);
     }
@@ -346,7 +352,7 @@ export default function GhostTable() {
   const resetDrill = () => {
     setPhase("intro"); setSpots([]); setIndex(0);
     setLastResult(null); setSessionCorrect(0); setSessionTotal(0);
-    setAnalysis(null); setStreak(0); setTimedOut(false); setGtoStrategy(null);
+    setAnalysis(null); setAnalysisOpen(false); setStreak(0); setTimedOut(false); setGtoStrategy(null);
     setNoSpotsFound(false);
   };
 
@@ -632,17 +638,18 @@ export default function GhostTable() {
                   </div>
                 )}
 
-                {analysis ? (
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
-                    <p className="font-mono text-[9px] uppercase tracking-widest text-primary">{t("result.engineNote")}</p>
-                    <AiText>{analysis}</AiText>
-                  </div>
-                ) : (
-                  <button onClick={requestAnalysis} disabled={analysisLoading}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-hud-surface px-4 py-2.5 font-mono text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 disabled:opacity-60 transition-colors shrink-0">
-                    {analysisLoading ? <><Loader2 className="size-3.5 animate-spin" aria-hidden />{t("result.analysisLoading")}</> : <><BookOpen className="size-3.5" aria-hidden />{t("result.requestAnalysis")}</>}
-                  </button>
-                )}
+                <button onClick={requestAnalysis} disabled={analysisLoading}
+                  className={cn(
+                    "w-full inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 font-mono text-xs font-semibold transition-colors shrink-0 disabled:opacity-60",
+                    analysis
+                      ? "border-primary/50 bg-primary/10 text-primary hover:bg-primary/20"
+                      : "border-border bg-hud-surface text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"
+                  )}>
+                  {analysisLoading
+                    ? <><Loader2 className="size-3.5 animate-spin" aria-hidden />{t("result.analysisLoading")}</>
+                    : <><BookOpen className="size-3.5" aria-hidden />{analysis ? t("result.viewAnalysis") : t("result.requestAnalysis")}</>
+                  }
+                </button>
 
                 <button onClick={nextSpot}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors shrink-0">
@@ -660,6 +667,32 @@ export default function GhostTable() {
   // ── Normal layout: intro / loading / done ─────────────────────────────────
   return (
     <HudLayout eyebrow="Ghost Table" title={t("title")} description={t("subtitle")}>
+
+      {/* ── AI Analysis Modal ─────────────────────────────────────────────────── */}
+      <Dialog open={analysisOpen} onOpenChange={setAnalysisOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-sm uppercase tracking-widest text-primary">
+              {t("result.engineNote")}
+            </DialogTitle>
+          </DialogHeader>
+          {analysis && <AiText>{analysis}</AiText>}
+          <div className="flex gap-3 pt-2 border-t border-border/40">
+            <button
+              onClick={() => { setAnalysisOpen(false); nextSpot(); }}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors"
+            >
+              {t("next")} <ArrowRight className="size-4" aria-hidden />
+            </button>
+            <button
+              onClick={() => setAnalysisOpen(false)}
+              className="rounded-lg border border-border px-4 py-2.5 font-mono text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t("result.closeModal") ?? "Fechar"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── INTRO / LOADING ──────────────────────────────────────────────────── */}
       {(phase === "intro" || phase === "loading") && (
@@ -973,25 +1006,21 @@ export default function GhostTable() {
             </div>
           )}
 
-          {analysis ? (
-            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
-              <p className="font-mono text-[9px] uppercase tracking-widest text-primary">
-                {t("result.engineNote")}
-              </p>
-              <AiText>{analysis}</AiText>
-            </div>
-          ) : (
-            <button
-              onClick={requestAnalysis}
-              disabled={analysisLoading}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-hud-surface px-5 py-3 font-mono text-sm font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 disabled:opacity-60 transition-colors"
-            >
-              {analysisLoading
-                ? <><Loader2 className="size-4 animate-spin" aria-hidden /> {t("result.analysisLoading")}</>
-                : <><BookOpen className="size-4" aria-hidden /> {t("result.requestAnalysis")}</>
-              }
-            </button>
-          )}
+          <button
+            onClick={requestAnalysis}
+            disabled={analysisLoading}
+            className={cn(
+              "w-full inline-flex items-center justify-center gap-2 rounded-lg border px-5 py-3 font-mono text-sm font-semibold transition-colors disabled:opacity-60",
+              analysis
+                ? "border-primary/50 bg-primary/10 text-primary hover:bg-primary/20"
+                : "border-border bg-hud-surface text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"
+            )}
+          >
+            {analysisLoading
+              ? <><Loader2 className="size-4 animate-spin" aria-hidden /> {t("result.analysisLoading")}</>
+              : <><BookOpen className="size-4" aria-hidden /> {analysis ? t("result.viewAnalysis") : t("result.requestAnalysis")}</>
+            }
+          </button>
 
           <button
             onClick={nextSpot}

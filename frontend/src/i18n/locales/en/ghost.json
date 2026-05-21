@@ -59,7 +59,9 @@
     "engineNote": "Engine Analysis",
     "requestAnalysis": "View hand analysis",
     "analysisLoading": "Generating analysis…",
-    "analysisError": "Analysis unavailable right now. Try again."
+    "analysisError": "Analysis unavailable right now. Try again.",
+    "viewAnalysis": "View analysis",
+    "closeModal": "Close"
   },
   "next": "Next →",
   "stats": {

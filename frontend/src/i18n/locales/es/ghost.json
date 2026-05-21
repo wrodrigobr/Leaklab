@@ -59,7 +59,9 @@
     "engineNote": "Análisis del Motor",
     "requestAnalysis": "Ver análisis de esta mano",
     "analysisLoading": "Generando análisis…",
-    "analysisError": "Análisis no disponible en este momento. Inténtalo de nuevo."
+    "analysisError": "Análisis no disponible en este momento. Inténtalo de nuevo.",
+    "viewAnalysis": "Ver análisis",
+    "closeModal": "Cerrar"
   },
   "next": "Siguiente →",
   "stats": {
