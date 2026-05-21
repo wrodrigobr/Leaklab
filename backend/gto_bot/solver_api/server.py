@@ -649,7 +649,24 @@ def query_gto_wizard(spot: dict) -> dict:
                          snapped, alt_depth, position, street, num_players)
                 break
         else:
-            return {"found": False, "error": f"http_403_no_valid_depth"}
+            # Último recurso: se facing_size_bb > 0, tentar sem o contexto da aposta (root do street)
+            if facing_size_bb > 0:
+                root_params = dict(api_params)
+                root_params["flop_actions"]  = "X-X" if street in ("turn", "river") else ""
+                root_params["turn_actions"]  = "X-X" if street == "river" else ""
+                root_params["river_actions"] = ""
+                try:
+                    r3 = session.get(GW_SPOT_SOL, params=root_params, timeout=15)
+                    if r3.ok and r3.content:
+                        r = r3
+                        log.info("gto_wizard: fallback root street OK (%s %s %d-max facing=0)",
+                                 position, street, num_players)
+                    else:
+                        return {"found": False, "error": "http_403_no_valid_depth"}
+                except Exception:
+                    return {"found": False, "error": "http_403_no_valid_depth"}
+            else:
+                return {"found": False, "error": "http_403_no_valid_depth"}
 
     if r.status_code == 204 or not r.content:
         return {"found": False, "error": "no_solution_204"}
