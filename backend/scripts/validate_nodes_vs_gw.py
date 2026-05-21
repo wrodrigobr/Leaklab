@@ -13,6 +13,8 @@ Modos:
   (padrão)          Valida nós solver_cli existentes:
                       1. Exploit > 5%  →  2. Sem strategy_json  →  3. Amostra ~10%
   --new-decisions   Cobre decisões postflop sem nenhum nó GTO (GW first pipeline)
+  --force-refresh   Re-consulta GTO Wizard para TODAS as decisions postflop,
+                    atualizando nós antigos (bucket/solver_cli) com stack+facing exatos
 
 Uso:
     python scripts/validate_nodes_vs_gw.py --dry-run               # lista o que faria
@@ -24,6 +26,8 @@ Uso:
     python scripts/validate_nodes_vs_gw.py --street flop
     python scripts/validate_nodes_vs_gw.py --new-decisions --apply
     python scripts/validate_nodes_vs_gw.py --new-decisions --apply --limit 100
+    python scripts/validate_nodes_vs_gw.py --force-refresh --apply
+    python scripts/validate_nodes_vs_gw.py --force-refresh --apply --street flop
 """
 from __future__ import annotations
 
@@ -443,6 +447,121 @@ def run_new_decisions(args, conn):
     print(f"{'='*70}")
 
 
+# ── Modo --force-refresh: re-consultar TODAS as decisions com parâmetros corretos ─
+
+def run_force_refresh(args, conn):
+    """Re-consulta GTO Wizard para todas as decisions postflop, substituindo nós antigos."""
+    from leaklab.gto_utils import compute_spot_hash
+
+    street_filter = f" AND d.street = '{args.street}'" if args.street else ""
+    rows = conn.execute(f"""
+        SELECT d.id, d.street, d.position, d.board, d.hero_cards,
+               d.stack_bb, d.facing_bet, d.pot_size, d.num_players
+        FROM decisions d
+        WHERE d.street IN ('flop','turn','river')
+          AND d.board IS NOT NULL AND d.stack_bb IS NOT NULL
+          {street_filter}
+        ORDER BY d.id DESC
+    """).fetchall()
+
+    # Deduplica por spot_hash (sem hand-specific) — mesmo spot = mesma query
+    seen     = set()
+    to_query = []
+    _sc = {"flop": 3, "turn": 4, "river": 5}
+
+    for row in rows:
+        r = dict(row)
+        board = _parse_board(r.get("board"))
+        if not board or len(board) < 3:
+            continue
+        street  = r.get("street", "")
+        pos     = (r.get("position") or "BTN").upper()
+        stack   = float(r.get("stack_bb") or 20.0)
+        facing  = float(r.get("facing_bet") or 0.0)
+        bfh     = board[:_sc.get(street, len(board))]
+        h       = compute_spot_hash(street, pos, bfh, [], stack, facing)
+        if h in seen:
+            continue
+        seen.add(h)
+        to_query.append({
+            "decision_id": r["id"],
+            "street":      street,
+            "position":    pos,
+            "board":       board,
+            "board_hash":  bfh,
+            "stack_bb":    stack,
+            "facing_bb":   facing,
+            "pot_bb":      float(r.get("pot_size") or 0),
+            "spot_hash":   h,
+            "num_players": int(r.get("num_players") or 9),
+        })
+
+    if args.limit:
+        to_query = to_query[:args.limit]
+
+    print(f"\n{'='*70}")
+    print(f"Spots únicos para re-consulta: {len(to_query)}")
+    if args.dry_run:
+        print("[DRY RUN — use --apply para salvar]")
+    print(f"{'='*70}\n")
+
+    updated  = 0
+    no_resp  = 0
+
+    for i, dec in enumerate(to_query, 1):
+        street      = dec["street"]
+        pos         = dec["position"]
+        board       = dec["board_hash"]
+        stack_bb    = dec["stack_bb"]
+        facing      = dec["facing_bb"]
+        pot_bb      = dec["pot_bb"]
+        num_players = dec.get("num_players", 9)
+
+        board_str = " ".join(board)
+        print(f"[{i:3d}/{len(to_query)}] #{dec['decision_id']:6d} {street:5s} {pos:4s} "
+              f"{stack_bb:.0f}bb {num_players}p [{board_str}] facing={facing:.1f}", end="")
+
+        if args.dry_run:
+            print("  [dry-run]")
+            continue
+
+        time.sleep(0.3)
+        resp = gw_query(street=street, position=pos, board=board,
+                        hero_stack_bb=stack_bb, facing_size_bb=facing, pot_bb=pot_bb,
+                        num_players=num_players)
+        if not resp or not resp.get("found"):
+            print(f"  {_c('SEM RESPOSTA', RED)}")
+            no_resp += 1
+            continue
+
+        gw_strategy = _gw_to_strategy_json(resp["strategy"])
+        if not gw_strategy:
+            print(f"  {_c('STRATEGY VAZIO', RED)}")
+            no_resp += 1
+            continue
+
+        gw_top, gw_freq = _top_action(gw_strategy)
+        fallback = " [root]" if resp.get("_fallback") == "root_street" else ""
+        print(f"  {_c(gw_top, GREEN)} {gw_freq*100:.0f}%  [{_strat_str(gw_strategy)}]{fallback}")
+
+        if args.apply:
+            _insert_gw_node(conn, dec["spot_hash"], street, pos,
+                            board, stack_bb, gw_strategy)
+            updated += 1
+
+    if args.apply:
+        conn.commit()
+
+    print(f"\n{'='*70}")
+    print(f"Processados: {len(to_query) - no_resp} | Sem resposta: {no_resp}")
+    if args.apply:
+        print(f"Nós GTO Wizard atualizados: {updated}")
+        print("Execute resync_gto_actions.py --apply para propagar labels às decisions.")
+    else:
+        print("Use --apply para salvar no banco.")
+    print(f"{'='*70}")
+
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main():
@@ -455,6 +574,8 @@ def main():
     parser.add_argument("--no-strategy-only",  action="store_true")
     parser.add_argument("--new-decisions",     action="store_true",
                         help="Cobre decisões sem nó GTO (GW first pipeline)")
+    parser.add_argument("--force-refresh",     action="store_true",
+                        help="Re-consulta GTO Wizard para TODAS as decisions (substitui nós antigos)")
     parser.add_argument("--dry-run",           action="store_true")
     args = parser.parse_args()
     args.dry_run = args.dry_run or not args.apply
@@ -471,7 +592,9 @@ def main():
 
     conn = get_conn()
     try:
-        if args.new_decisions:
+        if args.force_refresh:
+            run_force_refresh(args, conn)
+        elif args.new_decisions:
             run_new_decisions(args, conn)
         else:
             run_validate_nodes(args, conn)
