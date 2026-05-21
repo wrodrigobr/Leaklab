@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.137.0] — 2026-05-21 — fix(gto): cobertura postflop 100% — fallback root street via re-query
+
+### Fixed
+- **Fallback root street**: quando todos os retries de depth falham (facing_bet fracionário sem árvore no GW), re-consulta `query_gto_wizard` com `facing_size_bb=0`. Usa exatamente o mesmo code path que funciona, evitando interferência de sessão HTTP dos requests anteriores
+- **BTN 13bb 4p facing=1.6bb**: último spot sem cobertura — agora retorna estratégia do root do flop (check 100%) via fallback
+
+### Impact
+- Cobertura postflop: **1 → 0 sem resposta** (100% de cobertura, 212/235 decisions com nó GTO)
+- 1 decisão (#26960) atualizada: action=check, label=gto_critical
+
+---
+
 ## [v0.136.0] — 2026-05-21 — fix(gto): cobertura postflop 98% — depths HU + MTTHUGeneral stacks vazio
 
 ### Fixed
