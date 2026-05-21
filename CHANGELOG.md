@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.139.0] — 2026-05-21 — chore: plano Ghost Table confirmado completo
+
+### Confirmed
+- **FIX 1** (`raise→bet` guard): presente em `app.py:1057` e `decision_engine_v11.py:548` — sem aposta anterior, `raise` é normalizado para `bet`
+- **FIX 2** (live GTO lookup no drill submit): `_resolve_best_action_from_node()` em `app.py:931` — mesma lógica do Replayer, com 3 fallbacks de hash e guard SPR
+- **FIX 3** (`num_players` no GhostTable): `GhostTable.tsx:156` usa `Math.min(9, spot.num_players ?? 6)` — sem hardcode HU para postflop
+- **FIX 4** (reset SRS): endpoint `DELETE /player/drill-sessions/reset` + botão "Reiniciar histórico de treino" na intro do Ghost Table + `drill.resetSessions()` no API client
+
+Todos os 4 fixes do plano `fuzzy-percolating-parnas.md` confirmados implementados. Plano fechado.
+
+---
+
 ## [v0.138.0] — 2026-05-21 — feat(gto): force-refresh todos os nós + invalidação de cache LLM
 
 ### Changed
