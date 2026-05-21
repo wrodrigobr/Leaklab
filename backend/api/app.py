@@ -4661,8 +4661,13 @@ def admin_gto_worker_status():
         # ── gto_nodes coverage by source ─────────────────────────────────────
         coverage_rows = _fetchall(conn, "SELECT source, COUNT(*) AS n FROM gto_nodes GROUP BY source")
         coverage = {r['source']: r['n'] for r in coverage_rows}
-        coverage_total_row = _fetchone(conn, "SELECT COUNT(*) AS n FROM gto_nodes")
-        coverage['total'] = coverage_total_row['n'] if coverage_total_row else 0
+        # Preflop decisions validated via JSON range files (no gto_nodes entry)
+        pf_row = _fetchone(conn, _adapt(
+            "SELECT COUNT(*) AS n FROM decisions WHERE street='preflop' AND gto_label IS NOT NULL"
+        ))
+        coverage['preflop_ranges'] = pf_row['n'] if pf_row else 0
+        nodes_total = sum(v for k, v in coverage.items() if k != 'preflop_ranges')
+        coverage['total'] = nodes_total + coverage['preflop_ranges']
 
         # ── Recent errors ────────────────────────────────────────────────────
         error_rows = _fetchall(conn, _adapt("""

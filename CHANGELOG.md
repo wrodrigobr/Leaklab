@@ -9,6 +9,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.129.0] — 2026-05-20 — fix(admin): cobertura GTO inclui preflop_ranges como terceiro source
+
+### Fixed
+- **`GET /admin/dashboard`**: `coverage` agora inclui `preflop_ranges` (decisions preflop com gto_label validado via arquivo JSON de ranges) além de `solver_cli` e `gto_wizard`. `total` inclui os três. Antes, as ~696 decisions preflop cobertas não apareciam no painel
+- **Admin UI — Cobertura por Fonte**: cada fonte tem cor distinta (emerald=preflop_ranges, blue=gto_wizard, amber=solver_cli) e subtitle explicativo. KPI tile renomeado para "Decisions Cobertas" com breakdown `nodes: X · preflop: Y`
+
+---
+
 ## [v0.128.0] — 2026-05-20 — fix(data): limpeza de nós ruins + propagação de labels GTO
 
 ### Fixed

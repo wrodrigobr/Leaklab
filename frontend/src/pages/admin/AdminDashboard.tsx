@@ -932,8 +932,8 @@ function GtoWorkerTab() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiTile label="Solver Pendentes" value={String(solverPend)} sub="gto_solver_queue" icon={Cpu} />
         <KpiTile label="Solver Concluídos" value={String(solverDone)} sub={`falhos: ${solverFail}`} icon={CheckCircle2} accent={solverDone > 0} />
-        <KpiTile label="gto_nodes Total"  value={String(coverageTotal)} sub="base de conhecimento" icon={BarChart2} accent={coverageTotal > 0} />
-        <KpiTile label="Solver API"  value={String(coverageWizard)} sub={`solver: ${coverageSolver} · remote: ${coverageRemote}`} icon={Activity} />
+        <KpiTile label="Decisions Cobertas"  value={String(coverageTotal)} sub={`nodes: ${(cov['solver_cli'] ?? 0) + (cov['gto_wizard'] ?? 0)} · preflop: ${cov['preflop_ranges'] ?? 0}`} icon={BarChart2} accent={coverageTotal > 0} />
+        <KpiTile label="GTO Wizard"  value={String(coverageWizard)} sub={`solver_cli: ${coverageSolver}`} icon={Activity} />
       </div>
 
       {/* Throughput chart */}
@@ -976,24 +976,35 @@ function GtoWorkerTab() {
       {coverageTotal > 0 && (
         <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-3">
           <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-            Cobertura por Fonte
+            Cobertura GTO por Fonte (decisions com label)
           </h3>
           <div className="space-y-2">
             {Object.entries(cov)
               .filter(([k]) => k !== 'total')
               .sort(([, a], [, b]) => b - a)
-              .map(([source, n]) => (
-                <div key={source} className="flex items-center gap-3">
-                  <span className="font-mono text-[11px] text-muted-foreground w-32 shrink-0">{source}</span>
-                  <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${coverageTotal > 0 ? Math.round((n / coverageTotal) * 100) : 0}%` }}
-                    />
+              .map(([source, n]) => {
+                const labels: Record<string, { label: string; sub: string; color: string }> = {
+                  preflop_ranges: { label: 'preflop_ranges', sub: 'ranges JSON validados',  color: 'bg-emerald-500' },
+                  gto_wizard:     { label: 'gto_wizard',     sub: 'GTO Wizard (GCP)',        color: 'bg-blue-500'    },
+                  solver_cli:     { label: 'solver_cli',     sub: 'solver local (CFR)',       color: 'bg-amber-500'   },
+                };
+                const meta = labels[source] ?? { label: source, sub: '', color: 'bg-primary' };
+                return (
+                  <div key={source} className="flex items-center gap-3">
+                    <div className="w-32 shrink-0">
+                      <span className="font-mono text-[11px] text-foreground">{meta.label}</span>
+                      {meta.sub && <p className="font-mono text-[10px] text-muted-foreground">{meta.sub}</p>}
+                    </div>
+                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${meta.color}`}
+                        style={{ width: `${coverageTotal > 0 ? Math.round((n / coverageTotal) * 100) : 0}%` }}
+                      />
+                    </div>
+                    <span className="font-mono text-[11px] tabular-nums text-foreground w-12 text-right">{n}</span>
                   </div>
-                  <span className="font-mono text-[11px] tabular-nums text-foreground w-12 text-right">{n}</span>
-                </div>
-              ))
+                );
+              })
             }
           </div>
         </div>
