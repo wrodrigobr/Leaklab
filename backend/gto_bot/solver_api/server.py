@@ -57,8 +57,9 @@ GW_SPOT_SOL  = f"{GW_API_BASE}/v4/solutions/spot-solution/"
 GW_NEXT_ACTS = f"{GW_API_BASE}/v4/game-points/next-actions/"
 GW_CLIENT_ID = os.environ.get('GW_CLIENT_ID', '790ab864-ed0c-4545-9e5a-97efe89672cd')
 
-GAMETYPE    = "MTTGeneral"
-STACK_SNAPS = [10, 13, 15, 17, 20, 25, 30, 40, 50, 75, 100]
+GAMETYPE     = "MTTGeneralV2"
+# V2 usa stacks reais (sem snapping) — format: "N.125-N.125-..." para 9 jogadores iguais
+GW_N_PLAYERS = 9
 
 PREFLOP_BY_POS = {
     "UTG":   "R2.3-F-F-F-F-F-F-C",
@@ -226,8 +227,15 @@ def _refresh_loop() -> None:
 
 # ── GTO Wizard query ──────────────────────────────────────────────────────────
 
-def _nearest_snap(stack_bb: float) -> int:
-    return min(STACK_SNAPS, key=lambda s: abs(s - stack_bb))
+def _stack_frac(stack_bb: float) -> float:
+    """Converte stack para formato V2: valor real + 0.125."""
+    return round(float(stack_bb) + 0.125, 3)
+
+
+def _stacks_param(stack_bb: float) -> str:
+    """Gera string de stacks para MTTGeneralV2: todos iguais ao hero (modelo simplificado)."""
+    sf = _stack_frac(stack_bb)
+    return "-".join([str(sf)] * GW_N_PLAYERS)
 
 
 def _norm_board(board, max_cards: int = 3) -> str:
@@ -385,8 +393,8 @@ def query_gto_wizard(spot: dict) -> dict:
     _pos_alias = {"UTG+2": "LJ", "MP1": "LJ", "MP2": "HJ", "MP": "LJ", "EP": "UTG"}
     position   = _pos_alias.get(position, position)
 
-    snap       = _nearest_snap(hero_stack_bb)
-    stack_frac = snap + 0.125
+    stack_frac = _stack_frac(hero_stack_bb)
+    stacks_str = _stacks_param(hero_stack_bb)
 
     try:
         session = _make_session(headers)
@@ -402,7 +410,7 @@ def query_gto_wizard(spot: dict) -> dict:
         api_params = {
             "gametype":        GAMETYPE,
             "depth":           stack_frac,
-            "stacks":          "",
+            "stacks":          stacks_str,
             "preflop_actions": decision_point,
             "flop_actions":    "",
             "turn_actions":    "",
@@ -466,7 +474,7 @@ def query_gto_wizard(spot: dict) -> dict:
     api_params = {
         "gametype":        GAMETYPE,
         "depth":           stack_frac,
-        "stacks":          "",
+        "stacks":          stacks_str,
         "preflop_actions": preflop,
         "flop_actions":    "",
         "turn_actions":    "",
@@ -475,14 +483,29 @@ def query_gto_wizard(spot: dict) -> dict:
     }
 
     # Build action context for the decision street.
-    # For flop: model facing_bet if present (same as before).
-    # For turn/river: send empty action strings — queries the street root.
-    # The board now has the correct number of cards (3/4/5) so GW sees the right street.
-    if street == "flop" and facing_size_bb > 0:
-        flop_before = "X" if hero_is_oop else ""
-        prefix      = "X-R" if hero_is_oop else "R"
-        valid_size  = _nearest_valid_bet(session, api_params, flop_before, facing_size_bb, street="flop")
-        api_params["flop_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
+    # Root of each street is modeled as X-X (both players checked previous streets).
+    # If facing a bet, reconstruct the action sequence to that bet.
+    if street == "flop":
+        if facing_size_bb > 0:
+            flop_before = "X" if hero_is_oop else ""
+            prefix      = "X-R" if hero_is_oop else "R"
+            valid_size  = _nearest_valid_bet(session, api_params, flop_before, facing_size_bb, street="flop")
+            api_params["flop_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
+    elif street == "turn":
+        api_params["flop_actions"] = "X-X"
+        if facing_size_bb > 0:
+            turn_before = "X" if hero_is_oop else ""
+            prefix      = "X-R" if hero_is_oop else "R"
+            valid_size  = _nearest_valid_bet(session, api_params, turn_before, facing_size_bb, street="turn")
+            api_params["turn_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
+    elif street == "river":
+        api_params["flop_actions"] = "X-X"
+        api_params["turn_actions"] = "X-X"
+        if facing_size_bb > 0:
+            river_before = "X" if hero_is_oop else ""
+            prefix       = "X-R" if hero_is_oop else "R"
+            valid_size   = _nearest_valid_bet(session, api_params, river_before, facing_size_bb, street="river")
+            api_params["river_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
 
     try:
         r = session.get(GW_SPOT_SOL, params=api_params, timeout=15)
