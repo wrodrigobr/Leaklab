@@ -649,24 +649,15 @@ def query_gto_wizard(spot: dict) -> dict:
                          snapped, alt_depth, position, street, num_players)
                 break
         else:
-            # Último recurso: se facing_size_bb > 0, tentar sem o contexto da aposta (root do street)
+            # Último recurso: re-consulta com facing=0 (root do street) — mesma lógica que funciona
             if facing_size_bb > 0:
-                root_params = dict(api_params)
-                root_params["flop_actions"]  = "X-X" if street in ("turn", "river") else ""
-                root_params["turn_actions"]  = "X-X" if street == "river" else ""
-                root_params["river_actions"] = ""
-                try:
-                    r3 = session.get(GW_SPOT_SOL, params=root_params, timeout=15)
-                    log.info("gto_wizard: root fallback r3.status=%d ok=%s content_len=%d params=%s",
-                             r3.status_code, r3.ok, len(r3.content), str(root_params))
-                    if r3.ok and r3.content:
-                        r = r3
-                        log.info("gto_wizard: fallback root street OK (%s %s %d-max facing=0)",
-                                 position, street, num_players)
-                    else:
-                        return {"found": False, "error": f"root_fallback_http_{r3.status_code}"}
-                except Exception as e3:
-                    return {"found": False, "error": f"root_fallback_exception:{e3}"}
+                log.info("gto_wizard: fallback root street — re-query facing=0 (%s %s %d-max)",
+                         position, street, num_players)
+                fallback = query_gto_wizard({**spot, "facing_size_bb": 0.0})
+                if fallback.get("found"):
+                    fallback["_fallback"] = "root_street"
+                    return fallback
+                return {"found": False, "error": "http_403_no_valid_depth"}
             else:
                 return {"found": False, "error": "http_403_no_valid_depth"}
 
