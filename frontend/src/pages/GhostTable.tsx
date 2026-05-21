@@ -22,7 +22,6 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { AiText } from "@/components/ui/AiText";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { drill, gto } from "@/lib/api";
 import type { DrillSpot, DrillStats, DrillSubmitResult, ReplayStep, GtoStrategyAction } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
@@ -433,7 +432,7 @@ export default function GhostTable() {
                 )
             }
             {!!current.is_3bet && <span className="font-semibold text-warning">{t("context.is3bet")}</span>}
-            {current.context_note === 'hu_postflop' && (
+            {current.context_note === 'hu_postflop' && (current.num_players ?? 2) <= 2 && (
               <span className="px-1.5 py-0.5 rounded border border-border bg-hud-surface text-muted-foreground">
                 {t('context.huPostflop')}
               </span>
@@ -536,10 +535,6 @@ export default function GhostTable() {
           <aside className="hidden lg:flex w-64 shrink-0 flex-col gap-3 overflow-y-auto pb-2 pt-10">
             {progressBar}
             {sitStrip}
-            <p className="font-mono text-[10px] text-muted-foreground shrink-0">
-              {t("result.originalMistake", { action: formatAction(current.action_taken).toUpperCase(), score: current.score.toFixed(2) })}
-            </p>
-
             {/* Active: action buttons */}
             {phase === "active" && (
               <>
@@ -593,22 +588,6 @@ export default function GhostTable() {
                       <Flame className="size-4" aria-hidden />{streak}
                     </div>
                   )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 shrink-0">
-                  <div className="rounded-lg border border-border bg-hud-surface p-3">
-                    <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("result.yourAction", { action: "" }).split(":")[0]}</p>
-                    <p className="mt-1 font-mono text-lg font-bold text-foreground">{formatAction(lastResult.new_action).toUpperCase()}</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-hud-surface p-3">
-                    <div className="flex items-center gap-1.5">
-                      <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
-                      {current?.gto_action && current?.gto_label !== 'wizard_pending' && (
-                        <span className="font-mono text-[8px] text-primary/60 bg-primary/10 rounded px-1">⚖ GTO</span>
-                      )}
-                    </div>
-                    <p className="mt-1 font-mono text-lg font-bold text-foreground">{formatAction(lastResult.best_action).toUpperCase()}</p>
-                  </div>
                 </div>
 
                 <div className={cn("flex items-center justify-between rounded-lg border p-3 shrink-0", lastResult.delta < 0 ? "border-success/30 bg-success/5" : "border-border bg-hud-surface")}>
@@ -671,30 +650,39 @@ export default function GhostTable() {
     <HudLayout eyebrow="Ghost Table" title={t("title")} description={t("subtitle")}>
 
       {/* ── AI Analysis Modal ─────────────────────────────────────────────────── */}
-      <Dialog open={analysisOpen} onOpenChange={setAnalysisOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-mono text-sm uppercase tracking-widest text-primary">
-              {t("result.engineNote")}
-            </DialogTitle>
-          </DialogHeader>
-          {analysis && <AiText>{analysis}</AiText>}
-          <div className="flex gap-3 pt-2 border-t border-border/40">
-            <button
-              onClick={() => { setAnalysisOpen(false); nextSpot(); }}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors"
-            >
-              {t("next")} <ArrowRight className="size-4" aria-hidden />
-            </button>
-            <button
-              onClick={() => setAnalysisOpen(false)}
-              className="rounded-lg border border-border px-4 py-2.5 font-mono text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {t("result.closeModal") ?? "Fechar"}
-            </button>
+      {analysisOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setAnalysisOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-xl space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <p className="font-mono text-xs uppercase tracking-widest text-primary">{t("result.engineNote")}</p>
+              <button onClick={() => setAnalysisOpen(false)} className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors">
+                ✕
+              </button>
+            </div>
+            {analysis && <AiText>{analysis}</AiText>}
+            <div className="flex gap-3 pt-2 border-t border-border/40">
+              <button
+                onClick={() => { setAnalysisOpen(false); nextSpot(); }}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors"
+              >
+                {t("next")} <ArrowRight className="size-4" aria-hidden />
+              </button>
+              <button
+                onClick={() => setAnalysisOpen(false)}
+                className="rounded-lg border border-border px-4 py-2.5 font-mono text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {t("result.closeModal")}
+              </button>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       {/* ── INTRO / LOADING ──────────────────────────────────────────────────── */}
       {(phase === "intro" || phase === "loading") && (
@@ -871,7 +859,7 @@ export default function GhostTable() {
                     )
                 }
                 {!!current.is_3bet && <span className="font-semibold text-warning">{t("context.is3bet")}</span>}
-                {current.context_note === 'hu_postflop' && (
+                {current.context_note === 'hu_postflop' && (current.num_players ?? 2) <= 2 && (
                   <span className="px-1.5 py-0.5 rounded border border-border bg-hud-surface text-muted-foreground">
                     {t('context.huPostflop')}
                   </span>
@@ -896,10 +884,6 @@ export default function GhostTable() {
                 betUnit="bb"
               />
             </div>
-
-            <p className="font-mono text-[10px] text-muted-foreground text-center">
-              {t("result.originalMistake", { action: formatAction(current.action_taken).toUpperCase(), score: current.score.toFixed(2) })}
-            </p>
 
             {/* Timeout banner */}
             {timedOut && (
@@ -955,22 +939,6 @@ export default function GhostTable() {
                 {streak}
               </div>
             )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-border bg-hud-surface p-4">
-              <p className="font-mono text-[10px] uppercase text-muted-foreground">{t("result.yourAction", { action: "" }).split(":")[0]}</p>
-              <p className="mt-1 font-mono text-xl font-bold text-foreground">{formatAction(lastResult.new_action).toUpperCase()}</p>
-            </div>
-            <div className="rounded-lg border border-border bg-hud-surface p-4">
-              <div className="flex items-center gap-1.5">
-                <p className="font-mono text-[10px] uppercase text-muted-foreground">{t("result.bestAction", { action: "" }).split(":")[0]}</p>
-                {current?.gto_action && current?.gto_label !== 'wizard_pending' && (
-                  <span className="font-mono text-[8px] text-primary/60 bg-primary/10 rounded px-1">⚖ GTO</span>
-                )}
-              </div>
-              <p className="mt-1 font-mono text-xl font-bold text-foreground">{formatAction(lastResult.best_action).toUpperCase()}</p>
-            </div>
           </div>
 
           <div className={cn(
