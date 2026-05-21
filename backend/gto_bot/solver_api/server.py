@@ -475,29 +475,14 @@ def query_gto_wizard(spot: dict) -> dict:
     }
 
     # Build action context for the decision street.
-    # Heuristic: model flop/turn as check-check to reach subsequent street roots.
-    # facing_size_bb > 0 means hero faces a bet on the current street.
-    if street == "flop":
-        if facing_size_bb > 0:
-            flop_before = "X" if hero_is_oop else ""
-            prefix      = "X-R" if hero_is_oop else "R"
-            valid_size  = _nearest_valid_bet(session, api_params, flop_before, facing_size_bb, street="flop")
-            api_params["flop_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
-    elif street == "turn":
-        api_params["flop_actions"] = "X-X"
-        if facing_size_bb > 0:
-            turn_before = "X" if hero_is_oop else ""
-            prefix      = "X-R" if hero_is_oop else "R"
-            valid_size  = _nearest_valid_bet(session, api_params, turn_before, facing_size_bb, street="turn")
-            api_params["turn_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
-    elif street == "river":
-        api_params["flop_actions"] = "X-X"
-        api_params["turn_actions"] = "X-X"
-        if facing_size_bb > 0:
-            river_before = "X" if hero_is_oop else ""
-            prefix       = "X-R" if hero_is_oop else "R"
-            valid_size   = _nearest_valid_bet(session, api_params, river_before, facing_size_bb, street="river")
-            api_params["river_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
+    # For flop: model facing_bet if present (same as before).
+    # For turn/river: send empty action strings — queries the street root.
+    # The board now has the correct number of cards (3/4/5) so GW sees the right street.
+    if street == "flop" and facing_size_bb > 0:
+        flop_before = "X" if hero_is_oop else ""
+        prefix      = "X-R" if hero_is_oop else "R"
+        valid_size  = _nearest_valid_bet(session, api_params, flop_before, facing_size_bb, street="flop")
+        api_params["flop_actions"] = f"{prefix}{valid_size if valid_size else round(facing_size_bb, 1)}"
 
     try:
         r = session.get(GW_SPOT_SOL, params=api_params, timeout=15)

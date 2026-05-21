@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.131.0] — 2026-05-20 — fix(gto-server): reverter MTTGeneralV2, manter fix de board por street
+
+### Fixed
+- **`GAMETYPE`**: revertido para `"MTTGeneral"` — `MTTGeneralV2` exige parâmetro `stacks` completo com todos os jogadores que nossa implementação não envia, causando 0 respostas
+- **`query_gto_wizard` — turn/river**: simplificado para enviar `flop_actions=""` / `turn_actions=""` (root do street) com o board correto (4/5 cartas). Não usa `X-X` — notação de check-check não confirmada no HAR do GW
+- O ganho real desta versão: turn queries agora enviam 4 cartas e river enviam 5, fazendo o GW consultar o tree correto em vez do flop tree
+
+---
+
 ## [v0.130.0] — 2026-05-20 — fix(gto-server): turn/river enviavam apenas 3 cartas ao GW (tratados como flop)
 
 ### Fixed
