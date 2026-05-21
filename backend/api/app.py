@@ -4903,6 +4903,21 @@ def admin_reanalyze_preflop_labels():
         conn.close()
 
 
+@app.route('/admin/llm-cache/clear', methods=['POST'])
+@require_admin
+def admin_clear_llm_cache():
+    """Limpa o LLM cache (banco + in-memory). Útil após re-validação GTO."""
+    import leaklab.llm_explainer as _exp
+    conn = get_conn()
+    try:
+        deleted = conn.execute("DELETE FROM llm_cache").rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    _exp._cache.clear()
+    return jsonify({'ok': True, 'deleted_db': deleted, 'message': 'LLM cache limpo'})
+
+
 @app.route('/support/contact', methods=['POST'])
 @require_auth
 def support_contact():

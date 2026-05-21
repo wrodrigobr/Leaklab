@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.138.0] — 2026-05-21 — feat(gto): force-refresh todos os nós + invalidação de cache LLM
+
+### Changed
+- **`validate_nodes_vs_gw.py --force-refresh`**: re-consulta GTO Wizard para todos os 199 spots únicos das decisions postflop, substituindo nós antigos (criados com `stack_bucket` ou `solver_cli`) por estratégias com stack exato, facing_bet e num_players corretos. 235 decisions agora têm dados precisos
+- **LLM cache invalidado**: 27 entradas removidas do banco (explicações geradas com gto_label antigo). Dashboard, planos de estudo e análises serão regenerados com dados corretos na próxima consulta
+- **`/admin/llm-cache/clear`**: novo endpoint admin para invalidar LLM cache (banco + in-memory) sem precisar acessar banco diretamente
+
+### Impact
+- gto_critical flop: 78→80 | gto_correct flop: 40→42 | turn: distribuição rebalanceada com dados precisos de stack/facing/num_players
+- Próximas explicações LLM gerarão contexto correto ("você tinha 42bb e foldou contra um c-bet de 1.6bb" vs "você tinha 50bb e...")
+
+---
+
 ## [v0.137.0] — 2026-05-21 — fix(gto): cobertura postflop 100% — fallback root street via re-query
 
 ### Fixed
