@@ -303,22 +303,23 @@ def _nearest_valid_bet(session, api_params: dict, street_before: str,
         return None
 
 
-_POSITIONS_ORDER = ["UTG", "UTG+1", "LJ", "HJ", "CO", "BTN", "SB", "BB"]
-_GW_OPEN_SIZE    = 2.3
+_POSITIONS_ORDER = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"]
+_GW_OPEN_SIZE    = 2.0   # MTTGeneralV2 usa R2 (2bb open) — confirmado no HAR
 
 
 def _preflop_decision_point(position: str, facing_size_bb: float) -> Optional[str]:
     """
     Constrói a string de ações preflop até (não incluindo) a ação do hero.
 
+    MTTGeneralV2 é 9-max: ["UTG","UTG+1","UTG+2","LJ","HJ","CO","BTN","SB","BB"]
     Retorna None para posição desconhecida ou situação fora da árvore MTT
     (limp: facing entre 0 e 1.5bb, ou jam > 6bb que não mapeamos).
 
-    Exemplos:
-      BTN RFI (facing=0)          -> "F-F-F-F-F"
-      BB free play (facing=0)     -> "F-F-F-F-F-C"
-      BB vs BTN raise (facing>0)  -> "F-F-F-F-F-R2.3-F"
-      SB vs BTN raise (facing>0)  -> "F-F-F-F-F-R2.3"
+    Exemplos (9-max):
+      BTN RFI (facing=0)          -> "F-F-F-F-F-F"
+      BB free play (facing=0)     -> "F-F-F-F-F-F-C"
+      BB vs BTN raise (facing>0)  -> "F-F-F-F-F-F-R2-F"
+      SB vs BTN raise (facing>0)  -> "F-F-F-F-F-F-R2"
     """
     if position not in _POSITIONS_ORDER:
         return None
@@ -390,7 +391,7 @@ def query_gto_wizard(spot: dict) -> dict:
     facing_size_bb = float(spot.get("facing_size_bb", 0) or 0)
 
     # Normaliza aliases de posição
-    _pos_alias = {"UTG+2": "LJ", "MP1": "LJ", "MP2": "HJ", "MP": "LJ", "EP": "UTG"}
+    _pos_alias = {"MP1": "LJ", "MP2": "HJ", "MP": "LJ", "EP": "UTG"}
     position   = _pos_alias.get(position, position)
 
     stack_frac = _stack_frac(hero_stack_bb)
