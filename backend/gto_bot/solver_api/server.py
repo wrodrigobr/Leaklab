@@ -225,8 +225,8 @@ def _refresh_loop() -> None:
 # ── GTO Wizard query ──────────────────────────────────────────────────────────
 
 def _stack_frac(stack_bb: float) -> float:
-    """Converte stack para formato V2: valor real + 0.125."""
-    return round(float(stack_bb) + 0.125, 3)
+    """Converte stack para formato V2: inteiro mais próximo + 0.125 (GW só tem soluções em profundidades inteiras)."""
+    return round(float(round(stack_bb)) + 0.125, 3)
 
 
 def _stacks_param(stack_bb: float, n_players: int) -> str:
