@@ -224,9 +224,27 @@ def _refresh_loop() -> None:
 
 # ── GTO Wizard query ──────────────────────────────────────────────────────────
 
+# Depths com solução confirmados empiricamente (2026-05-20, BTN flop MTTGeneralV2).
+# 7–25bb: contínuo; 32–60bb: pares + alguns ímpares; 60+: saltos grandes.
+_GW_VALID_DEPTHS: list[int] = sorted([
+    7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+    21, 22, 23, 24, 25,
+    32, 34, 35, 36, 38, 40, 42, 44, 46, 48, 50,
+    52, 54, 56, 58, 60,
+    70, 80, 100, 130, 160, 200,
+])
+
+
+def _snap_to_valid_depth(stack_bb: float) -> int:
+    """Retorna o depth válido do GTO Wizard mais próximo ao stack informado."""
+    n = round(float(stack_bb))
+    n = min(n, 200)  # cap máximo
+    return min(_GW_VALID_DEPTHS, key=lambda d: abs(d - n))
+
+
 def _stack_frac(stack_bb: float) -> float:
-    """Converte stack para formato V2: inteiro mais próximo + 0.125 (GW só tem soluções em profundidades inteiras)."""
-    return round(float(round(stack_bb)) + 0.125, 3)
+    """Converte stack para formato V2: depth válido mais próximo + 0.125."""
+    return round(float(_snap_to_valid_depth(stack_bb)) + 0.125, 3)
 
 
 def _stacks_param(stack_bb: float, n_players: int) -> str:
@@ -446,6 +464,20 @@ def query_gto_wizard(spot: dict) -> dict:
     gametype   = tbl["gametype"]
     positions  = tbl["positions"]
     open_size  = tbl["open"]
+
+    # Normaliza posição para as disponíveis neste gametype
+    # Ex: UTG+2 em 8-max → LJ (mesma profundidade de ação); UTG+1 em 7-max → LJ
+    if position not in positions:
+        _pos_fallback: dict[str, list[str]] = {
+            "UTG+2": ["LJ", "UTG+1", "UTG"],
+            "UTG+1": ["LJ", "UTG"],
+            "LJ":    ["UTG+1", "UTG"],
+            "HJ":    ["CO", "LJ", "UTG+1", "UTG"],
+        }
+        for fb in _pos_fallback.get(position, []):
+            if fb in positions:
+                position = fb
+                break
     stack_frac = _stack_frac(hero_stack_bb)
     stacks_str = _stacks_param(hero_stack_bb, num_players)
 
