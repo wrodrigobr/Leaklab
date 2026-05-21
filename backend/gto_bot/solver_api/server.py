@@ -247,6 +247,18 @@ def _stack_frac(stack_bb: float) -> float:
     return round(float(_snap_to_valid_depth(stack_bb)) + 0.125, 3)
 
 
+def _retry_depths(snapped: int, max_retries: int = 4) -> list[int]:
+    """Retorna depths alternativos para retry quando 403 (válidos, em ordem de distância)."""
+    idx = _GW_VALID_DEPTHS.index(snapped) if snapped in _GW_VALID_DEPTHS else -1
+    candidates = []
+    for offset in range(1, max_retries + 1):
+        if idx + offset < len(_GW_VALID_DEPTHS):
+            candidates.append(_GW_VALID_DEPTHS[idx + offset])
+        if idx - offset >= 0:
+            candidates.append(_GW_VALID_DEPTHS[idx - offset])
+    return candidates
+
+
 def _stacks_param(stack_bb: float, n_players: int) -> str:
     """Gera string de stacks: todos iguais ao hero (modelo simplificado), n_players entradas."""
     sf = _stack_frac(stack_bb)
@@ -455,6 +467,8 @@ def query_gto_wizard(spot: dict) -> dict:
     # Normaliza aliases de posição
     _pos_alias = {"MP1": "LJ", "MP2": "HJ", "MP": "LJ", "EP": "UTG"}
     position   = _pos_alias.get(position, position)
+    if num_players == 2 and position == "SB":
+        position = "BTN"  # HU: BTN posta o small blind
 
     # Resolve config de mesa — usa exato ou None (spot ignorado)
     tbl = _TABLE_CONFIG.get(num_players)
@@ -600,6 +614,29 @@ def query_gto_wizard(spot: dict) -> dict:
     if r.status_code == 401:
         _set_auth_failed("Token expirado (HTTP 401)")
         return {"found": False, "error": "auth_expired"}
+
+    # 403 = depth não tem solução para esta posição/gametype — tentar depths alternativos
+    if r.status_code == 403:
+        snapped = _snap_to_valid_depth(hero_stack_bb)
+        for alt_depth in _retry_depths(snapped):
+            alt_frac   = round(alt_depth + 0.125, 3)
+            alt_stacks = "-".join([str(alt_frac)] * num_players)
+            alt_params = dict(api_params)
+            alt_params["depth"]  = alt_frac
+            alt_params["stacks"] = alt_stacks
+            try:
+                r2 = session.get(GW_SPOT_SOL, params=alt_params, timeout=15)
+            except Exception:
+                continue
+            if r2.ok and r2.content:
+                r          = r2
+                stack_frac = alt_frac
+                stacks_str = alt_stacks
+                log.info("gto_wizard: retry depth %s→%s OK (%s %s %d-max)",
+                         snapped, alt_depth, position, street, num_players)
+                break
+        else:
+            return {"found": False, "error": f"http_403_no_valid_depth"}
 
     if r.status_code == 204 or not r.content:
         return {"found": False, "error": "no_solution_204"}
