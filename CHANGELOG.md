@@ -9,6 +9,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.128.0] — 2026-05-20 — fix(data): limpeza de nós ruins + propagação de labels GTO
+
+### Fixed
+- **176 nós ruins deletados**: nós `solver_cli` com `position=range_string` (ex: `JJ+,AKs,...`) e `stack_bucket='solver'` criados por runs antigos do solver foram identificados e removidos. Hashes desses nós eram inacessíveis via `compute_spot_hash()` com position real, tornando-os dead code no banco
+- **11 decisions nullificadas**: decisions que referenciavam os nós ruins (todas UTG+1/UTG+2 — posições não suportadas pelo GW) tiveram `gto_label/gto_action` nulificados para evitar classificações baseadas em dados corrompidos
+- **82 nós solver_cli enriquecidos com strategy_json**: run `--no-strategy-only` enriqueceu 82 nós válidos com `strategy_json` detalhado via GW (84 respondidos de 511 processados; os demais são UTG+2/0-10bb/boards não cobertos pelo GW)
+- **2 ações de nós corrigidas** onde GW divergia da ação armazenada pelo solver local
+- **11 labels de decisions propagados**: `resync_gto_actions.py --apply` atualizou 11 decisions cujos nós GTO foram enriquecidos/corrigidos
+
+### Added
+- **`scripts/_cleanup_bad_nodes.py`**: identifica nós com position=range_string ou stack_bucket='solver', encontra decisions afetadas, nullifica labels e deleta os nós. Dry-run por padrão, `--apply` para executar
+
+### Estado do banco após esta versão
+- `gto_nodes`: 449 solver_cli (159 com strategy_json) + 167 gto_wizard (todos com strategy_json)
+- Preflop: 696/704 decisions com label (99%) — 8 sem cobertura (UTG+1, UTG+2 não suportados)
+- Flop: 32/94 com label (34%) | Turn: 18/50 (36%) | River: 6/19 (32%)
+- Distribuição de labels: gto_correct=526, gto_critical=168, gto_mixed=47, gto_minor_deviation=11
+
+---
+
 ## [v0.127.0] — 2026-05-20 — refactor(gto): validate_nodes_vs_gw usa servidor GCP em vez de token de browser
 
 ### Changed
