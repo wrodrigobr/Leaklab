@@ -9,6 +9,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.136.0] — 2026-05-21 — fix(gto): cobertura postflop 98% — depths HU + MTTHUGeneral stacks vazio
+
+### Fixed
+- **MTTHUGeneral `stacks=""`**: HAR heads-up confirmou que o gametype HU não envia o parâmetro `stacks` (todos os outros gametypes enviam `stacks=X.125-X.125-...`). Adicionado `"stacks": ""` no `_TABLE_CONFIG[2]`
+- **`_GW_HU_VALID_DEPTHS`**: depths válidos para HU completamente diferentes do 9p — `[13,14,15,16,18,20,25,26,27,28,40,41,50,51,60,61,62,63,64,65]` mapeados empiricamente. Depths 7–12 e 66+ sem solução em HU
+- **`_GW_DEPTHS_BY_GAMETYPE`**: mapa gametype → lista de depths, permitindo snap e retry corretos por gametype
+- **`_snap_to_valid_depth` / `_retry_depths`**: recebem `gametype` como parâmetro e usam a lista correta
+
+### Impact
+- Cobertura postflop: **4 → 1 sem resposta** (98% de cobertura, 211/235 decisions com nó GTO)
+- 1 spot restante sem cobertura: BTN 13bb 4p com facing_bet=1.6 (reconstrução de action sequence para bet fracionário falha)
+- 6 decisões HU propagadas com gto_label via resync
+
+---
+
 ## [v0.135.0] — 2026-05-21 — fix(gto-server): cobertura postflop 93% — depths válidos, retry, multi-gametype
 
 ### Fixed
