@@ -9,6 +9,53 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.135.0] — 2026-05-21 — fix(gto-server): cobertura postflop 93% — depths válidos, retry, multi-gametype
+
+### Fixed
+- **`_GW_VALID_DEPTHS`**: lista completa de 41 depths com solução no GTO Wizard MTT (mapeados empiricamente 7–200bb). GW não tem solução em todo inteiro — padrão: 7–25 contínuo, 26–60 pares+extras, depois saltos 70/80/100/130/160/200
+- **`_snap_to_valid_depth`**: snap para o depth válido mais próximo (antes: inteiro mais próximo → gerava 403 em ~60% dos casos)
+- **`_retry_depths` + retry on 403**: quando depth não tem solução para a posição/gametype, tenta até 4 depths alternativos em ordem de distância. Resolve CO 34bb→35bb, LJ 24bb→25bb, SB 37bb→38bb, BB 34bb 7p→35bb
+- **Fallback de posição**: UTG+2 em 8-max → LJ; UTG+1 em 7-max → LJ (posição equivalente no gametype menor)
+- **SB→BTN em 2p**: em mesas HU não existe posição SB — mapeado para BTN
+- **Multi-gametype**: suporte a MTTHUGeneral (2p), MTTGeneral_3m/4m/5m/7m/8m e MTTGeneralV2 (9p)
+- **`_postflop_preflop_seq`**: sequência preflop correta para todos os gametypes (folds para todos entre hero e BB, BB calls)
+
+### Impact
+- Cobertura postflop: **37 → 4 sem resposta** (93% de cobertura, 205/235 decisions)
+- 81 decisions atualizadas com gto_action e gto_label via resync
+- 4 spots sem cobertura restantes: 3 HU (MTTHUGeneral — requer HAR específico) + 1 BTN 13bb 4p
+
+### Added
+- `scripts/probe_gw_depths.py`: mapeia depths válidos por gametype empiricamente
+
+---
+
+## [v0.134.0] — 2026-05-20 — fix(parser): prêmio do vencedor PokerStars ("wins the tournament")
+
+### Fixed
+- **`_extract_financials`**: regex não capturava o vencedor — formato "hero wins the tournament and receives $X" usa verbos no presente ("wins"/"receives"), enquanto o código só cobria "finished...received" (lugar 2+). Fallback somava chips coletados em potes → valores absurdos (ex: +$41.106)
+- Agora: vencedor capturado com `place=1` e `prize` correto
+
+---
+
+## [v0.133.0] — 2026-05-20 — fix(gto-server): snap de stack para depth válido no GTO Wizard
+
+### Fixed
+- **`_stack_frac`**: stacks fracionários (ex: 22.3bb → 22.425) retornavam 403 no GTO Wizard, pois GW só tem soluções em profundidades inteiras. Agora snapa para `round(stack_bb)` antes de adicionar 0.125
+
+---
+
+## [v0.132.0] — 2026-05-20 — fix(gto-server): MTTGeneralV2 9-max com stacks param, preflop correto, multi-gametype
+
+### Fixed
+- **`MTTGeneralV2`** (9-max): adicionado parâmetro `stacks=` com 9 valores iguais (era string vazia → 0 respostas)
+- **`_TABLE_CONFIG`**: mapeamento completo num_players 2–9 → gametype/positions/open_size
+- **`_postflop_preflop_seq`**: gerava sequências com contagem errada de ações (ex: UTG gerava 3 em vez de 9)
+- **`positions`** MTTGeneralV2: incluído UTG+2 (era 8 posições → sem match para CO e abaixo)
+- **`validate_nodes_vs_gw.py`**: SELECT agora inclui `d.num_players` — antes todas decisions defaultavam para 9p
+
+---
+
 ## [v0.131.0] — 2026-05-20 — fix(gto-server): reverter MTTGeneralV2, manter fix de board por street
 
 ### Fixed
