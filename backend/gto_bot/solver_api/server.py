@@ -657,14 +657,16 @@ def query_gto_wizard(spot: dict) -> dict:
                 root_params["river_actions"] = ""
                 try:
                     r3 = session.get(GW_SPOT_SOL, params=root_params, timeout=15)
+                    log.info("gto_wizard: root fallback r3.status=%d ok=%s content_len=%d params=%s",
+                             r3.status_code, r3.ok, len(r3.content), str(root_params))
                     if r3.ok and r3.content:
                         r = r3
                         log.info("gto_wizard: fallback root street OK (%s %s %d-max facing=0)",
                                  position, street, num_players)
                     else:
-                        return {"found": False, "error": "http_403_no_valid_depth"}
-                except Exception:
-                    return {"found": False, "error": "http_403_no_valid_depth"}
+                        return {"found": False, "error": f"root_fallback_http_{r3.status_code}"}
+                except Exception as e3:
+                    return {"found": False, "error": f"root_fallback_exception:{e3}"}
             else:
                 return {"found": False, "error": "http_403_no_valid_depth"}
 
