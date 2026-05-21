@@ -61,7 +61,7 @@ GW_CLIENT_ID = os.environ.get('GW_CLIENT_ID', '790ab864-ed0c-4545-9e5a-97efe8967
 # Gametypes confirmados via HAR/browser: 9=MTTGeneralV2, 8=MTTGeneral_8m, 6=MTT6mSimple.
 # Restantes inferidos pelo padrão de nomenclatura do GTO Wizard.
 _TABLE_CONFIG: dict[int, dict] = {
-    2: {"gametype": "MTTHUGeneral",   "positions": ["BTN","BB"],                                            "open": 2.0},
+    2: {"gametype": "MTTHUGeneral",   "positions": ["BTN","BB"],                                            "open": 2.0, "stacks": ""},
     3: {"gametype": "MTTGeneral_3m",  "positions": ["BTN","SB","BB"],                                      "open": 2.0},
     4: {"gametype": "MTTGeneral_4m",  "positions": ["CO","BTN","SB","BB"],                                  "open": 2.0},
     5: {"gametype": "MTTGeneral_5m",  "positions": ["HJ","CO","BTN","SB","BB"],                             "open": 2.0},
@@ -493,7 +493,8 @@ def query_gto_wizard(spot: dict) -> dict:
                 position = fb
                 break
     stack_frac = _stack_frac(hero_stack_bb)
-    stacks_str = _stacks_param(hero_stack_bb, num_players)
+    # HU (MTTHUGeneral) usa stacks="" — confirmado via HAR. Outros gametypes usam stacks iguais.
+    stacks_str = tbl.get("stacks", _stacks_param(hero_stack_bb, num_players))
 
     try:
         session = _make_session(headers)
