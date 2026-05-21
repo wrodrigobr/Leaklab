@@ -329,7 +329,7 @@ def run_new_decisions(args, conn):
     street_filter = f" AND d.street = '{args.street}'" if args.street else ""
     rows = conn.execute(f"""
         SELECT d.id, d.street, d.position, d.board, d.hero_cards,
-               d.stack_bb, d.facing_bet, d.pot_size
+               d.stack_bb, d.facing_bet, d.pot_size, d.num_players
         FROM decisions d
         WHERE d.street IN ('flop','turn','river')
           AND d.board IS NOT NULL AND d.stack_bb IS NOT NULL
