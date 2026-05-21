@@ -638,7 +638,9 @@ export default function GhostTable() {
                   </div>
                 )}
 
-                <button onClick={requestAnalysis} disabled={analysisLoading}
+                <button
+                  onClick={analysis ? () => setAnalysisOpen(true) : requestAnalysis}
+                  disabled={analysisLoading}
                   className={cn(
                     "w-full inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 font-mono text-xs font-semibold transition-colors shrink-0 disabled:opacity-60",
                     analysis
@@ -1007,7 +1009,7 @@ export default function GhostTable() {
           )}
 
           <button
-            onClick={requestAnalysis}
+            onClick={analysis ? () => setAnalysisOpen(true) : requestAnalysis}
             disabled={analysisLoading}
             className={cn(
               "w-full inline-flex items-center justify-center gap-2 rounded-lg border px-5 py-3 font-mono text-sm font-semibold transition-colors disabled:opacity-60",
