@@ -60,6 +60,7 @@ def query_spot(
     hero_stack_bb: float,
     facing_size_bb: float = 0.0,
     pot_bb: float = 0.0,
+    num_players: int = 9,
 ) -> Optional[dict]:
     """
     Consulta o GTO Wizard via servidor remoto (POST /gto-wizard).
@@ -90,6 +91,7 @@ def query_spot(
                 "hero_stack_bb":   hero_stack_bb,
                 "facing_size_bb":  facing_size_bb,
                 "pot_bb":          pot_bb,
+                "num_players":     num_players,
             },
             headers={"x-api-key": _api_key()},
             timeout=20,

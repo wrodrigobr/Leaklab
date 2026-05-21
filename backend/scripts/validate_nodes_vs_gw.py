@@ -375,6 +375,7 @@ def run_new_decisions(args, conn):
             "facing_bb":   facing,
             "pot_bb":      float(r.get("pot_size") or 0),
             "spot_hash":   h2,
+            "num_players": int(r.get("num_players") or 9),
         })
 
     if args.limit:
@@ -390,16 +391,17 @@ def run_new_decisions(args, conn):
     no_resp   = 0
 
     for i, dec in enumerate(uncovered, 1):
-        street   = dec["street"]
-        pos      = dec["position"]
-        board    = dec["board_hash"]
-        stack_bb = dec["stack_bb"]
-        facing   = dec["facing_bb"]
-        pot_bb   = dec["pot_bb"]
+        street      = dec["street"]
+        pos         = dec["position"]
+        board       = dec["board_hash"]
+        stack_bb    = dec["stack_bb"]
+        facing      = dec["facing_bb"]
+        pot_bb      = dec["pot_bb"]
+        num_players = dec.get("num_players", 9)
 
         board_str = " ".join(board)
         print(f"[{i:3d}/{len(uncovered)}] #{dec['decision_id']:6d} {street:5s} {pos:4s} "
-              f"{stack_bb:.0f}bb  [{board_str}]", end="")
+              f"{stack_bb:.0f}bb {num_players}p [{board_str}]", end="")
 
         if args.dry_run:
             print("  [dry-run]")
@@ -407,7 +409,8 @@ def run_new_decisions(args, conn):
 
         time.sleep(0.5)
         resp = gw_query(street=street, position=pos, board=board,
-                        hero_stack_bb=stack_bb, facing_size_bb=facing, pot_bb=pot_bb)
+                        hero_stack_bb=stack_bb, facing_size_bb=facing, pot_bb=pot_bb,
+                        num_players=num_players)
         if not resp or not resp.get("found"):
             print(f"  {_c('SEM RESPOSTA', RED)}")
             no_resp += 1

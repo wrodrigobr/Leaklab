@@ -114,6 +114,7 @@ def lookup_gto(
     vs_position: str = '',
     facing_size_bb: float = 0.0,
     pot_bb: float = 0.0,
+    num_players: int = 9,
 ) -> dict:
     """
     Ponto de entrada único para consultas GTO.
@@ -242,6 +243,7 @@ def lookup_gto(
             hero_stack_bb  = hero_stack_bb,
             facing_size_bb = facing_size_bb,
             pot_bb         = pot_bb,
+            num_players    = num_players,
         )
         if _gw and _gw.get('found') and _gw.get('strategy'):
             _gw_best = max(_gw['strategy'], key=lambda s: s['frequency'])

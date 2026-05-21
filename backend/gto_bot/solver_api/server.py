@@ -57,23 +57,20 @@ GW_SPOT_SOL  = f"{GW_API_BASE}/v4/solutions/spot-solution/"
 GW_NEXT_ACTS = f"{GW_API_BASE}/v4/game-points/next-actions/"
 GW_CLIENT_ID = os.environ.get('GW_CLIENT_ID', '790ab864-ed0c-4545-9e5a-97efe89672cd')
 
-GAMETYPE     = "MTTGeneralV2"
-# V2 usa stacks reais (sem snapping) — format: "N.125-N.125-..." para 9 jogadores iguais
-GW_N_PLAYERS = 9
-
-PREFLOP_BY_POS = {
-    "UTG":   "R2.3-F-F-F-F-F-F-C",
-    "UTG+1": "F-R2.3-F-F-F-F-F-C",
-    "UTG+2": "F-F-R2.3-F-F-F-F-C",
-    "LJ":    "F-F-R2.3-F-F-F-F-C",
-    "HJ":    "F-F-F-R2.3-F-F-F-C",
-    "CO":    "F-F-F-F-R2.3-F-F-C",
-    "BTN":   "F-F-F-F-F-R2.3-F-C",
-    "SB":    "F-F-F-F-F-F-R2.3-C",
-    "BB":    "F-F-F-F-F-R2.3-F-C",
-    "MP":    "F-F-R2.3-F-F-F-F-C",
-    "EP":    "R2.3-F-F-F-F-F-F-C",
+# Configuração por número de jogadores na mesa.
+# Gametypes confirmados via HAR/browser: 9=MTTGeneralV2, 8=MTTGeneral_8m, 6=MTT6mSimple.
+# Restantes inferidos pelo padrão de nomenclatura do GTO Wizard.
+_TABLE_CONFIG: dict[int, dict] = {
+    2: {"gametype": "MTTHUGeneral",   "positions": ["BTN","BB"],                                            "open": 2.0},
+    3: {"gametype": "MTTGeneral_3m",  "positions": ["BTN","SB","BB"],                                      "open": 2.0},
+    4: {"gametype": "MTTGeneral_4m",  "positions": ["CO","BTN","SB","BB"],                                  "open": 2.0},
+    5: {"gametype": "MTTGeneral_5m",  "positions": ["HJ","CO","BTN","SB","BB"],                             "open": 2.0},
+    6: {"gametype": "MTT6mSimple",    "positions": ["LJ","HJ","CO","BTN","SB","BB"],                        "open": 2.0},
+    7: {"gametype": "MTTGeneral_7m",  "positions": ["UTG","LJ","HJ","CO","BTN","SB","BB"],                  "open": 2.0},
+    8: {"gametype": "MTTGeneral_8m",  "positions": ["UTG","UTG+1","LJ","HJ","CO","BTN","SB","BB"],          "open": 2.0},
+    9: {"gametype": "MTTGeneralV2",   "positions": ["UTG","UTG+1","UTG+2","LJ","HJ","CO","BTN","SB","BB"],  "open": 2.0},
 }
+
 OOP_POSITIONS = {"BB", "SB"}
 
 
@@ -232,10 +229,17 @@ def _stack_frac(stack_bb: float) -> float:
     return round(float(stack_bb) + 0.125, 3)
 
 
-def _stacks_param(stack_bb: float) -> str:
-    """Gera string de stacks para MTTGeneralV2: todos iguais ao hero (modelo simplificado)."""
+def _stacks_param(stack_bb: float, n_players: int) -> str:
+    """Gera string de stacks: todos iguais ao hero (modelo simplificado), n_players entradas."""
     sf = _stack_frac(stack_bb)
-    return "-".join([str(sf)] * GW_N_PLAYERS)
+    return "-".join([str(sf)] * n_players)
+
+
+def _get_table_config(num_players: int) -> Optional[dict]:
+    """Retorna config (gametype, positions, open) para o tamanho de mesa, ou None se não suportado."""
+    if num_players in _TABLE_CONFIG:
+        return _TABLE_CONFIG[num_players]
+    return None
 
 
 def _norm_board(board, max_cards: int = 3) -> str:
@@ -303,67 +307,105 @@ def _nearest_valid_bet(session, api_params: dict, street_before: str,
         return None
 
 
-_POSITIONS_ORDER = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"]
-_GW_OPEN_SIZE    = 2.0   # MTTGeneralV2 usa R2 (2bb open) — confirmado no HAR
-
-
-def _preflop_decision_point(position: str, facing_size_bb: float) -> Optional[str]:
+def _preflop_decision_point(position: str, facing_size_bb: float, positions: list[str], open_size: float) -> Optional[str]:
     """
     Constrói a string de ações preflop até (não incluindo) a ação do hero.
+    Recebe a lista de posições do gametype correto para o tamanho da mesa.
 
-    MTTGeneralV2 é 9-max: ["UTG","UTG+1","UTG+2","LJ","HJ","CO","BTN","SB","BB"]
-    Retorna None para posição desconhecida ou situação fora da árvore MTT
-    (limp: facing entre 0 e 1.5bb, ou jam > 6bb que não mapeamos).
-
-    Exemplos (9-max):
-      BTN RFI (facing=0)          -> "F-F-F-F-F-F"
-      BB free play (facing=0)     -> "F-F-F-F-F-F-C"
-      BB vs BTN raise (facing>0)  -> "F-F-F-F-F-F-R2-F"
-      SB vs BTN raise (facing>0)  -> "F-F-F-F-F-F-R2"
+    Retorna None para posição desconhecida, limp (0 < facing < 1.5bb) ou jam > 6bb.
     """
-    if position not in _POSITIONS_ORDER:
+    if position not in positions:
         return None
-    hero_idx = _POSITIONS_ORDER.index(position)
+    hero_idx = positions.index(position)
+    open_s   = str(open_size) if open_size != int(open_size) else str(int(open_size))
 
     if facing_size_bb == 0 and position != "BB":
-        # RFI: todos antes foldaram
         return "-".join(["F"] * hero_idx) if hero_idx else ""
 
     if facing_size_bb == 0 and position == "BB":
         # BB free play: assume SB completou (limp)
         return "-".join(["F"] * (hero_idx - 1) + ["C"])
 
-    # Limp: facing < 1.5bb mas > 0 — fora da árvore MTT (não há nó de limp)
     if 0 < facing_size_bb < 1.5:
-        return None
+        return None  # limp — fora da árvore MTT
 
-    # Jam preflop: facing > 6bb — ação é all-in, não modelamos ainda
     if facing_size_bb > 6.0:
-        return None
+        return None  # jam preflop — não modelado
 
-    # Facing raise padrão (1.5–6bb): snapa para 2.3bb (open padrão MTTGeneral)
+    # Facing raise padrão (1.5–6bb)
+    if "BTN" in positions:
+        btn_idx = positions.index("BTN")
+    else:
+        btn_idx = hero_idx - 2 if hero_idx >= 2 else 0
+
+    sb_idx = positions.index("SB") if "SB" in positions else -1
+
     if position == "BB":
-        # Assume BTN abriu, SB foldou
-        btn_idx = _POSITIONS_ORDER.index("BTN")
-        sb_idx  = _POSITIONS_ORDER.index("SB")
         actions = []
         for i in range(hero_idx):
-            if i < btn_idx:
-                actions.append("F")
-            elif i == btn_idx:
-                actions.append(f"R{_GW_OPEN_SIZE}")
+            if i == btn_idx:
+                actions.append(f"R{open_s}")
             elif i == sb_idx:
+                actions.append("F")
+            else:
                 actions.append("F")
         return "-".join(actions)
 
     if position == "SB":
-        # Assume BTN abriu
-        btn_idx = _POSITIONS_ORDER.index("BTN")
-        actions = ["F" if i != btn_idx else f"R{_GW_OPEN_SIZE}" for i in range(hero_idx)]
+        actions = ["F" if i != btn_idx else f"R{open_s}" for i in range(hero_idx)]
         return "-".join(actions)
 
-    # IP (CO/HJ/LJ etc.) vs raise: assume UTG abriu
-    actions = [f"R{_GW_OPEN_SIZE}" if i == 0 else "F" for i in range(hero_idx)]
+    # IP (CO/HJ/LJ etc.) vs raise: assume UTG (idx=0) abriu
+    actions = [f"R{open_s}" if i == 0 else "F" for i in range(hero_idx)]
+    return "-".join(actions)
+
+
+def _postflop_preflop_seq(position: str, positions: list[str], open_size: float) -> Optional[str]:
+    """
+    Constrói a sequência preflop que leva a um pot HU no postflop (pot single-raised).
+
+    Modela sempre: hero RFI (IP) ou hero é BB/SB chamando o open do BTN.
+    Retorna None se posição não está na lista.
+    """
+    if position not in positions:
+        return None
+    hero_idx = positions.index(position)
+    open_s   = str(open_size) if open_size != int(open_size) else str(int(open_size))
+    n        = len(positions)
+    btn_idx  = positions.index("BTN") if "BTN" in positions else n - 3
+    sb_idx   = positions.index("SB")  if "SB"  in positions else n - 2
+    bb_idx   = positions.index("BB")  if "BB"  in positions else n - 1
+
+    if position == "BB":
+        # BTN abriu, SB foldou, BB chamou
+        actions = []
+        for i in range(bb_idx):
+            if i == btn_idx:
+                actions.append(f"R{open_s}")
+            elif i == sb_idx:
+                actions.append("F")
+            else:
+                actions.append("F")
+        actions.append("C")  # BB chama
+        return "-".join(actions)
+
+    if position == "SB":
+        # BTN abriu, SB chamou HU
+        actions = ["F" if i != btn_idx else f"R{open_s}" for i in range(sb_idx)]
+        actions.append("C")  # SB chama
+        return "-".join(actions)
+
+    # IP (BTN, CO, HJ, LJ, UTG*): hero abriu, SB foldou, BB chamou
+    actions = []
+    for i in range(hero_idx):
+        actions.append("F")
+    actions.append(f"R{open_s}")   # hero abre
+    for i in range(hero_idx + 1, n):
+        p = positions[i]
+        if p == "SB":
+            actions.append("F")
+        elif p == "BB":
+            actions.append("C")
     return "-".join(actions)
 
 
@@ -373,7 +415,7 @@ def query_gto_wizard(spot: dict) -> dict:
 
     Parâmetros esperados:
       street, position, board (list ou string), hero_stack_bb,
-      facing_size_bb (default 0), pot_bb (default 0)
+      facing_size_bb (default 0), pot_bb (default 0), num_players (default 9)
 
     Retorna:
       {"found": true, "strategy": [{action, frequency, betsize_bb}]}
@@ -389,13 +431,22 @@ def query_gto_wizard(spot: dict) -> dict:
     board          = spot.get("board", [])
     hero_stack_bb  = float(spot.get("hero_stack_bb", 20))
     facing_size_bb = float(spot.get("facing_size_bb", 0) or 0)
+    num_players    = int(spot.get("num_players", 9) or 9)
 
     # Normaliza aliases de posição
     _pos_alias = {"MP1": "LJ", "MP2": "HJ", "MP": "LJ", "EP": "UTG"}
     position   = _pos_alias.get(position, position)
 
+    # Resolve config de mesa — usa exato ou None (spot ignorado)
+    tbl = _TABLE_CONFIG.get(num_players)
+    if tbl is None:
+        return {"found": False, "error": f"unsupported_num_players:{num_players}"}
+
+    gametype   = tbl["gametype"]
+    positions  = tbl["positions"]
+    open_size  = tbl["open"]
     stack_frac = _stack_frac(hero_stack_bb)
-    stacks_str = _stacks_param(hero_stack_bb)
+    stacks_str = _stacks_param(hero_stack_bb, num_players)
 
     try:
         session = _make_session(headers)
@@ -404,12 +455,12 @@ def query_gto_wizard(spot: dict) -> dict:
 
     # ── Preflop ────────────────────────────────────────────────────────────────
     if street == "preflop":
-        decision_point = _preflop_decision_point(position, facing_size_bb)
+        decision_point = _preflop_decision_point(position, facing_size_bb, positions, open_size)
         if decision_point is None:
             return {"found": False, "error": f"preflop_unknown_position:{position}"}
 
         api_params = {
-            "gametype":        GAMETYPE,
+            "gametype":        gametype,
             "depth":           stack_frac,
             "stacks":          stacks_str,
             "preflop_actions": decision_point,
@@ -452,15 +503,15 @@ def query_gto_wizard(spot: dict) -> dict:
         if not strategy:
             return {"found": False, "error": "empty_preflop_strategy"}
 
-        log.info("gto_wizard preflop: OK %s %.0fbb facing=%.1f dp=%s → %d acoes",
-                 position, hero_stack_bb, facing_size_bb, decision_point, len(strategy))
+        log.info("gto_wizard preflop: OK %s %d-max %.0fbb facing=%.1f dp=%s → %d acoes",
+                 position, num_players, hero_stack_bb, facing_size_bb, decision_point, len(strategy))
         return {"found": True, "strategy": strategy, "source": "gtowizard_preflop"}
 
     # ── Postflop (flop/turn/river) ─────────────────────────────────────────────
     if street not in ("flop", "turn", "river"):
         return {"found": False, "error": f"unsupported_street:{street}"}
 
-    preflop = PREFLOP_BY_POS.get(position)
+    preflop = _postflop_preflop_seq(position, positions, open_size)
     if not preflop:
         return {"found": False, "error": f"unknown_position:{position}"}
 
@@ -473,7 +524,7 @@ def query_gto_wizard(spot: dict) -> dict:
     hero_is_oop = position in OOP_POSITIONS
 
     api_params = {
-        "gametype":        GAMETYPE,
+        "gametype":        gametype,
         "depth":           stack_frac,
         "stacks":          stacks_str,
         "preflop_actions": preflop,
@@ -548,8 +599,8 @@ def query_gto_wizard(spot: dict) -> dict:
     if not strategy:
         return {"found": False, "error": "empty_strategy"}
 
-    log.info("gto_wizard: OK %s %s %.0fbb facing=%.1f → %d acoes",
-             position, board_str, hero_stack_bb, facing_size_bb, len(strategy))
+    log.info("gto_wizard: OK %s %s %d-max %.0fbb facing=%.1f → %d acoes",
+             position, board_str, num_players, hero_stack_bb, facing_size_bb, len(strategy))
     return {"found": True, "strategy": strategy, "source": "gtowizard"}
 
 

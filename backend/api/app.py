@@ -4454,6 +4454,7 @@ def gto_strategy():
     action_seq      = str(d.get('action_seq', 'rfi'))
     vs_position     = str(d.get('vs_position', ''))
     facing_size_bb  = float(d.get('facing_size_bb', 0.0) or 0.0)
+    num_players     = int(d.get('num_players', 9) or 9)
 
     if not position or not hero_hand:
         return jsonify({'error': 'position e hero_hand são obrigatórios'}), 400
@@ -4463,6 +4464,7 @@ def gto_strategy():
         hero_hand=hero_hand, hero_stack_bb=hero_stack_bb,
         action_seq=action_seq, vs_position=vs_position,
         facing_size_bb=facing_size_bb,
+        num_players=num_players,
     )
     return jsonify(result), 200 if result.get('found') else 202
 
@@ -5060,6 +5062,7 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                 vs_position     = spot.get('villainPosition', ctx.get('vsPosition', '')),
                 facing_size_bb  = float(db_dec.get('facing_bet', 0) or 0),
                 pot_bb          = float(spot.get('potSize', 0) or 0),
+                num_players     = int(db_dec.get('num_players', 9) or 9),
             )
 
             if gto.get('found') and gto.get('strategy'):
