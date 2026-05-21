@@ -224,8 +224,8 @@ def _refresh_loop() -> None:
 
 # ── GTO Wizard query ──────────────────────────────────────────────────────────
 
-# Depths com solução confirmados empiricamente (2026-05-20, BTN flop MTTGeneralV2).
-# 7–25bb: contínuo; 32–60bb: pares + alguns ímpares; 60+: saltos grandes.
+# Depths com solução confirmados empiricamente por gametype.
+# MTTGeneralV2 (9p): 2026-05-20; MTTHUGeneral (2p): 2026-05-21.
 _GW_VALID_DEPTHS: list[int] = sorted([
     7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
     21, 22, 23, 24, 25,
@@ -234,28 +234,40 @@ _GW_VALID_DEPTHS: list[int] = sorted([
     70, 80, 100, 130, 160, 200,
 ])
 
+# HU tem depths completamente diferentes — soluções pré-computadas em subset menor.
+_GW_HU_VALID_DEPTHS: list[int] = sorted([
+    13, 14, 15, 16, 18, 20, 25, 26, 27, 28, 40, 41, 50, 51, 60, 61, 62, 63, 64, 65,
+])
 
-def _snap_to_valid_depth(stack_bb: float) -> int:
+# Mapeamento gametype → lista de depths válidos (fallback: _GW_VALID_DEPTHS)
+_GW_DEPTHS_BY_GAMETYPE: dict[str, list[int]] = {
+    "MTTHUGeneral": _GW_HU_VALID_DEPTHS,
+}
+
+
+def _snap_to_valid_depth(stack_bb: float, gametype: str = "") -> int:
     """Retorna o depth válido do GTO Wizard mais próximo ao stack informado."""
+    depths = _GW_DEPTHS_BY_GAMETYPE.get(gametype, _GW_VALID_DEPTHS)
     n = round(float(stack_bb))
-    n = min(n, 200)  # cap máximo
-    return min(_GW_VALID_DEPTHS, key=lambda d: abs(d - n))
+    n = min(n, max(depths))
+    return min(depths, key=lambda d: abs(d - n))
 
 
-def _stack_frac(stack_bb: float) -> float:
+def _stack_frac(stack_bb: float, gametype: str = "") -> float:
     """Converte stack para formato V2: depth válido mais próximo + 0.125."""
-    return round(float(_snap_to_valid_depth(stack_bb)) + 0.125, 3)
+    return round(float(_snap_to_valid_depth(stack_bb, gametype)) + 0.125, 3)
 
 
-def _retry_depths(snapped: int, max_retries: int = 4) -> list[int]:
+def _retry_depths(snapped: int, gametype: str = "", max_retries: int = 6) -> list[int]:
     """Retorna depths alternativos para retry quando 403 (válidos, em ordem de distância)."""
-    idx = _GW_VALID_DEPTHS.index(snapped) if snapped in _GW_VALID_DEPTHS else -1
+    depths = _GW_DEPTHS_BY_GAMETYPE.get(gametype, _GW_VALID_DEPTHS)
+    idx = depths.index(snapped) if snapped in depths else -1
     candidates = []
     for offset in range(1, max_retries + 1):
-        if idx + offset < len(_GW_VALID_DEPTHS):
-            candidates.append(_GW_VALID_DEPTHS[idx + offset])
+        if idx + offset < len(depths):
+            candidates.append(depths[idx + offset])
         if idx - offset >= 0:
-            candidates.append(_GW_VALID_DEPTHS[idx - offset])
+            candidates.append(depths[idx - offset])
     return candidates
 
 
@@ -492,7 +504,7 @@ def query_gto_wizard(spot: dict) -> dict:
             if fb in positions:
                 position = fb
                 break
-    stack_frac = _stack_frac(hero_stack_bb)
+    stack_frac = _stack_frac(hero_stack_bb, gametype)
     # HU (MTTHUGeneral) usa stacks="" — confirmado via HAR. Outros gametypes usam stacks iguais.
     stacks_str = tbl.get("stacks", _stacks_param(hero_stack_bb, num_players))
 
@@ -619,7 +631,7 @@ def query_gto_wizard(spot: dict) -> dict:
     # 403 = depth não tem solução para esta posição/gametype — tentar depths alternativos
     if r.status_code == 403:
         snapped = _snap_to_valid_depth(hero_stack_bb)
-        for alt_depth in _retry_depths(snapped):
+        for alt_depth in _retry_depths(snapped, gametype):
             alt_frac   = round(alt_depth + 0.125, 3)
             alt_stacks = "-".join([str(alt_frac)] * num_players)
             alt_params = dict(api_params)
