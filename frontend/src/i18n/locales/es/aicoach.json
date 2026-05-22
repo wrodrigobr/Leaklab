@@ -4,7 +4,7 @@
   "description": "Pregunta sobre leaks, rangos, posiciones o pide resúmenes de sesiones. La IA usa tu historial importado como contexto.",
   "session": {
     "title": "Sesión de coaching",
-    "model": "Modelo táctico v2.1",
+    "model": "Claude Haiku",
     "loadingCtx": "cargando contexto…",
     "noData": "sin datos",
     "contextLabel": "contexto: {{count}} manos",

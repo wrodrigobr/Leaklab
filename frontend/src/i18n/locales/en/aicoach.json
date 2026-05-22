@@ -4,7 +4,7 @@
   "description": "Ask about leaks, ranges, positions, or request session summaries. The AI uses your imported history as context.",
   "session": {
     "title": "Coaching session",
-    "model": "Tactical model v2.1",
+    "model": "Claude Haiku",
     "loadingCtx": "loading context…",
     "noData": "no data",
     "contextLabel": "context: {{count}} hands",

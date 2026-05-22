@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.143.0] — 2026-05-21 — fix(ui): corrige labels do Top Leaks e remove referência IA_CORE
+
+### Fixed
+- `LeaksPanel.tsx`: removido badge "IA_CORE v2.1" — apenas "DEMO" exibido em modo fallback
+- `leaks.doing` i18n em PT-BR/EN/ES: semântica corrigida — `best_action` é a ação **recomendada** pelo GTO, não a ação errada do jogador. Labels anteriores diziam "dando X quando não devia" (invertido); agora: "deveria dar X"
+- `aicoach.json` (3 locales): campo `model` corrigido de "Modelo tático v2.1" / "Tactical model v2.1" para "Claude Haiku" (modelo real em uso)
+
+---
+
 ## [v0.142.0] — 2026-05-21 — fix(replayer): v4 dimensões e cor da borda fieis ao PS
 
 ### Fixed

@@ -84,9 +84,9 @@ export function LeaksPanel({ leaks }: Props) {
           {t("leaks.title")}
           <HudTooltip content={t("leaks.tooltip")} />
         </h2>
-        <span className="font-mono text-[10px] text-muted-foreground">
-          {isFallback ? "DEMO" : "IA_CORE v2.1"}
-        </span>
+        {isFallback && (
+          <span className="font-mono text-[10px] text-muted-foreground">DEMO</span>
+        )}
       </div>
 
       <ul className="divide-y divide-border/50">

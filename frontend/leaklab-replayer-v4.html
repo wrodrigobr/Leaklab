@@ -45,18 +45,26 @@ html,body{
   background:radial-gradient(ellipse at 50% 65%, #0a1a0b 0%, #040906 50%, #020405 100%)
 }
 
-/* Layer 1 — table background (no CSS perspective — oval drawn directly in canvas) */
+/* Layer 1 — tilted table background */
+/* rotateX cria a perspectiva 3D: parte inferior (proxima) mostra face frontal da borda,
+   parte superior (distante) mostra apenas o topo da borda — igual ao PS */
 .rp-bg-layer{
   position:absolute;inset:0;
+  perspective:680px;
+  perspective-origin:50% -18%;
 }
 .rp-bg-layer>canvas{
   width:100%;height:100%;display:block;
+  transform:rotateX(20deg);
+  transform-origin:50% 62%;
 }
 
-/* Layer 2 — flat content SVG */
+/* Layer 2 — conteudo flat (seats, cards, chips) com compensacao leve de escala */
 #rp-svg{
   position:absolute;inset:0;
   width:100%;height:100%;display:block;
+  transform:scaleY(0.91) translateY(2.5%);
+  transform-origin:50% 56%;
 }
 
 /* Overlays */
@@ -357,8 +365,8 @@ html,body{
 
 <script>
 // ── Table geometry ────────────────────────────────────────────────────────────
-const CX=560, CY=310;
-const RX_SEAT=484, RY_SEAT=178;  // seats just outside rim (R_RY=170)
+const CX=560, CY=318;
+const RX_SEAT=484, RY_SEAT=192;  // seats at rim outer edge (R_RY=204)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SUIT_SYM={s:'♠',h:'♥',d:'♦',c:'♣'};
@@ -1240,10 +1248,17 @@ async function rpLoadReal(){
 }
 
 // ── Table Canvas Background ─────────────────────────────────────────────────────
-// Dimensions measured pixel-by-pixel from PS reference (mesa ps.png, 1441×767):
-//   Rim color: #222222 (dark charcoal — NOT warm brown)
-//   Rim thickness: 54px in 1441px image → 42px scaled to our 1120px canvas
-//   Felt apparent ratio: ~3.4:1 (drawn flat, no CSS rotateX)
+// Medido pixel-a-pixel na referencia PS (1441x767):
+//   Borda: #222222 charcoal, espessura 54px -> 42px em 1120px
+//   Felt: rx~401px, ry~110px aparentes (perspectiva PS ja aplicada)
+//
+// Com rotateX(20deg) CSS, desenhamos o canvas FLAT e a perspectiva cria:
+//   - Parte inferior (proxima): face frontal da borda VISIVEL (efeito bumper rail)
+//   - Parte superior (distante): apenas o topo da borda, face some
+//   - Feltro parece recuar na distancia (realismo 3D)
+//
+// Canvas flat: rx=462 ry=162 (ratio 2.85:1)
+// Apos rotateX(20deg): aparente rx~462 ry~152 -> ratio ~3.0:1 (similar ao PS)
 function drawPokerTable(){
   const canvas=document.getElementById('rp-bg-canvas');
   if(!canvas) return;
@@ -1251,12 +1266,12 @@ function drawPokerTable(){
   canvas.width=W; canvas.height=H;
   const ctx=canvas.getContext('2d');
 
-  // Table center matches CX/CY constants used by game content layer
-  const c=560, t=310;
-  // Felt semi-axes: ratio 3.40:1 — matches PS apparent oval
-  const F_RX=435, F_RY=128;
-  // Rim outer: felt + 42px (scaled from PS measurement of 54px in 1441px image)
-  const R_RX=477, R_RY=170;
+  const c=560, t=318;   // centro da mesa no canvas flat
+  const F_RX=462, F_RY=162;          // feltro flat — ratio 2.85:1
+  const R_RX=F_RX+42, R_RY=F_RY+42; // borda outer (+42px medido no PS)
+  // Face frontal da borda (bumper rail height): simulada por camadas offset para baixo
+  // CSS rotateX faz a parte de baixo parecer mais alta — face aparece MAIOR na parte proxima
+  const FACE_H=28;  // altura da face frontal em pixels canvas
 
   function ell(ecx,ecy,rx,ry){
     ctx.beginPath();
@@ -1264,98 +1279,105 @@ function drawPokerTable(){
     ctx.closePath();
   }
 
-  // ① Room — PS-accurate: near-pure black, very faint green glow only under table
-  ctx.fillStyle='#050606';
+  // ① Fundo — quase preto puro, leve brilho verde embaixo da mesa (PS-style)
+  ctx.fillStyle='#050607';
   ctx.fillRect(0,0,W,H);
-  const bgGrad=ctx.createRadialGradient(c,t+30,0,c,t+30,W*0.44);
-  bgGrad.addColorStop(0,  'rgba(10,22,12,0.50)');
-  bgGrad.addColorStop(0.5,'rgba(3,8,4,0.22)');
+  const bgGrad=ctx.createRadialGradient(c,t+35,0,c,t+35,480);
+  bgGrad.addColorStop(0,  'rgba(10,22,12,0.55)');
+  bgGrad.addColorStop(0.5,'rgba(3,8,4,0.25)');
   bgGrad.addColorStop(1,  'rgba(0,0,0,0)');
   ctx.fillStyle=bgGrad;
   ctx.fillRect(0,0,W,H);
 
-  // ② Table drop shadow
+  // ② Sombra da mesa no chao (offset para baixo = profundidade)
   ctx.save();
   ctx.shadowColor='#000';
-  ctx.shadowBlur=75;
-  ctx.shadowOffsetY=18;
-  ell(c,t+14,R_RX+6,R_RY+6);
-  ctx.fillStyle='rgba(0,0,0,0.94)';
+  ctx.shadowBlur=80;
+  ctx.shadowOffsetY=20;
+  ell(c,t+16,R_RX+8,R_RY+8);
+  ctx.fillStyle='rgba(0,0,0,0.95)';
   ctx.fill();
   ctx.restore();
 
-  // ③ RIM 3D near-face — subtle charcoal layers offset downward
-  // PS rim is #222222 charcoal, blends with dark room — deliberately NOT prominent
-  [{off:12,c:'#0d0d0d'},{off:7,c:'#131313'},{off:3,c:'#1a1a1a'},{off:0,c:'#202020'}]
-    .forEach(l=>{ ell(c,t+l.off,R_RX,R_RY); ctx.fillStyle=l.c; ctx.fill(); });
+  // ③ FACE FRONTAL DA BORDA — simulacao do bumper rail 3D
+  // Camadas progressivamente mais claras do fundo (mais distante) para o topo da face
+  // CSS rotateX amplifica este efeito: a parte de baixo do canvas aparece mais proxima
+  // e a face frontal parece MAIS ALTA la (comportamento 3D correto)
+  const faceColors=['#060606','#090909','#0d0d0d','#111111','#151515','#191919','#1e1e1e'];
+  faceColors.forEach((col,i)=>{
+    const off=FACE_H - Math.round(i*(FACE_H/faceColors.length));
+    ell(c, t+off, R_RX, R_RY);
+    ctx.fillStyle=col;
+    ctx.fill();
+  });
 
-  // Rim surface — matches PS measured #222222
+  // Borda superior (topo do bumper rail) — charcoal #242424 medido no PS
   ell(c,t,R_RX,R_RY);
   ctx.fillStyle='#242424';
   ctx.fill();
 
-  // Rim outer edge: very faint specular highlight (table rail edge catches light)
+  // Linha especular na borda externa (aresta do rail captura a luz ambiente)
   ell(c,t,R_RX,R_RY);
-  ctx.strokeStyle='rgba(255,255,255,0.11)';
-  ctx.lineWidth=1.2;
+  ctx.strokeStyle='rgba(255,255,255,0.13)';
+  ctx.lineWidth=1.5;
   ctx.stroke();
 
-  // Inner rim shadow — separation between rail and felt
-  ell(c,t,R_RX-4,R_RY-4);
-  ctx.strokeStyle='rgba(0,0,0,0.88)';
-  ctx.lineWidth=6;
+  // Sombra interna (borda->feltro) — separa visualmente o rail do feltro
+  ell(c,t,R_RX-5,R_RY-5);
+  ctx.strokeStyle='rgba(0,0,0,0.90)';
+  ctx.lineWidth=7;
   ctx.stroke();
 
-  // ④ FELT
-  const feltGrad=ctx.createRadialGradient(c,t-18,0,c,t+14,360);
-  feltGrad.addColorStop(0,   '#2d8840');
-  feltGrad.addColorStop(0.14,'#226e32');
-  feltGrad.addColorStop(0.42,'#145025');
-  feltGrad.addColorStop(0.72,'#0b3618');
+  // ④ FELTRO
+  const feltGrad=ctx.createRadialGradient(c,t-22,0,c,t+18,400);
+  feltGrad.addColorStop(0,   '#2e8a42');
+  feltGrad.addColorStop(0.13,'#237033');
+  feltGrad.addColorStop(0.40,'#155228');
+  feltGrad.addColorStop(0.70,'#0c3a1a');
   feltGrad.addColorStop(1,   '#04110a');
   ell(c,t,F_RX,F_RY);
   ctx.fillStyle=feltGrad;
   ctx.fill();
 
-  // Felt weave texture
+  // Textura feltro — crosshatch diagonal muito sutil
   ctx.save();
   ell(c,t,F_RX,F_RY);
   ctx.clip();
-  ctx.strokeStyle='rgba(0,0,0,0.065)';
+  ctx.strokeStyle='rgba(0,0,0,0.06)';
   ctx.lineWidth=0.7;
   for(let d=-700;d<700;d+=4){
-    ctx.beginPath(); ctx.moveTo(c-600+d,t-140); ctx.lineTo(c+600+d,t+140); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(c-600+d,t-190); ctx.lineTo(c+600+d,t+190); ctx.stroke();
   }
-  ctx.strokeStyle='rgba(255,255,255,0.020)';
+  ctx.strokeStyle='rgba(255,255,255,0.018)';
   ctx.lineWidth=0.5;
   for(let d=-700;d<700;d+=4){
-    ctx.beginPath(); ctx.moveTo(c+600+d,t-140); ctx.lineTo(c-600+d,t+140); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(c+600+d,t-190); ctx.lineTo(c-600+d,t+190); ctx.stroke();
   }
   ctx.restore();
 
-  // Felt edge vignette
-  const vigGrad=ctx.createRadialGradient(c,t,25,c,t,400);
-  vigGrad.addColorStop(0.50,'rgba(0,0,0,0)');
-  vigGrad.addColorStop(1,   'rgba(0,0,0,0.74)');
+  // Vinheta feltro (escurece bordas)
+  const vigGrad=ctx.createRadialGradient(c,t,30,c,t,450);
+  vigGrad.addColorStop(0.48,'rgba(0,0,0,0)');
+  vigGrad.addColorStop(1,   'rgba(0,0,0,0.75)');
   ell(c,t,F_RX,F_RY);
   ctx.fillStyle=vigGrad; ctx.fill();
 
-  // Overhead lamp reflection
-  const lampGrad=ctx.createRadialGradient(c,t-40,0,c,t,270);
-  lampGrad.addColorStop(0,  'rgba(255,255,255,0.060)');
-  lampGrad.addColorStop(0.5,'rgba(255,255,255,0.016)');
+  // Reflexo da lampada overhead
+  const lampGrad=ctx.createRadialGradient(c,t-45,0,c,t,290);
+  lampGrad.addColorStop(0,  'rgba(255,255,255,0.058)');
+  lampGrad.addColorStop(0.5,'rgba(255,255,255,0.015)');
   lampGrad.addColorStop(1,  'rgba(255,255,255,0)');
   ell(c,t,F_RX,F_RY);
   ctx.fillStyle=lampGrad; ctx.fill();
 
-  // Felt stitching trim
-  ell(c,t,F_RX-12,F_RY-12);
-  ctx.strokeStyle='rgba(255,255,255,0.065)'; ctx.lineWidth=1.8; ctx.stroke();
+  // Linhas decorativas (costuras do feltro)
+  ell(c,t,F_RX-13,F_RY-13);
+  ctx.strokeStyle='rgba(255,255,255,0.062)'; ctx.lineWidth=1.8; ctx.stroke();
 
-  // LEAKLAB watermark
+  // Marca d'agua
   ctx.save();
-  ctx.font='800 44px Inter,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillStyle='rgba(255,255,255,0.014)';
+  ctx.font='800 46px Inter,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,0.013)';
   ctx.fillText('LEAKLAB',c,t);
   ctx.restore();
 }

@@ -41,7 +41,7 @@
     "title": "Top Leaks Detected",
     "study": "Study",
     "studyLabel": "Study leak {{spot}}",
-    "doing": "{{street}} — doing {{action}} when you shouldn't",
+    "doing": "{{street}} — should {{action}}",
     "critical": "Critical",
     "evLoss": "{{amount}}/mo",
     "trendImproving": "Improving",
