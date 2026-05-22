@@ -9,6 +9,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.159.0] — 2026-05-22 — feat(push-fold): banner explícito + reconcile não mascara leak
+
+### Added
+- **Banner Push/Fold Zone no Replayer**: quando hero está em preflop com `stack_bb ≤ 12`, exibe banner âmbar explicando que apenas JAM ou FOLD são GTO em short stack. Esclarece dúvida do aluno sobre "por que call é leak"
+
+### Fixed
+- **`_reconcile_label` não mais mascara limp/call em push/fold zone**: antes, `gto_mixed → label='standard'` sempre. Agora: em PF zone (stack≤12bb preflop), se hero não-jam/fold com `gto_mixed`, demota para `small_mistake`. Não é "standard" limpar QTs UTG 10bb mesmo se GTO tiver 35% limp na strategy
+- Assinatura de `_reconcile_label` ganha parâmetros opcionais `stack_bb`, `street`, `action_taken` para contexto. Callers em `update_decision_gto`, `resync_gto_labels_for_node`, `reconcile_tournament_labels` passam os campos do DB
+- Função auxiliar `_is_pf_zone(stack_bb, street)` encapsula a heurística (≤12bb + preflop)
+
+### Why
+- **Reportado pelo usuário**: hand 260605903016 (QTs UTG 10.2bb, limp em zona push/fold) — engine via que era PF (best_action='jam') e GTO retornou gto_mixed → reconcile fazia `label='standard'`. Aluno via "decisão standard" mascarando o leak real
+- Após fix: `label='small_mistake'`, gto_label permanece gto_mixed, mas aluno vê leak corretamente no dashboard
+
+### Reprocess feito (decisão do user)
+- Re-rodada do engine em todos os 10 torneios (1122 decisions) para aplicar fixes acumulados v0.151-v0.158 (is_3bet contextual, _POS_NORM corrigido, heurístico facing 3-bet+)
+- Backup automático em `data/leaklab.backup.20260522_*.db`
+- Cobertura GTO: 89.8% (postflop solver nodes reconectados via lookup natural)
+- 4 labels reconciliados pelo demote PF
+
+### Validated
+- QTs UTG 10.2bb limp (id=28797): `label standard → small_mistake` ✓
+- TypeScript verde, suite database 36/36, reconcile phase2 5/5
+
+### Não fiz (deliberadamente)
+- **A) Override de label em PF zone sem GTO** (escopo original): pulado pois B+C resolvem o caso do usuário. Pode ser adicionado se aparecerem outros casos sem gto_label em PF zone
+
+---
+
 ## [v0.158.0] — 2026-05-22 — fix(heuristic): facing 3-bet+ vira set-mine/call para borderline + banner "Sem cobertura GTO"
 
 ### Fixed

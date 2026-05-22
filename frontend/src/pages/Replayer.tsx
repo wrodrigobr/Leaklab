@@ -586,6 +586,20 @@ function SidePanels({
               </div>
             )}
 
+            {/* Push/Fold Zone — stack curto, decisão binária jam ou fold */}
+            {step.is_hero && step.type === "action" && step.street === "preflop"
+              && step.hero_stack_bb != null && step.hero_stack_bb <= 12 && (
+              <div className="flex items-start gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 px-2.5 py-2">
+                <span className="text-amber-400 text-[11px] mt-px shrink-0">⚡</span>
+                <div className="text-[10px] text-amber-100/90 leading-relaxed">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                    Push/Fold Zone ({step.hero_stack_bb.toFixed(1)}bb)
+                  </span>
+                  {" — "}com stack curto, apenas <span className="font-mono font-bold">JAM</span> ou <span className="font-mono font-bold">FOLD</span> são GTO. Limp/call sacrifica fold equity e EV. Decisão é binária: a mão está no shove range ou folda.
+                </div>
+              </div>
+            )}
+
             {/* Conflito engine vs GTO — footnote compacto */}
             {!step.gto_spot_mismatch && step.engine_best && step.gto_action &&
              step.engine_best !== step.gto_action && isError && (

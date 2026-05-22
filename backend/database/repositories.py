@@ -5160,9 +5160,31 @@ def get_gto_hand_request_queue(limit: int = 50) -> list:
 _LABEL_SEVERITY = {'standard': 0, 'marginal': 1, 'small_mistake': 2, 'clear_mistake': 3}
 
 
-def _reconcile_label(label: str, gto_label: str) -> str:
-    """Reconcilia label heurístico com veredicto GTO. GTO é autoritativo para direção."""
+def _is_pf_zone(stack_bb: float | None, street: str | None) -> bool:
+    """Push/Fold zone: stack curto (<=12bb) em preflop — decisão deve ser jam/fold."""
+    try:
+        return bool(street == 'preflop' and stack_bb is not None and float(stack_bb) <= 12.0)
+    except (TypeError, ValueError):
+        return False
+
+
+def _reconcile_label(label: str, gto_label: str,
+                     stack_bb: float | None = None,
+                     street: str | None = None,
+                     action_taken: str | None = None) -> str:
+    """Reconcilia label heurístico com veredicto GTO. GTO é autoritativo para direção.
+
+    Em push/fold zone (stack ≤ 12bb preflop), se hero não jam/fold com gto_mixed:
+    demote para small_mistake — não é decisão "standard" limpar/callar em short stack.
+    """
+    is_pf = _is_pf_zone(stack_bb, street)
+    act = (action_taken or '').lower().strip()
+    pf_non_decisive = is_pf and act not in ('jam', 'shove', 'allin', 'all-in', 'fold')
+
     if gto_label in ('gto_correct', 'gto_mixed'):
+        # PF zone com call/limp/check vs gto_mixed → não é standard
+        if pf_non_decisive and gto_label == 'gto_mixed':
+            return label if _LABEL_SEVERITY.get(label, 0) >= 2 else 'small_mistake'
         return 'standard'
     if gto_label == 'gto_minor_deviation':
         return label if _LABEL_SEVERITY.get(label, 0) >= 1 else 'marginal'
@@ -5186,9 +5208,14 @@ def update_decision_gto(decision_id: int, gto_label: str, gto_action: str,
         else:
             # Reconcilia o label existente com o novo gto_label
             row = _fetchone(conn, _adapt(
-                "SELECT label FROM decisions WHERE id = ?"
+                "SELECT label, stack_bb, street, action_taken FROM decisions WHERE id = ?"
             ), (decision_id,))
-            reconciled = _reconcile_label(row['label'] if row else 'standard', gto_label)
+            reconciled = _reconcile_label(
+                row['label'] if row else 'standard', gto_label,
+                stack_bb=row['stack_bb'] if row else None,
+                street=row['street'] if row else None,
+                action_taken=row['action_taken'] if row else None,
+            )
             conn.execute(_adapt("""
                 UPDATE decisions SET gto_label = ?, gto_action = ?, label = ? WHERE id = ?
             """), (gto_label, gto_action, reconciled, decision_id))
@@ -5276,7 +5303,12 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
                 else:
                     new_gto_label = 'gto_critical'
 
-                reconciled = _reconcile_label(d.get('label', 'standard'), new_gto_label)
+                reconciled = _reconcile_label(
+                    d.get('label', 'standard'), new_gto_label,
+                    stack_bb=d.get('stack_bb'),
+                    street=street,
+                    action_taken=d.get('action_taken'),
+                )
                 conn.execute(_adapt(
                     "UPDATE decisions SET gto_label=?, gto_action=?, label=? WHERE id=?"
                 ), (new_gto_label, top_action, reconciled, d['id']))
@@ -5318,7 +5350,7 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
     conn = get_conn()
     try:
         rows = _fetchall(conn, _adapt("""
-            SELECT id, label, gto_label
+            SELECT id, label, gto_label, stack_bb, street, action_taken
             FROM decisions
             WHERE tournament_id = ?
               AND gto_label IS NOT NULL AND gto_label != ''
@@ -5327,7 +5359,10 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
 
         changes = []
         for r in rows:
-            new = _reconcile_label(r['label'], r['gto_label'])
+            new = _reconcile_label(
+                r['label'], r['gto_label'],
+                stack_bb=r['stack_bb'], street=r['street'], action_taken=r['action_taken'],
+            )
             if new != r['label']:
                 changes.append((new, r['id']))
 
