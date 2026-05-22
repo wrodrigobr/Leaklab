@@ -4338,7 +4338,7 @@ def get_gto_node(spot_hash: str) -> Optional[dict]:
         return _fetchone(conn, _adapt("""
             SELECT spot_hash, street, position, board, hero_hand, stack_bucket,
                    gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
-                   strategy_json
+                   strategy_json, COALESCE(is_aggregate, 0) AS is_aggregate
             FROM gto_nodes
             WHERE spot_hash = ?
               AND (
@@ -4360,68 +4360,172 @@ def get_gto_node_by_spot(street: str, board: list, position: str) -> Optional[di
     return get_gto_node(spot_hash)
 
 
+_GTO_VALID_STREETS   = {'preflop', 'flop', 'turn', 'river'}
+_GTO_VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
+_GTO_VALID_ACTIONS   = {'fold', 'check', 'call', 'bet', 'raise', 'jam', 'allin', 'shove', 'all-in', 'all_in'}
+_gto_log = __import__('logging').getLogger('leaklab.gto')
+
+
+def _log_gto_rejection(node: dict, reason: str) -> None:
+    _gto_log.warning('GTO node rejected — %s | street=%s pos=%s action=%s',
+                     reason, node.get('street'), node.get('position'), node.get('gto_action'))
+
+
+def _parse_strategy_json_safe(raw) -> dict:
+    """Desserializa strategy_json para dict {action: {frequency: float}}. Retorna {} em erro."""
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        if not isinstance(data, dict):
+            return {}
+        return data
+    except Exception:
+        return {}
+
+
+def _strategy_freq_sum(strategy: dict) -> float:
+    total = 0.0
+    for v in strategy.values():
+        if isinstance(v, dict):
+            total += float(v.get('frequency', 0) or 0)
+        elif isinstance(v, (int, float)):
+            total += float(v)
+    return total
+
+
 def insert_gto_nodes(nodes: list[dict]) -> int:
     """
-    Insere nós GTO. Nós do solver_cli exigem exploitability_pct.
-    Nós do GTO Wizard (source='gto_wizard') podem ter exploitability=None mas devem ter strategy_json.
-    Nós do solver_cli sem exploitability ou acima do threshold são rejeitados.
+    Insere nós GTO com validação rigorosa.
+
+    Regras de aceitação:
+    - solver_cli: exploitability_pct obrigatório e <= GTO_EXPLOITABILITY_THRESHOLD
+    - gto_wizard: strategy_json obrigatório (exploitability assumida 0%)
+    - Todos: street/position/gto_action válidos; gto_freq in [0,1]
+    - strategy_json: soma das frequências deve ser >= 0.10 (senão corrompido)
+    - Nós preflop sem hero_hand: marcados automaticamente como is_aggregate=True
     """
     if not nodes:
         return 0
+
+    from leaklab.gto_utils import compute_spot_hash, stack_bucket, normalize_gto_action, VALID_POSITIONS
+
     conn = get_conn()
     try:
         count = 0
+        rejected = 0
         for n in nodes:
             exploitability = n.get('exploitability_pct')
             source = n.get('source', 'solver_cli')
 
-            # Nós do GTO Wizard: aceitar sem exploitability se tiver strategy_json
+            # ── Validação de exploitability / source ─────────────────────────
             if exploitability is None:
                 if source == 'gto_wizard' and n.get('strategy_json'):
-                    pass  # aceitar — GTO Wizard não fornece exploitability
+                    pass  # aceitar — GTO Wizard é equilíbrio Nash
                 else:
-                    continue  # solver_cli sem exploitability → rejeitar
+                    _log_gto_rejection(n, 'exploitability_pct ausente e sem strategy_json gto_wizard')
+                    rejected += 1
+                    continue
             elif float(exploitability) > GTO_EXPLOITABILITY_THRESHOLD:
-                continue  # solve não convergiu o suficiente
+                _log_gto_rejection(n, f'exploitability {exploitability:.1f}% > threshold {GTO_EXPLOITABILITY_THRESHOLD}%')
+                rejected += 1
+                continue
 
-            from leaklab.gto_utils import compute_spot_hash, stack_bucket
-            # Usa hash pré-computado se disponível (preserva facing_size_bb no hash)
-            spot_hash = n.get('spot_hash') or compute_spot_hash(
-                street=n['street'],
-                position=n['position'],
-                board=n.get('board', []),
-                hero_hand=n.get('hero_hand', []),
-                hero_stack_bb=float(n.get('hero_stack_bb', 30.0)),
-                facing_size_bb=float(n.get('facing_size_bb', 0.0)),
-            )
-            # Aceita strategy_json diretamente (GTO Wizard) ou via strategy_detail (solver_cli)
-            strategy_json = (
+            # ── Sanity checks universais ──────────────────────────────────────
+            street   = (n.get('street') or '').lower().strip()
+            position = (n.get('position') or '').upper().strip()
+            raw_action = (n.get('gto_action') or '').strip()
+            gto_action = normalize_gto_action(raw_action)
+            try:
+                gto_freq = float(n.get('gto_freq', 0) or 0)
+            except (TypeError, ValueError):
+                gto_freq = 0.0
+
+            fail_reason = None
+            if street not in _GTO_VALID_STREETS:
+                fail_reason = f'street inválido: {street!r}'
+            elif position not in _GTO_VALID_POSITIONS:
+                fail_reason = f'position inválido: {position!r}'
+            elif not (0.0 <= gto_freq <= 1.0):
+                fail_reason = f'gto_freq fora de [0,1]: {gto_freq}'
+            elif gto_action not in _GTO_VALID_ACTIONS:
+                fail_reason = f'gto_action inválido após normalização: {gto_action!r}'
+
+            if fail_reason:
+                _log_gto_rejection(n, fail_reason)
+                rejected += 1
+                continue
+
+            # ── Validar strategy_json ─────────────────────────────────────────
+            strategy_raw = (
                 n.get('strategy_json')
                 or (json.dumps(n['strategy_detail']) if n.get('strategy_detail') else None)
             )
+            strategy = _parse_strategy_json_safe(strategy_raw)
+            if strategy:
+                # Validar ações no strategy
+                invalid_acts = [a for a in strategy if normalize_gto_action(a) not in _GTO_VALID_ACTIONS]
+                if invalid_acts:
+                    _log_gto_rejection(n, f'strategy_json com ações inválidas: {invalid_acts}')
+                    rejected += 1
+                    continue
+                # Validar soma das frequências (>= 0.10 para não ser corrompido)
+                freq_sum = _strategy_freq_sum(strategy)
+                if freq_sum < 0.10:
+                    _log_gto_rejection(n, f'strategy_json freq_sum={freq_sum:.3f} < 0.10 (corrompido)')
+                    rejected += 1
+                    continue
+                strategy_json = strategy_raw
+            else:
+                strategy_json = None
+
+            # ── Detectar nó preflop agregado ──────────────────────────────────
+            hero_hand = n.get('hero_hand') or []
+            is_aggregate = False
+            if street == 'preflop' and not hero_hand:
+                is_aggregate = True
+                # Estratégia agregada: freq_sum deve bater com 1.0 (é a distribuição do range)
+                if strategy and not (0.85 <= _strategy_freq_sum(strategy) <= 1.15):
+                    _log_gto_rejection(n, f'preflop aggregate freq_sum inválido: {_strategy_freq_sum(strategy):.2f}')
+                    rejected += 1
+                    continue
+
+            # ── Computar hash ─────────────────────────────────────────────────
+            spot_hash = n.get('spot_hash') or compute_spot_hash(
+                street=street,
+                position=position,
+                board=n.get('board', []),
+                hero_hand=hero_hand,
+                hero_stack_bb=float(n.get('hero_stack_bb', 30.0)),
+                facing_size_bb=float(n.get('facing_size_bb', 0.0)),
+            )
+
             conn.execute(_adapt("""
                 INSERT OR REPLACE INTO gto_nodes
                     (spot_hash, street, position, board, hero_hand, stack_bucket,
                      gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
-                     strategy_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     strategy_json, is_aggregate)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """), (
                 spot_hash,
-                n['street'].lower(),
-                n['position'].upper(),
+                street,
+                position,
                 json.dumps(sorted(n.get('board', []))),
-                json.dumps(sorted(n.get('hero_hand', []))),
+                json.dumps(sorted(hero_hand)),
                 stack_bucket(float(n.get('hero_stack_bb', 30.0))),
-                n['gto_action'],
-                float(n['gto_freq']),
+                gto_action,
+                gto_freq,
                 float(n['ev_diff']) if n.get('ev_diff') is not None else None,
                 float(exploitability) if exploitability is not None else None,
                 int(n['iterations']) if n.get('iterations') else None,
                 source,
                 strategy_json,
+                1 if is_aggregate else 0,
             ))
             count += 1
         conn.commit()
+        if rejected:
+            _gto_log.info('insert_gto_nodes: %d inseridos, %d rejeitados', count, rejected)
     finally:
         conn.close()
 

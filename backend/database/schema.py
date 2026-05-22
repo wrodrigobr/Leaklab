@@ -685,6 +685,7 @@ def _run_migrations(conn):
             "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS exploitability_pct REAL",
             "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS iterations INTEGER",
             "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS strategy_json TEXT",
+            "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS is_aggregate BOOLEAN NOT NULL DEFAULT FALSE",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -1107,6 +1108,7 @@ def _run_migrations(conn):
             ("exploitability_pct", "ALTER TABLE gto_nodes ADD COLUMN exploitability_pct REAL"),
             ("iterations",         "ALTER TABLE gto_nodes ADD COLUMN iterations INTEGER"),
             ("strategy_json",      "ALTER TABLE gto_nodes ADD COLUMN strategy_json TEXT"),
+            ("is_aggregate",       "ALTER TABLE gto_nodes ADD COLUMN is_aggregate INTEGER NOT NULL DEFAULT 0"),
         ]:
             if col not in gto_existing:
                 try: conn.execute(sql)

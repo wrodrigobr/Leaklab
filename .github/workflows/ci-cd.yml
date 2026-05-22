@@ -9,7 +9,7 @@ on:
 jobs:
   # ── Testes ────────────────────────────────────────────────────────────────
   test:
-    name: Testes (184 casos)
+    name: Testes
     runs-on: ubuntu-latest
 
     steps:
@@ -25,30 +25,13 @@ jobs:
       - name: Instalar dependências
         run: pip install -r backend/requirements.txt
 
+      - name: Suite GTO — gate de qualidade (zero falhas permitidas)
+        working-directory: backend
+        run: python3 tests/run_all_tests.py --suite gto
+
       - name: Rodar suite completa
         working-directory: backend
-        run: |
-          total=0; passed=0; failed=0
-          for f in tests/test_decision_engine.py tests/test_pipeline.py \
-                    tests/test_multi_decision.py tests/test_mtt_context.py \
-                    tests/test_postflop_evaluator.py tests/test_tournament.py \
-                    tests/test_api.py tests/test_llm_explainer.py \
-                    tests/test_draw_detector.py tests/test_database.py \
-                    tests/test_coach_system.py; do
-            result=$(python3 $f 2>&1 | tail -1)
-            t=$(echo $result | grep -o 'Total: [0-9]*' | grep -o '[0-9]*')
-            p=$(echo $result | grep -o 'Passed: [0-9]*' | grep -o '[0-9]*')
-            total=$((total + ${t:-0}))
-            passed=$((passed + ${p:-0}))
-            failed=$((failed + ${t:-0} - ${p:-0}))
-            echo "  $(basename $f) → $result"
-          done
-          echo ""
-          echo "TOTAL: $passed/$total testes passando"
-          if [ $failed -gt 0 ]; then
-            echo "FALHOU: $failed testes"
-            exit 1
-          fi
+        run: python3 tests/run_all_tests.py
 
   # ── Deploy Backend (Render) ───────────────────────────────────────────────
   deploy-backend:

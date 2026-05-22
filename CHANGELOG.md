@@ -9,6 +9,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.145.0] — 2026-05-22 — feat(gto): blindagem total do pipeline GTO — 6 camadas de proteção
+
+### Added
+- `backend/leaklab/gto_utils.py`: `normalize_gto_action()` — canonicaliza shove/allin/all-in → jam; constantes `VALID_POSITIONS`, `VALID_GTO_ACTIONS`
+- `backend/database/schema.py`: migration `is_aggregate BOOLEAN DEFAULT FALSE` na tabela `gto_nodes`
+- `backend/database/repositories.py` — `insert_gto_nodes()` reescrito com sanity checks completos:
+  - Rejeita nós com street/position/gto_action inválidos
+  - Rejeita nós com `gto_freq` fora de `[0,1]`
+  - Rejeita `strategy_json` com `freq_sum < 0.10` (dados corrompidos)
+  - Marca nós preflop sem `hero_hand` como `is_aggregate=True` automaticamente
+  - Normaliza `gto_action` via `normalize_gto_action()` antes de inserir
+- `backend/leaklab/decision_engine_v11.py`:
+  - `_validate_decision_input()` — valida stack_bb, facing_size, board cards, position antes do lookup GTO
+  - `_log_gto_miss()` — logging estruturado de todos os fallbacks GTO silenciosos
+  - Guard em `_enrich_gto`: strategy com `freq_sum < 0.10` descartada
+  - Consistência score/label: quality=correct → `final_score = min(score, 0.08)`; acceptable → `min(score, 0.18)`
+- `backend/api/app.py` — `get_decision_gto()`: campo `is_aggregate` e `gto_note` na resposta JSON
+- `backend/scripts/audit_gto_nodes.py` — script de auditoria com 9 checks (C1–C9):
+  - C9 detecta o padrão "KK bug" (preflop fold-dominant aggregate nodes)
+  - `--fix` aplica correções seguras: normaliza ações, marca is_aggregate, limpa strategy corrompida
+- `backend/tests/test_gto_utils_comprehensive.py` — 92 testes de `gto_utils.py`
+- `backend/tests/test_gto_enrichment.py` — 51 testes de enrichment functions do engine
+- `backend/tests/test_api_gto_endpoints.py` — 38 testes de endpoints GTO incl. regressão KK
+- `backend/tests/run_all_tests.py` — suite `gto` registrada com 4 arquivos (188 testes)
+- `.github/workflows/ci-cd.yml` — step dedicado `Suite GTO` (zero falhas permitidas) antes do deploy
+
+### Fixed
+- Regressão KK: nós preflop agregados não contaminam mais análise hand-specific via `is_aggregate` flag e override em `get_decision_gto()`
+
+---
+
 ## [v0.144.0] — 2026-05-21 — fix(replayer): GTO preflop usa análise hand-specific, não estratégia agregada do range
 
 ### Fixed

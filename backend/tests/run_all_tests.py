@@ -20,7 +20,10 @@ SUITES = {
     'api':       ['test_api_endpoints.py', 'test_subscription.py'],
     'regression':['test_tournament.py', 'test_multi_decision.py'],
     'academy':   ['test_academy_variety.py'],
-    'gto':       ['test_gto_comparison.py'],
+    'gto':       ['test_gto_comparison.py',
+                  'test_gto_utils_comprehensive.py',
+                  'test_gto_enrichment.py',
+                  'test_api_gto_endpoints.py'],
 }
 
 BASE = os.path.dirname(__file__)

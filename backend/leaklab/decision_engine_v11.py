@@ -1,5 +1,61 @@
 from __future__ import annotations
 from typing import Dict, Any
+import logging as _logging
+
+_gto_log = _logging.getLogger('leaklab.gto')
+
+_GTO_VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
+_VALID_CARD_RANKS    = set('AKQJT98765432')
+_VALID_CARD_SUITS    = set('shdc')
+
+
+def _log_gto_miss(scope: str, street: str, position: str, reason: str) -> None:
+    _gto_log.debug('GTO %s miss — street=%s pos=%s reason=%s', scope, street, position, reason)
+
+
+def _validate_decision_input(inp: dict) -> list:
+    """
+    Valida campos numéricos e enumerados antes do GTO lookup.
+    Retorna lista de warning strings (não bloqueia avaliação).
+    """
+    warnings = []
+    spot    = inp.get('spot') or {}
+    street  = (inp.get('street') or '').strip()
+    pos     = (spot.get('position') or '').upper().strip()
+
+    stack = spot.get('effectiveStackBb')
+    if stack is not None:
+        try:
+            s = float(stack)
+            if not (0 < s < 10_000) or s != s:
+                warnings.append(f'stack_bb inválido: {stack!r}')
+        except (TypeError, ValueError):
+            warnings.append(f'stack_bb não numérico: {stack!r}')
+
+    facing = spot.get('facingSize')
+    if facing is not None:
+        try:
+            f = float(facing)
+            if f < 0 or f != f:
+                warnings.append(f'facing_size negativo/NaN: {facing!r}')
+        except (TypeError, ValueError):
+            warnings.append(f'facing_size não numérico: {facing!r}')
+
+    if pos and pos not in _GTO_VALID_POSITIONS:
+        warnings.append(f'position desconhecida: {pos!r}')
+
+    if street and street != 'preflop':
+        board = spot.get('board') or []
+        if isinstance(board, list):
+            for card in board:
+                if not isinstance(card, str) or len(card) != 2:
+                    warnings.append(f'card inválida no board: {card!r}')
+                    break
+                if card[0].upper() not in _VALID_CARD_RANKS or card[1].lower() not in _VALID_CARD_SUITS:
+                    warnings.append(f'card inválida: {card!r}')
+                    break
+
+    return warnings
 
 
 # ── GTO helpers ───────────────────────────────────────────────────────────────
@@ -131,7 +187,8 @@ def _enrich_preflop_gto(input_data: Dict[str, Any]) -> dict:
             vs_position    = spot.get('villainPosition', ''),
             is_3bet_pot    = bool(input_data.get('is_3bet', False)),
         )
-    except Exception:
+    except Exception as exc:
+        _log_gto_miss('preflop', input_data.get('street'), spot.get('position'), str(exc)[:120])
         return {'available': False}
 
 
@@ -232,8 +289,17 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
                 if strategy:
                     top_action = strategy[0]['action']
                     top_freq   = strategy[0]['frequency']
-            except Exception:
+            except Exception as exc:
+                _log_gto_miss('postflop', street, position, f'strategy_json parse error: {exc!s:.80}')
                 strategy = []
+
+        # Guard: strategy com freq_sum ≈ 0 indica nó corrompido
+        if strategy:
+            freq_sum = sum(s['frequency'] for s in strategy)
+            if freq_sum < 0.10:
+                _log_gto_miss('postflop', street, position, f'strategy freq_sum={freq_sum:.3f} (corrompido)')
+                strategy = []
+                node = None
 
         # Classificação: usa frequência real da ação jogada quando possível
         if strategy:
@@ -253,7 +319,9 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
             'source':       node.get('source', 'postflop_db'),
         }
 
-    except Exception:
+    except Exception as exc:
+        _log_gto_miss('postflop', input_data.get('street', ''),
+                      (input_data.get('spot') or {}).get('position', ''), str(exc)[:120])
         return {'available': False}
 
 
@@ -518,6 +586,12 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             # Nó parcial (sem strategy_json): apenas capeia label, não muda score
             label = _gto_label_cap(label, gto['gto_label'])
 
+    # Validar inputs antes do GTO enrichment (warnings apenas — não bloqueia)
+    _input_warnings = _validate_decision_input(input_data)
+    if _input_warnings:
+        for _w in _input_warnings:
+            _log_gto_miss('input_validation', street, input_data.get('spot', {}).get('position', ''), _w)
+
     # GTO enrichment preflop: range GTO por posição/stack — ajusta label e best_action
     preflop_gto = _enrich_preflop_gto(input_data)
     if preflop_gto.get('available'):
@@ -526,6 +600,11 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         rec     = preflop_gto.get('recommended_actions', [])
         if rec:
             _best_action = rec[0]   # sobrescreve com ação GTO recomendada
+        # Consistência score/label: recalcular final_score para bater com novo label
+        if quality == 'correct':
+            final_score = min(final_score, 0.08)    # cap em 'standard'
+        elif quality == 'acceptable':
+            final_score = min(final_score, 0.18)    # cap em 'marginal'
         # Persistir gto_label/gto_action preflop no DB (save_decisions lê result['gto'])
         if quality and quality != 'unknown':
             _QUALITY_TO_GTO_LABEL = {

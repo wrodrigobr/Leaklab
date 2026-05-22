@@ -22,6 +22,21 @@ STACK_BUCKETS = [
 RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
 RANK_IDX = {r: i for i, r in enumerate(RANKS)}
 
+VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
+
+_ACTION_NORM: dict[str, str] = {
+    'shove': 'jam', 'allin': 'jam', 'all-in': 'jam', 'all_in': 'jam', 'all in': 'jam',
+    'open': 'raise', 'openraise': 'raise',
+    'x': 'check', 'limp': 'call',
+}
+VALID_GTO_ACTIONS = {'fold', 'check', 'call', 'bet', 'raise', 'jam'}
+
+
+def normalize_gto_action(action: str) -> str:
+    """Normaliza string de ação GTO para o conjunto canônico {fold,check,call,bet,raise,jam}."""
+    a = (action or '').lower().strip()
+    return _ACTION_NORM.get(a, a)
+
 
 def stack_bucket(bb: float) -> str:
     """Converte stack em BBs para bucket discreto."""

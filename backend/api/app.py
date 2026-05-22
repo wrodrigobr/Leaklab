@@ -4295,6 +4295,8 @@ def get_decision_gto(decision_id):
         'player_action_freq':  player_freq,
         'agreement':           agreement,
         'strategy':            strategy,
+        'is_aggregate':        bool(node and node.get('is_aggregate')),
+        'gto_note':            'range_distribution' if node and node.get('is_aggregate') else None,
     })
 
 
