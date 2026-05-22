@@ -226,9 +226,15 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
             ? "border-border/40 bg-muted/10"
             : gto.in_range ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"
         )}>
-          {/* Scenario */}
+          {/* Scenario — em PF zone renomear "Raise First In" para "Push/Fold" */}
           <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wide">
-            Cenário: {SCENARIO_LABEL[gto.scenario] ?? gto.scenario}
+            Cenário: {
+              isPushZone && gto.scenario === 'rfi'
+                ? `Push/Fold (RFI · ${stackBb.toFixed(0)}bb)`
+                : isPushZone && gto.scenario === 'vs_rfi'
+                ? `Push/Fold (Reshove vs Open · ${stackBb.toFixed(0)}bb)`
+                : (SCENARIO_LABEL[gto.scenario] ?? gto.scenario)
+            }
           </p>
 
           {/* Solver override notice */}
