@@ -454,10 +454,26 @@ const Tournaments = () => {
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            {t.avg_score != null ? (
+                            {t.avg_score != null && t.labels_reconciled_at == null ? (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20"
+                                title={tc("status.gtoPendingTooltip")}
+                              >
+                                <Loader2 className="size-3 animate-spin" aria-hidden />
+                                {tc("status.gtoPending")}
+                              </span>
+                            ) : t.avg_score != null ? (
                               <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
                                 <CheckCircle2 className="size-3" aria-hidden />
                                 {tc("status.analyzed")}
+                                {t.gto_coverage_pct != null && t.gto_coverage_pct > 0 && (
+                                  <span
+                                    className="ml-1 text-[9px] font-normal opacity-70"
+                                    title={tc("status.gtoCoverageTooltip")}
+                                  >
+                                    · {tc("status.gtoCoverage", { pct: Math.round(t.gto_coverage_pct) })}
+                                  </span>
+                                )}
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20">

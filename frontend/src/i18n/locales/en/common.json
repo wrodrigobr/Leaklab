@@ -35,6 +35,10 @@
   "status": {
     "analyzed": "Analyzed",
     "pending": "In queue",
+    "gtoPending": "GTO analysis in progress",
+    "gtoPendingTooltip": "GTO sync hasn't completed yet. KPIs may change once analysis finishes.",
+    "gtoCoverage": "{{pct}}% GTO",
+    "gtoCoverageTooltip": "Percentage of this tournament's decisions with GTO analysis available.",
     "active": "Active",
     "inactive": "Inactive",
     "paid": "Paid",
