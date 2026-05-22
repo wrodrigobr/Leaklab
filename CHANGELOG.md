@@ -9,6 +9,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.155.0] — 2026-05-22 — feat(gto): engine consome vs_squeeze (squeeze multiway com cobertura GTO)
+
+### Added — `analyze_preflop` agora reconhece scenario `squeeze`
+- `analyze_preflop()` ganha parâmetro `caller_position` (str): quando preenchido junto com `vs_position` em pote 3-bet, scenario passa a ser `'squeeze'` em vez de `'vs_3bet'`
+- Lookup acontece em `bk_data['vs_squeeze'][<pos>_squeeze_vs_<opener>_open_<caller>_call]`
+- Fallback de bucket: stack 28-29bb (bucket 30bb) cai para 40bb quando vs_squeeze não tem 30bb
+- Mantém compatibilidade: sem `caller_position`, comportamento de vs_3bet inalterado
+
+### Detector de squeeze no sync
+- `_detect_squeeze_context()` em `sync_gto_labels_from_ranges.py`: parsea `raw_text` do hand history para identificar opener e cold caller. Retorna `(opener_pos, caller_pos)` quando padrão `raise + call + hero_raise` é detectado
+- Mapeamento de seats → posições 8-max canonical (UTG, UTG+1, LJ, HJ, CO, BTN, SB, BB)
+- Skip casos não-tradicionais (cold 4bet, limp+iso+squeeze, etc.)
+- `_process_rows()` agora carrega `raw_text` por torneio (cache) e usa detector para spots `is_3bet=True`
+
+### Bugs corrigidos durante implementação
+- Regex de seats no detector: restringido ao header (antes de `*** HOLE CARDS ***`) para evitar match duplicado no SUMMARY com sufixos como "showed [...]"
+
+### Validated
+- Spot real do banco do user: decision id=26443 (CO AQs 28.5bb squeeze vs UTG+LJ) — antes sem `gto_label`, agora classificada como `gto_critical` (squeeze de AQs nesse spot deveria foldar)
+- 1/2 squeeze spots reais do banco ganharam cobertura. O outro (26367, BTN KJs vs limp+iso+squeeze) é cenário não-tradicional não coberto pelo schema vs_squeeze (limper + raise ≠ raise + caller).
+- Suites database (36) + audit phase 1 (8) + reconcile phase 2 (5) — todas verdes, zero regressão
+
+### Cobertura efetiva no banco
+- 2 squeezes reais identificados; 1 classificado pelo novo schema (50%)
+- Pipeline pronto para qualquer torneio futuro com squeezes tradicionais
+
+---
+
 ## [v0.154.0] — 2026-05-22 — feat(gto): ranges vs_squeeze extraídos do GTO Wizard (64 spots novos)
 
 ### Added — leaklab_gto_ranges.json v2.4.2

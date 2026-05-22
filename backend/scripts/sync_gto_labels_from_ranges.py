@@ -48,6 +48,146 @@ def quality_to_label(quality: str) -> str:
     return "gto_critical"
 
 
+def _detect_squeeze_context(row: dict, raw_text_by_tid: dict) -> tuple[str, str] | None:
+    """Detecta se a decisão do hero é um SQUEEZE (raise sobre open + cold call).
+    Parsea raw_text da hand pra identificar opener e cold caller positions.
+
+    Retorna (opener_pos_8max, caller_pos_8max) se for squeeze, None caso contrário.
+    """
+    import re as _re
+    raw = raw_text_by_tid.get(row.get('tournament_id'))
+    if not raw or not row.get('hand_id') or not row.get('hero_name'):
+        return None
+    idx = raw.find(row['hand_id'])
+    if idx < 0:
+        return None
+    end = raw.find('PokerStars Hand', idx + 50)
+    block = raw[idx:end if end > 0 else idx + 5000]
+    s = block.find('*** HOLE CARDS ***')
+    if s < 0:
+        return None
+    e_flop = block.find('*** FLOP ***', s)
+    e_sum  = block.find('*** SUMMARY ***', s)
+    e = e_flop if e_flop > 0 else e_sum
+    if e < 0:
+        return None
+    preflop = block[s:e]
+
+    # Mapear seats → posições do PokerStars
+    # Encontrar button seat
+    m_btn = _re.search(r'Seat #(\d+) is the button', block)
+    if not m_btn:
+        return None
+    btn_seat = int(m_btn.group(1))
+
+    # Restringe parsing de seats ao HEADER (antes de '*** HOLE CARDS ***') para evitar
+    # match no SUMMARY que duplica entradas e capta nomes com sufixos como 'showed [...]'
+    header_end = block.find('*** HOLE CARDS ***')
+    header_block = block[:header_end] if header_end > 0 else block
+    seats_present = []
+    seen_seats = set()
+    for m in _re.finditer(r'Seat (\d+): ([^\(\n]+?) \(', header_block):
+        seat_num = int(m.group(1))
+        if seat_num in seen_seats:
+            continue
+        seen_seats.add(seat_num)
+        seats_present.append((seat_num, m.group(2).strip()))
+    if len(seats_present) < 3:
+        return None
+
+    # Ordem de ação preflop: começa do seat após BB (3 seats após BTN), no sentido horário
+    # Em PokerStars 9-max: BTN, SB(BTN+1), BB(BTN+2), UTG(BTN+3), UTG+1(BTN+4), ...
+    # Em 8-max ou menos, a numeração é a mesma — só pula seats vazios
+    ordered_seats = sorted(seats_present, key=lambda x: x[0])
+    seat_to_player = dict(ordered_seats)
+    n_seats_max = max(s for s, _ in ordered_seats) + 1 if ordered_seats else 0
+
+    # Determinar ordem de ação: começa após BB. Em N-max table, BB é o 2º seat após BTN.
+    # Para 9-max: SB=BTN+1, BB=BTN+2, UTG=BTN+3, ..., last=BTN
+    n_active = len(ordered_seats)
+    # Construir lista circular de seats ocupados em ordem horária
+    sorted_occupied = [s for s, _ in ordered_seats]
+    btn_idx_in_list = next((i for i, s in enumerate(sorted_occupied) if s == btn_seat), None)
+    if btn_idx_in_list is None:
+        return None
+    # Reorganizar ciclicamente a partir do button
+    btn_first = sorted_occupied[btn_idx_in_list:] + sorted_occupied[:btn_idx_in_list]
+    # btn_first[0] = BTN, btn_first[1] = SB, btn_first[2] = BB, btn_first[3] = UTG, etc.
+    if len(btn_first) < 3:
+        return None
+    # Mapear seat → position name (8-max canonical: UTG, UTG+1, LJ, HJ, CO, BTN, SB, BB)
+    # Para tables maiores, mantém o nome direto do PokerStars (UTG+2, UTG+3) se necessário
+    POS_NAMES_BY_NPLAYERS = {
+        2: ['BTN', 'BB'],
+        3: ['BTN', 'SB', 'BB'],
+        4: ['BTN', 'SB', 'BB', 'CO'],
+        5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
+        6: ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'],
+        7: ['BTN', 'SB', 'BB', 'UTG', 'LJ', 'HJ', 'CO'],
+        8: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'LJ', 'HJ', 'CO'],
+        9: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'LJ', 'HJ', 'CO', 'MP'],  # MP entre UTG+1 e LJ varia
+    }
+    n = len(btn_first)
+    if n not in POS_NAMES_BY_NPLAYERS:
+        return None
+    # Mapeamento: btn_first[i] → POS_NAMES_BY_NPLAYERS[n][i]
+    # Atenção: para 8-max o padrão é BTN, SB, BB, UTG, UTG+1, LJ, HJ, CO (acim a do button)
+    # Mas a ordem de ação preflop começa em UTG (índice 3) → BTN (índice 0) → SB (índice 1)
+    # Vou usar mapeamento 8-max canônico independente do número real, para alinhar com GW
+    POS_8MAX = {
+        'BTN': 'BTN', 'SB': 'SB', 'BB': 'BB',
+        'UTG': 'UTG', 'UTG+1': 'UTG+1', 'LJ': 'LJ', 'HJ': 'HJ', 'CO': 'CO', 'MP': 'LJ',
+    }
+    pos_names = POS_NAMES_BY_NPLAYERS.get(n, [])
+    seat_to_pos = {s: POS_8MAX.get(p, p) for s, p in zip(btn_first, pos_names)}
+
+    # Construir ordem de ação preflop (UTG primeiro, depois clockwise até BB)
+    # Em N-handed: action_order = btn_first[3:] + btn_first[:3]
+    if n < 4:
+        # 3-handed: ação preflop é BTN -> SB -> BB. Não dá squeeze 3-handed (precisa 4+ p/ ter caller entre open e hero)
+        return None
+    action_order = btn_first[3:] + [btn_first[0], btn_first[1], btn_first[2]]
+    action_order_pos = [seat_to_pos[s] for s in action_order]
+
+    # Identificar ações dos villains antes do hero
+    hero_name = row['hero_name']
+    actions = []  # lista de (player_name, action_name, size_to)
+    for line in preflop.splitlines():
+        m = _re.match(r'^([^:\n]+?):\s+(folds|calls|raises|checks|bets)\s*(.*)$', line.strip())
+        if not m:
+            continue
+        player, act, rest = m.group(1).strip(), m.group(2), m.group(3)
+        if player == hero_name:
+            break
+        actions.append((player, act))
+
+    # Achar opener e caller (em ordem)
+    opener = None
+    caller = None
+    for player, act in actions:
+        if act == 'raises' and opener is None:
+            opener = player
+        elif act == 'calls' and opener is not None and caller is None:
+            caller = player
+        elif act == 'raises' and opener is not None:
+            # 3-bet de outro villain antes do hero → não é squeeze do hero (hero seria cold4bet)
+            return None
+    if opener is None or caller is None:
+        return None
+
+    # Mapear nomes → posições
+    name_to_seat = {p: s for s, p in seat_to_player.items()}
+    op_seat = name_to_seat.get(opener)
+    cl_seat = name_to_seat.get(caller)
+    if op_seat is None or cl_seat is None:
+        return None
+    op_pos = seat_to_pos.get(op_seat)
+    cl_pos = seat_to_pos.get(cl_seat)
+    if not op_pos or not cl_pos:
+        return None
+    return (op_pos, cl_pos)
+
+
 def _build_vs3bet_context(rows: list[dict], conn) -> set[int]:
     """Identifica decisions que sao vs_3bet por contexto: hero ja deu raise
     antes na mesma hand_id, mesma street=preflop, e agora enfrenta facing_bet>0.
@@ -93,6 +233,19 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
     skipped = 0
     vs3bet_ids = _build_vs3bet_context(rows, conn)
 
+    # Cache de raw_text + hero por tournament_id (para detector squeeze)
+    tids = {r.get('tournament_id') for r in rows if r.get('tournament_id')}
+    raw_by_tid: dict[int, str] = {}
+    hero_by_tid: dict[int, str] = {}
+    if tids:
+        ph = ",".join("?" * len(tids))
+        for tid, hero, raw in conn.execute(
+            f"SELECT id, hero, raw_text FROM tournaments WHERE id IN ({ph})",
+            list(tids),
+        ).fetchall():
+            raw_by_tid[tid] = raw or ""
+            hero_by_tid[tid] = hero or ""
+
     for r in rows:
         cards = parse_cards(r["hero_cards"])
         if len(cards) < 2:
@@ -119,6 +272,20 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
             updates.append(("gto_correct", "check", r["id"]))
             continue
 
+        # Squeeze detection: se hero é 3-bet pot, tenta detectar squeeze para passar caller_position
+        caller_pos = ""
+        squeeze_op_pos = ""
+        if is_3bet and action in ("raise", "jam", "shove"):
+            tid = r.get('tournament_id')
+            row_for_detect = {
+                'tournament_id': tid,
+                'hand_id': r.get('hand_id'),
+                'hero_name': hero_by_tid.get(tid, ''),
+            }
+            sq = _detect_squeeze_context(row_for_detect, raw_by_tid)
+            if sq:
+                squeeze_op_pos, caller_pos = sq
+
         try:
             result = analyze_preflop(
                 position=pos,
@@ -126,8 +293,9 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
                 stack_bb=stack_bb,
                 action_taken=action,
                 facing_size=facing_bb,
-                vs_position=vs_pos,
+                vs_position=squeeze_op_pos or vs_pos,
                 is_3bet_pot=is_3bet,
+                caller_position=caller_pos,
             )
         except Exception:
             skipped += 1
@@ -172,7 +340,7 @@ def sync_tournament(tournament_id: int) -> int:
     conn = get_conn()
     try:
         rows = conn.execute("""
-            SELECT id, hand_id, street, position, stack_bb, facing_bet, is_3bet,
+            SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet,
                    action_taken, best_action, hero_cards, vs_position
             FROM decisions
             WHERE tournament_id = ?
@@ -210,7 +378,7 @@ def main():
         params.append(args.tid)
 
     rows = conn.execute(
-        f"SELECT id, hand_id, street, position, stack_bb, facing_bet, is_3bet, "
+        f"SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet, "
         f"action_taken, best_action, hero_cards, vs_position FROM decisions {where}",
         params
     ).fetchall()

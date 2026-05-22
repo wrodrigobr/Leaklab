@@ -96,8 +96,9 @@ def analyze_preflop(
     stack_bb: float,
     action_taken: str,        # 'fold', 'call', 'raise', 'jam'
     facing_size: float = 0.0,
-    vs_position: str = '',    # posição de quem abriu
+    vs_position: str = '',    # posição de quem abriu (opener)
     is_3bet_pot: bool = False,
+    caller_position: str = '', # posição do cold caller (se houver, ativa squeeze lookup)
 ) -> dict:
     """
     Retorna análise GTO completa de uma decisão preflop.
@@ -113,6 +114,7 @@ def analyze_preflop(
     bk_data = data.get('ranges', {}).get(bucket, {})
     pos     = _norm_pos(position)
     vs_pos  = _norm_pos(vs_position) if vs_position else ''
+    cal_pos = _norm_pos(caller_position) if caller_position else ''
 
     base = {
         'available': False, 'scenario': 'rfi',
@@ -124,7 +126,10 @@ def analyze_preflop(
         'action_taken': action_taken, 'pro_notes': [],
     }
 
-    if is_3bet_pot and vs_pos:
+    # Squeeze: hero é squeezador (raise sobre open + cold caller). Distingue de vs_3bet HU.
+    if is_3bet_pot and vs_pos and cal_pos:
+        scenario = 'squeeze'
+    elif is_3bet_pot and vs_pos:
         scenario = 'vs_3bet'
     elif facing_size > 0:
         # vs_pos pode ser '' quando opener não foi detectado — lookup retornará None → available=False
@@ -298,6 +303,49 @@ def analyze_preflop(
                 'pro_notes': _vs_rfi_notes(pos, vs_pos, hero_hand_type, stack_bb,
                                             pct_play, in_rng, action_taken, acoes),
             })
+
+    # ── Squeeze (hero é squeezador em pot 3-way com open + cold call) ────────
+    elif scenario == 'squeeze':
+        key = f"{pos}_squeeze_vs_{vs_pos}_open_{cal_pos}_call"
+        # Lookup: tenta bucket exato primeiro, depois fallback para buckets adjacentes
+        # (vs_squeeze cobre 40/50/75/100bb; 30bb cai pra 40bb, 20bb pra 40bb).
+        candidate_buckets = [bucket]
+        bucket_fallbacks = {
+            '20bb': ['40bb'], '30bb': ['40bb'],
+            '40bb': ['50bb'], '50bb': ['40bb'],
+            '75bb': ['100bb'], '100bb': ['75bb'],
+        }
+        candidate_buckets += bucket_fallbacks.get(bucket, [])
+        spot = None
+        used_bucket = bucket
+        for bk_try in candidate_buckets:
+            vs_sq_try = data.get('ranges', {}).get(bk_try, {}).get('vs_squeeze', {})
+            if key in vs_sq_try:
+                spot = vs_sq_try[key]
+                used_bucket = bk_try
+                break
+        if not spot:
+            return base  # available=False — sem cobertura para essa combinação
+        pct_sq     = float(spot.get('pct_squeeze', 0))
+        pct_call   = float(spot.get('pct_call', 0))
+        hands_4bet = spot.get('hands_4bet', '')
+        hands_call = spot.get('hands_call', '')
+        in_4b      = _in_range(hero_hand_type, hands_4bet)
+        in_cl      = _in_range(hero_hand_type, hands_call)
+        in_rng     = in_4b or in_cl
+        rec        = ['raise', 'jam'] if in_4b else (['call'] if in_cl else ['fold'])
+        quality    = _vs_3bet_quality(action_taken, in_4b, in_cl)  # mesma lógica de 3bet aplicável
+        base.update({
+            'available': True, 'in_range': in_rng,
+            'range_pct': pct_sq,
+            'range_hands': f"squeeze: {hands_4bet} | call: {hands_call}",
+            'recommended_actions': rec, 'action_quality': quality,
+            'hands_4bet': hands_4bet, 'hands_call': hands_call,
+            'pro_notes': [
+                f"Spot multiway: {vs_pos} abriu, {cal_pos} pagou. Hero {pos} decide "
+                f"squeeze/call/fold. Squeeze frequência GTO: {pct_sq:.1%}, call: {pct_call:.1%}."
+            ],
+        })
 
     # ── vs 3bet ───────────────────────────────────────────────────────────────
     elif scenario == 'vs_3bet':
