@@ -17,7 +17,7 @@ SCRIPT_DIR  = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
-from leaklab.gto_utils import stack_bucket as canonical_stack_bucket
+from leaklab.gto_utils import stack_bucket as canonical_stack_bucket, compute_spot_hash
 
 
 def gw_label_from_freq(freq: float) -> str:
@@ -135,11 +135,21 @@ def main() -> int:
             by_type_agree[spot_type]["disagree"] += 1
             agree = "DIFF"
 
-        # Persist em gto_nodes — usa stack_bucket canônico do projeto
+        # Persist em gto_nodes — usa compute_spot_hash do projeto (mesma chave do engine)
+        # Sem isso, lookup do engine nao acha esses nodes.
         if not (args.dry_run or args.report_only):
             sb = canonical_stack_bucket(float(spot["stack_bb"]))
-            sh = make_spot_hash("preflop", spot["position"], spot["hero_cards"],
-                                sb, spot["preflop_actions"])
+            # hero_cards no DB e JSON array como '["Kd","9h"]' — parseia
+            try:
+                import json as _json
+                hand_list = _json.loads(spot["hero_cards"]) if spot["hero_cards"].startswith("[") else \
+                            [spot["hero_cards"][i:i+2] for i in range(0, len(spot["hero_cards"]), 2)]
+            except Exception:
+                hand_list = [spot["hero_cards"][:2], spot["hero_cards"][2:4]] if len(spot["hero_cards"]) >= 4 else []
+            sh = compute_spot_hash(
+                "preflop", spot["position"], [], hand_list,
+                float(spot["stack_bb"]), float(spot.get("facing_bet") or 0),
+            )
             stack_bucket = sb
             was_new = upsert_gto_node(
                 db, sh, spot["position"], spot["hero_cards"], stack_bucket,
