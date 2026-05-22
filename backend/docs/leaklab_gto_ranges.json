@@ -1,7 +1,7 @@
 {
   "_metadata": {
     "projeto": "LeakLab",
-    "versao": "2.4.1",
+    "versao": "2.4.2",
     "descricao": "Ranges GTO preflop para MTT 8-max com ante de 1bb. RFI atualizado com dados RegLife (solver-generated) via pixel analysis. vs_RFI preservado da versÃÂ£o anterior.",
     "formato": "MTT 8-max com ante de 1bb",
     "fontes": [
@@ -73,6 +73,11 @@
         "versao": "2.4.1",
         "data": "2026-05-22",
         "mudanca": "Adicionadas 19 entries vs_3bet + 18 entries vs_4bet (Greenline+Pekarstas)"
+      },
+      {
+        "versao": "2.4.2",
+        "data": "2026-05-22",
+        "mudanca": "Adicionado schema vs_squeeze com 64 spots (GTO Wizard extraction)"
       }
     ]
   },
@@ -2021,6 +2026,172 @@
             "_source": "interpolated_reglife"
           }
         }
+      },
+      "vs_squeeze": {
+        "HJ_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0504,
+          "pct_call": 0.0604,
+          "pct_fold": 0.8891,
+          "hands_4bet": "84s,87s,88,98o,JJ,JTs,K8s,T3s",
+          "hands_call": "22,43o,52o,86s,AA,J4o,J5o,K3o,K6o,K7s,KJo,Q2s,Q8o,T2o,T5s,T8o",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F"
+        },
+        "CO_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0518,
+          "pct_call": 0.0666,
+          "pct_fold": 0.8816,
+          "hands_4bet": "84s,87s,88,98o,JJ,JTs,K8s,T3s",
+          "hands_call": "22,43o,52o,86s,AA,J4o,J5o,K3o,K6o,K7s,KJo,KTs,Q2s,Q8o,T2o,T5s,T8o",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F"
+        },
+        "BTN_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0546,
+          "pct_call": 0.0778,
+          "pct_fold": 0.8676,
+          "hands_4bet": "84s,87s,88,98o,AA,JJ,JTs,K8s,KJo,T3s",
+          "hands_call": "22,33,43o,52o,76s,83s,86s,87o,AKs,J4o,J5o,K3o,K6o,K7s,KTs,Q2s,Q8o,QJo,T2o,T5s,T8o",
+          "hands_fold": "resto",
+          "hands_mixed": "J8s",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F"
+        },
+        "SB_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0592,
+          "pct_call": 0.0968,
+          "pct_fold": 0.844,
+          "hands_4bet": "84s,87s,88,98o,AA,JJ,JTs,K8s,KJo,T3s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,83s,86s,87o,A7o,AKs,J4o,J5o,J8s,K3o,K6o,K7s,KTs,Q2s,Q3o,Q6o,Q8o,QJo,T2o,T4o,T5o,T5s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F-F"
+        },
+        "BB_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0568,
+          "pct_call": 0.4252,
+          "pct_fold": 0.518,
+          "hands_4bet": "84s,87s,88,98o,JJ,K7s,K8s,KJo,T3s,T8o",
+          "hands_call": "22,32s,33,42o,43o,44,52o,54s,62s,63o,64o,64s,65o,66,72o,72s,74o,74s,75o,76s,82o,83o,83s,84o,85o,85s,86o,86s,87o,92o,93o,93s,94o,95o,95s,96o,97s,99,A2o,A3s,A5s,A7o,A7s,A8o,A9s,AA,AJo,AJs,AKs,AQo,AQs,J2s,J3o,J4o,J4s,J5o,J6o,J6s,J8o,J8s,J9o,J9s,JTo,JTs,K2o,K3o,K3s,K4o,K5o,K5s,K6o,K6s,K9o,K9s,KTo,KTs,Q2o,Q2s,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T5s,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F-F-F"
+        },
+        "CO_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0568,
+          "pct_call": 0.0657,
+          "pct_fold": 0.8775,
+          "hands_4bet": "84s,87s,88,98o,AA,JJ,JTs,K8s,KJo,T3s",
+          "hands_call": "22,43o,52o,83s,86s,87o,J4o,J5o,K3o,K6o,K7s,KTs,Q2s,Q8o,T2o,T5s,T8o",
+          "hands_fold": "resto",
+          "hands_mixed": "QJo",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F"
+        },
+        "BTN_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0575,
+          "pct_call": 0.0792,
+          "pct_fold": 0.8633,
+          "hands_4bet": "84s,87s,88,98o,AA,JJ,JTs,K8s,KJo,Q2s,T3s,T5s",
+          "hands_call": "22,43o,52o,76s,83s,86s,87o,AKs,J4o,J5o,K3o,K6o,K7s,KTs,Q8o,QJo,T2o,T8o",
+          "hands_fold": "resto",
+          "hands_mixed": "J8s",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F-F"
+        },
+        "BB_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0624,
+          "pct_call": 0.4463,
+          "pct_fold": 0.4912,
+          "hands_4bet": "84s,87s,88,98o,AA,JJ,K7s,K8s,KJo,T3s,T8o",
+          "hands_call": "22,32s,33,42o,43o,44,52o,52s,54s,62s,63o,64o,64s,65o,66,72o,72s,74o,74s,75o,76s,82o,83o,83s,84o,85o,85s,86o,86s,87o,92o,93o,93s,94o,95o,95s,96o,97s,99,A2o,A3s,A5s,A7o,A7s,A8o,A9o,A9s,AJo,AJs,AKo,AKs,AQo,AQs,ATs,J2s,J3o,J4o,J4s,J5o,J6o,J6s,J8o,J8s,J9o,J9s,JTo,JTs,K2o,K3o,K3s,K4o,K5o,K5s,K6o,K6s,K9o,K9s,KQs,KTo,KTs,Q2o,Q2s,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T5s,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F-F-F-F"
+        },
+        "CO_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.069,
+          "pct_call": 0.0682,
+          "pct_fold": 0.8628,
+          "hands_4bet": "84s,85s,87s,88,AA,JJ,K7s,K8s,KJo,Q2s,Q8o,QJo,T3s,T8o",
+          "hands_call": "22,43o,52o,83s,86s,87o,98o,A7o,AKs,J4o,J5o,JTs,K3o,K6o,KTs,T2o,T5s",
+          "hands_fold": "resto",
+          "hands_mixed": "J8s",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C"
+        },
+        "BTN_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.0741,
+          "pct_call": 0.0807,
+          "pct_fold": 0.8452,
+          "hands_4bet": "84s,85s,87s,88,98o,AA,JJ,JTs,K6o,K7s,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "22,43o,52o,76s,83s,86s,87o,A7o,AKs,J4o,J5o,J8s,K3o,KTs,Q6o,Q8o,QJo,T2o,T2s,T5s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C-F"
+        },
+        "BB_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.0777,
+          "pct_call": 0.4868,
+          "pct_fold": 0.4354,
+          "hands_4bet": "84s,87s,88,98o,AA,JJ,JTs,K6o,K7s,K8s,Q2s,T3s,T8o",
+          "hands_call": "22,32s,33,42o,42s,43o,44,52o,52s,54s,62s,63o,64o,64s,65o,66,72o,72s,74o,74s,75o,75s,76s,77,82o,82s,83o,83s,84o,85o,85s,86o,86s,87o,92o,93o,93s,94o,95o,95s,96o,97s,99,A2o,A3s,A5s,A7o,A7s,A8o,A9o,A9s,AJo,AJs,AKo,AKs,AQo,AQs,ATs,J2s,J3o,J4o,J4s,J5o,J5s,J6o,J6s,J7s,J8o,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K4o,K5o,K5s,K6s,K7o,K9o,K9s,KJo,KQs,KTo,KTs,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T5s,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C-F-F-F"
+        },
+        "BTN_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.0892,
+          "pct_call": 0.0768,
+          "pct_fold": 0.8341,
+          "hands_4bet": "83s,84s,85s,87s,88,98o,AA,J5o,J8o,JJ,JTs,K6o,K7s,K8s,Q2s,QJo,T3s,T5s,T8o",
+          "hands_call": "22,43o,52o,86s,87o,A7o,AKs,J4o,J8s,K3o,K5s,KJo,KTs,Q6o,Q7o,Q8o,T2o,T2s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C"
+        },
+        "SB_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.0957,
+          "pct_call": 0.0908,
+          "pct_fold": 0.8136,
+          "hands_4bet": "83s,84s,86s,87s,88,98o,AA,J5o,J8o,JJ,JTs,K5s,K6o,K7s,K8s,KJo,Q2s,Q8o,QJo,T3s,T5s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,85s,87o,A7o,AJs,AKs,J4o,J6s,J8s,J9s,K3o,KTs,Q3o,Q6o,Q7o,T2o,T2s,T4o,T7o",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C-F"
+        },
+        "BB_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.0951,
+          "pct_call": 0.4729,
+          "pct_fold": 0.4321,
+          "hands_4bet": "82s,84s,86s,87s,88,98o,AA,J5o,J8o,JJ,JTs,K6o,K8s,KTs,Q2s,QJo,T3s,T5s,T8o",
+          "hands_call": "22,32s,33,42o,43o,44,52o,52s,54s,62s,63o,64o,64s,65o,66,72o,72s,74o,74s,75o,75s,76s,77,83o,83s,84o,85o,85s,86o,87o,92o,93o,93s,94o,95o,95s,96o,97s,99,A2o,A3s,A5s,A7o,A7s,A8o,A9o,A9s,AJo,AJs,AKo,AKs,AQo,AQs,ATs,J2s,J3o,J4o,J4s,J5s,J6o,J6s,J7o,J7s,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K4o,K4s,K5o,K5s,K6s,K7o,K7s,K9o,K9s,KJo,KQs,KTo,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C-F-F"
+        },
+        "SB_squeeze_vs_CO_open_BTN_call": {
+          "pct_squeeze": 0.1197,
+          "pct_call": 0.1064,
+          "pct_fold": 0.7739,
+          "hands_4bet": "82s,84s,85s,86s,87s,88,98o,AA,J4o,J5o,J8o,JJ,JTs,K3s,K6o,K6s,K7s,K8s,KJo,KTs,Q2s,Q8o,T3s,T5s,T8o",
+          "hands_call": "22,33,43o,52o,72s,74s,76s,83s,87o,A7o,AJs,AKs,J2s,J4s,J6s,J8s,J9s,K3o,K5s,Q3o,Q6o,Q7o,QJo,T2o,T2s,T4o,T5o,T7o",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-F-R2.3-C"
+        },
+        "BB_squeeze_vs_CO_open_BTN_call": {
+          "pct_squeeze": 0.1203,
+          "pct_call": 0.4912,
+          "pct_fold": 0.3885,
+          "hands_4bet": "76s,84s,85s,86s,87o,87s,88,98o,AA,AKs,J4o,J5o,JJ,K6o,K6s,K7o,K8s,KJo,KTs,Q2s,Q8o,T3s,T5s,T8o",
+          "hands_call": "22,32s,33,42o,42s,43o,44,52o,52s,54s,62s,63o,64o,64s,65o,66,72o,72s,73s,74o,74s,75o,75s,77,82s,83o,83s,84o,85o,86o,92o,93o,93s,94o,95o,95s,96o,97o,97s,99,A2o,A3s,A5s,A7o,A7s,A8o,A9o,A9s,AJo,AJs,AKo,AQo,AQs,ATs,J2s,J3o,J3s,J4s,J5s,J6o,J6s,J7o,J7s,J8o,J8s,J9o,J9s,JTo,JTs,K2o,K3o,K3s,K4o,K4s,K5o,K5s,K7s,K9o,K9s,KQs,KTo,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-F-R2.3-C-F"
+        }
       }
     },
     "50bb": {
@@ -2539,6 +2710,174 @@
           "_source": "greenline+pekarstas BB_6max (agg N=5) + stack_compression(50bb)",
           "_synth_stack": 50
         }
+      },
+      "vs_squeeze": {
+        "HJ_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0588,
+          "pct_call": 0.0,
+          "pct_fold": 0.9412,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K6o,K8s,KJo,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F"
+        },
+        "CO_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0608,
+          "pct_call": 0.0,
+          "pct_fold": 0.9392,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K6o,K7s,K8s,KJo,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F"
+        },
+        "BTN_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0624,
+          "pct_call": 0.0,
+          "pct_fold": 0.9376,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K6o,K7s,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F"
+        },
+        "SB_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0605,
+          "pct_call": 0.0,
+          "pct_fold": 0.9395,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K6o,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F-F"
+        },
+        "BB_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0549,
+          "pct_call": 0.4039,
+          "pct_fold": 0.5412,
+          "hands_4bet": "84s,86s,87s,88,98o,JJ,JTs,K8s,KJo,Q2s,T3s",
+          "hands_call": "22,32s,33,42o,43o,44,52o,54s,62s,63o,64o,65o,66,72o,72s,74o,74s,75o,76s,82o,83o,83s,84o,85o,85s,86o,87o,92o,93o,93s,94o,95o,95s,96o,97s,99,A2o,A3s,A7o,A7s,A8o,A9s,AA,AJo,AJs,AKs,AQo,AQs,J2s,J3o,J4o,J4s,J5o,J6o,J6s,J8o,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K4o,K5o,K5s,K6o,K6s,K7s,K9o,K9s,KTo,KTs,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T5s,T6o,T7o,T7s,T8o,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F-F-F"
+        },
+        "CO_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0536,
+          "pct_call": 0.075,
+          "pct_fold": 0.8714,
+          "hands_4bet": "84s,87s,88,98o,JJ,K7s,K8s,T3s",
+          "hands_call": "22,43o,52o,83s,86s,87o,AA,AKs,J4o,J5o,JTs,K3o,K6o,KJo,KTs,Q2s,Q8o,T2o,T5s,T8o",
+          "hands_fold": "resto",
+          "hands_mixed": "J8s",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F"
+        },
+        "BTN_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0551,
+          "pct_call": 0.0891,
+          "pct_fold": 0.8558,
+          "hands_4bet": "84s,87s,88,98o,AA,JJ,JTs,K8s,T3s",
+          "hands_call": "22,33,43o,52o,76s,83s,86s,87o,AKs,J4o,J5o,J8s,K3o,K6o,K7s,KJo,KTs,Q2s,Q3o,Q8o,T2o,T2s,T4o,T5o,T5s,T8o",
+          "hands_fold": "resto",
+          "hands_mixed": "QJo",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F-F"
+        },
+        "BB_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0619,
+          "pct_call": 0.359,
+          "pct_fold": 0.5791,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K8s,KJo,Q2s,T3s,T5s,T8o",
+          "hands_call": "22,32s,33,42o,43o,44,52o,54s,62s,63o,64o,65o,66,72o,72s,74s,76s,83o,83s,84o,85o,85s,86o,87o,92o,93o,93s,94o,95o,95s,97s,99,A2o,A7o,A7s,A9s,AJo,AJs,AKs,AQo,AQs,J2s,J3o,J4o,J4s,J5o,J6o,J6s,J8o,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K5s,K6o,K6s,K7s,K9o,K9s,KTo,KTs,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F-F-F-F"
+        },
+        "CO_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.0694,
+          "pct_call": 0.0651,
+          "pct_fold": 0.8655,
+          "hands_4bet": "84s,85s,87s,88,98o,AA,AKs,JJ,JTs,K7s,K8s,KJo,Q2s,Q8o,T3s,T5s",
+          "hands_call": "22,43o,52o,83s,86s,87o,J4o,J5o,J8s,K3o,K6o,KTs,T2o,T8o",
+          "hands_fold": "resto",
+          "hands_mixed": "QJo",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C"
+        },
+        "BTN_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.0724,
+          "pct_call": 0.0861,
+          "pct_fold": 0.8415,
+          "hands_4bet": "84s,85s,87s,88,AA,JJ,JTs,K7s,K8s,KJo,Q2s,Q8o,T3s,T8o",
+          "hands_call": "22,43o,52o,76s,83s,86s,87o,98o,A7o,AJs,AKs,J4o,J5o,J8s,K3o,K6o,KTs,Q6o,QJo,T2o,T2s,T5s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C-F"
+        },
+        "BB_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.082,
+          "pct_call": 0.4607,
+          "pct_fold": 0.4573,
+          "hands_4bet": "84s,85s,87s,88,98o,AA,J8o,JJ,JTs,K6o,K7s,K8s,KJo,Q2s,T3s,T5s,T8o",
+          "hands_call": "22,32s,33,42o,42s,43o,44,52o,52s,54s,62s,63o,64o,64s,65o,66,72o,72s,74o,74s,75o,76s,77,82o,82s,83o,83s,84o,85o,86o,86s,87o,92o,93o,93s,94o,95o,95s,96o,97s,99,A2o,A3s,A5s,A7o,A7s,A8o,A9o,A9s,AJo,AJs,AKo,AKs,AQo,AQs,ATs,J2s,J3o,J4o,J4s,J5o,J6o,J6s,J7s,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K4o,K5o,K5s,K6s,K7o,K9o,K9s,KQs,KTo,KTs,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C-F-F-F"
+        },
+        "BTN_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.087,
+          "pct_call": 0.0851,
+          "pct_fold": 0.8279,
+          "hands_4bet": "84s,85s,87s,88,98o,AA,AKs,JJ,JTs,K5s,K6o,K7s,K8s,KTs,Q2s,QJo,T3s,T8o",
+          "hands_call": "22,43o,52o,74s,76s,83s,86s,87o,A7o,AJs,J4o,J5o,J8s,K3o,KJo,Q6o,Q7o,Q8o,T2o,T2s,T5s",
+          "hands_fold": "resto",
+          "hands_mixed": "J9s",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C"
+        },
+        "SB_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.0944,
+          "pct_call": 0.0961,
+          "pct_fold": 0.8095,
+          "hands_4bet": "84s,85s,86s,87s,88,98o,AA,AKs,J5o,JJ,JTs,K6o,K7s,K8s,KJo,Q2s,Q8o,QJo,T3s,T5s,T8o",
+          "hands_call": "22,33,43o,52o,72s,74s,76s,83s,87o,A7o,AJs,J4o,J6s,J8s,K3o,K5s,KTs,Q3o,Q6o,Q7o,T2o,T2s,T4o,T5o,T7o",
+          "hands_fold": "resto",
+          "hands_mixed": "J8o",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C-F"
+        },
+        "BB_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.0936,
+          "pct_call": 0.4911,
+          "pct_fold": 0.4153,
+          "hands_4bet": "84s,85s,86s,87s,88,98o,AA,AKs,J8o,JJ,JTs,K6o,K7s,K8s,KTs,Q2s,QJo,T3s,T5s,T8o",
+          "hands_call": "22,32s,33,42o,42s,43o,44,52o,52s,54s,62s,63o,64o,64s,65o,66,72o,72s,74o,74s,75o,75s,76s,77,82o,82s,83o,83s,84o,85o,86o,87o,92o,93o,93s,94o,95o,95s,96o,97s,99,A2o,A3s,A5s,A7o,A7s,A8o,A9o,A9s,AJo,AJs,AKo,AQo,AQs,ATs,J2s,J3o,J4o,J4s,J5o,J5s,J6o,J6s,J7o,J7s,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K4o,K4s,K5o,K5s,K6s,K7o,K9o,K9s,KJo,KQs,KTo,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C-F-F"
+        },
+        "SB_squeeze_vs_CO_open_BTN_call": {
+          "pct_squeeze": 0.1225,
+          "pct_call": 0.0833,
+          "pct_fold": 0.7941,
+          "hands_4bet": "83s,84s,85s,86s,87s,88,98o,A7o,AA,J4o,J5o,J8o,JJ,JTs,K3s,K6o,K7s,K8s,KJo,KTs,Q2s,Q7o,QJo,T3s,T5s,T8o",
+          "hands_call": "22,43o,52o,72s,74s,76s,87o,AJs,AKs,J4s,J6s,J8s,J9s,K3o,K5s,Q6o,Q8o,T2o,T2s,T5o,T7o",
+          "hands_fold": "resto",
+          "hands_mixed": "K6s",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-F-R2.3-C"
+        },
+        "BB_squeeze_vs_CO_open_BTN_call": {
+          "pct_squeeze": 0.1264,
+          "pct_call": 0.5161,
+          "pct_fold": 0.3575,
+          "hands_4bet": "84s,85s,86s,87s,88,98o,AA,AKs,J4o,J5o,J8o,JJ,K3s,K6o,K6s,K7o,K8s,K9o,KJo,KTs,Q2s,Q8o,T2s,T3s,T5s,T8o",
+          "hands_call": "22,32s,33,42o,42s,43o,44,52o,52s,54s,62s,63o,64o,64s,65o,66,72o,72s,73s,74o,74s,75o,75s,76s,77,82o,82s,83o,83s,84o,85o,86o,87o,92o,93o,93s,94o,95o,95s,96o,97o,97s,99,A2o,A3s,A5s,A6o,A7o,A7s,A8o,A9o,A9s,AJo,AJs,AKo,AQo,AQs,ATo,ATs,J2s,J3o,J3s,J4s,J5s,J6o,J6s,J7o,J7s,J8s,J9o,J9s,JTo,JTs,K2o,K2s,K3o,K4o,K4s,K5o,K5s,K7s,K9s,KQs,KTo,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8s,Q9o,QJo,QQ,QTs,T2o,T3o,T4o,T4s,T5o,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-F-R2.3-C-F"
+        }
       }
     },
     "75bb": {
@@ -2971,6 +3310,173 @@
           "hands_fold": "resto",
           "_source": "greenline+pekarstas BB_6max (agg N=5)",
           "_synth_stack": 75
+        }
+      },
+      "vs_squeeze": {
+        "HJ_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0629,
+          "pct_call": 0.0,
+          "pct_fold": 0.9371,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F"
+        },
+        "CO_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.065,
+          "pct_call": 0.0,
+          "pct_fold": 0.935,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K6o,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F"
+        },
+        "BTN_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0679,
+          "pct_call": 0.0,
+          "pct_fold": 0.9321,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K6o,K7s,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F"
+        },
+        "SB_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0621,
+          "pct_call": 0.0,
+          "pct_fold": 0.9379,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K7s,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F-F"
+        },
+        "BB_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0559,
+          "pct_call": 0.3456,
+          "pct_fold": 0.5985,
+          "hands_4bet": "84s,86s,87s,88,JJ,JTs,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "22,32s,33,42o,43o,52o,54s,64o,65o,66,72o,72s,74s,76s,83o,83s,84o,85o,85s,86o,87o,92o,93s,94o,95o,97s,98o,99,A2o,A7o,A7s,A8o,A9s,AA,AJo,AJs,AKs,AQo,AQs,J2s,J3o,J4o,J4s,J5o,J6s,J8o,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K5s,K6o,K6s,K7s,K9o,K9s,KTo,KTs,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T5s,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F-F-F"
+        },
+        "CO_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0704,
+          "pct_call": 0.0,
+          "pct_fold": 0.9296,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K6o,K7s,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F"
+        },
+        "BTN_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0732,
+          "pct_call": 0.0,
+          "pct_fold": 0.9268,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K6o,K7s,K8s,KJo,Q2s,Q8o,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F-F"
+        },
+        "BB_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0607,
+          "pct_call": 0.3483,
+          "pct_fold": 0.5909,
+          "hands_4bet": "84s,86s,87s,88,JJ,JTs,K7s,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "22,32s,33,42o,43o,52o,54s,64o,65o,66,72o,72s,74s,76s,83o,83s,84o,85o,85s,86o,87o,92o,93s,94o,95o,95s,97s,98o,99,A2o,A7o,A7s,A8o,A9s,AA,AJo,AJs,AKs,AQo,AQs,J2s,J3o,J4o,J4s,J5o,J6s,J8o,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K5s,K6o,K6s,K9o,K9s,KTo,KTs,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T5s,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F-F-F-F"
+        },
+        "CO_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.0755,
+          "pct_call": 0.0752,
+          "pct_fold": 0.8493,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K7s,K8s,Q2s,QJo,T2s,T3s,T5s,T8o",
+          "hands_call": "22,43o,52o,76s,83s,87o,A7o,AKs,J4o,J5o,K3o,K6o,KJo,KTs,Q6o,Q8o,T2o",
+          "hands_fold": "resto",
+          "hands_mixed": "J8s,T4o",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C"
+        },
+        "BTN_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.0784,
+          "pct_call": 0.1002,
+          "pct_fold": 0.8214,
+          "hands_4bet": "83s,84s,86s,87s,88,98o,AA,JJ,K7s,K8s,KJo,T3s,T5s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,87o,A7o,AJs,AKs,J4o,J5o,J8s,JTs,K3o,K5s,K6o,KTs,Q2s,Q3o,Q6o,Q7o,Q8o,QJo,T2o,T2s,T4o,T5o",
+          "hands_fold": "resto",
+          "hands_mixed": "85s",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C-F"
+        },
+        "BB_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.0781,
+          "pct_call": 0.3555,
+          "pct_fold": 0.5664,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K7s,K8s,KJo,KTs,Q2s,Q8o,T3s,T5s,T8o",
+          "hands_call": "22,32s,33,42o,43o,44,52o,54s,63o,64o,65o,66,72o,72s,74s,75o,76s,82s,83o,83s,84o,85o,85s,86o,87o,92o,94o,95o,96o,97s,99,A2o,A7o,A7s,A9s,AJo,AJs,AKs,AQo,AQs,J2s,J3o,J4o,J4s,J5o,J6o,J6s,J8o,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K5s,K6o,K6s,K9o,K9s,KTo,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C-F-F-F"
+        },
+        "BTN_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.0987,
+          "pct_call": 0.0912,
+          "pct_fold": 0.8102,
+          "hands_4bet": "83s,84s,85s,86s,87o,87s,88,98o,AA,AJs,AKs,JJ,JTs,K5s,K6o,K7s,K8s,KJo,KTs,Q8o,QJo,T2s,T3s,T5s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,A7o,J4o,J5o,J8s,K3o,Q2s,Q3o,Q6o,Q7o,T2o,T4o,T6o,T7o",
+          "hands_fold": "resto",
+          "hands_mixed": "J9s,T5o",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C"
+        },
+        "SB_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.0903,
+          "pct_call": 0.0876,
+          "pct_fold": 0.8221,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,AKs,JJ,JTs,K6o,K7s,K8s,KJo,Q2s,Q8o,T2s,T3s,T5s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,83s,85s,87o,A7o,AJs,J4o,J5o,J8s,K3o,K5s,KTs,Q6o,Q7o,QJo,T2o,T4o,T7o",
+          "hands_fold": "resto",
+          "hands_mixed": "Q3o",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C-F"
+        },
+        "BB_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.0928,
+          "pct_call": 0.4543,
+          "pct_fold": 0.4529,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,AKs,JJ,JTs,K6o,K7s,K8s,KJo,KTs,Q2s,Q8o,T2s,T3s,T5s,T8o",
+          "hands_call": "22,32s,33,42o,43o,44,52o,54s,62s,63o,64o,64s,65o,66,72o,72s,74o,74s,75o,76s,77,82s,83o,83s,84o,85o,85s,86o,87o,92o,93o,93s,94o,95o,95s,96o,97s,99,A2o,A3s,A5s,A7o,A7s,A8o,A9o,A9s,AJo,AJs,AKo,AQo,AQs,ATs,J2s,J3o,J4o,J4s,J5o,J6o,J6s,J7s,J8o,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K4o,K4s,K5o,K5s,K6s,K7o,K9o,K9s,KQs,KTo,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8s,QJo,QQ,QTs,T2o,T3o,T4o,T4s,T5o,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C-F-F"
+        },
+        "SB_squeeze_vs_CO_open_BTN_call": {
+          "pct_squeeze": 0.1139,
+          "pct_call": 0.1014,
+          "pct_fold": 0.7847,
+          "hands_4bet": "83s,84s,85s,86s,87s,88,98o,A7o,AA,AJs,AKs,J5o,J8s,JJ,JTs,K6o,K7s,K8s,KJo,KTs,Q2s,Q6o,Q8o,QJo,T2s,T3s,T5s,T8o",
+          "hands_call": "22,33,43o,52o,72s,74s,76s,87o,J2s,J4o,J4s,J6s,J8o,J9s,K3o,K5s,Q7o,T2o,T4o,T5o,T7o",
+          "hands_fold": "resto",
+          "hands_mixed": "Q3o",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-F-R2.3-C"
+        },
+        "BB_squeeze_vs_CO_open_BTN_call": {
+          "pct_squeeze": 0.1197,
+          "pct_call": 0.5369,
+          "pct_fold": 0.3434,
+          "hands_4bet": "83s,84s,85s,86s,87s,88,98o,A7o,AA,AJs,AKs,J8s,JJ,JTs,K6o,K7s,K8s,KJo,KTs,Q2s,Q6o,Q8o,QJo,T2s,T3s,T5o,T5s,T8o",
+          "hands_call": "22,32s,33,42o,42s,43o,44,52o,52s,54s,62s,63o,64o,64s,65o,66,72o,72s,73s,74o,74s,75o,75s,76s,77,82o,82s,83o,84o,85o,86o,87o,92o,93o,93s,94o,95o,95s,96o,97o,97s,99,A2o,A3s,A5s,A6o,A7s,A8o,A9o,A9s,AJo,AKo,AQo,AQs,ATo,ATs,J2s,J3o,J3s,J4o,J4s,J5o,J5s,J6o,J6s,J7o,J7s,J8o,J9o,J9s,JTo,K2o,K2s,K3o,K3s,K4o,K4s,K5o,K5s,K6s,K7o,K9o,K9s,KQs,KTo,Q2o,Q3o,Q4s,Q6s,Q7o,Q8s,Q9o,QQ,QTo,QTs,T2o,T3o,T4o,T4s,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-F-R2.3-C-F"
         }
       }
     },
@@ -3488,6 +3994,173 @@
           "hands_fold": "resto",
           "_source": "greenline+pekarstas BB_6max (agg N=5)",
           "_synth_stack": 100
+        }
+      },
+      "vs_squeeze": {
+        "HJ_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0656,
+          "pct_call": 0.0,
+          "pct_fold": 0.9344,
+          "hands_4bet": "84s,86s,87o,87s,88,AA,J5o,JJ,JTs,K6o,K7s,K8s,KJo,Q2s,Q8o,T3s,T8o",
+          "hands_call": "",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F"
+        },
+        "CO_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0533,
+          "pct_call": 0.0929,
+          "pct_fold": 0.8538,
+          "hands_4bet": "84s,86s,87o,87s,88,JJ,JTs,K8s,KJo,Q8o,T3s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,98o,A7o,AA,AKs,J4o,J5o,K3o,K6o,K7s,KTs,Q2s,Q3o,Q6o,T2o,T2s,T4o,T5o,T5s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F"
+        },
+        "BTN_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.055,
+          "pct_call": 0.1125,
+          "pct_fold": 0.8326,
+          "hands_4bet": "84s,86s,87s,88,JJ,JTs,K8s,KJo,Q8o,T3s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,83s,85o,87o,98o,A2o,A7o,AA,AJs,AKs,J4o,J5o,J8s,K3o,K6o,K7s,KTs,Q2s,Q3o,Q6o,Q7o,T2o,T2s,T3o,T4o,T5o,T5s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F"
+        },
+        "SB_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.0517,
+          "pct_call": 0.0927,
+          "pct_fold": 0.8556,
+          "hands_4bet": "84s,86s,87s,88,JJ,JTs,K7s,K8s,KJo,T3s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,87o,98o,A7o,AA,AKs,J4o,J5o,K3o,K6o,KTs,Q2s,Q3o,Q6o,Q8o,T2o,T2s,T4o,T5o,T5s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F-F"
+        },
+        "BB_squeeze_vs_UTG_open_UTG+1_call": {
+          "pct_squeeze": 0.053,
+          "pct_call": 0.3492,
+          "pct_fold": 0.5978,
+          "hands_4bet": "84s,86s,87s,88,JJ,JTs,K7s,K8s,KJo,T3s,T8o",
+          "hands_call": "22,32s,33,42o,43o,52o,64o,65o,66,72o,72s,74s,76s,83o,83s,84o,85o,85s,86o,87o,92o,93s,94o,95o,97s,98o,99,A2o,A7o,A7s,A9s,AA,AJo,AJs,AKs,AQo,AQs,J2s,J3o,J4o,J4s,J5o,J6s,J8o,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K5s,K6o,K6s,K9o,K9s,KTo,KTs,Q2o,Q2s,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T5s,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-C-F-F-F-F-F"
+        },
+        "CO_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0566,
+          "pct_call": 0.0884,
+          "pct_fold": 0.855,
+          "hands_4bet": "84s,86s,87o,87s,88,AA,JJ,JTs,K7s,K8s,KJo,Q2s,Q8o,T3s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,83s,98o,A7o,AJs,AKs,J4o,J5o,K3o,K6o,KTs,Q3o,Q6o,T2o,T2s,T4o,T5o,T5s",
+          "hands_fold": "resto",
+          "hands_mixed": "J8s",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F"
+        },
+        "BTN_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0597,
+          "pct_call": 0.1065,
+          "pct_fold": 0.8338,
+          "hands_4bet": "84s,86s,87o,87s,88,AA,JJ,JTs,K7s,K8s,KJo,Q8o,T3s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,83s,85o,98o,A2o,A7o,AJs,AKs,J4o,J5o,J8s,K3o,K6o,KTs,Q2s,Q3o,Q6o,Q7o,T2o,T2s,T4o,T5o,T5s",
+          "hands_fold": "resto",
+          "hands_mixed": "QJo",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F-F"
+        },
+        "BB_squeeze_vs_UTG_open_LJ_call": {
+          "pct_squeeze": 0.0598,
+          "pct_call": 0.3415,
+          "pct_fold": 0.5987,
+          "hands_4bet": "84s,86s,87s,88,JJ,JTs,K7s,K8s,KJo,Q2s,T3s,T8o",
+          "hands_call": "22,32s,33,42o,43o,52o,64o,65o,72o,72s,74s,76s,83o,83s,84o,85o,85s,86o,87o,92o,93s,94o,95o,95s,97s,98o,99,A2o,A7o,A7s,A9s,AA,AJo,AJs,AKs,AQo,AQs,J2s,J3o,J4o,J4s,J5o,J6s,J8o,J8s,J9o,J9s,JTo,K3o,K3s,K5s,K6o,K6s,K9o,K9s,KTo,KTs,Q2o,Q3o,Q4s,Q6o,Q6s,Q7o,Q8o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T5s,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "R2.3-F-C-F-F-F-F"
+        },
+        "CO_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.0719,
+          "pct_call": 0.0771,
+          "pct_fold": 0.851,
+          "hands_4bet": "83s,84s,86s,87o,87s,88,98o,AA,JJ,JTs,K6o,K7s,K8s,KJo,Q2s,Q8o,T3s,T5s,T8o",
+          "hands_call": "22,43o,52o,76s,A7o,AKs,J4o,J5o,K3o,KTs,Q3o,Q6o,Q7o,T2o,T2s",
+          "hands_fold": "resto",
+          "hands_mixed": "J8s,QJo,T4o",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C"
+        },
+        "BTN_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.0766,
+          "pct_call": 0.103,
+          "pct_fold": 0.8203,
+          "hands_4bet": "83s,84s,86s,87o,87s,88,98o,AA,JJ,JTs,K6o,K7s,K8s,KJo,Q8o,T3s,T5s,T8o",
+          "hands_call": "22,33,43o,52o,74s,76s,A7o,AJs,AKs,J4o,J5o,J8s,K3o,K5s,KTs,Q2s,Q3o,Q6o,Q7o,QJo,T2o,T2s,T4o,T5o,T6o,T7o",
+          "hands_fold": "resto",
+          "hands_mixed": "85s",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C-F"
+        },
+        "BB_squeeze_vs_LJ_open_HJ_call": {
+          "pct_squeeze": 0.0749,
+          "pct_call": 0.3731,
+          "pct_fold": 0.552,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K7s,K8s,KJo,KTs,Q2s,Q3o,Q8o,T3s,T5s,T8o",
+          "hands_call": "22,32s,33,42o,43o,52o,54s,64o,65o,66,72o,72s,74s,75o,76s,82s,83o,83s,84o,85o,85s,86o,87o,92o,94o,95o,95s,96o,97s,99,A2o,A3s,A5s,A7o,A7s,A9o,A9s,AJo,AJs,AKo,AKs,AQo,AQs,ATs,J2s,J3o,J4o,J4s,J5o,J6o,J6s,J8o,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K5s,K6o,K6s,K9o,K9s,KTo,Q2o,Q4s,Q6o,Q6s,Q7o,Q8s,QJo,QQ,QTs,T2o,T2s,T3o,T4o,T4s,T5o,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-R2.3-C-F-F-F"
+        },
+        "BTN_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.107,
+          "pct_call": 0.0972,
+          "pct_fold": 0.7958,
+          "hands_4bet": "83s,84s,85s,86s,87o,87s,88,98o,A7o,AA,AJs,AKs,J8s,JJ,JTs,K5s,K6o,K7s,K8s,KJo,KTs,Q2s,Q8o,T2s,T3s,T5s,T8o",
+          "hands_call": "22,33,43o,52o,72s,74s,76s,J4o,J5o,J6s,K3o,Q3o,Q6o,Q7o,QJo,T2o,T4o,T5o,T6o,T7o",
+          "hands_fold": "resto",
+          "hands_mixed": "J4s,K9o",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C"
+        },
+        "SB_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.0877,
+          "pct_call": 0.1019,
+          "pct_fold": 0.8104,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,JJ,JTs,K6o,K7s,K8s,KJo,KTs,Q2s,Q8o,T2s,T3s,T5s,T8o",
+          "hands_call": "22,33,43o,52o,72s,74s,76s,83s,85s,87o,A7o,AJs,AKs,J4o,J5o,J8s,K3o,K5s,Q3o,Q6o,Q7o,QJo,T2o,T4o,T5o,T7o",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C-F"
+        },
+        "BB_squeeze_vs_HJ_open_CO_call": {
+          "pct_squeeze": 0.0928,
+          "pct_call": 0.4174,
+          "pct_fold": 0.4898,
+          "hands_4bet": "84s,86s,87s,88,98o,AA,AKs,JJ,JTs,K7s,K8s,KJo,KTs,Q2s,Q3o,Q6o,Q8o,T2s,T3s,T5o,T5s,T8o",
+          "hands_call": "22,32s,33,42o,43o,44,52o,54s,62s,64o,65o,66,72o,72s,74s,75o,76s,77,82s,83o,83s,84o,85o,85s,86o,87o,92o,93s,94o,95o,95s,96o,97s,99,A2o,A3s,A5s,A7o,A7s,A8o,A9o,A9s,AJo,AJs,AKo,AQo,AQs,ATs,J2s,J3o,J4o,J4s,J5o,J6o,J6s,J7o,J7s,J8o,J8s,J9o,J9s,JTo,K2o,K3o,K3s,K4s,K5o,K5s,K6o,K6s,K7o,K9o,K9s,KTo,Q2o,Q4s,Q6s,Q7o,Q8s,QJo,QQ,QTs,T2o,T3o,T4o,T4s,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-R2.3-C-F-F"
+        },
+        "SB_squeeze_vs_CO_open_BTN_call": {
+          "pct_squeeze": 0.1123,
+          "pct_call": 0.1061,
+          "pct_fold": 0.7816,
+          "hands_4bet": "83s,84s,85s,86s,87s,88,98o,A7o,AA,AJs,AKs,J5o,J8s,JJ,JTs,K6o,K7s,K8s,KJo,KTs,Q2s,Q8o,QJo,T2s,T3s,T5o,T5s,T8o",
+          "hands_call": "22,33,43o,52o,72s,74s,76s,85o,87o,J2s,J4o,J4s,J6s,J8o,J9s,K3o,K3s,K5s,KTo,Q3o,Q6o,Q7o,T2o,T4o,T6o,T7o",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-F-R2.3-C"
+        },
+        "BB_squeeze_vs_CO_open_BTN_call": {
+          "pct_squeeze": 0.1197,
+          "pct_call": 0.4849,
+          "pct_fold": 0.3954,
+          "hands_4bet": "83s,84s,85s,86s,87s,88,98o,A7o,AA,AJs,AKs,J8s,JJ,JTs,K6o,K7s,K8s,KJo,KTs,Q2s,Q3o,Q6o,Q8o,QJo,T2s,T3s,T4o,T5o,T5s,T8o",
+          "hands_call": "22,32s,33,42o,43o,44,52o,52s,54s,62s,63o,64o,64s,65o,66,72o,72s,73s,74o,74s,75o,75s,76s,77,82s,83o,84o,85o,86o,87o,92o,93o,93s,94o,95o,95s,96o,97o,97s,99,A2o,A3s,A5s,A6o,A7s,A8o,A9o,A9s,AJo,AKo,AQo,AQs,ATs,J2s,J3o,J3s,J4o,J4s,J5o,J5s,J6o,J6s,J7o,J7s,J8o,J9o,J9s,JTo,K2o,K3o,K3s,K4o,K4s,K5o,K5s,K6s,K7o,K9o,K9s,KQs,KTo,Q2o,Q4s,Q6s,Q7o,Q8s,QQ,QTs,T2o,T3o,T4s,T6o,T7o,T7s,T9s",
+          "hands_fold": "resto",
+          "_source": "gto_wizard MTTGeneral 2026-05-22",
+          "_preflop_actions": "F-F-F-F-R2.3-C-F"
         }
       }
     },

@@ -9,6 +9,65 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.154.0] — 2026-05-22 — feat(gto): ranges vs_squeeze extraídos do GTO Wizard (64 spots novos)
+
+### Added — leaklab_gto_ranges.json v2.4.2
+**+64 entries no schema novo `vs_squeeze`** (não conflita com vs_3bet/vs_4bet existentes):
+
+Cobertura por bucket:
+- **40bb**: 16 entries
+- **50bb**: 16 entries (mapeia também 60bb)
+- **75bb**: 16 entries (mapeia também 80bb)
+- **100bb**: 16 entries
+
+Combinações cobertas (16 únicas):
+- `BTN_squeeze_vs_HJ_open_CO_call`, `BB_squeeze_vs_CO_open_BTN_call` (clássicos)
+- `CO_squeeze_vs_UTG_open_UTGplus1_call`, `BB_squeeze_vs_UTG_open_UTGplus1_call`
+- Outros squeezes UTG/MP/LJ/HJ/CO opener + caller intermediário
+
+### Pipeline reprodutivel
+- `extract_squeeze_ranges.py` (servidor GCP): 96 queries ao GW via Chrome CDP, decoding hand-by-hand do array `strategy[169]`. 80/96 sucesso (16 spots 30bb fora da árvore)
+- **Mapping `index → hand` descoberto via probe empírico:** ranks low→high (`'2','3','4','5','6','7','8','9','T','J','Q','K','A'`), index = row*13+col, com convenção:
+  - row==col → par
+  - row>col → suited (rank maior primeiro)
+  - row<col → offsuit (rank maior primeiro)
+  - Validado com: AA=168, 23o=1, 32s=13, AKs=167
+- `merge_squeeze_into_ranges.py`: merge controlado com backup automático
+
+### Schema novo (não invasivo)
+```json
+"50bb": {
+  "vs_squeeze": {
+    "BB_squeeze_vs_CO_open_BTN_call": {
+      "pct_squeeze": 0.1264, "pct_call": 0.5161, "pct_fold": 0.3575,
+      "hands_4bet": "AA,KK,AKs,JJ,KTs,...",
+      "hands_call": "22-77,A9s,JTs,...",
+      "hands_fold": "resto",
+      "hands_mixed": "...",
+      "_source": "gto_wizard MTTGeneral 2026-05-22",
+      "_preflop_actions": "F-F-F-F-R2.3-C-F"
+    }
+  }
+}
+```
+
+### Validated
+- Sample BTN squeeze vs HJ+CO 100bb: 10.7% squeeze (composição polarizada: AA/JJ/AKs + bluffs blocker)
+- Sample BB squeeze vs CO+BTN 50bb: 12.6% squeeze + 51.6% call (BB defende wide)
+- 0 erros 403 — todos os spots squeeze cobertos pela árvore atual
+- Backup automático em `leaklab_gto_ranges.backup.20260522_171941.json`
+
+### Não foi mexido
+- Gametype mapping (`MTTGeneralV2` para HU, `MTTGeneral` antigo aceito) — mantido como estava
+- gto_nodes cache — não tocado (reverti rollback dos inserts experimentais)
+- Engine `analyze_preflop`, `compute_spot_hash` — não modificados
+- Lookup atual continua funcionando para os cenários cobertos hoje
+
+### Próximo passo natural
+- Engine ainda não consome `vs_squeeze` (estrutura nova). Quando consumir: detectar spot multiway com cold caller em `pipeline.py` e chamar lookup no novo schema. Fica como sprint separada.
+
+---
+
 ## [v0.153.0] — 2026-05-22 — feat(gto): benchmark + cache populado via GTO Wizard (100 spots preflop)
 
 ### Added
