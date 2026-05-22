@@ -9,6 +9,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.153.0] — 2026-05-22 — feat(gto): benchmark + cache populado via GTO Wizard (100 spots preflop)
+
+### Added
+- Pipeline benchmark em 3 passos (separação local ↔ servidor GCP):
+  - `bench_step1_prepare.py` (local): sample 100 spots preflop diversos do DB, parsea raw_text do hand history, reconstrói `preflop_actions` no formato GW
+  - `bench_step2_call_gw.py` (servidor GCP): chama API GW via Chrome CDP (porta 9222), salva responses brutos
+  - `bench_step3_persist.py` (local): persiste em `gto_nodes` usando `stack_bucket` canônico do projeto
+- Confirmado empiricamente: gametype `MTTGeneral` é **8-max** (não 9-max). Mapping fold-count → posição: 0=UTG, 1=UTG+1, 2=LJ, 3=HJ, 4=CO, 5=BTN, 6=SB
+
+### Cache populado
+- **gto_nodes preflop: 46 → 97** (+51 novos)
+- Distribuição: 0-10bb (15), 10-20bb (19), 20-35bb (38), 35-60bb (16), 60-100bb (5), 100bb+ (4)
+- Cada node tem `strategy_json` rico (frequências por família de ação)
+
+### Stats benchmark (100 spots preflop)
+| HTTP status | Count | Significa |
+|---|---|---|
+| 200 OK | 51 | Estratégia retornada |
+| 204 No Content | 39 | Spot existe na árvore mas sem solução na conta |
+| 403 Forbidden | 10 | Sem permissão (vs_3bet/multiway na maioria) |
+
+### Limitações descobertas e documentadas
+- A conta atual NÃO tem acesso a `MTTGeneralV2` (V2 retorna 403 para tudo). Mantido `MTTGeneral` (antigo)
+- Comparação "agree/disagree" inicial estava comparando NÍVEIS DIFERENTES (ação dominante do range completo vs ação tomada com mão específica) — **inválida**. Benchmark hand-by-hand requer descobrir ordem do array `strategy[169]` retornado por action_solution (TODO próximo passo)
+- Multiway (squeeze, cold 4-bet) e vs_3bet pré-resolvidos na árvore atual: maioria retorna 204 — cobertura limitada para estes cenários
+
+### Recovery do erro de bucket
+- Primeira leva de 51 inserts usou stack_bucket no formato `Xbb` puro (`50bb`, `60bb`) inconsistente com o resto do projeto (`X-Ybb` range). Foram revertidos e re-inseridos usando `leaklab.gto_utils.stack_bucket()` canônico
+- Backup automático criado antes da operação
+
+### Próximo passo (pendente decisão)
+- Para benchmark hand-by-hand real: descobrir mapeamento do array `strategy[169]` em cada `action_solution` (ordem das 169 hands em row-major do grid 13×13). Via probe direcionado, ~15min de trabalho.
+
+---
+
 ## [v0.152.0] — 2026-05-22 — feat(gto): cobertura vs_3bet/vs_4bet completa (item #13 backlog)
 
 ### Added — leaklab_gto_ranges.json v2.4.1
