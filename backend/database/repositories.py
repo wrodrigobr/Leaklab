@@ -5321,8 +5321,16 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
 
         if changes or pct_row:
             conn.commit()
+        log.info(
+            "reconcile_tournament_labels: tournament_id=%s changes=%d",
+            tournament_id, len(changes),
+        )
         return len(changes)
-    except Exception:
+    except Exception as e:
+        log.exception(
+            "reconcile_tournament_labels FAILED tournament_id=%s err=%s",
+            tournament_id, e,
+        )
         return 0
     finally:
         conn.close()

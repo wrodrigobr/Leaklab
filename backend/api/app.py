@@ -510,6 +510,8 @@ def _analyze_impl():
 
     # Preencher gto_label preflop via ranges estáticos + reconciliar label vs gto_label
     def _preflop_sync_and_reconcile(tid: int) -> None:
+        import logging as _logging
+        _log = _logging.getLogger(__name__)
         try:
             import sys as _sys
             from pathlib import Path as _Path
@@ -518,9 +520,13 @@ def _analyze_impl():
                 _sys.path.insert(0, _scripts)
             from sync_gto_labels_from_ranges import sync_tournament
             sync_tournament(tid)
-        except Exception:
-            pass
-        reconcile_tournament_labels(tid)
+        except Exception as _e:
+            _log.exception("preflop_sync FAILED tournament_id=%s err=%s", tid, _e)
+        try:
+            n = reconcile_tournament_labels(tid)
+            _log.info("preflop_sync_and_reconcile done tournament_id=%s reconciled=%d", tid, n)
+        except Exception as _e:
+            _log.exception("reconcile FAILED tournament_id=%s err=%s", tid, _e)
 
     threading.Thread(
         target=_preflop_sync_and_reconcile,
@@ -3854,6 +3860,25 @@ def subscription_cancel_endpoint():
 @require_admin
 def admin_dashboard():
     return jsonify(get_admin_dashboard_stats())
+
+
+@app.route('/admin/label-coherence', methods=['GET'])
+@require_admin
+def admin_label_coherence():
+    """Auditoria de coerencia label vs gto_label. Read-only.
+    Query params:
+      user_id (int, opcional) — filtrar por usuario
+      scan_limit (int, default 5000) — limite de decisions no audit C (live vs stored)
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _scripts = str(_Path(__file__).resolve().parent.parent / 'scripts')
+    if _scripts not in _sys.path:
+        _sys.path.insert(0, _scripts)
+    from audit_label_coherence import run_audit
+    user_id = request.args.get('user_id', type=int)
+    scan_limit = request.args.get('scan_limit', type=int, default=5000)
+    return jsonify(run_audit(user_id=user_id, scan_limit=scan_limit))
 
 
 @app.route('/admin/users', methods=['GET'])

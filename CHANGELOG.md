@@ -9,6 +9,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.149.0] — 2026-05-22 — feat(audit): Fase 1 do backlog #2 — diagnóstico de coerência label vs gto_label
+
+### Added
+- `backend/scripts/audit_label_coherence.py`: script de auditoria read-only com 4 categorias:
+  - **A) Reconciliação pendente** — decisions onde `_reconcile_label(label, gto_label) != label`, agrupadas por transição
+  - **B) Cobertura GTO** — % de decisions com gto_label populado, por street e por posição
+  - **C) Live vs stored** — decisions cujo gto_label recalculado pela strategy_json do nó atual diverge do gto_label armazenado (resync pendente)
+  - **D) Confiança dos KPIs de torneio** — tournaments cujo `standard_pct` deriva de baixa cobertura GTO
+  - CLI: `--user-id`, `--samples`, `--json`, `--scan-limit`
+  - Função `run_audit(user_id, scan_limit)` reutilizada pelo endpoint
+- `GET /admin/label-coherence` (protegido `@require_admin`): expõe o relatório em JSON, com filtros `user_id` e `scan_limit`
+- `backend/tests/test_label_coherence_audit.py`: 8 testes de integração cobrindo as 4 categorias e o filtro por usuário
+
+### Fixed
+- `reconcile_tournament_labels` (`repositories.py`) substituía `except: return 0` silencioso por log estruturado (`log.exception`); agora falhas são visíveis em produção
+- `_preflop_sync_and_reconcile` (`app.py`): cada etapa (sync preflop + reconcile) tem try/except próprio com logging; antes uma falha no sync abortava silenciosamente o reconcile
+
+### Why
+- Item #2 do backlog (CRÍTICO): dashboard exibia `label` heurístico enquanto Replayer mostrava `gto_label` GTO, levando o aluno a ver "Standard" no dashboard e descobrir erro crítico no Replayer
+- Esta fase é diagnóstica: mede a extensão do problema antes de remediar. No banco local atual: 105 decisions (9.66%) em 9 torneios pendentes de reconciliação, dominadas por transições `standard → small_mistake (gto_critical)` (43 casos) e `clear_mistake → standard (gto_correct/mixed)` (37 casos)
+
+### Next
+- Fase 2: tornar reconcile observável (`tournaments.labels_reconciled_at`), endpoint admin para forçar reconciliação, comando de backfill
+- Fase 3: transparência no dashboard (badges de cobertura GTO nos cards)
+- Fase 4: leak ranking unificado com `source` explícito
+
+---
+
 ## [v0.148.0] — 2026-05-22 — fix(replayer): call vs shove com mao premium classifica como Correto
 
 ### Fixed
