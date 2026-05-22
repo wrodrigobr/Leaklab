@@ -135,7 +135,7 @@ def get_rfi_entry(rng: dict, bucket: str, pos: str) -> dict | None:
     """Retorna a entrada RFI para um bucket/posicao do JSON."""
     pos_map = {
         'UTG+1': 'UTG1', 'UTG+2': 'LJ', 'MP': 'LJ',
-        'MP1': 'LJ', 'MP2': 'HJ',
+        'MP1': 'HJ', 'MP2': 'CO',  # FIX 2026-05-22
     }
     pos = pos_map.get(pos.upper(), pos.upper())
     return rng.get('ranges', {}).get(bucket, {}).get('RFI', {}).get(pos)

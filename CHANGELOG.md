@@ -9,6 +9,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.157.0] — 2026-05-22 — fix(preflop): mapping 9-max → 8-max corrigido (MP1→HJ, MP2→CO)
+
+### Fixed
+- **Bug estrutural no `_POS_NORM`** (introduzido no commit 30fb9e7 em 10/maio): `MP1` colapsava para `LJ` e `MP2` para `HJ`, causando colisão geométrica quando o opener era `UTG+2` (também `LJ`)
+- Quando hero=MP1 e opener=UTG+2, lookup virava `vs_RFI[LJ][LJ]` (não existe) → `available=False` → engine caía no heurístico genérico que recomendava raise mesmo com small pairs (set-mining seria correto)
+- **Reportado pelo usuário**: hand 260886154914 (MP1 com 44 vs UTG+2 raise + UTG+1 limp, 70bb) — engine recomendava raise quando GTO correto é fold/call (set-mine)
+
+### Changed
+- `_POS_NORM` em `preflop_gto_ranges.py`: MP1 agora → HJ; MP2 → CO (mapping geométrico por índice de ação 9-max → 8-max)
+- Mesma correção aplicada em `gto_bot/solver_api/server.py`, `scripts/enqueue_preflop_gw.py`, `scripts/compare_ranges_gw.py`, `scripts/validate_reglife_coherence.py` para consistência
+
+### Validation feita antes do fix
+- **V1 git blame**: confirmado commit de origem (30fb9e7), intenção era resolver `available=False` mas mapping foi geometricamente errado
+- **V2 escopo real**: apenas 26 decisions afetadas (2.4% do banco) — 16 com position=MP1 + 10 com vs_position=MP1; zero MP2
+- **V3 convenção**: 9-max PokerStars → 8-max RegLife: UTG+2 é 3ª (LJ), MP1 é 4ª (HJ), MP2 é 5ª (CO)
+- **V5 tests**: nenhum test pinning este mapping; safe para mexer
+
+### Validated post-fix
+- Hand reportada (id=27337, 44 MP1): antes `gto_label=None` → agora `gto_correct, gto_action=fold` ✓
+- 23 decisions re-syncadas com sucesso
+- Cobertura GTO: 98.0% → 98.2%
+- Suites database (36) verde. Falha em test_postflop_error_rate_reduced é pré-existente (não relacionada com preflop)
+
+### Limitação documentada
+- `_POS_NORM` continua collapsing 9-max → 8-max (lossy por design — não temos ranges 9-max no RegLife). Para conta com `MTTGeneralV2` no GW (9-max nativo), seria possível usar mapping 1:1 — fica como melhoria futura
+
+---
+
 ## [v0.156.0] — 2026-05-22 — feat(study-plan): item #9 do backlog — plano de estudos GTO-first
 
 ### Added — Helper unificado em repositories.py

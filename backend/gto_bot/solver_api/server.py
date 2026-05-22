@@ -476,8 +476,8 @@ def query_gto_wizard(spot: dict) -> dict:
     facing_size_bb = float(spot.get("facing_size_bb", 0) or 0)
     num_players    = int(spot.get("num_players", 9) or 9)
 
-    # Normaliza aliases de posição
-    _pos_alias = {"MP1": "LJ", "MP2": "HJ", "MP": "LJ", "EP": "UTG"}
+    # Normaliza aliases de posição (FIX 2026-05-22: MP1→HJ, MP2→CO por índice de ação 9-max)
+    _pos_alias = {"MP1": "HJ", "MP2": "CO", "MP": "LJ", "EP": "UTG"}
     position   = _pos_alias.get(position, position)
     if num_players == 2 and position == "SB":
         position = "BTN"  # HU: BTN posta o small blind

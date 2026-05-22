@@ -55,7 +55,7 @@ def get_rl_range_pct(pos: str, stack: float) -> float | None:
     if not bucket:
         return None
 
-    pos_map = {"UTG+1": "UTG1", "UTG+2": "LJ", "MP": "LJ", "MP1": "LJ", "MP2": "HJ"}
+    pos_map = {"UTG+1": "UTG1", "UTG+2": "LJ", "MP": "LJ", "MP1": "HJ", "MP2": "CO"}
     pos_key = pos_map.get(pos.upper(), pos.upper())
 
     entry = data.get("ranges", {}).get(bucket, {}).get("RFI", {}).get(pos_key)

@@ -67,12 +67,15 @@ _POS = {
 
 # Pipeline e banco usam nomes distintos do JSON — normalizamos antes do lookup
 _POS_NORM = {
-    'UTG+1': 'UTG1',   # 2º a agir pós-BB (8-max)
+    # Mapeamento 9-max (PokerStars) → 8-max (JSON RegLife) por índice de ação
+    # Ordem de ação 9-max: UTG, UTG+1, UTG+2, MP1, MP2, HJ, CO, BTN, SB, BB
+    # Ordem de ação 8-max: UTG, UTG+1, LJ, HJ, CO, BTN, SB, BB
+    'UTG+1': 'UTG1',   # 2º a agir
     'UTG+2': 'LJ',     # 3º a agir = LoJack
     'LJ':    'LJ',
-    'MP':    'LJ',     # Middle Position genérico → LoJack
-    'MP1':   'LJ',
-    'MP2':   'HJ',
+    'MP':    'LJ',     # MP genérico (sem distinção 1/2) → LJ (mid-position)
+    'MP1':   'HJ',     # 4º a agir = HJ (FIX 2026-05-22: era LJ, colidia com UTG+2)
+    'MP2':   'CO',     # 5º a agir = CO (FIX 2026-05-22: era HJ)
     'HJ':    'HJ',
 }
 
