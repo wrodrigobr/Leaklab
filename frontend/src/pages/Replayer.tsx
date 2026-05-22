@@ -124,7 +124,10 @@ function SidePanels({
 
   // When live strategy is available, derive the label from actual frequencies.
   // Stored gto_label may be stale if the solver node was updated after import.
-  const effectiveGtoLabel = hasGto
+  // Exception: for preflop with range data (pg.available), the strategy comes from
+  // an aggregate node (fold 72% = entire range folds) — not hand-specific.
+  // Using it would mark KK as "Desvio Leve" when the range-based analysis says "Correto".
+  const effectiveGtoLabel = hasGto && (isPostflop || !pg?.available)
     ? computeEffectiveGtoLabel(stratSorted, step.gto_label, step.action)
     : null;
 
@@ -549,8 +552,9 @@ function SidePanels({
               </div>
             )}
 
-            {/* Estratégia do Solver */}
-            {!step.gto_spot_mismatch && stratSorted.length >= 1 && (
+            {/* Estratégia do Solver — not shown for preflop when range data is available
+                (aggregate nodes show range-level frequencies, not hand-specific) */}
+            {!step.gto_spot_mismatch && stratSorted.length >= 1 && (isPostflop || !pg?.available) && (
               <div className="space-y-2 border-t border-border/30 pt-2">
                 <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/50">
                   Estratégia do Solver
