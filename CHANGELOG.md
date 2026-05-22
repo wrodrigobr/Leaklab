@@ -9,6 +9,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.150.0] — 2026-05-22 — feat(reconcile): Fase 2 do backlog #2 — reconciliação observável e backfill
+
+### Added
+- Coluna `tournaments.labels_reconciled_at` (TIMESTAMP, SQLite + PostgreSQL) — marca quando o reconcile rodou pela última vez. Frontend pode usar para mostrar "análise GTO em andamento" quando NULL
+- `POST /admin/reconcile-tournament/<tournament_db_id>` (require_admin) — força sync preflop + reconcile manual; retorna `{tournament_id, preflop_synced, reconciled, labels_reconciled_at}`
+- `backend/scripts/backfill_label_reconciliation.py` — itera torneios e reconcilia tudo. Modos: `--dry-run`, `--user-id`, `--since`, `--no-sync`. Reporta pending antes e reconciliations realizadas
+- `backend/tests/test_label_reconcile_phase2.py`: 5 testes cobrindo migration, reconcile com/sem mudanças, backfill dry-run e execução normal
+
+### Changed
+- `reconcile_tournament_labels` agora seta `labels_reconciled_at = CURRENT_TIMESTAMP` ao final, mesmo quando 0 mudanças — assim o dashboard sabe que a análise GTO foi aplicada
+
+### Validated
+- Backfill rodado no banco local: 105/105 decisions reconciliadas em 9 torneios
+- Auditoria pós-backfill: 0 pending (era 105 = 9.66%)
+- Suites database (36) + api (64) + audit phase 1 (8) + phase 2 (5) verdes
+
+### Note
+- Fase 2 originalmente previa fallback de hash matching em `resync_gto_labels_for_node` (Furo C), mas a auditoria reportou 0 divergências live vs stored no banco atual. Sem evidência do problema, o fallback foi adiado — o audit C continua sendo a detecção contínua. Será revisitado se aparecerem casos
+
+### Next
+- Fase 3: transparência no dashboard (badges de cobertura GTO, "análise em andamento" enquanto `labels_reconciled_at IS NULL`)
+- Fase 4: leak ranking unificado com `source` explícito
+
+---
+
 ## [v0.149.0] — 2026-05-22 — feat(audit): Fase 1 do backlog #2 — diagnóstico de coerência label vs gto_label
 
 ### Added

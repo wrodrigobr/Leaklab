@@ -5319,7 +5319,18 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
                 "UPDATE tournaments SET standard_pct=?, avg_score=? WHERE id=?"
             ), (round(pct_row['s'] or 0, 2), round(pct_row['a'] or 0, 4), tournament_id))
 
+        # Stamp the tournament as reconciled — sempre, mesmo sem mudanças,
+        # para que o dashboard saiba que a análise GTO ja foi aplicada.
+        try:
+            conn.execute(_adapt(
+                "UPDATE tournaments SET labels_reconciled_at = CURRENT_TIMESTAMP WHERE id = ?"
+            ), (tournament_id,))
+        except Exception:
+            pass
+
         if changes or pct_row:
+            conn.commit()
+        else:
             conn.commit()
         log.info(
             "reconcile_tournament_labels: tournament_id=%s changes=%d",

@@ -422,6 +422,7 @@ def _run_migrations(conn):
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS profit REAL",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS raw_text TEXT",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS tournament_name TEXT",
+            "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS labels_reconciled_at TIMESTAMP",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS position    TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS num_players INTEGER",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS level_sb    REAL",
@@ -828,6 +829,7 @@ def _run_migrations(conn):
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),
             ("raw_text",        "ALTER TABLE tournaments ADD COLUMN raw_text TEXT"),
             ("tournament_name", "ALTER TABLE tournaments ADD COLUMN tournament_name TEXT"),
+            ("labels_reconciled_at", "ALTER TABLE tournaments ADD COLUMN labels_reconciled_at TEXT"),
         ]:
             if col not in existing:
                 try: conn.execute(sql)

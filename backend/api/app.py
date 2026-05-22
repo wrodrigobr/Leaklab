@@ -3862,6 +3862,50 @@ def admin_dashboard():
     return jsonify(get_admin_dashboard_stats())
 
 
+@app.route('/admin/reconcile-tournament/<int:tournament_db_id>', methods=['POST'])
+@require_admin
+def admin_reconcile_tournament(tournament_db_id: int):
+    """Forca reconciliacao manual de label vs gto_label para um torneio.
+    Tambem roda o sync de gto_labels preflop via ranges estaticos antes
+    do reconcile, garantindo que decisions sem cobertura GTO recebam
+    classificacao quando possivel.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _scripts = str(_Path(__file__).resolve().parent.parent / 'scripts')
+    if _scripts not in _sys.path:
+        _sys.path.insert(0, _scripts)
+
+    sync_count = 0
+    try:
+        from sync_gto_labels_from_ranges import sync_tournament
+        sync_count = sync_tournament(tournament_db_id) or 0
+    except Exception as e:
+        return jsonify({'error': f'sync_failed: {e}'}), 500
+
+    try:
+        reconciled = reconcile_tournament_labels(tournament_db_id)
+    except Exception as e:
+        return jsonify({'error': f'reconcile_failed: {e}'}), 500
+
+    # Buscar timestamp atualizado
+    from database.schema import get_conn as _get_conn
+    conn = _get_conn()
+    try:
+        row = conn.execute(
+            "SELECT labels_reconciled_at FROM tournaments WHERE id=?",
+            (tournament_db_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+    return jsonify({
+        'tournament_id': tournament_db_id,
+        'preflop_synced': sync_count,
+        'reconciled': reconciled,
+        'labels_reconciled_at': row['labels_reconciled_at'] if row else None,
+    })
+
+
 @app.route('/admin/label-coherence', methods=['GET'])
 @require_admin
 def admin_label_coherence():
