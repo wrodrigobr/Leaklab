@@ -3436,6 +3436,48 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 except Exception:
                     pass
 
+        # Preflop override: aggregate nodes give misleading fold recommendation for in-range hands.
+        # Use analyze_preflop with the specific hero hand to get the correct recommendation.
+        # This overrides both gto_action (stale DB value) and live_top_act (from aggregate node).
+        preflop_override_action = None
+        if action.street == 'preflop' and action.player == hero and decision:
+            _di_pf  = decision.get('_di') or {}
+            _spot   = _di_pf.get('spot', {})
+            _hc     = _di_pf.get('hero_cards', []) or []
+            _pos    = _spot.get('position', '') or decision.get('position', '')
+            _sb     = float(_spot.get('effectiveStackBb') or decision.get('stack_bb') or 20.0)
+            _facing = float(decision.get('facing_bet') or 0.0)
+            if not _hc and isinstance(decision.get('hero_cards'), str):
+                _raw_hc = decision['hero_cards'].strip()
+                _hc = _raw_hc.split() if ' ' in _raw_hc else [_raw_hc[i:i+2] for i in range(0, len(_raw_hc), 2)]
+            if _hc and _pos:
+                try:
+                    from leaklab.preflop_gto_ranges import analyze_preflop as _apf
+                    from leaklab.gto_utils import hand_to_type as _h2t
+                    _ht = _h2t(_hc)
+                    if _ht:
+                        _pf = _apf(
+                            position       = _pos,
+                            hero_hand_type = _ht,
+                            stack_bb       = _sb,
+                            action_taken   = _norm(action.action),
+                            facing_size    = _facing,
+                            vs_position    = (_spot.get('villainPosition') or _spot.get('vsPosition', '')),
+                        )
+                        if _pf.get('available') and _pf.get('recommended_actions'):
+                            preflop_override_action = _pf['recommended_actions'][0]
+                            _pf_quality = _pf.get('action_quality', 'unknown')
+                            if _pf_quality in ('correct', 'acceptable'):
+                                is_error        = False
+                                reconciled_best = _norm(action.action)
+                                gto_label       = 'gto_correct' if _pf_quality == 'correct' else 'gto_mixed'
+                            elif _pf_quality in ('leak', 'major_leak'):
+                                is_error        = True
+                                reconciled_best = preflop_override_action
+                                gto_label       = 'gto_critical'
+                except Exception:
+                    pass
+
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,
@@ -3449,7 +3491,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          gto_label,
-            'gto_action':         live_top_act or gto_action,
+            'gto_action':         preflop_override_action or live_top_act or gto_action,
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
             'preflop_gto':        decision.get('preflop_gto') if decision else None,

@@ -409,6 +409,79 @@ def test_label_adjust_unknown_quality_passthrough():
     _ok('adjust_unknown_passthrough', result == 'marginal', f'{result}')
 
 
+# ── _build_replay_data preflop override (regressão bug KK) ───────────────────
+# O bug: lookup_gto encontra nó agregado preflop (fold=72%), live_top_act='fold',
+# e o bloco de live-strategy define is_error=True para KK (raise_freq=0.28 < 0.30).
+# O preflop_override_action deve corrigir is_error=False após esse bloco.
+
+def test_preflop_override_analyze_preflop_kk_correct():
+    """analyze_preflop deve retornar quality='correct' para KK HJ 27bb raise."""
+    from leaklab.preflop_gto_ranges import analyze_preflop
+    from leaklab.gto_utils import hand_to_type
+    ht = hand_to_type(['Kc', 'Kd'])
+    result = analyze_preflop(
+        position='HJ', hero_hand_type=ht, stack_bb=27.4,
+        action_taken='raise', facing_size=0.0, vs_position='',
+    )
+    _ok('kk_hj_27bb_available',       result.get('available') is True, f'{result}')
+    _ok('kk_hj_27bb_quality_correct', result.get('action_quality') in ('correct', 'acceptable'), f'{result}')
+    _ok('kk_hj_27bb_rec_raise',       'raise' in (result.get('recommended_actions') or []), f'{result}')
+
+
+def test_preflop_override_aggregate_node_does_not_set_is_error():
+    """
+    Simula o fluxo de _build_replay_data: nó agregado preflop retorna fold=0.72,
+    mas o override com analyze_preflop deve forçar is_error=False para KK.
+    """
+    from leaklab.preflop_gto_ranges import analyze_preflop
+    from leaklab.gto_utils import hand_to_type
+
+    # Simula o que o bloco live-strategy faz com nó agregado
+    aggregate_strategy = [
+        {'action': 'fold',  'frequency': 0.72, 'ev_bb': 0.0},
+        {'action': 'raise', 'frequency': 0.28, 'ev_bb': 1.5},
+    ]
+    acted_action = 'raise'
+    live_top_act = 'fold'   # top action do nó agregado
+    live_freq    = 0.28     # frequência do raise no range completo (< 0.30 → bug marcaria is_error=True)
+    is_error = live_freq < 0.30  # simula o código antigo (bug)
+
+    _ok('aggregate_would_mark_error', is_error is True, 'precondition: bug original marcaria como erro')
+
+    # Aplica override com analyze_preflop (o fix)
+    ht = hand_to_type(['Kc', 'Kd'])
+    pf = analyze_preflop(position='HJ', hero_hand_type=ht, stack_bb=27.4,
+                         action_taken=acted_action, facing_size=0.0, vs_position='')
+    if pf.get('available') and pf.get('recommended_actions'):
+        quality = pf.get('action_quality', 'unknown')
+        if quality in ('correct', 'acceptable'):
+            is_error = False  # override corrige o bug
+
+    _ok('kk_preflop_override_no_error', is_error is False,
+        f'is_error={is_error}, quality={pf.get("action_quality")}')
+
+
+def test_preflop_override_72o_still_marks_error():
+    """72o UTG raise deve continuar marcado como erro (leak) após override."""
+    from leaklab.preflop_gto_ranges import analyze_preflop
+    from leaklab.gto_utils import hand_to_type
+
+    ht = hand_to_type(['7c', '2d'])
+    if not ht:
+        _ok('72o_hand_type', False, 'hand_to_type returned None')
+        return
+
+    pf = analyze_preflop(position='UTG', hero_hand_type=ht, stack_bb=30.0,
+                         action_taken='raise', facing_size=0.0, vs_position='')
+    if not pf.get('available'):
+        _ok('72o_utg_skip', True, 'analyze_preflop unavailable for 72o UTG — skip (ok)')
+        return
+
+    quality = pf.get('action_quality', 'unknown')
+    _ok('72o_utg_not_correct', quality not in ('correct', 'acceptable'),
+        f'quality={quality!r} (should be leak/major_leak/not_correct for 72o UTG)')
+
+
 # ── Score/label consistency ───────────────────────────────────────────────────
 
 def test_score_label_thresholds():

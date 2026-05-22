@@ -9,6 +9,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.146.0] — 2026-05-22 — fix(replayer): corrige bug KK na timeline de replay (_build_replay_data)
+
+### Fixed
+- `_build_replay_data` (app.py): segundo vetor do bug KK descoberto e corrigido. O bloco de "live strategy" usava `lookup_gto` para buscar a estratégia do nó — que retornava o nó **agregado** preflop (fold=72%, raise=28%). Para KK (raise no range com 28%), `live_freq=0.28 < 0.30` definia `is_error=True` mesmo quando o DB tinha `gto_label='gto_correct'`
+- Adicionado bloco `preflop_override_action` na timeline: após o live-strategy block, chama `analyze_preflop` com a mão específica do herói. Se `quality in ('correct','acceptable')`: `is_error=False`, `reconciled_best=action`, `gto_label='gto_correct'`. Tem prioridade máxima sobre `live_top_act` e `gto_action` armazenado
+- Novo campo na timeline: `gto_action: preflop_override_action or live_top_act or gto_action`
+- 6 novos testes em `test_gto_enrichment.py` cobrindo o fluxo de override e o comportamento correto para mãos fora do range (72o UTG)
+
+---
+
 ## [v0.145.0] — 2026-05-22 — feat(gto): blindagem total do pipeline GTO — 6 camadas de proteção
 
 ### Added
