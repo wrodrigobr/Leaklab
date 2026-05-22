@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.141.0] — 2026-05-21 — feat(replayer): v4 Canvas API — mesa ultra-realista
+
+### Changed
+- **`leaklab-replayer-v4.html`**: background da mesa migrado de SVG para Canvas 2D API
+  - Maior controle de gradientes e texturas — qualidade visivelmente superior ao SVG
+  - Mesa oval `rx=482, ry=172` (ratio 2.80:1 → aparente ~3.5:1 após CSS perspective)
+  - Borda mahogany com 9 camadas de profundidade 3D (offset maior = face frontal mais visível)
+  - Gradiente rim top-lit warm: `#8a6e54 → #6a4e38 → #422f20 → #0e0b08`
+  - Catchlight externo `rgba(255,225,155,0.32)` + groove sombra 10px → separação clara feltro/borda
+  - Textura de feltro: crosshatch diagonal (warp+weft, canvas clip)
+  - Perspectiva reforçada: `rotateX(24deg)`, `perspective: 620px`
+  - Slots de cartas comunitárias redesenhados: inset escuro com borda visível + inner glow
+
 ## [v0.140.0] — 2026-05-21 — feat(replayer): leaklab-replayer-v4 — mesa PS-quality
 
 ### Added

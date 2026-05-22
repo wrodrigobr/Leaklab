@@ -48,18 +48,20 @@ html,body{
 /* Layer 1 — tilted table background */
 .rp-bg-layer{
   position:absolute;inset:0;
-  perspective:700px;perspective-origin:50% -35%
+  perspective:620px;perspective-origin:50% -40%
 }
-.rp-bg-layer>svg{
+.rp-bg-layer>canvas{
   width:100%;height:100%;display:block;
-  transform:rotateX(19deg);
+  transform:rotateX(24deg);
   transform-origin:50% 60%
 }
 
 /* Layer 2 — flat content SVG */
 #rp-svg{
   position:absolute;inset:0;
-  width:100%;height:100%;display:block
+  width:100%;height:100%;display:block;
+  transform:scaleY(0.93) translateY(2%);
+  transform-origin:50% 55%
 }
 
 /* Overlays */
@@ -274,115 +276,9 @@ html,body{
   <div class="rp-table">
     <!-- Mesa de poker -->
     <div class="rp-canvas" id="rp-canvas">
-      <!-- Layer 1: TILTED background -->
+      <!-- Layer 1: TILTED table background (Canvas API) -->
       <div class="rp-bg-layer">
-        <svg id="rp-bg-svg" viewBox="0 0 1120 630"
-             xmlns="http://www.w3.org/2000/svg"
-             preserveAspectRatio="xMidYMid meet">
-          <defs>
-            <!-- Room ambient glow: green light radiating from table -->
-            <radialGradient id="bg-room-glow" cx="50%" cy="52%" r="62%"
-                            gradientUnits="userSpaceOnUse" fx="560" fy="315">
-              <stop offset="0%"   stop-color="#0f3d1a" stop-opacity="0.95"/>
-              <stop offset="40%"  stop-color="#061a0c" stop-opacity="0.55"/>
-              <stop offset="75%"  stop-color="#030a06" stop-opacity="0.25"/>
-              <stop offset="100%" stop-color="#010302" stop-opacity="0"/>
-            </radialGradient>
-
-            <!-- Felt: PS-style — bright saturated center, dark vignette edges -->
-            <radialGradient id="bg-felt" cx="49%" cy="40%" r="56%">
-              <stop offset="0%"   stop-color="#42a855"/>
-              <stop offset="22%"  stop-color="#338a44"/>
-              <stop offset="55%"  stop-color="#1e6230"/>
-              <stop offset="85%"  stop-color="#0f3d1e"/>
-              <stop offset="100%" stop-color="#071c0e"/>
-            </radialGradient>
-
-            <!-- Rim top surface: dark leather, top-lit (warm) -->
-            <radialGradient id="bg-rim-top" cx="50%" cy="15%" r="72%">
-              <stop offset="0%"   stop-color="#3a2e24"/>
-              <stop offset="35%"  stop-color="#201a14"/>
-              <stop offset="100%" stop-color="#090807"/>
-            </radialGradient>
-
-            <!-- Rim side face (visible depth at top edge): darker -->
-            <linearGradient id="bg-rim-side" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stop-color="#0e0c0a"/>
-              <stop offset="100%" stop-color="#030303"/>
-            </linearGradient>
-
-            <!-- Vignette -->
-            <radialGradient id="bg-vig" cx="50%" cy="50%" r="58%">
-              <stop offset="28%"  stop-color="rgba(0,0,0,0)"/>
-              <stop offset="100%" stop-color="rgba(0,0,0,0.68)"/>
-            </radialGradient>
-
-            <!-- Table massive drop-shadow -->
-            <filter id="bg-shadow" x="-35%" y="-35%" width="170%" height="200%">
-              <feGaussianBlur stdDeviation="55" result="blur"/>
-              <feFlood flood-color="#000" flood-opacity="1" result="col"/>
-              <feComposite in="col" in2="blur" operator="in" result="shad"/>
-              <feMerge><feMergeNode in="shad"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-          </defs>
-
-          <!-- ① Room ambient glow -->
-          <rect x="0" y="0" width="1120" height="630" fill="url(#bg-room-glow)"/>
-
-          <!-- ② Massive table drop-shadow -->
-          <ellipse cx="562" cy="346" rx="492" ry="232"
-                   fill="rgba(0,0,0,0.97)" filter="url(#bg-shadow)" opacity="0.9"/>
-
-          <!--
-            TABLE CONSTRUCTION — 3 visual layers simulating 3D rim depth:
-            Layer A: "rim bottom face" — darkest, widest, offset down
-            Layer B: "rim side face"  — dark gradient, slightly smaller, less offset
-            Layer C: "rim top face"   — leather texture, main surface at normal position
-          -->
-
-          <!-- ③A Rim bottom face (widest + most offset → visible at top edge as PS) -->
-          <ellipse cx="560" cy="338" rx="490" ry="230" fill="#020202"/>
-          <ellipse cx="560" cy="333" rx="489" ry="228" fill="#060504"/>
-
-          <!-- ③B Rim side face (intermediate — gradient dark→lighter toward top) -->
-          <ellipse cx="560" cy="326" rx="488" ry="226" fill="#0d0b09"/>
-          <ellipse cx="560" cy="321" rx="487" ry="224" fill="#131008"/>
-
-          <!-- ③C Rim top surface (main leather surface, top-lit) -->
-          <ellipse cx="560" cy="314" rx="486" ry="222" fill="url(#bg-rim-top)"/>
-
-          <!-- ④ Rim outer bevel catch-light (thin warm line at very top of rim) -->
-          <ellipse cx="560" cy="314" rx="486" ry="222" fill="none"
-                   stroke="rgba(255,230,170,0.16)" stroke-width="1.8"/>
-          <!-- Rim secondary highlight -->
-          <ellipse cx="560" cy="314" rx="484" ry="220" fill="none"
-                   stroke="rgba(255,255,255,0.04)" stroke-width="0.8"/>
-
-          <!-- ⑤ Deep shadow groove between rim and felt -->
-          <ellipse cx="560" cy="314" rx="466" ry="204" fill="none"
-                   stroke="rgba(0,0,0,0.95)" stroke-width="5"/>
-          <ellipse cx="560" cy="314" rx="462" ry="200" fill="rgba(0,0,0,0.50)"/>
-
-          <!-- ⑥ FELT surface — PS oval ratio ~2.3:1 raw (→2.45:1 apparent after CSS tilt) -->
-          <ellipse cx="560" cy="312" rx="456" ry="196" fill="url(#bg-felt)"/>
-
-          <!-- ⑦ Inner felt decorative trim rings (like PS gold border) -->
-          <ellipse cx="560" cy="312" rx="442" ry="183" fill="none"
-                   stroke="rgba(255,255,255,0.07)" stroke-width="2.2"/>
-          <ellipse cx="560" cy="312" rx="436" ry="177" fill="none"
-                   stroke="rgba(255,255,255,0.030)" stroke-width="1"/>
-
-          <!-- ⑧ Felt vignette overlay (darkens edges) -->
-          <ellipse cx="560" cy="312" rx="456" ry="196" fill="url(#bg-vig)"/>
-
-          <!-- ⑨ Top ambient light reflection on felt surface (simulates overhead lamp) -->
-          <ellipse cx="560" cy="268" rx="165" ry="52" fill="rgba(255,255,255,0.022)"/>
-
-          <!-- ⑩ LEAKLAB watermark on felt -->
-          <text x="560" y="322" text-anchor="middle" fill="rgba(255,255,255,0.020)"
-                font-family="Inter,sans-serif" font-size="52" font-weight="800"
-                letter-spacing="16">LEAKLAB</text>
-        </svg>
+        <canvas id="rp-bg-canvas" width="1120" height="630"></canvas>
       </div>
 
       <!-- Layer 2: FLAT content -->
@@ -467,7 +363,7 @@ html,body{
 <script>
 // ── Table geometry ────────────────────────────────────────────────────────────
 const CX=560, CY=315;
-const RX_SEAT=466, RY_SEAT=228;  // wider oval to match PS proportions
+const RX_SEAT=484, RY_SEAT=200;  // wider oval positions
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SUIT_SYM={s:'♠',h:'♥',d:'♦',c:'♣'};
@@ -924,8 +820,15 @@ function rpRenderBoard(cards){
     if(i<cards.length){
       g.innerHTML+=cardSVG(cards[i],x,y,W,H);
     } else {
-      g.innerHTML+=`<rect x="${x}" y="${y}" width="${W}" height="${H}" rx="4"
-        fill="rgba(0,0,0,0.18)" stroke="rgba(255,255,255,0.07)" stroke-width="1" stroke-dasharray="5 4"/>`;
+      const rx=Math.round(W*0.10);
+      // Card slot: dark recessed inset, like PS placeholder
+      g.innerHTML+=`<g>
+        <rect x="${x+2}" y="${y+3}" width="${W}" height="${H}" rx="${rx}" fill="rgba(0,0,0,0.50)"/>
+        <rect x="${x}" y="${y}" width="${W}" height="${H}" rx="${rx}"
+          fill="rgba(0,0,0,0.40)" stroke="rgba(255,255,255,0.22)" stroke-width="1.5"/>
+        <rect x="${x+3}" y="${y+3}" width="${W-6}" height="${H-6}" rx="${rx-2}"
+          fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+      </g>`;
     }
   }
 }
@@ -1341,6 +1244,200 @@ async function rpLoadReal(){
   }
 }
 
+// ── Table Canvas Background ─────────────────────────────────────────────────────
+function drawPokerTable(){
+  const canvas=document.getElementById('rp-bg-canvas');
+  if(!canvas) return;
+  const W=1120,H=630;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const cx=W/2, cy=H/2;
+
+  function ell(ecx,ecy,rx,ry){
+    ctx.beginPath();
+    ctx.ellipse(ecx,ecy,rx,ry,0,0,Math.PI*2);
+    ctx.closePath();
+  }
+
+  // ① Room — very dark, deep green cast, atmospheric
+  const bgGrad=ctx.createRadialGradient(cx,cy*0.5,0,cx,cy*0.75,W*0.75);
+  bgGrad.addColorStop(0,  '#0e2618');
+  bgGrad.addColorStop(0.3,'#060e09');
+  bgGrad.addColorStop(1,  '#010303');
+  ctx.fillStyle=bgGrad;
+  ctx.fillRect(0,0,W,H);
+
+  // Corner darkening vignette
+  const cornGrad=ctx.createRadialGradient(cx,cy,H*0.25,cx,cy,W*0.72);
+  cornGrad.addColorStop(0,'rgba(0,0,0,0)');
+  cornGrad.addColorStop(0.6,'rgba(0,0,0,0)');
+  cornGrad.addColorStop(1,'rgba(0,0,0,0.72)');
+  ctx.fillStyle=cornGrad;
+  ctx.fillRect(0,0,W,H);
+
+  // ② Table drop shadow — offset down for 3D depth perception
+  ctx.save();
+  ctx.shadowColor='#000';
+  ctx.shadowBlur=100;
+  ctx.shadowOffsetY=28;
+  ell(cx,cy+12,535,214);
+  ctx.fillStyle='rgba(0,0,0,0.96)';
+  ctx.fill();
+  ctx.restore();
+
+  // ③ RIM 3D DEPTH — stacked offset layers to simulate visible near-face of rim
+  // Most offset (bottom) = darkest, least offset = transition to top surface
+  const rimLayers=[
+    {off:40,rx:534,ry:216,c:'#010101'},
+    {off:34,rx:533,ry:215,c:'#030302'},
+    {off:28,rx:532,ry:214,c:'#070605'},
+    {off:22,rx:531,ry:213,c:'#0c0a08'},
+    {off:17,rx:530,ry:212,c:'#12100d'},
+    {off:12,rx:529,ry:211,c:'#1a1714'},
+    {off:8, rx:528,ry:210,c:'#22201a'},
+    {off:4, rx:527,ry:209,c:'#29271f'},
+    {off:0, rx:526,ry:208,c:'#312e26'},
+  ];
+  rimLayers.forEach(l=>{
+    ell(cx,cy+l.off,l.rx,l.ry);
+    ctx.fillStyle=l.c;
+    ctx.fill();
+  });
+
+  // ④ RIM TOP SURFACE — warm mahogany/leather, top-lit radial gradient
+  const rimGrad=ctx.createRadialGradient(cx,cy-100,15,cx,cy+10,420);
+  rimGrad.addColorStop(0,   '#8a6e54');
+  rimGrad.addColorStop(0.15,'#6a4e38');
+  rimGrad.addColorStop(0.40,'#422f20');
+  rimGrad.addColorStop(0.68,'#271e14');
+  rimGrad.addColorStop(1,   '#0e0b08');
+  ell(cx,cy,526,208);
+  ctx.fillStyle=rimGrad;
+  ctx.fill();
+
+  // Rim leather grain texture (thin diag lines)
+  ctx.save();
+  ell(cx,cy,526,208);
+  ctx.clip();
+  ctx.strokeStyle='rgba(0,0,0,0.06)';
+  ctx.lineWidth=0.8;
+  for(let d=-900;d<900;d+=5){
+    ctx.beginPath();
+    ctx.moveTo(cx-700+d,cy-280);
+    ctx.lineTo(cx+700+d,cy+280);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Rim outer catchlight — warm specular from overhead lamp
+  ell(cx,cy,526,208);
+  ctx.strokeStyle='rgba(255,225,155,0.32)';
+  ctx.lineWidth=3;
+  ctx.stroke();
+
+  // Second inner highlight ring
+  ell(cx,cy,521,203);
+  ctx.strokeStyle='rgba(255,205,125,0.14)';
+  ctx.lineWidth=1.5;
+  ctx.stroke();
+
+  // Rim inner edge — warm pinstripe (like PS's inner rim line)
+  ell(cx,cy,500,190);
+  ctx.strokeStyle='rgba(200,155,90,0.18)';
+  ctx.lineWidth=1.8;
+  ctx.stroke();
+
+  // ⑤ Shadow groove — sharp transition from rim to felt (critical for 3D realism)
+  ell(cx,cy,497,187);
+  ctx.strokeStyle='rgba(0,0,0,0.98)';
+  ctx.lineWidth=10;
+  ctx.stroke();
+
+  ell(cx,cy,491,181);
+  ctx.strokeStyle='rgba(0,0,0,0.60)';
+  ctx.lineWidth=5;
+  ctx.stroke();
+
+  // ⑥ FELT SURFACE — rx=482, ry=172 → raw ratio 2.80:1 → apparent ~3.5:1 after CSS tilt
+  const feltGrad=ctx.createRadialGradient(cx,cy-18,0,cx,cy+22,445);
+  feltGrad.addColorStop(0,   '#35a850');
+  feltGrad.addColorStop(0.1, '#28843e');
+  feltGrad.addColorStop(0.35,'#18632c');
+  feltGrad.addColorStop(0.65,'#0e4520');
+  feltGrad.addColorStop(1,   '#051610');
+  ell(cx,cy,482,172);
+  ctx.fillStyle=feltGrad;
+  ctx.fill();
+
+  // Felt cloth weave texture — very subtle cross-hatch
+  ctx.save();
+  ell(cx,cy,482,172);
+  ctx.clip();
+  // Fine diagonal lines (warp)
+  ctx.strokeStyle='rgba(0,0,0,0.07)';
+  ctx.lineWidth=0.7;
+  for(let d=-700;d<700;d+=4){
+    ctx.beginPath();
+    ctx.moveTo(cx-600+d,cy-210);
+    ctx.lineTo(cx+600+d,cy+210);
+    ctx.stroke();
+  }
+  // Fine diagonal lines (weft, opposite direction)
+  ctx.strokeStyle='rgba(255,255,255,0.025)';
+  ctx.lineWidth=0.5;
+  for(let d=-700;d<700;d+=4){
+    ctx.beginPath();
+    ctx.moveTo(cx+600+d,cy-210);
+    ctx.lineTo(cx-600+d,cy+210);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Felt edge vignette — dark edges for depth
+  const vigGrad=ctx.createRadialGradient(cx,cy,50,cx,cy,475);
+  vigGrad.addColorStop(0,   'rgba(0,0,0,0)');
+  vigGrad.addColorStop(0.50,'rgba(0,0,0,0)');
+  vigGrad.addColorStop(1,   'rgba(0,0,0,0.78)');
+  ell(cx,cy,482,172);
+  ctx.fillStyle=vigGrad;
+  ctx.fill();
+
+  // Overhead lamp reflection — soft oval highlight
+  const lampGrad=ctx.createRadialGradient(cx,cy*0.68,0,cx,cy*0.9,310);
+  lampGrad.addColorStop(0,  'rgba(255,255,255,0.072)');
+  lampGrad.addColorStop(0.4,'rgba(255,255,255,0.022)');
+  lampGrad.addColorStop(1,  'rgba(255,255,255,0)');
+  ell(cx,cy,482,172);
+  ctx.fillStyle=lampGrad;
+  ctx.fill();
+
+  // ⑦ Felt decorative trim rings (stitching line, like PS)
+  ell(cx,cy,468,158);
+  ctx.strokeStyle='rgba(255,255,255,0.08)';
+  ctx.lineWidth=2.2;
+  ctx.stroke();
+
+  ell(cx,cy,461,151);
+  ctx.strokeStyle='rgba(0,0,0,0.30)';
+  ctx.lineWidth=1.2;
+  ctx.stroke();
+
+  ell(cx,cy,458,148);
+  ctx.strokeStyle='rgba(255,255,255,0.025)';
+  ctx.lineWidth=0.8;
+  ctx.stroke();
+
+  // ⑧ LEAKLAB watermark
+  ctx.save();
+  ctx.font='800 52px Inter,sans-serif';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,0.016)';
+  ctx.fillText('LEAKLAB',cx,cy);
+  ctx.restore();
+}
+
+drawPokerTable();
 rpLoadReal();
 </script>
 </body>
