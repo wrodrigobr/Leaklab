@@ -4226,6 +4226,28 @@ def get_decision_gto(decision_id):
             top_action = strategy[0]['action']
         spot_hash_out = node.get('spot_hash', '')
 
+    # Preflop override: GTO nodes store aggregate range strategy (e.g. "HJ opens 28%"),
+    # not hand-specific strategy. For KK, the node says "fold 72%" (72% of all HJ hands fold)
+    # which is misleading. Use analyze_preflop for the hand-specific recommendation instead.
+    if street == 'preflop' and hero_hand:
+        try:
+            from leaklab.preflop_gto_ranges import analyze_preflop
+            from leaklab.gto_utils import hand_to_type
+            h_type = hand_to_type(hero_hand)
+            if h_type:
+                pf = analyze_preflop(
+                    position     = position,
+                    hero_hand_type = h_type,
+                    stack_bb     = stack_bb,
+                    action_taken = player_action,
+                    facing_size  = facing_bb,
+                    vs_position  = (dec.get('villain_position') or ''),
+                )
+                if pf.get('available') and pf.get('recommended_actions'):
+                    top_action = pf['recommended_actions'][0]
+        except Exception:
+            pass
+
     # Sanity: jam dominante (>50%) com SPR > 8 e sem aposta = nó incorreto.
     # Overbet de mais de 8x o pote nunca é ação dominante no GTO — descarta nó.
     if strategy and facing_bb == 0:

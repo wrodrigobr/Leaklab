@@ -9,6 +9,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.144.0] — 2026-05-21 — fix(replayer): GTO preflop usa análise hand-specific, não estratégia agregada do range
+
+### Fixed
+- `get_decision_gto` (replayer): para streets preflop, o nó GTO da DB contém estratégia **agregada** do range (ex: "HJ abre 28% → fold 72% de todas as mãos"). O sistema usava erroneamente esse fold 72% como recomendação para KK, marcando KK open como "Desvio Leve" com "Solver → Fold"
+- Adicionado bloco preflop override: após encontrar o nó, chama `analyze_preflop` com a mão específica do herói; se retornar `available=True`, sobrescreve `top_action` com a recomendação hand-specific (ex: KK → raise)
+- O strategy display (fold 72% · raise 28%) é mantido como contexto do range — apenas o `gto_action` (recomendação) é corrigido
+
+---
+
 ## [v0.143.0] — 2026-05-21 — fix(ui): corrige labels do Top Leaks e remove referência IA_CORE
 
 ### Fixed
