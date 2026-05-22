@@ -56,6 +56,7 @@ const SCENARIO_LABEL: Record<string, string> = {
   rfi: 'Raise First In (abertura)',
   vs_rfi: 'vs Open (defender)',
   vs_3bet: 'vs 3-Bet (continuar)',
+  vs_shove_fallback: 'Call vs Shove',
 };
 
 const QUALITY_META: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
@@ -271,6 +272,11 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
                   </span>
                 )}
               </div>
+              {gto.reasoning && (
+                <p className="font-mono text-[9px] text-muted-foreground/70 leading-relaxed">
+                  {gto.reasoning}
+                </p>
+              )}
             </>
           )}
         </div>

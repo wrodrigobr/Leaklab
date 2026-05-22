@@ -258,7 +258,7 @@ export interface ReplayStep {
   // Preflop range analysis (preflop hero actions only)
   preflop_gto?: {
     available: boolean;
-    scenario: "rfi" | "vs_rfi" | "vs_3bet";
+    scenario: "rfi" | "vs_rfi" | "vs_3bet" | "vs_shove_fallback";
     hand_type: string;
     stack_bucket: string;
     stack_bb: number;
@@ -274,6 +274,7 @@ export interface ReplayStep {
     rfi_pct?: number;
     hands_4bet?: string;
     hands_call?: string;
+    reasoning?: string;
   } | null;
   // Score breakdown (all hero actions)
   draw_profile?: string | null;

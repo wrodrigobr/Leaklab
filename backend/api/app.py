@@ -3136,15 +3136,51 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                         h_cards  = di.get('hero_cards', [])
                         h_type   = hand_to_type(h_cards) if h_cards else None
                         if h_type:
-                            all_decisions[key]['preflop_gto'] = analyze_preflop(
-                                position     = spot.get('position', ''),
+                            _pf_facing_chips = float(spot.get('facingSize') or 0)
+                            _pf_level_bb     = float(ctx.get('levelBb') or 0)
+                            # Convert chips to BB; facingSize from parser is in chips
+                            _pf_facing_bb = (round(_pf_facing_chips / _pf_level_bb, 2)
+                                             if _pf_facing_chips > 0 and _pf_level_bb > 0
+                                             else _pf_facing_chips)
+                            _pf_stack_bb     = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)
+                            _pf_pos          = spot.get('position', '')
+                            _pf_result = analyze_preflop(
+                                position       = _pf_pos,
                                 hero_hand_type = h_type,
-                                stack_bb     = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20),
-                                action_taken = di.get('player_action', ''),
-                                facing_size  = float(spot.get('facingSize') or 0),
-                                vs_position  = spot.get('villainPosition', ''),
-                                is_3bet_pot  = bool(spot.get('is3betPot') or di.get('is_3bet', False)),
+                                stack_bb       = _pf_stack_bb,
+                                action_taken   = di.get('player_action', ''),
+                                facing_size    = _pf_facing_bb,
+                                vs_position    = spot.get('villainPosition', ''),
+                                is_3bet_pot    = bool(spot.get('is3betPot') or di.get('is_3bet', False)),
                             )
+                            # Fallback for call-vs-shove (no vs_3bet data yet):
+                            # use RFI range membership as proxy for shove-call quality
+                            if (not _pf_result.get('available')
+                                    and di.get('player_action', '') in ('call', 'allin')
+                                    and _pf_facing_bb >= _pf_stack_bb * 0.40):
+                                _rfi_check = analyze_preflop(
+                                    position=_pf_pos, hero_hand_type=h_type,
+                                    stack_bb=_pf_stack_bb, action_taken='raise',
+                                    facing_size=0.0, vs_position='',
+                                )
+                                if _rfi_check.get('available'):
+                                    _rq = _rfi_check.get('action_quality', 'unknown')
+                                    _q  = 'correct' if _rq == 'correct' else ('acceptable' if _rq == 'acceptable' else 'leak')
+                                    _pf_result = {
+                                        'available': True,
+                                        'recommended_actions': ['call' if _q != 'leak' else 'fold'],
+                                        'action_quality': _q,
+                                        'in_range': _rfi_check.get('in_range', False),
+                                        'scenario': 'vs_shove_fallback',
+                                        'reasoning': (
+                                            'Mão premium em range de abertura — call de shove correto.'
+                                            if _q == 'correct' else
+                                            'Mão no limite do range — call de shove aceitável.'
+                                            if _q == 'acceptable' else
+                                            'Mão fora do range de abertura — fold vs shove recomendado.'
+                                        ),
+                                    }
+                            all_decisions[key]['preflop_gto'] = _pf_result
                     except Exception:
                         pass
     except Exception:
@@ -3450,6 +3486,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             _pos    = _spot.get('position', '') or decision.get('position', '')
             _sb     = float(_spot.get('effectiveStackBb') or decision.get('stack_bb') or 20.0)
             _facing = float(decision.get('facing_bet') or 0.0)
+            if not _facing:
+                # facing_bet not available in live_decision for decisions without gto_label —
+                # try spot.facingSize (in chips) and convert to BB using level_bb
+                _facing_chips = float(_spot.get('facingSize') or 0)
+                _level_bb = float((_di_pf.get('context') or {}).get('levelBb') or 0)
+                if _facing_chips > 0 and _level_bb > 0:
+                    _facing = round(_facing_chips / _level_bb, 2)
             if not _hc and isinstance(decision.get('hero_cards'), str):
                 _raw_hc = decision['hero_cards'].strip()
                 _hc = _raw_hc.split() if ' ' in _raw_hc else [_raw_hc[i:i+2] for i in range(0, len(_raw_hc), 2)]
@@ -3467,6 +3510,28 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             facing_size    = _facing,
                             vs_position    = (_spot.get('villainPosition') or _spot.get('vsPosition', '')),
                         )
+                        # Fallback for call-vs-shove: no specific vs_3bet data in ranges yet.
+                        # When facing >= 40% of stack with call, use RFI range membership
+                        # as proxy: in-range hand calling a shove = correct (KK, AA, AKs, QQ+).
+                        # Out-of-range hand calling = leak. Pending: add vs_3bet range data.
+                        if not _pf.get('available') and _norm(action.action) == 'call' and _facing >= _sb * 0.40:
+                            _pf_rfi = _apf(position=_pos, hero_hand_type=_ht, stack_bb=_sb,
+                                           action_taken='raise', facing_size=0.0, vs_position='')
+                            if _pf_rfi.get('available'):
+                                _rfi_quality = _pf_rfi.get('action_quality', 'unknown')
+                                if _rfi_quality == 'correct':
+                                    _pf = {'available': True, 'recommended_actions': ['call'],
+                                           'action_quality': 'correct', 'in_range': True,
+                                           'scenario': 'vs_shove_fallback'}
+                                elif _rfi_quality == 'acceptable':
+                                    _pf = {'available': True, 'recommended_actions': ['call'],
+                                           'action_quality': 'acceptable', 'in_range': True,
+                                           'scenario': 'vs_shove_fallback'}
+                                else:
+                                    _pf = {'available': True, 'recommended_actions': ['fold'],
+                                           'action_quality': 'leak', 'in_range': False,
+                                           'scenario': 'vs_shove_fallback'}
+
                         if _pf.get('available') and _pf.get('recommended_actions'):
                             preflop_override_action = _pf['recommended_actions'][0]
                             _pf_quality = _pf.get('action_quality', 'unknown')

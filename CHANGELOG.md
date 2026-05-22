@@ -9,6 +9,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.148.0] — 2026-05-22 — fix(replayer): call vs shove com mao premium classifica como Correto
+
+### Fixed
+- `_build_replay_data` (app.py): `_facing` era 0.0 para decisões sem `gto_label` no banco (live_decisions não carregava `facing_bet` de `gto_data` quando gto_label=None). Com facing=0.0, `analyze_preflop` entendia como spot RFI e retornava `quality='acceptable'` para KK call vs shove → exibia "Misto" sem contexto
+- Correção: `_facing` agora também tenta `spot.facingSize / level_bb` quando `decision.facing_bet` não está disponível (conversão chips→BB)
+- Adicionado fallback "call vs shove": quando `analyze_preflop` retorna `available=False` para um CALL com `facing >= 40% do stack`, o sistema verifica o range de abertura da mão. Se premium (RFI quality='correct') → `quality='correct'`; se borderline → `quality='acceptable'`; se fora do range → `leak`. Evita análise incorreta de spots sem dados específicos de vs_3bet
+- Mesmo fallback aplicado no enriquecimento de `preflop_gto` em `all_decisions` (linha 3139)
+- Campo `reasoning` adicionado ao resultado do fallback: "Mão premium em range de abertura — call de shove correto."
+- Novo label de cenário no frontend: `vs_shove_fallback` → "Call vs Shove" em `RangePanel.tsx`
+- `reasoning` exibido no banner de contexto GTO do RangePanel quando presente
+- KK HJ 27.4bb call vs shove 17.7bb: agora classificado como "✓ Correto (GTO)" com nota de raciocínio
+
+### Technical
+- `api.ts`: tipo de `scenario` ampliado para incluir `vs_shove_fallback`; campo `reasoning?: string` adicionado ao tipo `preflop_gto`
+
+---
+
 ## [v0.147.0] — 2026-05-22 — fix(replayer): bloqueia escrita de dados preflop agregados no banco
 
 ### Fixed
