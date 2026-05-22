@@ -48,10 +48,50 @@ def quality_to_label(quality: str) -> str:
     return "gto_critical"
 
 
+def _build_vs3bet_context(rows: list[dict], conn) -> set[int]:
+    """Identifica decisions que sao vs_3bet por contexto: hero ja deu raise
+    antes na mesma hand_id, mesma street=preflop, e agora enfrenta facing_bet>0.
+
+    O campo decisions.is_3bet vindo do pipeline so e True quando hero da 3-bet
+    (action=raise), nao quando hero FOLDA/CALLA ao 3-bet. Por isso recomputamos.
+
+    Retorna o set de decision ids que devem ser tratados como is_3bet_pot=True.
+    """
+    hand_ids = {r["hand_id"] for r in rows if r.get("hand_id") and r.get("street") == "preflop"}
+    if not hand_ids:
+        return set()
+    # Para cada hand, busca todas as decisions preflop com seus ids/actions
+    placeholders = ",".join("?" * len(hand_ids))
+    raised_by_hand: dict[str, list[int]] = {}
+    for hid, did, act in conn.execute(
+        f"SELECT hand_id, id, action_taken FROM decisions "
+        f"WHERE hand_id IN ({placeholders}) AND street='preflop' ORDER BY id ASC",
+        list(hand_ids),
+    ).fetchall():
+        if (act or "").lower() in ("raise", "jam", "shove", "allin"):
+            raised_by_hand.setdefault(hid, []).append(did)
+
+    is_vs3bet: set[int] = set()
+    for r in rows:
+        if r.get("street") != "preflop":
+            continue
+        try:
+            facing = float(r.get("facing_bet") or 0)
+        except Exception:
+            facing = 0.0
+        if facing <= 0:
+            continue
+        prior_raises = raised_by_hand.get(r["hand_id"], [])
+        if any(prev_id < r["id"] for prev_id in prior_raises):
+            is_vs3bet.add(r["id"])
+    return is_vs3bet
+
+
 def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = True) -> int:
     """Process a list of decision rows, filling gto_label where missing. Returns count updated."""
     updates: list[tuple] = []
     skipped = 0
+    vs3bet_ids = _build_vs3bet_context(rows, conn)
 
     for r in rows:
         cards = parse_cards(r["hero_cards"])
@@ -69,7 +109,9 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
         facing_bb = float(r["facing_bet"] or 0)
         pos       = r["position"] or ""
         vs_pos    = r["vs_position"] or ""
-        is_3bet   = bool(r["is_3bet"])
+        # is_3bet_pot semantico: hero ja deu raise antes nesta hand
+        # (corrige bug do pipeline que so marca True quando hero da 3-bet)
+        is_3bet   = bool(r["is_3bet"]) or (r["id"] in vs3bet_ids)
         action    = (r["action_taken"] or "").lower()
 
         # BB free play: no facing bet, BB checks — always correct
@@ -130,7 +172,7 @@ def sync_tournament(tournament_id: int) -> int:
     conn = get_conn()
     try:
         rows = conn.execute("""
-            SELECT id, street, position, stack_bb, facing_bet, is_3bet,
+            SELECT id, hand_id, street, position, stack_bb, facing_bet, is_3bet,
                    action_taken, best_action, hero_cards, vs_position
             FROM decisions
             WHERE tournament_id = ?
@@ -168,7 +210,7 @@ def main():
         params.append(args.tid)
 
     rows = conn.execute(
-        f"SELECT id, street, position, stack_bb, facing_bet, is_3bet, "
+        f"SELECT id, hand_id, street, position, stack_bb, facing_bet, is_3bet, "
         f"action_taken, best_action, hero_cards, vs_position FROM decisions {where}",
         params
     ).fetchall()

@@ -9,6 +9,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.151.2] — 2026-05-22 — fix(gto): cobertura vs_3bet — detecta is_3bet_pot por contexto
+
+### Fixed
+- **Bug crítico de cobertura vs_3bet**: `pipeline.py` marcava `is_3bet=True` somente quando o hero **dava** um 3-bet (action='raise' + facing_size>0). Quando o hero **foldava ou callava** ao 3-bet do villain, a flag ficava False — o engine acabava tentando lookup vs_RFI e retornando `available=False`, deixando `gto_label=None`
+- Fix em `scripts/sync_gto_labels_from_ranges.py`: nova função `_build_vs3bet_context()` faz lookup intra-hand — se hero já deu raise antes nessa mesma hand preflop, a decisão seguinte com `facing_bet > 0` é semanticamente vs_3bet, independente da ação tomada
+- Adicionado `hand_id` aos SELECTs do sync (preflop)
+
+### Why
+- Reportado pelo usuário: torneio 4002336128, hand 260886143567, decision id=27336 (fold A8s do HJ vs CO 3-bet) estava com `gto_label=None`. Após o fix, classificada como `gto_correct` — fold A8s vs 3-bet está fora do range de continuação (22%)
+- Ranges vs_3bet **já estão** integrados no `analyze_preflop` (`preflop_gto_ranges.py:303-324`) e no JSON `leaklab_gto_ranges.json` para 30bb/50bb/100bb com fallback para outras posições/stacks. O bug era só na detecção do cenário
+
+### Validated
+- Cobertura GTO global: 96.9% → **98.0%** após sync global
+- 13 decisions ganharam cobertura (4 no torneio 199 + 9 nos demais)
+- Suites: database 36/36, audit phase 1 8/8, reconcile phase 2 5/5
+
+### Backlog
+- Item #13 (Ranges vs_3bet por posição) parcialmente atendido: a infra existe e funciona; falta completar tabela vs_3bet para 10/14/17/20/40/75bb e para posições HJ/CO/LJ/MP/SB nos stacks que já têm dados. Fica como continuidade do item #13
+
+---
+
 ## [v0.151.0] — 2026-05-22 — feat(dashboard): Fase 3 do backlog #2 — transparência GTO no dashboard
 
 ### Backend
