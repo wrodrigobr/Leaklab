@@ -9,6 +9,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.147.0] — 2026-05-22 — fix(replayer): bloqueia escrita de dados preflop agregados no banco
+
+### Fixed
+- `_build_replay_data` (app.py): terceiro vetor do bug KK — o bloco "live strategy" chamava `_upd_gto` para **todas** as streets incluindo preflop. Para KK com nó agregado (fold=72%), isso gravava `gto_action='fold'` e `gto_label='gto_minor_deviation'` no banco, corrompendo futuras consultas ao endpoint `get_decision_gto`
+- Solução: o `_upd_gto` do bloco live-strategy agora é protegido por `if action.street != 'preflop'` — nós agregados nunca mais poluem o DB
+- O bloco `preflop_override_action` agora também persiste os valores corretos (`gto_label`, `preflop_override_action`) no banco via `update_decision_gto`, sobrescrevendo qualquer dado incorreto que já exista
+- Todos os 194 testes da suite GTO passam sem regressão
+
+---
+
 ## [v0.146.0] — 2026-05-22 — fix(replayer): corrige bug KK na timeline de replay (_build_replay_data)
 
 ### Fixed

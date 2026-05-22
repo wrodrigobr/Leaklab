@@ -3415,26 +3415,29 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 else:
                     is_error        = True
                     reconciled_best = live_top_act
-                # Sempre persiste o veredicto do solver — ele tem prioridade sobre RegLife
-                try:
-                    from database.repositories import update_decision_gto as _upd_gto
-                    # Thresholds alinhados com effectiveGtoLabel do frontend
-                    _live_gto_label = (
-                        'gto_correct'         if live_freq >= 0.60 else
-                        'gto_mixed'           if live_freq >= 0.30 else
-                        'gto_minor_deviation' if live_freq >= 0.10 else
-                        'gto_critical'
-                    )
-                    _dec_id = next(
-                        (d.get('id') for d in _db_hand
-                         if _norm(d.get('street','')) == _norm(action.street)
-                         and _norm(d.get('action_taken','')) == acted_norm),
-                        None,
-                    )
-                    if _dec_id:
-                        _upd_gto(_dec_id, _live_gto_label, live_top_act)
-                except Exception:
-                    pass
+                # Persiste o veredicto do solver — ele tem prioridade sobre RegLife.
+                # Preflop usa analyze_preflop (ranges estáticos), nunca gto_nodes agregados.
+                # O bloco preflop_override abaixo persiste os valores corretos para preflop.
+                if action.street != 'preflop':
+                    try:
+                        from database.repositories import update_decision_gto as _upd_gto
+                        # Thresholds alinhados com effectiveGtoLabel do frontend
+                        _live_gto_label = (
+                            'gto_correct'         if live_freq >= 0.60 else
+                            'gto_mixed'           if live_freq >= 0.30 else
+                            'gto_minor_deviation' if live_freq >= 0.10 else
+                            'gto_critical'
+                        )
+                        _dec_id = next(
+                            (d.get('id') for d in _db_hand
+                             if _norm(d.get('street','')) == _norm(action.street)
+                             and _norm(d.get('action_taken','')) == acted_norm),
+                            None,
+                        )
+                        if _dec_id:
+                            _upd_gto(_dec_id, _live_gto_label, live_top_act)
+                    except Exception:
+                        pass
 
         # Preflop override: aggregate nodes give misleading fold recommendation for in-range hands.
         # Use analyze_preflop with the specific hero hand to get the correct recommendation.
@@ -3475,6 +3478,21 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 is_error        = True
                                 reconciled_best = preflop_override_action
                                 gto_label       = 'gto_critical'
+                            # Persiste os valores corretos de preflop no banco.
+                            # Sobrescreve qualquer lixo que gto_nodes agregados possam ter gravado.
+                            try:
+                                from database.repositories import update_decision_gto as _upd_gto_pf
+                                _pf_acted_norm = _norm(action.action)
+                                _pf_dec_id = next(
+                                    (d.get('id') for d in _db_hand
+                                     if _norm(d.get('street', '')) == 'preflop'
+                                     and _norm(d.get('action_taken', '')) == _pf_acted_norm),
+                                    None,
+                                )
+                                if _pf_dec_id:
+                                    _upd_gto_pf(_pf_dec_id, gto_label, preflop_override_action)
+                            except Exception:
+                                pass
                 except Exception:
                     pass
 
