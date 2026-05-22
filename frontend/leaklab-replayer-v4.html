@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LeakLab Replayer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --rp-red:#e52020;--rp-green:#3aaa52;--rp-gold:#c9a840;
+  --rp-muted:#666;--rp-ctrl:#060709;
+}
+html,body{
+  width:100%;height:100%;
+  background:#07090f;
+  color:#f0ede8;font-family:'Inter',sans-serif;overflow:hidden
+}
+.rp-wrap{display:flex;flex-direction:column;height:100vh}
+
+/* ── Header ── */
+.rp-hdr{
+  display:flex;align-items:center;gap:10px;padding:7px 16px;
+  background:rgba(0,0,0,.75);border-bottom:1px solid rgba(255,255,255,.05);
+  flex-shrink:0;z-index:10;height:40px
+}
+.rp-logo{font-size:.72rem;font-weight:800;color:#f0f0f0;letter-spacing:.2em;
+  font-family:'Share Tech Mono',monospace}
+.rp-logo span{color:var(--rp-green)}
+.rp-hand{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--rp-muted)}
+.rp-close{margin-left:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  color:var(--rp-muted);padding:3px 12px;border-radius:4px;cursor:pointer;
+  font-size:.62rem;font-family:'Share Tech Mono',monospace;transition:.15s}
+.rp-close:hover{border-color:#fff;color:#fff}
+
+/* ── Table row (mesa + painel lateral) ── */
+.rp-table{
+  flex:1;min-height:0;display:flex;flex-direction:row;overflow:hidden
+}
+
+/* ── Canvas: mesa de poker ── */
+.rp-canvas{
+  flex:1;min-width:0;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 65%, #0a1a0b 0%, #040906 50%, #020405 100%)
+}
+
+/* Layer 1 — tilted table background */
+.rp-bg-layer{
+  position:absolute;inset:0;
+  perspective:700px;perspective-origin:50% -35%
+}
+.rp-bg-layer>svg{
+  width:100%;height:100%;display:block;
+  transform:rotateX(19deg);
+  transform-origin:50% 60%
+}
+
+/* Layer 2 — flat content SVG */
+#rp-svg{
+  position:absolute;inset:0;
+  width:100%;height:100%;display:block
+}
+
+/* Overlays */
+.rp-badge{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.82);border:1px solid var(--rp-gold);border-radius:20px;
+  padding:3px 18px;font-family:'Share Tech Mono',monospace;font-size:.65rem;
+  color:var(--rp-gold);letter-spacing:.16em;pointer-events:none;
+  opacity:0;transition:.3s;z-index:20
+}
+.rp-badge.show{opacity:1}
+
+/* ── Painel lateral direito ── */
+.rp-side{
+  width:0;flex-shrink:0;overflow:hidden;
+  background:#090d14;border-left:1px solid rgba(255,255,255,.05);
+  transition:width .25s ease;
+  display:flex;flex-direction:column;
+}
+.rp-side.visible{width:268px}
+.rp-side-inner{
+  width:268px;height:100%;overflow-y:auto;overflow-x:hidden;
+  padding:10px 10px 16px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.rp-side-inner::-webkit-scrollbar{width:4px}
+.rp-side-inner::-webkit-scrollbar-track{background:transparent}
+.rp-side-inner::-webkit-scrollbar-thumb{background:#1e2d40;border-radius:2px}
+
+/* ── Card base ── */
+.rp-card{
+  border-radius:8px;border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.03);overflow:hidden
+}
+.rp-card-hdr{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.05);
+}
+.rp-card-hdr-icon{font-size:.7rem;opacity:.5}
+.rp-card-hdr-lbl{
+  font-family:'Share Tech Mono',monospace;font-size:.62rem;
+  text-transform:uppercase;letter-spacing:.15em;color:rgba(255,255,255,.35)
+}
+.rp-card-hdr-sub{
+  margin-left:auto;font-family:'Share Tech Mono',monospace;
+  font-size:.56rem;color:rgba(255,255,255,.2)
+}
+.rp-card-body{padding:8px 10px;display:flex;flex-direction:column;gap:7px}
+
+/* ── Verdict badge ── */
+.rp-verdict{
+  border-radius:6px;border:1px solid;padding:7px 10px;
+  display:flex;flex-direction:column;gap:4px
+}
+.rp-verdict.ok   {background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.28);color:#34d399}
+.rp-verdict.mixed{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.28);color:#fbbf24}
+.rp-verdict.bad  {background:rgba(229,32,32,.08); border-color:rgba(229,32,32,.28); color:#f87171}
+.rp-verdict-label{font-family:'Share Tech Mono',monospace;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.rp-verdict-row{display:flex;align-items:flex-end;justify-content:space-between;gap:6px}
+.rp-verdict-col{}
+.rp-verdict-sub{font-family:'Share Tech Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.3);margin-bottom:2px}
+.rp-verdict-act{font-family:'Share Tech Mono',monospace;font-size:1.1rem;font-weight:700;color:#f0ede8;line-height:1.1}
+.rp-verdict-act.ok   {color:#34d399}
+.rp-verdict-act.mixed{color:#fbbf24}
+.rp-verdict-act.bad  {color:#f87171}
+.rp-verdict-evdiff{font-family:'Share Tech Mono',monospace;font-size:.65rem;margin-top:1px}
+.rp-verdict-evdiff.ok {color:rgba(52,211,153,.7)}
+.rp-verdict-evdiff.bad{color:rgba(248,113,113,.7)}
+
+/* ── Strategy bars ── */
+.rp-strat{display:flex;flex-direction:column;gap:3px}
+.rp-strat-row{display:flex;align-items:center;gap:5px}
+.rp-strat-lbl{
+  font-family:'Share Tech Mono',monospace;font-size:.62rem;
+  width:60px;flex-shrink:0;font-weight:600;color:rgba(255,255,255,.45)
+}
+.rp-strat-lbl.player{color:#f87171}
+.rp-strat-lbl.top   {color:#f0ede8}
+.rp-strat-lbl.both  {color:#34d399}
+.rp-strat-bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.rp-strat-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.rp-strat-fill.c-top   {background:#3b82f6}
+.rp-strat-fill.c-both  {background:#10b981}
+.rp-strat-fill.c-player{background:#e52020}
+.rp-strat-fill.c-fold  {background:#555}
+.rp-strat-fill.c-check {background:#38bdf8}
+.rp-strat-fill.c-call  {background:#0ea5e9}
+.rp-strat-fill.c-jam   {background:#dc2626}
+.rp-strat-fill.c-other {background:#7c3aed}
+.rp-strat-pct{
+  font-family:'Share Tech Mono',monospace;font-size:.62rem;
+  width:24px;text-align:right;flex-shrink:0;color:rgba(255,255,255,.35)
+}
+.rp-strat-pct.player{color:#f87171;font-weight:700}
+.rp-strat-pct.top   {color:#f0ede8;font-weight:700}
+.rp-strat-pct.both  {color:#34d399;font-weight:700}
+.rp-strat-arrow{font-size:.6rem;color:rgba(255,255,255,.2);width:8px;flex-shrink:0}
+
+/* ── Context rows ── */
+.rp-ctx-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+.rp-ctx-row{display:flex;align-items:center;gap:4px}
+.rp-ctx-lbl{font-family:'Share Tech Mono',monospace;font-size:.56rem;text-transform:uppercase;
+  letter-spacing:.08em;color:rgba(255,255,255,.25)}
+.rp-ctx-val{font-family:'Share Tech Mono',monospace;font-size:.62rem;color:rgba(255,255,255,.6)}
+
+/* ── Heuristic rows ── */
+.rp-metric-row{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.rp-metric-lbl{font-family:'Share Tech Mono',monospace;font-size:.6rem;
+  text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.3)}
+.rp-metric-val{font-family:'Share Tech Mono',monospace;font-size:.72rem;font-weight:700;color:#f0ede8}
+.rp-metric-bar{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.08);
+  overflow:hidden;margin:0 6px}
+.rp-metric-fill{height:100%;border-radius:2px}
+
+/* ── Inline badges ── */
+.rp-badge-inline{
+  display:inline-block;padding:2px 7px;border-radius:4px;border:1px solid;
+  font-family:'Share Tech Mono',monospace;font-size:.6rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em
+}
+.rp-badge-inline.green {background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:#34d399}
+.rp-badge-inline.amber {background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);color:#fbbf24}
+.rp-badge-inline.red   {background:rgba(229,32,32,.12); border-color:rgba(229,32,32,.35); color:#f87171}
+.rp-badge-inline.blue  {background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.35);color:#60a5fa}
+.rp-badge-inline.muted {background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.4)}
+.rp-section-lbl{
+  font-family:'Share Tech Mono',monospace;font-size:.56rem;text-transform:uppercase;
+  letter-spacing:.12em;color:rgba(255,255,255,.2);margin-bottom:3px
+}
+.rp-divider{height:1px;background:rgba(255,255,255,.05);margin:2px 0}
+
+/* ── Controls (black bar) ── */
+.rp-ctrl{flex-shrink:0;background:var(--rp-ctrl);border-top:1px solid rgba(255,255,255,.06)}
+.rp-streets{display:flex;border-bottom:1px solid rgba(255,255,255,.06)}
+.rp-street-btn{
+  flex:1;padding:10px 4px;
+  background:transparent;border:none;border-right:1px solid rgba(255,255,255,.06);
+  color:#555;font-family:'Inter',sans-serif;font-weight:600;font-size:.78rem;
+  cursor:pointer;transition:.15s;white-space:nowrap
+}
+.rp-street-btn:last-child{border-right:none}
+.rp-street-btn.rp-st-available{color:#999}
+.rp-street-btn.rp-st-available:hover:not(.rp-st-active){background:#181818;color:#fff}
+.rp-street-btn.rp-st-active{background:var(--rp-red);color:#fff;font-weight:700}
+.rp-street-btn.rp-st-disabled{opacity:.2;cursor:default;pointer-events:none}
+.rp-btns{display:flex;align-items:center;gap:10px;padding:8px 16px}
+.rp-cbtn{
+  width:34px;height:34px;border-radius:50%;
+  background:#1c1c1c;border:1px solid #303030;color:#bbb;font-size:.76rem;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:.15s;flex-shrink:0
+}
+.rp-cbtn:hover{background:#2a2a2a;color:#fff;border-color:#555}
+.rp-cbtn.play{width:40px;height:40px;border-color:#555}
+.rp-cbtn.play:hover{background:#282828;border-color:#fff}
+.rp-speed-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.rp-speed-lbl{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--rp-muted);min-width:26px}
+.rp-speed-range{
+  -webkit-appearance:none;appearance:none;
+  width:80px;height:3px;background:#252525;border-radius:2px;outline:none;cursor:pointer
+}
+.rp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;
+  border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid #111}
+.rp-speed-range::-moz-range-thumb{width:13px;height:13px;border-radius:50%;
+  background:#3b82f6;cursor:pointer;border:2px solid #111}
+.rp-unit-btn{background:#181818;border:1px solid #333;color:var(--rp-muted);
+  padding:4px 10px;border-radius:5px;font-family:'Share Tech Mono',monospace;
+  font-size:.6rem;cursor:pointer;transition:.15s;flex-shrink:0}
+.rp-unit-btn:hover,.rp-unit-btn.active{border-color:var(--rp-gold);color:var(--rp-gold)}
+.rp-log{margin-left:auto;text-align:right;font-family:'Share Tech Mono',monospace;font-size:.6rem}
+.rp-log-street{color:var(--rp-gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.rp-log-action{color:#888}
+.rp-log-action.err{color:var(--rp-red);font-weight:700}
+
+/* ── Loading / Error overlay ── */
+.rp-overlay{
+  position:absolute;inset:0;z-index:50;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(4,8,16,.92);backdrop-filter:blur(4px)
+}
+.rp-overlay-box{
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+  padding:32px 40px;border-radius:12px;
+  background:#090d14;border:1px solid rgba(255,255,255,.1);
+  font-family:'Share Tech Mono',monospace
+}
+.rp-overlay-title{font-size:.78rem;color:#ccc;letter-spacing:.12em;text-transform:uppercase}
+.rp-overlay-sub{font-size:.64rem;color:#555;letter-spacing:.06em;text-align:center;max-width:240px;line-height:1.5}
+.rp-spinner{
+  width:28px;height:28px;border:2.5px solid rgba(255,255,255,.08);
+  border-top-color:#3b82f6;border-radius:50%;
+  animation:rp-spin .7s linear infinite
+}
+@keyframes rp-spin{to{transform:rotate(360deg)}}
+.rp-overlay-btn{
+  margin-top:4px;padding:6px 20px;border-radius:6px;
+  background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.35);
+  color:#60a5fa;font-family:'Share Tech Mono',monospace;font-size:.65rem;
+  cursor:pointer;letter-spacing:.06em;transition:.15s
+}
+.rp-overlay-btn:hover{background:rgba(59,130,246,.22);border-color:#60a5fa}
+</style>
+</head>
+<body>
+<div class="rp-wrap">
+  <div class="rp-hdr">
+    <span class="rp-logo">▷ LEAK<span>LAB</span></span>
+    <span class="rp-hand" id="rp-hand-id">Mão #---</span>
+    <button class="rp-close" onclick="window.close()">✕ Fechar</button>
+  </div>
+
+  <div class="rp-table">
+    <!-- Mesa de poker -->
+    <div class="rp-canvas" id="rp-canvas">
+      <!-- Layer 1: TILTED background -->
+      <div class="rp-bg-layer">
+        <svg id="rp-bg-svg" viewBox="0 0 1120 630"
+             xmlns="http://www.w3.org/2000/svg"
+             preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <!-- Room ambient glow: green light radiating from table -->
+            <radialGradient id="bg-room-glow" cx="50%" cy="52%" r="62%"
+                            gradientUnits="userSpaceOnUse" fx="560" fy="315">
+              <stop offset="0%"   stop-color="#0f3d1a" stop-opacity="0.95"/>
+              <stop offset="40%"  stop-color="#061a0c" stop-opacity="0.55"/>
+              <stop offset="75%"  stop-color="#030a06" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#010302" stop-opacity="0"/>
+            </radialGradient>
+
+            <!-- Felt: PS-style — bright saturated center, dark vignette edges -->
+            <radialGradient id="bg-felt" cx="49%" cy="40%" r="56%">
+              <stop offset="0%"   stop-color="#42a855"/>
+              <stop offset="22%"  stop-color="#338a44"/>
+              <stop offset="55%"  stop-color="#1e6230"/>
+              <stop offset="85%"  stop-color="#0f3d1e"/>
+              <stop offset="100%" stop-color="#071c0e"/>
+            </radialGradient>
+
+            <!-- Rim top surface: dark leather, top-lit (warm) -->
+            <radialGradient id="bg-rim-top" cx="50%" cy="15%" r="72%">
+              <stop offset="0%"   stop-color="#3a2e24"/>
+              <stop offset="35%"  stop-color="#201a14"/>
+              <stop offset="100%" stop-color="#090807"/>
+            </radialGradient>
+
+            <!-- Rim side face (visible depth at top edge): darker -->
+            <linearGradient id="bg-rim-side" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stop-color="#0e0c0a"/>
+              <stop offset="100%" stop-color="#030303"/>
+            </linearGradient>
+
+            <!-- Vignette -->
+            <radialGradient id="bg-vig" cx="50%" cy="50%" r="58%">
+              <stop offset="28%"  stop-color="rgba(0,0,0,0)"/>
+              <stop offset="100%" stop-color="rgba(0,0,0,0.68)"/>
+            </radialGradient>
+
+            <!-- Table massive drop-shadow -->
+            <filter id="bg-shadow" x="-35%" y="-35%" width="170%" height="200%">
+              <feGaussianBlur stdDeviation="55" result="blur"/>
+              <feFlood flood-color="#000" flood-opacity="1" result="col"/>
+              <feComposite in="col" in2="blur" operator="in" result="shad"/>
+              <feMerge><feMergeNode in="shad"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- ① Room ambient glow -->
+          <rect x="0" y="0" width="1120" height="630" fill="url(#bg-room-glow)"/>
+
+          <!-- ② Massive table drop-shadow -->
+          <ellipse cx="562" cy="346" rx="492" ry="232"
+                   fill="rgba(0,0,0,0.97)" filter="url(#bg-shadow)" opacity="0.9"/>
+
+          <!--
+            TABLE CONSTRUCTION — 3 visual layers simulating 3D rim depth:
+            Layer A: "rim bottom face" — darkest, widest, offset down
+            Layer B: "rim side face"  — dark gradient, slightly smaller, less offset
+            Layer C: "rim top face"   — leather texture, main surface at normal position
+          -->
+
+          <!-- ③A Rim bottom face (widest + most offset → visible at top edge as PS) -->
+          <ellipse cx="560" cy="338" rx="490" ry="230" fill="#020202"/>
+          <ellipse cx="560" cy="333" rx="489" ry="228" fill="#060504"/>
+
+          <!-- ③B Rim side face (intermediate — gradient dark→lighter toward top) -->
+          <ellipse cx="560" cy="326" rx="488" ry="226" fill="#0d0b09"/>
+          <ellipse cx="560" cy="321" rx="487" ry="224" fill="#131008"/>
+
+          <!-- ③C Rim top surface (main leather surface, top-lit) -->
+          <ellipse cx="560" cy="314" rx="486" ry="222" fill="url(#bg-rim-top)"/>
+
+          <!-- ④ Rim outer bevel catch-light (thin warm line at very top of rim) -->
+          <ellipse cx="560" cy="314" rx="486" ry="222" fill="none"
+                   stroke="rgba(255,230,170,0.16)" stroke-width="1.8"/>
+          <!-- Rim secondary highlight -->
+          <ellipse cx="560" cy="314" rx="484" ry="220" fill="none"
+                   stroke="rgba(255,255,255,0.04)" stroke-width="0.8"/>
+
+          <!-- ⑤ Deep shadow groove between rim and felt -->
+          <ellipse cx="560" cy="314" rx="466" ry="204" fill="none"
+                   stroke="rgba(0,0,0,0.95)" stroke-width="5"/>
+          <ellipse cx="560" cy="314" rx="462" ry="200" fill="rgba(0,0,0,0.50)"/>
+
+          <!-- ⑥ FELT surface — PS oval ratio ~2.3:1 raw (→2.45:1 apparent after CSS tilt) -->
+          <ellipse cx="560" cy="312" rx="456" ry="196" fill="url(#bg-felt)"/>
+
+          <!-- ⑦ Inner felt decorative trim rings (like PS gold border) -->
+          <ellipse cx="560" cy="312" rx="442" ry="183" fill="none"
+                   stroke="rgba(255,255,255,0.07)" stroke-width="2.2"/>
+          <ellipse cx="560" cy="312" rx="436" ry="177" fill="none"
+                   stroke="rgba(255,255,255,0.030)" stroke-width="1"/>
+
+          <!-- ⑧ Felt vignette overlay (darkens edges) -->
+          <ellipse cx="560" cy="312" rx="456" ry="196" fill="url(#bg-vig)"/>
+
+          <!-- ⑨ Top ambient light reflection on felt surface (simulates overhead lamp) -->
+          <ellipse cx="560" cy="268" rx="165" ry="52" fill="rgba(255,255,255,0.022)"/>
+
+          <!-- ⑩ LEAKLAB watermark on felt -->
+          <text x="560" y="322" text-anchor="middle" fill="rgba(255,255,255,0.020)"
+                font-family="Inter,sans-serif" font-size="52" font-weight="800"
+                letter-spacing="16">LEAKLAB</text>
+        </svg>
+      </div>
+
+      <!-- Layer 2: FLAT content -->
+      <svg id="rp-svg" viewBox="0 0 1120 630"
+           xmlns="http://www.w3.org/2000/svg"
+           preserveAspectRatio="xMidYMid meet"
+           style="overflow:visible">
+        <defs>
+          <filter id="rp-cshadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feDropShadow dx="1" dy="2.5" stdDeviation="3.5" flood-color="#000" flood-opacity=".65"/>
+          </filter>
+          <filter id="rp-chip-shadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity=".7"/>
+          </filter>
+          <filter id="rp-pod-glow" x="-20%" y="-40%" width="140%" height="180%">
+            <feGaussianBlur stdDeviation="6" result="blur"/>
+            <feFlood flood-color="#c9a840" flood-opacity="0.25" result="color"/>
+            <feComposite in="color" in2="blur" operator="in" result="glow"/>
+            <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <g id="rp-board"></g>
+        <g id="rp-pot"></g>
+        <g id="rp-seats"></g>
+        <g id="rp-chips"></g>
+      </svg>
+
+      <!-- Street badge -->
+      <div class="rp-badge" id="rp-badge"></div>
+
+      <!-- Loading overlay -->
+      <div class="rp-overlay" id="rp-loading" style="display:none">
+        <div class="rp-overlay-box">
+          <div class="rp-spinner"></div>
+          <div class="rp-overlay-title">Carregando mão...</div>
+        </div>
+      </div>
+
+      <!-- Error overlay -->
+      <div class="rp-overlay" id="rp-error" style="display:none">
+        <div class="rp-overlay-box">
+          <div class="rp-overlay-title">Erro ao carregar</div>
+          <div class="rp-overlay-sub" id="rp-error-msg">Mão não encontrada.</div>
+          <button class="rp-overlay-btn" onclick="rpLoadDemo()">Carregar demo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Painel lateral: heurística + GTO -->
+    <div class="rp-side" id="rp-side">
+      <div class="rp-side-inner" id="rp-side-inner">
+        <!-- preenchido dinamicamente pelo JS -->
+      </div>
+    </div>
+  </div>
+
+  <div class="rp-ctrl">
+    <div class="rp-streets">
+      <button class="rp-street-btn rp-st-disabled" data-street="preflop"  onclick="rpJumpToStreet('preflop')">Pre-flop</button>
+      <button class="rp-street-btn rp-st-disabled" data-street="flop"     onclick="rpJumpToStreet('flop')">Flop</button>
+      <button class="rp-street-btn rp-st-disabled" data-street="turn"     onclick="rpJumpToStreet('turn')">Turn</button>
+      <button class="rp-street-btn rp-st-disabled" data-street="river"    onclick="rpJumpToStreet('river')">River</button>
+      <button class="rp-street-btn rp-st-disabled" data-street="showdown" onclick="rpJumpToStreet('showdown')">Showdown</button>
+    </div>
+    <div class="rp-btns">
+      <button class="rp-cbtn" onclick="rpBack()">◀</button>
+      <button class="rp-cbtn play" id="rp-play" onclick="rpToggle()">▶</button>
+      <button class="rp-cbtn" onclick="rpFwd()">▶▶</button>
+      <div class="rp-speed-wrap">
+        <input type="range" class="rp-speed-range" id="rp-spd" min="0" max="4" value="2" oninput="rpSetSpeed(+this.value)">
+        <span class="rp-speed-lbl" id="rp-spd-lbl">1×</span>
+      </div>
+      <button class="rp-unit-btn active" id="rp-unit-btn" onclick="rpToggleBB()">BB</button>
+      <div class="rp-log">
+        <div class="rp-log-street" id="rp-log-st">PREFLOP</div>
+        <div class="rp-log-action" id="rp-log-ac">Início da mão</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Table geometry ────────────────────────────────────────────────────────────
+const CX=560, CY=315;
+const RX_SEAT=466, RY_SEAT=228;  // wider oval to match PS proportions
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const SUIT_SYM={s:'♠',h:'♥',d:'♦',c:'♣'};
+const SUIT_COL={s:'#111111',h:'#e50a0a',d:'#e50a0a',c:'#111111'};
+const SPEED_MAP=[2200,1500,1000,550,200];
+const SPEED_LABELS=['0.5×','0.8×','1×','1.5×','3×'];
+const AC_COLORS={folds:'#e52020',calls:'#3aaa52',raises:'#c9a840',bets:'#c9a840',checks:'#5580aa','all-in':'#ff4040'};
+const POS_COLORS={BTN:'#c9a840',BB:'#e52020',SB:'#d47030'};
+
+const DENOM=[
+  {val:1000, top:'#c9a84c', side:'#957a34', text:'#1a0a00'},
+  {val:500,  top:'#9b72c0', side:'#70509a', text:'#fff'},
+  {val:100,  top:'#484848', side:'#2c2c2c', text:'#eee'},
+  {val:25,   top:'#5580c0', side:'#3d60a0', text:'#fff'},
+  {val:5,    top:'#b84040', side:'#8c2a2a', text:'#fff'},
+  {val:1,    top:'#b0a040', side:'#887830', text:'#333'},
+];
+
+function breakChips(amount){
+  amount=Math.round(amount);
+  const chips=[];
+  for(const d of DENOM){
+    const n=Math.floor(amount/d.val);
+    if(n>0){const show=Math.min(n,4);for(let i=0;i<show;i++) chips.push(d);amount-=n*d.val;}
+    if(chips.length>=7) break;
+  }
+  if(chips.length===0) chips.push(DENOM[DENOM.length-1]);
+  return chips.slice(0,7);
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let REPLAY=null,rpStep=0,rpPlaying=false,rpTimer=null,rpSpeed=1000;
+let rpShowBB=true,_rpLayout=null,_rpStreetMap={};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtAmt(v,bb){
+  if(rpShowBB){const x=v/bb;return (x<1?x.toFixed(1):Math.round(x))+'BB';}
+  return v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+'';
+}
+
+// ── GTO helpers ───────────────────────────────────────────────────────────────
+function gtoActionLabel(k){
+  const MAP={
+    check:'CHECK',call:'CALL',fold:'FOLD',allin:'ALL-IN','all-in':'ALL-IN',
+    bet_33pct:'BET 33%',bet_50pct:'BET 50%',bet_66pct:'BET 66%',
+    bet_75pct:'BET 75%',bet_100pct:'BET POT',bet_125pct:'BET 125%',
+    raise_2x:'RAISE 2×',raise_3x:'RAISE 3×',raise_4x:'RAISE 4×',
+    jam:'ALL-IN',bet:'BET',raise:'RAISE'
+  };
+  if(!k) return '';
+  const key=k.toLowerCase().trim();
+  return MAP[key]||(key.replace(/_/g,' ').toUpperCase());
+}
+
+function gtoVerdictClass(label){
+  if(label==='gto_correct') return 'ok';
+  if(label==='gto_mixed'||label==='gto_minor_deviation') return 'mixed';
+  if(label==='gto_critical') return 'bad';
+  return 'mixed';
+}
+
+function gtoVerdictText(label){
+  if(label==='gto_correct')         return '✓ Dentro da estratégia GTO';
+  if(label==='gto_mixed')            return '~ Ação marginal';
+  if(label==='gto_minor_deviation')  return '~ Desvio menor';
+  if(label==='gto_critical')         return '✗ Desvio crítico do GTO';
+  return '';
+}
+
+// Verifica se uma action_key bate com o que o hero jogou
+function isPlayerAct(actionKey, playerAction){
+  if(!playerAction) return false;
+  const a=actionKey.toLowerCase();
+  const p=playerAction.toLowerCase().replace(/s$/,''); // normaliza 'calls'→'call'
+  if(a===p) return true;
+  if(['bet','raise','jam'].includes(p) &&
+     (a.includes('bet')||a.includes('raise')||a.includes('allin')||a.includes('jam'))) return true;
+  return false;
+}
+
+// Cor da barra de estratégia
+function stratFillClass(actionKey, playerAction, topAction){
+  const a=actionKey.toLowerCase();
+  const isPlayer=isPlayerAct(actionKey,playerAction);
+  const isTop=a===topAction.toLowerCase();
+  if(isPlayer&&isTop)  return 'c-both';
+  if(isTop)            return 'c-top';
+  if(isPlayer)         return 'c-player';
+  if(a.includes('fold')) return 'c-fold';
+  if(a.includes('check')) return 'c-check';
+  if(a==='call')          return 'c-call';
+  if(a.includes('allin')||a==='jam') return 'c-jam';
+  return 'c-other';
+}
+
+// Classe do texto label da barra
+function stratLblClass(actionKey, playerAction, topAction){
+  const a=actionKey.toLowerCase();
+  const isPlayer=isPlayerAct(actionKey,playerAction);
+  const isTop=a===topAction.toLowerCase();
+  if(isPlayer&&isTop) return 'both';
+  if(isTop)           return 'top';
+  if(isPlayer)        return 'player';
+  return '';
+}
+
+// ── Painel lateral: card GTO ──────────────────────────────────────────────────
+function rpRenderGtoCard(ev){
+  const label=ev.gto_label;
+  if(!label) return '';
+  const vc=gtoVerdictClass(label);
+  const vt=gtoVerdictText(label);
+  const gtoAct=ev.gto_action||'';
+  const playerAct=(ev.action||'').toLowerCase().replace(/s$/,'');
+  const strat=ev.gto_strategy||[];
+  const topAction=strat.length>0?strat[0].action:gtoAct;
+  const exploit=strat.length>0&&strat[0].exploitability_pct!=null?strat[0].exploitability_pct:null;
+
+  // ev_diff: diferença de EV entre top action e jogada do hero
+  let evDiff=null;
+  if(strat.length>0){
+    const topEv=strat[0].ev_bb;
+    if(topEv!=null){
+      const playerItem=strat.find(s=>isPlayerAct(s.action,playerAct));
+      const playerEv=playerItem&&playerItem.ev_bb!=null?playerItem.ev_bb:null;
+      if(playerEv!=null) evDiff=topEv-playerEv;
+    }
+  }
+
+  const gtoActLbl=gtoActionLabel(topAction)||gtoActionLabel(gtoAct)||'—';
+  const playerActLbl=gtoActionLabel(playerAct)||playerAct.toUpperCase()||'—';
+
+  let h=`<div class="rp-card">`;
+  h+=`<div class="rp-card-hdr">
+    <span class="rp-card-hdr-icon">⚖</span>
+    <span class="rp-card-hdr-lbl">GTO</span>`;
+  if(exploit!=null){
+    h+=`<span class="rp-card-hdr-sub">exploit ${exploit.toFixed(1)}%</span>`;
+  }
+  h+=`</div><div class="rp-card-body">`;
+
+  // Veredito
+  h+=`<div class="rp-verdict ${vc}">
+    <span class="rp-verdict-label">${vt}</span>
+    <div class="rp-verdict-row">
+      <div class="rp-verdict-col">
+        <div class="rp-verdict-sub">GTO recomenda</div>
+        <div class="rp-verdict-act">${gtoActLbl}</div>
+      </div>
+      <div class="rp-verdict-col" style="text-align:right">
+        <div class="rp-verdict-sub">você jogou</div>
+        <div class="rp-verdict-act ${vc}">${playerActLbl}</div>
+      </div>
+    </div>`;
+  if(evDiff!=null&&Math.abs(evDiff)>=0.05){
+    const sign=evDiff>0?'+':'';
+    const cls=evDiff<=0?'ok':'bad';
+    h+=`<div class="rp-verdict-evdiff ${cls}">${sign}${evDiff.toFixed(2)} bb vs. GTO</div>`;
+  }
+  h+=`</div>`;
+
+  // Barras de estratégia (apenas quando há >= 2 ações)
+  if(strat.length>=2){
+    h+=`<div class="rp-section-lbl">estratégia completa</div>
+        <div class="rp-strat">`;
+    for(const s of strat){
+      const pct=Math.round(s.frequency*100);
+      const fillCls=stratFillClass(s.action,playerAct,topAction);
+      const lblCls=stratLblClass(s.action,playerAct,topAction);
+      const isPlayer=isPlayerAct(s.action,playerAct);
+      h+=`<div class="rp-strat-row">
+        <span class="rp-strat-lbl ${lblCls}">${gtoActionLabel(s.action)||s.action}</span>
+        <div class="rp-strat-bar"><div class="rp-strat-fill ${fillCls}" style="width:${pct}%"></div></div>
+        <span class="rp-strat-pct ${lblCls}">${pct}%</span>
+        <span class="rp-strat-arrow">${isPlayer?'←':''}</span>
+      </div>`;
+    }
+    h+=`</div>`;
+  }
+
+  h+=`</div></div>`;
+  return h;
+}
+
+// ── Painel lateral: card heurística ──────────────────────────────────────────
+function rpRenderHeuristicCard(ev){
+  const pg=ev.preflop_gto;
+  const equity=ev.hand_equity;
+  const potOdds=ev.pot_odds_equity;
+  const draw=ev.draw_profile;
+  const mRatio=ev.m_ratio;
+  const icm=ev.icm_pressure;
+  const hasPreflop=pg&&pg.available;
+  const hasPostflop=equity!=null||potOdds!=null||draw||mRatio!=null;
+  if(!hasPreflop&&!hasPostflop) return '';
+
+  let h=`<div class="rp-card">
+    <div class="rp-card-hdr">
+      <span class="rp-card-hdr-icon">◎</span>
+      <span class="rp-card-hdr-lbl">Heurística</span>
+    </div>
+    <div class="rp-card-body">`;
+
+  if(hasPreflop){
+    // Cenário
+    const scenMap={rfi:'RFI',vs_rfi:'vs Open',vs_3bet:'vs 3-Bet'};
+    const scen=scenMap[pg.scenario]||pg.scenario||'';
+    // Quality badge
+    const qMap={correct:'green',acceptable:'amber',leak:'red',major_leak:'red',unknown:'muted'};
+    const qLblMap={correct:'Correto',acceptable:'Aceitável',leak:'Leak',major_leak:'Leak Grave',unknown:'—'};
+    const qCls=qMap[pg.action_quality]||'muted';
+    const qLbl=qLblMap[pg.action_quality]||pg.action_quality||'—';
+    // In-range badge
+    const inRangeLbl=pg.in_range?'In Range':'Fora do Range';
+    const inRangeCls=pg.in_range?'green':'amber';
+
+    h+=`<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+      <span class="rp-badge-inline blue">${scen}</span>
+      <span class="rp-badge-inline ${inRangeCls}">${inRangeLbl}</span>
+      <span class="rp-badge-inline ${qCls}">${qLbl}</span>
+    </div>`;
+
+    if(pg.hand_type){
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Mão</span>
+        <span class="rp-metric-val">${pg.hand_type}</span>
+      </div>`;
+    }
+    if(pg.range_pct>0){
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Range</span>
+        <div class="rp-metric-bar"><div class="rp-metric-fill" style="width:${Math.min(pg.range_pct,100)}%;background:#3b82f6"></div></div>
+        <span class="rp-metric-val">${pg.range_pct.toFixed(0)}%</span>
+      </div>`;
+    }
+    if(pg.recommended_actions&&pg.recommended_actions.length>0){
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Rec.</span>
+        <span class="rp-metric-val" style="font-size:.65rem">${pg.recommended_actions.join(' / ').toUpperCase()}</span>
+      </div>`;
+    }
+  }
+
+  if(hasPreflop&&hasPostflop){
+    h+=`<div class="rp-divider"></div>`;
+  }
+
+  if(hasPostflop){
+    if(equity!=null){
+      const eqPct=Math.round(equity*100);
+      const eqColor=eqPct>=50?'#10b981':eqPct>=33?'#f59e0b':'#e52020';
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Equity</span>
+        <div class="rp-metric-bar"><div class="rp-metric-fill" style="width:${eqPct}%;background:${eqColor}"></div></div>
+        <span class="rp-metric-val">${eqPct}%</span>
+      </div>`;
+    }
+    if(potOdds!=null&&potOdds>0){
+      const poPct=Math.round(potOdds*100);
+      const needEq=poPct;
+      const haveEq=equity!=null?Math.round(equity*100):null;
+      const profitable=haveEq!=null&&haveEq>=needEq;
+      const podColor=profitable?'#10b981':'#e52020';
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Pot odds</span>
+        <span class="rp-metric-val" style="color:${podColor}">${poPct}%</span>
+      </div>`;
+    }
+    if(draw&&draw!=='none'&&draw!=='made_hand'){
+      const drawMap={flush_draw:'Flush Draw',straight_draw:'Straight Draw',
+                     combo_draw:'Combo Draw',gutshot:'Gutshot'};
+      const drawLbl=drawMap[draw]||draw.replace(/_/g,' ');
+      h+=`<div class="rp-metric-row">
+        <span class="rp-metric-lbl">Draw</span>
+        <span class="rp-badge-inline blue" style="font-size:.58rem">${drawLbl}</span>
+      </div>`;
+    }
+
+    if(mRatio!=null||icm!=null){
+      h+=`<div class="rp-ctx-grid" style="margin-top:2px">`;
+      if(mRatio!=null){
+        const mCol=mRatio<=5?'#e52020':mRatio<=10?'#f59e0b':'rgba(255,255,255,.6)';
+        h+=`<div class="rp-ctx-row">
+          <span class="rp-ctx-lbl">M-Ratio</span>
+          <span class="rp-ctx-val" style="color:${mCol}">${mRatio.toFixed(1)}</span>
+        </div>`;
+      }
+      if(icm!=null){
+        const icmPct=Math.round(icm*100);
+        const icmLbl=icmPct>=60?'Crítico':icmPct>=35?'Alto':icmPct>=15?'Médio':'Baixo';
+        const icmCol=icmPct>=60?'#e52020':icmPct>=35?'#f59e0b':icmPct>=15?'#60a5fa':'rgba(255,255,255,.45)';
+        h+=`<div class="rp-ctx-row">
+          <span class="rp-ctx-lbl">ICM</span>
+          <span class="rp-ctx-val" style="color:${icmCol}">${icmLbl}</span>
+        </div>`;
+      }
+      h+=`</div>`;
+    }
+  }
+
+  h+=`</div></div>`;
+  return h;
+}
+
+// ── Render painel lateral ─────────────────────────────────────────────────────
+function rpRenderSidePanel(ev){
+  const side=document.getElementById('rp-side');
+  const inner=document.getElementById('rp-side-inner');
+
+  if(!ev||!ev.is_hero||(ev.type!=='action')){
+    side.classList.remove('visible');
+    return;
+  }
+
+  const heuristicHtml=rpRenderHeuristicCard(ev);
+  const gtoHtml=rpRenderGtoCard(ev);
+
+  if(!heuristicHtml&&!gtoHtml){
+    side.classList.remove('visible');
+    return;
+  }
+
+  inner.innerHTML=heuristicHtml+gtoHtml;
+  side.classList.add('visible');
+}
+
+// ── Chip stack (v4: taller chips, drop shadow, premium look) ─────────────────
+function chipStackSVG(cx, bottomY, amount){
+  const RX=14, RY=8, CH=5;  // CH=5 instead of 4 — taller chips
+  const N=4;
+  const chips=breakChips(amount);
+  if(!chips.length) return '';
+  let h=`<g filter="url(#rp-chip-shadow)">`;
+  for(let i=0;i<chips.length;i++){
+    const {top:topCol,side:sideCol}=chips[i];
+    const ty  =bottomY-(i+1)*CH;
+    const by2 =bottomY-i*CH;
+    // Side face (cylinder body)
+    h+=`<rect x="${cx-RX}" y="${ty}" width="${RX*2}" height="${CH}" fill="${sideCol}"/>`;
+    // Bottom ellipse (edge between chips)
+    h+=`<ellipse cx="${cx}" cy="${by2}" rx="${RX}" ry="${RY}" fill="${sideCol}"/>`;
+    // Top ellipse face
+    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${RX}" ry="${RY}" fill="${topCol}"/>`;
+    // Edge dots
+    for(let s=0;s<N;s++){
+      const a=(s/N)*Math.PI*2;
+      const ex=(cx+Math.cos(a)*(RX-3.5)).toFixed(1);
+      const ey=(ty+Math.sin(a)*(RY-2.8)).toFixed(1);
+      const rot=((a*180/Math.PI)+90).toFixed(1);
+      h+=`<ellipse cx="${ex}" cy="${ey}" rx="2.0" ry="1.0"
+                   fill="rgba(255,255,255,0.82)"
+                   transform="rotate(${rot},${ex},${ey})"/>`;
+    }
+    // Inner ring decoration
+    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${(RX*0.62).toFixed(1)}" ry="${(RY*0.62).toFixed(1)}"
+                 fill="none" stroke="rgba(255,255,255,0.38)" stroke-width=".9"/>`;
+    // Center highlight
+    h+=`<ellipse cx="${cx}" cy="${ty}" rx="${(RX*0.58).toFixed(1)}" ry="${(RY*0.58).toFixed(1)}"
+                 fill="rgba(255,255,255,0.92)"/>`;
+  }
+  h+=`</g>`;
+  const top=chips[chips.length-1];
+  const label=top.val>=1000?(top.val/1000)+'K':top.val+'';
+  const topY=bottomY-chips.length*CH;
+  h+=`<text x="${cx}" y="${topY}" text-anchor="middle" dominant-baseline="middle"
+            fill="#111" font-family="Inter,sans-serif" font-size="6.5" font-weight="900"
+            letter-spacing=".15">${label}</text>`;
+  return h;
+}
+
+// ── Card SVG (v4: premium face-down with diamond pattern + shield logo) ───────
+const SUIT_FILE={s:'S',h:'H',d:'D',c:'C'};
+const RANK_FILE={T:'10'};
+const CARDS_BASE=location.protocol==='file:'?'./public/cards/':'/cards/';
+
+function cardSVG(code,x,y,w,h,faceDown){
+  w=w||58; h=h||84;
+  const rx=Math.round(w*0.09);
+  if(!code||faceDown){
+    // v4: cleaner diamond/cross-hatch pattern on deep blue, with shield logo mark
+    const p=5;
+    const innerW=w-p*2, innerH=h-p*2;
+    const ds=Math.round(w*0.22);  // diamond grid spacing
+    let diamonds='';
+    for(let ty=y+p-ds;ty<y+h+ds;ty+=ds){
+      for(let tx=x+p-ds;tx<x+w+ds;tx+=ds){
+        // Small rotated square (diamond)
+        const hd=ds*0.36;
+        diamonds+=`<polygon
+          points="${(tx+hd).toFixed(1)},${ty.toFixed(1)} ${(tx+ds).toFixed(1)},${(ty+hd).toFixed(1)} ${(tx+hd).toFixed(1)},${(ty+ds*0.72).toFixed(1)} ${tx.toFixed(1)},${(ty+hd).toFixed(1)}"
+          fill="rgba(60,100,180,0.13)" stroke="rgba(100,145,220,0.16)" stroke-width=".5"/>`;
+      }
+    }
+    // Cross-hatch lines
+    let hatch='';
+    for(let tx=x+p;tx<x+w-p;tx+=ds){
+      hatch+=`<line x1="${tx.toFixed(1)}" y1="${(y+p).toFixed(1)}" x2="${tx.toFixed(1)}" y2="${(y+h-p).toFixed(1)}" stroke="rgba(80,120,200,0.09)" stroke-width=".6"/>`;
+    }
+    for(let ty=y+p;ty<y+h-p;ty+=ds){
+      hatch+=`<line x1="${(x+p).toFixed(1)}" y1="${ty.toFixed(1)}" x2="${(x+w-p).toFixed(1)}" y2="${ty.toFixed(1)}" stroke="rgba(80,120,200,0.09)" stroke-width=".6"/>`;
+    }
+    // Shield / logo mark (simplified LeakLab shield)
+    const shX=x+w/2, shY=y+h*0.44;
+    const shW=w*0.32, shH=h*0.28;
+    const shield=`M${shX},${(shY-shH*0.5).toFixed(1)} L${(shX+shW*0.5).toFixed(1)},${(shY-shH*0.28).toFixed(1)} L${(shX+shW*0.5).toFixed(1)},${(shY+shH*0.18).toFixed(1)} Q${(shX+shW*0.5).toFixed(1)},${(shY+shH*0.5).toFixed(1)} ${shX.toFixed(1)},${(shY+shH*0.5).toFixed(1)} Q${(shX-shW*0.5).toFixed(1)},${(shY+shH*0.5).toFixed(1)} ${(shX-shW*0.5).toFixed(1)},${(shY+shH*0.18).toFixed(1)} L${(shX-shW*0.5).toFixed(1)},${(shY-shH*0.28).toFixed(1)} Z`;
+    // L monogram inside shield
+    const lSize=shW*0.42;
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#091830" stroke="#132848" stroke-width="1" filter="url(#rp-cshadow)"/>
+    <rect x="${x+p}" y="${y+p}" width="${innerW}" height="${innerH}" rx="${rx-2}" fill="none" stroke="rgba(80,130,220,0.28)" stroke-width="1"/>
+    <rect x="${x+p+2}" y="${y+p+2}" width="${innerW-4}" height="${innerH-4}" rx="${rx-3}" fill="none" stroke="rgba(60,100,180,0.12)" stroke-width=".6"/>
+    <clipPath id="cd-clip-${x.toFixed(0)}-${y.toFixed(0)}">
+      <rect x="${x+p}" y="${y+p}" width="${innerW}" height="${innerH}" rx="${rx-2}"/>
+    </clipPath>
+    <g clip-path="url(#cd-clip-${x.toFixed(0)}-${y.toFixed(0)})">${diamonds}${hatch}</g>
+    <path d="${shield}" fill="rgba(30,70,150,0.22)" stroke="rgba(90,140,230,0.35)" stroke-width=".9"/>
+    <text x="${shX.toFixed(1)}" y="${(shY+lSize*0.12).toFixed(1)}" text-anchor="middle" dominant-baseline="middle"
+          fill="rgba(100,160,255,0.38)" font-family="Inter,sans-serif" font-size="${(lSize*1.1).toFixed(1)}" font-weight="900">L</text>`;
+  }
+  const r=code.slice(0,-1).toUpperCase();
+  const suit=code.slice(-1).toLowerCase();
+  const rank=RANK_FILE[r]||r;
+  const file=`${CARDS_BASE}${rank}${SUIT_FILE[suit]||suit.toUpperCase()}.svg`;
+  return `<image href="${file}" x="${x}" y="${y}" width="${w}" height="${h}" filter="url(#rp-cshadow)" preserveAspectRatio="xMidYMid meet"/>`;
+}
+
+// ── Seat layout ───────────────────────────────────────────────────────────────
+function rpBuildLayout(seatNums,heroSeat){
+  if(_rpLayout) return _rpLayout;
+  const n=seatNums.length;
+  const heroIdx=heroSeat!==undefined?seatNums.indexOf(heroSeat):n-1;
+  const rotOffset=heroIdx>=0?(180-(360/n)*heroIdx):0;
+  _rpLayout={};
+  seatNums.forEach((s,i)=>{
+    const baseAng=-90+(360/n)*i+rotOffset;
+    const ang=baseAng*Math.PI/180;
+    const x=Math.round(CX+RX_SEAT*Math.cos(ang));
+    const y=Math.round(CY+RY_SEAT*Math.sin(ang));
+    const dir=y<CY?'top':'bottom';
+    _rpLayout[s]={x,y,dir};
+  });
+  return _rpLayout;
+}
+
+// ── Board ─────────────────────────────────────────────────────────────────────
+function rpRenderBoard(cards){
+  const g=document.getElementById('rp-board');
+  g.innerHTML='';
+  const W=58,H=100,GAP=8;
+  const totalW=5*W+4*GAP;
+  const sx=CX-totalW/2;
+  const y=CY-H/2-6;
+  for(let i=0;i<5;i++){
+    const x=sx+i*(W+GAP);
+    if(i<cards.length){
+      g.innerHTML+=cardSVG(cards[i],x,y,W,H);
+    } else {
+      g.innerHTML+=`<rect x="${x}" y="${y}" width="${W}" height="${H}" rx="4"
+        fill="rgba(0,0,0,0.18)" stroke="rgba(255,255,255,0.07)" stroke-width="1" stroke-dasharray="5 4"/>`;
+    }
+  }
+}
+
+// ── Pot ───────────────────────────────────────────────────────────────────────
+function rpRenderPot(pot,bb){
+  const g=document.getElementById('rp-pot');
+  g.innerHTML='';
+  if(pot<=0) return;
+  const cardH=68, cardY=CY-cardH/2-6;
+  const cardBottom=cardY+cardH;
+  const potStr=fmtAmt(pot,bb);
+  // Pot label with subtle pill background
+  g.innerHTML+=`<rect x="${CX-46}" y="${cardY-26}" width="92" height="18" rx="9"
+    fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.10)" stroke-width=".8"/>`;
+  g.innerHTML+=`<text x="${CX}" y="${cardY-13}" text-anchor="middle" dominant-baseline="middle"
+    fill="rgba(255,255,255,0.88)" font-family="Inter,sans-serif" font-size="11.5" font-weight="700"
+    letter-spacing=".04">Pot: ${potStr}</text>`;
+  const chipBottomY=cardBottom+58;
+  g.innerHTML+=chipStackSVG(CX,chipBottomY,pot);
+  g.innerHTML+=`<text x="${CX}" y="${chipBottomY+17}" text-anchor="middle"
+    fill="rgba(255,255,255,0.92)" font-family="Share Tech Mono,monospace" font-size="13" font-weight="700">${potStr}</text>`;
+  g.innerHTML+=`<text x="${CX}" y="${chipBottomY+33}" text-anchor="middle"
+    fill="rgba(255,255,255,0.18)" font-family="Inter,sans-serif" font-size="11">NL Hold'em</text>`;
+}
+
+// ── Seats (v4: PS-style pods with avatar circles) ─────────────────────────────
+function rpRenderSeats(ev,bb){
+  const seatsG=document.getElementById('rp-seats');
+  const chipsG=document.getElementById('rp-chips');
+  seatsG.innerHTML=''; chipsG.innerHTML='';
+
+  const seatNums=Object.keys(ev.seats).map(Number).sort((a,b)=>a-b);
+  const heroSeat=seatNums.find(sn=>ev.seats[sn].player===ev.hero);
+  const layout=rpBuildLayout(seatNums,heroSeat);
+
+  // PS-style pod dimensions
+  const bw=152, bh=50, brad=24;
+  // Avatar circle radius and offset
+  const AR=21;  // avatar radius — larger, more PS-like
+  const avatarOffX=AR+7;  // avatar center x offset from pod left edge
+
+  seatNums.forEach(sn=>{
+    const d=ev.seats[sn];
+    const pos=layout[sn];
+    if(!pos) return;
+
+    const isHero  =d.player===ev.hero;
+    const isBtn   =sn===ev.button;
+    const isFolded=(ev.folded||[]).includes(d.player);
+    const isActive=ev.type==='action'&&ev.seat===sn;
+    const isError =ev.is_error&&ev.is_hero&&isActive;
+    const bx=pos.x-bw/2, by=pos.y-bh/2;
+    const dir=pos.dir;
+    const opacity=isFolded?0.28:1;
+
+    // Avatar center (left side of pod)
+    const avCX=bx+avatarOffX;
+    const avCY=by+bh/2;
+
+    // Pod stroke and fill based on state
+    let podFill='rgba(8,11,20,0.88)';
+    let podStroke='rgba(50,60,80,0.65)';
+    let podStrokeW=1.2;
+    let avatarStroke='rgba(70,90,120,0.9)';
+    let avatarStrokeW=2;
+
+    if(isError){
+      podFill='rgba(30,5,5,0.92)';
+      podStroke='#e52020';
+      podStrokeW=2;
+      avatarStroke='#e52020';
+      avatarStrokeW=2;
+    } else if(isActive){
+      podFill='rgba(12,14,22,0.92)';
+      podStroke='#c9a840';
+      podStrokeW=2;
+      avatarStroke='#c9a840';
+      avatarStrokeW=2;
+    } else if(isHero){
+      podStroke='rgba(80,130,220,0.55)';
+      podStrokeW=1.5;
+      avatarStroke='rgba(100,160,255,0.6)';
+      avatarStrokeW=1.8;
+    }
+
+    // Unique clipPath id for avatar silhouette
+    const clipId=`av-clip-${sn}`;
+
+    let html=`<g opacity="${opacity}">`;
+
+    // Cards — always ABOVE the spot (smaller Y = higher on screen), regardless of dir
+    {
+      const cw=52, ch=88, cg=5;
+      if(isHero&&ev.hero_cards&&ev.hero_cards.length===2){
+        const cardY=by-ch-4;
+        html+=cardSVG(ev.hero_cards[0],pos.x-cw-cg/2,cardY,cw,ch);
+        html+=cardSVG(ev.hero_cards[1],pos.x+cg/2,   cardY,cw,ch);
+      } else if(!isHero&&!isFolded){
+        const vw=32, vh=52;
+        const vcY=by-vh-4;
+        html+=cardSVG(null,pos.x-vw-2,vcY,vw,vh,true);
+        html+=cardSVG(null,pos.x+2,   vcY,vw,vh,true);
+      }
+    }
+
+    // Seat ambient shadow (anchors pod visually to table edge)
+    html+=`<ellipse cx="${pos.x}" cy="${pos.y}" rx="${bw*0.55}" ry="${bh*0.60}"
+                   fill="rgba(0,0,0,0.55)" filter="url(#rp-chip-shadow)"/>`;
+
+    // Hero outer ring (wide glow ring around pod)
+    if(isHero){
+      html+=`<rect x="${bx-8}" y="${by-8}" width="${bw+16}" height="${bh+16}" rx="${brad+8}"
+                   fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2.5"/>`;
+    }
+
+    // Pod active glow filter
+    if(isActive&&!isError){
+      html+=`<rect x="${bx-4}" y="${by-4}" width="${bw+8}" height="${bh+8}" rx="${brad+4}"
+                   fill="none" stroke="rgba(201,168,64,0.18)" stroke-width="6" filter="url(#rp-pod-glow)"/>`;
+    }
+
+    // Pod body
+    html+=`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${brad}"
+                 fill="${podFill}" stroke="${podStroke}" stroke-width="${podStrokeW}"/>`;
+
+    // Active golden overlay
+    if(isActive&&!isError){
+      html+=`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${brad}"
+                   fill="rgba(201,168,64,0.06)"/>`;
+    }
+
+    // ── Avatar circle ──
+    // ClipPath for silhouette
+    html+=`<defs>
+      <clipPath id="${clipId}">
+        <circle cx="${avCX}" cy="${avCY}" r="${AR-1.5}"/>
+      </clipPath>
+    </defs>`;
+
+    // Avatar background
+    html+=`<circle cx="${avCX}" cy="${avCY}" r="${AR}" fill="#0b1220" stroke="${avatarStroke}" stroke-width="${avatarStrokeW}"/>`;
+
+    // Silhouette clipped to avatar circle
+    html+=`<g clip-path="url(#${clipId})">`;
+    // Body gradient background (dark blue-gray)
+    html+=`<rect x="${avCX-AR}" y="${avCY-AR}" width="${AR*2}" height="${AR*2}" fill="#0e1828"/>`;
+    // Body shape (lower torso ellipse)
+    const bodyColor=isHero?'rgba(80,130,200,0.45)':'rgba(60,75,95,0.55)';
+    html+=`<ellipse cx="${avCX}" cy="${avCY+AR-3}" rx="${AR*0.72}" ry="${AR*0.56}" fill="${bodyColor}"/>`;
+    // Head shape (circle upper)
+    const headColor=isHero?'rgba(100,155,220,0.55)':'rgba(80,98,120,0.60)';
+    html+=`<circle cx="${avCX}" cy="${avCY-AR*0.32}" r="${AR*0.38}" fill="${headColor}"/>`;
+    html+=`</g>`;
+
+    // Avatar border ring (on top of silhouette)
+    html+=`<circle cx="${avCX}" cy="${avCY}" r="${AR}" fill="none" stroke="${avatarStroke}" stroke-width="${avatarStrokeW}"/>`;
+
+    // Subtle inner highlight arc on avatar
+    html+=`<path d="M${(avCX-AR*0.6).toFixed(1)},${(avCY-AR*0.72).toFixed(1)} A${(AR*0.72).toFixed(1)},${(AR*0.72).toFixed(1)} 0 0,1 ${(avCX+AR*0.6).toFixed(1)},${(avCY-AR*0.72).toFixed(1)}"
+                 fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.2" stroke-linecap="round"/>`;
+
+    // ── Name text (right of avatar) ──
+    const nameX=avCX+AR+8;
+    const nameMaxW=bw-(AR*2+18);
+    const name=d.player.length>11?d.player.slice(0,11)+'…':d.player;
+    const nameColor=isHero?'#ffffff':'#d8d0c8';
+    html+=`<text x="${nameX}" y="${by+bh*0.38}" dominant-baseline="middle"
+                 fill="${nameColor}"
+                 font-family="Inter,sans-serif" font-size="${isHero?13:12}" font-weight="${isHero?700:600}"
+                 letter-spacing=".05">${name}</text>`;
+
+    // ── Stack text (below name) ──
+    const sv=(ev.stacks&&ev.stacks[sn]!=null)?ev.stacks[sn]:d.stack;
+    const stackColor=isHero?'#8ec8ff':'#8090a0';
+    html+=`<text x="${nameX}" y="${by+bh*0.68}" dominant-baseline="middle"
+                 fill="${stackColor}"
+                 font-family="Share Tech Mono,monospace" font-size="11" font-weight="600"
+                 letter-spacing=".04">${fmtAmt(sv,bb)}</text>`;
+
+    // ── Position badge (near pod, offset toward table center) ──
+    const posLabel=d.pos||'';
+    if(posLabel){
+      const posCol=POS_COLORS[posLabel]||'rgba(80,100,130,0.8)';
+      const posBgCol=posLabel==='BTN'?'rgba(30,22,4,0.9)':
+                     posLabel==='BB' ?'rgba(30,5,5,0.9)':
+                     posLabel==='SB' ?'rgba(28,14,4,0.9)':
+                                      'rgba(10,14,22,0.88)';
+      const posBorderCol=posLabel==='BTN'?'rgba(201,168,64,0.55)':
+                          posLabel==='BB' ?'rgba(229,32,32,0.55)':
+                          posLabel==='SB' ?'rgba(212,112,48,0.55)':
+                                           'rgba(60,80,110,0.45)';
+      // Badge placed near pod edge toward table center
+      const t=0.15;
+      const badgeX=Math.round(pos.x+(CX-pos.x)*t);
+      const badgeY=Math.round(pos.y+(CY-pos.y)*t);
+      const bpW=posLabel.length<=2?34:42, bpH=16;
+      html+=`<rect x="${badgeX-bpW/2}" y="${badgeY-bpH/2}" width="${bpW}" height="${bpH}" rx="8"
+                   fill="${posBgCol}" stroke="${posBorderCol}" stroke-width="1"/>`;
+      html+=`<text x="${badgeX}" y="${badgeY}" text-anchor="middle" dominant-baseline="middle"
+                   fill="${posCol}" font-family="Share Tech Mono,monospace" font-size="9" font-weight="700"
+                   letter-spacing=".08">${posLabel}</text>`;
+    }
+
+    // ── Bounty badge ──
+    if(d.bounty && d.bounty>0){
+      const bn=d.bounty;
+      const bountyStr=bn<1?bn.toFixed(2):(bn<10?bn.toFixed(2):(bn<100?bn.toFixed(2):Math.round(bn)+''));
+      const bW=60, bH=17;
+      const bBadgeX=bx+bw-bW, bBadgeY=by+bh+3;
+      html+=`<rect x="${bBadgeX}" y="${bBadgeY}" width="${bW}" height="${bH}" rx="8.5"
+                   fill="rgba(6,5,4,0.92)" stroke="rgba(100,78,12,0.70)" stroke-width=".8"/>`;
+      html+=`<text x="${bBadgeX+11}" y="${bBadgeY+bH/2}" dominant-baseline="middle" text-anchor="middle"
+                   fill="#c9a840" font-family="Inter,sans-serif" font-size="11">⊕</text>`;
+      html+=`<text x="${bBadgeX+21}" y="${bBadgeY+bH/2}" dominant-baseline="middle"
+                   fill="#e8d090" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700">$${bountyStr}</text>`;
+    }
+
+    // ── Dealer button (premium 3D chip) ──
+    if(isBtn){
+      const t=0.28;
+      const dbX=Math.round(pos.x+(CX-pos.x)*t);
+      const dbY=Math.round(pos.y+(CY-pos.y)*t);
+      const dRX=16, dRY=9, dCH=6;
+      const dN=4;
+      const dTy=dbY, dBy2=dbY+dCH;
+      // Button drop shadow
+      html+=`<ellipse cx="${dbX+2}" cy="${dBy2+4}" rx="${dRX}" ry="${dRY*0.7}" fill="rgba(0,0,0,0.5)"/>`;
+      html+=`<rect x="${dbX-dRX}" y="${dTy}" width="${dRX*2}" height="${dCH}" fill="#b4b4b4"/>`;
+      html+=`<ellipse cx="${dbX}" cy="${dBy2}" rx="${dRX}" ry="${dRY}" fill="#b4b4b4"/>`;
+      html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${dRX}" ry="${dRY}" fill="#f4f0ec"/>`;
+      for(let s=0;s<dN;s++){
+        const a=(s/dN)*Math.PI*2;
+        const ex=(dbX+Math.cos(a)*(dRX-3.5)).toFixed(1);
+        const ey=(dTy+Math.sin(a)*(dRY-2.8)).toFixed(1);
+        const rot=((a*180/Math.PI)+90).toFixed(1);
+        html+=`<ellipse cx="${ex}" cy="${ey}" rx="2.0" ry="1.0" fill="rgba(55,55,55,0.50)"
+                       transform="rotate(${rot},${ex},${ey})"/>`;
+      }
+      html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX*0.62).toFixed(1)}" ry="${(dRY*0.62).toFixed(1)}"
+                     fill="none" stroke="rgba(55,55,55,0.28)" stroke-width=".9"/>`;
+      html+=`<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX*0.58).toFixed(1)}" ry="${(dRY*0.58).toFixed(1)}"
+                     fill="rgba(255,255,255,0.90)"/>`;
+      html+=`<path d="M0,-5 L1.18,-1.62 L4.76,-1.55 L1.90,0.62 L2.94,4.05
+                      L0,2 L-2.94,4.05 L-1.90,0.62 L-4.76,-1.55 L-1.18,-1.62 Z"
+                   fill="#222" transform="translate(${dbX},${dTy})"/>`;
+    }
+
+    // ── Action label ──
+    if(isActive&&ev.action){
+      const ac=AC_COLORS[ev.action]||'#888';
+      const amtStr=ev.amount>0?(' '+fmtAmt(ev.amount,bb)):'';
+      const actLabel=ev.action.toUpperCase()+amtStr;
+      const labY=dir==='top'?by+bh+22:by-12;
+      html+=`<rect x="${pos.x-46}" y="${labY-14}" width="92" height="20" rx="10" fill="${ac}" opacity=".96"/>
+             <text x="${pos.x}" y="${labY}" text-anchor="middle" dominant-baseline="middle"
+                   fill="#fff" font-family="Inter,sans-serif" font-size="10.5" font-weight="700">${actLabel}</text>`;
+    }
+
+    html+='</g>';
+    seatsG.innerHTML+=html;
+
+    // Bet chips
+    const bet=ev.bets&&ev.bets[sn]>0?ev.bets[sn]:0;
+    if(bet>0){
+      const t=0.36;
+      const cx2=Math.round(pos.x+(CX-pos.x)*t);
+      const cy2=Math.round(pos.y+(CY-pos.y)*t);
+      chipsG.innerHTML+=chipStackSVG(cx2,cy2,bet);
+      const betStr=fmtAmt(bet,bb);
+      chipsG.innerHTML+=`<rect x="${cx2-24}" y="${cy2+11}" width="48" height="14" rx="7"
+        fill="rgba(0,0,0,0.80)" stroke="rgba(255,255,255,0.12)" stroke-width=".7"/>
+      <text x="${cx2}" y="${cy2+22}" text-anchor="middle" dominant-baseline="middle"
+            fill="#fff" font-family="Share Tech Mono,monospace" font-size="8.5">${betStr}</text>`;
+    }
+  });
+}
+
+// ── Main render ───────────────────────────────────────────────────────────────
+function rpRender(step){
+  if(!REPLAY||step<0||step>=REPLAY.timeline.length) return;
+  const ev=REPLAY.timeline[step];
+  const bb=REPLAY.bb||100;
+
+  if(ev.type==='street'){
+    const badge=document.getElementById('rp-badge');
+    badge.textContent=ev.street.toUpperCase();
+    badge.className='rp-badge show';
+    setTimeout(()=>badge.className='rp-badge',1600);
+  }
+
+  document.querySelectorAll('.rp-street-btn').forEach(btn=>{
+    btn.classList.remove('rp-st-active');
+    if(btn.dataset.street===(ev.street||'preflop')) btn.classList.add('rp-st-active');
+  });
+
+  document.getElementById('rp-log-st').textContent=(ev.street||'preflop').toUpperCase();
+  const logAc=document.getElementById('rp-log-ac');
+  if(ev.is_error){logAc.textContent='⚠ '+ev.desc;logAc.className='rp-log-action err';}
+  else           {logAc.textContent=ev.desc||'—';logAc.className='rp-log-action';}
+
+  rpRenderBoard(ev.board||[]);
+  rpRenderPot(ev.pot||0,bb);
+  rpRenderSeats(ev,bb);
+  rpRenderSidePanel(ev);
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function rpSetSpeed(v){rpSpeed=SPEED_MAP[v]||1000;document.getElementById('rp-spd-lbl').textContent=SPEED_LABELS[v]||'1×';}
+function rpToggleBB(){
+  rpShowBB=!rpShowBB;
+  const btn=document.getElementById('rp-unit-btn');
+  btn.textContent=rpShowBB?'BB':'chips';
+  btn.classList.toggle('active',rpShowBB);
+  rpRender(rpStep);
+}
+function rpJumpToStreet(s){const idx=_rpStreetMap[s];if(idx!==undefined)rpSeekTo(idx);}
+function rpToggle(){
+  rpPlaying=!rpPlaying;
+  document.getElementById('rp-play').textContent=rpPlaying?'⏸':'▶';
+  if(rpPlaying)rpPlayNext();else clearTimeout(rpTimer);
+}
+function rpPlayNext(){
+  if(!rpPlaying)return;
+  if(rpStep>=REPLAY.timeline.length-1){rpPlaying=false;document.getElementById('rp-play').textContent='▶';return;}
+  rpStep++;rpRender(rpStep);
+  rpTimer=setTimeout(rpPlayNext,REPLAY.timeline[rpStep].is_error?rpSpeed*2.5:rpSpeed);
+}
+function rpFwd(){clearTimeout(rpTimer);rpPlaying=false;document.getElementById('rp-play').textContent='▶';if(rpStep<REPLAY.timeline.length-1){rpStep++;rpRender(rpStep);}}
+function rpBack(){clearTimeout(rpTimer);rpPlaying=false;document.getElementById('rp-play').textContent='▶';if(rpStep>0){rpStep--;rpRender(rpStep);}}
+function rpSeekTo(s){clearTimeout(rpTimer);rpPlaying=false;document.getElementById('rp-play').textContent='▶';rpStep=s;rpRender(s);}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')rpFwd();
+  if(e.key==='ArrowLeft') rpBack();
+  if(e.key===' '){e.preventDefault();rpToggle();}
+  if(e.key==='b')rpToggleBB();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function initReplayer(data){
+  REPLAY=data;rpStep=0;_rpLayout=null;_rpStreetMap={};
+  document.getElementById('rp-hand-id').textContent='Mão #'+String(data.hand_id).slice(-8);
+  const ev0=data.timeline[0];
+  const sn0=Object.keys(ev0.seats).map(Number).sort((a,b)=>a-b);
+  rpBuildLayout(sn0,sn0.find(s=>ev0.seats[s].player===data.hero));
+  data.timeline.forEach((ev,i)=>{
+    const s=ev.street||'preflop';
+    if(_rpStreetMap[s]===undefined)_rpStreetMap[s]=i;
+    if(ev.type==='showdown'&&_rpStreetMap['showdown']===undefined)_rpStreetMap['showdown']=i;
+  });
+  document.querySelectorAll('.rp-street-btn').forEach(btn=>{
+    if(_rpStreetMap[btn.dataset.street]!==undefined){
+      btn.classList.remove('rp-st-disabled');btn.classList.add('rp-st-available');
+    }
+  });
+  rpRender(0);
+}
+
+// ── Demo ─────────────────────────────────────────────────────────────────────
+const DEMO={"hand_id":"257045940964","tournament_id":"3910307458","hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"button":3,"sb":50.0,"bb":100.0,"seats":{"1":{"player":"jojosetubal","stack":7431,"stack_bb":74.3,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8135,"stack_bb":81.3,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1447,"stack_bb":14.5,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5078,"stack_bb":50.8,"pos":"SB"},"5":{"player":"SuKKinho","stack":5253,"stack_bb":52.5,"pos":"BB"},"6":{"player":"martelli1990","stack":3398,"stack_bb":34.0,"pos":"UTG"},"7":{"player":"varen1k322","stack":3200,"stack_bb":32.0,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6419,"stack_bb":64.2,"pos":"UTG+2"},"9":{"player":"phpro","stack":2242,"stack_bb":22.4,"pos":"MP"}},"timeline":[{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3386,"stack_bb":33.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3386,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":258,"pot_bb":2.6,"bets":{"4":50,"5":100},"street":"preflop","folded":[],"bb":100.0,"type":"deal","desc":"Início da mão"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2230,"stack_bb":22.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2230},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":458,"pot_bb":4.6,"bets":{"4":50,"5":100,"6":200},"street":"preflop","folded":[],"bb":100.0,"type":"action","player":"martelli1990","seat":6,"action":"raises","amount":100.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"martelli1990: raises 100"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":5141,"stack_bb":51.4,"pos":"BB"},"6":{"player":"martelli1990","stack":3186,"stack_bb":31.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":5141,"6":3186,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":658,"pot_bb":6.6,"bets":{"4":50,"5":100,"6":200,"9":200},"street":"preflop","folded":["varen1k322","Cyan Diogenes"],"bb":100.0,"type":"action","player":"phpro","seat":9,"action":"calls","amount":200.0,"is_hero":true,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"preflop_gto":{"available":true,"scenario":"vs_rfi","hand_type":"KQo","stack_bucket":"20-35bb","stack_bb":22.3,"position":"MP","vs_position":"UTG","in_range":true,"range_pct":14.2,"range_hands":"QQ+,AKs,AQs,AJs,KQs,AKo","recommended_actions":["call","raise"],"action_quality":"correct","pro_notes":["KQo está no range de call/3bet vs UTG open","Stack de 22bb: call é razoável, jam também é opção"]},"hand_equity":null,"pot_odds_equity":0.23,"draw_profile":"none","m_ratio":18.6,"icm_pressure":0.12,"desc":"phpro: calls 200"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":4411,"stack_bb":44.1,"pos":"BB"},"6":{"player":"martelli1990","stack":2556,"stack_bb":25.6,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":4411,"6":2556,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":[],"pot":2018,"pot_bb":20.2,"bets":{"5":830,"6":830},"street":"preflop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":730.0,"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 730"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"street","desc":"FLOP"},{"seats":{"1":{"player":"jojosetubal","stack":7419,"stack_bb":74.2,"pos":"HJ"},"2":{"player":"Kaptahh","stack":8123,"stack_bb":81.2,"pos":"CO"},"3":{"player":"Andrew Willian","stack":1435,"stack_bb":14.3,"pos":"BTN"},"4":{"player":"Maks19111979","stack":5016,"stack_bb":50.2,"pos":"SB"},"5":{"player":"SuKKinho","stack":0,"stack_bb":0,"pos":"BB"},"6":{"player":"martelli1990","stack":1890,"stack_bb":18.9,"pos":"UTG"},"7":{"player":"varen1k322","stack":3188,"stack_bb":31.9,"pos":"UTG+1"},"8":{"player":"Cyan Diogenes","stack":6407,"stack_bb":64.1,"pos":"UTG+2"},"9":{"player":"phpro","stack":2030,"stack_bb":20.3,"pos":"MP"}},"stacks":{"1":7419,"2":8123,"3":1435,"4":5016,"5":0,"6":1890,"7":3188,"8":6407,"9":2030},"button":3,"hero":"phpro","hero_cards":["Qs","Kd"],"board":["5d","6h","Ad"],"pot":7095,"pot_bb":71.0,"bets":{"5":4411,"6":666},"street":"flop","folded":["varen1k322","Cyan Diogenes","jojosetubal","Kaptahh","Andrew Willian","Maks19111979","phpro","martelli1990"],"bb":100.0,"type":"action","player":"SuKKinho","seat":5,"action":"raises","amount":3745.0,"gto_label":"gto_critical","gto_action":"check","gto_strategy":[{"action":"check","frequency":0.72,"combos":96.4,"ev_bb":2.1,"exploitability_pct":18.5},{"action":"bet_50pct","frequency":0.19,"combos":25.4,"ev_bb":1.8,"exploitability_pct":18.5},{"action":"fold","frequency":0.09,"combos":12.0,"ev_bb":0.0,"exploitability_pct":18.5}],"is_hero":false,"is_error":false,"error_label":null,"error_score":null,"best_action":null,"desc":"SuKKinho: raises 3745"}]};
+function rpLoadDemo(){
+  document.getElementById('rp-loading').style.display='none';
+  document.getElementById('rp-error').style.display='none';
+  const bountySample={1:12.50,5:3.14,9:7.25};
+  DEMO.timeline.forEach(ev=>{
+    Object.entries(bountySample).forEach(([sn,val])=>{
+      if(ev.seats[sn]) ev.seats[sn].bounty=val;
+    });
+  });
+  initReplayer(DEMO);
+}
+
+async function rpLoadReal(){
+  const p=new URLSearchParams(location.search);
+  const t=p.get('t');
+  const h=p.get('h');
+  const student=p.get('student');
+
+  if(!t||!h){ rpLoadDemo(); return; }
+
+  document.getElementById('rp-loading').style.display='flex';
+  document.getElementById('rp-error').style.display='none';
+
+  const token=sessionStorage.getItem('ll_token');
+  if(!token){
+    document.getElementById('rp-loading').style.display='none';
+    document.getElementById('rp-error').style.display='flex';
+    document.getElementById('rp-error-msg').textContent='Sessão expirada. Faça login novamente.';
+    return;
+  }
+
+  try{
+    const url=student
+      ?`/coach/student/${student}/replay/${t}/${h}`
+      :`/replay/${t}/${h}`;
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
+    if(!resp.ok){
+      let msg=`Erro ${resp.status}`;
+      try{const j=await resp.json();if(j.error)msg=j.error;}catch(_){}
+      document.getElementById('rp-loading').style.display='none';
+      document.getElementById('rp-error').style.display='flex';
+      document.getElementById('rp-error-msg').textContent=msg;
+      return;
+    }
+    const data=await resp.json();
+    document.getElementById('rp-loading').style.display='none';
+    initReplayer(data);
+  }catch(e){
+    document.getElementById('rp-loading').style.display='none';
+    document.getElementById('rp-error').style.display='flex';
+    document.getElementById('rp-error-msg').textContent='Erro de rede: '+(e.message||e);
+  }
+}
+
+rpLoadReal();
+</script>
+</body>
+</html>

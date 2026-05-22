@@ -9,6 +9,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.140.0] — 2026-05-21 — feat(replayer): leaklab-replayer-v4 — mesa PS-quality
+
+### Added
+- **`leaklab-replayer-v4.html`**: redesign visual completo do replayer com qualidade PokerStars
+  - Mesa oval ratio ~2.4:1 (era 1.9:1), igual ao PS
+  - Borda 3D com 4 camadas de profundidade (bottom-face, side-face × 2, top-face) visíveis na perspectiva
+  - CSS `rotateX(19deg)` com `perspective: 700px` para tilt dramático tipo casino
+  - Felt verde rico com destaque central e vinheta escura nas bordas
+  - Ambiente escuro com glow verde emanando da mesa (efeito luz de mesa)
+  - Player pods PS-style: avatar circular (r=21) com silhueta, nameplate horizontal dark
+  - Cartas sempre posicionadas ACIMA dos player spots
+  - Face-down card back com padrão de diamantes e escudo LeakLab
+  - Chip stacks mais altos (CH=5) com drop shadow
+
+### Fixed
+- Ghost Table: `originalMistake` removido das fases active e result (evita ancoragem)
+- Ghost Table: label "Heads-up" agora só exibe quando `num_players <= 2`
+- Ghost Table: painel duplicado "Você escolheu / Ação correta" removido do resultado
+- Ghost Table: modal IA agora renderiza no branch full-screen correto (estava no HudLayout que não era montado)
+
+---
+
 ## [v0.139.0] — 2026-05-21 — chore: plano Ghost Table confirmado completo
 
 ### Confirmed
