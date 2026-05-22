@@ -617,6 +617,24 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
         conn.close()
 
 
+def get_leak_ranking_gto_first(user_id: int, days: int = 90, last_n: int | None = None,
+                                limit: int = 10) -> dict:
+    """Leak ranking unificado: tenta GTO primeiro (gto_label-based), fallback heurístico (label-based).
+
+    Retorna {'source': 'gto'|'heuristic'|'empty', 'leaks': [...]}.
+    Shape de cada leak é compatível entre as duas fontes (mesmos campos).
+    Consumido pelo /player/leak-roi, generate_study_plan, coach_chat, /coach/context,
+    /history/evolution, recommend_coaches_for_leaks.
+    """
+    leaks = get_gto_leak_ranking(user_id, days, last_n=last_n)
+    if leaks:
+        return {'source': 'gto', 'leaks': leaks[:limit]}
+    leaks = get_leak_roi_impact(user_id, days, last_n=last_n)
+    if leaks:
+        return {'source': 'heuristic', 'leaks': leaks[:limit]}
+    return {'source': 'empty', 'leaks': []}
+
+
 def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None) -> list:
     """
     Leak ranking baseado em gto_label — substitui get_leak_roi_impact com fonte GTO.
@@ -2358,52 +2376,39 @@ def recommend_coaches_for_leaks(user_id: int, limit: int = 3) -> List[dict]:
     """
     Recomenda coaches da base baseado nos leaks do aluno.
     Cruza os leaks do aluno com as especialidades dos coaches.
+    Usa leak ranking GTO-first (item #9 do backlog).
     """
-    conn = get_conn()
-    try:
-        # Pegar top leaks do aluno
-        leaks = conn.execute("""
-            SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) as avg_score
-            FROM decisions d
-            JOIN tournaments t ON t.id = d.tournament_id
-            WHERE t.user_id = ?
-              AND d.label IN ('small_mistake','clear_mistake')
-              AND t.imported_at >= datetime('now', '-90 days')
-            GROUP BY spot
-            ORDER BY avg_score DESC
-            LIMIT 3
-        """, (user_id,)).fetchall()
+    gto_first = get_leak_ranking_gto_first(user_id, days=90, limit=3)
+    leaks = gto_first['leaks']
 
-        if not leaks:
-            return get_public_coaches(limit=limit)
+    if not leaks:
+        return get_public_coaches(limit=limit)
 
-        # Extrair streets/ações dos leaks para matching
-        leak_streets = list(set(l['spot'].split('/')[0] for l in leaks))
+    # Extrair streets/ações dos leaks para matching
+    leak_streets = list(set(l['spot'].split('/')[0] for l in leaks))
 
-        # Buscar coaches com especialidades relevantes
-        coaches = get_public_coaches(limit=20)
-        scored = []
-        for coach in coaches:
-            if coach['user_id'] == user_id:
-                continue
-            specs = [s.lower() for s in coach['specialties']]
-            # Score de relevância: quantos leaks do aluno o coach cobre
-            match_score = sum(
-                1 for street in leak_streets
-                if any(street in spec or spec in street for spec in specs)
-            )
-            coach['relevance_score'] = match_score
-            coach['matching_leaks'] = [
-                l['spot'] for l in leaks
-                if any(l['spot'].split('/')[0] in spec or spec in l['spot'] for spec in specs)
-            ]
-            scored.append(coach)
+    # Buscar coaches com especialidades relevantes
+    coaches = get_public_coaches(limit=20)
+    scored = []
+    for coach in coaches:
+        if coach['user_id'] == user_id:
+            continue
+        specs = [s.lower() for s in coach['specialties']]
+        # Score de relevância: quantos leaks do aluno o coach cobre
+        match_score = sum(
+            1 for street in leak_streets
+            if any(street in spec or spec in street for spec in specs)
+        )
+        coach['relevance_score'] = match_score
+        coach['matching_leaks'] = [
+            l['spot'] for l in leaks
+            if any(l['spot'].split('/')[0] in spec or spec in l['spot'] for spec in specs)
+        ]
+        scored.append(coach)
 
-        # Ordenar por relevância, depois por popularidade
-        scored.sort(key=lambda x: (x['relevance_score'], x['student_count']), reverse=True)
-        return scored[:limit]
-    finally:
-        conn.close()
+    # Ordenar por relevância, depois por popularidade
+    scored.sort(key=lambda x: (x['relevance_score'], x['student_count']), reverse=True)
+    return scored[:limit]
 
 
 # ── Coach Study Overrides ─────────────────────────────────────────────────────

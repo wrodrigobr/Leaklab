@@ -173,6 +173,7 @@ const StudyPlanPage = () => {
   const [errorMsg, setErrorMsg]   = useState("");
   const [generating, setGenerating] = useState(false);
   const [coachManaged, setCoachManaged] = useState(false);
+  const [planSource, setPlanSource]   = useState<'gto' | 'heuristic' | 'empty' | null>(null);
   const hasCoach = !!user?.coach_id;
   const [activeLeakId, setActiveLeakId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"diagnosis" | "schedule" | "exercises">("diagnosis");
@@ -194,6 +195,7 @@ const StudyPlanPage = () => {
         return;
       }
       setCoachManaged(data.coach_managed ?? false);
+      setPlanSource(data.source ?? null);
       const built = buildStudyPlan(data);
       setPlan(built);
       if (!activeLeakId) {
@@ -264,9 +266,24 @@ const StudyPlanPage = () => {
             <BrainCircuit className="size-5" aria-hidden />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-foreground">
-              {plan ? t("toolbar.planReady") : t("toolbar.planLoading")}
-            </h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-semibold text-foreground">
+                {plan ? t("toolbar.planReady") : t("toolbar.planLoading")}
+              </h2>
+              {planSource && planSource !== 'empty' && (
+                <span
+                  className={
+                    "inline-flex items-center rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ring-1 " +
+                    (planSource === 'gto'
+                      ? "text-primary bg-primary/10 ring-primary/20"
+                      : "text-muted-foreground bg-muted/30 ring-border")
+                  }
+                  title={t(planSource === 'gto' ? "source.gtoTooltip" : "source.heuristicTooltip")}
+                >
+                  {t(planSource === 'gto' ? "source.gto" : "source.heuristic")}
+                </span>
+              )}
+            </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {plan?.diagnosis.summary ?? t("toolbar.analysisWaiting")}
             </p>

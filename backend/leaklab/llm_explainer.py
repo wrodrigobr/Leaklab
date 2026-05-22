@@ -953,11 +953,15 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
                         hero: str = 'Jogador',
                         user_id: int | None = None,
                         force_new: bool = False,
-                        player_stats: dict | None = None) -> dict:
+                        player_stats: dict | None = None,
+                        leak_source: str = 'gto') -> dict:
     """
     Gera plano de estudos personalizado baseado nos leaks reais do jogador.
-    Retorna dict com cards[], resumo, e nível identificado.
+    Retorna dict com cards[], resumo, nível identificado e `source` (gto|heuristic|empty).
     Cache persistente no banco via llm_cache com chave estável por aluno.
+
+    leak_source: 'gto' (default) ou 'heuristic' — origem dos leaks. Afeta o prompt
+    (Claude é informado da fonte) e é retornado no payload para o frontend.
     """
     import hashlib, json, os, requests
 
@@ -966,9 +970,9 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
         k: v for k, v in (player_stats or {}).items()
         if k != 'total_hands' and v is not None
     } if player_stats else {}
-    mem_key = 'study_plan_v4:' + hashlib.md5(
-        json.dumps({'leaks': leaks, 'evo_len': len(evolution), 'stats': stats_fingerprint},
-                   sort_keys=True).encode()
+    mem_key = 'study_plan_v5:' + hashlib.md5(
+        json.dumps({'leaks': leaks, 'evo_len': len(evolution), 'stats': stats_fingerprint,
+                    'source': leak_source}, sort_keys=True).encode()
     ).hexdigest()
     # Chave DB estável — plano canônico único por aluno
     db_key = 'study_plan_current'
@@ -1013,6 +1017,13 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
     # --- HUD stats section (se disponível) ---
     hud_txt = _format_hud_stats_for_prompt(player_stats) if player_stats else ''
 
+    # Indicar fonte dos leaks ao Claude para contextualizar o nível de confiança
+    source_note = {
+        'gto': '\n(Leaks identificados via análise GTO — comparação direta com solver. Alta confiança.)',
+        'heuristic': '\n(Leaks identificados via análise heurística do engine — fallback usado quando cobertura GTO é insuficiente. Confiança moderada.)',
+        'empty': '',
+    }.get(leak_source, '')
+
     prompt = f"""Você é um coach profissional de poker MTT com mais de 15 anos de experiência, especialista em identificar e corrigir leaks em torneios.
 Analise os dados de performance abaixo e gere um plano de estudos DETALHADO e PERSONALIZADO.
 
@@ -1024,7 +1035,7 @@ Analise os dados de performance abaixo e gere um plano de estudos DETALHADO e PE
 - Erros claros: {avg_clear:.1f}% (meta: abaixo de 5%)
 - Pior fase ICM: pressão {icm_weak}
 {hud_txt}
-**Leaks identificados (por frequência de erro):**
+**Leaks identificados (por frequência de erro):**{source_note}
 {leaks_txt}
 
 ## Instrução de Coach
@@ -1093,6 +1104,7 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
         raw = raw.strip()
 
         result = json.loads(raw)
+        result['source'] = leak_source
         result_str = json.dumps(result, ensure_ascii=False)
         _cache[mem_key] = result_str
         # Persistir no banco com chave estável (sobrescreve plano anterior)
@@ -1110,6 +1122,7 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
             'nivel': 'intermediario',
             'resumo': 'Análise indisponível no momento.',
             'cards': [],
+            'source': leak_source,
             'error': str(e),
         }
 
@@ -1778,19 +1791,28 @@ def _template_twin(profile: dict, lang: str = 'pt-BR') -> str:
 # ── AI Coach conversacional ────────────────────────────────────────────────────
 
 def coach_chat_reply(message: str, leaks: list, evolution: list,
-                     hero: str = 'Jogador', frequencies: dict | None = None) -> str:
-    """Responde pergunta do usuário com contexto real de desempenho."""
+                     hero: str = 'Jogador', frequencies: dict | None = None,
+                     leak_source: str = 'gto') -> str:
+    """Responde pergunta do usuário com contexto real de desempenho.
+
+    leak_source: 'gto' (default) ou 'heuristic' — origem dos leaks. Informa o Claude
+    sobre a confiança da fonte para contextualizar a resposta.
+    """
     import requests as _req
 
     ctx_parts: list[str] = []
 
     if leaks:
+        source_note = {
+            'gto': ' (fonte: análise GTO, alta confiança)',
+            'heuristic': ' (fonte: análise heurística, confiança moderada — cobertura GTO insuficiente)',
+        }.get(leak_source, '')
         leaks_txt = '\n'.join(
             f"  - {l['spot']}: {l['n']} ocorrências, score médio {l['avg_score']:.3f} "
             f"({'crítico' if l['avg_score'] >= .36 else 'moderado' if l['avg_score'] >= .20 else 'leve'})"
             for l in leaks[:5]
         )
-        ctx_parts.append(f"Top leaks detectados:\n{leaks_txt}")
+        ctx_parts.append(f"Top leaks detectados{source_note}:\n{leaks_txt}")
 
     if evolution:
         recent = evolution[-5:]

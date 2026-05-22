@@ -12,6 +12,12 @@
     "generating": "Generando…",
     "regenerated": "Plan regenerado con IA."
   },
+  "source": {
+    "gto": "GTO",
+    "gtoTooltip": "Plan basado en leaks con análisis GTO (solver + rangos). Alta precisión.",
+    "heuristic": "Heurístico",
+    "heuristicTooltip": "Plan basado en análisis heurístico — cobertura GTO insuficiente. Confianza moderada."
+  },
   "loading": {
     "analyzing": "Coach IA analizando tus leaks…",
     "firstTime": "Puede tardar unos segundos la primera vez."

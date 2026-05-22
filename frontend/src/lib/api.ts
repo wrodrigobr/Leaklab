@@ -448,6 +448,7 @@ export interface EvolutionResponse {
     n: number;
     avg_score: number;
   }[];
+  leak_source?: 'gto' | 'heuristic' | 'empty';
   icm: Record<string, { n: number; avg_score: number; standard_rate: number }>;
 }
 
@@ -986,6 +987,7 @@ export interface StudyPlanResponse {
   nivel: string;
   resumo: string;
   cards: StudyCard[];
+  source?: 'gto' | 'heuristic' | 'empty';
   error?: string;
   coach_managed?: boolean;
 }
@@ -1007,13 +1009,14 @@ export interface CoachContext {
   hands_analyzed: number;
   tournaments_analyzed: number;
   top_leaks: { spot: string; avg_score: number; n: number }[];
+  leak_source?: 'gto' | 'heuristic' | 'empty';
   avg_score: number | null;
   standard_pct: number | null;
 }
 
 export const coach = {
   chat: (message: string) =>
-    request<{ reply: string }>("/coach/chat", {
+    request<{ reply: string; source?: 'gto' | 'heuristic' | 'empty' }>("/coach/chat", {
       method: "POST",
       body: JSON.stringify({ message }),
     }),

@@ -828,12 +828,15 @@ def history_tournament_report_pdf(tournament_id):
 @app.route('/history/evolution', methods=['GET'])
 @require_auth
 def history_evolution():
+    from database.repositories import get_leak_ranking_gto_first
     days   = int(request.args.get('days', 30))
     last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    leak_data = get_leak_ranking_gto_first(g.user_id, days, last_n=last_n)
     return jsonify({
-        'evolution': get_evolution_metrics(g.user_id, days, last_n=last_n),
-        'leaks':     get_leak_summary(g.user_id, days, last_n=last_n),
-        'icm':       get_icm_performance(g.user_id, days),
+        'evolution':    get_evolution_metrics(g.user_id, days, last_n=last_n),
+        'leaks':        leak_data['leaks'],
+        'leak_source':  leak_data['source'],
+        'icm':          get_icm_performance(g.user_id, days),
     })
 
 
@@ -1419,15 +1422,19 @@ def coach_chat():
 
     message = sanitize_llm_input(message, max_len=1000)
 
-    days      = 90
-    leaks     = get_leak_summary(g.user_id, days) or []
-    evolution = get_evolution_metrics(g.user_id, days) or []
-    freqs     = get_player_action_frequencies(g.user_id, days)
-    hero      = g.user.get('username', 'Jogador')
+    from database.repositories import get_leak_ranking_gto_first
+    days        = 90
+    leak_data   = get_leak_ranking_gto_first(g.user_id, days)
+    leaks       = leak_data['leaks']
+    leak_source = leak_data['source']
+    evolution   = get_evolution_metrics(g.user_id, days) or []
+    freqs       = get_player_action_frequencies(g.user_id, days)
+    hero        = g.user.get('username', 'Jogador')
 
     try:
-        reply = coach_chat_reply(message, leaks, evolution, hero=hero, frequencies=freqs)
-        return jsonify({'reply': reply})
+        reply = coach_chat_reply(message, leaks, evolution, hero=hero,
+                                  frequencies=freqs, leak_source=leak_source)
+        return jsonify({'reply': reply, 'source': leak_source})
     except Exception as e:
         log.exception("coach_chat error")
         return jsonify({'error': 'Coach temporariamente indisponível'}), 500
@@ -1436,10 +1443,13 @@ def coach_chat():
 @app.route('/coach/context', methods=['GET'])
 @require_auth
 def coach_context():
-    days      = 90
-    leaks     = get_leak_summary(g.user_id, days) or []
-    evolution = get_evolution_metrics(g.user_id, days) or []
-    tourns    = get_tournaments(g.user_id, limit=200)
+    from database.repositories import get_leak_ranking_gto_first
+    days        = 90
+    leak_data   = get_leak_ranking_gto_first(g.user_id, days)
+    leaks       = leak_data['leaks']
+    leak_source = leak_data['source']
+    evolution   = get_evolution_metrics(g.user_id, days) or []
+    tourns      = get_tournaments(g.user_id, limit=200)
 
     total_hands = sum(t.get('hands_count', 0) for t in tourns)
 
@@ -1453,6 +1463,7 @@ def coach_context():
         'hands_analyzed':       total_hands,
         'tournaments_analyzed': len(tourns),
         'top_leaks':            [{'spot': l['spot'], 'avg_score': l['avg_score'], 'n': l['n']} for l in leaks[:5]],
+        'leak_source':          leak_source,
         'avg_score':            avg_score,
         'standard_pct':         standard_pct,
     })
@@ -1484,13 +1495,16 @@ def coach_student_history(student_id):
     students = get_students(g.user_id)
     if not any(s['id'] == student_id for s in students):
         return jsonify({'error': 'Aluno não encontrado'}), 404
+    from database.repositories import get_leak_ranking_gto_first
     days = int(request.args.get('days', 30))
+    leak_data = get_leak_ranking_gto_first(student_id, days)
     return jsonify({
-        'student_id': student_id,
-        'evolution':  get_evolution_metrics(student_id, days),
-        'leaks':      get_leak_summary(student_id, days),
-        'icm':        get_icm_performance(student_id, days),
-        'tournaments':get_tournaments(student_id),
+        'student_id':   student_id,
+        'evolution':    get_evolution_metrics(student_id, days),
+        'leaks':        leak_data['leaks'],
+        'leak_source':  leak_data['source'],
+        'icm':          get_icm_performance(student_id, days),
+        'tournaments':  get_tournaments(student_id),
     })
 
 
@@ -2285,9 +2299,11 @@ def coach_student_study_plan(student_id):
         return jsonify({'error': 'Aluno não encontrado'}), 404
     try:
         from leaklab.llm_explainer import generate_study_plan
-        from database.repositories import get_player_stats as _get_player_stats
+        from database.repositories import get_player_stats as _get_player_stats, get_leak_ranking_gto_first
         days = int(request.args.get('days', 90))
-        leaks        = get_leak_summary(student_id, days)    or []
+        leak_data    = get_leak_ranking_gto_first(student_id, days)
+        leaks        = leak_data['leaks']
+        leak_source  = leak_data['source']
         evolution    = get_evolution_metrics(student_id, days) or []
         icm          = get_icm_performance(student_id, days)  or {}
         player_stats = _get_player_stats(student_id, days)
@@ -2297,7 +2313,8 @@ def coach_student_study_plan(student_id):
         hero = tourns[0]['hero'] if tourns else 'Aluno'
         force_new = request.args.get('new') == '1'
         plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=student_id,
-                                   force_new=force_new, player_stats=player_stats)
+                                   force_new=force_new, player_stats=player_stats,
+                                   leak_source=leak_source)
         return jsonify(plan)
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -2754,10 +2771,13 @@ def study_plan():
     """Gera plano de estudos personalizado via LLM baseado nos leaks reais."""
     try:
         from leaklab.llm_explainer import generate_study_plan
+        from database.repositories import get_leak_ranking_gto_first
 
         days = int(request.args.get('days', 90))
 
-        leaks        = get_leak_summary(g.user_id, days)     or []
+        leak_data    = get_leak_ranking_gto_first(g.user_id, days)
+        leaks        = leak_data['leaks']
+        leak_source  = leak_data['source']
         evolution    = get_evolution_metrics(g.user_id, days) or []
         icm          = get_icm_performance(g.user_id, days)   or {}
         from database.repositories import get_player_stats as _get_player_stats
@@ -2784,7 +2804,8 @@ def study_plan():
         force_new = request.args.get('new') == '1' and not coach_id_val
 
         plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id,
-                                   force_new=force_new, player_stats=player_stats)
+                                   force_new=force_new, player_stats=player_stats,
+                                   leak_source=leak_source)
 
         # Aplicar overrides do coach nos cards para que o aluno veja o mesmo conteúdo
         coach_managed = False

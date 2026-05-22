@@ -9,6 +9,50 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.156.0] — 2026-05-22 — feat(study-plan): item #9 do backlog — plano de estudos GTO-first
+
+### Added — Helper unificado em repositories.py
+- `get_leak_ranking_gto_first(user_id, days, last_n, limit)` — retorna `{source, leaks}`:
+  - Tenta `get_gto_leak_ranking` (GTO) primeiro
+  - Fallback para `get_leak_roi_impact` (heurístico) quando GTO está vazio
+  - Retorna `source='empty'` se ambos vazios
+- Reutilizado por todos os endpoints que consomem leak ranking para recomendações
+
+### Endpoints refatorados (GTO-first com fallback transparente)
+- `/coach/student/<id>/study-plan` (coach gerando plano para aluno)
+- `/study/plan` (aluno gerando próprio plano)
+- `/coach/chat` (AI Coach conversacional)
+- `/coach/context` (contexto greeting do AI Coach)
+- `/history/evolution` (dashboard de evolução)
+- `/coach/student/<id>/history` (dashboard do coach com leaks do aluno)
+- `recommend_coaches_for_leaks` em repositories.py (recomendação de coaches)
+
+### LLM Coach narrative atualizado
+- `generate_study_plan()` ganha parâmetro `leak_source: str` e:
+  - Inclui nota de fonte no prompt do Claude (alta confiança GTO vs moderada heurística)
+  - Retorna `source` no payload final para frontend
+- `coach_chat_reply()` ganha parâmetro `leak_source` que contextualiza a confiança da fonte ao Claude
+
+### Frontend
+- `StudyPlanResponse`, `EvolutionResponse`, `CoachContext` types ampliados com `source`/`leak_source`
+- `StudyPlan.tsx`: badge "GTO" (verde) ou "Heurístico" (cinza) no header do plano de estudos, com tooltip explicando precisão
+- i18n nas 3 locales: chaves novas `source.gto`, `source.heuristic` + tooltips
+
+### Why
+- Antes: plano de estudos, AI Coach e recomendações usavam `get_leak_summary` (heurístico) como fonte primária — gerava recomendações inconsistentes com o que o aluno via no Replayer
+- Agora: tudo passa por `get_leak_ranking_gto_first` — recomendações refletem análise GTO real quando disponível, com fallback transparente quando não há cobertura
+- Alinhado com Ghost Table/Sparring GTO-only (v0.146.x) e Fase 3 do item #2 (v0.151.0)
+
+### Validated
+- Smoke test: `get_leak_ranking_gto_first(13, 90)` retorna `source='gto'`, 10 leaks (banco real do user)
+- Suites database (36) + api (64) — todas verdes, zero regressão
+- TypeScript verde
+
+### Próximo
+- Item 3 (multiway equity HU) ou Item 10 (cap 100bb) ou Item 12 (Range Grid postflop)
+
+---
+
 ## [v0.155.0] — 2026-05-22 — feat(gto): engine consome vs_squeeze (squeeze multiway com cobertura GTO)
 
 ### Added — `analyze_preflop` agora reconhece scenario `squeeze`
