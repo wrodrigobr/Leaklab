@@ -9,6 +9,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.142.0] — 2026-05-21 — fix(replayer): v4 dimensões e cor da borda fieis ao PS
+
+### Fixed
+- Borda refeita com dimensões medidas pixel-a-pixel na referência PS (`mesa ps.png`, 1441×767px)
+  - Cor: `#242424` charcoal escuro (era mahogany quente — totalmente errado)
+  - Espessura: +42px sobre o feltro (54px na imagem PS × escala 1120/1441)
+  - Apenas 4 camadas de profundidade 3D (era 9), offsets sutis
+  - Nenhum destaque quente — apenas linha especular `rgba(255,255,255,0.11)` na borda externa
+- Feltro: `rx=435, ry=128` → ratio 3.40:1 (matches apparent oval do PS)
+- CSS `rotateX` removido — perspectiva embutida diretamente no canvas (oval desenhado flat)
+- Fundo: quase preto puro `#050606` com glow verde mínimo (PS-accurate)
+- `CY=310, RY_SEAT=178` alinhados ao novo centro da mesa
+
 ## [v0.141.0] — 2026-05-21 — feat(replayer): v4 Canvas API — mesa ultra-realista
 
 ### Changed

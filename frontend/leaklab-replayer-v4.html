@@ -45,23 +45,18 @@ html,body{
   background:radial-gradient(ellipse at 50% 65%, #0a1a0b 0%, #040906 50%, #020405 100%)
 }
 
-/* Layer 1 — tilted table background */
+/* Layer 1 — table background (no CSS perspective — oval drawn directly in canvas) */
 .rp-bg-layer{
   position:absolute;inset:0;
-  perspective:620px;perspective-origin:50% -40%
 }
 .rp-bg-layer>canvas{
   width:100%;height:100%;display:block;
-  transform:rotateX(24deg);
-  transform-origin:50% 60%
 }
 
 /* Layer 2 — flat content SVG */
 #rp-svg{
   position:absolute;inset:0;
   width:100%;height:100%;display:block;
-  transform:scaleY(0.93) translateY(2%);
-  transform-origin:50% 55%
 }
 
 /* Overlays */
@@ -362,8 +357,8 @@ html,body{
 
 <script>
 // ── Table geometry ────────────────────────────────────────────────────────────
-const CX=560, CY=315;
-const RX_SEAT=484, RY_SEAT=200;  // wider oval positions
+const CX=560, CY=310;
+const RX_SEAT=484, RY_SEAT=178;  // seats just outside rim (R_RY=170)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SUIT_SYM={s:'♠',h:'♥',d:'♦',c:'♣'};
@@ -1245,13 +1240,23 @@ async function rpLoadReal(){
 }
 
 // ── Table Canvas Background ─────────────────────────────────────────────────────
+// Dimensions measured pixel-by-pixel from PS reference (mesa ps.png, 1441×767):
+//   Rim color: #222222 (dark charcoal — NOT warm brown)
+//   Rim thickness: 54px in 1441px image → 42px scaled to our 1120px canvas
+//   Felt apparent ratio: ~3.4:1 (drawn flat, no CSS rotateX)
 function drawPokerTable(){
   const canvas=document.getElementById('rp-bg-canvas');
   if(!canvas) return;
   const W=1120,H=630;
   canvas.width=W; canvas.height=H;
   const ctx=canvas.getContext('2d');
-  const cx=W/2, cy=H/2;
+
+  // Table center matches CX/CY constants used by game content layer
+  const c=560, t=310;
+  // Felt semi-axes: ratio 3.40:1 — matches PS apparent oval
+  const F_RX=435, F_RY=128;
+  // Rim outer: felt + 42px (scaled from PS measurement of 54px in 1441px image)
+  const R_RX=477, R_RY=170;
 
   function ell(ecx,ecy,rx,ry){
     ctx.beginPath();
@@ -1259,181 +1264,99 @@ function drawPokerTable(){
     ctx.closePath();
   }
 
-  // ① Room — very dark, deep green cast, atmospheric
-  const bgGrad=ctx.createRadialGradient(cx,cy*0.5,0,cx,cy*0.75,W*0.75);
-  bgGrad.addColorStop(0,  '#0e2618');
-  bgGrad.addColorStop(0.3,'#060e09');
-  bgGrad.addColorStop(1,  '#010303');
+  // ① Room — PS-accurate: near-pure black, very faint green glow only under table
+  ctx.fillStyle='#050606';
+  ctx.fillRect(0,0,W,H);
+  const bgGrad=ctx.createRadialGradient(c,t+30,0,c,t+30,W*0.44);
+  bgGrad.addColorStop(0,  'rgba(10,22,12,0.50)');
+  bgGrad.addColorStop(0.5,'rgba(3,8,4,0.22)');
+  bgGrad.addColorStop(1,  'rgba(0,0,0,0)');
   ctx.fillStyle=bgGrad;
   ctx.fillRect(0,0,W,H);
 
-  // Corner darkening vignette
-  const cornGrad=ctx.createRadialGradient(cx,cy,H*0.25,cx,cy,W*0.72);
-  cornGrad.addColorStop(0,'rgba(0,0,0,0)');
-  cornGrad.addColorStop(0.6,'rgba(0,0,0,0)');
-  cornGrad.addColorStop(1,'rgba(0,0,0,0.72)');
-  ctx.fillStyle=cornGrad;
-  ctx.fillRect(0,0,W,H);
-
-  // ② Table drop shadow — offset down for 3D depth perception
+  // ② Table drop shadow
   ctx.save();
   ctx.shadowColor='#000';
-  ctx.shadowBlur=100;
-  ctx.shadowOffsetY=28;
-  ell(cx,cy+12,535,214);
-  ctx.fillStyle='rgba(0,0,0,0.96)';
+  ctx.shadowBlur=75;
+  ctx.shadowOffsetY=18;
+  ell(c,t+14,R_RX+6,R_RY+6);
+  ctx.fillStyle='rgba(0,0,0,0.94)';
   ctx.fill();
   ctx.restore();
 
-  // ③ RIM 3D DEPTH — stacked offset layers to simulate visible near-face of rim
-  // Most offset (bottom) = darkest, least offset = transition to top surface
-  const rimLayers=[
-    {off:40,rx:534,ry:216,c:'#010101'},
-    {off:34,rx:533,ry:215,c:'#030302'},
-    {off:28,rx:532,ry:214,c:'#070605'},
-    {off:22,rx:531,ry:213,c:'#0c0a08'},
-    {off:17,rx:530,ry:212,c:'#12100d'},
-    {off:12,rx:529,ry:211,c:'#1a1714'},
-    {off:8, rx:528,ry:210,c:'#22201a'},
-    {off:4, rx:527,ry:209,c:'#29271f'},
-    {off:0, rx:526,ry:208,c:'#312e26'},
-  ];
-  rimLayers.forEach(l=>{
-    ell(cx,cy+l.off,l.rx,l.ry);
-    ctx.fillStyle=l.c;
-    ctx.fill();
-  });
+  // ③ RIM 3D near-face — subtle charcoal layers offset downward
+  // PS rim is #222222 charcoal, blends with dark room — deliberately NOT prominent
+  [{off:12,c:'#0d0d0d'},{off:7,c:'#131313'},{off:3,c:'#1a1a1a'},{off:0,c:'#202020'}]
+    .forEach(l=>{ ell(c,t+l.off,R_RX,R_RY); ctx.fillStyle=l.c; ctx.fill(); });
 
-  // ④ RIM TOP SURFACE — warm mahogany/leather, top-lit radial gradient
-  const rimGrad=ctx.createRadialGradient(cx,cy-100,15,cx,cy+10,420);
-  rimGrad.addColorStop(0,   '#8a6e54');
-  rimGrad.addColorStop(0.15,'#6a4e38');
-  rimGrad.addColorStop(0.40,'#422f20');
-  rimGrad.addColorStop(0.68,'#271e14');
-  rimGrad.addColorStop(1,   '#0e0b08');
-  ell(cx,cy,526,208);
-  ctx.fillStyle=rimGrad;
+  // Rim surface — matches PS measured #222222
+  ell(c,t,R_RX,R_RY);
+  ctx.fillStyle='#242424';
   ctx.fill();
 
-  // Rim leather grain texture (thin diag lines)
-  ctx.save();
-  ell(cx,cy,526,208);
-  ctx.clip();
-  ctx.strokeStyle='rgba(0,0,0,0.06)';
-  ctx.lineWidth=0.8;
-  for(let d=-900;d<900;d+=5){
-    ctx.beginPath();
-    ctx.moveTo(cx-700+d,cy-280);
-    ctx.lineTo(cx+700+d,cy+280);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // Rim outer catchlight — warm specular from overhead lamp
-  ell(cx,cy,526,208);
-  ctx.strokeStyle='rgba(255,225,155,0.32)';
-  ctx.lineWidth=3;
-  ctx.stroke();
-
-  // Second inner highlight ring
-  ell(cx,cy,521,203);
-  ctx.strokeStyle='rgba(255,205,125,0.14)';
-  ctx.lineWidth=1.5;
-  ctx.stroke();
-
-  // Rim inner edge — warm pinstripe (like PS's inner rim line)
-  ell(cx,cy,500,190);
-  ctx.strokeStyle='rgba(200,155,90,0.18)';
-  ctx.lineWidth=1.8;
-  ctx.stroke();
-
-  // ⑤ Shadow groove — sharp transition from rim to felt (critical for 3D realism)
-  ell(cx,cy,497,187);
-  ctx.strokeStyle='rgba(0,0,0,0.98)';
-  ctx.lineWidth=10;
-  ctx.stroke();
-
-  ell(cx,cy,491,181);
-  ctx.strokeStyle='rgba(0,0,0,0.60)';
-  ctx.lineWidth=5;
-  ctx.stroke();
-
-  // ⑥ FELT SURFACE — rx=482, ry=172 → raw ratio 2.80:1 → apparent ~3.5:1 after CSS tilt
-  const feltGrad=ctx.createRadialGradient(cx,cy-18,0,cx,cy+22,445);
-  feltGrad.addColorStop(0,   '#35a850');
-  feltGrad.addColorStop(0.1, '#28843e');
-  feltGrad.addColorStop(0.35,'#18632c');
-  feltGrad.addColorStop(0.65,'#0e4520');
-  feltGrad.addColorStop(1,   '#051610');
-  ell(cx,cy,482,172);
-  ctx.fillStyle=feltGrad;
-  ctx.fill();
-
-  // Felt cloth weave texture — very subtle cross-hatch
-  ctx.save();
-  ell(cx,cy,482,172);
-  ctx.clip();
-  // Fine diagonal lines (warp)
-  ctx.strokeStyle='rgba(0,0,0,0.07)';
-  ctx.lineWidth=0.7;
-  for(let d=-700;d<700;d+=4){
-    ctx.beginPath();
-    ctx.moveTo(cx-600+d,cy-210);
-    ctx.lineTo(cx+600+d,cy+210);
-    ctx.stroke();
-  }
-  // Fine diagonal lines (weft, opposite direction)
-  ctx.strokeStyle='rgba(255,255,255,0.025)';
-  ctx.lineWidth=0.5;
-  for(let d=-700;d<700;d+=4){
-    ctx.beginPath();
-    ctx.moveTo(cx+600+d,cy-210);
-    ctx.lineTo(cx-600+d,cy+210);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // Felt edge vignette — dark edges for depth
-  const vigGrad=ctx.createRadialGradient(cx,cy,50,cx,cy,475);
-  vigGrad.addColorStop(0,   'rgba(0,0,0,0)');
-  vigGrad.addColorStop(0.50,'rgba(0,0,0,0)');
-  vigGrad.addColorStop(1,   'rgba(0,0,0,0.78)');
-  ell(cx,cy,482,172);
-  ctx.fillStyle=vigGrad;
-  ctx.fill();
-
-  // Overhead lamp reflection — soft oval highlight
-  const lampGrad=ctx.createRadialGradient(cx,cy*0.68,0,cx,cy*0.9,310);
-  lampGrad.addColorStop(0,  'rgba(255,255,255,0.072)');
-  lampGrad.addColorStop(0.4,'rgba(255,255,255,0.022)');
-  lampGrad.addColorStop(1,  'rgba(255,255,255,0)');
-  ell(cx,cy,482,172);
-  ctx.fillStyle=lampGrad;
-  ctx.fill();
-
-  // ⑦ Felt decorative trim rings (stitching line, like PS)
-  ell(cx,cy,468,158);
-  ctx.strokeStyle='rgba(255,255,255,0.08)';
-  ctx.lineWidth=2.2;
-  ctx.stroke();
-
-  ell(cx,cy,461,151);
-  ctx.strokeStyle='rgba(0,0,0,0.30)';
+  // Rim outer edge: very faint specular highlight (table rail edge catches light)
+  ell(c,t,R_RX,R_RY);
+  ctx.strokeStyle='rgba(255,255,255,0.11)';
   ctx.lineWidth=1.2;
   ctx.stroke();
 
-  ell(cx,cy,458,148);
-  ctx.strokeStyle='rgba(255,255,255,0.025)';
-  ctx.lineWidth=0.8;
+  // Inner rim shadow — separation between rail and felt
+  ell(c,t,R_RX-4,R_RY-4);
+  ctx.strokeStyle='rgba(0,0,0,0.88)';
+  ctx.lineWidth=6;
   ctx.stroke();
 
-  // ⑧ LEAKLAB watermark
+  // ④ FELT
+  const feltGrad=ctx.createRadialGradient(c,t-18,0,c,t+14,360);
+  feltGrad.addColorStop(0,   '#2d8840');
+  feltGrad.addColorStop(0.14,'#226e32');
+  feltGrad.addColorStop(0.42,'#145025');
+  feltGrad.addColorStop(0.72,'#0b3618');
+  feltGrad.addColorStop(1,   '#04110a');
+  ell(c,t,F_RX,F_RY);
+  ctx.fillStyle=feltGrad;
+  ctx.fill();
+
+  // Felt weave texture
   ctx.save();
-  ctx.font='800 52px Inter,sans-serif';
-  ctx.textAlign='center';
-  ctx.textBaseline='middle';
-  ctx.fillStyle='rgba(255,255,255,0.016)';
-  ctx.fillText('LEAKLAB',cx,cy);
+  ell(c,t,F_RX,F_RY);
+  ctx.clip();
+  ctx.strokeStyle='rgba(0,0,0,0.065)';
+  ctx.lineWidth=0.7;
+  for(let d=-700;d<700;d+=4){
+    ctx.beginPath(); ctx.moveTo(c-600+d,t-140); ctx.lineTo(c+600+d,t+140); ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(255,255,255,0.020)';
+  ctx.lineWidth=0.5;
+  for(let d=-700;d<700;d+=4){
+    ctx.beginPath(); ctx.moveTo(c+600+d,t-140); ctx.lineTo(c-600+d,t+140); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Felt edge vignette
+  const vigGrad=ctx.createRadialGradient(c,t,25,c,t,400);
+  vigGrad.addColorStop(0.50,'rgba(0,0,0,0)');
+  vigGrad.addColorStop(1,   'rgba(0,0,0,0.74)');
+  ell(c,t,F_RX,F_RY);
+  ctx.fillStyle=vigGrad; ctx.fill();
+
+  // Overhead lamp reflection
+  const lampGrad=ctx.createRadialGradient(c,t-40,0,c,t,270);
+  lampGrad.addColorStop(0,  'rgba(255,255,255,0.060)');
+  lampGrad.addColorStop(0.5,'rgba(255,255,255,0.016)');
+  lampGrad.addColorStop(1,  'rgba(255,255,255,0)');
+  ell(c,t,F_RX,F_RY);
+  ctx.fillStyle=lampGrad; ctx.fill();
+
+  // Felt stitching trim
+  ell(c,t,F_RX-12,F_RY-12);
+  ctx.strokeStyle='rgba(255,255,255,0.065)'; ctx.lineWidth=1.8; ctx.stroke();
+
+  // LEAKLAB watermark
+  ctx.save();
+  ctx.font='800 44px Inter,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,0.014)';
+  ctx.fillText('LEAKLAB',c,t);
   ctx.restore();
 }
 
