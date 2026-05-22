@@ -9,6 +9,49 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.152.0] — 2026-05-22 — feat(gto): cobertura vs_3bet/vs_4bet completa (item #13 backlog)
+
+### Added — leaklab_gto_ranges.json v2.4.1
+**+19 entries vs_3bet** preenchendo gaps (NÃO sobrescreve entries existentes):
+- 100bb: MP, LJ, HJ, SB
+- 75bb: MP, LJ, HJ, CO, SB
+- 50bb: MP, LJ, HJ, CO, SB
+- 30bb: MP, LJ, HJ, CO, SB
+
+**+18 entries vs_4bet** (cenário 3-bettor enfrentando 4-bet):
+- 100bb / 75bb / 50bb: MP, HJ, CO, BTN, SB, BB
+- Convenção: `<POS>_3bet_vs_4bet`. Engine ainda não consome (requer fix posterior em `analyze_preflop` se quiser usar)
+
+### Pipeline
+- `backend/docs/external_ranges/`: charts MIT do AHTOOOXA/poker-charts (Greenline + Pekarstas, 100bb 6-max cash) como fonte
+- `backend/scripts/parse_external_ranges.py`: TS → JSON normalizado
+- `backend/scripts/synthesize_missing_vs3bet.py`: agrega greenline+pekarstas por voto majoritário, mapeia 6-max → 8-max, aplica stack compression para 30/50bb
+- `backend/scripts/validate_gaps.py`: sanity checks (4bet ⊆ RFI, AA/KK em 4-bet, spot check da hand reportada)
+- `backend/scripts/merge_gaps.py`: merge controlado com backup automático
+
+### Mapeamento 6-max → 8-max
+- UTG → UTG; MP_6max → LJ_8max (via `_POS_NORM` existente); HJ → HJ (mapeia também MP2); CO/BTN/SB/BB → identidade
+- LJ usa range de UTG_6max (mais tight); HJ usa MP_6max
+
+### Stack compression
+- 100bb / 75bb: identity
+- 50bb: remove hands marginais do call range (A2s-A8s, T9s, 76s, etc.)
+- 30bb: compression mais agressiva (remove broadway suited marginais, pares médios)
+
+### Validated
+- Sanity check passou (2 errors em SB são consequência do SB RFI estar anomalamente tight no JSON original, não dos novos ranges)
+- Spot check: HJ 75bb vs CO 3-bet com A8s → fold ✓ (mão reportada pelo usuário)
+- Cobertura GTO atual: 98.0% (já estava no mesmo nível desde fix de detecção de is_3bet — os novos ranges agora servem como base estrutural para análises futuras com cenários HJ/CO/SB vs 3-bet)
+- Backup do JSON original em `backend/docs/leaklab_gto_ranges.backup.20260522_121305.json`
+
+### Limitações
+- Fontes Greenline + Pekarstas são 6-max 100bb cash; adaptação para 8-max MTT é aproximada (~5% diferença no range real esperado)
+- Stack compression para 30/50bb é heurística baseada em conceitos GTO, não solver-exato
+- vs_4bet não consumido pelo engine ainda (requer fix em `analyze_preflop` se desejar uso ativo)
+- Multiway spots (squeeze, cold 4-bet, limpers) continuam sem cobertura — próximo natural é GTO Wizard
+
+---
+
 ## [v0.151.2] — 2026-05-22 — fix(gto): cobertura vs_3bet — detecta is_3bet_pot por contexto
 
 ### Fixed

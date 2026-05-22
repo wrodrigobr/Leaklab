@@ -1,0 +1,372 @@
+{
+  "_metadata": {
+    "generated_by": "synthesize_missing_vs3bet.py",
+    "source_providers": [
+      "greenline",
+      "pekarstas"
+    ],
+    "mapping_6max_to_8max": {
+      "UTG": [
+        "UTG",
+        "identity"
+      ],
+      "UTG+1": [
+        "UTG",
+        "identity"
+      ],
+      "MP": [
+        "MP",
+        "identity"
+      ],
+      "MP1": [
+        "MP",
+        "identity"
+      ],
+      "LJ": [
+        "UTG",
+        "identity"
+      ],
+      "HJ": [
+        "MP",
+        "identity"
+      ],
+      "CO": [
+        "CO",
+        "identity"
+      ],
+      "BTN": [
+        "BTN",
+        "identity"
+      ],
+      "SB": [
+        "SB",
+        "identity"
+      ],
+      "BB": [
+        "BB",
+        "identity"
+      ]
+    },
+    "note": "Apenas entries que NAO existem em leaklab_gto_ranges.json. vs_3bet usa shape compativel com analyze_preflop. vs_4bet introduz nova convencao '<POS>_3bet_vs_4bet' — exige fix no engine antes de uso."
+  },
+  "ranges": {
+    "100bb": {
+      "vs_3bet": {
+        "MP_RFI_vs_3bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,KTs,QQ",
+          "hands_call": "55,65s,66,76s,77,87s,88,99,A9s,AJs,AQs,ATs,JJ,JTs,KJs,KQs,QJs,QTs,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=4)",
+          "_synth_stack": 100
+        },
+        "LJ_RFI_vs_3bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,QQ",
+          "hands_call": "55,66,77,87s,88,99,AJs,AQs,ATs,JJ,JTs,KJs,KQs,KTs,QJs,QTs,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas UTG_6max (agg N=5)",
+          "_synth_stack": 100
+        },
+        "HJ_RFI_vs_3bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,KTs,QQ",
+          "hands_call": "55,65s,66,76s,77,87s,88,99,A9s,AJs,AQs,ATs,JJ,JTs,KJs,KQs,QJs,QTs,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=4)",
+          "_synth_stack": 100
+        },
+        "SB_RFI_vs_3bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "A2s,A6s,AA,AJo,AKo,AKs,AQo,J8s,JJ,KK,KQo,Q8s,QQ,TT",
+          "hands_call": "22,33,44,54s,55,65s,66,76s,77,87s,88,97s,98s,99,A3s,A4s,A5s,A7s,A8s,A9s,AJs,AQs,ATo,ATs,J9s,JTs,K6s,K7s,K8s,K9s,KJo,KJs,KQs,KTs,Q9s,QJs,QTs,T8s,T9s",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas SB_6max (agg N=1)",
+          "_synth_stack": 100
+        }
+      },
+      "vs_4bet": {
+        "MP_3bet_vs_4bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "",
+          "hands_call": "77,88,99,A4s,A5s,AA,AJs,AKo,AKs,AQo,AQs,ATs,JJ,JTs,KJs,KK,KQs,KTs,QJs,QQ,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=1)",
+          "_synth_stack": 100
+        },
+        "HJ_3bet_vs_4bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "",
+          "hands_call": "77,88,99,A4s,A5s,AA,AJs,AKo,AKs,AQo,AQs,ATs,JJ,JTs,KJs,KK,KQs,KTs,QJs,QQ,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=1)",
+          "_synth_stack": 100
+        },
+        "CO_3bet_vs_4bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "",
+          "hands_call": "77,88,99,A4s,A5s,AA,AJs,AKo,AKs,AQo,AQs,ATs,JJ,JTs,KJs,KK,KQs,KTs,QJs,QQ,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas CO_6max (agg N=1)",
+          "_synth_stack": 100
+        },
+        "BTN_3bet_vs_4bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "77,88,99,A5s,AA,AKo,AKs,KK,QQ",
+          "hands_call": "66,76s,87s,98s,A2s,A3s,A4s,A7s,A8s,A9s,AJo,AJs,AQo,AQs,ATs,J9s,JJ,JTs,K9s,KJs,KQo,KQs,KTs,Q9s,QJs,QTs,T8s,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas BTN_6max (agg N=2)",
+          "_synth_stack": 100
+        },
+        "SB_3bet_vs_4bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "88,99,AA,AKo,AKs,JJ,KK,QQ",
+          "hands_call": "76s,77,87s,98s,A2s,A3s,A4s,A5s,A6s,A7s,A8s,A9s,AJo,AJs,AQo,AQs,ATo,ATs,J9s,JTs,K9s,KJs,KQo,KQs,KTs,Q9s,QJs,QTs,T8s,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas SB_6max (agg N=4)",
+          "_synth_stack": 100
+        },
+        "BB_3bet_vs_4bet": {
+          "pct_continua": 0.46,
+          "hands_4bet": "88,AA,AKo,AKs,JJ,KK,QQ",
+          "hands_call": "55,66,76s,77,87s,98s,99,AJs,AQo,AQs,ATs,JTs,KJs,KQs,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas BB_6max (agg N=5)",
+          "_synth_stack": 100
+        }
+      }
+    },
+    "75bb": {
+      "vs_3bet": {
+        "MP_RFI_vs_3bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,KTs,QQ",
+          "hands_call": "55,65s,66,76s,77,87s,88,99,A9s,AJs,AQs,ATs,JJ,JTs,KJs,KQs,QJs,QTs,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=4)",
+          "_synth_stack": 75
+        },
+        "LJ_RFI_vs_3bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,QQ",
+          "hands_call": "55,66,77,87s,88,99,AJs,AQs,ATs,JJ,JTs,KJs,KQs,KTs,QJs,QTs,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas UTG_6max (agg N=5)",
+          "_synth_stack": 75
+        },
+        "HJ_RFI_vs_3bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,KTs,QQ",
+          "hands_call": "55,65s,66,76s,77,87s,88,99,A9s,AJs,AQs,ATs,JJ,JTs,KJs,KQs,QJs,QTs,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=4)",
+          "_synth_stack": 75
+        },
+        "CO_RFI_vs_3bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "A4s,A5s,A8s,AA,AKo,AKs,K8s,K9s,KK,KQo,QQ",
+          "hands_call": "54s,55,65s,66,76s,77,87s,88,98s,99,A6s,A7s,A9s,AJo,AJs,AQo,AQs,ATs,J9s,JJ,JTs,KJs,KQs,KTs,QJs,QTs,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas CO_6max (agg N=3)",
+          "_synth_stack": 75
+        },
+        "SB_RFI_vs_3bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "A2s,A6s,AA,AJo,AKo,AKs,AQo,J8s,JJ,KK,KQo,Q8s,QQ,TT",
+          "hands_call": "22,33,44,54s,55,65s,66,76s,77,87s,88,97s,98s,99,A3s,A4s,A5s,A7s,A8s,A9s,AJs,AQs,ATo,ATs,J9s,JTs,K6s,K7s,K8s,K9s,KJo,KJs,KQs,KTs,Q9s,QJs,QTs,T8s,T9s",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas SB_6max (agg N=1)",
+          "_synth_stack": 75
+        }
+      },
+      "vs_4bet": {
+        "MP_3bet_vs_4bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "",
+          "hands_call": "77,88,99,A4s,A5s,AA,AJs,AKo,AKs,AQo,AQs,ATs,JJ,JTs,KJs,KK,KQs,KTs,QJs,QQ,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=1)",
+          "_synth_stack": 75
+        },
+        "HJ_3bet_vs_4bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "",
+          "hands_call": "77,88,99,A4s,A5s,AA,AJs,AKo,AKs,AQo,AQs,ATs,JJ,JTs,KJs,KK,KQs,KTs,QJs,QQ,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=1)",
+          "_synth_stack": 75
+        },
+        "CO_3bet_vs_4bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "",
+          "hands_call": "77,88,99,A4s,A5s,AA,AJs,AKo,AKs,AQo,AQs,ATs,JJ,JTs,KJs,KK,KQs,KTs,QJs,QQ,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas CO_6max (agg N=1)",
+          "_synth_stack": 75
+        },
+        "BTN_3bet_vs_4bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "77,88,99,A5s,AA,AKo,AKs,KK,QQ",
+          "hands_call": "66,76s,87s,98s,A2s,A3s,A4s,A7s,A8s,A9s,AJo,AJs,AQo,AQs,ATs,J9s,JJ,JTs,K9s,KJs,KQo,KQs,KTs,Q9s,QJs,QTs,T8s,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas BTN_6max (agg N=2)",
+          "_synth_stack": 75
+        },
+        "SB_3bet_vs_4bet": {
+          "pct_continua": 1.0,
+          "hands_4bet": "88,99,AA,AKo,AKs,JJ,KK,QQ",
+          "hands_call": "76s,77,87s,98s,A2s,A3s,A4s,A5s,A6s,A7s,A8s,A9s,AJo,AJs,AQo,AQs,ATo,ATs,J9s,JTs,K9s,KJs,KQo,KQs,KTs,Q9s,QJs,QTs,T8s,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas SB_6max (agg N=4)",
+          "_synth_stack": 75
+        },
+        "BB_3bet_vs_4bet": {
+          "pct_continua": 0.46,
+          "hands_4bet": "88,AA,AKo,AKs,JJ,KK,QQ",
+          "hands_call": "55,66,76s,77,87s,98s,99,AJs,AQo,AQs,ATs,JTs,KJs,KQs,T9s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas BB_6max (agg N=5)",
+          "_synth_stack": 75
+        }
+      }
+    },
+    "50bb": {
+      "vs_3bet": {
+        "MP_RFI_vs_3bet": {
+          "pct_continua": 0.897,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,KTs,QQ",
+          "hands_call": "55,65s,66,77,88,99,A9s,AJs,AQs,ATs,JJ,JTs,KJs,KQs,QJs,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=4) + stack_compression(50bb)",
+          "_synth_stack": 50
+        },
+        "LJ_RFI_vs_3bet": {
+          "pct_continua": 0.923,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,QQ",
+          "hands_call": "55,66,77,88,99,AJs,AQs,ATs,JJ,JTs,KJs,KQs,KTs,QJs,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas UTG_6max (agg N=5) + stack_compression(50bb)",
+          "_synth_stack": 50
+        },
+        "HJ_RFI_vs_3bet": {
+          "pct_continua": 0.897,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,KTs,QQ",
+          "hands_call": "55,65s,66,77,88,99,A9s,AJs,AQs,ATs,JJ,JTs,KJs,KQs,QJs,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=4) + stack_compression(50bb)",
+          "_synth_stack": 50
+        },
+        "CO_RFI_vs_3bet": {
+          "pct_continua": 0.821,
+          "hands_4bet": "A4s,A5s,A8s,AA,AKo,AKs,K8s,K9s,KK,KQo,QQ",
+          "hands_call": "54s,55,65s,66,77,88,99,A9s,AJo,AJs,AQo,AQs,ATs,JJ,JTs,KJs,KQs,KTs,QJs,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas CO_6max (agg N=3) + stack_compression(50bb)",
+          "_synth_stack": 50
+        },
+        "SB_RFI_vs_3bet": {
+          "pct_continua": 0.774,
+          "hands_4bet": "A2s,A6s,AA,AJo,AKo,AKs,AQo,J8s,JJ,KK,KQo,Q8s,QQ,TT",
+          "hands_call": "22,33,44,54s,55,65s,66,77,88,97s,99,A9s,AJs,AQs,ATo,ATs,JTs,K6s,K7s,K8s,KJo,KJs,KQs,KTs,QJs,QTs,T8s",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas SB_6max (agg N=1) + stack_compression(50bb)",
+          "_synth_stack": 50
+        }
+      },
+      "vs_4bet": {
+        "MP_3bet_vs_4bet": {
+          "pct_continua": 0.909,
+          "hands_4bet": "",
+          "hands_call": "77,88,99,AA,AJs,AKo,AKs,AQo,AQs,ATs,JJ,JTs,KJs,KK,KQs,KTs,QJs,QQ,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=1) + stack_compression(50bb)",
+          "_synth_stack": 50
+        },
+        "HJ_3bet_vs_4bet": {
+          "pct_continua": 0.909,
+          "hands_4bet": "",
+          "hands_call": "77,88,99,AA,AJs,AKo,AKs,AQo,AQs,ATs,JJ,JTs,KJs,KK,KQs,KTs,QJs,QQ,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=1) + stack_compression(50bb)",
+          "_synth_stack": 50
+        },
+        "CO_3bet_vs_4bet": {
+          "pct_continua": 0.909,
+          "hands_4bet": "",
+          "hands_call": "77,88,99,AA,AJs,AKo,AKs,AQo,AQs,ATs,JJ,JTs,KJs,KK,KQs,KTs,QJs,QQ,QTs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas CO_6max (agg N=1) + stack_compression(50bb)",
+          "_synth_stack": 50
+        },
+        "BTN_3bet_vs_4bet": {
+          "pct_continua": 0.684,
+          "hands_4bet": "77,88,99,A5s,AA,AKo,AKs,KK,QQ",
+          "hands_call": "66,A9s,AJo,AJs,AQo,AQs,ATs,JJ,JTs,KJs,KQo,KQs,KTs,QJs,QTs,T8s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas BTN_6max (agg N=2) + stack_compression(50bb)",
+          "_synth_stack": 50
+        },
+        "SB_3bet_vs_4bet": {
+          "pct_continua": 0.641,
+          "hands_4bet": "88,99,AA,AKo,AKs,JJ,KK,QQ",
+          "hands_call": "77,A9s,AJo,AJs,AQo,AQs,ATo,ATs,JTs,KJs,KQo,KQs,KTs,QJs,QTs,T8s,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas SB_6max (agg N=4) + stack_compression(50bb)",
+          "_synth_stack": 50
+        },
+        "BB_3bet_vs_4bet": {
+          "pct_continua": 0.38,
+          "hands_4bet": "88,AA,AKo,AKs,JJ,KK,QQ",
+          "hands_call": "55,66,77,99,AJs,AQo,AQs,ATs,JTs,KJs,KQs,TT",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas BB_6max (agg N=5) + stack_compression(50bb)",
+          "_synth_stack": 50
+        }
+      }
+    },
+    "30bb": {
+      "vs_3bet": {
+        "MP_RFI_vs_3bet": {
+          "pct_continua": 0.621,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,KTs,QQ",
+          "hands_call": "55,65s,66,77,A9s,AQs,JJ,KQs,QTs",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=4) + stack_compression(30bb)",
+          "_synth_stack": 30
+        },
+        "LJ_RFI_vs_3bet": {
+          "pct_continua": 0.615,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,QQ",
+          "hands_call": "55,66,77,AQs,JJ,KQs,KTs,QTs",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas UTG_6max (agg N=5) + stack_compression(30bb)",
+          "_synth_stack": 30
+        },
+        "HJ_RFI_vs_3bet": {
+          "pct_continua": 0.621,
+          "hands_4bet": "A4s,A5s,AA,AKo,AKs,AQo,KK,KTs,QQ",
+          "hands_call": "55,65s,66,77,A9s,AQs,JJ,KQs,QTs",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas MP_6max (agg N=4) + stack_compression(30bb)",
+          "_synth_stack": 30
+        },
+        "CO_RFI_vs_3bet": {
+          "pct_continua": 0.59,
+          "hands_4bet": "A4s,A5s,A8s,AA,AKo,AKs,K8s,K9s,KK,KQo,QQ",
+          "hands_call": "54s,55,65s,66,77,A9s,AQo,AQs,JJ,KQs,KTs,QTs",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas CO_6max (agg N=3) + stack_compression(30bb)",
+          "_synth_stack": 30
+        },
+        "SB_RFI_vs_3bet": {
+          "pct_continua": 0.623,
+          "hands_4bet": "A2s,A6s,AA,AJo,AKo,AKs,AQo,J8s,JJ,KK,KQo,Q8s,QQ,TT",
+          "hands_call": "22,33,44,54s,55,65s,66,77,97s,A9s,AQs,K6s,K7s,K8s,KJo,KQs,KTs,QTs,T8s",
+          "hands_fold": "resto",
+          "_source": "greenline+pekarstas SB_6max (agg N=1) + stack_compression(30bb)",
+          "_synth_stack": 30
+        }
+      }
+    }
+  }
+}
