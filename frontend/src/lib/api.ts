@@ -135,6 +135,8 @@ export interface Tournament {
   profit: number | null;
   llm_summary: string | null;
   coach_reviewed?: boolean;
+  labels_reconciled_at?: string | null;
+  gto_coverage_pct?: number;
 }
 
 export interface TournamentsResponse {
@@ -727,7 +729,9 @@ export const metrics = {
     request<PlayerLevel>(`/metrics/level`),
 
   leakRoi: (days = 90, lastN?: number) =>
-    request<{ leaks: LeakRoiData[] }>(`/player/leak-roi?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+    request<{ source: 'gto' | 'heuristic'; leaks: LeakRoiData[] }>(
+      `/player/leak-roi?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`,
+    ),
 
   drillStats: (days = 30) =>
     request<DrillStats>(`/player/drill-stats?days=${days}`),

@@ -9,6 +9,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.151.0] — 2026-05-22 — feat(dashboard): Fase 3 do backlog #2 — transparência GTO no dashboard
+
+### Backend
+- `get_tournaments` (`repositories.py`): retorna `labels_reconciled_at` e `gto_coverage_pct` por torneio (calculado on-demand a partir de decisions.gto_label)
+- `get_breakdown` (`repositories.py`): retorna `gto_coverage_pct`, `total_decisions` e `with_gto` no payload
+- `/player/leak-roi` (`app.py`): retorna `{source: 'gto' | 'heuristic', leaks: [...]}` em vez de só a lista — frontend agora sabe a fonte explícita
+
+### Frontend
+- `Tournament` type (`api.ts`): novos campos opcionais `labels_reconciled_at` e `gto_coverage_pct`
+- `metrics.leakRoi`: response type ampliado para incluir `source`
+- `RecentTournamentsTable`: badge "Análise GTO em andamento" (loader animado) quando `labels_reconciled_at == null` — substitui o badge "Analisado". Quando reconcile concluído, badge "Analisado" passa a exibir `· X% GTO` ao lado (cobertura)
+- `LeaksPanel`: badge "GTO" (verde) ou "Heurístico" (cinza) no header, sinalizando a fonte do ranking. Tooltips explicam a diferença
+- i18n nas 3 locales (pt-BR, en, es): chaves novas em `table.gtoPending`, `table.gtoCoverage`, `leaks.sourceGto`, `leaks.sourceHeuristic` e tooltips
+
+### Decisão
+- `DecisionQualityCard.tsx` é órfão no projeto (não é importado em nenhum lugar) — task de aplicar badge nele foi descartada por irrelevância. Foco ficou nos cards efetivamente usados (`GtoQualityCard` já mostra coverage no header; agora `RecentTournamentsTable` e `LeaksPanel` também)
+
+### Validated
+- TypeScript compila sem erros (`npx tsc --noEmit`)
+- Smoke test backend: endpoint `/player/leak-roi` registrado; `get_tournaments` retorna os novos campos no banco real
+- Suites: database 36/36, fase 1 audit 8/8, fase 2 reconcile 5/5, api 64/64
+
+### Next
+- Fase 4: leak ranking com `source` propagado para o LLM Coach e plano de estudos (alinhado com item #9 do backlog)
+
+---
+
 ## [v0.150.0] — 2026-05-22 — feat(reconcile): Fase 2 do backlog #2 — reconciliação observável e backfill
 
 ### Added

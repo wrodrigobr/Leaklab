@@ -341,8 +341,11 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
                    t.hands_count, t.decisions_count, t.avg_score,
                    t.standard_pct, t.clear_pct, t.result, t.place, t.llm_summary,
                    t.buy_in, t.prize, t.profit,
+                   t.labels_reconciled_at,
                    COUNT(CASE WHEN d.label = 'clear_mistake' THEN 1 END) AS clear_count,
-                   COUNT(CASE WHEN d.label = 'small_mistake' THEN 1 END) AS small_count
+                   COUNT(CASE WHEN d.label = 'small_mistake' THEN 1 END) AS small_count,
+                   COUNT(d.id) AS total_decisions_count,
+                   SUM(CASE WHEN d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS with_gto_count
             FROM tournaments t
             LEFT JOIN decisions d ON d.tournament_id = t.id
             WHERE t.user_id = ?
@@ -350,7 +353,14 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             ORDER BY t.imported_at DESC
             LIMIT ?
         """, (user_id, limit)).fetchall()
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            t = dict(r)
+            tot = t.pop('total_decisions_count', 0) or 0
+            wg = t.pop('with_gto_count', 0) or 0
+            t['gto_coverage_pct'] = round(wg * 100.0 / tot, 1) if tot else 0.0
+            result.append(t)
+        return result
     finally:
         conn.close()
 
@@ -1074,10 +1084,22 @@ def get_breakdown(user_id: int, days: int = 90) -> dict:
             GROUP BY d.label
         """, (user_id, since)).fetchall()
 
+        gto_row = conn.execute(f"""
+            SELECT COUNT(*) AS total,
+                   SUM(CASE WHEN d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS with_gto
+            {base}
+        """, (user_id, since)).fetchone()
+        total_dec = gto_row['total'] if gto_row else 0
+        with_gto = gto_row['with_gto'] if gto_row else 0
+        gto_coverage_pct = round(with_gto * 100.0 / total_dec, 1) if total_dec else 0.0
+
         return {
             'by_street':   {r['street']:   dict(r) for r in by_street},
             'by_position': {r['position']: dict(r) for r in by_position if r['position']},
             'by_label':    {r['label']:    r['n']   for r in by_label   if r['label']},
+            'gto_coverage_pct': gto_coverage_pct,
+            'total_decisions':  total_dec,
+            'with_gto':         with_gto,
         }
     finally:
         conn.close()

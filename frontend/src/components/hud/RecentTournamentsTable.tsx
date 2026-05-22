@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, Eye } from "lucide-react";
+import { CheckCircle2, Clock, Eye, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -121,7 +121,9 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                   )}>
                     {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
                   </span>
-                  {analyzed ? (
+                  {analyzed && row.labels_reconciled_at == null ? (
+                    <Loader2 className="size-3.5 text-warning animate-spin" aria-label={t("table.gtoPending")} />
+                  ) : analyzed ? (
                     <CheckCircle2 className="size-3.5 text-primary" aria-label={t("table.analyzed")} />
                   ) : (
                     <Clock className="size-3.5 text-warning animate-pulse" aria-label={t("table.inQueue")} />
@@ -196,10 +198,26 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                         : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5">
-                      {analyzed ? (
+                      {analyzed && row.labels_reconciled_at == null ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20"
+                          title={t("table.gtoPendingTooltip")}
+                        >
+                          <Loader2 className="size-3 animate-spin" aria-hidden />
+                          {t("table.gtoPending")}
+                        </span>
+                      ) : analyzed ? (
                         <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
                           <CheckCircle2 className="size-3" aria-hidden />
                           {t("table.analyzed")}
+                          {row.gto_coverage_pct != null && row.gto_coverage_pct > 0 && (
+                            <span
+                              className="ml-1 text-[9px] font-normal opacity-70"
+                              title={t("table.gtoCoverageTooltip")}
+                            >
+                              · {t("table.gtoCoverage", { pct: Math.round(row.gto_coverage_pct) })}
+                            </span>
+                          )}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20">

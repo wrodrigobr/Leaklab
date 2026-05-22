@@ -861,14 +861,19 @@ def player_level():
 @app.route('/player/leak-roi', methods=['GET'])
 @require_auth
 def player_leak_roi():
-    """Leaks rankeados por gto_label (critical/minor_deviation). Fallback para heurístico se sem dados GTO."""
+    """Leaks rankeados por gto_label (critical/minor_deviation). Fallback para heurístico se sem dados GTO.
+    Retorna {source: 'gto'|'heuristic', leaks: [...]} para o frontend exibir a fonte explicitamente.
+    """
     from database.repositories import get_gto_leak_ranking
     days   = int(request.args.get('days', 90))
     last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
     leaks = get_gto_leak_ranking(g.user_id, days, last_n=last_n)
-    if not leaks:
+    if leaks:
+        source = 'gto'
+    else:
         leaks = get_leak_roi_impact(g.user_id, days, last_n=last_n)
-    return jsonify({'leaks': leaks})
+        source = 'heuristic'
+    return jsonify({'source': source, 'leaks': leaks})
 
 
 @app.route('/player/pressure-profile', methods=['GET'])

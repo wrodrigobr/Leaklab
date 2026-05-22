@@ -26,6 +26,7 @@ const TREND_CONFIG = {
 
 interface Props {
   leaks?: LeakData[];
+  source?: 'gto' | 'heuristic' | null;
 }
 
 const SEVERITY: Record<Severity, { dot: string; badge: string; Icon: typeof ShieldAlert }> = {
@@ -59,7 +60,7 @@ const FALLBACK: LeakData[] = [
   { spot: "river_check_call_flush_board", n: 11, avg_score: 0.21 },
 ];
 
-export function LeaksPanel({ leaks }: Props) {
+export function LeaksPanel({ leaks, source }: Props) {
   const navigate   = useNavigate();
   const { t }      = useTranslation("dashboard");
   const data       = leaks && leaks.length > 0 ? leaks.slice(0, 6) : FALLBACK;
@@ -84,9 +85,24 @@ export function LeaksPanel({ leaks }: Props) {
           {t("leaks.title")}
           <HudTooltip content={t("leaks.tooltip")} />
         </h2>
-        {isFallback && (
-          <span className="font-mono text-[10px] text-muted-foreground">DEMO</span>
-        )}
+        <div className="flex items-center gap-2">
+          {!isFallback && source && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ring-1",
+                source === 'gto'
+                  ? "text-primary bg-primary/10 ring-primary/20"
+                  : "text-muted-foreground bg-muted/30 ring-border",
+              )}
+              title={t(source === 'gto' ? "leaks.sourceGtoTooltip" : "leaks.sourceHeuristicTooltip")}
+            >
+              {t(source === 'gto' ? "leaks.sourceGto" : "leaks.sourceHeuristic")}
+            </span>
+          )}
+          {isFallback && (
+            <span className="font-mono text-[10px] text-muted-foreground">DEMO</span>
+          )}
+        </div>
       </div>
 
       <ul className="divide-y divide-border/50">

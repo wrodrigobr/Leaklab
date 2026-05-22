@@ -53,6 +53,7 @@ const Index = () => {
   const [playerStats, setPlayerStats]     = useState<PlayerStatsResponse | null>(null);
   const [tourns, setTourns]               = useState<Tournament[]>(_cachedTourns ?? []);
   const [leakRoi, setLeakRoi]             = useState<LeakRoiData[]>([]);
+  const [leakSource, setLeakSource]       = useState<'gto' | 'heuristic' | null>(null);
   const [pressureData, setPressureData]   = useState<PressureProfile | null>(null);
   const [driftData, setDriftData]         = useState<ConfidenceDrift | null>(null);
 
@@ -86,7 +87,7 @@ const Index = () => {
     Promise.all([
       metrics.evolution(90, ln).then(setEvo).catch(() => null),
       metrics.playerStats(90, ln).then(setPlayerStats).catch(() => null),
-      metrics.leakRoi(90, ln).then((r) => setLeakRoi(r.leaks)).catch(() => null),
+      metrics.leakRoi(90, ln).then((r) => { setLeakRoi(r.leaks); setLeakSource(r.source); }).catch(() => null),
       metrics.pressureProfile(90).then(setPressureData).catch(() => null),
       metrics.confidenceDrift(30).then(setDriftData).catch(() => null),
       tournaments.list().then((r) => { _cachedTourns = r.tournaments; setTourns(r.tournaments); setTournsLoaded(true); }).catch(() => null),
@@ -203,7 +204,7 @@ const Index = () => {
   const renderSidebarCard = (id: SidebarSection) => {
     if (id === "leaks") return (
       <DraggableCard key={id} id={id}>
-        <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} />
+        <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />
       </DraggableCard>
     );
     if (id === "causal_map") return leakGraph && leakGraph.nodes.length >= 3 ? (
