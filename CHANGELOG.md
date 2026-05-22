@@ -9,6 +9,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.158.0] — 2026-05-22 — fix(heuristic): facing 3-bet+ vira set-mine/call para borderline + banner "Sem cobertura GTO"
+
+### Fixed
+- `_recommended_action` em `preflop_range_evaluator.py`: quando `facing_size >= 3bb` (hero enfrenta 3-bet ou squeeze), borderline hands (small pairs 44-77, suited connectors, broadway weak como K9s) → recomenda **call** (set-mine / implied odds) em vez de raise. Premium core hands (88+, broadway suited) em IP ainda podem 4-bet, OOP preferem call
+- **Reportado pelo usuário**: hand 260886194685 (K9s UTG 44.9bb facing 4bb 3-bet + cold caller) — engine recomendava raise quando GTO correto é call/fold. Após fix: recomenda **call**
+
+### Added
+- Banner "Sem cobertura GTO" no Replayer: quando uma decisão do hero não tem `gto_label` (spot multiway sem solução pré-computada), exibe nota explícita explicando que a recomendação vem do engine heurístico, com confiança moderada, e que detalhes profissionais não estão disponíveis para esse tipo de spot
+
+### Why
+- Antes: usuário via "Recomendado: raise" em spot multiway sem entender que não havia dados de solver e a recomendação era heurística genérica que ignorava o facing_size grande
+- Agora: heurístico sabe que facing 3-bet+ ≠ facing RFI; UI deixa transparente quando a fonte é heurística vs GTO
+
+### Limitação
+- Opener facing squeeze (open + 3bet + cold caller, hero=opener) continua sem cobertura GTO na conta atual do GW (`MTTGeneral` antigo retorna 204 para esses spots). Cobertura completa exigiria upgrade do plano GW para `MTTGeneralV2`
+
+### Validated
+- K9s UTG facing 4bb → recomenda `call` (era `raise`)
+- 4c4s LJ facing 4bb → recomenda `call` (set-mine)
+- AA UTG facing 4bb → recomenda `call` (OOP prefer manter range)
+- AA BTN facing 4bb → recomenda `raise` (IP 4-bet)
+- Sem facing (RFI): comportamento inalterado
+- TypeScript verde, suite database 36/36 verde, engine 194/195 (1 falha pré-existente em test_postflop_error_rate_reduced, sem relação)
+
+---
+
 ## [v0.157.0] — 2026-05-22 — fix(preflop): mapping 9-max → 8-max corrigido (MP1→HJ, MP2→CO)
 
 ### Fixed

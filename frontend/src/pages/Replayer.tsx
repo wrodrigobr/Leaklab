@@ -575,6 +575,17 @@ function SidePanels({
               </div>
             )}
 
+            {/* Sem cobertura GTO — análise heurística */}
+            {step.is_hero && step.type === "action" && !step.gto_label && !step.gto_spot_mismatch && (
+              <div className="flex items-start gap-1.5 rounded-lg bg-muted/30 border border-border/60 px-2.5 py-2">
+                <span className="text-muted-foreground text-[10px] mt-px shrink-0">ⓘ</span>
+                <p className="text-[10px] text-muted-foreground/85 leading-relaxed">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider">Sem cobertura GTO</span>
+                  {" — "}spot multiway sem solução pré-computada no solver. Recomendação baseada em análise heurística do engine — confiança moderada. Detalhes profissionais não estão disponíveis para este tipo de spot.
+                </p>
+              </div>
+            )}
+
             {/* Conflito engine vs GTO — footnote compacto */}
             {!step.gto_spot_mismatch && step.engine_best && step.gto_action &&
              step.engine_best !== step.gto_action && isError && (

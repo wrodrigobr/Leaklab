@@ -42,7 +42,31 @@ def _classify_range_zone(cards: str) -> str:
 
 
 def _recommended_action(cards: str, position: str, facing_size: float = 0.0) -> str:
+    """Recomenda ação preflop usando classificação por zona + posição + facing_size.
+
+    Regra crítica (FIX 2026-05-22): quando facing_size > 3bb (hero enfrenta 3-bet
+    ou maior), borderline hands não devem 4-bet — preferem call (set-mine para
+    pares, implied odds para suited connectors). Antes o heurístico recomendava
+    raise para todo borderline em não-blind, o que sobreestimava agressão em
+    spots multiway com 3-bet.
+    """
     zone = _classify_range_zone(cards)
+    is_pair = len(cards) >= 4 and cards[0] == cards[2]
+    r1      = cards[0] if len(cards) >= 1 else ""
+    is_small_pair = is_pair and r1 in "234567"
+
+    # Facing 3-bet+ (>= 3bb): tighter logic — set-mine / call em vez de 4-bet
+    if facing_size >= 3.0:
+        if zone == "core_range":
+            # Pares 88-AA + broadway suited → call ou 4-bet conforme posição
+            # Em IP, premium pode 4-bet; OOP prefere call
+            return "raise" if position not in {"BB", "SB", "UTG", "UTG+1", "UTG1"} else "call"
+        if zone == "borderline_range":
+            # Borderline facing 3-bet: call (set-mine, implied odds) ou fold
+            return "call"
+        return "fold"
+
+    # Sem facing ou facing pequeno (steal/limp): lógica RFI/vs_limp original
     if zone == "core_range":
         return "raise" if position not in {"BB"} else "call"
     if zone == "borderline_range":
