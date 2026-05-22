@@ -773,6 +773,54 @@ def _run_migrations(conn):
             conn.execute("CREATE INDEX IF NOT EXISTS idx_session_goals_user    ON session_goals(user_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_session_goals_tourney ON session_goals(tournament_id)")
         except Exception: pass
+        # revalidation suite — auditoria sistemática engine vs oracle (M3)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS revalidation_runs (
+                    id                   SERIAL PRIMARY KEY,
+                    scope                TEXT NOT NULL,
+                    total_tournaments    INTEGER NOT NULL DEFAULT 0,
+                    total_hands          INTEGER NOT NULL DEFAULT 0,
+                    total_decisions      INTEGER NOT NULL DEFAULT 0,
+                    category_counts_json TEXT,
+                    llm_judge_used       BOOLEAN NOT NULL DEFAULT FALSE,
+                    notes                TEXT,
+                    created_at           TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS revalidation_findings (
+                    id                 SERIAL PRIMARY KEY,
+                    run_id             INTEGER NOT NULL REFERENCES revalidation_runs(id) ON DELETE CASCADE,
+                    tournament_db_id   INTEGER,
+                    hand_id            TEXT,
+                    decision_index     INTEGER,
+                    street             TEXT,
+                    position           TEXT,
+                    action_taken       TEXT,
+                    engine_best        TEXT,
+                    gto_action         TEXT,
+                    oracle_action      TEXT,
+                    category           TEXT NOT NULL,
+                    severity_score     REAL NOT NULL,
+                    opp_cost_bb        REAL,
+                    oracle_source      TEXT,
+                    oracle_confidence  TEXT,
+                    reasons_json       TEXT,
+                    llm_verdict        TEXT,
+                    llm_reasoning      TEXT
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS ix_revfindings_run_cat ON revalidation_findings(run_id, category)")
+            conn.execute("CREATE INDEX IF NOT EXISTS ix_revfindings_severity ON revalidation_findings(run_id, severity_score DESC)")
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS revalidation_llm_cache (
+                    cache_key TEXT PRIMARY KEY,
+                    response  TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+        except Exception: pass
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS coach_baselines (
@@ -1177,6 +1225,53 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_hand_req_status ON gto_hand_requests(status)")
+        # revalidation suite — auditoria sistemática engine vs oracle (M3)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS revalidation_runs (
+                id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                scope                TEXT NOT NULL,
+                total_tournaments    INTEGER NOT NULL DEFAULT 0,
+                total_hands          INTEGER NOT NULL DEFAULT 0,
+                total_decisions      INTEGER NOT NULL DEFAULT 0,
+                category_counts_json TEXT,
+                llm_judge_used       INTEGER NOT NULL DEFAULT 0,
+                notes                TEXT,
+                created_at           TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS revalidation_findings (
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id             INTEGER NOT NULL REFERENCES revalidation_runs(id) ON DELETE CASCADE,
+                tournament_db_id   INTEGER,
+                hand_id            TEXT,
+                decision_index     INTEGER,
+                street             TEXT,
+                position           TEXT,
+                action_taken       TEXT,
+                engine_best        TEXT,
+                gto_action         TEXT,
+                oracle_action      TEXT,
+                category           TEXT NOT NULL,
+                severity_score     REAL NOT NULL,
+                opp_cost_bb        REAL,
+                oracle_source      TEXT,
+                oracle_confidence  TEXT,
+                reasons_json       TEXT,
+                llm_verdict        TEXT,
+                llm_reasoning      TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_revfindings_run_cat ON revalidation_findings(run_id, category)")
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_revfindings_severity ON revalidation_findings(run_id, severity_score DESC)")
+        # Cache compartilhado do llm_judge (não amarrado a user — runs são globais)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS revalidation_llm_cache (
+                cache_key TEXT PRIMARY KEY,
+                response  TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
 
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────

@@ -24,6 +24,12 @@ SUITES = {
                   'test_gto_utils_comprehensive.py',
                   'test_gto_enrichment.py',
                   'test_api_gto_endpoints.py'],
+    'revalidation': ['test_revalidation_oracle.py',
+                     'test_revalidation_differ.py',
+                     'test_revalidation_orchestrator.py',
+                     'test_revalidation_api.py',
+                     'test_revalidation_llm_judge.py',
+                     'test_revalidation_fixtures.py'],
 }
 
 BASE = os.path.dirname(__file__)

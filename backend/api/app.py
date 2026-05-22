@@ -5036,6 +5036,220 @@ def admin_gto_reprocess_decisions():
     })
 
 
+# ── Revalidação engine vs oracle (varredura sistemática) ────────────────────
+
+_REVAL_RUNS: dict[int, dict] = {}        # status em memória dos runs em background
+_REVAL_NEXT_FAKE_ID = [0]                # sequência local p/ marcador "started"
+
+
+@app.route('/admin/revalidation/run', methods=['POST'])
+@require_admin
+def admin_revalidation_run():
+    """
+    Dispara uma varredura de revalidação engine vs oracle.
+
+    Body JSON:
+      scope: 'all' | 'user:<id>' | 'tournament:<id>'   (default 'all')
+      with_llm_judge: bool                              (default false)
+      llm_budget: int                                   (default 50)
+      sync: bool                                        (default false — roda em thread)
+      output_dir: str                                   (opcional)
+      notes: str                                        (opcional)
+
+    Quando sync=true, executa inline e retorna o run_id real.
+    Quando sync=false, retorna { run_id: null, task_id, status: 'started' }
+    e o resultado pode ser consultado em /admin/revalidation/runs/<id>.
+    """
+    body = request.get_json(silent=True) or {}
+    scope = _parse_scope(body.get('scope', 'all'))
+    with_llm_judge = bool(body.get('with_llm_judge', False))
+    llm_budget = int(body.get('llm_budget', 50))
+    output_dir = body.get('output_dir') or os.path.join('reports', 'revalidation')
+    notes = body.get('notes')
+    sync = bool(body.get('sync', False))
+
+    from leaklab.revalidation.orchestrator import revalidate
+
+    if sync:
+        result = revalidate(
+            scope=scope, with_llm_judge=with_llm_judge,
+            llm_budget=llm_budget, output_dir=output_dir, notes=notes,
+        )
+        return jsonify({
+            'run_id':         result.run_id,
+            'scope':          result.scope,
+            'status':         'done',
+            'total_decisions': result.total_decisions,
+            'category_counts': result.category_counts,
+            'elapsed_sec':    result.elapsed_sec,
+            'errors':         len(result.errors),
+        })
+
+    # Background
+    _REVAL_NEXT_FAKE_ID[0] += 1
+    task_id = _REVAL_NEXT_FAKE_ID[0]
+    _REVAL_RUNS[task_id] = {'status': 'started', 'run_id': None}
+
+    def _bg():
+        try:
+            result = revalidate(
+                scope=scope, with_llm_judge=with_llm_judge,
+                llm_budget=llm_budget, output_dir=output_dir, notes=notes,
+            )
+            _REVAL_RUNS[task_id] = {
+                'status':          'done',
+                'run_id':          result.run_id,
+                'total_decisions': result.total_decisions,
+                'category_counts': result.category_counts,
+                'elapsed_sec':     result.elapsed_sec,
+                'errors':          len(result.errors),
+            }
+        except Exception as e:
+            log.exception('revalidation background failed: task_id=%s', task_id)
+            _REVAL_RUNS[task_id] = {'status': 'error', 'error': str(e), 'run_id': None}
+
+    threading.Thread(target=_bg, daemon=True, name=f'revalidate-{task_id}').start()
+    return jsonify({'task_id': task_id, 'status': 'started', 'run_id': None})
+
+
+@app.route('/admin/revalidation/tasks/<int:task_id>', methods=['GET'])
+@require_admin
+def admin_revalidation_task_status(task_id: int):
+    """Status de um run iniciado em background."""
+    info = _REVAL_RUNS.get(task_id)
+    if not info:
+        return jsonify({'error': 'task não encontrada'}), 404
+    return jsonify(info)
+
+
+@app.route('/admin/revalidation/runs', methods=['GET'])
+@require_admin
+def admin_revalidation_runs():
+    """Últimos N runs persistidos em revalidation_runs."""
+    from database.schema import get_conn as _gc
+    limit = int(request.args.get('limit', 20))
+    conn = _gc()
+    try:
+        rows = conn.execute(
+            "SELECT id, scope, total_tournaments, total_hands, total_decisions, "
+            "category_counts_json, llm_judge_used, notes, created_at "
+            "FROM revalidation_runs ORDER BY id DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d['category_counts'] = json.loads(d.pop('category_counts_json') or '{}')
+            except Exception:
+                d['category_counts'] = {}
+            out.append(d)
+        return jsonify({'runs': out})
+    finally:
+        conn.close()
+
+
+@app.route('/admin/revalidation/runs/<int:run_id>', methods=['GET'])
+@require_admin
+def admin_revalidation_run_detail(run_id: int):
+    """Sumário + counts de um run específico."""
+    from database.schema import get_conn as _gc
+    conn = _gc()
+    try:
+        row = conn.execute(
+            "SELECT * FROM revalidation_runs WHERE id = ?", (run_id,)
+        ).fetchone()
+        if not row:
+            return jsonify({'error': 'run não encontrado'}), 404
+        d = dict(row)
+        try:
+            d['category_counts'] = json.loads(d.pop('category_counts_json') or '{}')
+        except Exception:
+            d['category_counts'] = {}
+        return jsonify(d)
+    finally:
+        conn.close()
+
+
+@app.route('/admin/revalidation/runs/<int:run_id>/findings', methods=['GET'])
+@require_admin
+def admin_revalidation_findings(run_id: int):
+    """
+    Findings paginados de um run.
+
+    Query params:
+      category (string ou 'all', default 'all')
+      street, position (filtros opcionais)
+      limit (default 100, máx 500), offset (default 0)
+      order ('severity_desc' [default] | 'severity_asc' | 'id_asc')
+    """
+    from database.schema import get_conn as _gc
+    cat   = request.args.get('category', 'all')
+    street = request.args.get('street')
+    position = request.args.get('position')
+    limit  = min(int(request.args.get('limit', 100)), 500)
+    offset = int(request.args.get('offset', 0))
+    order  = request.args.get('order', 'severity_desc')
+
+    where = ["run_id = ?"]
+    params: list = [run_id]
+    if cat and cat != 'all':
+        where.append("category = ?"); params.append(cat)
+    if street:
+        where.append("street = ?"); params.append(street)
+    if position:
+        where.append("position = ?"); params.append(position)
+    where_sql = ' AND '.join(where)
+
+    if order == 'severity_asc':
+        order_sql = "ORDER BY severity_score ASC, id ASC"
+    elif order == 'id_asc':
+        order_sql = "ORDER BY id ASC"
+    else:
+        order_sql = "ORDER BY severity_score DESC, id ASC"
+
+    conn = _gc()
+    try:
+        rows = conn.execute(
+            f"SELECT * FROM revalidation_findings WHERE {where_sql} {order_sql} LIMIT ? OFFSET ?",
+            tuple(params) + (limit, offset),
+        ).fetchall()
+        total_row = conn.execute(
+            f"SELECT COUNT(*) AS n FROM revalidation_findings WHERE {where_sql}",
+            tuple(params),
+        ).fetchone()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d['reasons'] = json.loads(d.pop('reasons_json') or '[]')
+            except Exception:
+                d['reasons'] = []
+            out.append(d)
+        return jsonify({
+            'run_id': run_id,
+            'total':  dict(total_row).get('n', 0) if total_row else 0,
+            'limit':  limit,
+            'offset': offset,
+            'findings': out,
+        })
+    finally:
+        conn.close()
+
+
+def _parse_scope(raw: str):
+    """Converte string 'all'|'user:N'|'tournament:N' em Scope."""
+    from leaklab.revalidation.orchestrator import Scope
+    raw = (raw or 'all').strip()
+    if raw == 'all':
+        return Scope.all()
+    if raw.startswith('user:'):
+        return Scope.for_user(int(raw.split(':', 1)[1]))
+    if raw.startswith('tournament:'):
+        return Scope.for_tournament(int(raw.split(':', 1)[1]))
+    return Scope.all()
+
+
 @app.route('/admin/reanalyze-preflop-labels', methods=['POST'])
 @require_admin
 def admin_reanalyze_preflop_labels():

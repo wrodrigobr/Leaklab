@@ -21,6 +21,9 @@ node_modules/
 # Fixtures locais (dados pessoais de torneio)
 backend/torneio_ingles.txt
 
+# Outputs do varredor de revalidação (gerados localmente)
+backend/reports/
+
 # Claude Code
 .claude/
 

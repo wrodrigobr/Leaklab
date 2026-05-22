@@ -1,0 +1,136 @@
+PokerStars Hand #100000000001: Tournament #999900001, $1.00+$0.10 USD Hold'em No Limit - Level I (10/20) - 2026/05/22 18:00:00 ET
+Table '999900001 1' 6-max Seat #1 is the button
+Seat 1: Villain1 (1500 in chips)
+Seat 2: Villain2 (1500 in chips)
+Seat 3: HeroPlayer (1500 in chips)
+Seat 4: Villain3 (1500 in chips)
+Seat 5: Villain4 (1500 in chips)
+Seat 6: Villain5 (1500 in chips)
+Villain2: posts small blind 10
+Villain3: posts big blind 20
+*** HOLE CARDS ***
+Dealt to HeroPlayer [Ah Ad]
+Villain4: folds
+Villain5: folds
+Villain1: folds
+Villain2: folds
+HeroPlayer: raises 40 to 60
+Villain3: folds
+Uncalled bet (40) returned to HeroPlayer
+HeroPlayer collected 40 from pot
+*** SUMMARY ***
+Total pot 40 | Rake 0
+Seat 3: HeroPlayer collected (40)
+
+
+PokerStars Hand #100000000002: Tournament #999900001, $1.00+$0.10 USD Hold'em No Limit - Level I (10/20) - 2026/05/22 18:02:00 ET
+Table '999900001 1' 6-max Seat #2 is the button
+Seat 1: Villain1 (1500 in chips)
+Seat 2: Villain2 (1500 in chips)
+Seat 3: HeroPlayer (1540 in chips)
+Seat 4: Villain3 (1500 in chips)
+Seat 5: Villain4 (1500 in chips)
+Seat 6: Villain5 (1500 in chips)
+Villain3: posts small blind 10
+Villain4: posts big blind 20
+*** HOLE CARDS ***
+Dealt to HeroPlayer [7c 2d]
+Villain5: folds
+Villain1: folds
+Villain2: folds
+HeroPlayer: folds
+Villain3: folds
+Villain4 collected 20 from pot
+*** SUMMARY ***
+Total pot 20 | Rake 0
+Seat 4: Villain4 collected (20)
+
+
+PokerStars Hand #100000000003: Tournament #999900001, $1.00+$0.10 USD Hold'em No Limit - Level II (15/30) - 2026/05/22 18:05:00 ET
+Table '999900001 1' 6-max Seat #3 is the button
+Seat 1: Villain1 (1500 in chips)
+Seat 2: Villain2 (1500 in chips)
+Seat 3: HeroPlayer (1540 in chips)
+Seat 4: Villain3 (1490 in chips)
+Seat 5: Villain4 (1500 in chips)
+Seat 6: Villain5 (1500 in chips)
+Villain4: posts small blind 15
+Villain5: posts big blind 30
+*** HOLE CARDS ***
+Dealt to HeroPlayer [Ks Qs]
+Villain1: folds
+Villain2: folds
+HeroPlayer: raises 60 to 90
+Villain3: folds
+Villain4: folds
+Villain5: calls 60
+*** FLOP *** [Kh 7c 2d]
+Villain5: checks
+HeroPlayer: bets 120
+Villain5: folds
+Uncalled bet (120) returned to HeroPlayer
+HeroPlayer collected 195 from pot
+*** SUMMARY ***
+Total pot 195 | Rake 0
+Board [Kh 7c 2d]
+Seat 3: HeroPlayer collected (195)
+
+
+PokerStars Hand #100000000004: Tournament #999900001, $1.00+$0.10 USD Hold'em No Limit - Level II (15/30) - 2026/05/22 18:08:00 ET
+Table '999900001 1' 6-max Seat #4 is the button
+Seat 1: Villain1 (1500 in chips)
+Seat 2: Villain2 (1500 in chips)
+Seat 3: HeroPlayer (1735 in chips)
+Seat 4: Villain3 (1490 in chips)
+Seat 5: Villain4 (1485 in chips)
+Seat 6: Villain5 (1410 in chips)
+Villain4: posts small blind 15
+Villain5: posts big blind 30
+*** HOLE CARDS ***
+Dealt to HeroPlayer [8h 8d]
+Villain1: folds
+Villain2: folds
+HeroPlayer: calls 30
+Villain3: raises 90 to 120
+Villain4: folds
+Villain5: folds
+HeroPlayer: calls 90
+*** FLOP *** [9d 7c 4h]
+HeroPlayer: checks
+Villain3: bets 150
+HeroPlayer: calls 150
+*** TURN *** [9d 7c 4h] [2s]
+HeroPlayer: checks
+Villain3: bets 250
+HeroPlayer: folds
+Uncalled bet (250) returned to Villain3
+Villain3 collected 540 from pot
+*** SUMMARY ***
+Total pot 540 | Rake 0
+Board [9d 7c 4h 2s]
+Seat 4: Villain3 collected (540)
+
+
+PokerStars Hand #100000000005: Tournament #999900001, $1.00+$0.10 USD Hold'em No Limit - Level III (20/40) - 2026/05/22 18:12:00 ET
+Table '999900001 1' 6-max Seat #5 is the button
+Seat 1: Villain1 (1500 in chips)
+Seat 2: Villain2 (1500 in chips)
+Seat 3: HeroPlayer (1465 in chips)
+Seat 4: Villain3 (2030 in chips)
+Seat 5: Villain4 (1485 in chips)
+Seat 6: Villain5 (1410 in chips)
+Villain5: posts small blind 20
+Villain1: posts big blind 40
+*** HOLE CARDS ***
+Dealt to HeroPlayer [Td 9h]
+Villain2: folds
+HeroPlayer: folds
+Villain3: folds
+Villain4: folds
+Villain5: folds
+Villain1 collected 40 from pot
+*** SUMMARY ***
+Total pot 40 | Rake 0
+Seat 1: Villain1 collected (40)
+
+
