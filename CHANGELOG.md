@@ -9,6 +9,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.162.0] — 2026-05-23 — fix(preflop): workaround para pares premium QQ-77 em vs_RFI
+
+### Why
+Descoberto que JSON `leaklab_gto_ranges.json` v2.3.0 tem bug sistemático de extração: cor azul-petróleo RGB(59,128,155) do PDF RegLife — que representa **call** — foi classificada erroneamente como **fold** pelo `extract_vsrfi_ranges.py`. Resultado: pares premium (QQ, JJ, TT, 99, 88, 77) e mãos como QJo apareciam em `fold_hands` em vários spots vs_RFI. Aluno com QQ defendendo open recebia "leak" se desse call — feedback completamente errado em centenas de mãos do banco.
+
+### Fix temporário (Backlog #17 mantém solução definitiva)
+- `backend/leaklab/preflop_gto_ranges.py:269-276`: guard em `analyze_preflop` para cenário `vs_rfi`. Quando hero tem QQ-77 e o lookup do JSON retorna `in_range=False`, força `in_range=True` com recomendação `jam` (stack ≤20bb) ou `call` (>20bb). Não aplica em PF zone (≤12bb usa lógica push/fold separada).
+- Não corrige o JSON nem o Range Panel do frontend (esse continua mostrando QQ azul = fold no grid)
+- Resolve impacto direto no Decision Card (verdict + recomendação)
+
+### Validação
+- Reprocessamento: 1118 decisions, **80 atualizadas** + 80 reconcile
+- Test consistency: 24 → 25 violações (categorias residuais não cobertas pelo workaround)
+- Suite engine: 33/33 OK
+
+### Tentativa anterior (rejeitada)
+Tentei re-extrair via pixel (opção C do plano). Descobri 2 bugs aninhados:
+1. Cor azul-petróleo classificada como fold (corrigi)
+2. `_detect_y_bounds` captura área errada em PNGs 100bb (apenas 1.7% pixels brancos vs 45-55% nos 17-20bb) — layout do PDF varia por stack
+
+Re-extração pixel exigiria 1-2 dias de calibração. JSON e script restaurados via backup `leaklab_gto_ranges.bak.v2.3.0.json`. Solução definitiva (D) — validação programática contra GTO Wizard — documentada em Backlog #17.
+
+### Files
+- **Changed**: `backend/leaklab/preflop_gto_ranges.py` (+11 linhas guard)
+- **New**: `backend/docs/leaklab_gto_ranges.bak.v2.3.0.json` (backup pré-tentativa)
+
+---
+
 ## [v0.161.0] — 2026-05-23 — feat(replayer): DecisionCard template único + coerência verdict×math
 
 ### Why

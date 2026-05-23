@@ -276,6 +276,18 @@ def analyze_preflop(
             else:
                 rec = ['fold']
 
+            # ── Workaround temporário (Backlog #17) ──
+            # JSON v2.3.0 tem bug de extração que coloca pares premium (QQ-77)
+            # em fold_hands em vários spots vs_RFI (cor azul-petróleo classificada
+            # erroneamente como fold). Até re-validação completa, garantir que
+            # pares premium nunca sejam classificados como fold vs open.
+            # Não aplica em PF zone (stack ≤ 12bb usa lógica push/fold separada).
+            _PREMIUM_PAIRS = {'QQ', 'JJ', 'TT', '99', '88', '77'}
+            if (hero_hand_type in _PREMIUM_PAIRS and not in_rng and stack_bb > 12):
+                in_rng = True
+                # Stacks rasos (13-20bb): jam é GTO. Stacks médios+: call/raise dominam.
+                rec = ['jam'] if stack_bb <= 20 else ['call']
+
             quality = _vs_rfi_quality_new(action_taken, in_rng, rec)
             base.update({
                 'available': True, 'in_range': in_rng,
