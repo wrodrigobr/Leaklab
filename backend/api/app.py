@@ -4669,7 +4669,9 @@ def preflop_ranges():
             'pct':   float(rfi_raw.get('pct', 0)),
         }
 
-    # vs_RFI — return all openers available for this defender position
+    # vs_RFI — return all openers available for this defender position.
+    # JSON RegLife usa formato novo: call_hands/raise_hands/allin_hands
+    # (cada um já separado por ação). Formato antigo usava 'hands'+'acoes'.
     vs_rfi_raw = bk.get('vs_RFI', {})
     vs_rfi = {}
     for opener_key, defenders in vs_rfi_raw.items():
@@ -4677,15 +4679,52 @@ def preflop_ranges():
         if not defender:
             continue
         opener_label = opener_key.replace('_open', '')
-        all_hands = _expand_range(defender.get('hands', ''))
-        acoes     = defender.get('acoes', [])
-        is_3bet   = 'THREBET' in acoes or '3BET' in [a.upper() for a in acoes]
+
+        # Formato novo (RegLife): call_hands / raise_hands / allin_hands separados
+        call_hands_str  = defender.get('call_hands', '')
+        raise_hands_str = defender.get('raise_hands', '')
+        allin_hands_str = defender.get('allin_hands', '')
+
+        call_set  = _expand_range(call_hands_str)
+        # raise3bet = raise + allin (ambos são agressões — verde no grid)
+        raise_set = _expand_range(raise_hands_str) | _expand_range(allin_hands_str)
+
+        # Fallback p/ formato antigo (hands + acoes) se o novo não tiver nada
+        if not call_set and not raise_set:
+            all_hands = _expand_range(defender.get('hands', ''))
+            acoes     = defender.get('acoes', [])
+            is_3bet   = 'THREBET' in acoes or '3BET' in [a.upper() for a in acoes]
+            raise_set = all_hands if is_3bet else set()
+            call_set  = all_hands if not is_3bet else set()
+
+        # ── Workaround Backlog #17 ──
+        # JSON v2.3.0 tem bug: pares premium QQ-77 caem em fold_hands em vários
+        # spots vs_RFI (cor azul-petróleo mal classificada). Garantir que esses
+        # pares apareçam em call/raise no grid (não em branco = fold).
+        # Só promove pra call se NÃO estiver em raise — não sobrescreve dados válidos.
+        _PREMIUM_PAIRS = {'QQ', 'JJ', 'TT', '99', '88', '77'}
+        for pair in _PREMIUM_PAIRS:
+            if pair not in call_set and pair not in raise_set:
+                # Stacks rasos preferem jam (vai pro raise/verde); stacks médios call (azul)
+                if stack_bb <= 20:
+                    raise_set.add(pair)
+                else:
+                    call_set.add(pair)
+
+        # pct_play = call_pct + raise_pct + allin_pct quando disponíveis no novo formato
+        if defender.get('call_pct') is not None:
+            pct_play = (float(defender.get('call_pct') or 0)
+                        + float(defender.get('raise_pct') or 0)
+                        + float(defender.get('allin_pct') or 0))
+        else:
+            pct_play = float(defender.get('pct_play', 0))
+
         vs_rfi[opener_label] = {
-            'raise3bet': sorted(all_hands) if is_3bet else [],
-            'call':      sorted(all_hands) if not is_3bet else [],
-            'pct_play':  float(defender.get('pct_play', 0)),
-            'acoes':     acoes,
-            'hands':     sorted(all_hands),
+            'raise3bet': sorted(raise_set),
+            'call':      sorted(call_set),
+            'pct_play':  pct_play,
+            'acoes':     defender.get('acoes', []),
+            'hands':     sorted(call_set | raise_set),
         }
 
     # vs_3bet
