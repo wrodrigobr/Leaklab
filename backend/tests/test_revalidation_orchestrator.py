@@ -191,13 +191,13 @@ def test_output_dir_writes_files():
         assert any(f.endswith('.md') for f in files), f"sem MD em {files}"
         # Valida JSON
         json_path = next(f for f in files if f.endswith('.json'))
-        with open(os.path.join(tmpdir, json_path)) as f:
+        with open(os.path.join(tmpdir, json_path), encoding='utf-8') as f:
             payload = json.load(f)
         assert payload['meta']['total_decisions'] == r.total_decisions
         assert len(payload['findings']) == r.total_decisions
         # Valida MD
         md_path = next(f for f in files if f.endswith('.md'))
-        with open(os.path.join(tmpdir, md_path)) as f:
+        with open(os.path.join(tmpdir, md_path), encoding='utf-8') as f:
             md = f.read()
         assert '# Revalidação' in md
         assert 'Distribuição por categoria' in md
