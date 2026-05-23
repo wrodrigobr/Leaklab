@@ -218,7 +218,14 @@ function SidePanels({
     if (a === "allin" || a.startsWith("allin") || a === "shove") return "text-red-400";
     return "text-purple-400";
   };
-  const scenarioLabel: Record<string, string> = { rfi: "RFI", vs_rfi: "vs Open", vs_3bet: "vs 3-Bet" };
+  const scenarioLabel: Record<string, string> = {
+    rfi: "RFI",
+    vs_rfi: "vs Open",
+    vs_3bet: "vs 3-Bet",
+    vs_shove_fallback: "vs Shove (heurística)",
+    squeeze: "Squeeze",
+    vs_4bet: "vs 4-Bet",
+  };
   return (
     <div className="flex flex-col gap-2">
 

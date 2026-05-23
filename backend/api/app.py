@@ -3205,6 +3205,16 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                         'action_quality': _q,
                                         'in_range': _rfi_check.get('in_range', False),
                                         'scenario': 'vs_shove_fallback',
+                                        # Campos completos para frontend renderizar
+                                        'hand_type': h_type,
+                                        'stack_bucket': _rfi_check.get('stack_bucket', f'{int(_pf_stack_bb)}bb'),
+                                        'stack_bb': _pf_stack_bb,
+                                        'position': _pf_pos,
+                                        'vs_position': '',
+                                        'range_pct': _rfi_check.get('range_pct', 0),
+                                        'range_hands': _rfi_check.get('range_hands', ''),
+                                        'action_taken': 'call',
+                                        'pro_notes': _rfi_check.get('pro_notes', []),
                                         'reasoning': (
                                             'Mão premium em range de abertura — call de shove correto.'
                                             if _q == 'correct' else
@@ -3554,18 +3564,31 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                            action_taken='raise', facing_size=0.0, vs_position='')
                             if _pf_rfi.get('available'):
                                 _rfi_quality = _pf_rfi.get('action_quality', 'unknown')
+                                # Base com campos completos para o frontend renderizar
+                                # corretamente (sem isto, hand_type/stack_bucket/range_pct
+                                # ficam vazios e o card aparece sem informação)
+                                _pf_base = {
+                                    'available': True,
+                                    'scenario': 'vs_shove_fallback',
+                                    'hand_type': _ht,
+                                    'stack_bucket': _pf_rfi.get('stack_bucket', f'{int(_sb)}bb'),
+                                    'stack_bb': _sb,
+                                    'position': _pos,
+                                    'vs_position': '',
+                                    'range_pct': _pf_rfi.get('range_pct', 0),
+                                    'range_hands': _pf_rfi.get('range_hands', ''),
+                                    'action_taken': _norm(action.action),
+                                    'pro_notes': _pf_rfi.get('pro_notes', []),
+                                }
                                 if _rfi_quality == 'correct':
-                                    _pf = {'available': True, 'recommended_actions': ['call'],
-                                           'action_quality': 'correct', 'in_range': True,
-                                           'scenario': 'vs_shove_fallback'}
+                                    _pf = {**_pf_base, 'recommended_actions': ['call'],
+                                           'action_quality': 'correct', 'in_range': True}
                                 elif _rfi_quality == 'acceptable':
-                                    _pf = {'available': True, 'recommended_actions': ['call'],
-                                           'action_quality': 'acceptable', 'in_range': True,
-                                           'scenario': 'vs_shove_fallback'}
+                                    _pf = {**_pf_base, 'recommended_actions': ['call'],
+                                           'action_quality': 'acceptable', 'in_range': True}
                                 else:
-                                    _pf = {'available': True, 'recommended_actions': ['fold'],
-                                           'action_quality': 'leak', 'in_range': False,
-                                           'scenario': 'vs_shove_fallback'}
+                                    _pf = {**_pf_base, 'recommended_actions': ['fold'],
+                                           'action_quality': 'leak', 'in_range': False}
 
                         if _pf.get('available') and _pf.get('recommended_actions'):
                             preflop_override_action = _pf['recommended_actions'][0]
