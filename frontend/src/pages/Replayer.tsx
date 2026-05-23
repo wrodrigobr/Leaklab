@@ -412,8 +412,13 @@ function SidePanels({
                            : profitable
                              ? `Call lucrativo — equity ${Math.round(eq*100)}% supera o necessário ${Math.round(po*100)}%`
                              : `Call perdedor — equity ${Math.round(eq*100)}% abaixo do necessário ${Math.round(po*100)}%`;
+              // sprCtx: descrição genérica do SPR. O texto "foldar seria erro" só
+              // aparece quando hero realmente foldou — caso contrário não faz sentido.
+              const heroFolded = step.is_hero && step.action === "fold";
               const sprCtx = spr == null ? null
-                           : spr < 1   ? "Stack comprometido — foldar seria erro matemático"
+                           : spr < 1   ? (heroFolded
+                                          ? "Stack comprometido — foldar seria erro matemático"
+                                          : "Stack comprometido — pot odds + equity dominam fold neste SPR")
                            : spr < 2   ? "Pouco espaço — prefira push ou fold em vez de calls"
                            : spr < 5   ? "Espaço médio — calls e raises ainda são viáveis"
                            : "Stack fundo — jogue seu range completo com posição";
