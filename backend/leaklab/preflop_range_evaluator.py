@@ -6,7 +6,8 @@ def evaluate_preflop_range(state: HandState, spot: SpotClassification) -> RangeE
     cards = state.hero_cards or ""
     zone = _classify_range_zone(cards)
     facing_size = float(getattr(state, 'facing_size', 0) or 0)
-    recommended = _recommended_action(cards, state.position, facing_size)
+    stack_bb    = float(getattr(state, 'effective_stack_bb', 0) or getattr(spot, 'effective_stack_bb', 0) or 0)
+    recommended = _recommended_action(cards, state.position, facing_size, stack_bb=stack_bb)
     alternatives = []
     if zone == "borderline_range":
         base_alts = ["call", "fold"] if recommended == "call" else ["raise", "fold"]
@@ -41,22 +42,37 @@ def _classify_range_zone(cards: str) -> str:
     return "outside_range"
 
 
-def _recommended_action(cards: str, position: str, facing_size: float = 0.0) -> str:
-    """Recomenda ação preflop usando classificação por zona + posição + facing_size.
+def _recommended_action(cards: str, position: str, facing_size: float = 0.0,
+                         stack_bb: float = 0.0) -> str:
+    """Recomenda ação preflop usando classificação por zona + posição + facing_size + stack.
 
-    Regra crítica (FIX 2026-05-22): quando facing_size > 3bb (hero enfrenta 3-bet
-    ou maior), borderline hands não devem 4-bet — preferem call (set-mine para
-    pares, implied odds para suited connectors). Antes o heurístico recomendava
-    raise para todo borderline em não-blind, o que sobreestimava agressão em
-    spots multiway com 3-bet.
+    Regras críticas:
+    - Push/Fold zone (stack ≤ 12bb preflop): apenas JAM ou FOLD. Nada de call/limp.
+    - Facing >= 3bb (vs 3-bet): borderline = call (set-mine); core IP = raise; core OOP = call.
+    - RFI: core = raise; borderline = raise (não-blind) ou call (blind); fora = fold.
     """
     zone = _classify_range_zone(cards)
     is_pair = len(cards) >= 4 and cards[0] == cards[2]
     r1      = cards[0] if len(cards) >= 1 else ""
-    is_small_pair = is_pair and r1 in "234567"
 
-    # Facing 3-bet+ (>= 3bb): tighter logic — set-mine / call em vez de 4-bet
-    if facing_size >= 3.0:
+    # Push/Fold zone: stack curto → decisão binária jam ou fold
+    # Threshold 14bb cobre 10-14bb range padrão MTT (push/fold standard)
+    if stack_bb > 0 and stack_bb <= 14.0:
+        if zone == "core_range":
+            return "jam"
+        if zone == "borderline_range":
+            # Borderline em PF: jam de posições mid-late (LJ+), fold de early.
+            # SB/BTN/CO jamming wide range; UTG/UTG+1 mais tight.
+            if position in {"BTN", "SB", "CO", "HJ", "LJ", "MP", "MP1", "MP2"}:
+                return "jam"
+            return "fold"
+        # outside_range em PF zone → fold
+        return "fold"
+
+    # Facing > 2bb (vs raise, iso-over-limp, ou 3-bet): tighter logic
+    # — set-mine / call em vez de 4-bet. Threshold 2bb cobre iso 2.5x sobre limpers
+    # (era 3bb antes, mas iso típicos são 2-2.5x e estavam fora do critério).
+    if facing_size >= 2.0:
         if zone == "core_range":
             # Pares 88-AA + broadway suited → call ou 4-bet conforme posição
             # Em IP, premium pode 4-bet; OOP prefere call

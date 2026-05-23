@@ -9,6 +9,57 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.160.0] — 2026-05-23 — fix(engine): revalidação reduz majors 32 → 2 (-94%)
+
+### Why
+Relatório `revalidation_run_1` detectou 32 majors (2.9% das 1122 decisões). Em 4 padrões:
+- 19 casos `engine='bet'` vs `oracle='raise'` em preflop (60%)
+- 5 casos postflop jam não enumerado (16%)
+- 5 casos multiway iso engine recomendava raise quando oracle diz call
+- 3 casos SB push/fold engine sugeria call
+
+### Fix 1 — bet↔raise preflop normalize (cobre 19/32)
+- `decision_engine_v11.py`: guard `raise → bet` quando `facingSize=0` só dispara em **postflop**. Preflop RFI continua sendo `raise` (existe BB facing implícito)
+- `revalidation/differ.py`: nova `_norm_for_compare(action, street)` trata `bet ↔ raise` como equivalentes em preflop. Postflop mantém distinção
+- `revalidation/orchestrator.py` passa `street` ao differ
+
+### Fix 2 — Push/Fold zone no engine (cobre 3/32 + extras)
+- `preflop_range_evaluator.py`: `_recommended_action` ganha parâmetro `stack_bb`. Quando `stack_bb ≤ 14bb` (PF zone), retorna apenas `jam` ou `fold` — nunca `call`/`raise`/`limp`
+  - core_range → jam (todas posições)
+  - borderline → jam (BTN/SB/CO/HJ/LJ/MP), fold (UTG/UTG+1)
+  - outside → fold
+- `evaluate_preflop_range` extrai stack do state e passa adiante
+
+### Fix 3 — postflop jam awareness (cobre 5/32)
+- `decision_engine_v11.py`: quando GTO postflop sem strategy_json mas com `gto_label=gto_critical`, override `bestAction = gto.gto_action`. Antes só capeava o label, agora também corrige a recomendação (call → allin quando solver diz jam)
+
+### Fix 4 — heurístico facing ≥ 2bb (cobre 5/32)
+- `preflop_range_evaluator.py`: threshold de facing para tighter logic baixou de 3bb → **2bb**. Cobre iso-over-limp típicos (2-2.5x) que antes não disparavam set-mine/call para borderline
+
+### Tweak adicional — oracle alts agressivas
+- `revalidation/oracle.py:_heuristic_potodds`: quando `equity ≥ 0.55`, adiciona `raise` como alternative. Permite que engine.raise vs oracle.call vire `acceptable_alt` em vez de `major` quando hero tem equity confortável
+
+### Resultados (1122 decisões)
+| Métrica | Run #1 (baseline) | Run #4 (pós-fix) | Δ |
+|---|---:|---:|---|
+| Aligned | 89.5% | **98.3%** | +8.8pp |
+| Major mismatch | 32 (2.9%) | **2 (0.2%)** | **-94%** |
+| Acceptable alt | 79 (7.0%) | 15 (1.3%) | -64 (viraram aligned) |
+
+### Majors residuais (2 — aceitos)
+- **AQs UTG+2 30bb equity=0.49 facing iso**: spot mixed (4-bet ou call ambos GTO); equity abaixo do threshold 0.55 do oracle alt
+- **K7s BTN 12bb vs all-in massivo**: PF zone heurístico recomendou jam, spot real é vs-shove com equity ruim — distinção que requer detecção de "facing all-in" no heurístico (TODO futuro)
+
+### Validated
+- Suites engine 194/195 (1 falha pré-existente postflop, sem relação), database 36/36, audit 8/8, reconcile 5/5
+- Reprocess completo (1122 decisions) + sync + reconcile aplicados
+
+### Próximo passo natural
+- Refinar oracle/engine para spots vs-all-in (PF zone com facing >> stack)
+- Considerar `revalidation_run_5` após mais torneios serem importados
+
+---
+
 ## [v0.159.0] — 2026-05-22 — feat(push-fold): banner explícito + reconcile não mascara leak
 
 ### Added

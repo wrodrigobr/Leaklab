@@ -187,6 +187,7 @@ def _process_decision(tournament_db_id: int, hand_id: str, idx: int,
         oracle=oracle_rec,
         gto_info=gto_info,
         action_taken=di.get('player_action'),
+        street=di.get('street'),
     )
 
     spot = di.get('spot') or {}

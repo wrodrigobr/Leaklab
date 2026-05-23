@@ -583,8 +583,11 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             label        = classify_mistake_score(final_score)
             _best_action = gto['gto_action']
         else:
-            # Nó parcial (sem strategy_json): apenas capeia label, não muda score
+            # Nó parcial (sem strategy_json): capeia label e override bestAction
+            # quando GTO crítico — não faz sentido recomendar call quando solver diz jam.
             label = _gto_label_cap(label, gto['gto_label'])
+            if gto.get('gto_label') == 'gto_critical' and gto.get('gto_action'):
+                _best_action = gto['gto_action']
 
     # Validar inputs antes do GTO enrichment (warnings apenas — não bloqueia)
     _input_warnings = _validate_decision_input(input_data)
@@ -623,8 +626,10 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if float(spot.get('facingSize') or 0) == 0 and _best_action == 'fold' and spot.get('position') == 'BB':
         _best_action = 'check'
 
-    # Guard: sem aposta anterior, "raise" não é ação válida — normalizar para "bet" (open).
-    if float(spot.get('facingSize') or 0) == 0 and _best_action == 'raise':
+    # Guard: em POSTFLOP sem aposta anterior, "raise" não é ação válida — normalizar para "bet".
+    # Preflop sempre tem BB facing, então "raise" continua válido em RFI preflop.
+    if (input_data.get('street') != 'preflop'
+        and float(spot.get('facingSize') or 0) == 0 and _best_action == 'raise'):
         _best_action = 'bet'
 
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])

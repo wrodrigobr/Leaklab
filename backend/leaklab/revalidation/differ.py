@@ -64,16 +64,31 @@ class DivergenceRecord:
         }
 
 
+def _norm_for_compare(action: str, street: Optional[str] = None) -> str:
+    """Normaliza ação para comparação considerando street.
+
+    Em preflop, 'bet' e 'raise' são semanticamente equivalentes (BB sempre é a
+    primeira aposta; qualquer aposta voluntária é tecnicamente um raise sobre
+    a BB). Postflop mantém a distinção (bet = primeira aposta, raise = aumentar).
+    """
+    norm = _norm_gto_action(action)
+    if street and street.lower() == 'preflop' and norm == 'bet':
+        return 'raise'
+    return norm
+
+
 def classify(engine_result: dict,
              oracle: OracleDecision,
              gto_info: Optional[dict] = None,
-             action_taken: Optional[str] = None) -> DivergenceRecord:
+             action_taken: Optional[str] = None,
+             street: Optional[str] = None) -> DivergenceRecord:
     """
     engine_result: dict produzido por evaluate_decision()
     oracle:        OracleDecision retornado por oracle.decide()
     gto_info:      dict opcional com {'gto_label': str, 'gto_action': str}
                    (engine_result['gto'] já carrega isso quando available)
     action_taken:  ação efetiva do jogador (para anotar no record)
+    street:        'preflop'|'flop'|'turn'|'river' — afeta normalização bet/raise
     """
     engine_best  = (engine_result or {}).get('bestAction')
     debug        = (engine_result or {}).get('debug') or {}
@@ -111,8 +126,8 @@ def classify(engine_result: dict,
             reasons=reasons,
         )
 
-    ne = _norm_gto_action(engine_best)
-    no = _norm_gto_action(oracle.action)
+    ne = _norm_for_compare(engine_best, street)
+    no = _norm_for_compare(oracle.action, street)
 
     # 3) Engine == Oracle (mesma ação canônica)
     if ne == no:
@@ -129,8 +144,8 @@ def classify(engine_result: dict,
     # Daqui pra baixo: ações diferentes.
 
     # 4) Alternativa aceitável: engine_best está nas alternativas do oráculo
-    oracle_alts_norm = {_norm_gto_action(a) for a in (oracle.alternatives or [])}
-    engine_alts_norm = {_norm_gto_action(a) for a in alts_engine}
+    oracle_alts_norm = {_norm_for_compare(a, street) for a in (oracle.alternatives or [])}
+    engine_alts_norm = {_norm_for_compare(a, street) for a in alts_engine}
 
     if ne in oracle_alts_norm:
         reasons.append(f'engine_best={engine_best} listado em oracle.alternatives')

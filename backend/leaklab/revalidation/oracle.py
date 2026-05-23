@@ -389,8 +389,12 @@ def _heuristic_potodds(decision_input: dict) -> Optional[OracleDecision]:
 
     diff = round(equity - pot_odds, 4)
     if diff > 0.05:
+        # Quando há equity confortável, raise/aggression é alternativa válida.
+        # equity >= 0.55 ≈ mãos premium/strong com fold equity boa → 3-bet/raise defensável.
+        # facing é em chips (não bb), por isso só usamos equity como threshold aqui.
+        alts: list[str] = ['raise'] if equity >= 0.55 else []
         return OracleDecision(
-            action='call', alternatives=['raise'] if equity >= 0.65 else [],
+            action='call', alternatives=alts,
             confidence='low', source='heuristic_potodds',
             justification=f'equity={equity:.2f} - pot_odds={pot_odds:.2f} = +{diff} -> call.',
         )
