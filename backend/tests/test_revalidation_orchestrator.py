@@ -10,6 +10,13 @@ Cobertura:
 """
 import sys, os, json, tempfile, shutil
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 
 # Banco em tempfile (não :memory:) porque cada get_conn cria conexão nova.
 _TMPDB = tempfile.NamedTemporaryFile(suffix='.db', delete=False)

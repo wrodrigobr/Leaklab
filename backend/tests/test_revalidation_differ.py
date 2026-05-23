@@ -3,6 +3,13 @@ Testa leaklab.revalidation.differ.classify -- categorização de divergência.
 """
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 os.environ['LEAKLAB_DB'] = ':memory:'
 
 from leaklab.revalidation.differ import classify, DivergenceRecord

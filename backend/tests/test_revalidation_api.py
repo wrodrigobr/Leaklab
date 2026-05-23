@@ -7,6 +7,13 @@ Testa os endpoints admin da revalidação:
 """
 import sys, os, json, tempfile, sqlite3
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 
 # Mock flask_cors quando ausente
 try:

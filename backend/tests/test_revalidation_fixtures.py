@@ -10,6 +10,13 @@ spots representativos do problema (ex: "AKo facing 3bet @ 25bb").
 """
 import sys, os, tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 
 _TMPDB = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
 _TMPDB.close()

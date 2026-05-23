@@ -7,6 +7,13 @@ Cobre as 5 fontes:
 """
 import sys, os, json, sqlite3, tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 
 # Banco isolado em memória ANTES de importar repositories
 os.environ['LEAKLAB_DB'] = ':memory:'
