@@ -1,9 +1,9 @@
 """
-report.py — Formata RevalidationResult em Markdown + JSON para auditoria humana.
+report.py -- Formata RevalidationResult em Markdown + JSON para auditoria humana.
 
 Gera dois arquivos por run em output_dir/:
-  revalidation_run_<run_id>.json   — payload completo (findings + counts)
-  revalidation_run_<run_id>.md     — relatório legível
+  revalidation_run_<run_id>.json   -- payload completo (findings + counts)
+  revalidation_run_<run_id>.md     -- relatório legível
 """
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ def render_markdown(result: RevalidationResult) -> str:
     counts = result.category_counts
     total = result.total_decisions or 0
 
-    lines.append(f"# Revalidação — run #{result.run_id} ({result.scope})")
+    lines.append(f"# Revalidação -- run #{result.run_id} ({result.scope})")
     lines.append('')
     lines.append(f"- Torneios varridos: **{result.total_tournaments}**")
     lines.append(f"- Mãos processadas: **{result.total_hands}**")
@@ -114,7 +114,7 @@ def render_markdown(result: RevalidationResult) -> str:
             hid = r.get('hand_id', '?')
             lines.append(
                 f"### {i}. [{r.get('category')}] severity={r.get('severity_score', 0):.3f}"
-                f" — tid={tid} hand={hid} {r.get('street')}/{r.get('position')}"
+                f" -- tid={tid} hand={hid} {r.get('street')}/{r.get('position')}"
             )
             lines.append(
                 f"- tomou=`{r.get('action_taken')}` engine=`{r.get('engine_best')}`"
@@ -129,7 +129,7 @@ def render_markdown(result: RevalidationResult) -> str:
             if reasons:
                 lines.append('- razões: ' + '; '.join(str(x) for x in reasons))
             if r.get('llm_verdict'):
-                lines.append(f"- llm: **{r['llm_verdict']}** — {r.get('llm_reasoning', '')[:200]}")
+                lines.append(f"- llm: **{r['llm_verdict']}** -- {r.get('llm_reasoning', '')[:200]}")
             lines.append('')
     else:
         lines.append('_sem findings_')
@@ -150,7 +150,7 @@ def render_markdown(result: RevalidationResult) -> str:
     return '\n'.join(lines)
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# -- Helpers ------------------------------------------------------------------
 
 def _aggregate_by(findings: list[dict], key: str) -> dict:
     out: dict = defaultdict(lambda: defaultdict(int))

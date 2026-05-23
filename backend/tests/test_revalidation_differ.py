@@ -1,5 +1,5 @@
 """
-Testa leaklab.revalidation.differ.classify — categorização de divergência.
+Testa leaklab.revalidation.differ.classify -- categorização de divergência.
 """
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -27,7 +27,7 @@ def _oracle(action, alternatives=None, confidence='high', source='postflop_strat
     )
 
 
-# ── Categorias positivas ─────────────────────────────────────────────────────
+# -- Categorias positivas -----------------------------------------------------
 
 def test_aligned_same_action():
     r = classify(_engine('bet'), _oracle('bet'))
@@ -60,7 +60,7 @@ def test_acceptable_alt_via_gto_correct():
     print("OK  test_acceptable_alt_via_gto_correct")
 
 
-# ── Minor mismatch ────────────────────────────────────────────────────────────
+# -- Minor mismatch ------------------------------------------------------------
 
 def test_minor_mismatch_low_opp_cost():
     r = classify(_engine('check'), _oracle('call', opp_cost=0.10))
@@ -83,7 +83,7 @@ def test_minor_when_oracle_low_confidence_no_opp_cost():
     print(f"OK  test_minor_when_oracle_low_confidence_no_opp_cost (reasons={r.reasons})")
 
 
-# ── Major mismatch ────────────────────────────────────────────────────────────
+# -- Major mismatch ------------------------------------------------------------
 
 def test_major_mismatch_fold_vs_jam():
     r = classify(_engine('fold'), _oracle('jam'))
@@ -113,7 +113,7 @@ def test_major_severity_scales_with_opp_cost():
     print(f"OK  test_major_severity_scales_with_opp_cost ({r_low.severity_score} < {r_high.severity_score})")
 
 
-# ── Edge cases ────────────────────────────────────────────────────────────────
+# -- Edge cases ----------------------------------------------------------------
 
 def test_no_oracle_data_returns_unverifiable():
     r = classify(_engine('bet'), _oracle(None, confidence='unavailable',

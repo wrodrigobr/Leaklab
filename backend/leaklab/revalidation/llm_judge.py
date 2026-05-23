@@ -1,9 +1,9 @@
 """
-llm_judge.py — Claude Haiku como tiebreaker independente.
+llm_judge.py -- Claude Haiku como tiebreaker independente.
 
 Quando ativado (--with-llm-judge), itera sobre os top-N findings disputados
 (major_mismatch e no_oracle_data) e pede a Claude um veredicto independente.
-Não modifica a categoria do finding — apenas anota llm_verdict + llm_reasoning.
+Não modifica a categoria do finding -- apenas anota llm_verdict + llm_reasoning.
 
 Cache: chave SHA256 do (street, position, action_taken, engine_best,
 oracle_action, board, hero_cards). Reusa a tabela `llm_cache` (user_id=0
@@ -58,7 +58,7 @@ def judge_findings(findings: list[dict], budget: int = 50) -> int:
 def judge_spot(finding: dict) -> dict:
     """
     Pede ao Claude que escolha entre engine_correct, oracle_correct,
-    both_acceptable, neither — para um único finding.
+    both_acceptable, neither -- para um único finding.
 
     Retorna {'verdict': str, 'reasoning': str, 'cached': bool}.
 
@@ -82,7 +82,7 @@ def judge_spot(finding: dict) -> dict:
     return parsed
 
 
-# ── Payload / parse ──────────────────────────────────────────────────────────
+# -- Payload / parse ----------------------------------------------------------
 
 _SYSTEM_PROMPT = (
     "Você é um juiz de poker MTT. Recebe um spot com a recomendação de duas "
@@ -152,13 +152,13 @@ def _parse_response(raw: str) -> dict:
     return {'verdict': verdict, 'reasoning': reasoning}
 
 
-# ── HTTP + cache ─────────────────────────────────────────────────────────────
+# -- HTTP + cache -------------------------------------------------------------
 
 def _call_api(payload: dict) -> str:
     import requests as _req
     key = os.environ.get('ANTHROPIC_API_KEY', '')
     if not key:
-        raise RuntimeError('ANTHROPIC_API_KEY não configurada — llm_judge indisponível.')
+        raise RuntimeError('ANTHROPIC_API_KEY não configurada -- llm_judge indisponível.')
     resp = _req.post(
         'https://api.anthropic.com/v1/messages',
         json=payload,

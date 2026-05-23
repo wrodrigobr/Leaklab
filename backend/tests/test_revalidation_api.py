@@ -73,7 +73,7 @@ def _hdr(tok):
     return {'Authorization': f'Bearer {tok}', 'Content-Type': 'application/json'}
 
 
-# ── Testes ──────────────────────────────────────────────────────────────────
+# -- Testes ------------------------------------------------------------------
 
 def test_run_sync_returns_run_id_and_counts():
     client, tok, _ = _make_admin_client_with_fixture()

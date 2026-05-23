@@ -2,7 +2,7 @@
 Smoke regressivo: trava o output esperado do varredor na fixture canônica.
 
 Quando alguém alterar o engine ou o oracle e a contagem de divergências
-mudar nessa fixture, o teste falha — força quem mexeu a justificar o
+mudar nessa fixture, o teste falha -- força quem mexeu a justificar o
 delta (atualiza o teto OU explica a regressão).
 
 Para atacar uma categoria de divergência, ADICIONE fixtures novas com
@@ -17,7 +17,7 @@ os.environ['LEAKLAB_DB'] = _TMPDB.name
 
 FIXTURE = os.path.join(os.path.dirname(__file__), 'fixtures', 'revalidation_mini.txt')
 
-# Teto atual — captura o estado conhecido em 2026-05-22 sobre a fixture mini.
+# Teto atual -- captura o estado conhecido em 2026-05-22 sobre a fixture mini.
 # Subir esses números sem comentário no PR é regressão.
 _BUDGETS = {
     'major_mismatch':  1,    # 1 spot conhecido (call vs raise CO facing 3bet)
@@ -62,7 +62,7 @@ def test_total_decisions_matches_fixture_shape():
     # 5 mãos na fixture, 11 decisões do hero (medido na implementação atual).
     assert r.total_hands == 5
     assert r.total_decisions == 11, (
-        f"esperava 11 decisões, recebi {r.total_decisions} — "
+        f"esperava 11 decisões, recebi {r.total_decisions} -- "
         "shape da fixture mudou ou hand_state_builder está rotando spots."
     )
     print(f"OK  test_total_decisions_matches_fixture_shape (decisions={r.total_decisions})")
@@ -74,7 +74,7 @@ def test_major_mismatch_within_budget():
     r = revalidate(scope=Scope.all(), persist=False)
     n = r.category_counts.get('major_mismatch', 0)
     assert n <= _BUDGETS['major_mismatch'], (
-        f"major_mismatch={n} > budget={_BUDGETS['major_mismatch']} — "
+        f"major_mismatch={n} > budget={_BUDGETS['major_mismatch']} -- "
         "engine OU oracle introduziu divergência nova. Investigue o finding "
         "(rode `python -m scripts.revalidate --tournament-id <id> --output /tmp`) "
         "antes de atualizar o budget."
@@ -98,7 +98,7 @@ def test_engine_no_data_zero():
     from leaklab.revalidation.orchestrator import revalidate, Scope
     r = revalidate(scope=Scope.all(), persist=False)
     n = r.category_counts.get('engine_no_data', 0)
-    assert n == 0, f"engine_no_data={n} — engine retornou bestAction vazio (não deveria)"
+    assert n == 0, f"engine_no_data={n} -- engine retornou bestAction vazio (não deveria)"
     print("OK  test_engine_no_data_zero")
 
 
@@ -111,7 +111,7 @@ def test_aligned_majority():
     healthy = aligned + acceptable
     pct = healthy / max(r.total_decisions, 1)
     assert pct >= 0.70, (
-        f"aligned+acceptable_alt = {healthy}/{r.total_decisions} ({pct:.0%}) < 70% — "
+        f"aligned+acceptable_alt = {healthy}/{r.total_decisions} ({pct:.0%}) < 70% -- "
         "saúde do engine caiu drasticamente na fixture mini"
     )
     print(f"OK  test_aligned_majority ({pct:.0%} healthy)")

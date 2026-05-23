@@ -1,5 +1,5 @@
 """
-Testa leaklab.revalidation.llm_judge — mocka requests.post para evitar API real.
+Testa leaklab.revalidation.llm_judge -- mocka requests.post para evitar API real.
 
 Cobre:
   - payload tem modelo + max_tokens + descrição do spot
@@ -44,14 +44,14 @@ def _finding(**over):
 
 
 def _fake_response(text: str):
-    """Simula requests.Response — retorna .json() e .raise_for_status()."""
+    """Simula requests.Response -- retorna .json() e .raise_for_status()."""
     m = mock.MagicMock()
     m.raise_for_status = lambda: None
     m.json = lambda: {'content': [{'type': 'text', 'text': text}]}
     return m
 
 
-# ── Testes ──────────────────────────────────────────────────────────────────
+# -- Testes ------------------------------------------------------------------
 
 def test_payload_has_model_and_spot_context():
     _reset_db_with_cache_table()
@@ -127,7 +127,7 @@ def test_cache_hit_skips_api_call():
 
     with mock.patch('requests.post', side_effect=fake_post):
         r1 = llm_judge.judge_spot(_finding())
-        r2 = llm_judge.judge_spot(_finding())  # mesmo finding → cache hit
+        r2 = llm_judge.judge_spot(_finding())  # mesmo finding -> cache hit
     assert r1['cached'] is False
     assert r2['cached'] is True
     assert call_count['n'] == 1, f"esperava 1 chamada, recebi {call_count['n']}"
@@ -177,7 +177,7 @@ def test_judge_findings_respects_budget_cap():
     _reset_db_with_cache_table()
     from leaklab.revalidation import llm_judge
 
-    # Spots distintos (street ou position diferentes) → cada um é uma chamada nova.
+    # Spots distintos (street ou position diferentes) -> cada um é uma chamada nova.
     streets = ['flop', 'turn', 'river', 'flop', 'turn', 'river', 'flop', 'turn', 'river', 'flop']
     positions = ['BTN', 'CO', 'HJ', 'SB', 'BB', 'UTG', 'UTG1', 'LJ', 'MP', 'BTN']
     findings = [_finding(street=streets[i], position=positions[i],
@@ -196,7 +196,7 @@ def test_judge_spot_raises_when_no_api_key_and_no_cache():
     from leaklab.revalidation import llm_judge
     os.environ.pop('ANTHROPIC_API_KEY', None)
     try:
-        # finding novo — não tem cache — vai tentar chamar e falhar
+        # finding novo -- não tem cache -- vai tentar chamar e falhar
         threw = False
         try:
             llm_judge.judge_spot(_finding(hand_id='H_NEW'))

@@ -1,5 +1,5 @@
 """
-orchestrator.py — Varre torneios, compara engine vs oracle, persiste findings.
+orchestrator.py -- Varre torneios, compara engine vs oracle, persiste findings.
 
 Não modifica nenhuma decisão existente: só lê tournaments.raw_text e grava
 linhas novas em revalidation_runs / revalidation_findings.
@@ -27,7 +27,7 @@ from leaklab.revalidation.oracle import OracleDecision, decide
 log = logging.getLogger(__name__)
 
 
-# ── Tipos ────────────────────────────────────────────────────────────────────
+# -- Tipos --------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class Scope:
@@ -82,7 +82,7 @@ class RevalidationResult:
         }
 
 
-# ── Entrypoint principal ─────────────────────────────────────────────────────
+# -- Entrypoint principal -----------------------------------------------------
 
 def revalidate(scope: Scope = Scope.all(),
                with_llm_judge: bool = False,
@@ -174,7 +174,7 @@ def revalidate(scope: Scope = Scope.all(),
     return result
 
 
-# ── Processamento por decisão ────────────────────────────────────────────────
+# -- Processamento por decisão ------------------------------------------------
 
 def _process_decision(tournament_db_id: int, hand_id: str, idx: int,
                       di: dict) -> dict:
@@ -210,7 +210,7 @@ def _process_decision(tournament_db_id: int, hand_id: str, idx: int,
     }
 
 
-# ── Fetch de torneios ────────────────────────────────────────────────────────
+# -- Fetch de torneios --------------------------------------------------------
 
 def _fetch_tournaments(scope: Scope) -> list[dict]:
     conn = get_conn()
@@ -230,7 +230,7 @@ def _fetch_tournaments(scope: Scope) -> list[dict]:
         conn.close()
 
 
-# ── Persistência ─────────────────────────────────────────────────────────────
+# -- Persistência -------------------------------------------------------------
 
 def _persist_run(scope: Scope, category_counts: dict[str, int],
                  findings: list[dict], *,

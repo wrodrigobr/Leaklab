@@ -1,11 +1,11 @@
 """
-oracle.py — Veredicto independente sobre a melhor ação em um spot.
+oracle.py -- Veredicto independente sobre a melhor ação em um spot.
 
 Princípio: NÃO chama decision_engine_v11.evaluate_decision em ponto algum.
 Recebe o mesmo decision_input que o engine recebe, mas decide a partir das
 fontes primárias (preflop ranges + gto_nodes locais) e cai para heurística
 matemática quando não há cobertura GTO. Sem chamadas externas (GTO Wizard,
-solver remoto) durante varredura — quem precisa daquilo é o ingestion path.
+solver remoto) durante varredura -- quem precisa daquilo é o ingestion path.
 
 Saída padronizada (OracleDecision) usada pelo differ.classify().
 """
@@ -18,7 +18,7 @@ from typing import Optional
 from leaklab.gto_utils import compute_spot_hash, hand_to_type, normalize_gto_action
 
 
-# ── Tipos públicos ───────────────────────────────────────────────────────────
+# -- Tipos públicos -----------------------------------------------------------
 
 @dataclass
 class OracleDecision:
@@ -48,13 +48,13 @@ _SOURCE_TAGS = {
     'postflop_strategy',      # gto_nodes.strategy_json com distribuição completa
     'postflop_top_action',    # gto_nodes só com gto_action (sem strategy_json)
     'heuristic_potodds',      # equity vs pot odds
-    'heuristic_pushfold',     # M-Ratio < 6 → push/fold
+    'heuristic_pushfold',     # M-Ratio < 6 -> push/fold
     'rule_bb_free_check',     # BB pode check grátis sem aposta
     'unavailable',            # sem dados suficientes
 }
 
 
-# ── Entrypoint ───────────────────────────────────────────────────────────────
+# -- Entrypoint ---------------------------------------------------------------
 
 def decide(decision_input: dict) -> OracleDecision:
     """
@@ -82,7 +82,7 @@ def decide(decision_input: dict) -> OracleDecision:
         return OracleDecision(
             action='check', alternatives=[],
             confidence='high', source='rule_bb_free_check',
-            justification='BB sem aposta — check é a única ação válida (não há range).',
+            justification='BB sem aposta -- check é a única ação válida (não há range).',
         )
 
     # 2. Preflop ranges estáticos
@@ -114,7 +114,7 @@ def decide(decision_input: dict) -> OracleDecision:
     )
 
 
-# ── Preflop ──────────────────────────────────────────────────────────────────
+# -- Preflop ------------------------------------------------------------------
 
 def _from_preflop_ranges(decision_input: dict) -> Optional[OracleDecision]:
     """Decide preflop a partir dos ranges estáticos. Retorna None se sem cobertura."""
@@ -176,7 +176,7 @@ def _from_preflop_ranges(decision_input: dict) -> Optional[OracleDecision]:
     )
 
 
-# ── Postflop ─────────────────────────────────────────────────────────────────
+# -- Postflop -----------------------------------------------------------------
 
 def _from_postflop_nodes(decision_input: dict) -> Optional[OracleDecision]:
     """
@@ -184,7 +184,7 @@ def _from_postflop_nodes(decision_input: dict) -> Optional[OracleDecision]:
     nem solver remoto. Espelha a ordem de fallback de lookup_gto():
       a) hash exato (com hero_hand + facing)
       b) hash genérico (sem hero_hand, mesmo facing)
-      c) hash genérico sem facing — só quando facing == 0
+      c) hash genérico sem facing -- só quando facing == 0
     """
     try:
         from database.repositories import get_gto_node
@@ -242,7 +242,7 @@ def _from_postflop_nodes(decision_input: dict) -> Optional[OracleDecision]:
         alternatives=[],
         confidence='medium',
         source='postflop_top_action',
-        justification=f"node sem strategy_json — gto_action={top}, gto_freq={node.get('gto_freq')}",
+        justification=f"node sem strategy_json -- gto_action={top}, gto_freq={node.get('gto_freq')}",
         strategy_freqs={normalize_gto_action(top): float(node.get('gto_freq') or 0.0)},
     )
 
@@ -277,7 +277,7 @@ def _decision_from_strategy_json(node: dict, decision_input: dict) -> Optional[O
     if not strategy:
         return None
 
-    # Sanidade: estratégias com soma de freq ≈ 0 indicam nó corrompido
+    # Sanidade: estratégias com soma de freq ~= 0 indicam nó corrompido
     freq_sum = sum(s['frequency'] for s in strategy)
     if freq_sum < 0.10:
         return None
@@ -313,14 +313,14 @@ def _decision_from_strategy_json(node: dict, decision_input: dict) -> Optional[O
     )
 
 
-# ── Heurísticas determinísticas ─────────────────────────────────────────────
+# -- Heurísticas determinísticas ---------------------------------------------
 
 def _heuristic_pushfold(decision_input: dict, m_ratio: float) -> OracleDecision:
     """
-    M-Ratio < 6 → push/fold puro. Aplica regra simples:
-      equity estimada ≥ 0.50  → jam
-      equity ≥ 0.40 e position in {BTN,SB} → jam (mais larga IP)
-      caso contrário → fold
+    M-Ratio < 6 -> push/fold puro. Aplica regra simples:
+      equity estimada >= 0.50  -> jam
+      equity >= 0.40 e position in {BTN,SB} -> jam (mais larga IP)
+      caso contrário -> fold
     """
     math = decision_input.get('math') or {}
     spot = decision_input.get('spot') or {}
@@ -331,18 +331,18 @@ def _heuristic_pushfold(decision_input: dict, m_ratio: float) -> OracleDecision:
         # Sem equity, sem como decidir; cai para low confidence fold (conservador)
         return OracleDecision(
             action='fold', confidence='low', source='heuristic_pushfold',
-            justification=f'M={m_ratio:.1f} push/fold sem equity estimada — fold conservador.',
+            justification=f'M={m_ratio:.1f} push/fold sem equity estimada -- fold conservador.',
         )
     if equity >= 0.50 or (equity >= 0.40 and position in {'BTN', 'SB'}):
         return OracleDecision(
             action='jam', alternatives=['fold'],
             confidence='medium', source='heuristic_pushfold',
-            justification=f'M={m_ratio:.1f} push/fold | equity={equity:.2f} → jam.',
+            justification=f'M={m_ratio:.1f} push/fold | equity={equity:.2f} -> jam.',
         )
     return OracleDecision(
         action='fold', alternatives=['jam'] if equity >= 0.35 else [],
         confidence='medium', source='heuristic_pushfold',
-        justification=f'M={m_ratio:.1f} push/fold | equity={equity:.2f} insuficiente → fold.',
+        justification=f'M={m_ratio:.1f} push/fold | equity={equity:.2f} insuficiente -> fold.',
     )
 
 
@@ -350,12 +350,12 @@ def _heuristic_potodds(decision_input: dict) -> Optional[OracleDecision]:
     """
     Regra simples e independente:
       facing == 0:
-        equity ≥ 0.50 → bet (value)
-        senão        → check
+        equity >= 0.50 -> bet (value)
+        senão        -> check
       facing > 0:
-        equity > pot_odds + 0.05 → call (com margem clara)
-        equity < pot_odds - 0.05 → fold
-        |diff| ≤ 0.05            → mixed (oracle marca como acceptable_alt entre call/fold)
+        equity > pot_odds + 0.05 -> call (com margem clara)
+        equity < pot_odds - 0.05 -> fold
+        |diff| <= 0.05            -> mixed (oracle marca como acceptable_alt entre call/fold)
     """
     math = decision_input.get('math') or {}
     spot = decision_input.get('spot') or {}
@@ -366,7 +366,7 @@ def _heuristic_potodds(decision_input: dict) -> Optional[OracleDecision]:
     if equity is None and facing == 0.0:
         return OracleDecision(
             action='check', confidence='low', source='heuristic_potodds',
-            justification='facing=0 sem equity — check é o default seguro.',
+            justification='facing=0 sem equity -- check é o default seguro.',
         )
     if equity is None:
         return None
@@ -376,12 +376,12 @@ def _heuristic_potodds(decision_input: dict) -> Optional[OracleDecision]:
             return OracleDecision(
                 action='bet', alternatives=['check'],
                 confidence='low', source='heuristic_potodds',
-                justification=f'facing=0 equity={equity:.2f} ≥ 0.50 → bet (value).',
+                justification=f'facing=0 equity={equity:.2f} >= 0.50 -> bet (value).',
             )
         return OracleDecision(
             action='check', alternatives=['bet'] if equity >= 0.40 else [],
             confidence='low', source='heuristic_potodds',
-            justification=f'facing=0 equity={equity:.2f} < 0.50 → check.',
+            justification=f'facing=0 equity={equity:.2f} < 0.50 -> check.',
         )
 
     if pot_odds is None:
@@ -392,21 +392,21 @@ def _heuristic_potodds(decision_input: dict) -> Optional[OracleDecision]:
         return OracleDecision(
             action='call', alternatives=['raise'] if equity >= 0.65 else [],
             confidence='low', source='heuristic_potodds',
-            justification=f'equity={equity:.2f} − pot_odds={pot_odds:.2f} = +{diff} → call.',
+            justification=f'equity={equity:.2f} - pot_odds={pot_odds:.2f} = +{diff} -> call.',
         )
     if diff < -0.05:
         return OracleDecision(
             action='fold', confidence='low', source='heuristic_potodds',
-            justification=f'equity={equity:.2f} − pot_odds={pot_odds:.2f} = {diff} → fold.',
+            justification=f'equity={equity:.2f} - pot_odds={pot_odds:.2f} = {diff} -> fold.',
         )
     return OracleDecision(
         action='call', alternatives=['fold'],
         confidence='low', source='heuristic_potodds',
-        justification=f'equity≈pot_odds (diff={diff}) — call/fold ambos defensáveis.',
+        justification=f'equity~=pot_odds (diff={diff}) -- call/fold ambos defensáveis.',
     )
 
 
-# ── Util ────────────────────────────────────────────────────────────────────
+# -- Util --------------------------------------------------------------------
 
 def _as_float(v) -> Optional[float]:
     if v is None:

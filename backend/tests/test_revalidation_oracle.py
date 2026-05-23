@@ -1,5 +1,5 @@
 """
-Testa leaklab.revalidation.oracle.decide — veredicto independente do engine.
+Testa leaklab.revalidation.oracle.decide -- veredicto independente do engine.
 
 Cobre as 5 fontes:
   rule_bb_free_check, preflop_ranges_static, postflop_strategy,
@@ -15,7 +15,7 @@ from leaklab.revalidation.oracle import decide, OracleDecision
 from leaklab.gto_utils import compute_spot_hash
 
 
-# ── Fábrica de decision_input ────────────────────────────────────────────────
+# -- Fábrica de decision_input ------------------------------------------------
 
 def _di(street='preflop', position='BTN', action='raise', hero_cards=None,
         facing=0.0, stack_bb=50.0, board=None, equity=None, pot_odds=None,
@@ -67,7 +67,7 @@ def _di(street='preflop', position='BTN', action='raise', hero_cards=None,
     }
 
 
-# ── Stub do gto_node em memória ───────────────────────────────────────────────
+# -- Stub do gto_node em memória -----------------------------------------------
 
 class _FakeNodeStore:
     """Substitui get_gto_node por lookup em dict em memória."""
@@ -104,7 +104,7 @@ class _FakeNodeStore:
         }
 
 
-# ── Testes ────────────────────────────────────────────────────────────────────
+# -- Testes --------------------------------------------------------------------
 
 def test_bb_free_check_is_rule():
     d = decide(_di(street='preflop', position='BB', action='check', facing=0.0,
@@ -137,7 +137,7 @@ def test_preflop_vs_rfi_kqs_bb_responds():
                    villain_position='BTN', stack_bb=50.0,
                    hero_cards=['Kh', 'Qh']))
     assert d.source == 'preflop_ranges_static'
-    # GTO sugere call ou 3bet — qualquer dos dois é aceitável
+    # GTO sugere call ou 3bet -- qualquer dos dois é aceitável
     assert d.action in {'call', 'raise', 'jam'}
     print(f"OK  test_preflop_vs_rfi_kqs_bb_responds (action={d.action})")
 
@@ -146,7 +146,7 @@ def test_pushfold_high_equity_jam():
     d = decide(_di(street='preflop', position='BTN', action='jam', facing=0.0,
                    stack_bb=8.0, m_ratio=4.5, hero_cards=['Ad', '5d'],
                    equity=0.55))
-    # M=4.5 < 6 force push/fold heuristic when preflop ranges não tem cobertura — mas
+    # M=4.5 < 6 force push/fold heuristic when preflop ranges não tem cobertura -- mas
     # com BTN @ 8bb existe range. Aceita qualquer fonte que escolha jam.
     assert d.action in {'jam', 'raise'}, f"esperado jam, recebi {d.action} / source={d.source}"
     print(f"OK  test_pushfold_high_equity_jam (source={d.source}, action={d.action})")
@@ -206,7 +206,7 @@ def test_postflop_strategy_mixed_includes_alts():
                        stack_bb=40.0, board=board, hero_cards=['8s', '8d']))
         assert d.source == 'postflop_strategy'
         assert d.action == 'call'
-        assert 'raise' in d.alternatives  # ≥ 20% freq → entra como alt
+        assert 'raise' in d.alternatives  # >= 20% freq -> entra como alt
         print(f"OK  test_postflop_strategy_mixed_includes_alts (alts={d.alternatives})")
     finally:
         store.restore()
@@ -221,7 +221,7 @@ def test_postflop_top_action_only_fallback():
             street='flop', position='CO', board=board, hero_hand=[],
             stack_bb=30.0, facing=0.0,
             gto_action='bet', gto_freq=0.80,
-            strategy_json=None,  # nó parcial — só top action
+            strategy_json=None,  # nó parcial -- só top action
         )
         d = decide(_di(street='flop', position='CO', action='check', facing=0.0,
                        stack_bb=30.0, board=board, hero_cards=['Jh', 'Tc']))
@@ -234,7 +234,7 @@ def test_postflop_top_action_only_fallback():
 
 
 def test_postflop_no_node_falls_to_heuristic():
-    # store vazio → cai pra heurística potodds
+    # store vazio -> cai pra heurística potodds
     store = _FakeNodeStore()
     store.install()
     try:
@@ -263,7 +263,7 @@ def test_postflop_heuristic_fold_when_no_equity_edge():
 
 
 def test_unavailable_when_no_data():
-    # Sem cartas, sem equity, sem pot odds, sem M-Ratio → unavailable
+    # Sem cartas, sem equity, sem pot odds, sem M-Ratio -> unavailable
     store = _FakeNodeStore()
     store.install()
     try:
@@ -286,12 +286,12 @@ def test_strategy_corrupt_freq_sum_zero():
             street='flop', position='BTN', board=board, hero_hand=[],
             stack_bb=40.0, facing=0.0,
             gto_action='bet', gto_freq=0.0,
-            strategy_json=json.dumps({'bet': {'frequency': 0.001}}),  # soma < 0.10 → corrupto
+            strategy_json=json.dumps({'bet': {'frequency': 0.001}}),  # soma < 0.10 -> corrupto
         )
         d = decide(_di(street='flop', position='BTN', action='check', facing=0.0,
                        stack_bb=40.0, board=board, hero_cards=['7c', '6c'],
                        equity=0.45))
-        # Cai para postflop_top_action (gto_action='bet' freq=0) ou heurística — não deve crashar
+        # Cai para postflop_top_action (gto_action='bet' freq=0) ou heurística -- não deve crashar
         assert d.action is not None or d.source == 'unavailable'
         print(f"OK  test_strategy_corrupt_freq_sum_zero (source={d.source})")
     finally:
@@ -313,7 +313,7 @@ def test_opp_cost_none_when_played_action_outside_range():
                        stack_bb=30.0, board=board, hero_cards=['Ks', 'Kd'],
                        equity=0.80))
         assert d.action == 'bet'
-        # 'check' not in strategy → opp_cost_bb fica None (não inventamos)
+        # 'check' not in strategy -> opp_cost_bb fica None (não inventamos)
         assert d.opp_cost_bb is None
         print("OK  test_opp_cost_none_when_played_action_outside_range")
     finally:

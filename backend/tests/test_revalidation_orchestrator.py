@@ -60,7 +60,7 @@ def _bootstrap_db_with_fixture():
         conn.close()
 
 
-# ── Testes ──────────────────────────────────────────────────────────────────
+# -- Testes ------------------------------------------------------------------
 
 def test_sweep_all_completes_without_errors():
     uid, tid = _bootstrap_db_with_fixture()
@@ -70,7 +70,7 @@ def test_sweep_all_completes_without_errors():
     assert result.errors == [], f"sweep teve erros: {result.errors}"
     assert result.total_tournaments == 1
     assert result.total_hands == 5
-    assert result.total_decisions >= 5, f"esperava ≥5 decisões, recebi {result.total_decisions}"
+    assert result.total_decisions >= 5, f"esperava >=5 decisões, recebi {result.total_decisions}"
     assert result.run_id is not None
     print(f"OK  test_sweep_all_completes_without_errors (decisions={result.total_decisions}, run_id={result.run_id})")
 

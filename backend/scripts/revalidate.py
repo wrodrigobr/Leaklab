@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-revalidate.py — CLI para a varredura de revalidação engine vs oracle.
+revalidate.py -- CLI para a varredura de revalidação engine vs oracle.
 
 Uso:
     python -m scripts.revalidate                              # todos os torneios
@@ -60,7 +60,7 @@ def main() -> int:
         scope = Scope.all()
 
     print(f'== Revalidação ({scope.label()}) ==')
-    print('  iniciando varredura — pode demorar conforme o volume...')
+    print('  iniciando varredura -- pode demorar conforme o volume...')
     result = revalidate(
         scope=scope,
         with_llm_judge=args.with_llm_judge,
@@ -91,7 +91,7 @@ def _print_summary(result) -> None:
                 'engine_no_data', 'acceptable_alt', 'aligned']:
         n = result.category_counts.get(cat, 0)
         pct = n * 100.0 / total
-        bar = '█' * int(pct // 2) if pct > 0 else ''
+        bar = '#' * int(pct // 2) if pct > 0 else ''
         print(f'    {cat:<18}  {n:>6}  ({pct:5.1f}%)  {bar}')
 
 

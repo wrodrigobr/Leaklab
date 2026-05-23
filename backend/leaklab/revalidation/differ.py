@@ -1,16 +1,16 @@
 """
-differ.py — Classifica a divergência entre o veredicto do engine e o do oráculo.
+differ.py -- Classifica a divergência entre o veredicto do engine e o do oráculo.
 
 Não inventa veredito próprio: apenas categoriza o par (engine_best, oracle.action)
 considerando alternativas conhecidas, GTO label e opp_cost.
 
 Categorias:
-  aligned            — engine_best ≡ oracle.action (após normalização canônica)
-  acceptable_alt     — engine_best ∈ alternativas do oráculo OU GTO classifica como mixed
-  minor_mismatch     — ações diferentes, baixo opp_cost (< 0.15bb) ou gto_minor_deviation
-  major_mismatch     — ações diferentes E (opp_cost ≥ 0.30bb OU gto_critical OU fold↔jam)
-  no_oracle_data     — oracle.confidence == 'unavailable' (engine pode estar certo, sem como verificar)
-  engine_no_data     — engine_best vazio (raro — proteção)
+  aligned            -- engine_best == oracle.action (após normalização canônica)
+  acceptable_alt     -- engine_best in alternativas do oráculo OU GTO classifica como mixed
+  minor_mismatch     -- ações diferentes, baixo opp_cost (< 0.15bb) ou gto_minor_deviation
+  major_mismatch     -- ações diferentes E (opp_cost >= 0.30bb OU gto_critical OU fold<->jam)
+  no_oracle_data     -- oracle.confidence == 'unavailable' (engine pode estar certo, sem como verificar)
+  engine_no_data     -- engine_best vazio (raro -- proteção)
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from leaklab.decision_engine_v11 import _norm_gto_action
 from leaklab.revalidation.oracle import OracleDecision
 
 
-# Aggressive ↔ passive pares que sempre são "major" quando trocados
+# Aggressive <-> passive pares que sempre são "major" quando trocados
 _AGGRESSIVE = {'bet', 'raise', 'jam', 'allin', 'shove'}
 _PASSIVE    = {'fold', 'check', 'call'}
 
@@ -86,7 +86,7 @@ def classify(engine_result: dict,
 
     reasons: list[str] = []
 
-    # 1) Engine sem ação — proteção
+    # 1) Engine sem ação -- proteção
     if not engine_best:
         return DivergenceRecord(
             category='engine_no_data',
@@ -98,7 +98,7 @@ def classify(engine_result: dict,
             reasons=['engine.bestAction vazio'],
         )
 
-    # 2) Oracle sem dados — engine pode estar certo, mas não há como verificar
+    # 2) Oracle sem dados -- engine pode estar certo, mas não há como verificar
     if oracle.confidence == 'unavailable' or oracle.action is None:
         reasons.append('oracle.confidence=unavailable')
         return DivergenceRecord(
@@ -114,7 +114,7 @@ def classify(engine_result: dict,
     ne = _norm_gto_action(engine_best)
     no = _norm_gto_action(oracle.action)
 
-    # 3) Engine ≡ Oracle (mesma ação canônica)
+    # 3) Engine == Oracle (mesma ação canônica)
     if ne == no:
         return DivergenceRecord(
             category='aligned',
@@ -144,7 +144,7 @@ def classify(engine_result: dict,
             reasons=reasons,
         )
 
-    # GTO declara mixed/correct → tratamos como acceptable_alt mesmo sem o oracle listar
+    # GTO declara mixed/correct -> tratamos como acceptable_alt mesmo sem o oracle listar
     if gto_label in ('gto_correct', 'gto_mixed'):
         reasons.append(f'gto_label={gto_label} sinaliza ação alternativa válida')
         return DivergenceRecord(
@@ -161,14 +161,14 @@ def classify(engine_result: dict,
     #
     # Política:
     #   - gto_critical sempre promove a major (GTO é a verdade objetiva).
-    #   - opp_cost ≥ 0.30bb sempre promove a major (custo direto em EV).
-    #   - swap agressivo↔passivo promove a major SALVO quando:
+    #   - opp_cost >= 0.30bb sempre promove a major (custo direto em EV).
+    #   - swap agressivo<->passivo promove a major SALVO quando:
     #       * gto_label=gto_minor_deviation (GTO já disse que é leve), OU
     #       * opp_cost_bb conhecido e < 0.15 (custo real é desprezível).
     is_major = False
     is_swap = _is_major_swap(ne, no)
     if is_swap:
-        reasons.append(f'swap agressivo↔passivo: engine={ne} vs oracle={no}')
+        reasons.append(f'swap agressivo<->passivo: engine={ne} vs oracle={no}')
         is_major = True
 
     if gto_label == 'gto_minor_deviation':
@@ -183,12 +183,12 @@ def classify(engine_result: dict,
         reasons.append('gto_label=gto_critical')
     if oracle.opp_cost_bb is not None and oracle.opp_cost_bb >= 0.30:
         is_major = True
-        reasons.append(f'opp_cost_bb={oracle.opp_cost_bb} ≥ 0.30')
+        reasons.append(f'opp_cost_bb={oracle.opp_cost_bb} >= 0.30')
 
     if (not is_major
             and oracle.opp_cost_bb is None
             and oracle.confidence == 'low'):
-        reasons.append('oracle.confidence=low + opp_cost desconhecido → minor')
+        reasons.append('oracle.confidence=low + opp_cost desconhecido -> minor')
 
     if is_major:
         return DivergenceRecord(
@@ -212,12 +212,12 @@ def classify(engine_result: dict,
     )
 
 
-# ── Helpers ─────────────────────────────────────────────────────────────────
+# -- Helpers -----------------------------------------------------------------
 
 def _is_major_swap(ne: str, no: str) -> bool:
     """
     Major quando engine recomenda agressivo e oracle recomenda passivo (ou vice-versa).
-    fold↔jam, fold↔raise, fold↔bet, check↔jam etc.
+    fold<->jam, fold<->raise, fold<->bet, check<->jam etc.
     """
     a_set = _AGGRESSIVE
     p_set = _PASSIVE
@@ -232,7 +232,7 @@ def _severity_for_major(opp_cost_bb: Optional[float]) -> float:
     base = _SEVERITY_BY_CATEGORY['major_mismatch']
     if opp_cost_bb is None:
         return base
-    # Escala: 0.85 (sem opp) → até 0.99 conforme opp_cost cresce
+    # Escala: 0.85 (sem opp) -> até 0.99 conforme opp_cost cresce
     return min(0.99, base + min(opp_cost_bb / 5.0, 0.14))
 
 
