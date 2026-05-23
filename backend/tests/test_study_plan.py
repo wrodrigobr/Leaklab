@@ -112,10 +112,11 @@ def test_study_plan_no_double_braces_in_prompt():
 
 
 def test_study_plan_cache_key_v2():
-    """O cache key deve usar prefixo v4 (inclui instrução dando raise/bet/fold) para invalidar caches antigos."""
+    """O cache key deve usar prefixo v5 (v0.156.0 adicionou leak_source ao cache para invalidar
+    quando fonte muda entre GTO ↔ heurístico)."""
     import inspect
     src = inspect.getsource(generate_study_plan)
-    assert 'study_plan_v4:' in src, "Cache key deve usar prefixo 'study_plan_v4:'"
+    assert 'study_plan_v5:' in src, "Cache key deve usar prefixo 'study_plan_v5:'"
     print("OK  test_study_plan_cache_key_v2")
 
 
