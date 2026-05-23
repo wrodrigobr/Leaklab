@@ -126,15 +126,11 @@ export function GtoStrategyPanel({ strategy, playedAction, compact }: Props) {
         );
       })}
 
-      {/* Mixed strategy badge — when ≥2 actions have ≥10% frequency */}
+      {/* Mixed strategy badge — when ≥2 actions have ≥10% frequency.
+          Texto "Fold 85% · Raise 15%" removido: redundante com as barras acima. */}
       {sorted.filter(r => r.frequency >= 0.10).length >= 2 && (
         <div className="flex items-center gap-2 pt-0.5">
           <GtoMixedBadge label="spot_mixed" size={compact ? "xs" : "sm"} />
-          {!compact && (
-            <span className="font-mono text-[8px] text-muted-foreground/50">
-              {sorted.filter(r => r.frequency >= 0.10).map(r => `${formatActionLabel(r.action)} ${Math.round(r.frequency * 100)}%`).join(' · ')}
-            </span>
-          )}
         </div>
       )}
 

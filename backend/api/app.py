@@ -3028,6 +3028,7 @@ def get_replay(tournament_id, hand_id):
                 'score':        r['evaluation']['mistakeScore'],
                 'context':      di.get('context', {}),
                 'math':         di.get('math', {}),
+                'thresholds':   r.get('thresholds', {}),
                 'breakdown':    r['evaluation'].get('scoreBreakdown', {}),
                 'gto_label':    gto_data.get('gto_label'),
                 'gto_action':   gto_data.get('gto_action'),
@@ -3375,9 +3376,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         if decision:
             ctx  = decision.get('context', {})
             math = decision.get('math', {})
+            thr  = decision.get('thresholds', {})
             bd   = decision.get('breakdown', {})
             tech = {
                 'pot_odds_equity': math.get('potOddsEquity'),
+                'adjusted_required_equity': thr.get('adjustedRequiredEquity'),
                 'hand_equity':     math.get('estimatedHandEquity'),
                 'draw_profile':    math.get('drawProfile', 'none'),
                 'm_ratio':         ctx.get('mRatio'),

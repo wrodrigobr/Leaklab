@@ -30,6 +30,19 @@ def test_anti_overfold_does_not_downgrade_far():
     assert apply_anti_rules('fold', 0.50, 0.20, 'clear_mistake') == 'clear_mistake'
     print("OK  test_anti_overfold_does_not_downgrade_far")
 
+def test_anti_fold_plus_ev_promotes_standard():
+    """Fold com equity >= pot_odds + 3pp deve promover label de standard para small_mistake.
+    Sem isso, verdict 'Correto' pode contradizer o indicador 'Call lucrativo'."""
+    # caso real do user: eq=37%, po=33% → margem 4pp → small_mistake
+    assert apply_anti_rules('fold', 0.37, 0.33, 'standard') == 'small_mistake'
+    # margem exata de 3pp → ainda promove
+    assert apply_anti_rules('fold', 0.33, 0.30, 'standard') == 'small_mistake'
+    # margem 2pp → permanece standard (noise dentro da tolerância)
+    assert apply_anti_rules('fold', 0.34, 0.32, 'standard') == 'standard'
+    # equity < required → fold correto, permanece standard
+    assert apply_anti_rules('fold', 0.30, 0.33, 'standard') == 'standard'
+    print("OK  test_anti_fold_plus_ev_promotes_standard")
+
 def test_anti_soft_call_escalates_marginal():
     assert apply_anti_rules('call', 0.20, 0.26, 'marginal') == 'small_mistake'
     print("OK  test_anti_soft_call_escalates_marginal")

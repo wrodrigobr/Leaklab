@@ -9,6 +9,59 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.161.0] — 2026-05-23 — feat(replayer): DecisionCard template único + coerência verdict×math
+
+### Why
+Replayer mostrava 6+ variações de card (preflop, postflop math, push/fold banner, sem-GTO banner, spot-incompatível banner, conflito footnote) com layouts diferentes. Pior: inconsistências semânticas exibidas (verdict "Correto" + frase "Call lucrativo" + math card "Fold −EV") porque math card usava `pot_odds_equity` bruto enquanto engine classifica com `adjusted_required_equity` (pot_odds + realization_adj + pressure_adj).
+
+### Fix 1 — DecisionCard template único (5 slots fixos)
+Novo `frontend/src/components/replayer/DecisionCard.tsx`: template aplicado a TODOS os spots.
+- **Slot 1** Verdict bar: icon + label + source badge + toggle 👁
+- **Slot 2** Action comparison: Você jogou (+ Recomendado quando diverge)
+- **Slot 3** Evidence: 1 widget primário (range bar | math card | solver bars | equity bar)
+- **Slot 4** Indicators: chips/rows secundários (audit, SPR, Sizing) — sempre visíveis
+- **Slot 5** Context footer: Stack · M · ICM
+
+Toggle 👁: revela frase Why + pro_notes. Profissional vê só dados; iniciante ativa explicação.
+
+Source badges com cor distinta: `Solver` (roxo), `Preflop` (foreground), `Engine` (muted), `Heurística` (cinza), `Push/Fold` (amber), `Spot N/A` (orange).
+
+### Fix 2 — Banners separados eliminados (–193 linhas líquidas)
+- Push/Fold Zone → source badge amber + frase no Why
+- Sem cobertura GTO → source badge cinza + frase no Why
+- Spot incompatível → source badge orange + frase no Why
+- Conflito Engine vs GTO footnote → frase no Why quando diverge
+
+### Fix 3 — Duplicação visual removida
+- `✓` extra na coluna "Você jogou" (já existe `✓ Correto` no banner)
+- "Fold 85% · Raise 15%" abaixo das barras do GtoStrategyPanel
+- Audit trail movido para toggle (era sempre visível, redundante)
+
+### Fix 4 — Tipografia consolidada (5 tamanhos → 3 níveis 10/11/13)
+Opacidades agressivas (`/30`, `/40`, `/45`) substituídas por `text-muted-foreground`. Resolve violação WCAG SC 1.4.4 (texto em `[8px] opacity-40`).
+
+### Fix 5 — Frase Why descreve a ação tomada, não a alternativa
+Antes: `"Call lucrativo — equity 37% supera pot odds 33%"` aparecia mesmo quando hero foldou. Agora: para fold mostra `"Fold correto"`, `"Fold defensável (break-even)"` ou `"Fold deixou EV na mesa"` conforme margem.
+
+### Fix 6 — adjusted_required_equity exposto ao frontend (coerência verdict × math)
+- `backend/api/app.py`: endpoint do Replayer agora retorna `thresholds` do engine e popula `tech.adjusted_required_equity` no step
+- `frontend/src/lib/api.ts`: novo campo `adjusted_required_equity?: number`
+- `frontend/src/pages/Replayer.tsx`: `req = step.adjusted_required_equity ?? poRaw` — math card e frase Why usam o mesmo critério que o engine usa para classificar
+- Math card label vira `"Equity Necessária"` (tooltip com pot odds bruto) quando há ajuste relevante
+- Caso resolvido: fold com SPR 0.6, pot_odds=33%, eq=37%, adjusted=37% → verdict `Correto`, badge `Fold +EV`, frase `"Fold defensável — break-even"` — tudo coerente
+
+### Fix 7 — Backend guard: fold com equity ≥ pot_odds + 3pp promove para small_mistake
+`decision_engine_v11.py:apply_anti_rules`: nova regra postflop. Fold com `equity − pot_odds ≥ 3pp` + `label='standard'` é promovido para `small_mistake` + `best_action='call'`. Test unit `test_anti_fold_plus_ev_promotes_standard` cobre 4 casos. Reprocessamento aplicou em **89 decisions** + 76 mudanças via reconcile.
+
+### Fix 8 — Test consistency interna
+Novo `tests/test_engine_internal_consistency.py`: invariantes label/best_action/gto_label. Sessão: **85 → 24 violações (−72%)**. Resíduo é preflop sem pot_odds (backlog).
+
+### Files
+- **New**: `frontend/src/components/replayer/DecisionCard.tsx`, `backend/scripts/reanalyze_all_labels.py`, `backend/tests/test_engine_internal_consistency.py`
+- **Changed**: `frontend/src/pages/Replayer.tsx` (–193 linhas líquidas), `frontend/src/components/replayer/GtoStrategyPanel.tsx`, `frontend/src/lib/api.ts`, `backend/api/app.py`, `backend/leaklab/decision_engine_v11.py`, `backend/tests/test_decision_engine.py`
+
+---
+
 ## [v0.160.0] — 2026-05-23 — fix(engine): revalidação reduz majors 32 → 2 (-94%)
 
 ### Why

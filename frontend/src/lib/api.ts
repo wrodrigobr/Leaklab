@@ -247,6 +247,7 @@ export interface ReplayStep {
   best_action?: string;
   // error details
   pot_odds_equity?: number;
+  adjusted_required_equity?: number;  // engine usa isto (pot_odds + realization_adj + pressure_adj) para classificar
   hand_equity?: number;
   m_ratio?: number;
   icm_pressure?: string;

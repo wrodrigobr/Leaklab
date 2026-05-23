@@ -323,9 +323,13 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
         return 0
 
     for new_label, new_action, dec_id in updates:
+        # Atualiza gto_label/gto_action E best_action — manter consistencia interna
+        # (best_action eh exibido no Replayer; gto_action e a fonte autoritativa GTO;
+        # quando GTO override, best_action precisa refletir para evitar inconsistencia
+        # como "label=standard mas action=fold vs best=call" no UI).
         conn.execute(
-            "UPDATE decisions SET gto_label=?, gto_action=? WHERE id=?",
-            (new_label, new_action, dec_id)
+            "UPDATE decisions SET gto_label=?, gto_action=?, best_action=? WHERE id=?",
+            (new_label, new_action, new_action, dec_id)
         )
     conn.commit()
     return len(updates)

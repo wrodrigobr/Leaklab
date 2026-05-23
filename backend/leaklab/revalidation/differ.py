@@ -27,13 +27,49 @@ _PASSIVE    = {'fold', 'check', 'call'}
 
 # Tiers de severidade numérica (0..1) para ordenar findings no relatório.
 _SEVERITY_BY_CATEGORY = {
-    'aligned':         0.00,
-    'acceptable_alt':  0.05,
-    'no_oracle_data':  0.10,
-    'engine_no_data':  0.20,
-    'minor_mismatch':  0.40,
-    'major_mismatch':  0.85,
+    'aligned':                0.00,
+    'acceptable_alt':         0.05,
+    'no_oracle_data':         0.10,
+    'engine_no_data':         0.20,
+    'minor_mismatch':         0.40,
+    'major_mismatch':         0.85,
+    'internal_inconsistency': 0.70,   # verdict do engine bate com indicadores math?
 }
+
+
+def detect_internal_inconsistency(engine_result: dict, action_taken: Optional[str]) -> Optional[str]:
+    """Detecta quando o veredicto do engine (label) contradiz seus próprios indicadores
+    matemáticos (pot_odds vs equity, SPR, best_action).
+
+    Retorna a razão (string) se inconsistente, None caso contrário.
+    Casos típicos:
+      - label='standard' (Correto) mas hero foldou quando call era +EV substancial
+      - label='standard' mas action != best_action com gap mathemático claro
+      - score baixo (<0.08) mas action diverge bestAction com EV diff >= 0.05
+    """
+    if not engine_result:
+        return None
+    eval_ = engine_result.get('evaluation') or {}
+    label = eval_.get('label') or ''
+    score = float(eval_.get('mistakeScore') or 0)
+    best  = (engine_result.get('bestAction') or '').lower()
+    taken = (action_taken or '').lower()
+    thresholds = engine_result.get('thresholds') or {}
+    pot_odds  = thresholds.get('potOddsEquity')
+    req_eq    = thresholds.get('adjustedRequiredEquity') or pot_odds
+    # equity vem de math no input — engine_result não tem direto. Inferir via diff.
+    # Se best=call e taken=fold → check se pot_odds claramente < equity
+    if label != 'standard':
+        return None  # só interessa quando engine diz "Correto"
+    # Caso 1: hero foldou um call/raise/jam recomendado
+    if taken == 'fold' and best in {'call', 'raise', 'jam', 'allin', 'bet'}:
+        return f"label='standard' mas hero foldou enquanto engine recomendava {best}"
+    # Caso 2: action != best e ambos agressivos com magnitudes diferentes (jam vs raise OK)
+    if taken in {'check', 'call'} and best in {'raise', 'jam', 'allin', 'bet'}:
+        return f"label='standard' mas hero foi passivo ({taken}) quando engine recomendava agressao ({best})"
+    if taken in {'raise', 'jam', 'allin', 'bet'} and best in {'check', 'fold', 'call'}:
+        return f"label='standard' mas hero foi agressivo ({taken}) quando engine recomendava {best}"
+    return None
 
 
 @dataclass
@@ -100,6 +136,20 @@ def classify(engine_result: dict,
         action_taken = (engine_result or {}).get('actionTaken')
 
     reasons: list[str] = []
+
+    # 0) Inconsistência interna do engine — verdict 'Correto' vs indicadores math/best_action
+    internal = detect_internal_inconsistency(engine_result, action_taken)
+    if internal:
+        return DivergenceRecord(
+            category='internal_inconsistency',
+            severity_score=_SEVERITY_BY_CATEGORY['internal_inconsistency'],
+            engine_best=engine_best, oracle_action=oracle.action if oracle else None,
+            gto_action=gto_action, action_taken=action_taken,
+            opp_cost_bb=oracle.opp_cost_bb if oracle else None,
+            oracle_source=oracle.source if oracle else 'n/a',
+            oracle_confidence=oracle.confidence if oracle else 'n/a',
+            reasons=[internal],
+        )
 
     # 1) Engine sem ação -- proteção
     if not engine_best:

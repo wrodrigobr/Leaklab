@@ -466,6 +466,10 @@ def apply_anti_rules(player_action: str, estimated_hand_equity: float | None, ad
     if player_action == "fold":
         if 0 <= diff <= 0.03 and provisional_label == "clear_mistake":
             return "small_mistake"
+        # Fold com equity >= required + 3pp é leak math claro. Sem essa regra,
+        # label pode ficar 'standard' contradizendo o indicador "Call lucrativo".
+        if diff >= 0.03 and provisional_label == "standard":
+            return "small_mistake"
     if player_action == "call":
         if diff <= -0.07:
             return "clear_mistake"
