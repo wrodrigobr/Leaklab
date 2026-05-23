@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -683,11 +683,19 @@ function SidePanels({
               </p>
             </div>
           )}
-          {gtoRequestStatus === "done" && (
-            <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
-              <Loader2 className="size-3.5 text-amber-400 shrink-0 mt-px animate-spin" />
-              <p className="text-[11px] text-amber-400 leading-relaxed">
-                Processamento concluído — recarregue a página para ver os resultados GTO.
+          {gtoRequestStatus === "done" && hasGto && (
+            <div className="flex items-center gap-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20 px-2.5 py-2">
+              <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
+              <p className="text-[11px] text-emerald-400">
+                Análise GTO carregada.
+              </p>
+            </div>
+          )}
+          {gtoRequestStatus === "done" && !hasGto && (
+            <div className="flex items-start gap-2 rounded-lg bg-muted/30 border border-border/60 px-2.5 py-2">
+              <Info className="size-3.5 text-muted-foreground shrink-0 mt-px" />
+              <p className="text-[11px] text-muted-foreground/85 leading-relaxed">
+                Solver processou mas não retornou solução — spot multiway sem cobertura na árvore GTO atual.
               </p>
             </div>
           )}
