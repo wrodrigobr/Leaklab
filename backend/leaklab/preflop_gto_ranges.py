@@ -313,10 +313,13 @@ def analyze_preflop(
         # Lookup: tenta bucket exato primeiro, depois fallback para buckets adjacentes
         # (vs_squeeze cobre 40/50/75/100bb; 30bb cai pra 40bb, 20bb pra 40bb).
         candidate_buckets = [bucket]
+        # Fallback inferior (mais conservador) — squeeze cobre 40/50/75/100bb
         bucket_fallbacks = {
-            '20bb': ['40bb'], '30bb': ['40bb'],
-            '40bb': ['50bb'], '50bb': ['40bb'],
-            '75bb': ['100bb'], '100bb': ['75bb'],
+            '20bb': ['40bb'], '30bb': ['40bb'],  # sobem (único caminho)
+            '40bb': ['50bb'],                     # 40 → 50 (não há inferior em squeeze)
+            '50bb': ['40bb'],                     # 50 → 40 (inferior)
+            '75bb': ['50bb'],                     # 75 → 50 (inferior)
+            '100bb': ['75bb'],                    # 100 → 75 (inferior)
         }
         candidate_buckets += bucket_fallbacks.get(bucket, [])
         spot = None
@@ -352,10 +355,25 @@ def analyze_preflop(
 
     # ── vs 3bet ───────────────────────────────────────────────────────────────
     elif scenario == 'vs_3bet':
-        vs3  = bk_data.get('vs_3bet', {})
-        spot = vs3.get(f'{pos}_RFI_vs_3bet') or next(
-            (v for k, v in vs3.items() if k.endswith('_RFI_vs_3bet')), None
-        )
+        # Lookup: bucket exato, fallback para bucket INFERIOR (mais conservador — ranges
+        # mais tight em short stack evitam over-recomendação de agressão).
+        # vs_3bet cobre 30/50/75/100bb.
+        bucket_fallbacks = {
+            '14bb': ['30bb'], '17bb': ['30bb'], '20bb': ['30bb'],  # sobem (único caminho)
+            '40bb': ['30bb'],                                       # 40 → 30 (inferior)
+            '50bb': ['30bb'],                                       # 50 → 30 (inferior)
+            '60bb': ['50bb'], '75bb': ['50bb'],                     # 60/75 → 50 (inferior)
+            '100bb': ['75bb'],                                      # 100 → 75 (inferior)
+        }
+        candidate_buckets = [bucket] + bucket_fallbacks.get(bucket, [])
+        spot = None
+        for bk_try in candidate_buckets:
+            vs3_try = data.get('ranges', {}).get(bk_try, {}).get('vs_3bet', {})
+            spot = vs3_try.get(f'{pos}_RFI_vs_3bet') or next(
+                (v for k, v in vs3_try.items() if k.endswith('_RFI_vs_3bet')), None
+            )
+            if spot:
+                break
         if not spot:
             return base
         pct        = float(spot.get('pct_continua', 0))
