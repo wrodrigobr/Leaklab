@@ -9,6 +9,56 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.163.0] — 2026-05-25 — feat(preflop): integração GTO Wizard v3 (900 spots 9-max nativo)
+
+### Why
+JSON RegLife v2.3.0 tinha bug sistemático de extração de pixels (cor azul-petróleo classificada como fold). Pares premium QQ-77 frequentemente apareciam em `fold_hands` em spots vs_RFI, gerando feedback errado para alunos. Substituído por JSON master coletado direto da API GTO Wizard via HARs navegando o tree do app — 900 spots GTO-quality em 9-max nativo cobrindo RFI + vs_RFI + vs_3bet + vs_4bet em 9 stacks (10-100bb).
+
+### Coleta
+- **RFI**: 72/72 (9 buckets × 8 posições openers)
+- **vs_RFI**: 324/324 (9 buckets × 36 pairs opener/defender)
+- **vs_3bet**: 324/324 (9 buckets × 36 pairs opener/3-bettor)
+- **vs_4bet**: 180/180 (5 buckets 30-100bb × 36 pairs; ≤20bb não tem 4-bet sized)
+- **Total: 900 spots GTO-Wizard puros**
+
+### Mudanças no engine
+- `preflop_gto_ranges.py:_POS_NORM`: agora 9-max nativo (UTG, UTG+1, UTG+2, LJ, HJ, CO, BTN, SB, BB). Mapeia 8-max → 9-max (MP → UTG+1; MP2 → UTG+2). Legacy UTG1 → UTG+1.
+- `preflop_gto_ranges.py:analyze_preflop()` RFI: adapter detecta formato v3 (campo `open_pct` presente) vs v2 (`pct`). v3 usa `raise_hands`+`allin_hands` separados; recomendação derivada via `in_raise`/`in_allin`. Compat v2 preservada como fallback.
+- `preflop_gto_ranges.py` vs_RFI: aliases simplificados — `UTG+1` agora é nativo (não precisa mais converter pra MP).
+- **Workaround Backlog #17 removido** — pares premium QQ-77 vinham bugados no RegLife; JSON v3 tem dados corretos.
+
+### Arquivos novos
+- `backend/scripts/parse_gw_har.py` — parser HARs do GW (9-max nativo, categorização rfi/vs_rfi/vs_3bet/vs_4bet)
+- `backend/scripts/fetch_gw_passive.py` — captura passiva via CDP (fallback)
+- `backend/scripts/fetch_gw_rfi.py` — coleta RFI via Playwright (deprecated em favor de HAR manual)
+- `backend/docs/ranges_gto/master_gw_ranges.json` — JSON master 9-max (fonte da verdade)
+- `backend/docs/ranges_gto/{vs_rfi,vs_3bet,4bet}/*.har` — HARs fonte (200+ arquivos, organizados por opener)
+- `backend/docs/leaklab_gto_ranges.bak.pre_gw_v3.json` — backup do JSON RegLife v2.3.0
+
+### Reprocessamento
+- 1118 decisions verificadas, **208 atualizadas** com novo JSON v3
+- 208 mudanças adicionais via reconcile_label
+
+### Testes
+- Suite engine: 194/196 OK
+  - `vs_rfi_88_call_in_range`: fixture esperava False, v3 mostra True (correto — RegLife antigo tinha bug)
+  - `test_postflop_error_rate_reduced`: pré-existente (não relacionado)
+- `test_engine_internal_consistency`: **91 violations residuais** (era 24 com v2). Causa: v3 tem ranges mais accurate, expondo decisions antes mascaradas pelo RegLife bugado. Follow-up: revisar `_reconcile_label` para promover label quando best_action diverge significativamente.
+
+### Próximas categorias (não cobertas ainda)
+- **Squeeze** (multiway 3-way) — ~450 spots
+- **vs Squeeze** — ~450 spots
+- 5-bet+ — ~50 spots
+
+### Files
+- **Changed**: `backend/leaklab/preflop_gto_ranges.py` (POS_NORM, RFI adapter, vs_RFI aliases, workaround removido)
+- **Changed**: `backend/docs/leaklab_gto_ranges.json` (← `master_gw_ranges.json`)
+- **New**: `backend/scripts/parse_gw_har.py`, `backend/scripts/fetch_gw_passive.py`, `backend/scripts/fetch_gw_rfi.py`
+- **New**: `backend/docs/ranges_gto/` (master + HARs fonte)
+- **New**: `backend/docs/leaklab_gto_ranges.bak.pre_gw_v3.json` (backup)
+
+---
+
 ## [v0.162.0] — 2026-05-23 — fix(preflop): workaround para pares premium QQ-77 em vs_RFI
 
 ### Why

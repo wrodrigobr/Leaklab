@@ -65,18 +65,28 @@ _POS = {
     'UTG': 'UTG', 'UTG1': 'UTG+1', 'SB': 'Small Blind', 'BB': 'Big Blind',
 }
 
-# Pipeline e banco usam nomes distintos do JSON — normalizamos antes do lookup
+# Pipeline e banco usam nomes distintos do JSON — normalizamos antes do lookup.
+# JSON v3 (GW master) usa 9-max nativo: UTG, UTG+1, UTG+2, LJ, HJ, CO, BTN, SB, BB.
+# Pipeline/banco (PokerStars MTT) pode dar nomes 8-max ou 9-max. Mapeamos pra 9-max.
 _POS_NORM = {
-    # Mapeamento 9-max (PokerStars) → 8-max (JSON RegLife) por índice de ação
-    # Ordem de ação 9-max: UTG, UTG+1, UTG+2, MP1, MP2, HJ, CO, BTN, SB, BB
-    # Ordem de ação 8-max: UTG, UTG+1, LJ, HJ, CO, BTN, SB, BB
-    'UTG+1': 'UTG1',   # 2º a agir
-    'UTG+2': 'LJ',     # 3º a agir = LoJack
+    # Nomes JSON v3 (preservar)
+    'UTG':   'UTG',
+    'UTG+1': 'UTG+1',
+    'UTG+2': 'UTG+2',
     'LJ':    'LJ',
-    'MP':    'LJ',     # MP genérico (sem distinção 1/2) → LJ (mid-position)
-    'MP1':   'HJ',     # 4º a agir = HJ (FIX 2026-05-22: era LJ, colidia com UTG+2)
-    'MP2':   'CO',     # 5º a agir = CO (FIX 2026-05-22: era HJ)
     'HJ':    'HJ',
+    'CO':    'CO',
+    'BTN':   'BTN',
+    'SB':    'SB',
+    'BB':    'BB',
+    # Aliases legacy do JSON v2 antigo (UTG1 sem +)
+    'UTG1':  'UTG+1',
+    'UTG2':  'UTG+2',
+    # 8-max → 9-max: PokerStars MTT 8-max usa MP único.
+    # Mapeamos MP → UTG+1 (a posição early-mid mais próxima do 9-max).
+    'MP':    'UTG+1',
+    'MP1':   'UTG+1',
+    'MP2':   'UTG+2',
 }
 
 # Push/fold bucket → lista de pf_stack keys (em ordem de preferência)
@@ -174,22 +184,50 @@ def analyze_preflop(
                     })
                     return base
             return base
-        pct         = float(rfi.get('combo_pct') or rfi.get('pct', 0))
-        grid_pct    = float(rfi.get('grid_pct') or rfi.get('pct', 0))
-        hands_str   = rfi.get('hands', '')
-        acoes       = rfi.get('acoes', [])
-        limp_str    = rfi.get('limp_hands', '')   # SB limp range (quando presente)
-        limp_pct    = float(rfi.get('limp_combo_pct') or rfi.get('limp_pct', 0))
-        in_rng      = _in_range(hero_hand_type, hands_str)
-        in_limp     = bool(limp_str) and _in_range(hero_hand_type, limp_str)
+        # Detecta formato v3 (GW master) vs v2 (RegLife antigo)
+        is_v3 = 'open_pct' in rfi or 'raise_hands' in rfi
 
-        # Recomendação: raise se no raise range, call/limp se no limp range, fold caso contrário
-        if in_rng:
-            rec = [_ACT.get(a, a.lower()) for a in acoes]
-        elif in_limp:
-            rec = ['call']   # limp from SB
+        if is_v3:
+            # v3: campos open_pct/raise_pct/allin_pct + raise_hands/allin_hands
+            pct         = float(rfi.get('open_pct', 0))
+            grid_pct    = pct
+            raise_hs    = rfi.get('raise_hands', '')
+            allin_hs    = rfi.get('allin_hands', '')
+            # range total não-fold = raise + allin (em stacks rasos quase tudo é allin)
+            all_hands_parts = [h for h in [raise_hs, allin_hs] if h]
+            hands_str   = ','.join(all_hands_parts)
+            acoes       = []  # v3 deriva ação por hand_in (in_raise vs in_allin)
+            limp_str    = ''   # v3 não tem limp (RegLife antigo tinha SB limp)
+            limp_pct    = 0.0
+            in_raise    = bool(raise_hs) and _in_range(hero_hand_type, raise_hs)
+            in_allin    = bool(allin_hs) and _in_range(hero_hand_type, allin_hs)
+            in_rng      = in_raise or in_allin
+            in_limp     = False
+
+            if in_allin and not in_raise:
+                rec = ['jam']
+            elif in_raise:
+                rec = ['raise']
+            else:
+                rec = ['fold']
         else:
-            rec = ['fold']
+            # v2 (RegLife antigo): pct + hands + acoes
+            pct         = float(rfi.get('combo_pct') or rfi.get('pct', 0))
+            grid_pct    = float(rfi.get('grid_pct') or rfi.get('pct', 0))
+            hands_str   = rfi.get('hands', '')
+            acoes       = rfi.get('acoes', [])
+            limp_str    = rfi.get('limp_hands', '')   # SB limp range (quando presente)
+            limp_pct    = float(rfi.get('limp_combo_pct') or rfi.get('limp_pct', 0))
+            in_rng      = _in_range(hero_hand_type, hands_str)
+            in_limp     = bool(limp_str) and _in_range(hero_hand_type, limp_str)
+
+            # Recomendação: raise se no raise range, call/limp se no limp range, fold caso contrário
+            if in_rng:
+                rec = [_ACT.get(a, a.lower()) for a in acoes]
+            elif in_limp:
+                rec = ['call']   # limp from SB
+            else:
+                rec = ['fold']
 
         quality = _rfi_quality(action_taken, in_rng, stack_bb, in_limp=in_limp, is_sb=(pos == 'SB'))
         base.update({
@@ -207,22 +245,21 @@ def analyze_preflop(
     # ── vs RFI ───────────────────────────────────────────────────────────────
     elif scenario == 'vs_rfi':
         vs_rfi = bk_data.get('vs_RFI', {})
-        # Try new format (RegLife): vs_RFI[opener][defender]
-        # Then fall back to old format: vs_RFI["{opener}_open"][defender]
-        # vs_RFI JSON usa 'MP' para UTG+1; RFI JSON usa 'UTG1' — alias necessário
-        _VSRFI_OPENER_ALIAS = {'UTG1': 'MP', 'UTG+1': 'MP'}
-        opener_key = _VSRFI_OPENER_ALIAS.get(vs_pos, vs_pos)
-        opener_data = vs_rfi.get(opener_key)
+        # JSON v3 (GW master) usa 9-max nativo. vs_pos e pos já foram normalizados
+        # pelo _POS_NORM (UTG+1, UTG+2, etc).
+        # Tentar lookup direto; fallback p/ aliases legacy ("{opener}_open", "MP")
+        opener_data = vs_rfi.get(vs_pos)
         if not isinstance(opener_data, dict):
-            opener_data = vs_rfi.get(f"{opener_key}_open")
-        if not isinstance(opener_data, dict) and opener_key != vs_pos:
-            opener_data = vs_rfi.get(vs_pos) or vs_rfi.get(f"{vs_pos}_open")
-        # Mesmo alias necessário para o lado do defender
-        _VSRFI_DEF_ALIAS = {'UTG1': 'MP', 'UTG+1': 'MP'}
-        def_key = _VSRFI_DEF_ALIAS.get(pos, pos)
-        defender = opener_data.get(def_key) if isinstance(opener_data, dict) else None
-        if defender is None and def_key != pos and isinstance(opener_data, dict):
-            defender = opener_data.get(pos)
+            # Fallback v2 antigo: usava "MP" no lugar de "UTG+1"
+            for alt in (f"{vs_pos}_open", 'MP' if vs_pos == 'UTG+1' else None):
+                if alt and isinstance(vs_rfi.get(alt), dict):
+                    opener_data = vs_rfi.get(alt)
+                    break
+        defender = opener_data.get(pos) if isinstance(opener_data, dict) else None
+        if defender is None and isinstance(opener_data, dict):
+            # Fallback: tentar 'MP' se pos for UTG+1 (legacy)
+            if pos == 'UTG+1':
+                defender = opener_data.get('MP')
         if not defender or not isinstance(defender, dict):
             # Push/fold reshove fallback para stacks curtos sem dados RegLife vs_RFI
             pf_section = bk_data.get('push_fold', {}).get(pos)
@@ -276,17 +313,9 @@ def analyze_preflop(
             else:
                 rec = ['fold']
 
-            # ── Workaround temporário (Backlog #17) ──
-            # JSON v2.3.0 tem bug de extração que coloca pares premium (QQ-77)
-            # em fold_hands em vários spots vs_RFI (cor azul-petróleo classificada
-            # erroneamente como fold). Até re-validação completa, garantir que
-            # pares premium nunca sejam classificados como fold vs open.
-            # Não aplica em PF zone (stack ≤ 12bb usa lógica push/fold separada).
-            _PREMIUM_PAIRS = {'QQ', 'JJ', 'TT', '99', '88', '77'}
-            if (hero_hand_type in _PREMIUM_PAIRS and not in_rng and stack_bb > 12):
-                in_rng = True
-                # Stacks rasos (13-20bb): jam é GTO. Stacks médios+: call/raise dominam.
-                rec = ['jam'] if stack_bb <= 20 else ['call']
+            # Workaround Backlog #17 removido em v0.163.0 — JSON v3 (GW master)
+            # tem dados corretos para pares premium QQ-77. Guard era necessário
+            # apenas para o JSON RegLife v2.3.0 com bug de extração de pixel.
 
             quality = _vs_rfi_quality_new(action_taken, in_rng, rec)
             base.update({
