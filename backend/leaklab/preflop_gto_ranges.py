@@ -662,7 +662,7 @@ def _rfi_notes(pos, hand, stack, pct, in_rng, action, *, in_limp: bool = False) 
         if act == 'fold':
             notes.append(f"Foldar {hand} do {label} é um leak evidente: a mão tem equity e posição para abrir.")
         elif act == 'call':
-            notes.append("Limp desperdiça vantagem posicional. Raise/jam é a linha mais lucrativa aqui.")
+            notes.append("Limp desperdiça vantagem posicional. Raise/shove é a linha mais lucrativa aqui.")
         else:
             notes.append(f"Raise correto. {hand} é uma abertura sólida do {label} neste stack.")
     elif in_limp:
@@ -778,7 +778,7 @@ def _pushfold_notes(pos, hand, stack, shove_pct, in_shove, action, *, is_reshove
         if act == 'fold':
             notes.append(f"Foldar {hand} a {stack:.0f}bb é um leak: a mão tem equity suficiente para {verb}.")
         elif act == 'call':
-            notes.append(f"Call a {stack:.0f}bb é passivo — {verb}/jam maximiza fold equity e EV esperado.")
+            notes.append(f"Call a {stack:.0f}bb é passivo — {verb}/shove maximiza fold equity e EV esperado.")
     else:
         notes.append(f"{hand} está fora do range de {verb} do {label} a {stack:.0f}bb (range: top {pct_s}).")
         if act in ('jam', 'raise'):

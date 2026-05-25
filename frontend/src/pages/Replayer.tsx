@@ -232,8 +232,17 @@ function SidePanels({
       {/* ── Decision Card — template único de 5 slots (banner / ação / why / evidence / footer) ── */}
       {showDecision && verdict && (() => {
         // ──────── Source variant (1 só badge, prioridade descendente) ────────
+        // Push/Fold zone: só ativa quando hand_freq mostra que jam realmente é GTO dominante.
+        // Apenas stack ≤ 12bb não basta (GW v3 mostra que BTN 8bb ainda faz raise sized 96%).
+        // Trigger refinado: stack ≤ 12bb E (jam é dominante OU não há freq de raise sized).
         const isPfZone = !isPostflop && step.is_hero && step.type === "action"
-          && step.hero_stack_bb != null && step.hero_stack_bb <= 12;
+          && step.hero_stack_bb != null && step.hero_stack_bb <= 12
+          && (() => {
+            const hf = step.preflop_gto?.hand_freq;
+            if (!hf) return true;  // sem dados: assume push/fold (conservador)
+            // Push/fold real = jam > raise (jam é a ação dominante)
+            return (hf.allin ?? 0) >= (hf.raise ?? 0);
+          })();
         const sourceVariant: DecisionSourceVariant =
           step.gto_spot_mismatch                  ? "na"        :
           effectiveGtoLabel                       ? "gto"       :
@@ -250,7 +259,7 @@ function SidePanels({
           preflop: "Preflop — ranges de abertura GTO por posição e stack depth",
           engine: "Engine — equity estimada, M-Ratio, pressão ICM e contexto de torneio",
           heuristic: "Análise heurística — solver não tem cobertura para este spot multiway",
-          pushfold: "Push/Fold zone — stack ≤12bb, decisão binária jam ou fold",
+          pushfold: "Push/Fold zone — stack ≤12bb, decisão binária shove ou fold",
           na: "Spot incompatível — solver consultado para spot diferente do real",
         };
 
@@ -278,7 +287,7 @@ function SidePanels({
             ? "Solver foi consultado para um spot sem aposta, mas você enfrentava aposta — análise via heurística do engine."
             : "Solver foi consultado para um spot com aposta, mas não havia aposta — análise via heurística do engine.";
         } else if (isPfZone) {
-          why = `Stack ${step.hero_stack_bb!.toFixed(1)}bb — apenas JAM ou FOLD são GTO. Limp/call sacrifica fold equity e EV.`;
+          why = `Stack ${step.hero_stack_bb!.toFixed(1)}bb — push/fold dominante. Verifique a barra de freq pra ação ótima específica desta mão.`;
         } else if (hasEngineGtoConflict) {
           why = `Engine sugere ${fmtAction(step.engine_best!)} mas Solver indica ${fmtAction(step.gto_action!)} — priorizamos GTO.`;
         } else if (hasMathEvidence) {
