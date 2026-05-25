@@ -368,12 +368,9 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
         </div>
       )}
 
-      {/* Range grid — dimmed when solver verdict supersedes static ranges.
-          Description text removida — pcts já visíveis no Decision Card e legenda do grid. */}
+      {/* Range grid — sempre interativo (tooltips por célula). */}
       {displayRange ? (
-        <div className={cn(solverOverridesRegLife && "opacity-40 pointer-events-none")}>
-          <RangeGrid range={displayRange} heroHand={hand} />
-        </div>
+        <RangeGrid range={displayRange} heroHand={hand} />
       ) : loading ? (
         <p className="text-xs text-muted-foreground text-center py-4 animate-pulse">Carregando ranges…</p>
       ) : (
