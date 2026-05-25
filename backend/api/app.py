@@ -4744,22 +4744,34 @@ def preflop_ranges():
 
         pct_play = call_pct + raise_pct + allin_pct
 
-        # Construir frequencies por mão pra renderização GW-style.
-        # Se mão está em apenas 1 set → 100% naquela ação. Mixed (múltiplos sets) →
-        # split proporcional pelos pcts globais.
+        # Construir frequencies por mão. Prefere hand_freqs exato do JSON v3 (GW Wizard
+        # — soma 1.0 com fold). Fallback: split proporcional pelos pcts globais.
         all_hands_seen = call_set | raise_set | allin_set
+        hand_freqs_raw = defender.get('hand_freqs', {}) or {}
         frequencies = {}
-        for hand in sorted(all_hands_seen):
+
+        # 1. Mãos com hand_freqs exato (GW Wizard): mapear códigos brutos pra ações
+        for hand, freqs in hand_freqs_raw.items():
+            mapped = {'fold': 0.0, 'call': 0.0, 'raise': 0.0, 'allin': 0.0}
+            for code, f in freqs.items():
+                if code == 'F':       mapped['fold']  += float(f)
+                elif code == 'C':     mapped['call']  += float(f)
+                elif code == 'RAI':   mapped['allin'] += float(f)
+                elif code.startswith('R'):  mapped['raise'] += float(f)
+            frequencies[hand] = {k: round(v, 4) for k, v in mapped.items()}
+
+        # 2. Mãos nos sets mas SEM hand_freqs (edge case): fallback pro split simulado
+        for hand in all_hands_seen:
+            if hand in frequencies:
+                continue
             in_call  = hand in call_set
             in_raise = hand in raise_set
             in_allin = hand in allin_set
-            # Pesos: usa pct global da ação se a mão estiver no set, 0 caso contrário
             w_call  = call_pct  if in_call  else 0
             w_raise = raise_pct if in_raise else 0
             w_allin = allin_pct if in_allin else 0
             total_w = w_call + w_raise + w_allin
             if total_w == 0:
-                # Edge case: fallback uniforme entre os sets que contêm a mão
                 n = sum([in_call, in_raise, in_allin]) or 1
                 frequencies[hand] = {
                     'call':  (1/n) if in_call  else 0,

@@ -274,6 +274,14 @@ export interface ReplayStep {
     action_quality: "correct" | "acceptable" | "leak" | "major_leak" | "unknown";
     action_taken: string;
     pro_notes: string[];
+    // % por ação (preenchidos em cenários vs_RFI/vs_3bet — usados na barra stacked do Decision Card)
+    fold_pct?:  number;
+    call_pct?:  number;
+    raise_pct?: number;
+    allin_pct?: number;
+    // Frequência EXATA da mão do hero (GTO Wizard) — soma 1.0 entre fold+call+raise+allin
+    // Preferido sobre %_pct globais (que são do range agregado).
+    hand_freq?: { fold: number; call: number; raise: number; allin: number };
     rfi_pct?: number;
     hands_4bet?: string;
     hands_call?: string;

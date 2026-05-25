@@ -417,33 +417,92 @@ function SidePanels({
         const sizingPct = (amtBb != null && potBeforeBb != null && potBeforeBb > 0)
                           ? Math.round(amtBb / potBeforeBb * 100) : null;
 
-        // INDICATORS (sempre visíveis — dados, não texto): audit chain + SPR + Sizing
+        // INDICATORS (sempre visíveis — dados, não texto): cenário+mão + barra stacked + SPR + Sizing
+        // Stacked bar: prefere frequência EXATA da mão do hero (hand_freq) sobre
+        // % globais do range (call_pct/raise_pct). Ex: 88 vs UTG = 85/15 (mão específica)
+        // em vez de 13/5 (% do range agregado).
+        const useHandFreq = !!pg?.hand_freq && Object.values(pg.hand_freq).some(v => v > 0.001);
+        const callPct  = useHandFreq ? pg!.hand_freq!.call  : (pg?.call_pct  ?? 0);
+        const raisePct = useHandFreq ? pg!.hand_freq!.raise : (pg?.raise_pct ?? 0);
+        const allinPct = useHandFreq ? pg!.hand_freq!.allin : (pg?.allin_pct ?? 0);
+        const foldPct  = useHandFreq
+          ? pg!.hand_freq!.fold
+          : (pg ? Math.max(0, 1 - (pg.range_pct ?? 0)) : 0);
+        const hasFreqs = showAuditPreflop && (callPct > 0 || raisePct > 0 || allinPct > 0 || foldPct > 0);
+
         const indicators = (
           <>
             {showAuditPreflop && (
-              <div className="flex flex-wrap gap-1 items-center">
-                <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[10px]">
-                  <span className="text-muted-foreground mr-1">Cenário</span>
-                  <span className="text-foreground font-bold">{scenarioLabel[pg!.scenario] ?? pg!.scenario}</span>
-                </span>
-                <span className="text-muted-foreground/60 text-[10px]">›</span>
-                <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[10px]">
-                  <span className="text-muted-foreground mr-1">Range</span>
-                  <span className="text-foreground font-bold">
-                    {pg!.vs_position && pg!.vs_position !== 'UNKNOWN' ? `${pg!.vs_position} · ` : ''}{pg!.stack_bucket}
+              <>
+                <div className="flex flex-wrap gap-1 items-center">
+                  <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[10px]">
+                    <span className="text-muted-foreground mr-1">Cenário</span>
+                    <span className="text-foreground font-bold">{scenarioLabel[pg!.scenario] ?? pg!.scenario}</span>
                   </span>
-                </span>
-                <span className="text-muted-foreground/60 text-[10px]">›</span>
-                <span className={cn(
-                  "rounded-md ring-1 px-2 py-1 font-mono text-[10px]",
-                  pg!.in_range ? "bg-emerald-500/8 ring-emerald-500/30" : "bg-red-500/8 ring-red-500/30"
-                )}>
-                  <span className="text-muted-foreground mr-1">Mão</span>
-                  <span className={cn("font-bold", pg!.in_range ? "text-emerald-400" : "text-red-400")}>
-                    {pg!.hand_type} {pg!.in_range ? '✓' : '✗'}
+                  <span className="text-muted-foreground/60 text-[10px]">›</span>
+                  <span className={cn(
+                    "rounded-md ring-1 px-2 py-1 font-mono text-[10px]",
+                    pg!.in_range ? "bg-emerald-500/8 ring-emerald-500/30" : "bg-red-500/8 ring-red-500/30"
+                  )}>
+                    <span className="text-muted-foreground mr-1">Mão</span>
+                    <span className={cn("font-bold", pg!.in_range ? "text-emerald-400" : "text-red-400")}>
+                      {pg!.hand_type} {pg!.in_range ? '✓' : '✗'}
+                    </span>
                   </span>
-                </span>
-              </div>
+                </div>
+                {hasFreqs && (
+                  <div className="space-y-1">
+                    <div className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground"
+                         title={useHandFreq
+                           ? `Frequência GTO específica de ${pg!.hand_type} vs ${pg!.vs_position || 'open'} (${pg!.stack_bucket})`
+                           : `Range agregado do ${pg!.position} vs ${pg!.vs_position || 'open'} (${pg!.stack_bucket})`}>
+                      {useHandFreq
+                        ? `Como GTO joga ${pg!.hand_type} · ${pg!.vs_position || ''} ${pg!.stack_bucket}`
+                        : `Range agregado · ${pg!.vs_position || ''} ${pg!.stack_bucket}`}
+                    </div>
+                    <div className="flex h-2 rounded overflow-hidden ring-1 ring-border/30">
+                      {foldPct > 0.001 && (
+                        <div title={`Fold ${(foldPct*100).toFixed(1)}%`}
+                             style={{ width: `${foldPct*100}%`, background: 'rgba(120,120,120,0.25)' }} />
+                      )}
+                      {callPct > 0.001 && (
+                        <div title={`Call ${(callPct*100).toFixed(1)}%`}
+                             style={{ width: `${callPct*100}%`, background: '#3b82f6' }} />
+                      )}
+                      {raisePct > 0.001 && (
+                        <div title={`Raise ${(raisePct*100).toFixed(1)}%`}
+                             style={{ width: `${raisePct*100}%`, background: '#10b981' }} />
+                      )}
+                      {allinPct > 0.001 && (
+                        <div title={`Allin ${(allinPct*100).toFixed(1)}%`}
+                             style={{ width: `${allinPct*100}%`, background: '#ef4444' }} />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap font-mono text-[10px]">
+                      {foldPct > 0.001 && (
+                        <span className="text-muted-foreground">
+                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background:'rgba(120,120,120,0.4)'}}/>Fold {(foldPct*100).toFixed(0)}%
+                        </span>
+                      )}
+                      {callPct > 0.001 && (
+                        <span className="text-blue-400">
+                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background:'#3b82f6'}}/>Call {(callPct*100).toFixed(1)}%
+                        </span>
+                      )}
+                      {raisePct > 0.001 && (
+                        <span className="text-emerald-400">
+                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background:'#10b981'}}/>Raise {(raisePct*100).toFixed(1)}%
+                        </span>
+                      )}
+                      {allinPct > 0.001 && (
+                        <span className="text-red-400">
+                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background:'#ef4444'}}/>Allin {(allinPct*100).toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             {isPostflop && spr != null && (
               <div className="flex items-center gap-2 font-mono text-[11px]"

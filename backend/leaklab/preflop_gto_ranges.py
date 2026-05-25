@@ -337,6 +337,20 @@ def analyze_preflop(
             quality = _vs_rfi_quality_new(action_taken, in_rng, rec)
             # aggr_pct: campo v2 (RegLife) ou computado em v3 (call+raise+allin = não-fold)
             aggr_pct = float(defender.get('aggr_pct', call_pct + raise_pct + allin_pct))
+
+            # hand_freq: frequência EXATA da mão do hero (vem do JSON v3 hand_freqs).
+            # Permite mostrar 28/72 pra 88 em vez de 13/5 (% global do range).
+            # Códigos brutos do GW (C, R5, R6, RAI, F) — normalizar pra call/raise/allin/fold.
+            hand_freq_raw = defender.get('hand_freqs', {}).get(hero_hand_type, {})
+            hand_freq = {'call': 0.0, 'raise': 0.0, 'allin': 0.0, 'fold': 0.0}
+            for code, f in hand_freq_raw.items():
+                if code == 'F':       hand_freq['fold']  += float(f)
+                elif code == 'C':     hand_freq['call']  += float(f)
+                elif code == 'RAI':   hand_freq['allin'] += float(f)
+                elif code.startswith('R'):  hand_freq['raise'] += float(f)
+            # Round
+            hand_freq = {k: round(v, 4) for k, v in hand_freq.items()}
+
             base.update({
                 'available': True, 'in_range': in_rng,
                 'range_pct':    aggr_pct,
@@ -346,6 +360,7 @@ def analyze_preflop(
                 'call_pct':   call_pct,
                 'raise_pct':  raise_pct,
                 'allin_pct':  allin_pct,
+                'hand_freq':  hand_freq,  # freq EXATA da mão hero (use no Decision Card)
                 'fold_hands': fold_hands, 'call_hands': call_hands,
                 'raise_hands': raise_hands, 'allin_hands': allin_hands,
                 'pro_notes':  _vs_rfi_notes_new(pos, vs_pos, hero_hand_type, stack_bb,

@@ -188,6 +188,27 @@ def position_from_preflop_actions(preflop_actions: str) -> str | None:
     return {0: 'UTG', 1: 'MP', 3: 'LJ', 4: 'HJ', 5: 'CO', 6: 'BTN', 7: 'SB'}.get(n_folds)
 
 
+def extract_hand_freqs(counters: dict) -> dict:
+    """Extrai mapa {hand_name: {action_code: freq}} preservando apenas mãos não-fold-puras.
+
+    Usado pra renderização precisa por mão (em vez de % global do range).
+    Skip mãos onde freq fold = 1.0 (não-jogadas) pra reduzir tamanho do JSON.
+    """
+    out = {}
+    for hand, info in counters.items():
+        freqs = info.get('actions_total_frequencies', {})
+        if not freqs:
+            continue
+        # Skip mãos com fold = 1.0 (puramente foldadas) — não acrescentam info
+        if freqs.get('F', 0) > 0.999:
+            continue
+        # Salva só ações com freq > 0 (compacta JSON)
+        non_zero = {code: round(f, 4) for code, f in freqs.items() if f > 0.0001}
+        if non_zero:
+            out[hand] = non_zero
+    return out
+
+
 def parse_spot(raw: dict, params: dict) -> dict:
     """Extrai summary de uma response /spot-solution/.
 
@@ -266,6 +287,9 @@ def parse_spot(raw: dict, params: dict) -> dict:
         'call_hands':  ','.join(sorted(call_set)) if call_set else '',
         'check_hands': ','.join(sorted(check_set)) if check_set else '',
         'fold_hands':  ','.join(sorted(fold_set)) if fold_set else '',
+        # Freq exata por mão (estilo GTO Wizard): {hand: {action_code: freq}}
+        # Permite renderização precisa por mão na barra stacked do Decision Card.
+        'hand_freqs':  extract_hand_freqs(counters),
     }
 
 
@@ -355,6 +379,7 @@ def build_ranges_json(all_spots: list[dict]) -> dict:
             'fold_hands':  parsed['fold_hands'],
             'actions':     parsed['actions_summary'],
             'preflop_actions': parsed['preflop_actions'],
+            'hand_freqs':  parsed['hand_freqs'],
         }
 
         if scenario == 'rfi' and hero_pos:
