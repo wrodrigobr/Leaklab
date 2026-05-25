@@ -26,12 +26,28 @@ interface Props {
   onHeaderMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
+// Frequência por ação (estilo GTO Wizard — soma 1.0)
+interface HandFreqApi {
+  raise?: number; call?: number; allin?: number; fold?: number;
+}
+
 interface PreflopRangesResp {
   position: string;
   stack_bb: number;
   stack_bucket: string;
-  rfi: { hands: string[]; pct: number } | null;
-  vs_rfi: Record<string, { hands: string[]; raise3bet: string[]; call: string[]; pct_play: number; acoes: string[] }>;
+  rfi: { hands: string[]; pct: number; raise_pct?: number; allin_pct?: number; frequencies?: Record<string, HandFreqApi> } | null;
+  vs_rfi: Record<string, {
+    hands: string[];
+    raise3bet: string[];
+    call: string[];
+    allin?: string[];
+    pct_play: number;
+    call_pct?: number;
+    raise_pct?: number;
+    allin_pct?: number;
+    acoes: string[];
+    frequencies?: Record<string, HandFreqApi>;
+  }>;
   vs_3bet: { hands_4bet: string[]; hands_call: string[]; pct_continua: number } | null;
 }
 
@@ -72,15 +88,16 @@ function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?:
     if (!resp.rfi) return null;
     return {
       label: `Open ${resp.position} (${resp.stack_bucket})`,
-      description: `Top ${(resp.rfi.pct * 100).toFixed(0)}% das mãos`,
+      description: `Open ${(resp.rfi.pct * 100).toFixed(1)}% das mãos`,
       raise: new Set(resp.rfi.hands),
+      frequencies: resp.rfi.frequencies,
     };
   }
   if (type === '3bet') {
     if (!resp.vs_3bet) return null;
     return {
       label: `vs 3-Bet ${resp.position} (${resp.stack_bucket})`,
-      description: `${(resp.vs_3bet.pct_continua * 100).toFixed(0)}% continuam — Verde: 4-bet · Azul: call`,
+      description: `${(resp.vs_3bet.pct_continua * 100).toFixed(0)}% continuam`,
       raise: new Set(resp.vs_3bet.hands_4bet),
       call:  new Set(resp.vs_3bet.hands_call),
     };
@@ -88,7 +105,6 @@ function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?:
   if (type === 'call') {
     const openers = Object.keys(resp.vs_rfi);
     if (!openers.length) return null;
-    // API returns keys as "UTG_open", but openerPos may arrive as "UTG" — try both
     const resolvedKey = openerPos
       ? (resp.vs_rfi[openerPos] ? openerPos
         : resp.vs_rfi[openerPos + '_open'] ? openerPos + '_open'
@@ -96,19 +112,18 @@ function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?:
       : null;
     const key = resolvedKey ?? openers[0];
     const def = resp.vs_rfi[key];
-    const has3bet = def.raise3bet?.length > 0;
-    const hasCall = def.call?.length > 0;
-    const description = [
-      `${(def.pct_play * 100).toFixed(0)}% continuam vs ${key.replace('_open', '')} open`,
-      has3bet ? 'Verde: 3-bet' : '',
-      hasCall ? 'Azul: call' : '',
-      'Branco: fold',
-    ].filter(Boolean).join(' · ');
+    const parts: string[] = [];
+    if (def.call_pct  != null && def.call_pct  > 0.001) parts.push(`Call ${(def.call_pct*100).toFixed(1)}%`);
+    if (def.raise_pct != null && def.raise_pct > 0.001) parts.push(`Raise ${(def.raise_pct*100).toFixed(1)}%`);
+    if (def.allin_pct != null && def.allin_pct > 0.001) parts.push(`Allin ${(def.allin_pct*100).toFixed(1)}%`);
+    const description = `vs ${key.replace('_open', '')} open · ${(def.pct_play*100).toFixed(1)}% defendem${parts.length ? ` · ${parts.join(' / ')}` : ''}`;
     return {
       label: `vs ${key.replace('_open', '')} open · ${resp.position} (${resp.stack_bucket})`,
       description,
       raise: new Set(def.raise3bet ?? []),
-      call:  new Set(def.call ?? def.hands ?? []),
+      call:  new Set(def.call ?? []),
+      allin: new Set(def.allin ?? []),
+      frequencies: def.frequencies,
     };
   }
   return null;

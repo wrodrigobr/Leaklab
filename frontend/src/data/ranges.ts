@@ -53,20 +53,49 @@ export function heroHand(cards: string[]): string | null {
 
 export type CellAction = 'r' | 'c' | 'rc' | '';
 
+// Frequency por ação (estilo GTO Wizard — soma 1.0 entre raise+call+allin; resto é fold)
+export interface HandFreq {
+  raise?: number;   // 3-bet sized (verde escuro)
+  call?:  number;   // call (azul)
+  allin?: number;   // jam (vermelho/laranja)
+  fold?:  number;   // implicito = 1 - sum(outros)
+}
+
 export interface RangeSet {
   raise: Set<string>;
-  call?: Set<string>;
-  label: string;
+  call?:  Set<string>;
+  allin?: Set<string>;
+  label:  string;
   description?: string;
+  // Frequências por mão pra renderização GW-style (multi-cor proporcional).
+  // Quando ausente, fallback usa sets (raise/call/allin) com 100% cada.
+  frequencies?: Record<string, HandFreq>;
 }
 
 export function getCellAction(hand: string, range: RangeSet): CellAction {
-  const inR = range.raise.has(hand);
+  const inR = range.raise.has(hand) || (range.allin?.has(hand) ?? false);
   const inC = range.call?.has(hand) ?? false;
   if (inR && inC) return 'rc';
   if (inR) return 'r';
   if (inC) return 'c';
   return '';
+}
+
+// Frequências da mão pra renderização multi-cor. Fallback: deduz do RangeSet
+// quando `frequencies` ausente (cada ação 100% se mão presente no respectivo set).
+export function getHandFreq(hand: string, range: RangeSet): HandFreq {
+  if (range.frequencies?.[hand]) return range.frequencies[hand];
+  const inR = range.raise.has(hand);
+  const inC = range.call?.has(hand) ?? false;
+  const inA = range.allin?.has(hand) ?? false;
+  if (!inR && !inC && !inA) return { fold: 1 };
+  // Sem frequencies → split uniforme entre sets presentes
+  const n = (inR ? 1 : 0) + (inC ? 1 : 0) + (inA ? 1 : 0);
+  return {
+    raise: inR ? 1 / n : 0,
+    call:  inC ? 1 / n : 0,
+    allin: inA ? 1 / n : 0,
+  };
 }
 
 export function rangeStats(range: RangeSet): { combos: number; pct: string } {

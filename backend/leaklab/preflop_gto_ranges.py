@@ -323,13 +323,16 @@ def analyze_preflop(
             in_rng   = in_call or in_raise or in_allin
 
             # Recomendação preserva TODAS as ações válidas (mãos mistas — GW retorna
-            # mesma mão em múltiplos sets: ex. 88 vs UTG pode ser call OR raise, ambas GTO).
-            # Ordem por agressividade (jam > raise > call) só serve pra "ação primária".
-            rec = []
-            if in_allin: rec.append('jam')
-            if in_raise: rec.append('raise')
-            if in_call:  rec.append('call')
-            if not rec:  rec = ['fold']
+            # mesma mão em múltiplos sets). ORDEM por frequência global (ação dominante
+            # primeiro). Ex: 88 vs UTG com call_pct=12.9% > raise_pct=5.1% → rec=['call','raise'].
+            _options = []
+            if in_allin: _options.append(('jam',   float(defender.get('allin_pct', 0) or 0)))
+            if in_raise: _options.append(('raise', float(defender.get('raise_pct', 0) or 0)))
+            if in_call:  _options.append(('call',  float(defender.get('call_pct',  0) or 0)))
+            # Empate ou pcts zerados → fallback por agressividade (jam > raise > call)
+            _agg_order = {'jam': 3, 'raise': 2, 'call': 1}
+            _options.sort(key=lambda x: (-x[1], -_agg_order[x[0]]))
+            rec = [a for a, _ in _options] or ['fold']
 
             quality = _vs_rfi_quality_new(action_taken, in_rng, rec)
             # aggr_pct: campo v2 (RegLife) ou computado em v3 (call+raise+allin = não-fold)

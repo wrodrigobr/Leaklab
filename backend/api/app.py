@@ -4660,18 +4660,51 @@ def preflop_ranges():
     data   = _load()
     bk     = data.get('ranges', {}).get(bucket, {})
 
-    # RFI
+    # RFI — formato v3 GW (open_pct + raise_hands + allin_hands) ou v2 (pct + hands)
     rfi_raw = bk.get('RFI', {}).get(pos)
     rfi = None
     if rfi_raw:
-        rfi = {
-            'hands': sorted(_expand_range(rfi_raw.get('hands', ''))),
-            'pct':   float(rfi_raw.get('pct', 0)),
-        }
+        if 'open_pct' in rfi_raw or 'raise_hands' in rfi_raw:
+            # v3 GW master
+            raise_set = _expand_range(rfi_raw.get('raise_hands', ''))
+            allin_set = _expand_range(rfi_raw.get('allin_hands', ''))
+            open_pct  = float(rfi_raw.get('open_pct', 0))
+            raise_pct = float(rfi_raw.get('raise_pct', 0))
+            allin_pct = float(rfi_raw.get('allin_pct', 0))
 
-    # vs_RFI — return all openers available for this defender position.
-    # JSON RegLife usa formato novo: call_hands/raise_hands/allin_hands
-    # (cada um já separado por ação). Formato antigo usava 'hands'+'acoes'.
+            # Frequencies por mão (split proporcional pelos pcts globais)
+            all_hands_seen = raise_set | allin_set
+            freqs = {}
+            for hand in sorted(all_hands_seen):
+                w_raise = raise_pct if hand in raise_set else 0
+                w_allin = allin_pct if hand in allin_set else 0
+                total = w_raise + w_allin
+                if total == 0:
+                    n = sum([hand in raise_set, hand in allin_set]) or 1
+                    freqs[hand] = {'raise': (1/n) if hand in raise_set else 0,
+                                   'allin': (1/n) if hand in allin_set else 0,
+                                   'call': 0, 'fold': 0}
+                else:
+                    freqs[hand] = {'raise': round(w_raise/total, 4),
+                                   'allin': round(w_allin/total, 4),
+                                   'call': 0, 'fold': 0}
+            rfi = {
+                'hands':       sorted(all_hands_seen),
+                'pct':         round(open_pct, 4),
+                'raise_pct':   round(raise_pct, 4),
+                'allin_pct':   round(allin_pct, 4),
+                'frequencies': freqs,
+            }
+        else:
+            # v2 legacy
+            hands_set = _expand_range(rfi_raw.get('hands', ''))
+            rfi = {
+                'hands':       sorted(hands_set),
+                'pct':         float(rfi_raw.get('pct', 0)),
+                'frequencies': {h: {'raise': 1.0, 'call': 0, 'allin': 0, 'fold': 0} for h in hands_set},
+            }
+
+    # vs_RFI — retorna frequencies por mão estilo GTO Wizard (multi-cor proporcional)
     vs_rfi_raw = bk.get('vs_RFI', {})
     vs_rfi = {}
     for opener_key, defenders in vs_rfi_raw.items():
@@ -4680,51 +4713,79 @@ def preflop_ranges():
             continue
         opener_label = opener_key.replace('_open', '')
 
-        # Formato novo (RegLife): call_hands / raise_hands / allin_hands separados
-        call_hands_str  = defender.get('call_hands', '')
-        raise_hands_str = defender.get('raise_hands', '')
-        allin_hands_str = defender.get('allin_hands', '')
+        # Formato v3 GW (preferido): pcts globais + hands separados por ação
+        call_set  = _expand_range(defender.get('call_hands', ''))
+        raise_set = _expand_range(defender.get('raise_hands', ''))
+        allin_set = _expand_range(defender.get('allin_hands', ''))
 
-        call_set  = _expand_range(call_hands_str)
-        # raise3bet = raise + allin (ambos são agressões — verde no grid)
-        raise_set = _expand_range(raise_hands_str) | _expand_range(allin_hands_str)
-
-        # Fallback p/ formato antigo (hands + acoes) se o novo não tiver nada
-        if not call_set and not raise_set:
+        # Fallback formato antigo (sem separação por ação)
+        if not call_set and not raise_set and not allin_set:
             all_hands = _expand_range(defender.get('hands', ''))
             acoes     = defender.get('acoes', [])
             is_3bet   = 'THREBET' in acoes or '3BET' in [a.upper() for a in acoes]
-            raise_set = all_hands if is_3bet else set()
-            call_set  = all_hands if not is_3bet else set()
+            if is_3bet: raise_set = all_hands
+            else:       call_set  = all_hands
 
-        # ── Workaround Backlog #17 ──
-        # JSON v2.3.0 tem bug: pares premium QQ-77 caem em fold_hands em vários
-        # spots vs_RFI (cor azul-petróleo mal classificada). Garantir que esses
-        # pares apareçam em call/raise no grid (não em branco = fold).
-        # Só promove pra call se NÃO estiver em raise — não sobrescreve dados válidos.
-        _PREMIUM_PAIRS = {'QQ', 'JJ', 'TT', '99', '88', '77'}
-        for pair in _PREMIUM_PAIRS:
-            if pair not in call_set and pair not in raise_set:
-                # Stacks rasos preferem jam (vai pro raise/verde); stacks médios call (azul)
-                if stack_bb <= 20:
-                    raise_set.add(pair)
-                else:
-                    call_set.add(pair)
+        # Pcts globais (default GW v3, fallback pra v2)
+        call_pct  = float(defender.get('call_pct') or 0)
+        raise_pct = float(defender.get('raise_pct') or 0)
+        allin_pct = float(defender.get('allin_pct') or 0)
+        if call_pct + raise_pct + allin_pct == 0:
+            # v2 antigo: usa pct_play como total não-fold (heurística simples)
+            pct_total = float(defender.get('pct_play', 0))
+            if all(s == set() for s in [call_set, raise_set, allin_set]):
+                pass
+            else:
+                # split proporcional por tamanho dos sets (aproximação grosseira)
+                total_combos = sum(len(s) for s in [call_set, raise_set, allin_set]) or 1
+                call_pct  = pct_total * len(call_set)  / total_combos
+                raise_pct = pct_total * len(raise_set) / total_combos
+                allin_pct = pct_total * len(allin_set) / total_combos
 
-        # pct_play = call_pct + raise_pct + allin_pct quando disponíveis no novo formato
-        if defender.get('call_pct') is not None:
-            pct_play = (float(defender.get('call_pct') or 0)
-                        + float(defender.get('raise_pct') or 0)
-                        + float(defender.get('allin_pct') or 0))
-        else:
-            pct_play = float(defender.get('pct_play', 0))
+        pct_play = call_pct + raise_pct + allin_pct
+
+        # Construir frequencies por mão pra renderização GW-style.
+        # Se mão está em apenas 1 set → 100% naquela ação. Mixed (múltiplos sets) →
+        # split proporcional pelos pcts globais.
+        all_hands_seen = call_set | raise_set | allin_set
+        frequencies = {}
+        for hand in sorted(all_hands_seen):
+            in_call  = hand in call_set
+            in_raise = hand in raise_set
+            in_allin = hand in allin_set
+            # Pesos: usa pct global da ação se a mão estiver no set, 0 caso contrário
+            w_call  = call_pct  if in_call  else 0
+            w_raise = raise_pct if in_raise else 0
+            w_allin = allin_pct if in_allin else 0
+            total_w = w_call + w_raise + w_allin
+            if total_w == 0:
+                # Edge case: fallback uniforme entre os sets que contêm a mão
+                n = sum([in_call, in_raise, in_allin]) or 1
+                frequencies[hand] = {
+                    'call':  (1/n) if in_call  else 0,
+                    'raise': (1/n) if in_raise else 0,
+                    'allin': (1/n) if in_allin else 0,
+                    'fold':  0,
+                }
+            else:
+                frequencies[hand] = {
+                    'call':  round(w_call  / total_w, 4),
+                    'raise': round(w_raise / total_w, 4),
+                    'allin': round(w_allin / total_w, 4),
+                    'fold':  0,
+                }
 
         vs_rfi[opener_label] = {
-            'raise3bet': sorted(raise_set),
-            'call':      sorted(call_set),
-            'pct_play':  pct_play,
-            'acoes':     defender.get('acoes', []),
-            'hands':     sorted(call_set | raise_set),
+            'raise3bet':   sorted(raise_set | allin_set),  # legacy field (mantém compat)
+            'call':        sorted(call_set),
+            'allin':       sorted(allin_set),
+            'pct_play':    round(pct_play, 4),
+            'call_pct':    round(call_pct, 4),
+            'raise_pct':   round(raise_pct, 4),
+            'allin_pct':   round(allin_pct, 4),
+            'acoes':       defender.get('acoes', []),
+            'hands':       sorted(all_hands_seen),
+            'frequencies': frequencies,
         }
 
     # vs_3bet
