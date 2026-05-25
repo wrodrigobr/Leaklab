@@ -371,11 +371,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--save", action="store_true")
     parser.add_argument("--tid", type=int, default=None, help="Processar apenas este tournament_id")
+    parser.add_argument("--force", action="store_true",
+                        help="Reprocessa TODAS as preflop (mesmo já com gto_label) — usar após mudança no arquivo de ranges")
     args = parser.parse_args()
 
     conn = get_conn()
 
-    where = "WHERE street = 'preflop' AND (gto_label IS NULL OR gto_label = '') AND hero_cards IS NOT NULL AND hero_cards != ''"
+    if args.force:
+        where = "WHERE street = 'preflop' AND hero_cards IS NOT NULL AND hero_cards != ''"
+    else:
+        where = "WHERE street = 'preflop' AND (gto_label IS NULL OR gto_label = '') AND hero_cards IS NOT NULL AND hero_cards != ''"
     params: list = []
     if args.tid:
         where += " AND tournament_id = ?"
@@ -387,7 +392,7 @@ def main():
         params
     ).fetchall()
     rows = [dict(r) for r in rows]
-    print(f"Preflop sem gto_label: {len(rows)}")
+    print(f"Preflop a processar: {len(rows)} ({'FORCE — todas' if args.force else 'só sem gto_label'})")
 
     n = _process_rows(rows, conn, dry_run=not args.save, verbose=True)
 
