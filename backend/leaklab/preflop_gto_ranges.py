@@ -275,10 +275,20 @@ def analyze_preflop(
             in_rng      = in_raise or in_allin
             in_limp     = False
 
-            # Ordem por freq: ação dominante primeiro
+            # Ordem por freq da MÃO específica quando disponível (hand_freqs do GW v3)
+            # — não pelos pcts globais do range (que pode dar ranking inverso pra mãos premium).
+            # Ex: QQ BTN 10bb tem global allin=34% > raise=5%, mas hand_freq[QQ] é raise=96% > allin=4%.
+            _hf_rfi = rfi.get('hand_freqs', {}).get(hero_hand_type, {})
+            _hf_raise_w = 0.0
+            _hf_allin_w = 0.0
+            for code, f in _hf_rfi.items():
+                if code == 'RAI':                _hf_allin_w += float(f)
+                elif code.startswith('R'):       _hf_raise_w += float(f)
             _opts = []
-            if in_allin: _opts.append(('jam',   float(rfi.get('allin_pct', 0) or 0)))
-            if in_raise: _opts.append(('raise', float(rfi.get('raise_pct', 0) or 0)))
+            if in_allin:
+                _opts.append(('jam',   _hf_allin_w if _hf_allin_w > 0 else float(rfi.get('allin_pct', 0) or 0)))
+            if in_raise:
+                _opts.append(('raise', _hf_raise_w if _hf_raise_w > 0 else float(rfi.get('raise_pct', 0) or 0)))
             _opts.sort(key=lambda x: -x[1])
             rec = [a for a, _ in _opts] or ['fold']
         else:
@@ -390,13 +400,23 @@ def analyze_preflop(
             in_allin = bool(allin_hands) and _in_range(hero_hand_type, allin_hands)
             in_rng   = in_call or in_raise or in_allin
 
-            # Recomendação preserva TODAS as ações válidas (mãos mistas — GW retorna
-            # mesma mão em múltiplos sets). ORDEM por frequência global (ação dominante
-            # primeiro). Ex: 88 vs UTG com call_pct=12.9% > raise_pct=5.1% → rec=['call','raise'].
+            # Recomendação preserva TODAS as ações válidas (mãos mistas). ORDEM por
+            # freq da MÃO específica (hand_freqs do GW v3) quando disponível —
+            # fallback pelos pcts globais quando ausente.
+            _hf_vs = defender.get('hand_freqs', {}).get(hero_hand_type, {})
+            _hf_call_w = 0.0; _hf_raise_w = 0.0; _hf_allin_w = 0.0
+            for code, f in _hf_vs.items():
+                if code == 'C':                  _hf_call_w  += float(f)
+                elif code == 'RAI':              _hf_allin_w += float(f)
+                elif code.startswith('R'):       _hf_raise_w += float(f)
+            has_hf_vs = (_hf_call_w + _hf_raise_w + _hf_allin_w) > 0
             _options = []
-            if in_allin: _options.append(('jam',   float(defender.get('allin_pct', 0) or 0)))
-            if in_raise: _options.append(('raise', float(defender.get('raise_pct', 0) or 0)))
-            if in_call:  _options.append(('call',  float(defender.get('call_pct',  0) or 0)))
+            if in_allin:
+                _options.append(('jam',   _hf_allin_w if has_hf_vs else float(defender.get('allin_pct', 0) or 0)))
+            if in_raise:
+                _options.append(('raise', _hf_raise_w if has_hf_vs else float(defender.get('raise_pct', 0) or 0)))
+            if in_call:
+                _options.append(('call',  _hf_call_w  if has_hf_vs else float(defender.get('call_pct',  0) or 0)))
             # Empate ou pcts zerados → fallback por agressividade (jam > raise > call)
             _agg_order = {'jam': 3, 'raise': 2, 'call': 1}
             _options.sort(key=lambda x: (-x[1], -_agg_order[x[0]]))

@@ -172,7 +172,7 @@ export function DecisionCard({
         {showDetails && (why || proNotes) && (
           <div className="space-y-2 pt-1 border-t border-border/30">
             {why && (
-              <p className="text-[13px] text-foreground/85 leading-relaxed">
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
                 {why}
               </p>
             )}
