@@ -4666,17 +4666,30 @@ def preflop_ranges():
     rfi = None
     if rfi_raw:
         if 'open_pct' in rfi_raw or 'raise_hands' in rfi_raw:
-            # v3 GW master
+            # v3 GW master — usa hand_freqs exato quando disponível
             raise_set = _expand_range(rfi_raw.get('raise_hands', ''))
             allin_set = _expand_range(rfi_raw.get('allin_hands', ''))
             open_pct  = float(rfi_raw.get('open_pct', 0))
             raise_pct = float(rfi_raw.get('raise_pct', 0))
             allin_pct = float(rfi_raw.get('allin_pct', 0))
 
-            # Frequencies por mão (split proporcional pelos pcts globais)
             all_hands_seen = raise_set | allin_set
+            hand_freqs_raw = rfi_raw.get('hand_freqs', {}) or {}
             freqs = {}
+
+            # 1. hand_freqs exato do JSON v3 (GW): mapear códigos brutos
+            for hand, hf in hand_freqs_raw.items():
+                mapped = {'fold': 0.0, 'call': 0.0, 'raise': 0.0, 'allin': 0.0}
+                for code, f in hf.items():
+                    if code == 'F':                  mapped['fold']  += float(f)
+                    elif code == 'C':                mapped['call']  += float(f)
+                    elif code == 'RAI':              mapped['allin'] += float(f)
+                    elif code.startswith('R'):       mapped['raise'] += float(f)
+                freqs[hand] = {k: round(v, 4) for k, v in mapped.items()}
+
+            # 2. Fallback split simulado pras mãos nos sets sem hand_freqs
             for hand in sorted(all_hands_seen):
+                if hand in freqs: continue
                 w_raise = raise_pct if hand in raise_set else 0
                 w_allin = allin_pct if hand in allin_set else 0
                 total = w_raise + w_allin
