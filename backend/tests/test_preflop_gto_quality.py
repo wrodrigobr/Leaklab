@@ -284,19 +284,21 @@ def test_rfi_in_range_correct_action():
     else:
         _check("rfi_in_range_correct_action_available", r['available'], True)
 
-def test_vs_rfi_out_of_range_call_is_leak():
-    # CO com 88 vs UTG open @ 30bb — 88 fora do range → call = leak
+def test_vs_rfi_88_call_is_correct():
+    # CO com 88 vs UTG open @ 30bb — GW v3: 88 está no range mixed call/raise
+    # (call ~85%, raise ~15%). Call é GTO dominante → correct.
+    # (Era 'leak' nos fixtures RegLife buggy; v3 GW corrigiu.)
     r = analyze_preflop('CO', '88', 30, 'call', facing_size=2.5, vs_position='UTG')
     _check("vs_rfi_88_call_available", r['available'], True)
-    _check("vs_rfi_88_call_in_range", r['in_range'], False)
-    _check("vs_rfi_88_call_quality", r['action_quality'], 'leak')
+    _check("vs_rfi_88_call_in_range", r['in_range'], True)
+    _check("vs_rfi_88_call_quality", r['action_quality'], 'correct')
 
-def test_vs_rfi_in_range_fold_mixed_strategy():
-    # CO com AKo vs UTG open @ 30bb — RegLife: AKo esta no call range (flat)
-    # foldar mao no range e leak
+def test_vs_rfi_AKo_fold_is_major_leak():
+    # CO com AKo vs UTG open @ 30bb — GW v3: AKo SEMPRE joga (0% fold).
+    # Foldar AKo é major_leak (não 'leak' — fold tem freq < 3%).
     r = analyze_preflop('CO', 'AKo', 30, 'fold', facing_size=2.5, vs_position='UTG')
     if r['available']:
-        _check("vs_rfi_AKo_fold_quality", r['action_quality'], 'leak')
+        _check("vs_rfi_AKo_fold_quality", r['action_quality'], 'major_leak')
     else:
         _check("vs_rfi_AKo_fold_available", r['available'], True)
 
