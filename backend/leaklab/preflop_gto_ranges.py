@@ -84,9 +84,17 @@ _POS = {
     'UTG': 'UTG', 'UTG1': 'UTG+1', 'SB': 'Small Blind', 'BB': 'Big Blind',
 }
 
-# Pipeline e banco usam nomes distintos do JSON — normalizamos antes do lookup.
-# JSON v3 (GW master) usa 9-max nativo: UTG, UTG+1, UTG+2, LJ, HJ, CO, BTN, SB, BB.
-# Pipeline/banco (PokerStars MTT) pode dar nomes 8-max ou 9-max. Mapeamos pra 9-max.
+# Pipeline (hand_state_builder._position_names) e JSON v3 (GW master 9-max) usam
+# nomenclaturas diferentes. Mapeamento determinístico baseado na ORDEM DE AÇÃO:
+#
+# Mesa 9-max (PokerStars torneio): SB(0), BB(1), UTG(2), UTG+1(3), UTG+2(4), MP1(5), HJ(6), CO(7), BTN(8)
+# Mesa 9-max (GW MTTGeneralV2):    SB,    BB,    UTG,    UTG+1,    UTG+2,    LJ(*), HJ,    CO,    BTN
+#                                                                            ↑
+#                                                                      pipeline "MP1" = GW "LJ" (4ª ação)
+#
+# Mesa 8-max: SB(0), BB(1), UTG(2), UTG+1(3), UTG+2(4), HJ(5), CO(6), BTN(7)
+# 8-max não tem MP1 — UTG+2 do pipeline 8-max = LJ do GW (mas como JSON tem ambos
+# UTG+2 e LJ, mantemos UTG+2 → UTG+2 pra 9-max e tratamos 8-max no future).
 _POS_NORM = {
     # Nomes JSON v3 (preservar)
     'UTG':   'UTG',
@@ -98,14 +106,13 @@ _POS_NORM = {
     'BTN':   'BTN',
     'SB':    'SB',
     'BB':    'BB',
-    # Aliases legacy do JSON v2 antigo (UTG1 sem +)
+    # Aliases legacy v2 (UTG1 sem +)
     'UTG1':  'UTG+1',
     'UTG2':  'UTG+2',
-    # 8-max → 9-max: PokerStars MTT 8-max usa MP único.
-    # Mapeamos MP → UTG+1 (a posição early-mid mais próxima do 9-max).
-    'MP':    'UTG+1',
-    'MP1':   'UTG+1',
-    'MP2':   'UTG+2',
+    # Pipeline pos → GW 9-max
+    'MP1':   'LJ',   # 4ª ação preflop em 9-max = LJ do GW (fix v0.165.0)
+    'MP2':   'HJ',   # 5ª ação — pode acontecer em mesa 10+ (raro)
+    'MP':    'LJ',   # 8-max genérico ou 6-max MP → tratar como LJ (mid-position)
 }
 
 # Push/fold bucket → lista de pf_stack keys (em ordem de preferência)
