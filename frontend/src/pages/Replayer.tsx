@@ -452,14 +452,25 @@ function SidePanels({
                 </div>
                 {hasFreqs && (
                   <div className="space-y-1">
-                    <div className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground"
-                         title={useHandFreq
-                           ? `Frequência GTO específica de ${pg!.hand_type} vs ${pg!.vs_position || 'open'} (${pg!.stack_bucket})`
-                           : `Range agregado do ${pg!.position} vs ${pg!.vs_position || 'open'} (${pg!.stack_bucket})`}>
-                      {useHandFreq
-                        ? `Como GTO joga ${pg!.hand_type} · ${pg!.vs_position || ''} ${pg!.stack_bucket}`
-                        : `Range agregado · ${pg!.vs_position || ''} ${pg!.stack_bucket}`}
-                    </div>
+                    {(() => {
+                      const isRFI = pg!.scenario === 'rfi';
+                      const validVs = pg!.vs_position && pg!.vs_position !== 'UNKNOWN' ? pg!.vs_position : null;
+                      // Contexto: RFI mostra "abrindo"; vs_RFI/3bet/etc mostra "vs OPENER"
+                      const ctxStr = isRFI
+                        ? `${pg!.position} abrindo ${pg!.stack_bucket}`
+                        : (validVs ? `vs ${validVs} · ${pg!.stack_bucket}` : `${pg!.position} ${pg!.stack_bucket}`);
+                      const title = useHandFreq
+                        ? `Frequência GTO específica de ${pg!.hand_type} em ${ctxStr}`
+                        : `Range agregado em ${ctxStr}`;
+                      const display = useHandFreq
+                        ? `Como GTO joga ${pg!.hand_type} · ${ctxStr}`
+                        : `Range agregado · ${ctxStr}`;
+                      return (
+                        <div className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground" title={title}>
+                          {display}
+                        </div>
+                      );
+                    })()}
                     <div className="flex h-2 rounded overflow-hidden ring-1 ring-border/30">
                       {foldPct > 0.001 && (
                         <div title={`Fold ${(foldPct*100).toFixed(1)}%`}
