@@ -684,12 +684,38 @@ def _rfi_notes(pos, hand, stack, pct, in_rng, action, *, in_limp: bool = False,
     act   = action.lower()
     if in_rng:
         notes.append(f"{label} abre {pct_s} das mãos a {stack:.0f}bb — {hand} está no range de abertura.")
-        if act == 'fold':
-            notes.append(f"Foldar {hand} do {label} é um leak evidente: a mão tem equity e posição para abrir.")
-        elif act == 'call':
-            notes.append("Limp desperdiça vantagem posicional. Raise/shove é a linha mais lucrativa aqui.")
+        # Pro_note baseado na freq EXATA da ação tomada (vs. dominante)
+        hf_fold  = float(hand_freq.get('fold', 0))  if hand_freq else 0.0
+        hf_raise = float(hand_freq.get('raise', 0)) if hand_freq else 0.0
+        hf_allin = float(hand_freq.get('allin', 0)) if hand_freq else 0.0
+        # Mapear ação → freq da ação tomada
+        act_freq_map = {'fold': hf_fold, 'raise': hf_raise, 'bet': hf_raise,
+                        'jam': hf_allin, 'shove': hf_allin, 'allin': hf_allin, 'call': 0.0}
+        act_freq = act_freq_map.get(act, 0.0)
+        # Ação dominante
+        action_pcts = [('Fold', hf_fold), ('Raise', hf_raise), ('Shove', hf_allin)]
+        action_pcts.sort(key=lambda x: -x[1])
+        dom_name, dom_freq = action_pcts[0]
+        act_label = {'fold': 'Fold', 'raise': 'Raise', 'bet': 'Raise',
+                     'jam': 'Shove', 'shove': 'Shove', 'allin': 'Shove', 'call': 'Limp/Call'}.get(act, act.title())
+
+        if hand_freq and (hf_raise > 0 or hf_allin > 0 or hf_fold > 0):
+            if act_freq >= 0.50:
+                notes.append(f"{act_label} é a ação dominante GTO pra {hand} ({act_freq*100:.0f}%).")
+            elif act_freq >= 0.20:
+                notes.append(f"{act_label} é GTO válido pra {hand} ({act_freq*100:.0f}%), mas {dom_name.lower()} é dominante ({dom_freq*100:.0f}%).")
+            elif act_freq >= 0.03:
+                notes.append(f"{act_label} é GTO raramente ({act_freq*100:.0f}%) pra {hand}. GTO prefere {dom_name.lower()} ({dom_freq*100:.0f}%).")
+            else:
+                notes.append(f"{act_label} com {hand} é leak — GTO sempre escolhe {dom_name.lower()} ({dom_freq*100:.0f}%) neste spot.")
         else:
-            notes.append(f"Raise correto. {hand} é uma abertura sólida do {label} neste stack.")
+            # Sem hand_freq: textos genéricos antigos
+            if act == 'fold':
+                notes.append(f"Foldar {hand} do {label} é um leak: GTO sempre joga essa mão neste spot.")
+            elif act == 'call':
+                notes.append("Limp desperdiça vantagem posicional. Raise/shove é a linha mais lucrativa aqui.")
+            else:
+                notes.append(f"Raise correto. {hand} é uma abertura sólida do {label} neste stack.")
     elif in_limp:
         notes.append(f"{hand} do {label} a {stack:.0f}bb — mão no range de limp (call) da small blind.")
         if act == 'call':
