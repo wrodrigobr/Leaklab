@@ -344,7 +344,7 @@ function SidePanels({
               <div className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
                 Estratégia do Solver
               </div>
-              <GtoStrategyPanel strategy={stratSorted} playedAction={playedAction} potBb={step.pot_bb} />
+              <GtoStrategyPanel strategy={stratSorted} playedAction={playedAction} />
             </div>
           );
         } else if (hasMathEvidence) {

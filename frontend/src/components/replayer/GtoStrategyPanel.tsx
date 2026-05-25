@@ -7,7 +7,6 @@ interface Props {
   strategy: GtoStrategyAction[];
   playedAction?: string | null;
   compact?: boolean;
-  potBb?: number | null;
 }
 
 
@@ -15,49 +14,62 @@ function normalizeAction(a: string): string {
   return (a ?? "").toLowerCase().replace(/[-_ ]/g, "");
 }
 
-function formatActionLabel(action: string, label?: string, potBb?: number | null): string {
-  const raw = (label || action || "").trim();
+// Base action sem sizing: bet_1.1bb / bet_75pct → "bet", raise_2.5bb → "raise"
+function baseAction(action: string, label?: string): string {
+  const raw = (label || action || "").trim().toLowerCase();
   const norm = normalizeAction(raw);
-  if (norm === "allin" || norm === "allinfold" || norm === "jam" || norm === "shove") return "Shove";
-  if (norm === "call") return "Call";
-  if (norm === "fold") return "Fold";
-  if (norm === "check") return "Check";
-  if (norm === "bet") return "Bet";
-  if (norm === "raise") return "Raise";
-  // bet_1.4bb / raise_2.5bb → converte pra "% pot" se potBb disponível, senão mantém "Bet 1.4bb"
-  // bet_75pct / raise_50pct → "Bet 75% pot" / "Raise 50% pot"
-  const sized = raw.toLowerCase().match(/^(bet|raise)_(.+)$/);
-  if (sized) {
-    const verb = sized[1].charAt(0).toUpperCase() + sized[1].slice(1);
-    let size = sized[2];
-    const bbMatch = size.match(/^([\d.]+)bb$/);
-    if (bbMatch && potBb && potBb > 0) {
-      const sizeBb = parseFloat(bbMatch[1]);
-      if (!Number.isNaN(sizeBb)) {
-        const pct = Math.round((sizeBb / potBb) * 100);
-        return `${verb} ${pct}% pot`;
-      }
-    }
-    size = size.replace(/pct$/, "% pot");
-    return `${verb} ${size}`;
-  }
-  // jam/shove genérico no fallback
-  if (/^(jam|shove|all[- ]?in)$/i.test(raw)) return "Shove";
-  // Capitalize first letter, keep the rest
-  return raw.charAt(0).toUpperCase() + raw.slice(1);
+  if (norm === "allin" || norm === "allinfold" || norm === "jam" || norm === "shove") return "shove";
+  if (norm.startsWith("bet")) return "bet";
+  if (norm.startsWith("raise")) return "raise";
+  if (norm === "call") return "call";
+  if (norm === "fold") return "fold";
+  if (norm === "check") return "check";
+  return norm;
 }
 
-export function GtoStrategyPanel({ strategy, playedAction, compact, potBb }: Props) {
+function labelForBase(base: string): string {
+  switch (base) {
+    case "shove": return "Shove";
+    case "bet":   return "Bet";
+    case "raise": return "Raise";
+    case "call":  return "Call";
+    case "fold":  return "Fold";
+    case "check": return "Check";
+    default:      return base.charAt(0).toUpperCase() + base.slice(1);
+  }
+}
+
+export function GtoStrategyPanel({ strategy, playedAction, compact }: Props) {
   if (!strategy || strategy.length === 0) return null;
 
-  const sorted = [...strategy].sort((a, b) => b.frequency - a.frequency);
+  // Agrega por ação-base (bet_1.1bb + bet_2.5bb → "bet" com freq somada)
+  const aggMap = new Map<string, { freq: number; evWeighted: number; evTotal: number }>();
+  for (const r of strategy) {
+    const b = baseAction(r.action, r.label);
+    const slot = aggMap.get(b) ?? { freq: 0, evWeighted: 0, evTotal: 0 };
+    slot.freq += r.frequency || 0;
+    if (r.ev_bb != null) {
+      slot.evWeighted += r.ev_bb * (r.frequency || 0);
+      slot.evTotal    += r.frequency || 0;
+    }
+    aggMap.set(b, slot);
+  }
+  const sorted = Array.from(aggMap.entries())
+    .map(([base, v]) => ({
+      action: base,
+      label: labelForBase(base),
+      frequency: v.freq,
+      ev_bb: v.evTotal > 0 ? v.evWeighted / v.evTotal : null,
+      combos: null,
+      exploitability_pct: null,
+    }))
+    .sort((a, b) => b.frequency - a.frequency);
+
   const topRow = sorted[0];
   const topEv = topRow?.ev_bb ?? null;
 
-  const playedNorm = playedAction ? normalizeAction(playedAction) : null;
-  const playedRow = playedNorm
-    ? sorted.find(r => normalizeAction(r.action) === playedNorm || normalizeAction(r.label) === playedNorm)
-    : null;
+  const playedBase = playedAction ? baseAction(playedAction) : null;
+  const playedRow = playedBase ? sorted.find(r => r.action === playedBase) : null;
   const playedEv = playedRow?.ev_bb ?? null;
 
   const opportunityCost =
@@ -68,13 +80,11 @@ export function GtoStrategyPanel({ strategy, playedAction, compact, potBb }: Pro
   return (
     <div className="space-y-2">
       {sorted.map((row, idx) => {
-        const isPlayed =
-          playedNorm != null &&
-          (normalizeAction(row.action) === playedNorm || normalizeAction(row.label) === playedNorm);
+        const isPlayed = playedBase != null && row.action === playedBase;
         const isTop = idx === 0;
         const isTopAndPlayed = isTop && isPlayed;
         const pct = Math.round(row.frequency * 100);
-        const displayLabel = formatActionLabel(row.action, row.label);
+        const displayLabel = row.label;
 
         // Bar color: top+played → emerald; top only → amber; played only → primary; rest → muted
         const barClass = isTopAndPlayed
