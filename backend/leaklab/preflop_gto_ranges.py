@@ -308,8 +308,7 @@ def analyze_preflop(
             return base
 
         if 'fold_pct' in defender:
-            # New RegLife format: fold_pct / call_pct / raise_pct / allin_pct
-            aggr_pct    = float(defender.get('aggr_pct', 0))
+            # Formato novo (RegLife v2 e v3 GW master): fold/call/raise/allin separados
             call_pct    = float(defender.get('call_pct', 0))
             raise_pct   = float(defender.get('raise_pct', 0))
             allin_pct   = float(defender.get('allin_pct', 0))
@@ -323,20 +322,18 @@ def analyze_preflop(
             in_allin = bool(allin_hands) and _in_range(hero_hand_type, allin_hands)
             in_rng   = in_call or in_raise or in_allin
 
-            if in_allin:
-                rec = ['jam']
-            elif in_raise:
-                rec = ['raise']
-            elif in_call:
-                rec = ['call']
-            else:
-                rec = ['fold']
-
-            # Workaround Backlog #17 removido em v0.163.0 — JSON v3 (GW master)
-            # tem dados corretos para pares premium QQ-77. Guard era necessário
-            # apenas para o JSON RegLife v2.3.0 com bug de extração de pixel.
+            # Recomendação preserva TODAS as ações válidas (mãos mistas — GW retorna
+            # mesma mão em múltiplos sets: ex. 88 vs UTG pode ser call OR raise, ambas GTO).
+            # Ordem por agressividade (jam > raise > call) só serve pra "ação primária".
+            rec = []
+            if in_allin: rec.append('jam')
+            if in_raise: rec.append('raise')
+            if in_call:  rec.append('call')
+            if not rec:  rec = ['fold']
 
             quality = _vs_rfi_quality_new(action_taken, in_rng, rec)
+            # aggr_pct: campo v2 (RegLife) ou computado em v3 (call+raise+allin = não-fold)
+            aggr_pct = float(defender.get('aggr_pct', call_pct + raise_pct + allin_pct))
             base.update({
                 'available': True, 'in_range': in_rng,
                 'range_pct':    aggr_pct,
