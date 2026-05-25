@@ -7,6 +7,7 @@ interface Props {
   strategy: GtoStrategyAction[];
   playedAction?: string | null;
   compact?: boolean;
+  potBb?: number | null;
 }
 
 
@@ -14,20 +15,39 @@ function normalizeAction(a: string): string {
   return (a ?? "").toLowerCase().replace(/[-_ ]/g, "");
 }
 
-function formatActionLabel(action: string, label?: string): string {
+function formatActionLabel(action: string, label?: string, potBb?: number | null): string {
   const raw = (label || action || "").trim();
   const norm = normalizeAction(raw);
-  if (norm === "allin" || norm === "allinfold") return "Shove";
+  if (norm === "allin" || norm === "allinfold" || norm === "jam" || norm === "shove") return "Shove";
   if (norm === "call") return "Call";
   if (norm === "fold") return "Fold";
   if (norm === "check") return "Check";
   if (norm === "bet") return "Bet";
   if (norm === "raise") return "Raise";
+  // bet_1.4bb / raise_2.5bb → converte pra "% pot" se potBb disponível, senão mantém "Bet 1.4bb"
+  // bet_75pct / raise_50pct → "Bet 75% pot" / "Raise 50% pot"
+  const sized = raw.toLowerCase().match(/^(bet|raise)_(.+)$/);
+  if (sized) {
+    const verb = sized[1].charAt(0).toUpperCase() + sized[1].slice(1);
+    let size = sized[2];
+    const bbMatch = size.match(/^([\d.]+)bb$/);
+    if (bbMatch && potBb && potBb > 0) {
+      const sizeBb = parseFloat(bbMatch[1]);
+      if (!Number.isNaN(sizeBb)) {
+        const pct = Math.round((sizeBb / potBb) * 100);
+        return `${verb} ${pct}% pot`;
+      }
+    }
+    size = size.replace(/pct$/, "% pot");
+    return `${verb} ${size}`;
+  }
+  // jam/shove genérico no fallback
+  if (/^(jam|shove|all[- ]?in)$/i.test(raw)) return "Shove";
   // Capitalize first letter, keep the rest
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
-export function GtoStrategyPanel({ strategy, playedAction, compact }: Props) {
+export function GtoStrategyPanel({ strategy, playedAction, compact, potBb }: Props) {
   if (!strategy || strategy.length === 0) return null;
 
   const sorted = [...strategy].sort((a, b) => b.frequency - a.frequency);
