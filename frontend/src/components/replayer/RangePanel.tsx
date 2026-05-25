@@ -303,21 +303,18 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
         </div>
       )}
 
-      {/* Push/Fold zone banner */}
-      {isPushZone && effectiveType === 'shove' && (
+      {/* Push/Fold zone banner — só mostra quando NÃO há dados GW v3 disponíveis
+          (Nash simplificado faz sentido em 4-6bb fallback). GW v3 cobre 10bb+ com
+          freqs reais incluindo raise sized — banner ficaria contraditório. */}
+      {isPushZone && effectiveType === 'shove' && !apiData?.rfi && (
         <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 px-3 py-2 space-y-1">
           <div className="flex items-center gap-1.5">
             <span className="font-mono text-[9px] font-bold uppercase tracking-wide text-violet-400">
-              Push/Fold Zone · {stackBb.toFixed(0)}bb
+              Push/Fold Zone · {stackBb.toFixed(0)}bb (Nash simplificado)
             </span>
-            {pos === 'BB' && (
-              <span className="font-mono text-[8px] text-muted-foreground">(call vs shove)</span>
-            )}
           </div>
           <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">
-            {pos === 'BB'
-              ? 'Azul = call · Fold o resto. Sem call no SB, re-raise é shove.'
-              : 'Verde = shove all-in · Fold o resto. Sem open pequeno nessa profundidade.'}
+            Sem dados GTO Wizard pra este bucket — usando tabela Nash binária shove/fold.
           </p>
           {hand && nashRange && (
             <p className={cn(
