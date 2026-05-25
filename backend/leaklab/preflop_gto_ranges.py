@@ -336,7 +336,7 @@ def analyze_preflop(
             'in_limp_range': in_limp,
             'limp_pct': limp_pct,
             'pro_notes': _rfi_notes(pos, hero_hand_type, stack_bb, pct, in_rng, action_taken,
-                                     in_limp=in_limp),
+                                     in_limp=in_limp, hand_freq=hand_freq),
         })
 
     # ── vs RFI ───────────────────────────────────────────────────────────────
@@ -672,7 +672,8 @@ def _vs_3bet_quality(action: str, in_4b: bool, in_cl: bool) -> str:
 
 # ── Professional notes ────────────────────────────────────────────────────────
 
-def _rfi_notes(pos, hand, stack, pct, in_rng, action, *, in_limp: bool = False) -> list[str]:
+def _rfi_notes(pos, hand, stack, pct, in_rng, action, *, in_limp: bool = False,
+               hand_freq: dict | None = None) -> list[str]:
     notes = []
     label = _POS.get(pos, pos)
     pct_s = f"{pct*100:.0f}%"
@@ -702,8 +703,24 @@ def _rfi_notes(pos, hand, stack, pct, in_rng, action, *, in_limp: bool = False) 
                 notes.append(f"Abrir {hand} do {label} é loose: perde EV contra os ranges de defesa dos oponentes.")
         elif act == 'fold':
             notes.append(f"Fold correto. {hand} não justifica entrada desta posição neste stack.")
-    if stack <= 15:
-        notes.append(f"Com {stack:.0f}bb: jogo essencialmente push/fold — use tabelas ICM para decisões marginais.")
+    # Nota sobre stack — usa hand_freq quando disponível pra ser preciso.
+    # Evita "essencialmente push/fold" quando GW indica raise sized é dominante (ex: QQ BTN 8bb).
+    if hand_freq and in_rng:
+        hf_r = float(hand_freq.get('raise', 0))
+        hf_a = float(hand_freq.get('allin', 0))
+        if hf_r > 0.7:
+            # Raise sized é claramente dominante pra essa mão — não é push/fold puro
+            if stack <= 15:
+                notes.append(f"Mesmo com {stack:.0f}bb, GTO prefere raise sized ({hf_r*100:.0f}%) — {hand} mantém valor pós-flop.")
+        elif hf_a > 0.7:
+            # Allin é dominante — push/fold de fato
+            notes.append(f"Com {stack:.0f}bb, GTO faz shove ({hf_a*100:.0f}%) com {hand} — maximiza fold equity.")
+        elif hf_r > 0.2 and hf_a > 0.2:
+            # Mix significativo entre raise e shove — zona transição
+            notes.append(f"Stack {stack:.0f}bb em zona de transição: GTO mistura raise ({hf_r*100:.0f}%) e shove ({hf_a*100:.0f}%) com {hand}.")
+    elif stack <= 15:
+        # Fallback sem hand_freq (mão fora do range, ou v2 legacy) — genérico
+        notes.append(f"Com {stack:.0f}bb a jogabilidade pós-flop é limitada — equity de mão e posição são prioridade.")
     elif stack <= 25:
         notes.append(f"Com {stack:.0f}bb a jogabilidade pós-flop é limitada — equity de mão e posição são prioridade.")
     return notes
