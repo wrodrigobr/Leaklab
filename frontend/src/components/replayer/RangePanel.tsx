@@ -368,12 +368,10 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
         </div>
       )}
 
-      {/* Range grid — dimmed when solver verdict supersedes static ranges */}
+      {/* Range grid — dimmed when solver verdict supersedes static ranges.
+          Description text removida — pcts já visíveis no Decision Card e legenda do grid. */}
       {displayRange ? (
         <div className={cn(solverOverridesRegLife && "opacity-40 pointer-events-none")}>
-          {displayRange.description && (
-            <p className="font-mono text-[9px] text-muted-foreground">{displayRange.description}</p>
-          )}
           <RangeGrid range={displayRange} heroHand={hand} />
         </div>
       ) : loading ? (
