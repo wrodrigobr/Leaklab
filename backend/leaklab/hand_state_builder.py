@@ -242,6 +242,7 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'raw_hand': hand.raw_text,
                 'decision_index': idx,
                 'total_decisions': None,  # preenchido depois
+                'n_players': len(hand.players) if hand.players else None,  # tamanho da mesa
             },
         )
         states.append(state)

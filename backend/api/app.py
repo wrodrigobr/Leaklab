@@ -3185,6 +3185,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 facing_size    = _pf_facing_bb,
                                 vs_position    = spot.get('villainPosition', ''),
                                 is_3bet_pot    = bool(spot.get('is3betPot') or di.get('is_3bet', False)),
+                                n_players      = spot.get('nPlayers'),
                             )
                             # Fallback for call-vs-shove (no vs_3bet data yet):
                             # use RFI range membership as proxy for shove-call quality

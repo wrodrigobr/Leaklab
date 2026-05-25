@@ -84,19 +84,33 @@ _POS = {
     'UTG': 'UTG', 'UTG1': 'UTG+1', 'SB': 'Small Blind', 'BB': 'Big Blind',
 }
 
-# Pipeline (hand_state_builder._position_names) e JSON v3 (GW master 9-max) usam
-# nomenclaturas diferentes. Mapeamento determinístico baseado na ORDEM DE AÇÃO:
+# Pipeline (hand_state_builder._position_names) e JSON v3 (GW MTTGeneralV2 9-max)
+# usam nomenclaturas diferentes. Mapeamento depende do TAMANHO DA MESA (n_players).
 #
-# Mesa 9-max (PokerStars torneio): SB(0), BB(1), UTG(2), UTG+1(3), UTG+2(4), MP1(5), HJ(6), CO(7), BTN(8)
-# Mesa 9-max (GW MTTGeneralV2):    SB,    BB,    UTG,    UTG+1,    UTG+2,    LJ(*), HJ,    CO,    BTN
-#                                                                            ↑
-#                                                                      pipeline "MP1" = GW "LJ" (4ª ação)
+# Pipeline naming por n_players (de hand_state_builder._position_names):
+#   n=6: SB, BB, UTG, HJ, CO, BTN
+#   n=7: SB, BB, UTG, UTG+1, HJ, CO, BTN
+#   n=8: SB, BB, UTG, UTG+1, UTG+2, HJ, CO, BTN
+#   n=9: SB, BB, UTG, UTG+1, UTG+2, MP1, HJ, CO, BTN
+#  n=10: SB, BB, UTG, UTG+1, UTG+2, MP1, MP2, HJ, CO, BTN
 #
-# Mesa 8-max: SB(0), BB(1), UTG(2), UTG+1(3), UTG+2(4), HJ(5), CO(6), BTN(7)
-# 8-max não tem MP1 — UTG+2 do pipeline 8-max = LJ do GW (mas como JSON tem ambos
-# UTG+2 e LJ, mantemos UTG+2 → UTG+2 pra 9-max e tratamos 8-max no future).
+# GW MTTGeneralV2 (sempre 9-max): SB, BB, UTG, UTG+1, UTG+2, LJ, HJ, CO, BTN
+#
+# Mapping por ordem de ação (pipeline_pos → GW pos):
+# Mesa de N seats, hero na ordem K (0=SB, 1=BB, 2=UTG, ...):
+#   - K ∈ {0, 1}: blinds direto (SB/BB)
+#   - K = 2: UTG
+#   - K = N-1: BTN
+#   - K = N-2: CO
+#   - K = N-3: HJ
+#   - K ∈ [3, N-4]: ordem early/middle → mapear pro slot equivalente em GW 9-max
+#
+# Em GW 9-max (N=9): ordem early = {3:UTG+1, 4:UTG+2, 5:LJ}
+# Pra mesa menor (8/7/6), comprimimos: pipeline 'UTG+2' em 8-max = LJ em GW (3ª ação).
+
+# Mapping estático default — assume GW 9-max nativo.
+# Usado quando n_players desconhecido (fallback).
 _POS_NORM = {
-    # Nomes JSON v3 (preservar)
     'UTG':   'UTG',
     'UTG+1': 'UTG+1',
     'UTG+2': 'UTG+2',
@@ -106,13 +120,37 @@ _POS_NORM = {
     'BTN':   'BTN',
     'SB':    'SB',
     'BB':    'BB',
-    # Aliases legacy v2 (UTG1 sem +)
-    'UTG1':  'UTG+1',
-    'UTG2':  'UTG+2',
-    # Pipeline pos → GW 9-max
-    'MP1':   'LJ',   # 4ª ação preflop em 9-max = LJ do GW (fix v0.165.0)
-    'MP2':   'HJ',   # 5ª ação — pode acontecer em mesa 10+ (raro)
-    'MP':    'LJ',   # 8-max genérico ou 6-max MP → tratar como LJ (mid-position)
+    'UTG1':  'UTG+1',   # legacy v2
+    'UTG2':  'UTG+2',   # legacy v2
+    'MP1':   'LJ',      # 9-max pipeline: 4ª ação = LJ no GW
+    'MP2':   'HJ',      # 10-max pipeline: 5ª ação (raro)
+    'MP':    'LJ',      # genérico
+}
+
+# Mapping específico por n_players (preciso): pipeline N-max → GW 9-max
+_POS_NORM_BY_N = {
+    # Mesa 8-max — pipeline 'UTG+2' (5ª seat) é a 3ª ação preflop = LJ no GW
+    8: {
+        **_POS_NORM,
+        'UTG+2': 'LJ',  # 3ª ação em 8-max = LJ
+    },
+    # Mesa 7-max — pipeline 'UTG+1' é a 2ª ação preflop. Em GW 9-max, 2ª ação = UTG+1.
+    # MAS quem é early/mid em 7-max joga ranges mais wide que UTG+1 9-max.
+    # Aceito imprecisão: 'UTG+1' 7-max → UTG+1 9-max (ranges aproximados).
+    7: {
+        **_POS_NORM,
+        # UTG+1 (4º seat) é 2ª ação preflop em 7-max = UTG+1 9-max (mesma ordem)
+        # HJ (5º seat) é 3ª ação preflop = LJ 9-max
+        'HJ': 'LJ',
+    },
+    # Mesa 6-max — só 4 posições não-blind. UTG=1ª ação, HJ=2ª, CO=3ª, BTN=4ª.
+    # GW 9-max 2ª ação = UTG+1. Mapear:
+    6: {
+        **_POS_NORM,
+        # HJ (4º seat) 6-max é 2ª ação = UTG+1 no GW
+        # CO permanece CO (próximo do BTN, similar)
+        'HJ': 'UTG+1',
+    },
 }
 
 # Push/fold bucket → lista de pf_stack keys (em ordem de preferência)
@@ -123,9 +161,15 @@ _PUSHFOLD_BUCKET_STACK = {
 }
 
 
-def _norm_pos(position: str) -> str:
-    """Normaliza nome de posição do pipeline/banco para chave do JSON."""
+def _norm_pos(position: str, n_players: int | None = None) -> str:
+    """Normaliza nome de posição do pipeline/banco para chave do JSON v3 (9-max GW).
+
+    Quando n_players conhecido, usa mapping específico (mais accurate).
+    Sem n_players, usa default (assume 9-max).
+    """
     p = position.upper()
+    if n_players in _POS_NORM_BY_N:
+        return _POS_NORM_BY_N[n_players].get(p, p)
     return _POS_NORM.get(p, p)
 
 
@@ -138,6 +182,7 @@ def analyze_preflop(
     vs_position: str = '',    # posição de quem abriu (opener)
     is_3bet_pot: bool = False,
     caller_position: str = '', # posição do cold caller (se houver, ativa squeeze lookup)
+    n_players: int | None = None,  # tamanho da mesa — usado pra mapping correto pipeline→GW
 ) -> dict:
     """
     Retorna análise GTO completa de uma decisão preflop.
@@ -151,9 +196,9 @@ def analyze_preflop(
     data    = _load()
     bucket  = _stack_bucket(stack_bb)
     bk_data = data.get('ranges', {}).get(bucket, {})
-    pos     = _norm_pos(position)
-    vs_pos  = _norm_pos(vs_position) if vs_position else ''
-    cal_pos = _norm_pos(caller_position) if caller_position else ''
+    pos     = _norm_pos(position, n_players)
+    vs_pos  = _norm_pos(vs_position, n_players) if vs_position else ''
+    cal_pos = _norm_pos(caller_position, n_players) if caller_position else ''
 
     base = {
         'available': False, 'scenario': 'rfi',
