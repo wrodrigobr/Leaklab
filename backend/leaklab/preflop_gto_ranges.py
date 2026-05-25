@@ -341,7 +341,6 @@ def analyze_preflop(
             _options.sort(key=lambda x: (-x[1], -_agg_order[x[0]]))
             rec = [a for a, _ in _options] or ['fold']
 
-            quality = _vs_rfi_quality_new(action_taken, in_rng, rec)
             # aggr_pct: campo v2 (RegLife) ou computado em v3 (call+raise+allin = não-fold)
             aggr_pct = float(defender.get('aggr_pct', call_pct + raise_pct + allin_pct))
 
@@ -355,8 +354,12 @@ def analyze_preflop(
                 elif code == 'C':     hand_freq['call']  += float(f)
                 elif code == 'RAI':   hand_freq['allin'] += float(f)
                 elif code.startswith('R'):  hand_freq['raise'] += float(f)
-            # Round
             hand_freq = {k: round(v, 4) for k, v in hand_freq.items()}
+            has_hf = sum(hand_freq.values()) > 0.001
+
+            # Quality classifier usa hand_freq (freq EXATA) quando disponível —
+            # mais preciso que verificar in/out range. Fallback pro modo rec/in_rng.
+            quality = _vs_rfi_quality_new(action_taken, in_rng, rec, hand_freq if has_hf else None)
 
             base.update({
                 'available': True, 'in_range': in_rng,
@@ -504,9 +507,35 @@ def _rfi_quality(action: str, in_rng: bool, stack_bb: float, *,
     return 'acceptable'
 
 
-def _vs_rfi_quality_new(action: str, in_rng: bool, rec: list) -> str:
-    """Quality classifier for new RegLife vs_RFI format."""
+def _vs_rfi_quality_new(action: str, in_rng: bool, rec: list, hand_freq: dict | None = None) -> str:
+    """Quality classifier vs_RFI.
+
+    Quando hand_freq disponível (freq EXATA da mão hero pelo GTO Wizard), classifica
+    pela frequência GTO da ação tomada — mais preciso que verificar in/out range:
+      freq >= 30%  → correct      (ação dominante ou frequente do GTO)
+      10–30%       → acceptable   (ação válida do GTO mix, minoritária)
+      3–10%        → leak         (ação raramente GTO)
+      < 3%         → major_leak   (ação fora do GTO)
+
+    Sem hand_freq, fallback pro classificador binário (in_rng/rec) original.
+    """
     act = action.lower()
+    if hand_freq:
+        # Mapear action → key em hand_freq
+        key_map = {
+            'fold': 'fold',
+            'call': 'call', 'check': 'call',
+            'raise': 'raise', 'bet': 'raise',
+            'jam': 'allin', 'allin': 'allin', 'shove': 'allin', 'all-in': 'allin',
+        }
+        key = key_map.get(act, act)
+        freq = float(hand_freq.get(key, 0))
+        if   freq >= 0.30: return 'correct'
+        elif freq >= 0.10: return 'acceptable'
+        elif freq >= 0.03: return 'leak'
+        else:              return 'major_leak'
+
+    # Fallback (sem hand_freq): lógica binária original
     if in_rng and act in rec:                     return 'correct'
     if in_rng and act == 'fold':                  return 'leak'
     if in_rng and act not in rec:                 return 'leak'
