@@ -148,10 +148,11 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
   const pushBucket = getPushFoldBucket(stackBb);
   const isPushZone = pushBucket !== null;
 
-  // Default to 'shove' in push/fold zone; otherwise auto-select from GTO/raise context
-  const defaultType: RangeType = isPushZone
-    ? 'shove'
-    : (gto?.scenario ? (SCENARIO_TO_TYPE[gto.scenario] ?? 'open')
+  // Default: segue o cenário (open pra RFI, call pra vs_RFI, 3bet pra vs 3-bet).
+  // Aba 'shove' (Nash simplificado) só é default quando NÃO temos GW v3 — caso contrário
+  // o range de open/call já mostra raise+allin com freqs reais (mais informativo).
+  const defaultType: RangeType =
+    (gto?.scenario ? (SCENARIO_TO_TYPE[gto.scenario] ?? 'open')
       : (Object.entries(step.bets ?? {}).some(([seat, bet]) =>
           step.seats?.[seat]?.player !== hero && bet > (step.bb ?? 0))
         ? 'call' : 'open'));
@@ -174,7 +175,9 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
   const nashRange      = pushBucket ? PUSH_FOLD[pushBucket]?.[pos] : null;
 
   const availableTypes = RANGE_TYPES.filter(t => {
-    if (t.id === 'shove') return isPushZone && !!nashRange;
+    // Aba shove (Nash simplificado) só faz sentido sem GW v3 — o range de open já tem
+    // raise+allin com freqs precisas. Esconde quando apiData.rfi existe.
+    if (t.id === 'shove') return isPushZone && !!nashRange && !apiData?.rfi;
     if (apiData) {
       if (t.id === 'open')  return !!apiData.rfi;
       if (t.id === '3bet')  return !!apiData.vs_3bet;
