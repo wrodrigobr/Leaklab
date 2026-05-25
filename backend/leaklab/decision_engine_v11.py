@@ -125,8 +125,16 @@ def _gto_classify_from_strategy(player_action: str, strategy: list) -> tuple:
             return 'gto_mixed', played_freq
         return 'gto_minor_deviation', played_freq
 
-    # Tier 4: < 10% — frequência muito baixa, severidade pelo custo real
-    if ev_diff is not None and ev_diff < 0.30:
+    # Tier 4: < 10% — frequência baixa, severidade pelo custo real
+    # Se a ação aparece no mix GTO (>=3%), evita 'gto_critical' sem evidência de EV alto:
+    # 7% de bet num check-heavy spot ainda é parte do range; não merece "Desvio Crítico".
+    if ev_diff is not None:
+        if ev_diff < 0.30:
+            return 'gto_minor_deviation', played_freq
+        # Custo de EV alto E freq baixa
+        return 'gto_critical', played_freq
+    # Sem ev_diff: usa freq como proxy. Frequência >=3% = ação faz parte do range GTO.
+    if played_freq >= 0.03:
         return 'gto_minor_deviation', played_freq
     return 'gto_critical', played_freq
 

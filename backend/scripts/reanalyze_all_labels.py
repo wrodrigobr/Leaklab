@@ -63,7 +63,7 @@ for row in tournaments:
             seen_decisions.add(dedup_key)
 
             db_row = conn.execute(
-                """SELECT id, label, best_action FROM decisions
+                """SELECT id, label, best_action, gto_label, gto_action FROM decisions
                    WHERE hand_id = ? AND street = ? AND action_taken = ?
                    LIMIT 1""",
                 (hand_id, street, act)
@@ -71,27 +71,38 @@ for row in tournaments:
             if not db_row:
                 continue
 
-            did, old_label, old_best = db_row['id'], db_row['label'], db_row['best_action']
+            did       = db_row['id']
+            old_label = db_row['label']
+            old_best  = db_row['best_action']
+            old_gtolbl = db_row['gto_label']
+            old_gtoact = db_row['gto_action']
 
             try:
                 result    = evaluate_decision(di)
                 new_label = (result.get('evaluation') or {}).get('label') or old_label
                 new_best  = result.get('bestAction') or old_best
+                gto_dict  = result.get('gto') or {}
+                new_gtolbl = gto_dict.get('gto_label') if gto_dict.get('available') else old_gtolbl
+                new_gtoact = gto_dict.get('gto_action') if gto_dict.get('available') else old_gtoact
+                if not new_gtolbl: new_gtolbl = old_gtolbl
+                if not new_gtoact: new_gtoact = old_gtoact
             except Exception:
                 continue
 
             total_checked += 1
-            if new_label != old_label or new_best != old_best:
+            changed = (new_label != old_label or new_best != old_best or
+                       new_gtolbl != old_gtolbl or new_gtoact != old_gtoact)
+            if changed:
                 conn.execute(
-                    "UPDATE decisions SET label = ?, best_action = ? WHERE id = ?",
-                    (new_label, new_best, did)
+                    "UPDATE decisions SET label = ?, best_action = ?, gto_label = ?, gto_action = ? WHERE id = ?",
+                    (new_label, new_best, new_gtolbl, new_gtoact, did)
                 )
                 hand_updated += 1
                 total_updated += 1
                 affected_tournament_ids.add(tid)
                 if total_updated <= 30 or total_updated % 50 == 0:
                     print(f"  tid={tid} hand={hand_id} {street}/{act}: "
-                          f"{old_label}->{new_label} | best {old_best}->{new_best}")
+                          f"{old_label}->{new_label} | gto {old_gtolbl}->{new_gtolbl}")
 
     if hand_updated:
         conn.commit()
