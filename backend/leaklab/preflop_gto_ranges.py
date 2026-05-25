@@ -24,10 +24,29 @@ def _load() -> dict:
     return _data
 
 
+# Hardcoded buckets — JSON v3 (GW master) não tem stack_buckets section.
+# Mantém compat com v2 que tinha campo no JSON.
+_DEFAULT_BUCKETS = [
+    ('10bb',  0,    12),
+    ('14bb',  12,   15.5),
+    ('17bb',  15.5, 18.5),
+    ('20bb',  18.5, 25),
+    ('30bb',  25,   35),
+    ('40bb',  35,   45),
+    ('50bb',  45,   62.5),
+    ('75bb',  62.5, 87.5),
+    ('100bb', 87.5, 9999),
+]
+
 def _stack_bucket(stack_bb: float) -> str:
     data = _load()
+    # Prioriza campo do JSON se existir (v2 antigo)
     for label, bounds in data.get('stack_buckets', {}).items():
-        if bounds['min'] <= stack_bb <= bounds['max']:
+        if bounds.get('min', 0) <= stack_bb <= bounds.get('max', 0):
+            return label
+    # Fallback hardcoded (v3 não tem stack_buckets no JSON)
+    for label, lo, hi in _DEFAULT_BUCKETS:
+        if lo <= stack_bb < hi:
             return label
     return '100bb'
 
