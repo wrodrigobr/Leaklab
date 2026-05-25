@@ -275,12 +275,12 @@ def analyze_preflop(
             in_rng      = in_raise or in_allin
             in_limp     = False
 
-            if in_allin and not in_raise:
-                rec = ['jam']
-            elif in_raise:
-                rec = ['raise']
-            else:
-                rec = ['fold']
+            # Ordem por freq: ação dominante primeiro
+            _opts = []
+            if in_allin: _opts.append(('jam',   float(rfi.get('allin_pct', 0) or 0)))
+            if in_raise: _opts.append(('raise', float(rfi.get('raise_pct', 0) or 0)))
+            _opts.sort(key=lambda x: -x[1])
+            rec = [a for a, _ in _opts] or ['fold']
         else:
             # v2 (RegLife antigo): pct + hands + acoes
             pct         = float(rfi.get('combo_pct') or rfi.get('pct', 0))
@@ -300,10 +300,26 @@ def analyze_preflop(
             else:
                 rec = ['fold']
 
-        quality = _rfi_quality(action_taken, in_rng, stack_bb, in_limp=in_limp, is_sb=(pos == 'SB'))
+        # hand_freq exato pra RFI (v3 GW) — usado pelo quality classifier por freq
+        hand_freq = None
+        if is_v3:
+            hand_freq_raw = rfi.get('hand_freqs', {}).get(hero_hand_type, {})
+            if hand_freq_raw:
+                hand_freq = {'call': 0.0, 'raise': 0.0, 'allin': 0.0, 'fold': 0.0}
+                for code, f in hand_freq_raw.items():
+                    if code == 'F':       hand_freq['fold']  += float(f)
+                    elif code == 'C':     hand_freq['call']  += float(f)
+                    elif code == 'RAI':   hand_freq['allin'] += float(f)
+                    elif code.startswith('R'):  hand_freq['raise'] += float(f)
+                hand_freq = {k: round(v, 4) for k, v in hand_freq.items()}
+
+        quality = _rfi_quality(action_taken, in_rng, stack_bb,
+                               in_limp=in_limp, is_sb=(pos == 'SB'),
+                               hand_freq=hand_freq)
         base.update({
             'available': True, 'in_range': in_rng or in_limp,
             'range_pct': pct, 'range_hands': hands_str,
+            'hand_freq': hand_freq,  # freq exata da mão hero (para barra Decision Card)
             'range_grid_pct': grid_pct,
             'recommended_actions': rec, 'rfi_pct': pct,
             'action_quality': quality,
@@ -530,24 +546,47 @@ def analyze_preflop(
 # ── Quality classifiers ──────────────────────────────────────────────────────
 
 def _rfi_quality(action: str, in_rng: bool, stack_bb: float, *,
-                 in_limp: bool = False, is_sb: bool = False) -> str:
+                 in_limp: bool = False, is_sb: bool = False,
+                 hand_freq: dict | None = None) -> str:
+    """Quality classifier RFI.
+
+    Quando hand_freq disponível (freq EXATA da mão pelo GTO Wizard), classifica
+    pela frequência GTO da ação tomada:
+      >= 30% → correct (ação dominante)
+      10–30% → acceptable (ação válida do mix, minoritária)
+      3–10%  → leak (raramente GTO — ex: QQ shove 4% quando raise é 96%)
+      < 3%   → major_leak (fora do GTO)
+    """
     act = action.lower()
+    # Normalizar 'shove'/'allin'/'all-in' → 'jam' (forma canônica)
+    if act in ('shove', 'allin', 'all-in'): act = 'jam'
+
+    # 1. Usa hand_freq quando disponível (preciso por mão)
+    if hand_freq:
+        key_map = {
+            'fold': 'fold', 'call': 'call', 'check': 'call',
+            'raise': 'raise', 'bet': 'raise',
+            'jam': 'allin',
+        }
+        key = key_map.get(act, act)
+        freq = float(hand_freq.get(key, 0))
+        if   freq >= 0.30: return 'correct'
+        elif freq >= 0.10: return 'acceptable'
+        elif freq >= 0.03: return 'leak'
+        else:              return 'major_leak'
+
+    # 2. Fallback (sem hand_freq): lógica binária original
     if in_rng and act in ('raise', 'jam'):    return 'correct'
-    if in_rng and act == 'call':              return 'acceptable'   # raise preferred but call ok
+    if in_rng and act == 'call':              return 'acceptable'
     if in_rng and act == 'fold':              return 'leak'
-    # SB limp range
     if in_limp and act == 'call':             return 'correct'
-    if in_limp and act in ('raise', 'jam'):   return 'acceptable'   # raise not optimal but ok
+    if in_limp and act in ('raise', 'jam'):   return 'acceptable'
     if in_limp and act == 'fold':             return 'leak'
     if not in_rng and not in_limp:
         if act == 'fold':                     return 'correct'
         if act in ('raise', 'jam'):
-            # SB raises a wide range; overplaying outside raise range is a leak but not major
             return 'leak' if is_sb else ('major_leak' if stack_bb > 25 else 'leak')
         if act == 'call':
-            # SB: completing non-raise hands is acceptable — GTO Wizard models ~53% of SB
-            # hands as complete/limp. Our static range only covers raises (no complete zone),
-            # so we cannot mark a SB complete as a leak without knowing if it's in complete zone.
             return 'acceptable' if is_sb else 'leak'
     return 'acceptable'
 
