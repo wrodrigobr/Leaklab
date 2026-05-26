@@ -557,8 +557,20 @@ def analyze_preflop(
         in_cl   = _in_range(hero_hand_type, hands_call)
         in_jam  = _in_range(hero_hand_type, hands_allin)
         in_rng  = in_4b or in_cl or in_jam
-        # Ordem recomendada pela freq da mão específica (quando disponível)
-        hf = hand_freqs.get(hero_hand_type, {}) if hand_freqs else {}
+        # Freq por mão — normaliza códigos brutos GW (F/C/R{x}/RAI) → nosso modelo.
+        # Se a mão não está em hand_freqs, é fold 100% (GW só popula mãos com ação não-fold).
+        hf_raw = hand_freqs.get(hero_hand_type) if hand_freqs else None
+        hf = {'fold': 0.0, 'call': 0.0, 'raise': 0.0, 'allin': 0.0}
+        if hf_raw:
+            for code, f in hf_raw.items():
+                if code == 'F':            hf['fold']  += float(f)
+                elif code == 'C':          hf['call']  += float(f)
+                elif code == 'RAI':        hf['allin'] += float(f)
+                elif code.startswith('R'): hf['raise'] += float(f)
+            hf = {k: round(v, 4) for k, v in hf.items()}
+        elif hand_freqs:
+            # Mão fora de todos os ranges de ação → fold puro
+            hf = {'fold': 1.0, 'call': 0.0, 'raise': 0.0, 'allin': 0.0}
         actions_freq = [
             ('raise', float(hf.get('raise', 0)) or (1.0 if in_4b else 0)),
             ('call',  float(hf.get('call',  0)) or (1.0 if in_cl else 0)),
@@ -572,18 +584,28 @@ def analyze_preflop(
         pct_continua = (float(spot.get('raise_pct', 0))
                         + float(spot.get('call_pct', 0))
                         + float(spot.get('allin_pct', 0)))
+        # Pcts globais do spot (range agregado) — barra de freq por ação
+        raise_pct_g = float(spot.get('raise_pct', 0))
+        call_pct_g  = float(spot.get('call_pct',  0))
+        allin_pct_g = float(spot.get('allin_pct', 0))
+        fold_pct_g  = float(spot.get('fold_pct',  1.0))
+        # Normaliza: alguns JSONs vêm em [0,1], outros em [0,100]
+        if max(raise_pct_g, call_pct_g, allin_pct_g, fold_pct_g) > 1.5:
+            raise_pct_g /= 100.0
+            call_pct_g  /= 100.0
+            allin_pct_g /= 100.0
+            fold_pct_g  /= 100.0
+
         base.update({
             'available': True, 'in_range': in_rng,
             'range_pct': pct_continua / 100.0 if pct_continua > 1 else pct_continua,
             'range_hands': f"4bet: {hands_4bet} | call: {hands_call} | jam: {hands_allin}",
             'recommended_actions': rec, 'action_quality': quality,
             'hands_4bet': hands_4bet, 'hands_call': hands_call, 'hands_allin': hands_allin,
-            'hand_freq': {
-                'fold':  float(hf.get('fold', 0)),
-                'call':  float(hf.get('call', 0)),
-                'raise': float(hf.get('raise', 0)),
-                'allin': float(hf.get('allin', 0)),
-            } if hf else None,
+            # Pcts globais (frontend usa pra stacked bar quando hand_freq não está disponível)
+            'raise_pct': raise_pct_g, 'call_pct': call_pct_g,
+            'allin_pct': allin_pct_g, 'fold_pct': fold_pct_g,
+            'hand_freq': hf,
             'vs_position': actual_vs,
             'pro_notes':   _vs_3bet_notes(pos, hero_hand_type, stack_bb,
                                           pct_continua, in_4b, in_cl, action_taken),
