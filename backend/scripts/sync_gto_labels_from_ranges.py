@@ -227,9 +227,15 @@ def _build_vs3bet_context(rows: list[dict], conn) -> set[int]:
     return is_vs3bet
 
 
-def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = True) -> int:
-    """Process a list of decision rows, filling gto_label where missing. Returns count updated."""
+def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = True,
+                  clear_stale: bool = False) -> int:
+    """Process a list of decision rows, filling gto_label where missing. Returns count updated.
+
+    clear_stale=True: quando o range nao cobre o spot mas o DB ainda tem gto_label
+    persistido de uma run anterior, limpa o campo (evita label orfa sem evidencia).
+    """
     updates: list[tuple] = []
+    clears:  list[int] = []
     skipped = 0
     vs3bet_ids = _build_vs3bet_context(rows, conn)
 
@@ -303,6 +309,8 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
 
         if not result.get("available"):
             skipped += 1
+            if clear_stale and (r.get("gto_label") or r.get("gto_action")):
+                clears.append(r["id"])
             continue
 
         quality    = result.get("action_quality", "")
@@ -317,22 +325,26 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
                   f"quality={quality:<24}  label={new_label}")
 
     if verbose:
-        print(f"\nCom range disponivel: {len(updates)}  |  Sem range (skipped): {skipped}")
+        extra = f" | Limpas (orfas): {len(clears)}" if clears else ""
+        print(f"\nCom range disponivel: {len(updates)}  |  Sem range (skipped): {skipped}{extra}")
 
-    if not updates or dry_run:
+    if (not updates and not clears) or dry_run:
         return 0
 
     for new_label, new_action, dec_id in updates:
         # Atualiza gto_label/gto_action E best_action — manter consistencia interna
-        # (best_action eh exibido no Replayer; gto_action e a fonte autoritativa GTO;
-        # quando GTO override, best_action precisa refletir para evitar inconsistencia
-        # como "label=standard mas action=fold vs best=call" no UI).
         conn.execute(
             "UPDATE decisions SET gto_label=?, gto_action=?, best_action=? WHERE id=?",
             (new_label, new_action, new_action, dec_id)
         )
+    # Limpa labels orfas (DB tem gto_label mas range atual nao cobre o spot)
+    for dec_id in clears:
+        conn.execute(
+            "UPDATE decisions SET gto_label=NULL, gto_action=NULL WHERE id=?",
+            (dec_id,)
+        )
     conn.commit()
-    return len(updates)
+    return len(updates) + len(clears)
 
 
 def sync_tournament(tournament_id: int) -> int:
@@ -388,13 +400,13 @@ def main():
 
     rows = conn.execute(
         f"SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet, "
-        f"action_taken, best_action, hero_cards, vs_position FROM decisions {where}",
+        f"action_taken, best_action, hero_cards, vs_position, gto_label, gto_action FROM decisions {where}",
         params
     ).fetchall()
     rows = [dict(r) for r in rows]
     print(f"Preflop a processar: {len(rows)} ({'FORCE — todas' if args.force else 'só sem gto_label'})")
 
-    n = _process_rows(rows, conn, dry_run=not args.save, verbose=True)
+    n = _process_rows(rows, conn, dry_run=not args.save, verbose=True, clear_stale=args.force)
 
     if not args.save:
         print("\n[DRY RUN] Use --save para persistir.")
