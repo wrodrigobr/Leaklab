@@ -3240,6 +3240,31 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                              else _pf_facing_chips)
                             _pf_stack_bb     = float(spot.get('effectiveStackBb') or ctx.get('heroStackBb') or 20)
                             _pf_pos          = spot.get('position', '')
+                            # Detectar 3-bet pot pelo HISTÓRICO da hand: se já houve >= 2
+                            # raises preflop antes da ação do hero, é 3-bet pot (independente
+                            # de hero ser o 3-bettor ou estar enfrentando).
+                            _pf_n_raises_before = 0
+                            _hand_obj = hand  # ParsedHand do escopo de _build_replay_data
+                            try:
+                                _act_canon = (di.get('player_action', '') or '').lower().rstrip('s')
+                                _hero_seen = 0
+                                # Conta quantas vezes essa player_action do hero já apareceu
+                                # antes do DI atual (di_idx) — DIs preflop em ordem.
+                                _hero_idx = -1
+                                for _i, _a in enumerate(_hand_obj.actions or []):
+                                    if (_a.street == 'preflop' and _a.player == _hand_obj.hero
+                                            and (_a.action or '').lower().rstrip('s') == _act_canon):
+                                        _hero_idx = _i; break
+                                if _hero_idx >= 0:
+                                    _pf_n_raises_before = sum(
+                                        1 for _a in (_hand_obj.actions or [])[:_hero_idx]
+                                        if _a.street == 'preflop' and (_a.action or '') in ('raises','all-in','raise','allin')
+                                    )
+                            except Exception:
+                                pass
+                            _pf_is_3bet_pot = (_pf_n_raises_before >= 2
+                                              or bool(spot.get('is3betPot'))
+                                              or bool(di.get('is_3bet', False)))
                             _pf_result = analyze_preflop(
                                 position       = _pf_pos,
                                 hero_hand_type = h_type,
@@ -3247,7 +3272,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 action_taken   = di.get('player_action', ''),
                                 facing_size    = _pf_facing_bb,
                                 vs_position    = spot.get('villainPosition', ''),
-                                is_3bet_pot    = bool(spot.get('is3betPot') or di.get('is_3bet', False)),
+                                is_3bet_pot    = _pf_is_3bet_pot,
                                 n_players      = spot.get('nPlayers'),
                             )
                             # Fallback for call-vs-shove (no vs_3bet data yet):
