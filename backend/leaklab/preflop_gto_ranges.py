@@ -525,43 +525,68 @@ def analyze_preflop(
 
     # ── vs 3bet ───────────────────────────────────────────────────────────────
     elif scenario == 'vs_3bet':
-        # Lookup: bucket exato, fallback para bucket INFERIOR (mais conservador — ranges
-        # mais tight em short stack evitam over-recomendação de agressão).
-        # vs_3bet cobre 30/50/75/100bb.
+        # Formato GW v3: ranges[stack][vs_3bet][hero_pos][vs_pos] = spot
+        # Estrutura do spot: raise_hands (4bet), call_hands, allin_hands, hand_freqs.
         bucket_fallbacks = {
-            '14bb': ['30bb'], '17bb': ['30bb'], '20bb': ['30bb'],  # sobem (único caminho)
-            '40bb': ['30bb'],                                       # 40 → 30 (inferior)
-            '50bb': ['30bb'],                                       # 50 → 30 (inferior)
-            '60bb': ['50bb'], '75bb': ['50bb'],                     # 60/75 → 50 (inferior)
-            '100bb': ['75bb'],                                      # 100 → 75 (inferior)
+            '14bb': ['10bb', '20bb'], '17bb': ['20bb', '14bb'],
+            '40bb': ['30bb', '50bb'], '60bb': ['50bb', '75bb'],
+            '75bb': ['100bb', '50bb'],
         }
         candidate_buckets = [bucket] + bucket_fallbacks.get(bucket, [])
         spot = None
+        actual_vs = vs_pos
         for bk_try in candidate_buckets:
             vs3_try = data.get('ranges', {}).get(bk_try, {}).get('vs_3bet', {})
-            spot = vs3_try.get(f'{pos}_RFI_vs_3bet') or next(
-                (v for k, v in vs3_try.items() if k.endswith('_RFI_vs_3bet')), None
-            )
+            hero_dict = vs3_try.get(pos, {})
+            if not hero_dict:
+                continue
+            # Tenta vs_pos exato, depois qualquer 3bettor disponível
+            spot = hero_dict.get(vs_pos)
+            if not spot and hero_dict:
+                actual_vs = next(iter(hero_dict.keys()))
+                spot = hero_dict[actual_vs]
             if spot:
                 break
         if not spot:
             return base
-        pct        = float(spot.get('pct_continua', 0))
-        hands_4bet = spot.get('hands_4bet', '')
-        hands_call = spot.get('hands_call', '')
-        in_4b      = _in_range(hero_hand_type, hands_4bet)
-        in_cl      = _in_range(hero_hand_type, hands_call)
-        in_rng     = in_4b or in_cl
-        rec        = ['raise', 'jam'] if in_4b else (['call'] if in_cl else ['fold'])
-        quality    = _vs_3bet_quality(action_taken, in_4b, in_cl)
+        hands_4bet  = spot.get('raise_hands', '')
+        hands_call  = spot.get('call_hands', '')
+        hands_allin = spot.get('allin_hands', '')
+        hand_freqs  = spot.get('hand_freqs') or {}
+        in_4b   = _in_range(hero_hand_type, hands_4bet)
+        in_cl   = _in_range(hero_hand_type, hands_call)
+        in_jam  = _in_range(hero_hand_type, hands_allin)
+        in_rng  = in_4b or in_cl or in_jam
+        # Ordem recomendada pela freq da mão específica (quando disponível)
+        hf = hand_freqs.get(hero_hand_type, {}) if hand_freqs else {}
+        actions_freq = [
+            ('raise', float(hf.get('raise', 0)) or (1.0 if in_4b else 0)),
+            ('call',  float(hf.get('call',  0)) or (1.0 if in_cl else 0)),
+            ('jam',   float(hf.get('allin', 0)) or (1.0 if in_jam else 0)),
+            ('fold',  float(hf.get('fold',  0))),
+        ]
+        rec = [a for a, f in sorted(actions_freq, key=lambda x: -x[1]) if f >= 0.10]
+        if not rec:
+            rec = ['fold']
+        quality = _vs_3bet_quality(action_taken, in_4b, in_cl, in_jam=in_jam, hand_freq=hf)
+        pct_continua = (float(spot.get('raise_pct', 0))
+                        + float(spot.get('call_pct', 0))
+                        + float(spot.get('allin_pct', 0)))
         base.update({
             'available': True, 'in_range': in_rng,
-            'range_pct': pct,
-            'range_hands': f"4bet: {hands_4bet} | call: {hands_call}",
+            'range_pct': pct_continua / 100.0 if pct_continua > 1 else pct_continua,
+            'range_hands': f"4bet: {hands_4bet} | call: {hands_call} | jam: {hands_allin}",
             'recommended_actions': rec, 'action_quality': quality,
-            'hands_4bet': hands_4bet, 'hands_call': hands_call,
-            'pro_notes': _vs_3bet_notes(pos, hero_hand_type, stack_bb,
-                                         pct, in_4b, in_cl, action_taken),
+            'hands_4bet': hands_4bet, 'hands_call': hands_call, 'hands_allin': hands_allin,
+            'hand_freq': {
+                'fold':  float(hf.get('fold', 0)),
+                'call':  float(hf.get('call', 0)),
+                'raise': float(hf.get('raise', 0)),
+                'allin': float(hf.get('allin', 0)),
+            } if hf else None,
+            'vs_position': actual_vs,
+            'pro_notes':   _vs_3bet_notes(pos, hero_hand_type, stack_bb,
+                                          pct_continua, in_4b, in_cl, action_taken),
         })
 
     return base
@@ -665,12 +690,26 @@ def _vs_rfi_quality(action: str, in_rng: bool, acoes: list) -> str:
     return 'acceptable'
 
 
-def _vs_3bet_quality(action: str, in_4b: bool, in_cl: bool) -> str:
+def _vs_3bet_quality(action: str, in_4b: bool, in_cl: bool, *,
+                     in_jam: bool = False, hand_freq: dict | None = None) -> str:
     act = action.lower()
-    if in_4b and act in ('raise', 'jam'):  return 'correct'
-    if in_cl and act == 'call':            return 'correct'
-    if (in_4b or in_cl) and act == 'fold': return 'leak'
-    if not (in_4b or in_cl) and act == 'fold': return 'correct'
+    if act in ('shove', 'allin', 'all-in'):
+        act = 'jam'
+    # Classifica pela freq exata da mão quando disponível (mesma lógica do RFI)
+    if hand_freq:
+        key_map = {'fold': 'fold', 'call': 'call', 'check': 'call',
+                   'raise': 'raise', 'bet': 'raise', 'jam': 'allin'}
+        freq = float(hand_freq.get(key_map.get(act, act), 0))
+        if   freq >= 0.30: return 'correct'
+        elif freq >= 0.10: return 'acceptable'
+        elif freq >= 0.03: return 'leak'
+        else:              return 'major_leak'
+    # Fallback binário (sem hand_freq)
+    if in_4b and act in ('raise', 'jam'):       return 'correct'
+    if in_cl and act == 'call':                  return 'correct'
+    if in_jam and act == 'jam':                  return 'correct'
+    if (in_4b or in_cl or in_jam) and act == 'fold': return 'leak'
+    if not (in_4b or in_cl or in_jam) and act == 'fold': return 'correct'
     return 'major_leak'
 
 
