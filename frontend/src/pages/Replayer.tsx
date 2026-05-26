@@ -271,6 +271,23 @@ function SidePanels({
         // Fallback para pot_odds bruto preserva compat com decisions antigas sem o campo.
         const req = step.adjusted_required_equity ?? poRaw;
         const profitable = eq != null && req != null && req > 0 ? eq >= req : null;
+        // Implicit required equity para bet/raise próprios:
+        // bet ÷ (pot_after_call) = sizing_pct / (1 + 2·sizing_pct).
+        // Significado: "mínima equity quando pago para o bet ser +EV". Threshold informativo
+        // pra apostas próprias quando não há pot odds tradicional.
+        const reqImplicit = (req == null || req <= 0)
+          ? (() => {
+              const isBetActLocal = step.is_hero && (step.action === "bet" || step.action === "raise" || step.action === "shove");
+              const bbLocal = step.bb ?? (replayData?.bb ?? 100);
+              const amtBbLocal = (isBetActLocal && step.amount) ? step.amount / bbLocal : null;
+              const potBeforeBbLocal = (amtBbLocal != null && step.pot_bb != null) ? step.pot_bb - amtBbLocal : null;
+              if (amtBbLocal != null && potBeforeBbLocal != null && potBeforeBbLocal > 0) {
+                const s = amtBbLocal / potBeforeBbLocal;
+                return s / (1 + 2 * s);
+              }
+              return null;
+            })()
+          : null;
         const spr = (step.hero_stack_bb != null && step.pot_bb != null && step.pot_bb > 0)
                     ? step.hero_stack_bb / step.pot_bb : null;
         const hasMathEvidence = isPostflop && eq != null && req != null && req > 0;
@@ -555,23 +572,30 @@ function SidePanels({
                 </span>
               </div>
             )}
-            {req != null && req > 0 && (
-              <div className="flex items-center gap-2 font-mono text-[11px]"
-                title={requiredIsAdjusted
+            {((req != null && req > 0) || reqImplicit != null) && (() => {
+              const reqShown = (req != null && req > 0) ? req : reqImplicit!;
+              const isImplicit = !(req != null && req > 0);
+              const tooltip = isImplicit
+                ? "Equity mínima quando pago para a aposta ser +EV (bet ÷ pot pós-call). Threshold do bet/raise próprio."
+                : requiredIsAdjusted
                   ? `Equity mínima ajustada por realization e pressão ICM. Pot odds bruto: ${(poRaw! * 100).toFixed(1)}%.`
-                  : "Equity mínima para call ser break-even (bet ÷ (bet + pot))"}>
-                <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Necess.</span>
-                <span className="font-bold tabular-nums text-foreground/80">{(req * 100).toFixed(1)}%</span>
-                {eq != null && (
-                  <span className={cn(
-                    "text-[10px]",
-                    eq >= req ? "text-emerald-400" : "text-red-400"
-                  )}>
-                    {eq >= req ? `+${((eq - req) * 100).toFixed(1)}pp` : `${((eq - req) * 100).toFixed(1)}pp`}
-                  </span>
-                )}
-              </div>
-            )}
+                  : "Equity mínima para call ser break-even (bet ÷ (bet + pot))";
+              const label = isImplicit ? "Mín. EV" : "Necess.";
+              return (
+                <div className="flex items-center gap-2 font-mono text-[11px]" title={tooltip}>
+                  <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">{label}</span>
+                  <span className="font-bold tabular-nums text-foreground/80">{(reqShown * 100).toFixed(1)}%</span>
+                  {eq != null && (
+                    <span className={cn(
+                      "text-[10px]",
+                      eq >= reqShown ? "text-emerald-400" : "text-red-400"
+                    )}>
+                      {eq >= reqShown ? `+${((eq - reqShown) * 100).toFixed(1)}pp` : `${((eq - reqShown) * 100).toFixed(1)}pp`}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
           </>
         );
 
@@ -586,7 +610,7 @@ function SidePanels({
 
         const hasIndicators = showAuditPreflop ||
                               (isPostflop && (spr != null || sizingPct != null)) ||
-                              eq != null || (req != null && req > 0);
+                              eq != null || (req != null && req > 0) || reqImplicit != null;
 
         return (
           <DecisionCard
