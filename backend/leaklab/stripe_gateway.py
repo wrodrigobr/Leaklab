@@ -13,13 +13,11 @@ _stripe.api_key       = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
 PLAN_PRICES: dict[str, str] = {
-    "starter": os.environ.get("STRIPE_PRICE_STARTER", ""),
-    "pro":     os.environ.get("STRIPE_PRICE_PRO", ""),
+    "pro": os.environ.get("STRIPE_PRICE_PRO", ""),
 }
 
 PLAN_AMOUNTS: dict[str, float] = {
-    "starter": 19.00,
-    "pro":     39.00,
+    "pro": 99.00,
 }
 
 

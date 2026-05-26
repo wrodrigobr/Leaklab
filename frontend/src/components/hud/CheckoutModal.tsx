@@ -9,22 +9,22 @@ import { cn } from "@/lib/utils";
 const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string;
 
 const PLAN_INFO = {
-  starter: {
-    label: "Starter",
-    price: "R$ 19/mês",
-    colorClass: "text-blue-400 border-blue-400/30 bg-blue-400/5",
-    features: ["10 torneios/mês", "20 análises LeakLabs IA", "Plano de estudo básico"],
-  },
   pro: {
     label: "Pro",
-    price: "R$ 39/mês",
+    price: "R$ 99/mês",
     colorClass: "text-primary border-primary/30 bg-primary/5",
-    features: ["Torneios ilimitados", "Análises ilimitadas", "Coach IA avançado + ICM"],
+    features: [
+      "Torneios ilimitados",
+      "Análises LeakLabs ilimitadas",
+      "AI Coach Chat (conversa contextual)",
+      "Plano de estudos personalizado",
+      "Acesso ao marketplace de coaches",
+    ],
   },
 } as const;
 
 interface Props {
-  plan: "starter" | "pro";
+  plan: "pro";
   onClose: () => void;
   onSuccess?: (newPlan: string) => void;
 }

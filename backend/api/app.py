@@ -1430,6 +1430,14 @@ def coach_chat():
     if not message:
         return jsonify({'error': 'Mensagem obrigatória'}), 400
 
+    # Gate: AI Coach Chat e exclusivo do plano Pro
+    _plan = (g.user.get('plan') or 'free').lower()
+    if not PLAN_LIMITS.get(_plan, PLAN_LIMITS['free']).get('ai_coach_chat', False):
+        return jsonify({
+            'error': 'AI Coach Chat exclusivo do plano Pro',
+            'upgrade_required': True,
+        }), 402
+
     message = sanitize_llm_input(message, max_len=1000)
 
     from database.repositories import get_leak_ranking_gto_first
@@ -3813,7 +3821,7 @@ def subscription_plans():
         'plans': [
             {
                 'id':          'free',
-                'name':        'Free',
+                'name':        'Freemium',
                 'price':       0,
                 'currency':    'BRL',
                 'tournaments': PLAN_LIMITS['free']['tournaments'],
@@ -3821,37 +3829,24 @@ def subscription_plans():
                 'features':    [
                     f"{PLAN_LIMITS['free']['tournaments']} torneios/mês",
                     f"{PLAN_LIMITS['free']['ai_calls']} análises LeakLabs/mês",
-                    'Detecção de leaks e score de decisão',
-                    'Sistema de nível (7 níveis)',
-                ],
-            },
-            {
-                'id':          'starter',
-                'name':        'Starter',
-                'price':       1900,
-                'currency':    'BRL',
-                'tournaments': PLAN_LIMITS['starter']['tournaments'],
-                'ai_calls':    PLAN_LIMITS['starter']['ai_calls'],
-                'features':    [
-                    f"{PLAN_LIMITS['starter']['tournaments']} torneios/mês",
-                    f"{PLAN_LIMITS['starter']['ai_calls']} análises LeakLabs/mês",
-                    'Plano de estudos personalizado',
-                    'Histórico completo + evolução',
-                    'Replayer com análise de decisão',
+                    'Acesso a todas as funcionalidades de análise',
+                    'Replayer, Ghost Table, plano de estudos',
+                    'Heatmap GTO, leaks, evolução',
+                    '✗ Sem AI Coach Chat',
                 ],
             },
             {
                 'id':          'pro',
                 'name':        'Pro',
-                'price':       3900,
+                'price':       9900,   # R$99,00
                 'currency':    'BRL',
                 'tournaments': PLAN_LIMITS['pro']['tournaments'],
                 'ai_calls':    PLAN_LIMITS['pro']['ai_calls'],
                 'features':    [
                     'Torneios ilimitados',
-                    f"{PLAN_LIMITS['pro']['ai_calls']} análises LeakLabs/mês",
+                    'Análises LeakLabs ilimitadas',
+                    'AI Coach Chat (conversa contextual)',
                     'Plano de estudos personalizado',
-                    'Histórico completo + evolução',
                     'Acesso ao marketplace de coaches',
                     'Suporte prioritário',
                 ],
@@ -3888,8 +3883,8 @@ def subscription_checkout():
     """Cria assinatura Stripe incompleta e retorna client_secret para o frontend."""
     data = request.get_json(silent=True) or {}
     plan = data.get('plan')
-    if plan not in ('starter', 'pro'):
-        return jsonify({'error': 'Plano inválido. Use starter ou pro.'}), 400
+    if plan != 'pro':
+        return jsonify({'error': 'Plano inválido. Use pro.'}), 400
 
     try:
         result = create_subscription(

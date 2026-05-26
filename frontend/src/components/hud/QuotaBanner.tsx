@@ -32,7 +32,7 @@ function QuotaBar({ used, limit, label }: { used: number; limit: number; label: 
 
 export function QuotaBanner() {
   const [status, setStatus] = useState<QuotaStatus | null>(null);
-  const [checkoutPlan, setCheckoutPlan] = useState<"starter" | "pro" | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<"pro" | null>(null);
 
   useEffect(() => {
     subscription.status().then(setStatus).catch(() => {});
@@ -67,20 +67,12 @@ export function QuotaBanner() {
         <QuotaBar used={ai_calls_used}   limit={aiLimit} label="Análises IA este mês" />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => setCheckoutPlan("starter")}
-          className="flex items-center justify-center gap-1 rounded-md border border-primary/50 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
-        >
-          Starter R$19
-        </button>
-        <button
-          onClick={() => setCheckoutPlan("pro")}
-          className="flex items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
-        >
-          <Zap className="size-3" /> Pro R$39
-        </button>
-      </div>
+      <button
+        onClick={() => setCheckoutPlan("pro")}
+        className="flex items-center justify-center gap-1 w-full rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+      >
+        <Zap className="size-3" /> Upgrade para Pro R$99
+      </button>
 
       {checkoutPlan && (
         <CheckoutModal

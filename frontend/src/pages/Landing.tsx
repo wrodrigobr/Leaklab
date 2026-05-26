@@ -193,7 +193,7 @@ function PricingSection() {
   const plans = [
     {
       id: "free",
-      name: "Free",
+      name: "Freemium",
       price: "R$ 0",
       period: t("plans.period"),
       highlight: false,
@@ -203,20 +203,9 @@ function PricingSection() {
       href: "/login",
     },
     {
-      id: "starter",
-      name: "Starter",
-      price: "R$ 19",
-      period: t("plans.period"),
-      highlight: false,
-      badge: t("plans.popular") as string | null,
-      features: [t("plans.starterF1"), t("plans.starterF2"), t("plans.starterF3"), t("plans.starterF4"), t("plans.starterF5")],
-      cta: t("plans.ctaSubscribe", { name: "Starter" }),
-      href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Starter",
-    },
-    {
       id: "pro",
       name: "Pro",
-      price: "R$ 39",
+      price: "R$ 99",
       period: t("plans.period"),
       highlight: true,
       badge: t("plans.grinder") as string | null,
@@ -233,7 +222,7 @@ function PricingSection() {
           <h2 className="text-2xl font-bold text-foreground">{t("plans.heading")}</h2>
           <p className="text-sm text-muted-foreground mt-2">{t("plans.details")}</p>
         </div>
-        <div className="grid sm:grid-cols-3 gap-5">
+        <div className="grid sm:grid-cols-2 gap-5 max-w-3xl mx-auto">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -271,9 +260,7 @@ function PricingSection() {
                 className={`flex items-center justify-center gap-1.5 w-full rounded-md py-2.5 font-mono text-xs font-bold uppercase tracking-widest-2 transition-colors ${
                   plan.highlight
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : plan.id === "starter"
-                      ? "border border-primary/50 text-primary hover:bg-primary/10"
-                      : "border border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+                    : "border border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
                 }`}
               >
                 {plan.cta} <ChevronRight className="size-3.5" />

@@ -6,17 +6,15 @@ import { cn } from "@/lib/utils";
 import { CheckoutModal } from "./CheckoutModal";
 
 const PLAN_LABEL: Record<string, string> = {
-  free:    "Free",
-  starter: "Starter",
-  pro:     "Pro",
-  coach:   "Coach",
+  free:  "Freemium",
+  pro:   "Pro",
+  coach: "Coach",
 };
 
 const PLAN_COLOR: Record<string, string> = {
-  free:    "text-muted-foreground bg-muted/40 border-border",
-  starter: "text-blue-400 bg-blue-400/10 border-blue-400/30",
-  pro:     "text-primary bg-primary/10 border-primary/30",
-  coach:   "text-violet-400 bg-violet-400/10 border-violet-400/30",
+  free:  "text-muted-foreground bg-muted/40 border-border",
+  pro:   "text-primary bg-primary/10 border-primary/30",
+  coach: "text-violet-400 bg-violet-400/10 border-violet-400/30",
 };
 
 function UsageBar({ used, limit, label }: { used: number; limit: number | null; label: string }) {
@@ -53,7 +51,7 @@ export function AccountMenu() {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [checkoutPlan, setCheckoutPlan] = useState<"starter" | "pro" | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<"pro" | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -122,27 +120,11 @@ export function AccountMenu() {
               <UsageBar used={user.tournaments_used ?? 0} limit={limits.tournaments} label="Torneios" />
               <UsageBar used={user.ai_calls_used ?? 0}   limit={limits.ai_calls}    label="Análises LeakLabs" />
               {plan === "free" && (
-                <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                  <button
-                    onClick={() => { setOpen(false); setCheckoutPlan("starter"); }}
-                    className="flex items-center justify-center rounded-md border border-primary/40 py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    Starter R$19
-                  </button>
-                  <button
-                    onClick={() => { setOpen(false); setCheckoutPlan("pro"); }}
-                    className="flex items-center justify-center gap-1 rounded-md bg-primary py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:opacity-90 transition-opacity"
-                  >
-                    <Zap className="size-3" />Pro R$39
-                  </button>
-                </div>
-              )}
-              {plan === "starter" && (
                 <button
                   onClick={() => { setOpen(false); setCheckoutPlan("pro"); }}
                   className="flex items-center justify-center gap-1 w-full rounded-md bg-primary py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:opacity-90 transition-opacity"
                 >
-                  <Zap className="size-3" /> Upgrade para Pro R$39
+                  <Zap className="size-3" /> Upgrade para Pro R$99
                 </button>
               )}
             </div>
