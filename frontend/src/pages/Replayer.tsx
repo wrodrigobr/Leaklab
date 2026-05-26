@@ -555,6 +555,23 @@ function SidePanels({
                 </span>
               </div>
             )}
+            {req != null && req > 0 && (
+              <div className="flex items-center gap-2 font-mono text-[11px]"
+                title={requiredIsAdjusted
+                  ? `Equity mínima ajustada por realization e pressão ICM. Pot odds bruto: ${(poRaw! * 100).toFixed(1)}%.`
+                  : "Equity mínima para call ser break-even (bet ÷ (bet + pot))"}>
+                <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Necess.</span>
+                <span className="font-bold tabular-nums text-foreground/80">{(req * 100).toFixed(1)}%</span>
+                {eq != null && (
+                  <span className={cn(
+                    "text-[10px]",
+                    eq >= req ? "text-emerald-400" : "text-red-400"
+                  )}>
+                    {eq >= req ? `+${((eq - req) * 100).toFixed(1)}pp` : `${((eq - req) * 100).toFixed(1)}pp`}
+                  </span>
+                )}
+              </div>
+            )}
           </>
         );
 
@@ -569,7 +586,7 @@ function SidePanels({
 
         const hasIndicators = showAuditPreflop ||
                               (isPostflop && (spr != null || sizingPct != null)) ||
-                              eq != null;
+                              eq != null || (req != null && req > 0);
 
         return (
           <DecisionCard
