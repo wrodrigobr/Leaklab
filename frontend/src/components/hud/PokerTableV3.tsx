@@ -370,9 +370,22 @@ function renderSeatsAndChips(
       const dvx = CX - wpos.x, dvy = CY - wpos.y;
       const blen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
       const isSide = !isWinnerHero && Math.abs(wpos.x - CX) > 80;
-      const t2 = isWinnerHero ? 0.46 : isSide ? 0.26 : 0.36;
-      const offX = isWinnerHero ? Math.round((-dvy / blen) * 28) : 0;
-      const offY = isWinnerHero ? Math.round((dvx / blen) * 28) : 0;
+      // Bottom-side seats avançam mais (t=0.42) pra não sobrepor cartas.
+      const heroPosW = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
+      const isAdjacentW = !isWinnerHero && heroPosW !== null
+                          && Math.abs(wpos.y - heroPosW.y) < 80;
+      const t2 = isWinnerHero ? 0.46 : isAdjacentW ? 0.42 : isSide ? 0.26 : 0.36;
+      // Perp offset: hero usa horário; vizinhos inferiores movem em direção ao centro
+      // (mesma lógica das bets) pra afastar das cartas.
+      let offX = 0, offY = 0;
+      if (isWinnerHero) {
+        offX = Math.round((-dvy / blen) * 28);
+        offY = Math.round((dvx / blen) * 28);
+      } else if (isAdjacentW) {
+        const sign = wpos.x < CX ? 1 : -1;
+        offX = Math.round(sign * (-dvy / blen) * 14);
+        offY = Math.round(sign * (dvx / blen) * 14);
+      }
       const cx2 = Math.round(wpos.x + dvx * t2) + offX;
       const cy2 = Math.round(wpos.y + dvy * t2) + offY;
       chipsHtml += chipStackSVG(cx2, cy2, winner.won);
