@@ -308,8 +308,11 @@ function renderSeatsAndChips(
     html += "</g>";
     seatsHtml += html;
 
-    // Bet chips — na linha jogador→centro, próximas ao pod, sempre dentro do feltro
-    const bet = ev.bets?.[sn] ?? 0;
+    // Bet chips — na linha jogador→centro, próximas ao pod, sempre dentro do feltro.
+    // No showdown, todas as bets ja foram somadas ao pot e estao fluindo pros
+    // vencedores — nao renderiza apostas dos seats pra evitar 'blinds estaticas'.
+    const isShowdown = ev.type === "showdown";
+    const bet = isShowdown ? 0 : (ev.bets?.[sn] ?? 0);
     if (bet > 0) {
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const blen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
