@@ -318,10 +318,13 @@ function renderSeatsAndChips(
       const blen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
       // Hero: mais ao centro; jogadores laterais: mais próximos ao pod
       const isSide = !isHero && Math.abs(pos.x - CX) > 80;
-      // Seats inferiores (vizinhos do hero) puxados mais pra frente (perto do pod)
-      // pra reforçar separação das cartas — usa 0.40 em vez de 0.26.
+      // Seats imediatamente adjacentes ao hero (mesma altura ~) puxados pra frente
+      // pra reforçar separação das cartas. Demais seats inferiores ficam default.
+      const heroPosT2 = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
+      const isAdjT2 = !isHero && pos.dir === "bottom" && heroPosT2 !== null
+                       && Math.abs(pos.y - heroPosT2.y) < 80;
       let t2 = isHero ? 0.46 : isSide ? 0.26 : 0.36;
-      if (!isHero && pos.dir === "bottom") t2 = 0.42;
+      if (isAdjT2) t2 = 0.42;
       // Hero: offset perpendicular horário (+28px para a direita do ponto de vista do hero).
       // Seats adjacentes ao hero (parte inferior do feltro, dir='bottom') tambem ganham
       // offset perpendicular pra nao sobrepor as cartas do jogador.
@@ -332,11 +335,16 @@ function renderSeatsAndChips(
         perpOffX = Math.round((-dvy / blen) * 28);
         perpOffY = Math.round((dvx / blen) * 28);
       } else if (pos.dir === "bottom") {
-        // Desvio sutil em direção ao centro (longe das cartas do jogador).
-        // Magnitude pequena (10px) porque t2=0.42 ja afasta bastante.
-        const sign = pos.x < CX ? 1 : -1;
-        perpOffX = Math.round(sign * (-dvy / blen) * 10);
-        perpOffY = Math.round(sign * (dvx / blen) * 10);
+        // Desvio em direção ao centro só pra seats IMEDIATAMENTE adjacentes ao hero
+        // (cartas dele estão na mesma altura). Seats mais distantes (SB/BB num
+        // 9-max longe do hero) já estão suficientemente afastados sem offset.
+        const heroPos = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
+        const isAdjacentToHero = heroPos !== null && Math.abs(pos.y - heroPos.y) < 80;
+        if (isAdjacentToHero) {
+          const sign = pos.x < CX ? 1 : -1;
+          perpOffX = Math.round(sign * (-dvy / blen) * 10);
+          perpOffY = Math.round(sign * (dvx / blen) * 10);
+        }
       }
       const cx2 = Math.round(pos.x + dvx * t2) + perpOffX;
       const cy2 = Math.round(pos.y + dvy * t2) + perpOffY;
