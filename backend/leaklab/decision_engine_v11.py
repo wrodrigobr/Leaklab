@@ -160,12 +160,25 @@ def _gto_classify(player_action: str, gto_action: str, gto_freq: float, hero_equ
 
 def _gto_label_cap(label: str, gto_label: str) -> str:
     """
-    Se GTO confirma que a ação era válida (correct/mixed), nunca classifica
-    como erro crítico — máximo 'marginal'.
+    Reconcilia label heuristico com sinal do solver:
+      - gto_correct/gto_mixed: acao validada pelo GTO -> cap em 'marginal'
+        (nunca pode ser small/clear mistake)
+      - gto_minor_deviation: solver classifica como desvio leve -> cap em
+        'small_mistake' (impede clear_mistake quando proprio solver diz
+        que e leve)
+      - gto_critical: solver diz erro grave -> floor em 'small_mistake'
+        (impede engine de dar pass como 'standard'/'marginal' quando
+        solver classifica como critico)
     """
     if gto_label in ('gto_correct', 'gto_mixed'):
         if label in ('small_mistake', 'clear_mistake'):
             return 'marginal'
+    elif gto_label == 'gto_minor_deviation':
+        if label == 'clear_mistake':
+            return 'small_mistake'
+    elif gto_label == 'gto_critical':
+        if label in ('standard', 'marginal'):
+            return 'small_mistake'
     return label
 
 
@@ -594,6 +607,10 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             }
             final_score  = clamp(round4(opp_cost * _score_mult.get(gto_lbl, 0.5)), 0.0, 1.0)
             label        = classify_mistake_score(final_score)
+            # Aplica cap mesmo no caminho com strategy completo. Score recalculado
+            # pode ficar acima de 0.36 (clear_mistake) quando opp_cost e alto,
+            # contradizendo o proprio rotulo do solver (gto_minor_deviation/mixed).
+            label        = _gto_label_cap(label, gto_lbl)
             _best_action = gto['gto_action']
         else:
             # Nó parcial (sem strategy_json): capeia label e override bestAction
