@@ -1655,9 +1655,9 @@ def _template_cognitive(patterns: list, lang: str = 'pt-BR') -> str:
 # ── Strategic Twin Narrative (Sprint AR) ─────────────────────────────────────
 
 _LANG_TWIN = {
-    'pt-BR': "Responda APENAS em português do Brasil.",
-    'en':    "Respond ONLY in English.",
-    'es':    "Responde ÚNICAMENTE en español.",
+    'pt-BR': "CRITICAL: Write the entire response in Brazilian Portuguese (pt-BR). Use 'eu', 'minha', 'meu' (first person). Do NOT use English words except for established poker terms (shove, jam, fold, call, raise, check, bet, equity, ICM, EV, range, etc.).",
+    'en':    "Write the entire response in English.",
+    'es':    "CRITICAL: Write the entire response in Spanish (español). Use 'yo', 'mi' (first person). Do NOT use English words except for established poker terms (shove, jam, fold, call, raise, check, bet, equity, ICM, EV, range, etc.).",
 }
 
 _ACTION_LABEL_EN = {
@@ -1708,8 +1708,10 @@ def _call_twin_narrative(profile: dict, lang: str) -> str:
         for s in costly
     )
     system = (
-        f"You are a concise MTT poker coach writing a personal strategic profile. {lang_instr} "
-        "Write EXACTLY 2-3 sentences in the FIRST PERSON ('In situations where...', 'My most costly spot...'): "
+        f"{lang_instr}\n\n"
+        "You are a concise MTT poker coach writing a personal strategic profile. "
+        "Write EXACTLY 2-3 sentences in the FIRST PERSON (e.g. 'Em situações em que...', "
+        "'Meu spot mais custoso...' for pt-BR; 'In situations where...' for English): "
         "(1) name the most costly spot and the error rate, "
         "(2) explain what this tendency reveals about the player's strategy, "
         "(3) state one concrete adjustment. "
