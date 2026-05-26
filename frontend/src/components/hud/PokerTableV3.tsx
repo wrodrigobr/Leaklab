@@ -282,7 +282,7 @@ function renderSeatsAndChips(
     // visivel quando o BTN folda. Sem opacity wrapper.
     if (isBtn) {
       const heroPosBtn = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
-      const isAdjacentBtn = heroPosBtn !== null && Math.abs(pos.y - heroPosBtn.y) < 80;
+      const isAdjacentBtn = heroPosBtn !== null && Math.abs(pos.y - heroPosBtn.y) <= 100;
       const t = isHero ? 0.32 : isAdjacentBtn ? 0.36 : 0.28;
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
@@ -323,7 +323,7 @@ function renderSeatsAndChips(
       // pra reforçar separação das cartas. Demais seats inferiores ficam default.
       const heroPosT2 = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
       const isAdjT2 = !isHero && pos.dir === "bottom" && heroPosT2 !== null
-                       && Math.abs(pos.y - heroPosT2.y) < 80;
+                       && Math.abs(pos.y - heroPosT2.y) <= 100;
       let t2 = isHero ? 0.46 : isSide ? 0.26 : 0.36;
       if (isAdjT2) t2 = 0.72;
       // Hero: offset perpendicular horário (+28px para a direita do ponto de vista do hero).
@@ -340,7 +340,7 @@ function renderSeatsAndChips(
         // (cartas dele estão na mesma altura). Seats mais distantes (SB/BB num
         // 9-max longe do hero) já estão suficientemente afastados sem offset.
         const heroPos = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
-        const isAdjacentToHero = heroPos !== null && Math.abs(pos.y - heroPos.y) < 80;
+        const isAdjacentToHero = heroPos !== null && Math.abs(pos.y - heroPos.y) <= 100;
         if (isAdjacentToHero) {
           const sign = pos.x < CX ? 1 : -1;
           perpOffX = Math.round(sign * (-dvy / blen) * 32);
@@ -369,7 +369,7 @@ function renderSeatsAndChips(
       // Bottom-side seats avançam mais (t=0.42) pra não sobrepor cartas.
       const heroPosW = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
       const isAdjacentW = !isWinnerHero && heroPosW !== null
-                          && Math.abs(wpos.y - heroPosW.y) < 80;
+                          && Math.abs(wpos.y - heroPosW.y) <= 100;
       const t2 = isWinnerHero ? 0.46 : isAdjacentW ? 0.42 : isSide ? 0.26 : 0.36;
       // Perp offset: hero usa horário; vizinhos inferiores movem em direção ao centro
       // (mesma lógica das bets) pra afastar das cartas.
