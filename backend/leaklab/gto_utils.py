@@ -15,8 +15,12 @@ STACK_BUCKETS = [
     (10,  20,  "10-20bb"),
     (20,  35,  "20-35bb"),
     (35,  60,  "35-60bb"),
-    (60,  100, "60-100bb"),
-    (100, float("inf"), "100bb+"),
+    # Stacks >= 60bb usam '60-100bb' como bucket de referência. As soluções
+    # do arquivo de ranges (preflop_gto_ranges) e do solver postflop são
+    # calibradas até 100bb — stacks acima usam 100bb como profundidade
+    # efetiva (cap implícito). Evita criar bucket '100bb+' sem cobertura
+    # e mantém lookup consistente para cash deep + MTT early stages.
+    (60,  float("inf"), "60-100bb"),
 ]
 
 RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
@@ -39,11 +43,11 @@ def normalize_gto_action(action: str) -> str:
 
 
 def stack_bucket(bb: float) -> str:
-    """Converte stack em BBs para bucket discreto."""
+    """Converte stack em BBs para bucket discreto. Stacks >= 60bb cap em '60-100bb'."""
     for lo, hi, label in STACK_BUCKETS:
         if lo <= bb < hi:
             return label
-    return "100bb+"
+    return "60-100bb"
 
 
 BET_BUCKETS = [
