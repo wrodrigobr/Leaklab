@@ -18,8 +18,59 @@ node_modules/
 .DS_Store
 *.swp
 
+# Logs (dev local)
+*.log
+
 # Fixtures locais (dados pessoais de torneio)
 backend/torneio_ingles.txt
+backend/HH*.txt
+backend/GG*.txt
+backend/.ssh/
+
+# HARs e dumps de scraping (privados, podem conter cookies/tokens)
+backend/docs/*.har
+backend/docs/login.har
+backend/docs/gw_*.json
+backend/docs/gw_*.html
+
+# Backups locais do master JSON (gerados antes de cada merge)
+backend/docs/leaklab_gto_ranges.backup.*.json
+backend/docs/leaklab_gto_ranges.bak.*.json
+backend/docs/leaklab_gto_ranges_gw_v3.json
+backend/docs/leaklab_gto_ranges_reglife.json
+
+# JSON exports / probes locais
+backend/gw_spots_export.json
+backend/test_*.json
+backend/scripts/gto_validation/*.json
+backend/scripts/gto_validation/python
+
+# Scratch scripts (prefixo _ ou debug_)
+backend/_*.py
+backend/check_*.py
+backend/debug_*.py
+backend/find_*.py
+backend/export_*.py
+backend/solver_main.py
+backend/test_*.py
+backend/scripts/_*.py
+backend/scripts/debug_*.py
+backend/tests/_*.py
+
+# Docs locais (PDFs de referência, scratch, HTMLs)
+/docs/
+
+# Screenshots / temp images
+frontend/*.png
+frontend/*.PNG
+!frontend/public/**/*.png
+
+# Pastas de coleta manual (HAR PKO/3bet/etc são locais)
+backend/docs/ranges_gto/3bet/
+
+# Lixo / scratch geral
+lixo/
+docs/scratch/
 
 # Outputs do varredor de revalidação (gerados localmente)
 backend/reports/
