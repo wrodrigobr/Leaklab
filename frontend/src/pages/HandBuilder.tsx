@@ -687,7 +687,7 @@ export default function HandBuilder() {
                       )}>
                         <span className="font-mono text-[9px] text-muted-foreground w-9">{positionLabel(p)}</span>
                         <span className="font-mono flex-1 truncate">{p.name}</span>
-                        {bet > 0 && <span className="font-mono text-[10px] tabular-nums text-foreground/70">{bet}</span>}
+                        {bet > 0 && <span className="font-mono text-[10px] tabular-nums text-foreground/70">{fmtBB(bet, state.bb)}</span>}
                       </div>
                     );
                   })}
@@ -703,7 +703,7 @@ export default function HandBuilder() {
                       <span className="text-muted-foreground w-14">[{a.street}]</span>
                       <span className="text-foreground flex-1">{a.player}</span>
                       <span className="text-primary uppercase">{a.action}</span>
-                      {a.amount != null && <span className="tabular-nums text-foreground/70">{a.amount}</span>}
+                      {a.amount != null && <span className="tabular-nums text-foreground/70">{fmtBB(a.amount, state.bb)}</span>}
                     </div>
                   ))}
                 </div>
@@ -749,10 +749,13 @@ export default function HandBuilder() {
                     </select>
                   </label>
                   <label className="space-y-1">
-                    <span className="font-mono text-[10px] text-muted-foreground">Pote (chips)</span>
-                    <input type="number" value={state.winAmount}
-                      onChange={e => update("winAmount", +e.target.value)}
-                      className="w-full bg-background border border-border rounded px-2 py-1 font-mono tabular-nums text-right" />
+                    <span className="font-mono text-[10px] text-muted-foreground">Pote (BB)</span>
+                    <div className="flex items-center gap-1">
+                      <input type="number" step="0.01" value={state.winAmount ? toBB(state.winAmount, state.bb) : ""}
+                        onChange={e => update("winAmount", Math.round((+e.target.value || 0) * state.bb))}
+                        className="flex-1 bg-background border border-border rounded px-2 py-1 font-mono tabular-nums text-right" />
+                      <span className="font-mono text-[10px] text-muted-foreground">BB</span>
+                    </div>
                   </label>
                 </div>
               </section>
@@ -891,6 +894,10 @@ function SeatLayoutDiagram({
 
 // ── Sub-component: current actor card ────────────────────────────────────────
 
+// chips ↔ BB conversions (UI mostra BB com 2 casas decimais; HH guarda chips)
+const toBB = (chips: number, bb: number): number => Math.round((chips / bb) * 100) / 100;
+const fmtBB = (chips: number, bb: number): string => `${toBB(chips, bb).toFixed(2)} BB`;
+
 function CurrentActorCard({
   actor, positionLabel, facing, bb, onAddAction,
 }: {
@@ -900,10 +907,10 @@ function CurrentActorCard({
   bb: number;
   onAddAction: (action: ActionType, amount?: number) => void;
 }) {
-  const [amount, setAmount] = useState<number>(0);
+  // amountBB = valor digitado em big blinds (decimal). Convertido pra chips no submit.
+  const [amountBB, setAmountBB] = useState<number>(0);
 
-  // Reset amount quando troca de actor
-  useEffect(() => { setAmount(0); }, [actor?.name]);
+  useEffect(() => { setAmountBB(0); }, [actor?.name]);
 
   if (!actor) {
     return (
@@ -918,27 +925,30 @@ function CurrentActorCard({
   const canBet   = !facing.facingBet;
   const canRaise = facing.facingBet;
 
-  // Sugestões inteligentes
-  const callAmount = facing.facingBet ? facing.invested + facing.toCall : 0;
-  const minRaiseTotal = facing.facingBet
-    ? facing.invested + facing.toCall * 2  // mínimo: igualar + raise pelo mesmo tanto
-    : 0;
-  const defaultBet = Math.round(bb * 2.5);
+  // Sugestões (em chips)
+  const callAmountChips = facing.facingBet ? facing.invested + facing.toCall : 0;
+  const minRaiseChips   = facing.facingBet ? facing.invested + facing.toCall * 2 : 0;
+  const defaultBetChips = Math.round(bb * 2.5);
+
+  // Versões em BB pra mostrar
+  const callAmountBB = toBB(callAmountChips, bb);
+  const minRaiseBB   = toBB(minRaiseChips, bb);
+  const defaultBetBB = toBB(defaultBetChips, bb);
 
   const setSmart = (action: ActionType) => {
-    if (action === "call")  setAmount(callAmount);
-    if (action === "bet")   setAmount(amount || defaultBet);
-    if (action === "raise") setAmount(amount || minRaiseTotal);
-    if (action === "allin") setAmount(actor.stack + facing.invested);
+    if (action === "call")  setAmountBB(callAmountBB);
+    if (action === "bet")   setAmountBB(amountBB || defaultBetBB);
+    if (action === "raise") setAmountBB(amountBB || minRaiseBB);
+    if (action === "allin") setAmountBB(toBB(actor.stack + facing.invested, bb));
   };
 
   const submit = (action: ActionType) => {
     const needsAmount = action === "bet" || action === "raise" || action === "call" || action === "allin";
-    let val = amount;
-    if (action === "call")  val = callAmount;
-    if (action === "allin") val = actor.stack + facing.invested;
-    onAddAction(action, needsAmount ? val : undefined);
-    setAmount(0);
+    let chipsVal = Math.round(amountBB * bb);
+    if (action === "call")  chipsVal = callAmountChips;
+    if (action === "allin") chipsVal = actor.stack + facing.invested;
+    onAddAction(action, needsAmount ? chipsVal : undefined);
+    setAmountBB(0);
   };
 
   return (
@@ -954,19 +964,22 @@ function CurrentActorCard({
       </div>
 
       <div className="flex items-center gap-4 text-[11px] font-mono">
-        <span><span className="text-muted-foreground">Stack:</span> <span className="tabular-nums text-foreground">{actor.stack}</span></span>
+        <span><span className="text-muted-foreground">Stack:</span> <span className="tabular-nums text-foreground">{fmtBB(actor.stack, bb)}</span></span>
         {facing.invested > 0 && (
-          <span><span className="text-muted-foreground">Investido nesta street:</span> <span className="tabular-nums text-foreground">{facing.invested}</span></span>
+          <span><span className="text-muted-foreground">Investido:</span> <span className="tabular-nums text-foreground">{fmtBB(facing.invested, bb)}</span></span>
         )}
         {facing.facingBet && (
-          <span><span className="text-muted-foreground">Pra pagar:</span> <span className="tabular-nums text-blue-400">{facing.toCall}</span></span>
+          <span><span className="text-muted-foreground">Pra pagar:</span> <span className="tabular-nums text-blue-400">{fmtBB(facing.toCall, bb)}</span></span>
         )}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <input type="number" value={amount || ""} onChange={e => setAmount(+e.target.value || 0)}
-          placeholder={facing.facingBet ? `${minRaiseTotal} (min raise)` : `${defaultBet} (def bet)`}
-          className="w-32 bg-background border border-border rounded px-2 py-1.5 text-sm font-mono tabular-nums text-right" />
+        <div className="flex items-center gap-1">
+          <input type="number" step="0.01" value={amountBB || ""} onChange={e => setAmountBB(+e.target.value || 0)}
+            placeholder={facing.facingBet ? minRaiseBB.toFixed(2) : defaultBetBB.toFixed(2)}
+            className="w-24 bg-background border border-border rounded px-2 py-1.5 text-sm font-mono tabular-nums text-right" />
+          <span className="font-mono text-[10px] text-muted-foreground">BB</span>
+        </div>
         <button onClick={() => setSmart("call")}  disabled={!canCall}  className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">call→</button>
         <button onClick={() => setSmart("bet")}   disabled={!canBet}   className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">2.5x→</button>
         <button onClick={() => setSmart("raise")} disabled={!canRaise} className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">min raise→</button>
@@ -976,7 +989,7 @@ function CurrentActorCard({
         <ActionButton action="fold"  available color="bg-zinc-500/20 text-zinc-300 hover:bg-zinc-500/30"     onClick={() => submit("fold")}>Fold</ActionButton>
         <ActionButton action="check" available={canCheck} color="bg-sky-500/20 text-sky-300 hover:bg-sky-500/30"  onClick={() => submit("check")}>Check</ActionButton>
         <ActionButton action="call"  available={canCall}  color="bg-blue-500/20 text-blue-300 hover:bg-blue-500/30" onClick={() => submit("call")}>
-          Call {callAmount > 0 ? `(${callAmount})` : ""}
+          Call {callAmountChips > 0 ? `(${callAmountBB.toFixed(2)} BB)` : ""}
         </ActionButton>
         <ActionButton action="bet"   available={canBet}   color="bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30" onClick={() => submit("bet")}>Bet</ActionButton>
         <ActionButton action="raise" available={canRaise} color="bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30" onClick={() => submit("raise")}>Raise</ActionButton>
