@@ -318,7 +318,10 @@ function renderSeatsAndChips(
       const blen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
       // Hero: mais ao centro; jogadores laterais: mais próximos ao pod
       const isSide = !isHero && Math.abs(pos.x - CX) > 80;
-      const t2 = isHero ? 0.46 : isSide ? 0.26 : 0.36;
+      // Seats inferiores (vizinhos do hero) puxados mais pra frente (perto do pod)
+      // pra reforçar separação das cartas — usa 0.40 em vez de 0.26.
+      let t2 = isHero ? 0.46 : isSide ? 0.26 : 0.36;
+      if (!isHero && pos.dir === "bottom") t2 = 0.42;
       // Hero: offset perpendicular horário (+28px para a direita do ponto de vista do hero).
       // Seats adjacentes ao hero (parte inferior do feltro, dir='bottom') tambem ganham
       // offset perpendicular pra nao sobrepor as cartas do jogador.
