@@ -275,9 +275,9 @@ function renderSeatsAndChips(
       html += `<text x="${pos.x}" y="${by - 10}" text-anchor="middle" fill="#fbbf24" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700">💀${bStr}</text>`;
     }
 
-    // Dealer button
+    // Dealer button — t mais baixo = mais perto do jogador (longe do centro).
     if (isBtn) {
-      const t = 0.38;
+      const t = 0.22;
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
       // Hero is at bottom-center — clockwise perp goes right, clear of both cards (64px wide + gap)
