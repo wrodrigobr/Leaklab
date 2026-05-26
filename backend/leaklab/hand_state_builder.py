@@ -215,6 +215,9 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
             if a.street == street and a.action not in {'shows', 'mucks'}
         )
         is_multiway = len(active_in_street) > 2
+        # Numero exato de oponentes ainda vivos no pote no momento da decisao do hero.
+        # Usado para ajustar equity heuristica vs HU em postflop multiway.
+        n_active_opponents = max(0, len(active_in_street) - 1)  # exclui hero
 
         # Board correto para a street atual
         board_at_street = _board_for_street(
@@ -243,6 +246,7 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'decision_index': idx,
                 'total_decisions': None,  # preenchido depois
                 'n_players': len(hand.players) if hand.players else None,  # tamanho da mesa
+                'n_active_opponents': n_active_opponents,
             },
         )
         states.append(state)

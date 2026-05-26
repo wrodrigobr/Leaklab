@@ -10,6 +10,16 @@ def build_math_snapshot(state: HandState) -> MathSnapshot:
         pot_odds_equity = round(facing / (pot + facing), 4) if (pot + facing) > 0 else None
 
     estimated_equity = _estimate_hand_equity(state.hero_cards, state.board, state.street)
+    # Ajuste multiway: equity heuristica eh calibrada vs random HU. Em pote
+    # 3+way, equity real cai significativamente. Aplica fator empirico em
+    # postflop (preflop ja usa ranges GTO especificos por cenario).
+    if estimated_equity is not None and state.street != 'preflop':
+        n_opp = (state.metadata or {}).get('n_active_opponents', 1) or 1
+        if n_opp > 1:
+            # eq_multiway = eq_HU / (1 + 0.3 * (n_opp - 1))
+            # 2 opps -> 77% do HU; 3 opps -> 62%; 4 opps -> 53%; 5 opps -> 45%
+            factor = 1.0 / (1.0 + 0.3 * (n_opp - 1))
+            estimated_equity = round(estimated_equity * factor, 4)
     implied = 0.1 if state.street in {"flop", "turn"} else 0.0
     reverse_implied = 0.15 if (state.hero_cards and len(state.hero_cards) >= 4 and state.hero_cards[0] != state.hero_cards[2]) else 0.05
     pressure = _estimate_pressure(state)

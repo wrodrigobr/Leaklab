@@ -86,6 +86,7 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'raiseSizeBb':      state.facing_size,
             'board':            state.board or [],
             'nPlayers':         state.metadata.get('n_players'),  # tamanho da mesa
+            'nActiveOpponents': state.metadata.get('n_active_opponents', 1),  # opps vivos na street
         },
         'hand_profile': hand_profile,
         'math': {
