@@ -327,6 +327,23 @@ export default function HandBuilder() {
     update("actions", state.actions.slice(0, -1));
   };
 
+  // Limpa só a mão atual (actions, board, hero cards, winner) — mantem players,
+  // button, blinds, tournament config e mãos já completas.
+  const clearCurrentHand = () => {
+    const hasContent = state.actions.length > 0 || state.heroCards.length > 0
+      || state.board.flop.length > 0 || state.board.turn || state.board.river
+      || state.showWinner || state.winAmount > 0;
+    if (hasContent && !confirm("Limpar a mão atual? Players, button e config permanecem.")) return;
+    setState(s => ({
+      ...s,
+      heroCards: [],
+      actions: [],
+      board: { flop: [], turn: "", river: "" },
+      showWinner: "",
+      winAmount: 0,
+    }));
+  };
+
   // Live HH preview
   const handInput: HandInput | null = useMemo(() => {
     if (!heroPlayer || state.players.length < 2 || state.heroCards.length !== 2) return null;
@@ -577,10 +594,18 @@ export default function HandBuilder() {
                   <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                     Ações · <span className="text-primary">{currentStreet}</span>
                   </h2>
-                  <button onClick={removeLastAction} disabled={state.actions.length === 0}
-                    className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">
-                    <RotateCcw className="size-3" /> Desfazer
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button onClick={removeLastAction} disabled={state.actions.length === 0}
+                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      title="Desfaz a última ação registrada">
+                      <RotateCcw className="size-3" /> Desfazer
+                    </button>
+                    <button onClick={clearCurrentHand}
+                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-destructive"
+                      title="Limpa a mão atual (mantém players/config/mãos completas)">
+                      <Trash2 className="size-3" /> Limpar mão
+                    </button>
+                  </div>
                 </div>
 
                 {/* Street complete? Show prompt; else show actor card. */}
