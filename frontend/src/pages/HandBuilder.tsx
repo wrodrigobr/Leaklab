@@ -128,6 +128,7 @@ const initialState = () => {
     board: { flop: [] as string[], turn: "", river: "" },
     showWinner: "",
     winAmount: 0,
+    completedHands: [] as string[],  // HHs de mãos já finalizadas (mesmo torneio)
   };
 };
 
@@ -335,15 +336,86 @@ export default function HandBuilder() {
 
   const hhText = handInput ? generateHandHistory(handInput) : "";
 
+  // Conteúdo completo = mãos finalizadas + mão atual (separadas por linha em branco)
+  const fullHhText = useMemo(() => {
+    const parts = [...state.completedHands];
+    if (hhText) parts.push(hhText);
+    return parts.join("\n\n\n");
+  }, [state.completedHands, hhText]);
+
   const exportTxt = () => {
-    if (!hhText) return;
-    const blob = new Blob([hhText], { type: "text/plain" });
+    if (!fullHhText) return;
+    const blob = new Blob([fullHhText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `hand_${state.handId}.txt`;
+    a.download = `tournament_${state.tournamentId}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Finaliza a mão atual e prepara a próxima — mantém torneio/players, rotaciona button,
+  // atualiza stacks (deducao do investido + ganhos), incrementa hand_id, limpa actions/board/cards.
+  const nextHand = () => {
+    if (!hhText) return;
+
+    // 1. Calcula investido por player (somando o maior amount de cada street)
+    const invested = new Map<string, number>();
+    // Antes
+    state.players.forEach(p => invested.set(p.name, state.ante));
+    // Blinds
+    if (clockwiseFromSb[0]) invested.set(clockwiseFromSb[0].name, (invested.get(clockwiseFromSb[0].name) ?? 0) + state.sb);
+    if (clockwiseFromSb[1]) invested.set(clockwiseFromSb[1].name, (invested.get(clockwiseFromSb[1].name) ?? 0) + state.bb);
+    // Actions: maior amount por player+street
+    const byPlayerStreet = new Map<string, number>();
+    for (const a of state.actions) {
+      if (a.action === "fold" || a.action === "check") continue;
+      const k = `${a.street}|${a.player}`;
+      const prev = byPlayerStreet.get(k) ?? 0;
+      const v = a.amount ?? 0;
+      if (v > prev) {
+        const delta = v - prev;
+        invested.set(a.player, (invested.get(a.player) ?? 0) + delta);
+        byPlayerStreet.set(k, v);
+      }
+    }
+    // Pra preflop, SB/BB já tinham contado os blinds — desconta sobreposicao
+    if (clockwiseFromSb[0]) {
+      const k = `preflop|${clockwiseFromSb[0].name}`;
+      if (byPlayerStreet.has(k)) invested.set(clockwiseFromSb[0].name, (invested.get(clockwiseFromSb[0].name) ?? 0) - state.sb);
+    }
+    if (clockwiseFromSb[1]) {
+      const k = `preflop|${clockwiseFromSb[1].name}`;
+      if (byPlayerStreet.has(k)) invested.set(clockwiseFromSb[1].name, (invested.get(clockwiseFromSb[1].name) ?? 0) - state.bb);
+    }
+
+    // 2. Atualiza stacks: subtrai investido, adiciona winnings
+    const updatedPlayers = state.players.map(p => {
+      const lost = invested.get(p.name) ?? 0;
+      const won  = state.showWinner === p.name ? state.winAmount : 0;
+      return { ...p, stack: Math.max(0, p.stack - lost + won) };
+    });
+
+    // 3. Rotaciona button pro próximo seat ocupado clockwise
+    const seatNums = updatedPlayers.map(p => p.seat).sort((a, b) => a - b);
+    const btnIdx = seatNums.indexOf(state.buttonSeat);
+    const nextBtn = seatNums[(btnIdx + 1) % seatNums.length] ?? state.buttonSeat;
+
+    // 4. Incrementa hand_id (preservando padrão numérico)
+    const nextHandId = String(Number(state.handId) + 1);
+
+    setState(s => ({
+      ...s,
+      completedHands: [...s.completedHands, hhText],
+      handId: nextHandId,
+      players: updatedPlayers,
+      buttonSeat: nextBtn,
+      heroCards: [],
+      actions: [],
+      board: { flop: [], turn: "", river: "" },
+      showWinner: "",
+      winAmount: 0,
+    }));
   };
 
   const resetAll = () => {
@@ -508,11 +580,19 @@ export default function HandBuilder() {
                     </p>
                   </div>
                 ) : handComplete ? (
-                  <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/5 p-4 text-center space-y-2">
+                  <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/5 p-4 text-center space-y-3">
                     <p className="text-sm font-bold text-emerald-300">Mão finalizada</p>
                     <p className="text-xs text-muted-foreground">
-                      Marque o vencedor abaixo e exporte o hand history.
+                      Marque o vencedor abaixo. Depois inicie a próxima mão (button rotaciona, stacks atualizam, HH é acumulado).
                     </p>
+                    {state.showWinner && state.winAmount > 0 && (
+                      <button
+                        onClick={nextHand}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-500 text-emerald-950 font-mono text-xs font-bold uppercase tracking-widest hover:bg-emerald-400"
+                      >
+                        <ChevronRight className="size-3.5" /> Iniciar próxima mão
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <CurrentActorCard
@@ -622,7 +702,7 @@ export default function HandBuilder() {
                   <FileText className="inline size-3 mr-1" /> Hand History
                 </h2>
                 <div className="flex items-center gap-2">
-                  <button onClick={exportTxt} disabled={!hhText}
+                  <button onClick={exportTxt} disabled={!fullHhText}
                     className="flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary font-mono text-[10px] uppercase tracking-widest hover:bg-primary/20 disabled:opacity-30">
                     <Download className="size-3" /> .txt
                   </button>
@@ -632,15 +712,27 @@ export default function HandBuilder() {
                   </button>
                 </div>
               </div>
+
+              {/* Contador de mãos */}
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-muted-foreground">
+                  {state.completedHands.length === 0
+                    ? "Mão em construção"
+                    : `${state.completedHands.length} mão(s) concluída(s) + ${hhText ? "1 em andamento" : "—"}`}
+                </span>
+                <span className="text-primary">tournament #{state.tournamentId}</span>
+              </div>
+
               <pre className="bg-background border border-border/50 rounded p-3 text-[10px] font-mono leading-relaxed text-foreground/80 max-h-[600px] overflow-auto whitespace-pre-wrap">
-                {hhText || "(preencha os campos pra ver o HH gerado em tempo real)"}
+                {fullHhText || "(preencha os campos pra ver o HH gerado em tempo real)"}
               </pre>
-              {hhText && (
+
+              {fullHhText && (
                 <a
                   href="/?import=builder"
                   onClick={(e) => {
                     e.preventDefault();
-                    localStorage.setItem("pendingImport", hhText);
+                    localStorage.setItem("pendingImport", fullHhText);
                     window.location.href = "/?import=builder";
                   }}
                   className="flex items-center justify-center gap-1 w-full px-3 py-2 rounded-md bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:bg-primary/90"
