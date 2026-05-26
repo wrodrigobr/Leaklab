@@ -232,6 +232,42 @@ export default function HandBuilder() {
     return { invested, toCall, facingBet: toCall > 0 };
   }, [currentActor, maxBetThisStreet]);
 
+  // Detecta se a street fechou (todos active matched o maxBet OU foldaram OU all-in).
+  // Bloqueia o currentActor card e prompta seleção do próximo board.
+  const streetComplete = useMemo<boolean>(() => {
+    const active = clockwiseFromSb.filter(p => !foldedPlayers.has(p.name));
+    if (active.length <= 1) return true;  // hand acabou
+    const streetActions = state.actions.filter(a => a.street === currentStreet);
+
+    // Preflop: SB e BB têm posts, mas precisam de ação voluntária (BB tem option).
+    // Para todas as streets, cada player ativo precisa de ao menos 1 ação na street.
+    for (const p of active) {
+      const playerActions = streetActions.filter(a => a.player === p.name);
+      if (playerActions.length === 0) return false;
+      const last = playerActions[playerActions.length - 1];
+      if (last.action === "allin") continue;          // all-in não precisa matchar mais
+      if (last.action === "fold")  continue;          // já está fora (não deveria ocorrer aqui)
+      const invested = maxBetThisStreet.totalByPlayer.get(p.name) ?? 0;
+      if (invested < maxBetThisStreet.maxBet) return false;  // ainda devendo
+    }
+    return true;
+  }, [clockwiseFromSb, foldedPlayers, state.actions, currentStreet, maxBetThisStreet]);
+
+  const handComplete = useMemo<boolean>(() => {
+    const active = clockwiseFromSb.filter(p => !foldedPlayers.has(p.name));
+    if (active.length <= 1) return true;
+    return streetComplete && currentStreet === "river";
+  }, [clockwiseFromSb, foldedPlayers, streetComplete, currentStreet]);
+
+  // Próxima street pendente (a que precisa do board). Skip se a mão acabou.
+  const pendingBoardStreet: Street | null = useMemo(() => {
+    if (!streetComplete || handComplete) return null;
+    if (currentStreet === "preflop" && state.board.flop.length !== 3) return "flop";
+    if (currentStreet === "flop"    && !state.board.turn)             return "turn";
+    if (currentStreet === "turn"    && !state.board.river)            return "river";
+    return null;
+  }, [streetComplete, handComplete, currentStreet, state.board]);
+
   // Disabled cards = already used
   const usedCards = useMemo(() => {
     const all = new Set<string>();
@@ -457,17 +493,39 @@ export default function HandBuilder() {
                   </button>
                 </div>
 
-                {/* Current actor card + smart action buttons */}
-                <CurrentActorCard
-                  actor={currentActor}
-                  positionLabel={currentActor ? positionLabel(currentActor) : ""}
-                  facing={facing}
-                  bb={state.bb}
-                  onAddAction={(action, amount) => {
-                    if (!currentActor) return;
-                    addAction(action, currentActor.name, amount);
-                  }}
-                />
+                {/* Street complete? Show prompt; else show actor card. */}
+                {streetComplete && pendingBoardStreet ? (
+                  <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/5 p-4 text-center space-y-2">
+                    <p className="text-sm font-bold text-amber-300">
+                      {currentStreet === "preflop" ? "Preflop" :
+                       currentStreet === "flop"    ? "Flop"     :
+                       currentStreet === "turn"    ? "Turn"     : "River"} completo
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Selecione as cartas do <strong>{pendingBoardStreet === "flop" ? "flop (3 cartas)" :
+                                                       pendingBoardStreet === "turn" ? "turn (1 carta)" :
+                                                       "river (1 carta)"}</strong> abaixo pra continuar.
+                    </p>
+                  </div>
+                ) : handComplete ? (
+                  <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/5 p-4 text-center space-y-2">
+                    <p className="text-sm font-bold text-emerald-300">Mão finalizada</p>
+                    <p className="text-xs text-muted-foreground">
+                      Marque o vencedor abaixo e exporte o hand history.
+                    </p>
+                  </div>
+                ) : (
+                  <CurrentActorCard
+                    actor={currentActor}
+                    positionLabel={currentActor ? positionLabel(currentActor) : ""}
+                    facing={facing}
+                    bb={state.bb}
+                    onAddAction={(action, amount) => {
+                      if (!currentActor) return;
+                      addAction(action, currentActor.name, amount);
+                    }}
+                  />
+                )}
 
                 {/* Status table: quem está vivo, quem foldou, bets */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 pt-2 border-t border-border/40">
