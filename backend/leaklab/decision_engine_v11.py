@@ -662,6 +662,25 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         and float(spot.get('facingSize') or 0) == 0 and _best_action == 'raise'):
         _best_action = 'bet'
 
+    # Guard: facing all-in que cobre o hero — raise é impossível. Cai pra call/fold
+    # baseado em equity vs required. Cobre o bug onde engine sugeria 'raise' em
+    # spots multi-all-in ou facing shove cobrindo o stack do hero.
+    _facing_bb = float(spot.get('facingSize') or 0)
+    _hero_stack_bb = float(spot.get('effectiveStackBb') or input_data.get('context', {}).get('heroStackBb') or 0)
+    if (_best_action in ('raise', 'jam') and _facing_bb > 0 and _hero_stack_bb > 0
+            and _facing_bb >= _hero_stack_bb * 0.95):
+        _eq  = math.get('estimatedHandEquity')
+        _req = threshold_pack.get('adjustedRequiredEquity')
+        if _eq is not None and _req is not None and _eq >= _req:
+            _best_action = 'call'
+        else:
+            _best_action = 'fold'
+        # Reclassifica: score foi computado contra 'raise' invalido. Se player
+        # matched o novo best_action, e standard. Caso contrario, mantem severidade.
+        if _norm_gto_action(input_data["player_action"]) == _norm_gto_action(_best_action):
+            label = 'standard'
+            final_score = 0.0
+
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
     return {
         "handId": input_data["hand_id"],
