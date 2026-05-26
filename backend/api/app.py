@@ -3731,7 +3731,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             **tech,
         }))
 
-    # Apply uncalled bet returns — correct pot/stacks/bets before showdown
+    # Apply uncalled bet returns — correct pot/stacks/bets before showdown.
+    # Em maos uncontested (so o jogador do uncalled vai coletar o pot), pular
+    # o frame de "return" pra evitar o efeito visual de 'aposta diminui antes
+    # de virar pot'. Os dados de pot/stacks ainda sao aplicados.
+    _summary_pre = _parse_summary(hand.raw_text or '')
+    _uncontested_winners = set()
+    if _summary_pre.get('winners') and len(_summary_pre['winners']) == 1:
+        _uncontested_winners.add(_summary_pre['winners'][0]['player'])
+
     for ur in uncalled_returns:
         ur_player = ur['player']
         ur_amount = ur['amount']
@@ -3740,6 +3748,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         if ur_pseat is not None:
             stacks[ur_pseat]   = stacks[ur_pseat] + ur_amount
             bets_r[ur_pseat]   = max(0, bets_r.get(ur_pseat, 0) - ur_amount)
+        # Pula o frame visual se uncontested win — o pot displaced ja cobre.
+        if ur_player in _uncontested_winners:
+            continue
         timeline.append(snap({
             'type':   'return',
             'player': ur_player,
