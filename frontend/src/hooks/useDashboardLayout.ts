@@ -10,8 +10,10 @@ export interface DashboardLayout {
 }
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
-  main: ["quality_row", "bankroll_row", "street_row", "dna_row", "drill_row", "insight_row"],
-  sidebar: ["leaks", "causal_map", "level", "twin"],
+  // Ordem: cards GTO em bloco contíguo (donut + breakdowns) → evolução
+  // ($, carreira, padrões) → diagnóstico contextual (pressão, ICM, DNA).
+  main: ["quality_row", "street_row", "bankroll_row", "insight_row", "drill_row", "dna_row"],
+  sidebar: ["leaks", "causal_map", "twin", "level"],
 };
 
 export function useDashboardLayout() {
