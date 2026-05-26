@@ -282,7 +282,7 @@ function renderSeatsAndChips(
     if (isBtn) {
       const heroPosBtn = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
       const isAdjacentBtn = heroPosBtn !== null && Math.abs(pos.y - heroPosBtn.y) < 80;
-      const t = isHero ? 0.32 : isAdjacentBtn ? 0.36 : 0.22;
+      const t = isHero ? 0.32 : isAdjacentBtn ? 0.36 : 0.28;
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
       // Hero is at bottom-center — clockwise perp goes right, clear of both cards (64px wide + gap)
