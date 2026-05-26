@@ -104,7 +104,7 @@ function ActionButton({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-const MAX_SEATS = 9;
+// MAX_SEATS now lives in state (state.maxSeats — 8 or 9)
 
 const DEFAULTS = {
   handId: "100000001",
@@ -114,6 +114,7 @@ const DEFAULTS = {
   sb: 40,
   bb: 80,
   ante: 10,
+  maxSeats: 9 as 2 | 6 | 8 | 9,
   players: [] as PlayerInput[],
   buttonSeat: 1,
   heroSeat: 9,
@@ -300,7 +301,7 @@ export default function HandBuilder() {
   // Add player
   const addPlayer = () => {
     const occupied = new Set(state.players.map(p => p.seat));
-    const nextSeat = Array.from({ length: MAX_SEATS }, (_, i) => i + 1).find(s => !occupied.has(s));
+    const nextSeat = Array.from({ length: state.maxSeats }, (_, i) => i + 1).find(s => !occupied.has(s));
     if (!nextSeat) return;
     update("players", [...state.players, {
       seat: nextSeat,
@@ -353,6 +354,7 @@ export default function HandBuilder() {
       buyIn: state.buyIn,
       level: state.level,
       sb: state.sb, bb: state.bb, ante: state.ante,
+      maxSeats: state.maxSeats,
       players: state.players,
       buttonSeat: state.buttonSeat,
       heroName: heroPlayer.name,
@@ -524,11 +526,20 @@ export default function HandBuilder() {
                     className="w-full bg-background border border-border rounded px-2 py-1 font-mono tabular-nums" />
                 </label>
                 <label className="space-y-1">
+                  <span className="font-mono text-[10px] text-muted-foreground">Max seats</span>
+                  <select value={state.maxSeats}
+                    onChange={e => update("maxSeats", +e.target.value as 8 | 9)}
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono">
+                    <option value={8}>8-max</option>
+                    <option value={9}>9-max</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
                   <span className="font-mono text-[10px] text-muted-foreground">BTN Seat</span>
                   <select value={state.buttonSeat}
                     onChange={e => update("buttonSeat", +e.target.value)}
                     className="w-full bg-background border border-border rounded px-2 py-1 font-mono">
-                    {Array.from({ length: MAX_SEATS }, (_, i) => i + 1).map(s => (
+                    {Array.from({ length: state.maxSeats }, (_, i) => i + 1).map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
@@ -540,9 +551,20 @@ export default function HandBuilder() {
             <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Jogadores ({state.players.length}/{MAX_SEATS})
+                  Jogadores ({state.players.length}/{state.maxSeats})
                 </h2>
-                <button onClick={addPlayer} disabled={state.players.length >= MAX_SEATS}
+              </div>
+
+              {/* Diagrama de referência: layout 8/9-max */}
+              <SeatLayoutDiagram
+                occupiedSeats={state.players.map(p => p.seat)}
+                buttonSeat={state.buttonSeat}
+                heroSeat={state.heroSeat}
+                maxSeats={state.maxSeats}
+              />
+
+              <div className="flex items-center justify-end pt-1">
+                <button onClick={addPlayer} disabled={state.players.length >= state.maxSeats}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary/10 text-primary font-mono text-[10px] uppercase tracking-widest hover:bg-primary/20 transition-colors disabled:opacity-30">
                   <Plus className="size-3" /> Adicionar
                 </button>
@@ -790,6 +812,82 @@ export default function HandBuilder() {
     </div>
   );
 }
+
+// ── Sub-component: seat layout diagram (9-max reference) ─────────────────────
+
+function SeatLayoutDiagram({
+  occupiedSeats, buttonSeat, heroSeat, maxSeats,
+}: {
+  occupiedSeats: number[];
+  buttonSeat: number;
+  heroSeat: number;
+  maxSeats: number;
+}) {
+  // N seats em círculo. Hero na base, demais clockwise.
+  const W = 380, H = 220, CX = W / 2, CY = H / 2;
+  const RX = 150, RY = 80;
+  const occupied = new Set(occupiedSeats);
+  const seats = Array.from({ length: maxSeats }, (_, i) => i + 1);
+  const heroIdx = seats.indexOf(heroSeat);
+  const rotOffset = heroIdx >= 0 ? 180 - (360 / maxSeats) * heroIdx : 0;
+
+  const positions = seats.map((s, i) => {
+    const ang = (-90 + (360 / maxSeats) * i + rotOffset) * Math.PI / 180;
+    return {
+      seat: s,
+      x: CX + RX * Math.cos(ang),
+      y: CY + RY * Math.sin(ang),
+    };
+  });
+
+  return (
+    <div className="flex justify-center py-2">
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: W }}>
+        {/* Feltro */}
+        <ellipse cx={CX} cy={CY} rx={RX + 28} ry={RY + 28} fill="rgba(20,80,40,0.15)" stroke="rgba(20,80,40,0.4)" strokeWidth={1.5} />
+        <ellipse cx={CX} cy={CY} rx={RX + 4} ry={RY + 4} fill="rgba(10,40,20,0.30)" stroke="rgba(40,140,80,0.20)" strokeWidth={1} />
+        <text x={CX} y={CY - 4} textAnchor="middle" fontFamily="monospace" fontSize="10" fill="rgba(255,255,255,0.30)" letterSpacing="2">
+          MESA {maxSeats}-MAX
+        </text>
+        <text x={CX} y={CY + 12} textAnchor="middle" fontFamily="monospace" fontSize="9" fill="rgba(255,255,255,0.45)">
+          (hero seat {heroSeat}, base)
+        </text>
+
+        {/* Seats */}
+        {positions.map(p => {
+          const isOccupied = occupied.has(p.seat);
+          const isBtn = p.seat === buttonSeat;
+          const isHero = p.seat === heroSeat;
+          return (
+            <g key={p.seat}>
+              <circle
+                cx={p.x} cy={p.y} r={16}
+                fill={isOccupied ? (isHero ? "rgba(201,168,76,0.25)" : "rgba(59,130,246,0.20)") : "rgba(60,60,60,0.30)"}
+                stroke={isOccupied ? (isHero ? "#c9a84c" : "#3b82f6") : "rgba(120,120,120,0.50)"}
+                strokeWidth={1.5}
+              />
+              <text x={p.x} y={p.y + 4} textAnchor="middle" fontFamily="monospace"
+                fontSize="11" fontWeight="700"
+                fill={isOccupied ? "#fff" : "rgba(180,180,180,0.7)"}>
+                {p.seat}
+              </text>
+              {isBtn && (
+                <>
+                  <circle cx={p.x + 18} cy={p.y - 14} r={7} fill="#f4f0ec" stroke="#222" strokeWidth={1} />
+                  <text x={p.x + 18} y={p.y - 11} textAnchor="middle" fontFamily="monospace" fontSize="8" fontWeight="900" fill="#222">D</text>
+                </>
+              )}
+              {isHero && (
+                <text x={p.x} y={p.y + 30} textAnchor="middle" fontFamily="monospace" fontSize="9" fill="#c9a84c" fontWeight="700">HERO</text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 
 // ── Sub-component: current actor card ────────────────────────────────────────
 
