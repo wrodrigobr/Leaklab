@@ -143,18 +143,94 @@ export default function HandBuilder() {
     setState(s => ({ ...s, [key]: val }));
 
   const heroPlayer = state.players.find(p => p.seat === state.heroSeat);
-  const playersActiveInStreet = (street: Street): PlayerInput[] => {
-    const folded = new Set(state.actions.filter(a => a.action === "fold").map(a => a.player));
-    return state.players.filter(p => !folded.has(p.name));
+  const foldedPlayers = useMemo(() =>
+    new Set(state.actions.filter(a => a.action === "fold").map(a => a.player)),
+    [state.actions]
+  );
+
+  // Ordem clockwise a partir do SB (depois do button): [SB, BB, UTG, UTG+1, ..., BTN]
+  const clockwiseFromSb = useMemo<PlayerInput[]>(() => {
+    if (state.players.length === 0) return [];
+    const seatNums = state.players.map(p => p.seat).sort((a, b) => a - b);
+    const btnIdx = seatNums.indexOf(state.buttonSeat);
+    if (btnIdx === -1) return state.players;
+    const ordered: PlayerInput[] = [];
+    for (let i = 1; i <= seatNums.length; i++) {
+      const seat = seatNums[(btnIdx + i) % seatNums.length];
+      const p = state.players.find(x => x.seat === seat);
+      if (p) ordered.push(p);
+    }
+    return ordered;
+  }, [state.players, state.buttonSeat]);
+
+  const positionLabel = (player: PlayerInput): string => {
+    const idx = clockwiseFromSb.findIndex(p => p.name === player.name);
+    if (idx === -1) return "";
+    const n = clockwiseFromSb.length;
+    if (idx === n - 1) return "BTN";
+    if (idx === 0)     return "SB";
+    if (idx === 1)     return "BB";
+    if (idx === 2)     return n > 4 ? "UTG" : "UTG/CO";
+    if (idx === n - 2) return "CO";
+    if (idx === n - 3) return "HJ";
+    if (idx === n - 4) return "LJ";
+    return `UTG+${idx - 2}`;
   };
 
-  // Next player to act on current street (rotates from SB-of-action)
+  // Current street derivada do board
   const currentStreet: Street = useMemo(() => {
     if (state.board.river) return "river";
     if (state.board.turn)  return "turn";
     if (state.board.flop.length === 3) return "flop";
     return "preflop";
   }, [state.board]);
+
+  // Próximo a agir (auto-rotaciona clockwise a partir do último que agiu)
+  const currentActor = useMemo<PlayerInput | null>(() => {
+    if (clockwiseFromSb.length < 2) return null;
+    const active = clockwiseFromSb.filter(p => !foldedPlayers.has(p.name));
+    if (active.length <= 1) return null; // hand acabou
+
+    const streetActions = state.actions.filter(a => a.street === currentStreet);
+    if (streetActions.length === 0) {
+      // Início da street: preflop começa UTG (idx 2); postflop começa SB (idx 0)
+      if (currentStreet === "preflop") return active[2 % active.length] ?? active[0];
+      return active[0];
+    }
+    const lastActor = streetActions[streetActions.length - 1].player;
+    const lastIdx = active.findIndex(p => p.name === lastActor);
+    if (lastIdx === -1) return active[0];
+    return active[(lastIdx + 1) % active.length];
+  }, [clockwiseFromSb, foldedPlayers, currentStreet, state.actions]);
+
+  // Maior aposta nesta street (pra determinar "facing bet")
+  const maxBetThisStreet = useMemo(() => {
+    const streetActions = state.actions.filter(a => a.street === currentStreet);
+    const blindContext = currentStreet === "preflop";
+    let maxBet = blindContext ? state.bb : 0;
+    // Total por player nesta street
+    const totalByPlayer = new Map<string, number>();
+    if (blindContext) {
+      const sbP = clockwiseFromSb[0]; const bbP = clockwiseFromSb[1];
+      if (sbP) totalByPlayer.set(sbP.name, state.sb);
+      if (bbP) totalByPlayer.set(bbP.name, state.bb);
+    }
+    for (const a of streetActions) {
+      if (a.action === "fold" || a.action === "check") continue;
+      const v = a.amount ?? 0;
+      totalByPlayer.set(a.player, Math.max(totalByPlayer.get(a.player) ?? 0, v));
+      if (v > maxBet) maxBet = v;
+    }
+    return { maxBet, totalByPlayer };
+  }, [state.actions, currentStreet, state.sb, state.bb, clockwiseFromSb]);
+
+  // Quanto o currentActor já tem investido nesta street + quanto falta pra call
+  const facing = useMemo(() => {
+    if (!currentActor) return { invested: 0, toCall: 0, facingBet: false };
+    const invested = maxBetThisStreet.totalByPlayer.get(currentActor.name) ?? 0;
+    const toCall = Math.max(0, maxBetThisStreet.maxBet - invested);
+    return { invested, toCall, facingBet: toCall > 0 };
+  }, [currentActor, maxBetThisStreet]);
 
   // Disabled cards = already used
   const usedCards = useMemo(() => {
@@ -381,15 +457,38 @@ export default function HandBuilder() {
                   </button>
                 </div>
 
-                <p className="text-xs text-muted-foreground">
-                  Clique no jogador, escolha a ação, informe valor se necessário (em chips).
-                </p>
-
-                {/* Player picker + action buttons */}
-                <PlayerActionRow
-                  players={playersActiveInStreet(currentStreet)}
-                  onAddAction={(player, action, amount) => addAction(action, player, amount)}
+                {/* Current actor card + smart action buttons */}
+                <CurrentActorCard
+                  actor={currentActor}
+                  positionLabel={currentActor ? positionLabel(currentActor) : ""}
+                  facing={facing}
+                  bb={state.bb}
+                  onAddAction={(action, amount) => {
+                    if (!currentActor) return;
+                    addAction(action, currentActor.name, amount);
+                  }}
                 />
+
+                {/* Status table: quem está vivo, quem foldou, bets */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 pt-2 border-t border-border/40">
+                  {clockwiseFromSb.map(p => {
+                    const folded = foldedPlayers.has(p.name);
+                    const isCurrent = currentActor?.name === p.name;
+                    const bet = maxBetThisStreet.totalByPlayer.get(p.name) ?? 0;
+                    return (
+                      <div key={p.seat} className={cn(
+                        "flex items-center gap-1.5 px-2 py-1 rounded text-[11px] border transition-colors",
+                        isCurrent ? "border-primary bg-primary/10" :
+                        folded    ? "border-border/30 opacity-40 line-through" :
+                                    "border-border/50"
+                      )}>
+                        <span className="font-mono text-[9px] text-muted-foreground w-9">{positionLabel(p)}</span>
+                        <span className="font-mono flex-1 truncate">{p.name}</span>
+                        {bet > 0 && <span className="font-mono text-[10px] tabular-nums text-foreground/70">{bet}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
 
                 {/* Lista de ações */}
                 <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -499,44 +598,99 @@ export default function HandBuilder() {
   );
 }
 
-// ── Sub-component: action input row ───────────────────────────────────────────
+// ── Sub-component: current actor card ────────────────────────────────────────
 
-function PlayerActionRow({
-  players, onAddAction,
+function CurrentActorCard({
+  actor, positionLabel, facing, bb, onAddAction,
 }: {
-  players: PlayerInput[];
-  onAddAction: (player: string, action: ActionType, amount?: number) => void;
+  actor: PlayerInput | null;
+  positionLabel: string;
+  facing: { invested: number; toCall: number; facingBet: boolean };
+  bb: number;
+  onAddAction: (action: ActionType, amount?: number) => void;
 }) {
-  const [playerName, setPlayerName] = useState<string>(players[0]?.name ?? "");
   const [amount, setAmount] = useState<number>(0);
 
-  useEffect(() => {
-    if (!playerName && players[0]) setPlayerName(players[0].name);
-  }, [players, playerName]);
+  // Reset amount quando troca de actor
+  useEffect(() => { setAmount(0); }, [actor?.name]);
 
-  const handle = (action: ActionType) => {
-    if (!playerName) return;
+  if (!actor) {
+    return (
+      <div className="rounded-lg bg-background border border-border/50 p-4 text-center text-sm text-muted-foreground">
+        Mão finalizada (ou só 1 jogador ativo). Avance para o próximo street/board ou registre o vencedor.
+      </div>
+    );
+  }
+
+  const canCheck = !facing.facingBet;
+  const canCall  = facing.facingBet;
+  const canBet   = !facing.facingBet;
+  const canRaise = facing.facingBet;
+
+  // Sugestões inteligentes
+  const callAmount = facing.facingBet ? facing.invested + facing.toCall : 0;
+  const minRaiseTotal = facing.facingBet
+    ? facing.invested + facing.toCall * 2  // mínimo: igualar + raise pelo mesmo tanto
+    : 0;
+  const defaultBet = Math.round(bb * 2.5);
+
+  const setSmart = (action: ActionType) => {
+    if (action === "call")  setAmount(callAmount);
+    if (action === "bet")   setAmount(amount || defaultBet);
+    if (action === "raise") setAmount(amount || minRaiseTotal);
+    if (action === "allin") setAmount(actor.stack + facing.invested);
+  };
+
+  const submit = (action: ActionType) => {
     const needsAmount = action === "bet" || action === "raise" || action === "call" || action === "allin";
-    onAddAction(playerName, action, needsAmount ? amount : undefined);
+    let val = amount;
+    if (action === "call")  val = callAmount;
+    if (action === "allin") val = actor.stack + facing.invested;
+    onAddAction(action, needsAmount ? val : undefined);
     setAmount(0);
   };
 
   return (
-    <div className="flex items-center gap-2 flex-wrap p-3 rounded-lg bg-background border border-border/50">
-      <select value={playerName} onChange={e => setPlayerName(e.target.value)}
-        className="bg-background border border-border rounded px-2 py-1.5 text-sm">
-        {players.map(p => <option key={p.seat} value={p.name}>{p.name}</option>)}
-      </select>
-      <input type="number" value={amount} onChange={e => setAmount(+e.target.value)}
-        placeholder="0"
-        className="w-24 bg-background border border-border rounded px-2 py-1.5 text-sm font-mono tabular-nums text-right" />
+    <div className="rounded-lg bg-primary/5 border-2 border-primary/30 p-4 space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="flex flex-col">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-primary">Vez de</span>
+          <span className="text-lg font-bold text-foreground">{actor.name}</span>
+        </div>
+        <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary ring-1 ring-primary/30">
+          {positionLabel} · S{actor.seat}
+        </span>
+      </div>
 
-      <ActionButton action="fold"  available color="bg-zinc-500/20 text-zinc-300 hover:bg-zinc-500/30"     onClick={() => handle("fold")}>Fold</ActionButton>
-      <ActionButton action="check" available color="bg-sky-500/20 text-sky-300 hover:bg-sky-500/30"        onClick={() => handle("check")}>Check</ActionButton>
-      <ActionButton action="call"  available color="bg-blue-500/20 text-blue-300 hover:bg-blue-500/30"     onClick={() => handle("call")}>Call</ActionButton>
-      <ActionButton action="bet"   available color="bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30" onClick={() => handle("bet")}>Bet</ActionButton>
-      <ActionButton action="raise" available color="bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30" onClick={() => handle("raise")}>Raise</ActionButton>
-      <ActionButton action="allin" available color="bg-red-500/20 text-red-300 hover:bg-red-500/30"        onClick={() => handle("allin")}>All-in</ActionButton>
+      <div className="flex items-center gap-4 text-[11px] font-mono">
+        <span><span className="text-muted-foreground">Stack:</span> <span className="tabular-nums text-foreground">{actor.stack}</span></span>
+        {facing.invested > 0 && (
+          <span><span className="text-muted-foreground">Investido nesta street:</span> <span className="tabular-nums text-foreground">{facing.invested}</span></span>
+        )}
+        {facing.facingBet && (
+          <span><span className="text-muted-foreground">Pra pagar:</span> <span className="tabular-nums text-blue-400">{facing.toCall}</span></span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <input type="number" value={amount || ""} onChange={e => setAmount(+e.target.value || 0)}
+          placeholder={facing.facingBet ? `${minRaiseTotal} (min raise)` : `${defaultBet} (def bet)`}
+          className="w-32 bg-background border border-border rounded px-2 py-1.5 text-sm font-mono tabular-nums text-right" />
+        <button onClick={() => setSmart("call")}  disabled={!canCall}  className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">call→</button>
+        <button onClick={() => setSmart("bet")}   disabled={!canBet}   className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">2.5x→</button>
+        <button onClick={() => setSmart("raise")} disabled={!canRaise} className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">min raise→</button>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <ActionButton action="fold"  available color="bg-zinc-500/20 text-zinc-300 hover:bg-zinc-500/30"     onClick={() => submit("fold")}>Fold</ActionButton>
+        <ActionButton action="check" available={canCheck} color="bg-sky-500/20 text-sky-300 hover:bg-sky-500/30"  onClick={() => submit("check")}>Check</ActionButton>
+        <ActionButton action="call"  available={canCall}  color="bg-blue-500/20 text-blue-300 hover:bg-blue-500/30" onClick={() => submit("call")}>
+          Call {callAmount > 0 ? `(${callAmount})` : ""}
+        </ActionButton>
+        <ActionButton action="bet"   available={canBet}   color="bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30" onClick={() => submit("bet")}>Bet</ActionButton>
+        <ActionButton action="raise" available={canRaise} color="bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30" onClick={() => submit("raise")}>Raise</ActionButton>
+        <ActionButton action="allin" available color="bg-red-500/20 text-red-300 hover:bg-red-500/30"        onClick={() => submit("allin")}>All-in</ActionButton>
+      </div>
     </div>
   );
 }
