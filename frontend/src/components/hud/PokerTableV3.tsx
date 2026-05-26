@@ -276,10 +276,10 @@ function renderSeatsAndChips(
     }
 
     // Dealer button — t mais baixo = mais perto do jogador (longe do centro).
-    // Hero usa t maior porque o seat dele ja está no fundo da tela — t baixo
-    // colocaria o button na borda do feltro (fora da área de jogo).
+    // Hero e seats inferiores usam t maior porque já estão no fundo da tela —
+    // t baixo colocaria o button na borda do feltro (fora da área de jogo).
     if (isBtn) {
-      const t = isHero ? 0.32 : 0.22;
+      const t = isHero ? 0.32 : pos.dir === "bottom" ? 0.30 : 0.22;
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
       // Hero is at bottom-center — clockwise perp goes right, clear of both cards (64px wide + gap)
