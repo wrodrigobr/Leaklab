@@ -12,6 +12,7 @@ import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
+import { ACTION_COLORS } from "@/lib/actionColors";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
 // ── Card parsing ──────────────────────────────────────────────────────────────
@@ -500,40 +501,40 @@ function SidePanels({
                     <div className="flex h-2 rounded overflow-hidden ring-1 ring-border/30">
                       {foldPct > 0.001 && (
                         <div title={`Fold ${(foldPct*100).toFixed(1)}%`}
-                             style={{ width: `${foldPct*100}%`, background: '#71717a' }} />
+                             style={{ width: `${foldPct*100}%`, background: ACTION_COLORS.fold }} />
                       )}
                       {callPct > 0.001 && (
                         <div title={`Call ${(callPct*100).toFixed(1)}%`}
-                             style={{ width: `${callPct*100}%`, background: '#3b82f6' }} />
+                             style={{ width: `${callPct*100}%`, background: ACTION_COLORS.call }} />
                       )}
                       {raisePct > 0.001 && (
                         <div title={`Raise ${(raisePct*100).toFixed(1)}%`}
-                             style={{ width: `${raisePct*100}%`, background: '#10b981' }} />
+                             style={{ width: `${raisePct*100}%`, background: ACTION_COLORS.raise }} />
                       )}
                       {allinPct > 0.001 && (
                         <div title={`Allin ${(allinPct*100).toFixed(1)}%`}
-                             style={{ width: `${allinPct*100}%`, background: '#ef4444' }} />
+                             style={{ width: `${allinPct*100}%`, background: ACTION_COLORS.allin }} />
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap font-mono text-[10px]">
                       {foldPct > 0.001 && (
-                        <span className="text-zinc-400">
-                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background:'#71717a'}}/>Fold {(foldPct*100).toFixed(0)}%
+                        <span style={{ color: ACTION_COLORS.fold }}>
+                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background: ACTION_COLORS.fold}}/>Fold {(foldPct*100).toFixed(0)}%
                         </span>
                       )}
                       {callPct > 0.001 && (
-                        <span className="text-blue-400">
-                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background:'#3b82f6'}}/>Call {(callPct*100).toFixed(1)}%
+                        <span style={{ color: ACTION_COLORS.call }}>
+                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background: ACTION_COLORS.call}}/>Call {(callPct*100).toFixed(1)}%
                         </span>
                       )}
                       {raisePct > 0.001 && (
-                        <span className="text-emerald-400">
-                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background:'#10b981'}}/>Raise {(raisePct*100).toFixed(1)}%
+                        <span style={{ color: ACTION_COLORS.raise }}>
+                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background: ACTION_COLORS.raise}}/>Raise {(raisePct*100).toFixed(1)}%
                         </span>
                       )}
                       {allinPct > 0.001 && (
-                        <span className="text-red-400">
-                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background:'#ef4444'}}/>Allin {(allinPct*100).toFixed(1)}%
+                        <span style={{ color: ACTION_COLORS.allin }}>
+                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background: ACTION_COLORS.allin}}/>Allin {(allinPct*100).toFixed(1)}%
                         </span>
                       )}
                     </div>

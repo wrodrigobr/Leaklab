@@ -2,6 +2,7 @@ import { CheckCircle2, Star } from "lucide-react";
 import { GtoStrategyAction } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { GtoMixedBadge } from "./GtoMixedBadge";
+import { ACTION_COLORS, actionKey } from "@/lib/actionColors";
 
 interface Props {
   strategy: GtoStrategyAction[];
@@ -85,54 +86,37 @@ export function GtoStrategyPanel({ strategy, playedAction, compact }: Props) {
         const isTopAndPlayed = isTop && isPlayed;
         const pct = Math.round(row.frequency * 100);
         const displayLabel = row.label;
-
-        // Bar color: top+played → emerald; top only → amber; played only → primary; rest → muted
-        const barClass = isTopAndPlayed
-          ? "bg-emerald-500"
-          : isTop
-          ? "bg-amber-400"
-          : isPlayed
-          ? "bg-primary"
-          : "bg-muted-foreground/30";
-
-        // Label color
-        const labelClass = isTopAndPlayed
-          ? "text-emerald-400 font-bold"
-          : isTop
-          ? "text-amber-300 font-bold"
-          : isPlayed
-          ? "text-primary font-bold"
-          : "text-muted-foreground";
+        const actColor = ACTION_COLORS[actionKey(row.action)];
 
         return (
           <div
             key={row.action}
             className={cn(
-              "rounded-md px-2 py-1 space-y-0.5 transition-colors",
-              isTop && "bg-amber-400/8 border border-amber-400/20",
-              isTopAndPlayed && "bg-emerald-500/8 border border-emerald-500/25",
-              isPlayed && !isTop && "bg-primary/8 border border-primary/20",
-              !isTop && !isPlayed && "border border-transparent"
+              "rounded-md px-2 py-1 space-y-0.5 transition-colors border",
+              isPlayed ? "border-foreground/40 bg-foreground/5" : "border-transparent",
             )}
           >
             <div className="flex items-center gap-2">
-              {/* bar */}
+              {/* bar — cor canônica da ação */}
               <div className="flex-1 h-1.5 rounded-full bg-muted/20 overflow-hidden">
                 <div
-                  className={cn("h-full rounded-full transition-all", barClass)}
-                  style={{ width: `${pct}%` }}
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${pct}%`, background: actColor }}
                 />
               </div>
-              {/* top star */}
+              {/* top star — apenas indica ação dominante */}
               {isTop && !compact && (
                 <Star className="shrink-0 size-2.5 text-amber-400 fill-amber-400" />
               )}
-              {/* label */}
-              <span className={cn(
-                "font-mono shrink-0",
-                compact ? "text-[8px]" : "text-[9px]",
-                labelClass
-              )}>
+              {/* label colorido pela ação */}
+              <span
+                className={cn(
+                  "font-mono shrink-0",
+                  compact ? "text-[8px]" : "text-[9px]",
+                  isTopAndPlayed || isTop || isPlayed ? "font-bold" : ""
+                )}
+                style={{ color: actColor }}
+              >
                 {displayLabel}
               </span>
               {/* frequency */}
@@ -147,9 +131,9 @@ export function GtoStrategyPanel({ strategy, playedAction, compact }: Props) {
               {isPlayed && (
                 <CheckCircle2 className={cn(
                   "shrink-0",
-                  compact ? "size-2.5" : "size-3",
-                  isTopAndPlayed ? "text-emerald-400" : "text-primary"
-                )} />
+                  compact ? "size-2.5" : "size-3"
+                )}
+                style={{ color: actColor }} />
               )}
             </div>
           </div>

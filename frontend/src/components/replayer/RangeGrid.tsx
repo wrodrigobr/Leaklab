@@ -1,20 +1,20 @@
 import { cellHand, cellLabel, getHandFreq, rangeStats, RangeSet } from "@/data/ranges";
 import { cn } from "@/lib/utils";
+import { ACTION_COLORS } from "@/lib/actionColors";
 
 /**
  * RangeGrid estilo GTO Wizard — cada célula pode ter múltiplas cores
  * proporcionais à frequência de cada ação (raise / call / allin / fold).
  *
  * Layout: stripes verticais. Ex: 88 com 70% call + 30% raise → 70% da largura
- * azul + 30% verde. Folds = sem cor (cinza claro).
+ * azul + 30% verde. Folds = zinc-500 (distintivo do fundo).
  */
 
-// Cores por ação — alinhadas com convenções GW (vermelho=allin, verde=raise, azul=call)
 const COLORS = {
-  raise: '#10b981', // emerald-500
-  call:  '#3b82f6', // blue-500
-  allin: '#ef4444', // red-500
-  fold:  '#71717a', // zinc-500 — distintivo contra fundo dark
+  raise: ACTION_COLORS.raise,
+  call:  ACTION_COLORS.call,
+  allin: ACTION_COLORS.allin,
+  fold:  ACTION_COLORS.fold,
 } as const;
 
 interface Props {
