@@ -324,7 +324,7 @@ function renderSeatsAndChips(
       const heroPosT2 = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
       const isAdjT2 = !isHero && pos.dir === "bottom" && heroPosT2 !== null
                        && Math.abs(pos.y - heroPosT2.y) <= 100;
-      let t2 = isHero ? 0.46 : isSide ? 0.26 : 0.36;
+      let t2 = isHero ? 0.46 : isSide ? 0.20 : 0.36;
       if (isAdjT2) t2 = 0.42;
       // Hero: offset perpendicular horário (+28px para a direita do ponto de vista do hero).
       // Seats adjacentes ao hero (parte inferior do feltro, dir='bottom') tambem ganham
