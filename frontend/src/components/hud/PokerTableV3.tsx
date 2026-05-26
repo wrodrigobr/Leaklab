@@ -275,18 +275,17 @@ function renderSeatsAndChips(
       html += `<text x="${pos.x}" y="${by - 10}" text-anchor="middle" fill="#fbbf24" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700">💀${bStr}</text>`;
     }
 
-    // Dealer button — t mais baixo = mais perto do jogador (longe do centro).
-    // Hero e seats *adjacentes* (mesma altura do hero) usam t maior porque já
-    // estão no fundo da tela. Seats laterais distantes usam t baixo (perto do
-    // jogador, sem invadir o centro).
+    html += "</g>";  // fecha o grupo do seat (com opacity quando folded)
+    seatsHtml += html;
+
+    // Dealer button — RENDERIZADO FORA DO GRUPO COM OPACITY pra permanecer
+    // visivel quando o BTN folda. Sem opacity wrapper.
     if (isBtn) {
       const heroPosBtn = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
       const isAdjacentBtn = heroPosBtn !== null && Math.abs(pos.y - heroPosBtn.y) < 80;
       const t = isHero ? 0.32 : isAdjacentBtn ? 0.36 : 0.28;
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
-      // Hero is at bottom-center — clockwise perp goes right, clear of both cards (64px wide + gap)
-      // Other seats use counterclockwise perp (left from player's view)
       const perpSign = isHero ? -1 : 1;
       const perpDist = isHero ? 90 : 38;
       const perpX = Math.round(perpSign * (dvy / dlen) * perpDist);
@@ -295,23 +294,20 @@ function renderSeatsAndChips(
       const dbY = Math.round(pos.y + dvy * t) + perpY;
       const dRX = 20, dRY = 12, dCH = 7, dN = 4;
       const dTy = dbY, dBy2 = dbY + dCH;
-      html += `<rect x="${dbX - dRX}" y="${dTy}" width="${dRX * 2}" height="${dCH}" fill="#b4b4b4"/>`;
-      html += `<ellipse cx="${dbX}" cy="${dBy2}" rx="${dRX}" ry="${dRY}" fill="#b4b4b4"/>`;
-      html += `<ellipse cx="${dbX}" cy="${dTy}" rx="${dRX}" ry="${dRY}" fill="#f4f0ec"/>`;
+      let btnHtml = `<rect x="${dbX - dRX}" y="${dTy}" width="${dRX * 2}" height="${dCH}" fill="#b4b4b4"/>`;
+      btnHtml += `<ellipse cx="${dbX}" cy="${dBy2}" rx="${dRX}" ry="${dRY}" fill="#b4b4b4"/>`;
+      btnHtml += `<ellipse cx="${dbX}" cy="${dTy}" rx="${dRX}" ry="${dRY}" fill="#f4f0ec"/>`;
       for (let s = 0; s < dN; s++) {
         const a = (s / dN) * Math.PI * 2;
         const ex = (dbX + Math.cos(a) * (dRX - 4)).toFixed(1);
         const ey = (dTy + Math.sin(a) * (dRY - 3)).toFixed(1);
         const rot = ((a * 180 / Math.PI) + 90).toFixed(1);
-        html += `<ellipse cx="${ex}" cy="${ey}" rx="2.5" ry="1.2" fill="rgba(55,55,55,0.50)" transform="rotate(${rot},${ex},${ey})"/>`;
+        btnHtml += `<ellipse cx="${ex}" cy="${ey}" rx="2.5" ry="1.2" fill="rgba(55,55,55,0.50)" transform="rotate(${rot},${ex},${ey})"/>`;
       }
-      html += `<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX * 0.58).toFixed(1)}" ry="${(dRY * 0.58).toFixed(1)}" fill="rgba(255,255,255,0.90)"/>`;
-      html += `<path d="M0,-6 L1.42,-1.95 L5.71,-1.85 L2.29,0.74 L3.53,4.85 L0,2.4 L-3.53,4.85 L-2.29,0.74 L-5.71,-1.85 L-1.42,-1.95 Z" fill="#222" transform="translate(${dbX},${dTy})"/>`;
+      btnHtml += `<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX * 0.58).toFixed(1)}" ry="${(dRY * 0.58).toFixed(1)}" fill="rgba(255,255,255,0.90)"/>`;
+      btnHtml += `<path d="M0,-6 L1.42,-1.95 L5.71,-1.85 L2.29,0.74 L3.53,4.85 L0,2.4 L-3.53,4.85 L-2.29,0.74 L-5.71,-1.85 L-1.42,-1.95 Z" fill="#222" transform="translate(${dbX},${dTy})"/>`;
+      seatsHtml += btnHtml;
     }
-
-
-    html += "</g>";
-    seatsHtml += html;
 
     // Bet chips — na linha jogador→centro, próximas ao pod, sempre dentro do feltro.
     // No showdown, todas as bets ja foram somadas ao pot e estao fluindo pros
@@ -329,7 +325,7 @@ function renderSeatsAndChips(
       const isAdjT2 = !isHero && pos.dir === "bottom" && heroPosT2 !== null
                        && Math.abs(pos.y - heroPosT2.y) < 80;
       let t2 = isHero ? 0.46 : isSide ? 0.26 : 0.36;
-      if (isAdjT2) t2 = 0.42;
+      if (isAdjT2) t2 = 0.48;
       // Hero: offset perpendicular horário (+28px para a direita do ponto de vista do hero).
       // Seats adjacentes ao hero (parte inferior do feltro, dir='bottom') tambem ganham
       // offset perpendicular pra nao sobrepor as cartas do jogador.
@@ -347,8 +343,8 @@ function renderSeatsAndChips(
         const isAdjacentToHero = heroPos !== null && Math.abs(pos.y - heroPos.y) < 80;
         if (isAdjacentToHero) {
           const sign = pos.x < CX ? 1 : -1;
-          perpOffX = Math.round(sign * (-dvy / blen) * 10);
-          perpOffY = Math.round(sign * (dvx / blen) * 10);
+          perpOffX = Math.round(sign * (-dvy / blen) * 18);
+          perpOffY = Math.round(sign * (dvx / blen) * 18);
         }
       }
       const cx2 = Math.round(pos.x + dvx * t2) + perpOffX;
