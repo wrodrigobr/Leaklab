@@ -286,7 +286,9 @@ function renderSeatsAndChips(
       const t = isHero ? 0.32 : isAdjacentBtn ? 0.30 : 0.22;
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
-      const perpSign = isHero ? -1 : 1;
+      // perpSign: adjacent right-side seat usa -1 (up-right) pra ficar acima das
+      // cartas do jogador. Demais mantém +1 (down-left original).
+      const perpSign = isHero ? -1 : (isAdjacentBtn && pos.x > CX ? -1 : 1);
       const perpDist = isHero ? 90 : 38;
       const perpX = Math.round(perpSign * (dvy / dlen) * perpDist);
       const perpY = Math.round(perpSign * (-dvx / dlen) * perpDist);
