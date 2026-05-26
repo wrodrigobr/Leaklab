@@ -118,8 +118,10 @@ def test_stack_bucket_boundaries():
         (59.99, '35-60bb'),
         (60.0,  '60-100bb'),
         (99.99, '60-100bb'),
-        (100.0, '100bb+'),
-        (200.0, '100bb+'),
+        # Cap implícito 100bb desde 2026-05-26 — stacks >= 60bb usam mesmo bucket
+        # pra evitar bucket '100bb+' isolado com poucos nós solver pre-computados.
+        (100.0, '60-100bb'),
+        (200.0, '60-100bb'),
     ]
     for bb, expected in cases:
         result = stack_bucket(bb)

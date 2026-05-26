@@ -1,0 +1,224 @@
+"""
+test_recent_regressions.py — Regressões dos fixes da sessão 2026-05-25/26.
+
+Cobre:
+1. Tier 4 do _gto_classify_from_strategy (bet 7% → minor, não critical)
+2. _gto_label_cap (minor_deviation cap clear→small; critical floor std→small)
+3. Multiway equity adjustment (build_math_snapshot)
+4. PKO ICM pressure atenuation (_detect_icm_pressure is_pko=True)
+5. PKO required equity (calc_pressure_adjustment negativo)
+6. Stack bucket cap >100bb (stack_bucket(150) == '60-100bb')
+7. Guard facing all-in (best_action vira call/fold, não raise)
+"""
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from leaklab.decision_engine_v11 import (
+    _gto_classify_from_strategy,
+    _gto_label_cap,
+    calc_pressure_adjustment,
+    calc_adjusted_required_equity,
+)
+from leaklab.street_math_engine import build_math_snapshot
+from leaklab.models import HandState
+from leaklab.gto_utils import stack_bucket
+from leaklab.mtt_context import _detect_icm_pressure
+from leaklab.preflop_gto_ranges import analyze_preflop
+
+
+# ── 1. Tier 4 do classifier — bet com freq baixa sem ev_diff ────────────────
+def test_tier4_low_freq_no_ev_minor_deviation():
+    """played_freq=7% sem ev_diff → minor_deviation (não critical).
+    Caso real: solver Check 93% / Bet 7%. User bet matched freq da ação rara."""
+    strat = [
+        {'action': 'check', 'frequency': 0.93},
+        {'action': 'bet 1.1', 'frequency': 0.07},
+    ]
+    label, freq = _gto_classify_from_strategy('bet', strat)
+    assert label == 'gto_minor_deviation', f'expected minor_deviation, got {label}'
+    assert abs(freq - 0.07) < 0.01
+    print("OK  test_tier4_low_freq_no_ev_minor_deviation")
+
+def test_tier4_very_low_freq_critical():
+    """played_freq=1% (<3%) sem ev_diff → critical (ação fora do mix)."""
+    strat = [
+        {'action': 'check', 'frequency': 0.99},
+        {'action': 'bet',   'frequency': 0.01},
+    ]
+    label, _ = _gto_classify_from_strategy('bet', strat)
+    assert label == 'gto_critical', f'expected critical, got {label}'
+    print("OK  test_tier4_very_low_freq_critical")
+
+def test_tier4_dominant_action_correct():
+    """played_freq=60%+ → correct (Tier 1)."""
+    strat = [{'action': 'check', 'frequency': 0.70}, {'action': 'bet', 'frequency': 0.30}]
+    label, _ = _gto_classify_from_strategy('check', strat)
+    assert label == 'gto_correct'
+    print("OK  test_tier4_dominant_action_correct")
+
+
+# ── 2. _gto_label_cap — reconciliação bidirecional ──────────────────────────
+def test_cap_gto_correct_clear_mistake_to_marginal():
+    assert _gto_label_cap('clear_mistake', 'gto_correct') == 'marginal'
+    assert _gto_label_cap('small_mistake', 'gto_mixed')   == 'marginal'
+    print("OK  test_cap_gto_correct_clear_mistake_to_marginal")
+
+def test_cap_minor_deviation_caps_clear_to_small():
+    """Solver diz desvio leve — engine não pode dizer erro grave."""
+    assert _gto_label_cap('clear_mistake', 'gto_minor_deviation') == 'small_mistake'
+    assert _gto_label_cap('small_mistake', 'gto_minor_deviation') == 'small_mistake'
+    print("OK  test_cap_minor_deviation_caps_clear_to_small")
+
+def test_floor_gto_critical_promotes_standard():
+    """Solver diz erro crítico — engine não pode dar pass como standard/marginal."""
+    assert _gto_label_cap('standard', 'gto_critical') == 'small_mistake'
+    assert _gto_label_cap('marginal', 'gto_critical') == 'small_mistake'
+    # Já severo: mantém
+    assert _gto_label_cap('clear_mistake', 'gto_critical') == 'clear_mistake'
+    assert _gto_label_cap('small_mistake', 'gto_critical') == 'small_mistake'
+    print("OK  test_floor_gto_critical_promotes_standard")
+
+
+# ── 3. Multiway equity adjustment ───────────────────────────────────────────
+def _state(n_opp: int, street='flop'):
+    return HandState(
+        hand_id='x', street=street, hero='h', hero_cards='AhAd',
+        board=['7s', '2c', '9d'], player_action='check',
+        pot_size=10, facing_size=0, effective_stack_bb=20,
+        position='BTN', villain_position='SB', is_in_position=True,
+        is_multiway=n_opp > 1, actions=[],
+        metadata={'n_active_opponents': n_opp},
+    )
+
+def test_multiway_equity_hu_unchanged():
+    """HU (1 opp) — equity heurística não é ajustada."""
+    snap = build_math_snapshot(_state(1))
+    assert snap.estimated_hand_equity == 0.58  # AA postflop heurística
+    print("OK  test_multiway_equity_hu_unchanged")
+
+def test_multiway_equity_3way_decay():
+    """3-way (2 opps) → 77% do HU. AA 0.58 → ~0.45."""
+    snap = build_math_snapshot(_state(2))
+    expected = round(0.58 / (1.0 + 0.3 * 1), 4)
+    assert abs(snap.estimated_hand_equity - expected) < 0.001, \
+        f'expected {expected}, got {snap.estimated_hand_equity}'
+    print("OK  test_multiway_equity_3way_decay")
+
+def test_multiway_equity_5way_decay():
+    """5-way (4 opps) → 53% do HU."""
+    snap = build_math_snapshot(_state(4))
+    expected = round(0.58 / (1.0 + 0.3 * 3), 4)
+    assert abs(snap.estimated_hand_equity - expected) < 0.001
+    print("OK  test_multiway_equity_5way_decay")
+
+def test_multiway_preflop_not_adjusted():
+    """Preflop preservado: ranges GTO já lidam com multiway."""
+    snap = build_math_snapshot(_state(3, street='preflop'))
+    assert snap.estimated_hand_equity == 0.64  # AA preflop heurística
+    print("OK  test_multiway_preflop_not_adjusted")
+
+
+# ── 4. PKO ICM pressure ─────────────────────────────────────────────────────
+def test_pko_atenuates_pressure_pre_ft():
+    """PKO atenua 1 nível pré-final-table: high→medium, medium→low."""
+    # 9 active players, m=8 → classic medium → PKO low
+    assert _detect_icm_pressure(8, 9, is_pko=False) == 'medium'
+    assert _detect_icm_pressure(8, 9, is_pko=True)  == 'low'
+    # m=5 → classic high → PKO medium (pré-FT)
+    assert _detect_icm_pressure(5, 7, is_pko=False) == 'high'
+    assert _detect_icm_pressure(5, 7, is_pko=True)  == 'medium'
+    print("OK  test_pko_atenuates_pressure_pre_ft")
+
+def test_pko_final_table_keeps_pressure():
+    """Final table (≤3 players): PKO mantém high (bounty 'drowns' perto da bolha)."""
+    assert _detect_icm_pressure(5, 3, is_pko=True)  == 'high'
+    assert _detect_icm_pressure(5, 3, is_pko=False) == 'high'
+    print("OK  test_pko_final_table_keeps_pressure")
+
+
+# ── 5. PKO required equity ──────────────────────────────────────────────────
+def test_pko_reduces_required_equity():
+    """PKO subtrai 2pp da adjusted required equity pré-FT."""
+    adj_classic = calc_pressure_adjustment('flop', 0.4, False, 'low', is_pko=False)
+    adj_pko     = calc_pressure_adjustment('flop', 0.4, False, 'low', is_pko=True)
+    assert adj_pko == round(adj_classic - 0.02, 4), \
+        f'expected {adj_classic - 0.02}, got {adj_pko}'
+    print("OK  test_pko_reduces_required_equity")
+
+def test_pko_final_table_no_reduction():
+    """Final table high ICM: PKO NÃO reduz (bounty effect drowns)."""
+    adj = calc_pressure_adjustment('river', 0.7, False, 'high', is_pko=True)
+    # Mesmo valor que classic high
+    adj_classic = calc_pressure_adjustment('river', 0.7, False, 'high', is_pko=False)
+    assert adj == adj_classic
+    print("OK  test_pko_final_table_no_reduction")
+
+def test_adjusted_required_equity_floor_5pct():
+    """Piso de 5% pra evitar valores absurdos com PKO + pot odds muito baixos."""
+    # pot_odds 5% + adj -3% = 2% → cap em 5%
+    r = calc_adjusted_required_equity('flop', 0.05, 0.0, -0.03)
+    assert r['adjustedRequiredEquity'] >= 0.05
+    print("OK  test_adjusted_required_equity_floor_5pct")
+
+
+# ── 6. Stack bucket cap 100bb+ ──────────────────────────────────────────────
+def test_stack_bucket_cap_at_60_100():
+    """Stacks >= 60bb usam bucket único '60-100bb' (cap implícito 100bb)."""
+    assert stack_bucket(60)  == '60-100bb'
+    assert stack_bucket(90)  == '60-100bb'
+    assert stack_bucket(100) == '60-100bb'
+    assert stack_bucket(150) == '60-100bb'
+    assert stack_bucket(500) == '60-100bb'
+    print("OK  test_stack_bucket_cap_at_60_100")
+
+def test_stack_bucket_lower_brackets_intact():
+    assert stack_bucket(0)  == '0-10bb'
+    assert stack_bucket(9)  == '0-10bb'
+    assert stack_bucket(10) == '10-20bb'
+    assert stack_bucket(19) == '10-20bb'
+    assert stack_bucket(20) == '20-35bb'
+    assert stack_bucket(34) == '20-35bb'
+    assert stack_bucket(35) == '35-60bb'
+    assert stack_bucket(59) == '35-60bb'
+    print("OK  test_stack_bucket_lower_brackets_intact")
+
+
+# ── 7. vs_3bet engine routing ───────────────────────────────────────────────
+def test_vs_3bet_engine_routing():
+    """is_3bet_pot=True deve achar spot vs_3bet com hand_freq."""
+    r = analyze_preflop(
+        position='BTN', hero_hand_type='AKo', stack_bb=20,
+        action_taken='raise', facing_size=4, vs_position='SB',
+        is_3bet_pot=True, n_players=9,
+    )
+    assert r.get('available') is True, 'vs_3bet should be available'
+    assert r.get('scenario') == 'vs_3bet'
+    print("OK  test_vs_3bet_engine_routing")
+
+def test_vs_3bet_hand_freq_fold_when_out_of_range():
+    """Mão fora do range vs_3bet → hand_freq.fold=1.0 (inferido)."""
+    r = analyze_preflop(
+        position='UTG+1', hero_hand_type='72o', stack_bb=20,
+        action_taken='fold', facing_size=4, vs_position='UTG+2',
+        is_3bet_pot=True, n_players=9,
+    )
+    hf = r.get('hand_freq') or {}
+    # 72o nunca está no range de continuação vs 3-bet de EP
+    assert hf.get('fold', 0) >= 0.95, f'expected fold ~1.0, got {hf}'
+    print("OK  test_vs_3bet_hand_freq_fold_when_out_of_range")
+
+
+# ── Runner ──────────────────────────────────────────────────────────────────
+if __name__ == '__main__':
+    tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
+    passed = failed = 0
+    for t in tests:
+        try:
+            t()
+            passed += 1
+        except Exception as e:
+            print(f"FAIL {t.__name__}: {e}")
+            import traceback; traceback.print_exc()
+            failed += 1
+    print(f"\n{'='*50}")
+    print(f"Total: {passed+failed} | Passed: {passed} | Failed: {failed}")
