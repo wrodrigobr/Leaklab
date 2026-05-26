@@ -949,6 +949,50 @@ def _format_hud_stats_for_prompt(stats: dict) -> str:
     return '\n'.join(lines) + '\n'
 
 
+def _recover_truncated_plan_json(raw: str) -> str | None:
+    """Tenta recuperar JSON de study plan truncado por max_tokens.
+
+    Estrategia: localizar o ultimo '}' que esteja seguido de ',' ou ']' (= cards
+    completos), recortar ate ali e fechar o array + objeto root.
+    Retorna None se nao conseguir recuperar.
+    """
+    import re as _re
+    # Encontra todos os fechamentos '}' que parecem terminar um card
+    # (seguidos de ',' ou ']'). Pega o ultimo.
+    last_complete = -1
+    depth = 0
+    in_str = False
+    escape = False
+    for i, ch in enumerate(raw):
+        if escape:
+            escape = False
+            continue
+        if ch == '\\' and in_str:
+            escape = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            # depth 1 = dentro do array "cards", entao esse } fechou um card
+            if depth == 1:
+                last_complete = i
+    if last_complete < 0:
+        return None
+    # Recorta ate o ultimo card completo e fecha estrutura
+    fixed = raw[:last_complete + 1] + "\n  ]\n}"
+    try:
+        json.loads(fixed)
+        return fixed
+    except Exception:
+        return None
+
+
 def generate_study_plan(leaks: list, evolution: list, icm: dict,
                         hero: str = 'Jogador',
                         user_id: int | None = None,
@@ -1088,7 +1132,7 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
             },
             json={
                 'model':      'claude-haiku-4-5-20251001',
-                'max_tokens': 3500,
+                'max_tokens': 6000,
                 'messages':   [{'role': 'user', 'content': prompt}],
             },
             timeout=90,
@@ -1103,7 +1147,16 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
                 raw = raw[4:]
         raw = raw.strip()
 
-        result = json.loads(raw)
+        # Truncamento por max_tokens: tenta recuperar tentando fechar o JSON
+        # até o último card completo (último '}' seguido de virgula ou fechamento).
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError:
+            recovered = _recover_truncated_plan_json(raw)
+            if recovered:
+                result = json.loads(recovered)
+            else:
+                raise
         result['source'] = leak_source
         result_str = json.dumps(result, ensure_ascii=False)
         _cache[mem_key] = result_str
