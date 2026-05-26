@@ -146,6 +146,18 @@ export function UploadZone({ onResult }: Props) {
             </span>
           ))}
         </div>
+
+        <div className="mt-3 pt-3 border-t border-border/40 text-center">
+          <p className="text-[11px] text-muted-foreground mb-2">
+            Não tem hand history? Reconstrua manualmente uma mão (análise de vídeo, anotação, etc).
+          </p>
+          <a
+            href="/hand-builder"
+            className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-primary hover:underline"
+          >
+            Abrir Hand Builder →
+          </a>
+        </div>
       </div>
     </section>
   );
