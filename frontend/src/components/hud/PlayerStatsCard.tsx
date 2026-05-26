@@ -223,8 +223,37 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
   );
 }
 
+// Confiança estatistica baseada em volume:
+// - < 200 mãos: IC > ±10pp em VPIP/PFR — numero ainda nao se estabilizou
+// - 200-1000: IC tipico ±5pp — diretional, nao definitivo
+// - >= 1000: IC < ±3pp — confiavel para benchmarking
+function sampleConfidence(n: number): { level: "low" | "medium" | "high"; label: string; tooltip: string } {
+  if (n < 200) return {
+    level: "low",
+    label: "Amostra baixa",
+    tooltip: `${n} mãos — intervalo de confiança alto (>±10pp em VPIP/PFR). Os números aqui são DIRETIONAIS, não definitivos. Atingir 200+ mãos pra leitura confiável; 1000+ pra benchmarking.`,
+  };
+  if (n < 1000) return {
+    level: "medium",
+    label: "Amostra média",
+    tooltip: `${n} mãos — IC típico ±5pp. Tendências confiáveis mas valores absolutos ainda flutuam. Atingir 1000+ mãos pra benchmarking firme.`,
+  };
+  return {
+    level: "high",
+    label: "Amostra robusta",
+    tooltip: `${n} mãos — IC < ±3pp. Números estatisticamente confiáveis para comparação com referências.`,
+  };
+}
+
+const CONFIDENCE_CLS: Record<"low" | "medium" | "high", string> = {
+  low:    "bg-amber-500/10 text-amber-300 ring-amber-500/30",
+  medium: "bg-sky-500/10 text-sky-300 ring-sky-500/30",
+  high:   "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30",
+};
+
 export function PlayerStatsCard({ stats }: Props) {
   const { t } = useTranslation("dashboard");
+  const conf = stats && stats.total_hands > 0 ? sampleConfidence(stats.total_hands) : null;
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-hud-surface shadow-elevated">
       <div className="flex items-center justify-between border-b border-border px-6 py-3">
@@ -235,9 +264,22 @@ export function PlayerStatsCard({ stats }: Props) {
           </span>
           <HudTooltip content="Indicadores táticos do seu perfil de jogo. Row 1: VPIP, PFR, AF, C-Bet. Row 2: Fold to 3BET, WTSD, 3BET%, W$SD. Row 3: Fold vs Flop Bet (proxy FtCB), BB Defense, Steal%, Open Limp%." />
         </div>
-        <span className="font-mono text-[10px] text-primary">
-          {stats && stats.total_hands > 0 ? t("playerStats.hands", { n: stats.total_hands }) : t("playerStats.noStats")}
-        </span>
+        <div className="flex items-center gap-2">
+          {conf && (
+            <span
+              className={cn(
+                "inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide ring-1 cursor-help",
+                CONFIDENCE_CLS[conf.level]
+              )}
+              title={conf.tooltip}
+            >
+              {conf.label}
+            </span>
+          )}
+          <span className="font-mono text-[10px] text-primary">
+            {stats && stats.total_hands > 0 ? t("playerStats.hands", { n: stats.total_hands }) : t("playerStats.noStats")}
+          </span>
+        </div>
       </div>
 
       {!stats || stats.total_hands === 0 ? (
