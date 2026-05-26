@@ -325,7 +325,7 @@ function renderSeatsAndChips(
       const isAdjT2 = !isHero && pos.dir === "bottom" && heroPosT2 !== null
                        && Math.abs(pos.y - heroPosT2.y) <= 100;
       let t2 = isHero ? 0.46 : isSide ? 0.26 : 0.36;
-      if (isAdjT2) t2 = 0.72;
+      if (isAdjT2) t2 = 0.48;
       // Hero: offset perpendicular horário (+28px para a direita do ponto de vista do hero).
       // Seats adjacentes ao hero (parte inferior do feltro, dir='bottom') tambem ganham
       // offset perpendicular pra nao sobrepor as cartas do jogador.
@@ -343,8 +343,8 @@ function renderSeatsAndChips(
         const isAdjacentToHero = heroPos !== null && Math.abs(pos.y - heroPos.y) <= 100;
         if (isAdjacentToHero) {
           const sign = pos.x < CX ? 1 : -1;
-          perpOffX = Math.round(sign * (-dvy / blen) * 32);
-          perpOffY = Math.round(sign * (dvx / blen) * 32);
+          perpOffX = Math.round(sign * (-dvy / blen) * 18);
+          perpOffY = Math.round(sign * (dvx / blen) * 18);
         }
       }
       const cx2 = Math.round(pos.x + dvx * t2) + perpOffX;
