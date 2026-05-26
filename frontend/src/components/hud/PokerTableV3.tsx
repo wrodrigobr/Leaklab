@@ -291,7 +291,7 @@ function renderSeatsAndChips(
       const isAdjRightBtn = isAdjacentBtn && pos.x > CX;
       const perpSign = isHero ? -1 : isAdjRightBtn ? -1 : 1;
       // perpDist menor pra adjacent right-side — afasta menos perpendicularmente
-      const perpDist = isHero ? 90 : isAdjRightBtn ? 14 : 38;
+      const perpDist = isHero ? 90 : isAdjRightBtn ? 20 : 38;
       const perpX = Math.round(perpSign * (dvy / dlen) * perpDist);
       const perpY = Math.round(perpSign * (-dvx / dlen) * perpDist);
       const dbX = Math.round(pos.x + dvx * t) + perpX;
