@@ -500,7 +500,7 @@ function SidePanels({
                     <div className="flex h-2 rounded overflow-hidden ring-1 ring-border/30">
                       {foldPct > 0.001 && (
                         <div title={`Fold ${(foldPct*100).toFixed(1)}%`}
-                             style={{ width: `${foldPct*100}%`, background: 'rgba(120,120,120,0.25)' }} />
+                             style={{ width: `${foldPct*100}%`, background: '#71717a' }} />
                       )}
                       {callPct > 0.001 && (
                         <div title={`Call ${(callPct*100).toFixed(1)}%`}
@@ -517,8 +517,8 @@ function SidePanels({
                     </div>
                     <div className="flex items-center gap-2 flex-wrap font-mono text-[10px]">
                       {foldPct > 0.001 && (
-                        <span className="text-muted-foreground">
-                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background:'rgba(120,120,120,0.4)'}}/>Fold {(foldPct*100).toFixed(0)}%
+                        <span className="text-zinc-400">
+                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background:'#71717a'}}/>Fold {(foldPct*100).toFixed(0)}%
                         </span>
                       )}
                       {callPct > 0.001 && (

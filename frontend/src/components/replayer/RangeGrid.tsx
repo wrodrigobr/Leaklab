@@ -14,7 +14,7 @@ const COLORS = {
   raise: '#10b981', // emerald-500
   call:  '#3b82f6', // blue-500
   allin: '#ef4444', // red-500
-  fold:  'transparent',
+  fold:  '#71717a', // zinc-500 — distintivo contra fundo dark
 } as const;
 
 interface Props {
@@ -30,9 +30,9 @@ function buildGradient(hand: string, range: RangeSet): string {
   if (f.allin && f.allin > 0.001) segs.push([COLORS.allin, f.allin]);
   const totalActive = segs.reduce((a, [, v]) => a + v, 0);
   const foldPct = Math.max(0, 1 - totalActive);
-  if (foldPct > 0.001) segs.push(['rgba(120,120,120,0.10)', foldPct]); // cinza claro pra fold
+  if (foldPct > 0.001) segs.push(['rgba(113,113,122,0.35)', foldPct]); // zinc-500 transparente pra fold (cells)
 
-  if (segs.length === 0) return 'rgba(120,120,120,0.10)';
+  if (segs.length === 0) return 'rgba(113,113,122,0.35)';
   if (segs.length === 1) return segs[0][0];
 
   // Linear gradient horizontal — stripes proporcionais
@@ -115,7 +115,7 @@ export function RangeGrid({ range, heroHand }: Props) {
             </span>
           )}
           <span className="flex items-center gap-1">
-            <span className="inline-block size-2 rounded-[1px]" style={{ background: 'rgba(120,120,120,0.10)', border: '1px solid rgba(120,120,120,0.3)' }} />Fold
+            <span className="inline-block size-2 rounded-[1px]" style={{ background: 'rgba(113,113,122,0.4)', border: '1px solid #71717a' }} />Fold
           </span>
         </div>
         <span>{pct}% · {combos} combos</span>
