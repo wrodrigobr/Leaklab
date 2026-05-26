@@ -540,6 +540,21 @@ function SidePanels({
                 <span className="text-muted-foreground text-[10px]">do pot</span>
               </div>
             )}
+            {eq != null && !hasMathEvidence && (
+              <div className="flex items-center gap-2 font-mono text-[11px]"
+                title="Equity estimada da sua mão vs range provável do villain neste momento">
+                <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Equity</span>
+                <span className={cn(
+                  "font-bold tabular-nums",
+                  eq >= 0.65 ? "text-emerald-400" :
+                  eq >= 0.50 ? "text-foreground" :
+                  eq >= 0.35 ? "text-amber-400" : "text-red-400"
+                )}>{(eq * 100).toFixed(1)}%</span>
+                <span className="text-muted-foreground text-[10px]">
+                  {eq >= 0.65 ? "forte" : eq >= 0.50 ? "favorável" : eq >= 0.35 ? "marginal" : "fraca"}
+                </span>
+              </div>
+            )}
           </>
         );
 
@@ -553,7 +568,8 @@ function SidePanels({
         ) : null;
 
         const hasIndicators = showAuditPreflop ||
-                              (isPostflop && (spr != null || sizingPct != null));
+                              (isPostflop && (spr != null || sizingPct != null)) ||
+                              (eq != null && !hasMathEvidence);
 
         return (
           <DecisionCard
