@@ -319,11 +319,23 @@ function renderSeatsAndChips(
       // Hero: mais ao centro; jogadores laterais: mais próximos ao pod
       const isSide = !isHero && Math.abs(pos.x - CX) > 80;
       const t2 = isHero ? 0.46 : isSide ? 0.26 : 0.36;
-      // Hero: offset perpendicular horário (+28px para a direita do ponto de vista do hero)
-      const heroOffX = isHero ? Math.round((-dvy / blen) * 28) : 0;
-      const heroOffY = isHero ? Math.round((dvx / blen) * 28) : 0;
-      const cx2 = Math.round(pos.x + dvx * t2) + heroOffX;
-      const cy2 = Math.round(pos.y + dvy * t2) + heroOffY;
+      // Hero: offset perpendicular horário (+28px para a direita do ponto de vista do hero).
+      // Seats adjacentes ao hero (parte inferior do feltro, dir='bottom') tambem ganham
+      // offset perpendicular pra nao sobrepor as cartas do jogador.
+      // Sinal: hero usa anti-horario; vizinhos inferiores usam horario (afastam-se
+      // do centro inferior onde o hero está renderizado).
+      let perpOffX = 0, perpOffY = 0;
+      if (isHero) {
+        perpOffX = Math.round((-dvy / blen) * 28);
+        perpOffY = Math.round((dvx / blen) * 28);
+      } else if (pos.dir === "bottom") {
+        // Direção do desvio: pra fora (longe do hero centro). Sinal depende de qual lado.
+        const sign = pos.x < CX ? -1 : 1;  // esquerda: -; direita: +
+        perpOffX = Math.round(sign * (-dvy / blen) * 22);
+        perpOffY = Math.round(sign * (dvx / blen) * 22);
+      }
+      const cx2 = Math.round(pos.x + dvx * t2) + perpOffX;
+      const cy2 = Math.round(pos.y + dvy * t2) + perpOffY;
       chipsHtml += chipStackSVG(cx2, cy2, bet);
       const betStr = fmtAmt(bet, bb, unit);
       chipsHtml += `<rect x="${cx2 - 28}" y="${cy2 + 10}" width="56" height="18" rx="9" fill="rgba(0,0,0,0.80)" stroke="rgba(255,255,255,0.15)" stroke-width=".8"/>
