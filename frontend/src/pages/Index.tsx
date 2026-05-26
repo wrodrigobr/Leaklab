@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Coins, Layers, Percent, Target, GraduationCap, Brain, RotateCcw, Loader2 } from "lucide-react";
+import { Coins, Layers, Percent, Target, GraduationCap, Brain, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -41,6 +41,12 @@ const Index = () => {
   const [showLinkCoach, setShowLinkCoach]   = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !user?.onboarding_completed);
   const [showSupport, setShowSupport]       = useState(false);
+  type DashTab = "overview" | "gto" | "diagnosis";
+  const [activeTab, setActiveTab]           = useState<DashTab>(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("dashTab") : null;
+    return (saved === "gto" || saved === "diagnosis") ? saved : "overview";
+  });
+  useEffect(() => { localStorage.setItem("dashTab", activeTab); }, [activeTab]);
 
   const { data: supportCount } = useQuery({
     queryKey: ["admin-support-count"],
@@ -288,14 +294,6 @@ const Index = () => {
                     );
                   })}
                 </div>
-                <button
-                  onClick={resetLayout}
-                  title={tc("actions.resetLayout")}
-                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground ring-1 ring-border hover:text-foreground hover:ring-primary/40 transition-colors"
-                >
-                  <RotateCcw className="size-3" />
-                  {tc("actions.resetLayout")}
-                </button>
               </div>
             )}
           </div>
@@ -395,28 +393,72 @@ const Index = () => {
 
             <PlayerStatsCard stats={playerStats} />
 
-            <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-              {/* ── Main column (sortable rows) ──────────────────────────────── */}
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMainDragEnd}>
-                <SortableContext items={layout.main} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-6 lg:col-span-8">
-                    {layout.main.map((id) => (
-                      <DraggableCard key={id} id={id}>
-                        {renderMainRow(id)}
-                      </DraggableCard>
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
+            {/* ── Tabs ──────────────────────────────────────────────────────── */}
+            <section aria-label="dashboard-sections" className="space-y-6">
+              <div className="flex items-center gap-1 border-b border-border/60 overflow-x-auto">
+                {[
+                  { id: "overview"  as DashTab, label: t("tabs.overview")  || "Visão Geral" },
+                  { id: "gto"       as DashTab, label: t("tabs.gto")        || "Análise GTO" },
+                  { id: "diagnosis" as DashTab, label: t("tabs.diagnosis")  || "Diagnóstico" },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest-2 transition-colors border-b-2 -mb-px ${
+                      activeTab === tab.id
+                        ? "text-primary border-primary"
+                        : "text-muted-foreground border-transparent hover:text-foreground"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-              {/* ── Sidebar (sortable cards) ─────────────────────────────────── */}
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSidebarDragEnd}>
-                <SortableContext items={layout.sidebar} strategy={verticalListSortingStrategy}>
-                  <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
-                    {layout.sidebar.map(renderSidebarCard)}
-                  </aside>
-                </SortableContext>
-              </DndContext>
+              {/* Visão Geral — bankroll + leaks + insights de ação */}
+              {activeTab === "overview" && (
+                <div className="space-y-6">
+                  <BankrollChart />
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+                    <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />
+                    <PlayerDnaCard data={dnaData} />
+                  </div>
+                </div>
+              )}
+
+              {/* Análise GTO — quality + alignments + matrix */}
+              {activeTab === "gto" && (
+                <div className="space-y-6">
+                  <GtoQualityCard data={gtoQualityData} pendingGto={pendingGto} />
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+                    <GtoAlignmentCard data={gtoAlignmentData} pendingGto={pendingGto} />
+                    <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />
+                  </div>
+                  <GtoAlignmentMatrixCard data={gtoMatrixData} />
+                </div>
+              )}
+
+              {/* Diagnóstico — comportamento, evolução, ICM, padrões */}
+              {activeTab === "diagnosis" && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+                    <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} />
+                    <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />
+                  </div>
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+                    <PressureProfileCard data={pressureData} />
+                    <IcmBreakdown icm={evo?.icm} />
+                  </div>
+                  <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />
+                  {leakGraph && leakGraph.nodes.length >= 3 && (
+                    <LeakCausalMap
+                      nodes={leakGraph.nodes}
+                      edges={leakGraph.edges}
+                      narrative={leakGraph.narrative}
+                    />
+                  )}
+                </div>
+              )}
             </section>
           </>
         )}

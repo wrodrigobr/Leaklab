@@ -1,6 +1,11 @@
 {
   "eyebrow": "Session synced",
   "eyebrowEmpty": "Import tournaments to get started",
+  "tabs": {
+    "overview": "Overview",
+    "gto": "GTO Analysis",
+    "diagnosis": "Diagnosis"
+  },
   "title": "Dashboard",
   "titleDefault": "Dashboard",
   "subtitle": "Monitor performance, review leaks, and track your technical evolution tournament by tournament.",

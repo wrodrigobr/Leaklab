@@ -1,6 +1,11 @@
 {
   "eyebrow": "Sessão sincronizada",
   "eyebrowEmpty": "Importe torneios para começar",
+  "tabs": {
+    "overview": "Visão Geral",
+    "gto": "Análise GTO",
+    "diagnosis": "Diagnóstico"
+  },
   "title": "Dashboard",
   "titleDefault": "Dashboard",
   "subtitle": "Monitore performance, revise leaks e acompanhe sua evolução técnica torneio a torneio.",
