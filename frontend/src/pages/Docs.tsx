@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight } from "lucide-react";
 
-const SECTION_IDS = ["scoring", "indicators", "gto_method", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
+const SECTION_IDS = ["scoring", "indicators", "gto_method", "alignment_matrix", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -257,6 +257,35 @@ export default function Docs() {
               />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p3") }} />
+            </Section>
+
+            {/* Alignment Matrix (Heatmap posição × street) */}
+            <Section id="alignment_matrix" title={t("alignment_matrix.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("alignment_matrix.p1") }} />
+              <Table
+                headers={[t("alignment_matrix.col_color"), t("alignment_matrix.col_pct"), t("alignment_matrix.col_meaning")]}
+                rows={[
+                  [<Badge color="bg-emerald-500/20 text-emerald-300">{t("alignment_matrix.bucket_strong")}</Badge>, "≥ 70%",   t("alignment_matrix.meaning_strong")],
+                  [<Badge color="bg-amber-500/20 text-amber-300">{t("alignment_matrix.bucket_ok")}</Badge>,         "55–70%", t("alignment_matrix.meaning_ok")],
+                  [<Badge color="bg-orange-500/20 text-orange-300">{t("alignment_matrix.bucket_weak")}</Badge>,     "40–55%", t("alignment_matrix.meaning_weak")],
+                  [<Badge color="bg-red-500/20 text-red-300">{t("alignment_matrix.bucket_leak")}</Badge>,           "< 40%",  t("alignment_matrix.meaning_leak")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("alignment_matrix.p2") }} />
+            </Section>
+
+            {/* PKO Tournaments */}
+            <Section id="pko_tournaments" title={t("pko_tournaments.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("pko_tournaments.p1") }} />
+              <Table
+                headers={[t("pko_tournaments.col_situation"), t("pko_tournaments.col_classic"), t("pko_tournaments.col_pko")]}
+                rows={[
+                  [t("pko_tournaments.row_required"),  "~14%", "~6% (−2pp aplicado)"],
+                  [t("pko_tournaments.row_pre_ft"),    "high → medium → low", t("pko_tournaments.pre_ft_pko")],
+                  [t("pko_tournaments.row_final"),     t("pko_tournaments.final_classic"), t("pko_tournaments.final_pko")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("pko_tournaments.p2") }} />
             </Section>
 
             {/* M-Ratio Phases */}
