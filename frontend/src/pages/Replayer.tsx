@@ -1364,7 +1364,16 @@ const Replayer = () => {
             </div>
           ) : <div />}
 
-          <div />
+          <div className="flex items-center justify-end">
+            {replayData?.is_pko && (
+              <span
+                className="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ring-1 ring-amber-500/30 text-amber-300"
+                title="Progressive Knockout (PKO) — torneio com bounties. Ranges e thresholds GTO específicos podem divergir do MTT clássico."
+              >
+                PKO
+              </span>
+            )}
+          </div>
         </div>
 
         {/* ── Main row: table (flex-1) + side panel (w-72, desktop only) ── */}

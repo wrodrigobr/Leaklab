@@ -26,6 +26,7 @@ class ParsedHand:
     actions: List[ParsedAction] = field(default_factory=list)
     raw_text: str = ""
     bounties: Dict[str, float] = field(default_factory=dict)   # player -> bounty value
+    is_pko:   bool = False                                     # PKO/Bounty tournament flag
 
 
 @dataclass

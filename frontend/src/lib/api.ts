@@ -330,6 +330,7 @@ export interface ReplayData {
   bb: number;
   seats: Record<string, { player: string; stack: number; pos: string; bounty?: number }>;
   is_bounty?: boolean;
+  is_pko?: boolean;
   timeline: ReplayStep[];
   coach_annotations?: Record<string, CoachAnnotation>;
 }

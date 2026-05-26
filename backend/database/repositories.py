@@ -211,7 +211,8 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
                     prize: float | None = None,
                     profit: float | None = None,
                     raw_text: str | None = None,
-                    tournament_name: str | None = None) -> int:
+                    tournament_name: str | None = None,
+                    is_pko: bool = False) -> int:
     conn = get_conn()
     lp = metrics.get('label_pct', {})
     try:
@@ -221,8 +222,8 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
               (user_id, tournament_id, site, tournament_name, hero, played_at, imported_at,
                hands_count, decisions_count, avg_score,
                standard_pct, marginal_pct, small_pct, clear_pct,
-               result, place, buy_in, prize, profit, raw_text)
-            VALUES (?,?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?,?,?,?,?)
+               result, place, buy_in, prize, profit, raw_text, is_pko)
+            VALUES (?,?,?,?,?,?,datetime('now'),?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(user_id, tournament_id) DO UPDATE SET
               imported_at    = datetime('now'),
               tournament_name= excluded.tournament_name,
@@ -238,7 +239,8 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
               buy_in         = excluded.buy_in,
               prize          = excluded.prize,
               profit         = excluded.profit,
-              raw_text       = excluded.raw_text
+              raw_text       = excluded.raw_text,
+              is_pko         = excluded.is_pko
         """, (
             user_id, tournament_id, site, tournament_name, hero, played_at,
             metrics.get('total_hands', 0),
@@ -246,7 +248,7 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
             metrics.get('avg_mistake_score'),
             lp.get('standard'), lp.get('marginal'),
             lp.get('small_mistake'), lp.get('clear_mistake'),
-            result, place, buy_in, prize, profit, raw_text,
+            result, place, buy_in, prize, profit, raw_text, is_pko,
         ))
         conn.commit()
         # Buscar o ID (seja novo ou existente) — SELECT separado

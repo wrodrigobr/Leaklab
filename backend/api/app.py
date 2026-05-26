@@ -501,6 +501,7 @@ def _analyze_impl():
         profit=financials.get('profit'),
         raw_text=raw_full,
         tournament_name=t_name,
+        is_pko=any(getattr(h, 'is_pko', False) for h in hands) if hands else False,
     )
     save_decisions(t_db_id, results)
     try:
@@ -3115,6 +3116,9 @@ def get_replay(tournament_id, hand_id):
         }
     else:
         replay['coach_annotations'] = {}
+
+    # PKO flag — frontend mostra badge no header do Replayer.
+    replay['is_pko'] = bool(t.get('is_pko'))
 
     return jsonify(replay)
 

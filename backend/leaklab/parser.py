@@ -35,6 +35,12 @@ SEAT_BOUNTY_GG_RE = re.compile(
 BOUNTY_WIN_RE = re.compile(
     r"^(.+?) wins \$([0-9.]+) bounty for eliminating (.+)", re.IGNORECASE
 )
+# Deteccao PKO via header (caso bounties no seat nao estejam visiveis):
+# 3-tier buyin "$0.45+$0.45+$0.10" (buyin + bounty + rake)
+PKO_3TIER_RE = re.compile(r"\$[0-9.]+\+\$[0-9.]+\+\$[0-9.]+")
+PKO_KEYWORD_RE = re.compile(
+    r"\b(progressive|knockout|bounty\b|\bKO|PKO)\b", re.IGNORECASE
+)
 
 
 def _detect_site(text: str) -> str:
@@ -141,6 +147,16 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
                 raw=line,
             ))
 
+    # Deteccao PKO: bounty visivel em seat OU header com 3-tier buyin OU palavra-chave
+    is_pko = bool(bounties)
+    if not is_pko:
+        header = raw_text[:300]
+        # PokerStars: $0.45+$0.45+$0.10 (buyin + bounty + rake)
+        if PKO_3TIER_RE.search(header):
+            is_pko = True
+        elif PKO_KEYWORD_RE.search(header):
+            is_pko = True
+
     return ParsedHand(
         hand_id=hand_id or "unknown",
         tournament_id=tourn_id,
@@ -154,6 +170,7 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
         actions=actions,
         raw_text=raw_text,
         bounties=bounties,
+        is_pko=is_pko,
     )
 
 
