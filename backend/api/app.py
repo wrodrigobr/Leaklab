@@ -2969,6 +2969,34 @@ def reset_my_data():
         conn.close()
 
 
+# In-memory cache do replay por (tid_db, hand_id, user_id).
+# `_build_replay_data` re-roda engine + preflop GTO + strategy lookup por step —
+# pesado (300-1500ms). TTL curto (5min) cobre uma sessao de review sem ficar
+# stale entre sessoes. Limit 256 entradas evita memory leak em prod.
+_REPLAY_CACHE: dict = {}
+_REPLAY_CACHE_LOCK = threading.Lock()
+_REPLAY_CACHE_TTL = 300  # 5 min
+_REPLAY_CACHE_MAX = 256
+
+def _replay_cache_get(key):
+    with _REPLAY_CACHE_LOCK:
+        entry = _REPLAY_CACHE.get(key)
+        if not entry:
+            return None
+        if time.time() - entry['ts'] > _REPLAY_CACHE_TTL:
+            _REPLAY_CACHE.pop(key, None)
+            return None
+        return entry['data']
+
+def _replay_cache_set(key, data):
+    with _REPLAY_CACHE_LOCK:
+        if len(_REPLAY_CACHE) >= _REPLAY_CACHE_MAX:
+            # Evict mais antigo
+            oldest = min(_REPLAY_CACHE.items(), key=lambda kv: kv[1]['ts'])
+            _REPLAY_CACHE.pop(oldest[0], None)
+        _REPLAY_CACHE[key] = {'ts': time.time(), 'data': data}
+
+
 @app.route('/replay/<tournament_id>/<hand_id>', methods=['GET'])
 @require_auth
 def get_replay(tournament_id, hand_id):
@@ -2982,6 +3010,26 @@ def get_replay(tournament_id, hand_id):
         t = get_tournament(g.user_id, tournament_id)
     if not t:
         return jsonify({'error': 'Torneio não encontrado'}), 404
+
+    # Cache hit pelo replay pesado (sem coach_annotations — essas sao leves e por user)
+    _cache_key = (t['id'], str(hand_id), g.user_id)
+    cached_replay = _replay_cache_get(_cache_key)
+    if cached_replay is not None:
+        replay = dict(cached_replay)  # shallow copy pra adicionar anotações
+        # Re-fetch coach_annotations (rapido, e podem ter sido editadas)
+        db_decisions = get_decisions(t['id'])
+        hand_db_decisions = [d for d in db_decisions if str(d.get('hand_id')) == str(hand_id)]
+        if hand_db_decisions:
+            ann_list = get_annotations_for_decisions([d['id'] for d in hand_db_decisions])
+            ann_map = {str(a['decision_id']): a for a in ann_list}
+            replay['coach_annotations'] = {
+                str(d['id']): {**ann_map[str(d['id'])],
+                               'street': d.get('street'), 'action_taken': d.get('action_taken')}
+                for d in hand_db_decisions if str(d['id']) in ann_map
+            }
+        else:
+            replay['coach_annotations'] = {}
+        return jsonify(replay)
 
     raw_text = t.get('raw_text')
     if not raw_text:
@@ -3040,10 +3088,11 @@ def get_replay(tournament_id, hand_id):
         # Fallback para dados do banco se engine falhar
         hand_decisions = _db_hand
 
-    # Construir replay data
+    # Construir replay data (parte pesada — vai pro cache)
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
+    _replay_cache_set(_cache_key, dict(replay))
 
-    # Incluir anotações do coach para o aluno visualizar no replay
+    # Incluir anotações do coach para o aluno visualizar no replay (rapido, fora do cache)
     db_decisions = get_decisions(t['id'])
     hand_db_decisions = [d for d in db_decisions if str(d.get('hand_id')) == str(hand_id)]
     if hand_db_decisions:

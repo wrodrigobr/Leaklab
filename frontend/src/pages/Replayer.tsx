@@ -918,6 +918,39 @@ function SidePanels({
 
 // ── Replayer ──────────────────────────────────────────────────────────────────
 
+// Module-scoped cache de replays (sobrevive re-renders). Chave: `t|h|student?`.
+// TTL 5 min — alinhado com backend cache. Permite prefetch da próxima mão em
+// background pra navegação fluida durante review de torneio.
+type ReplayCacheEntry = { ts: number; data: ReplayData };
+const REPLAY_CACHE = new Map<string, ReplayCacheEntry>();
+const REPLAY_CACHE_TTL = 5 * 60 * 1000;
+const REPLAY_CACHE_MAX = 64;
+
+function replayCacheKey(t: string, h: string, student: number | null): string {
+  return `${t}|${h}|${student ?? ""}`;
+}
+
+function replayCacheGet(key: string): ReplayData | null {
+  const e = REPLAY_CACHE.get(key);
+  if (!e) return null;
+  if (Date.now() - e.ts > REPLAY_CACHE_TTL) {
+    REPLAY_CACHE.delete(key);
+    return null;
+  }
+  return e.data;
+}
+
+function replayCacheSet(key: string, data: ReplayData) {
+  if (REPLAY_CACHE.size >= REPLAY_CACHE_MAX) {
+    // Evict mais antigo
+    let oldestKey: string | null = null;
+    let oldestTs = Infinity;
+    REPLAY_CACHE.forEach((v, k) => { if (v.ts < oldestTs) { oldestTs = v.ts; oldestKey = k; } });
+    if (oldestKey) REPLAY_CACHE.delete(oldestKey);
+  }
+  REPLAY_CACHE.set(key, { ts: Date.now(), data });
+}
+
 const Replayer = () => {
   const [params]   = useSearchParams();
   const navigate   = useNavigate();
@@ -952,12 +985,40 @@ const Replayer = () => {
 
   useEffect(() => {
     if (!tournamentId || !handId) return;
-    setLoading(true);
     setError("");
     setStepIdx(0);
     setPlaying(false);
     setGtoRequestStatus("idle");
 
+    // Cache hit local: zero latência percebida
+    const cacheKey = replayCacheKey(tournamentId, handId, studentId);
+    const cached = replayCacheGet(cacheKey);
+    if (cached) {
+      setReplayData(cached);
+      setLoading(false);
+      // Ainda precisa do tournament data se nao tem (primeiro load)
+      if (handList.length === 0) {
+        const tournamentFn = studentId
+          ? coachDashboard.studentTournament(studentId, tournamentId)
+              .then((r) => ({ decisions: r.decisions }))
+              .catch(() => null)
+          : tournamentsApi.get(tournamentId).catch(() => null);
+        tournamentFn.then((tournamentData) => {
+          if (tournamentData) {
+            const seen = new Set<string>();
+            const ids: string[] = [];
+            tournamentData.decisions.forEach((d) => {
+              if (d.hand_id && !seen.has(d.hand_id)) { seen.add(d.hand_id); ids.push(d.hand_id); }
+            });
+            setHandList(ids);
+            setDecisions(tournamentData.decisions);
+          }
+        });
+      }
+      return;
+    }
+
+    setLoading(true);
     const replayFn = studentId
       ? coachDashboard.studentReplay(studentId, tournamentId, handId)
       : tournamentsApi.replay(tournamentId, handId);
@@ -971,6 +1032,7 @@ const Replayer = () => {
     Promise.all([replayFn, tournamentFn])
       .then(([replay, tournamentData]) => {
         setReplayData(replay);
+        replayCacheSet(cacheKey, replay);
         if (tournamentData) {
           const seen = new Set<string>();
           const ids: string[] = [];
@@ -984,6 +1046,25 @@ const Replayer = () => {
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao carregar replay"))
       .finally(() => setLoading(false));
   }, [tournamentId, handId, studentId]);
+
+  // Prefetch das mãos adjacentes (próxima + anterior) em background.
+  // Dispara quando handList chega; cada uma só se ainda não está no cache.
+  useEffect(() => {
+    if (!tournamentId || handList.length === 0) return;
+    const idx = handList.indexOf(handId);
+    if (idx < 0) return;
+    const toPrefetch: string[] = [];
+    if (idx + 1 < handList.length) toPrefetch.push(handList[idx + 1]);
+    if (idx - 1 >= 0)               toPrefetch.push(handList[idx - 1]);
+    toPrefetch.forEach((h) => {
+      const k = replayCacheKey(tournamentId, h, studentId);
+      if (replayCacheGet(k)) return;
+      const fn = studentId
+        ? coachDashboard.studentReplay(studentId, tournamentId, h)
+        : tournamentsApi.replay(tournamentId, h);
+      fn.then((replay) => replayCacheSet(k, replay)).catch(() => {});
+    });
+  }, [tournamentId, handId, studentId, handList]);
 
   const steps = replayData?.timeline ?? [];
   const step  = steps[stepIdx] as ReplayStep | undefined;
