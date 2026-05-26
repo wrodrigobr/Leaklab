@@ -329,8 +329,9 @@ function renderSeatsAndChips(
         perpOffX = Math.round((-dvy / blen) * 28);
         perpOffY = Math.round((dvx / blen) * 28);
       } else if (pos.dir === "bottom") {
-        // Direção do desvio: pra fora (longe do hero centro). Sinal depende de qual lado.
-        const sign = pos.x < CX ? -1 : 1;  // esquerda: -; direita: +
+        // Direção do desvio: pra dentro do feltro (em direção ao centro), longe das
+        // cartas do próprio jogador. Right-side seat: vai pra esquerda; left-side: direita.
+        const sign = pos.x < CX ? 1 : -1;  // invertido pra mover em direção ao centro
         perpOffX = Math.round(sign * (-dvy / blen) * 22);
         perpOffY = Math.round(sign * (dvx / blen) * 22);
       }
