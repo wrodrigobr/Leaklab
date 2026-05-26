@@ -540,7 +540,7 @@ function SidePanels({
                 <span className="text-muted-foreground text-[10px]">do pot</span>
               </div>
             )}
-            {eq != null && !hasMathEvidence && (
+            {eq != null && (
               <div className="flex items-center gap-2 font-mono text-[11px]"
                 title="Equity estimada da sua mão vs range provável do villain neste momento">
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Equity</span>
@@ -569,7 +569,7 @@ function SidePanels({
 
         const hasIndicators = showAuditPreflop ||
                               (isPostflop && (spr != null || sizingPct != null)) ||
-                              (eq != null && !hasMathEvidence);
+                              eq != null;
 
         return (
           <DecisionCard
