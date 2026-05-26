@@ -81,47 +81,31 @@ def test_stripe_key_configured():
     print(f"OK  test_stripe_key_configured | key={key[:20]}...")
 
 def test_stripe_prices_configured():
-    """Verifica que os Price IDs estão configurados."""
-    starter = os.environ.get("STRIPE_PRICE_STARTER", "")
-    pro     = os.environ.get("STRIPE_PRICE_PRO", "")
-    assert starter.startswith("price_"), f"STRIPE_PRICE_STARTER inválido: {starter}"
-    assert pro.startswith("price_"),     f"STRIPE_PRICE_PRO inválido: {pro}"
-    print(f"OK  test_stripe_prices_configured | starter={starter} pro={pro}")
+    """Verifica que o Price ID do Pro está configurado."""
+    pro = os.environ.get("STRIPE_PRICE_PRO", "")
+    assert pro.startswith("price_"), f"STRIPE_PRICE_PRO inválido: {pro}"
+    print(f"OK  test_stripe_prices_configured | pro={pro}")
 
 # ── Gateway direto ───────────────────────────────────────────────────────────
 
-def test_gateway_create_payment_intent_starter():
-    """create_subscription cria PaymentIntent real no Stripe e retorna client_secret."""
-    from leaklab.stripe_gateway import create_subscription
-    result = create_subscription(
-        plan_name="starter",
-        payer_email="test@integration.test",
-        user_id=99999,
-    )
-    assert result["subscription_id"].startswith("pi_"), \
-        f"subscription_id deveria ser pi_xxx, got: {result['subscription_id']}"
-    assert result["client_secret"], "client_secret vazio"
-    assert "_secret_" in result["client_secret"], \
-        f"client_secret inválido: {result['client_secret'][:30]}"
-    print(f"OK  test_gateway_create_payment_intent_starter | pi={result['subscription_id']}")
-    return result["subscription_id"]
-
 def test_gateway_create_payment_intent_pro():
-    """create_subscription funciona para plano pro."""
+    """create_subscription cria PaymentIntent real no Stripe e retorna client_secret."""
     from leaklab.stripe_gateway import create_subscription
     result = create_subscription(
         plan_name="pro",
         payer_email="test@integration.test",
         user_id=99998,
     )
-    assert result["subscription_id"].startswith("pi_")
+    assert result["subscription_id"].startswith("pi_"), \
+        f"subscription_id deveria ser pi_xxx, got: {result['subscription_id']}"
+    assert result["client_secret"], "client_secret vazio"
     assert "_secret_" in result["client_secret"]
     print(f"OK  test_gateway_create_payment_intent_pro | pi={result['subscription_id']}")
 
 def test_gateway_get_payment_returns_dict():
     """get_payment retorna dict (não StripeObject) com campo status."""
     from leaklab.stripe_gateway import create_subscription, get_payment
-    pi_id = create_subscription("starter", "test@integration.test", 99997)["subscription_id"]
+    pi_id = create_subscription("pro", "test@integration.test", 99997)["subscription_id"]
     pi = get_payment(pi_id)
     assert isinstance(pi, dict), f"get_payment deveria retornar dict, got {type(pi)}"
     assert "status" in pi, f"campo status ausente: {list(pi.keys())[:10]}"
@@ -131,7 +115,7 @@ def test_gateway_get_payment_returns_dict():
 def test_gateway_confirm_and_get_succeeded():
     """Confirma PaymentIntent com pm_card_visa e verifica status=succeeded."""
     from leaklab.stripe_gateway import create_subscription, get_payment
-    pi_id = create_subscription("starter", "test@integration.test", 99996)["subscription_id"]
+    pi_id = create_subscription("pro", "test@integration.test", 99996)["subscription_id"]
 
     # Confirma com cartão de teste do Stripe (sempre aprova)
     _stripe.PaymentIntent.confirm(
@@ -151,7 +135,7 @@ def test_endpoint_checkout_returns_client_secret():
     """POST /subscription/checkout retorna client_secret e subscription_id reais."""
     c = _make_client()
     token, _ = _register_and_login(c, '1')
-    r = c.post('/subscription/checkout', json={'plan': 'starter'}, headers=_auth(token))
+    r = c.post('/subscription/checkout', json={'plan': 'pro'}, headers=_auth(token))
     assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_data(as_text=True)}"
     data = r.get_json()
     assert data.get('client_secret'), "client_secret ausente"
@@ -159,6 +143,15 @@ def test_endpoint_checkout_returns_client_secret():
         f"subscription_id inválido: {data.get('subscription_id')}"
     print(f"OK  test_endpoint_checkout_returns_client_secret | pi={data['subscription_id']}")
     return data
+
+def test_endpoint_checkout_rejects_invalid_plan():
+    """POST /subscription/checkout com plan=free ou plan=starter retorna 400."""
+    c = _make_client()
+    token, _ = _register_and_login(c, '4')
+    for bad_plan in ('free', 'starter', 'random'):
+        r = c.post('/subscription/checkout', json={'plan': bad_plan}, headers=_auth(token))
+        assert r.status_code == 400, f"Esperado 400 para plan={bad_plan}, got {r.status_code}"
+    print("OK  test_endpoint_checkout_rejects_invalid_plan")
 
 # ── Endpoint /subscription/activate ─────────────────────────────────────────
 
@@ -202,12 +195,12 @@ def test_endpoint_activate_rejects_unconfirmed_pi():
     c = _make_client()
     token, _ = _register_and_login(c, '3')
 
-    r = c.post('/subscription/checkout', json={'plan': 'starter'}, headers=_auth(token))
+    r = c.post('/subscription/checkout', json={'plan': 'pro'}, headers=_auth(token))
     pi_id = r.get_json()['subscription_id']
 
     # Tenta ativar SEM confirmar o PI
     r = c.post('/subscription/activate',
-               json={'plan': 'starter', 'payment_intent_id': pi_id, 'subscription_id': pi_id},
+               json={'plan': 'pro', 'payment_intent_id': pi_id, 'subscription_id': pi_id},
                headers=_auth(token))
     assert r.status_code == 400, f"Deveria rejeitar PI não confirmado, got {r.status_code}"
     print(f"OK  test_endpoint_activate_rejects_unconfirmed_pi | status={r.status_code}")

@@ -3913,8 +3913,8 @@ def subscription_activate():
     payment_intent_id = data.get('payment_intent_id')
     subscription_id   = data.get('subscription_id')
 
-    if plan not in ('starter', 'pro'):
-        return jsonify({'error': 'Plano inválido'}), 400
+    if plan != 'pro':
+        return jsonify({'error': 'Plano inválido. Use pro.'}), 400
     if not payment_intent_id or not subscription_id:
         return jsonify({'error': 'payment_intent_id e subscription_id obrigatórios'}), 400
 

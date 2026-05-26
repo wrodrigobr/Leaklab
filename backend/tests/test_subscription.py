@@ -78,7 +78,7 @@ def _mock_pi(pi_id='pi_TEST001', status='succeeded'):
 
 def test_checkout_requires_auth():
     c = _make_client()
-    r = c.post('/subscription/checkout', json={'plan': 'starter'})
+    r = c.post('/subscription/checkout', json={'plan': 'pro'})
     assert r.status_code == 401, f"Expected 401, got {r.status_code}"
     print("OK  test_checkout_requires_auth")
 
@@ -99,17 +99,22 @@ def test_checkout_invalid_plan():
     print("OK  test_checkout_invalid_plan")
 
 
-def test_checkout_starter_returns_client_secret():
+def test_checkout_rejects_starter_plan():
+    """Plano starter foi removido em 2026-05-26 — esperado 400."""
     c = _make_client()
     token = _register_and_login(c, 'cs1')
-    with patch('api.app.create_subscription', return_value=_mock_checkout('sub_S', 'pi_s_cs')) as mock:
-        r = c.post('/subscription/checkout', json={'plan': 'starter'}, headers=_auth(token))
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_data(as_text=True)}"
-    data = r.get_json()
-    assert data.get('client_secret') == 'pi_s_cs'
-    assert data.get('subscription_id') == 'sub_S'
-    mock.assert_called_once()
-    print(f"OK  test_checkout_starter_returns_client_secret")
+    r = c.post('/subscription/checkout', json={'plan': 'starter'}, headers=_auth(token))
+    assert r.status_code == 400, f"Expected 400, got {r.status_code}"
+    print("OK  test_checkout_rejects_starter_plan")
+
+
+def test_checkout_rejects_free_plan():
+    """Plan='free' deve ser rejeitado pelo checkout (nao se assina o free)."""
+    c = _make_client()
+    token = _register_and_login(c, 'cs1f')
+    r = c.post('/subscription/checkout', json={'plan': 'free'}, headers=_auth(token))
+    assert r.status_code == 400
+    print("OK  test_checkout_rejects_free_plan")
 
 
 def test_checkout_pro_returns_client_secret():
@@ -126,7 +131,7 @@ def test_checkout_stripe_error_returns_502():
     c = _make_client()
     token = _register_and_login(c, 'err1')
     with patch('api.app.create_subscription', side_effect=Exception("Stripe config error")):
-        r = c.post('/subscription/checkout', json={'plan': 'starter'}, headers=_auth(token))
+        r = c.post('/subscription/checkout', json={'plan': 'pro'}, headers=_auth(token))
     assert r.status_code == 502
     assert 'error' in r.get_json()
     print("OK  test_checkout_stripe_error_returns_502")
@@ -148,7 +153,7 @@ def test_checkout_no_plan_update_before_activate():
 def test_activate_requires_auth():
     c = _make_client()
     r = c.post('/subscription/activate',
-               json={'plan': 'starter', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'})
+               json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'})
     assert r.status_code == 401
     print("OK  test_activate_requires_auth")
 
@@ -166,7 +171,7 @@ def test_activate_invalid_plan():
 def test_activate_missing_fields():
     c = _make_client()
     token = _register_and_login(c, 'act2')
-    r = c.post('/subscription/activate', json={'plan': 'starter'}, headers=_auth(token))
+    r = c.post('/subscription/activate', json={'plan': 'pro'}, headers=_auth(token))
     assert r.status_code == 400
     print("OK  test_activate_missing_fields")
 
@@ -177,7 +182,7 @@ def test_activate_payment_not_succeeded():
     token = _register_and_login(c, 'act3')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_x', 'requires_payment_method')):
         r = c.post('/subscription/activate',
-                   json={'plan': 'starter', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'},
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'},
                    headers=_auth(token))
     assert r.status_code == 400
     print("OK  test_activate_payment_not_succeeded")
@@ -194,18 +199,16 @@ def test_activate_payment_not_found():
     print("OK  test_activate_payment_not_found")
 
 
-def test_activate_starter_success():
+def test_activate_rejects_starter_plan():
+    """Plano starter foi removido em 2026-05-26 — activate retorna 400."""
     c = _make_client()
     token = _register_and_login(c, 'act5')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_ok', 'succeeded')):
         r = c.post('/subscription/activate',
                    json={'plan': 'starter', 'payment_intent_id': 'pi_ok', 'subscription_id': 'sub_ok'},
                    headers=_auth(token))
-    assert r.status_code == 200, f"Expected 200: {r.get_data(as_text=True)}"
-    data = r.get_json()
-    assert data.get('ok') is True
-    assert data.get('plan') == 'starter'
-    print(f"OK  test_activate_starter_success | plan={data['plan']}")
+    assert r.status_code == 400, f"Expected 400, got {r.status_code}"
+    print("OK  test_activate_rejects_starter_plan")
 
 
 def test_activate_pro_success():
@@ -239,7 +242,7 @@ def test_activate_processing_status_accepted():
     token = _register_and_login(c, 'proc')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_proc', 'processing')):
         r = c.post('/subscription/activate',
-                   json={'plan': 'starter', 'payment_intent_id': 'pi_proc', 'subscription_id': 'sub_proc'},
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_proc', 'subscription_id': 'sub_proc'},
                    headers=_auth(token))
     assert r.status_code == 200
     print("OK  test_activate_processing_status_accepted")
@@ -269,12 +272,12 @@ def test_invoices_after_activation():
     token = _register_and_login(c, 'invpay')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_inv', 'succeeded')):
         c.post('/subscription/activate',
-               json={'plan': 'starter', 'payment_intent_id': 'pi_inv', 'subscription_id': 'sub_inv'},
+               json={'plan': 'pro', 'payment_intent_id': 'pi_inv', 'subscription_id': 'sub_inv'},
                headers=_auth(token))
     r = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'})
     data = r.get_json()
     assert len(data['invoices']) >= 1
-    assert data['invoices'][0].get('plan') == 'starter'
+    assert data['invoices'][0].get('plan') == 'pro'
     print(f"OK  test_invoices_after_activation | count={len(data['invoices'])}")
 
 
