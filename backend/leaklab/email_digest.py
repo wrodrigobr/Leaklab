@@ -56,11 +56,15 @@ def build_digest_data(user_id: int) -> Optional[dict]:
     """Monta o conjunto de dados para o digest. Retorna None se sem dados."""
     try:
         from database.repositories import (
-            get_evolution_metrics, get_leak_roi_impact,
+            get_evolution_metrics, get_leak_ranking_gto_first,
             get_drill_spots, get_drill_stats,
         )
         evo = get_evolution_metrics(user_id, days=7)
-        leaks = get_leak_roi_impact(user_id, days=30)
+        # Leak digest GTO-first: prefere ranking baseado em gto_label (critical/minor),
+        # fallback heuristico apenas se sem cobertura GTO. Alinhado com /player/leak-roi.
+        leak_data = get_leak_ranking_gto_first(user_id, days=30)
+        leaks = leak_data['leaks']
+        leak_source = leak_data['source']
         spots = get_drill_spots(user_id)
         stats = get_drill_stats(user_id)
     except Exception as e:
@@ -100,6 +104,7 @@ def build_digest_data(user_id: int) -> Optional[dict]:
         "overdue_spot":     overdue_spot,
         "overdue_count":    len(overdue_spots),
         "drill_accuracy":   drill_accuracy,
+        "leak_source":      leak_source,
     }
 
 
