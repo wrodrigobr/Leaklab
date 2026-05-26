@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, Play, Plus, Trash2, RotateCcw, FileText, ChevronRight } from "lucide-react";
-import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { cn } from "@/lib/utils";
 import {
@@ -107,29 +106,48 @@ function ActionButton({
 
 const MAX_SEATS = 9;
 
-const initialState = () => {
+const DEFAULTS = {
+  handId: "100000001",
+  tournamentId: "999999",
+  buyIn: "1.00+0.10",
+  level: "V",
+  sb: 40,
+  bb: 80,
+  ante: 10,
+  players: [] as PlayerInput[],
+  buttonSeat: 1,
+  heroSeat: 9,
+  heroCards: [] as string[],
+  actions: [] as HandAction[],
+  board: { flop: [] as string[], turn: "", river: "" },
+  showWinner: "",
+  winAmount: 0,
+  completedHands: [] as string[],
+};
+
+const initialState = (): typeof DEFAULTS => {
   const stored = typeof window !== "undefined" ? localStorage.getItem("handBuilderDraft") : null;
   if (stored) {
-    try { return JSON.parse(stored); } catch { /* fall through */ }
+    try {
+      const parsed = JSON.parse(stored);
+      // Merge com DEFAULTS pra cobrir campos novos em drafts antigos
+      return {
+        ...DEFAULTS,
+        ...parsed,
+        // Garantir tipos pra arrays/objects aninhados
+        players:        Array.isArray(parsed.players)        ? parsed.players        : DEFAULTS.players,
+        heroCards:      Array.isArray(parsed.heroCards)      ? parsed.heroCards      : DEFAULTS.heroCards,
+        actions:        Array.isArray(parsed.actions)        ? parsed.actions        : DEFAULTS.actions,
+        completedHands: Array.isArray(parsed.completedHands) ? parsed.completedHands : DEFAULTS.completedHands,
+        board: {
+          flop:  Array.isArray(parsed?.board?.flop) ? parsed.board.flop : DEFAULTS.board.flop,
+          turn:  parsed?.board?.turn ?? "",
+          river: parsed?.board?.river ?? "",
+        },
+      };
+    } catch { /* fall through */ }
   }
-  return {
-    handId: "100000001",
-    tournamentId: "999999",
-    buyIn: "1.00+0.10",
-    level: "V",
-    sb: 40,
-    bb: 80,
-    ante: 10,
-    players: [] as PlayerInput[],
-    buttonSeat: 1,
-    heroSeat: 9,
-    heroCards: [] as string[],
-    actions: [] as HandAction[],
-    board: { flop: [] as string[], turn: "", river: "" },
-    showWinner: "",
-    winAmount: 0,
-    completedHands: [] as string[],  // HHs de mãos já finalizadas (mesmo torneio)
-  };
+  return DEFAULTS;
 };
 
 export default function HandBuilder() {
@@ -425,7 +443,7 @@ export default function HandBuilder() {
   };
 
   return (
-    <HudLayout>
+    <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader />
       <div className="mx-auto max-w-[1400px] px-6 py-8 space-y-6">
         <div>
@@ -744,7 +762,7 @@ export default function HandBuilder() {
           </div>
         </div>
       </div>
-    </HudLayout>
+    </div>
   );
 }
 
