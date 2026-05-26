@@ -558,7 +558,7 @@ function SidePanels({
               </div>
             )}
             {eq != null && (
-              <div className="flex items-center gap-2 font-mono text-[11px]"
+              <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap"
                 title="Equity estimada da sua mão vs range provável do villain neste momento">
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Equity</span>
                 <span className={cn(
@@ -567,7 +567,7 @@ function SidePanels({
                   eq >= 0.50 ? "text-foreground" :
                   eq >= 0.35 ? "text-amber-400" : "text-red-400"
                 )}>{(eq * 100).toFixed(1)}%</span>
-                <span className="text-muted-foreground text-[10px]">
+                <span className="text-muted-foreground text-[10px] whitespace-nowrap">
                   {eq >= 0.65 ? "forte" : eq >= 0.50 ? "favorável" : eq >= 0.35 ? "marginal" : "fraca"}
                 </span>
               </div>
