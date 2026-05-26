@@ -332,11 +332,11 @@ function renderSeatsAndChips(
         perpOffX = Math.round((-dvy / blen) * 28);
         perpOffY = Math.round((dvx / blen) * 28);
       } else if (pos.dir === "bottom") {
-        // Direção do desvio: pra dentro do feltro (em direção ao centro), longe das
-        // cartas do próprio jogador. Right-side seat: vai pra esquerda; left-side: direita.
-        const sign = pos.x < CX ? 1 : -1;  // invertido pra mover em direção ao centro
-        perpOffX = Math.round(sign * (-dvy / blen) * 22);
-        perpOffY = Math.round(sign * (dvx / blen) * 22);
+        // Desvio sutil em direção ao centro (longe das cartas do jogador).
+        // Magnitude pequena (10px) porque t2=0.42 ja afasta bastante.
+        const sign = pos.x < CX ? 1 : -1;
+        perpOffX = Math.round(sign * (-dvy / blen) * 10);
+        perpOffY = Math.round(sign * (dvx / blen) * 10);
       }
       const cx2 = Math.round(pos.x + dvx * t2) + perpOffX;
       const cy2 = Math.round(pos.y + dvy * t2) + perpOffY;
