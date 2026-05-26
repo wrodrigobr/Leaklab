@@ -555,12 +555,13 @@ export default function HandBuilder() {
                 </h2>
               </div>
 
-              {/* Diagrama de referência: layout 8/9-max */}
+              {/* Diagrama de referência: layout 8/9-max — clique seta o BTN */}
               <SeatLayoutDiagram
                 occupiedSeats={state.players.map(p => p.seat)}
                 buttonSeat={state.buttonSeat}
                 heroSeat={state.heroSeat}
                 maxSeats={state.maxSeats}
+                onSelectButton={(seat) => update("buttonSeat", seat)}
               />
 
               <div className="flex items-center justify-end pt-1">
@@ -819,12 +820,13 @@ export default function HandBuilder() {
 // ── Sub-component: seat layout diagram (9-max reference) ─────────────────────
 
 function SeatLayoutDiagram({
-  occupiedSeats, buttonSeat, heroSeat, maxSeats,
+  occupiedSeats, buttonSeat, heroSeat, maxSeats, onSelectButton,
 }: {
   occupiedSeats: number[];
   buttonSeat: number;
   heroSeat: number;
   maxSeats: number;
+  onSelectButton?: (seat: number) => void;
 }) {
   // N seats em círculo. Hero na base, demais clockwise.
   const W = 380, H = 220, CX = W / 2, CY = H / 2;
@@ -861,8 +863,10 @@ function SeatLayoutDiagram({
           const isOccupied = occupied.has(p.seat);
           const isBtn = p.seat === buttonSeat;
           const isHero = p.seat === heroSeat;
+          const clickable = !!onSelectButton && isOccupied;
           return (
-            <g key={p.seat}>
+            <g key={p.seat} style={{ cursor: clickable ? "pointer" : "default" }}
+              onClick={() => clickable && onSelectButton!(p.seat)}>
               <circle
                 cx={p.x} cy={p.y} r={16}
                 fill={isOccupied ? (isHero ? "rgba(201,168,76,0.25)" : "rgba(59,130,246,0.20)") : "rgba(60,60,60,0.30)"}
@@ -886,6 +890,12 @@ function SeatLayoutDiagram({
             </g>
           );
         })}
+        {onSelectButton && occupiedSeats.length > 0 && (
+          <text x={W / 2} y={H - 8} textAnchor="middle" fontFamily="monospace" fontSize="9"
+            fill="rgba(255,255,255,0.50)">
+            clique em um seat pra definir o BTN
+          </text>
+        )}
       </svg>
     </div>
   );
