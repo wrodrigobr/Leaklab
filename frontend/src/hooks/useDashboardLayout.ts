@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { preferences } from "@/lib/api";
 
 export type MainSection = "quality_row" | "bankroll_row" | "street_row" | "dna_row" | "drill_row" | "insight_row";
-export type SidebarSection = "leaks" | "causal_map" | "level" | "twin";
+export type SidebarSection = "leaks" | "causal_map" | "level" | "twin" | "pressure" | "icm";
 
 export interface DashboardLayout {
   main: MainSection[];
@@ -10,10 +10,11 @@ export interface DashboardLayout {
 }
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
-  // Ordem: cards GTO em bloco contíguo (donut + breakdowns) → evolução
-  // ($, carreira, padrões) → diagnóstico contextual (pressão, ICM, DNA).
-  main: ["quality_row", "street_row", "bankroll_row", "insight_row", "drill_row", "dna_row"],
-  sidebar: ["leaks", "causal_map", "twin", "level"],
+  // Main 8/12: cards GTO em bloco contíguo + evolução ampla.
+  // Sidebar 4/12: ação (leaks) no topo, contexto comportamental (pressure/ICM)
+  // e perfil estratégico (twin/causal) abaixo.
+  main: ["quality_row", "street_row", "bankroll_row", "insight_row", "dna_row"],
+  sidebar: ["leaks", "pressure", "icm", "twin", "causal_map", "level"],
 };
 
 export function useDashboardLayout() {

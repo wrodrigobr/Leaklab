@@ -217,6 +217,16 @@ const Index = () => {
         <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />
       </DraggableCard>
     );
+    if (id === "pressure") return (
+      <DraggableCard key={id} id={id}>
+        <PressureProfileCard data={pressureData} />
+      </DraggableCard>
+    );
+    if (id === "icm") return (
+      <DraggableCard key={id} id={id}>
+        <IcmBreakdown icm={evo?.icm} />
+      </DraggableCard>
+    );
     if (id === "causal_map") return leakGraph && leakGraph.nodes.length >= 3 ? (
       <DraggableCard key={id} id={id}>
         <LeakCausalMap
