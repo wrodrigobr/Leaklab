@@ -53,6 +53,9 @@ class MTTContext:
     # ICM pressure
     icm_pressure: str              # low / medium / high
 
+    # PKO context (bounty tournaments)
+    is_pko: bool                   # detectado em hand.is_pko (bounties no seat / nome do torneio)
+
     # Extras
     level_sb:  float               # SB do nível atual (pode diferir do hand.sb)
     level_bb:  float
@@ -104,8 +107,13 @@ def build_mtt_context(hand: ParsedHand) -> MTTContext:
     # ── Tournament stage ──────────────────────────────────────────────────────
     tournament_stage = _detect_stage(active_players, m_ratio)
 
+    # ── PKO flag (vem do parser via hand.is_pko) ─────────────────────────────
+    is_pko = bool(getattr(hand, 'is_pko', False))
+
     # ── ICM pressure ─────────────────────────────────────────────────────────
-    icm_pressure = _detect_icm_pressure(m_ratio, active_players)
+    # PKO alivia bubble pressure pré-bolha (bounty incentiva agressão).
+    # Artigo GW: bubble factors menores para covering players em PKO.
+    icm_pressure = _detect_icm_pressure(m_ratio, active_players, is_pko=is_pko)
 
     return MTTContext(
         hero_stack_chips=hero_stack_chips,
@@ -118,6 +126,7 @@ def build_mtt_context(hand: ParsedHand) -> MTTContext:
         active_players=active_players,
         tournament_stage=tournament_stage,
         icm_pressure=icm_pressure,
+        is_pko=is_pko,
         level_sb=level_sb,
         level_bb=level_bb,
         level_num=level_num,
@@ -145,25 +154,33 @@ def _detect_stage(active_players: int, m_ratio: Optional[float]) -> str:
 
 
 def _detect_icm_pressure(m_ratio: Optional[float],
-                          active_players: int) -> str:
+                          active_players: int,
+                          is_pko: bool = False) -> str:
     """
     ICM pressure baseado no M ratio e posição no torneio.
-    
+
     Regras:
       - Final table (≤3 players): sempre high
       - M crítico (≤6): high
       - M curto (≤10) ou late stage: medium
       - Resto: low
+
+    PKO: bubble factors são menores pré-bolha (bounty incentiva agressão).
+    Artigo GW indica que covering players têm bubble factor ~1.22 vs ~1.27
+    classic. Pra refletir isso no modelo simplificado, baixamos 1 nível de
+    pressure (high→medium, medium→low) APENAS pré-final-table — perto da
+    bolha o efeito do bounty atenua ("drown under rising risk premiums").
     """
     if active_players <= 3:
-        return 'high'
+        return 'high'  # final table: PKO mantém pressão alta
     if m_ratio is None:
         return 'low'
-    if m_ratio <= 6:
-        return 'high'
-    if m_ratio <= 10 or active_players <= 5:
-        return 'medium'
-    return 'low'
+    base = 'high' if m_ratio <= 6 else ('medium' if (m_ratio <= 10 or active_players <= 5) else 'low')
+    if is_pko:
+        # Atenua um nível pré-FT
+        if base == 'high':   return 'medium'
+        if base == 'medium': return 'low'
+    return base
 
 
 def context_to_dict(ctx: MTTContext) -> dict:
@@ -171,7 +188,8 @@ def context_to_dict(ctx: MTTContext) -> dict:
     return {
         'tournamentStage': ctx.tournament_stage,
         'icmPressure':     ctx.icm_pressure,
-        'bountyDynamic':   False,
+        'bountyDynamic':   ctx.is_pko,  # True em PKO: bounty incentiva agressão
+        'isPko':           ctx.is_pko,
         'readsAvailable':  False,
         # Extras para auditoria / relatório
         'mRatio':          ctx.m_ratio,

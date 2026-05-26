@@ -375,7 +375,8 @@ def calc_realization_adjustment(is_in_position: bool | None, reverse_implied_odd
     return clamp(adj, 0.0, 0.04)
 
 
-def calc_pressure_adjustment(street: str, pressure_score: float | None, is_multiway: bool | None, icm_pressure: str | None) -> float:
+def calc_pressure_adjustment(street: str, pressure_score: float | None, is_multiway: bool | None,
+                              icm_pressure: str | None, is_pko: bool = False) -> float:
     adj = 0.0
     p = pressure_score or 0.0
     if 0.35 <= p < 0.65:
@@ -386,15 +387,24 @@ def calc_pressure_adjustment(street: str, pressure_score: float | None, is_multi
         adj += 0.01
     if icm_pressure == "high" and street in {"turn", "river"}:
         adj += 0.01
-    return clamp(adj, 0.0, 0.03)
+    # PKO: bounty reduz a equity necessária para stack-off — covering player
+    # tem incentivo extra (matar villain = ganha bounty). Artigo GW indica
+    # 5.9% adicional vs 14.2% classic. Aplicamos -0.02 (2pp) na adjusted
+    # required equity. Apenas pré-final-table — perto da bolha o efeito atenua.
+    if is_pko and icm_pressure != 'high':
+        adj -= 0.02
+    return clamp(adj, -0.03, 0.03)
 
 
 def calc_adjusted_required_equity(street: str, pot_odds_equity: float | None, realization_adjustment: float, pressure_adjustment: float):
     if pot_odds_equity is None:
         return {"adjustedRequiredEquity": None, "streetCapApplied": decision_engine_config["streetCaps"][street], "totalAdjustment": 0.0}
     cap = decision_engine_config["streetCaps"][street]
-    total = clamp(realization_adjustment + pressure_adjustment, 0.0, cap)
-    return {"adjustedRequiredEquity": round4(pot_odds_equity + total), "streetCapApplied": cap, "totalAdjustment": round4(total)}
+    # PKO pode gerar pressure_adjustment negativo (bounty reduz equity necessária).
+    # Permite total negativo (cap inferior: -cap).
+    total = clamp(realization_adjustment + pressure_adjustment, -cap, cap)
+    adjusted = max(0.05, round4(pot_odds_equity + total))  # piso 5% pra evitar absurdos
+    return {"adjustedRequiredEquity": adjusted, "streetCapApplied": cap, "totalAdjustment": round4(total)}
 
 
 def calc_base_action_gap(player_action: str, recommended_primary_action: str, alternative_actions: list[str] | None = None) -> float:
@@ -537,6 +547,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         math.get("pressureScore"),
         spot.get("isMultiway"),
         context.get("icmPressure"),
+        is_pko=bool(context.get("isPko")),
     )
     threshold_pack = calc_adjusted_required_equity(
         street,
