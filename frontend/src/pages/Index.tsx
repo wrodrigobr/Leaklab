@@ -13,6 +13,7 @@ import { GtoPositionCard } from "@/components/hud/GtoPositionCard";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { GtoAlignmentCard } from "@/components/hud/GtoAlignmentCard";
+import { GtoAlignmentMatrixCard } from "@/components/hud/GtoAlignmentMatrixCard";
 import { GtoQualityCard } from "@/components/hud/GtoQualityCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { OnboardingModal } from "@/components/hud/OnboardingModal";
@@ -27,7 +28,7 @@ import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, GtoAlignmentMatrixData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // Module-level cache — survives unmount/remount during SPA navigation
@@ -170,6 +171,12 @@ const Index = () => {
     staleTime: 120_000,
   });
 
+  const { data: gtoMatrixData } = useQuery<GtoAlignmentMatrixData>({
+    queryKey: ["gto-matrix", refreshKey, volumeLimit],
+    queryFn: () => metrics.gtoAlignmentMatrix(volumeLimit ?? undefined),
+    staleTime: 120_000,
+  });
+
   const { data: gtoQualityData } = useQuery<GtoQualityData>({
     queryKey: ["gto-quality", refreshKey, volumeLimit],
     queryFn: () => metrics.gtoQuality(volumeLimit ?? undefined),
@@ -180,9 +187,12 @@ const Index = () => {
     if (id === "quality_row") return <GtoQualityCard data={gtoQualityData} pendingGto={pendingGto} />;
     if (id === "bankroll_row") return <BankrollChart />;
     if (id === "street_row") return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <GtoAlignmentCard data={gtoAlignmentData} pendingGto={pendingGto} />
-        <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <GtoAlignmentCard data={gtoAlignmentData} pendingGto={pendingGto} />
+          <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />
+        </div>
+        <GtoAlignmentMatrixCard data={gtoMatrixData} />
       </div>
     );
     if (id === "dna_row") return <PlayerDnaCard data={dnaData} />;

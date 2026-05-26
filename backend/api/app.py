@@ -930,6 +930,15 @@ def player_gto_position():
     return jsonify(get_gto_alignment_by_position(g.user_id, last_n=last_n))
 
 
+@app.route('/player/gto-alignment-matrix', methods=['GET'])
+@require_auth
+def player_gto_alignment_matrix():
+    """GTO alignment heatmap matrix — posicao (EP/MP/CO/BTN/SB/BB) x street."""
+    from database.repositories import get_gto_alignment_matrix
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    return jsonify(get_gto_alignment_matrix(g.user_id, last_n=last_n))
+
+
 @app.route('/player/spots/drill', methods=['GET'])
 @require_auth
 def player_drill_spots():
@@ -2834,6 +2843,7 @@ def study_plan():
                 pass
 
         plan['coach_managed'] = coach_managed
+        # plan['source'] já é setado por generate_study_plan com leak_source
         return jsonify(plan)
 
     except Exception as e:

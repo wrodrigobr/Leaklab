@@ -4786,6 +4786,86 @@ def get_gto_alignment_by_position(user_id: int, since_days: int = 90, last_n: in
         conn.close()
 
 
+def get_gto_alignment_matrix(user_id: int, since_days: int = 90, last_n: int | None = None) -> dict:
+    """GTO alignment matrix: posição × street. Cada célula tem aligned_pct + n.
+
+    Posições agrupadas em buckets canônicos (EP/MP/CO/BTN/SB/BB) pra evitar
+    explosão de células com pouco volume. Cliente decide se mostra célula
+    com baixo n (sample insuficiente) ou atenua.
+    """
+    from collections import defaultdict
+    tf, tp = _build_tournament_filter(user_id, since_days, last_n)
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(f"""
+            SELECT
+                d.position,
+                d.street,
+                d.gto_label,
+                COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf}
+              AND d.position IS NOT NULL
+              AND d.street IS NOT NULL
+            GROUP BY d.position, d.street, d.gto_label
+        """), tp)
+
+        # Bucket de posição canônico (mantém heatmap legível com 6 linhas)
+        def pos_bucket(p: str) -> str:
+            u = (p or '').upper()
+            if u in ('UTG', 'UTG+1', 'UTG+2', 'UTG1', 'UTG2', 'LJ'): return 'EP'
+            if u in ('HJ', 'MP', 'MP1', 'MP2'):                       return 'MP'
+            if u in ('CO', 'BTN', 'SB', 'BB'):                        return u
+            return 'OTHER'
+
+        STREETS = ['preflop', 'flop', 'turn', 'river']
+        POS_ORDER = ['EP', 'MP', 'CO', 'BTN', 'SB', 'BB']
+
+        # cell_counts[pos][street][gto_label] = n
+        cell_counts: dict = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+        for r in rows:
+            pb = pos_bucket(r['position'])
+            if pb == 'OTHER':
+                continue
+            cell_counts[pb][r['street']][r['gto_label'] or ''] += r['n']
+
+        cells = []
+        for pos in POS_ORDER:
+            for street in STREETS:
+                counts = cell_counts.get(pos, {}).get(street, {})
+                total_street = sum(counts.values())
+                with_gto = sum(v for k, v in counts.items() if k and k != '')
+                if total_street == 0:
+                    cells.append({
+                        'position':     pos,
+                        'street':       street,
+                        'n':            0,
+                        'with_gto':     0,
+                        'aligned_pct':  None,
+                        'critical_pct': None,
+                    })
+                    continue
+                aligned  = counts.get('gto_correct', 0) + counts.get('gto_mixed', 0)
+                critical = counts.get('gto_critical', 0)
+                cells.append({
+                    'position':     pos,
+                    'street':       street,
+                    'n':            total_street,
+                    'with_gto':     with_gto,
+                    'aligned_pct':  round(aligned  * 100.0 / with_gto, 1) if with_gto else None,
+                    'critical_pct': round(critical * 100.0 / with_gto, 1) if with_gto else None,
+                })
+
+        return {
+            'positions': POS_ORDER,
+            'streets':   STREETS,
+            'cells':     cells,
+        }
+    finally:
+        conn.close()
+
+
 def get_missing_gto_spots(limit: int = 100) -> list[dict]:
     """Retorna spots únicos de decisions que não têm nó GTO — para o bot priorizar."""
     conn = get_conn()

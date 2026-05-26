@@ -523,6 +523,21 @@ export interface GtoPositionData {
   by_position: GtoPositionRow[];
 }
 
+export interface GtoAlignmentMatrixCell {
+  position: string;
+  street: string;
+  n: number;
+  with_gto: number;
+  aligned_pct: number | null;
+  critical_pct: number | null;
+}
+
+export interface GtoAlignmentMatrixData {
+  positions: string[];
+  streets: string[];
+  cells: GtoAlignmentMatrixCell[];
+}
+
 export interface PlayerStatsResponse {
   total_hands: number;
   vpip: number | null;
@@ -763,6 +778,9 @@ export const metrics = {
 
   gtoPosition: (lastN?: number) =>
     request<GtoPositionData>(`/player/gto-position${lastN != null ? `?last_n=${lastN}` : ""}`),
+
+  gtoAlignmentMatrix: (lastN?: number) =>
+    request<GtoAlignmentMatrixData>(`/player/gto-alignment-matrix${lastN != null ? `?last_n=${lastN}` : ""}`),
 
   dna: (days = 90) =>
     request<PlayerDnaResponse>(`/player/dna?days=${days}`),
