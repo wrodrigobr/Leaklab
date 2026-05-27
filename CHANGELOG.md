@@ -7,6 +7,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto-bot): captura aceita token `google-anal-id` (GW novo)
+- `backend/gto_bot/solver_api/server.py`: `_capture_headers_via_cdp` agora aceita header `google-anal-id` como evidência de auth válida, não só `authorization`. GW migrou de Bearer JWT pra token ECDSA assinado client-side; antes, refresh sempre falhava com "Chrome não respondeu" mesmo com Chrome logado.
+
 ### feat(gto): endpoint `/gw-spot` para spots multiway (passthrough cru pro GW)
 - `backend/gto_bot/solver_api/server.py`: nova função `query_gto_wizard_raw()` + rota `POST /gw-spot`. Cliente envia `preflop_actions` já encoded (formato GW: `R2.1-F-F-C-F-C-R11.55`) e servidor proxia com headers de auth capturados via CDP. Suporta multiway, squeeze e cold-callers — qualquer cenário que GW resolva.
 - Response inclui `action_solutions[].strategy[169]` cru (frequência por hand_type 13×13) — permite extrair `hand_freqs` por mão específica no cliente.

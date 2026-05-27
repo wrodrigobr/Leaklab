@@ -182,7 +182,9 @@ def _capture_headers_via_cdp(timeout_s: int = 25) -> Optional[dict]:
             if "api.gtowizard.com" not in req.url or captured:
                 return
             h = dict(req.headers)
-            if "authorization" in h:
+            # GW antigo usava Bearer JWT (authorization); GW atual usa token
+            # ECDSA assinado client-side (google-anal-id). Aceita qualquer um.
+            if "authorization" in h or "google-anal-id" in h:
                 captured.update(h)
 
         page.on("request", on_req)
@@ -202,7 +204,11 @@ def _capture_headers_via_cdp(timeout_s: int = 25) -> Optional[dict]:
         except Exception:
             pass
 
-    return captured if captured and "authorization" in captured else None
+    if not captured:
+        return None
+    if "authorization" in captured or "google-anal-id" in captured:
+        return captured
+    return None
 
 
 def _refresh_once() -> bool:
