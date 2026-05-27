@@ -3171,10 +3171,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     seats = {}
     _bounties = getattr(hand, 'bounties', {}) or {}
     for line in hand.raw_text.split('\n'):
-        m = _re.match(r'Seat (\d+): (.+?) \((\d+) in chips\)', line)
+        m = _re.match(r'Seat (\d+): (.+?) \(([0-9.]+) in chips\)', line)
         if m:
             player = m.group(2).strip()
-            seat_d = {'player': player, 'stack': int(m.group(3))}
+            seat_d = {'player': player, 'stack': int(float(m.group(3)))}
             if player in _bounties:
                 seat_d['bounty'] = _bounties[player]
             seats[int(m.group(1))] = seat_d

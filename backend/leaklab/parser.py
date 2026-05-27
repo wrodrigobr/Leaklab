@@ -25,11 +25,11 @@ ACTION_LINE_RE  = re.compile(
 )
 # PokerStars PKO: "Seat 3: phpro (1500 in chips) bounty $0.25"
 SEAT_BOUNTY_PS_RE = re.compile(
-    r"^Seat \d+: (.+?) \(\d+ in chips\) bounty \$([0-9.]+)", re.IGNORECASE
+    r"^Seat \d+: (.+?) \([0-9.]+ in chips\) bounty \$([0-9.]+)", re.IGNORECASE
 )
 # GGPoker PKO: "Seat 3: phpro (1500 in chips, bounty $0.25)"
 SEAT_BOUNTY_GG_RE = re.compile(
-    r"^Seat \d+: (.+?) \(\d+ in chips, bounty \$([0-9.]+)\)", re.IGNORECASE
+    r"^Seat \d+: (.+?) \([0-9.]+ in chips, bounty \$([0-9.]+)\)", re.IGNORECASE
 )
 # PokerStars bounty collection: "phpro wins $0.25 bounty for eliminating villain"
 BOUNTY_WIN_RE = re.compile(

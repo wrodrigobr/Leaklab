@@ -1077,7 +1077,7 @@ const Replayer = () => {
 
   // Alias map: todos os jogadores com nomes reais
   const playerAliases = useMemo<Record<string, string>>(() => {
-    if (!replayData) return {};
+    if (!replayData?.seats) return {};
     const aliases: Record<string, string> = {};
     Object.values(replayData.seats).forEach(({ player }) => {
       aliases[player] = player;

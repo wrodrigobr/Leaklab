@@ -26,8 +26,8 @@ def _roman_to_int(s: str) -> int:
         prev = v
     return result
 _ANTE_RE   = re.compile(r'posts the ante (\d+)')
-_SEAT_RE   = re.compile(r'^Seat \d+: .+ \(\d+ in chips\)')
-_STACK_RE  = re.compile(r'Seat \d+: {hero} \((\d+) in chips\)')
+_SEAT_RE   = re.compile(r'^Seat \d+: .+ \([0-9.]+ in chips\)')
+_STACK_RE  = re.compile(r'Seat \d+: {hero} \(([0-9.]+) in chips\)')
 _FINISH_RE = re.compile(r'finished the tournament in (\d+)(?:st|nd|rd|th) place')
 
 
@@ -87,7 +87,7 @@ def build_mtt_context(hand: ParsedHand) -> MTTContext:
     # ── Stack do hero ─────────────────────────────────────────────────────────
     hero_stack_chips: Optional[float] = None
     pattern = re.compile(
-        r'Seat \d+: ' + re.escape(hero) + r' \((\d+) in chips\)'
+        r'Seat \d+: ' + re.escape(hero) + r' \(([0-9.]+) in chips\)'
     )
     mp = pattern.search(raw)
     if mp:
