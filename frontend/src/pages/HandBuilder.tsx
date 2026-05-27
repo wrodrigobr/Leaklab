@@ -205,7 +205,10 @@ export default function HandBuilder() {
     return "preflop";
   }, [state.board]);
 
-  // Próximo a agir (auto-rotaciona clockwise a partir do último que agiu)
+  // Próximo a agir (auto-rotaciona clockwise a partir do último que agiu).
+  // Usa clockwiseFromSb COMPLETO pra preservar a posição original — necessário
+  // quando o último a agir foldou (ele sai do 'active' mas a posição na ordem
+  // clockwise ainda importa pra calcular o próximo).
   const currentActor = useMemo<PlayerInput | null>(() => {
     if (clockwiseFromSb.length < 2) return null;
     const active = clockwiseFromSb.filter(p => !foldedPlayers.has(p.name));
@@ -218,9 +221,15 @@ export default function HandBuilder() {
       return active[0];
     }
     const lastActor = streetActions[streetActions.length - 1].player;
-    const lastIdx = active.findIndex(p => p.name === lastActor);
-    if (lastIdx === -1) return active[0];
-    return active[(lastIdx + 1) % active.length];
+    // Posição na ordem CLOCKWISE COMPLETA (inclui foldados)
+    const lastIdxFull = clockwiseFromSb.findIndex(p => p.name === lastActor);
+    const startFrom = lastIdxFull >= 0 ? lastIdxFull : -1;
+    // Anda clockwise procurando o próximo player que ainda está ativo
+    for (let i = 1; i <= clockwiseFromSb.length; i++) {
+      const candidate = clockwiseFromSb[(startFrom + i + clockwiseFromSb.length) % clockwiseFromSb.length];
+      if (!foldedPlayers.has(candidate.name)) return candidate;
+    }
+    return active[0];
   }, [clockwiseFromSb, foldedPlayers, currentStreet, state.actions]);
 
   // Maior aposta nesta street (pra determinar "facing bet")
