@@ -7,6 +7,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): endpoint `/gw-spot` para spots multiway (passthrough cru pro GW)
+- `backend/gto_bot/solver_api/server.py`: nova função `query_gto_wizard_raw()` + rota `POST /gw-spot`. Cliente envia `preflop_actions` já encoded (formato GW: `R2.1-F-F-C-F-C-R11.55`) e servidor proxia com headers de auth capturados via CDP. Suporta multiway, squeeze e cold-callers — qualquer cenário que GW resolva.
+- Response inclui `action_solutions[].strategy[169]` cru (frequência por hand_type 13×13) — permite extrair `hand_freqs` por mão específica no cliente.
+- Validação via HAR de mão real (UTG+1 open + HJ call + BTN call + SB squeeze, BB to act): GW retorna FOLD 96.7% / RAISE 2.6% / ALLIN 0.8%.
+
+### fix(replayer): rota `/replay/<t>/<h>` não bloqueia mais em I/O remoto GTO offline
+- `backend/leaklab/gto_solver.py`: novo parâmetro `block_remote=True` em `lookup_gto`. Quando `False`, pula GTO Wizard e solver remoto, retornando apenas dados do DB local.
+- `backend/api/app.py`: chamada inline em `/replay/<t>/<h>` passa `block_remote=False` — frontend responde em <1s mesmo com servidor GTO offline (antes ficava 2min em "Carregando mão..." aguardando timeout).
+
+### fix(frontend): silencia Vercel Analytics em dev
+- `frontend/src/main.tsx`: `<Analytics />` só renderiza em produção (`import.meta.env.PROD`). Elimina 404s espúrios em `/_vercel/insights/view` durante `npm run dev`.
+
 ---
 
 ## [v0.163.0] — 2026-05-25 — feat(preflop): integração GTO Wizard v3 (900 spots 9-max nativo)

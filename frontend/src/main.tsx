@@ -39,6 +39,6 @@ createRoot(document.getElementById("root")!).render(
     }
   >
     <App />
-    <Analytics />
+    {import.meta.env.PROD && <Analytics />}
   </Sentry.ErrorBoundary>
 );

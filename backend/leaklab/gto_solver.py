@@ -115,6 +115,7 @@ def lookup_gto(
     facing_size_bb: float = 0.0,
     pot_bb: float = 0.0,
     num_players: int = 9,
+    block_remote: bool = True,
 ) -> dict:
     """
     Ponto de entrada único para consultas GTO.
@@ -232,6 +233,17 @@ def lookup_gto(
                 'exploitability_pct': node.get('exploitability_pct'),
             }]
         log.debug("Nó parcial (sem strategy_json) para hash=%s; consultando GTO Wizard", spot_hash)
+
+    # Short-circuit: chamadas inline (ex.: rota /replay) não devem bloquear em I/O remoto.
+    # O worker assíncrono cuida de popular gto_nodes em background.
+    if not block_remote:
+        if _db_fallback_strategy:
+            return {'found': True, 'source': 'postflop_db_partial',
+                    'strategy': _db_fallback_strategy,
+                    'exploitability_pct': None, 'spot_hash': spot_hash, 'queued': False}
+        return {'found': False, 'source': 'solver_unavailable',
+                'strategy': [], 'exploitability_pct': None,
+                'spot_hash': spot_hash, 'queued': False}
 
     # 3. Miss — tenta GTO Wizard primeiro (se habilitado e auth disponível)
     try:

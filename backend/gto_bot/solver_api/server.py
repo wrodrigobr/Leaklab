@@ -4,7 +4,10 @@ solver_api/server.py — HTTP wrapper do solver_cli + proxy GTO Wizard via CDP.
 Endpoints:
   GET  /health        — status do solver e GTO Wizard auth
   POST /solve         — chama solver_cli Rust e retorna estratégia local
-  POST /gto-wizard    — consulta GTO Wizard via CDP e retorna estratégia
+  POST /gto-wizard    — consulta GTO Wizard via CDP e retorna estratégia (HU only)
+  POST /gw-spot       — passthrough: cliente envia preflop_actions já encoded
+                        (suporta multiway, squeeze, cold-callers); retorna
+                        action_solutions cru + strategy[169] por mão
   GET  /gw-status     — estado da autenticação GTO Wizard
 
 Autenticação via header x-api-key.
@@ -697,6 +700,170 @@ def query_gto_wizard(spot: dict) -> dict:
     return {"found": True, "strategy": strategy, "source": "gtowizard"}
 
 
+# ── GTO Wizard raw passthrough (multiway / cold-callers / squeeze) ────────────
+
+def query_gto_wizard_raw(spot: dict) -> dict:
+    """
+    Passthrough direto para GW /v4/solutions/spot-solution/.
+
+    O cliente envia preflop_actions/flop_actions/etc já encoded (formato GW:
+    "R2.1-F-F-C-F-C-R11.55"). Servidor só anexa auth headers da sessão
+    capturada e proxia o request. Suporta qualquer cenário que o GW resolva
+    (HU, multiway, squeeze, cold-call, etc).
+
+    Parâmetros aceitos:
+      num_players      int (resolve gametype se gametype omitido)
+      gametype         str (override; ex "MTTGeneral_8m")
+      depth_bb         float (stack ref; snap pro depth válido mais próximo)
+      stacks_bb        list[float] | None (default: all = depth_bb)
+      preflop_actions  str (encoded; pode ser vazio)
+      flop_actions     str (encoded; default "")
+      turn_actions     str (encoded; default "")
+      river_actions    str (encoded; default "")
+      board            str | list[str] (default "")
+      include_strategy bool (default True; se False, omite arrays strategy/evs
+                       de cada action — payload bem menor)
+
+    Retorna:
+      {found:true, source, gametype, depth_used, stacks, params,
+       action_solutions:[{action, total_frequency, strategy?, evs?, total_combos}],
+       players_info, hands_locked, usage}
+      {found:false, error:"..."}
+    """
+    with _auth_lock:
+        if not _auth_ok or not _auth_headers:
+            return {"found": False, "error": "auth_unavailable"}
+        headers = dict(_auth_headers)
+
+    num_players = int(spot.get("num_players", 0) or 0)
+    gametype    = str(spot.get("gametype", "") or "").strip()
+    if not gametype:
+        tbl = _TABLE_CONFIG.get(num_players)
+        if not tbl:
+            return {"found": False, "error": f"missing_gametype_and_unsupported_num_players:{num_players}"}
+        gametype = tbl["gametype"]
+
+    try:
+        depth_bb = float(spot.get("depth_bb", 0) or 0)
+    except (TypeError, ValueError):
+        return {"found": False, "error": "invalid_depth_bb"}
+    if depth_bb <= 0:
+        return {"found": False, "error": "missing_depth_bb"}
+
+    depth_frac = _stack_frac(depth_bb, gametype)
+
+    # stacks: usa fornecido ou repete depth_frac. Quando num_players=0 e stacks
+    # não fornecido, infere pelo gametype via _TABLE_CONFIG.
+    stacks_in = spot.get("stacks_bb")
+    if isinstance(stacks_in, list) and stacks_in:
+        try:
+            stacks_str = "-".join(
+                str(round(_snap_to_valid_depth(float(s), gametype) + 0.125, 3))
+                for s in stacks_in
+            )
+        except (TypeError, ValueError):
+            return {"found": False, "error": "invalid_stacks_bb"}
+    else:
+        n = num_players
+        if not n:
+            for k, v in _TABLE_CONFIG.items():
+                if v.get("gametype") == gametype:
+                    n = k
+                    break
+        if not n:
+            return {"found": False, "error": "cannot_infer_num_players_for_stacks"}
+        # Permite stacks="" quando o gametype usa (ex MTTHUGeneral)
+        tbl_lookup = _TABLE_CONFIG.get(n, {})
+        stacks_str = tbl_lookup.get("stacks", "-".join([str(depth_frac)] * n))
+
+    pf = str(spot.get("preflop_actions", "") or "")
+    fl = str(spot.get("flop_actions",    "") or "")
+    tn = str(spot.get("turn_actions",    "") or "")
+    rv = str(spot.get("river_actions",   "") or "")
+    bd = spot.get("board", "") or ""
+    if isinstance(bd, list):
+        # Normaliza independente da street — GW aceita 0/3/4/5 cartas
+        _max = 5 if rv else 4 if tn else 3 if fl else 0
+        bd = _norm_board(bd, max_cards=_max) if _max else ""
+    elif isinstance(bd, str):
+        bd = bd.strip().replace(" ", "")
+
+    api_params = {
+        "gametype":        gametype,
+        "depth":           depth_frac,
+        "stacks":          stacks_str,
+        "preflop_actions": pf,
+        "flop_actions":    fl,
+        "turn_actions":    tn,
+        "river_actions":   rv,
+        "board":           bd,
+    }
+
+    try:
+        session = _make_session(headers)
+    except ImportError:
+        return {"found": False, "error": "requests_not_installed"}
+
+    try:
+        r = session.get(GW_SPOT_SOL, params=api_params, timeout=20)
+    except Exception as e:
+        return {"found": False, "error": f"request_exception:{e}"}
+
+    if r.status_code == 401:
+        _set_auth_failed("Token expirado (HTTP 401)")
+        return {"found": False, "error": "auth_expired"}
+    if r.status_code in (204, 404) or not r.content:
+        return {"found": False, "error": f"no_solution_{r.status_code}", "params": api_params}
+    if not r.ok:
+        return {"found": False, "error": f"http_{r.status_code}",
+                "params": api_params, "body": r.text[:300]}
+
+    try:
+        data = r.json()
+    except Exception:
+        return {"found": False, "error": "invalid_json"}
+
+    include_strategy = bool(spot.get("include_strategy", True))
+    actions_out = []
+    for item in data.get("action_solutions", []):
+        a = item.get("action", {}) or {}
+        entry = {
+            "action": {
+                "code":         a.get("code"),
+                "type":         a.get("type"),
+                "display_name": a.get("display_name"),
+                "position":     a.get("position"),
+                "betsize":      a.get("betsize"),
+                "allin":        a.get("allin"),
+                "next_position": a.get("next_position"),
+            },
+            "total_frequency": item.get("total_frequency"),
+            "total_ev":        item.get("total_ev"),
+            "total_combos":    item.get("total_combos"),
+        }
+        if include_strategy:
+            entry["strategy"] = item.get("strategy", [])
+            entry["evs"]      = item.get("evs", [])
+        actions_out.append(entry)
+
+    log.info("gw-spot: OK gametype=%s depth=%s pf=%s fl=%s board=%s → %d acoes",
+             gametype, depth_frac, pf, fl, bd, len(actions_out))
+
+    return {
+        "found":            True,
+        "source":           "gtowizard_raw",
+        "gametype":         gametype,
+        "depth_used":       depth_frac,
+        "stacks":           stacks_str,
+        "params":           api_params,
+        "action_solutions": actions_out,
+        "players_info":     data.get("players_info"),
+        "hands_locked":     data.get("hands_locked"),
+        "usage":            data.get("usage"),
+        "warning":          data.get("warning"),
+    }
+
+
 # ── Solver local ──────────────────────────────────────────────────────────────
 
 def solve(spot: dict) -> dict:
@@ -804,6 +971,21 @@ class Handler(BaseHTTPRequestHandler):
                 return
             result = query_gto_wizard(spot)
             code   = 200 if result.get("found") else 503 if result.get("error") == "auth_unavailable" else 404
+            self._respond(code, result)
+
+        elif self.path == '/gw-spot':
+            spot = self._read_body()
+            if spot is None:
+                return
+            result = query_gto_wizard_raw(spot)
+            if result.get("found"):
+                code = 200
+            elif result.get("error") == "auth_unavailable":
+                code = 503
+            elif result.get("error") == "auth_expired":
+                code = 401
+            else:
+                code = 404
             self._respond(code, result)
 
         else:
