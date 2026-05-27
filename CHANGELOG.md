@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### refactor(gto-bot): `/gw-spot` executa fetch in-page via CDP (auth-safe)
+- `backend/gto_bot/solver_api/server.py`: nova helper `_fetch_via_page(api_path, params)` que abre conexão Playwright→CDP, encontra aba aberta do GW e roda `fetch()` dentro do contexto da página via `page.evaluate()`. Browser anexa `google-anal-id` automaticamente (signature ECDSA válida).
+- `query_gto_wizard_raw` (`/gw-spot`) refatorado pra usar `_fetch_via_page` em vez de `requests.Session` + headers replay. Replay externo era rejeitado pelo GW (401) porque assinatura do token está atrelada ao TLS/JS context do browser.
+- Trade-off: ~500ms-1s de overhead por request (abrir/fechar conexão Playwright); serializado via lock pra evitar race no sync_playwright.
+
 ### fix(gto-bot): captura aceita token `google-anal-id` (GW novo)
 - `backend/gto_bot/solver_api/server.py`: `_capture_headers_via_cdp` agora aceita header `google-anal-id` como evidência de auth válida, não só `authorization`. GW migrou de Bearer JWT pra token ECDSA assinado client-side; antes, refresh sempre falhava com "Chrome não respondeu" mesmo com Chrome logado.
 

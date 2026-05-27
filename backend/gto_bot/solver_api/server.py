@@ -706,6 +706,110 @@ def query_gto_wizard(spot: dict) -> dict:
     return {"found": True, "strategy": strategy, "source": "gtowizard"}
 
 
+# ── In-page fetch via CDP (auth-safe) ─────────────────────────────────────────
+#
+# O GW migrou pra token ECDSA assinado client-side (header google-anal-id) —
+# replay via requests.Session é rejeitado (401), mesmo do mesmo IP. A unica
+# forma de fazer chamada autenticada é executar o fetch DENTRO da pagina do
+# Chrome via Playwright/CDP page.evaluate(), assim o browser assina sozinho.
+
+_page_fetch_lock = threading.Lock()  # sync_playwright nao e thread-safe
+
+
+def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 20) -> dict:
+    """
+    Executa fetch GET na pagina do Chrome (contexto GW) via CDP.
+
+    Retorna:
+      {ok:true, status:200, json:{...}}
+      {ok:false, error:"...", status?:int}
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return {"ok": False, "error": "playwright_not_installed"}
+
+    # Monta URL com query string (encoding compativel com GW)
+    from urllib.parse import urlencode
+    url = f"{GW_API_BASE}{api_path}"
+    if params:
+        url = f"{url}?{urlencode(params)}"
+
+    with _page_fetch_lock:
+        try:
+            pw = sync_playwright().start()
+        except Exception as e:
+            return {"ok": False, "error": f"playwright_start:{e}"}
+
+        try:
+            try:
+                browser = pw.chromium.connect_over_cdp(f"http://localhost:{CDP_PORT}")
+            except Exception as e:
+                return {"ok": False, "error": f"cdp_connect:{e}"}
+
+            contexts = browser.contexts
+            if not contexts:
+                return {"ok": False, "error": "no_browser_context"}
+
+            # Procura aba ja aberta no app.gtowizard.com — se nao tiver, abre uma
+            target_page = None
+            for ctx in contexts:
+                for p in ctx.pages:
+                    try:
+                        if "gtowizard.com" in (p.url or ""):
+                            target_page = p
+                            break
+                    except Exception:
+                        continue
+                if target_page:
+                    break
+
+            if target_page is None:
+                try:
+                    target_page = contexts[0].new_page()
+                    target_page.goto(f"{GW_APP}/solutions",
+                                     timeout=15000,
+                                     wait_until="domcontentloaded")
+                except Exception as e:
+                    return {"ok": False, "error": f"open_gw_page:{e}"}
+
+            # fetch in-page: browser anexa Origin/Referer/google-anal-id automaticamente
+            js = """
+            async (url) => {
+                try {
+                    const r = await fetch(url, { credentials: 'include' });
+                    const txt = await r.text();
+                    let body = null;
+                    try { body = JSON.parse(txt); } catch (e) { body = txt.slice(0, 500); }
+                    return { status: r.status, ok: r.ok, body: body };
+                } catch (e) {
+                    return { status: 0, ok: false, error: String(e) };
+                }
+            }
+            """
+            try:
+                result = target_page.evaluate(js, url)
+            except Exception as e:
+                return {"ok": False, "error": f"evaluate:{e}"}
+
+            if not isinstance(result, dict):
+                return {"ok": False, "error": "invalid_evaluate_result"}
+
+            if result.get("error"):
+                return {"ok": False, "error": f"fetch:{result['error']}", "status": result.get("status")}
+
+            return {
+                "ok":     bool(result.get("ok")),
+                "status": int(result.get("status") or 0),
+                "json":   result.get("body"),
+            }
+        finally:
+            try:
+                pw.stop()
+            except Exception:
+                pass
+
+
 # ── GTO Wizard raw passthrough (multiway / cold-callers / squeeze) ────────────
 
 def query_gto_wizard_raw(spot: dict) -> dict:
@@ -805,29 +909,23 @@ def query_gto_wizard_raw(spot: dict) -> dict:
         "board":           bd,
     }
 
-    try:
-        session = _make_session(headers)
-    except ImportError:
-        return {"found": False, "error": "requests_not_installed"}
+    # Executa fetch DENTRO da pagina do Chrome (GW assina via google-anal-id)
+    fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params, timeout_s=20)
+    if not fetched.get("ok"):
+        status = fetched.get("status") or 0
+        if status == 401:
+            _set_auth_failed("Token expirado (HTTP 401 in-page)")
+            return {"found": False, "error": "auth_expired"}
+        if status in (204, 404):
+            return {"found": False, "error": f"no_solution_{status}", "params": api_params}
+        return {"found": False,
+                "error": fetched.get("error") or f"http_{status}",
+                "params": api_params,
+                "body": fetched.get("json") if isinstance(fetched.get("json"), str) else None}
 
-    try:
-        r = session.get(GW_SPOT_SOL, params=api_params, timeout=20)
-    except Exception as e:
-        return {"found": False, "error": f"request_exception:{e}"}
-
-    if r.status_code == 401:
-        _set_auth_failed("Token expirado (HTTP 401)")
-        return {"found": False, "error": "auth_expired"}
-    if r.status_code in (204, 404) or not r.content:
-        return {"found": False, "error": f"no_solution_{r.status_code}", "params": api_params}
-    if not r.ok:
-        return {"found": False, "error": f"http_{r.status_code}",
-                "params": api_params, "body": r.text[:300]}
-
-    try:
-        data = r.json()
-    except Exception:
-        return {"found": False, "error": "invalid_json"}
+    data = fetched.get("json")
+    if not isinstance(data, dict):
+        return {"found": False, "error": "invalid_json", "raw": str(data)[:300]}
 
     include_strategy = bool(spot.get("include_strategy", True))
     actions_out = []
