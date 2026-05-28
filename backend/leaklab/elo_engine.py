@@ -22,13 +22,14 @@ Fórmula clássica:
 Aplica-se SEQUENCIALMENTE — cada decisão atualiza o rating, que afeta o cálculo
 da próxima. Decisões processadas em ordem cronológica (created_at).
 
-Rating separado por street + agregado total. Bandas:
-    < 1200       : Iniciante
-    1200 - 1499  : Casual
-    1500 - 1799  : Em desenvolvimento
-    1800 - 2099  : Sólido
-    2100 - 2399  : Avançado
-    >= 2400      : Elite
+Rating separado por street + agregado total. Bandas (fonte: BANDS abaixo):
+    < 1570       : Iniciante   (<60% aderência GTO)
+    1570 - 1646  : Estudante   (60-70%)
+    1647 - 1709  : Grinder     (70-77%)
+    1710 - 1815  : Regular     (77-86%)
+    1816 - 1923  : Sólido      (86-92%)
+    1924 - 2052  : Expert      (92-96%)
+    >= 2053      : Elite       (>=96%)
 """
 from __future__ import annotations
 

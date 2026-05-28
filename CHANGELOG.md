@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs: revisão de acurácia das seções restantes da /docs
+- Conferidas contra o backend as seções ainda não revisadas (`dna`, `leaks`, `causal_map`, `form`, `decisions`, `streets`, `positions`, `pressure`, `icm`, `bankroll`, `level`, `compare`, `gamification`): **todas factualmente corretas** e sem exposição de lógica interna.
+- Validados os números: limiares de score `0.08 / 0.18 / 0.36` (= `decision_engine_v11._LABELS`), valores de XP `50 / 10 / 25 / 100` (= `repositories._XP_AMOUNTS`), e bandas/limiares de ELO `<1570 … ≥2053` (= `elo_engine.BANDS`) — tudo consistente com a /docs.
+- **Fix**: docstring do módulo `elo_engine.py` listava bandas antigas (pré-unificação, `<1200 Iniciante / Casual / … / ≥2400 Elite`) que contradiziam a lista real `BANDS`. Atualizada para as 7 bandas atuais (Iniciante…Elite, 1570…2053).
+
 ### docs: revisão editorial da /docs — explicar conceitos sem expor a lógica interna
 - **Princípio**: a documentação do usuário deve explicar **o que é** cada indicador/recurso e como interpretá-lo, sem revelar a engenharia interna ("não entregar o ouro"). Removidos de toda a `/docs`: nomes de variáveis/campos de código (`gto_label`, `facing_size`, `is_3bet_pot`, `action_quality`, `aligned_pct`, `error_rate`, `best_action`, `small_mistake`/`clear_mistake`), nomes de componentes (`GhostDrillCard`), comandos (`/sparring`), descrições de algoritmo/pipeline (pipeline de 3 fontes, regressão linear, janelas deslizantes, parsing de PKO, ciclagem do Sparring) e fórmulas/pesos proprietários (Leak ROI, efetividade do coach, threshold −2pp). **Mantidos** os números úteis ao usuário (intervalos de revisão, ELO por nível/banda, amostra mínima).
 - **`gto_method`** reescrita nas 3 locales: removido o "pipeline de 3 fontes / solver nodes / reconciliação"; tabela de qualidade agora usa rótulos amigáveis (Correta/Aceitável/Leak/Leak grave) em vez dos enums crus. `Docs.tsx`: badges passam a usar chaves i18n (`correct_label`…`major_leak_label`).
