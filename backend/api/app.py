@@ -552,6 +552,16 @@ def _analyze_impl():
         name='gto-hand-autoqueue',
     ).start()
 
+    # Warm-up cache GW pra spots preflop multiway (squeeze, cold-callers) —
+    # spots fora do escopo HU do lookup_gto local. Antecipa a captura pra
+    # que o Replayer abra com hand_freqs corretas sem cache miss.
+    threading.Thread(
+        target=_warmup_gw_multiway,
+        args=(hands, hero),
+        daemon=True,
+        name='gw-multiway-warmup',
+    ).start()
+
     # Explicações LLM se solicitado
     if request.args.get('explain', '').lower() == 'true':
         all_decisions = [d for h in hand_results.values() for d in h['decisions']]
@@ -6042,6 +6052,118 @@ def _gto_hand_worker_loop():
         except Exception:
             log.exception("GTO hand worker loop error")
             time.sleep(30)
+
+
+def _warmup_gw_multiway(hands: list, hero: str) -> None:
+    """
+    Warm-up cache GW pra spots preflop multiway de um torneio recém-importado.
+
+    Para cada decisão preflop do hero:
+      1. Encoda preflop_actions (formato GW)
+      2. Classifica scenario via classify_multiway
+      3. Skip se HU comum (rfi/vs_rfi/vs_3bet/vs_4bet) — esses têm cobertura
+         local via analyze_preflop. So warm scenarios multiway/squeeze/vs_squeeze
+         /5bet_or_higher onde lookup_gto falha.
+      4. Dedup por (gametype, depth, preflop_actions) — mesma combinação só é
+         resolvida 1x mesmo aparecendo em várias mãos.
+      5. Chama lookup_for_hand_decision(use_cache=True) — popula gw_raw_cache.
+
+    Rodando em daemon thread; serializado via _page_fetch_lock no server remoto.
+    """
+    try:
+        from leaklab.gto_wizard_client import (
+            lookup_for_hand_decision as _lookup, _enabled as _gw_enabled,
+        )
+        from leaklab.gw_action_encoder import (
+            encode_preflop_actions, find_hero_preflop_decisions,
+            num_seated_players, gw_gametype_for, classify_multiway,
+        )
+        from database.repositories import get_gw_raw_cache
+        import hashlib
+    except Exception as e:
+        log.debug("gw-warmup: imports falharam — %s", e)
+        return
+
+    if not _gw_enabled():
+        log.info("gw-warmup: GTO_WIZARD_ENABLED=false, skip")
+        return
+    if not hands or not hero:
+        return
+
+    # Coleta spots únicos (gametype, depth_bucket, preflop_actions) — só multiway
+    WARM_SCENARIOS = {"multiway", "squeeze", "vs_squeeze", "5bet_or_higher"}
+    seen_keys: set[str] = set()
+    queue: list[tuple] = []  # (hand, idx, depth_bb)
+    total_decisions = 0
+    skipped_hu = 0
+
+    for h in hands:
+        if not getattr(h, 'hero', None) or h.hero != hero:
+            continue
+        try:
+            n = num_seated_players(h)
+            gt = gw_gametype_for(n)
+            if not gt:
+                continue
+        except Exception:
+            continue
+
+        for idx in find_hero_preflop_decisions(h):
+            total_decisions += 1
+            try:
+                pf = encode_preflop_actions(h, idx)
+            except Exception:
+                continue
+            classify = classify_multiway(pf)
+            if classify.get("scenario") not in WARM_SCENARIOS:
+                skipped_hu += 1
+                continue
+
+            # Estima depth — tenta extrair stack do hero da linha "Seat N:"
+            depth_bb = 100.0
+            try:
+                from leaklab.hand_state_builder import _effective_stack as _es
+                depth_bb = float(_es(h, hero, [a for a in h.actions[:idx]])) or 100.0
+            except Exception:
+                pass
+
+            # Dedup por chave (gametype, depth bucketed em 10bb, preflop_actions)
+            dep_bucket = int(round(depth_bb / 10) * 10)
+            key = f"{gt}|{dep_bucket}|{pf}"
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            queue.append((h, idx, depth_bb))
+
+    if not queue:
+        log.info("gw-warmup: nada pra warmar (decisions=%d hu_skipped=%d uniq=0)",
+                 total_decisions, skipped_hu)
+        return
+
+    log.info("gw-warmup: iniciando torneio (decisions=%d hu_skip=%d multiway_uniq=%d)",
+             total_decisions, skipped_hu, len(queue))
+
+    warmed, hits, errors = 0, 0, 0
+    import time as _time
+    t0 = _time.time()
+    for hand, idx, depth_bb in queue:
+        try:
+            # cache_only=True primeiro pra contar hits sem chamar GW
+            cached = _lookup(hand, idx, depth_bb=depth_bb, cache_only=True)
+            if cached:
+                hits += 1
+                continue
+            # Cache miss — faz lookup completo (popula cache)
+            r = _lookup(hand, idx, depth_bb=depth_bb, timeout=90, use_cache=True)
+            if r:
+                warmed += 1
+            else:
+                errors += 1
+        except Exception:
+            errors += 1
+
+    log.info("gw-warmup: done em %.0fs (warmed=%d hit=%d err=%d uniq=%d)",
+             _time.time() - t0, warmed, hits, errors, len(queue))
 
 
 def _auto_queue_gto_for_tournament(t_db_id: int, results: list, user_id: int) -> None:

@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): warm-up automático do cache GW após upload de torneio
+- `backend/api/app.py`: nova função `_warmup_gw_multiway(hands, hero)` disparada em background thread após `save_tournament` no `/analyze`. Enumera decisões preflop do hero em todas as mãos, encoda `preflop_actions`, classifica scenario via `classify_multiway`, **filtra só os multiway** (scenarios `multiway/squeeze/vs_squeeze/5bet_or_higher` — onde `lookup_gto` HU local não tem cobertura), dedupa por (gametype, depth bucket 10bb, preflop_actions), e chama `lookup_for_hand_decision()` pra popular `gw_raw_cache`.
+- Serializado via `_page_fetch_lock` no server remoto — não satura GW; tipicamente 30-80 spots únicos por torneio de 150 mãos, 15-40min em background.
+- Próximo abrir do Replayer em qualquer dessas mãos já bate cache (<50ms) em vez de cache miss async.
+
 ### feat(replayer): mesa deslocada 25px ↓ + agregados de ação no RFI
 - `frontend/src/components/hud/PokerTableV3.tsx`: `CY` (centro vertical do layout) `315 → 340`; ellipses do feltro e texto LEAKLAB acompanham (cy 315→340, cy 328→353, text y 326→351). Cartas de seats do topo (UTG/UTG+1) não são mais cortadas pela borda superior; folga inferior preservada.
 - `backend/leaklab/preflop_gto_ranges.py`: cenário RFI agora expõe `raise_pct/allin_pct/call_pct/fold_pct` agregados no response do `analyze_preflop`. Frontend usa esses quando `hand_freq` específico é null (caso comum em spots sem hand_freqs do GW v3). Antes, barra do Decision Card mostrava só `Fold 78%` pq `raise_pct` não existia — agora mostra `Fold 78% + Raise 22%`.
