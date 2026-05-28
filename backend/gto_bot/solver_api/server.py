@@ -792,7 +792,10 @@ def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 25) -> dict:
                         return False
                     if resp.request.method != "GET":
                         return False
-                    # Compara params essenciais via URL substring
+                    # Filtra 200 only — GW dispara 2 requests por nav (200 + 204);
+                    # queremos a com conteudo.
+                    if resp.status != 200:
+                        return False
                     for k, v in expected.items():
                         if f"{k}={v}" not in resp.url and not (v == "" and f"{k}=&" in resp.url + "&"):
                             return False
@@ -877,19 +880,22 @@ def _snap_preflop_raise_sizes(api_params: dict) -> Optional[str]:
         probe_params = dict(base)
         probe_params["preflop_actions"] = current_pf
 
-        fetched = _fetch_via_page("/v4/game-points/next-actions/", probe_params, timeout_s=20)
+        # spot-solution do estado anterior ja retorna action_solutions[] com
+        # sizings validos pra proxima acao — evita chamada extra a /next-actions
+        # (que so dispara quando pf nao e vazio).
+        fetched = _fetch_via_page("/v4/solutions/spot-solution/", probe_params, timeout_s=20)
         if not (fetched.get("ok") and isinstance(fetched.get("json"), dict)):
-            log.info("snap: next-actions falhou pra estado %r — mantem token %s", current_pf, tok)
+            log.info("snap: spot-solution falhou pra estado %r — mantem token %s", current_pf, tok)
             new_tokens.append(tok)
             continue
 
-        na = fetched["json"].get("next_actions") or {}
-        avail = na.get("available_actions") or []
+        avail = fetched["json"].get("action_solutions") or []
         valid_sizes: list[float] = []
         for item in avail:
-            a = item.get("action") or item
+            a = item.get("action") or {}
             atype = str(a.get("type") or "").upper()
-            if atype in ("RAISE", "BET", "ALLIN", "ALL_IN"):
+            allin = bool(a.get("allin"))
+            if atype in ("RAISE", "BET") and not allin:
                 bs = a.get("betsize")
                 try:
                     sz = float(bs)
@@ -899,7 +905,7 @@ def _snap_preflop_raise_sizes(api_params: dict) -> Optional[str]:
                     pass
 
         if not valid_sizes:
-            log.info("snap: sem sizings validos em %r — mantem token %s", current_pf, tok)
+            log.info("snap: sem sizings RAISE/BET validos em %r — mantem token %s", current_pf, tok)
             new_tokens.append(tok)
             continue
 
