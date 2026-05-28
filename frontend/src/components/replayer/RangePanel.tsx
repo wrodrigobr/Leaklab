@@ -26,7 +26,7 @@ interface Props {
   onHeaderMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-// Frequência por ação (estilo GTO Wizard — soma 1.0)
+// Frequência por ação (estilo solver — soma 1.0)
 interface HandFreqApi {
   raise?: number; call?: number; allin?: number; fold?: number;
 }
@@ -199,17 +199,17 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
   // not yet in the static list (e.g. LJ before the fix), so we show it regardless
   const showGtoCtx = gto?.available ?? false;
 
-  // Solver overrides RegLife when available — same logic as effectiveGtoLabel in Replayer.tsx
+  // Solver overrides static ranges when available — same logic as effectiveGtoLabel in Replayer.tsx
   const solverStratSorted = step.gto_strategy
     ? [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0))
     : [];
   const effectiveGtoLabel = computeEffectiveGtoLabel(solverStratSorted, step.gto_label, step.action);
-  const solverOverridesRegLife =
+  const solverOverridesStatic =
     !!effectiveGtoLabel &&
     ['gto_correct', 'gto_mixed', 'gto_minor_deviation'].includes(effectiveGtoLabel) &&
     ['leak', 'major_leak'].includes(gto?.action_quality ?? '');
 
-  const quality = showGtoCtx && !solverOverridesRegLife
+  const quality = showGtoCtx && !solverOverridesStatic
     ? QUALITY_META[gto!.action_quality ?? 'unknown'] : null;
   const QIcon   = quality?.icon ?? Info;
 
@@ -240,7 +240,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
       {showGtoCtx && gto && (
         <div className={cn(
           "rounded-lg border px-3 py-2 space-y-1.5",
-          solverOverridesRegLife
+          solverOverridesStatic
             ? "border-border/40 bg-muted/10"
             : gto.in_range ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"
         )}>
@@ -256,7 +256,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
           </p>
 
           {/* Solver override notice */}
-          {solverOverridesRegLife ? (
+          {solverOverridesStatic ? (
             <div className="flex items-center flex-wrap gap-2">
               <p className="font-mono text-[9px] text-muted-foreground/60 italic">
                 Veredicto do solver substitui análise de range estática.
@@ -317,7 +317,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
             </span>
           </div>
           <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">
-            Sem dados GTO Wizard pra este bucket — usando tabela Nash binária shove/fold.
+            Sem dados do GTO Solver pra este bucket — usando tabela Nash binária shove/fold.
           </p>
           {hand && nashRange && (
             <p className={cn(
@@ -377,8 +377,8 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
         <p className="text-xs text-muted-foreground text-center py-4">Range não disponível para esta posição.</p>
       )}
 
-      {/* Pro notes — suprimidas quando solver contradiz RegLife */}
-      {showGtoCtx && !solverOverridesRegLife && gto?.pro_notes && gto.pro_notes.length > 0 && (
+      {/* Pro notes — suprimidas quando solver contradiz ranges estaticos */}
+      {showGtoCtx && !solverOverridesStatic && gto?.pro_notes && gto.pro_notes.length > 0 && (
         <div className="rounded-lg border border-border bg-muted/10 px-3 py-2 space-y-1">
           <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wide mb-1.5">Análise GTO</p>
           {gto.pro_notes.map((note, i) => (

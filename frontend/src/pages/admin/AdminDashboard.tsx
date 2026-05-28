@@ -933,7 +933,7 @@ function GtoWorkerTab() {
         <KpiTile label="Solver Pendentes" value={String(solverPend)} sub="gto_solver_queue" icon={Cpu} />
         <KpiTile label="Solver Concluídos" value={String(solverDone)} sub={`falhos: ${solverFail}`} icon={CheckCircle2} accent={solverDone > 0} />
         <KpiTile label="Decisions Cobertas"  value={String(coverageTotal)} sub={`nodes: ${(cov['solver_cli'] ?? 0) + (cov['gto_wizard'] ?? 0)} · preflop: ${cov['preflop_ranges'] ?? 0}`} icon={BarChart2} accent={coverageTotal > 0} />
-        <KpiTile label="GTO Wizard"  value={String(coverageWizard)} sub={`solver_cli: ${coverageSolver}`} icon={Activity} />
+        <KpiTile label="GTO Solver (remoto)"  value={String(coverageWizard)} sub={`solver_cli: ${coverageSolver}`} icon={Activity} />
       </div>
 
       {/* Throughput chart */}
@@ -985,7 +985,7 @@ function GtoWorkerTab() {
               .map(([source, n]) => {
                 const labels: Record<string, { label: string; sub: string; color: string }> = {
                   preflop_ranges: { label: 'preflop_ranges', sub: 'ranges JSON validados',  color: 'bg-emerald-500' },
-                  gto_wizard:     { label: 'gto_wizard',     sub: 'GTO Wizard (GCP)',        color: 'bg-blue-500'    },
+                  gto_wizard:     { label: 'gto_solver',     sub: 'GTO Solver (remoto)',     color: 'bg-blue-500'    },
                   solver_cli:     { label: 'solver_cli',     sub: 'solver local (CFR)',       color: 'bg-amber-500'   },
                 };
                 const meta = labels[source] ?? { label: source, sub: '', color: 'bg-primary' };

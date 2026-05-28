@@ -74,7 +74,7 @@
   },
   "gto_method": {
     "title": "GTO Classification Methodology",
-    "p1": "The system evaluates each preflop decision through a <strong>3-source priority pipeline</strong>: (1) <strong>Static ranges</strong> — RegLife MTT 8-max tables validated against GTO Wizard (79% agreement across 42 RFI spots); (2) <strong>Solver nodes</strong> — postflop spots solved and stored with measured exploitability; (3) <strong>Heuristic engine</strong> — equity + bet sizing + MTT context as fallback. The <code>gto_label</code> is saved at upload time and automatically reconciled with the dashboard <code>label</code> — ensuring the two views never show contradictory verdicts.",
+    "p1": "The system evaluates each preflop decision through a <strong>3-source priority pipeline</strong>: (1) <strong>GTO ranges</strong> — tables precomputed by the GTO Solver for MTT 8-max; (2) <strong>Solver nodes</strong> — spots solved by the GTO Solver and stored with measured exploitability; (3) <strong>Heuristic engine</strong> — equity + bet sizing + MTT context as fallback. The <code>gto_label</code> is saved at upload time and automatically reconciled with the dashboard <code>label</code> — ensuring the two views never show contradictory verdicts.",
     "scenarios_title": "The 3 preflop analysis scenarios",
     "col_scenario": "Scenario",
     "col_condition": "Detected condition",
@@ -103,8 +103,8 @@
     "buckets_title": "Supported stack depth buckets",
     "col_bucket": "Bucket",
     "col_bb_range": "Effective stack covered",
-    "p2": "The system <strong>does not display preflop GTO analysis</strong> (<em>available = false</em>) when the villain's position was not detected in the hand history, or when the spot is a 3-bet without a recognized opener. In these cases the Replayer shows only postflop analysis (equity + pot odds). <strong>Known SB limitation</strong>: for some stack buckets (10bb, 40bb, 75bb) the model only covers fold/raise for SB. In those spots, completing (limping) with a hand outside the raise range is classified as <em>acceptable</em> — not a mistake — because GTO Wizard models ~53% of SB hands as complete, which our simplified model does not represent.",
-    "p3": "System guarantee: <strong>we never display contradictory recommendations</strong>. The dashboard <code>label</code> and Replayer <code>gto_label</code> are automatically reconciled after every upload, solver update, or range sync. Preflop ranges validated against GTO Wizard at 79% agreement (42 RFI spots tested, v0.118.0 — May 2026)."
+    "p2": "The system <strong>does not display preflop GTO analysis</strong> (<em>available = false</em>) when the villain's position was not detected in the hand history, or when the spot is a 3-bet without a recognized opener. In these cases the Replayer shows only postflop analysis (equity + pot odds). <strong>Known SB limitation</strong>: for some stack buckets (10bb, 40bb, 75bb) the model only covers fold/raise for SB. In those spots, completing (limping) with a hand outside the raise range is classified as <em>acceptable</em> — not a mistake — because the GTO Solver models ~53% of SB hands as complete, which our simplified model does not represent.",
+    "p3": "System guarantee: <strong>we never display contradictory recommendations</strong>. The dashboard <code>label</code> and Replayer <code>gto_label</code> are automatically reconciled after every upload, solver update, or range sync. All preflop tables are precomputed by the GTO Solver."
   },
   "alignment_matrix": {
     "title": "Position × Street Heatmap",
@@ -134,7 +134,7 @@
     "pre_ft_pko": "Attenuated 1 level (bounty eases bubble)",
     "final_classic": "Maximum pressure (pure ICM)",
     "final_pko": "Keeps high pressure (bounty effect \"drowns under rising risk premiums\")",
-    "p2": "<strong>Current limitation</strong>: the engine uses <em>Classic ranges</em> in PKO tournaments, adjusting only the equity thresholds. PKO-specific ranges (native GTO Wizard MTT-PKO structure) require a dedicated collection blocked by the current subscription. Even so, the threshold adjustment (−2pp on required equity pre-FT) reflects the main qualitative shift documented by GTO Wizard."
+    "p2": "<strong>Current limitation</strong>: the engine uses <em>Classic ranges</em> in PKO tournaments, adjusting only the equity thresholds. PKO-specific ranges (native PKO solver structure) require a dedicated collection not yet available. Even so, the threshold adjustment (−2pp on required equity pre-FT) reflects the main qualitative shift documented by PKO theory."
   },
   "mstacks": {
     "title": "M-Ratio Phases",
@@ -215,7 +215,7 @@
     "event_exercise": "Complete an exercise correctly",
     "event_drill": "Complete a drill in the Ghost Table",
     "event_mastery": "Reach mastery on a spot",
-    "levels_title": "Level is calculated from the average Standard% of recent tournaments (minimum 5):",
+    "levels_title": "Level is computed from your ELO rating (GTO adherence, recent form):",
     "col_level": "Level",
     "col_req": "Required ELO",
     "streak_desc": "The number of consecutive days with registered activity (any XP-generating event). Resets if a day passes without activity.",
@@ -235,16 +235,16 @@
   },
   "career": {
     "title": "Career Trajectory",
-    "p1": "The <strong>Career Trajectory</strong> card projects when you will reach each level based on your actual <strong>Standard%</strong> curve across imported tournaments. The system uses linear regression over recent tournaments to calculate improvement rate and estimate dates.",
+    "p1": "The <strong>Career Trajectory</strong> card projects when you'll reach each level based on your real <strong>ELO</strong> curve across imported tournaments. The system runs linear regression over recent tournaments to compute the improvement rate and estimate dates.",
     "table": {
       "col_term": "Term",
       "col_meaning": "Meaning",
       "slope_term": "Slope",
-      "slope_meaning": "Standard% improvement per tournament (e.g. +0.12% = grows 1.2% every 10 tournaments)",
+      "slope_meaning": "ELO improvement per tournament (e.g. +3 = you gain ~30 ELO every 10 tournaments)",
       "milestone_term": "Milestone",
-      "milestone_meaning": "Standard% threshold to reach each level (e.g. Solid requires 86%)",
+      "milestone_meaning": "ELO threshold to reach each level (e.g. Sólido requires 1816 ELO)",
       "blocking_term": "Blocker",
-      "blocking_meaning": "High-frequency leak spots with the greatest impact on your current Standard%"
+      "blocking_meaning": "High-frequency leak spots that most impact your current ELO"
     },
     "p2": "The <strong>dashed line</strong> in the chart represents the future projection — not a guarantee. If the slope is negative or zero, the system indicates stagnation and does not project dates.",
     "p3": "The AI narrative in the card summarizes: (1) current trend, (2) estimated time to the next level, (3) the priority leak to fix to accelerate progression."

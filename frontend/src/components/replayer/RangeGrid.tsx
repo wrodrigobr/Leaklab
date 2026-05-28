@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { ACTION_COLORS } from "@/lib/actionColors";
 
 /**
- * RangeGrid estilo GTO Wizard — cada célula pode ter múltiplas cores
+ * RangeGrid estilo solver — cada célula pode ter múltiplas cores
  * proporcionais à frequência de cada ação (raise / call / allin / fold).
  *
  * Layout: stripes verticais. Ex: 88 com 70% call + 30% raise → 70% da largura

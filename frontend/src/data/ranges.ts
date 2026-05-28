@@ -53,7 +53,7 @@ export function heroHand(cards: string[]): string | null {
 
 export type CellAction = 'r' | 'c' | 'rc' | '';
 
-// Frequency por ação (estilo GTO Wizard — soma 1.0 entre raise+call+allin; resto é fold)
+// Frequency por ação (estilo solver — soma 1.0 entre raise+call+allin; resto é fold)
 export interface HandFreq {
   raise?: number;   // 3-bet sized (verde escuro)
   call?:  number;   // call (azul)

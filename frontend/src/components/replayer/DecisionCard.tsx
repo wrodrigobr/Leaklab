@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 
 export type DecisionSourceVariant =
   | "gto"        // Solver — autoridade máxima (roxo/primary)
-  | "preflop"    // Preflop RegLife — autoridade média (foreground)
+  | "preflop"    // Preflop GTO Solver — autoridade média (foreground)
   | "engine"     // Heurística do engine — autoridade baixa (muted)
   | "heuristic"  // Sem cobertura GTO — fallback (cinza)
   | "pushfold"   // Push/Fold zone — modo binário (amber)

@@ -279,7 +279,7 @@ export interface ReplayStep {
     call_pct?:  number;
     raise_pct?: number;
     allin_pct?: number;
-    // Frequência EXATA da mão do hero (GTO Wizard) — soma 1.0 entre fold+call+raise+allin
+    // Frequência EXATA da mão do hero (GTO Solver) — soma 1.0 entre fold+call+raise+allin
     // Preferido sobre %_pct globais (que são do range agregado).
     hand_freq?: { fold: number; call: number; raise: number; allin: number };
     rfi_pct?: number;

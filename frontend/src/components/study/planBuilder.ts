@@ -124,7 +124,6 @@ function severityFromIndex(i: number): LeakSeverity {
 function resourcesFromCard(card: StudyCard): StudyResource[] {
   const out: StudyResource[] = [];
   const KNOWN_URLS: Record<string, string> = {
-    "Solver GTO":       "https://gtowizard.com",
     "Run It Once":      "https://www.runitonce.com",
     "PokerCoaching":    "https://www.pokercoaching.com",
     "Upswing Poker":    "https://www.upswingpoker.com",
