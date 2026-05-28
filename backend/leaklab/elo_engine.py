@@ -240,6 +240,44 @@ def compute_player_elo_from_decisions(
     )
 
 
+def compute_elo_curve(decisions: list[dict]) -> list[dict]:
+    """
+    Calcula a curva de ELO torneio-a-torneio: processa decisions em ordem e
+    grava o ELO overall ao FINAL de cada torneio.
+
+    `decisions`: dicts com {tournament_id, street, gto_label, created_at} já
+    ordenados cronologicamente (por imported_at do torneio + ordem da decisão).
+
+    Retorna [{tournament_id, elo, n_decisions}] — um ponto por torneio que
+    teve ao menos 1 decisão com gto_label.
+    """
+    elo = INITIAL_ELO
+    n   = 0
+    curve: list[dict] = []
+    cur_tid = None
+    tid_had_decision = False
+
+    def _flush(tid):
+        if tid is not None and tid_had_decision:
+            curve.append({"tournament_id": tid, "elo": round(elo, 1), "n_decisions": n})
+
+    for d in decisions:
+        tid = d.get("tournament_id")
+        if tid != cur_tid:
+            _flush(cur_tid)
+            cur_tid = tid
+            tid_had_decision = False
+        score = decision_score(d.get("gto_label"), d.get("label"))
+        if score is None:
+            continue
+        elo = apply_decision(elo, score, n)
+        n  += 1
+        tid_had_decision = True
+
+    _flush(cur_tid)
+    return curve
+
+
 def snapshot_to_dict(s: PlayerEloSnapshot) -> dict:
     """Serializa snapshot pra dict JSON-friendly (resposta de API)."""
     return {

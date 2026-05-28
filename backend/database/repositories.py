@@ -4704,6 +4704,44 @@ def get_decisions_for_elo(user_id: int, last_n_tournaments: Optional[int] = None
         conn.close()
 
 
+def get_decisions_for_elo_curve(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:
+    """
+    Decisões pra curva de ELO torneio-a-torneio: inclui tournament_id, ordenadas
+    por imported_at do torneio (cronológico) + ordem da decisão.
+
+    last_n_tournaments: limita aos últimos N torneios (por imported_at).
+    """
+    conn = get_conn()
+    try:
+        if last_n_tournaments:
+            t_rows = _fetchall(conn, _adapt(
+                "SELECT id FROM tournaments WHERE user_id = ? "
+                "ORDER BY imported_at DESC, id DESC LIMIT ?"
+            ), (user_id, int(last_n_tournaments)))
+            tids = [r['id'] for r in t_rows]
+            if not tids:
+                return []
+            placeholders = ",".join(["?"] * len(tids))
+            rows = _fetchall(conn, _adapt(
+                f"SELECT d.id, d.tournament_id, d.street, d.gto_label, d.label "
+                f"FROM decisions d "
+                f"INNER JOIN tournaments t ON t.id = d.tournament_id "
+                f"WHERE d.tournament_id IN ({placeholders}) "
+                f"ORDER BY t.imported_at ASC, t.id ASC, d.id ASC"
+            ), tuple(tids))
+        else:
+            rows = _fetchall(conn, _adapt(
+                "SELECT d.id, d.tournament_id, d.street, d.gto_label, d.label "
+                "FROM decisions d "
+                "INNER JOIN tournaments t ON t.id = d.tournament_id "
+                "WHERE t.user_id = ? "
+                "ORDER BY t.imported_at ASC, t.id ASC, d.id ASC"
+            ), (user_id,))
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
 def get_peak_elo(user_id: int) -> Optional[float]:
     """Maior elo_overall já registrado pro user (pico histórico)."""
     conn = get_conn()

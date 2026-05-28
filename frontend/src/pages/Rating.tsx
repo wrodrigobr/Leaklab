@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Award, TrendingUp, TrendingDown, Minus, BookOpen } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { metrics, EloResponse } from "@/lib/api";
+import { metrics, EloResponse, EloCurveResponse, EloCurvePoint } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 
@@ -15,12 +15,13 @@ const STREET_LABEL: Record<string, string> = {
 
 export default function Rating() {
   const [data, setData] = useState<EloResponse | null>(null);
+  const [curve, setCurve] = useState<EloCurveResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    metrics.elo()
-      .then(setData)
+    Promise.all([metrics.elo(), metrics.eloCurve().catch(() => null)])
+      .then(([elo, c]) => { setData(elo); setCurve(c); })
       .catch((e) => setError(String(e?.message ?? e)))
       .finally(() => setLoading(false));
   }, []);
@@ -41,12 +42,12 @@ export default function Rating() {
           {error}
         </div>
       )}
-      {data && <RatingBody data={data} />}
+      {data && <RatingBody data={data} curve={curve} />}
     </HudLayout>
   );
 }
 
-function RatingBody({ data }: { data: EloResponse }) {
+function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveResponse | null }) {
   const { overall, by_street, total_decisions, delta_7d, bands, history, no_data, next_band, peak_elo } = data;
 
   return (
@@ -176,19 +177,26 @@ function RatingBody({ data }: { data: EloResponse }) {
         </div>
       </section>
 
-      {/* Gráfico histórico (sparkline simples) */}
-      {history.length >= 2 && (
+      {/* Curvas de ELO — histórico (all-time) e forma recente */}
+      {curve && curve.all_time.length >= 2 && (
         <section className="space-y-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Evolução
+            Evolução do ELO
           </h3>
-          <div className="rounded-xl border border-border/40 bg-card/40 p-4">
-            <Sparkline history={history} color={overall.band_color} />
-            <div className="flex items-center justify-between mt-2 font-mono text-[10px] text-muted-foreground">
-              <span>{history[history.length - 1]?.calculated_at?.slice(0, 10)}</span>
-              <span>{history[0]?.calculated_at?.slice(0, 10)}</span>
+          <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-1">
+            <div className="font-mono text-[10px] text-muted-foreground">
+              Histórico completo · {curve.all_time.length} torneios
             </div>
+            <EloCurveChart points={curve.all_time} color={overall.band_color} />
           </div>
+          {curve.recent.length >= 2 && (
+            <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-1">
+              <div className="font-mono text-[10px] text-muted-foreground">
+                Forma recente · últimos {curve.window_tournaments} torneios
+              </div>
+              <EloCurveChart points={curve.recent} color={overall.band_color} />
+            </div>
+          )}
         </section>
       )}
     </div>
@@ -208,31 +216,39 @@ function DeltaBadge({ delta }: { delta: number | null }) {
   );
 }
 
-function Sparkline({
-  history, color,
-}: {
-  history: EloResponse["history"];
-  color: string;
-}) {
-  // history vem mais novo primeiro; pra plot temporal, inverter
-  const points = [...history].reverse();
+function EloCurveChart({ points, color }: { points: EloCurvePoint[]; color: string }) {
   if (points.length < 2) return null;
-  const values = points.map((p) => p.elo_overall);
+  const values = points.map((p) => p.elo);
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const range = Math.max(1, max - min);
-  const W = 800, H = 120, padY = 8;
+  // padding do range pra curva não colar nas bordas
+  const pad = Math.max(20, (max - min) * 0.15);
+  const lo = min - pad, hi = max + pad;
+  const range = Math.max(1, hi - lo);
+  const W = 800, H = 140, padY = 10;
   const stepX = W / (points.length - 1);
-  const yOf = (v: number) => padY + (1 - (v - min) / range) * (H - 2 * padY);
-  const path = points.map((p, i) => `${i === 0 ? "M" : "L"}${(i * stepX).toFixed(1)},${yOf(p.elo_overall).toFixed(1)}`).join(" ");
+  const yOf = (v: number) => padY + (1 - (v - lo) / range) * (H - 2 * padY);
+  const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${(i * stepX).toFixed(1)},${yOf(p.elo).toFixed(1)}`).join(" ");
+  const area = `${line} L ${W},${H} L 0,${H} Z`;
+  const last = points[points.length - 1];
+  const gradId = `elo-area-${Math.round(min)}-${points.length}`;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-32" preserveAspectRatio="none">
-      <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      <text x="4" y="14" fontFamily="monospace" fontSize="10" fill="rgba(255,255,255,0.4)">
-        max {max.toFixed(0)}
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-36" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.20" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gradId})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      {/* ponto final */}
+      <circle cx={(W).toFixed(1)} cy={yOf(last.elo).toFixed(1)} r="3" fill={color} />
+      <text x="6" y="16" fontFamily="monospace" fontSize="11" fill="rgba(255,255,255,0.45)">
+        máx {max.toFixed(0)}
       </text>
-      <text x="4" y={H - 4} fontFamily="monospace" fontSize="10" fill="rgba(255,255,255,0.4)">
-        min {min.toFixed(0)}
+      <text x="6" y={H - 6} fontFamily="monospace" fontSize="11" fill="rgba(255,255,255,0.45)">
+        mín {min.toFixed(0)}
       </text>
     </svg>
   );

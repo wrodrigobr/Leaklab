@@ -1031,6 +1031,28 @@ def player_elo():
     })
 
 
+@app.route('/player/elo-curve', methods=['GET'])
+@require_auth
+def player_elo_curve():
+    """
+    Curva de ELO torneio-a-torneio em duas janelas:
+      all_time: cumulativo desde o 1º torneio (jornada completa)
+      recent:   últimos ELO_WINDOW_TOURNAMENTS torneios (forma atual)
+    Cada série: [{tournament_id, elo, n_decisions}].
+    """
+    from leaklab.elo_engine import compute_elo_curve
+    from database.repositories import get_decisions_for_elo_curve
+
+    all_dec    = get_decisions_for_elo_curve(g.user_id)
+    recent_dec = get_decisions_for_elo_curve(g.user_id, last_n_tournaments=ELO_WINDOW_TOURNAMENTS)
+
+    return jsonify({
+        'all_time':           compute_elo_curve(all_dec),
+        'recent':             compute_elo_curve(recent_dec),
+        'window_tournaments': ELO_WINDOW_TOURNAMENTS,
+    })
+
+
 @app.route('/player/pending-gto-count', methods=['GET'])
 @require_auth
 def player_pending_gto_count():

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { TrendingUp, TrendingDown, Minus, Target, AlertCircle, ChevronRight } from "lucide-react";
-import { CareerProjection, CareerMilestone, metrics, EloResponse } from "@/lib/api";
+import { CareerProjection, CareerMilestone, metrics, EloResponse, EloCurveResponse } from "@/lib/api";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import { cn } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
@@ -108,6 +108,33 @@ function Sparkline({ history, projection }: { history: number[]; projection: num
   );
 }
 
+function EloMiniCurve({ points, color }: { points: number[]; color: string }) {
+  if (points.length < 2) return null;
+  const min = Math.min(...points), max = Math.max(...points);
+  const pad = Math.max(15, (max - min) * 0.15);
+  const lo = min - pad, hi = max + pad;
+  const range = Math.max(1, hi - lo);
+  const W = 260, H = 52, padY = 6;
+  const stepX = W / (points.length - 1);
+  const yOf = (v: number) => padY + (1 - (v - lo) / range) * (H - 2 * padY);
+  const line = points.map((v, i) => `${i === 0 ? "M" : "L"}${(i * stepX).toFixed(1)} ${yOf(v).toFixed(1)}`).join(" ");
+  const area = `${line} L ${W} ${H} L 0 ${H} Z`;
+  const gid = `cg-elo-${points.length}-${Math.round(min)}`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 52 }} aria-hidden>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.20" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gid})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={W} cy={yOf(points[points.length - 1])} r={2.5} fill={color} />
+    </svg>
+  );
+}
+
 interface Props {
   data: CareerProjection;
 }
@@ -115,10 +142,12 @@ interface Props {
 export function CareerGraphCard({ data }: Props) {
   const { t, i18n } = useTranslation("dashboard");
   const [elo, setElo] = useState<EloResponse | null>(null);
+  const [curve, setCurve] = useState<EloCurveResponse | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     metrics.elo().then((r) => { if (!cancelled) setElo(r); }).catch(() => {});
+    metrics.eloCurve().then((r) => { if (!cancelled) setCurve(r); }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -208,8 +237,15 @@ export function CareerGraphCard({ data }: Props) {
       )}
 
       <div className="p-4 space-y-4">
-        {/* Sparkline */}
-        {data.series_history && data.series_history.length > 1 && (
+        {/* Mini-curva de ELO (forma recente) */}
+        {curve && curve.recent.length > 1 ? (
+          <div className="space-y-1">
+            <EloMiniCurve points={curve.recent.map(p => p.elo)} color={elo?.overall.band_color ?? "hsl(var(--primary))"} />
+            <span className="font-mono text-[9px] text-muted-foreground">
+              ELO · últimos {curve.window_tournaments} torneios
+            </span>
+          </div>
+        ) : data.series_history && data.series_history.length > 1 ? (
           <div className="space-y-1">
             <Sparkline
               history={data.series_history}
@@ -225,7 +261,7 @@ export function CareerGraphCard({ data }: Props) {
               </span>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Current + Next */}
         <div className="grid grid-cols-2 gap-3">

@@ -522,6 +522,18 @@ export interface EloResponse {
   no_data?:           boolean;
 }
 
+export interface EloCurvePoint {
+  tournament_id: number;
+  elo:           number;
+  n_decisions:   number;
+}
+
+export interface EloCurveResponse {
+  all_time:            EloCurvePoint[];
+  recent:              EloCurvePoint[];
+  window_tournaments:  number;
+}
+
 export interface GtoQualityData {
   total_with_gto: number;
   coverage_pct: number;
@@ -821,6 +833,9 @@ export const metrics = {
 
   elo: () =>
     request<EloResponse>(`/player/elo`),
+
+  eloCurve: () =>
+    request<EloCurveResponse>(`/player/elo-curve`),
 
   gtoQuality: (lastN?: number) =>
     request<GtoQualityData>(`/player/gto-quality${lastN != null ? `?last_n=${lastN}` : ""}`),
