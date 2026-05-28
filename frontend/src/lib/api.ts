@@ -761,6 +761,39 @@ export interface AcademySubmitResult {
   is_correct: boolean;
 }
 
+// GTO Preflop trainer (server-graded — a resposta certa nunca vem na /question)
+export interface GtoPreflopOption { action: string; label: string; }
+export interface GtoPreflopSpot {
+  position: string;
+  vs_position: string;
+  stack_bb: number;
+  facing_size: number;
+  is_3bet_pot: boolean;
+  hand: string;
+  scenario: string;
+}
+export interface GtoPreflopQuestion {
+  type: string;
+  scenario: string;
+  context: string;
+  prompt: string;
+  hand: string;
+  hero_cards: { rank: string; suit: string }[];
+  options: GtoPreflopOption[];
+  xp_value: number;
+  spot: GtoPreflopSpot;
+}
+export interface GtoPreflopVerdict {
+  is_correct: boolean;
+  action_quality: string;
+  best_action: string;
+  recommended: string[];
+  hand_freq: Record<string, number>;
+  range_pct: number | null;
+  explanation: string;
+  xp_awarded: number;
+}
+
 export const academy = {
   mathQuestion: (level: "beginner" | "intermediate" = "beginner") =>
     request<AcademyQuestion>(`/academy/math/question?level=${level}`),
@@ -787,6 +820,17 @@ export const academy = {
     request<AcademySubmitResult>("/academy/tournament/submit", {
       method: "POST",
       body: JSON.stringify({ selected_index, correct_index, xp_value }),
+    }),
+};
+
+export const gtoPreflop = {
+  question: (scenario: "mixed" | "rfi" | "vs_rfi" | "vs_3bet" = "mixed") =>
+    request<GtoPreflopQuestion>(`/academy/gto-preflop/question?scenario=${scenario}`),
+
+  submit: (spot: GtoPreflopSpot, action: string, xp_value: number) =>
+    request<GtoPreflopVerdict>("/academy/gto-preflop/submit", {
+      method: "POST",
+      body: JSON.stringify({ spot, action, xp_value }),
     }),
 };
 

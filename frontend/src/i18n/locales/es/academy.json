@@ -31,8 +31,8 @@
       "desc": "Calcula equity con outs, usa la regla 2/4 y combina draws con pot odds sin calculadora."
     },
     "ranges": {
-      "title": "Ranges por Stack Depth",
-      "desc": "Construye y ajusta ranges para push/fold, open y 3-bet a medida que el stack depth cambia."
+      "title": "Ranges GTO Preflop",
+      "desc": "Toma la decisión GTO en spots de open, defensa (call/3-bet) y vs 3-bet — corregido contra las ranges del solver."
     },
     "bet_sizing": {
       "title": "Bet Sizing 101",
@@ -43,8 +43,8 @@
       "desc": "SPR y compromiso, ICM en la burbuja y FT, equity en potes de 3-bet — spots donde chip EV ≠ equity de torneo."
     },
     "ranges_advanced": {
-      "title": "Range Advantage",
-      "desc": "Identifica quién tiene ventaja de range en distintas texturas de board y cómo explotarla con el sizing."
+      "title": "GTO Preflop — vs 3-Bet",
+      "desc": "Spots avanzados de 4-bet / call / fold contra 3-bets, en las distintas profundidades de stack."
     }
   },
   "stats": {
@@ -68,7 +68,15 @@
     "odds_vs_equity": "Odds vs Equity",
     "spr_commitment": "SPR y Compromiso",
     "icm_spot": "Spot ICM",
-    "3bet_pot": "Bote de 3-Bet"
+    "3bet_pot": "Bote de 3-Bet",
+    "gto_rfi": "RFI (Apertura)",
+    "gto_vs_rfi": "vs Open (Defensa)",
+    "gto_vs_3bet": "vs 3-Bet"
+  },
+  "gtoPreflop": {
+    "eyebrow": "Academia — Ranges GTO",
+    "title": "Ranges GTO Preflop",
+    "subtitle": "Elige la acción GTO en spots de open, defensa y 3-bet — evaluado contra las ranges del solver."
   },
   "math": {
     "eyebrow": "Academia — Principiante",

@@ -1397,6 +1397,31 @@ def academy_tournament_submit():
     return jsonify({'is_correct': is_correct})
 
 
+@app.route('/academy/gto-preflop/question', methods=['GET'])
+@require_auth
+def academy_gto_preflop_question():
+    from leaklab.academy_gto_preflop import generate_gto_preflop_question
+    scenario = request.args.get('scenario', 'mixed')
+    return jsonify(generate_gto_preflop_question(scenario))
+
+
+@app.route('/academy/gto-preflop/submit', methods=['POST'])
+@require_auth
+def academy_gto_preflop_submit():
+    # Avaliação SERVER-SIDE: o cliente manda o spot (echo da /question) + a ação
+    # escolhida; o veredito GTO é calculado aqui — a range nunca vai pro cliente.
+    from leaklab.academy_gto_preflop import grade_gto_preflop_answer
+    body     = request.get_json(force=True) or {}
+    spot     = body.get('spot') or {}
+    action   = (body.get('action') or '').lower()
+    xp_value = int(body.get('xp_value', 25))
+    result   = grade_gto_preflop_answer(spot, action)
+    result['xp_awarded'] = xp_value if result.get('is_correct') else 0
+    if result['xp_awarded']:
+        add_xp(g.user_id, 'academy_gto_preflop_correct', xp_value)
+    return jsonify(result)
+
+
 @app.route('/player/strategic-twin', methods=['GET'])
 @require_auth
 def player_strategic_twin():
