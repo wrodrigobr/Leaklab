@@ -323,7 +323,7 @@ export function CareerGraphCard({ data }: Props) {
             <div className="rounded-lg border border-border bg-background p-3 space-y-1.5">
               <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("career.currentLevel")}</p>
               <p className={cn("font-mono text-sm font-bold", colorCls)}>{levelName}</p>
-              <p className="font-mono text-[10px] text-muted-foreground">{data.current_avg?.toFixed(1)}%</p>
+              <p className="font-mono text-[10px] text-muted-foreground">{data.current_avg?.toFixed(0)} ELO</p>
             </div>
             {nm && nm.reachable && (
               <div className="rounded-lg border border-border bg-background p-3 space-y-1">
@@ -357,7 +357,7 @@ export function CareerGraphCard({ data }: Props) {
                     <span className={cn("flex items-center gap-1.5 font-mono font-semibold", mColor)}>
                       {Icon && <Icon size={11} />}
                       {mName}
-                      <span className="text-muted-foreground font-normal">({m.threshold}%)</span>
+                      <span className="text-muted-foreground font-normal">({m.threshold} ELO)</span>
                     </span>
                     <span className="font-mono text-[10px] text-muted-foreground">
                       {!m.reachable

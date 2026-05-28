@@ -1415,7 +1415,7 @@ def _call_career_narrative(projection: dict, lang: str) -> str:
     leak_str = ", ".join(lk['spot'].replace('/', ' → ') for lk in leaks[:2]) or "—"
     if nm.get("reachable") and nm.get("months_needed", 0) > 0:
         timeline = (f"At the current rate, the next level ({nm['level_name']} / "
-                    f"{nm['threshold']}%) is ~{nm['months_needed']} months away "
+                    f"{nm['threshold']} ELO) is ~{nm['months_needed']} months away "
                     f"({nm['tournaments_needed']} tournaments).")
     elif projection.get("slope_per_tournament", 0) <= 0:
         timeline = "The current trajectory is flat or declining."
@@ -1431,8 +1431,9 @@ def _call_career_narrative(projection: dict, lang: str) -> str:
         "Never invent or substitute different level names. Be direct and specific. No headers or bullets."
     )
     user_content = (
-        f"Current level: {projection['current_level']} ({projection['current_avg']:.1f}% standard). "
-        f"Trend: {projection['slope_per_tournament']:+.3f}% per tournament over "
+        f"Current level: {projection['current_level']} ({projection['current_avg']:.0f} ELO rating, "
+        f"GTO-adherence based). "
+        f"Trend: {projection['slope_per_tournament']:+.1f} ELO per tournament over "
         f"{projection['tournament_count']} tournaments. "
         f"{timeline} "
         f"Top blocking leaks: {leak_str}."
@@ -1467,14 +1468,14 @@ def _template_career(projection: dict) -> str:
     top   = leaks[0]["spot"].replace("/", " → ") if leaks else "leaks recorrentes"
     if slope > 0.05 and nm.get("reachable"):
         return (
-            f"Sua trajetória atual mostra melhora consistente de {slope:+.2f}% por torneio. "
+            f"Sua trajetória atual mostra melhora consistente de {slope:+.1f} ELO por torneio. "
             f"Mantendo esse ritmo, você alcançará o nível {nm['level_name']} "
-            f"({nm['threshold']}%) em aproximadamente {nm['months_needed']} meses. "
+            f"({nm['threshold']} ELO) em aproximadamente {nm['months_needed']} meses. "
             f"O principal obstáculo é o leak em {top} — corrigi-lo acelera diretamente essa projeção."
         )
     elif slope <= 0:
         return (
-            f"Seu Standard% está estagnado ou em queda nos últimos torneios. "
+            f"Seu ELO está estagnado ou em queda nos últimos torneios. "
             f"O foco imediato deve ser consistência, não volume. "
             f"O leak de {top} é o ponto de maior impacto para retomar a curva positiva."
         )

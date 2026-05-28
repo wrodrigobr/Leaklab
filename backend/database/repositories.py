@@ -1502,69 +1502,75 @@ def get_player_action_frequencies(user_id: int, days: int = 90) -> dict:
 
 def get_career_projection(user_id: int) -> dict:
     """
-    Sprint AP — Projeta a trajetória de carreira do jogador.
-    Regressão linear sobre standard_pct histórico → data estimada para cada nível.
+    Projeta a trajetória de carreira do jogador — UNIFICADO com ELO (2026-05-28).
+    Regressão linear sobre a CURVA DE ELO (torneio-a-torneio) → data estimada
+    para cada nível/banda. Antes usava standard_pct heurístico; agora alinhado
+    ao rating ELO oficial.
     """
     from datetime import datetime, timedelta
+    from leaklab.elo_engine import BANDS, compute_elo_curve
 
-    LEVELS = [
-        {"name": "Iniciante", "slug": "beginner", "min": 0,  "max": 60},
-        {"name": "Estudante", "slug": "student",  "min": 60, "max": 70},
-        {"name": "Grinder",   "slug": "grinder",  "min": 70, "max": 77},
-        {"name": "Regular",   "slug": "regular",  "min": 77, "max": 86},
-        {"name": "Sólido",    "slug": "solid",    "min": 86, "max": 92},
-        {"name": "Expert",    "slug": "expert",   "min": 92, "max": 96},
-        {"name": "Elite",     "slug": "elite",    "min": 96, "max": 100},
-    ]
+    # name → slug (pro frontend manter cores/i18n)
+    SLUG = {"Iniciante": "beginner", "Estudante": "student", "Grinder": "grinder",
+            "Regular": "regular", "Sólido": "solid", "Expert": "expert", "Elite": "elite"}
+    # LEVELS derivados das BANDS do ELO: (slug, name, min_elo, max_elo)
+    LEVELS = []
+    for i, (thr, _icon, label, _color) in enumerate(BANDS):
+        nxt = BANDS[i + 1][0] if i + 1 < len(BANDS) else 9999
+        LEVELS.append({"name": label, "slug": SLUG.get(label, label.lower()),
+                       "min": thr, "max": nxt})
 
+    # Curva de ELO all-time (1 ponto por torneio com gto_label)
+    decisions = get_decisions_for_elo_curve(user_id)
+    curve = compute_elo_curve(decisions)
+
+    if len(curve) < 5:
+        return {"insufficient_data": True, "tournament_count": len(curve)}
+
+    # Datas dos torneios (pra cadência/estimativa)
     conn = get_conn()
     try:
-        rows = conn.execute(_adapt("""
-            SELECT standard_pct, imported_at
-            FROM tournaments
-            WHERE user_id = ? AND standard_pct IS NOT NULL
-            ORDER BY imported_at ASC
-        """), (user_id,)).fetchall()
+        trows = conn.execute(_adapt(
+            "SELECT id, imported_at FROM tournaments WHERE user_id = ?"
+        ), (user_id,)).fetchall()
     finally:
         conn.close()
+    date_by_tid = {r["id"]: r["imported_at"] for r in trows}
 
-    history = [{"std": r["standard_pct"], "date": r["imported_at"]} for r in rows]
-
-    if len(history) < 5:
-        return {"insufficient_data": True, "tournament_count": len(history)}
-
-    stds = [h["std"] for h in history]
-    n = len(stds)
+    elos = [p["elo"] for p in curve]
+    n = len(elos)
     xs = list(range(n))
 
-    # Linear regression (pure Python — no numpy)
+    # Linear regression (pure Python) sobre a curva de ELO
     sum_x  = sum(xs)
-    sum_y  = sum(stds)
-    sum_xy = sum(x * y for x, y in zip(xs, stds))
+    sum_y  = sum(elos)
+    sum_xy = sum(x * y for x, y in zip(xs, elos))
     sum_x2 = sum(x * x for x in xs)
     denom  = n * sum_x2 - sum_x ** 2
     slope     = (n * sum_xy - sum_x * sum_y) / denom if denom else 0.0
     intercept = (sum_y - slope * sum_x) / n
 
     current_projected = slope * (n - 1) + intercept
-    current_avg       = round(sum(stds[-5:]) / 5, 2)
+    current_avg       = round(elos[-1], 1)   # = ELO atual (all-time)
 
-    # Tournaments per month from actual cadence
+    # Tournaments per month a partir da cadência real
     try:
-        first_date = datetime.fromisoformat(history[0]["date"].replace("Z", ""))
-        last_date  = datetime.fromisoformat(history[-1]["date"].replace("Z", ""))
+        d0 = date_by_tid.get(curve[0]["tournament_id"])
+        d1 = date_by_tid.get(curve[-1]["tournament_id"])
+        first_date = datetime.fromisoformat(str(d0).replace("Z", ""))
+        last_date  = datetime.fromisoformat(str(d1).replace("Z", ""))
         months_span = max((last_date - first_date).days / 30.0, 1.0)
     except Exception:
         months_span = max(n / 4.0, 1.0)
     tourns_per_month = n / months_span
 
-    # Current level
+    # Nível atual (banda do ELO)
     current_level = LEVELS[0]
     for lv in LEVELS:
         if current_avg >= lv["min"]:
             current_level = lv
 
-    # Project milestones (only levels above current)
+    # Milestones: bandas acima da atual
     milestones = []
     today = datetime.utcnow()
     for lv in LEVELS:
@@ -1572,45 +1578,37 @@ def get_career_projection(user_id: int) -> dict:
             continue
         if slope <= 0:
             milestones.append({
-                "level_name": lv["name"],
-                "level_slug": lv["slug"],
-                "threshold":  lv["min"],
-                "reachable":  False,
+                "level_name": lv["name"], "level_slug": lv["slug"],
+                "threshold":  lv["min"], "reachable":  False,
             })
             continue
         tourns_needed = (lv["min"] - current_projected) / slope
         if tourns_needed <= 0:
             milestones.append({
-                "level_name": lv["name"],
-                "level_slug": lv["slug"],
-                "threshold":  lv["min"],
-                "reachable":  True,
-                "tournaments_needed": 0,
-                "months_needed": 0.0,
+                "level_name": lv["name"], "level_slug": lv["slug"],
+                "threshold":  lv["min"], "reachable":  True,
+                "tournaments_needed": 0, "months_needed": 0.0,
                 "estimated_date": today.strftime("%Y-%m-%d"),
             })
         else:
             months_needed = tourns_needed / tourns_per_month
             est_date = today + timedelta(days=months_needed * 30)
             milestones.append({
-                "level_name":       lv["name"],
-                "level_slug":       lv["slug"],
-                "threshold":        lv["min"],
-                "reachable":        True,
+                "level_name":       lv["name"], "level_slug": lv["slug"],
+                "threshold":        lv["min"], "reachable":  True,
                 "tournaments_needed": round(tourns_needed),
                 "months_needed":    round(months_needed, 1),
                 "estimated_date":   est_date.strftime("%Y-%m-%d"),
             })
 
-    # Sparkline: historical points + short projection
-    series_history = [round(s, 1) for s in stds]
+    # Sparkline: ELO histórico + projeção curta
+    series_history = [round(e, 1) for e in elos]
     proj_points = max(5, min(10, round(n * 0.3)))
     series_projection = []
     for i in range(1, proj_points + 1):
         proj_val = slope * (n - 1 + i) + intercept
-        series_projection.append(round(min(100, max(0, proj_val)), 1))
+        series_projection.append(round(max(0, proj_val), 1))
 
-    # Next milestone shorthand
     next_milestone = next((m for m in milestones if m.get("reachable", False)), None)
 
     # Blocking leaks (from get_player_level logic)
@@ -1636,24 +1634,30 @@ def get_career_projection(user_id: int) -> dict:
         for r in blocking_rows
     ]
 
+    is_top_band = current_level["max"] >= 9999
     lv_span     = current_level["max"] - current_level["min"]
-    lv_progress = round((current_avg - current_level["min"]) / lv_span, 3) if lv_span > 0 else 1.0
+    if is_top_band:
+        lv_progress = 1.0
+    else:
+        lv_progress = round((current_avg - current_level["min"]) / lv_span, 3) if lv_span > 0 else 1.0
     lv_progress = max(0.0, min(1.0, lv_progress))
 
     return {
         "insufficient_data":    False,
+        "metric":               "elo",   # sinaliza pro frontend que valores são ELO
         "tournament_count":     n,
         "current_level":        current_level["name"],
         "current_level_slug":   current_level["slug"],
-        "current_avg":          current_avg,
+        "current_avg":          current_avg,        # = ELO atual (all-time)
+        "current_elo":          current_avg,
         "level_min":            current_level["min"],
-        "level_max":            current_level["max"],
+        "level_max":            None if is_top_band else current_level["max"],
         "level_progress":       lv_progress,
-        "slope_per_tournament": round(slope, 4),
+        "slope_per_tournament": round(slope, 4),    # ELO/torneio
         "tourns_per_month":     round(tourns_per_month, 1),
         "milestones":           milestones,
         "next_milestone":       next_milestone,
-        "series_history":       series_history,
+        "series_history":       series_history,      # ELO por torneio
         "series_projection":    series_projection,
         "blocking_leaks":       blocking_leaks,
     }
