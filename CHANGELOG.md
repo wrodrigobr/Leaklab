@@ -16,9 +16,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - `backend/gto_bot/solver_api/server.py`: `_capture_headers_via_cdp` agora aceita header `google-anal-id` como evidência de auth válida, não só `authorization`. GW migrou de Bearer JWT pra token ECDSA assinado client-side; antes, refresh sempre falhava com "Chrome não respondeu" mesmo com Chrome logado.
 
 ### feat(gto): endpoint `/gw-spot` para spots multiway (passthrough cru pro GW)
-- `backend/gto_bot/solver_api/server.py`: nova função `query_gto_wizard_raw()` + rota `POST /gw-spot`. Cliente envia `preflop_actions` já encoded (formato GW: `R2.1-F-F-C-F-C-R11.55`) e servidor proxia com headers de auth capturados via CDP. Suporta multiway, squeeze e cold-callers — qualquer cenário que GW resolva.
+- `backend/gto_bot/solver_api/server.py`: nova função `query_gto_wizard_raw()` + rota `POST /gw-spot`. Cliente envia `preflop_actions` já encoded (formato GW: `R2.1-F-F-C-F-C-R11.55`) e servidor navega o Chrome pra URL do app GW correspondente, interceptando a response da API que o próprio GW dispara (com auth ECDSA do interceptor JS). Suporta multiway, squeeze e cold-callers — qualquer cenário que GW resolva.
 - Response inclui `action_solutions[].strategy[169]` cru (frequência por hand_type 13×13) — permite extrair `hand_freqs` por mão específica no cliente.
-- Validação via HAR de mão real (UTG+1 open + HJ call + BTN call + SB squeeze, BB to act): GW retorna FOLD 96.7% / RAISE 2.6% / ALLIN 0.8%.
+- **Validado end-to-end** com mão multiway real (UTG+1 R2.1, HJ call, BTN call, SB R11.55, BB to act): retornou FOLD 96.66%, RAISE 2.57% (to 25.41bb), ALLIN 0.77%, com arrays strategy[169] preenchidos (FOLD: 165 mãos ativas, RAISE: 19, ALLIN: 12). Latência ~9s/request (overhead de navegar página + interceptar).
 
 ### fix(replayer): rota `/replay/<t>/<h>` não bloqueia mais em I/O remoto GTO offline
 - `backend/leaklab/gto_solver.py`: novo parâmetro `block_remote=True` em `lookup_gto`. Quando `False`, pula GTO Wizard e solver remoto, retornando apenas dados do DB local.
