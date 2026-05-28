@@ -715,25 +715,37 @@ def query_gto_wizard(spot: dict) -> dict:
 
 _page_fetch_lock = threading.Lock()  # sync_playwright nao e thread-safe
 
+# Params extras que o GW app inclui na URL do /solutions (defaults da UI)
+_GW_APP_DEFAULTS = {
+    "solution_type":     "gwiz",
+    "gmfs_solution_tab": "ai_sols",
+    "gmfft_sort_key":    "0",
+    "gmfft_sort_order":  "desc",
+    "history_spot":      "7",
+    "gmff_favorite":     "false",
+}
 
-def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 20) -> dict:
+
+def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 25) -> dict:
     """
-    Executa fetch GET na pagina do Chrome (contexto GW) via CDP.
+    Navega a pagina do Chrome para a URL correspondente do app GW
+    e intercepta a response da API que o proprio GW dispara (com
+    auth ECDSA assinada pelo interceptor JS do app).
 
     Retorna:
-      {ok:true, status:200, json:{...}}
+      {ok:true,  status:200, json:{...}}
       {ok:false, error:"...", status?:int}
     """
     try:
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
     except ImportError:
         return {"ok": False, "error": "playwright_not_installed"}
 
-    # Monta URL com query string (encoding compativel com GW)
     from urllib.parse import urlencode
-    url = f"{GW_API_BASE}{api_path}"
-    if params:
-        url = f"{url}?{urlencode(params)}"
+
+    # URL do app: mesmos params da API + defaults da UI
+    app_params = {**_GW_APP_DEFAULTS, **params}
+    app_url    = f"{GW_APP}/solutions?{urlencode(app_params)}"
 
     with _page_fetch_lock:
         try:
@@ -751,7 +763,6 @@ def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 20) -> dict:
             if not contexts:
                 return {"ok": False, "error": "no_browser_context"}
 
-            # Procura aba ja aberta no app.gtowizard.com — se nao tiver, abre uma
             target_page = None
             for ctx in contexts:
                 for p in ctx.pages:
@@ -767,72 +778,62 @@ def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 20) -> dict:
             if target_page is None:
                 try:
                     target_page = contexts[0].new_page()
-                    target_page.goto(f"{GW_APP}/solutions",
-                                     timeout=15000,
-                                     wait_until="domcontentloaded")
                 except Exception as e:
-                    return {"ok": False, "error": f"open_gw_page:{e}"}
+                    return {"ok": False, "error": f"new_page:{e}"}
 
-            # GW SPA tem um interceptor axios/fetch que assina cada request com
-            # google-anal-id (ECDSA client-side). fetch() raw nao passa pelo
-            # interceptor — request vai sem assinatura e CORS bloqueia. Pra
-            # resolver, copiamos a logica do interceptor: pegamos a ultima
-            # request feita pelo proprio GW (que esta nas request_headers do
-            # performance entries) e replicamos os headers exatos.
-            js = """
-            async (url) => {
-                try {
-                    // 1. Tenta usar o axios global do app (preserva interceptors)
-                    const axiosCandidates = [
-                        window.axios,
-                        window.$axios,
-                        window.__NUXT__?.$axios,
-                        window.$nuxt?.$axios,
-                    ];
-                    for (const ax of axiosCandidates) {
-                        if (ax && typeof ax.get === 'function') {
-                            const r = await ax.get(url);
-                            return { status: r.status, ok: r.status>=200 && r.status<300, body: r.data, via: 'axios' };
-                        }
-                    }
-                    // 2. Tenta achar axios no Vue app montado
-                    const root = document.querySelector('#app') || document.querySelector('#__nuxt') || document.body;
-                    const vue = root?.__vue_app__ || root?.__vue__;
-                    const ax2 = vue?.config?.globalProperties?.$axios
-                             || vue?.$axios
-                             || vue?.proxy?.$axios;
-                    if (ax2 && typeof ax2.get === 'function') {
-                        const r = await ax2.get(url);
-                        return { status: r.status, ok: r.status>=200 && r.status<300, body: r.data, via: 'vue_axios' };
-                    }
-                    // 3. Fallback: fetch direto (sem auth — vai falhar com 401/CORS)
-                    const r = await fetch(url, { credentials: 'include' });
-                    const txt = await r.text();
-                    let body = null;
-                    try { body = JSON.parse(txt); } catch(e) { body = txt.slice(0,500); }
-                    return { status: r.status, ok: r.ok, body: body, via: 'fetch_raw' };
-                } catch (e) {
-                    return { status: 0, ok: false, error: String(e), stack: String(e.stack||'').slice(0,200) };
-                }
-            }
-            """
+            # Match: API spot-solution com mesmos params essenciais
+            essential = ("gametype", "depth", "preflop_actions", "flop_actions",
+                         "turn_actions", "river_actions", "board")
+            expected = {k: str(params.get(k, "")) for k in essential}
+
+            def is_target(resp):
+                try:
+                    if api_path not in resp.url:
+                        return False
+                    if resp.request.method != "GET":
+                        return False
+                    # Compara params essenciais via URL substring
+                    for k, v in expected.items():
+                        if f"{k}={v}" not in resp.url and not (v == "" and f"{k}=&" in resp.url + "&"):
+                            return False
+                    return True
+                except Exception:
+                    return False
+
             try:
-                result = target_page.evaluate(js, url)
+                with target_page.expect_response(is_target, timeout=timeout_s * 1000) as resp_info:
+                    target_page.goto(app_url,
+                                     timeout=timeout_s * 1000,
+                                     wait_until="commit")
+                response = resp_info.value
+            except PWTimeout:
+                return {"ok": False, "error": "timeout_waiting_api_response"}
             except Exception as e:
-                return {"ok": False, "error": f"evaluate:{e}"}
+                return {"ok": False, "error": f"navigate:{e}"}
 
-            if not isinstance(result, dict):
-                return {"ok": False, "error": "invalid_evaluate_result"}
+            try:
+                status = response.status
+            except Exception:
+                status = 0
 
-            if result.get("error"):
-                return {"ok": False, "error": f"fetch:{result['error']}", "status": result.get("status")}
+            if status == 401:
+                _set_auth_failed("Token expirado (HTTP 401 via navigate)")
+                return {"ok": False, "status": 401, "error": "auth_expired"}
 
-            return {
-                "ok":     bool(result.get("ok")),
-                "status": int(result.get("status") or 0),
-                "json":   result.get("body"),
-                "via":    result.get("via"),
-            }
+            if status < 200 or status >= 300:
+                body_preview = None
+                try:
+                    body_preview = response.text()[:300]
+                except Exception:
+                    pass
+                return {"ok": False, "status": status, "error": f"http_{status}", "body": body_preview}
+
+            try:
+                data = response.json()
+            except Exception as e:
+                return {"ok": False, "status": status, "error": f"json_parse:{e}"}
+
+            return {"ok": True, "status": status, "json": data, "via": "navigate"}
         finally:
             try:
                 pw.stop()
@@ -870,10 +871,8 @@ def query_gto_wizard_raw(spot: dict) -> dict:
        players_info, hands_locked, usage}
       {found:false, error:"..."}
     """
-    with _auth_lock:
-        if not _auth_ok or not _auth_headers:
-            return {"found": False, "error": "auth_unavailable"}
-        headers = dict(_auth_headers)
+    # Nao bloqueia em _auth_ok — o novo _fetch_via_page nao usa headers
+    # capturados; auth e validada in-page (browser assina com google-anal-id).
 
     num_players = int(spot.get("num_players", 0) or 0)
     gametype    = str(spot.get("gametype", "") or "").strip()
@@ -939,9 +938,10 @@ def query_gto_wizard_raw(spot: dict) -> dict:
         "board":           bd,
     }
 
-    # Executa fetch DENTRO da pagina do Chrome (GW assina via google-anal-id)
-    fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params, timeout_s=20)
-    log.info("gw-spot via=%s status=%s ok=%s", fetched.get("via"), fetched.get("status"), fetched.get("ok"))
+    # Navega no Chrome pra URL do app e intercepta response da API (GW assina via interceptor JS)
+    fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params, timeout_s=25)
+    log.info("gw-spot via=%s status=%s ok=%s err=%s",
+             fetched.get("via"), fetched.get("status"), fetched.get("ok"), fetched.get("error"))
     if not fetched.get("ok"):
         status = fetched.get("status") or 0
         if status == 401:
