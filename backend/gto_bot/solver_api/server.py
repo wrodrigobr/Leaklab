@@ -958,7 +958,8 @@ def query_gto_wizard_raw(spot: dict) -> dict:
     if not isinstance(data, dict):
         return {"found": False, "error": "invalid_json", "raw": str(data)[:300]}
 
-    include_strategy = bool(spot.get("include_strategy", True))
+    include_strategy   = bool(spot.get("include_strategy", True))
+    include_hand_freqs = bool(spot.get("include_hand_freqs", True))
     actions_out = []
     for item in data.get("action_solutions", []):
         a = item.get("action", {}) or {}
@@ -981,8 +982,29 @@ def query_gto_wizard_raw(spot: dict) -> dict:
             entry["evs"]      = item.get("evs", [])
         actions_out.append(entry)
 
-    log.info("gw-spot: OK gametype=%s depth=%s pf=%s fl=%s board=%s → %d acoes",
-             gametype, depth_frac, pf, fl, bd, len(actions_out))
+    # Extrai hand_freqs do hero (players_info[i] com is_hero=true)
+    hero_hand_freqs = None
+    hero_position   = None
+    if include_hand_freqs:
+        for p in (data.get("players_info") or []):
+            player = p.get("player") or {}
+            if player.get("is_hero"):
+                hero_position = player.get("position")
+                counters = p.get("simple_hand_counters") or {}
+                hf = {}
+                for hand_name, info in counters.items():
+                    freqs = (info or {}).get("actions_total_frequencies") or {}
+                    if not freqs:
+                        continue
+                    # action codes mantidos crus (F, C, R2.1, RAI) — cliente normaliza
+                    hf[hand_name] = {k: round(float(v), 4) for k, v in freqs.items()}
+                if hf:
+                    hero_hand_freqs = hf
+                break
+
+    log.info("gw-spot: OK gametype=%s depth=%s pf=%s fl=%s board=%s → %d acoes hero=%s hands=%d",
+             gametype, depth_frac, pf, fl, bd, len(actions_out),
+             hero_position, len(hero_hand_freqs or {}))
 
     return {
         "found":            True,
@@ -991,8 +1013,10 @@ def query_gto_wizard_raw(spot: dict) -> dict:
         "depth_used":       depth_frac,
         "stacks":           stacks_str,
         "params":           api_params,
+        "hero_position":    hero_position,
+        "hero_hand_freqs":  hero_hand_freqs,
         "action_solutions": actions_out,
-        "players_info":     data.get("players_info"),
+        "players_info":     data.get("players_info") if include_strategy else None,
         "hands_locked":     data.get("hands_locked"),
         "usage":            data.get("usage"),
         "warning":          data.get("warning"),

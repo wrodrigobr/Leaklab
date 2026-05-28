@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): cliente `query_spot_raw()` + extração de `hand_freqs` pelo servidor
+- `backend/leaklab/gto_wizard_client.py`: nova função `query_spot_raw()` que chama `POST /gw-spot`. Aceita `preflop_actions` encoded (formato GW) + street actions + board. Retorna `strategy` normalizada (action_codes → fold/call/raise/allin/bet) e `hand_freqs` por hand_type (ex `{"AJo": {"fold": 0.45, "raise": 0.55}}`).
+- Helper `_normalize_gw_action(code, action_type)` converte `R2.1`, `RAI`, `F`, `C` etc para o vocabulário do engine, preservando `betsize_bb` quando aplicável.
+- `backend/gto_bot/solver_api/server.py`: response de `/gw-spot` agora inclui `hero_position` + `hero_hand_freqs` extraídos de `players_info[hero].simple_hand_counters` (keyed por hand_type, evita o problema do array `strategy[169]` com ordem não-trivial). Param `include_hand_freqs` (default true).
+
 ### refactor(gto-bot): `/gw-spot` executa fetch in-page via CDP (auth-safe)
 - `backend/gto_bot/solver_api/server.py`: nova helper `_fetch_via_page(api_path, params)` que abre conexão Playwright→CDP, encontra aba aberta do GW e roda `fetch()` dentro do contexto da página via `page.evaluate()`. Browser anexa `google-anal-id` automaticamente (signature ECDSA válida).
 - `query_gto_wizard_raw` (`/gw-spot`) refatorado pra usar `_fetch_via_page` em vez de `requests.Session` + headers replay. Replay externo era rejeitado pelo GW (401) porque assinatura do token está atrelada ao TLS/JS context do browser.

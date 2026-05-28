@@ -142,3 +142,172 @@ def query_spot(
         "spot_hash":           None,
         "queued":              False,
     }
+
+
+# ── Raw passthrough (multiway / squeeze / cold-callers) ───────────────────────
+
+def _normalize_gw_action(code: str, action_type: str = "") -> tuple[str, float | None]:
+    """
+    Normaliza action code do GW pro vocabulário do engine.
+
+    Retorna (action_name, betsize_bb).
+    Tipo de ação tem precedência sobre prefixo do code quando disponível.
+    """
+    code = (code or "").strip()
+    t = (action_type or "").upper()
+    if t in ("FOLD",):
+        return "fold", None
+    if t in ("CHECK",):
+        return "check", None
+    if t in ("CALL",):
+        return "call", None
+    if t in ("ALLIN", "ALL_IN") or code.upper() == "RAI":
+        return "allin", None
+    if t in ("RAISE", "BET"):
+        try:
+            sz = float(code.lstrip("Rr").lstrip("Bb")) if code else None
+        except (ValueError, TypeError):
+            sz = None
+        return ("raise" if t == "RAISE" else "bet"), sz
+    # Sem tipo conhecido: fallback pelo prefixo
+    if code == "F":  return "fold",  None
+    if code == "C":  return "call",  None
+    if code == "X":  return "check", None
+    if code.upper() == "RAI": return "allin", None
+    if code.startswith("R"):
+        try: return "raise", float(code[1:])
+        except ValueError: return "raise", None
+    if code.startswith("B"):
+        try: return "bet", float(code[1:])
+        except ValueError: return "bet", None
+    return code.lower(), None
+
+
+def query_spot_raw(
+    preflop_actions: str,
+    num_players: int,
+    depth_bb: float,
+    *,
+    flop_actions: str = "",
+    turn_actions: str = "",
+    river_actions: str = "",
+    board: str | list[str] = "",
+    stacks_bb: list[float] | None = None,
+    gametype: str | None = None,
+    include_strategy: bool = False,
+    timeout: int = 45,
+) -> Optional[dict]:
+    """
+    Consulta GW via servidor remoto `POST /gw-spot` — suporta qualquer cenário
+    (multiway, squeeze, cold-callers) desde que `preflop_actions` esteja
+    encoded no formato GW (ex: "R2.1-F-F-C-F-C-R11.55").
+
+    Retorna None se desabilitado, servidor indisponível ou sem solução.
+
+    Em sucesso, retorna dict:
+    {
+      "found":            True,
+      "source":           "gtowizard_raw",
+      "hero_position":    str | None,
+      "strategy":         [{action, frequency, betsize_bb, code, total_combos}],
+      "hand_freqs":       { hand_type: {action: frequency, ...} },  # action normalizado
+      "raw_hand_freqs":   { hand_type: {code: frequency, ...} },    # codes brutos do GW
+      "spot":             { gametype, depth_used, stacks, preflop_actions },
+    }
+    """
+    if not _enabled():
+        return None
+    base = _base_url()
+    if not base:
+        return None
+
+    payload = {
+        "num_players":     int(num_players),
+        "depth_bb":        float(depth_bb),
+        "preflop_actions": preflop_actions or "",
+        "flop_actions":    flop_actions or "",
+        "turn_actions":    turn_actions or "",
+        "river_actions":   river_actions or "",
+        "board":           board or "",
+        "include_strategy":   bool(include_strategy),
+        "include_hand_freqs": True,
+    }
+    if stacks_bb is not None:
+        payload["stacks_bb"] = list(stacks_bb)
+    if gametype:
+        payload["gametype"] = gametype
+
+    try:
+        import requests
+        r = requests.post(
+            f"{base}/gw-spot",
+            json=payload,
+            headers={"x-api-key": _api_key()},
+            timeout=timeout,
+        )
+    except Exception as e:
+        log.debug("gw-spot: request falhou — %s", e)
+        return None
+
+    if r.status_code == 503:
+        log.info("gw-spot: auth indisponível no servidor (503)")
+        return None
+    if r.status_code == 401:
+        log.info("gw-spot: token GW expirado (401)")
+        return None
+    if not r.ok:
+        log.info("gw-spot: HTTP %d — %s", r.status_code, r.text[:200])
+        return None
+
+    try:
+        data = r.json()
+    except Exception:
+        return None
+    if not data.get("found"):
+        log.debug("gw-spot: sem solução — %s", data.get("error"))
+        return None
+
+    # Normaliza strategy do action_solutions
+    strategy_out = []
+    for entry in data.get("action_solutions") or []:
+        act    = entry.get("action") or {}
+        code   = act.get("code") or ""
+        atype  = act.get("type") or ""
+        name, betsize = _normalize_gw_action(code, atype)
+        strategy_out.append({
+            "action":             name,
+            "code":               code,
+            "frequency":          round(float(entry.get("total_frequency") or 0), 4),
+            "betsize_bb":         betsize,
+            "total_combos":       entry.get("total_combos"),
+        })
+
+    # Normaliza hand_freqs: codes crus → ações normalizadas
+    raw_hf = data.get("hero_hand_freqs") or {}
+    hand_freqs: dict[str, dict[str, float]] = {}
+    for hand_name, freqs in raw_hf.items():
+        norm: dict[str, float] = {}
+        for code, freq in freqs.items():
+            name, _ = _normalize_gw_action(code)
+            norm[name] = round(norm.get(name, 0.0) + float(freq), 4)
+        hand_freqs[hand_name] = norm
+
+    spot_info = {
+        "gametype":        data.get("gametype"),
+        "depth_used":      data.get("depth_used"),
+        "stacks":          data.get("stacks"),
+        "preflop_actions": (data.get("params") or {}).get("preflop_actions"),
+    }
+    log.info("gw-spot: OK hero=%s %d acoes hands=%d gametype=%s",
+             data.get("hero_position"), len(strategy_out),
+             len(hand_freqs), data.get("gametype"))
+
+    return {
+        "found":          True,
+        "source":         "gtowizard_raw",
+        "hero_position":  data.get("hero_position"),
+        "strategy":       strategy_out,
+        "hand_freqs":     hand_freqs,
+        "raw_hand_freqs": raw_hf,
+        "spot":           spot_info,
+    }
