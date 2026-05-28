@@ -328,12 +328,32 @@ def analyze_preflop(
         quality = _rfi_quality(action_taken, in_rng, stack_bb,
                                in_limp=in_limp, is_sb=(pos == 'SB'),
                                hand_freq=hand_freq)
+        # Expõe raise/allin/call/fold pct agregados do range — usados pela
+        # barra do Decision Card quando hand_freq específica não existe.
+        if is_v3:
+            agg_raise = float(rfi.get('raise_pct', 0) or 0)
+            agg_allin = float(rfi.get('allin_pct', 0) or 0)
+        else:
+            # v2: deriva de acoes (R = raise, J/A = allin)
+            _acoes_norm = [str(a).upper() for a in acoes]
+            agg_raise = pct if any(a in ('R', 'RAISE') for a in _acoes_norm) else 0.0
+            agg_allin = pct if any(a in ('J', 'A', 'JAM', 'ALLIN', 'ALL-IN') for a in _acoes_norm) else 0.0
+            if not (agg_raise or agg_allin):  # fallback genérico
+                agg_raise = pct
+        agg_call = limp_pct  # RFI tem call só via limp (SB)
+        agg_fold = max(0.0, 1.0 - (agg_raise + agg_allin + agg_call))
+
         base.update({
             'available': True, 'in_range': in_rng or in_limp,
             'range_pct': pct, 'range_hands': hands_str,
             'hand_freq': hand_freq,  # freq exata da mão hero (para barra Decision Card)
             'range_grid_pct': grid_pct,
             'recommended_actions': rec, 'rfi_pct': pct,
+            # Agregados do range (rendered no Decision Card quando hand_freq=null)
+            'raise_pct': round(agg_raise, 4),
+            'allin_pct': round(agg_allin, 4),
+            'call_pct':  round(agg_call,  4),
+            'fold_pct':  round(agg_fold,  4),
             'action_quality': quality,
             'in_limp_range': in_limp,
             'limp_pct': limp_pct,

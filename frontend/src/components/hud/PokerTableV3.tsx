@@ -9,7 +9,7 @@ import { useEffect, useRef } from "react";
 import type { ReplayStep } from "@/lib/api";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const CX = 560, CY = 315;
+const CX = 560, CY = 340;
 const RX_SEAT = 452, RY_SEAT = 272;
 const CARDS_BASE = "/cards/";
 const AC_COLORS: Record<string, string> = {
@@ -476,14 +476,14 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
               <feDropShadow dx="0" dy="16" stdDeviation="28" floodColor="#000" floodOpacity=".95" />
             </filter>
           </defs>
-          <ellipse cx="562" cy="328" rx="445" ry="245" fill="#000" filter="url(#bg-shadow)" />
-          <ellipse cx="560" cy="315" rx="442" ry="240" fill="url(#bg-rail)" />
-          <ellipse cx="560" cy="315" rx="442" ry="240" fill="none" stroke="#2c2c2c" strokeWidth="1.2" />
-          <ellipse cx="560" cy="315" rx="418" ry="222" fill="none" stroke="#1a1a1a" strokeWidth="5" />
-          <ellipse cx="560" cy="315" rx="414" ry="218" fill="url(#bg-felt)" />
-          <ellipse cx="560" cy="315" rx="403" ry="207" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5" />
-          <ellipse cx="560" cy="315" rx="414" ry="218" fill="url(#bg-vig)" />
-          <text x="560" y="326" textAnchor="middle" fill="rgba(255,255,255,0.022)"
+          <ellipse cx="562" cy="353" rx="445" ry="245" fill="#000" filter="url(#bg-shadow)" />
+          <ellipse cx="560" cy="340" rx="442" ry="240" fill="url(#bg-rail)" />
+          <ellipse cx="560" cy="340" rx="442" ry="240" fill="none" stroke="#2c2c2c" strokeWidth="1.2" />
+          <ellipse cx="560" cy="340" rx="418" ry="222" fill="none" stroke="#1a1a1a" strokeWidth="5" />
+          <ellipse cx="560" cy="340" rx="414" ry="218" fill="url(#bg-felt)" />
+          <ellipse cx="560" cy="340" rx="403" ry="207" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5" />
+          <ellipse cx="560" cy="340" rx="414" ry="218" fill="url(#bg-vig)" />
+          <text x="560" y="351" textAnchor="middle" fill="rgba(255,255,255,0.022)"
                 fontFamily="Inter,sans-serif" fontSize="58" fontWeight="800" letterSpacing="16">LEAKLAB</text>
         </svg>
       </div>

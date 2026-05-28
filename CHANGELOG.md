@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): mesa deslocada 25px ↓ + agregados de ação no RFI
+- `frontend/src/components/hud/PokerTableV3.tsx`: `CY` (centro vertical do layout) `315 → 340`; ellipses do feltro e texto LEAKLAB acompanham (cy 315→340, cy 328→353, text y 326→351). Cartas de seats do topo (UTG/UTG+1) não são mais cortadas pela borda superior; folga inferior preservada.
+- `backend/leaklab/preflop_gto_ranges.py`: cenário RFI agora expõe `raise_pct/allin_pct/call_pct/fold_pct` agregados no response do `analyze_preflop`. Frontend usa esses quando `hand_freq` específico é null (caso comum em spots sem hand_freqs do GW v3). Antes, barra do Decision Card mostrava só `Fold 78%` pq `raise_pct` não existia — agora mostra `Fold 78% + Raise 22%`.
+
 ### feat(replayer): barras de frequência GTO independentes por ação + cor fold amarela
 - `frontend/src/pages/Replayer.tsx`: barra única stacked (fold/call/raise/allin coladas) substituída por uma barra horizontal independente por ação, ordenada por frequência decrescente. Cada linha mostra: bar + label colorido + %.
 - `frontend/src/lib/actionColors.ts`: cor do `fold` alterada de `zinc-500` (cinza) para `yellow-300` (amarelo claro) — usuário achou o cinza pesado demais. Atualizada também a versão Tailwind (`ACTION_TW.fold`).
