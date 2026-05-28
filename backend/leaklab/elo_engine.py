@@ -40,7 +40,13 @@ log = logging.getLogger(__name__)
 
 # ── Constantes ────────────────────────────────────────────────────────────────
 
-SOLVER_ELO    = 3000
+# BENCHMARK_ELO = rating de referência ("par") contra o qual cada decisão é
+# pontuada. Calibrado em 1500 = jogador médio. Acertar GTO (S alto) empurra o
+# rating acima do par; errar empurra abaixo. NÃO é "a força do solver" — é o
+# baseline da plataforma. Com 1500, a escala fica espalhada: ~70% aderência →
+# ~1680, ~85% → ~1800, ~99% → 2400+. (Antes era 3000, comprimia todo mundo no
+# topo: avg S 0.71 estabilizava em ~3060 = todos "Elite".)
+SOLVER_ELO    = 1500
 INITIAL_ELO   = 1500
 ELO_DIVISOR   = 400.0   # diff de 400 = razão 10:1 esperada
 
@@ -52,16 +58,11 @@ GTO_LABEL_SCORE: dict[str, float] = {
     "gto_critical":        0.0,
 }
 
-# Fallback quando não há gto_label (usa label heurístico do engine).
-# Valores neutros (S=0.5) para 'standard'/'marginal' garantem que o ELO
-# estabiliza próximo ao SOLVER_ELO pra um jogador que sempre joga "no
-# padrão" — só sobe acima de 3000 quem realmente joga GTO-correct sempre.
-ENGINE_LABEL_SCORE: dict[str, float] = {
-    "standard":      0.5,
-    "marginal":      0.5,
-    "small_mistake": 0.3,
-    "clear_mistake": 0.0,
-}
+# NOTA: decisões SEM gto_label são EXCLUÍDAS do rating (não usamos fallback
+# heurístico). Decisão de produto (2026-05-28): o ELO só conta spots com
+# análise de solver GTO — garante que o rating reflete aderência real ao
+# equilíbrio, sem ruído do engine heurístico. Spots sem cobertura GTO são
+# pulados (não afetam o rating pra cima nem pra baixo).
 
 # K-factor dinâmico por experiência (n_decisions processadas)
 def k_factor(n_decisions: int) -> int:
@@ -100,12 +101,14 @@ def expected_score(player_elo: float, opponent_elo: float = SOLVER_ELO) -> float
     return 1.0 / (1.0 + 10.0 ** ((opponent_elo - player_elo) / ELO_DIVISOR))
 
 
-def decision_score(gto_label: Optional[str], engine_label: Optional[str]) -> Optional[float]:
-    """Retorna S (score real) pra decisão. None se não classificável."""
+def decision_score(gto_label: Optional[str], engine_label: Optional[str] = None) -> Optional[float]:
+    """
+    Retorna S (score real) pra decisão. None quando NÃO há gto_label —
+    essas decisões são excluídas do rating (sem fallback heurístico).
+    `engine_label` mantido na assinatura por compat, mas não usado.
+    """
     if gto_label and gto_label in GTO_LABEL_SCORE:
         return GTO_LABEL_SCORE[gto_label]
-    if engine_label and engine_label in ENGINE_LABEL_SCORE:
-        return ENGINE_LABEL_SCORE[engine_label]
     return None
 
 

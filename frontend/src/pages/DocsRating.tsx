@@ -61,8 +61,16 @@ K  = fator de volatilidade (32 iniciante, 16 médio, 8 experiente)`}
           </h2>
           <p>
             Poker não tem um adversário direto cuja qualidade dê pra medir em cada partida.
-            Adotamos uma abordagem <strong>vs Solver GTO</strong>: cada decisão sua é uma
-            "partida" contra o solver, que tem rating fixo <strong>3000</strong>.
+            Adotamos uma abordagem <strong>vs Solver GTO</strong>: cada decisão sua é
+            comparada com a solução do solver. O rating de referência ("par") da
+            plataforma é <strong>1500</strong> — o jogador médio. Aderência alta ao GTO
+            empurra seu rating acima do par; erros graves empurram abaixo.
+          </p>
+          <p className="rounded-md bg-emerald-500/10 border border-emerald-500/30 p-3 text-emerald-300/90 text-xs">
+            <strong>Importante:</strong> o ELO considera <strong>apenas decisões com
+            análise de solver GTO</strong>. Spots sem cobertura GTO (ainda não resolvidos)
+            são ignorados — não inflam nem deflacionam seu rating. Isso garante que o
+            número reflete aderência real ao equilíbrio, não estimativa heurística.
           </p>
           <p>
             Seu resultado <strong>S</strong> em cada decisão depende do alinhamento com o GTO:
@@ -100,11 +108,6 @@ K  = fator de volatilidade (32 iniciante, 16 médio, 8 experiente)`}
               </tbody>
             </table>
           </div>
-          <p className="text-xs">
-            Quando não há dado GTO disponível (cobertura faltante), usamos o label do engine
-            heurístico como fallback: <code>standard/marginal</code> = 0.5,
-            <code> small_mistake</code> = 0.3, <code>clear_mistake</code> = 0.0.
-          </p>
         </section>
 
         <section className="space-y-3">
@@ -112,31 +115,31 @@ K  = fator de volatilidade (32 iniciante, 16 médio, 8 experiente)`}
             4. Exemplo de cálculo
           </h2>
           <p>
-            Player com <strong>ELO 1500</strong>, decisão classificada como
+            Player no par (<strong>ELO 1500</strong>), decisão classificada como
             <code> gto_correct</code> (S = 1.0), K-factor = 32 (iniciante):
           </p>
           <pre className="rounded-md bg-card/60 border border-border/40 p-3 font-mono text-xs text-foreground">
-{`E = 1 / (1 + 10^((3000 − 1500) / 400))
-  = 1 / (1 + 10^3.75)
-  = 1 / (1 + 5623)
-  = 0.000178      ← esperava perder feio
+{`E = 1 / (1 + 10^((1500 − 1500) / 400))
+  = 1 / (1 + 1)
+  = 0.5            ← partida equilibrada (você está no par)
 
-R' = 1500 + 32 × (1.0 − 0.000178)
-   = 1500 + 31.99
-   = 1531.99     ← ganhou +32 ELO em 1 decisão!`}
+R' = 1500 + 32 × (1.0 − 0.5)
+   = 1500 + 16
+   = 1516           ← acertou: +16 ELO`}
           </pre>
           <p>
-            Outro exemplo: mesmo player joga um <code>gto_critical</code> (S = 0):
+            Mesmo player joga um <code>gto_critical</code> (S = 0):
           </p>
           <pre className="rounded-md bg-card/60 border border-border/40 p-3 font-mono text-xs text-foreground">
-{`R' = 1500 + 32 × (0 − 0.000178)
-   = 1500 − 0.006
-   = 1499.99     ← perda mínima (não era esperado vencer mesmo)`}
+{`R' = 1500 + 32 × (0 − 0.5)
+   = 1500 − 16
+   = 1484           ← erro grave: −16 ELO`}
           </pre>
           <p>
-            Por isso o ELO sobe muito mais rápido quando você joga BEM no início (você
-            "supera" expectativas), e cai pouco quando erra um spot difícil. Conforme
-            seu ELO cresce, ganhos por acerto diminuem e perdas por erro aumentam.
+            Conforme seu rating sobe acima do par, o <strong>E</strong> (resultado esperado)
+            aumenta — então acertos passam a valer menos e erros a custar mais. É isso que
+            estabiliza o rating: pra subir de 1800 pra 2000 você precisa de aderência
+            consistentemente mais alta, não só "acertar o óbvio".
           </p>
         </section>
 
