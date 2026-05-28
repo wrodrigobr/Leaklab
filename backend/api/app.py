@@ -562,6 +562,16 @@ def _analyze_impl():
         name='gw-multiway-warmup',
     ).start()
 
+    # Recalcula ELO do user — processa todas as decisoes em ordem cronologica.
+    # Snapshot inserido em player_elo_history. Idempotente (snapshot novo a
+    # cada upload, gera serie temporal pro grafico de evolucao).
+    threading.Thread(
+        target=_recompute_user_elo,
+        args=(g.user_id,),
+        daemon=True,
+        name='elo-recompute',
+    ).start()
+
     # Explicações LLM se solicitado
     if request.args.get('explain', '').lower() == 'true':
         all_decisions = [d for h in hand_results.values() for d in h['decisions']]
@@ -904,6 +914,112 @@ def player_confidence_drift():
     """PERF-005 — Detecta sessões com possível tilt/drift de confiança."""
     days = int(request.args.get('days', 30))
     return jsonify(get_confidence_drift(g.user_id, days))
+
+
+@app.route('/player/elo', methods=['GET'])
+@require_auth
+def player_elo():
+    """
+    Retorna ELO atual + histórico do jogador.
+
+    Resposta:
+      { user_id, overall: {elo, n_decisions, band_label, band_color},
+        by_street: {preflop:{...}, flop:{...}, ...},
+        total_decisions, calculated_at, bands, solver_elo, initial_elo,
+        history: [{calculated_at, elo_overall, total_decisions}],
+        delta_7d: float | null }   ← variacao nos ultimos 7 dias
+    """
+    from database.repositories import (
+        get_latest_elo, get_elo_history, get_decisions_for_elo, insert_elo_snapshot,
+    )
+    from leaklab.elo_engine import compute_player_elo_from_decisions, snapshot_to_dict, BANDS, SOLVER_ELO, INITIAL_ELO
+
+    latest = get_latest_elo(g.user_id)
+    # Se nunca calculado, computa on-demand (1ª chamada por user)
+    if not latest:
+        decisions = get_decisions_for_elo(g.user_id)
+        if decisions:
+            snap = compute_player_elo_from_decisions(g.user_id, decisions)
+            insert_elo_snapshot(snapshot_to_dict(snap))
+            latest = get_latest_elo(g.user_id)
+
+    history = get_elo_history(g.user_id, limit=180)  # ~6 meses
+
+    # Delta 7 dias (compara latest com snapshot mais próximo de 7d atrás)
+    delta_7d = None
+    if latest and len(history) >= 2:
+        import datetime
+        try:
+            now_ts = datetime.datetime.fromisoformat(str(latest['calculated_at']).replace('Z',''))
+            target = now_ts - datetime.timedelta(days=7)
+            best = None
+            for h in history:
+                try:
+                    hts = datetime.datetime.fromisoformat(str(h['calculated_at']).replace('Z',''))
+                except Exception:
+                    continue
+                if hts <= target:
+                    best = h
+                    break
+            if best:
+                delta_7d = round(float(latest['elo_overall']) - float(best['elo_overall']), 1)
+        except Exception:
+            pass
+
+    if not latest:
+        # User novo sem decisions ainda
+        from leaklab.elo_engine import band_for
+        bl, bc = band_for(INITIAL_ELO)
+        return jsonify({
+            'user_id':         g.user_id,
+            'overall': {
+                'elo':         float(INITIAL_ELO),
+                'n_decisions': 0,
+                'band_label':  bl,
+                'band_color':  bc,
+            },
+            'by_street':       {},
+            'total_decisions': 0,
+            'calculated_at':   None,
+            'bands':           [{'threshold': t, 'label': l, 'color': c} for (t, l, c) in BANDS],
+            'solver_elo':      SOLVER_ELO,
+            'initial_elo':     INITIAL_ELO,
+            'history':         [],
+            'delta_7d':        None,
+            'no_data':         True,
+        })
+
+    from leaklab.elo_engine import band_for
+    def _wrap(elo: float | None, n: int) -> dict | None:
+        if elo is None: return None
+        bl, bc = band_for(float(elo))
+        return {'elo': float(elo), 'n_decisions': int(n or 0), 'band_label': bl, 'band_color': bc}
+
+    by_street = {}
+    for st, n_col in (('preflop','n_preflop'), ('flop','n_flop'),
+                      ('turn','n_turn'), ('river','n_river')):
+        v = _wrap(latest.get(f'elo_{st}'), latest.get(n_col) or 0)
+        if v: by_street[st] = v
+
+    overall = _wrap(latest['elo_overall'], latest.get('total_decisions') or 0)
+
+    return jsonify({
+        'user_id':         g.user_id,
+        'overall':         overall,
+        'by_street':       by_street,
+        'total_decisions': int(latest.get('total_decisions') or 0),
+        'calculated_at':   str(latest.get('calculated_at') or ''),
+        'bands':           [{'threshold': t, 'label': l, 'color': c} for (t, l, c) in BANDS],
+        'solver_elo':      SOLVER_ELO,
+        'initial_elo':     INITIAL_ELO,
+        'history':         [
+            {'calculated_at': str(h['calculated_at']),
+             'elo_overall':  round(float(h['elo_overall']), 1),
+             'total_decisions': int(h['total_decisions'])}
+            for h in history
+        ],
+        'delta_7d':        delta_7d,
+    })
 
 
 @app.route('/player/pending-gto-count', methods=['GET'])
@@ -6164,6 +6280,25 @@ def _warmup_gw_multiway(hands: list, hero: str) -> None:
 
     log.info("gw-warmup: done em %.0fs (warmed=%d hit=%d err=%d uniq=%d)",
              _time.time() - t0, warmed, hits, errors, len(queue))
+
+
+def _recompute_user_elo(user_id: int) -> None:
+    """
+    Recalcula ELO do user processando todas as suas decisões em ordem
+    cronológica e insere snapshot em player_elo_history. Idempotente —
+    rodado após cada upload, gera série temporal pro gráfico de evolução.
+    """
+    try:
+        from leaklab.elo_engine import compute_player_elo_from_decisions, snapshot_to_dict
+        from database.repositories import get_decisions_for_elo, insert_elo_snapshot
+        decisions = get_decisions_for_elo(user_id)
+        snapshot  = compute_player_elo_from_decisions(user_id, decisions)
+        payload   = snapshot_to_dict(snapshot)
+        insert_elo_snapshot(payload)
+        log.info("elo-recompute: user=%s overall=%.1f decisions=%d",
+                 user_id, payload['overall']['elo'], payload['total_decisions'])
+    except Exception as e:
+        log.exception("elo-recompute FAILED user=%s err=%s", user_id, e)
 
 
 def _auto_queue_gto_for_tournament(t_db_id: int, results: list, user_id: int) -> None:

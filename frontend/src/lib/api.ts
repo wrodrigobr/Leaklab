@@ -474,6 +474,41 @@ export interface BreakdownResponse {
   by_label:    Record<string, number>;
 }
 
+// ── Sistema ELO ──────────────────────────────────────────────────────────────
+
+export interface EloBucket {
+  elo:         number;
+  n_decisions: number;
+  band_label:  string;
+  band_color:  string;
+}
+
+export interface EloBand {
+  threshold: number;
+  label:     string;
+  color:     string;
+}
+
+export interface EloHistoryEntry {
+  calculated_at:    string;
+  elo_overall:      number;
+  total_decisions:  number;
+}
+
+export interface EloResponse {
+  user_id:          number;
+  overall:          EloBucket;
+  by_street:        Record<"preflop" | "flop" | "turn" | "river", EloBucket | undefined>;
+  total_decisions:  number;
+  calculated_at:    string | null;
+  bands:            EloBand[];
+  solver_elo:       number;
+  initial_elo:      number;
+  history:          EloHistoryEntry[];
+  delta_7d:         number | null;
+  no_data?:         boolean;
+}
+
 export interface GtoQualityData {
   total_with_gto: number;
   coverage_pct: number;
@@ -770,6 +805,9 @@ export const metrics = {
 
   pendingGtoCount: () =>
     request<{ pending: number }>(`/player/pending-gto-count`),
+
+  elo: () =>
+    request<EloResponse>(`/player/elo`),
 
   gtoQuality: (lastN?: number) =>
     request<GtoQualityData>(`/player/gto-quality${lastN != null ? `?last_n=${lastN}` : ""}`),

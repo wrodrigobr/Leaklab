@@ -11,6 +11,8 @@ import Login from "./pages/Login.tsx";
 import Tournaments from "./pages/Tournaments.tsx";
 import TournamentDetail from "./pages/TournamentDetail.tsx";
 import Replayer from "./pages/Replayer.tsx";
+import Rating from "./pages/Rating.tsx";
+import DocsRating from "./pages/DocsRating.tsx";
 import AICoach from "./pages/AICoach.tsx";
 import StudyPlan from "./pages/StudyPlan.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -132,6 +134,22 @@ const App = () => (
                 <AuthRoute>
                   <Replayer />
                 </AuthRoute>
+              }
+            />
+            <Route
+              path="/rating"
+              element={
+                <ProtectedRoute>
+                  <Rating />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/docs/rating"
+              element={
+                <ProtectedRoute>
+                  <DocsRating />
+                </ProtectedRoute>
               }
             />
             <Route

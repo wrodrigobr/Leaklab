@@ -7,6 +7,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(elo): sistema de rating ELO para jogadores (backlog #19 — sprint 1)
+- **Engine** (`backend/leaklab/elo_engine.py` novo): fórmula ELO clássica adaptada pra poker (cada decisão = partida vs solver ELO 3000). Score `S` derivado de `gto_label` (correct=1.0, mixed=0.7, minor=0.4, critical=0.0) com fallback heurístico (standard/marginal=0.5). K-factor dinâmico (32 <100 / 16 / 8). Bandas: Iniciante / Casual / Em desenvolvimento / Sólido / Avançado / Elite / Master / Grandmaster. ELO calculado overall + por street.
+- **Schema** (`backend/database/schema.py`): nova tabela `player_elo_history` (SQLite + Postgres) com snapshots por user (`elo_overall + elo_preflop/flop/turn/river + counts + calculated_at`). Snapshot novo a cada upload — gera série temporal pro gráfico.
+- **Repo** (`backend/database/repositories.py`): `insert_elo_snapshot`, `get_latest_elo`, `get_elo_history`, `get_decisions_for_elo`.
+- **Endpoint** `GET /player/elo`: retorna ELO atual + by_street + bandas + histórico + delta 7d. Lazy compute na 1ª chamada se sem snapshot.
+- **Trigger automático**: thread `_recompute_user_elo` no `/analyze` após upload — recalcula processando todas as decisions do user em ordem cronológica.
+- **Frontend**:
+  - `EloRatingCard.tsx` no Index — ELO atual + banda + delta 7d + link pra /rating
+  - `Rating.tsx` (`/rating`) — hero card + breakdown por street + tabela de bandas (destacando atual) + sparkline de evolução
+  - `DocsRating.tsx` (`/docs/rating`) — teoria ELO, fórmula, exemplo de cálculo step-by-step, mapeamento `gto_label → S`, tabela de bandas com perfis, notas (K dinâmico, recalculo automático)
+- Validado local com user 13 (1033 decisions): overall ELO 3060 (Grandmaster), preflop 3126 / flop 2756 / turn 2632 / river 1941 — refletindo cobertura GTO maior em preflop.
+
 ### feat(gto): warm-up automático do cache GW após upload de torneio
 - `backend/api/app.py`: nova função `_warmup_gw_multiway(hands, hero)` disparada em background thread após `save_tournament` no `/analyze`. Enumera decisões preflop do hero em todas as mãos, encoda `preflop_actions`, classifica scenario via `classify_multiway`, **filtra só os multiway** (scenarios `multiway/squeeze/vs_squeeze/5bet_or_higher` — onde `lookup_gto` HU local não tem cobertura), dedupa por (gametype, depth bucket 10bb, preflop_actions), e chama `lookup_for_hand_decision()` pra popular `gw_raw_cache`.
 - Serializado via `_page_fetch_lock` no server remoto — não satura GW; tipicamente 30-80 spots únicos por torneio de 150 mãos, 15-40min em background.

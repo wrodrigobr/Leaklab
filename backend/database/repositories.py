@@ -4579,6 +4579,89 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
     return count
 
 
+# ── player_elo_history (Sistema ELO) ─────────────────────────────────────────
+
+def insert_elo_snapshot(snapshot: dict) -> int:
+    """Insere snapshot ELO. `snapshot` é dict de elo_engine.snapshot_to_dict."""
+    conn = get_conn()
+    try:
+        overall = snapshot.get('overall') or {}
+        by_st   = snapshot.get('by_street') or {}
+        pre = by_st.get('preflop') or {}
+        flp = by_st.get('flop')    or {}
+        trn = by_st.get('turn')    or {}
+        rvr = by_st.get('river')   or {}
+        conn.execute(_adapt(
+            "INSERT INTO player_elo_history "
+            "(user_id, elo_overall, elo_preflop, elo_flop, elo_turn, elo_river, "
+            "total_decisions, n_preflop, n_flop, n_turn, n_river) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ), (
+            int(snapshot['user_id']),
+            float(overall.get('elo') or 1500),
+            float(pre.get('elo')) if pre else None,
+            float(flp.get('elo')) if flp else None,
+            float(trn.get('elo')) if trn else None,
+            float(rvr.get('elo')) if rvr else None,
+            int(snapshot.get('total_decisions') or 0),
+            int(pre.get('n_decisions') or 0),
+            int(flp.get('n_decisions') or 0),
+            int(trn.get('n_decisions') or 0),
+            int(rvr.get('n_decisions') or 0),
+        ))
+        conn.commit()
+        return 1
+    finally:
+        conn.close()
+
+
+def get_latest_elo(user_id: int) -> Optional[dict]:
+    """Retorna o snapshot mais recente do user, ou None se nunca calculado."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT user_id, elo_overall, elo_preflop, elo_flop, elo_turn, elo_river, "
+            "total_decisions, n_preflop, n_flop, n_turn, n_river, calculated_at "
+            "FROM player_elo_history WHERE user_id = ? "
+            "ORDER BY calculated_at DESC, id DESC LIMIT 1"
+        ), (user_id,))
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_elo_history(user_id: int, limit: int = 100) -> list[dict]:
+    """Retorna histórico de snapshots (mais novos primeiro)."""
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(
+            "SELECT id, elo_overall, elo_preflop, elo_flop, elo_turn, elo_river, "
+            "total_decisions, calculated_at "
+            "FROM player_elo_history WHERE user_id = ? "
+            "ORDER BY calculated_at DESC, id DESC LIMIT ?"
+        ), (user_id, int(limit)))
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_decisions_for_elo(user_id: int) -> list[dict]:
+    """Lista TODAS as decisões do user ordenadas por created_at (asc), pra
+    recalcular ELO sequencialmente."""
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(
+            "SELECT d.id, d.street, d.gto_label, d.label, d.created_at "
+            "FROM decisions d "
+            "INNER JOIN tournaments t ON t.id = d.tournament_id "
+            "WHERE t.user_id = ? "
+            "ORDER BY d.created_at ASC, d.id ASC"
+        ), (user_id,))
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
 # ── gw_raw_cache (multiway / squeeze responses from /gw-spot) ────────────────
 
 def get_gw_raw_cache(cache_key: str) -> Optional[dict]:

@@ -12,6 +12,7 @@ import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { GtoPositionCard } from "@/components/hud/GtoPositionCard";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
+import { EloRatingCard } from "@/components/hud/EloRatingCard";
 import { GtoAlignmentCard } from "@/components/hud/GtoAlignmentCard";
 import { GtoAlignmentMatrixCard } from "@/components/hud/GtoAlignmentMatrixCard";
 import { GtoQualityCard } from "@/components/hud/GtoQualityCard";
@@ -404,6 +405,8 @@ const Index = () => {
             )}
 
             <PlayerStatsCard stats={playerStats} />
+
+            <EloRatingCard />
 
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
               {/* ── Main column (sortable rows) ──────────────────────────────── */}

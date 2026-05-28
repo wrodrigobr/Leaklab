@@ -738,6 +738,28 @@ def _run_migrations(conn):
             conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_queue_status ON gto_solver_queue(status, priority)")
         except Exception: pass
 
+        # player_elo_history (Postgres) — espelha SQLite
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS player_elo_history (
+                    id                 SERIAL PRIMARY KEY,
+                    user_id            INTEGER NOT NULL,
+                    elo_overall        REAL NOT NULL,
+                    elo_preflop        REAL,
+                    elo_flop           REAL,
+                    elo_turn           REAL,
+                    elo_river          REAL,
+                    total_decisions    INTEGER NOT NULL DEFAULT 0,
+                    n_preflop          INTEGER NOT NULL DEFAULT 0,
+                    n_flop             INTEGER NOT NULL DEFAULT 0,
+                    n_turn             INTEGER NOT NULL DEFAULT 0,
+                    n_river            INTEGER NOT NULL DEFAULT 0,
+                    calculated_at      TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_elo_user_calc ON player_elo_history(user_id, calculated_at)")
+        except Exception: pass
+
         # gw_raw_cache (Postgres) — espelha o SQLite (cache de responses /gw-spot)
         try:
             conn.execute("""
@@ -1227,6 +1249,28 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_queue_status ON gto_solver_queue(status, priority)")
+
+        # player_elo_history (SQLite) — snapshots de ELO calculados ao longo do
+        # tempo. Cada linha é o estado do ELO do user em um momento (apos
+        # processar X decisoes). Permite gráfico de evolução + diff semanal.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS player_elo_history (
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id            INTEGER NOT NULL,
+                elo_overall        REAL NOT NULL,
+                elo_preflop        REAL,
+                elo_flop           REAL,
+                elo_turn           REAL,
+                elo_river          REAL,
+                total_decisions    INTEGER NOT NULL DEFAULT 0,
+                n_preflop          INTEGER NOT NULL DEFAULT 0,
+                n_flop             INTEGER NOT NULL DEFAULT 0,
+                n_turn             INTEGER NOT NULL DEFAULT 0,
+                n_river            INTEGER NOT NULL DEFAULT 0,
+                calculated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_elo_user_calc ON player_elo_history(user_id, calculated_at)")
 
         # gw_raw_cache (SQLite) — cache de responses do /gw-spot (multiway / squeeze /
         # cold-callers via GTO Wizard). Separado de gto_nodes (que tem validacoes
