@@ -289,7 +289,7 @@ export function CareerGraphCard({ data }: Props) {
                 <p className="font-mono text-lg font-bold tabular-nums" style={{ color: allBand.color }}>
                   {allTimeElo.toFixed(0)} <span className="text-[9px] text-muted-foreground font-normal">ELO</span>
                 </p>
-                <p className="font-mono text-[9px] text-muted-foreground/60">todos os {curve.all_time.length} torneios</p>
+                <p className="font-mono text-[9px] text-muted-foreground/60">Rating histórico</p>
               </div>
               {/* Forma recente */}
               <div className="rounded-lg border border-border bg-background p-3 space-y-1.5">
