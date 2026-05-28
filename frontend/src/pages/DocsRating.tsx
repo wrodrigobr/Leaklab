@@ -158,44 +158,39 @@ R' = 1500 + 32 × (1.0 − 0.5)
               </thead>
               <tbody>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 font-mono">Iniciante</td>
-                  <td className="px-3 py-2 font-mono">&lt; 1200</td>
-                  <td className="px-3 py-2">Começando a estudar poker</td>
+                  <td className="px-3 py-2 font-mono">🎯 Iniciante</td>
+                  <td className="px-3 py-2 font-mono">&lt; 1570</td>
+                  <td className="px-3 py-2">Aderência GTO &lt; 60% — começando a estudar</td>
                 </tr>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 font-mono">Casual</td>
-                  <td className="px-3 py-2 font-mono">1200 – 1499</td>
-                  <td className="px-3 py-2">Joga regularmente, ainda não estuda GTO</td>
+                  <td className="px-3 py-2 font-mono">📖 Estudante</td>
+                  <td className="px-3 py-2 font-mono">1570 – 1646</td>
+                  <td className="px-3 py-2">~60–70% — fundamentos em construção</td>
                 </tr>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 font-mono">Em desenvolvimento</td>
-                  <td className="px-3 py-2 font-mono">1500 – 1799</td>
-                  <td className="px-3 py-2">Acerta preflop básico, postflop em construção</td>
+                  <td className="px-3 py-2 font-mono">⚙️ Grinder</td>
+                  <td className="px-3 py-2 font-mono">1647 – 1709</td>
+                  <td className="px-3 py-2">~70–77% — joga volume com consistência</td>
                 </tr>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 font-mono">Sólido</td>
-                  <td className="px-3 py-2 font-mono">1800 – 2099</td>
-                  <td className="px-3 py-2">Joga reg-level, decisões consistentes</td>
+                  <td className="px-3 py-2 font-mono">📈 Regular</td>
+                  <td className="px-3 py-2 font-mono">1710 – 1815</td>
+                  <td className="px-3 py-2">~77–86% — decisões sólidas na maioria dos spots</td>
                 </tr>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 font-mono">Avançado</td>
-                  <td className="px-3 py-2 font-mono">2100 – 2399</td>
-                  <td className="px-3 py-2">Dominio de spots complexos, raros erros graves</td>
+                  <td className="px-3 py-2 font-mono">🔷 Sólido</td>
+                  <td className="px-3 py-2 font-mono">1816 – 1923</td>
+                  <td className="px-3 py-2">~86–92% — reg-level, raros erros graves</td>
                 </tr>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 font-mono">Elite</td>
-                  <td className="px-3 py-2 font-mono">2400 – 2699</td>
-                  <td className="px-3 py-2">Nível de high-stakes; aderência GTO alta</td>
+                  <td className="px-3 py-2 font-mono">♠ Expert</td>
+                  <td className="px-3 py-2 font-mono">1924 – 2052</td>
+                  <td className="px-3 py-2">~92–96% — domínio de spots complexos</td>
                 </tr>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 font-mono">Master</td>
-                  <td className="px-3 py-2 font-mono">2700 – 2999</td>
-                  <td className="px-3 py-2">Indistinguível de pro player em maioria dos spots</td>
-                </tr>
-                <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 font-mono">Grandmaster</td>
-                  <td className="px-3 py-2 font-mono">3000+</td>
-                  <td className="px-3 py-2">Iguala ou supera o solver em consistência</td>
+                  <td className="px-3 py-2 font-mono">👑 Elite</td>
+                  <td className="px-3 py-2 font-mono">≥ 2053</td>
+                  <td className="px-3 py-2">≥ 96% — aderência GTO de high-stakes</td>
                 </tr>
               </tbody>
             </table>

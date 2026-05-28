@@ -217,7 +217,7 @@
     "event_mastery": "Reach mastery on a spot",
     "levels_title": "Level is calculated from the average Standard% of recent tournaments (minimum 5):",
     "col_level": "Level",
-    "col_req": "Standard% required",
+    "col_req": "Required ELO",
     "streak_desc": "The number of consecutive days with registered activity (any XP-generating event). Resets if a day passes without activity.",
     "achievements_title": "Achievements:",
     "ach_first": "First Analysis — import and analyze the first tournament",
@@ -375,16 +375,16 @@
   "level": {
     "title": "My Level",
     "p1": "The <strong>My Level</strong> card shows your current level in the system, the progress percentage to the next level, and the leaks blocking your advancement.",
-    "p2": "Level is calculated based on the average <strong>Standard%</strong> of your recent tournaments (minimum 5 to calculate). Each level requires a higher decision quality threshold — it is based on technical consistency, not financial results.",
+    "p2": "Your level is computed from your <strong>ELO rating</strong> (recent form, last 25 tournaments), derived from GTO adherence. Each level requires a higher ELO — it is not based on financial results, but on technical consistency against the solver. <a href=\"/docs/rating\" class=\"text-primary underline\">See how ELO works</a>.",
     "table": {
       "col_level": "Level",
-      "col_req": "Standard% required",
+      "col_req": "Required ELO",
       "col_focus": "Main focus"
     },
     "p3": "The <strong>blocking leaks</strong> shown in the card are the highest-frequency error spots that most impact your current Standard%. Fixing them is the most direct path to levelling up. Use the <em>View study plan</em> button to see the AI-generated personalised plan.",
     "example_progress": "of the way to the next level",
     "example_blocker": "Blocking leak",
-    "example": "Grinder level at 73% Standard, 4pp below the Regular threshold (77%). Progress at 75% of the way. The blocking leak identified by the AI is the highest-frequency error spot preventing advancement."
+    "example": "Grinder level at 1680 ELO, on the way to Regular (1710). About 50% progress to the threshold. The blocking leak identified by the AI is the highest-frequency error spot holding back your climb."
   },
   "sparring": {
     "title": "Sparring Mode",

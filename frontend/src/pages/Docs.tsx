@@ -494,9 +494,9 @@ export default function Docs() {
                       <span className="inline-flex items-center rounded border border-amber-400/30 bg-amber-400/5 px-2 py-1 font-mono text-[10px] font-bold text-amber-400">
                         Grinder
                       </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">73% Standard</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">1680 ELO</span>
                     </div>
-                    <span className="font-mono text-[9px] text-muted-foreground">Regular → 77%</span>
+                    <span className="font-mono text-[9px] text-muted-foreground">Regular → 1710</span>
                   </div>
                   <div className="space-y-1">
                     <div className="h-2 rounded-full bg-border overflow-hidden">
@@ -575,13 +575,13 @@ export default function Docs() {
               <Table
                 headers={[t("gamification.col_level"), t("gamification.col_req")]}
                 rows={[
-                  [t("gamification.level_beginner"), "< 60%"],
-                  [t("gamification.level_student"),  "60% – 70%"],
-                  [t("gamification.level_grinder"),  "70% – 77%"],
-                  [t("gamification.level_regular"),  "77% – 86%"],
-                  [t("gamification.level_solid"),    "86% – 92%"],
-                  [t("gamification.level_expert"),   "92% – 96%"],
-                  [t("gamification.level_elite"),    "≥ 96%"],
+                  [t("gamification.level_beginner"), "< 1570"],
+                  [t("gamification.level_student"),  "1570 – 1646"],
+                  [t("gamification.level_grinder"),  "1647 – 1709"],
+                  [t("gamification.level_regular"),  "1710 – 1815"],
+                  [t("gamification.level_solid"),    "1816 – 1923"],
+                  [t("gamification.level_expert"),   "1924 – 2052"],
+                  [t("gamification.level_elite"),    "≥ 2053"],
                 ]}
               />
               <p>{t("gamification.streak_desc")}</p>

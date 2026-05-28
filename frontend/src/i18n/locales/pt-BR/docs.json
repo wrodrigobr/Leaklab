@@ -217,7 +217,7 @@
     "event_mastery": "Atingir mastery em um spot",
     "levels_title": "Nível é calculado com base no Standard% médio dos últimos torneios (mínimo 5):",
     "col_level": "Nível",
-    "col_req": "Standard% necessário",
+    "col_req": "ELO necessário",
     "streak_desc": "O número de dias consecutivos com atividade registrada (qualquer evento que gere XP). Reinicia se houver um dia sem atividade.",
     "achievements_title": "Conquistas:",
     "ach_first": "Primeira Análise — importar e analisar o primeiro torneio",
@@ -375,16 +375,16 @@
   "level": {
     "title": "Meu Nível",
     "p1": "O card de <strong>Meu Nível</strong> exibe seu nível atual no sistema, o percentual de progresso até o próximo nível e os leaks que estão bloqueando o avanço.",
-    "p2": "O nível é calculado com base na média de <strong>Standard%</strong> dos últimos torneios (mínimo 5 para calcular). Cada nível exige um patamar de qualidade de decisões maior — não é baseado em resultados financeiros, mas em consistência técnica.",
+    "p2": "O nível é calculado a partir do seu <strong>rating ELO</strong> (forma recente, últimos 25 torneios), derivado da aderência ao GTO. Cada nível exige um ELO maior — não é baseado em resultados financeiros, mas em consistência técnica frente ao solver. <a href=\"/docs/rating\" class=\"text-primary underline\">Ver como o ELO funciona</a>.",
     "table": {
       "col_level": "Nível",
-      "col_req": "Standard% necessário",
+      "col_req": "ELO necessário",
       "col_focus": "Foco principal"
     },
     "p3": "Os <strong>leaks bloqueadores</strong> mostrados no card são os spots de erro de maior frequência que mais impactam seu Standard% atual. Corrigi-los é o caminho mais direto para subir de nível. Use o botão <em>Ver plano de estudos</em> para ver o plano personalizado da IA.",
     "example_progress": "do caminho para o próximo nível",
     "example_blocker": "Leak bloqueador",
-    "example": "Nível Grinder em 73% Standard, a 4pp do limiar de Regular (77%). Progresso de 75% do caminho. O leak bloqueador identificado pela IA é o spot com maior frequência de erro que impede o avanço."
+    "example": "Nível Grinder com 1680 ELO, a caminho de Regular (1710). Progresso de ~50% até o limiar. O leak bloqueador identificado pela IA é o spot com maior frequência de erro que impede o avanço."
   },
   "sparring": {
     "title": "Sparring Mode",
