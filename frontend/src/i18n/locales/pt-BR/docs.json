@@ -28,7 +28,8 @@
     "career": "Trajetória de Carreira",
     "cognitive": "Padrões Cognitivos",
     "twin": "Tendências Estratégicas",
-    "sparring": "Sparring Mode"
+    "sparring": "Sparring Mode",
+    "rating": "Rating ELO"
   },
   "scoring": {
     "title": "Sistema de Scoring",

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { BookOpen, ChevronRight } from "lucide-react";
+import { BookOpen, ChevronRight, TrendingUp } from "lucide-react";
 
 const SECTION_IDS = ["scoring", "indicators", "gto_method", "alignment_matrix", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
 type SectionId = typeof SECTION_IDS[number];
@@ -176,6 +177,13 @@ export default function Docs() {
                 {t(`nav.${id}`)}
               </a>
             ))}
+            <Link
+              to="/docs/rating"
+              className="mt-1 flex items-center gap-2 rounded-md border-t border-border/50 px-3 pt-3 pb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:bg-hud-surface hover:text-foreground"
+            >
+              <TrendingUp className="size-3 shrink-0" />
+              {t("nav.rating")}
+            </Link>
           </nav>
 
           {/* Content */}
