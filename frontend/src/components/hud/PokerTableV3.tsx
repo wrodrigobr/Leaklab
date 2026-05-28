@@ -283,9 +283,9 @@ function renderSeatsAndChips(
     if (isBtn) {
       const heroPosBtn = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
       const isAdjacentBtn = heroPosBtn !== null && Math.abs(pos.y - heroPosBtn.y) < 80;
-      // Dealer perto do pod do jogador. perpOffset (38px) abaixo dá a
-      // separação lateral das cartas. t pequeno = perto do player.
-      const t = isHero ? 0.22 : isAdjacentBtn ? 0.28 : 0.20;
+      // Dealer perto do pod do jogador, mas com folga. perpOff dá separação
+      // lateral; t controla quão longe do pod (no eixo player→centro).
+      const t = isHero ? 0.28 : isAdjacentBtn ? 0.34 : 0.30;
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
       // perpSign -1 nos dois casos: dealer fica do lado oposto às cartas/bets
