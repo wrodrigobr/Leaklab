@@ -7,6 +7,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): validação end-to-end completa (parser → encoder → GW)
+- Pipeline completo testado com `teste_torneio_carma.txt` hand #100000002 (BB hero vs 4-way squeeze):
+  - Encoder gerou `R2.0-F-F-C-F-C-R0.0` (com sizings errados — bug ante + bug parser "raises 0 to 0")
+  - Server snappou pra `R2.1-F-F-C-F-C-R11.55` (sizings válidos descobertos via `spot-solution` do estado anterior)
+  - GW retornou 200 com hero=BB, 169 hand_freqs corretos, 75o = 100% fold
+- O snap é robusto a TANTO o sizing ante-adjusted QUANTO valores absurdos (R0.0): consulta árvore de ações válidas no estado anterior e snappa pro mais próximo. Bugs do encoder/parser ficam absorvidos pelo retry.
+
 ### feat(gto): server snappa raise sizings preflop pro válido mais próximo
 - `backend/gto_bot/solver_api/server.py`: nova função `_snap_preflop_raise_sizes(api_params)` consulta `/v4/game-points/next-actions/` step-by-step pra cada token `R{x.y}` no `preflop_actions`, descobre os sizings que GW aceita pro estado atual, e snappea pro mais próximo. Após receber 204/404 na 1ª tentativa do `/gw-spot`, retry automático com versão snapped.
 - Endereça o caso real validado empiricamente: GW MTTGeneral_8m 100bb só aceita `R2.1` pra open; encoder do client emite `R2.0` (sem ante-adjustment) → 404 → snap detecta R2.1 nos sizings válidos → retry → 200.
