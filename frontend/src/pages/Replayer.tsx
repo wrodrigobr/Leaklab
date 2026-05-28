@@ -498,46 +498,34 @@ function SidePanels({
                         </div>
                       );
                     })()}
-                    <div className="flex h-2 rounded overflow-hidden ring-1 ring-border/30">
-                      {foldPct > 0.001 && (
-                        <div title={`Fold ${(foldPct*100).toFixed(1)}%`}
-                             style={{ width: `${foldPct*100}%`, background: ACTION_COLORS.fold }} />
-                      )}
-                      {callPct > 0.001 && (
-                        <div title={`Call ${(callPct*100).toFixed(1)}%`}
-                             style={{ width: `${callPct*100}%`, background: ACTION_COLORS.call }} />
-                      )}
-                      {raisePct > 0.001 && (
-                        <div title={`Raise ${(raisePct*100).toFixed(1)}%`}
-                             style={{ width: `${raisePct*100}%`, background: ACTION_COLORS.raise }} />
-                      )}
-                      {allinPct > 0.001 && (
-                        <div title={`Allin ${(allinPct*100).toFixed(1)}%`}
-                             style={{ width: `${allinPct*100}%`, background: ACTION_COLORS.allin }} />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap font-mono text-[10px]">
-                      {foldPct > 0.001 && (
-                        <span style={{ color: ACTION_COLORS.fold }}>
-                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background: ACTION_COLORS.fold}}/>Fold {(foldPct*100).toFixed(0)}%
-                        </span>
-                      )}
-                      {callPct > 0.001 && (
-                        <span style={{ color: ACTION_COLORS.call }}>
-                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background: ACTION_COLORS.call}}/>Call {(callPct*100).toFixed(1)}%
-                        </span>
-                      )}
-                      {raisePct > 0.001 && (
-                        <span style={{ color: ACTION_COLORS.raise }}>
-                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background: ACTION_COLORS.raise}}/>Raise {(raisePct*100).toFixed(1)}%
-                        </span>
-                      )}
-                      {allinPct > 0.001 && (
-                        <span style={{ color: ACTION_COLORS.allin }}>
-                          <span className="inline-block size-1.5 mr-1 rounded-sm" style={{background: ACTION_COLORS.allin}}/>Allin {(allinPct*100).toFixed(1)}%
-                        </span>
-                      )}
-                    </div>
+                    {/* Uma barra independente por ação — facilita leitura visual
+                        de cada %, em vez de uma stacked bar com cores coladas. */}
+                    {(() => {
+                      const rows: { key: string; label: string; pct: number; color: string }[] = [];
+                      if (foldPct  > 0.001) rows.push({ key: 'fold',  label: 'Fold',  pct: foldPct,  color: ACTION_COLORS.fold  });
+                      if (callPct  > 0.001) rows.push({ key: 'call',  label: 'Call',  pct: callPct,  color: ACTION_COLORS.call  });
+                      if (raisePct > 0.001) rows.push({ key: 'raise', label: 'Raise', pct: raisePct, color: ACTION_COLORS.raise });
+                      if (allinPct > 0.001) rows.push({ key: 'allin', label: 'Allin', pct: allinPct, color: ACTION_COLORS.allin });
+                      rows.sort((a, b) => b.pct - a.pct);
+                      return (
+                        <div className="space-y-1">
+                          {rows.map((r) => (
+                            <div key={r.key} className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 rounded-full bg-muted/20 overflow-hidden">
+                                <div className="h-full rounded-full transition-all"
+                                     style={{ width: `${r.pct*100}%`, background: r.color }} />
+                              </div>
+                              <span className="font-mono text-[10px] shrink-0 w-10" style={{ color: r.color }}>
+                                {r.label}
+                              </span>
+                              <span className="font-mono text-[10px] shrink-0 w-10 text-right text-foreground">
+                                {(r.pct*100).toFixed(1)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </>

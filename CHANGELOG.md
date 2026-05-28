@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): barras de frequência GTO independentes por ação + cor fold amarela
+- `frontend/src/pages/Replayer.tsx`: barra única stacked (fold/call/raise/allin coladas) substituída por uma barra horizontal independente por ação, ordenada por frequência decrescente. Cada linha mostra: bar + label colorido + %.
+- `frontend/src/lib/actionColors.ts`: cor do `fold` alterada de `zinc-500` (cinza) para `yellow-300` (amarelo claro) — usuário achou o cinza pesado demais. Atualizada também a versão Tailwind (`ACTION_TW.fold`).
+
 ### fix(replayer): posicionamento de fichas de aposta e dealer button
 - `frontend/src/components/hud/PokerTableV3.tsx`: bets de seats adjacentes ao hero (caso `isAdjT2`) estavam em `t2=0.72` (quase no pot) — ajustado pra `0.38` (próximo ao default 0.36), trazendo fichas pra perto do pod do jogador.
 - Sign do `perpOff` em seats `bottom` adjacentes ao hero estava invertido: empurrava fichas EM DIREÇÃO ao hero (centralizando-as) em vez de afastar. Corrigido — agora seats à esquerda do hero se deslocam pra esquerda, e à direita pra direita. Magnitude também reduzida (32→24px).

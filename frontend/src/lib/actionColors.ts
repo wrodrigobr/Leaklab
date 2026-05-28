@@ -3,7 +3,7 @@
  * que represente ação visualmente (barras de freq, range grid, badges, etc).
  *
  * Convenção:
- *   - Fold:  zinc-500 (cinza-azulado neutro, contrasta com fundo dark)
+ *   - Fold:  yellow-300 (amarelo claro — leve, sem peso de "erro")
  *   - Check: sky-400 (azul claro — ação passiva sem investir fichas)
  *   - Call:  blue-500 (azul — comprometeu mas passivo)
  *   - Bet:   emerald-500 (verde — agressão inicial)
@@ -11,7 +11,7 @@
  *   - Allin: red-500 (vermelho — máxima agressão)
  */
 export const ACTION_COLORS = {
-  fold:  "#71717a",  // zinc-500
+  fold:  "#fde047",  // yellow-300
   check: "#38bdf8",  // sky-400
   call:  "#3b82f6",  // blue-500
   bet:   "#10b981",  // emerald-500
@@ -23,7 +23,7 @@ export type ActionKey = keyof typeof ACTION_COLORS;
 
 // Versão Tailwind classes — quando precisar de bg-/text-/ring-
 export const ACTION_TW = {
-  fold:  { bg: "bg-zinc-500",     text: "text-zinc-400",    ring: "ring-zinc-500/30" },
+  fold:  { bg: "bg-yellow-300",   text: "text-yellow-300",  ring: "ring-yellow-300/30" },
   check: { bg: "bg-sky-400",      text: "text-sky-300",     ring: "ring-sky-400/30"  },
   call:  { bg: "bg-blue-500",     text: "text-blue-400",    ring: "ring-blue-500/30" },
   bet:   { bg: "bg-emerald-500",  text: "text-emerald-400", ring: "ring-emerald-500/30" },
