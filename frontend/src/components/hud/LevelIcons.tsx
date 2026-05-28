@@ -41,14 +41,17 @@ export function IconEstudante({ className, size = 24 }: IconProps) {
   );
 }
 
-// Grinder — engrenagem com chip central (volume + estudo)
+// Grinder — pilha de fichas (alto volume de jogo)
 export function IconGrinder({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
-      <path d="M12 2.5l1.6 1.2 1.9-.5.8 1.8 1.9.6-.1 2 1.5 1.3-.7 1.9 1 1.7-1.3 1.5.3 2-1.8.8-.6 1.9-2 .1-1.2 1.6H10.6L9.4 21l-2-.1-.6-1.9-1.8-.8.3-2-1.3-1.5 1-1.7-.7-1.9 1.5-1.3-.1-2 1.9-.6.8-1.8 1.9.5L12 2.5z"
-            fill="currentColor" fillOpacity="0.08" />
-      <circle cx="12" cy="12" r="3.4" />
-      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+      {/* três fichas empilhadas (elipses) */}
+      <ellipse cx="12" cy="17" rx="7" ry="2.4" fill="currentColor" fillOpacity="0.16" />
+      <ellipse cx="12" cy="13.5" rx="7" ry="2.4" fill="currentColor" fillOpacity="0.12" />
+      <ellipse cx="12" cy="10" rx="7" ry="2.4" fill="currentColor" fillOpacity="0.08" />
+      {/* laterais da pilha conectando topo e base */}
+      <path d="M5 10v7" />
+      <path d="M19 10v7" />
     </svg>
   );
 }

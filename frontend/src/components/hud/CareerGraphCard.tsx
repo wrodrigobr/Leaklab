@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { TrendingUp, TrendingDown, Minus, Target, AlertCircle } from "lucide-react";
-import { CareerProjection, CareerMilestone } from "@/lib/api";
+import { TrendingUp, TrendingDown, Minus, Target, AlertCircle, ChevronRight } from "lucide-react";
+import { CareerProjection, CareerMilestone, metrics, EloResponse } from "@/lib/api";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import { cn } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
@@ -113,6 +114,13 @@ interface Props {
 
 export function CareerGraphCard({ data }: Props) {
   const { t, i18n } = useTranslation("dashboard");
+  const [elo, setElo] = useState<EloResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    metrics.elo().then((r) => { if (!cancelled) setElo(r); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   if (data.insufficient_data) {
     return (
@@ -147,6 +155,8 @@ export function CareerGraphCard({ data }: Props) {
     }
   };
 
+  const EloIcon = elo ? LEVEL_ICONS[elo.overall.band_label] : null;
+
   return (
     <div className="rounded-xl border border-border bg-hud-surface overflow-hidden">
       {/* Header */}
@@ -161,6 +171,41 @@ export function CareerGraphCard({ data }: Props) {
           {trendLabel}
         </span>
       </div>
+
+      {/* Rating ELO em destaque — clicável pra página completa */}
+      {elo && (
+        <Link to="/rating"
+              className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background/40 hover:bg-background/70 transition-colors group">
+          <div className="flex items-center gap-3 min-w-0">
+            {EloIcon && <EloIcon size={28} className="shrink-0" />}
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono text-2xl font-bold tabular-nums leading-none"
+                      style={{ color: elo.overall.band_color }}>
+                  {elo.overall.elo.toFixed(0)}
+                </span>
+                <span className="font-mono text-xs font-semibold"
+                      style={{ color: elo.overall.band_color }}>
+                  {elo.overall.band_label}
+                </span>
+                <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">ELO</span>
+              </div>
+              {elo.next_band && (
+                <div className="mt-1 flex items-center gap-2">
+                  <div className="h-1 w-24 rounded-full bg-muted/20 overflow-hidden">
+                    <div className="h-full rounded-full"
+                         style={{ width: `${elo.next_band.progress * 100}%`, background: elo.overall.band_color }} />
+                  </div>
+                  <span className="font-mono text-[9px] text-muted-foreground">
+                    {elo.next_band.elo_to_go.toFixed(0)} pra {elo.next_band.label}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground/40 group-hover:text-foreground/60 transition-colors shrink-0" />
+        </Link>
+      )}
 
       <div className="p-4 space-y-4">
         {/* Sparkline */}
