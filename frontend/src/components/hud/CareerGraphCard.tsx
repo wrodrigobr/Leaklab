@@ -249,7 +249,7 @@ export function CareerGraphCard({ data }: Props) {
           <div className="space-y-1">
             <EloMiniCurve points={curve.recent.map(p => p.elo)} color={elo?.overall.band_color ?? "hsl(var(--primary))"} />
             <span className="font-mono text-[9px] text-muted-foreground">
-              ELO · últimos {curve.window_tournaments} torneios
+              Rating recente
             </span>
           </div>
         ) : data.series_history && data.series_history.length > 1 ? (
@@ -312,7 +312,7 @@ export function CareerGraphCard({ data }: Props) {
                     </p>
                   </>
                 ) : (
-                  <p className="font-mono text-[9px] text-muted-foreground/60">últimos {curve.window_tournaments} torneios</p>
+                  <p className="font-mono text-[9px] text-muted-foreground/60">Rating recente</p>
                 )}
               </div>
             </div>
