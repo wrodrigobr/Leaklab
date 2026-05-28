@@ -841,6 +841,85 @@ def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 25) -> dict:
                 pass
 
 
+# ── Preflop raise-size snapping ──────────────────────────────────────────────
+
+def _snap_preflop_raise_sizes(api_params: dict) -> Optional[str]:
+    """
+    Recebe api_params (com preflop_actions provavelmente invalido) e tenta
+    snappear cada token R{x.y} pro sizing valido mais proximo, consultando
+    /v4/game-points/next-actions/ em cada step.
+
+    Retorna preflop_actions corrigido (str), ou None se nao conseguiu snap.
+    Otimizacao: so consulta next-actions quando o token e R, mantendo cada
+    F/C como esta.
+    """
+    pf = api_params.get("preflop_actions", "") or ""
+    if not pf:
+        return None
+
+    tokens = pf.split("-")
+    new_tokens: list[str] = []
+    base = {k: v for k, v in api_params.items() if k != "preflop_actions"}
+    snapped_any = False
+
+    for tok in tokens:
+        # Pra tokens que nao sao raise: mantem
+        if not (tok.startswith("R") and tok != "RAI"):
+            new_tokens.append(tok)
+            continue
+        try:
+            desired = float(tok[1:])
+        except ValueError:
+            new_tokens.append(tok)
+            continue
+
+        current_pf = "-".join(new_tokens)
+        probe_params = dict(base)
+        probe_params["preflop_actions"] = current_pf
+
+        fetched = _fetch_via_page("/v4/game-points/next-actions/", probe_params, timeout_s=20)
+        if not (fetched.get("ok") and isinstance(fetched.get("json"), dict)):
+            log.info("snap: next-actions falhou pra estado %r — mantem token %s", current_pf, tok)
+            new_tokens.append(tok)
+            continue
+
+        na = fetched["json"].get("next_actions") or {}
+        avail = na.get("available_actions") or []
+        valid_sizes: list[float] = []
+        for item in avail:
+            a = item.get("action") or item
+            atype = str(a.get("type") or "").upper()
+            if atype in ("RAISE", "BET", "ALLIN", "ALL_IN"):
+                bs = a.get("betsize")
+                try:
+                    sz = float(bs)
+                    if sz > 0:
+                        valid_sizes.append(sz)
+                except (TypeError, ValueError):
+                    pass
+
+        if not valid_sizes:
+            log.info("snap: sem sizings validos em %r — mantem token %s", current_pf, tok)
+            new_tokens.append(tok)
+            continue
+
+        nearest = min(valid_sizes, key=lambda s: abs(s - desired))
+        # Formato GW: ate 2 casas (sem trailing zero, garantindo 1 casa minima)
+        s = f"{nearest:.2f}"
+        if s.endswith("0"):
+            s = s[:-1]
+        if s.endswith("."):
+            s = s + "0"
+        snapped_tok = f"R{s}"
+        if snapped_tok != tok:
+            snapped_any = True
+            log.info("snap: %s -> %s (desired %.2f, avail %s)",
+                     tok, snapped_tok, desired, valid_sizes[:6])
+        new_tokens.append(snapped_tok)
+
+    return "-".join(new_tokens) if snapped_any else None
+
+
 # ── GTO Wizard raw passthrough (multiway / cold-callers / squeeze) ────────────
 
 def query_gto_wizard_raw(spot: dict) -> dict:
@@ -942,6 +1021,22 @@ def query_gto_wizard_raw(spot: dict) -> dict:
     fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params, timeout_s=25)
     log.info("gw-spot via=%s status=%s ok=%s err=%s",
              fetched.get("via"), fetched.get("status"), fetched.get("ok"), fetched.get("error"))
+
+    # Retry com snap de raise sizings — GW tem sizings discretos (ex MTTGeneral_8m 100bb
+    # so aceita R2.1 pra open). Quando recebe 204/404 e tem raise no preflop_actions,
+    # tenta descobrir sizings validos via /next-actions e refazer.
+    snap_raises = bool(spot.get("snap_raises", True))
+    if (not fetched.get("ok") and fetched.get("status") in (0, 204, 404)
+            and snap_raises and pf and "R" in pf):
+        snapped_pf = _snap_preflop_raise_sizes(api_params)
+        if snapped_pf and snapped_pf != pf:
+            log.info("gw-spot: snap %r -> %r, retry", pf, snapped_pf)
+            api_params2 = dict(api_params)
+            api_params2["preflop_actions"] = snapped_pf
+            fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params2, timeout_s=25)
+            log.info("gw-spot retry via=%s status=%s ok=%s",
+                     fetched.get("via"), fetched.get("status"), fetched.get("ok"))
+            api_params = api_params2  # propaga preflop_actions corrigido no response
     if not fetched.get("ok"):
         status = fetched.get("status") or 0
         if status == 401:

@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): server snappa raise sizings preflop pro válido mais próximo
+- `backend/gto_bot/solver_api/server.py`: nova função `_snap_preflop_raise_sizes(api_params)` consulta `/v4/game-points/next-actions/` step-by-step pra cada token `R{x.y}` no `preflop_actions`, descobre os sizings que GW aceita pro estado atual, e snappea pro mais próximo. Após receber 204/404 na 1ª tentativa do `/gw-spot`, retry automático com versão snapped.
+- Endereça o caso real validado empiricamente: GW MTTGeneral_8m 100bb só aceita `R2.1` pra open; encoder do client emite `R2.0` (sem ante-adjustment) → 404 → snap detecta R2.1 nos sizings válidos → retry → 200.
+- Param `snap_raises` (default true) no payload do `/gw-spot` controla o comportamento.
+- Trade-off: cache miss + snap = 2 navegações Playwright (~18s). Cache hit (futuro step 4) elimina.
+
 ### feat(gto): encoder ParsedHand → preflop_actions GW + classifier
 - `backend/leaklab/gw_action_encoder.py` (novo): `encode_preflop_actions(hand, stop_index)` converte ações preflop em string GW (`R2.1-F-F-C-F-C-R11.55`). Inclui `find_hero_preflop_decisions()`, `num_seated_players()`, `gw_gametype_for()`, e `classify_multiway()` (scenarios: rfi/vs_rfi/vs_3bet/vs_4bet/squeeze/vs_squeeze/multiway/5bet_or_higher).
 - Validado contra hand #100000002 do `teste_torneio_carma.txt`: scenario classificado como `vs_squeeze` com `is_multiway_with_callers=True` (BB hero facing 4-way 3bet squeeze).
