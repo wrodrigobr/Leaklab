@@ -7,6 +7,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs(gto): correção 8-max → 9-max na Metodologia de Classificação GTO
+- `gto_method.p1` (docs PT/EN/ES) descrevia as Ranges GTO como "MTT 8-max" — resíduo do JSON antigo RegLife (v2.x). A fonte da verdade atual (`master_gw_ranges.json`, gametype `MTTGeneralV2`) é **9-max nativo** desde a v0.163.0. Texto corrigido para "MTT 9-max" nas 3 locales.
+
 ### feat(elo): sistema de rating ELO para jogadores (backlog #19 — sprint 1)
 - **Engine** (`backend/leaklab/elo_engine.py` novo): fórmula ELO clássica adaptada pra poker (cada decisão = partida vs solver ELO 3000). Score `S` derivado de `gto_label` (correct=1.0, mixed=0.7, minor=0.4, critical=0.0) com fallback heurístico (standard/marginal=0.5). K-factor dinâmico (32 <100 / 16 / 8). Bandas: Iniciante / Casual / Em desenvolvimento / Sólido / Avançado / Elite / Master / Grandmaster. ELO calculado overall + por street.
 - **Schema** (`backend/database/schema.py`): nova tabela `player_elo_history` (SQLite + Postgres) com snapshots por user (`elo_overall + elo_preflop/flop/turn/river + counts + calculated_at`). Snapshot novo a cada upload — gera série temporal pro gráfico.

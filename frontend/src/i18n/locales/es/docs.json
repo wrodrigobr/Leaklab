@@ -74,7 +74,7 @@
   },
   "gto_method": {
     "title": "Metodología de Clasificación GTO",
-    "p1": "El sistema evalúa cada decisión preflop con un <strong>pipeline de 3 fuentes con prioridad</strong>: (1) <strong>Rangos GTO</strong> — tablas precomputadas por el GTO Solver para MTT 8-max; (2) <strong>Solver nodes</strong> — spots resueltos por el GTO Solver y almacenados con exploitability medida; (3) <strong>Motor heurístico</strong> — equity + tamaño de bet + contexto MTT como fallback. El <code>gto_label</code> se guarda al subir el archivo y se reconcilia automáticamente con el <code>label</code> del dashboard — garantizando que ambas pantallas nunca muestren veredictos contradictorios.",
+    "p1": "El sistema evalúa cada decisión preflop con un <strong>pipeline de 3 fuentes con prioridad</strong>: (1) <strong>Rangos GTO</strong> — tablas precomputadas por el GTO Solver para MTT 9-max; (2) <strong>Solver nodes</strong> — spots resueltos por el GTO Solver y almacenados con exploitability medida; (3) <strong>Motor heurístico</strong> — equity + tamaño de bet + contexto MTT como fallback. El <code>gto_label</code> se guarda al subir el archivo y se reconcilia automáticamente con el <code>label</code> del dashboard — garantizando que ambas pantallas nunca muestren veredictos contradictorios.",
     "scenarios_title": "Los 3 escenarios de análisis preflop",
     "col_scenario": "Escenario",
     "col_condition": "Condición detectada",
