@@ -3545,14 +3545,16 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             and _norm(engine_best) != _norm(reconciled_best or '')
         )
 
+        # Extrai contexto da decisao (compartilhado entre lookup_gto e multiway)
+        _di   = (decision or {}).get('_di', {}) if decision else {}
+        _spot = _di.get('spot', {})
+        _ctx  = _di.get('context', {})
+
         # Fetch full GTO strategy for display (all actions with freq + combos)
         gto_strategy = None
         if decision and gto_label and not gto_spot_mismatch:
             try:
                 from leaklab.gto_solver import lookup_gto as _lookup_gto
-                _di   = decision.get('_di', {})
-                _spot = _di.get('spot', {})
-                _ctx  = _di.get('context', {})
                 _gto_result = _lookup_gto(
                     street         = action.street,
                     position       = _spot.get('position', _ctx.get('position', '')),
@@ -3567,6 +3569,40 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 )
                 if _gto_result.get('found') and _gto_result.get('strategy'):
                     gto_strategy = _gto_result['strategy']
+            except Exception:
+                pass
+
+        # Fallback multiway: quando lookup_gto local nao tem cobertura (spot fora
+        # do escopo HU — multiway / squeeze / cold-callers), tenta GTO Wizard via
+        # /gw-spot. So pra preflop, quando esta e uma decisao do hero. Cache local
+        # garante que repetir a mesma mao bate em <50ms.
+        if (gto_strategy is None
+                and action.street == 'preflop'
+                and action.player == hero
+                and not gto_spot_mismatch):
+            try:
+                from leaklab.gto_wizard_client import lookup_for_hand_decision as _lookup_mw
+                _act_idx = hand.actions.index(action)
+                _stack_bb = float(_spot.get('effectiveStackBb')
+                                  or _ctx.get('heroStackBb') or 100.0)
+                _mw = _lookup_mw(hand, _act_idx, depth_bb=_stack_bb, timeout=90)
+                if _mw and _mw.get('strategy'):
+                    gto_strategy = _mw['strategy']
+                    # Expose hero-specific hand_freqs no payload — Decision Card
+                    # usa pra mostrar frequencia da mao especifica do hero.
+                    _hero_cards = _di.get('hero_cards') or []
+                    _hand_type  = None
+                    if _hero_cards and len(_hero_cards) == 2:
+                        try:
+                            from leaklab.gto_utils import hand_to_type
+                            _hand_type = hand_to_type(_hero_cards)
+                        except Exception:
+                            pass
+                    if _hand_type:
+                        _hf = (_mw.get('hand_freqs') or {}).get(_hand_type)
+                        if _hf:
+                            for _gs in gto_strategy:
+                                _gs['hero_freq'] = _hf.get(_gs.get('action'), 0.0)
             except Exception:
                 pass
 

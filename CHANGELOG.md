@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): wiring `/replay/<t>/<h>` — fallback multiway via `/gw-spot` (step 5)
+- `backend/api/app.py:3548`: após `lookup_gto` (HU) falhar em fornecer estratégia preflop, fallback automático pra `lookup_for_hand_decision()` quando: (a) `gto_strategy is None`, (b) `action.street == 'preflop'`, (c) `action.player == hero`, (d) sem spot_mismatch.
+- Quando o multiway lookup retorna sucesso, popula `gto_strategy` E adiciona `hero_freq` em cada entry da strategy (frequência específica da mão do hero — extraída de `hand_freqs[hand_type]`). Frontend pode usar pra mostrar Decision Card com a freq da mão jogada.
+- Requer envs `GTO_WIZARD_ENABLED=true`, `GTO_SOLVER_URL`, `GTO_SOLVER_API_KEY` no backend. Sem isso, o fallback retorna None silenciosamente — comportamento atual preservado.
+- Cache `gw_raw_cache` mata 99% da latência: primeira chamada ~30s (GW), repetidas ~12ms.
+
 ### feat(gto): cache `gw_raw_cache` + `lookup_for_hand_decision()` (step 4)
 - `backend/database/schema.py`: nova tabela `gw_raw_cache` (SQLite + Postgres) com `cache_key` (hash de gametype/depth/preflop_actions/board), `payload_json`, e metadata.
 - `backend/database/repositories.py`: `get_gw_raw_cache(key)` e `upsert_gw_raw_cache(...)` — UPSERT cross-backend.
