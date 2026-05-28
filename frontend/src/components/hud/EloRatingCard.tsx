@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { TrendingUp, TrendingDown, Minus, ChevronRight, Award } from "lucide-react";
-import { playerApi, EloResponse } from "@/lib/api";
+import { metrics, EloResponse } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,7 +15,7 @@ export function EloRatingCard() {
 
   useEffect(() => {
     let cancelled = false;
-    playerApi.elo()
+    metrics.elo()
       .then((r) => { if (!cancelled) setData(r); })
       .catch((e) => { if (!cancelled) setError(String(e?.message ?? e)); })
       .finally(() => { if (!cancelled) setLoading(false); });

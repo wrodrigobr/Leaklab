@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Award, TrendingUp, TrendingDown, Minus, BookOpen } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { playerApi, EloResponse } from "@/lib/api";
+import { metrics, EloResponse } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const STREET_LABEL: Record<string, string> = {
@@ -18,7 +18,7 @@ export default function Rating() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    playerApi.elo()
+    metrics.elo()
       .then(setData)
       .catch((e) => setError(String(e?.message ?? e)))
       .finally(() => setLoading(false));
