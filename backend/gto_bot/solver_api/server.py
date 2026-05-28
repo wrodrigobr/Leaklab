@@ -791,11 +791,9 @@ def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 25) -> dict:
                     if api_path not in resp.url:
                         return False
                     if resp.request.method != "GET":
-                        return False
-                    # Filtra 200 only — GW dispara 2 requests por nav (200 + 204);
-                    # queremos a com conteudo.
-                    if resp.status != 200:
-                        return False
+                        return False  # ignora OPTIONS preflight
+                    # Aceita 200 (com payload) e 204 (sem solucao) — ambos respostas
+                    # validas do GET. Outras (401, 403, 5xx) tambem aceitas pra reportar erro.
                     for k, v in expected.items():
                         if f"{k}={v}" not in resp.url and not (v == "" and f"{k}=&" in resp.url + "&"):
                             return False
@@ -822,6 +820,10 @@ def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 25) -> dict:
             if status == 401:
                 _set_auth_failed("Token expirado (HTTP 401 via navigate)")
                 return {"ok": False, "status": 401, "error": "auth_expired"}
+
+            if status == 204:
+                # 204 = sem solucao GW pra esse spot — resposta valida, sem payload
+                return {"ok": False, "status": 204, "error": "no_solution_204"}
 
             if status < 200 or status >= 300:
                 body_preview = None
