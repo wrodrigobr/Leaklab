@@ -32,7 +32,7 @@
   },
   "scoring": {
     "title": "Sistema de Scoring",
-    "p1": "Cada decisión importada se evalúa con un score de <strong>0 a 1</strong>, donde 0 representa la decisión óptima y 1 el mayor desvío posible del ideal. El score combina cuatro factores ponderados: equity de la mano, adecuación de la apuesta (bet sizing), awareness posicional y contexto MTT (M-ratio y presión ICM).",
+    "p1": "Cada decisión importada se evalúa con un score de <strong>0 a 1</strong>, donde 0 representa la decisión óptima y 1 el mayor desvío posible del ideal. El score tiene en cuenta la fuerza de la mano (equity), la adecuación de la apuesta (bet sizing), la conciencia posicional y el contexto de torneo (M-ratio y presión ICM).",
     "table": {
       "col_label": "Label",
       "col_score": "Score",
@@ -46,7 +46,7 @@
       "clear_score": "> 0.36",
       "clear_meaning": "Error claro con impacto relevante en EV."
     },
-    "p2": "El sistema considera el contexto MTT al reclasificar decisiones: bajo alta presión ICM (M ≤ 6 o final table), los márgenes de error son menores — una decisión <em>marginal</em> puede reclasificarse como <em>small_mistake</em> si el contexto amplifica el costo estratégico.",
+    "p2": "El sistema considera el contexto MTT al reclasificar decisiones: bajo alta presión ICM (M ≤ 6 o final table), los márgenes de error son menores — una decisión <em>marginal</em> puede reclasificarse como <em>error pequeño</em> si el contexto amplifica el costo estratégico.",
     "p3": "El <strong>Standard%</strong> de un torneo es el porcentaje de decisiones con label <em>standard</em> sobre el total analizado. Es el principal indicador de calidad técnica de una sesión.",
     "example_standard": "Fold correcto de mano débil OOP con pot odds insuficientes — desviación mínima del óptimo",
     "example_marginal": "Call en el flop con equity limítrofe — acción defendible, pero existía una alternativa levemente mejor",
@@ -70,45 +70,49 @@
     "icm_interpret": "Las decisiones incorrectas con ICM alto cuestan más a largo plazo.",
     "drift_measures": "Tendencia de caída de calidad en sesiones consecutivas",
     "drift_interpret": "Indica tilt o fatiga. Se recomienda revisar las últimas sesiones.",
-    "p1": "El <strong>Leak ROI</strong> se calcula multiplicando la frecuencia de cada spot de error por el costo promedio en EV de una decisión incorrecta en ese spot. Spots de alta frecuencia con bajo costo individual pueden superar spots raros con alto costo — el ROI captura eso."
+    "p1": "El <strong>Leak ROI</strong> combina la frecuencia de cada spot de error con el costo en EV de equivocarse allí — priorizando lo que más pesa a largo plazo. Spots frecuentes de bajo costo pueden importar más que spots raros de alto costo, y el ROI captura eso."
   },
   "gto_method": {
     "title": "Metodología de Clasificación GTO",
-    "p1": "El sistema evalúa cada decisión preflop con un <strong>pipeline de 3 fuentes con prioridad</strong>: (1) <strong>Rangos GTO</strong> — tablas precomputadas por el GTO Solver para MTT 9-max; (2) <strong>Solver nodes</strong> — spots resueltos por el GTO Solver y almacenados con exploitability medida; (3) <strong>Motor heurístico</strong> — equity + tamaño de bet + contexto MTT como fallback. El <code>gto_label</code> se guarda al subir el archivo y se reconcilia automáticamente con el <code>label</code> del dashboard — garantizando que ambas pantallas nunca muestren veredictos contradictorios.",
+    "p1": "Cada decisión preflop se compara con la estrategia de equilibrio (GTO) para esa situación exacta — tu posición en la mesa, la profundidad de stack efectivo y las acciones de los oponentes antes que tú. Cuando existe una solución GTO para el spot, se usa como referencia para evaluar tu jugada; cuando no hay solución precalculada, la evaluación se basa en equity, tamaño de apuesta y contexto de torneo. El análisis preflop se hace para MTT 9-max.",
     "scenarios_title": "Los 3 escenarios de análisis preflop",
     "col_scenario": "Escenario",
-    "col_condition": "Condición detectada",
+    "col_condition": "Cuándo ocurre",
     "col_range_used": "Rango consultado",
     "rfi_scenario": "RFI (Apertura)",
-    "rfi_condition": "Sin apuesta por delante (facing_size = 0)",
-    "rfi_range": "Rango de apertura de la posición del hero en el bucket de stack",
+    "rfi_condition": "Eres el primero en entrar al bote — nadie ha apostado antes que tú",
+    "rfi_range": "Rango de apertura de tu posición para tu profundidad de stack",
     "vs_rfi_scenario": "vs Open (Defensa)",
-    "vs_rfi_condition": "Hay apuesta abierta (facing_size > 0) con posición del villain reconocida",
-    "vs_rfi_range": "Rango de defensa de la posición del hero vs el opener específico",
+    "vs_rfi_condition": "Un oponente ya abrió el bote y su posición es conocida",
+    "vs_rfi_range": "Rango de defensa de tu posición contra el opener específico",
     "vs_3bet_scenario": "vs 3-Bet",
-    "vs_3bet_condition": "Bote 3-bet (is_3bet_pot = true) con posición del villain reconocida",
-    "vs_3bet_range": "Rango de 4-bet/call de la posición del hero en ese bucket",
-    "quality_title": "Calidad de acción → impacto en el label",
-    "col_quality": "action_quality",
+    "vs_3bet_condition": "El bote ya fue 3-beteado y la posición del agresor es conocida",
+    "vs_3bet_range": "Rango de 4-bet/call de tu posición contra ese 3-bet",
+    "quality_title": "Cómo se clasifica la calidad de tu acción",
+    "col_quality": "Clasificación",
     "col_quality_meaning": "Significado",
-    "col_label_impact": "Impacto en el label",
-    "correct_meaning": "Acción alineada con GTO: mano en el rango y acción recomendada tomada",
-    "correct_impact": "Mantiene el label base (standard o mejor)",
-    "acceptable_meaning": "Acción defensable: mano en el rango pero acción secundaria",
-    "acceptable_impact": "Techo: label limitado a marginal como máximo",
-    "leak_meaning": "Desviación del GTO: ej. call con mano fuera del rango de defensa",
-    "leak_impact": "Piso: label elevado a small_mistake como mínimo",
-    "major_leak_meaning": "Error grave: ej. raise/call con mano muy débil contra rango fuerte",
-    "major_leak_impact": "Piso: label elevado a clear_mistake como mínimo",
-    "buckets_title": "Profundidades de stack soportadas",
-    "col_bucket": "Bucket",
+    "col_label_impact": "Cómo afecta tu veredicto",
+    "correct_label": "Correcta",
+    "correct_meaning": "Acción alineada con GTO: mano en el rango y acción recomendada",
+    "correct_impact": "Mantiene el mejor veredicto posible para la mano",
+    "acceptable_label": "Aceptable",
+    "acceptable_meaning": "Acción defensable: mano en el rango pero en una acción secundaria",
+    "acceptable_impact": "Veredicto neutro — defensable, pero no óptimo",
+    "leak_label": "Leak",
+    "leak_meaning": "Desviación del GTO: ej. pagar con una mano fuera del rango de defensa",
+    "leak_impact": "El veredicto pasa a señalar un error a corregir",
+    "major_leak_label": "Leak grave",
+    "major_leak_meaning": "Error grave: ej. raise/call con mano muy débil contra un rango fuerte",
+    "major_leak_impact": "El veredicto señala un error claro y costoso",
+    "buckets_title": "Profundidades de stack analizadas",
+    "col_bucket": "Stack de referencia",
     "col_bb_range": "Stack efectivo cubierto",
-    "p2": "El sistema <strong>no muestra análisis GTO preflop</strong> (<em>available = false</em>) cuando la posición del villain no fue detectada en el historial, o cuando el spot es un 3-bet sin opener reconocido. En estos casos el Replayer solo muestra análisis postflop (equity + pot odds). <strong>Limitación conocida del SB</strong>: en algunos buckets de stack (10bb, 40bb, 75bb) el modelo solo cubre fold/raise para SB. En esos spots, completar (limp) con una mano fuera del rango de apertura se clasifica como <em>acceptable</em> — no como error — porque el GTO Solver modela ~53% de las manos del SB como complete, algo que nuestro modelo simplificado no representa.",
-    "p3": "Garantía del sistema: <strong>nunca mostramos recomendaciones contradictorias</strong>. El <code>label</code> del dashboard y el <code>gto_label</code> del Replayer se reconcilian automáticamente tras cada subida, actualización del solver o sync de rangos. Todas las tablas preflop son precomputadas por el GTO Solver."
+    "p2": "El sistema <strong>no muestra análisis GTO preflop</strong> cuando no puede identificar la posición del oponente en el historial, o cuando el bote es un 3-bet sin opener identificado. En estos casos la revisión de la mano muestra solo el análisis postflop (equity + pot odds). <strong>Limitación conocida del SB</strong>: en algunas profundidades de stack (10bb, 40bb, 75bb) el modelo solo cubre fold/raise para el SB. En esos spots, completar (limp) con una mano fuera del rango de apertura se trata como <em>aceptable</em> — no como error — porque la estrategia GTO completa cerca del 53% de las manos del SB, comportamiento que el modelo simplificado no representa.",
+    "p3": "Garantía del sistema: <strong>nunca mostramos recomendaciones contradictorias</strong>. El veredicto mostrado en el panel principal y en la revisión de la mano es siempre el mismo — ambas pantallas se mantienen sincronizadas automáticamente."
   },
   "alignment_matrix": {
     "title": "Heatmap Posición × Calle",
-    "p1": "Matriz 6×6 en el dashboard que cruza <strong>posición de mesa</strong> (EP, MP, CO, BTN, SB, BB) con <strong>calle</strong> (preflop, flop, turn, river). Cada celda muestra <code>aligned_pct</code> (% de decisiones alineadas con solver GTO) y <code>n</code> (muestra). Permite identificar leaks con precisión quirúrgica — ej.: \"juego BTN preflop bien (87%) pero SB river es agujero (42%)\".",
+    "p1": "Matriz 6×6 en el dashboard que cruza <strong>posición de mesa</strong> (EP, MP, CO, BTN, SB, BB) con <strong>calle</strong> (preflop, flop, turn, river). Cada celda muestra el porcentaje de decisiones alineadas con GTO y el número de manos en la muestra. Permite identificar leaks con precisión quirúrgica — ej.: \"juego BTN preflop bien (87%) pero SB river es agujero (42%)\".",
     "col_color": "Color de celda",
     "col_pct": "% aligned",
     "col_meaning": "Interpretación",
@@ -120,11 +124,11 @@
     "meaning_ok": "Aceptable, con margen para mejorar. Prioriza si es spot de alto volumen.",
     "meaning_weak": "Divergencia relevante. Vale revisión puntual.",
     "meaning_leak": "Leak claro. Prioridad de estudio.",
-    "p2": "Celdas con <code>n &lt; 20</code> aparecen atenuadas (IC demasiado alto). Celdas con <code>n &lt; 3</code> no muestran porcentaje — sin datos. El heatmap es más útil para alumnos con 500+ decisiones con cobertura GTO."
+    "p2": "Las celdas con menos de 20 manos aparecen atenuadas — muestra demasiado pequeña para una lectura confiable. Con menos de 3 manos, el porcentaje ni se muestra. El heatmap es más útil a partir de algunos cientos de decisiones con cobertura GTO."
   },
   "pko_tournaments": {
     "title": "Torneos PKO (Progressive Knockout / Bounty)",
-    "p1": "El sistema detecta torneos PKO automáticamente desde el hand history (bounties en seat info, patrón de buy-in 3-tier <code>$X+$Y+$Z</code>, o keyword en el nombre del torneo). Cuando se detecta, aparece un badge <strong>PKO</strong> en el Replayer y el engine ajusta thresholds — el bounty incentiva agresión y reduce la equity necesaria para stack-off.",
+    "p1": "El sistema detecta automáticamente torneos PKO. Cuando se detecta, aparece un sello <strong>PKO</strong> en la revisión de la mano y el análisis se ajusta — el bounty incentiva la agresión y reduce la equity necesaria para arriesgar el stack.",
     "col_situation": "Situación",
     "col_classic": "MTT Clásico",
     "col_pko": "PKO",
@@ -133,8 +137,8 @@
     "row_final": "Final table",
     "pre_ft_pko": "Atenuado 1 nivel (bounty alivia bubble)",
     "final_classic": "Presión máxima (ICM puro)",
-    "final_pko": "Mantiene presión alta (bounty effect \"drowns under rising risk premiums\")",
-    "p2": "<strong>Limitación actual</strong>: el engine usa <em>rangos Classic</em> en torneos PKO, ajustando solo los thresholds de equity. Rangos PKO específicos (estructura nativa de solver PKO) requieren recolección dedicada aún no disponible. Aún así, el ajuste de threshold (−2pp en equity necesaria pre-FT) refleja el cambio cualitativo principal documentado por la teoría de PKO."
+    "final_pko": "Se mantiene alta (el efecto del bounty sostiene la agresión)",
+    "p2": "Los ajustes para PKO reflejan el cambio cualitativo principal de la teoría de bounty: la equity necesaria para arriesgar el stack baja y la agresión se recompensa más que en un MTT clásico equivalente. El refinamiento del análisis específico de PKO sigue en evolución."
   },
   "mstacks": {
     "title": "Fases de M-Ratio",
@@ -146,8 +150,8 @@
     "mid_strategy": "La jugabilidad pre-flop empieza a reducirse. Cuidado con enfrentamientos de grandes stacks.",
     "short_strategy": "Foco en spots de reshove/push-fold. Los resteals son importantes para mantener M.",
     "pushfold_strategy": "Estrategia binaria: fold o all-in. ICM pressure automáticamente alto.",
-    "p2": "Las decisiones en fase Push/Fold se evalúan con criterios diferentes. El sistema aplica tablas de push/fold basadas en equity mínima y posición para calcular el score correcto en este contexto.",
-    "p3": "El stage del torneo (<em>early, middle, late, final_table, heads_up</em>) se detecta por el número de jugadores activos en la mesa y complementa el M en la definición del contexto."
+    "p2": "Las decisiones en fase Push/Fold se evalúan con criterios específicos para ese contexto binario (fold o all-in), donde la equity necesaria y la posición pesan de forma diferente a las demás fases.",
+    "p3": "La etapa del torneo (inicio, medio, fase final, mesa final, heads-up) se identifica automáticamente y complementa el M en la definición del contexto."
   },
   "dna": {
     "title": "Decision DNA",
@@ -170,15 +174,15 @@
   "ghost": {
     "title": "Ghost Table / Drills",
     "p1": "El <strong>Ghost Table</strong> convierte tus propios leaks en drills de revisión. Cada \"spot\" es un patrón recurrente donde tomaste decisiones por debajo del ideal — el sistema extrae estos spots automáticamente del historial importado.",
-    "p2": "Cómo funciona el SRS adaptativo: después de cada sesión de drill, el intervalo hasta la próxima revisión se ajusta según el rendimiento:",
+    "p2": "Repetición espaciada: tras cada sesión de drill, el intervalo hasta la próxima revisión se ajusta según tu rendimiento:",
     "col_result": "Resultado",
     "col_next": "Próxima revisión",
     "hit_next": "El intervalo se duplica: 3d → 7d → 14d → 28d → 60d",
     "miss_next": "El intervalo se reinicia a 3 días",
     "mastery_next": "Spot archivado — intervalo máximo de 60 días",
-    "p3": "La tarjeta GhostDrillCard en el dashboard muestra los spots con revisión vencida (rojo), próximos a vencer (amarillo) y al día (verde). El objetivo es mantener todos los spots en verde — señal de que los patrones fueron internalizados.",
+    "p3": "El card de drills en el dashboard muestra los spots con revisión vencida (rojo), próximos a vencer (amarillo) y al día (verde). El objetivo es mantener todos los spots en verde — señal de que los patrones fueron internalizados.",
     "p4": "XP ganado: <strong>25 XP</strong> por drill completado, <strong>100 XP</strong> al alcanzar mastery en un spot.",
-    "p5": "El <strong>Modo Presión</strong> agrega un cronómetro de 30 segundos por decisión. Un anillo SVG muestra la cuenta regresiva; al llegar a cero, se registra automáticamente un fold y el streak de aciertos se reinicia. El streak acumulado se muestra con badge 🔥 durante la sesión y en el tile de resumen final.",
+    "p5": "El <strong>Modo Presión</strong> agrega un cronómetro de 30 segundos por decisión. Cuando el tiempo llega a cero, se registra un fold automáticamente y el streak de aciertos se reinicia. El streak se muestra con un sello 🔥 durante la sesión y en el resumen final.",
     "result_hit": "Acierto",
     "result_miss": "Error",
     "result_mastery": "Mastery"
@@ -203,7 +207,7 @@
     "reviewed_meaning": "El coach anotó o comentó al menos una decisión de la sesión",
     "override_meaning": "El coach reemplazó el plan de estudios generado por IA por uno personalizado",
     "effectiveness_meaning": "Mejora mediana de Standard% de los alumnos en los primeros 60 días de coaching",
-    "p2": "La <strong>efectividad del coach</strong> se calcula comparando el Standard% promedio de cada alumno en los 30 días antes del vínculo con los 30 días después del baseline. Los coaches con ≥ 3 alumnos con baseline reciben un badge público verificado en el directorio.",
+    "p2": "La <strong>efectividad del coach</strong> mide la mejora en el Standard% de los alumnos desde el inicio del acompañamiento. Los coaches con 3 o más alumnos acompañados reciben un sello público verificado en el directorio.",
     "term_override": "Override de Plan"
   },
   "gamification": {
@@ -235,7 +239,7 @@
   },
   "career": {
     "title": "Trayectoria de Carrera",
-    "p1": "La tarjeta de <strong>Trayectoria de Carrera</strong> proyecta cuándo alcanzarás cada nivel con base en tu curva real de <strong>ELO</strong> a lo largo de los torneos importados. El sistema usa regresión lineal sobre los últimos torneos para calcular la tasa de mejora y estimar fechas.",
+    "p1": "La tarjeta de <strong>Trayectoria de Carrera</strong> proyecta cuándo alcanzarás cada nivel con base en tu curva real de <strong>ELO</strong> a lo largo de los torneos importados. La proyección parte de tu tendencia reciente de mejora para estimar las fechas.",
     "table": {
       "col_term": "Término",
       "col_meaning": "Significado",
@@ -251,7 +255,7 @@
   },
   "cognitive": {
     "title": "Cognitive Failure Mapper",
-    "p1": "El <strong>Cognitive Failure Mapper</strong> detecta patrones cognitivo-emocionales en la secuencia cronológica de decisiones dentro de cada torneo. En lugar de analizar decisiones aisladas, el sistema analiza ventanas deslizantes de 5–10 decisiones consecutivas para identificar cuándo cambia el estado mental del jugador.",
+    "p1": "El <strong>Cognitive Failure Mapper</strong> detecta patrones cognitivo-emocionales en la secuencia cronológica de decisiones dentro de cada torneo. En lugar de analizar decisiones aisladas, el sistema sigue la secuencia de tus jugadas para identificar cuándo cambia tu estado mental.",
     "table": {
       "col_pattern": "Patrón",
       "col_trigger": "Disparador",
@@ -274,22 +278,22 @@
       "compensation_trigger": "Fold correcto de mano fuerte",
       "compensation_signal": "2+ calls incorrectos en las siguientes 3 decisiones"
     },
-    "p2": "Cada patrón recibe una <strong>frecuencia</strong> (% de oportunidades en que el patrón se manifiesta) y un <strong>nivel de severidad</strong> — <em>high</em> (≥ 40%), <em>medium</em> (≥ 20%) o <em>low</em> (por debajo del 20%). Mínimo: 30 decisiones para la activación.",
+    "p2": "Cada patrón recibe una <strong>frecuencia</strong> (% de oportunidades en que el patrón se manifiesta) y un <strong>nivel de severidad</strong> — alto (≥ 40%), medio (≥ 20%) o bajo (por debajo de 20%). Se requiere un mínimo de 30 decisiones para la activación.",
     "p3": "La narrativa de IA describe el patrón dominante, por qué cuesta EV y un hábito correctivo concreto para aplicar en la próxima sesión."
   },
   "twin": {
     "title": "Tendencias Estratégicas",
-    "p1": "El <strong>Strategic Twin</strong> transforma los datos de frecuencia de error por spot en lenguaje predictivo. En lugar de listar errores pasados, el sistema dice: <em>«en spots de shove preflop bajo ICM alto, cometes errores el 63% de las veces — muy por encima de tu promedio personal del 28%»</em>.",
-    "p2": "Cada <strong>spot</strong> se define por la combinación de <em>street</em> (preflop/flop/turn/river), <em>best_action</em> (la acción correcta: fold/call/raise/bet/check/shove) e <em>ICM pressure</em> (bajo/medio/alto/crítico). El sistema filtra spots con un mínimo de 5 decisiones y error_rate al menos 10% superior a tu promedio personal.",
+    "p1": "El <strong>Strategic Twin</strong> transforma tus patrones de error por spot en lenguaje predictivo. En lugar de listar errores pasados, el sistema dice: <em>«en spots de shove preflop bajo ICM alto, cometes errores el 63% de las veces — muy por encima de tu promedio personal del 28%»</em>.",
+    "p2": "Cada <strong>spot</strong> se define por la combinación de street (preflop/flop/turn/river), acción correcta (fold/call/raise/bet/check/shove) y presión ICM (bajo/medio/alto/crítico). El sistema destaca los spots con al menos 5 decisiones en los que te equivocas por encima de tu media personal.",
     "table": {
       "col_term": "Concepto",
       "col_meaning": "Significado",
       "avg_term": "Tasa media de error",
-      "avg_meaning": "Porcentaje global de decisiones clasificadas como small_mistake o clear_mistake en los últimos 180 días",
+      "avg_meaning": "Porcentaje global de decisiones clasificadas como error (error pequeño o error claro) en los últimos 180 días",
       "costly_term": "Spot costoso",
-      "costly_meaning": "Spot donde error_rate > promedio personal + 10% y volumen ≥ 5 decisiones",
+      "costly_meaning": "Spot con al menos 5 decisiones en los que te equivocas por encima de tu media personal",
       "delta_term": "Delta",
-      "delta_meaning": "Cuánto supera (positivo) o queda por debajo (negativo) del promedio personal el error_rate del spot"
+      "delta_meaning": "Cuánto tu tasa de error en el spot excede (positivo) o queda por debajo (negativo) de tu media personal"
     },
     "p3": "La línea vertical en el gráfico de barras representa tu promedio personal. Las barras que superan esa línea indican spots donde rindes por debajo de tu estándar habitual. La narrativa de IA resume las 3 tendencias más costosas y propone un ajuste concreto."
   },
@@ -388,16 +392,16 @@
   },
   "sparring": {
     "title": "Sparring Mode",
-    "p1": "El <strong>Sparring Mode</strong> (<code>/sparring</code>) transforma el aprendizaje pasivo en aprendizaje por acción. En lugar de revisar un spot aislado, juegas una mano histórica completa pausando en cada punto de decisión real — y el engine evalúa cada elección con el mismo rigor que el Ghost Table.",
+    "p1": "El <strong>Sparring Mode</strong> transforma el aprendizaje pasivo en aprendizaje por acción. En lugar de revisar un spot aislado, juegas una mano histórica completa pausando en cada punto de decisión real — y el engine evalúa cada elección con el mismo rigor que el Ghost Table.",
     "col_phase": "Fase",
     "col_desc": "Qué sucede",
     "phase_playing": "Jugando",
     "phase_playing_desc": "Cada decisión de la mano se presenta con cartas, board y contexto completo (posición, stack, M-ratio, ICM, bote). El usuario elige una de las 6 acciones disponibles.",
     "phase_feedback": "Feedback",
-    "phase_feedback_desc": "Resultado inmediato: correcto o incorrecto, acción recomendada, delta de score, scheduling SRS y análisis opcional del engine vía IA.",
+    "phase_feedback_desc": "Resultado inmediato: correcto o incorrecto, acción recomendada, delta de score, programación de la próxima revisión y análisis opcional por IA.",
     "phase_summary": "Resumen",
     "phase_summary_desc": "Al finalizar todas las decisiones: precisión global, resumen por decisión con resultado, botón para jugar una nueva mano.",
-    "p2": "La mano auto-seleccionada es la que contiene el peor error del jugador en los últimos 90 días, priorizando manos con múltiples decisiones para crear un arco narrativo completo (preflop → flop → turn/river). En cada nueva sesión, las manos ya jugadas se excluyen de la selección — el sistema itera por manos distintas en la ventana de 90 días; cuando todas se agotan, el ciclo comienza de nuevo.",
-    "p3": "Cada respuesta se registra en el sistema SRS (Spaced Repetition): los aciertos avanzan el intervalo de revisión [3, 7, 14, 28, 60 días]; los errores lo reinician a 3 días. El <strong>Sparring se integra directamente con el Ghost Table</strong> — los mismos spots aparecen en ambos modos según el SRS los programe."
+    "p2": "La mano autoseleccionada contiene uno de tus peores errores de los últimos 90 días, priorizando manos con varias decisiones para formar un arco narrativo completo (preflop → flop → turn/river). En cada nueva sesión, las manos ya jugadas se dejan de lado hasta que pases por las demás.",
+    "p3": "Cada respuesta ajusta cuándo verás el spot de nuevo (repetición espaciada): los aciertos avanzan el intervalo de revisión [3, 7, 14, 28, 60 días] y los errores lo reinician en 3 días. El <strong>Sparring se integra directamente con el Ghost Table</strong> — los mismos spots aparecen en ambos modos según se programe la revisión."
   }
 }

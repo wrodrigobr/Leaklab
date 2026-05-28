@@ -235,10 +235,10 @@ export default function Docs() {
               <Table
                 headers={[t("gto_method.col_quality"), t("gto_method.col_quality_meaning"), t("gto_method.col_label_impact")]}
                 rows={[
-                  [<Badge color="bg-emerald-500/15 text-emerald-400">correct</Badge>,    t("gto_method.correct_meaning"),    t("gto_method.correct_impact")],
-                  [<Badge color="bg-sky-500/15 text-sky-400">acceptable</Badge>,         t("gto_method.acceptable_meaning"), t("gto_method.acceptable_impact")],
-                  [<Badge color="bg-amber-500/15 text-amber-400">leak</Badge>,           t("gto_method.leak_meaning"),       t("gto_method.leak_impact")],
-                  [<Badge color="bg-destructive/15 text-destructive">major_leak</Badge>, t("gto_method.major_leak_meaning"), t("gto_method.major_leak_impact")],
+                  [<Badge color="bg-emerald-500/15 text-emerald-400">{t("gto_method.correct_label")}</Badge>,    t("gto_method.correct_meaning"),    t("gto_method.correct_impact")],
+                  [<Badge color="bg-sky-500/15 text-sky-400">{t("gto_method.acceptable_label")}</Badge>,         t("gto_method.acceptable_meaning"), t("gto_method.acceptable_impact")],
+                  [<Badge color="bg-amber-500/15 text-amber-400">{t("gto_method.leak_label")}</Badge>,           t("gto_method.leak_meaning"),       t("gto_method.leak_impact")],
+                  [<Badge color="bg-destructive/15 text-destructive">{t("gto_method.major_leak_label")}</Badge>, t("gto_method.major_leak_meaning"), t("gto_method.major_leak_impact")],
                 ]}
               />
               <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-foreground/70">{t("gto_method.buckets_title")}</p>

@@ -7,8 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
-### docs(gto): correção 8-max → 9-max na Metodologia de Classificação GTO
-- `gto_method.p1` (docs PT/EN/ES) descrevia as Ranges GTO como "MTT 8-max" — resíduo do JSON antigo RegLife (v2.x). A fonte da verdade atual (`master_gw_ranges.json`, gametype `MTTGeneralV2`) é **9-max nativo** desde a v0.163.0. Texto corrigido para "MTT 9-max" nas 3 locales.
+### docs: revisão editorial da /docs — explicar conceitos sem expor a lógica interna
+- **Princípio**: a documentação do usuário deve explicar **o que é** cada indicador/recurso e como interpretá-lo, sem revelar a engenharia interna ("não entregar o ouro"). Removidos de toda a `/docs`: nomes de variáveis/campos de código (`gto_label`, `facing_size`, `is_3bet_pot`, `action_quality`, `aligned_pct`, `error_rate`, `best_action`, `small_mistake`/`clear_mistake`), nomes de componentes (`GhostDrillCard`), comandos (`/sparring`), descrições de algoritmo/pipeline (pipeline de 3 fontes, regressão linear, janelas deslizantes, parsing de PKO, ciclagem do Sparring) e fórmulas/pesos proprietários (Leak ROI, efetividade do coach, threshold −2pp). **Mantidos** os números úteis ao usuário (intervalos de revisão, ELO por nível/banda, amostra mínima).
+- **`gto_method`** reescrita nas 3 locales: removido o "pipeline de 3 fontes / solver nodes / reconciliação"; tabela de qualidade agora usa rótulos amigáveis (Correta/Aceitável/Leak/Leak grave) em vez dos enums crus. `Docs.tsx`: badges passam a usar chaves i18n (`correct_label`…`major_leak_label`).
+- **Correção factual**: as Ranges GTO eram descritas como "MTT 8-max" (resíduo do JSON antigo RegLife) — corrigido para **9-max nativo** (`master_gw_ranges.json`, `MTTGeneralV2`, fonte da verdade desde v0.163.0).
+- **`DocsRating.tsx`** (página /docs/rating): removida a fórmula ELO explícita, o mapeamento interno de score (`gto_correct`…), os exemplos de cálculo passo-a-passo e os K-factors exatos. Mantidos o conceito de ELO, a tabela de bandas (ELO por nível) e os insights de leitura do rating.
+- **Revisão de acurácia**: confirmado que a doc não descreve features inexistentes e não há resíduo de "RegLife"/"GTO Wizard"/"8-max". Gap conhecido (não-bloqueante): o Rating ELO está em página dedicada (`/docs/rating`, linkada da seção "Meu Nível") mas ainda não tem entrada no menu lateral principal.
 
 ### feat(elo): sistema de rating ELO para jogadores (backlog #19 — sprint 1)
 - **Engine** (`backend/leaklab/elo_engine.py` novo): fórmula ELO clássica adaptada pra poker (cada decisão = partida vs solver ELO 3000). Score `S` derivado de `gto_label` (correct=1.0, mixed=0.7, minor=0.4, critical=0.0) com fallback heurístico (standard/marginal=0.5). K-factor dinâmico (32 <100 / 16 / 8). Bandas: Iniciante / Casual / Em desenvolvimento / Sólido / Avançado / Elite / Master / Grandmaster. ELO calculado overall + por street.

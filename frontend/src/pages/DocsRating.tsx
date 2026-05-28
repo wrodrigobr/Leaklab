@@ -38,20 +38,20 @@ export default function DocsRating() {
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground border-b border-border pb-2">
-            2. A fórmula
+            2. Como o rating se move
           </h2>
-          <pre className="rounded-md bg-card/60 border border-border/40 p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`R' = R + K × (S − E)
-
-R  = rating atual
-R' = novo rating após a partida
-S  = resultado real      (1 vitória, 0.5 empate, 0 derrota)
-E  = resultado esperado  = 1 / (1 + 10^((R_opp − R) / 400))
-K  = fator de volatilidade (32 iniciante, 16 médio, 8 experiente)`}
-          </pre>
           <p>
-            Diferença de <strong>400 pontos</strong> significa que o mais forte é esperado
-            ganhar <strong>10× mais</strong> que o mais fraco (E ≈ 0.91 vs E ≈ 0.09).
+            A cada decisão analisada, seu rating sobe ou desce um pouco. O tamanho do
+            ajuste depende de quão <strong>surpreendente</strong> foi o resultado em
+            relação ao que se esperava de alguém no seu nível: jogar bem quando já se
+            espera que você jogue bem move pouco; um erro grave — ou um acerto acima do
+            seu nível — move mais.
+          </p>
+          <p>
+            Como em qualquer ELO, a distância entre dois níveis tem peso: uma diferença
+            de <strong>400 pontos</strong> equivale a cerca de <strong>10× mais
+            chance</strong> de o lado mais forte levar o confronto. É por isso que o
+            rating não dispara nem despenca de um torneio para o outro.
           </p>
         </section>
 
@@ -73,37 +73,32 @@ K  = fator de volatilidade (32 iniciante, 16 médio, 8 experiente)`}
             número reflete aderência real ao equilíbrio, não estimativa heurística.
           </p>
           <p>
-            Seu resultado <strong>S</strong> em cada decisão depende do alinhamento com o GTO:
+            O quanto cada decisão pesa no rating depende do alinhamento dela com o GTO:
           </p>
           <div className="rounded-lg border border-border/40 overflow-hidden">
             <table className="w-full text-xs">
               <thead className="bg-card/60">
                 <tr>
                   <th className="px-3 py-2 text-left font-mono uppercase tracking-wider">Classificação</th>
-                  <th className="px-3 py-2 text-left font-mono uppercase tracking-wider">S (score)</th>
                   <th className="px-3 py-2 text-left font-mono uppercase tracking-wider">Significado</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 text-emerald-400 font-mono">gto_correct</td>
-                  <td className="px-3 py-2 font-mono">1.0</td>
-                  <td className="px-3 py-2">Jogou exatamente como GTO indica — vitória total</td>
+                  <td className="px-3 py-2 text-emerald-400">Correta</td>
+                  <td className="px-3 py-2">Jogou exatamente como o GTO indica</td>
                 </tr>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 text-sky-400 font-mono">gto_mixed</td>
-                  <td className="px-3 py-2 font-mono">0.7</td>
-                  <td className="px-3 py-2">Jogou uma das ações mistas do solver</td>
+                  <td className="px-3 py-2 text-sky-400">Mista</td>
+                  <td className="px-3 py-2">Jogou uma das ações que o solver mistura naquele spot</td>
                 </tr>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 text-amber-400 font-mono">gto_minor_deviation</td>
-                  <td className="px-3 py-2 font-mono">0.4</td>
-                  <td className="px-3 py-2">Desvio pequeno; quase empate</td>
+                  <td className="px-3 py-2 text-amber-400">Desvio pequeno</td>
+                  <td className="px-3 py-2">Saiu um pouco do ideal, mas longe de um erro grave</td>
                 </tr>
                 <tr className="border-t border-border/30">
-                  <td className="px-3 py-2 text-red-400 font-mono">gto_critical</td>
-                  <td className="px-3 py-2 font-mono">0.0</td>
-                  <td className="px-3 py-2">Desvio grave; perdeu a partida</td>
+                  <td className="px-3 py-2 text-red-400">Desvio grave</td>
+                  <td className="px-3 py-2">Erro claro, que mais custa no rating</td>
                 </tr>
               </tbody>
             </table>
@@ -112,34 +107,13 @@ K  = fator de volatilidade (32 iniciante, 16 médio, 8 experiente)`}
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground border-b border-border pb-2">
-            4. Exemplo de cálculo
+            4. Por que o rating se estabiliza
           </h2>
           <p>
-            Player no par (<strong>ELO 1500</strong>), decisão classificada como
-            <code> gto_correct</code> (S = 1.0), K-factor = 32 (iniciante):
-          </p>
-          <pre className="rounded-md bg-card/60 border border-border/40 p-3 font-mono text-xs text-foreground">
-{`E = 1 / (1 + 10^((1500 − 1500) / 400))
-  = 1 / (1 + 1)
-  = 0.5            ← partida equilibrada (você está no par)
-
-R' = 1500 + 32 × (1.0 − 0.5)
-   = 1500 + 16
-   = 1516           ← acertou: +16 ELO`}
-          </pre>
-          <p>
-            Mesmo player joga um <code>gto_critical</code> (S = 0):
-          </p>
-          <pre className="rounded-md bg-card/60 border border-border/40 p-3 font-mono text-xs text-foreground">
-{`R' = 1500 + 32 × (0 − 0.5)
-   = 1500 − 16
-   = 1484           ← erro grave: −16 ELO`}
-          </pre>
-          <p>
-            Conforme seu rating sobe acima do par, o <strong>E</strong> (resultado esperado)
-            aumenta — então acertos passam a valer menos e erros a custar mais. É isso que
-            estabiliza o rating: pra subir de 1800 pra 2000 você precisa de aderência
-            consistentemente mais alta, não só "acertar o óbvio".
+            Conforme seu rating sobe, passa a se esperar mais de você — então acertos
+            "óbvios" valem cada vez menos e os erros pesam mais. É esse mecanismo que
+            estabiliza o número: subir de uma banda para a próxima exige aderência
+            consistentemente mais alta ao GTO, não apenas acertar o fácil.
           </p>
         </section>
 
@@ -203,9 +177,9 @@ R' = 1500 + 32 × (1.0 − 0.5)
           </h2>
           <ul className="list-disc list-inside space-y-2">
             <li>
-              <strong>K-factor dinâmico</strong>: 32 (até 100 decisões), 16 (100-1000), 8
-              (acima de 1000). Volatilidade alta no início pra calibrar rápido; baixa depois
-              pra que erros isolados não destruam o rating.
+              <strong>Volatilidade adaptativa</strong>: o rating é mais sensível no
+              início, para calibrar rápido, e vai estabilizando conforme você acumula
+              decisões — assim erros isolados não destroem um rating já consolidado.
             </li>
             <li>
               <strong>Rating por street</strong>: além do agregado, mantemos ratings
@@ -214,8 +188,8 @@ R' = 1500 + 32 × (1.0 − 0.5)
             </li>
             <li>
               <strong>Recalculado a cada upload</strong>: depois de cada novo torneio
-              importado, recomputamos seu ELO processando todas as decisões em ordem
-              cronológica. O snapshot é gravado pro gráfico de evolução.
+              importado, seu ELO é recalculado e um novo ponto é gravado no gráfico de
+              evolução.
             </li>
             <li>
               <strong>Sem ranking público</strong>: por enquanto seu ELO é privado. Quando
