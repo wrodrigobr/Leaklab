@@ -7,6 +7,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): encoder ParsedHand → preflop_actions GW + classifier
+- `backend/leaklab/gw_action_encoder.py` (novo): `encode_preflop_actions(hand, stop_index)` converte ações preflop em string GW (`R2.1-F-F-C-F-C-R11.55`). Inclui `find_hero_preflop_decisions()`, `num_seated_players()`, `gw_gametype_for()`, e `classify_multiway()` (scenarios: rfi/vs_rfi/vs_3bet/vs_4bet/squeeze/vs_squeeze/multiway/5bet_or_higher).
+- Validado contra hand #100000002 do `teste_torneio_carma.txt`: scenario classificado como `vs_squeeze` com `is_multiway_with_callers=True` (BB hero facing 4-way 3bet squeeze).
+- **Limitações conhecidas (não bloqueadoras pro encoder):**
+  - Sizing ante-adjusted: GW codifica raise como R2.1 quando hand history tem `raises 2 to 2` (ante de 0.13×8). Encoder emite valor cru `R2.0`. Pode causar 404 → consumidor deve fazer snap.
+  - Bug parser PokerStars: `raises 0 to 0` em formatos com ante aparece com `amount=0` (squeeze real perdido). Fix deve ser no parser, não no encoder.
+
 ### feat(gto): cliente `query_spot_raw()` + extração de `hand_freqs` pelo servidor
 - `backend/leaklab/gto_wizard_client.py`: nova função `query_spot_raw()` que chama `POST /gw-spot`. Aceita `preflop_actions` encoded (formato GW) + street actions + board. Retorna `strategy` normalizada (action_codes → fold/call/raise/allin/bet) e `hand_freqs` por hand_type (ex `{"AJo": {"fold": 0.45, "raise": 0.55}}`).
 - Helper `_normalize_gw_action(code, action_type)` converte `R2.1`, `RAI`, `F`, `C` etc para o vocabulário do engine, preservando `betsize_bb` quando aplicável.
