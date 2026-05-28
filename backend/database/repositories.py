@@ -4579,6 +4579,70 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
     return count
 
 
+# ── gw_raw_cache (multiway / squeeze responses from /gw-spot) ────────────────
+
+def get_gw_raw_cache(cache_key: str) -> Optional[dict]:
+    """Busca response cacheada do /gw-spot. Retorna dict (payload deserializado)
+    com metadata, ou None se cache miss."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT cache_key, gametype, depth_used, preflop_actions, hero_position, "
+            "payload_json, created_at FROM gw_raw_cache WHERE cache_key = ?"
+        ), (cache_key,))
+        if not row:
+            return None
+        try:
+            payload = json.loads(row['payload_json'])
+        except Exception:
+            return None
+        return {
+            'cache_key':       row['cache_key'],
+            'gametype':        row['gametype'],
+            'depth_used':      row['depth_used'],
+            'preflop_actions': row['preflop_actions'],
+            'hero_position':   row['hero_position'],
+            'payload':         payload,
+            'created_at':      row['created_at'],
+        }
+    finally:
+        conn.close()
+
+
+def upsert_gw_raw_cache(
+    cache_key: str,
+    gametype: str,
+    depth_used: float,
+    preflop_actions: str,
+    hero_position: Optional[str],
+    payload: dict,
+) -> None:
+    """Insere ou atualiza entrada de cache do /gw-spot."""
+    conn = get_conn()
+    try:
+        payload_json = json.dumps(payload, sort_keys=True)
+        # UPSERT: SQLite usa INSERT OR REPLACE; Postgres usa ON CONFLICT
+        if USE_POSTGRES:
+            conn.execute(_adapt(
+                "INSERT INTO gw_raw_cache "
+                "(cache_key, gametype, depth_used, preflop_actions, hero_position, payload_json) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT (cache_key) DO UPDATE SET "
+                "gametype=EXCLUDED.gametype, depth_used=EXCLUDED.depth_used, "
+                "preflop_actions=EXCLUDED.preflop_actions, hero_position=EXCLUDED.hero_position, "
+                "payload_json=EXCLUDED.payload_json, created_at=NOW()"
+            ), (cache_key, gametype, float(depth_used), preflop_actions, hero_position, payload_json))
+        else:
+            conn.execute(_adapt(
+                "INSERT OR REPLACE INTO gw_raw_cache "
+                "(cache_key, gametype, depth_used, preflop_actions, hero_position, payload_json) "
+                "VALUES (?, ?, ?, ?, ?, ?)"
+            ), (cache_key, gametype, float(depth_used), preflop_actions, hero_position, payload_json))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_gto_stats() -> dict:
     """Retorna estatísticas da base gto_nodes."""
     conn = get_conn()

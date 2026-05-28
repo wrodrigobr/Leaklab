@@ -7,6 +7,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): cache `gw_raw_cache` + `lookup_for_hand_decision()` (step 4)
+- `backend/database/schema.py`: nova tabela `gw_raw_cache` (SQLite + Postgres) com `cache_key` (hash de gametype/depth/preflop_actions/board), `payload_json`, e metadata.
+- `backend/database/repositories.py`: `get_gw_raw_cache(key)` e `upsert_gw_raw_cache(...)` — UPSERT cross-backend.
+- `backend/leaklab/gto_wizard_client.py`:
+  - `_cache_key_for_spot(...)`: hash SHA256 truncado (24 chars) determinístico, independente de `hero_hand` (response cobre todos 169 hand_types).
+  - `query_spot_raw(...)` agora consulta cache antes de chamar server; após sucesso, grava sob a chave ORIGINAL E a chave pós-snap (próximas chamadas com sizings imperfeitos batem cache direto).
+  - `lookup_for_hand_decision(hand, decision_index, depth_bb)`: wrapper de conveniência que combina `encode_preflop_actions` + `classify_multiway` + `query_spot_raw`. Retorna o mesmo dict com `scenario` adicionado.
+- **Validado end-to-end**: 1ª chamada 31.4s (encoder + snap + GW), 2ª chamada 0.012s (cache hit) — **2600x speedup**. Resultados corretos: 75o=100% fold, AA=96.5% raise.
+
 ### feat(gto): validação end-to-end completa (parser → encoder → GW)
 - Pipeline completo testado com `teste_torneio_carma.txt` hand #100000002 (BB hero vs 4-way squeeze):
   - Encoder gerou `R2.0-F-F-C-F-C-R0.0` (com sizings errados — bug ante + bug parser "raises 0 to 0")

@@ -737,6 +737,23 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_queue_status ON gto_solver_queue(status, priority)")
         except Exception: pass
+
+        # gw_raw_cache (Postgres) — espelha o SQLite (cache de responses /gw-spot)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS gw_raw_cache (
+                    id              SERIAL PRIMARY KEY,
+                    cache_key       TEXT NOT NULL UNIQUE,
+                    gametype        TEXT NOT NULL,
+                    depth_used      REAL NOT NULL,
+                    preflop_actions TEXT NOT NULL,
+                    hero_position   TEXT,
+                    payload_json    TEXT NOT NULL,
+                    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_gw_raw_cache_key ON gw_raw_cache(cache_key)")
+        except Exception: pass
         # gto_hand_requests (Postgres) — solicitações GTO por mão
         try:
             conn.execute("""
@@ -1210,6 +1227,24 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_queue_status ON gto_solver_queue(status, priority)")
+
+        # gw_raw_cache (SQLite) — cache de responses do /gw-spot (multiway / squeeze /
+        # cold-callers via GTO Wizard). Separado de gto_nodes (que tem validacoes
+        # estritas pra HU postflop). Chave inclui gametype/depth/preflop_actions
+        # (mais flop/turn/river quando postflop suportado).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS gw_raw_cache (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                cache_key       TEXT NOT NULL UNIQUE,
+                gametype        TEXT NOT NULL,
+                depth_used      REAL NOT NULL,
+                preflop_actions TEXT NOT NULL,
+                hero_position   TEXT,
+                payload_json    TEXT NOT NULL,
+                created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_gw_raw_cache_key ON gw_raw_cache(cache_key)")
         # gto_hand_requests — solicitações de análise GTO por mão específica (user-triggered)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS gto_hand_requests (
