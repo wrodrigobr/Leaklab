@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { TrendingUp, TrendingDown, Minus, ChevronRight, Award } from "lucide-react";
 import { metrics, EloResponse } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 
 /**
  * EloRatingCard — exibe ELO atual do jogador no Index dashboard.
@@ -54,8 +55,9 @@ export function EloRatingCard() {
             <Award className="size-3" />
             Rating ELO
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="font-mono text-3xl font-bold tabular-nums"
+          <div className="flex items-center gap-2">
+            {(() => { const I = LEVEL_ICONS[overall.band_label]; return I ? <I size={22} className="shrink-0" /> : null; })()}
+            <span className="font-mono text-3xl font-bold tabular-nums leading-none"
                   style={{ color: overall.band_color }}>
               {overall.elo.toFixed(0)}
             </span>
@@ -73,6 +75,18 @@ export function EloRatingCard() {
               </span>
             )}
           </div>
+          {/* Progresso até o próximo nível */}
+          {data.next_band && (
+            <div className="pt-1 space-y-0.5">
+              <div className="h-1 rounded-full bg-muted/20 overflow-hidden">
+                <div className="h-full rounded-full transition-all"
+                     style={{ width: `${data.next_band.progress * 100}%`, background: overall.band_color }} />
+              </div>
+              <div className="font-mono text-[9px] text-muted-foreground">
+                {data.next_band.elo_to_go.toFixed(0)} pra {data.next_band.label}
+              </div>
+            </div>
+          )}
         </div>
         <ChevronRight className="size-4 text-muted-foreground/40 group-hover:text-foreground/60 transition-colors" />
       </div>

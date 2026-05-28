@@ -89,7 +89,9 @@ export function LevelCard({ data, showStudyLink = true, compact = false }: Props
         </div>
         <div className="flex-1 space-y-1">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs font-bold text-foreground">{data.standard_pct.toFixed(1)}%</span>
+            <span className="font-mono text-xs font-bold text-foreground">
+              {data.elo != null ? `${data.elo.toFixed(0)} ELO` : (data.standard_pct != null ? `${data.standard_pct.toFixed(1)}%` : "—")}
+            </span>
             {data.next_level && nextName && (
               <span className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
                 {(() => { const Icon = LEVEL_ICONS[data.next_level]; return Icon ? <Icon size={11} /> : null; })()}

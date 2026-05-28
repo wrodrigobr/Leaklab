@@ -4,6 +4,7 @@ import { ArrowLeft, Award, TrendingUp, TrendingDown, Minus, BookOpen } from "luc
 import { HudLayout } from "@/components/hud/HudLayout";
 import { metrics, EloResponse } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 
 const STREET_LABEL: Record<string, string> = {
   preflop: "Preflop",
@@ -46,7 +47,7 @@ export default function Rating() {
 }
 
 function RatingBody({ data }: { data: EloResponse }) {
-  const { overall, by_street, total_decisions, delta_7d, bands, history, no_data } = data;
+  const { overall, by_street, total_decisions, delta_7d, bands, history, no_data, next_band, peak_elo } = data;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -54,13 +55,14 @@ function RatingBody({ data }: { data: EloResponse }) {
       {/* Hero — ELO atual */}
       <div className="rounded-2xl border border-border/40 bg-card/60 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
               <Award className="size-3" />
-              ELO atual
+              ELO — forma recente{data.window_tournaments ? ` (últimos ${data.window_tournaments} torneios)` : ""}
             </div>
-            <div className="flex items-baseline gap-3">
-              <span className="font-mono text-5xl font-bold tabular-nums"
+            <div className="flex items-center gap-3">
+              {(() => { const I = LEVEL_ICONS[overall.band_label]; return I ? <I size={40} className="shrink-0" /> : null; })()}
+              <span className="font-mono text-5xl font-bold tabular-nums leading-none"
                     style={{ color: overall.band_color }}>
                 {overall.elo.toFixed(0)}
               </span>
@@ -69,10 +71,27 @@ function RatingBody({ data }: { data: EloResponse }) {
                 {overall.band_label}
               </span>
             </div>
-            <div className="mt-2 flex items-center gap-4 text-xs font-mono text-muted-foreground">
-              <span>{total_decisions.toLocaleString()} decisões processadas</span>
+            <div className="mt-2 flex items-center gap-4 flex-wrap text-xs font-mono text-muted-foreground">
+              <span>{total_decisions.toLocaleString()} decisões (com solver GTO)</span>
               {!no_data && <DeltaBadge delta={delta_7d} />}
+              {peak_elo != null && (
+                <span className="text-muted-foreground/80">pico: {peak_elo.toFixed(0)}</span>
+              )}
             </div>
+
+            {/* Progresso até o próximo nível */}
+            {next_band && (
+              <div className="mt-3 max-w-sm space-y-1">
+                <div className="h-1.5 rounded-full bg-muted/20 overflow-hidden">
+                  <div className="h-full rounded-full transition-all"
+                       style={{ width: `${next_band.progress * 100}%`, background: overall.band_color }} />
+                </div>
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  Faltam <span className="text-foreground font-semibold">{next_band.elo_to_go.toFixed(0)}</span> pontos
+                  pra {next_band.icon} {next_band.label}
+                </div>
+              </div>
+            )}
           </div>
 
           <Link
@@ -104,8 +123,9 @@ function RatingBody({ data }: { data: EloResponse }) {
                        style={{ color: b.band_color }}>
                     {b.elo.toFixed(0)}
                   </div>
-                  <div className="font-mono text-[9px]"
+                  <div className="flex items-center gap-1 font-mono text-[9px]"
                        style={{ color: b.band_color }}>
+                    {(() => { const I = LEVEL_ICONS[b.band_label]; return I ? <I size={11} /> : null; })()}
                     {b.band_label}
                   </div>
                   <div className="font-mono text-[9px] text-muted-foreground mt-0.5">
@@ -136,7 +156,7 @@ function RatingBody({ data }: { data: EloResponse }) {
                      isCurrent && "bg-foreground/5"
                    )}>
                 <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full" style={{ background: b.color }} />
+                  {(() => { const I = LEVEL_ICONS[b.label]; return I ? <I size={16} className="shrink-0" /> : null; })()}
                   <span className="font-mono text-sm font-semibold"
                         style={{ color: b.color }}>
                     {b.label}

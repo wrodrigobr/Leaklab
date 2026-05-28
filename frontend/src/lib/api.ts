@@ -479,14 +479,24 @@ export interface BreakdownResponse {
 export interface EloBucket {
   elo:         number;
   n_decisions: number;
+  band_icon:   string;
   band_label:  string;
   band_color:  string;
 }
 
 export interface EloBand {
   threshold: number;
+  icon:      string;
   label:     string;
   color:     string;
+}
+
+export interface EloNextBand {
+  label:     string;
+  icon:      string;
+  threshold: number;
+  progress:  number;   // 0..1
+  elo_to_go: number;
 }
 
 export interface EloHistoryEntry {
@@ -496,17 +506,20 @@ export interface EloHistoryEntry {
 }
 
 export interface EloResponse {
-  user_id:          number;
-  overall:          EloBucket;
-  by_street:        Record<"preflop" | "flop" | "turn" | "river", EloBucket | undefined>;
-  total_decisions:  number;
-  calculated_at:    string | null;
-  bands:            EloBand[];
-  solver_elo:       number;
-  initial_elo:      number;
-  history:          EloHistoryEntry[];
-  delta_7d:         number | null;
-  no_data?:         boolean;
+  user_id:            number;
+  overall:            EloBucket;
+  next_band:          EloNextBand | null;
+  peak_elo:           number | null;
+  by_street:          Record<"preflop" | "flop" | "turn" | "river", EloBucket | undefined>;
+  total_decisions:    number;
+  calculated_at:      string | null;
+  window_tournaments?: number;
+  bands:              EloBand[];
+  solver_elo:         number;
+  initial_elo:        number;
+  history:            EloHistoryEntry[];
+  delta_7d:           number | null;
+  no_data?:           boolean;
 }
 
 export interface GtoQualityData {
@@ -1018,12 +1031,18 @@ export interface Achievement {
 export interface PlayerLevel {
   level: string | null;
   icon: string;
-  standard_pct: number;
+  // Unificado com ELO (2026-05-28): nível deriva do ELO de forma recente.
+  elo?: number;
+  elo_min?: number;
+  elo_max?: number | null;
+  peak_elo?: number | null;
+  decisions_scored?: number;
+  standard_pct: number | null;   // informativo, não define mais o nível
   level_min: number;
   level_max: number;
   next_level: string | null;
   next_level_icon: string | null;
-  next_pct: number | null;
+  next_pct: number | null;       // agora é threshold de ELO
   progress: number;
   tournament_count: number;
   top_blocking_leaks: { spot: string; n: number; avg_score: number }[];

@@ -70,28 +70,54 @@ def k_factor(n_decisions: int) -> int:
     if n_decisions < 1000:  return 16
     return 8
 
-# Bandas (cor e label). Acima de 2700 = jogadores que vencem o solver em
-# acuracia (raro; geralmente players preflop-puristas com base grande de
-# decisoes preflop bem cobertas).
-BANDS: list[tuple[int, str, str]] = [
-    (0,    "Iniciante",         "#94a3b8"),  # slate-400
-    (1200, "Casual",             "#fbbf24"),  # amber-400
-    (1500, "Em desenvolvimento", "#38bdf8"),  # sky-400
-    (1800, "Sólido",             "#34d399"),  # emerald-400
-    (2100, "Avançado",           "#a78bfa"),  # violet-400
-    (2400, "Elite",              "#f472b6"),  # pink-400
-    (2700, "Master",             "#ef4444"),  # red-500
-    (3000, "Grandmaster",        "#facc15"),  # yellow-400
+# Bandas = os 7 níveis de carreira (UNIFICADO 2026-05-28). Os thresholds de ELO
+# foram derivados dos thresholds de aderência GTO históricos do sistema de
+# níveis, via a fórmula de equilíbrio ELO (benchmark 1500):
+#     ELO(S) = 1500 - 400 * log10((1-S)/S)
+# Mapeamento aderência → ELO:
+#     60% → 1570 | 70% → 1647 | 77% → 1710 | 86% → 1816 | 92% → 1924 | 96% → 2053
+# (icon, label, hex_color) por threshold.
+BANDS: list[tuple[int, str, str, str]] = [
+    (0,    "🎯", "Iniciante", "#94a3b8"),  # slate-400   (<60% aderência)
+    (1570, "📖", "Estudante", "#60a5fa"),  # blue-400    (60-70%)
+    (1647, "⚙️", "Grinder",   "#fbbf24"),  # amber-400   (70-77%)
+    (1710, "📈", "Regular",   "#34d399"),  # emerald-400 (77-86%)
+    (1816, "🔷", "Sólido",    "#22d3ee"),  # cyan-400    (86-92%)
+    (1924, "♠",  "Expert",    "#a78bfa"),  # violet-400  (92-96%)
+    (2053, "👑", "Elite",     "#facc15"),  # yellow-400  (≥96%)
 ]
 
 
-def band_for(elo: float) -> tuple[str, str]:
-    """Retorna (label, hex_color) da banda do ELO dado."""
+def band_full(elo: float) -> tuple[str, str, str]:
+    """Retorna (icon, label, hex_color) do nível do ELO dado."""
     chosen = BANDS[0]
-    for threshold, label, color in BANDS:
-        if elo >= threshold:
-            chosen = (threshold, label, color)
-    return chosen[1], chosen[2]
+    for entry in BANDS:
+        if elo >= entry[0]:
+            chosen = entry
+    return chosen[1], chosen[2], chosen[3]
+
+
+def band_for(elo: float) -> tuple[str, str]:
+    """Retorna (label, hex_color) — compat. Use band_full pra incluir icon."""
+    _icon, label, color = band_full(elo)
+    return label, color
+
+
+def next_band_for(elo: float) -> Optional[dict]:
+    """Próximo nível + progresso (0..1) + ELO faltante. None se já no topo (Elite)."""
+    for i, entry in enumerate(BANDS):
+        if elo < entry[0]:
+            prev = BANDS[i - 1] if i > 0 else BANDS[0]
+            span = entry[0] - prev[0]
+            prog = (elo - prev[0]) / span if span > 0 else 1.0
+            return {
+                "label":     entry[2],
+                "icon":      entry[1],
+                "threshold": entry[0],
+                "progress":  round(max(0.0, min(1.0, prog)), 3),
+                "elo_to_go": round(entry[0] - elo, 1),
+            }
+    return None
 
 
 # ── Núcleo ELO ────────────────────────────────────────────────────────────────
@@ -125,6 +151,7 @@ def apply_decision(current_elo: float, score_S: float, n_decisions: int) -> floa
 class StreetElo:
     elo:               float
     n_decisions:       int
+    band_icon:         str
     band_label:        str
     band_color:        str
 
@@ -183,23 +210,25 @@ def compute_player_elo_from_decisions(
     import datetime
     now_iso = datetime.datetime.utcnow().isoformat()
 
-    overall_band = band_for(elo_overall)
+    oi, ol, oc = band_full(elo_overall)
     overall = StreetElo(
         elo=round(elo_overall, 1),
         n_decisions=n_overall,
-        band_label=overall_band[0],
-        band_color=overall_band[1],
+        band_icon=oi,
+        band_label=ol,
+        band_color=oc,
     )
 
     by_street_out: dict[str, StreetElo] = {}
     for st in ("preflop", "flop", "turn", "river"):
         if st in elo_by_street:
-            b = band_for(elo_by_street[st])
+            bi, bl, bc = band_full(elo_by_street[st])
             by_street_out[st] = StreetElo(
                 elo=round(elo_by_street[st], 1),
                 n_decisions=n_by_street[st],
-                band_label=b[0],
-                band_color=b[1],
+                band_icon=bi,
+                band_label=bl,
+                band_color=bc,
             )
 
     return PlayerEloSnapshot(
@@ -218,13 +247,16 @@ def snapshot_to_dict(s: PlayerEloSnapshot) -> dict:
         "overall": {
             "elo":          s.overall.elo,
             "n_decisions":  s.overall.n_decisions,
+            "band_icon":    s.overall.band_icon,
             "band_label":   s.overall.band_label,
             "band_color":   s.overall.band_color,
         },
+        "next_band":       next_band_for(s.overall.elo),
         "by_street": {
             st: {
                 "elo":         v.elo,
                 "n_decisions": v.n_decisions,
+                "band_icon":   v.band_icon,
                 "band_label":  v.band_label,
                 "band_color":  v.band_color,
             }
@@ -233,8 +265,8 @@ def snapshot_to_dict(s: PlayerEloSnapshot) -> dict:
         "total_decisions": s.total_decisions,
         "calculated_at":   s.calculated_at,
         "bands": [
-            {"threshold": t, "label": l, "color": c}
-            for (t, l, c) in BANDS
+            {"threshold": t, "icon": ic, "label": l, "color": c}
+            for (t, ic, l, c) in BANDS
         ],
         "solver_elo":      SOLVER_ELO,
         "initial_elo":     INITIAL_ELO,

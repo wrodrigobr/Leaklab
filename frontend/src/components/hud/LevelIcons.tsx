@@ -7,102 +7,93 @@ interface IconProps {
 
 const base = {
   fill: "none" as const,
-  strokeWidth: 1.5,
+  strokeWidth: 1.6,
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
   stroke: "currentColor" as const,
 };
 
-// Iniciante — playing card com um pip central
+// ── Set v2 (2026-05-28) — ícones mais refinados, progressão visual de
+// "broto → coroa". Cada nível tem um motivo próprio com detalhe preenchido
+// pra dar personalidade vs os traços simples anteriores. ──────────────────
+
+// Iniciante — broto/semente saindo do chão (começo da jornada)
 export function IconIniciante({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
-      <rect x="5" y="3" width="14" height="18" rx="2" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
-      {/* corner pips */}
-      <line x1="8" y1="6.5" x2="8.01" y2="6.5" strokeWidth="2" />
-      <line x1="16" y1="17.5" x2="16.01" y2="17.5" strokeWidth="2" />
+      <path d="M12 21v-7" />
+      <path d="M12 14c0-2.5-2-4.5-5-4.5 0 3 2 5 5 4.5z" fill="currentColor" fillOpacity="0.12" />
+      <path d="M12 12.5c0-2.8 2.2-5 5-5 0 3.2-2.2 5.3-5 5z" fill="currentColor" fillOpacity="0.18" />
+      <line x1="7" y1="21" x2="17" y2="21" />
     </svg>
   );
 }
 
-// Estudante — duas cartas sobrepostas em ângulo
+// Estudante — birrete de formatura
 export function IconEstudante({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
-      {/* carta de trás */}
-      <rect x="8" y="5" width="11" height="15" rx="2" />
-      {/* carta da frente */}
-      <rect x="5" y="4" width="11" height="15" rx="2" fill="currentColor" fillOpacity="0.08" />
-      {/* linhas de conteúdo */}
-      <line x1="8" y1="9"  x2="13" y2="9"  />
-      <line x1="8" y1="12" x2="13" y2="12" />
-      <line x1="8" y1="15" x2="11" y2="15" />
+      <path d="M2 9l10-4 10 4-10 4-10-4z" fill="currentColor" fillOpacity="0.12" />
+      <path d="M6 11v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4" />
+      <line x1="22" y1="9" x2="22" y2="13" />
+      <circle cx="22" cy="14" r="0.9" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-// Grinder — relógio (volume/tempo de estudo)
+// Grinder — engrenagem com chip central (volume + estudo)
 export function IconGrinder({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
-      <circle cx="12" cy="12" r="9.5" />
-      <polyline points="12 6.5 12 12 15.5 14" />
-      {/* marcas de hora */}
-      <line x1="12" y1="3"    x2="12" y2="4.5"  />
-      <line x1="12" y1="19.5" x2="12" y2="21"   />
-      <line x1="3"  y1="12"   x2="4.5"  y2="12" />
-      <line x1="19.5" y1="12" x2="21"   y2="12" />
+      <path d="M12 2.5l1.6 1.2 1.9-.5.8 1.8 1.9.6-.1 2 1.5 1.3-.7 1.9 1 1.7-1.3 1.5.3 2-1.8.8-.6 1.9-2 .1-1.2 1.6H10.6L9.4 21l-2-.1-.6-1.9-1.8-.8.3-2-1.3-1.5 1-1.7-.7-1.9 1.5-1.3-.1-2 1.9-.6.8-1.8 1.9.5L12 2.5z"
+            fill="currentColor" fillOpacity="0.08" />
+      <circle cx="12" cy="12" r="3.4" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-// Regular — ficha de poker com 4 entalhes nos eixos
+// Regular — gráfico ascendente com seta (progresso consistente)
 export function IconRegular({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5.5" />
-      {/* entalhes */}
-      <line x1="12" y1="3"    x2="12" y2="6.5"  />
-      <line x1="12" y1="17.5" x2="12" y2="21"   />
-      <line x1="3"  y1="12"   x2="6.5"  y2="12" />
-      <line x1="17.5" y1="12" x2="21"   y2="12" />
+      <polyline points="3 17 9 11 13 14 21 6" />
+      <polyline points="21 11 21 6 16 6" />
+      <line x1="3" y1="21" x2="21" y2="21" strokeOpacity="0.4" />
     </svg>
   );
 }
 
-// Sólido — escudo com checkmark
+// Sólido — escudo reforçado com checkmark
 export function IconSolido({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
-      <path d="M12 22s8-4 8-10.5V5.5l-8-3-8 3v6C4 18 12 22 12 22z" />
-      <polyline points="9 12 11 14.5 15.5 9.5" />
+      <path d="M12 22s8-4 8-10.5V5.5l-8-3-8 3v6C4 18 12 22 12 22z" fill="currentColor" fillOpacity="0.1" />
+      <polyline points="8.5 12 11 14.5 15.5 9.5" />
     </svg>
   );
 }
 
-// Expert — estrela de 5 pontas
+// Expert — naipe de espada (símbolo clássico de maestria no poker)
 export function IconExpert({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      <path d="M12 3C9 7 5 9.5 5 13a3.4 3.4 0 0 0 5.5 2.7c-.2 1.6-.9 2.8-2 3.8h7c-1.1-1-1.8-2.2-2-3.8A3.4 3.4 0 0 0 19 13c0-3.5-4-6-7-10z"
+            fill="currentColor" fillOpacity="0.14" />
     </svg>
   );
 }
 
-// Elite — coroa com 5 pontos e base
+// Elite — coroa ornamentada com joias
 export function IconElite({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
-      {/* corpo da coroa */}
-      <path d="M3 20L3 14.5L6.5 10L12 14.5L17.5 10L21 14.5L21 20Z" />
-      {/* base */}
-      <line x1="3" y1="20" x2="21" y2="20" />
-      {/* joias nos picos */}
-      <circle cx="6.5"  cy="10" r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="12"   cy="8"  r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="17.5" cy="10" r="1.5" fill="currentColor" stroke="none" />
+      <path d="M3 18l1.2-9 4.3 4L12 6l3.5 7 4.3-4L21 18z" fill="currentColor" fillOpacity="0.14" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="20.5" x2="21" y2="20.5" />
+      <circle cx="4.5" cy="9"  r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="12"  cy="6"  r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="19.5" cy="9" r="1.1" fill="currentColor" stroke="none" />
     </svg>
   );
 }

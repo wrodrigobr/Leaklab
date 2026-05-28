@@ -934,14 +934,16 @@ def player_elo():
     )
     from leaklab.elo_engine import compute_player_elo_from_decisions, snapshot_to_dict, BANDS, SOLVER_ELO, INITIAL_ELO
 
+    from database.repositories import get_peak_elo
     latest = get_latest_elo(g.user_id)
-    # Se nunca calculado, computa on-demand (1ª chamada por user)
+    # Se nunca calculado, computa on-demand (1ª chamada por user) — forma recente
     if not latest:
-        decisions = get_decisions_for_elo(g.user_id)
+        decisions = get_decisions_for_elo(g.user_id, last_n_tournaments=ELO_WINDOW_TOURNAMENTS)
         if decisions:
             snap = compute_player_elo_from_decisions(g.user_id, decisions)
             insert_elo_snapshot(snapshot_to_dict(snap))
             latest = get_latest_elo(g.user_id)
+    peak_elo = get_peak_elo(g.user_id)
 
     history = get_elo_history(g.user_id, limit=180)  # ~6 meses
 
@@ -966,22 +968,26 @@ def player_elo():
         except Exception:
             pass
 
+    from leaklab.elo_engine import band_full, next_band_for
+
     if not latest:
         # User novo sem decisions ainda
-        from leaklab.elo_engine import band_for
-        bl, bc = band_for(INITIAL_ELO)
+        ic, bl, bc = band_full(INITIAL_ELO)
         return jsonify({
             'user_id':         g.user_id,
             'overall': {
                 'elo':         float(INITIAL_ELO),
                 'n_decisions': 0,
+                'band_icon':   ic,
                 'band_label':  bl,
                 'band_color':  bc,
             },
+            'next_band':       next_band_for(INITIAL_ELO),
+            'peak_elo':        None,
             'by_street':       {},
             'total_decisions': 0,
             'calculated_at':   None,
-            'bands':           [{'threshold': t, 'label': l, 'color': c} for (t, l, c) in BANDS],
+            'bands':           [{'threshold': t, 'icon': i, 'label': l, 'color': c} for (t, i, l, c) in BANDS],
             'solver_elo':      SOLVER_ELO,
             'initial_elo':     INITIAL_ELO,
             'history':         [],
@@ -989,11 +995,11 @@ def player_elo():
             'no_data':         True,
         })
 
-    from leaklab.elo_engine import band_for
     def _wrap(elo: float | None, n: int) -> dict | None:
         if elo is None: return None
-        bl, bc = band_for(float(elo))
-        return {'elo': float(elo), 'n_decisions': int(n or 0), 'band_label': bl, 'band_color': bc}
+        ic, bl, bc = band_full(float(elo))
+        return {'elo': float(elo), 'n_decisions': int(n or 0),
+                'band_icon': ic, 'band_label': bl, 'band_color': bc}
 
     by_street = {}
     for st, n_col in (('preflop','n_preflop'), ('flop','n_flop'),
@@ -1006,10 +1012,13 @@ def player_elo():
     return jsonify({
         'user_id':         g.user_id,
         'overall':         overall,
+        'next_band':       next_band_for(float(latest['elo_overall'])),
+        'peak_elo':        round(peak_elo, 1) if peak_elo is not None else None,
         'by_street':       by_street,
         'total_decisions': int(latest.get('total_decisions') or 0),
         'calculated_at':   str(latest.get('calculated_at') or ''),
-        'bands':           [{'threshold': t, 'label': l, 'color': c} for (t, l, c) in BANDS],
+        'window_tournaments': ELO_WINDOW_TOURNAMENTS,
+        'bands':           [{'threshold': t, 'icon': i, 'label': l, 'color': c} for (t, i, l, c) in BANDS],
         'solver_elo':      SOLVER_ELO,
         'initial_elo':     INITIAL_ELO,
         'history':         [
@@ -6282,21 +6291,26 @@ def _warmup_gw_multiway(hands: list, hero: str) -> None:
              _time.time() - t0, warmed, hits, errors, len(queue))
 
 
+# Janela de "forma recente" pro ELO — últimos N torneios.
+ELO_WINDOW_TOURNAMENTS = 25
+
+
 def _recompute_user_elo(user_id: int) -> None:
     """
-    Recalcula ELO do user processando todas as suas decisões em ordem
-    cronológica e insere snapshot em player_elo_history. Idempotente —
-    rodado após cada upload, gera série temporal pro gráfico de evolução.
+    Recalcula ELO de FORMA RECENTE do user (últimos ELO_WINDOW_TOURNAMENTS
+    torneios) e insere snapshot em player_elo_history. Rodado após cada upload
+    — gera série temporal. O pico histórico é derivado do MAX dos snapshots.
     """
     try:
         from leaklab.elo_engine import compute_player_elo_from_decisions, snapshot_to_dict
         from database.repositories import get_decisions_for_elo, insert_elo_snapshot
-        decisions = get_decisions_for_elo(user_id)
+        decisions = get_decisions_for_elo(user_id, last_n_tournaments=ELO_WINDOW_TOURNAMENTS)
         snapshot  = compute_player_elo_from_decisions(user_id, decisions)
         payload   = snapshot_to_dict(snapshot)
         insert_elo_snapshot(payload)
-        log.info("elo-recompute: user=%s overall=%.1f decisions=%d",
-                 user_id, payload['overall']['elo'], payload['total_decisions'])
+        log.info("elo-recompute: user=%s overall=%.1f decisions=%d (janela=%dt)",
+                 user_id, payload['overall']['elo'], payload['total_decisions'],
+                 ELO_WINDOW_TOURNAMENTS)
     except Exception as e:
         log.exception("elo-recompute FAILED user=%s err=%s", user_id, e)
 

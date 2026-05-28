@@ -1325,58 +1325,73 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
 
 def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> dict:
     """
-    Calcula o nível de gamificação do jogador baseado na média de standard_pct.
-    Usa os últimos N torneios (min 5, ou dentro dos últimos `days` dias).
-    standard_pct está em escala 0-100 no banco.
+    Nível de gamificação do jogador — UNIFICADO com o ELO (2026-05-28).
+
+    O nível agora deriva do ELO de forma recente (não mais do standard_pct
+    heurístico). Os 7 níveis (Iniciante→Elite) são as bandas do ELO. Mantém
+    a mesma forma de resposta pra compat com LevelCard/study/coach, mas com
+    campos novos: `elo`, `elo_min`, `elo_max`, `peak_elo`.
+
+    `standard_pct` ainda retornado (informativo), mas NÃO define mais o nível.
     """
     from datetime import datetime, timedelta
+    from leaklab.elo_engine import BANDS, band_full, compute_player_elo_from_decisions
     since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-
-    LEVELS = [
-        {"name": "Iniciante", "icon": "🎯", "min": 0,    "max": 60},
-        {"name": "Estudante", "icon": "📖", "min": 60,   "max": 70},
-        {"name": "Grinder",   "icon": "⚙️", "min": 70,   "max": 77},
-        {"name": "Regular",   "icon": "📈", "min": 77,   "max": 86},
-        {"name": "Sólido",    "icon": "🔷", "min": 86,   "max": 92},
-        {"name": "Expert",    "icon": "♠",  "min": 92,   "max": 96},
-        {"name": "Elite",     "icon": "👑", "min": 96,   "max": 100},
-    ]
 
     conn = get_conn()
     try:
-        # Pega os últimos min_tournaments ou todos do período (o que for maior)
-        rows = conn.execute("""
-            SELECT standard_pct, avg_score, imported_at
-            FROM tournaments
+        # Conta torneios (pra gating de min_tournaments / "sem dados")
+        t_count_row = conn.execute(
+            "SELECT COUNT(*) AS n FROM tournaments WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        t_count = t_count_row['n'] if t_count_row else 0
+        if not t_count:
+            return {"level": None, "tournament_count": 0}
+
+        # standard_pct informativo (média últimos 5)
+        std_rows = conn.execute("""
+            SELECT standard_pct FROM tournaments
             WHERE user_id = ? AND standard_pct IS NOT NULL
-            ORDER BY imported_at DESC
-            LIMIT 20
+            ORDER BY imported_at DESC LIMIT 5
         """, (user_id,)).fetchall()
+        std_values = [r['standard_pct'] for r in std_rows if r['standard_pct'] is not None]
+        avg_std = round(sum(std_values) / len(std_values), 2) if std_values else None
+    finally:
+        conn.close()
 
-        if not rows:
-            return {"level": None, "tournament_count": 0}
+    # ELO de forma recente — preferir snapshot mais recente; senão computa
+    ELO_WINDOW = 25
+    latest = get_latest_elo(user_id)
+    if latest and latest.get('elo_overall') is not None:
+        elo = float(latest['elo_overall'])
+        n_dec = int(latest.get('total_decisions') or 0)
+    else:
+        decisions = get_decisions_for_elo(user_id, last_n_tournaments=ELO_WINDOW)
+        snap = compute_player_elo_from_decisions(user_id, decisions)
+        elo = snap.overall.elo
+        n_dec = snap.overall.n_decisions
 
-        # Usa sempre os últimos min_tournaments torneios (igual ao career projection)
-        use = list(rows[:min_tournaments]) if len(rows) >= min_tournaments else list(rows)
+    peak = get_peak_elo(user_id)
 
-        std_values = [r['standard_pct'] for r in use if r['standard_pct'] is not None]
-        if not std_values:
-            return {"level": None, "tournament_count": 0}
+    # Mapeia ELO → banda/nível (BANDS = [(threshold, icon, label, color), ...])
+    cur_idx = 0
+    for i, entry in enumerate(BANDS):
+        if elo >= entry[0]:
+            cur_idx = i
+    cur = BANDS[cur_idx]
+    nxt = BANDS[cur_idx + 1] if cur_idx + 1 < len(BANDS) else None
 
-        avg_std = round(sum(std_values) / len(std_values), 2)
-
-        # Determina nível atual
-        current = LEVELS[0]
-        for lv in LEVELS:
-            if avg_std >= lv["min"]:
-                current = lv
-
-        next_lv = next((lv for lv in LEVELS if lv["min"] > current["min"]), None)
-        span = current["max"] - current["min"]
-        progress = round((avg_std - current["min"]) / span, 3) if span > 0 else 1.0
+    elo_min = cur[0]
+    elo_max = nxt[0] if nxt else None
+    if elo_max is not None and elo_max > elo_min:
+        progress = round((elo - elo_min) / (elo_max - elo_min), 3)
         progress = max(0.0, min(1.0, progress))
+    else:
+        progress = 1.0
 
-        # Top leaks que bloqueiam o avanço (spots com mais erros)
+    # Top leaks que bloqueiam o avanço (spots com mais erros)
+    conn = get_conn()
+    try:
         top_leaks_rows = conn.execute("""
             SELECT d.street || '/' || d.best_action AS spot,
                    COUNT(*) AS n,
@@ -1391,23 +1406,29 @@ def get_player_level(user_id: int, min_tournaments: int = 5, days: int = 30) -> 
             ORDER BY n DESC
             LIMIT 3
         """, (user_id, since)).fetchall()
-
-        return {
-            "level":            current["name"],
-            "icon":             current["icon"],
-            "standard_pct":     avg_std,
-            "level_min":        current["min"],
-            "level_max":        current["max"],
-            "next_level":       next_lv["name"] if next_lv else None,
-            "next_level_icon":  next_lv["icon"] if next_lv else None,
-            "next_pct":         next_lv["min"] if next_lv else None,
-            "progress":         progress,
-            "tournament_count": len(use),
-            "top_blocking_leaks": [{"spot": r["spot"], "n": r["n"], "avg_score": round(r["avg_score"], 1)}
-                                    for r in top_leaks_rows],
-        }
     finally:
         conn.close()
+
+    return {
+        "level":            cur[2],
+        "icon":             cur[1],
+        "elo":              round(elo, 1),
+        "elo_min":          elo_min,
+        "elo_max":          elo_max,
+        "peak_elo":         round(peak, 1) if peak is not None else None,
+        "standard_pct":     avg_std,       # informativo (não define nível)
+        # level_min/max mantidos por compat (agora em escala ELO)
+        "level_min":        elo_min,
+        "level_max":        elo_max if elo_max is not None else elo_min,
+        "next_level":       nxt[2] if nxt else None,
+        "next_level_icon":  nxt[1] if nxt else None,
+        "next_pct":         nxt[0] if nxt else None,   # agora é ELO threshold
+        "progress":         progress,
+        "decisions_scored": n_dec,
+        "tournament_count": t_count,
+        "top_blocking_leaks": [{"spot": r["spot"], "n": r["n"], "avg_score": round(r["avg_score"], 1)}
+                                for r in top_leaks_rows],
+    }
 
 
 def get_player_action_frequencies(user_id: int, days: int = 90) -> dict:
@@ -4645,19 +4666,52 @@ def get_elo_history(user_id: int, limit: int = 100) -> list[dict]:
         conn.close()
 
 
-def get_decisions_for_elo(user_id: int) -> list[dict]:
-    """Lista TODAS as decisões do user ordenadas por created_at (asc), pra
-    recalcular ELO sequencialmente."""
+def get_decisions_for_elo(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:
+    """
+    Lista decisões do user ordenadas por created_at (asc) pra recalcular ELO
+    sequencialmente.
+
+    last_n_tournaments: se informado, limita aos últimos N torneios (por
+    imported_at) — usado pra ELO de 'forma recente'. None = histórico todo.
+    """
     conn = get_conn()
     try:
-        rows = _fetchall(conn, _adapt(
-            "SELECT d.id, d.street, d.gto_label, d.label, d.created_at "
-            "FROM decisions d "
-            "INNER JOIN tournaments t ON t.id = d.tournament_id "
-            "WHERE t.user_id = ? "
-            "ORDER BY d.created_at ASC, d.id ASC"
-        ), (user_id,))
+        if last_n_tournaments:
+            # IDs dos últimos N torneios do user (mais recentes por imported_at)
+            t_rows = _fetchall(conn, _adapt(
+                "SELECT id FROM tournaments WHERE user_id = ? "
+                "ORDER BY imported_at DESC, id DESC LIMIT ?"
+            ), (user_id, int(last_n_tournaments)))
+            tids = [r['id'] for r in t_rows]
+            if not tids:
+                return []
+            placeholders = ",".join(["?"] * len(tids))
+            rows = _fetchall(conn, _adapt(
+                f"SELECT d.id, d.street, d.gto_label, d.label, d.created_at "
+                f"FROM decisions d WHERE d.tournament_id IN ({placeholders}) "
+                f"ORDER BY d.created_at ASC, d.id ASC"
+            ), tuple(tids))
+        else:
+            rows = _fetchall(conn, _adapt(
+                "SELECT d.id, d.street, d.gto_label, d.label, d.created_at "
+                "FROM decisions d "
+                "INNER JOIN tournaments t ON t.id = d.tournament_id "
+                "WHERE t.user_id = ? "
+                "ORDER BY d.created_at ASC, d.id ASC"
+            ), (user_id,))
         return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_peak_elo(user_id: int) -> Optional[float]:
+    """Maior elo_overall já registrado pro user (pico histórico)."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT MAX(elo_overall) AS peak FROM player_elo_history WHERE user_id = ?"
+        ), (user_id,))
+        return float(row['peak']) if row and row['peak'] is not None else None
     finally:
         conn.close()
 
