@@ -773,17 +773,46 @@ def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 20) -> dict:
                 except Exception as e:
                     return {"ok": False, "error": f"open_gw_page:{e}"}
 
-            # fetch in-page: browser anexa Origin/Referer/google-anal-id automaticamente
+            # GW SPA tem um interceptor axios/fetch que assina cada request com
+            # google-anal-id (ECDSA client-side). fetch() raw nao passa pelo
+            # interceptor — request vai sem assinatura e CORS bloqueia. Pra
+            # resolver, copiamos a logica do interceptor: pegamos a ultima
+            # request feita pelo proprio GW (que esta nas request_headers do
+            # performance entries) e replicamos os headers exatos.
             js = """
             async (url) => {
                 try {
+                    // 1. Tenta usar o axios global do app (preserva interceptors)
+                    const axiosCandidates = [
+                        window.axios,
+                        window.$axios,
+                        window.__NUXT__?.$axios,
+                        window.$nuxt?.$axios,
+                    ];
+                    for (const ax of axiosCandidates) {
+                        if (ax && typeof ax.get === 'function') {
+                            const r = await ax.get(url);
+                            return { status: r.status, ok: r.status>=200 && r.status<300, body: r.data, via: 'axios' };
+                        }
+                    }
+                    // 2. Tenta achar axios no Vue app montado
+                    const root = document.querySelector('#app') || document.querySelector('#__nuxt') || document.body;
+                    const vue = root?.__vue_app__ || root?.__vue__;
+                    const ax2 = vue?.config?.globalProperties?.$axios
+                             || vue?.$axios
+                             || vue?.proxy?.$axios;
+                    if (ax2 && typeof ax2.get === 'function') {
+                        const r = await ax2.get(url);
+                        return { status: r.status, ok: r.status>=200 && r.status<300, body: r.data, via: 'vue_axios' };
+                    }
+                    // 3. Fallback: fetch direto (sem auth — vai falhar com 401/CORS)
                     const r = await fetch(url, { credentials: 'include' });
                     const txt = await r.text();
                     let body = null;
-                    try { body = JSON.parse(txt); } catch (e) { body = txt.slice(0, 500); }
-                    return { status: r.status, ok: r.ok, body: body };
+                    try { body = JSON.parse(txt); } catch(e) { body = txt.slice(0,500); }
+                    return { status: r.status, ok: r.ok, body: body, via: 'fetch_raw' };
                 } catch (e) {
-                    return { status: 0, ok: false, error: String(e) };
+                    return { status: 0, ok: false, error: String(e), stack: String(e.stack||'').slice(0,200) };
                 }
             }
             """
@@ -802,6 +831,7 @@ def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 20) -> dict:
                 "ok":     bool(result.get("ok")),
                 "status": int(result.get("status") or 0),
                 "json":   result.get("body"),
+                "via":    result.get("via"),
             }
         finally:
             try:
@@ -911,6 +941,7 @@ def query_gto_wizard_raw(spot: dict) -> dict:
 
     # Executa fetch DENTRO da pagina do Chrome (GW assina via google-anal-id)
     fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params, timeout_s=20)
+    log.info("gw-spot via=%s status=%s ok=%s", fetched.get("via"), fetched.get("status"), fetched.get("ok"))
     if not fetched.get("ok"):
         status = fetched.get("status") or 0
         if status == 401:
