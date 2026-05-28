@@ -108,6 +108,13 @@ function Sparkline({ history, projection }: { history: number[]; projection: num
   );
 }
 
+// Deriva a banda/nível pra um ELO arbitrário usando a lista de bands da API.
+function bandForElo(eloVal: number, bands: EloResponse["bands"]) {
+  let chosen = bands[0];
+  for (const b of bands) if (eloVal >= b.threshold) chosen = b;
+  return chosen; // { threshold, icon, label, color }
+}
+
 function EloMiniCurve({ points, color }: { points: number[]; color: string }) {
   if (points.length < 2) return null;
   const min = Math.min(...points), max = Math.max(...points);
@@ -263,53 +270,76 @@ export function CareerGraphCard({ data }: Props) {
           </div>
         ) : null}
 
-        {/* Current + Next */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-border bg-background p-3 space-y-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("career.currentLevel")}</p>
-            <p className={cn("font-mono text-sm font-bold", colorCls)}>{levelName}</p>
-            <p className="font-mono text-[10px] text-muted-foreground">{data.current_avg?.toFixed(1)}%</p>
-            {data.level_progress !== undefined && data.next_milestone && (
-              <>
-                <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                  <div
-                    className={cn("h-full rounded-full transition-all duration-700", PROGRESS_COLOR[slug] ?? "bg-primary")}
-                    style={{ width: `${Math.round(data.level_progress * 100)}%` }}
-                  />
+        {/* Histórico (all-time) vs Forma recente (25t) — ambos ELO */}
+        {elo && curve && curve.all_time.length > 0 ? (() => {
+          const allTimeElo = curve.all_time[curve.all_time.length - 1].elo;
+          const allBand = bandForElo(allTimeElo, elo.bands);
+          const AllIcon = LEVEL_ICONS[allBand.label];
+          const recBand = elo.overall;
+          const RecIcon = LEVEL_ICONS[recBand.band_label];
+          return (
+            <div className="grid grid-cols-2 gap-3">
+              {/* Histórico */}
+              <div className="rounded-lg border border-border bg-background p-3 space-y-1.5">
+                <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Histórico</p>
+                <div className="flex items-center gap-1.5">
+                  {AllIcon && <AllIcon size={16} className="shrink-0" />}
+                  <span className="font-mono text-sm font-bold" style={{ color: allBand.color }}>{allBand.label}</span>
                 </div>
-                <p className="font-mono text-[9px] text-muted-foreground/70">
-                  {Math.round(data.level_progress * 100)}% {t("career.progressToNext", {
-                    next: t(`level.names.${data.next_milestone.level_slug}`, { defaultValue: data.next_milestone.level_name }),
-                  })}
+                <p className="font-mono text-lg font-bold tabular-nums" style={{ color: allBand.color }}>
+                  {allTimeElo.toFixed(0)} <span className="text-[9px] text-muted-foreground font-normal">ELO</span>
                 </p>
-              </>
+                <p className="font-mono text-[9px] text-muted-foreground/60">todos os {curve.all_time.length} torneios</p>
+              </div>
+              {/* Forma recente */}
+              <div className="rounded-lg border border-border bg-background p-3 space-y-1.5">
+                <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Forma recente</p>
+                <div className="flex items-center gap-1.5">
+                  {RecIcon && <RecIcon size={16} className="shrink-0" />}
+                  <span className="font-mono text-sm font-bold" style={{ color: recBand.band_color }}>{recBand.band_label}</span>
+                </div>
+                <p className="font-mono text-lg font-bold tabular-nums" style={{ color: recBand.band_color }}>
+                  {recBand.elo.toFixed(0)} <span className="text-[9px] text-muted-foreground font-normal">ELO</span>
+                </p>
+                {elo.next_band ? (
+                  <>
+                    <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700"
+                           style={{ width: `${elo.next_band.progress * 100}%`, background: recBand.band_color }} />
+                    </div>
+                    <p className="font-mono text-[9px] text-muted-foreground/70">
+                      {elo.next_band.elo_to_go.toFixed(0)} pra {elo.next_band.label}
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-mono text-[9px] text-muted-foreground/60">últimos {curve.window_tournaments} torneios</p>
+                )}
+              </div>
+            </div>
+          );
+        })() : (
+          /* Fallback %-based enquanto ELO/curva não carregam */
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-border bg-background p-3 space-y-1.5">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("career.currentLevel")}</p>
+              <p className={cn("font-mono text-sm font-bold", colorCls)}>{levelName}</p>
+              <p className="font-mono text-[10px] text-muted-foreground">{data.current_avg?.toFixed(1)}%</p>
+            </div>
+            {nm && nm.reachable && (
+              <div className="rounded-lg border border-border bg-background p-3 space-y-1">
+                <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("career.nextLevel")}</p>
+                <p className={cn("font-mono text-sm font-bold", MILESTONE_COLOR[nm.level_slug] ?? "text-primary")}>
+                  {t(`level.names.${nm.level_slug}`, { defaultValue: nm.level_name })}
+                </p>
+                {nm.estimated_date && nm.months_needed! > 0 && (
+                  <p className="font-mono text-[9px] text-muted-foreground">
+                    {t("career.estimatedDate", { date: formatDate(nm.estimated_date) })}
+                  </p>
+                )}
+              </div>
             )}
-            <p className="font-mono text-[9px] text-muted-foreground/50">{t("career.currentWindow")}</p>
           </div>
-          {nm && nm.reachable ? (
-            <div className="rounded-lg border border-border bg-background p-3 space-y-1">
-              <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("career.nextLevel")}</p>
-              <p className={cn("font-mono text-sm font-bold", MILESTONE_COLOR[nm.level_slug] ?? "text-primary")}>
-                {t(`level.names.${nm.level_slug}`, { defaultValue: nm.level_name })}
-              </p>
-              <p className="font-mono text-[10px] text-muted-foreground">
-                {nm.months_needed! > 0
-                  ? t("career.monthsAway", { n: nm.months_needed })
-                  : t("career.already")}
-              </p>
-              {nm.estimated_date && nm.months_needed! > 0 && (
-                <p className="font-mono text-[9px] text-muted-foreground">
-                  {t("career.estimatedDate", { date: formatDate(nm.estimated_date) })}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-border bg-background p-3 space-y-1">
-              <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("career.nextLevel")}</p>
-              <p className="font-mono text-xs text-muted-foreground">{t("career.notReachable")}</p>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Milestones timeline */}
         {data.milestones && data.milestones.length > 0 && (
