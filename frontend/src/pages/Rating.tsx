@@ -59,7 +59,7 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
               <Award className="size-3" />
-              ELO — forma recente{data.window_tournaments ? ` (últimos ${data.window_tournaments} torneios)` : ""}
+              Rating recente — forma atual{data.window_tournaments ? ` (últimos ${data.window_tournaments} torneios)` : ""}
             </div>
             <div className="flex items-center gap-3">
               {(() => { const I = LEVEL_ICONS[overall.band_label]; return I ? <I size={40} className="shrink-0" /> : null; })()}
@@ -185,14 +185,14 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
           </h3>
           <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-1">
             <div className="font-mono text-[10px] text-muted-foreground">
-              Histórico completo · {curve.all_time.length} torneios
+              Rating histórico · cumulativo dos {curve.all_time.length} torneios
             </div>
             <EloCurveChart points={curve.all_time} color={overall.band_color} />
           </div>
           {curve.recent.length >= 2 && (
             <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-1">
               <div className="font-mono text-[10px] text-muted-foreground">
-                Forma recente · últimos {curve.window_tournaments} torneios
+                Rating recente · últimos {curve.window_tournaments} torneios
               </div>
               <EloCurveChart points={curve.recent} color={overall.band_color} />
             </div>
