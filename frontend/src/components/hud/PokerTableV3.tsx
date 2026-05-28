@@ -283,15 +283,22 @@ function renderSeatsAndChips(
     if (isBtn) {
       const heroPosBtn = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
       const isAdjacentBtn = heroPosBtn !== null && Math.abs(pos.y - heroPosBtn.y) < 80;
-      const t = isHero ? 0.32 : isAdjacentBtn ? 0.36 : 0.28;
+      // Dealer perto do pod do jogador. perpOffset (38px) abaixo dá a
+      // separação lateral das cartas. t pequeno = perto do player.
+      const t = isHero ? 0.22 : isAdjacentBtn ? 0.28 : 0.20;
       const dvx = CX - pos.x, dvy = CY - pos.y;
       const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
-      const perpSign = isHero ? -1 : 1;
-      const perpDist = isHero ? 90 : 38;
+      // perpSign -1 nos dois casos: dealer fica do lado oposto às cartas/bets
+      // (visualmente "abaixo e à direita" pra seats no quadrante esquerdo
+      // inferior do feltro). Antes hero usava -1 e demais usavam 1 — invertido.
+      const perpSign = -1;
+      const perpDist = isHero ? 90 : 30;
       const perpX = Math.round(perpSign * (dvy / dlen) * perpDist);
       const perpY = Math.round(perpSign * (-dvx / dlen) * perpDist);
       const dbX = Math.round(pos.x + dvx * t) + perpX;
-      const dbY = Math.round(pos.y + dvy * t) + perpY;
+      // Ajuste vertical fino: dealer sobe 12px (independente da geometria
+      // perpendicular, pra não afetar deslocamento horizontal).
+      const dbY = Math.round(pos.y + dvy * t) + perpY - 12;
       const dRX = 20, dRY = 12, dCH = 7, dN = 4;
       const dTy = dbY, dBy2 = dbY + dCH;
       let btnHtml = `<rect x="${dbX - dRX}" y="${dTy}" width="${dRX * 2}" height="${dCH}" fill="#b4b4b4"/>`;
@@ -324,8 +331,12 @@ function renderSeatsAndChips(
       const heroPosT2 = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
       const isAdjT2 = !isHero && pos.dir === "bottom" && heroPosT2 !== null
                        && Math.abs(pos.y - heroPosT2.y) < 80;
+      // t2 = fração da distância seat→centro. Menor = bets mais próximas ao
+      // pod do jogador. Adjacente ao hero ganha um pouco de avanço (0.42)
+      // pra somar ao perpOff lateral e ficar visualmente equilibrado — antes
+      // estava 0.72 (quase no pot, longe demais do jogador).
       let t2 = isHero ? 0.46 : isSide ? 0.26 : 0.36;
-      if (isAdjT2) t2 = 0.72;
+      if (isAdjT2) t2 = 0.38;
       // Hero: offset perpendicular horário (+28px para a direita do ponto de vista do hero).
       // Seats adjacentes ao hero (parte inferior do feltro, dir='bottom') tambem ganham
       // offset perpendicular pra nao sobrepor as cartas do jogador.
@@ -342,9 +353,12 @@ function renderSeatsAndChips(
         const heroPos = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
         const isAdjacentToHero = heroPos !== null && Math.abs(pos.y - heroPos.y) < 80;
         if (isAdjacentToHero) {
-          const sign = pos.x < CX ? 1 : -1;
-          perpOffX = Math.round(sign * (-dvy / blen) * 32);
-          perpOffY = Math.round(sign * (dvx / blen) * 32);
+          // Sign flipped: chip se afasta do hero (esquerdo do hero vai mais
+          // pra esquerda; direito do hero, mais pra direita). Antes estava
+          // invertido — empurrava em direção ao hero, fichas ficavam centrais.
+          const sign = pos.x < CX ? -1 : 1;
+          perpOffX = Math.round(sign * (-dvy / blen) * 24);
+          perpOffY = Math.round(sign * (dvx / blen) * 24);
         }
       }
       const cx2 = Math.round(pos.x + dvx * t2) + perpOffX;

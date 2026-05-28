@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): posicionamento de fichas de aposta e dealer button
+- `frontend/src/components/hud/PokerTableV3.tsx`: bets de seats adjacentes ao hero (caso `isAdjT2`) estavam em `t2=0.72` (quase no pot) — ajustado pra `0.38` (próximo ao default 0.36), trazendo fichas pra perto do pod do jogador.
+- Sign do `perpOff` em seats `bottom` adjacentes ao hero estava invertido: empurrava fichas EM DIREÇÃO ao hero (centralizando-as) em vez de afastar. Corrigido — agora seats à esquerda do hero se deslocam pra esquerda, e à direita pra direita. Magnitude também reduzida (32→24px).
+- Dealer button reposicionado: `t=0.22/0.28/0.20` (próximo ao pod) com `perpSign=-1` consistente e ajuste vertical de `-12px` pra não sobrepor cartas/fichas de aposta.
+
 ### fix(gto): `/replay` não bloqueia em cache miss do multiway (warmup async)
 - Bug: wiring inicial fazia `/replay` esperar ~30s por decisão hero preflop quando cache miss → mãos com 2+ decisões = 60-120s = browser timeout.
 - Fix: novo param `cache_only=True` em `query_spot_raw()` e `lookup_for_hand_decision()` — no cache miss, retorna `None` imediatamente sem chamar o server GW.
