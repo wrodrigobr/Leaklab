@@ -3574,35 +3574,54 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
         # Fallback multiway: quando lookup_gto local nao tem cobertura (spot fora
         # do escopo HU — multiway / squeeze / cold-callers), tenta GTO Wizard via
-        # /gw-spot. So pra preflop, quando esta e uma decisao do hero. Cache local
-        # garante que repetir a mesma mao bate em <50ms.
+        # /gw-spot. So pra preflop e decisao do hero.
+        #
+        # IMPORTANTE: nao bloqueia /replay no cache miss (cada GW call leva ~30s).
+        # Estrategia: tenta cache local primeiro (12ms). Se HIT, usa. Se MISS,
+        # dispara background task pra popular o cache pra proxima visita e segue
+        # sem GTO multiway no response atual.
         if (gto_strategy is None
                 and action.street == 'preflop'
                 and action.player == hero
                 and not gto_spot_mismatch):
             try:
-                from leaklab.gto_wizard_client import lookup_for_hand_decision as _lookup_mw
-                _act_idx = hand.actions.index(action)
-                _stack_bb = float(_spot.get('effectiveStackBb')
-                                  or _ctx.get('heroStackBb') or 100.0)
-                _mw = _lookup_mw(hand, _act_idx, depth_bb=_stack_bb, timeout=90)
-                if _mw and _mw.get('strategy'):
-                    gto_strategy = _mw['strategy']
-                    # Expose hero-specific hand_freqs no payload — Decision Card
-                    # usa pra mostrar frequencia da mao especifica do hero.
-                    _hero_cards = _di.get('hero_cards') or []
-                    _hand_type  = None
-                    if _hero_cards and len(_hero_cards) == 2:
-                        try:
-                            from leaklab.gto_utils import hand_to_type
-                            _hand_type = hand_to_type(_hero_cards)
-                        except Exception:
-                            pass
-                    if _hand_type:
-                        _hf = (_mw.get('hand_freqs') or {}).get(_hand_type)
-                        if _hf:
-                            for _gs in gto_strategy:
-                                _gs['hero_freq'] = _hf.get(_gs.get('action'), 0.0)
+                from leaklab.gto_wizard_client import (
+                    lookup_for_hand_decision as _lookup_mw,
+                    _enabled as _gw_enabled,
+                )
+                if _gw_enabled():
+                    _act_idx = hand.actions.index(action)
+                    _stack_bb = float(_spot.get('effectiveStackBb')
+                                      or _ctx.get('heroStackBb') or 100.0)
+                    # 1. Cache-only lookup (12ms; nao chama GW)
+                    _mw = _lookup_mw(hand, _act_idx, depth_bb=_stack_bb,
+                                     use_cache=True, cache_only=True)
+                    if _mw is None:
+                        # Cache miss — dispara warmup em background pra proxima visita
+                        import threading
+                        def _warmup_gw(h=hand, idx=_act_idx, sb=_stack_bb):
+                            try:
+                                _lookup_mw(h, idx, depth_bb=sb, timeout=120, use_cache=True)
+                            except Exception:
+                                pass
+                        threading.Thread(target=_warmup_gw, daemon=True).start()
+                    elif _mw.get('strategy'):
+                        gto_strategy = _mw['strategy']
+                        # Expose hero-specific hand_freqs no payload — Decision Card
+                        # usa pra mostrar frequencia da mao especifica do hero.
+                        _hero_cards = _di.get('hero_cards') or []
+                        _hand_type  = None
+                        if _hero_cards and len(_hero_cards) == 2:
+                            try:
+                                from leaklab.gto_utils import hand_to_type
+                                _hand_type = hand_to_type(_hero_cards)
+                            except Exception:
+                                pass
+                        if _hand_type:
+                            _hf = (_mw.get('hand_freqs') or {}).get(_hand_type)
+                            if _hf:
+                                for _gs in gto_strategy:
+                                    _gs['hero_freq'] = _hf.get(_gs.get('action'), 0.0)
             except Exception:
                 pass
 

@@ -221,6 +221,7 @@ def query_spot_raw(
     include_strategy: bool = False,
     timeout: int = 45,
     use_cache: bool = True,
+    cache_only: bool = False,
 ) -> Optional[dict]:
     """
     Consulta GW via servidor remoto `POST /gw-spot` — suporta qualquer cenário
@@ -278,6 +279,11 @@ def query_spot_raw(
                 return cached["payload"]
         except Exception as e:
             log.debug("gw-spot: cache lookup falhou — %s", e)
+
+    # cache_only: no cache miss, retorna None imediatamente (sem chamar server).
+    # Util pra hot paths como /replay onde nao podemos bloquear 30s no GW.
+    if cache_only:
+        return None
 
     payload = {
         "num_players":     int(num_players),
@@ -417,6 +423,7 @@ def lookup_for_hand_decision(
     depth_bb: float | None = None,
     timeout: int = 60,
     use_cache: bool = True,
+    cache_only: bool = False,
 ) -> Optional[dict]:
     """
     Wrapper: encoder + classifier + query_spot_raw (com cache).
@@ -463,6 +470,7 @@ def lookup_for_hand_decision(
     result = query_spot_raw(
         preflop_actions=pf, num_players=n_players, depth_bb=float(depth_bb),
         gametype=gametype, timeout=timeout, use_cache=use_cache,
+        cache_only=cache_only,
     )
     if result:
         result["scenario"] = classify.get("scenario")

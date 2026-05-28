@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): `/replay` não bloqueia em cache miss do multiway (warmup async)
+- Bug: wiring inicial fazia `/replay` esperar ~30s por decisão hero preflop quando cache miss → mãos com 2+ decisões = 60-120s = browser timeout.
+- Fix: novo param `cache_only=True` em `query_spot_raw()` e `lookup_for_hand_decision()` — no cache miss, retorna `None` imediatamente sem chamar o server GW.
+- `/replay` usa `cache_only=True` no hot path. Cache miss → dispara background thread que faz o lookup completo (com cache write) pra popular pra próxima visita.
+- Latência: cache hit 220ms (com `gto_strategy` + `hero_freq` populados); cache miss 80ms (sem GTO multiway no response — vem na próxima visita).
+
 ### feat(gto): wiring `/replay/<t>/<h>` — fallback multiway via `/gw-spot` (step 5)
 - `backend/api/app.py:3548`: após `lookup_gto` (HU) falhar em fornecer estratégia preflop, fallback automático pra `lookup_for_hand_decision()` quando: (a) `gto_strategy is None`, (b) `action.street == 'preflop'`, (c) `action.player == hero`, (d) sem spot_mismatch.
 - Quando o multiway lookup retorna sucesso, popula `gto_strategy` E adiciona `hero_freq` em cada entry da strategy (frequência específica da mão do hero — extraída de `hand_freqs[hand_type]`). Frontend pode usar pra mostrar Decision Card com a freq da mão jogada.
