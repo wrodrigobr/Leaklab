@@ -8,6 +8,7 @@
   "loadError": "Could not load the exercise.",
   "retry": "Try again",
   "nextQuestion": "Next exercise",
+  "showHint": "Show hint",
   "finishChallenge": "See result",
   "challenge": {
     "title": "Challenge complete!",

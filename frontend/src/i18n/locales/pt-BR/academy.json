@@ -8,6 +8,7 @@
   "loadError": "Não foi possível carregar o exercício.",
   "retry": "Tentar novamente",
   "nextQuestion": "Próximo exercício",
+  "showHint": "Ver dica",
   "finishChallenge": "Ver resultado",
   "challenge": {
     "title": "Desafio concluído!",

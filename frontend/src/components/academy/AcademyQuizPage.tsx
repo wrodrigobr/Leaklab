@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
   CheckCircle2,
+  Lightbulb,
   Loader2,
   RefreshCw,
   XCircle,
@@ -102,11 +103,13 @@ export default function AcademyQuizPage({
   const [totalDone, setTotalDone]       = useState(0);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [xpEarned, setXpEarned]         = useState(0);
+  const [showHint, setShowHint]         = useState(false);
 
   const loadQuestion = useCallback(async () => {
     setPhase("loading");
     setSelected(null);
     setIsCorrect(null);
+    setShowHint(false);
     try {
       const timeout = new Promise<never>((_, rej) =>
         setTimeout(() => rej(new Error("timeout")), 12000)
@@ -253,6 +256,24 @@ export default function AcademyQuizPage({
                 </div>
               </div>
 
+              {/* Hint (before answering) */}
+              {phase === "question" && question.mental_tip && (
+                showHint ? (
+                  <div className="rounded-lg border border-sky-500/30 bg-sky-500/5 px-4 py-3 space-y-1">
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-sky-400">{t("feedback.mentalTip")}</p>
+                    <p className="text-xs text-sky-300/90 leading-relaxed"><MdText>{question.mental_tip}</MdText></p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowHint(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-hud-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-sky-500/50 hover:text-sky-400"
+                  >
+                    <Lightbulb className="size-3.5" aria-hidden />
+                    {t("showHint")}
+                  </button>
+                )
+              )}
+
               {/* Options */}
               <div className="space-y-2">
                 {question.options.map((opt, idx) => {
@@ -312,7 +333,7 @@ export default function AcademyQuizPage({
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     <MdText>{question.explanation}</MdText>
                   </p>
-                  {!isCorrect && question.mental_tip && (
+                  {question.mental_tip && (
                     <div className="rounded-lg border border-sky-500/30 bg-sky-500/5 px-4 py-3 space-y-1">
                       <p className="font-mono text-[9px] uppercase tracking-widest text-sky-400">{t("feedback.mentalTip")}</p>
                       <p className="text-xs text-sky-300/90 leading-relaxed">
