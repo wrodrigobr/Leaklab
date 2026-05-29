@@ -471,6 +471,13 @@ def _analyze_impl():
 
     hero          = hands[0].hero or 'Hero'
     tournament_id = hands[0].tournament_id or ''
+    # Sem identificador de torneio (ex.: cash game ou formato sem "Tournament #"):
+    # não persistir — um tournament_id vazio quebra abrir/excluir no frontend
+    # (URL /tournament/ sem id). A plataforma é focada em torneios (MTT/SNG).
+    if not str(tournament_id).strip():
+        return jsonify({'error': 'Hand history sem identificador de torneio. '
+                                 'Apenas torneios (MTT/SNG) são suportados — cash games '
+                                 'e formatos sem "Tournament #" não podem ser importados.'}), 422
     site          = _detect_site(hands[0].raw_text if hasattr(hands[0],'raw_text') else '')
     played_at  = _extract_date(hands[0].raw_text if hasattr(hands[0],'raw_text') else '')
     raw_full   = '\n'.join(h.raw_text for h in hands if hasattr(h,'raw_text'))

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(analyze): rejeita hand history sem identificador de torneio + seed de leaderboard
+- **Bug**: um HH sem a linha `Tournament #…` (cash game / formato antigo) era salvo com `tournament_id` vazio → frontend gerava URLs `/tournament/` sem id, quebrando **abrir as mãos** e **excluir** (DELETE 500). `/analyze` agora **rejeita com 422** ("Apenas torneios MTT/SNG são suportados…") antes de persistir, evitando o registro quebrado.
+- **`backend/scripts/seed_fake_leaderboard.py`** (novo, só SQLite local): cria 5 usuários fake com perfis distintos (crusher/improver/grinder/rookie/below-gate) — torneios + decisões com `gto_label` + drills — para exercitar o leaderboard (#15) localmente, onde só há 2 usuários reais. Idempotente (`--clean`).
+
 ### feat(leaderboard): fundação do ranking de alunos (#15, Sprint 1)
 - **`leaklab/leaderboard.py`** (novo, motor PURO): rankeia por **aprendizado, não por $** — aderência GTO (40%) + evolução (30%) + engajamento (20%) + volume (10%). `score_player` normaliza cada dimensão (0..100) e `rank_leaderboard` separa elegíveis × inelegíveis, ordena (score desc, desempate determinístico) e atribui rank. **Guarda de elegibilidade** (anti micro-amostra/gaming): mín. 500 mãos, 10 torneios e 100 decisões com `gto_label`.
 - **`repositories.get_leaderboard_metrics(period_days)`**: agrega por usuário (mãos, torneios, drills, decisões com cobertura GTO, aderência total e início×recente para a evolução) no período.
