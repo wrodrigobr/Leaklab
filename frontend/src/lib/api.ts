@@ -881,7 +881,7 @@ export interface LeaderboardResponse {
 
 export const metrics = {
   leaderboard: (period = 90) =>
-    request<LeaderboardResponse>(`/leaderboard?period=${period}`),
+    request<LeaderboardResponse>(`/metrics/leaderboard?period=${period}`),
 
   evolution: (days = 90, lastN?: number) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),

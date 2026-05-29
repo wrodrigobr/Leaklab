@@ -10,7 +10,8 @@
     "coachDashboard": "Panel",
     "ghost": "Ghost Table",
     "sparring": "Sparring",
-    "training": "Entrenamiento"
+    "training": "Entrenamiento",
+    "leaderboard": "Ranking"
   },
   "actions": {
     "import": "Importar",

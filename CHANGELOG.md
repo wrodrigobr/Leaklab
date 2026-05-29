@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix+feat(leaderboard): rota proxiada + item de menu (visibilidade)
+- **Fix "Erro do servidor (HTTP 200)"**: o endpoint era `/leaderboard` (top-level), mas o proxy do Vite dev só encaminha prefixos específicos → o Vite servia o `index.html` (200 HTML) e o cliente quebrava no parse JSON. Movido para **`/metrics/leaderboard`** (prefixo já proxiado em dev) — funciona sem reiniciar o dev server e sem mexer no proxy. (Produção usa base URL absoluta, não afetada.)
+- **Visibilidade**: adicionado item **"Ranking"** (ícone medalha) no nav principal (`HudHeader`), entre Torneios e Estudos — desktop + bottom nav mobile. `nav.leaderboard` nas 3 locales (`common`).
+
 ### feat(leaderboard): UI mínima do ranking de alunos (#15)
 - **`pages/Leaderboard.tsx`** (nova, rota `/leaderboard`): consome `GET /leaderboard` (via `metrics.leaderboard()` em `api.ts`) e renderiza o ranking — rank (top-3 com tinta ouro/prata/bronze), nome, score, e **mini-barras das 4 dimensões** (GTO/evolução/engajamento/volume) — além da lista de **inelegíveis** com motivo e das notas de pesos/critério. Estados de loading/erro/vazio.
 - **Entrada**: link "Ranking" (ícone troféu) no header da `/rating`. i18n nas 3 locales (`dashboard` → bloco `leaderboard.*`, 18 chaves). Termos de poker mantidos.

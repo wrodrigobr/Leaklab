@@ -1400,7 +1400,7 @@ def player_cognitive_failures():
     return jsonify(report)
 
 
-@app.route('/leaderboard', methods=['GET'])
+@app.route('/metrics/leaderboard', methods=['GET'])
 @require_auth
 def leaderboard():
     """Ranking de alunos por APRENDIZADO (#15 — fundação: motor + endpoint).

@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bot, Dumbbell, GraduationCap, Globe, LayoutDashboard, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, LifeBuoy, X } from "lucide-react";
+import { Activity, BarChart3, Bot, Dumbbell, GraduationCap, Globe, LayoutDashboard, Medal, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, LifeBuoy, X } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -88,6 +88,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   const playerNavItems: NavItem[] = [
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",   icon: LayoutDashboard },
     { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments", icon: Trophy },
+    { label: t("nav.leaderboard"), mobileLabel: t("nav.leaderboard"), to: "/leaderboard", icon: Medal },
     { label: t("nav.study"),       mobileLabel: t("nav.study"),       to: "/study",       icon: GraduationCap },
     {
       label: t("nav.training"), mobileLabel: t("nav.training"),
