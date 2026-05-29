@@ -13,6 +13,15 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 from .models import ParsedHand
+from .icm import hero_icm_equity
+
+# Stack por assento — cobre PokerStars/GGPoker ("(1500 in chips)") e o dialeto
+# PartyGaming/888/PartyPoker ("( 500 )" / "( $826.51 )" / "( 86,425 )").
+_SEAT_STACK_PSGG_RE = re.compile(r'^Seat \d+: (.+?) \(([0-9.]+) in chips\)', re.MULTILINE)
+_SEAT_STACK_PG_RE   = re.compile(r'^Seat \d+: (.+?) \(\s*\$?([0-9,]+(?:\.[0-9]+)?)\s*\)\s*$', re.MULTILINE)
+
+# Só calcula ICM em estágios de mesa final (custo combinatório + relevância).
+_ICM_MAX_PLAYERS = 9
 
 # ── Regex ─────────────────────────────────────────────────────────────────────
 _LEVEL_RE  = re.compile(r'Level\s+([IVXLCDM]+)\s+\((\d+)/(\d+)\)')
@@ -61,6 +70,14 @@ class MTTContext:
     level_bb:  float
     level_num: int                 # número do nível (ex: XIV → 14)
 
+    # ICM equity real (mesa final) — via calculate_icm vendorizado do PokerKit.
+    # None fora de mesa final ou quando os stacks não são extraíveis.
+    # payouts reais não vêm no HH → usa curva padrão normalizada (aproxima a
+    # *forma* da pressão, não o valor monetário). Ver leaklab/icm.py.
+    icm_equity_pct: Optional[float] = None   # equity ICM do hero (% do prize pool)
+    icm_chip_pct:   Optional[float] = None   # fração de fichas do hero (%)
+    icm_tax_pct:    Optional[float] = None   # chip% − equity% (prêmio de risco/sobrevivência)
+
 
 def build_mtt_context(hand: ParsedHand) -> MTTContext:
     """Extrai contexto MTT completo de uma mão."""
@@ -83,6 +100,9 @@ def build_mtt_context(hand: ParsedHand) -> MTTContext:
         1 for line in raw.splitlines()
         if _SEAT_RE.match(line.strip())
     )
+    if active_players == 0:
+        # Fallback dialeto PartyGaming (888/PartyPoker): "Seat 4: Hero ( 500 )"
+        active_players = len(_SEAT_STACK_PG_RE.findall(raw))
 
     # ── Stack do hero ─────────────────────────────────────────────────────────
     hero_stack_chips: Optional[float] = None
@@ -115,6 +135,17 @@ def build_mtt_context(hand: ParsedHand) -> MTTContext:
     # Artigo GW: bubble factors menores para covering players em PKO.
     icm_pressure = _detect_icm_pressure(m_ratio, active_players, is_pko=is_pko)
 
+    # ── ICM equity real (mesa final) ─────────────────────────────────────────
+    icm_equity_pct = icm_chip_pct = icm_tax_pct = None
+    if 2 <= active_players <= _ICM_MAX_PLAYERS:
+        stacks, hero_idx = _extract_all_stacks(raw, hero)
+        if hero_idx is not None and len(stacks) >= 2 and all(s > 0 for s in stacks):
+            eq = hero_icm_equity(stacks, hero_idx)
+            if eq:
+                icm_equity_pct = eq['equity_pct']
+                icm_chip_pct   = eq['chip_pct']
+                icm_tax_pct    = eq['tax_pct']
+
     return MTTContext(
         hero_stack_chips=hero_stack_chips,
         hero_stack_bb=hero_stack_bb,
@@ -130,7 +161,29 @@ def build_mtt_context(hand: ParsedHand) -> MTTContext:
         level_sb=level_sb,
         level_bb=level_bb,
         level_num=level_num,
+        icm_equity_pct=icm_equity_pct,
+        icm_chip_pct=icm_chip_pct,
+        icm_tax_pct=icm_tax_pct,
     )
+
+
+def _extract_all_stacks(raw: str, hero: str) -> tuple[list[float], Optional[int]]:
+    """Extrai (stacks, índice_do_hero) de todos os assentos da mão.
+
+    Cobre o formato PokerStars/GGPoker e o dialeto PartyGaming (888/PartyPoker).
+    Retorna a lista de stacks na ordem dos assentos e o índice do hero (ou None).
+    """
+    matches = _SEAT_STACK_PSGG_RE.findall(raw) or _SEAT_STACK_PG_RE.findall(raw)
+    stacks: list[float] = []
+    hero_idx: Optional[int] = None
+    for name, chips in matches:
+        try:
+            stacks.append(float(chips.replace(',', '')))
+        except ValueError:
+            continue
+        if hero and name.strip() == hero.strip():
+            hero_idx = len(stacks) - 1
+    return stacks, hero_idx
 
 
 def _detect_stage(active_players: int, m_ratio: Optional[float]) -> str:
@@ -198,4 +251,8 @@ def context_to_dict(ctx: MTTContext) -> dict:
         'levelSb':         ctx.level_sb,
         'levelBb':         ctx.level_bb,
         'levelNum':        ctx.level_num,
+        # ICM equity real (mesa final) — None fora dela. Ver leaklab/icm.py.
+        'icmEquityPct':    ctx.icm_equity_pct,
+        'icmChipPct':      ctx.icm_chip_pct,
+        'icmTaxPct':       ctx.icm_tax_pct,
     }

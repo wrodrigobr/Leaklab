@@ -7,6 +7,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(mtt): ICM equity real na mesa final (calculate_icm vendorizado do PokerKit)
+- **`backend/leaklab/icm.py`** (novo): `calculate_icm(payouts, chips)` **vendorizado verbatim** do PokerKit (MIT, `uoftcprg/pokerkit`) — ICM clássico por permutações, mantido idêntico ao upstream (com os doctests) para auditoria/atualização. Sem nova dependência (Python puro). Wrapper `hero_icm_equity()` devolve `equity_pct` (equity ICM do hero, % do prize pool), `chip_pct` (fração de fichas) e `tax_pct` (chip% − equity%: >0 em big stacks por retornos decrescentes, <0 em short stacks pelo prêmio de sobrevivência).
+- **`mtt_context.py`**: na mesa final (2 ≤ jogadores ≤ 9) extrai os stacks de **todos** os assentos — cobrindo PokerStars/GGPoker (`(1500 in chips)`) **e** o dialeto PartyGaming (`( 500 )`/`( $826.51 )`/`( 86,425 )`) — e calcula a ICM equity do hero. Novos campos `icm_equity_pct` / `icm_chip_pct` / `icm_tax_pct` no `MTTContext` e no `context_to_dict` (`icmEquityPct`/`icmChipPct`/`icmTaxPct`). O `icm_pressure` heurístico foi **mantido intacto** (não-quebra; campos novos são extras). `active_players` ganhou fallback para contar assentos PartyGaming.
+- **Aproximação documentada**: payouts reais não vêm no HH → usa uma **curva de pagamento padrão normalizada** (top-heavy, top-6 para limitar o custo combinatório de `permutations(P,K)`). Modela a *forma* da pressão ICM (stack grande vs. short), não o valor monetário exato.
+- **Custo controlado**: só dispara com ≤ 9 jogadores; payouts limitados a 6 casas → `permutations` barato no hot path.
+- **Testes** (`backend/tests/test_icm.py`, suite `engine`): 6 casos — bate com os doctests do PokerKit, direções de tax (igual/short/leader), guards, integração no `mtt_context` (mesa final PartyPoker STT: 4-way equilibrado → tax ≈ 0; HU chip leader → tax > 0) e campo grande (>9) sem ICM. Suites engine/regression: zero regressões.
+
 ### docs: nova seção "Sites Suportados & Importação" na /docs
 - **`Docs.tsx`**: adicionada seção `import` como **primeira** da `/docs` (e no menu lateral) — antes não havia nenhuma seção sobre quais salas são suportadas nem como importar. Tabela com as **4 salas** (PokerStars, GGPoker, 888poker, PartyPoker), formatos (MTT · SNG · Cash/Spin) e onde obter o histórico de mãos. Nomes de sala/formatos hardcoded (neutros de idioma); só a coluna "onde obter" + textos via i18n.
 - **Dica 888poker**: explica (em linguagem de usuário, sem expor lógica interna) que o resultado do torneio fica num arquivo *Tournament Summary* separado do HH — para registrar o prêmio, enviar HH + summary juntos.

@@ -1,0 +1,110 @@
+"""
+Testa o ICM vendorizado do PokerKit (leaklab/icm.py) e sua integração no
+mtt_context (equity ICM real na mesa final).
+"""
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from leaklab.icm import calculate_icm, hero_icm_equity, standard_payouts
+from leaklab.parser import parse_hand_history
+from leaklab.mtt_context import build_mtt_context, context_to_dict
+
+FIX = os.path.join(os.path.dirname(__file__), 'fixtures')
+
+
+def _approx(a, b, tol=0.01):
+    return abs(a - b) <= tol
+
+
+def test_calculate_icm_matches_pokerkit_doctests():
+    """Valida que o trecho vendorizado bate com os valores do upstream (PokerKit)."""
+    r = calculate_icm([70, 30], [50, 30, 20])
+    assert _approx(r[0], 45.17, 0.01) and _approx(r[1], 32.25) and _approx(r[2], 22.57, 0.01)
+    r = calculate_icm([50, 30, 20], [25, 87, 88])
+    assert _approx(r[0], 25.69, 0.01) and _approx(r[1], 37.08, 0.01) and _approx(r[2], 37.21, 0.01)
+    # soma das equities == soma dos payouts
+    assert _approx(sum(calculate_icm([50, 30, 20], [10, 20, 30])), 100.0)
+    print("OK  test_calculate_icm_matches_pokerkit_doctests")
+
+
+def test_standard_payouts_normalized_and_capped():
+    for n in (1, 2, 3, 6, 9):
+        p = standard_payouts(n)
+        assert _approx(sum(p), 1.0), f"payouts({n}) não soma 1.0"
+        assert len(p) == min(n, 6), f"payouts({n}) deveria ter min(n,6) casas"
+        # top-heavy: cada casa paga ≥ que a seguinte
+        assert all(p[i] >= p[i + 1] for i in range(len(p) - 1))
+    print("OK  test_standard_payouts_normalized_and_capped")
+
+
+def test_hero_icm_equity_directions():
+    # stacks iguais → equity == chip% → tax 0
+    eq = hero_icm_equity([1000, 1000, 1000], hero_index=0)
+    assert _approx(eq['tax_pct'], 0.0)
+    # short stack → equity ICM ACIMA da fração de fichas (prêmio de sobrevivência) → tax < 0
+    short = hero_icm_equity([1000, 1000, 200], hero_index=2)
+    assert short['equity_pct'] > short['chip_pct']
+    assert short['tax_pct'] < 0
+    # chip leader → equity ICM ABAIXO da fração (retornos decrescentes) → tax > 0
+    leader = hero_icm_equity([5000, 1000, 1000], hero_index=0)
+    assert leader['equity_pct'] < leader['chip_pct']
+    assert leader['tax_pct'] > 0
+    print("OK  test_hero_icm_equity_directions")
+
+
+def test_hero_icm_equity_guards():
+    assert hero_icm_equity([], 0) is None
+    assert hero_icm_equity([100, 200], 5) is None          # índice fora do range
+    assert hero_icm_equity([0, 0, 0], 0) is None           # soma de fichas zero
+    print("OK  test_hero_icm_equity_guards")
+
+
+def test_mtt_context_icm_final_table():
+    """Na mesa final (PartyPoker STT), o ICM é calculado e exposto no contexto."""
+    raw = open(os.path.join(FIX, 'partypoker_tourney_stt.txt'), encoding='utf-8', errors='ignore').read()
+    hands = parse_hand_history(raw)
+    # 1ª mão: 4 jogadores com 500 cada → equity ≈ chip% ≈ 25%, tax ≈ 0
+    c0 = build_mtt_context(hands[0])
+    assert c0.active_players == 4
+    assert c0.icm_equity_pct is not None
+    assert _approx(c0.icm_chip_pct, 25.0, 0.5)
+    assert _approx(c0.icm_tax_pct, 0.0, 0.5)
+    # heads-up: hero chip leader → tax > 0 (paga o prêmio de risco)
+    hu = next(h for h in hands if build_mtt_context(h).active_players == 2)
+    chu = build_mtt_context(hu)
+    assert chu.icm_equity_pct is not None and chu.icm_tax_pct > 0
+    # exposto no dict + não quebrou icm_pressure heurístico
+    d = context_to_dict(chu)
+    assert d['icmEquityPct'] == chu.icm_equity_pct
+    assert d['icmPressure'] in ('low', 'medium', 'high')
+    print("OK  test_mtt_context_icm_final_table")
+
+
+def test_mtt_context_no_icm_for_large_field():
+    """Fora da mesa final (campo > 9 jogadores) o ICM não é calculado (None)."""
+    seats = "\n".join(f"Seat {i}: P{i} (1500 in chips)" for i in range(1, 13))
+    raw = (
+        "PokerStars Hand #1: Tournament #999, Hold'em No Limit - Level I (10/20)"
+        " - 2025/01/01 12:00:00 ET\nTable '999 1' 12-max Seat #1 is the button\n"
+        + seats + "\nDealt to P1 [Ah Kh]\n"
+    )
+    h = parse_hand_history(raw)[0]
+    c = build_mtt_context(h)
+    assert c.active_players == 12
+    assert c.icm_equity_pct is None and c.icm_tax_pct is None
+    print("OK  test_mtt_context_no_icm_for_large_field")
+
+
+if __name__ == '__main__':
+    tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
+    passed = failed = 0
+    for t in tests:
+        try:
+            t()
+            passed += 1
+        except Exception as e:
+            print(f"FAIL {t.__name__}: {e}")
+            import traceback; traceback.print_exc()
+            failed += 1
+    print(f"\n{'='*50}")
+    print(f"Total: {passed+failed} | Passed: {passed} | Failed: {failed}")
