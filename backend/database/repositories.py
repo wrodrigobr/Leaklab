@@ -1781,9 +1781,13 @@ def get_strategic_twin_profile(user_id: int, days: int = 180) -> dict:
 def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = None,
                       exclude_hand_ids: list = None) -> dict:
     """
-    Sprint AS — Seleciona uma mão histórica do jogador para o modo Sparring.
-    Auto-seleciona a mão com mais decisões que contém o pior erro dos últimos 90 dias.
-    exclude_hand_ids: lista de hand_ids já vistos nesta sessão — evita repetição.
+    Seleciona uma mão histórica do jogador para o modo Sparring, focada em
+    spots 100% GTO: escolhe uma mão em que TODA decisão tem cobertura GTO
+    (gto_action preenchido) — assim cada jogada do treino tem resposta e
+    frequências confiáveis (preflop via ranges, postflop via solver nodes).
+    Prioriza mãos com várias decisões (arco preflop→river) e randomiza para
+    variedade. Não exige que o jogador tenha errado.
+    exclude_hand_ids: hand_ids já vistos nesta sessão — evita repetição.
     Retorna todas as decisões da mão em ordem cronológica.
     """
     from datetime import datetime, timedelta
@@ -1799,48 +1803,35 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
             if exclusions:
                 placeholders = ",".join(["?" for _ in exclusions])
                 excl_clause  = f"AND d.hand_id NOT IN ({placeholders})"
-                params = (user_id, cutoff, *exclusions)
+                params = (user_id, *exclusions)
             else:
                 excl_clause = ""
-                params = (user_id, cutoff)
+                params = (user_id,)
 
-            best = conn.execute(_adapt(f"""
-                SELECT sub.hand_id, sub.tournament_id
-                FROM (
-                    SELECT d.hand_id, d.tournament_id,
-                           COUNT(*) AS total_decisions,
-                           MAX(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical') THEN d.score ELSE 0 END) AS max_err,
-                           SUM(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical') THEN 1 ELSE 0 END) AS gto_mistakes
-                    FROM decisions d
-                    JOIN tournaments t ON t.id = d.tournament_id
-                    WHERE t.user_id = ? AND t.imported_at >= ? {excl_clause}
-                    GROUP BY d.hand_id, d.tournament_id
-                    HAVING SUM(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical')
-                                     AND d.gto_action IS NOT NULL AND d.gto_action != '' THEN 1 ELSE 0 END) > 0
-                ) sub
-                ORDER BY sub.gto_mistakes DESC, sub.max_err DESC
-                LIMIT 1
-            """), params).fetchone()
-
-            if not best:
-                # All hands seen — reset exclusion list and return first hand again
-                best = conn.execute(_adapt("""
+            # Foco em spots 100% GTO: mãos em que TODA decisão tem gto_action.
+            # Prioriza mãos com várias decisões (arco preflop→river) e randomiza.
+            def _pick_gto_hand(min_decisions, qparams, clause):
+                return conn.execute(_adapt(f"""
                     SELECT sub.hand_id, sub.tournament_id
                     FROM (
                         SELECT d.hand_id, d.tournament_id,
-                               COUNT(*) AS total_decisions,
-                               MAX(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical') THEN d.score ELSE 0 END) AS max_err,
-                               SUM(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical') THEN 1 ELSE 0 END) AS gto_mistakes
+                               COUNT(*) AS total,
+                               SUM(CASE WHEN d.gto_action IS NOT NULL AND d.gto_action != ''
+                                        THEN 1 ELSE 0 END) AS covered
                         FROM decisions d
                         JOIN tournaments t ON t.id = d.tournament_id
-                        WHERE t.user_id = ? AND t.imported_at >= ?
+                        WHERE t.user_id = ? {clause}
                         GROUP BY d.hand_id, d.tournament_id
-                        HAVING SUM(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical')
-                                         AND d.gto_action IS NOT NULL AND d.gto_action != '' THEN 1 ELSE 0 END) > 0
+                        HAVING total = covered AND total >= {int(min_decisions)}
                     ) sub
-                    ORDER BY sub.gto_mistakes DESC, sub.max_err DESC
+                    ORDER BY RANDOM()
                     LIMIT 1
-                """), (user_id, cutoff)).fetchone()
+                """), qparams).fetchone()
+
+            best = _pick_gto_hand(2, params, excl_clause) or _pick_gto_hand(1, params, excl_clause)
+            if not best and exclusions:
+                # Esgotou as mãos não vistas nesta sessão — reseta as exclusões.
+                best = _pick_gto_hand(2, (user_id,), "") or _pick_gto_hand(1, (user_id,), "")
 
             if not best:
                 return {"insufficient_data": True}

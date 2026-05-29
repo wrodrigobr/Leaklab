@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix+feat(sparring): volta a aparecer mãos + foco em spots 100% GTO
+- **Fix**: `get_sparring_hand` montava os steps com `r.get(...)` em `sqlite3.Row` (sem `.get()` em dev/SQLite) → `AttributeError` → 500 → nenhuma mão. Rows convertidas em dict.
+- **Foco GTO**: seleção deixou de mirar nos *erros* do jogador (`gto_minor_deviation/gto_critical` dos últimos 90 dias, pool restrito) e passou a escolher mãos em que **toda decisão tem cobertura GTO** (`gto_action` preenchido), priorizando arcos multi-street (preflop→river) e randomizando. Assim todo spot do treino tem resposta e frequências confiáveis — as barras de **% por ação** (via `gto.decisionLookup`) já são exibidas no feedback. Validado: 14/15 mãos distintas, 100% cobertas, incl. postflop.
+
 ### feat(academy): board strength variado + modo desafio + dicas
 - **Variedade (anti-repetição)**: `generate_board_strength_question` agora sorteia cartas/boards sintéticos (variedade infinita) em vez de reciclar o histórico. Novos tipos além de `hand_classify`/`board_texture`: **made_vs_draw** (mão feita / draw / nada) e **identify_draw** (flush / straight / combo), reusando `_hand_bucket` + helpers de draw. Validado 400/400 questões distintas.
 - **Modo desafio**: `AcademyQuizPage` ganha prop `challengeSize` — após N questões, tela final (acertos/N, precisão, XP) com **"Novo desafio"**; barra de stats vira progresso N/total. Board strength usa **20**; re-entrar inicia outras 20.
