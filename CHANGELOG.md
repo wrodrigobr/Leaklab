@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(academy): board strength variado + modo desafio + dicas
+- **Variedade (anti-repetição)**: `generate_board_strength_question` agora sorteia cartas/boards sintéticos (variedade infinita) em vez de reciclar o histórico. Novos tipos além de `hand_classify`/`board_texture`: **made_vs_draw** (mão feita / draw / nada) e **identify_draw** (flush / straight / combo), reusando `_hand_bucket` + helpers de draw. Validado 400/400 questões distintas.
+- **Modo desafio**: `AcademyQuizPage` ganha prop `challengeSize` — após N questões, tela final (acertos/N, precisão, XP) com **"Novo desafio"**; barra de stats vira progresso N/total. Board strength usa **20**; re-entrar inicia outras 20.
+- **Dicas/ensino**: botão **"Ver dica"** revela o método (mental_tip) **antes** de responder; no feedback o método aparece **sempre** (não só quando erra). Vale para todos os exercícios.
+
 ### feat(academy): exercícios GTO Preflop (Ranges GTO) — correção server-side
 - **Novo módulo** na Academia que gera spots preflop a partir do `master_gw_ranges.json` (9-max) e pede a ação GTO (fold/call/raise/3-bet/4-bet). Cobre as condições: **open (RFI)**, **defesa vs open (call/3-bet)** e **vs 3-bet (4-bet/call)** — os 3 níveis (Iniciante/Intermediário/Avançado).
 - **Correção 100% server-side** (`backend/leaklab/academy_gto_preflop.py` novo): a `/academy/gto-preflop/question` manda só o contexto do spot + opções; a `/academy/gto-preflop/submit` reavalia via `preflop_gto_ranges.analyze_preflop` e devolve o veredito (`correct`/`acceptable` = acerto), frequências GTO da mão e explicação. As ranges nunca vão pro cliente. Trata mixed strategy (call/3-bet ambos aceitáveis quando o solver mistura).
