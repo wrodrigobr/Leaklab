@@ -18,7 +18,7 @@ SUITES = {
     'database':  ['test_database.py', 'test_coach_system.py'],
     'llm':       ['test_llm_explainer.py', 'test_study_plan.py'],
     'api':       ['test_api_endpoints.py', 'test_subscription.py'],
-    'regression':['test_tournament.py', 'test_multi_decision.py'],
+    'regression':['test_tournament.py', 'test_multi_decision.py', 'test_partygaming_parser.py'],
     'academy':   ['test_academy_variety.py'],
     'gto':       ['test_gto_comparison.py',
                   'test_gto_utils_comprehensive.py',

@@ -2006,7 +2006,9 @@ def _analyze_hands(hands):
 def _detect_site(raw: str) -> str:
     if 'PokerStars Hand #' in raw: return 'pokerstars'
     if 'Poker Hand #'      in raw: return 'ggpoker'
-    if '888'               in raw: return '888poker'
+    # 888 antes de PartyPoker: o header do 888 também contém "Hand History for Game".
+    if '888poker'          in raw: return '888poker'
+    if 'Hand History for Game' in raw: return 'partypoker'
     return 'unknown'
 
 

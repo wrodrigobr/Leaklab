@@ -12,6 +12,31 @@ PS_ID_RE     = re.compile(r"PokerStars Hand #(\d+)")
 GG_SPLIT_RE  = re.compile(r"(?=Poker Hand #)")
 GG_ID_RE     = re.compile(r"Poker Hand #(\w+)")
 
+# ── PartyGaming dialect (888poker / PartyPoker) ───────────────────────────────
+# Os dois sites compartilham um formato quase idêntico (herança Pacific/PartyGaming),
+# bem diferente do PokerStars/GGPoker. Header e cada linha de ação mudam.
+#   888:   ***** 888poker Hand History for Game 655462938 *****
+#   Party: ***** Hand History for Game 13165152578 *****
+PG_SPLIT_RE   = re.compile(r"(?=\*\*\*\*\* (?:888poker )?Hand History for Game)")
+PG_ID_RE      = re.compile(r"Hand History for Game (\d+)")
+PG_TOURN_RE   = re.compile(r"Tournament #(\d+)|Trny:\s*(\d+)", re.IGNORECASE)
+PG_BUTTON_RE  = re.compile(r"Seat (\d+) is the button")
+PG_SEAT_RE    = re.compile(r"^Seat (\d+): (.+?) \(")
+PG_DEALT_RE   = re.compile(r"Dealt to (\S+) \[\s*([^\]]+?)\s*\]")
+# Blinds: tenta na ordem — antes-blinds (MTT party), blinds parentizado (STT party),
+# e o par "$sb/$bb" (cash/tourney 888 e cash party). Números podem ter "," ou " " (milhar).
+PG_BLINDS_AB_RE  = re.compile(r"Blinds-Antes\(([\d ,]+)/([\d ,]+)")
+PG_BLINDS_P_RE   = re.compile(r"Blinds\(([\d ,]+)/([\d ,]+)\)")
+PG_BLINDS_DOLLAR_RE = re.compile(r"\$([\d.,]+)/\$([\d.,]+)")
+# Ações (sem ":" — diferença central vs PokerStars). Valor opcional em [ ... ].
+PG_ACTION_RE  = re.compile(
+    r"^(?P<player>\S+) (?P<action>folds|checks|calls|bets|raises|shows)"
+    r"(?: \[\s*(?P<amount>[^\]]+?)\s*\])?",
+    re.IGNORECASE,
+)
+# All-in tem sintaxe própria: "Player is all-In  [425]"
+PG_ALLIN_RE   = re.compile(r"^(?P<player>\S+) is all-In\s*\[\s*(?P<amount>[^\]]+?)\s*\]", re.IGNORECASE)
+
 # ── Shared patterns ───────────────────────────────────────────────────────────
 TOURN_RE        = re.compile(r"Tournament #(\d+)")
 BUTTON_RE       = re.compile(r"Seat #(\d+) is the button")
@@ -49,6 +74,11 @@ def _detect_site(text: str) -> str:
         return "pokerstars"
     if "Poker Hand #" in text:
         return "ggpoker"
+    # 888 antes de PartyPoker: o header do 888 também contém "Hand History for Game".
+    if "888poker" in text:
+        return "888poker"
+    if "Hand History for Game" in text:
+        return "partypoker"
     return "unknown"
 
 
@@ -70,8 +100,10 @@ def parse_pokerstars_file(path: str) -> List[ParsedHand]:
 
 
 def parse_hand_history(text: str) -> List[ParsedHand]:
-    """Parseia hand history de qualquer site suportado (PokerStars ou GGPoker)."""
+    """Parseia hand history de qualquer site suportado (PokerStars, GGPoker, 888poker, PartyPoker)."""
     site = _detect_site(text)
+    if site in ("888poker", "partypoker"):
+        return _parse_partygaming_hands(text, site)
     id_re = GG_ID_RE if site == "ggpoker" else PS_ID_RE
     chunks = _split_hands(text, site)
     return [parse_hand(chunk, id_re) for chunk in chunks]
@@ -174,6 +206,134 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
     )
 
 
+# ── PartyGaming dialect parser (888poker / PartyPoker) ────────────────────────
+
+def _pg_num(s: str | None) -> float | None:
+    """Converte um valor PartyGaming em float. Trata '$', ' USD', vírgula e espaço
+    como separador de milhar: '$1,594' → 1594.0, '1 200' → 1200.0, '$0.10 USD' → 0.10."""
+    if not s:
+        return None
+    cleaned = s.replace("$", "").replace("USD", "").replace(",", "").replace(" ", "").strip()
+    if not cleaned:
+        return None
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def _pg_cards(s: str) -> List[str]:
+    """Normaliza cartas entre colchetes: '8c, Qs' ou '3h Js' → ['8c', '5s']."""
+    return [c for c in s.replace(",", " ").split() if c]
+
+
+def _parse_partygaming_hands(text: str, site: str) -> List[ParsedHand]:
+    chunks = [c.strip() for c in PG_SPLIT_RE.split(text)
+              if "Hand History for Game" in c]
+    return [_parse_partygaming_hand(c, site) for c in chunks]
+
+
+def _parse_partygaming_hand(raw_text: str, site: str) -> ParsedHand:
+    hand_id = _search(PG_ID_RE, raw_text)
+
+    tourn_id = None
+    mt = PG_TOURN_RE.search(raw_text)
+    if mt:
+        tourn_id = mt.group(1) or mt.group(2)
+
+    button = _search(PG_BUTTON_RE, raw_text, cast=int)
+
+    hero_name = hero_cards = None
+    md = PG_DEALT_RE.search(raw_text)
+    if md:
+        hero_name = md.group(1).strip()
+        hero_cards = "".join(_pg_cards(md.group(2)))
+
+    sb = bb = None
+    mb = (PG_BLINDS_AB_RE.search(raw_text)
+          or PG_BLINDS_P_RE.search(raw_text)
+          or PG_BLINDS_DOLLAR_RE.search(raw_text))
+    if mb:
+        sb = _pg_num(mb.group(1))
+        bb = _pg_num(mb.group(2))
+
+    players: List[str] = []
+    actions: List[ParsedAction] = []
+    street = "preflop"
+    board: List[str] = []
+
+    for line in raw_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+
+        # Streets — board só traz a(s) carta(s) nova(s), então acumulamos.
+        low = line.lower()
+        if low.startswith("** dealing flop **"):
+            street = "flop"
+            board = _extract_board(line)
+            continue
+        if low.startswith("** dealing turn **"):
+            street = "turn"
+            board = board + _extract_board(line)
+            continue
+        if low.startswith("** dealing river **"):
+            street = "river"
+            board = board + _extract_board(line)
+            continue
+
+        ms = PG_SEAT_RE.match(line)
+        if ms:
+            players.append(ms.group(2).strip())
+            continue
+
+        # All-in tem sintaxe própria; tentar antes das ações normais.
+        mai = PG_ALLIN_RE.match(line)
+        if mai:
+            actions.append(ParsedAction(
+                player=mai.group("player").strip(),
+                street=street,
+                action="all-in",
+                amount=_pg_num(mai.group("amount")),
+                raw=line,
+            ))
+            continue
+
+        ma = PG_ACTION_RE.match(line)
+        if ma:
+            action_str = ma.group("action").lower()
+            # "raises [X] and is all-in" → all-in (variante defensiva)
+            if action_str in ("bets", "raises") and "all-in" in low:
+                action_str = "all-in"
+            actions.append(ParsedAction(
+                player=ma.group("player").strip(),
+                street=street,
+                action=action_str,
+                amount=_pg_num(ma.group("amount")),
+                raw=line,
+            ))
+
+    # PKO: o formato PartyGaming das amostras não traz bounty por assento;
+    # detecta só por palavra-chave no header (knockout/bounty/PKO).
+    is_pko = bool(PKO_KEYWORD_RE.search(raw_text[:300]))
+
+    return ParsedHand(
+        hand_id=hand_id or "unknown",
+        tournament_id=tourn_id,
+        hero=hero_name,
+        button_seat=button,
+        sb=sb,
+        bb=bb,
+        hero_cards=hero_cards,
+        board=board,
+        players=players,
+        actions=actions,
+        raw_text=raw_text,
+        bounties={},
+        is_pko=is_pko,
+    )
+
+
 def _extract_board(line: str) -> List[str]:
     """Extrai o board completo de uma linha de street.
 
@@ -181,13 +341,15 @@ def _extract_board(line: str) -> List[str]:
       FLOP:  *** FLOP ***   [Ah Kd 3c]
       TURN:  *** TURN ***   [Ah Kd 3c] [7s]
       RIVER: *** RIVER ***  [Ah Kd 3c 7s] [9h]
+    PartyGaming (888/PartyPoker) usa cartas separadas por vírgula:
+      ** Dealing Flop ** [ As, 5c, 9c ]
     """
     matches = BOARD_RE.findall(line)
     if not matches:
         return []
     cards = []
     for group in matches:
-        cards.extend(group.split())
+        cards.extend(group.replace(",", " ").split())
     return cards
 
 
