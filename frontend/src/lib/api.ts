@@ -520,6 +520,8 @@ export interface EloResponse {
   initial_elo:        number;
   history:            EloHistoryEntry[];
   delta_7d:           number | null;
+  decay_applied?:     number;   // pts subtraídos do overall por inatividade (decay)
+  weeks_inactive?:    number;
   no_data?:           boolean;
 }
 

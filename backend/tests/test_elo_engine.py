@@ -10,10 +10,10 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from leaklab.elo_engine import (
-    k_factor, expected_score, decision_score, apply_decision,
+    k_factor, expected_score, decision_score, apply_decision, apply_inactivity_decay,
     band_full, band_for, next_band_for,
     compute_player_elo_from_decisions, compute_elo_curve, snapshot_to_dict,
-    SOLVER_ELO, INITIAL_ELO, BANDS, GTO_LABEL_SCORE,
+    SOLVER_ELO, INITIAL_ELO, BANDS, GTO_LABEL_SCORE, DECAY_MAX,
 )
 
 
@@ -83,6 +83,25 @@ def test_apply_decision_direction_and_magnitude():
     small_k = apply_decision(1500, 1.0, 1000) - 1500  # K=8
     assert small_k < big_k
     print("OK  test_apply_decision_direction_and_magnitude")
+
+
+def test_inactivity_decay():
+    # Dentro da carência (≤1 semana) → sem decay
+    assert apply_inactivity_decay(1600, 0.5) == (1600.0, 0.0)
+    assert apply_inactivity_decay(1600, 1.0) == (1600.0, 0.0)
+    # Após carência: 3 semanas → 2 decaíveis × 2 = −4
+    elo, dec = apply_inactivity_decay(1600, 3.0)
+    assert dec == 4.0 and elo == 1596.0
+    # Cap total em DECAY_MAX (−20), mesmo após muitas semanas
+    elo, dec = apply_inactivity_decay(1600, 100.0)
+    assert dec == DECAY_MAX and elo == 1600 - DECAY_MAX
+    # Piso no INITIAL_ELO: rating logo acima do par não cai abaixo dele
+    elo, dec = apply_inactivity_decay(1510, 100.0)
+    assert elo == float(INITIAL_ELO) and dec == 10.0
+    # No/abaixo do par → nunca decai (nem sobe)
+    assert apply_inactivity_decay(1500, 100.0) == (1500.0, 0.0)
+    assert apply_inactivity_decay(1400, 100.0) == (1400.0, 0.0)
+    print("OK  test_inactivity_decay")
 
 
 # ── Bandas ──────────────────────────────────────────────────────────────────

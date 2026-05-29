@@ -4663,6 +4663,18 @@ def get_elo_history(user_id: int, limit: int = 100) -> list[dict]:
         conn.close()
 
 
+def get_last_activity_at(user_id: int) -> Optional[str]:
+    """Último imported_at de torneio do user (base do decay por inatividade do ELO)."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT MAX(imported_at) AS last FROM tournaments WHERE user_id = ?"
+        ), (user_id,))
+        return (dict(row).get('last') if row else None)
+    finally:
+        conn.close()
+
+
 def get_decisions_for_elo(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:
     """
     Lista decisões do user ordenadas por created_at (asc) pra recalcular ELO

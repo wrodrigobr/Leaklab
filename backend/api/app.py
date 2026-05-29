@@ -992,6 +992,8 @@ def player_elo():
             'initial_elo':     INITIAL_ELO,
             'history':         [],
             'delta_7d':        None,
+            'decay_applied':   0.0,
+            'weeks_inactive':  0.0,
             'no_data':         True,
         })
 
@@ -1007,12 +1009,29 @@ def player_elo():
         v = _wrap(latest.get(f'elo_{st}'), latest.get(n_col) or 0)
         if v: by_street[st] = v
 
-    overall = _wrap(latest['elo_overall'], latest.get('total_decisions') or 0)
+    # ── Decay por inatividade (Sprint 2) — aplicado na leitura, só no overall ──
+    from leaklab.elo_engine import apply_inactivity_decay
+    from database.repositories import get_last_activity_at
+    raw_overall = float(latest['elo_overall'])
+    weeks_inactive = 0.0
+    last_act = get_last_activity_at(g.user_id)
+    if last_act:
+        import datetime
+        try:
+            la = datetime.datetime.fromisoformat(str(last_act).replace('Z', ''))
+            weeks_inactive = max(0.0, (datetime.datetime.utcnow() - la).total_seconds() / (7 * 86400))
+        except Exception:
+            weeks_inactive = 0.0
+    display_overall, decay_applied = apply_inactivity_decay(raw_overall, weeks_inactive)
+
+    overall = _wrap(display_overall, latest.get('total_decisions') or 0)
 
     return jsonify({
         'user_id':         g.user_id,
         'overall':         overall,
-        'next_band':       next_band_for(float(latest['elo_overall'])),
+        'next_band':       next_band_for(display_overall),
+        'decay_applied':   decay_applied,                 # pts subtraídos do overall por inatividade
+        'weeks_inactive':  round(weeks_inactive, 1),
         'peak_elo':        round(peak_elo, 1) if peak_elo is not None else None,
         'by_street':       by_street,
         'total_decisions': int(latest.get('total_decisions') or 0),

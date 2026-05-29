@@ -51,6 +51,15 @@ SOLVER_ELO    = 1500
 INITIAL_ELO   = 1500
 ELO_DIVISOR   = 400.0   # diff de 400 = razão 10:1 esperada
 
+# Decay por inatividade (Sprint 2). O ELO "esfria" enquanto o jogador não
+# importa torneios, incentivando consistência. Aplicado na LEITURA (cresce com o
+# tempo parado, sem precisar de novo upload). Padrões: −2/semana, carência de 1
+# semana (não pune logo), cap total −20 (≈10 semanas), piso no INITIAL_ELO
+# (nunca rebaixa abaixo do par nem decai quem já está no/abaixo dele).
+DECAY_PER_WEEK    = 2.0
+DECAY_GRACE_WEEKS = 1.0
+DECAY_MAX         = 20.0
+
 # Score real (S) por classificação GTO
 GTO_LABEL_SCORE: dict[str, float] = {
     "gto_correct":         1.0,
@@ -144,6 +153,21 @@ def apply_decision(current_elo: float, score_S: float, n_decisions: int) -> floa
     E = expected_score(current_elo, SOLVER_ELO)
     K = k_factor(n_decisions)
     return current_elo + K * (score_S - E)
+
+
+def apply_inactivity_decay(elo: float, weeks_inactive: float) -> tuple[float, float]:
+    """Aplica decay por inatividade. Retorna (elo_ajustado, pontos_decaídos).
+
+    Só "esfria" ratings acima do par (INITIAL_ELO): quem já está no/abaixo dele
+    não decai. Carência de DECAY_GRACE_WEEKS antes de começar; −DECAY_PER_WEEK por
+    semana; cap total DECAY_MAX; piso no INITIAL_ELO.
+    """
+    if elo <= INITIAL_ELO or weeks_inactive <= DECAY_GRACE_WEEKS:
+        return round(elo, 1), 0.0
+    decayable = weeks_inactive - DECAY_GRACE_WEEKS
+    penalty   = min(decayable * DECAY_PER_WEEK, DECAY_MAX)
+    decayed   = max(elo - penalty, float(INITIAL_ELO))
+    return round(decayed, 1), round(elo - decayed, 1)
 
 
 # ── Cálculo agregado por player ───────────────────────────────────────────────

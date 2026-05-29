@@ -74,6 +74,14 @@ export function EloRatingCard() {
                 {delta_7d == null ? "—" : `${delta_7d > 0 ? "+" : ""}${delta_7d.toFixed(1)} (7d)`}
               </span>
             )}
+            {!!data.decay_applied && data.decay_applied > 0 && (
+              <span
+                className="text-amber-400/80"
+                title={`Calibração por inatividade: −${data.decay_applied.toFixed(0)} ELO por ~${Math.round(data.weeks_inactive ?? 0)} semanas sem importar torneios. Importe um torneio para recuperar.`}
+              >
+                −{data.decay_applied.toFixed(0)} inativo
+              </span>
+            )}
           </div>
           {/* Progresso até o próximo nível */}
           {data.next_band && (

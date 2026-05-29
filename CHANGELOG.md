@@ -7,6 +7,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(elo): decay por inatividade (Sprint 2 #19)
+- **`elo_engine.apply_inactivity_decay(elo, weeks_inactive)`**: o ELO "esfria" enquanto o jogador não importa torneios. Padrões: **−2/semana**, **carência de 1 semana** (não pune logo), **cap total −20** (~10 semanas), **piso no INITIAL_ELO (1500)** — só esfria ratings acima do par; quem está no/abaixo dele não decai nem sobe. Retorna `(elo_ajustado, pts_decaídos)`.
+- **Aplicado na leitura** (`GET /player/elo`): calcula semanas desde o último `imported_at` (novo repo `get_last_activity_at`) e decai **só o overall** (headline) — `by_street`, pico e histórico ficam crus. Snapshot persistido não muda; o decay é só de exibição (cresce com o tempo parado, sem precisar de upload). Response ganha `decay_applied` + `weeks_inactive`; `next_band` recalculado sobre o ELO decaído.
+- **Frontend**: `EloRatingCard` e `/rating` mostram "−X inativo" (âmbar) com tooltip ("calibração por inatividade; importe um torneio para recuperar") quando `decay_applied > 0`. Tipo `EloResponse` atualizado.
+- **Testes** (`test_elo_engine.py`): `test_inactivity_decay` (carência, −2/sem, cap, piso, no-decay no/abaixo do par). Validado end-to-end (user 13: 1.1 sem inativo → −0.2). Engine 240 / api 72: zero regressões; build OK.
+- Demais itens do Sprint 2 (stake bracket, notificações, integração leaderboard #15) seguem pendentes/bloqueados; tooltip "+X pts/delta" já estava entregue.
+
 ### test(elo): cobertura do motor de ELO (lacuna fechada)
 - **`backend/tests/test_elo_engine.py`** (novo, suite `engine`, 14 casos): o `elo_engine.py` era a única peça grande recente **sem testes**. Cobre `k_factor` (32/16/8), `expected_score` (par=0.5, ±400=10:1, simetria), `decision_score` (mapa GTO + **sem fallback heurístico**: None sem `gto_label`), `apply_decision` (direção/magnitude vs K), bandas (`band_full`/`next_band_for`, limiares 1570…2053, topo Elite sem próxima), `compute_player_elo_from_decisions` (sobe com acertos / cai com erros, exclusão de spots sem GTO, independência por street, streets inválidas puladas, ordenação por `created_at`), `compute_elo_curve` (1 ponto por torneio; torneios sem GTO omitidos) e `snapshot_to_dict`.
 - Suite engine: **225 → 239 testes**, zero regressões.

@@ -78,6 +78,14 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
               {peak_elo != null && (
                 <span className="text-muted-foreground/80">pico: {peak_elo.toFixed(0)}</span>
               )}
+              {!!data.decay_applied && data.decay_applied > 0 && (
+                <span
+                  className="text-amber-400/80"
+                  title={`Calibração por inatividade: −${data.decay_applied.toFixed(0)} ELO por ~${Math.round(data.weeks_inactive ?? 0)} semanas sem importar torneios. Importe um torneio para recuperar.`}
+                >
+                  −{data.decay_applied.toFixed(0)} por inatividade
+                </span>
+              )}
             </div>
 
             {/* Progresso até o próximo nível */}
