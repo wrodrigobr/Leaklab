@@ -76,7 +76,8 @@
   "gtoPreflop": {
     "eyebrow": "Academia — Ranges GTO",
     "title": "Ranges GTO Preflop",
-    "subtitle": "Elige la acción GTO en spots de open, defensa y 3-bet — evaluado contra las ranges del solver."
+    "subtitle": "Elige la acción GTO en spots de open, defensa y 3-bet — evaluado contra las ranges del solver.",
+    "showRange": "Tabla de ranges"
   },
   "math": {
     "eyebrow": "Academia — Principiante",

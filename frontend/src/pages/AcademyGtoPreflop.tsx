@@ -4,12 +4,14 @@ import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
   CheckCircle2,
+  LayoutGrid,
   Loader2,
   RefreshCw,
   XCircle,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
+import { RangePanel } from "@/components/replayer/RangePanel";
 import { gtoPreflop } from "@/lib/api";
 import type { GtoPreflopQuestion, GtoPreflopVerdict, ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -74,6 +76,8 @@ function buildPreflopStep(q: GtoPreflopQuestion) {
     button: ORDER.indexOf("BTN") + 1,
     board: [],
     player: "Hero", seat: heroIdx + 1, is_hero: true,
+    // Dica de cenário para a tabela de ranges abrir na aba certa (sem banner GTO).
+    preflop_gto: { available: false, scenario: scen, vs_position: vsPos || null },
   } as unknown as ReplayStep;
 
   const heroCards = q.hero_cards.map((c) => `${c.rank}${c.suit}`);
@@ -90,6 +94,7 @@ export default function AcademyGtoPreflop() {
   const [verdict, setVerdict]           = useState<GtoPreflopVerdict | null>(null);
   const [selected, setSelected]         = useState<string | null>(null);
   const [submitting, setSubmitting]     = useState(false);
+  const [showRange, setShowRange]       = useState(false);
   const [streak, setStreak]             = useState(0);
   const [totalDone, setTotalDone]       = useState(0);
   const [totalCorrect, setTotalCorrect] = useState(0);
@@ -98,6 +103,7 @@ export default function AcademyGtoPreflop() {
     setPhase("loading");
     setSelected(null);
     setVerdict(null);
+    setShowRange(false);
     try {
       const timeout = new Promise<never>((_, rej) =>
         setTimeout(() => rej(new Error("timeout")), 12000)
@@ -213,6 +219,15 @@ export default function AcademyGtoPreflop() {
                 <p className="text-sm text-foreground leading-relaxed">{question.context}</p>
               </div>
 
+              {/* Consultar tabela de ranges */}
+              <button
+                onClick={() => setShowRange(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-hud-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              >
+                <LayoutGrid className="size-3.5" aria-hidden />
+                {t("gtoPreflop.showRange")}
+              </button>
+
               {/* Decision (question phase) */}
               {phase === "question" && (
                 <div className="space-y-2">
@@ -288,6 +303,21 @@ export default function AcademyGtoPreflop() {
           </div>
         )}
       </div>
+
+      {/* Range table overlay (consulta) */}
+      {showRange && table && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setShowRange(false)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <RangePanel step={table.step} hero="Hero" heroCards={table.heroCards} onClose={() => setShowRange(false)} />
+          </div>
+        </div>
+      )}
     </HudLayout>
   );
 }
