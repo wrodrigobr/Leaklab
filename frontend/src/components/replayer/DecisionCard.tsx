@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -89,7 +90,7 @@ export function DecisionCard({
   source,
   playedAction,
   idealAction,
-  idealLabel = "Recomendado",
+  idealLabel,
   isActionOk,
   evidence,
   indicators,
@@ -102,6 +103,7 @@ export function DecisionCard({
   verdictTooltip,
   fmtAction,
 }: Props) {
+  const { t } = useTranslation("replayer");
   const showTwoCols =
     !!idealAction &&
     !isActionOk &&
@@ -140,7 +142,7 @@ export function DecisionCard({
           </span>
           <button
             onClick={onToggleDetails}
-            title={showDetails ? "Ocultar detalhes" : "Mostrar detalhes"}
+            title={showDetails ? t("card.toggleHide") : t("card.toggleShow")}
             className="text-muted-foreground/60 hover:text-foreground transition-colors"
           >
             {showDetails ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
@@ -153,7 +155,7 @@ export function DecisionCard({
         <div className={cn("grid gap-2", showTwoCols ? "grid-cols-2" : "grid-cols-1")}>
           <div className="rounded-lg px-2.5 py-2 ring-1 bg-background/60 ring-border/50">
             <div className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
-              Você jogou
+              {t("card.youPlayed")}
             </div>
             <div className={cn(
               "font-mono text-sm font-bold uppercase",
@@ -165,7 +167,7 @@ export function DecisionCard({
           {showTwoCols && (
             <div className="rounded-lg px-2.5 py-2 ring-1 bg-background/60 ring-border/50">
               <div className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
-                {idealLabel}
+                {idealLabel ?? t("card.recommended")}
               </div>
               <div className={cn("font-mono text-sm font-bold uppercase", verdict.cls)}>
                 {fmtAction(idealAction!)}
@@ -201,7 +203,7 @@ export function DecisionCard({
         {hasFooter && (
           <div className="flex items-center flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border/30">
             {footer?.stackBb != null && (
-              <span className="font-mono text-[10px]" title="Stack efetivo do hero em big blinds">
+              <span className="font-mono text-[10px]" title={t("card.stackTip")}>
                 <span className="text-muted-foreground">Stack </span>
                 <span className="font-bold tabular-nums text-foreground/80">
                   {footer.stackBb.toFixed(1)}bb
@@ -211,7 +213,7 @@ export function DecisionCard({
             {footer?.mRatio != null && (
               <span
                 className="font-mono text-[10px]"
-                title="M-Ratio: stack / custo médio de uma órbita. M < 10 = pressão, M < 5 = zona crítica"
+                title={t("card.mTip")}
               >
                 <span className="text-muted-foreground">M </span>
                 <span className={cn(
@@ -243,12 +245,12 @@ export function DecisionCard({
                   footer.icmPressure === "high"     ? "text-amber-400"   :
                   footer.icmPressure === "medium"   ? "text-sky-400"     : "text-muted-foreground"
                 )}
-                title="Pressão ICM: impacto das eliminações no valor esperado em torneio"
+                title={t("card.icmTip")}
               >
                 ICM {
-                  footer.icmPressure === "low" ? "baixo" :
-                  footer.icmPressure === "medium" ? "médio" :
-                  footer.icmPressure === "high" ? "alto" : footer.icmPressure
+                  footer.icmPressure === "low" ? t("card.icmLow") :
+                  footer.icmPressure === "medium" ? t("card.icmMedium") :
+                  footer.icmPressure === "high" ? t("card.icmHigh") : footer.icmPressure
                 }
               </span>
             )}

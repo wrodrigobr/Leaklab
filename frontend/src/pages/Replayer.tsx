@@ -135,10 +135,10 @@ function SidePanels({
 
   // ── Unified verdict: GTO Solver > Range > Engine ────────────────────────────
   const GTO_LABEL_TOOLTIP: Record<string, string> = {
-    gto_correct:         "Ação ótima: frequência GTO ≥ 60% — jogada correta segundo o solver",
-    gto_mixed:           "Estratégia mista: frequência GTO 30–60% — ação válida, mas não dominante no range",
-    gto_minor_deviation: "Desvio leve: frequência GTO 10–30% — jogada infrequente no GTO, mas defensável",
-    gto_critical:        "Desvio crítico: frequência GTO < 10% — jogada raramente justificada pelo solver",
+    gto_correct:         t("card.gtoCorrectTip"),
+    gto_mixed:           t("card.gtoMixedTip"),
+    gto_minor_deviation: t("card.gtoMinorTip"),
+    gto_critical:        t("card.gtoCriticalTip"),
   };
 
   type VInfo = { icon: string; label: string; cls: string; borderCls: string; hdrCls: string; source: string; sourceTooltip: string };
@@ -148,30 +148,30 @@ function SidePanels({
     const _actLow = (step.action ?? '').toLowerCase();
     if (_actLow === 'shows' || _actLow === 'show' || _actLow === 'mucks' || _actLow === 'muck' || _actLow === 'posts' || _actLow === 'post') return null;
     if (effectiveGtoLabel) {
-      const gtoTooltip = "GTO Solver — frequências de Nash equilibrium calculadas para este spot específico";
+      const gtoTooltip = t("card.tipGtoSolver");
       const m: Record<string, VInfo> = {
-        gto_correct:         { icon: "✓", label: "Correto",        cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Solver", sourceTooltip: gtoTooltip },
-        gto_mixed:           { icon: "◎", label: "Misto",          cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "Solver", sourceTooltip: gtoTooltip },
-        gto_minor_deviation: { icon: "⚠", label: "Desvio Leve",   cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Solver", sourceTooltip: gtoTooltip },
-        gto_critical:        { icon: "✗", label: "Desvio Crítico", cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "Solver", sourceTooltip: gtoTooltip },
+        gto_correct:         { icon: "✓", label: t("card.vCorrect"),     cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Solver", sourceTooltip: gtoTooltip },
+        gto_mixed:           { icon: "◎", label: t("card.vMixed"),       cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "Solver", sourceTooltip: gtoTooltip },
+        gto_minor_deviation: { icon: "⚠", label: t("card.vMinorDev"),    cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Solver", sourceTooltip: gtoTooltip },
+        gto_critical:        { icon: "✗", label: t("card.vCriticalDev"), cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "Solver", sourceTooltip: gtoTooltip },
       };
       if (m[effectiveGtoLabel]) return m[effectiveGtoLabel];
     }
     if (!isPostflop && pg?.available) {
-      const rangeTooltip = "Preflop — ranges de abertura GTO por posição e stack depth";
+      const rangeTooltip = t("card.tipRange");
       const m: Record<string, VInfo> = {
-        correct:    { icon: "✓", label: "Correto",      cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Preflop", sourceTooltip: rangeTooltip },
-        acceptable: { icon: "◎", label: "Aceitável",    cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "Preflop", sourceTooltip: rangeTooltip },
-        leak:       { icon: "⚠", label: "Leak",         cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Preflop", sourceTooltip: rangeTooltip },
-        major_leak: { icon: "✗", label: "Leak Grave",   cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "Preflop", sourceTooltip: rangeTooltip },
-        unknown:    { icon: "·", label: "Sem dados",    cls: "text-muted-foreground", borderCls: "border-border",   hdrCls: "bg-hud-surface",   source: "Preflop", sourceTooltip: rangeTooltip },
+        correct:    { icon: "✓", label: t("card.vCorrect"),    cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Preflop", sourceTooltip: rangeTooltip },
+        acceptable: { icon: "◎", label: t("card.vAcceptable"), cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "Preflop", sourceTooltip: rangeTooltip },
+        leak:       { icon: "⚠", label: t("card.vLeak"),       cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Preflop", sourceTooltip: rangeTooltip },
+        major_leak: { icon: "✗", label: t("card.vMajorLeak"),  cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "Preflop", sourceTooltip: rangeTooltip },
+        unknown:    { icon: "·", label: t("card.vNoData"),     cls: "text-muted-foreground", borderCls: "border-border",   hdrCls: "bg-hud-surface",   source: "Preflop", sourceTooltip: rangeTooltip },
       };
       return m[pg.action_quality] ?? m.unknown;
     }
-    const engineTooltip = "Engine — equity estimada, M-Ratio, pressão ICM e contexto de torneio";
-    if (isError) return { icon: "✗", label: "Erro", cls: "text-destructive", borderCls: "border-destructive/40", hdrCls: "bg-destructive/5", source: "Engine", sourceTooltip: engineTooltip };
+    const engineTooltip = t("card.tipEngine");
+    if (isError) return { icon: "✗", label: t("card.vError"), cls: "text-destructive", borderCls: "border-destructive/40", hdrCls: "bg-destructive/5", source: "Engine", sourceTooltip: engineTooltip };
     if (isCorrect || step.hand_equity != null || step.pot_odds_equity != null)
-      return { icon: "✓", label: "Correto", cls: "text-primary", borderCls: "border-primary/30", hdrCls: "bg-primary/5", source: "Engine", sourceTooltip: engineTooltip };
+      return { icon: "✓", label: t("card.vCorrect"), cls: "text-primary", borderCls: "border-primary/30", hdrCls: "bg-primary/5", source: "Engine", sourceTooltip: engineTooltip };
     return null;
   })();
   const showDecision = !!verdict && (studentId !== null || coachAnnotation?.mode !== "replace");
@@ -223,7 +223,7 @@ function SidePanels({
     rfi: "RFI",
     vs_rfi: "vs Open",
     vs_3bet: "vs 3-Bet",
-    vs_shove_fallback: "vs Shove (heurística)",
+    vs_shove_fallback: t("card.scenVsShoveFallback"),
     squeeze: "Squeeze",
     vs_4bet: "vs 4-Bet",
   };
@@ -253,15 +253,15 @@ function SidePanels({
                                                     "engine";
         const SOURCE_LABEL: Record<DecisionSourceVariant, string> = {
           gto: "Solver", preflop: "Preflop", engine: "Engine",
-          heuristic: "Heurística", pushfold: "Push/Fold", na: "Spot N/A",
+          heuristic: t("card.srcHeuristic"), pushfold: "Push/Fold", na: "Spot N/A",
         };
         const SOURCE_TOOLTIP: Record<DecisionSourceVariant, string> = {
-          gto: "GTO Solver — frequências de Nash equilibrium calculadas para este spot",
-          preflop: "Preflop — ranges de abertura GTO por posição e stack depth",
-          engine: "Engine — equity estimada, M-Ratio, pressão ICM e contexto de torneio",
-          heuristic: "Análise heurística — solver não tem cobertura para este spot multiway",
-          pushfold: "Push/Fold zone — stack ≤12bb, decisão binária shove ou fold",
-          na: "Spot incompatível — solver consultado para spot diferente do real",
+          gto: t("card.srcGtoTip"),
+          preflop: t("card.srcPreflopTip"),
+          engine: t("card.srcEngineTip"),
+          heuristic: t("card.srcHeuristicTip"),
+          pushfold: t("card.srcPushfoldTip"),
+          na: t("card.srcNaTip"),
         };
 
         // ──────── Pré-cálculos compartilhados (postflop) ────────
@@ -302,12 +302,12 @@ function SidePanels({
         let why = "";
         if (step.gto_spot_mismatch) {
           why = step.engine_best === "call"
-            ? "Solver foi consultado para um spot sem aposta, mas você enfrentava aposta — análise via heurística do engine."
-            : "Solver foi consultado para um spot com aposta, mas não havia aposta — análise via heurística do engine.";
+            ? t("card.whyMismatchFacing")
+            : t("card.whyMismatchNoBet");
         } else if (isPfZone) {
-          why = `Stack ${step.hero_stack_bb!.toFixed(1)}bb — push/fold dominante. Verifique a barra de freq pra ação ótima específica desta mão.`;
+          why = t("card.whyPushfold", { stack: step.hero_stack_bb!.toFixed(1) });
         } else if (hasEngineGtoConflict) {
-          why = `Engine sugere ${fmtAction(step.engine_best!)} mas Solver indica ${fmtAction(step.gto_action!)} — priorizamos GTO.`;
+          why = t("card.whyEngineConflict", { engine: fmtAction(step.engine_best!), gto: fmtAction(step.gto_action!) });
         } else if (hasMathEvidence) {
           // Frase descreve a AÇÃO TOMADA pelo hero, não a alternativa.
           // "Call lucrativo" quando hero foldou confunde — soa como crítica oposta ao verdict.
@@ -317,40 +317,40 @@ function SidePanels({
           const heroAct = (step.action ?? '').toLowerCase();
           // "necessário" usa adjusted_required quando disponível (engine ajusta por realization
           // e pressão ICM). Quando não há ajuste relevante, é pot odds bruto.
-          const reqLabel = requiredIsAdjusted ? "necessário (ajustado)" : "pot odds";
+          const reqLabel = requiredIsAdjusted ? t("card.reqLabelAdjusted") : t("card.reqLabelPotOdds");
           if (heroAct === 'fold') {
             why = profitable
               ? (margin <= 3
-                  ? `Fold defensável — equity ${eqPct}% ≈ ${reqLabel} ${reqPct}% (break-even).`
-                  : `Fold deixou EV na mesa — equity ${eqPct}% superava ${reqLabel} ${reqPct}%, call era preferível.`)
-              : `Fold correto — equity ${eqPct}% abaixo dos ${reqPct}% ${reqLabel}.`;
+                  ? t("card.whyFoldBreakeven", { eqPct, reqLabel, reqPct })
+                  : t("card.whyFoldLeftEv", { eqPct, reqLabel, reqPct }))
+              : t("card.whyFoldCorrect", { eqPct, reqPct, reqLabel });
           } else if (heroAct === 'call') {
             why = profitable
-              ? `Call lucrativo — equity ${eqPct}% supera ${reqLabel} ${reqPct}%.`
-              : `Call perdedor — equity ${eqPct}% abaixo dos ${reqPct}% ${reqLabel}.`;
+              ? t("card.whyCallProfit", { eqPct, reqLabel, reqPct })
+              : t("card.whyCallLose", { eqPct, reqPct, reqLabel });
           } else if (heroAct === 'check') {
-            why = `Check — equity ${eqPct}% vs ${reqLabel} ${reqPct}% (sem aposta para enfrentar).`;
+            why = t("card.whyCheck", { eqPct, reqLabel, reqPct });
           } else {
             // bet/raise/shove
             why = profitable
-              ? `${fmtAction(heroAct)} com equity ${eqPct}% acima do ${reqLabel} ${reqPct}% — pressão lucrativa.`
-              : `${fmtAction(heroAct)} com equity ${eqPct}% abaixo do ${reqLabel} ${reqPct}% — risco alto sem equity.`;
+              ? t("card.whyAggrProfit", { act: fmtAction(heroAct), eqPct, reqLabel, reqPct })
+              : t("card.whyAggrRisk", { act: fmtAction(heroAct), eqPct, reqLabel, reqPct });
           }
         } else if (!isPostflop && pg?.available) {
           const scen = scenarioLabel[pg.scenario] ?? pg.scenario;
           const pct  = pg.range_pct > 0 ? ` (${(pg.range_pct * 100).toFixed(0)}%)` : '';
           why = pg.in_range
-            ? `${pg.hand_type} está no range ${scen}${pct} @ ${pg.stack_bucket}.`
-            : `${pg.hand_type} está fora do range ${scen}${pct} @ ${pg.stack_bucket}.`;
+            ? t("card.whyInRange", { hand: pg.hand_type, scen, pct, bucket: pg.stack_bucket })
+            : t("card.whyOutRange", { hand: pg.hand_type, scen, pct, bucket: pg.stack_bucket });
         } else if (!hasGto && step.is_hero) {
-          why = "Spot multiway sem solução pré-computada no solver — análise heurística com confiança moderada.";
+          why = t("card.whyMultiway");
         } else if (isPostflop && eq != null) {
-          why = eq >= 0.70 ? "Mão forte — vantagem clara de equity."
-              : eq >= 0.50 ? "Equity ligeiramente favorável — jogue com atenção ao sizing."
-              : eq >= 0.35 ? "Equity desfavorável — prefira linhas de controle."
-              : "Equity fraca — situação difícil, evite inflar o pot.";
+          why = eq >= 0.70 ? t("card.whyEqStrong")
+              : eq >= 0.50 ? t("card.whyEqFavorable")
+              : eq >= 0.35 ? t("card.whyEqUnfavorable")
+              : t("card.whyEqWeak");
         } else {
-          why = "Análise baseada em contexto de torneio.";
+          why = t("card.whyContext");
         }
 
         // ──────── Evidence (1 widget, escolhido por contexto) ────────
@@ -436,7 +436,7 @@ function SidePanels({
                                ['gto_correct','gto_mixed','gto_minor_deviation'].includes(effectiveGtoLabel) &&
                                ['leak','major_leak'].includes(pg!.action_quality));
         const sprColor = spr == null ? "" : spr < 2 ? "text-amber-400" : spr < 5 ? "text-sky-400" : "text-muted-foreground";
-        const sprLabel = spr == null ? null : spr < 2 ? "comprometido" : spr < 5 ? "médio" : "fundo";
+        const sprLabel = spr == null ? null : spr < 2 ? t("card.sprCommitted") : spr < 5 ? t("card.sprMid") : t("card.sprDeep");
         const isBetAct = step.is_hero && (step.action === "bet" || step.action === "raise" || step.action === "shove");
         const bb = step.bb ?? (replayData?.bb ?? 100);
         const amtBb = (isBetAct && step.amount) ? step.amount / bb : null;
@@ -463,7 +463,7 @@ function SidePanels({
               <>
                 <div className="flex flex-wrap gap-1 items-center">
                   <span className="rounded-md bg-background/60 ring-1 ring-border/50 px-2 py-1 font-mono text-[10px]">
-                    <span className="text-muted-foreground mr-1">Cenário</span>
+                    <span className="text-muted-foreground mr-1">{t("card.indScenario")}</span>
                     <span className="text-foreground font-bold">{scenarioLabel[pg!.scenario] ?? pg!.scenario}</span>
                   </span>
                   <span className="text-muted-foreground/60 text-[10px]">›</span>
@@ -471,7 +471,7 @@ function SidePanels({
                     "rounded-md ring-1 px-2 py-1 font-mono text-[10px]",
                     pg!.in_range ? "bg-emerald-500/8 ring-emerald-500/30" : "bg-red-500/8 ring-red-500/30"
                   )}>
-                    <span className="text-muted-foreground mr-1">Mão</span>
+                    <span className="text-muted-foreground mr-1">{t("card.indHand")}</span>
                     <span className={cn("font-bold", pg!.in_range ? "text-emerald-400" : "text-red-400")}>
                       {pg!.hand_type} {pg!.in_range ? '✓' : '✗'}
                     </span>
@@ -484,14 +484,15 @@ function SidePanels({
                       const validVs = pg!.vs_position && pg!.vs_position !== 'UNKNOWN' ? pg!.vs_position : null;
                       // Contexto: RFI mostra "abrindo"; vs_RFI/3bet/etc mostra "vs OPENER"
                       const ctxStr = isRFI
-                        ? `${pg!.position} abrindo ${pg!.stack_bucket}`
-                        : (validVs ? `vs ${validVs} · ${pg!.stack_bucket}` : `${pg!.position} ${pg!.stack_bucket}`);
+                        ? t("card.ctxOpening", { position: pg!.position, stack: pg!.stack_bucket })
+                        : (validVs ? t("card.ctxVs", { vs: validVs, stack: pg!.stack_bucket })
+                                   : t("card.ctxPlain", { position: pg!.position, stack: pg!.stack_bucket }));
                       const title = useHandFreq
-                        ? `Frequência GTO específica de ${pg!.hand_type} em ${ctxStr}`
-                        : `Range agregado em ${ctxStr}`;
+                        ? t("card.freqTitleHand", { hand: pg!.hand_type, ctx: ctxStr })
+                        : t("card.freqTitleAggr", { ctx: ctxStr });
                       const display = useHandFreq
-                        ? `Como GTO joga ${pg!.hand_type} · ${ctxStr}`
-                        : `Range agregado · ${ctxStr}`;
+                        ? t("card.freqDisplayHand", { hand: pg!.hand_type, ctx: ctxStr })
+                        : t("card.freqDisplayAggr", { ctx: ctxStr });
                       return (
                         <div className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground" title={title}>
                           {display}
@@ -532,7 +533,7 @@ function SidePanels({
             )}
             {isPostflop && spr != null && (
               <div className="flex items-center gap-2 font-mono text-[11px]"
-                title="SPR (Stack-to-Pot Ratio): stack efetivo ÷ pot. < 2 = comprometido; 2–5 = médio; > 5 = fundo">
+                title={t("card.sprTip")}>
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">SPR</span>
                 <span className={cn("font-bold tabular-nums", sprColor)}>{spr.toFixed(1)}</span>
                 {sprLabel && <span className={cn("uppercase text-[10px]", sprColor)}>{sprLabel}</span>}
@@ -540,15 +541,15 @@ function SidePanels({
             )}
             {isPostflop && sizingPct != null && (
               <div className="flex items-center gap-2 font-mono text-[11px]"
-                title="Tamanho da sua aposta em relação ao pot antes da ação">
+                title={t("card.sizingTip")}>
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Sizing</span>
                 <span className="font-bold tabular-nums text-foreground">{sizingPct}%</span>
-                <span className="text-muted-foreground text-[10px]">do pot</span>
+                <span className="text-muted-foreground text-[10px]">{t("card.ofPot")}</span>
               </div>
             )}
             {eq != null && (
               <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap"
-                title="Equity estimada da sua mão vs range provável do villain neste momento">
+                title={t("card.equityTip")}>
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Equity</span>
                 <span className={cn(
                   "font-bold tabular-nums",
@@ -557,7 +558,7 @@ function SidePanels({
                   eq >= 0.35 ? "text-amber-400" : "text-red-400"
                 )}>{(eq * 100).toFixed(1)}%</span>
                 <span className="text-muted-foreground text-[10px] whitespace-nowrap">
-                  {eq >= 0.65 ? "forte" : eq >= 0.50 ? "favorável" : eq >= 0.35 ? "marginal" : "fraca"}
+                  {eq >= 0.65 ? t("card.eqStrong") : eq >= 0.50 ? t("card.eqFavorable") : eq >= 0.35 ? t("card.eqMarginal") : t("card.eqWeak")}
                 </span>
               </div>
             )}
@@ -565,11 +566,11 @@ function SidePanels({
               const reqShown = (req != null && req > 0) ? req : reqImplicit!;
               const isImplicit = !(req != null && req > 0);
               const tooltip = isImplicit
-                ? "Equity mínima quando pago para a aposta ser +EV (bet ÷ pot pós-call). Threshold do bet/raise próprio."
+                ? t("card.reqTipImplicit")
                 : requiredIsAdjusted
-                  ? `Equity mínima ajustada por realization e pressão ICM. Pot odds bruto: ${(poRaw! * 100).toFixed(1)}%.`
-                  : "Equity mínima para call ser break-even (bet ÷ (bet + pot))";
-              const label = isImplicit ? "Mín. EV" : "Necess.";
+                  ? t("card.reqTipAdjusted", { potOdds: (poRaw! * 100).toFixed(1) })
+                  : t("card.reqTipRaw");
+              const label = isImplicit ? t("card.reqMinEv") : t("card.reqNeeded");
               return (
                 <div className="flex items-center gap-2 font-mono text-[11px]" title={tooltip}>
                   <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">{label}</span>
@@ -611,7 +612,7 @@ function SidePanels({
             }}
             playedAction={playedAction}
             idealAction={idealAction}
-            idealLabel={hasGto ? "GTO recomenda" : "Recomendado"}
+            idealLabel={hasGto ? t("card.gtoRecommends") : t("card.recommended")}
             isActionOk={isActionOk}
             evidence={evidence}
             indicators={hasIndicators ? indicators : undefined}
@@ -651,15 +652,15 @@ function SidePanels({
           <div className="flex items-center gap-2">
             <FlaskConical className="size-4 shrink-0 text-muted-foreground" />
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground flex-1">
-              Análise GTO
+              {t("card.gtoSectionTitle")}
             </span>
-            <span className="font-mono text-[9px] text-muted-foreground/60 uppercase">Processando</span>
+            <span className="font-mono text-[9px] text-muted-foreground/60 uppercase">{t("card.processing")}</span>
           </div>
           {(gtoRequestStatus === "idle" || gtoRequestStatus === "requesting") && (
             <div className="flex items-center gap-2 rounded-lg bg-sky-500/5 border border-sky-500/20 px-2.5 py-2">
               <Loader2 className="size-3.5 text-sky-400 shrink-0 animate-spin" />
               <p className="text-[11px] text-sky-400">
-                Analisando este spot automaticamente. Recarregue a página em instantes para ver os resultados.
+                {t("card.statusRequesting")}
               </p>
             </div>
           )}
@@ -667,7 +668,7 @@ function SidePanels({
             <div className="flex items-center gap-2 rounded-lg bg-sky-500/5 border border-sky-500/20 px-2.5 py-2">
               <Loader2 className="size-3.5 text-sky-400 shrink-0 animate-spin" />
               <p className="text-[11px] text-sky-400">
-                Na fila — verificando a cada 4s. Os resultados aparecerão automaticamente.
+                {t("card.statusQueued")}
               </p>
             </div>
           )}
@@ -675,7 +676,7 @@ function SidePanels({
             <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
               <Loader2 className="size-3.5 text-amber-400 shrink-0 mt-px animate-spin" />
               <p className="text-[11px] text-amber-400 leading-relaxed">
-                Spot enfileirado para o solver — ainda não temos dados GTO para este cenário. O cálculo pode levar alguns minutos.
+                {t("card.statusSolverQueued")}
               </p>
             </div>
           )}
@@ -683,7 +684,7 @@ function SidePanels({
             <div className="flex items-center gap-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20 px-2.5 py-2">
               <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
               <p className="text-[11px] text-emerald-400">
-                Análise GTO carregada.
+                {t("card.statusDoneLoaded")}
               </p>
             </div>
           )}
@@ -691,14 +692,14 @@ function SidePanels({
             <div className="flex items-start gap-2 rounded-lg bg-muted/30 border border-border/60 px-2.5 py-2">
               <Info className="size-3.5 text-muted-foreground shrink-0 mt-px" />
               <p className="text-[11px] text-muted-foreground/85 leading-relaxed">
-                Solver processou mas não retornou solução — spot multiway sem cobertura na árvore GTO atual.
+                {t("card.statusDoneNoSolution")}
               </p>
             </div>
           )}
           {gtoRequestStatus === "error" && (
             <div className="flex items-center gap-2 rounded-lg bg-destructive/5 border border-destructive/20 px-2.5 py-2">
               <AlertOctagon className="size-3.5 text-destructive shrink-0" />
-              <p className="text-[11px] text-destructive">Não foi possível calcular GTO para este spot.</p>
+              <p className="text-[11px] text-destructive">{t("card.statusError")}</p>
             </div>
           )}
         </section>
@@ -732,7 +733,7 @@ function SidePanels({
           {!annotating && coachAnnotation && (
             <div className="space-y-1">
               <p className="text-sm text-foreground leading-relaxed">{coachAnnotation.comment}</p>
-              {coachAnnotation.coach_action && <p className="font-mono text-[11px] text-primary">→ Correto: {coachAnnotation.coach_action}</p>}
+              {coachAnnotation.coach_action && <p className="font-mono text-[11px] text-primary">→ {t("card.coachCorrect")}: {coachAnnotation.coach_action}</p>}
             </div>
           )}
           {!annotating && !coachAnnotation && <p className="text-xs text-muted-foreground">{t("annotation.noAnnotation")}</p>}

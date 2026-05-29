@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### refactor(i18n): migra o card de decisão do Replayer para i18n (PT/EN/ES)
+- **Débito removido**: `DecisionCard.tsx` e o `SidePanels` (`Replayer.tsx`) tinham dezenas de strings PT hardcoded. Migradas para o namespace `replayer` (bloco `card`, **91 chaves** nas 3 locales): rótulos de veredito (Correto/Misto/Desvio Leve/Crítico, Aceitável/Leak/Leak Grave/Sem dados, Erro), tooltips (Solver/Preflop/Engine, GTO label), source labels, `idealLabel` (GTO recomenda/Recomendado), footer (Você jogou, tooltips de Stack/M/ICM, ICM baixo/médio/alto), indicadores (SPR/Sizing/Equity/Necess. + descritores comprometido/médio/fundo/forte/favorável/marginal/fraca + audit Cenário/Mão), as narrativas `why` (interpolação via `{{eqPct}}`/`{{reqLabel}}`/…), o contexto de freq e as 6 mensagens de status GTO.
+- **Termos de poker mantidos em inglês** (regra do projeto): Fold/Call/Raise/Allin/Check/Shove/Bet, RFI, SPR, Sizing, Equity, Solver, Engine, Preflop, Push/Fold, Leak, Spot N/A.
+- **`DecisionCard`** passou a usar `useTranslation("replayer")`; no `SidePanels` o `t` já era prop. Padrão preservado (componente apresentacional recebe rótulos via prop quando aplicável).
+- **Validado**: script confere que as 91 chaves `card.*` referenciadas existem nas 3 locales; nenhuma string PT visível remanescente (só comentários/log de dev); `vite build` sem erros de tipo.
+
 ### feat(replayer): badge ICM direcional na decisão (mesa final)
 - **Badge visual** no footer do `DecisionCard` do Replayer, nos spots de **mesa final**, pelo sinal contínuo do ICM (`icm_tax` do `calculate_icm`): **ICM · risco alto** (pilha grande, equity ICM < fichas, âmbar), **ICM · sobrevivência** (short stack, equity > fichas, azul) ou **ICM · neutro** (stacks equilibrados). Substitui o chip heurístico "ICM alto/médio/baixo" quando disponível — é o sinal mais informativo ali. Tooltip explica a dinâmica. Fora da mesa final, mantém o chip heurístico.
 - **Plumbing mínimo**: `_build_replay_data` já re-executa o engine ao vivo (`build_decision_inputs_for_hand`), cujo `context` já trazia `icmTaxPct`; bastou propagá-lo no `tech` → step (`icm_tax_pct`). `api.ts` (`ReplayStep`) e `Replayer.tsx` repassam ao `DecisionCard` via prop `icmBadge`.
