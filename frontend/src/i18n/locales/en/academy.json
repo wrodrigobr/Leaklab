@@ -63,6 +63,8 @@
     "ev_direction": "Action EV",
     "hand_classify": "Hand Strength",
     "board_texture": "Board Texture",
+    "made_vs_draw": "Made or Draw",
+    "identify_draw": "Identify Draw",
     "outs_count": "Outs Count",
     "equity_estimate": "Equity Estimate",
     "odds_vs_equity": "Odds vs Equity",

@@ -510,30 +510,39 @@ def _fetch_board_decision(user_id: int, street: str = None) -> Optional[dict]:
 
 def generate_board_strength_question(user_id: int) -> dict:
     """
-    Generates one of 2 board strength exercise types:
-      - hand_classify  : classifique a força da mão neste board
-      - board_texture  : classifique a textura deste board
+    Gera (sintético — variedade infinita) um de 4 tipos de exercício de board:
+      - hand_classify : força da mão em 5 buckets (flop/turn/river)
+      - made_vs_draw  : mão feita / draw / nada
+      - identify_draw : que projeto a mão tem (flush / straight / combo)
+      - board_texture : textura do flop (seco / semi / úmido)
 
-    Returns a question dict ready to be JSON-serialized.
+    `user_id` mantido por compatibilidade de assinatura — as cartas são sorteadas,
+    não vêm do histórico (que causava repetição).
     """
-    decision = _fetch_board_decision(user_id)
+    qtype = random.choices(
+        ['hand_classify', 'made_vs_draw', 'identify_draw', 'board_texture'],
+        weights=[0.34, 0.26, 0.20, 0.20],
+    )[0]
 
-    if not decision:
-        return _synthetic_board_question()
+    if qtype == 'board_texture':
+        _, board = _deal_spot(3)
+        return _board_texture_question(board, {})
 
-    hero_raw  = decision.get('hero_cards', '')
-    board_raw = decision.get('board', '')
-    hero  = _parse_cards(hero_raw)
-    board = _parse_cards(board_raw)
+    if qtype == 'identify_draw':
+        # Sorteia até obter um projeto puro (bucket == 1, sem par feito) — flop ou turn.
+        for _ in range(200):
+            hero, board = _deal_spot(random.choice([3, 4]))
+            if _hand_bucket(hero, board) == 1:
+                return _identify_draw_question(hero, board)
+        hero, board = _deal_spot(3)
+        return _hand_classify_question(hero, board, {})
 
-    if len(hero) < 2 or len(board) < 3:
-        return _synthetic_board_question()
+    if qtype == 'made_vs_draw':
+        hero, board = _deal_spot(random.choice([3, 4, 5]))
+        return _made_vs_draw_question(hero, board)
 
-    qtype = random.choices(['hand_classify', 'board_texture'], weights=[0.65, 0.35])[0]
-
-    if qtype == 'hand_classify':
-        return _hand_classify_question(hero, board, decision)
-    return _board_texture_question(board, decision)
+    hero, board = _deal_spot(random.choice([3, 3, 4, 5]))
+    return _hand_classify_question(hero, board, {})
 
 
 def _hand_classify_question(
@@ -634,6 +643,105 @@ def _board_texture_question(
             "Ambos = úmido; um só = semi-úmido; nenhum = seco."
         ),
         'context': {'street': 'flop', 'position': d.get('position')},
+        'xp_value': 20,
+    }
+
+
+# ── Board sintético: dealer + detecção de draws ─────────────────────────────────
+
+_DECK_RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
+_DECK_SUITS = ['s', 'h', 'd', 'c']
+
+
+def _deal_spot(board_size: int) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """Sorteia hero(2) + board(board_size) cartas distintas de um baralho embaralhado."""
+    deck = [(r, s) for r in _DECK_RANKS for s in _DECK_SUITS]
+    random.shuffle(deck)
+    return deck[:2], deck[2:2 + board_size]
+
+
+def _has_flush_draw(hero, board) -> bool:
+    hsv = [c[1] for c in hero]
+    allsv = hsv + [c[1] for c in board]
+    return any(allsv.count(s) == 4 and hsv.count(s) >= 1 for s in _DECK_SUITS)
+
+
+def _has_straight_draw(hero, board) -> bool:
+    """4-para-straight (janela de 4 ranks distintos com span <= 4), hero participando."""
+    h_rv = [RANK_VALUES[c[0]] for c in hero]
+    all_rv = h_rv + [RANK_VALUES[c[0]] for c in board]
+    ext = sorted(set(all_rv + ([1] if 14 in all_rv else [])))
+    for i in range(len(ext) - 3):
+        w = ext[i:i + 4]
+        if w[3] - w[0] <= 4 and len(set(w)) == 4:
+            if any((hr == 14 and 1 in w) or hr in w for hr in h_rv):
+                return True
+    return False
+
+
+def _shuffled_options(labels: dict, order: list, correct_key: str):
+    pool = order[:]
+    random.shuffle(pool)
+    return [labels[k] for k in pool], pool.index(correct_key)
+
+
+def _made_vs_draw_question(hero, board) -> dict:
+    bucket = _hand_bucket(hero, board)
+    cat = 'feita' if bucket >= 2 else ('draw' if bucket == 1 else 'air')
+    labels = {
+        'feita': 'Mão feita (par ou melhor)',
+        'draw':  'Draw (projeto, sem par)',
+        'air':   'Nada (air)',
+    }
+    options, correct_index = _shuffled_options(labels, ['feita', 'draw', 'air'], cat)
+    expl = {
+        'feita': 'Você já tem par ou melhor — mão feita com showdown value.',
+        'draw':  'Sem par, mas com projeto (flush e/ou straight): equity que depende de melhorar.',
+        'air':   'Sem par e sem projeto relevante — air.',
+    }
+    hero_str  = ' '.join(f'{r}{s}' for r, s in hero)
+    board_str = ' '.join(f'{r}{s}' for r, s in board)
+    return {
+        'type': 'made_vs_draw',
+        'question': f'Board: **{board_str}**\nSuas cartas: **{hero_str}**\nVocê tem mão feita, draw ou nada?',
+        'hero_cards':  [{'rank': r, 'suit': s} for r, s in hero],
+        'board_cards': [{'rank': r, 'suit': s} for r, s in board],
+        'options': options,
+        'correct_index': correct_index,
+        'explanation': expl[cat],
+        'mental_tip': '**Atalho:** par com o board ou bolso = mão feita; sem par mas 4 do mesmo naipe / 4 em sequência = draw; nenhum = nada.',
+        'xp_value': 20,
+    }
+
+
+def _identify_draw_question(hero, board) -> dict:
+    fd = _has_flush_draw(hero, board)
+    sd = _has_straight_draw(hero, board)
+    cat = 'combo' if (fd and sd) else ('flush' if fd else ('straight' if sd else 'none'))
+    labels = {
+        'flush':    'Flush draw',
+        'straight': 'Straight draw (sequência)',
+        'combo':    'Combo (flush + straight)',
+        'none':     'Sem draw',
+    }
+    options, correct_index = _shuffled_options(labels, ['flush', 'straight', 'combo', 'none'], cat)
+    expl = {
+        'flush':    '4 cartas do mesmo naipe com você participando = flush draw (~9 outs).',
+        'straight': '4 cartas em sequência = straight draw (8 outs se open-ended, 4 se gutshot).',
+        'combo':    'Flush draw + straight draw ao mesmo tempo — projeto enorme (até ~15 outs).',
+        'none':     'Sem projeto relevante.',
+    }
+    hero_str  = ' '.join(f'{r}{s}' for r, s in hero)
+    board_str = ' '.join(f'{r}{s}' for r, s in board)
+    return {
+        'type': 'identify_draw',
+        'question': f'Board: **{board_str}**\nSuas cartas: **{hero_str}**\nQue projeto (draw) esta mão tem?',
+        'hero_cards':  [{'rank': r, 'suit': s} for r, s in hero],
+        'board_cards': [{'rank': r, 'suit': s} for r, s in board],
+        'options': options,
+        'correct_index': correct_index,
+        'explanation': expl[cat],
+        'mental_tip': '**Atalho:** conte naipes (4 iguais = flush draw) e ranks (4 em sequência, gap ≤1 = straight draw). Os dois juntos = combo.',
         'xp_value': 20,
     }
 
