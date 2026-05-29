@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### test: suite completa verde após as mudanças de ICM + desligar 888/Party
+- Rodada a suite inteira (`tests/run_all_tests.py`): **676 testes, 0 falhas** (~342s). Por suite: engine 225, database 36, llm 43, api 72, regression 30, academy 12, gto 194, revalidation 64.
+- Confirma que está tudo consistente: features de ICM (equity/scoring/feedback/badge/detector de leak), parser PartyGaming **desligado por flag** (testes `test_partygaming_*` e `test_icm` reativam a flag internamente e validam o código gateado), e nada regrediu no restante.
+
 ### chore(parser): desabilita detecção 888/PartyPoker (foco PS/GG) — reversível
 - **Decisão de produto**: por ora o foco é **PokerStars/GGPoker**; 888/PartyPoker ficam para depois. O suporte **não foi removido** — apenas desligado por uma flag, reativável com 1 linha.
 - **Flag `PARTYGAMING_ENABLED = False`** em `leaklab/parser.py`: gateia os dois `_detect_site` (parser + `app.py`, que lê a flag viva). Com ela desligada, arquivos 888/PartyPoker caem em `unknown` → "formato não suportado". Todo o parser PartyGaming (funções, regexes, extração financeira) e seus testes permanecem intactos.
