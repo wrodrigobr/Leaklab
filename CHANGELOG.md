@@ -7,6 +7,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(parser): extração financeira (buy-in/prêmio/data/nome) para 888poker e PartyPoker
+- **`app.py._extract_financials`** ganhou parâmetro `site` e um branch PartyGaming: **888poker** lê buy-in de `Tournament #… $18.30 + $1.70` (buy-in + rake); **PartyPoker** lê `$X USD Buy-in`. Prêmio/place do hero via `Player <hero> finished in N place and received $X` (vencedor) / `…finished in N.` (bustou → prêmio 0); profit = prêmio − buy-in. O branch faz `return` cedo, sem tocar na lógica PokerStars/GGPoker.
+- **`_extract_date`** passou a reconhecer os formatos novos: **888poker** `*** DD MM YYYY HH:MM:SS` e **PartyPoker** `Weekday, Month DD, … YYYY` (mês por nome, via `_MONTHS`).
+- **`_extract_tournament_name`** ganhou branch **PartyPoker**: nome amigável da linha `Table <nome> (<trny>) Table #N` (ex.: "Powerfest #193 - Main Event $500,000 Gtd", "$1 Sit & Go Hero"); cai no heurístico SNG/MTT quando não há nome (e 888, que não traz nome explícito, usa o heurístico `SNG/MTT $buy-in`). Seat regex do heurístico relaxado de `(\S+)` para `(.+?)` (nomes com espaço).
+- **Testes** (`backend/tests/test_partygaming_financials.py`, suite `api`): 5 casos contra as fixtures reais — 888 buy-in 20.00 + data; PartyPoker STT vencedor (buy-in 1 / prize 3 / place 1 / profit +2 / nome "Sit & Go"); PartyPoker MTT bustado (buy-in 215 / place 840 / profit −215 / nome "Powerfest"); cash sem financials; e **regressão garantindo que PokerStars não foi afetado**. Suites api: zero regressões.
+- **Limitação conhecida**: torneios **888poker** não trazem linha de finish nas amostras disponíveis, então prêmio/place ficam `None` (buy-in/data/nome funcionam). Quando aparecer um HH 888 com resultado, ajustar o regex de prêmio.
+
 ### feat(ui): expõe 888poker e PartyPoker na UI de upload
 - **`UploadZone.tsx`**: badges de sites suportados agora refletem o que o parser realmente aceita — `PokerStars, GGPoker, 888poker, PartyPoker`. Removidos **ACR** e **Winamax**, que estavam anunciados mas não têm parser (upload falhava com "Nenhuma mão encontrada").
 - **`SiteLogo.tsx`**: adicionada entrada `partypoker` (favicon + nome "PartyPoker") — torneios importados de PartyPoker passam a exibir logo/nome corretos na listagem; 888poker já tinha entrada. (O backend já persiste `site` via `_detect_site`, agora ciente dos dois.)

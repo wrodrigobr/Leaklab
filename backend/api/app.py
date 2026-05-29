@@ -474,7 +474,7 @@ def _analyze_impl():
     site          = _detect_site(hands[0].raw_text if hasattr(hands[0],'raw_text') else '')
     played_at  = _extract_date(hands[0].raw_text if hasattr(hands[0],'raw_text') else '')
     raw_full   = '\n'.join(h.raw_text for h in hands if hasattr(h,'raw_text'))
-    financials = _extract_financials(raw_full, hero)
+    financials = _extract_financials(raw_full, hero, site)
     t_name     = _extract_tournament_name(raw_full, site, financials.get('buy_in'))
 
     # Bloquear duplicata
@@ -2026,23 +2026,68 @@ def _extract_tournament_name(raw: str, site: str, buy_in: float | None = None) -
         if m:
             return m.group(1).strip()
     else:
+        if site == 'partypoker':
+            # Nome amigável na linha de mesa: "Table Powerfest #193 - Main Event $500,000 Gtd (128730277) Table #83"
+            # ou "Table $1 Sit & Go Hero (128487129) Table #1"
+            m = re.search(r'^Table (.+?) \(\d+\) Table #\d+', raw, re.MULTILINE)
+            if m:
+                return m.group(1).strip()
+            # cash (sem id de torneio na mesa) ou sem nome → cai no heurístico abaixo
         if buy_in is None or buy_in <= 0:
             return None
         # Contar jogadores únicos listados nos assentos para distinguir SNG de MTT
-        seats = re.findall(r'^Seat \d+: (\S+) \(', raw, re.MULTILINE)
+        seats = re.findall(r'^Seat \d+: (.+?) \(', raw, re.MULTILINE)
         unique_players = len(set(seats))
         fmt = 'SNG' if unique_players <= 9 else 'MTT'
         return f'{fmt} ${buy_in:.2f}'
     return None
 
 
-def _extract_financials(raw: str, hero: str) -> dict:
+def _extract_financials(raw: str, hero: str, site: str | None = None) -> dict:
     """
     Extrai buy-in e prêmio do hero do hand history.
-    Suporta PokerStars e GGPoker.
+    Suporta PokerStars, GGPoker, 888poker e PartyPoker.
     """
     import re
     result = {'buy_in': None, 'prize': None, 'profit': None, 'place': None}
+
+    # ── 888poker / PartyPoker (dialeto PartyGaming) ────────────────────────────
+    if site in ('888poker', 'partypoker'):
+        if site == '888poker':
+            # "Tournament #83728678 $18.30 + $1.70 - Table #1 9 Max" → buy-in + rake
+            m = re.search(r'Tournament #\d+\s+\$(\d+\.?\d*)\s*\+\s*\$(\d+\.?\d*)', raw)
+            if m:
+                result['buy_in'] = round(float(m.group(1)) + float(m.group(2)), 2)
+        else:  # partypoker — "NL Texas Hold'em $215 USD Buy-in ..." / "$1 USD Buy-in"
+            m = re.search(r'\$(\d+\.?\d*)\s+USD Buy-in', raw)
+            if m:
+                result['buy_in'] = float(m.group(1))
+
+        if hero:
+            # PartyPoker: "Player Hero finished in 1 place and received $3 USD"
+            #             "Player DiggErr555 finished in 840." (bustou — sem prêmio)
+            m = re.search(
+                r'Player ' + re.escape(hero) +
+                r' finished in (\d+)(?:\s+place and received \$(\d+\.?\d*))?',
+                raw, re.IGNORECASE
+            )
+            if m:
+                result['place'] = int(m.group(1))
+                result['prize'] = float(m.group(2)) if m.group(2) else 0.0
+            else:
+                # Fallback genérico (cobre variações 888): "...received/won $X"
+                m = re.search(
+                    re.escape(hero) + r'[^\n]*?finished[^\n]*?(\d+)[a-z]{0,2} place'
+                    r'(?:[^\n]*?(?:received|won) \$(\d+\.?\d*))?',
+                    raw, re.IGNORECASE
+                )
+                if m:
+                    result['place'] = int(m.group(1))
+                    result['prize'] = float(m.group(2)) if m.group(2) else 0.0
+
+        if result['buy_in'] and result['prize'] is not None:
+            result['profit'] = round(result['prize'] - result['buy_in'], 2)
+        return result
 
     # ── PokerStars buy-in: '$0.98+$0.12' ou '$0.49+$0.49+$0.12' ─────────────
     # Captura 2 ou 3 componentes (prize [+bounty] + rake) e soma tudo
@@ -2121,10 +2166,17 @@ def _extract_financials(raw: str, hero: str) -> dict:
     return result
 
 
+_MONTHS = {
+    'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
+    'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12,
+}
+
+
 def _extract_date(raw: str) -> str | None:
     """
     Extrai a data do jogo do hand history.
-    Suporta PokerStars (2025/07/22) e GGPoker (2026/04/24).
+    Suporta PokerStars/GGPoker (2025/07/22), 888poker ("*** 21 06 2018", DD MM YYYY)
+    e PartyPoker ("Sunday, July 24, 19:32:00 CEST 2016", mês por nome).
     """
     import re
     m = re.search(r'(\d{4})/(\d{2})/(\d{2})\s+\d{2}:\d{2}:\d{2}', raw)
@@ -2133,6 +2185,19 @@ def _extract_date(raw: str) -> str | None:
     m = re.search(r'(\d{4})/(\d{2})/(\d{2})', raw)
     if m:
         return f'{m.group(1)}-{m.group(2)}-{m.group(3)}'
+    # 888poker: "$100/$200 Blinds No Limit Holdem - *** 08 08 2016 23:03:27" (DD MM YYYY)
+    m = re.search(r'\*\*\*\s+(\d{2}) (\d{2}) (\d{4})\b', raw)
+    if m:
+        return f'{m.group(3)}-{m.group(2)}-{m.group(1)}'
+    # PartyPoker: "... - Sunday, July 24, 19:32:00 CEST 2016" (Mês DD ... YYYY)
+    m = re.search(
+        r'\b(January|February|March|April|May|June|July|August|September|October|November|December)'
+        r'\s+(\d{1,2}),.*?(\d{4})',
+        raw, re.IGNORECASE
+    )
+    if m:
+        mo = _MONTHS[m.group(1).lower()]
+        return f'{m.group(3)}-{mo:02d}-{int(m.group(2)):02d}'
     return None
 
 

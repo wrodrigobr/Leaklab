@@ -17,7 +17,7 @@ SUITES = {
                   'test_preflop_gto_quality.py', 'test_recent_regressions.py'],
     'database':  ['test_database.py', 'test_coach_system.py'],
     'llm':       ['test_llm_explainer.py', 'test_study_plan.py'],
-    'api':       ['test_api_endpoints.py', 'test_subscription.py'],
+    'api':       ['test_api_endpoints.py', 'test_subscription.py', 'test_partygaming_financials.py'],
     'regression':['test_tournament.py', 'test_multi_decision.py', 'test_partygaming_parser.py'],
     'academy':   ['test_academy_variety.py'],
     'gto':       ['test_gto_comparison.py',
