@@ -146,7 +146,7 @@ export default function AcademyGtoPreflop() {
       title={t("gtoPreflop.title")}
       description={t("gtoPreflop.subtitle")}
     >
-      <div className="mx-auto max-w-5xl space-y-5">
+      <div className="mx-auto w-full max-w-[1400px] space-y-4">
 
         {/* Stats bar */}
         {totalDone > 0 && (
@@ -195,97 +195,100 @@ export default function AcademyGtoPreflop() {
           </div>
         )}
 
-        {/* Table + actions/verdict */}
+        {/* Table (left) + decision/verdict (right) */}
         {(phase === "question" || phase === "feedback") && question && table && (
-          <div className="space-y-4">
+          <div className="flex flex-col lg:flex-row gap-4 items-stretch">
 
-            {/* Scenario chip + context */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-amber-400">
-                {t(`qtypes.${question.type}`, question.type)}
-              </span>
-              <span className="text-sm text-foreground">{question.context}</span>
-            </div>
-
-            {/* Poker table */}
-            <div className="mx-auto w-full overflow-visible">
-              <div className="mx-auto aspect-[16/10] max-w-[820px]">
+            {/* Table column */}
+            <div className="flex-1 min-w-0">
+              <div className="w-full aspect-[16/10]">
                 <PokerTableV3 step={table.step} hero="Hero" heroCards={table.heroCards} bb={table.bb} betUnit="bb" />
               </div>
             </div>
 
-            {/* Actions (question phase) */}
-            {phase === "question" && (
-              <div className="space-y-2">
-                <p className="text-center font-mono text-xs uppercase tracking-wider text-amber-400">{question.prompt}</p>
-                <div className={cn("grid gap-2 mx-auto max-w-xl",
-                  question.options.length === 2 ? "grid-cols-2" : "grid-cols-3")}>
-                  {question.options.map((opt) => (
-                    <button
-                      key={opt.action}
-                      onClick={() => submitAnswer(opt.action)}
-                      disabled={submitting}
-                      className={cn(
-                        "min-h-[48px] rounded-lg border px-4 py-3 font-mono text-sm font-bold uppercase tracking-wider transition-all active:scale-95",
-                        "border-border bg-hud-surface text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400",
-                        "disabled:opacity-40 disabled:cursor-not-allowed",
-                        submitting && selected === opt.action && "border-amber-500/60 bg-amber-500/5 text-amber-400",
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Side panel */}
+            <aside className="w-full lg:w-80 shrink-0 flex flex-col gap-3">
 
-            {/* Verdict (feedback phase) */}
-            {phase === "feedback" && verdict && (
-              <div className="mx-auto max-w-xl space-y-3">
-                <div className={cn(
-                  "rounded-xl border p-5 space-y-3",
-                  verdict.is_correct ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5",
-                )}>
-                  <div className="flex items-center gap-2">
-                    {verdict.is_correct
-                      ? <CheckCircle2 className="size-5 text-emerald-400 shrink-0" aria-hidden />
-                      : <XCircle className="size-5 text-amber-400 shrink-0" aria-hidden />}
-                    <span className={cn("font-mono text-xs font-bold uppercase tracking-wider",
-                      verdict.is_correct ? "text-emerald-400" : "text-amber-400")}>
-                      {verdict.is_correct ? t("feedback.correct") : t("feedback.wrong")}
-                    </span>
-                    {verdict.xp_awarded > 0 && (
-                      <span className="ml-auto font-mono text-[10px] text-emerald-400">+{verdict.xp_awarded} XP</span>
+              {/* Scenario + context */}
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-amber-400">
+                  {t(`qtypes.${question.type}`, question.type)}
+                </span>
+                <p className="text-sm text-foreground leading-relaxed">{question.context}</p>
+              </div>
+
+              {/* Decision (question phase) */}
+              {phase === "question" && (
+                <div className="space-y-2">
+                  <p className="font-mono text-xs uppercase tracking-wider text-amber-400">{question.prompt}</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {question.options.map((opt) => (
+                      <button
+                        key={opt.action}
+                        onClick={() => submitAnswer(opt.action)}
+                        disabled={submitting}
+                        className={cn(
+                          "min-h-[48px] rounded-lg border px-4 py-3 text-left font-mono text-sm font-bold uppercase tracking-wider transition-all active:scale-95",
+                          "border-border bg-hud-surface text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400",
+                          "disabled:opacity-40 disabled:cursor-not-allowed",
+                          submitting && selected === opt.action && "border-amber-500/60 bg-amber-500/5 text-amber-400",
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Verdict (feedback phase) */}
+              {phase === "feedback" && verdict && (
+                <div className="flex flex-col gap-3">
+                  <div className={cn(
+                    "rounded-xl border p-4 space-y-3",
+                    verdict.is_correct ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5",
+                  )}>
+                    <div className="flex items-center gap-2">
+                      {verdict.is_correct
+                        ? <CheckCircle2 className="size-5 text-emerald-400 shrink-0" aria-hidden />
+                        : <XCircle className="size-5 text-amber-400 shrink-0" aria-hidden />}
+                      <span className={cn("font-mono text-xs font-bold uppercase tracking-wider",
+                        verdict.is_correct ? "text-emerald-400" : "text-amber-400")}>
+                        {verdict.is_correct ? t("feedback.correct") : t("feedback.wrong")}
+                      </span>
+                      {verdict.xp_awarded > 0 && (
+                        <span className="ml-auto font-mono text-[10px] text-emerald-400">+{verdict.xp_awarded} XP</span>
+                      )}
+                    </div>
+
+                    {/* Frequências GTO da mão */}
+                    {freqEntries.length > 0 && (
+                      <div className="space-y-1.5">
+                        {freqEntries.map(([act, freq]) => (
+                          <div key={act} className="flex items-center gap-2">
+                            <span className="font-mono text-[10px] text-muted-foreground w-10 shrink-0">{FREQ_LABEL[act] ?? act}</span>
+                            <div className="relative flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                              <div className={cn("h-full rounded-full", FREQ_COLOR[act] ?? "bg-primary")} style={{ width: `${Math.min(100, freq * 100)}%` }} />
+                            </div>
+                            <span className="font-mono text-[10px] font-bold tabular-nums w-8 text-right text-foreground">{Math.round(freq * 100)}%</span>
+                          </div>
+                        ))}
+                      </div>
                     )}
+
+                    <p className="text-sm text-muted-foreground leading-relaxed">{verdict.explanation}</p>
                   </div>
 
-                  {/* Frequências GTO da mão */}
-                  {freqEntries.length > 0 && (
-                    <div className="space-y-1.5">
-                      {freqEntries.map(([act, freq]) => (
-                        <div key={act} className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] text-muted-foreground w-10 shrink-0">{FREQ_LABEL[act] ?? act}</span>
-                          <div className="relative flex-1 h-1.5 rounded-full bg-border overflow-hidden">
-                            <div className={cn("h-full rounded-full", FREQ_COLOR[act] ?? "bg-primary")} style={{ width: `${Math.min(100, freq * 100)}%` }} />
-                          </div>
-                          <span className="font-mono text-[10px] font-bold tabular-nums w-8 text-right text-foreground">{Math.round(freq * 100)}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <p className="text-sm text-muted-foreground leading-relaxed">{verdict.explanation}</p>
+                  <button
+                    onClick={loadQuestion}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400"
+                  >
+                    <ArrowRight className="size-4" aria-hidden />
+                    {t("nextQuestion")}
+                  </button>
                 </div>
-
-                <button
-                  onClick={loadQuestion}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400"
-                >
-                  <ArrowRight className="size-4" aria-hidden />
-                  {t("nextQuestion")}
-                </button>
-              </div>
-            )}
+              )}
+            </aside>
           </div>
         )}
       </div>
