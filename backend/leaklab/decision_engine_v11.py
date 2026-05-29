@@ -829,7 +829,18 @@ def build_interpretation(input_data: Dict[str, Any], label: str, adjusted_requir
         elif mr < 15:
             parts.append(f"M-Ratio {mr}: pressão moderada — stack preservation pesa em spots marginais.")
 
-    if icm == "high":
+    # ICM — na mesa final, leitura direcional pelo sinal contínuo (icm_tax);
+    # fora dela, o bucket heurístico icm_pressure. Qualitativo (sem número "duro":
+    # os payouts reais não vêm no HH, então a forma da pressão é confiável, o valor não).
+    icm_tax = ctx.get("icmTaxPct")
+    if icm_tax is not None:
+        if icm_tax >= 5:        # equity ICM < fração de fichas → pilha grande
+            parts.append("Mesa final: você tem das maiores pilhas — pelo ICM, suas fichas valem menos que a fração no prize pool (retornos decrescentes). Arriscar a stack exige mais equity do que o pot odds sugere; evite flips marginais e prefira pressionar os short stacks.")
+        elif icm_tax <= -5:     # equity ICM > fração de fichas → pilha curta
+            parts.append("Mesa final: pilha curta com prêmio de sobrevivência — pelo ICM sua equity supera a fração de fichas, então sobreviver tem valor real. Seja seletivo ao arriscar a eliminação.")
+        else:
+            parts.append("Mesa final: stacks equilibrados — a pressão ICM é leve, mas todo all-in carrega risco de eliminação.")
+    elif icm == "high":
         parts.append("ICM elevado: risco de eliminação aumenta o threshold de call — sobrevivência tem valor real.")
     elif icm == "medium" and label == "clear_mistake":
         parts.append("ICM médio: equity de fichas subestima o risco de eliminação neste spot.")

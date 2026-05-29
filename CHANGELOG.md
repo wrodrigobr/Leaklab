@@ -7,6 +7,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(engine): feedback ICM direcional na decisão (mesa final)
+- **`decision_engine_v11.build_interpretation`**: nos spots de **mesa final** (quando há `icmTaxPct`), o feedback da decisão agora explica a dinâmica ICM em linguagem de jogador, pelo **sinal do `icm_tax`**:
+  - **pilha grande** (equity ICM < fração de fichas): "suas fichas valem menos que a fração no prize pool (retornos decrescentes); arriscar a stack exige mais equity — evite flips marginais, pressione os short stacks";
+  - **pilha curta** (equity ICM > fração): "prêmio de sobrevivência — sobreviver tem valor real, seja seletivo ao arriscar a eliminação";
+  - **equilibrado**: pressão ICM leve, mas todo all-in carrega risco de eliminação.
+- **Qualitativo de propósito**: como os payouts reais não vêm no HH, a *forma* da pressão é confiável mas o valor não — então o texto **não expõe número "duro"** (% / $), alinhado à filosofia da /docs. Aparece só em mãos já marcadas como erro (onde explicar o porquê agrega).
+- **Fallback preservado**: fora da mesa final (sem `icmTaxPct`), mantém o texto heurístico anterior (`icm_pressure` high/medium) — inalterado.
+- **Testes** (`test_icm.py`): +1 caso cobrindo as 3 direções + o fallback. Suite engine (224): zero regressões.
+
 ### feat(engine): ICM tax contínuo no scoring (mesa final)
 - **`decision_engine_v11.calc_pressure_adjustment`** ganhou param `icm_tax_pct`: na **mesa final** usa o sinal **contínuo** do ICM (`icmTaxPct`, vindo do `calculate_icm` via `mtt_context`) em vez do bucket grosseiro. `|icm_tax|` = intensidade da distorção ICM → eleva a **equity requerida** para arriscar a pilha (calls finos viram erro maior; folds apertados são perdoados — comportamento clássico de risk/survival premium). Escala suave `|tax|/100 × 0.06`, capada em **+0.02** e dentro do clamp global `[-0.03, 0.03]`.
 - **Fallback preservado**: sem `icmTaxPct` (fora da mesa final), cai no heurístico anterior (`icm_pressure=="high"` em turn/river → +0.01) — **comportamento idêntico ao antigo**. Por isso a distribuição de labels do `test_tournament` (PokerStars 9-max, sem contexto FT) não muda.

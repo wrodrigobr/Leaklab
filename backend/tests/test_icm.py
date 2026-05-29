@@ -135,6 +135,28 @@ def test_icm_tax_raises_required_equity_for_thin_call():
     print("OK  test_icm_tax_raises_required_equity_for_thin_call")
 
 
+def test_icm_interpretation_directional():
+    """Na mesa final, o feedback da decisão (erro) traz a leitura direcional do ICM;
+    fora dela, mantém o texto heurístico. Qualitativo — sem número 'duro'."""
+    from leaklab.decision_engine_v11 import evaluate_decision
+
+    def strat(tax):
+        return evaluate_decision(_thin_call_input(tax))['interpretation']['strategicExplanation']
+
+    big = strat(30.0)        # pilha grande (equity ICM < fichas)
+    assert 'Mesa final' in big and 'maiores pilhas' in big
+
+    short = strat(-30.0)     # pilha curta (prêmio de sobrevivência)
+    assert 'Mesa final' in short and 'pilha curta' in short
+
+    balanced = strat(1.0)    # stacks equilibrados
+    assert 'Mesa final' in balanced and 'equilibrados' in balanced
+
+    none = strat(None)       # fora da mesa final → fallback heurístico, sem "Mesa final"
+    assert 'Mesa final' not in none and 'ICM elevado' in none
+    print("OK  test_icm_interpretation_directional")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
