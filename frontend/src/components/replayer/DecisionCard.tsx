@@ -46,6 +46,14 @@ export interface DecisionFooter {
   stackBb?: number | null;
   mRatio?: number | null;
   icmPressure?: string | null;
+  icmTaxPct?: number | null;   // mesa final: chip% − equity ICM% (None fora dela)
+}
+
+// Badge direcional de ICM (mesa final) — rótulos vêm localizados do Replayer (i18n).
+export interface IcmBadge {
+  label: string;
+  tooltip: string;
+  tone: "risk" | "survival" | "neutral";  // risk=pilha grande, survival=short stack
 }
 
 interface Props {
@@ -58,6 +66,7 @@ interface Props {
   evidence?: React.ReactNode;        // slot 3 — 1 widget primário (sempre visível)
   indicators?: React.ReactNode;      // slot 4 — chips/rows numéricos secundários (sempre visíveis)
   footer?: DecisionFooter;
+  icmBadge?: IcmBadge | null;        // badge direcional ICM (mesa final) — substitui o chip "ICM alto"
   why?: string;                      // texto explicativo — escondido por padrão (toggle)
   proNotes?: React.ReactNode;        // notas longas profissionais — escondidas por padrão (toggle)
   showDetails: boolean;
@@ -87,6 +96,7 @@ export function DecisionCard({
   why,
   proNotes,
   footer,
+  icmBadge,
   showDetails,
   onToggleDetails,
   verdictTooltip,
@@ -98,8 +108,15 @@ export function DecisionCard({
     idealAction.toLowerCase() !== playedAction.toLowerCase();
 
   const hasFooter =
-    footer &&
-    (footer.stackBb != null || footer.mRatio != null || footer.icmPressure != null);
+    !!icmBadge ||
+    (footer &&
+      (footer.stackBb != null || footer.mRatio != null || footer.icmPressure != null));
+
+  const ICM_TONE_CLS: Record<IcmBadge["tone"], string> = {
+    risk:     "text-amber-400 bg-amber-500/10 ring-amber-500/30",
+    survival: "text-sky-400 bg-sky-500/10 ring-sky-500/30",
+    neutral:  "text-muted-foreground bg-background/40 ring-border/50",
+  };
 
   return (
     <section className={cn("rounded-xl border overflow-hidden", verdict.borderCls)}>
@@ -183,15 +200,15 @@ export function DecisionCard({
         {/* ── Slot 5: Context footer ──────────────────────────────────── */}
         {hasFooter && (
           <div className="flex items-center flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border/30">
-            {footer!.stackBb != null && (
+            {footer?.stackBb != null && (
               <span className="font-mono text-[10px]" title="Stack efetivo do hero em big blinds">
                 <span className="text-muted-foreground">Stack </span>
                 <span className="font-bold tabular-nums text-foreground/80">
-                  {footer!.stackBb.toFixed(1)}bb
+                  {footer.stackBb.toFixed(1)}bb
                 </span>
               </span>
             )}
-            {footer!.mRatio != null && (
+            {footer?.mRatio != null && (
               <span
                 className="font-mono text-[10px]"
                 title="M-Ratio: stack / custo médio de uma órbita. M < 10 = pressão, M < 5 = zona crítica"
@@ -199,27 +216,39 @@ export function DecisionCard({
                 <span className="text-muted-foreground">M </span>
                 <span className={cn(
                   "font-bold tabular-nums",
-                  footer!.mRatio <= 5 ? "text-destructive" :
-                  footer!.mRatio <= 10 ? "text-amber-400" : "text-foreground/80"
+                  footer.mRatio <= 5 ? "text-destructive" :
+                  footer.mRatio <= 10 ? "text-amber-400" : "text-foreground/80"
                 )}>
-                  {footer!.mRatio.toFixed(1)}
+                  {footer.mRatio.toFixed(1)}
                 </span>
               </span>
             )}
-            {footer!.icmPressure != null && (
+            {/* Mesa final: badge direcional do ICM (calculate_icm) substitui o chip
+                heurístico "ICM alto/médio/baixo" — é o sinal mais informativo ali. */}
+            {icmBadge ? (
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide ring-1 cursor-help",
+                  ICM_TONE_CLS[icmBadge.tone]
+                )}
+                title={icmBadge.tooltip}
+              >
+                {icmBadge.label}
+              </span>
+            ) : footer?.icmPressure != null && (
               <span
                 className={cn(
                   "font-mono text-[10px] font-bold uppercase",
-                  footer!.icmPressure === "critical" ? "text-destructive" :
-                  footer!.icmPressure === "high"     ? "text-amber-400"   :
-                  footer!.icmPressure === "medium"   ? "text-sky-400"     : "text-muted-foreground"
+                  footer.icmPressure === "critical" ? "text-destructive" :
+                  footer.icmPressure === "high"     ? "text-amber-400"   :
+                  footer.icmPressure === "medium"   ? "text-sky-400"     : "text-muted-foreground"
                 )}
                 title="Pressão ICM: impacto das eliminações no valor esperado em torneio"
               >
                 ICM {
-                  footer!.icmPressure === "low" ? "baixo" :
-                  footer!.icmPressure === "medium" ? "médio" :
-                  footer!.icmPressure === "high" ? "alto" : footer!.icmPressure
+                  footer.icmPressure === "low" ? "baixo" :
+                  footer.icmPressure === "medium" ? "médio" :
+                  footer.icmPressure === "high" ? "alto" : footer.icmPressure
                 }
               </span>
             )}

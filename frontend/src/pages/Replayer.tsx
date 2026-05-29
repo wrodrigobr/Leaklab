@@ -621,7 +621,20 @@ function SidePanels({
               stackBb: step.hero_stack_bb,
               mRatio: step.m_ratio,
               icmPressure: step.icm_pressure,
+              icmTaxPct: step.icm_tax_pct,
             }}
+            icmBadge={(() => {
+              // Mesa final: badge direcional pelo sinal contínuo do ICM (calculate_icm).
+              // |tax| ≥ 5pp = direção clara; entre −5 e 5 = neutro. None fora da FT.
+              const tax = step.icm_tax_pct;
+              if (tax == null) return null;
+              const tone = tax >= 5 ? "risk" : tax <= -5 ? "survival" : "neutral";
+              return {
+                tone,
+                label: t(`icm.${tone}Label`),
+                tooltip: t(`icm.${tone}Tip`),
+              };
+            })()}
             showDetails={showDetails}
             onToggleDetails={toggleDetails}
             verdictTooltip={effectiveGtoLabel ? GTO_LABEL_TOOLTIP[effectiveGtoLabel] : undefined}

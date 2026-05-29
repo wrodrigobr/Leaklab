@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): badge ICM direcional na decisão (mesa final)
+- **Badge visual** no footer do `DecisionCard` do Replayer, nos spots de **mesa final**, pelo sinal contínuo do ICM (`icm_tax` do `calculate_icm`): **ICM · risco alto** (pilha grande, equity ICM < fichas, âmbar), **ICM · sobrevivência** (short stack, equity > fichas, azul) ou **ICM · neutro** (stacks equilibrados). Substitui o chip heurístico "ICM alto/médio/baixo" quando disponível — é o sinal mais informativo ali. Tooltip explica a dinâmica. Fora da mesa final, mantém o chip heurístico.
+- **Plumbing mínimo**: `_build_replay_data` já re-executa o engine ao vivo (`build_decision_inputs_for_hand`), cujo `context` já trazia `icmTaxPct`; bastou propagá-lo no `tech` → step (`icm_tax_pct`). `api.ts` (`ReplayStep`) e `Replayer.tsx` repassam ao `DecisionCard` via prop `icmBadge`.
+- **i18n** nas 3 locales (`replayer.json` → bloco `icm`): rótulos e tooltips localizados injetados via prop (mantém o `DecisionCard` apresentacional). Qualitativo — sem número "duro" (payouts reais não vêm no HH). Build do frontend validado.
+
 ### feat(engine): feedback ICM direcional na decisão (mesa final)
 - **`decision_engine_v11.build_interpretation`**: nos spots de **mesa final** (quando há `icmTaxPct`), o feedback da decisão agora explica a dinâmica ICM em linguagem de jogador, pelo **sinal do `icm_tax`**:
   - **pilha grande** (equity ICM < fração de fichas): "suas fichas valem menos que a fração no prize pool (retornos decrescentes); arriscar a stack exige mais equity — evite flips marginais, pressione os short stacks";

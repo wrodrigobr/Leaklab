@@ -11,6 +11,14 @@
   "noParams": "Nenhuma mão selecionada. Volte para o torneio e clique em 'Abrir no replayer'.",
   "players": "jogadores",
   "actionLog": "Action Log",
+  "icm": {
+    "riskLabel": "ICM · risco alto",
+    "survivalLabel": "ICM · sobrevivência",
+    "neutralLabel": "ICM · neutro",
+    "riskTip": "Mesa final: você tem das maiores pilhas — pelo ICM suas fichas valem menos que a fração no prize pool (retornos decrescentes). Evite flips marginais.",
+    "survivalTip": "Mesa final: pilha curta com prêmio de sobrevivência — sua equity ICM supera a fração de fichas. Seja seletivo ao arriscar a eliminação.",
+    "neutralTip": "Mesa final: stacks equilibrados — pressão ICM leve, mas todo all-in carrega risco de eliminação."
+  },
   "controls": {
     "play": "Reproduzir",
     "pause": "Pausar",

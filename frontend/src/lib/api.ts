@@ -251,6 +251,7 @@ export interface ReplayStep {
   hand_equity?: number;
   m_ratio?: number;
   icm_pressure?: string;
+  icm_tax_pct?: number | null;  // mesa final: chip% − equity ICM% (>0 pilha grande, <0 short stack)
   hero_stack_bb?: number;
   // GTO analysis (postflop hero actions only)
   gto_strategy?: GtoStrategyAction[] | null;

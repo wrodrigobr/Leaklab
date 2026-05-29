@@ -11,6 +11,14 @@
   "noParams": "No hand selected. Return to the tournament and click 'Open in replayer'.",
   "players": "players",
   "actionLog": "Action Log",
+  "icm": {
+    "riskLabel": "ICM · high risk",
+    "survivalLabel": "ICM · survival",
+    "neutralLabel": "ICM · neutral",
+    "riskTip": "Final table: you hold one of the bigger stacks — by ICM your chips are worth less than their prize-pool share (diminishing returns). Avoid marginal flips.",
+    "survivalTip": "Final table: short stack with a survival premium — your ICM equity exceeds your chip share. Be selective about risking elimination.",
+    "neutralTip": "Final table: balanced stacks — light ICM pressure, but every all-in still risks elimination."
+  },
   "controls": {
     "play": "Play",
     "pause": "Pause",
