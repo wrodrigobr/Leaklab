@@ -31,8 +31,8 @@
       "desc": "Calcula equity con outs, usa la regla 2/4 y combina draws con pot odds sin calculadora."
     },
     "ranges": {
-      "title": "Ranges GTO Preflop",
-      "desc": "Toma la decisión GTO en spots de open, defensa (call/3-bet) y vs 3-bet — corregido contra las ranges del solver."
+      "title": "Ranges GTO — Open (RFI)",
+      "desc": "Entrena solo la decisión de apertura: fold o raise por posición y stack, corregido contra las ranges del solver."
     },
     "bet_sizing": {
       "title": "Bet Sizing 101",
@@ -43,8 +43,8 @@
       "desc": "SPR y compromiso, ICM en la burbuja y FT, equity en potes de 3-bet — spots donde chip EV ≠ equity de torneo."
     },
     "ranges_advanced": {
-      "title": "GTO Preflop — vs 3-Bet",
-      "desc": "Spots avanzados de 4-bet / call / fold contra 3-bets, en las distintas profundidades de stack."
+      "title": "Ranges GTO — Completo",
+      "desc": "Todas las situaciones: open, defensa (call/3-bet) y vs 3-bet (4-bet/call), en distintas profundidades."
     }
   },
   "stats": {
