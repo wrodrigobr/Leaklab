@@ -376,7 +376,8 @@ def calc_realization_adjustment(is_in_position: bool | None, reverse_implied_odd
 
 
 def calc_pressure_adjustment(street: str, pressure_score: float | None, is_multiway: bool | None,
-                              icm_pressure: str | None, is_pko: bool = False) -> float:
+                              icm_pressure: str | None, is_pko: bool = False,
+                              icm_tax_pct: float | None = None) -> float:
     adj = 0.0
     p = pressure_score or 0.0
     if 0.35 <= p < 0.65:
@@ -385,7 +386,15 @@ def calc_pressure_adjustment(street: str, pressure_score: float | None, is_multi
         adj += 0.02
     if is_multiway:
         adj += 0.01
-    if icm_pressure == "high" and street in {"turn", "river"}:
+    # ICM: na mesa final usamos o sinal CONTÍNUO (icm_tax do calculate_icm, ver
+    # leaklab/icm.py) — |tax| = intensidade da distorção ICM. Quanto mais a equity
+    # ICM se afasta da fração de fichas (big stack pagando risk premium OU short
+    # stack com prêmio de sobrevivência), mais equity é exigida para arriscar a
+    # pilha (calls finos viram erro maior, folds apertados são perdoados). Fora da
+    # mesa final (icm_tax indisponível) caímos no bucket heurístico icm_pressure.
+    if icm_tax_pct is not None:
+        adj += clamp(abs(icm_tax_pct) / 100.0 * 0.06, 0.0, 0.02)
+    elif icm_pressure == "high" and street in {"turn", "river"}:
         adj += 0.01
     # PKO: bounty reduz a equity necessária para stack-off — covering player
     # tem incentivo extra (matar villain = ganha bounty). Artigo GW indica
@@ -548,6 +557,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         spot.get("isMultiway"),
         context.get("icmPressure"),
         is_pko=bool(context.get("isPko")),
+        icm_tax_pct=context.get("icmTaxPct"),
     )
     threshold_pack = calc_adjusted_required_equity(
         street,

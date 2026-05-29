@@ -95,6 +95,46 @@ def test_mtt_context_no_icm_for_large_field():
     print("OK  test_mtt_context_no_icm_for_large_field")
 
 
+def test_pressure_adjustment_uses_icm_tax_continuous():
+    """Na mesa final usa o sinal contínuo (icm_tax); fora dela, o bucket heurístico."""
+    from leaklab.decision_engine_v11 import calc_pressure_adjustment
+    # contínuo: |tax| escala a equity requerida, capado em 0.02
+    assert _approx(calc_pressure_adjustment('turn', None, False, 'high', icm_tax_pct=30.0), 0.018, 0.001)
+    assert _approx(calc_pressure_adjustment('turn', None, False, 'low', icm_tax_pct=8.0), 0.0048, 0.001)
+    assert calc_pressure_adjustment('turn', None, False, 'low', icm_tax_pct=100.0) <= 0.03  # clamp global
+    # sem icm_tax → fallback heurístico idêntico ao comportamento anterior
+    assert _approx(calc_pressure_adjustment('turn', None, False, 'high'), 0.01)
+    assert _approx(calc_pressure_adjustment('turn', None, False, 'low'), 0.0)
+    print("OK  test_pressure_adjustment_uses_icm_tax_continuous")
+
+
+def _thin_call_input(icm_tax):
+    ctx = {'tournamentStage': 'final_table', 'icmPressure': 'high', 'isPko': False}
+    if icm_tax is not None:
+        ctx['icmTaxPct'] = icm_tax
+    return {
+        'hand_id': 'h1', 'player_action': 'call', 'street': 'turn',
+        'spot': {'position': 'BB', 'isInPosition': True, 'isMultiway': False,
+                 'effectiveStackBb': 20, 'facingSize': 10, 'street': 'turn'},
+        'hand_profile': {'handClass': 'marginal'},
+        'math': {'potOddsEquity': 0.40, 'estimatedHandEquity': 0.41, 'pressureScore': 0.0,
+                 'reverseImpliedOddsFactor': 0.0, 'impliedOddsFactor': 0.0},
+        'range_evaluation': {'recommendedPrimaryAction': 'fold', 'alternativeActions': [],
+                             'rangeZone': 'outside_range', 'confidence': 0.7},
+        'context': ctx,
+    }
+
+
+def test_icm_tax_raises_required_equity_for_thin_call():
+    """ICM tax alto eleva a equity requerida → call fino vira erro maior."""
+    from leaklab.decision_engine_v11 import evaluate_decision
+    base = evaluate_decision(_thin_call_input(None))
+    iced = evaluate_decision(_thin_call_input(30.0))
+    assert iced['thresholds']['adjustedRequiredEquity'] > base['thresholds']['adjustedRequiredEquity']
+    assert iced['evaluation']['mistakeScore'] > base['evaluation']['mistakeScore']
+    print("OK  test_icm_tax_raises_required_equity_for_thin_call")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
