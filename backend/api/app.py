@@ -1259,31 +1259,50 @@ def player_drill_submit():
     norm_new   = _norm_drill(new_action)
     top_match  = norm_new == best_action
 
-    # Avaliação pela distribuição GTO: aceita como correta qualquer ação que o
-    # solver mistura com frequência relevante (não só a ação mais frequente).
-    # Vale preflop e postflop sempre que houver strategy_json no nó — alinha o
-    # veredito ao conceito de "gto_mixed" do Replayer.
-    MIX_THRESHOLD = 0.10
-    player_freq = float(gto_freqs.get(norm_new, 0.0)) if gto_freqs else 0.0
-    mixed_ok    = (not top_match) and player_freq >= MIX_THRESHOLD
-
     # Guard: quando facing_bet >= stack_bb, call e jam são mecanicamente equivalentes
     # (chamar o raise já coloca todas as fichas — shove não adiciona chips extras).
     facing_bet = float(row.get('facing_bet') or 0)
     stack_bb   = float(row.get('stack_bb') or 9999)
     call_jam_equiv = False
     if not top_match and facing_bet > 0 and stack_bb > 0 and facing_bet >= stack_bb * 0.95:
-        call_jam_set = {'call', 'jam'}
-        if norm_new in call_jam_set and best_action in call_jam_set:
+        if norm_new in ('call', 'jam') and best_action in ('call', 'jam'):
             call_jam_equiv = True
 
-    is_correct = top_match or call_jam_equiv or mixed_ok
+    # ── Avaliação pela distribuição GTO (princípio da indiferença) ───────────
+    # O solver só mistura ações de EV ~equivalente: qualquer ação que ele jogue
+    # não é erro de EV — a de maior frequência é a escolha prática (simplificação).
+    #   correct   = ação mais frequente OU freq >= 30% (linha mista co-ótima)
+    #   deviation = freq 10–30% (o solver joga, defensável — nudge p/ simplificar)
+    #   error     = freq < 10% (solver praticamente não joga) ou sem cobertura
+    CORRECT_FREQ, MIN_FREQ = 0.30, 0.10
+    player_freq = float(gto_freqs.get(norm_new, 0.0)) if gto_freqs else 0.0
+
+    if top_match or call_jam_equiv:
+        gto_tier = 'correct'
+    elif gto_freqs and player_freq >= CORRECT_FREQ:
+        gto_tier = 'correct'
+    elif gto_freqs and player_freq >= MIN_FREQ:
+        gto_tier = 'deviation'
+    else:
+        gto_tier = 'error'
+
+    is_correct    = gto_tier != 'error'
+    # "mixed" = acerto numa linha que NÃO é a #1 (ação mista co-ótima) → selo GTO Misto
+    is_mixed_line = gto_tier == 'correct' and not (top_match or call_jam_equiv)
     if top_match or call_jam_equiv:
         new_score = 0.02
-    elif mixed_ok:
-        new_score = 0.05          # ação mista defensável (GTO joga, mas não é a #1)
+    elif gto_tier == 'correct':
+        new_score = 0.04
+    elif gto_tier == 'deviation':
+        new_score = 0.10
     else:
         new_score = original_score
+
+    # Estratégia ordenada — para o veredito sempre exibir o % de cada ação.
+    gto_strategy = [
+        {'action': _a, 'frequency': round(_f, 4)}
+        for _a, _f in sorted(gto_freqs.items(), key=lambda kv: -kv[1]) if _f > 0.005
+    ] if gto_freqs else []
 
     result = save_drill_session(
         user_id=g.user_id,
@@ -1299,7 +1318,9 @@ def player_drill_submit():
         'new_score':         new_score,
         'original_score':    original_score,
         'gto_freq':          round(player_freq, 3),
-        'mixed':             mixed_ok,
+        'mixed':             is_mixed_line,
+        'gto_tier':          gto_tier,
+        'gto_strategy':      gto_strategy,
         'delta':             result['delta'],
         'next_drill_at':     result['next_drill_at'],
         'srs_interval_days': result['srs_interval_days'],

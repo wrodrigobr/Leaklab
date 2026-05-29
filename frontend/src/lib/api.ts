@@ -697,6 +697,10 @@ export interface DrillSubmitResult {
   delta: number;
   next_drill_at: string;
   srs_interval_days: number;
+  gto_freq?: number;   // frequência GTO da ação jogada (0..1)
+  mixed?: boolean;     // acerto numa linha mista co-ótima (não é a #1, freq ≥ 30%)
+  gto_tier?: "correct" | "deviation" | "error";  // acerto / desvio defensável / erro
+  gto_strategy?: GtoStrategyAction[];             // mix completo (% por ação) p/ o veredito
 }
 
 export interface DrillAnalysisResult {

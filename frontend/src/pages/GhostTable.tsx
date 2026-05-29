@@ -22,6 +22,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { AiText } from "@/components/ui/AiText";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
+import { GtoMixedBadge } from "@/components/replayer/GtoMixedBadge";
 import { drill, gto } from "@/lib/api";
 import type { DrillSpot, DrillStats, DrillSubmitResult, ReplayStep, GtoStrategyAction } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
@@ -265,7 +266,9 @@ export default function GhostTable() {
       setSessionTotal((n) => n + 1);
       setLastResult(result);
       setPhase("result");
-      // Fetch GTO strategy for result panel (postflop spots only)
+      // Mostra o mix direto do resultado (sempre que houver) — garante os % no veredito.
+      setGtoStrategy(result.gto_strategy && result.gto_strategy.length ? result.gto_strategy : null);
+      // Enriquece com o lookup completo quando disponível.
       if (current.street !== 'preflop') {
         gto.decisionLookup(current.id).then(r => {
           if (r.strategy && r.strategy.length > 0) setGtoStrategy(r.strategy);
@@ -579,9 +582,13 @@ export default function GhostTable() {
                 <div className={cn("flex items-center gap-3 rounded-xl border p-4 shrink-0", lastResult.is_correct ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5")}>
                   {lastResult.is_correct ? <CheckCircle2 className="size-8 shrink-0 text-success" aria-hidden /> : <XCircle className="size-8 shrink-0 text-destructive" aria-hidden />}
                   <div className="flex-1 min-w-0">
-                    <p className={cn("font-bold", lastResult.is_correct ? "text-success" : "text-destructive")}>
-                      {lastResult.is_correct ? t("result.correct") : t("result.wrong")}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className={cn("font-bold", lastResult.is_correct ? "text-success" : "text-destructive")}>
+                        {lastResult.is_correct ? t("result.correct") : t("result.wrong")}
+                      </p>
+                      {lastResult.mixed && <GtoMixedBadge label="gto_mixed" size="xs" />}
+                      {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
+                    </div>
                     <p className="text-xs text-muted-foreground">{t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}</p>
                   </div>
                   {pressureMode && streak > 0 && (
@@ -960,9 +967,13 @@ export default function GhostTable() {
               : <XCircle     className="size-9 shrink-0 text-destructive" aria-hidden />
             }
             <div className="flex-1 min-w-0">
-              <p className={cn("text-lg font-bold", lastResult.is_correct ? "text-success" : "text-destructive")}>
-                {lastResult.is_correct ? t("result.correct") : t("result.wrong")}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className={cn("text-lg font-bold", lastResult.is_correct ? "text-success" : "text-destructive")}>
+                  {lastResult.is_correct ? t("result.correct") : t("result.wrong")}
+                </p>
+                {lastResult.mixed && <GtoMixedBadge label="gto_mixed" size="xs" />}
+                {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
+              </div>
               <p className="text-sm text-muted-foreground">
                 {t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}
               </p>

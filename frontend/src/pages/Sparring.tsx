@@ -15,6 +15,7 @@ import {
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
+import { GtoMixedBadge } from "@/components/replayer/GtoMixedBadge";
 import { AiText } from "@/components/ui/AiText";
 import { sparring, drill, tournaments, gto } from "@/lib/api";
 import type { SparringHand, SparringStep, DrillSubmitResult, ReplayStep, GtoDecisionResult } from "@/lib/api";
@@ -270,8 +271,12 @@ function CoachCard({ result, gtoData, gtoLoading, step, t }: CoachCardProps) {
 
       {/* Header: verdict + source */}
       <div className={cn("flex items-center justify-between px-3 py-2.5", verdict.hdrCls)}>
-        <span className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls)}>
-          {verdict.icon} {verdict.label}
+        <span className="flex items-center gap-2">
+          <span className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls)}>
+            {verdict.icon} {verdict.label}
+          </span>
+          {result.mixed && <GtoMixedBadge label="gto_mixed" size="xs" />}
+          {result.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
         </span>
         <span className="font-mono text-[9px] text-muted-foreground/45 uppercase tracking-wider">
           {verdict.source}
