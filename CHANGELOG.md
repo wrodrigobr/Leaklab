@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### chore(backfill): popula icm_tax_pct nos torneios já importados
+- **`backend/scripts/backfill_icm_tax.py`** (novo): recomputa o `icm_tax_pct` (contexto a nível de mão) a partir de `tournaments.raw_text` via `build_mtt_context` → `context_to_dict` — o mesmo caminho que o `/analyze` persiste — e atualiza todas as decisões da mão. Sem isso, decisões importadas antes da coluna existir ficavam NULL e o detector de leak ICM não as enxergava. Cross-backend (placeholders `?` auto-adaptados), **idempotente** (`WHERE icm_tax_pct IS NULL`), com `--dry-run` e `--limit`.
+- Executado no banco local: 10 torneios / 858 mãos → **1122 decisões preenchidas**; 179 com `|tax| ≥ 8pp`, 38 spots de leak ICM (alto ICM + gamble errado). Re-run confirma idempotência (0 atualizações). End-to-end: o detector `icm_blindness` passou a surfacear (ex.: user 13 — high, 24 ocorrências / 52%).
+- **Produção (Render/Postgres)**: rodar lá uma vez (`python scripts/backfill_icm_tax.py`) para popular os torneios já importados dos usuários — o script funciona em Postgres sem alteração.
+
 ### feat(cognitive): detector de leak ICM ("ICM Blindness") na mesa final
 - **Novo padrão coachável** no Cognitive Failure Mapper: detecta o hábito de **arriscar a pilha em spots finos de alto ICM na mesa final** quando o ICM pede aperto. opp = decisão stack-risking (call/aposta/all-in) num spot com `|icm_tax| ≥ 8pp`; count = essa decisão foi erro. Frequência alta = cegueira a ICM. (`cognitive_mapper._icm_blindness`)
 - **Persistência**: nova coluna `decisions.icm_tax_pct` (schema SQLite + Postgres + migrations). `save_decisions` grava `context.icmTaxPct` (já computado no pipeline via `calculate_icm`); `get_cognitive_failure_report` passa o campo ao detector. Decisões fora da mesa final têm `icm_tax_pct` NULL e são naturalmente ignoradas.
