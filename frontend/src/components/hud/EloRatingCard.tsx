@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { TrendingUp, TrendingDown, Minus, ChevronRight, Award } from "lucide-react";
 import { metrics, EloResponse } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,7 @@ import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
  * Mostra: ELO overall + banda + delta 7d + link pra página /rating.
  */
 export function EloRatingCard() {
+  const { t } = useTranslation("dashboard");
   const [data, setData] = useState<EloResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export function EloRatingCard() {
         <div className="space-y-1 flex-1 min-w-0">
           <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             <Award className="size-3" />
-            Rating ELO
+            {t("elo.title")}
           </div>
           <div className="flex items-center gap-2">
             {(() => { const I = LEVEL_ICONS[overall.band_label]; return I ? <I size={22} className="shrink-0" /> : null; })()}
@@ -63,23 +65,23 @@ export function EloRatingCard() {
             </span>
             <span className="font-mono text-[11px] font-semibold"
                   style={{ color: overall.band_color }}>
-              {overall.band_label}
+              {t(`elo.bands.${overall.band_label}`, { defaultValue: overall.band_label })}
             </span>
           </div>
           <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
-            <span>{total_decisions.toLocaleString()} decisões</span>
+            <span>{t("elo.decisions", { n: total_decisions.toLocaleString() })}</span>
             {!no_data && (
               <span className={cn("flex items-center gap-0.5", trendColor)}>
                 <TrendIcon className="size-3" />
-                {delta_7d == null ? "—" : `${delta_7d > 0 ? "+" : ""}${delta_7d.toFixed(1)} (7d)`}
+                {delta_7d == null ? "—" : t("elo.delta7d", { val: `${delta_7d > 0 ? "+" : ""}${delta_7d.toFixed(1)}` })}
               </span>
             )}
             {!!data.decay_applied && data.decay_applied > 0 && (
               <span
                 className="text-amber-400/80"
-                title={`Calibração por inatividade: −${data.decay_applied.toFixed(0)} ELO por ~${Math.round(data.weeks_inactive ?? 0)} semanas sem importar torneios. Importe um torneio para recuperar.`}
+                title={t("elo.inactiveTip", { pts: data.decay_applied.toFixed(0), weeks: Math.round(data.weeks_inactive ?? 0) })}
               >
-                −{data.decay_applied.toFixed(0)} inativo
+                {t("elo.inactiveShort", { pts: data.decay_applied.toFixed(0) })}
               </span>
             )}
           </div>
@@ -91,7 +93,10 @@ export function EloRatingCard() {
                      style={{ width: `${data.next_band.progress * 100}%`, background: overall.band_color }} />
               </div>
               <div className="font-mono text-[9px] text-muted-foreground">
-                {data.next_band.elo_to_go.toFixed(0)} pra {data.next_band.label}
+                {t("elo.toNextBandShort", {
+                  pts: data.next_band.elo_to_go.toFixed(0),
+                  band: t(`elo.bands.${data.next_band.label}`, { defaultValue: data.next_band.label }),
+                })}
               </div>
             </div>
           )}

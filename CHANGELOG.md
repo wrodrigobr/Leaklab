@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### refactor(i18n): migra os cards de ELO para i18n (PT/EN/ES)
+- **Débito removido**: `EloRatingCard.tsx` e `Rating.tsx` (`/rating`) eram PT hardcoded. Migrados para o namespace `dashboard` (bloco `elo.*`: **28 chaves** estáticas + sub-bloco `bands`), nas 3 locales — título, contagem de decisões, delta/decay, "próxima banda", eyebrow/título/descrição da página, "Por street", tabela de bandas ("você está aqui"), curvas de evolução, máx/mín do gráfico, e o `DeltaBadge`.
+- **Nomes de banda localizados**: as 7 bandas (Iniciante…Elite) vêm do backend em PT; o frontend agora traduz via `t('elo.bands.<label>', { defaultValue: label })` (Beginner/Student/Solid… em EN; Principiante/Estudiante/Sólido… em ES). Ícone continua resolvido pelo label original (`LEVEL_ICONS`).
+- **Termos de poker mantidos em inglês** (regra do projeto): Preflop/Flop/Turn/River.
+- **Validado**: script confere que as 28 chaves `elo.*` + as 7 bandas existem nas 3 locales; sem PT visível remanescente; `vite build` sem erros de tipo. (Página `/docs/rating` — teoria — fica fora deste escopo de "cards".)
+
 ### feat(elo): decay por inatividade (Sprint 2 #19)
 - **`elo_engine.apply_inactivity_decay(elo, weeks_inactive)`**: o ELO "esfria" enquanto o jogador não importa torneios. Padrões: **−2/semana**, **carência de 1 semana** (não pune logo), **cap total −20** (~10 semanas), **piso no INITIAL_ELO (1500)** — só esfria ratings acima do par; quem está no/abaixo dele não decai nem sobe. Retorna `(elo_ajustado, pts_decaídos)`.
 - **Aplicado na leitura** (`GET /player/elo`): calcula semanas desde o último `imported_at` (novo repo `get_last_activity_at`) e decai **só o overall** (headline) — `by_street`, pico e histórico ficam crus. Snapshot persistido não muda; o decay é só de exibição (cresce com o tempo parado, sem precisar de upload). Response ganha `decay_applied` + `weeks_inactive`; `next_band` recalculado sobre o ELO decaído.

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Award, TrendingUp, TrendingDown, Minus, BookOpen } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { metrics, EloResponse, EloCurveResponse, EloCurvePoint } from "@/lib/api";
@@ -14,6 +15,7 @@ const STREET_LABEL: Record<string, string> = {
 };
 
 export default function Rating() {
+  const { t } = useTranslation("dashboard");
   const [data, setData] = useState<EloResponse | null>(null);
   const [curve, setCurve] = useState<EloCurveResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,13 +30,13 @@ export default function Rating() {
 
   return (
     <HudLayout
-      eyebrow="Métrica do jogador"
-      title="Rating ELO"
-      description="Sistema de rating baseado em ELO adaptado para poker. Cada decisão é uma 'partida' contra o solver GTO."
+      eyebrow={t("elo.page.eyebrow")}
+      title={t("elo.page.title")}
+      description={t("elo.page.description")}
     >
       {loading && (
         <div className="py-12 text-center font-mono text-sm text-muted-foreground">
-          Carregando…
+          {t("elo.page.loading")}
         </div>
       )}
       {error && (
@@ -48,7 +50,9 @@ export default function Rating() {
 }
 
 function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveResponse | null }) {
+  const { t } = useTranslation("dashboard");
   const { overall, by_street, total_decisions, delta_7d, bands, history, no_data, next_band, peak_elo } = data;
+  const bandName = (label: string) => t(`elo.bands.${label}`, { defaultValue: label });
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -59,7 +63,9 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
               <Award className="size-3" />
-              Rating recente — forma atual{data.window_tournaments ? ` (últimos ${data.window_tournaments} torneios)` : ""}
+              {data.window_tournaments
+                ? t("elo.page.recentFormWindow", { n: data.window_tournaments })
+                : t("elo.page.recentForm")}
             </div>
             <div className="flex items-center gap-3">
               {(() => { const I = LEVEL_ICONS[overall.band_label]; return I ? <I size={40} className="shrink-0" /> : null; })()}
@@ -69,21 +75,21 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
               </span>
               <span className="font-mono text-base font-semibold"
                     style={{ color: overall.band_color }}>
-                {overall.band_label}
+                {bandName(overall.band_label)}
               </span>
             </div>
             <div className="mt-2 flex items-center gap-4 flex-wrap text-xs font-mono text-muted-foreground">
-              <span>{total_decisions.toLocaleString()} decisões (com solver GTO)</span>
+              <span>{t("elo.page.decisionsGto", { n: total_decisions.toLocaleString() })}</span>
               {!no_data && <DeltaBadge delta={delta_7d} />}
               {peak_elo != null && (
-                <span className="text-muted-foreground/80">pico: {peak_elo.toFixed(0)}</span>
+                <span className="text-muted-foreground/80">{t("elo.page.peak", { n: peak_elo.toFixed(0) })}</span>
               )}
               {!!data.decay_applied && data.decay_applied > 0 && (
                 <span
                   className="text-amber-400/80"
-                  title={`Calibração por inatividade: −${data.decay_applied.toFixed(0)} ELO por ~${Math.round(data.weeks_inactive ?? 0)} semanas sem importar torneios. Importe um torneio para recuperar.`}
+                  title={t("elo.inactiveTip", { pts: data.decay_applied.toFixed(0), weeks: Math.round(data.weeks_inactive ?? 0) })}
                 >
-                  −{data.decay_applied.toFixed(0)} por inatividade
+                  {t("elo.inactiveLong", { pts: data.decay_applied.toFixed(0) })}
                 </span>
               )}
             </div>
@@ -96,8 +102,11 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
                        style={{ width: `${next_band.progress * 100}%`, background: overall.band_color }} />
                 </div>
                 <div className="font-mono text-[10px] text-muted-foreground">
-                  Faltam <span className="text-foreground font-semibold">{next_band.elo_to_go.toFixed(0)}</span> pontos
-                  pra {next_band.icon} {next_band.label}
+                  {t("elo.page.toNextBand", {
+                    pts: next_band.elo_to_go.toFixed(0),
+                    icon: next_band.icon,
+                    band: bandName(next_band.label),
+                  })}
                 </div>
               </div>
             )}
@@ -107,7 +116,7 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
             to="/docs/rating"
             className="inline-flex items-center gap-1.5 text-xs font-mono text-primary hover:underline shrink-0"
           >
-            <BookOpen className="size-3.5" /> Como funciona
+            <BookOpen className="size-3.5" /> {t("elo.page.howItWorks")}
           </Link>
         </div>
       </div>
@@ -116,7 +125,7 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
       {Object.keys(by_street).length > 0 && (
         <section className="space-y-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Por street
+            {t("elo.page.byStreet")}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {(["preflop","flop","turn","river"] as const).map((st) => {
@@ -135,10 +144,10 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
                   <div className="flex items-center gap-1 font-mono text-[9px]"
                        style={{ color: b.band_color }}>
                     {(() => { const I = LEVEL_ICONS[b.band_label]; return I ? <I size={11} /> : null; })()}
-                    {b.band_label}
+                    {bandName(b.band_label)}
                   </div>
                   <div className="font-mono text-[9px] text-muted-foreground mt-0.5">
-                    {b.n_decisions} decs
+                    {t("elo.page.decs", { n: b.n_decisions })}
                   </div>
                 </div>
               );
@@ -150,7 +159,7 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
       {/* Bandas */}
       <section className="space-y-2">
         <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          Bandas de rating
+          {t("elo.page.bandsTitle")}
         </h3>
         <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden">
           {bands.map((b, i) => {
@@ -168,11 +177,11 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
                   {(() => { const I = LEVEL_ICONS[b.label]; return I ? <I size={16} className="shrink-0" /> : null; })()}
                   <span className="font-mono text-sm font-semibold"
                         style={{ color: b.color }}>
-                    {b.label}
+                    {bandName(b.label)}
                   </span>
                   {isCurrent && (
                     <span className="font-mono text-[9px] uppercase text-foreground/70 ml-2">
-                      ← você está aqui
+                      {t("elo.page.youAreHere")}
                     </span>
                   )}
                 </div>
@@ -189,18 +198,18 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
       {curve && curve.all_time.length >= 2 && (
         <section className="space-y-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Evolução do ELO
+            {t("elo.page.evolution")}
           </h3>
           <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-1">
             <div className="font-mono text-[10px] text-muted-foreground">
-              Rating histórico · cumulativo dos {curve.all_time.length} torneios
+              {t("elo.page.historicCurve", { n: curve.all_time.length })}
             </div>
             <EloCurveChart points={curve.all_time} color={overall.band_color} />
           </div>
           {curve.recent.length >= 2 && (
             <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-1">
               <div className="font-mono text-[10px] text-muted-foreground">
-                Rating recente · últimos {curve.window_tournaments} torneios
+                {t("elo.page.recentCurve", { n: curve.window_tournaments })}
               </div>
               <EloCurveChart points={curve.recent} color={overall.band_color} />
             </div>
@@ -212,6 +221,7 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
 }
 
 function DeltaBadge({ delta }: { delta: number | null }) {
+  const { t } = useTranslation("dashboard");
   const Icon = delta == null ? Minus : delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
   const color = delta == null || delta === 0
     ? "text-muted-foreground"
@@ -219,12 +229,15 @@ function DeltaBadge({ delta }: { delta: number | null }) {
   return (
     <span className={cn("flex items-center gap-1", color)}>
       <Icon className="size-3" />
-      {delta == null ? "sem histórico de 7d" : `${delta > 0 ? "+" : ""}${delta.toFixed(1)} nos últimos 7 dias`}
+      {delta == null
+        ? t("elo.page.noDelta")
+        : t("elo.page.deltaDays", { val: `${delta > 0 ? "+" : ""}${delta.toFixed(1)}` })}
     </span>
   );
 }
 
 function EloCurveChart({ points, color }: { points: EloCurvePoint[]; color: string }) {
+  const { t } = useTranslation("dashboard");
   if (points.length < 2) return null;
   const values = points.map((p) => p.elo);
   const min = Math.min(...values);
@@ -253,10 +266,10 @@ function EloCurveChart({ points, color }: { points: EloCurvePoint[]; color: stri
       {/* ponto final */}
       <circle cx={(W).toFixed(1)} cy={yOf(last.elo).toFixed(1)} r="3" fill={color} />
       <text x="6" y="16" fontFamily="monospace" fontSize="11" fill="rgba(255,255,255,0.45)">
-        máx {max.toFixed(0)}
+        {t("elo.page.chartMax", { n: max.toFixed(0) })}
       </text>
       <text x="6" y={H - 6} fontFamily="monospace" fontSize="11" fill="rgba(255,255,255,0.45)">
-        mín {min.toFixed(0)}
+        {t("elo.page.chartMin", { n: min.toFixed(0) })}
       </text>
     </svg>
   );
