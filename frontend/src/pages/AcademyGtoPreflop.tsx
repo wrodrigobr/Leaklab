@@ -146,31 +146,7 @@ export default function AcademyGtoPreflop() {
       title={t("gtoPreflop.title")}
       description={t("gtoPreflop.subtitle")}
     >
-      <div className="mx-auto w-full max-w-[1400px] space-y-4">
-
-        {/* Stats bar */}
-        {totalDone > 0 && (
-          <div className="flex items-center justify-center gap-6 rounded-lg border border-border bg-hud-surface px-5 py-3">
-            <div className="text-center">
-              <p className="font-mono text-lg font-bold tabular-nums text-foreground">{totalDone}</p>
-              <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("stats.done")}</p>
-            </div>
-            <div className="h-6 w-px bg-border" />
-            <div className="text-center">
-              <p className={cn("font-mono text-lg font-bold tabular-nums", accuracy !== null && accuracy >= 70 ? "text-emerald-400" : "text-amber-400")}>
-                {accuracy}%
-              </p>
-              <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("stats.accuracy")}</p>
-            </div>
-            <div className="h-6 w-px bg-border" />
-            <div className="text-center">
-              <p className={cn("font-mono text-lg font-bold tabular-nums", streak >= 3 ? "text-amber-400" : "text-foreground")}>
-                {streak}🔥
-              </p>
-              <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("stats.streak")}</p>
-            </div>
-          </div>
-        )}
+      <div className="mx-auto w-full max-w-[1500px] space-y-4">
 
         {/* Loading (initial) */}
         {phase === "loading" && (
@@ -207,7 +183,27 @@ export default function AcademyGtoPreflop() {
             </div>
 
             {/* Side panel */}
-            <aside className="w-full lg:w-80 shrink-0 flex flex-col gap-3">
+            <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-3">
+
+              {/* Stats */}
+              {totalDone > 0 && (
+                <div className="flex items-center justify-around rounded-lg border border-border bg-hud-surface px-3 py-2">
+                  <div className="text-center">
+                    <p className="font-mono text-base font-bold tabular-nums text-foreground">{totalDone}</p>
+                    <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">{t("stats.done")}</p>
+                  </div>
+                  <div className="h-6 w-px bg-border" />
+                  <div className="text-center">
+                    <p className={cn("font-mono text-base font-bold tabular-nums", accuracy !== null && accuracy >= 70 ? "text-emerald-400" : "text-amber-400")}>{accuracy}%</p>
+                    <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">{t("stats.accuracy")}</p>
+                  </div>
+                  <div className="h-6 w-px bg-border" />
+                  <div className="text-center">
+                    <p className={cn("font-mono text-base font-bold tabular-nums", streak >= 3 ? "text-amber-400" : "text-foreground")}>{streak}🔥</p>
+                    <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">{t("stats.streak")}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Scenario + context */}
               <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-1.5">
