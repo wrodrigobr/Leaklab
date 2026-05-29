@@ -12,7 +12,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **`_extract_date`** passou a reconhecer os formatos novos: **888poker** `*** DD MM YYYY HH:MM:SS` e **PartyPoker** `Weekday, Month DD, … YYYY` (mês por nome, via `_MONTHS`).
 - **`_extract_tournament_name`** ganhou branch **PartyPoker**: nome amigável da linha `Table <nome> (<trny>) Table #N` (ex.: "Powerfest #193 - Main Event $500,000 Gtd", "$1 Sit & Go Hero"); cai no heurístico SNG/MTT quando não há nome (e 888, que não traz nome explícito, usa o heurístico `SNG/MTT $buy-in`). Seat regex do heurístico relaxado de `(\S+)` para `(.+?)` (nomes com espaço).
 - **Testes** (`backend/tests/test_partygaming_financials.py`, suite `api`): 5 casos contra as fixtures reais — 888 buy-in 20.00 + data; PartyPoker STT vencedor (buy-in 1 / prize 3 / place 1 / profit +2 / nome "Sit & Go"); PartyPoker MTT bustado (buy-in 215 / place 840 / profit −215 / nome "Powerfest"); cash sem financials; e **regressão garantindo que PokerStars não foi afetado**. Suites api: zero regressões.
-- **Limitação conhecida**: torneios **888poker** não trazem linha de finish nas amostras disponíveis, então prêmio/place ficam `None` (buy-in/data/nome funcionam). Quando aparecer um HH 888 com resultado, ajustar o regex de prêmio.
+- **Prêmio/place do 888 via Tournament Summary**: investigado o formato real — o **HH do 888 não contém linha de resultado** (só `** Summary **` por mão); o resultado fica num **arquivo `Tournament Summary` separado**:
+  ```
+  ***** Tournament Summary *****
+  Tournament ID: 777
+  Buy-In: $0.93 + $0.07
+  Hero finished 1/3 and won $1.5
+  ```
+  `_extract_financials` (branch 888) agora lê esse bloco quando presente no conteúdo enviado (caso real: usuário sobe **HH + summary juntos**, como PokerTracker/HM importam — o `raw_full` então contém os dois): `<hero> finished P/T and won|lost X` → `place = P`; `won/lost X` tratado como **resultado líquido** (`won` → `prize = buy-in + X`, `profit = +X`; `lost` → `prize = 0`, `profit = −X` — "lost X" = perda do buy-in). Buy-in também lido do summary (`Buy-In: …`) como fallback.
+  - **Moeda agnóstica**: regex de buy-in do 888 trocado de `\$…` fixo para `\D*?` antes do número — aceita `$`/`£`/`€` (ou símbolo perdido no encoding), já que o HH 888 não-USD usava `£0.93 + £0.07`.
+  - Fixture real `tests/fixtures/pp888_tourney_summary.txt` (HH + summary, formato do `Mudr0x/DD-HHConverter`) + 2 testes (vencedor `won`, bustado `lost`, moeda não-USD). Parse + pipeline validados na fixture.
+  - **Nota**: `won/lost` interpretado como líquido (bem sustentado pelo caso "lost X" = perde o buy-in). Upload só-summary (sem mãos) continua não-analisável — o resultado precisa vir junto do HH.
 
 ### feat(ui): expõe 888poker e PartyPoker na UI de upload
 - **`UploadZone.tsx`**: badges de sites suportados agora refletem o que o parser realmente aceita — `PokerStars, GGPoker, 888poker, PartyPoker`. Removidos **ACR** e **Winamax**, que estavam anunciados mas não têm parser (upload falhava com "Nenhuma mão encontrada").

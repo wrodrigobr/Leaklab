@@ -2054,31 +2054,43 @@ def _extract_financials(raw: str, hero: str, site: str | None = None) -> dict:
     # ── 888poker / PartyPoker (dialeto PartyGaming) ────────────────────────────
     if site in ('888poker', 'partypoker'):
         if site == '888poker':
-            # "Tournament #83728678 $18.30 + $1.70 - Table #1 9 Max" → buy-in + rake
-            m = re.search(r'Tournament #\d+\s+\$(\d+\.?\d*)\s*\+\s*\$(\d+\.?\d*)', raw)
+            # Buy-in no HH: "Tournament #83728678 $18.30 + $1.70 - Table #1 9 Max"
+            # (\D*? pula o símbolo de moeda — pode ser $, £, € ou perdido no encoding)
+            m = re.search(r'Tournament #\d+\s+\D*?(\d+(?:\.\d+)?)\s*\+\s*\D*?(\d+(?:\.\d+)?)', raw)
+            if not m:
+                # Fallback: arquivo de Tournament Summary — "Buy-In: $0.93 + $0.07"
+                m = re.search(r'Buy-In:\s*\D*?(\d+(?:\.\d+)?)\s*\+\s*\D*?(\d+(?:\.\d+)?)', raw, re.IGNORECASE)
             if m:
                 result['buy_in'] = round(float(m.group(1)) + float(m.group(2)), 2)
+
+            if hero:
+                # Resultado vive só no Tournament Summary (arquivo separado do HH):
+                #   "Hero finished 1/3 and won $1.5"  → place 1, ganho LÍQUIDO 1.5
+                #   "Hero finished 3/3 and lost $1"   → place 3, perda do buy-in
+                ms = re.search(
+                    re.escape(hero) +
+                    r'\s+finished\s+(\d+)/\d+\s+and\s+(won|lost)\s+\D*?(\d+(?:\.\d+)?)',
+                    raw, re.IGNORECASE
+                )
+                if ms:
+                    result['place'] = int(ms.group(1))
+                    net = float(ms.group(3))
+                    bi = result['buy_in'] or 0.0
+                    # 'won/lost X' = resultado líquido; prize derivado (bruto = buy-in + líquido)
+                    result['prize'] = round(bi + net if ms.group(2).lower() == 'won'
+                                            else max(bi - net, 0.0), 2)
         else:  # partypoker — "NL Texas Hold'em $215 USD Buy-in ..." / "$1 USD Buy-in"
             m = re.search(r'\$(\d+\.?\d*)\s+USD Buy-in', raw)
             if m:
                 result['buy_in'] = float(m.group(1))
 
-        if hero:
-            # PartyPoker: "Player Hero finished in 1 place and received $3 USD"
-            #             "Player DiggErr555 finished in 840." (bustou — sem prêmio)
-            m = re.search(
-                r'Player ' + re.escape(hero) +
-                r' finished in (\d+)(?:\s+place and received \$(\d+\.?\d*))?',
-                raw, re.IGNORECASE
-            )
-            if m:
-                result['place'] = int(m.group(1))
-                result['prize'] = float(m.group(2)) if m.group(2) else 0.0
-            else:
-                # Fallback genérico (cobre variações 888): "...received/won $X"
+            if hero:
+                # PartyPoker grava o resultado no próprio HH:
+                #   "Player Hero finished in 1 place and received $3 USD"
+                #   "Player DiggErr555 finished in 840." (bustou — sem prêmio)
                 m = re.search(
-                    re.escape(hero) + r'[^\n]*?finished[^\n]*?(\d+)[a-z]{0,2} place'
-                    r'(?:[^\n]*?(?:received|won) \$(\d+\.?\d*))?',
+                    r'Player ' + re.escape(hero) +
+                    r' finished in (\d+)(?:\s+place and received \$(\d+\.?\d*))?',
                     raw, re.IGNORECASE
                 )
                 if m:

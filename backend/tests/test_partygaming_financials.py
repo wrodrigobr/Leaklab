@@ -40,6 +40,33 @@ def test_888_tourney_buyin_and_date():
     print("OK  test_888_tourney_buyin_and_date")
 
 
+def test_888_tournament_summary_prize():
+    """888 grava o resultado num Tournament Summary separado; quando ele é enviado
+    junto com o HH, extraímos place/prêmio. 'won/lost X' = resultado líquido."""
+    raw = _load('pp888_tourney_summary.txt')
+    assert _detect_site(raw) == '888poker'
+    fin = _extract_financials(raw, 'Hero', '888poker')
+    # "Buy-In: $0.93 + $0.07" (HH ou summary) → 1.00
+    assert fin['buy_in'] == 1.0
+    # "Hero finished 1/3 and won $1.5" → place 1, ganho líquido 1.5 → prize 2.5, profit 1.5
+    assert fin['place'] == 1
+    assert fin['prize'] == 2.5
+    assert fin['profit'] == 1.5
+    print("OK  test_888_tournament_summary_prize")
+
+
+def test_888_summary_lost_and_currency_agnostic():
+    # "lost" = perda do buy-in → prize 0, profit negativo
+    lost = "Buy-In: $0.93 + $0.07\nHero finished 3/3 and lost $1\n"
+    fin = _extract_financials(lost, 'Hero', '888poker')
+    assert fin['place'] == 3 and fin['prize'] == 0.0 and fin['profit'] == -1.0
+    # moeda não-USD (símbolo perdido no encoding) ainda deve parsear buy-in e prêmio
+    gbp = "Tournament #1 0.93 + 0.07 - Table #0 3 Max\nHero finished 1/3 and won 1.5\n"
+    fin = _extract_financials(gbp, 'Hero', '888poker')
+    assert fin['buy_in'] == 1.0 and fin['place'] == 1 and fin['profit'] == 1.5
+    print("OK  test_888_summary_lost_and_currency_agnostic")
+
+
 def test_party_stt_winner():
     raw = _load('partypoker_tourney_stt.txt')
     assert _detect_site(raw) == 'partypoker'
