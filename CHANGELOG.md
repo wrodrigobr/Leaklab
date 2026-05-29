@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### test(elo): cobertura do motor de ELO (lacuna fechada)
+- **`backend/tests/test_elo_engine.py`** (novo, suite `engine`, 14 casos): o `elo_engine.py` era a única peça grande recente **sem testes**. Cobre `k_factor` (32/16/8), `expected_score` (par=0.5, ±400=10:1, simetria), `decision_score` (mapa GTO + **sem fallback heurístico**: None sem `gto_label`), `apply_decision` (direção/magnitude vs K), bandas (`band_full`/`next_band_for`, limiares 1570…2053, topo Elite sem próxima), `compute_player_elo_from_decisions` (sobe com acertos / cai com erros, exclusão de spots sem GTO, independência por street, streets inválidas puladas, ordenação por `created_at`), `compute_elo_curve` (1 ponto por torneio; torneios sem GTO omitidos) e `snapshot_to_dict`.
+- Suite engine: **225 → 239 testes**, zero regressões.
+
 ### test: suite completa verde após as mudanças de ICM + desligar 888/Party
 - Rodada a suite inteira (`tests/run_all_tests.py`): **676 testes, 0 falhas** (~342s). Por suite: engine 225, database 36, llm 43, api 72, regression 30, academy 12, gto 194, revalidation 64.
 - Confirma que está tudo consistente: features de ICM (equity/scoring/feedback/badge/detector de leak), parser PartyGaming **desligado por flag** (testes `test_partygaming_*` e `test_icm` reativam a flag internamente e validam o código gateado), e nada regrediu no restante.
