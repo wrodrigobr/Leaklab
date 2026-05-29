@@ -21,6 +21,7 @@ export default function AcademyBoardStrength() {
       loadFn={loadFn}
       submitFn={submitFn}
       showCards
+      challengeSize={20}
     />
   );
 }

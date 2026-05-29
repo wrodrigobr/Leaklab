@@ -8,6 +8,13 @@
   "loadError": "No se pudo cargar el ejercicio.",
   "retry": "Intentar de nuevo",
   "nextQuestion": "Siguiente ejercicio",
+  "finishChallenge": "Ver resultado",
+  "challenge": {
+    "title": "¡Desafío completado!",
+    "correct": "Aciertos",
+    "accuracy": "Precisión",
+    "again": "Nuevo desafío"
+  },
   "levels": {
     "beginner": "Principiante",
     "intermediate": "Intermedio",

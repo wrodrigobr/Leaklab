@@ -13,7 +13,7 @@ import type { CardData } from "@/components/hud/PlayingCard";
 import type { AcademyQuestion } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type Phase = "loading" | "question" | "feedback" | "error";
+type Phase = "loading" | "question" | "feedback" | "error" | "complete";
 
 export function MdText({ children }: { children: string }) {
   return (
@@ -76,6 +76,8 @@ interface Props {
   loadFn: () => Promise<AcademyQuestion>;
   submitFn: (idx: number, correctIdx: number, xp: number) => void;
   showCards?: boolean;
+  /** Quando definido, vira um desafio de N questões com tela final. */
+  challengeSize?: number;
 }
 
 export default function AcademyQuizPage({
@@ -87,6 +89,7 @@ export default function AcademyQuizPage({
   loadFn,
   submitFn,
   showCards = false,
+  challengeSize,
 }: Props) {
   const { t } = useTranslation("academy");
   const c = THEMES[theme];
@@ -98,6 +101,7 @@ export default function AcademyQuizPage({
   const [streak, setStreak]             = useState(0);
   const [totalDone, setTotalDone]       = useState(0);
   const [totalCorrect, setTotalCorrect] = useState(0);
+  const [xpEarned, setXpEarned]         = useState(0);
 
   const loadQuestion = useCallback(async () => {
     setPhase("loading");
@@ -126,6 +130,7 @@ export default function AcademyQuizPage({
     if (correct) {
       setStreak((s) => s + 1);
       setTotalCorrect((n) => n + 1);
+      setXpEarned((x) => x + question.xp_value);
     } else {
       setStreak(0);
     }
@@ -134,6 +139,13 @@ export default function AcademyQuizPage({
   };
 
   const accuracy = totalDone > 0 ? Math.round((totalCorrect / totalDone) * 100) : null;
+  const challengeDone = !!challengeSize && totalDone >= challengeSize;
+
+  const goNext = () => { if (challengeDone) setPhase("complete"); else loadQuestion(); };
+  const restartChallenge = () => {
+    setTotalDone(0); setTotalCorrect(0); setStreak(0); setXpEarned(0);
+    loadQuestion();
+  };
   const heroCards  = question?.hero_cards?.map(toCardData)  ?? [];
   const boardCards = question?.board_cards?.map(toCardData) ?? [];
 
@@ -142,10 +154,10 @@ export default function AcademyQuizPage({
       <div className="mx-auto max-w-3xl space-y-6">
 
         {/* Stats bar */}
-        {totalDone > 0 && (
+        {totalDone > 0 && phase !== "complete" && (
           <div className="flex items-center justify-center gap-6 rounded-lg border border-border bg-hud-surface px-5 py-3">
             <div className="text-center">
-              <p className="font-mono text-lg font-bold tabular-nums text-foreground">{totalDone}</p>
+              <p className="font-mono text-lg font-bold tabular-nums text-foreground">{challengeSize ? `${totalDone}/${challengeSize}` : totalDone}</p>
               <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("stats.done")}</p>
             </div>
             <div className="h-6 w-px bg-border" />
@@ -312,17 +324,49 @@ export default function AcademyQuizPage({
 
                 {/* Next button */}
                 <button
-                  onClick={loadQuestion}
+                  onClick={goNext}
                   className={cn(
                     "w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest transition-colors",
                     c.nextBtn,
                   )}
                 >
                   <ArrowRight className="size-4" aria-hidden />
-                  {t("nextQuestion")}
+                  {challengeDone ? t("finishChallenge") : t("nextQuestion")}
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Challenge complete */}
+        {phase === "complete" && (
+          <div className="mx-auto max-w-md flex flex-col items-center gap-5 rounded-xl border border-border bg-hud-surface p-8 text-center">
+            <div className={cn("flex size-14 items-center justify-center rounded-2xl text-2xl", c.icon)}>🏆</div>
+            <div>
+              <p className="text-lg font-semibold text-foreground">{t("challenge.title")}</p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{challengeSize} {t("stats.done")}</p>
+            </div>
+            <div className="grid w-full grid-cols-3 gap-5">
+              <div>
+                <p className="font-mono text-xl font-bold tabular-nums text-foreground">{totalCorrect}/{challengeSize}</p>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("challenge.correct")}</p>
+              </div>
+              <div>
+                <p className={cn("font-mono text-xl font-bold tabular-nums", (accuracy ?? 0) >= 70 ? "text-emerald-400" : "text-amber-400")}>{accuracy}%</p>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("challenge.accuracy")}</p>
+              </div>
+              <div>
+                <p className="font-mono text-xl font-bold tabular-nums text-emerald-400">+{xpEarned}</p>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">XP</p>
+              </div>
+            </div>
+            <button
+              onClick={restartChallenge}
+              className={cn("w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest transition-colors", c.nextBtn)}
+            >
+              <RefreshCw className="size-4" aria-hidden />
+              {t("challenge.again")}
+            </button>
           </div>
         )}
       </div>

@@ -8,6 +8,13 @@
   "loadError": "Could not load the exercise.",
   "retry": "Try again",
   "nextQuestion": "Next exercise",
+  "finishChallenge": "See result",
+  "challenge": {
+    "title": "Challenge complete!",
+    "correct": "Correct",
+    "accuracy": "Accuracy",
+    "again": "New challenge"
+  },
   "levels": {
     "beginner": "Beginner",
     "intermediate": "Intermediate",
