@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### refactor(i18n): migra a /docs/rating para i18n (PT/EN/ES)
+- **`DocsRating.tsx`** (página de teoria do ELO) era prosa PT hardcoded. Migrada para o namespace `docs` (bloco `rating.*`): eyebrow/título/descrição, 6 seções (texto via `dangerouslySetInnerHTML`, mesmo padrão do `Docs.tsx`), tabela de qualidade da decisão (Correta/Mista/Desvio…), tabela de bandas (nome + perfil) e as 4 notas. Componente reescrito data-driven (ícones de banda 🎯…👑 e ranges numéricos ficam no componente — neutros de idioma; só nomes/textos vêm do i18n).
+- **Validado**: 13 chaves estáticas + 22 dinâmicas existem nas 3 locales; `vite build` sem erros. Conclui a localização de **toda a superfície de ELO** (card + /rating + /docs/rating).
+
 ### refactor(i18n): migra os cards de ELO para i18n (PT/EN/ES)
 - **Débito removido**: `EloRatingCard.tsx` e `Rating.tsx` (`/rating`) eram PT hardcoded. Migrados para o namespace `dashboard` (bloco `elo.*`: **28 chaves** estáticas + sub-bloco `bands`), nas 3 locales — título, contagem de decisões, delta/decay, "próxima banda", eyebrow/título/descrição da página, "Por street", tabela de bandas ("você está aqui"), curvas de evolução, máx/mín do gráfico, e o `DeltaBadge`.
 - **Nomes de banda localizados**: as 7 bandas (Iniciante…Elite) vêm do backend em PT; o frontend agora traduz via `t('elo.bands.<label>', { defaultValue: label })` (Beginner/Student/Solid… em EN; Principiante/Estudiante/Sólido… em ES). Ícone continua resolvido pelo label original (`LEVEL_ICONS`).
