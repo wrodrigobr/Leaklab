@@ -7,6 +7,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### tune(leaderboard): pesos skill-first (aderência GTO domina)
+- Recalibrados os pesos do ranking de **40/30/20/10** para **50/25/15/10** (GTO/evolução/engajamento/volume): a aderência GTO passa a ser metade do score, garantindo que o melhor jogador fique no topo sem ser ultrapassado por volume/engajamento. Resultado: crusher (GTO 92) sobe para #1 (77.6) à frente do grinder (76.8). Testes (`test_leaderboard`, via constantes) seguem verdes; pesos expostos no endpoint refletem na UI automaticamente.
+
 ### fix+feat(leaderboard): rota proxiada + item de menu (visibilidade)
 - **Fix "Erro do servidor (HTTP 200)"**: o endpoint era `/leaderboard` (top-level), mas o proxy do Vite dev só encaminha prefixos específicos → o Vite servia o `index.html` (200 HTML) e o cliente quebrava no parse JSON. Movido para **`/metrics/leaderboard`** (prefixo já proxiado em dev) — funciona sem reiniciar o dev server e sem mexer no proxy. (Produção usa base URL absoluta, não afetada.)
 - **Visibilidade**: adicionado item **"Ranking"** (ícone medalha) no nav principal (`HudHeader`), entre Torneios e Estudos — desktop + bottom nav mobile. `nav.leaderboard` nas 3 locales (`common`).

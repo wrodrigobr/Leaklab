@@ -16,9 +16,12 @@ Funções PURAS (sem DB) — o assembler de dados e o endpoint ficam em reposito
 from __future__ import annotations
 
 # ── Pesos das dimensões (somam 1.0) ───────────────────────────────────────────
-W_GTO = 0.40
-W_EVO = 0.30
-W_ENG = 0.20
+# Calibração skill-first: aderência GTO domina (metade do score) — o melhor
+# jogador (maior aderência) fica no topo, sem que volume/engajamento o ultrapassem.
+# Evolução ainda pesa (incentiva melhora); engajamento/volume são guardas menores.
+W_GTO = 0.50
+W_EVO = 0.25
+W_ENG = 0.15
 W_VOL = 0.10
 
 # ── Guarda de elegibilidade ───────────────────────────────────────────────────
