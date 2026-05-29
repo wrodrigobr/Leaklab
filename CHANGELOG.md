@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+## [v0.164.0] — 2026-05-29 — feat(icm+elo): modelagem de ICM na mesa final + ELO (decay/testes/i18n) + parser 888/PartyPoker (desligado por flag)
+
+> Destaques: **ICM** end-to-end (equity real na mesa final via PokerKit → `icm_tax` no scoring → feedback direcional → badge no Replayer → detector de leak "ICM Blindness" + backfill); **ELO** com testes do engine, decay por inatividade (Sprint 2 #19) e i18n completo (card + /rating + /docs/rating); suporte a **888poker/PartyPoker** (parser PartyGaming + extração financeira), **desligado por flag** `PARTYGAMING_ENABLED` (foco PS/GG); i18n do card de decisão do Replayer. Suíte completa: **691 testes, 0 falhas**.
+
 ### refactor(i18n): migra a /docs/rating para i18n (PT/EN/ES)
 - **`DocsRating.tsx`** (página de teoria do ELO) era prosa PT hardcoded. Migrada para o namespace `docs` (bloco `rating.*`): eyebrow/título/descrição, 6 seções (texto via `dangerouslySetInnerHTML`, mesmo padrão do `Docs.tsx`), tabela de qualidade da decisão (Correta/Mista/Desvio…), tabela de bandas (nome + perfil) e as 4 notas. Componente reescrito data-driven (ícones de banda 🎯…👑 e ranges numéricos ficam no componente — neutros de idioma; só nomes/textos vêm do i18n).
 - **Validado**: 13 chaves estáticas + 22 dinâmicas existem nas 3 locales; `vite build` sem erros. Conclui a localização de **toda a superfície de ELO** (card + /rating + /docs/rating).
