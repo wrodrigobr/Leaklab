@@ -68,17 +68,26 @@ PKO_KEYWORD_RE = re.compile(
 )
 
 
+# Suporte a 888poker/PartyPoker (dialeto PartyGaming) — DESATIVADO por ora.
+# Foco atual: PokerStars/GGPoker. O parser PartyGaming permanece todo no código
+# (funções _parse_partygaming_*, regexes, extração financeira) e seus testes
+# continuam validando-o; basta voltar esta flag para True para reativar a
+# detecção/roteamento. Ver CHANGELOG "desabilita detecção 888/PartyPoker".
+PARTYGAMING_ENABLED = False
+
+
 def _detect_site(text: str) -> str:
     """Detecta o site a partir do conteúdo do hand history."""
     if "PokerStars Hand #" in text:
         return "pokerstars"
     if "Poker Hand #" in text:
         return "ggpoker"
-    # 888 antes de PartyPoker: o header do 888 também contém "Hand History for Game".
-    if "888poker" in text:
-        return "888poker"
-    if "Hand History for Game" in text:
-        return "partypoker"
+    if PARTYGAMING_ENABLED:
+        # 888 antes de PartyPoker: o header do 888 também contém "Hand History for Game".
+        if "888poker" in text:
+            return "888poker"
+        if "Hand History for Game" in text:
+            return "partypoker"
     return "unknown"
 
 

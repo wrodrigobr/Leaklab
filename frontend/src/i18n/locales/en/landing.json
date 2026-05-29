@@ -21,7 +21,7 @@
     "eyebrow": "How it works",
     "heading": "From HH file to precise diagnosis",
     "step1Title": "Import your history",
-    "step1Desc": "Upload the .txt file from any tournament (PokerStars, GGPoker, 888poker or PartyPoker). Multiple files supported at once.",
+    "step1Desc": "Upload the .txt file from any tournament (PokerStars or GGPoker). Multiple files supported at once.",
     "step2Title": "LeakLabs prioritizes your mistakes",
     "step2Desc": "Each decision is evaluated by equity, position, and MTT/SNG context. The detection engine crosses frequency with impact — and shows you exactly what's costing you chips.",
     "step3Title": "Improve with focus on what matters",

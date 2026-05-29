@@ -5,6 +5,11 @@ mtt_context (equity ICM real na mesa final).
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+# Alguns casos de ICM usam uma fixture PartyPoker (mesa final) via parse_hand_history;
+# a detecção 888/Party está desligada por padrão, então reativamos a flag aqui.
+import leaklab.parser as _lkparser
+_lkparser.PARTYGAMING_ENABLED = True
+
 from leaklab.icm import calculate_icm, hero_icm_equity, standard_payouts
 from leaklab.parser import parse_hand_history
 from leaklab.mtt_context import build_mtt_context, context_to_dict

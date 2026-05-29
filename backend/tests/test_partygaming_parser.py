@@ -10,6 +10,11 @@ ações sem ":", all-in "is all-In [x]", board separado por vírgula, e blinds e
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+# Detecção 888/PartyPoker está desligada por padrão (foco PS/GG); o parser
+# PartyGaming segue íntegro — reativamos a flag aqui para validá-lo.
+import leaklab.parser as _lkparser
+_lkparser.PARTYGAMING_ENABLED = True
+
 from leaklab.parser import parse_hand_history, _detect_site
 from leaklab.hand_state_builder import build_hand_state
 from leaklab.pipeline import build_decision_input

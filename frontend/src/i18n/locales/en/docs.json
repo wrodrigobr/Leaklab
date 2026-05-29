@@ -34,7 +34,7 @@
   },
   "import": {
     "title": "Supported Sites & Import",
-    "p1": "Analysis starts from your hand history. Export the <strong>.txt</strong> file from your room and upload it — the system auto-detects the site and evaluates every decision. Four rooms are supported:",
+    "p1": "Analysis starts from your hand history. Export the <strong>.txt</strong> file from your room and upload it — the system auto-detects the site and evaluates every decision. Supported rooms:",
     "col_site": "Site",
     "col_formats": "Formats",
     "col_where": "Where to get the history",

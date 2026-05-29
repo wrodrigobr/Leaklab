@@ -197,12 +197,9 @@ export default function Docs() {
                 rows={[
                   ["PokerStars", "MTT · SNG · Cash", t("import.ps_where")],
                   ["GGPoker",    "MTT · SNG · Spin", t("import.gg_where")],
-                  ["888poker",   "MTT · SNG · Cash", t("import.p888_where")],
-                  ["PartyPoker", "MTT · SNG · Cash", t("import.party_where")],
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("import.p2") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("import.p3") }} />
             </Section>
 
             {/* Scoring */}

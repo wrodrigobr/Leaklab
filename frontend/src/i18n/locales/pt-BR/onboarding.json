@@ -11,8 +11,8 @@
     },
     "upload": {
       "title": "Importe sua hand history",
-      "desc": "Exporte um arquivo .txt do PokerStars, GGPoker, 888poker ou PartyPoker e importe aqui. O sistema analisa automaticamente cada decisão — equity, posição, ICM — e gera um relatório completo da sua sessão.",
-      "hint": "Onde encontrar: PokerStars → Menu → Mãos → Exportar histórico; GGPoker → Histórico de Mãos. 888poker e PartyPoker salvam o histórico automaticamente na pasta do cliente."
+      "desc": "Exporte um arquivo .txt do PokerStars ou GGPoker e importe aqui. O sistema analisa automaticamente cada decisão — equity, posição, ICM — e gera um relatório completo da sua sessão.",
+      "hint": "Onde encontrar: PokerStars → Menu → Mãos → Exportar histórico; GGPoker → Histórico de Mãos."
     },
     "train": {
       "title": "Treine com Ghost Table & Sparring",

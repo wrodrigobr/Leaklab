@@ -34,7 +34,7 @@
   },
   "import": {
     "title": "Sites Suportados & Importação",
-    "p1": "A análise começa com o seu histórico de mãos (<em>hand history</em>). Exporte o arquivo <strong>.txt</strong> do seu site e faça o upload — o sistema detecta o site automaticamente e avalia cada decisão. Quatro salas são suportadas:",
+    "p1": "A análise começa com o seu histórico de mãos (<em>hand history</em>). Exporte o arquivo <strong>.txt</strong> do seu site e faça o upload — o sistema detecta o site automaticamente e avalia cada decisão. Salas suportadas:",
     "col_site": "Site",
     "col_formats": "Formatos",
     "col_where": "Onde obter o histórico",

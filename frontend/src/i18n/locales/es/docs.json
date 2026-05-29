@@ -34,7 +34,7 @@
   },
   "import": {
     "title": "Salas Soportadas e Importación",
-    "p1": "El análisis parte de tu historial de manos (<em>hand history</em>). Exporta el archivo <strong>.txt</strong> de tu sala y súbelo — el sistema detecta la sala automáticamente y evalúa cada decisión. Cuatro salas soportadas:",
+    "p1": "El análisis parte de tu historial de manos (<em>hand history</em>). Exporta el archivo <strong>.txt</strong> de tu sala y súbelo — el sistema detecta la sala automáticamente y evalúa cada decisión. Salas soportadas:",
     "col_site": "Sala",
     "col_formats": "Formatos",
     "col_where": "Dónde obtener el historial",

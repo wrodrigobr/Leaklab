@@ -257,7 +257,7 @@
     "errorTitle": "Erro ao importar",
     "title": "Inicialize sua base tática",
     "loadingDesc": "O HUD será populado assim que a varredura terminar.",
-    "desc": "Envie seu arquivo de hand history (.txt do PokerStars, GGPoker, 888poker ou PartyPoker) para calibrar o HUD e expor os leaks da sua mesa.",
+    "desc": "Envie seu arquivo de hand history (.txt do PokerStars ou GGPoker) para calibrar o HUD e expor os leaks da sua mesa.",
     "retry": "Tentar novamente",
     "import": "Importar Hand History",
     "fileLabel": "Selecionar arquivo de hand history",

@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### chore(parser): desabilita detecção 888/PartyPoker (foco PS/GG) — reversível
+- **Decisão de produto**: por ora o foco é **PokerStars/GGPoker**; 888/PartyPoker ficam para depois. O suporte **não foi removido** — apenas desligado por uma flag, reativável com 1 linha.
+- **Flag `PARTYGAMING_ENABLED = False`** em `leaklab/parser.py`: gateia os dois `_detect_site` (parser + `app.py`, que lê a flag viva). Com ela desligada, arquivos 888/PartyPoker caem em `unknown` → "formato não suportado". Todo o parser PartyGaming (funções, regexes, extração financeira) e seus testes permanecem intactos.
+- **Frontend** deixa de anunciar o que está desligado (mesma coerência do caso ACR/Winamax): `UploadZone` volta a listar só PokerStars/GGPoker; a tabela "Sites Suportados" da /docs idem; cópias de onboarding/landing/dashboard revertidas para "PokerStars/GGPoker" nas 3 locales. (`SiteLogo` mantém a entrada `partypoker` — inofensiva, pronta para reativar.)
+- **Testes**: `test_partygaming_parser`, `test_partygaming_financials` e `test_icm` (usa uma fixture PartyPoker) reativam a flag no topo do arquivo — continuam validando o parser gateado. Suites regression (30) / engine (225) / api (72): zero regressões. Build do frontend OK.
+- **ICM intacto**: equity, `icm_tax` no scoring, feedback, badge e detector de leak são site-agnósticos (rodam em PS/GG via `build_mtt_context`) e não foram tocados.
+- **Reativar**: `PARTYGAMING_ENABLED = True` + readicionar 888/Party na vitrine do frontend (tudo no histórico do git).
+
 ### chore(backfill): popula icm_tax_pct nos torneios já importados
 - **`backend/scripts/backfill_icm_tax.py`** (novo): recomputa o `icm_tax_pct` (contexto a nível de mão) a partir de `tournaments.raw_text` via `build_mtt_context` → `context_to_dict` — o mesmo caminho que o `/analyze` persiste — e atualiza todas as decisões da mão. Sem isso, decisões importadas antes da coluna existir ficavam NULL e o detector de leak ICM não as enxergava. Cross-backend (placeholders `?` auto-adaptados), **idempotente** (`WHERE icm_tax_pct IS NULL`), com `--dry-run` e `--limit`.
 - Executado no banco local: 10 torneios / 858 mãos → **1122 decisões preenchidas**; 179 com `|tax| ≥ 8pp`, 38 spots de leak ICM (alto ICM + gamble errado). Re-run confirma idempotência (0 atualizações). End-to-end: o detector `icm_blindness` passou a surfacear (ex.: user 13 — high, 24 ocorrências / 52%).

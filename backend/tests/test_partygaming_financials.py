@@ -15,6 +15,11 @@ except ImportError:
     sys.modules['flask_cors'] = mock.MagicMock()
     sys.modules['flask_cors'].CORS = lambda app, **kw: None
 
+# Detecção 888/PartyPoker desligada por padrão (foco PS/GG); reativamos a flag
+# aqui para validar o parser/extração PartyGaming, que seguem íntegros.
+import leaklab.parser as _lkparser
+_lkparser.PARTYGAMING_ENABLED = True
+
 from api.app import (
     _extract_financials, _extract_date, _extract_tournament_name, _detect_site
 )
