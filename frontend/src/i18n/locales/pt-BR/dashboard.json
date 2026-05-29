@@ -322,14 +322,16 @@
       "fear_folding": "Fold por Medo",
       "sunk_cost": "Custo Afundado",
       "entitlement_tilt": "Tilt por Relaxamento",
-      "compensation_call": "Call Compensatório"
+      "compensation_call": "Call Compensatório",
+      "icm_blindness": "Cegueira a ICM"
     },
     "descriptions": {
       "revenge_aggression": "Apostas agressivas incorretas logo após sequência de folds corretos",
       "fear_folding": "Folds incorretos após sofrer erros agressivos consecutivos",
       "sunk_cost": "Calls ruins em múltiplas streets da mesma mão (perseguindo o pot)",
       "entitlement_tilt": "Erros em cascata após longa sequência de decisões corretas",
-      "compensation_call": "Calls incorretos nas mãos seguintes a um fold correto de mão forte"
+      "compensation_call": "Calls incorretos nas mãos seguintes a um fold correto de mão forte",
+      "icm_blindness": "Arrisca a pilha em spots finos na mesa final, onde o ICM pede aperto (sobrevivência tem valor)"
     },
     "severity": {
       "high": "Alto",

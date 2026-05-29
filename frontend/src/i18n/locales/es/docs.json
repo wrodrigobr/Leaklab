@@ -291,7 +291,10 @@
       "entitlement_signal": "3+ errores en las siguientes 5 decisiones",
       "compensation": "Compensation Call",
       "compensation_trigger": "Fold correcto de mano fuerte",
-      "compensation_signal": "2+ calls incorrectos en las siguientes 3 decisiones"
+      "compensation_signal": "2+ calls incorrectos en las siguientes 3 decisiones",
+      "icm": "Ceguera al ICM",
+      "icm_trigger": "Spot de alto ICM en la mesa final",
+      "icm_signal": "Arriesga la pila (call/apuesta/all-in) y falla, en vez de apretar"
     },
     "p2": "Cada patrón recibe una <strong>frecuencia</strong> (% de oportunidades en que el patrón se manifiesta) y un <strong>nivel de severidad</strong> — alto (≥ 40%), medio (≥ 20%) o bajo (por debajo de 20%). Se requiere un mínimo de 30 decisiones para la activación.",
     "p3": "La narrativa de IA describe el patrón dominante, por qué cuesta EV y un hábito correctivo concreto para aplicar en la próxima sesión."

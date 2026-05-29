@@ -135,6 +135,7 @@ def _init_postgres(conn):
             range_penalty   REAL    NOT NULL DEFAULT 0,
             m_ratio         REAL,
             icm_pressure    TEXT,
+            icm_tax_pct     REAL,
             stack_bb        REAL,
             draw_profile    TEXT,
             position        TEXT,
@@ -302,6 +303,7 @@ def _init_sqlite(conn):
             range_penalty   REAL    NOT NULL DEFAULT 0,
             m_ratio         REAL,
             icm_pressure    TEXT,
+            icm_tax_pct     REAL,
             stack_bb        REAL,
             draw_profile    TEXT,
             position        TEXT,
@@ -485,6 +487,8 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS estimated_equity REAL",
             # GTO-007: posição do opener para spots vs_RFI
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS vs_position TEXT",
+            # ICM leak detector: ICM tax (chip% − equity ICM%) na mesa final
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS icm_tax_pct REAL",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -943,6 +947,7 @@ def _run_migrations(conn):
             ("gto_action",       "ALTER TABLE decisions ADD COLUMN gto_action       TEXT"),
             ("estimated_equity", "ALTER TABLE decisions ADD COLUMN estimated_equity REAL"),
             ("vs_position",      "ALTER TABLE decisions ADD COLUMN vs_position      TEXT"),
+            ("icm_tax_pct",      "ALTER TABLE decisions ADD COLUMN icm_tax_pct      REAL"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)

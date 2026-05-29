@@ -291,7 +291,10 @@
       "entitlement_signal": "3+ mistakes in the next 5 decisions",
       "compensation": "Compensation Call",
       "compensation_trigger": "Correct fold of a strong hand",
-      "compensation_signal": "2+ wrong calls in the next 3 decisions"
+      "compensation_signal": "2+ wrong calls in the next 3 decisions",
+      "icm": "ICM Blindness",
+      "icm_trigger": "High-ICM spot at the final table",
+      "icm_signal": "Risks the stack (call/bet/all-in) and errs, instead of tightening"
     },
     "p2": "Each pattern receives a <strong>frequency</strong> (% of opportunities where the pattern manifests) and a <strong>severity level</strong> — high (≥ 40%), medium (≥ 20%) or low (below 20%). Minimum: 30 decisions to activate.",
     "p3": "The AI narrative describes the dominant pattern, why it costs EV, and one concrete corrective habit to apply in the next session."

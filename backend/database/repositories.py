@@ -292,6 +292,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 bd.get('rangePenalty', 0),
                 ctx.get('mRatio'),
                 ctx.get('icmPressure'),
+                ctx.get('icmTaxPct'),
                 ctx.get('heroStackBb'),
                 r.get('draw_profile', ctx.get('drawProfile', '')),
                 r.get('position', ''),
@@ -313,12 +314,12 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
             INSERT INTO decisions
               (tournament_id, hand_id, street, hero_cards, board,
                action_taken, best_action, label, score,
-               math_penalty, range_penalty, m_ratio, icm_pressure,
+               math_penalty, range_penalty, m_ratio, icm_pressure, icm_tax_pct,
                stack_bb, draw_profile, position, num_players,
                level_sb, level_bb, level_num, note, is_3bet, showdown_result,
                pot_size, facing_bet, gto_label, gto_action, estimated_equity,
                vs_position)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:
@@ -1678,7 +1679,7 @@ def get_cognitive_failure_report(user_id: int, days: int = 90) -> dict:
         rows = conn.execute(_adapt("""
             SELECT d.id, d.tournament_id, d.hand_id, d.street,
                    d.action_taken, d.best_action, d.label, d.score,
-                   d.position, d.m_ratio, d.icm_pressure, d.stack_bb
+                   d.position, d.m_ratio, d.icm_pressure, d.icm_tax_pct, d.stack_bb
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ? AND t.imported_at >= ?
@@ -1700,6 +1701,7 @@ def get_cognitive_failure_report(user_id: int, days: int = 90) -> dict:
             "position":      r["position"],
             "m_ratio":       r["m_ratio"],
             "icm_pressure":  r["icm_pressure"],
+            "icm_tax_pct":   r["icm_tax_pct"],
             "stack_bb":      r["stack_bb"],
         }
         for r in rows

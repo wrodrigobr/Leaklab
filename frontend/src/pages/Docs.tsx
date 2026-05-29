@@ -645,6 +645,7 @@ export default function Docs() {
                   [<Badge color="bg-yellow-500/15 text-yellow-400">{t("cognitive.patterns.sunk")}</Badge>,           t("cognitive.patterns.sunk_trigger"),         t("cognitive.patterns.sunk_signal")],
                   [<Badge color="bg-orange-500/15 text-orange-400">{t("cognitive.patterns.entitlement")}</Badge>,   t("cognitive.patterns.entitlement_trigger"),  t("cognitive.patterns.entitlement_signal")],
                   [<Badge color="bg-yellow-500/15 text-yellow-400">{t("cognitive.patterns.compensation")}</Badge>,  t("cognitive.patterns.compensation_trigger"), t("cognitive.patterns.compensation_signal")],
+                  [<Badge color="bg-destructive/15 text-destructive">{t("cognitive.patterns.icm")}</Badge>,         t("cognitive.patterns.icm_trigger"),          t("cognitive.patterns.icm_signal")],
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("cognitive.p2") }} />

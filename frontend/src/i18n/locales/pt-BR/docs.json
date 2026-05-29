@@ -291,7 +291,10 @@
       "entitlement_signal": "3+ erros nas próximas 5 decisões",
       "compensation": "Compensation Call",
       "compensation_trigger": "Fold correto de mão forte",
-      "compensation_signal": "2+ call errados nas próximas 3 decisões"
+      "compensation_signal": "2+ call errados nas próximas 3 decisões",
+      "icm": "Cegueira a ICM",
+      "icm_trigger": "Spot de alto ICM na mesa final",
+      "icm_signal": "Arrisca a pilha (call/aposta/all-in) e erra, em vez de apertar"
     },
     "p2": "Cada padrão recebe uma <strong>frequência</strong> (% das oportunidades em que o padrão se manifesta) e um <strong>nível de severidade</strong> — alto (≥ 40%), médio (≥ 20%) ou baixo (abaixo de 20%). É preciso um mínimo de 30 decisões para o card ativar.",
     "p3": "A narrativa de IA descreve o padrão dominante, por que ele custa EV e um hábito corretivo concreto para aplicar na próxima sessão."

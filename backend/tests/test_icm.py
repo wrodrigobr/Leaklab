@@ -157,6 +157,41 @@ def test_icm_interpretation_directional():
     print("OK  test_icm_interpretation_directional")
 
 
+def test_cognitive_icm_blindness_detector():
+    """O detector marca gambles finos de alto ICM na mesa final como padrão coachável."""
+    from leaklab.cognitive_mapper import analyze_cognitive_failures
+
+    def dec(i, action, label, tax):
+        return {"tournament_id": 1, "id": i, "hand_id": f"h{i}", "street": "preflop",
+                "action_taken": action, "best_action": "fold", "label": label,
+                "score": 0.0, "position": "BB", "m_ratio": 8.0,
+                "icm_pressure": "high", "icm_tax_pct": tax, "stack_bb": 15.0}
+
+    decisions = []
+    # 5 spots de alto ICM (tax 20) arriscando a pilha: 4 erros, 1 ok → leak claro
+    decisions.append(dec(1, "call", "clear_mistake", 20.0))
+    decisions.append(dec(2, "raise", "small_mistake", 20.0))
+    decisions.append(dec(3, "all-in", "clear_mistake", -25.0))   # short stack, tax negativo
+    decisions.append(dec(4, "call", "small_mistake", 18.0))
+    decisions.append(dec(5, "call", "standard", 20.0))           # ok → opp mas não count
+    # ruído: spots de baixo ICM (tax pequeno) e fora da mesa final (tax None) — ignorados
+    for i in range(6, 36):
+        decisions.append(dec(i, "fold", "standard", 1.0 if i % 2 else None))
+
+    rep = analyze_cognitive_failures(decisions)
+    icm = next((p for p in rep["patterns"] if p["type"] == "icm_blindness"), None)
+    assert icm is not None, f"icm_blindness não detectado: {rep['patterns']}"
+    # 5 opps (stack-risk em alto ICM), 4 erros → freq 0.8 → high
+    assert icm["count"] == 4
+    assert icm["severity"] == "high"
+
+    # Sem spots de alto ICM → não dispara
+    clean = [dec(i, "fold", "standard", None) for i in range(1, 36)]
+    rep2 = analyze_cognitive_failures(clean)
+    assert not any(p["type"] == "icm_blindness" for p in rep2["patterns"])
+    print("OK  test_cognitive_icm_blindness_detector")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

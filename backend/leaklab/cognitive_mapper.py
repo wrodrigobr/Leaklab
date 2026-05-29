@@ -15,6 +15,10 @@ _CALL       = frozenset({"call"})
 _FOLD       = frozenset({"fold"})
 _MISTAKES   = frozenset({"small_mistake", "clear_mistake"})
 _STANDARD   = "standard"
+# Ações que arriscam fichas (relevantes para ICM na mesa final).
+_STACK_RISK = _AGGRESSIVE | _CALL
+# Distorção ICM mínima (|chip% − equity ICM%|) para o spot contar como "alto ICM".
+_ICM_TAX_MIN = 8.0
 
 
 def analyze_cognitive_failures(decisions: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -37,6 +41,7 @@ def analyze_cognitive_failures(decisions: List[Dict[str, Any]]) -> Dict[str, Any
         "sunk_cost":           {"count": 0, "opps": 0},
         "entitlement_tilt":    {"count": 0, "opps": 0},
         "compensation_call":   {"count": 0, "opps": 0},
+        "icm_blindness":       {"count": 0, "opps": 0},
     }
 
     for t_decisions in by_tournament.values():
@@ -47,6 +52,7 @@ def analyze_cognitive_failures(decisions: List[Dict[str, Any]]) -> Dict[str, Any
         _sunk_cost(t_decisions, accum["sunk_cost"])
         _entitlement_tilt(t_decisions, accum["entitlement_tilt"])
         _compensation_call(t_decisions, accum["compensation_call"])
+        _icm_blindness(t_decisions, accum["icm_blindness"])
 
     patterns = []
     for ptype, a in accum.items():
@@ -147,6 +153,22 @@ def _entitlement_tilt(decisions: List[Dict], a: Dict) -> None:
             i = max(j, i + 1)
         else:
             i += 1
+
+
+def _icm_blindness(decisions: List[Dict], a: Dict) -> None:
+    """Em spots de alto ICM na mesa final (|icm_tax| ≥ 8pp), o jogador arrisca a
+    pilha (call/aposta/all-in) e erra — ignora o prêmio de risco/sobrevivência do
+    ICM. opp = decisão stack-risking em spot de alto ICM; count = essa decisão foi
+    erro. Frequência alta = cegueira a ICM ("ICM blindness")."""
+    for d in decisions:
+        tax = d.get("icm_tax_pct")
+        if tax is None or abs(tax) < _ICM_TAX_MIN:
+            continue
+        if d["action_taken"] not in _STACK_RISK:
+            continue
+        a["opps"] += 1
+        if d["label"] in _MISTAKES:
+            a["count"] += 1
 
 
 def _compensation_call(decisions: List[Dict], a: Dict) -> None:

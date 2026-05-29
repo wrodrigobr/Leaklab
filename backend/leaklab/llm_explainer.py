@@ -1505,6 +1505,7 @@ _PATTERN_NAMES_EN = {
     "sunk_cost":          "Sunk Cost Continuation",
     "entitlement_tilt":   "Entitlement Tilt",
     "compensation_call":  "Compensation Call",
+    "icm_blindness":      "ICM Blindness",
 }
 
 # Plain-language behavior descriptions used in the LLM prompt so the model
@@ -1529,6 +1530,10 @@ _PATTERN_BEHAVIORS = {
     "compensation_call": (
         "calls bets they would normally fold immediately after correctly folding a strong hand, "
         "as if needing to 'make up' for the fold they just made"
+    ),
+    "icm_blindness": (
+        "gambles their whole stack on thin spots at the final table, where survival and pay "
+        "jumps make chips worth less than their face value, instead of tightening up under ICM pressure"
     ),
 }
 
@@ -1635,6 +1640,11 @@ def _template_cognitive(patterns: list, lang: str = 'pt-BR') -> str:
             "Cada mão é independente: foldar bem não cria nenhuma dívida para a próxima. "
             "Quando sentir vontade de pagar 'só para fazer alguma coisa', é sinal para foldar."
         ),
+        "icm_blindness": (
+            f"Em {freq}% dos spots de alto ICM na mesa final, você arrisca a pilha em situações finas em vez de apertar — ignorando que, perto dos pay jumps, suas fichas valem menos do que parecem. "
+            "Sobreviver tem valor real ali: um call ou shove marginal que seria certo em cash vira um erro caro sob ICM. "
+            "Na mesa final, antes de arriscar a stack, pergunte: 'esse all-in ainda é +EV depois de descontar o prêmio de sobrevivência?'"
+        ),
     }
     _PLAIN_EN = {
         "revenge_aggression": (
@@ -1662,6 +1672,11 @@ def _template_cognitive(patterns: list, lang: str = 'pt-BR') -> str:
             "Each hand is independent: folding well creates no debt for the next hand. "
             "When you feel like calling 'just to do something', that's your cue to fold."
         ),
+        "icm_blindness": (
+            f"In {freq}% of high-ICM final-table spots, you risk your stack on thin situations instead of tightening up — ignoring that near the pay jumps your chips are worth less than they look. "
+            "Survival has real value there: a marginal call or shove that would be correct in a cash game becomes a costly mistake under ICM. "
+            "At the final table, before risking your stack ask: 'is this all-in still +EV after subtracting the survival premium?'"
+        ),
     }
     _PLAIN_ES = {
         "revenge_aggression": (
@@ -1688,6 +1703,11 @@ def _template_cognitive(patterns: list, lang: str = 'pt-BR') -> str:
             f"En el {freq}% de las sesiones, tiendes a pagar bets que normalmente foldearías justo después de haber foldeado bien una mano fuerte — como si necesitaras 'compensar' ese fold. "
             "Cada mano es independiente: foldear bien no crea ninguna deuda para la siguiente. "
             "Cuando sientas ganas de pagar 'solo para hacer algo', esa es tu señal de fold."
+        ),
+        "icm_blindness": (
+            f"En el {freq}% de los spots de alto ICM en la mesa final, arriesgas tu pila en situaciones finas en vez de apretar — ignorando que, cerca de los pay jumps, tus fichas valen menos de lo que parecen. "
+            "Sobrevivir tiene valor real allí: un call o shove marginal que sería correcto en cash se vuelve un error caro bajo ICM. "
+            "En la mesa final, antes de arriesgar tu stack pregúntate: '¿este all-in sigue siendo +EV tras descontar el premio de supervivencia?'"
         ),
     }
     if lang == 'en':

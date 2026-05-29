@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(cognitive): detector de leak ICM ("ICM Blindness") na mesa final
+- **Novo padrão coachável** no Cognitive Failure Mapper: detecta o hábito de **arriscar a pilha em spots finos de alto ICM na mesa final** quando o ICM pede aperto. opp = decisão stack-risking (call/aposta/all-in) num spot com `|icm_tax| ≥ 8pp`; count = essa decisão foi erro. Frequência alta = cegueira a ICM. (`cognitive_mapper._icm_blindness`)
+- **Persistência**: nova coluna `decisions.icm_tax_pct` (schema SQLite + Postgres + migrations). `save_decisions` grava `context.icmTaxPct` (já computado no pipeline via `calculate_icm`); `get_cognitive_failure_report` passa o campo ao detector. Decisões fora da mesa final têm `icm_tax_pct` NULL e são naturalmente ignoradas.
+- **Narrativa** (`llm_explainer`): `icm_blindness` adicionado a `_PATTERN_NAMES_EN`, `_PATTERN_BEHAVIORS` (prompt do LLM) e aos templates de fallback `_PLAIN_PT/_EN/_ES` — explica em linguagem de jogador o prêmio de sobrevivência e dá uma dica acionável ("esse all-in ainda é +EV depois de descontar o prêmio de sobrevivência?").
+- **Frontend**: o `CognitiveFailureCard` é data-driven — bastou `cognitiveFailure.patterns.icm_blindness` + `descriptions.icm_blindness` no `dashboard.json` (3 locales). Aparece automaticamente no card e alimenta o Mapa Cognitivo.
+- **/docs**: nova linha "Cegueira a ICM" na tabela de Padrões Cognitivos (`Docs.tsx` + `cognitive.patterns.icm*` nas 3 locales).
+- **Testes** (`test_icm.py`): caso cobrindo detecção (5 spots de alto ICM, 4 erros → severity high), exclusão de spots de baixo ICM/fora da FT (tax NULL), e ausência quando não há spots de alto ICM. Suites database (36) + engine (225) + api (72): zero regressões. Build do frontend validado.
+
 ### refactor(i18n): migra o card de decisão do Replayer para i18n (PT/EN/ES)
 - **Débito removido**: `DecisionCard.tsx` e o `SidePanels` (`Replayer.tsx`) tinham dezenas de strings PT hardcoded. Migradas para o namespace `replayer` (bloco `card`, **91 chaves** nas 3 locales): rótulos de veredito (Correto/Misto/Desvio Leve/Crítico, Aceitável/Leak/Leak Grave/Sem dados, Erro), tooltips (Solver/Preflop/Engine, GTO label), source labels, `idealLabel` (GTO recomenda/Recomendado), footer (Você jogou, tooltips de Stack/M/ICM, ICM baixo/médio/alto), indicadores (SPR/Sizing/Equity/Necess. + descritores comprometido/médio/fundo/forte/favorável/marginal/fraca + audit Cenário/Mão), as narrativas `why` (interpolação via `{{eqPct}}`/`{{reqLabel}}`/…), o contexto de freq e as 6 mensagens de status GTO.
 - **Termos de poker mantidos em inglês** (regra do projeto): Fold/Call/Raise/Allin/Check/Shove/Bet, RFI, SPR, Sizing, Equity, Solver, Engine, Preflop, Push/Fold, Leak, Spot N/A.
