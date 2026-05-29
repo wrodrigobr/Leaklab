@@ -853,7 +853,36 @@ export const sparring = {
   },
 };
 
+// ── Leaderboard (#15) ─────────────────────────────────────────────────────────
+export interface LeaderboardDimensions {
+  gto: number; evolution: number; engagement: number; volume: number;
+}
+export interface LeaderboardEntry {
+  rank?: number;
+  user_id: number;
+  display_name: string;
+  score: number;
+  dimensions: LeaderboardDimensions;
+  aligned_pct: number;
+  hands: number;
+  tournaments: number;
+  drills: number;
+  gto_decisions: number;
+  eligible: boolean;
+  reason: string | null;
+}
+export interface LeaderboardResponse {
+  period_days: number;
+  weights: { gto: number; evolution: number; engagement: number; volume: number };
+  eligibility: { min_hands: number; min_tournaments: number; min_gto_decisions: number };
+  ranked: LeaderboardEntry[];
+  ineligible: LeaderboardEntry[];
+}
+
 export const metrics = {
+  leaderboard: (period = 90) =>
+    request<LeaderboardResponse>(`/leaderboard?period=${period}`),
+
   evolution: (days = 90, lastN?: number) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
 

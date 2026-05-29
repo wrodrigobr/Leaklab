@@ -13,6 +13,7 @@ import TournamentDetail from "./pages/TournamentDetail.tsx";
 import Replayer from "./pages/Replayer.tsx";
 import Rating from "./pages/Rating.tsx";
 import DocsRating from "./pages/DocsRating.tsx";
+import Leaderboard from "./pages/Leaderboard.tsx";
 import AICoach from "./pages/AICoach.tsx";
 import StudyPlan from "./pages/StudyPlan.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -150,6 +151,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <DocsRating />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leaderboard"
+              element={
+                <ProtectedRoute>
+                  <Leaderboard />
                 </ProtectedRoute>
               }
             />

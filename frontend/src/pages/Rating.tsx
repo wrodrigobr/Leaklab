@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Award, TrendingUp, TrendingDown, Minus, BookOpen } from "lucide-react";
+import { ArrowLeft, Award, TrendingUp, TrendingDown, Minus, BookOpen, Trophy } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { metrics, EloResponse, EloCurveResponse, EloCurvePoint } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -112,12 +112,20 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
             )}
           </div>
 
-          <Link
-            to="/docs/rating"
-            className="inline-flex items-center gap-1.5 text-xs font-mono text-primary hover:underline shrink-0"
-          >
-            <BookOpen className="size-3.5" /> {t("elo.page.howItWorks")}
-          </Link>
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <Link
+              to="/docs/rating"
+              className="inline-flex items-center gap-1.5 text-xs font-mono text-primary hover:underline"
+            >
+              <BookOpen className="size-3.5" /> {t("elo.page.howItWorks")}
+            </Link>
+            <Link
+              to="/leaderboard"
+              className="inline-flex items-center gap-1.5 text-xs font-mono text-primary hover:underline"
+            >
+              <Trophy className="size-3.5" /> {t("leaderboard.title")}
+            </Link>
+          </div>
         </div>
       </div>
 

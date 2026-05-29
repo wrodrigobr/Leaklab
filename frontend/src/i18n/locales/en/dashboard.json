@@ -40,6 +40,26 @@
       "Elite": "Elite"
     }
   },
+  "leaderboard": {
+    "eyebrow": "Community",
+    "title": "Student Leaderboard",
+    "description": "Ranked by LEARNING — GTO adherence, evolution, engagement and volume. Not by money.",
+    "loading": "Loading leaderboard…",
+    "empty": "Nobody eligible yet in this period. Keep importing tournaments and training.",
+    "colRank": "#",
+    "colPlayer": "Player",
+    "colScore": "Score",
+    "dimGto": "GTO",
+    "dimEvolution": "Evolution",
+    "dimEngagement": "Engagement",
+    "dimVolume": "Volume",
+    "weightsNote": "Weights: GTO {{gto}}% · Evolution {{evo}}% · Engagement {{eng}}% · Volume {{vol}}%",
+    "gateNote": "To qualify: min. {{hands}} hands, {{tournaments}} tournaments and {{gto}} solver decisions.",
+    "ineligibleTitle": "Not eligible yet",
+    "reason_insufficient_hands": "Too few hands",
+    "reason_insufficient_tournaments": "Too few tournaments",
+    "reason_insufficient_gto_coverage": "Insufficient GTO coverage"
+  },
   "eyebrow": "Session synced",
   "eyebrowEmpty": "Import tournaments to get started",
   "title": "Dashboard",

@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(leaderboard): UI mínima do ranking de alunos (#15)
+- **`pages/Leaderboard.tsx`** (nova, rota `/leaderboard`): consome `GET /leaderboard` (via `metrics.leaderboard()` em `api.ts`) e renderiza o ranking — rank (top-3 com tinta ouro/prata/bronze), nome, score, e **mini-barras das 4 dimensões** (GTO/evolução/engajamento/volume) — além da lista de **inelegíveis** com motivo e das notas de pesos/critério. Estados de loading/erro/vazio.
+- **Entrada**: link "Ranking" (ícone troféu) no header da `/rating`. i18n nas 3 locales (`dashboard` → bloco `leaderboard.*`, 18 chaves). Termos de poker mantidos.
+- Camada social (opt-in/privacidade, cron de snapshots, badges) segue deferida; esta é só a leitura do ranking. Build validado.
+
 ### fix(analyze): rejeita hand history sem identificador de torneio + seed de leaderboard
 - **Bug**: um HH sem a linha `Tournament #…` (cash game / formato antigo) era salvo com `tournament_id` vazio → frontend gerava URLs `/tournament/` sem id, quebrando **abrir as mãos** e **excluir** (DELETE 500). `/analyze` agora **rejeita com 422** ("Apenas torneios MTT/SNG são suportados…") antes de persistir, evitando o registro quebrado.
 - **`backend/scripts/seed_fake_leaderboard.py`** (novo, só SQLite local): cria 5 usuários fake com perfis distintos (crusher/improver/grinder/rookie/below-gate) — torneios + decisões com `gto_label` + drills — para exercitar o leaderboard (#15) localmente, onde só há 2 usuários reais. Idempotente (`--clean`).

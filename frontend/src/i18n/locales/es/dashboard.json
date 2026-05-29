@@ -40,6 +40,26 @@
       "Elite": "Elite"
     }
   },
+  "leaderboard": {
+    "eyebrow": "Comunidad",
+    "title": "Ranking de Alumnos",
+    "description": "Rankeado por APRENDIZAJE — adherencia GTO, evolución, engagement y volumen. No por dinero.",
+    "loading": "Cargando ranking…",
+    "empty": "Nadie elegible aún en el período. Sigue importando torneos y entrenando.",
+    "colRank": "#",
+    "colPlayer": "Jugador",
+    "colScore": "Score",
+    "dimGto": "GTO",
+    "dimEvolution": "Evolución",
+    "dimEngagement": "Engagement",
+    "dimVolume": "Volumen",
+    "weightsNote": "Pesos: GTO {{gto}}% · Evolución {{evo}}% · Engagement {{eng}}% · Volumen {{vol}}%",
+    "gateNote": "Para entrar: mín. {{hands}} manos, {{tournaments}} torneos y {{gto}} decisiones con solver.",
+    "ineligibleTitle": "Aún no elegibles",
+    "reason_insufficient_hands": "Pocas manos",
+    "reason_insufficient_tournaments": "Pocos torneos",
+    "reason_insufficient_gto_coverage": "Cobertura GTO insuficiente"
+  },
   "eyebrow": "Sesión sincronizada",
   "eyebrowEmpty": "Importa torneos para comenzar",
   "title": "Dashboard",
