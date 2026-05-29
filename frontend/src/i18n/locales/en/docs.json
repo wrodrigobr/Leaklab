@@ -4,6 +4,7 @@
   "subtitle": "Technical reference for indicators, scoring methodology, and platform features.",
   "exampleLabel": "Visual example",
   "nav": {
+    "import": "Sites & Import",
     "scoring": "Scoring System",
     "indicators": "Indicators",
     "gto_method": "GTO Methodology",
@@ -30,6 +31,19 @@
     "twin": "Strategic Patterns",
     "sparring": "Sparring Mode",
     "rating": "ELO Rating"
+  },
+  "import": {
+    "title": "Supported Sites & Import",
+    "p1": "Analysis starts from your hand history. Export the <strong>.txt</strong> file from your room and upload it — the system auto-detects the site and evaluates every decision. Four rooms are supported:",
+    "col_site": "Site",
+    "col_formats": "Formats",
+    "col_where": "Where to get the history",
+    "ps_where": "Menu → Hands → Export hand history",
+    "gg_where": "Hand History, in the client",
+    "p888_where": "Saved automatically in the client folder",
+    "party_where": "Saved automatically in the client folder",
+    "p2": "You can upload multiple files at once. Each tournament is imported only once — duplicate uploads are detected and skipped.",
+    "p3": "<strong>888poker tip:</strong> the tournament result (place and prize) lives in a separate <em>Tournament Summary</em> file, apart from the hand history. To record the prize, upload the hand history and the summary together."
   },
   "scoring": {
     "title": "Scoring System",

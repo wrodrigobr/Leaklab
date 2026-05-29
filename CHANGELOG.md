@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs: nova seção "Sites Suportados & Importação" na /docs
+- **`Docs.tsx`**: adicionada seção `import` como **primeira** da `/docs` (e no menu lateral) — antes não havia nenhuma seção sobre quais salas são suportadas nem como importar. Tabela com as **4 salas** (PokerStars, GGPoker, 888poker, PartyPoker), formatos (MTT · SNG · Cash/Spin) e onde obter o histórico de mãos. Nomes de sala/formatos hardcoded (neutros de idioma); só a coluna "onde obter" + textos via i18n.
+- **Dica 888poker**: explica (em linguagem de usuário, sem expor lógica interna) que o resultado do torneio fica num arquivo *Tournament Summary* separado do HH — para registrar o prêmio, enviar HH + summary juntos.
+- **i18n** nas 3 locales (PT/EN/ES): `nav.import` + bloco `import.*`. Build do frontend validado.
+
 ### feat(parser): extração financeira (buy-in/prêmio/data/nome) para 888poker e PartyPoker
 - **`app.py._extract_financials`** ganhou parâmetro `site` e um branch PartyGaming: **888poker** lê buy-in de `Tournament #… $18.30 + $1.70` (buy-in + rake); **PartyPoker** lê `$X USD Buy-in`. Prêmio/place do hero via `Player <hero> finished in N place and received $X` (vencedor) / `…finished in N.` (bustou → prêmio 0); profit = prêmio − buy-in. O branch faz `return` cedo, sem tocar na lógica PokerStars/GGPoker.
 - **`_extract_date`** passou a reconhecer os formatos novos: **888poker** `*** DD MM YYYY HH:MM:SS` e **PartyPoker** `Weekday, Month DD, … YYYY` (mês por nome, via `_MONTHS`).

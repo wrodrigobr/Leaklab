@@ -4,6 +4,7 @@
   "subtitle": "Referência técnica dos indicadores, metodologia de scoring e recursos da plataforma.",
   "exampleLabel": "Exemplo visual",
   "nav": {
+    "import": "Sites & Importação",
     "scoring": "Sistema de Scoring",
     "indicators": "Indicadores",
     "gto_method": "Metodologia GTO",
@@ -30,6 +31,19 @@
     "twin": "Tendências Estratégicas",
     "sparring": "Sparring Mode",
     "rating": "Rating ELO"
+  },
+  "import": {
+    "title": "Sites Suportados & Importação",
+    "p1": "A análise começa com o seu histórico de mãos (<em>hand history</em>). Exporte o arquivo <strong>.txt</strong> do seu site e faça o upload — o sistema detecta o site automaticamente e avalia cada decisão. Quatro salas são suportadas:",
+    "col_site": "Site",
+    "col_formats": "Formatos",
+    "col_where": "Onde obter o histórico",
+    "ps_where": "Menu → Mãos → Exportar histórico de mãos",
+    "gg_where": "Histórico de Mãos, no cliente",
+    "p888_where": "Salvo automaticamente na pasta do cliente",
+    "party_where": "Salvo automaticamente na pasta do cliente",
+    "p2": "Você pode enviar vários arquivos de uma vez. Cada torneio é importado uma única vez — uploads duplicados são detectados e ignorados.",
+    "p3": "<strong>Dica para 888poker:</strong> o resultado do torneio (posição e prêmio) fica em um arquivo de <em>Tournament Summary</em> separado do histórico de mãos. Para que a plataforma registre o prêmio, envie o histórico e o summary juntos."
   },
   "scoring": {
     "title": "Sistema de Scoring",

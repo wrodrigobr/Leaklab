@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight, TrendingUp } from "lucide-react";
 
-const SECTION_IDS = ["scoring", "indicators", "gto_method", "alignment_matrix", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
+const SECTION_IDS = ["import", "scoring", "indicators", "gto_method", "alignment_matrix", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -188,6 +188,22 @@ export default function Docs() {
 
           {/* Content */}
           <div className="flex-1 min-w-0 space-y-14">
+
+            {/* Supported Sites & Import */}
+            <Section id="import" title={t("import.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("import.p1") }} />
+              <Table
+                headers={[t("import.col_site"), t("import.col_formats"), t("import.col_where")]}
+                rows={[
+                  ["PokerStars", "MTT · SNG · Cash", t("import.ps_where")],
+                  ["GGPoker",    "MTT · SNG · Spin", t("import.gg_where")],
+                  ["888poker",   "MTT · SNG · Cash", t("import.p888_where")],
+                  ["PartyPoker", "MTT · SNG · Cash", t("import.party_where")],
+                ]}
+              />
+              <p dangerouslySetInnerHTML={{ __html: t("import.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("import.p3") }} />
+            </Section>
 
             {/* Scoring */}
             <Section id="scoring" title={t("scoring.title")}>
