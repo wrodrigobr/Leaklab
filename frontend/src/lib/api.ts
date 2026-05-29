@@ -751,6 +751,7 @@ export interface AcademyQuestion {
   correct_index: number;
   explanation: string;
   mental_tip?: string;
+  concept?: string;
   hero_cards?: { rank: string; suit: string }[];
   board_cards?: { rank: string; suit: string }[];
   context?: { street?: string; position?: string; stack_bb?: number };

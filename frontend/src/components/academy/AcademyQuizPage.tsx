@@ -254,6 +254,14 @@ export default function AcademyQuizPage({
                     <MdText>{showCards ? (question.question.split('\n').pop() ?? question.question) : question.question}</MdText>
                   </p>
                 </div>
+
+                {/* O que é (conceito) */}
+                {question.concept && (
+                  <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
+                    <p className="mb-0.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70">{t("whatIs")}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed"><MdText>{question.concept}</MdText></p>
+                  </div>
+                )}
               </div>
 
               {/* Hint (before answering) */}

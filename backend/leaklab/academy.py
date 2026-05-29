@@ -290,6 +290,7 @@ def _pot_odds_calc_question(pot: float, bet: float, correct_pct: float, d: dict)
     total_after_call = pot + 2 * bet
     return {
         'type': 'pot_odds_calc',
+        'concept': '**Pot odds** são o preço do call: o que você paga em relação ao tamanho do pote. Definem a equity mínima para o call valer a pena.',
         'question': f'Pot: **{pot} BB**. Villain aposta **{bet} BB**.\nQual a equity mínima necessária para o call ser +EV?',
         'options': [f'{o}%' for o in options['values']],
         'correct_index': options['correct_index'],
@@ -341,6 +342,7 @@ def _call_or_fold_question(pot: float, bet: float, min_equity_pct: float, d: dic
 
     return {
         'type': 'call_or_fold',
+        'concept': 'Pagar ou desistir é uma **comparação**: a sua equity estimada contra as pot odds exigidas pelo tamanho da aposta.',
         'question': (
             f'Pot: **{pot} BB**. Villain aposta **{bet} BB**.\n'
             f'Sua equity estimada neste spot: **{estimated_equity}%**.\n'
@@ -389,6 +391,7 @@ def _ev_direction_question(pot: float, bet: float, min_equity_pct: float, d: dic
 
     return {
         'type': 'ev_direction',
+        'concept': '**EV (valor esperado)** é o lucro ou prejuízo médio de uma jogada repetida infinitas vezes — +EV ganha no longo prazo, −EV perde.',
         'question': (
             f'Pot: **{pot} BB**. Bet: **{bet} BB**.\n'
             f'Equity estimada do hero: **{equity_used}%**.\n'
@@ -427,6 +430,7 @@ def _synthetic_pot_odds_question() -> dict:
     total_after_call = pot + 2 * bet
     return {
         'type': 'pot_odds_calc',
+        'concept': '**Pot odds** são o preço do call: o que você paga em relação ao tamanho do pote. Definem a equity mínima para o call valer a pena.',
         'question': f'Pot: **{pot} BB**. Villain aposta **{bet} BB**.\nQual a equity mínima necessária para o call ser +EV?',
         'options': [f'{o}%' for o in options['values']],
         'correct_index': options['correct_index'],
@@ -896,6 +900,7 @@ def _outs_count_question() -> dict:
     random.shuffle(pool)
     return {
         'type': 'outs_count',
+        'concept': '**Outs** são as cartas que ainda podem vir e que transformam a sua mão na melhor. Contá-las é a base de toda estimativa de equity.',
         'question': f'{prefix}{question_text}' if prefix else question_text,
         'options': [f'{o} outs' for o in pool],
         'correct_index': pool.index(outs),
@@ -948,6 +953,7 @@ def _equity_estimate_question() -> dict:
 
     return {
         'type': 'equity_estimate',
+        'concept': '**Equity** é a sua fatia do pote: a % de vezes que a sua mão venceria se fosse até o river. A Regra 2/4 a estima a partir dos outs.',
         'question': (
             f'{prefix}Você está no **{streets_label}** com um **{draw["name"]}** ({draw["outs"]} outs).\n'
             f'Usando a Regra 2/4, qual sua equity **aproximada**?'
@@ -998,6 +1004,7 @@ def _odds_vs_equity_question(pot: float, bet: float, d: dict) -> dict:
 
     return {
         'type': 'odds_vs_equity',
+        'concept': 'Esta é a decisão completa: estime a sua **equity** pelos outs (Regra 2/4) e compare com as **pot odds** do tamanho da aposta.',
         'question': (
             f'No **{street}**: pot = **{pot} BB**, villain aposta **{bet} BB**.\n'
             f'Você tem um **{draw["name"]}** ({draw["outs"]} outs).\n'
