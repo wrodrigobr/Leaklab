@@ -6,18 +6,19 @@ import {
   CheckCircle2,
   Loader2,
   RefreshCw,
-  Shield,
   XCircle,
 } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { PlayingCard } from "@/components/hud/PlayingCard";
-import type { CardData } from "@/components/hud/PlayingCard";
+import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { gtoPreflop } from "@/lib/api";
-import type { GtoPreflopQuestion, GtoPreflopVerdict } from "@/lib/api";
+import type { GtoPreflopQuestion, GtoPreflopVerdict, ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Phase = "loading" | "question" | "feedback" | "error";
 type Scenario = "mixed" | "rfi" | "vs_rfi" | "vs_3bet";
+
+// Ordem de ação preflop 9-max (early → late). Seats 1..9 nesta ordem.
+const ORDER = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
 
 const FREQ_LABEL: Record<string, string> = {
   raise: "raise", call: "call", allin: "all-in", fold: "fold",
@@ -25,6 +26,59 @@ const FREQ_LABEL: Record<string, string> = {
 const FREQ_COLOR: Record<string, string> = {
   raise: "bg-emerald-500", call: "bg-sky-500", allin: "bg-violet-500", fold: "bg-muted-foreground/40",
 };
+
+/** Monta um ReplayStep 9-max sintético a partir do spot da questão. */
+function buildPreflopStep(q: GtoPreflopQuestion) {
+  const bb = 100;
+  const sp = q.spot;
+  const heroPos = sp.position;
+  const vsPos = sp.vs_position;
+  const scen = sp.scenario;
+  const heroIdx = ORDER.indexOf(heroPos);
+  const vsIdx = vsPos ? ORDER.indexOf(vsPos) : -1;
+  const stackChips = Math.round((sp.stack_bb || 50) * bb);
+
+  const seats: Record<string, { player: string; stack: number; pos: string }> = {};
+  const bets: Record<string, number> = {};
+  const folded: string[] = [];
+
+  ORDER.forEach((pos, i) => {
+    const sn = String(i + 1);
+    const isHero = pos === heroPos;
+    const player = isHero ? "Hero" : pos;
+    seats[sn] = { player, stack: stackChips, pos };
+
+    if (pos === "SB") bets[sn] = Math.round(bb * 0.5);
+    else if (pos === "BB") bets[sn] = bb;
+
+    let isFolded = false;
+    if (scen === "rfi") isFolded = i < heroIdx;                       // foldou até o hero
+    else if (scen === "vs_rfi") isFolded = i < heroIdx && pos !== vsPos; // só o opener segue
+    else isFolded = !isHero && pos !== vsPos;                          // vs_3bet: hero vs 3-bettor
+    if (isFolded) folded.push(player);
+  });
+
+  // Apostas de raise/3-bet por cenário
+  if (scen === "vs_rfi" && vsIdx >= 0) {
+    bets[String(vsIdx + 1)] = Math.round((sp.facing_size || 2.2) * bb);
+  } else if (scen === "vs_3bet") {
+    if (heroIdx >= 0) bets[String(heroIdx + 1)] = Math.round(2.2 * bb);          // open do hero
+    if (vsIdx >= 0) bets[String(vsIdx + 1)] = Math.round((sp.facing_size || 8) * bb); // 3-bet do vilão
+  }
+
+  const potChips = Object.values(bets).reduce((a, b) => a + b, 0);
+  const step = {
+    type: "action", street: "preflop",
+    seats, bets, folded,
+    pot_bb: potChips / bb, pot: potChips, bb,
+    button: ORDER.indexOf("BTN") + 1,
+    board: [],
+    player: "Hero", seat: heroIdx + 1, is_hero: true,
+  } as unknown as ReplayStep;
+
+  const heroCards = q.hero_cards.map((c) => `${c.rank}${c.suit}`);
+  return { step, heroCards, bb };
+}
 
 export default function AcademyGtoPreflop() {
   const { t } = useTranslation("academy");
@@ -35,6 +89,7 @@ export default function AcademyGtoPreflop() {
   const [question, setQuestion]         = useState<GtoPreflopQuestion | null>(null);
   const [verdict, setVerdict]           = useState<GtoPreflopVerdict | null>(null);
   const [selected, setSelected]         = useState<string | null>(null);
+  const [submitting, setSubmitting]     = useState(false);
   const [streak, setStreak]             = useState(0);
   const [totalDone, setTotalDone]       = useState(0);
   const [totalCorrect, setTotalCorrect] = useState(0);
@@ -58,9 +113,9 @@ export default function AcademyGtoPreflop() {
   useEffect(() => { loadQuestion(); }, [loadQuestion]);
 
   const submitAnswer = async (action: string) => {
-    if (!question || phase !== "question") return;
+    if (!question || phase !== "question" || submitting) return;
     setSelected(action);
-    setPhase("loading");
+    setSubmitting(true);
     try {
       const v = await gtoPreflop.submit(question.spot, action, question.xp_value);
       setVerdict(v);
@@ -74,13 +129,13 @@ export default function AcademyGtoPreflop() {
       setPhase("feedback");
     } catch {
       setPhase("error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const accuracy   = totalDone > 0 ? Math.round((totalCorrect / totalDone) * 100) : null;
-  const heroCards: CardData[] =
-    question?.hero_cards?.map((c) => ({ rank: c.rank, suit: c.suit as CardData["suit"] })) ?? [];
-
+  const accuracy = totalDone > 0 ? Math.round((totalCorrect / totalDone) * 100) : null;
+  const table = question ? buildPreflopStep(question) : null;
   const freqEntries = verdict
     ? Object.entries(verdict.hand_freq || {}).filter(([, v]) => v && v > 0.01).sort((a, b) => b[1] - a[1])
     : [];
@@ -91,7 +146,7 @@ export default function AcademyGtoPreflop() {
       title={t("gtoPreflop.title")}
       description={t("gtoPreflop.subtitle")}
     >
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-5xl space-y-5">
 
         {/* Stats bar */}
         {totalDone > 0 && (
@@ -117,7 +172,7 @@ export default function AcademyGtoPreflop() {
           </div>
         )}
 
-        {/* Loading */}
+        {/* Loading (initial) */}
         {phase === "loading" && (
           <div className="flex flex-col items-center gap-4 py-16">
             <Loader2 className="size-8 animate-spin text-amber-400" aria-hidden />
@@ -140,78 +195,55 @@ export default function AcademyGtoPreflop() {
           </div>
         )}
 
-        {/* Question + Feedback */}
-        {(phase === "question" || phase === "feedback") && question && (
-          <div className={cn(
-            "gap-5",
-            phase === "feedback" ? "grid grid-cols-1 md:grid-cols-[1fr_280px]" : "flex flex-col",
-          )}>
+        {/* Table + actions/verdict */}
+        {(phase === "question" || phase === "feedback") && question && table && (
+          <div className="space-y-4">
 
-            {/* Left: spot card + options */}
-            <div className="space-y-4 min-w-0">
-              <div className="rounded-xl border border-border bg-hud-surface p-6 space-y-5">
-                <div className="flex items-center gap-2">
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 ring-1 ring-amber-500/30 text-amber-400">
-                    <Shield className="size-4" aria-hidden />
-                  </div>
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-amber-400">
-                    {t(`qtypes.${question.type}`, question.type)}
-                  </span>
-                </div>
+            {/* Scenario chip + context */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-amber-400">
+                {t(`qtypes.${question.type}`, question.type)}
+              </span>
+              <span className="text-sm text-foreground">{question.context}</span>
+            </div>
 
-                {/* Hero cards */}
-                {heroCards.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">{t("board.heroLabel")}</p>
-                    <div className="flex gap-1.5">
-                      {heroCards.map((cd, i) => <PlayingCard key={i} card={cd} size="md" />)}
-                    </div>
-                  </div>
-                )}
-
-                {/* Context + prompt */}
-                <div className="border-t border-border pt-4 space-y-2">
-                  <p className="text-sm text-foreground leading-relaxed">{question.context}</p>
-                  <p className="font-mono text-xs uppercase tracking-wider text-amber-400">{question.prompt}</p>
-                </div>
-              </div>
-
-              {/* Options */}
-              <div className="space-y-2">
-                {question.options.map((opt) => {
-                  const isSelected = selected === opt.action;
-                  const showResult = phase === "feedback" && verdict;
-                  const isBest     = showResult && verdict!.best_action === opt.action;
-                  const isRec      = showResult && (verdict!.recommended || []).includes(opt.action);
-                  return (
-                    <button
-                      key={opt.action}
-                      onClick={() => submitAnswer(opt.action)}
-                      disabled={phase !== "question"}
-                      className={cn(
-                        "w-full rounded-lg border px-5 py-3.5 text-left font-mono text-sm font-semibold transition-all",
-                        phase === "question" && "border-border bg-hud-surface hover:border-amber-500/40 hover:bg-amber-500/5 hover:text-amber-400",
-                        showResult && isRec      && "border-emerald-500/60 bg-emerald-500/10 text-emerald-400",
-                        showResult && isSelected && !isRec && "border-destructive/60 bg-destructive/10 text-destructive",
-                        showResult && !isSelected && !isRec && "border-border/40 opacity-40",
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs">{opt.label}</span>
-                        {showResult && isBest && <CheckCircle2 className="ml-auto size-4 text-emerald-400 shrink-0" aria-hidden />}
-                        {showResult && isSelected && !isRec && <XCircle className="ml-auto size-4 text-destructive shrink-0" aria-hidden />}
-                      </div>
-                    </button>
-                  );
-                })}
+            {/* Poker table */}
+            <div className="mx-auto w-full overflow-visible">
+              <div className="mx-auto aspect-[16/10] max-w-[820px]">
+                <PokerTableV3 step={table.step} hero="Hero" heroCards={table.heroCards} bb={table.bb} betUnit="bb" />
               </div>
             </div>
 
-            {/* Right: feedback */}
+            {/* Actions (question phase) */}
+            {phase === "question" && (
+              <div className="space-y-2">
+                <p className="text-center font-mono text-xs uppercase tracking-wider text-amber-400">{question.prompt}</p>
+                <div className={cn("grid gap-2 mx-auto max-w-xl",
+                  question.options.length === 2 ? "grid-cols-2" : "grid-cols-3")}>
+                  {question.options.map((opt) => (
+                    <button
+                      key={opt.action}
+                      onClick={() => submitAnswer(opt.action)}
+                      disabled={submitting}
+                      className={cn(
+                        "min-h-[48px] rounded-lg border px-4 py-3 font-mono text-sm font-bold uppercase tracking-wider transition-all active:scale-95",
+                        "border-border bg-hud-surface text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400",
+                        "disabled:opacity-40 disabled:cursor-not-allowed",
+                        submitting && selected === opt.action && "border-amber-500/60 bg-amber-500/5 text-amber-400",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Verdict (feedback phase) */}
             {phase === "feedback" && verdict && (
-              <div className="flex flex-col gap-3">
+              <div className="mx-auto max-w-xl space-y-3">
                 <div className={cn(
-                  "flex-1 rounded-xl border p-5 space-y-3",
+                  "rounded-xl border p-5 space-y-3",
                   verdict.is_correct ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5",
                 )}>
                   <div className="flex items-center gap-2">
@@ -227,7 +259,7 @@ export default function AcademyGtoPreflop() {
                     )}
                   </div>
 
-                  {/* GTO frequency breakdown for the hand */}
+                  {/* Frequências GTO da mão */}
                   {freqEntries.length > 0 && (
                     <div className="space-y-1.5">
                       {freqEntries.map(([act, freq]) => (
