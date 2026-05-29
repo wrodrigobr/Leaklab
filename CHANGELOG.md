@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(ui): expõe 888poker e PartyPoker na UI de upload
+- **`UploadZone.tsx`**: badges de sites suportados agora refletem o que o parser realmente aceita — `PokerStars, GGPoker, 888poker, PartyPoker`. Removidos **ACR** e **Winamax**, que estavam anunciados mas não têm parser (upload falhava com "Nenhuma mão encontrada").
+- **`SiteLogo.tsx`**: adicionada entrada `partypoker` (favicon + nome "PartyPoker") — torneios importados de PartyPoker passam a exibir logo/nome corretos na listagem; 888poker já tinha entrada. (O backend já persiste `site` via `_detect_site`, agora ciente dos dois.)
+- **Copy i18n (PT/EN/ES)**: textos de onboarding (`upload.desc`/`upload.hint`), landing (`step1Desc`) e dashboard (`empty.desc`) atualizados de "PokerStars ou GGPoker" para incluir **888poker** e **PartyPoker**. Hint de onboarding nota que 888poker/PartyPoker salvam o histórico automaticamente na pasta do cliente.
+- Build do frontend validado (vite, sem erros de tipo).
+
 ### feat(parser): suporte a 888poker e PartyPoker (dialeto PartyGaming)
 - **Novo parser** para o formato compartilhado por 888poker e PartyPoker (herança Pacific/PartyGaming), bem diferente do PokerStars/GGPoker — quase toda linha muda: header (`***** [888poker] Hand History for Game N *****`), botão sem `#` (`Seat 4 is the button`), stacks em `( $600 )`/`( 86,425 )`, hero cards separados por vírgula (`[ 8c, Qs ]`), ações **sem `:`** (`Player raises [5,000]`), all-in próprio (`Player is all-In  [425]`), board por street com vírgula (`** Dealing Flop ** [ As, 5c, 9c ]`).
 - **`backend/leaklab/parser.py`**: `_detect_site` reconhece `888poker` e `partypoker` (888 checado antes — seu header também contém "Hand History for Game"); `parse_hand_history` roteia os dois para `_parse_partygaming_hand`, que produz os mesmos `ParsedHand`/`ParsedAction` do parser legado — **nada a jusante muda** (pipeline/engine intactos). Trata as 5 variações de blinds (`$sb/$bb`, `Blinds(sb/bb)`, `Blinds-Antes(sb/bb -ante)`) e números com vírgula **ou espaço** como separador de milhar (`1 200` → 1200). `_extract_board` passou a aceitar cartas separadas por vírgula (acumula flop+turn+river, pois cada street só traz a carta nova). `app.py._detect_site` alinhado (888 antes de PartyPoker; `'888'` solto trocado por `'888poker'`).

@@ -14,7 +14,7 @@ interface Props {
   onResult?: (result: AnalyzeResult) => void;
 }
 
-const SUPPORTED = ["PokerStars", "GGPoker", "ACR", "Winamax", "888"];
+const SUPPORTED = ["PokerStars", "GGPoker", "888poker", "PartyPoker"];
 
 export function UploadZone({ onResult }: Props) {
   const [isDragging, setIsDragging] = useState(false);

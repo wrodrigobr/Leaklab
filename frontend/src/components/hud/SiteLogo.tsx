@@ -5,6 +5,7 @@ const FAVICON_URLS: Record<string, string> = {
   pokerstars: "https://www.pokerstars.com/favicon.ico",
   ggpoker:    "https://www.ggpoker.com/favicon.ico",
   "888poker": "https://www.888poker.com/favicon.ico",
+  partypoker: "https://www.partypoker.com/favicon.ico",
   winamax:    "https://www.winamax.fr/favicon.ico",
   acr:        "https://www.americascardroom.eu/favicon.ico",
 };
@@ -13,6 +14,7 @@ const DISPLAY_NAMES: Record<string, string> = {
   pokerstars: "PokerStars",
   ggpoker:    "GGPoker",
   "888poker": "888Poker",
+  partypoker: "PartyPoker",
   winamax:    "Winamax",
   acr:        "ACR",
 };

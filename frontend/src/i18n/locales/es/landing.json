@@ -21,7 +21,7 @@
     "eyebrow": "Cómo funciona",
     "heading": "Del archivo HH al diagnóstico preciso",
     "step1Title": "Importa tu historial",
-    "step1Desc": "Sube el archivo .txt de cualquier torneo (PokerStars o GGPoker). Soporta múltiples archivos a la vez.",
+    "step1Desc": "Sube el archivo .txt de cualquier torneo (PokerStars, GGPoker, 888poker o PartyPoker). Soporta múltiples archivos a la vez.",
     "step2Title": "LeakLabs prioriza tus errores",
     "step2Desc": "Cada decisión es evaluada por equity, posición y contexto MTT/SNG. El motor cruza frecuencia con impacto y te muestra exactamente qué te está costando fichas.",
     "step3Title": "Mejora enfocándote en lo que importa",
