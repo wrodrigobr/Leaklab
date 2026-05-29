@@ -265,6 +265,45 @@ def compute_player_elo_from_decisions(
     )
 
 
+# ── Stake bracket (Sprint 2 #19) ──────────────────────────────────────────────
+# Faixas por buy-in ($). ELO segmentado: jogar bem em micro ≠ em high-stakes.
+STAKE_BRACKETS = [
+    ("micro", 0.0,   5.0),            # ≤ $5
+    ("low",   5.0,   25.0),           # $5–25
+    ("mid",   25.0,  100.0),          # $25–100
+    ("high",  100.0, float("inf")),   # > $100
+]
+# Mínimo de decisões com gto_label numa faixa pra ela ser exibida (evita ruído).
+MIN_STAKE_DECISIONS = 20
+
+
+def bracket_for(buy_in: Optional[float]) -> Optional[str]:
+    """Faixa de stake do buy-in. None quando ausente/≤0 (ex.: freeroll/sem dado)."""
+    if buy_in is None or buy_in <= 0:
+        return None
+    for name, lo, hi in STAKE_BRACKETS:
+        if lo < buy_in <= hi:
+            return name
+    return None
+
+
+def compute_player_elo_by_stake(user_id: int, decisions: list[dict]) -> dict[str, PlayerEloSnapshot]:
+    """ELO segmentado por faixa de stake. `decisions` precisam ter `buy_in`.
+    Retorna {bracket: snapshot} só para faixas com ≥ MIN_STAKE_DECISIONS scored."""
+    by_bracket: dict[str, list[dict]] = {}
+    for d in decisions:
+        b = bracket_for(d.get("buy_in"))
+        if b:
+            by_bracket.setdefault(b, []).append(d)
+
+    out: dict[str, PlayerEloSnapshot] = {}
+    for b, decs in by_bracket.items():
+        snap = compute_player_elo_from_decisions(user_id, decs)
+        if snap.total_decisions >= MIN_STAKE_DECISIONS:
+            out[b] = snap
+    return out
+
+
 def compute_elo_curve(decisions: list[dict]) -> list[dict]:
     """
     Calcula a curva de ELO torneio-a-torneio: processa decisions em ordem e

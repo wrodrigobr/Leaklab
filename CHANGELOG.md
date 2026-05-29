@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(elo): stake bracket — ELO segmentado por faixa de buy-in (Sprint 2 #19)
+- **`elo_engine`**: `bracket_for(buy_in)` (micro ≤$5 / low $5–25 / mid $25–100 / high >$100) + `compute_player_elo_by_stake(user_id, decisions)` — segmenta o ELO por faixa, computando um rating independente por bracket (só faixas com ≥20 decisões com `gto_label`, anti-ruído). Aborda a limitação de justiça nº2 (jogar bem em micro ≠ em high-stakes).
+- **`repositories.get_decisions_for_elo_by_stake`**: decisões com o `buy_in` do torneio. **Endpoint `/player/elo`** ganha `by_stake` (recomputado na leitura, como o decay; faixas com ELO+banda+nº). `by_street`/pico/histórico inalterados.
+- **Frontend**: seção **"Por stake"** na `/rating` (mesmo padrão de "Por street"), mostrando só as faixas com dados. Tipo `EloResponse.by_stake` + i18n PT/EN/ES (labels das faixas com os cortes em $).
+- **Testes** (`test_elo_engine`): `bracket_for` (cortes/limiares) + `compute_player_elo_by_stake` (agrupamento, mínimo por faixa, exclusão de sem-buy-in). Engine 249 / api 72: zero regressões. Validado ao vivo (user 13: só micro, 907 decs, ELO 1584 — pouca variedade de stake local, esperado).
+
 ### tune(leaderboard): pesos skill-first (aderência GTO domina)
 - Recalibrados os pesos do ranking de **40/30/20/10** para **50/25/15/10** (GTO/evolução/engajamento/volume): a aderência GTO passa a ser metade do score, garantindo que o melhor jogador fique no topo sem ser ultrapassado por volume/engajamento. Resultado: crusher (GTO 92) sobe para #1 (77.6) à frente do grinder (76.8). Testes (`test_leaderboard`, via constantes) seguem verdes; pesos expostos no endpoint refletem na UI automaticamente.
 

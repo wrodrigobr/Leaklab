@@ -1001,6 +1001,7 @@ def player_elo():
             'delta_7d':        None,
             'decay_applied':   0.0,
             'weeks_inactive':  0.0,
+            'by_stake':        {},
             'no_data':         True,
         })
 
@@ -1033,12 +1034,29 @@ def player_elo():
 
     overall = _wrap(display_overall, latest.get('total_decisions') or 0)
 
+    # ── ELO por faixa de stake (Sprint 2 #19) — recomputado na leitura ─────────
+    by_stake = {}
+    try:
+        from database.repositories import get_decisions_for_elo_by_stake
+        from leaklab.elo_engine import compute_player_elo_by_stake
+        stake_snaps = compute_player_elo_by_stake(
+            g.user_id, get_decisions_for_elo_by_stake(g.user_id, last_n_tournaments=ELO_WINDOW_TOURNAMENTS))
+        for b in ('micro', 'low', 'mid', 'high'):
+            s = stake_snaps.get(b)
+            if s:
+                by_stake[b] = {'elo': s.overall.elo, 'n_decisions': s.overall.n_decisions,
+                               'band_icon': s.overall.band_icon, 'band_label': s.overall.band_label,
+                               'band_color': s.overall.band_color}
+    except Exception:
+        by_stake = {}
+
     return jsonify({
         'user_id':         g.user_id,
         'overall':         overall,
         'next_band':       next_band_for(display_overall),
         'decay_applied':   decay_applied,                 # pts subtraídos do overall por inatividade
         'weeks_inactive':  round(weeks_inactive, 1),
+        'by_stake':        by_stake,
         'peak_elo':        round(peak_elo, 1) if peak_elo is not None else None,
         'by_street':       by_street,
         'total_decisions': int(latest.get('total_decisions') or 0),

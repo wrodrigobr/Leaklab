@@ -4734,6 +4734,36 @@ def get_leaderboard_metrics(period_days: int = 90) -> list[dict]:
         conn.close()
 
 
+def get_decisions_for_elo_by_stake(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:
+    """Como get_decisions_for_elo, mas inclui `buy_in` do torneio em cada decisão
+    (para segmentar o ELO por faixa de stake — Sprint 2 #19)."""
+    conn = get_conn()
+    try:
+        if last_n_tournaments:
+            t_rows = _fetchall(conn, _adapt(
+                "SELECT id FROM tournaments WHERE user_id = ? "
+                "ORDER BY imported_at DESC, id DESC LIMIT ?"
+            ), (user_id, int(last_n_tournaments)))
+            tids = [r['id'] for r in t_rows]
+            if not tids:
+                return []
+            ph = ",".join(["?"] * len(tids))
+            rows = _fetchall(conn, _adapt(
+                f"SELECT d.id, d.street, d.gto_label, d.label, d.created_at, t.buy_in "
+                f"FROM decisions d INNER JOIN tournaments t ON t.id = d.tournament_id "
+                f"WHERE d.tournament_id IN ({ph}) ORDER BY d.created_at ASC, d.id ASC"
+            ), tuple(tids))
+        else:
+            rows = _fetchall(conn, _adapt(
+                "SELECT d.id, d.street, d.gto_label, d.label, d.created_at, t.buy_in "
+                "FROM decisions d INNER JOIN tournaments t ON t.id = d.tournament_id "
+                "WHERE t.user_id = ? ORDER BY d.created_at ASC, d.id ASC"
+            ), (user_id,))
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
 def get_decisions_for_elo(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:
     """
     Lista decisões do user ordenadas por created_at (asc) pra recalcular ELO

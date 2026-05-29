@@ -522,6 +522,7 @@ export interface EloResponse {
   delta_7d:           number | null;
   decay_applied?:     number;   // pts subtraídos do overall por inatividade (decay)
   weeks_inactive?:    number;
+  by_stake?:          Partial<Record<"micro" | "low" | "mid" | "high", EloBucket>>;
   no_data?:           boolean;
 }
 

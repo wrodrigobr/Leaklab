@@ -164,6 +164,40 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
         </section>
       )}
 
+      {/* Breakdown por stake (Sprint 2 #19) */}
+      {data.by_stake && Object.keys(data.by_stake).length > 0 && (
+        <section className="space-y-2">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            {t("elo.page.byStake")}
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {(["micro", "low", "mid", "high"] as const).map((bk) => {
+              const b = data.by_stake?.[bk];
+              if (!b) return null;
+              return (
+                <div key={bk} className="rounded-lg border border-border/40 bg-card/40 p-3">
+                  <div className="font-mono text-[9px] uppercase text-muted-foreground">
+                    {t(`elo.page.stake${bk.charAt(0).toUpperCase() + bk.slice(1)}`)}
+                  </div>
+                  <div className="font-mono text-xl font-bold tabular-nums"
+                       style={{ color: b.band_color }}>
+                    {b.elo.toFixed(0)}
+                  </div>
+                  <div className="flex items-center gap-1 font-mono text-[9px]"
+                       style={{ color: b.band_color }}>
+                    {(() => { const I = LEVEL_ICONS[b.band_label]; return I ? <I size={11} /> : null; })()}
+                    {bandName(b.band_label)}
+                  </div>
+                  <div className="font-mono text-[9px] text-muted-foreground mt-0.5">
+                    {t("elo.page.decs", { n: b.n_decisions })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Bandas */}
       <section className="space-y-2">
         <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">

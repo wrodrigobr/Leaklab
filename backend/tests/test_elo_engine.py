@@ -11,9 +11,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from leaklab.elo_engine import (
     k_factor, expected_score, decision_score, apply_decision, apply_inactivity_decay,
-    band_full, band_for, next_band_for,
+    band_full, band_for, next_band_for, bracket_for, compute_player_elo_by_stake,
     compute_player_elo_from_decisions, compute_elo_curve, snapshot_to_dict,
-    SOLVER_ELO, INITIAL_ELO, BANDS, GTO_LABEL_SCORE, DECAY_MAX,
+    SOLVER_ELO, INITIAL_ELO, BANDS, GTO_LABEL_SCORE, DECAY_MAX, MIN_STAKE_DECISIONS,
 )
 
 
@@ -232,6 +232,47 @@ def test_snapshot_to_dict_shape():
     assert "next_band" in d
     assert "preflop" in d["by_street"]
     print("OK  test_snapshot_to_dict_shape")
+
+
+def test_bracket_for():
+    assert bracket_for(None) is None
+    assert bracket_for(0) is None
+    assert bracket_for(-1) is None
+    assert bracket_for(1) == "micro"
+    assert bracket_for(5) == "micro"
+    assert bracket_for(5.01) == "low"
+    assert bracket_for(25) == "low"
+    assert bracket_for(25.01) == "mid"
+    assert bracket_for(50) == "mid"
+    assert bracket_for(100) == "mid"
+    assert bracket_for(100.01) == "high"
+    assert bracket_for(215) == "high"
+    print("OK  test_bracket_for")
+
+
+def test_compute_player_elo_by_stake():
+    decs = []
+    i = 0
+    # 30 decisões em micro (buy_in 2): aderência alta → ELO > par
+    for _ in range(30):
+        decs.append({**_dec("preflop", "gto_correct", i), "buy_in": 2.0}); i += 1
+    # 30 em high (buy_in 200): aderência baixa → ELO < par
+    for _ in range(30):
+        decs.append({**_dec("preflop", "gto_critical", i), "buy_in": 200.0}); i += 1
+    # 10 em mid (buy_in 50): abaixo do mínimo → não aparece
+    for _ in range(10):
+        decs.append({**_dec("preflop", "gto_correct", i), "buy_in": 50.0}); i += 1
+    # sem buy_in → ignorado
+    for _ in range(5):
+        decs.append({**_dec("preflop", "gto_correct", i), "buy_in": None}); i += 1
+
+    out = compute_player_elo_by_stake(1, decs)
+    assert set(out.keys()) == {"micro", "high"}          # mid (<20) e None excluídos
+    assert out["micro"].overall.elo > INITIAL_ELO        # só acertos
+    assert out["high"].overall.elo < INITIAL_ELO          # só erros
+    assert out["micro"].total_decisions == 30
+    assert MIN_STAKE_DECISIONS == 20
+    print("OK  test_compute_player_elo_by_stake")
 
 
 if __name__ == '__main__':
