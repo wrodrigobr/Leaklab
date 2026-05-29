@@ -1848,7 +1848,7 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
             target_hand_id       = best["hand_id"]
             target_tournament_id = best["tournament_id"]
 
-        rows = conn.execute(_adapt("""
+        rows = [dict(_r) for _r in conn.execute(_adapt("""
             SELECT d.id, d.hand_id, d.street, d.hero_cards, d.board,
                    d.action_taken, d.best_action, d.label, d.score,
                    d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
@@ -1859,7 +1859,7 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ? AND d.hand_id = ? AND d.tournament_id = ?
             ORDER BY d.id
-        """), (user_id, target_hand_id, target_tournament_id)).fetchall()
+        """), (user_id, target_hand_id, target_tournament_id)).fetchall()]
     finally:
         conn.close()
 
