@@ -4675,6 +4675,65 @@ def get_last_activity_at(user_id: int) -> Optional[str]:
         conn.close()
 
 
+def get_leaderboard_metrics(period_days: int = 90) -> list[dict]:
+    """Agrega, por usuário, as métricas que alimentam o ranking (#15, fundação):
+    mãos, torneios, drills, decisões com gto_label, aderência total e aderência
+    início×recente (metades cronológicas) — tudo no período. Funções puras de
+    pontuação/ranqueamento ficam em leaklab/leaderboard.py.
+    """
+    from datetime import datetime, timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=period_days)).strftime("%Y-%m-%d %H:%M:%S")
+    _ALIGNED = ("gto_correct", "gto_mixed")
+
+    conn = get_conn()
+    try:
+        users = _fetchall(conn, _adapt(
+            "SELECT DISTINCT u.id AS id, u.username AS username "
+            "FROM users u JOIN tournaments t ON t.user_id = u.id "
+            "WHERE t.imported_at >= ?"
+        ), (cutoff,))
+
+        out: list[dict] = []
+        for u in users:
+            uid = u["id"]
+            tt = _fetchone(conn, _adapt(
+                "SELECT COALESCE(SUM(hands_count),0) AS hands, COUNT(*) AS tournaments "
+                "FROM tournaments WHERE user_id = ? AND imported_at >= ?"
+            ), (uid, cutoff))
+            drills_row = _fetchone(conn, _adapt(
+                "SELECT COUNT(*) AS n FROM drill_sessions WHERE user_id = ? AND drilled_at >= ?"
+            ), (uid, cutoff))
+            labels = [r["gto_label"] for r in _fetchall(conn, _adapt(
+                "SELECT d.gto_label AS gto_label FROM decisions d "
+                "JOIN tournaments t ON t.id = d.tournament_id "
+                "WHERE t.user_id = ? AND t.imported_at >= ? AND d.gto_label IS NOT NULL "
+                "ORDER BY t.imported_at, d.id"
+            ), (uid, cutoff))]
+
+            n = len(labels)
+            aligned_pct = (sum(1 for l in labels if l in _ALIGNED) / n) if n else 0.0
+            half = n // 2
+            early = labels[:half] or labels
+            recent = labels[half:] or labels
+            aligned_early = (sum(1 for l in early if l in _ALIGNED) / len(early)) if early else 0.0
+            aligned_recent = (sum(1 for l in recent if l in _ALIGNED) / len(recent)) if recent else 0.0
+
+            out.append({
+                "user_id":        uid,
+                "display_name":   u["username"],
+                "hands":          int(tt["hands"] or 0),
+                "tournaments":    int(tt["tournaments"] or 0),
+                "drills":         int(drills_row["n"] or 0),
+                "gto_decisions":  n,
+                "aligned_pct":    round(aligned_pct, 4),
+                "aligned_early":  round(aligned_early, 4),
+                "aligned_recent": round(aligned_recent, 4),
+            })
+        return out
+    finally:
+        conn.close()
+
+
 def get_decisions_for_elo(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:
     """
     Lista decisões do user ordenadas por created_at (asc) pra recalcular ELO

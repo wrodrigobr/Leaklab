@@ -7,6 +7,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(leaderboard): fundação do ranking de alunos (#15, Sprint 1)
+- **`leaklab/leaderboard.py`** (novo, motor PURO): rankeia por **aprendizado, não por $** — aderência GTO (40%) + evolução (30%) + engajamento (20%) + volume (10%). `score_player` normaliza cada dimensão (0..100) e `rank_leaderboard` separa elegíveis × inelegíveis, ordena (score desc, desempate determinístico) e atribui rank. **Guarda de elegibilidade** (anti micro-amostra/gaming): mín. 500 mãos, 10 torneios e 100 decisões com `gto_label`.
+- **`repositories.get_leaderboard_metrics(period_days)`**: agrega por usuário (mãos, torneios, drills, decisões com cobertura GTO, aderência total e início×recente para a evolução) no período.
+- **Endpoint `GET /leaderboard?period=90`**: monta métricas + ranqueia; retorna `ranked` + `ineligible` (com motivo) + pesos/limiares. UI pública, opt-in/privacidade e cron de snapshots **deferidos** (precisam de escala real de usuários).
+- **Escopo consciente (local/solo)**: só a fundação backend — a parte social não é exercível com 2 usuários locais. Validado: ambos caem em `ineligible` (user 13 com 9 torneios falha o gate de 10 por 1; user 2 <500 mãos), confirmando a guarda; a lógica de ranking é coberta por testes sintéticos.
+- **Testes** (`test_leaderboard.py`, suite engine, 7 casos): normalização, gates de elegibilidade, pesos por dimensão, direção da evolução, ordenação/rank + desempate, e limites do score. Engine 247 / api 72: zero regressões.
+
 ## [v0.164.0] — 2026-05-29 — feat(icm+elo): modelagem de ICM na mesa final + ELO (decay/testes/i18n) + parser 888/PartyPoker (desligado por flag)
 
 > Destaques: **ICM** end-to-end (equity real na mesa final via PokerKit → `icm_tax` no scoring → feedback direcional → badge no Replayer → detector de leak "ICM Blindness" + backfill); **ELO** com testes do engine, decay por inatividade (Sprint 2 #19) e i18n completo (card + /rating + /docs/rating); suporte a **888poker/PartyPoker** (parser PartyGaming + extração financeira), **desligado por flag** `PARTYGAMING_ENABLED` (foco PS/GG); i18n do card de decisão do Replayer. Suíte completa: **691 testes, 0 falhas**.

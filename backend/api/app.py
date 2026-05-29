@@ -1393,6 +1393,33 @@ def player_cognitive_failures():
     return jsonify(report)
 
 
+@app.route('/leaderboard', methods=['GET'])
+@require_auth
+def leaderboard():
+    """Ranking de alunos por APRENDIZADO (#15 — fundação: motor + endpoint).
+
+    Pontua por aderência GTO (40%) + evolução (30%) + engajamento (20%) +
+    volume (10%), com guarda de elegibilidade (mín. mãos/torneios/cobertura GTO).
+    `period` em dias (default 90). UI pública, opt-in/privacidade e cron de
+    snapshots ficam para um sprint futuro (precisam de escala real de usuários).
+    """
+    from database.repositories import get_leaderboard_metrics
+    from leaklab.leaderboard import (
+        rank_leaderboard, W_GTO, W_EVO, W_ENG, W_VOL,
+        MIN_HANDS, MIN_TOURNAMENTS, MIN_GTO_DECISIONS,
+    )
+    period = request.args.get('period', default=90, type=int)
+    result = rank_leaderboard(get_leaderboard_metrics(period_days=period))
+    return jsonify({
+        'period_days':  period,
+        'weights':      {'gto': W_GTO, 'evolution': W_EVO, 'engagement': W_ENG, 'volume': W_VOL},
+        'eligibility':  {'min_hands': MIN_HANDS, 'min_tournaments': MIN_TOURNAMENTS,
+                         'min_gto_decisions': MIN_GTO_DECISIONS},
+        'ranked':       result['ranked'],
+        'ineligible':   result['ineligible'],
+    })
+
+
 @app.route('/player/sparring/hand', methods=['GET'])
 @require_auth
 def player_sparring_hand():
