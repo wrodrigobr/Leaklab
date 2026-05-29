@@ -1109,9 +1109,10 @@ def player_drill_spots():
     return jsonify({'spots': spots, 'stats': stats})
 
 
-def _resolve_best_action_from_node(row: dict) -> str:
+def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
     """Busca ação GTO ao vivo em gto_nodes (mesma lógica do /replay/<id>/gto).
-    Fallback para decisions.gto_action → best_action se nenhum nó for encontrado."""
+    Fallback para decisions.gto_action → best_action se nenhum nó for encontrado.
+    Com return_strategy=True retorna (top_action, {ação_normalizada: frequência})."""
     from database.repositories import get_gto_node
     from leaklab.gto_utils import compute_spot_hash
     import json as _j
@@ -1162,12 +1163,14 @@ def _resolve_best_action_from_node(row: dict) -> str:
     # podendo retornar nós completamente errados via colisão acidental.
 
     top_action = row.get('gto_action') or row.get('best_action') or 'fold'
+    strat = {}
     if node:
         if node.get('strategy_json'):
             try:
                 strat = _j.loads(node['strategy_json'])
                 top_action = max(strat, key=lambda k: strat[k].get('frequency', 0))
             except Exception:
+                strat = {}
                 if node.get('gto_action'):
                     top_action = node['gto_action']
         elif node.get('gto_action'):
@@ -1195,6 +1198,15 @@ def _resolve_best_action_from_node(row: dict) -> str:
             stored = _norm_action(row.get('gto_action') or '')
             a = stored if stored else 'check'
 
+    if return_strategy:
+        freqs: dict = {}
+        for _raw_act, _info in (strat or {}).items():
+            _na = _norm_action(_raw_act)
+            try:
+                freqs[_na] = freqs.get(_na, 0.0) + float((_info or {}).get('frequency', 0) or 0)
+            except Exception:
+                pass
+        return a, freqs
     return a
 
 
@@ -1230,8 +1242,9 @@ def player_drill_submit():
 
     # Usa live GTO node lookup quando cobertura GTO disponível (mesmo pipeline do Replayer).
     # Evita erros por decisions.gto_action desatualizado ou hash match incorreto.
+    gto_freqs: dict = {}
     if gto_action and gto_label not in ('wizard_pending', ''):
-        best_action = _resolve_best_action_from_node(row)
+        best_action, gto_freqs = _resolve_best_action_from_node(row, return_strategy=True)
     else:
         best_action = _norm_drill(best_action)
         # Guard: raise sem aposta anterior é semanticamente "bet"
@@ -1244,17 +1257,33 @@ def player_drill_submit():
 
     original_score = row['score']
     norm_new   = _norm_drill(new_action)
-    is_correct = norm_new == best_action
+    top_match  = norm_new == best_action
+
+    # Avaliação pela distribuição GTO: aceita como correta qualquer ação que o
+    # solver mistura com frequência relevante (não só a ação mais frequente).
+    # Vale preflop e postflop sempre que houver strategy_json no nó — alinha o
+    # veredito ao conceito de "gto_mixed" do Replayer.
+    MIX_THRESHOLD = 0.10
+    player_freq = float(gto_freqs.get(norm_new, 0.0)) if gto_freqs else 0.0
+    mixed_ok    = (not top_match) and player_freq >= MIX_THRESHOLD
 
     # Guard: quando facing_bet >= stack_bb, call e jam são mecanicamente equivalentes
     # (chamar o raise já coloca todas as fichas — shove não adiciona chips extras).
     facing_bet = float(row.get('facing_bet') or 0)
     stack_bb   = float(row.get('stack_bb') or 9999)
-    if not is_correct and facing_bet > 0 and stack_bb > 0 and facing_bet >= stack_bb * 0.95:
+    call_jam_equiv = False
+    if not top_match and facing_bet > 0 and stack_bb > 0 and facing_bet >= stack_bb * 0.95:
         call_jam_set = {'call', 'jam'}
         if norm_new in call_jam_set and best_action in call_jam_set:
-            is_correct = True
-    new_score  = 0.02 if is_correct else original_score
+            call_jam_equiv = True
+
+    is_correct = top_match or call_jam_equiv or mixed_ok
+    if top_match or call_jam_equiv:
+        new_score = 0.02
+    elif mixed_ok:
+        new_score = 0.05          # ação mista defensável (GTO joga, mas não é a #1)
+    else:
+        new_score = original_score
 
     result = save_drill_session(
         user_id=g.user_id,
@@ -1269,6 +1298,8 @@ def player_drill_submit():
         'new_action':        new_action,
         'new_score':         new_score,
         'original_score':    original_score,
+        'gto_freq':          round(player_freq, 3),
+        'mixed':             mixed_ok,
         'delta':             result['delta'],
         'next_drill_at':     result['next_drill_at'],
         'srs_interval_days': result['srs_interval_days'],
