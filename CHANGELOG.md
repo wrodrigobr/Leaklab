@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### ux(rating/leaderboard): aproveitar a largura da tela (layout em colunas)
+- As duas telas estavam presas em containers estreitos (`/rating` em `max-w-4xl` ~896px, `/leaderboard` em `max-w-3xl` ~768px) dentro de um `HudLayout` de 1440px — sobrava ~40–50% da largura vazia à direita.
+- **`/rating`**: Hero (ELO/banda) em largura total; abaixo um grid 3 colunas — **principal (2/3)** com diagnóstico (por street + por stake) e as curvas de evolução **lado a lado** em telas largas (`xl:grid-cols-2`), e **sidebar (1/3)** com a escada de bandas (bloco alto e estreito, encaixe natural). Pior caso (usuário sem dados) degrada para coluna única `max-w-2xl`, sem buraco.
+- **`/leaderboard`**: grid 3 colunas — **ranking (2/3)** como lista principal com as 4 barras de dimensão espalhando (`lg:grid-cols-4`), e **sidebar (1/3)** com a nota de pesos/elegibilidade e a lista de inelegíveis. Sem novas strings i18n; type-check limpo.
+
 ### feat(notifications): infra genérica de notificações in-app + trigger de banda do ELO (#19)
 - **Substrato genérico** (não existia): tabela `notifications` (`type` + `payload` JSON language-agnostic + `link` + `read_at`; SQLite+Postgres). Repo: `create_notification` / `get_notifications` / `get_unread_notification_count` / `mark_notification_read` / `mark_all_notifications_read`. Endpoints `GET /player/notifications`, `/unread-count`, `POST /…/{id}/read`, `/read-all`.
 - **Frontend**: `NotificationBell` no `HudHeader` — sino com badge de não-lidas, polling do contador (60s), dropdown (fecha ao clicar fora) que lista as notificações e marca todas como lidas ao abrir; clicar navega pro `link`. Texto renderizado por tipo via i18n (PT/EN/ES, namespace `common`).

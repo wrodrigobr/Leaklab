@@ -54,10 +54,54 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
   const { overall, by_street, total_decisions, delta_7d, bands, history, no_data, next_band, peak_elo } = data;
   const bandName = (label: string) => t(`elo.bands.${label}`, { defaultValue: label });
 
-  return (
-    <div className="space-y-6 max-w-4xl">
+  const hasMainContent =
+    Object.keys(by_street).length > 0 ||
+    (data.by_stake != null && Object.keys(data.by_stake).length > 0) ||
+    (curve != null && curve.all_time.length >= 2);
 
-      {/* Hero — ELO atual */}
+  const bandsLadder = (
+    <section className="space-y-2">
+      <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+        {t("elo.page.bandsTitle")}
+      </h3>
+      <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden">
+        {bands.map((b, i) => {
+          const isCurrent = overall.elo >= b.threshold &&
+            (i === bands.length - 1 || overall.elo < bands[i + 1].threshold);
+          const next = bands[i + 1];
+          const rangeStr = next ? `${b.threshold} – ${next.threshold - 1}` : `${b.threshold}+`;
+          return (
+            <div key={b.label}
+                 className={cn(
+                   "flex items-center justify-between px-4 py-2 border-t border-border/30 first:border-t-0",
+                   isCurrent && "bg-foreground/5"
+                 )}>
+              <div className="flex items-center gap-2">
+                {(() => { const I = LEVEL_ICONS[b.label]; return I ? <I size={16} className="shrink-0" /> : null; })()}
+                <span className="font-mono text-sm font-semibold"
+                      style={{ color: b.color }}>
+                  {bandName(b.label)}
+                </span>
+                {isCurrent && (
+                  <span className="font-mono text-[9px] uppercase text-foreground/70 ml-2">
+                    {t("elo.page.youAreHere")}
+                  </span>
+                )}
+              </div>
+              <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                {rangeStr}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+
+  return (
+    <div className="space-y-6">
+
+      {/* Hero — ELO atual (full width) */}
       <div className="rounded-2xl border border-border/40 bg-card/60 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex-1 min-w-0">
@@ -129,6 +173,11 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
         </div>
       </div>
 
+      {hasMainContent ? (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Coluna principal — diagnóstico + evolução */}
+          <div className="lg:col-span-2 space-y-6">
+
       {/* Breakdown por street */}
       {Object.keys(by_street).length > 0 && (
         <section className="space-y-2">
@@ -198,65 +247,39 @@ function RatingBody({ data, curve }: { data: EloResponse; curve: EloCurveRespons
         </section>
       )}
 
-      {/* Bandas */}
-      <section className="space-y-2">
-        <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          {t("elo.page.bandsTitle")}
-        </h3>
-        <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden">
-          {bands.map((b, i) => {
-            const isCurrent = overall.elo >= b.threshold &&
-              (i === bands.length - 1 || overall.elo < bands[i + 1].threshold);
-            const next = bands[i + 1];
-            const rangeStr = next ? `${b.threshold} – ${next.threshold - 1}` : `${b.threshold}+`;
-            return (
-              <div key={b.label}
-                   className={cn(
-                     "flex items-center justify-between px-4 py-2 border-t border-border/30 first:border-t-0",
-                     isCurrent && "bg-foreground/5"
-                   )}>
-                <div className="flex items-center gap-2">
-                  {(() => { const I = LEVEL_ICONS[b.label]; return I ? <I size={16} className="shrink-0" /> : null; })()}
-                  <span className="font-mono text-sm font-semibold"
-                        style={{ color: b.color }}>
-                    {bandName(b.label)}
-                  </span>
-                  {isCurrent && (
-                    <span className="font-mono text-[9px] uppercase text-foreground/70 ml-2">
-                      {t("elo.page.youAreHere")}
-                    </span>
-                  )}
-                </div>
-                <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                  {rangeStr}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
       {/* Curvas de ELO — histórico (all-time) e forma recente */}
       {curve && curve.all_time.length >= 2 && (
         <section className="space-y-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             {t("elo.page.evolution")}
           </h3>
-          <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-1">
-            <div className="font-mono text-[10px] text-muted-foreground">
-              {t("elo.page.historicCurve", { n: curve.all_time.length })}
-            </div>
-            <EloCurveChart points={curve.all_time} color={overall.band_color} />
-          </div>
-          {curve.recent.length >= 2 && (
+          <div className="grid gap-3 xl:grid-cols-2">
             <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-1">
               <div className="font-mono text-[10px] text-muted-foreground">
-                {t("elo.page.recentCurve", { n: curve.window_tournaments })}
+                {t("elo.page.historicCurve", { n: curve.all_time.length })}
               </div>
-              <EloCurveChart points={curve.recent} color={overall.band_color} />
+              <EloCurveChart points={curve.all_time} color={overall.band_color} />
             </div>
-          )}
+            {curve.recent.length >= 2 && (
+              <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-1">
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  {t("elo.page.recentCurve", { n: curve.window_tournaments })}
+                </div>
+                <EloCurveChart points={curve.recent} color={overall.band_color} />
+              </div>
+            )}
+          </div>
         </section>
+      )}
+
+          </div>
+          {/* Sidebar — escada de bandas */}
+          <aside className="space-y-6">
+            {bandsLadder}
+          </aside>
+        </div>
+      ) : (
+        <div className="max-w-2xl">{bandsLadder}</div>
       )}
     </div>
   );

@@ -43,7 +43,7 @@ function Row({ e }: { e: LeaderboardEntry }) {
           {e.score.toFixed(1)}
         </span>
       </div>
-      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1">
         <MiniBar label={t("leaderboard.dimGto")} pct={e.dimensions.gto} />
         <MiniBar label={t("leaderboard.dimEvolution")} pct={e.dimensions.evolution} />
         <MiniBar label={t("leaderboard.dimEngagement")} pct={e.dimensions.engagement} />
@@ -61,41 +61,47 @@ function Body({ data }: { data: LeaderboardResponse }) {
     code ? t(`leaderboard.reason_${code}`, { defaultValue: code }) : "";
 
   return (
-    <div className="space-y-5 max-w-3xl">
-      <div className="font-mono text-[10px] text-muted-foreground space-y-0.5">
-        <div>{t("leaderboard.weightsNote", {
-          gto: Math.round(w.gto * 100), evo: Math.round(w.evolution * 100),
-          eng: Math.round(w.engagement * 100), vol: Math.round(w.volume * 100),
-        })}</div>
-        <div>{t("leaderboard.gateNote", {
-          hands: g.min_hands, tournaments: g.min_tournaments, gto: g.min_gto_decisions,
-        })}</div>
+    <div className="grid gap-6 lg:grid-cols-3">
+      {/* Ranking principal */}
+      <div className="lg:col-span-2 space-y-2">
+        {data.ranked.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("leaderboard.empty")}</p>
+        ) : (
+          data.ranked.map((e) => <Row key={e.user_id} e={e} />)
+        )}
       </div>
 
-      {data.ranked.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("leaderboard.empty")}</p>
-      ) : (
-        <div className="space-y-2">
-          {data.ranked.map((e) => <Row key={e.user_id} e={e} />)}
-        </div>
-      )}
-
-      {data.ineligible.length > 0 && (
-        <section className="space-y-2">
-          <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            {t("leaderboard.ineligibleTitle")}
-          </h3>
-          <div className="rounded-xl border border-border/40 bg-card/30 overflow-hidden">
-            {data.ineligible.map((e) => (
-              <div key={e.user_id}
-                   className="flex items-center justify-between px-4 py-2 border-t border-border/30 first:border-t-0">
-                <span className="text-sm text-muted-foreground truncate">{e.display_name}</span>
-                <span className="font-mono text-[10px] text-amber-400/80 shrink-0">{reason(e.reason)}</span>
-              </div>
-            ))}
+      {/* Sidebar — como é calculado + inelegíveis */}
+      <aside className="space-y-4">
+        <div className="rounded-xl border border-border/40 bg-card/40 p-4">
+          <div className="font-mono text-[10px] text-muted-foreground space-y-1">
+            <div>{t("leaderboard.weightsNote", {
+              gto: Math.round(w.gto * 100), evo: Math.round(w.evolution * 100),
+              eng: Math.round(w.engagement * 100), vol: Math.round(w.volume * 100),
+            })}</div>
+            <div>{t("leaderboard.gateNote", {
+              hands: g.min_hands, tournaments: g.min_tournaments, gto: g.min_gto_decisions,
+            })}</div>
           </div>
-        </section>
-      )}
+        </div>
+
+        {data.ineligible.length > 0 && (
+          <section className="space-y-2">
+            <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              {t("leaderboard.ineligibleTitle")}
+            </h3>
+            <div className="rounded-xl border border-border/40 bg-card/30 overflow-hidden">
+              {data.ineligible.map((e) => (
+                <div key={e.user_id}
+                     className="flex items-center justify-between px-4 py-2 border-t border-border/30 first:border-t-0">
+                  <span className="text-sm text-muted-foreground truncate">{e.display_name}</span>
+                  <span className="font-mono text-[10px] text-amber-400/80 shrink-0">{reason(e.reason)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </aside>
     </div>
   );
 }
