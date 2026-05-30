@@ -2601,6 +2601,13 @@ def upsert_annotation(coach_id: int, student_id: int, decision_id: int,
             (coach_id, student_id, decision_id, comment, mode,
              coach_action, coach_override_label),
         )
+        # Notifica o aluno (mesma conexão).
+        try:
+            conn.execute(
+                "INSERT INTO notifications (user_id, type, payload, link) VALUES (?,?,?,?)",
+                (student_id, 'coach_annotation', '{}', '/dashboard'))
+        except Exception:
+            pass
         conn.commit()
         row = conn.execute(
             "SELECT * FROM coach_hand_annotations WHERE coach_id=? AND student_id=? AND decision_id=?",
@@ -3944,6 +3951,14 @@ def send_coach_message(coach_id: int, student_id: int, body: str,
     msg_id = cur.lastrowid
     conn.commit()
     conn.close()
+    # Notifica o destinatário (produtor de notificação).
+    try:
+        if sender_role == 'coach':
+            create_notification(student_id, 'coach_message', link='/dashboard')
+        elif sender_role == 'student':
+            create_notification(coach_id, 'student_message', link='/coach-dashboard')
+    except Exception:
+        pass
     return {"id": msg_id, "body": body, "sender_role": sender_role,
             "created_at": now_str, "read_at": None, "decision_id": decision_id}
 
@@ -4099,6 +4114,13 @@ def _check_and_grant_achievements(conn, user_id: int, event_type: str,
             )
             meta = _ACH_META.get(key, {'title': key, 'desc': ''})
             new_ach.append({'key': key, 'title': meta['title'], 'desc': meta['desc']})
+            # Notificação na MESMA conexão (transação) — evita lock.
+            try:
+                conn.execute(
+                    "INSERT INTO notifications (user_id, type, payload, link) VALUES (?,?,?,?)",
+                    (user_id, 'achievement', json.dumps({'key': key, 'title': meta['title']}), '/dashboard'))
+            except Exception:
+                pass
         except Exception:
             pass
     return new_ach

@@ -18,7 +18,11 @@
     "empty": "Nenhuma notificação",
     "markAllRead": "Marcar todas como lidas",
     "eloBandUp": "Você subiu para {{band}}! +{{delta}} ELO",
-    "eloBandDown": "Você caiu para {{band}} ({{delta}} ELO)"
+    "eloBandDown": "Você caiu para {{band}} ({{delta}} ELO)",
+    "coachMessage": "Nova mensagem do seu coach",
+    "studentMessage": "Nova mensagem de um aluno",
+    "achievement": "Conquista desbloqueada: {{title}}",
+    "coachAnnotation": "Seu coach anotou uma mão sua"
   },
   "actions": {
     "import": "Importar",

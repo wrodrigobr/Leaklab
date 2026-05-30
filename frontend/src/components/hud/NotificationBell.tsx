@@ -8,6 +8,10 @@ import { notifications as notifApi, NotificationItem } from "@/lib/api";
 const TYPE_ICON: Record<string, string> = {
   elo_band_up: "🏅",
   elo_band_down: "📉",
+  coach_message: "💬",
+  student_message: "💬",
+  achievement: "⭐",
+  coach_annotation: "✍️",
 };
 
 export function NotificationBell() {
@@ -51,10 +55,16 @@ export function NotificationBell() {
   };
 
   const renderText = (n: NotificationItem): string => {
-    const p = n.payload as { band?: string; delta?: number };
-    if (n.type === "elo_band_up") return t("notifications.eloBandUp", { band: p.band, delta: p.delta });
-    if (n.type === "elo_band_down") return t("notifications.eloBandDown", { band: p.band, delta: p.delta });
-    return n.type;
+    const p = n.payload as { band?: string; delta?: number; title?: string };
+    switch (n.type) {
+      case "elo_band_up":    return t("notifications.eloBandUp", { band: p.band, delta: p.delta });
+      case "elo_band_down":  return t("notifications.eloBandDown", { band: p.band, delta: p.delta });
+      case "coach_message":  return t("notifications.coachMessage");
+      case "student_message":return t("notifications.studentMessage");
+      case "achievement":    return t("notifications.achievement", { title: p.title });
+      case "coach_annotation": return t("notifications.coachAnnotation");
+      default:               return n.type;
+    }
   };
 
   return (

@@ -91,6 +91,19 @@ def test_mark_read_only_own():
     print("OK  test_mark_read_only_own")
 
 
+def test_coach_message_produces_notification():
+    coach = _new_user("notif_coach")
+    student = _new_user("notif_student")
+    # coach → aluno: notifica o aluno
+    repo.send_coach_message(coach, student, "boa linha!", sender_role="coach")
+    assert any(i["type"] == "coach_message" for i in repo.get_notifications(student))
+    assert repo.get_unread_notification_count(student) >= 1
+    # aluno → coach: notifica o coach
+    repo.send_coach_message(coach, student, "valeu", sender_role="student")
+    assert any(i["type"] == "student_message" for i in repo.get_notifications(coach))
+    print("OK  test_coach_message_produces_notification")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
