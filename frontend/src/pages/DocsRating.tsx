@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
@@ -40,6 +41,27 @@ export default function DocsRating() {
     { id: "s5", k: "rating.s5_title" },
     { id: "s6", k: "rating.s6_title" },
   ];
+
+  // Scroll-spy: destaca no TOC a seção visível mais alta na viewport
+  const [activeId, setActiveId] = useState<string>(TOC[0].id);
+  useEffect(() => {
+    const sections = TOC
+      .map((s) => document.getElementById(s.id))
+      .filter((el): el is HTMLElement => el != null);
+    if (sections.length === 0) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length > 0) setActiveId(visible[0].target.id);
+      },
+      // banda de detecção logo abaixo do header sticky; ignora o rodapé
+      { rootMargin: "-96px 0px -60% 0px", threshold: 0 }
+    );
+    sections.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
 
   const BackLink = () => (
     <Link to="/rating" className="inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:underline">
@@ -156,7 +178,12 @@ export default function DocsRating() {
               <li key={s.id}>
                 <a
                   href={`#${s.id}`}
-                  className="block -ml-px border-l border-transparent pl-3 text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+                  aria-current={activeId === s.id ? "true" : undefined}
+                  className={`block -ml-px border-l pl-3 text-xs transition-colors ${
+                    activeId === s.id
+                      ? "border-primary text-foreground font-medium"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                  }`}
                 >
                   {t(s.k)}
                 </a>
