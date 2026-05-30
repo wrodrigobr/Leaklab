@@ -21,9 +21,9 @@ from .elo_engine import expected_score, INITIAL_ELO
 # Calibração skill-first: aderência GTO domina (metade do score) — o melhor
 # jogador (maior aderência) fica no topo, sem que volume/engajamento o ultrapassem.
 # Evolução ainda pesa (incentiva melhora); engajamento/volume são guardas menores.
-W_GTO = 0.50
-W_EVO = 0.25
-W_ENG = 0.15
+W_GTO = 0.60
+W_EVO = 0.20
+W_ENG = 0.10
 W_VOL = 0.10
 
 # ── Guarda de elegibilidade ───────────────────────────────────────────────────

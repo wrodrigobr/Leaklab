@@ -10,7 +10,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 ### feat(leaderboard): integra o ELO como dimensão de aderência GTO (#19 ↔ #15)
 - A dimensão **A (aderência GTO, 50%)** do ranking deixou de usar `aligned_pct` cru e passa a derivar do **ELO**: `A = expected_score(player_elo)` — probabilidade de bater o jogador médio (par 1500). Mais principiado (o ELO já pondera dificuldade por K-factor e é auto-calibrado). `get_leaderboard_metrics` computa o ELO do jogador a partir das mesmas decisões e expõe `player_elo`; `aligned_pct` segue para a evolução (B) e o desempate.
 - **Frontend**: a linha de cada jogador na `/leaderboard` mostra o **ELO**; tipo `LeaderboardEntry.player_elo`.
-- **Efeito colateral (a calibrar)**: a curva logística do ELO **comprime** vantagens de aderência muito alta (crusher: aligned 0.92 → ELO 1826 → dim GTO 87, antes 92), então o ranking dos fakes mudou e o crusher caiu de #1 para #3. Os pesos skill-first (50/25/15/10) podem precisar de novo ajuste se a intenção for "melhor jogador no topo".
+- **Re-tune p/ skill-first**: como a curva logística do ELO comprime aderências altas (crusher: aligned 0.92 → ELO 1826 → dim GTO 87) e isso tinha derrubado o melhor jogador, os pesos foram de 50/25/15/10 para **60/20/10/10** (decisão de produto: ranking de habilidade) — o crusher (maior ELO) volta a #1 (77.4) à frente do grinder (76.4).
 - **Testes** (`test_leaderboard`): dimensão A via ELO (par 1500 → 50; sobe com ELO), pesos, ordenação. Engine 250 / api 72: zero regressões.
 
 ### feat(elo): stake bracket — ELO segmentado por faixa de buy-in (Sprint 2 #19)
