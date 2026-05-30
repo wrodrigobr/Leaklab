@@ -489,6 +489,9 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS vs_position TEXT",
             # ICM leak detector: ICM tax (chip% − equity ICM%) na mesa final
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS icm_tax_pct REAL",
+            # #15 leaderboard — opt-in/privacidade: aparecer no ranking público é consentido
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_handle TEXT",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -1092,6 +1095,9 @@ def _run_migrations(conn):
             ("profile_completed_at",      "ALTER TABLE users ADD COLUMN profile_completed_at      TEXT"),
             ("dashboard_layout",          "ALTER TABLE users ADD COLUMN dashboard_layout          TEXT"),
             ("onboarding_completed",      "ALTER TABLE users ADD COLUMN onboarding_completed      INTEGER NOT NULL DEFAULT 0"),
+            # #15 leaderboard — opt-in/privacidade
+            ("leaderboard_opt_in",        "ALTER TABLE users ADD COLUMN leaderboard_opt_in        INTEGER NOT NULL DEFAULT 0"),
+            ("leaderboard_handle",        "ALTER TABLE users ADD COLUMN leaderboard_handle         TEXT"),
         ]:
             if col not in usr_existing:
                 try: conn.execute(sql)

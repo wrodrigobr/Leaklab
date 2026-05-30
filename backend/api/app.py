@@ -1427,22 +1427,50 @@ def leaderboard():
     volume (10%), com guarda de elegibilidade (mín. mãos/torneios/cobertura GTO).
     `period` em dias (default 90). UI pública, opt-in/privacidade e cron de
     snapshots ficam para um sprint futuro (precisam de escala real de usuários).
+
+    Privacidade (#15 opt-in): a lista pública (`ranked`/`ineligible`) só inclui
+    quem optou por participar, anonimizado por handle. `me` traz a posição do
+    próprio usuário sempre — mesmo fora do ranking público.
     """
     from database.repositories import get_leaderboard_metrics
     from leaklab.leaderboard import (
-        rank_leaderboard, W_GTO, W_EVO, W_ENG, W_VOL,
+        rank_leaderboard, public_view, W_GTO, W_EVO, W_ENG, W_VOL,
         MIN_HANDS, MIN_TOURNAMENTS, MIN_GTO_DECISIONS,
     )
     period = request.args.get('period', default=90, type=int)
     result = rank_leaderboard(get_leaderboard_metrics(period_days=period))
+    view = public_view(result, viewer_id=g.user_id)
     return jsonify({
         'period_days':  period,
         'weights':      {'gto': W_GTO, 'evolution': W_EVO, 'engagement': W_ENG, 'volume': W_VOL},
         'eligibility':  {'min_hands': MIN_HANDS, 'min_tournaments': MIN_TOURNAMENTS,
                          'min_gto_decisions': MIN_GTO_DECISIONS},
-        'ranked':       result['ranked'],
-        'ineligible':   result['ineligible'],
+        'ranked':       view['ranked'],
+        'ineligible':   view['ineligible'],
+        'me':           view['me'],
     })
+
+
+@app.route('/player/leaderboard-prefs', methods=['GET'])
+@require_auth
+def leaderboard_prefs_get():
+    """Preferências de privacidade do ranking do próprio usuário (#15 opt-in)."""
+    from database.repositories import get_leaderboard_prefs
+    return jsonify(get_leaderboard_prefs(g.user_id))
+
+
+@app.route('/player/leaderboard-prefs', methods=['POST'])
+@require_auth
+def leaderboard_prefs_set():
+    """Liga/desliga a participação no ranking público + handle (apelido). Não afeta
+    a visão do coach sobre o aluno, só a vitrine pública."""
+    from database.repositories import set_leaderboard_prefs
+    body = request.get_json(silent=True) or {}
+    handle = body.get('handle')
+    if handle is not None and not isinstance(handle, str):
+        return jsonify({'error': 'handle must be a string'}), 400
+    prefs = set_leaderboard_prefs(g.user_id, bool(body.get('opt_in')), handle)
+    return jsonify(prefs)
 
 
 @app.route('/player/notifications', methods=['GET'])

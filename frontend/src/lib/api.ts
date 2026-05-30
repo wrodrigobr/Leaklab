@@ -873,12 +873,26 @@ export interface LeaderboardEntry {
   eligible: boolean;
   reason: string | null;
 }
+// "Sua linha" — sempre presente p/ o próprio usuário (mesmo fora do ranking público)
+export interface LeaderboardMe extends Omit<LeaderboardEntry, "rank"> {
+  rank: number | null;        // null = não está no ranking público (opt-out ou inelegível)
+  is_self: boolean;
+  opt_in: boolean;
+  handle: string | null;
+}
 export interface LeaderboardResponse {
   period_days: number;
   weights: { gto: number; evolution: number; engagement: number; volume: number };
   eligibility: { min_hands: number; min_tournaments: number; min_gto_decisions: number };
   ranked: LeaderboardEntry[];
   ineligible: LeaderboardEntry[];
+  me: LeaderboardMe | null;
+}
+
+// Preferências de privacidade do ranking (#15 opt-in)
+export interface LeaderboardPrefs {
+  opt_in: boolean;
+  handle: string | null;
 }
 
 // ── Notificações in-app ───────────────────────────────────────────────────────
@@ -901,6 +915,15 @@ export const notifications = {
     request<{ ok: boolean }>(`/player/notifications/${id}/read`, { method: "POST" }),
   markAllRead: () =>
     request<{ ok: boolean }>(`/player/notifications/read-all`, { method: "POST" }),
+};
+
+export const leaderboardPrefs = {
+  get: () => request<LeaderboardPrefs>(`/player/leaderboard-prefs`),
+  set: (opt_in: boolean, handle: string | null) =>
+    request<LeaderboardPrefs>(`/player/leaderboard-prefs`, {
+      method: "POST",
+      body: JSON.stringify({ opt_in, handle }),
+    }),
 };
 
 export const metrics = {

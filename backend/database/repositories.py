@@ -4783,7 +4783,8 @@ def get_leaderboard_metrics(period_days: int = 90) -> list[dict]:
     conn = get_conn()
     try:
         users = _fetchall(conn, _adapt(
-            "SELECT DISTINCT u.id AS id, u.username AS username "
+            "SELECT DISTINCT u.id AS id, u.username AS username, "
+            "       u.leaderboard_opt_in AS opt_in, u.leaderboard_handle AS handle "
             "FROM users u JOIN tournaments t ON t.user_id = u.id "
             "WHERE t.imported_at >= ?"
         ), (cutoff,))
@@ -4819,9 +4820,13 @@ def get_leaderboard_metrics(period_days: int = 90) -> list[dict]:
             from leaklab.elo_engine import compute_player_elo_from_decisions, INITIAL_ELO
             player_elo = compute_player_elo_from_decisions(uid, [dict(r) for r in drows]).overall.elo if n else INITIAL_ELO
 
+            handle = (u["handle"] or "").strip() or None
             out.append({
                 "user_id":        uid,
-                "display_name":   u["username"],
+                "username":       u["username"],
+                "display_name":   u["username"],   # nome real; o endpoint público troca por handle quando opt-in
+                "opt_in":         bool(u["opt_in"]),
+                "handle":         handle,
                 "hands":          int(tt["hands"] or 0),
                 "tournaments":    int(tt["tournaments"] or 0),
                 "drills":         int(drills_row["n"] or 0),
@@ -4834,6 +4839,39 @@ def get_leaderboard_metrics(period_days: int = 90) -> list[dict]:
         return out
     finally:
         conn.close()
+
+
+def get_leaderboard_prefs(user_id: int) -> dict:
+    """Preferências de privacidade do ranking (#15 opt-in). Default: fora do ranking
+    (opt_in=False). `handle` None → exibe o username quando opta por participar."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT leaderboard_opt_in AS opt_in, leaderboard_handle AS handle "
+            "FROM users WHERE id = ?"
+        ), (user_id,))
+        if not row:
+            return {"opt_in": False, "handle": None}
+        return {"opt_in": bool(row["opt_in"]), "handle": (row["handle"] or "").strip() or None}
+    finally:
+        conn.close()
+
+
+def set_leaderboard_prefs(user_id: int, opt_in: bool, handle: Optional[str] = None) -> dict:
+    """Grava opt-in/handle do ranking. `handle` é sanitizado (trim, máx 24 chars);
+    vazio vira NULL (cai pro username quando opta por participar). Retorna as prefs
+    efetivas. Não altera nada além da vitrine pública — o coach segue vendo os números."""
+    h = (handle or "").strip()
+    h = h[:24] if h else None
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "UPDATE users SET leaderboard_opt_in = ?, leaderboard_handle = ? WHERE id = ?"
+        ), (bool(opt_in), h, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"opt_in": bool(opt_in), "handle": h}
 
 
 def get_decisions_for_elo_by_stake(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:

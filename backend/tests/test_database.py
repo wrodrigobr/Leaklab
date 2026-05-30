@@ -226,6 +226,24 @@ def test_update_llm_summary():
     print("OK  test_update_llm_summary")
 
 
+def test_leaderboard_prefs_default_and_roundtrip():
+    # Default: fora do ranking público (opt-in é consentido, não automático).
+    _clean()
+    uid = repo.create_user('lbprefs', 'lbprefs@t.com', 'p')
+    assert repo.get_leaderboard_prefs(uid) == {"opt_in": False, "handle": None}
+    # Liga opt-in com handle → persiste e sanitiza (trim).
+    repo.set_leaderboard_prefs(uid, True, "  shark_river  ")
+    p = repo.get_leaderboard_prefs(uid)
+    assert p["opt_in"] is True and p["handle"] == "shark_river"
+    # Handle vazio → NULL (cai pro username quando opta por participar).
+    repo.set_leaderboard_prefs(uid, True, "   ")
+    assert repo.get_leaderboard_prefs(uid) == {"opt_in": True, "handle": None}
+    # Desliga.
+    repo.set_leaderboard_prefs(uid, False, None)
+    assert repo.get_leaderboard_prefs(uid)["opt_in"] is False
+    print("OK  test_leaderboard_prefs_default_and_roundtrip")
+
+
 if __name__ == '__main__':
     tests = [(k,v) for k,v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

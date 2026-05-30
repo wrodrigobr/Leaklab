@@ -7,7 +7,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from leaklab.leaderboard import (
-    _norm, eligibility, score_player, rank_leaderboard,
+    _norm, eligibility, score_player, rank_leaderboard, public_view,
     W_GTO, W_EVO, W_ENG, W_VOL,
     MIN_HANDS, MIN_TOURNAMENTS, MIN_GTO_DECISIONS,
     TARGET_HANDS,
@@ -107,6 +107,58 @@ def test_score_bounds():
                                  drills=0, tournaments=0, hands=0, gto_decisions=MIN_GTO_DECISIONS))
     assert 0.0 <= worst["score"] <= best["score"] <= 100.0
     print("OK  test_score_bounds")
+
+
+# ── Opt-in / privacidade (#15) ────────────────────────────────────────────────
+def test_public_view_filters_opt_out():
+    # Dois elegíveis; só o opt-in aparece no público, re-ranqueado 1..N contíguo.
+    a = _player(1, player_elo=2000, opt_in=True, username="alice")
+    b = _player(2, player_elo=1600, opt_in=False, username="bob")
+    view = public_view(rank_leaderboard([a, b]), viewer_id=2)
+    assert [p["user_id"] for p in view["ranked"]] == [1]      # bob (opt-out) fora
+    assert view["ranked"][0]["rank"] == 1
+    # nome real / flags não vazam nas linhas públicas
+    row = view["ranked"][0]
+    assert "username" not in row and "opt_in" not in row and "handle" not in row
+    print("OK  test_public_view_filters_opt_out")
+
+
+def test_public_view_handle_anonymizes():
+    a = _player(1, player_elo=2000, opt_in=True, username="realname", handle="shark_river")
+    view = public_view(rank_leaderboard([a]), viewer_id=1)
+    assert view["ranked"][0]["display_name"] == "shark_river"   # handle, não username
+    print("OK  test_public_view_handle_anonymizes")
+
+
+def test_public_view_me_always_present_opt_out():
+    # viewer opt-out ainda vê sua própria linha: rank None, nome real, opt_in False.
+    a = _player(1, player_elo=2000, opt_in=True, username="alice")
+    b = _player(2, player_elo=1600, opt_in=False, username="bob")
+    view = public_view(rank_leaderboard([a, b]), viewer_id=2)
+    me = view["me"]
+    assert me is not None and me["is_self"] is True
+    assert me["display_name"] == "bob"     # nome real pra si mesmo
+    assert me["opt_in"] is False
+    assert me["rank"] is None              # fora do ranking público
+    print("OK  test_public_view_me_always_present_opt_out")
+
+
+def test_public_view_me_rank_when_opted_in():
+    a = _player(1, player_elo=2000, opt_in=True, username="alice")
+    b = _player(2, player_elo=1600, opt_in=True, username="bob")
+    view = public_view(rank_leaderboard([a, b]), viewer_id=2)
+    assert view["me"]["rank"] == 2         # bob é #2 no público
+    print("OK  test_public_view_me_rank_when_opted_in")
+
+
+def test_public_view_ineligible_respects_opt_in():
+    # inelegível opt-out não aparece; inelegível opt-in aparece anonimizado.
+    a = _player(1, hands=100, opt_in=False, username="secret")
+    b = _player(2, hands=100, opt_in=True, username="real", handle="pubname")
+    view = public_view(rank_leaderboard([a, b]), viewer_id=1)
+    names = [p["display_name"] for p in view["ineligible"]]
+    assert names == ["pubname"]            # só o opt-in, via handle
+    print("OK  test_public_view_ineligible_respects_opt_in")
 
 
 if __name__ == '__main__':

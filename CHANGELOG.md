@@ -7,6 +7,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(leaderboard): fundação de opt-in/privacidade (#15)
+- Antes, **todo** usuário elegível aparecia no ranking público pelo username, sem consentimento. Agora há 3 garantias de privacidade:
+  - **Opt-in**: padrão é **não aparecer**; o aluno escolhe participar (`users.leaderboard_opt_in`, default false). A lista pública (`ranked`/`ineligible`) só inclui quem optou.
+  - **Anonimato**: handle opcional (`users.leaderboard_handle`, máx 24 chars) substitui o username na vitrine pública; campos sensíveis (username cru, flag de opt-in) são removidos das linhas públicas.
+  - **Sua posição sempre visível**: o endpoint retorna `me` — a linha do próprio usuário com nome real, score e rank público (ou `null` quando fora), mesmo sem opt-in. Coach segue vendo os números do aluno (visão pedagógica não passa pelo filtro).
+- **Backend**: colunas em `users` (migrations PG+SQLite), `repositories.get_leaderboard_prefs`/`set_leaderboard_prefs` (+ `opt_in`/`handle` em `get_leaderboard_metrics`), função pura `leaderboard.public_view(result, viewer_id)` (filtro opt-in + anonimização + `me`, re-rank contíguo sem vazar ocultos), endpoints `GET`/`POST /player/leaderboard-prefs` e `me` no `/metrics/leaderboard`.
+- **Frontend**: card "Sua participação" na `/leaderboard` (Switch opt-in + input de handle + salvar, i18n PT/EN/ES) e bloco "Sua posição" (rank público ou nudge "ative para aparecer"); linha do próprio usuário destacada na lista.
+- **Testes**: `test_leaderboard` (5 novos — filtro opt-out, anonimização por handle, `me` sempre presente com/sem opt-in, inelegível respeita opt-in) + `test_database` (round-trip default/sanitização de handle/liga-desliga). Type-check limpo.
+
 ### ux(rating/leaderboard): aproveitar a largura da tela (layout em colunas)
 - As duas telas estavam presas em containers estreitos (`/rating` em `max-w-4xl` ~896px, `/leaderboard` em `max-w-3xl` ~768px) dentro de um `HudLayout` de 1440px — sobrava ~40–50% da largura vazia à direita.
 - **`/rating`**: Hero (ELO/banda) em largura total; abaixo um grid 3 colunas — **principal (2/3)** com diagnóstico (por street + por stake) e as curvas de evolução **lado a lado** em telas largas (`xl:grid-cols-2`), e **sidebar (1/3)** com a escada de bandas (bloco alto e estreito, encaixe natural). Pior caso (usuário sem dados) degrada para coluna única `max-w-2xl`, sem buraco.

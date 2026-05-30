@@ -113,3 +113,59 @@ def rank_leaderboard(players: list[dict]) -> dict:
         p["rank"] = i
 
     return {"ranked": eligible, "ineligible": ineligible}
+
+
+# ── Opt-in / privacidade (#15) ────────────────────────────────────────────────
+def _public_name(p: dict) -> str:
+    """Nome exibido publicamente: handle (anonimato) quando definido, senão username."""
+    return (p.get("handle") or "").strip() or p.get("username") or p.get("display_name") or "—"
+
+
+def _strip_private(p: dict) -> dict:
+    """Linha pública: troca o nome pelo handle e remove campos sensíveis (username
+    cru, handle, flag de opt-in) para não vazar identidade de quem usou apelido."""
+    pub = {k: v for k, v in p.items() if k not in ("username", "handle", "opt_in")}
+    pub["display_name"] = _public_name(p)
+    return pub
+
+
+def public_view(result: dict, viewer_id: int | None = None) -> dict:
+    """Aplica opt-in/privacidade ao resultado de `rank_leaderboard`:
+
+      - `ranked` / `ineligible` só incluem quem **optou** (opt_in=True),
+        re-ranqueados 1..N de forma contígua (sem expor que há jogadores ocultos),
+        com nome via handle (anonimização).
+      - `me`: a linha do **próprio viewer** sempre (com nome real e suas prefs),
+        com `rank` = posição no ranking público se estiver lá, senão None — assim o
+        usuário vê seu score mesmo fora do ranking público, com um empurrão pra optar.
+
+    Função pura (sem DB) — testável isoladamente.
+    """
+    ranked_all     = result.get("ranked", [])
+    ineligible_all = result.get("ineligible", [])
+
+    pub_ranked = [p for p in ranked_all if p.get("opt_in")]
+    out_ranked = []
+    for i, p in enumerate(pub_ranked, start=1):
+        row = _strip_private(p)
+        row["rank"] = i
+        out_ranked.append(row)
+
+    out_ineligible = [_strip_private(p) for p in ineligible_all if p.get("opt_in")]
+
+    me = None
+    if viewer_id is not None:
+        rank_by_uid = {p["user_id"]: i for i, p in enumerate(pub_ranked, start=1)}
+        for p in [*ranked_all, *ineligible_all]:
+            if p.get("user_id") == viewer_id:
+                me = {
+                    **p,
+                    "is_self":      True,
+                    "display_name": p.get("username") or p.get("display_name"),
+                    "opt_in":       bool(p.get("opt_in")),
+                    "handle":       (p.get("handle") or "").strip() or None,
+                    "rank":         rank_by_uid.get(viewer_id),  # None se não está no público
+                }
+                break
+
+    return {"ranked": out_ranked, "ineligible": out_ineligible, "me": me}
