@@ -13,6 +13,13 @@
     "training": "Entrenamiento",
     "leaderboard": "Ranking"
   },
+  "notifications": {
+    "title": "Notificaciones",
+    "empty": "Sin notificaciones",
+    "markAllRead": "Marcar todas como leídas",
+    "eloBandUp": "¡Subiste a {{band}}! +{{delta}} ELO",
+    "eloBandDown": "Bajaste a {{band}} ({{delta}} ELO)"
+  },
   "actions": {
     "import": "Importar",
     "viewAll": "Ver todos →",

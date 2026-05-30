@@ -13,6 +13,13 @@
     "training": "Treinos",
     "leaderboard": "Ranking"
   },
+  "notifications": {
+    "title": "Notificações",
+    "empty": "Nenhuma notificação",
+    "markAllRead": "Marcar todas como lidas",
+    "eloBandUp": "Você subiu para {{band}}! +{{delta}} ELO",
+    "eloBandDown": "Você caiu para {{band}} ({{delta}} ELO)"
+  },
   "actions": {
     "import": "Importar",
     "viewAll": "Ver todos →",

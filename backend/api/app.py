@@ -1445,6 +1445,38 @@ def leaderboard():
     })
 
 
+@app.route('/player/notifications', methods=['GET'])
+@require_auth
+def notifications_list():
+    """Notificações do usuário (mais novas primeiro). type + payload (JSON) —
+    o frontend renderiza o texto localizado por tipo."""
+    from database.repositories import get_notifications
+    return jsonify({'notifications': get_notifications(g.user_id, limit=30)})
+
+
+@app.route('/player/notifications/unread-count', methods=['GET'])
+@require_auth
+def notifications_unread_count():
+    from database.repositories import get_unread_notification_count
+    return jsonify({'unread': get_unread_notification_count(g.user_id)})
+
+
+@app.route('/player/notifications/<int:notif_id>/read', methods=['POST'])
+@require_auth
+def notifications_mark_read(notif_id):
+    from database.repositories import mark_notification_read
+    mark_notification_read(g.user_id, notif_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/player/notifications/read-all', methods=['POST'])
+@require_auth
+def notifications_mark_all_read():
+    from database.repositories import mark_all_notifications_read
+    mark_all_notifications_read(g.user_id)
+    return jsonify({'ok': True})
+
+
 @app.route('/player/sparring/hand', methods=['GET'])
 @require_auth
 def player_sparring_hand():
@@ -6554,12 +6586,33 @@ def _recompute_user_elo(user_id: int) -> None:
     — gera série temporal. O pico histórico é derivado do MAX dos snapshots.
     """
     try:
-        from leaklab.elo_engine import compute_player_elo_from_decisions, snapshot_to_dict
-        from database.repositories import get_decisions_for_elo, insert_elo_snapshot
+        from leaklab.elo_engine import compute_player_elo_from_decisions, snapshot_to_dict, band_full
+        from database.repositories import (get_decisions_for_elo, insert_elo_snapshot,
+                                           get_latest_elo, create_notification)
+        # Banda anterior (antes de inserir o novo snapshot) — base do trigger.
+        prev = get_latest_elo(user_id)
+        prev_band = band_full(float(prev['elo_overall']))[1] if prev else None
+
         decisions = get_decisions_for_elo(user_id, last_n_tournaments=ELO_WINDOW_TOURNAMENTS)
         snapshot  = compute_player_elo_from_decisions(user_id, decisions)
         payload   = snapshot_to_dict(snapshot)
         insert_elo_snapshot(payload)
+
+        # ── Trigger de notificação: mudança de banda de ELO ────────────────────
+        new_band = payload['overall']['band_label']
+        if prev_band and new_band != prev_band:
+            new_elo = float(payload['overall']['elo'])
+            delta   = round(new_elo - float(prev['elo_overall']), 1)
+            direction = 'up' if delta >= 0 else 'down'
+            try:
+                create_notification(
+                    user_id, f'elo_band_{direction}',
+                    payload={'band': new_band, 'prev_band': prev_band,
+                             'elo': round(new_elo, 1), 'delta': delta},
+                    link='/rating')
+            except Exception:
+                log.exception("notif elo_band falhou user=%s", user_id)
+
         log.info("elo-recompute: user=%s overall=%.1f decisions=%d (janela=%dt)",
                  user_id, payload['overall']['elo'], payload['total_decisions'],
                  ELO_WINDOW_TOURNAMENTS)

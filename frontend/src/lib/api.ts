@@ -881,6 +881,28 @@ export interface LeaderboardResponse {
   ineligible: LeaderboardEntry[];
 }
 
+// ── Notificações in-app ───────────────────────────────────────────────────────
+export interface NotificationItem {
+  id: number;
+  type: string;
+  payload: Record<string, unknown>;
+  link: string | null;
+  created_at: string;
+  read_at: string | null;
+  read: boolean;
+}
+
+export const notifications = {
+  list: () =>
+    request<{ notifications: NotificationItem[] }>(`/player/notifications`),
+  unreadCount: () =>
+    request<{ unread: number }>(`/player/notifications/unread-count`),
+  markRead: (id: number) =>
+    request<{ ok: boolean }>(`/player/notifications/${id}/read`, { method: "POST" }),
+  markAllRead: () =>
+    request<{ ok: boolean }>(`/player/notifications/read-all`, { method: "POST" }),
+};
+
 export const metrics = {
   leaderboard: (period = 90) =>
     request<LeaderboardResponse>(`/metrics/leaderboard?period=${period}`),

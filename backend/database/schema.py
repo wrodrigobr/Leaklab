@@ -666,6 +666,21 @@ def _run_migrations(conn):
         ]:
             try: conn.execute(sql)
             except Exception: pass
+        # Notificações in-app (genérico — type + payload JSON, render no frontend) (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id         SERIAL PRIMARY KEY,
+                    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    type       TEXT      NOT NULL,
+                    payload    TEXT      NOT NULL DEFAULT '{}',
+                    link       TEXT,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    read_at    TIMESTAMP
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, created_at)")
+        except Exception: pass
         # Sprint GTO — gto_nodes table (Postgres)
         try:
             conn.execute("""
@@ -1178,6 +1193,19 @@ def _run_migrations(conn):
             if col not in st_existing:
                 try: conn.execute(sql)
                 except Exception: pass
+        # Notificações in-app (genérico — type + payload JSON) (SQLite)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                type       TEXT    NOT NULL,
+                payload    TEXT    NOT NULL DEFAULT '{}',
+                link       TEXT,
+                created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+                read_at    TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, created_at)")
         # gto_nodes (SQLite) — Sprint GTO
         conn.execute("""
             CREATE TABLE IF NOT EXISTS gto_nodes (

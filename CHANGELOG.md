@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(notifications): infra genérica de notificações in-app + trigger de banda do ELO (#19)
+- **Substrato genérico** (não existia): tabela `notifications` (`type` + `payload` JSON language-agnostic + `link` + `read_at`; SQLite+Postgres). Repo: `create_notification` / `get_notifications` / `get_unread_notification_count` / `mark_notification_read` / `mark_all_notifications_read`. Endpoints `GET /player/notifications`, `/unread-count`, `POST /…/{id}/read`, `/read-all`.
+- **Frontend**: `NotificationBell` no `HudHeader` — sino com badge de não-lidas, polling do contador (60s), dropdown (fecha ao clicar fora) que lista as notificações e marca todas como lidas ao abrir; clicar navega pro `link`. Texto renderizado por tipo via i18n (PT/EN/ES, namespace `common`).
+- **Primeiro produtor — mudança de banda do ELO**: no `_recompute_user_elo` (após cada upload), compara a banda anterior com a nova; se mudou, cria `elo_band_up`/`elo_band_down` com `{band, prev_band, elo, delta}` e link `/rating`. O sistema é genérico — novos gatilhos (coach respondeu, drill vencido, conquista) plugam como produtores.
+- **Testes** (`test_notifications.py`, suite database, 5): create/get/unread/mark-read/mark-all + isolamento por usuário + ordem + marcar só as próprias. Validado ao vivo (notificação criada → endpoint retorna → unread-count=1). database 41 / api 72: zero regressões; build OK.
+
 ### feat(leaderboard): integra o ELO como dimensão de aderência GTO (#19 ↔ #15)
 - A dimensão **A (aderência GTO, 50%)** do ranking deixou de usar `aligned_pct` cru e passa a derivar do **ELO**: `A = expected_score(player_elo)` — probabilidade de bater o jogador médio (par 1500). Mais principiado (o ELO já pondera dificuldade por K-factor e é auto-calibrado). `get_leaderboard_metrics` computa o ELO do jogador a partir das mesmas decisões e expõe `player_elo`; `aligned_pct` segue para a evolução (B) e o desempate.
 - **Frontend**: a linha de cada jogador na `/leaderboard` mostra o **ELO**; tipo `LeaderboardEntry.player_elo`.

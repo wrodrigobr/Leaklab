@@ -8,6 +8,7 @@ import { useUploadQueue } from "@/components/hud/UploadQueue";
 import { AccountMenu } from "@/components/hud/AccountMenu";
 import { CoachMessagesPanel } from "@/components/hud/CoachMessagesPanel";
 import { SupportModal } from "@/components/hud/SupportModal";
+import { NotificationBell } from "@/components/hud/NotificationBell";
 import { playerMessages, support } from "@/lib/api";
 
 interface HudHeaderProps {
@@ -222,6 +223,8 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                 )}
               </button>
             )}
+
+            {user && <NotificationBell />}
 
             <LanguageSwitcher />
 

@@ -4675,6 +4675,79 @@ def get_last_activity_at(user_id: int) -> Optional[str]:
         conn.close()
 
 
+# ── Notificações in-app (genérico — type + payload JSON, render no frontend) ──
+def create_notification(user_id: int, ntype: str, payload: Optional[dict] = None,
+                        link: Optional[str] = None) -> int:
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "INSERT INTO notifications (user_id, type, payload, link) VALUES (?,?,?,?)"
+        ), (user_id, ntype, json.dumps(payload or {}), link))
+        conn.commit()
+        return getattr(cur, 'lastrowid', 0) or 0
+    finally:
+        conn.close()
+
+
+def get_notifications(user_id: int, limit: int = 30) -> list[dict]:
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(
+            "SELECT id, type, payload, link, created_at, read_at FROM notifications "
+            "WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?"
+        ), (user_id, int(limit)))
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d['payload'] = json.loads(d.get('payload') or '{}')
+            except Exception:
+                d['payload'] = {}
+            d['read'] = d.get('read_at') is not None
+            out.append(d)
+        return out
+    finally:
+        conn.close()
+
+
+def get_unread_notification_count(user_id: int) -> int:
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND read_at IS NULL"
+        ), (user_id,))
+        return int(dict(row).get('n', 0)) if row else 0
+    finally:
+        conn.close()
+
+
+def mark_notification_read(user_id: int, notif_id: int) -> None:
+    from datetime import datetime
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "UPDATE notifications SET read_at = ? "
+            "WHERE id = ? AND user_id = ? AND read_at IS NULL"
+        ), (now, notif_id, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def mark_all_notifications_read(user_id: int) -> None:
+    from datetime import datetime
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL"
+        ), (now, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_leaderboard_metrics(period_days: int = 90) -> list[dict]:
     """Agrega, por usuário, as métricas que alimentam o ranking (#15, fundação):
     mãos, torneios, drills, decisões com gto_label, aderência total e aderência
