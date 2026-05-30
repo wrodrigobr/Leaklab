@@ -7,7 +7,7 @@ Cobertura:
 
 Roda sem banco de dados (mock de _fetch_math_decision).
 """
-import sys, os, re, unittest, unittest.mock
+import sys, os, re, random, unittest, unittest.mock
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import leaklab.academy as acad
@@ -35,6 +35,12 @@ MIN_DIVERSITY = 0.70   # mínimo 70% únicos em 50 chamadas
 # ── Tests ──────────────────────────────────────────────────────────────────────
 
 class TestAcademyVariety(unittest.TestCase):
+
+    def setUp(self):
+        # Seed fixa → variedade determinística. Sem isto, o estado global do RNG
+        # deixado por testes anteriores na suite completa fazia o gerador mais
+        # apertado (3bet_pot, ~80% típico) oscilar abaixo do mínimo de 70% (flaky).
+        random.seed(20260530)
 
     def _assert_diverse(self, name: str, fn, n: int = 50):
         unique, total, rate = _diversity(fn, n)

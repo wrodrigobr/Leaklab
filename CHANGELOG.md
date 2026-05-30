@@ -7,6 +7,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### test(academy): seed fixa elimina flakiness do teste de variedade
+- `test_academy_variety` media a variedade dos geradores com o `random` global — cujo estado, na suite completa, vinha "adiantado" por testes anteriores, fazendo o gerador mais apertado (`3bet_pot`, ~80% típico) oscilar abaixo do mínimo de 70% de vez em quando (falha intermitente). `setUp` agora faz `random.seed(20260530)` antes de cada teste → determinístico (3bet_pot fixo em 86%), imune à ordem da suite. Validado com 3 execuções idênticas.
+
 ### feat(leaderboard): fundação de opt-in/privacidade (#15)
 - Antes, **todo** usuário elegível aparecia no ranking público pelo username, sem consentimento. Agora há 3 garantias de privacidade:
   - **Opt-in**: padrão é **não aparecer**; o aluno escolhe participar (`users.leaderboard_opt_in`, default false). A lista pública (`ranked`/`ineligible`) só inclui quem optou.
