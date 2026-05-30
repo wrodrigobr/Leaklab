@@ -864,6 +864,7 @@ export interface LeaderboardEntry {
   display_name: string;
   score: number;
   dimensions: LeaderboardDimensions;
+  player_elo: number;     // ELO que alimenta a dimensão de aderência GTO
   aligned_pct: number;
   hands: number;
   tournaments: number;

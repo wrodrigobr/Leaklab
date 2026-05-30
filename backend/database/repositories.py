@@ -4703,12 +4703,14 @@ def get_leaderboard_metrics(period_days: int = 90) -> list[dict]:
             drills_row = _fetchone(conn, _adapt(
                 "SELECT COUNT(*) AS n FROM drill_sessions WHERE user_id = ? AND drilled_at >= ?"
             ), (uid, cutoff))
-            labels = [r["gto_label"] for r in _fetchall(conn, _adapt(
-                "SELECT d.gto_label AS gto_label FROM decisions d "
+            drows = _fetchall(conn, _adapt(
+                "SELECT d.street AS street, d.gto_label AS gto_label, d.label AS label, "
+                "d.created_at AS created_at, d.id AS id FROM decisions d "
                 "JOIN tournaments t ON t.id = d.tournament_id "
                 "WHERE t.user_id = ? AND t.imported_at >= ? AND d.gto_label IS NOT NULL "
                 "ORDER BY t.imported_at, d.id"
-            ), (uid, cutoff))]
+            ), (uid, cutoff))
+            labels = [r["gto_label"] for r in drows]
 
             n = len(labels)
             aligned_pct = (sum(1 for l in labels if l in _ALIGNED) / n) if n else 0.0
@@ -4718,6 +4720,10 @@ def get_leaderboard_metrics(period_days: int = 90) -> list[dict]:
             aligned_early = (sum(1 for l in early if l in _ALIGNED) / len(early)) if early else 0.0
             aligned_recent = (sum(1 for l in recent if l in _ALIGNED) / len(recent)) if recent else 0.0
 
+            # ELO do jogador (dimensão A do ranking) a partir das mesmas decisões
+            from leaklab.elo_engine import compute_player_elo_from_decisions, INITIAL_ELO
+            player_elo = compute_player_elo_from_decisions(uid, [dict(r) for r in drows]).overall.elo if n else INITIAL_ELO
+
             out.append({
                 "user_id":        uid,
                 "display_name":   u["username"],
@@ -4725,6 +4731,7 @@ def get_leaderboard_metrics(period_days: int = 90) -> list[dict]:
                 "tournaments":    int(tt["tournaments"] or 0),
                 "drills":         int(drills_row["n"] or 0),
                 "gto_decisions":  n,
+                "player_elo":     round(player_elo, 1),
                 "aligned_pct":    round(aligned_pct, 4),
                 "aligned_early":  round(aligned_early, 4),
                 "aligned_recent": round(aligned_recent, 4),

@@ -36,7 +36,7 @@ function Row({ e }: { e: LeaderboardEntry }) {
         <div className="flex-1 min-w-0">
           <div className="font-medium text-foreground truncate">{e.display_name}</div>
           <div className="font-mono text-[10px] text-muted-foreground">
-            {e.hands.toLocaleString()} · {e.tournaments}t · {e.drills}d
+            {Math.round(e.player_elo)} ELO · {e.hands.toLocaleString()} · {e.tournaments}t · {e.drills}d
           </div>
         </div>
         <span className="font-mono text-3xl font-bold tabular-nums text-primary shrink-0">

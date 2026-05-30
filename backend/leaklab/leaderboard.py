@@ -15,6 +15,8 @@ Funções PURAS (sem DB) — o assembler de dados e o endpoint ficam em reposito
 """
 from __future__ import annotations
 
+from .elo_engine import expected_score, INITIAL_ELO
+
 # ── Pesos das dimensões (somam 1.0) ───────────────────────────────────────────
 # Calibração skill-first: aderência GTO domina (metade do score) — o melhor
 # jogador (maior aderência) fica no topo, sem que volume/engajamento o ultrapassem.
@@ -67,7 +69,11 @@ def score_player(m: dict) -> dict:
     """
     eligible, reason = eligibility(m)
 
-    a = _clamp(float(m.get("aligned_pct") or 0.0))                       # A — aderência GTO
+    # A — aderência GTO via ELO: expected_score(elo) = prob. de bater o jogador
+    # médio (par 1500). Mais principiado que aligned_pct cru (o ELO já pondera
+    # dificuldade por K-factor e é auto-calibrado). aligned_pct segue no dict
+    # para a evolução (B) e o desempate.
+    a = expected_score(float(m.get("player_elo") or INITIAL_ELO))        # A — aderência GTO (ELO)
     evo_delta = float(m.get("aligned_recent") or 0.0) - float(m.get("aligned_early") or 0.0)
     b = _clamp(0.5 + evo_delta * EVO_SCALE)                              # B — evolução
     c = (_norm(m.get("drills") or 0, TARGET_DRILLS)
