@@ -31,6 +31,16 @@ export default function DocsRating() {
     { key: "b_elite",    icon: "👑", range: "≥ 2053" },
   ];
 
+  // Índice "Nesta página" — reusa os títulos de seção já traduzidos (sem novas strings além de toc)
+  const TOC: { id: string; k: string }[] = [
+    { id: "s1", k: "rating.s1_title" },
+    { id: "s2", k: "rating.s2_title" },
+    { id: "s3", k: "rating.s3_title" },
+    { id: "s4", k: "rating.s4_title" },
+    { id: "s5", k: "rating.s5_title" },
+    { id: "s6", k: "rating.s6_title" },
+  ];
+
   const BackLink = () => (
     <Link to="/rating" className="inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:underline">
       <ArrowLeft className="size-3.5" /> {t("rating.back")}
@@ -51,23 +61,24 @@ export default function DocsRating() {
       title={t("rating.title")}
       description={t("rating.description")}
     >
+      <div className="lg:grid lg:grid-cols-[1fr_220px] lg:gap-12">
       <div className="max-w-3xl space-y-8 text-sm text-muted-foreground leading-relaxed">
 
         <BackLink />
 
-        <section className="space-y-3">
+        <section id="s1" className="space-y-3 scroll-mt-24">
           <H2 k="rating.s1_title" />
           <P k="rating.s1_p1" />
           <P k="rating.s1_p2" />
         </section>
 
-        <section className="space-y-3">
+        <section id="s2" className="space-y-3 scroll-mt-24">
           <H2 k="rating.s2_title" />
           <P k="rating.s2_p1" />
           <P k="rating.s2_p2" />
         </section>
 
-        <section className="space-y-3">
+        <section id="s3" className="space-y-3 scroll-mt-24">
           <H2 k="rating.s3_title" />
           <P k="rating.s3_p1" />
           <P k="rating.s3_note" className="rounded-md bg-emerald-500/10 border border-emerald-500/30 p-3 text-emerald-300/90 text-xs" />
@@ -92,12 +103,12 @@ export default function DocsRating() {
           </div>
         </section>
 
-        <section className="space-y-3">
+        <section id="s4" className="space-y-3 scroll-mt-24">
           <H2 k="rating.s4_title" />
           <P k="rating.s4_p1" />
         </section>
 
-        <section className="space-y-3">
+        <section id="s5" className="space-y-3 scroll-mt-24">
           <H2 k="rating.s5_title" />
           <div className="rounded-lg border border-border/40 overflow-hidden">
             <table className="w-full text-xs">
@@ -121,7 +132,7 @@ export default function DocsRating() {
           </div>
         </section>
 
-        <section className="space-y-3">
+        <section id="s6" className="space-y-3 scroll-mt-24">
           <H2 k="rating.s6_title" />
           <ul className="list-disc list-inside space-y-2">
             <li dangerouslySetInnerHTML={{ __html: t("rating.n1") }} />
@@ -132,6 +143,28 @@ export default function DocsRating() {
         </section>
 
         <BackLink />
+      </div>
+
+      {/* TOC sticky — preenche a faixa à direita com navegação (a prosa fica legível) */}
+      <aside className="hidden lg:block">
+        <nav className="sticky top-24 space-y-2">
+          <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            {t("rating.toc")}
+          </div>
+          <ul className="space-y-1.5 border-l border-border/40">
+            {TOC.map((s) => (
+              <li key={s.id}>
+                <a
+                  href={`#${s.id}`}
+                  className="block -ml-px border-l border-transparent pl-3 text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+                >
+                  {t(s.k)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
       </div>
     </HudLayout>
   );

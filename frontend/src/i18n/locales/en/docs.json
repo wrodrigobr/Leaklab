@@ -50,6 +50,7 @@
     "title": "ELO Rating System",
     "description": "How ELO works, how we adapted it for poker, and how to read your rating.",
     "back": "Back to my rating",
+    "toc": "On this page",
     "s1_title": "1. What ELO is",
     "s1_p1": "ELO is a rating system created by the Hungarian physicist <strong>Árpád Élő</strong> in the 1960s to rank chess players. Today it is used in chess (FIDE), tennis, football (FIFA), and many competitive games.",
     "s1_p2": "The core idea: each player has a number (rating). When two players face off, the system computes the <strong>expected probability</strong> of each one winning based on the rating difference. After the match the winner gains points and the loser loses them — the more surprising the result, the more points change hands.",
