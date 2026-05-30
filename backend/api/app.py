@@ -1469,7 +1469,11 @@ def leaderboard_prefs_set():
     handle = body.get('handle')
     if handle is not None and not isinstance(handle, str):
         return jsonify({'error': 'handle must be a string'}), 400
-    prefs = set_leaderboard_prefs(g.user_id, bool(body.get('opt_in')), handle)
+    try:
+        prefs = set_leaderboard_prefs(g.user_id, bool(body.get('opt_in')), handle)
+    except ValueError as e:
+        # handle_taken → apelido já em uso por outro aluno (case-insensitive)
+        return jsonify({'error': str(e)}), 409
     return jsonify(prefs)
 
 

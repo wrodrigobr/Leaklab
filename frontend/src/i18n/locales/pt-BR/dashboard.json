@@ -73,6 +73,8 @@
     "save": "Salvar",
     "saving": "Salvando…",
     "saved": "Salvo ✓",
+    "handleTaken": "Esse apelido já está em uso. Escolha outro.",
+    "saveError": "Não foi possível salvar. Tente novamente.",
     "coachNote": "Seu coach sempre vê seus números, independente desta opção.",
     "myPositionTitle": "Sua posição",
     "myRank": "#{{rank}} no ranking público",

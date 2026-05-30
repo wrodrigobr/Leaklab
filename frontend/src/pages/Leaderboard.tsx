@@ -95,16 +95,21 @@ function PrivacyCard({ prefs, onSaved }: { prefs: LeaderboardPrefs; onSaved: () 
   const [handle, setHandle] = useState(prefs.handle ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const dirty = optIn !== prefs.opt_in || (handle.trim() || null) !== (prefs.handle ?? null);
 
   const save = async () => {
     setSaving(true);
     setSaved(false);
+    setError(null);
     try {
       await leaderboardPrefs.set(optIn, handle.trim() || null);
       setSaved(true);
       onSaved();
+    } catch (e) {
+      const msg = String((e as Error)?.message ?? e);
+      setError(msg === "handle_taken" ? t("leaderboard.handleTaken") : t("leaderboard.saveError"));
     } finally {
       setSaving(false);
     }
@@ -141,7 +146,7 @@ function PrivacyCard({ prefs, onSaved }: { prefs: LeaderboardPrefs; onSaved: () 
             value={handle}
             maxLength={24}
             placeholder={t("leaderboard.handlePlaceholder")}
-            onChange={(e) => { setHandle(e.target.value); setSaved(false); }}
+            onChange={(e) => { setHandle(e.target.value); setSaved(false); setError(null); }}
             className="h-8 text-sm"
           />
           <p className="text-[11px] text-muted-foreground">{t("leaderboard.handleHint")}</p>
@@ -155,6 +160,7 @@ function PrivacyCard({ prefs, onSaved }: { prefs: LeaderboardPrefs; onSaved: () 
         {saved && !dirty && (
           <span className="font-mono text-[11px] text-emerald-400">{t("leaderboard.saved")}</span>
         )}
+        {error && <span className="text-[11px] text-destructive">{error}</span>}
       </div>
 
       <p className="text-[10px] text-muted-foreground/80 border-t border-border/30 pt-2">

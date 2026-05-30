@@ -244,6 +244,29 @@ def test_leaderboard_prefs_default_and_roundtrip():
     print("OK  test_leaderboard_prefs_default_and_roundtrip")
 
 
+def test_leaderboard_handle_unique_case_insensitive():
+    _clean()
+    a = repo.create_user('lbA', 'lba@t.com', 'p')
+    b = repo.create_user('lbB', 'lbb@t.com', 'p')
+    repo.set_leaderboard_prefs(a, True, "Shark")
+    # b tenta o mesmo apelido com case diferente → bloqueado
+    try:
+        repo.set_leaderboard_prefs(b, True, "shark")
+        assert False, "deveria ter levantado handle_taken"
+    except ValueError as e:
+        assert str(e) == "handle_taken"
+    # b não ficou com o handle e a manteve o dele
+    assert repo.get_leaderboard_prefs(b)["handle"] is None
+    assert repo.get_leaderboard_prefs(a)["handle"] == "Shark"
+    # a pode re-salvar o próprio handle (mesmo case) sem conflito consigo mesmo
+    repo.set_leaderboard_prefs(a, True, "Shark")
+    assert repo.get_leaderboard_prefs(a)["handle"] == "Shark"
+    # b com apelido livre funciona
+    repo.set_leaderboard_prefs(b, True, "Whale")
+    assert repo.get_leaderboard_prefs(b)["handle"] == "Whale"
+    print("OK  test_leaderboard_handle_unique_case_insensitive")
+
+
 if __name__ == '__main__':
     tests = [(k,v) for k,v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

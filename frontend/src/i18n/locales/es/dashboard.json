@@ -73,6 +73,8 @@
     "save": "Guardar",
     "saving": "Guardando…",
     "saved": "Guardado ✓",
+    "handleTaken": "Ese alias ya está en uso. Elige otro.",
+    "saveError": "No se pudo guardar. Inténtalo de nuevo.",
     "coachNote": "Tu coach siempre ve tus números, independientemente de esta opción.",
     "myPositionTitle": "Tu posición",
     "myRank": "#{{rank}} en el ranking público",

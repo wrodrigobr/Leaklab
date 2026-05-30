@@ -492,6 +492,8 @@ def _run_migrations(conn):
             # #15 leaderboard — opt-in/privacidade: aparecer no ranking público é consentido
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_handle TEXT",
+            # handle único, case-insensitive (só p/ quem definiu) — rede de segurança além da checagem no repo
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_lb_handle ON users (LOWER(leaderboard_handle)) WHERE leaderboard_handle IS NOT NULL",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -1102,6 +1104,12 @@ def _run_migrations(conn):
             if col not in usr_existing:
                 try: conn.execute(sql)
                 except Exception: pass
+        # #15 leaderboard — handle único, case-insensitive (só p/ quem definiu)
+        try:
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_lb_handle "
+                         "ON users(leaderboard_handle COLLATE NOCASE) "
+                         "WHERE leaderboard_handle IS NOT NULL")
+        except Exception: pass
         # achievements table (SQLite) — FEAT-03
         conn.execute("""
             CREATE TABLE IF NOT EXISTS achievements (

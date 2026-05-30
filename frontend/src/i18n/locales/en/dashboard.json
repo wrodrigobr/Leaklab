@@ -73,6 +73,8 @@
     "save": "Save",
     "saving": "Saving…",
     "saved": "Saved ✓",
+    "handleTaken": "That handle is already taken. Pick another.",
+    "saveError": "Couldn't save. Please try again.",
     "coachNote": "Your coach always sees your numbers, regardless of this setting.",
     "myPositionTitle": "Your position",
     "myRank": "#{{rank}} on the public leaderboard",

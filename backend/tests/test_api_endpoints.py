@@ -582,6 +582,29 @@ def test_replay_invalid_ids():
     print(f"OK  test_replay_invalid_ids | status={r.status_code}")
 
 
+def test_leaderboard_prefs_default_set_and_conflict():
+    c = _make_client()
+    t1 = _register_and_login(c, 'lbp1')
+    t2 = _register_and_login(c, 'lbp2')
+    # default: fora do ranking público
+    r = c.get('/player/leaderboard-prefs', headers=_auth_headers(t1))
+    assert r.status_code == 200
+    assert r.get_json() == {'opt_in': False, 'handle': None}
+    # u1 define handle
+    r = c.post('/player/leaderboard-prefs',
+               json={'opt_in': True, 'handle': 'Crusher'}, headers=_auth_headers(t1))
+    assert r.status_code == 200 and r.get_json()['handle'] == 'Crusher'
+    # u2 tenta o mesmo apelido (case diferente) → 409
+    r = c.post('/player/leaderboard-prefs',
+               json={'opt_in': True, 'handle': 'crusher'}, headers=_auth_headers(t2))
+    assert r.status_code == 409 and r.get_json()['error'] == 'handle_taken'
+    # u2 com apelido livre → 200
+    r = c.post('/player/leaderboard-prefs',
+               json={'opt_in': True, 'handle': 'Grinder'}, headers=_auth_headers(t2))
+    assert r.status_code == 200 and r.get_json()['handle'] == 'Grinder'
+    print("OK  test_leaderboard_prefs_default_set_and_conflict")
+
+
 if __name__ == '__main__':
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

@@ -4860,11 +4860,20 @@ def get_leaderboard_prefs(user_id: int) -> dict:
 def set_leaderboard_prefs(user_id: int, opt_in: bool, handle: Optional[str] = None) -> dict:
     """Grava opt-in/handle do ranking. `handle` é sanitizado (trim, máx 24 chars);
     vazio vira NULL (cai pro username quando opta por participar). Retorna as prefs
-    efetivas. Não altera nada além da vitrine pública — o coach segue vendo os números."""
+    efetivas. Não altera nada além da vitrine pública — o coach segue vendo os números.
+
+    O handle é **único, case-insensitive** entre os usuários: se já estiver em uso por
+    outro aluno, levanta `ValueError("handle_taken")` (o endpoint mapeia para 409)."""
     h = (handle or "").strip()
     h = h[:24] if h else None
     conn = get_conn()
     try:
+        if h is not None:
+            taken = _fetchone(conn, _adapt(
+                "SELECT id FROM users WHERE LOWER(leaderboard_handle) = LOWER(?) AND id != ?"
+            ), (h, user_id))
+            if taken:
+                raise ValueError("handle_taken")
         conn.execute(_adapt(
             "UPDATE users SET leaderboard_opt_in = ?, leaderboard_handle = ? WHERE id = ?"
         ), (bool(opt_in), h, user_id))
