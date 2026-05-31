@@ -78,6 +78,10 @@
     "coachNote": "Your coach always sees your numbers, regardless of this setting.",
     "myPositionTitle": "Your position",
     "myRank": "#{{rank}} on the public leaderboard",
+    "overallRank": "Overall: #{{rank}}",
+    "publicYes": "Visible on the public leaderboard",
+    "publicNo": "Not public — enable above",
+    "rankDeltaSince": "Change since last snapshot",
     "notListed": "You're not on the public leaderboard",
     "notListedCta": "Turn on participation above to appear.",
     "myScoreLine": "Score {{score}} · {{elo}} ELO"

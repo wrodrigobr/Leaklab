@@ -267,6 +267,33 @@ def test_leaderboard_handle_unique_case_insensitive():
     print("OK  test_leaderboard_handle_unique_case_insensitive")
 
 
+def test_leaderboard_snapshot_and_rank_delta():
+    _clean()
+    u = repo.create_user('snapu', 'snapu@t.com', 'p')
+    v = repo.create_user('snapv', 'snapv@t.com', 'p')
+    # snapshot "ontem": u em #3, v em #1
+    r1 = [
+        {"user_id": u, "rank": 3, "score": 70.0, "dimensions": {"gto": 50}},
+        {"user_id": v, "rank": 1, "score": 80.0, "dimensions": {"gto": 60}},
+    ]
+    assert repo.save_leaderboard_snapshot(90, r1, snapshot_at="2026-05-29 03:00:00") == 2
+    # com 1 só snapshot ainda não há delta
+    assert repo.get_rank_delta(u, 90) is None
+    # snapshot "hoje": u subiu pra #1, v caiu pra #2
+    r2 = [
+        {"user_id": u, "rank": 1, "score": 82.0, "dimensions": {"gto": 62}},
+        {"user_id": v, "rank": 2, "score": 79.0, "dimensions": {"gto": 58}},
+    ]
+    repo.save_leaderboard_snapshot(90, r2, snapshot_at="2026-05-30 03:00:00")
+    assert repo.get_rank_delta(u, 90) == {"current": 1, "previous": 3, "delta": 2}   # subiu 2
+    assert repo.get_rank_delta(v, 90)["delta"] == -1                                  # caiu 1
+    assert repo.get_last_snapshot_at(90) == "2026-05-30 03:00:00"
+    # entradas sem rank são ignoradas; período diferente não mistura
+    assert repo.save_leaderboard_snapshot(90, [{"user_id": u, "rank": None}]) == 0
+    assert repo.get_rank_delta(u, 30) is None
+    print("OK  test_leaderboard_snapshot_and_rank_delta")
+
+
 if __name__ == '__main__':
     tests = [(k,v) for k,v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

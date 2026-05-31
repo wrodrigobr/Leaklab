@@ -4883,6 +4883,99 @@ def set_leaderboard_prefs(user_id: int, opt_in: bool, handle: Optional[str] = No
     return {"opt_in": bool(opt_in), "handle": h}
 
 
+# ── Snapshots do leaderboard (#15 — histórico de posição + delta) ─────────────
+# Hoje gravados SOB DEMANDA (guard ~1/dia no GET). Falta um cron real (scheduler/
+# hosting) para gravar de forma confiável independente de acesso — ver backlog #15.
+
+def save_leaderboard_snapshot(period_days: int, ranked: list[dict],
+                              snapshot_at: Optional[str] = None) -> int:
+    """Grava um snapshot do ranking: uma linha por jogador elegível (rank, score,
+    dimensões). `ranked` = saída de `rank_leaderboard` (cada item já tem rank).
+    `snapshot_at` opcional (default = agora) permite backfill/testes determinísticos.
+    Retorna quantas linhas gravou."""
+    import json as _json
+    rows = [p for p in ranked if p.get("rank") is not None]
+    conn = get_conn()
+    try:
+        for p in rows:
+            dims = _json.dumps(p.get("dimensions") or {})
+            if snapshot_at is None:
+                conn.execute(_adapt(
+                    "INSERT INTO leaderboard_snapshots (user_id, period_days, rank, score, dimensions_json) "
+                    "VALUES (?, ?, ?, ?, ?)"
+                ), (p["user_id"], period_days, int(p["rank"]), float(p.get("score") or 0.0), dims))
+            else:
+                conn.execute(_adapt(
+                    "INSERT INTO leaderboard_snapshots (user_id, period_days, rank, score, dimensions_json, snapshot_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)"
+                ), (p["user_id"], period_days, int(p["rank"]), float(p.get("score") or 0.0), dims, snapshot_at))
+        conn.commit()
+    finally:
+        conn.close()
+    return len(rows)
+
+
+def get_last_snapshot_at(period_days: int = 90):
+    """Timestamp do snapshot mais recente desse período (ou None)."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT MAX(snapshot_at) AS last FROM leaderboard_snapshots WHERE period_days = ?"
+        ), (period_days,))
+        return row["last"] if row and row["last"] else None
+    finally:
+        conn.close()
+
+
+def should_take_snapshot(period_days: int = 90, min_hours: float = 20.0) -> bool:
+    """True se ainda não há snapshot hoje (último mais antigo que `min_hours`).
+    Guard do modelo sob-demanda — evita gravar a cada acesso."""
+    last = get_last_snapshot_at(period_days)
+    if last is None:
+        return True
+    from datetime import datetime, timedelta
+    try:
+        last_dt = datetime.fromisoformat(str(last).replace("Z", "").replace("T", " ").split(".")[0])
+        return (datetime.utcnow() - last_dt) >= timedelta(hours=min_hours)
+    except Exception:
+        return True
+
+
+def take_leaderboard_snapshot(period_days: int = 90) -> int:
+    """Recomputa o ranking e grava um snapshot. Pensado para um cron diário —
+    hoje também usado sob demanda. Retorna o nº de linhas gravadas."""
+    from leaklab.leaderboard import rank_leaderboard
+    result = rank_leaderboard(get_leaderboard_metrics(period_days=period_days))
+    return save_leaderboard_snapshot(period_days, result["ranked"])
+
+
+def maybe_take_daily_snapshot(period_days: int = 90) -> bool:
+    """Substituto local do cron: grava um snapshot só se passou ~1 dia desde o
+    último. Idempotente em chamadas frequentes. Retorna True se gravou."""
+    if not should_take_snapshot(period_days):
+        return False
+    take_leaderboard_snapshot(period_days)
+    return True
+
+
+def get_rank_delta(user_id: int, period_days: int = 90):
+    """Variação de posição do usuário entre os 2 snapshots mais recentes.
+    Retorna {current, previous, delta} (delta > 0 = subiu de posição) ou None
+    quando há menos de 2 snapshots."""
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(
+            "SELECT rank, snapshot_at FROM leaderboard_snapshots "
+            "WHERE user_id = ? AND period_days = ? ORDER BY snapshot_at DESC, id DESC LIMIT 2"
+        ), (user_id, period_days))
+        if len(rows) < 2:
+            return None
+        current, previous = int(rows[0]["rank"]), int(rows[1]["rank"])
+        return {"current": current, "previous": previous, "delta": previous - current}
+    finally:
+        conn.close()
+
+
 def get_decisions_for_elo_by_stake(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:
     """Como get_decisions_for_elo, mas inclui `buy_in` do torneio em cada decisão
     (para segmentar o ELO por faixa de stake — Sprint 2 #19)."""

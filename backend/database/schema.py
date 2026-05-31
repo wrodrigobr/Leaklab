@@ -686,6 +686,22 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, created_at)")
         except Exception: pass
+        # #15 leaderboard — snapshots diários (histórico de posição + delta). Hoje
+        # gravados sob demanda (sem cron real ainda — ver memória/backlog).
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS leaderboard_snapshots (
+                    id              SERIAL PRIMARY KEY,
+                    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    period_days     INTEGER NOT NULL,
+                    rank            INTEGER NOT NULL,
+                    score           REAL    NOT NULL,
+                    dimensions_json TEXT    NOT NULL DEFAULT '{}',
+                    snapshot_at     TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_lb_snap ON leaderboard_snapshots(user_id, period_days, snapshot_at)")
+        except Exception: pass
         # Sprint GTO — gto_nodes table (Postgres)
         try:
             conn.execute("""
@@ -1220,6 +1236,20 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, created_at)")
+        # #15 leaderboard — snapshots diários (histórico de posição + delta).
+        # Gravados sob demanda por enquanto (sem cron real ainda — ver backlog).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS leaderboard_snapshots (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                period_days     INTEGER NOT NULL,
+                rank            INTEGER NOT NULL,
+                score           REAL    NOT NULL,
+                dimensions_json TEXT    NOT NULL DEFAULT '{}',
+                snapshot_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_lb_snap ON leaderboard_snapshots(user_id, period_days, snapshot_at)")
         # gto_nodes (SQLite) — Sprint GTO
         conn.execute("""
             CREATE TABLE IF NOT EXISTS gto_nodes (

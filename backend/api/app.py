@@ -1432,14 +1432,26 @@ def leaderboard():
     quem optou por participar, anonimizado por handle. `me` traz a posição do
     próprio usuário sempre — mesmo fora do ranking público.
     """
-    from database.repositories import get_leaderboard_metrics
+    from database.repositories import (
+        get_leaderboard_metrics, should_take_snapshot,
+        save_leaderboard_snapshot, get_rank_delta,
+    )
     from leaklab.leaderboard import (
         rank_leaderboard, public_view, W_GTO, W_EVO, W_ENG, W_VOL,
         MIN_HANDS, MIN_TOURNAMENTS, MIN_GTO_DECISIONS,
     )
     period = request.args.get('period', default=90, type=int)
     result = rank_leaderboard(get_leaderboard_metrics(period_days=period))
+    # Substituto local do cron: grava um snapshot ~1/dia (best-effort, reusa o
+    # ranking já computado). Cron real (scheduler/hosting) fica pendente — backlog #15.
+    try:
+        if should_take_snapshot(period):
+            save_leaderboard_snapshot(period, result['ranked'])
+    except Exception:
+        pass
     view = public_view(result, viewer_id=g.user_id)
+    if view['me'] is not None:
+        view['me']['rank_delta'] = get_rank_delta(g.user_id, period)
     return jsonify({
         'period_days':  period,
         'weights':      {'gto': W_GTO, 'evolution': W_EVO, 'engagement': W_ENG, 'volume': W_VOL},

@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(leaderboard): fundação de snapshots — histórico de posição + delta (#15)
+- O ranking era sempre um retrato do instante (recomputado a cada request), sem memória do passado. Agora há **snapshots**: tabela `leaderboard_snapshots` (user_id, period_days, rank, score, dimensions_json, snapshot_at; migrations PG+SQLite + índice) gravando "fotografias" do ranking — a série temporal que alimenta o histórico e o **delta de posição** ("subiu/caiu X").
+- **Modelo sob-demanda (substituto local do cron):** o `GET /metrics/leaderboard` grava um snapshot ~1/dia (guard `should_take_snapshot`, reusando o ranking já computado, best-effort) e injeta `me.rank_delta` (variação vs. snapshot anterior). `repositories`: `save_leaderboard_snapshot` (aceita `snapshot_at` p/ backfill/testes), `get_last_snapshot_at`, `take_leaderboard_snapshot`, `maybe_take_daily_snapshot`, `get_rank_delta`. `public_view` expõe `me.overall_rank` (posição entre todos os elegíveis — base estável do delta, existe mesmo opt-out).
+- **Script p/ cron real:** `scripts/take_leaderboard_snapshot.py` (`--period`, `--force`) — ponto de entrada para Render cron / Windows Task Scheduler quando houver hosting.
+- **Frontend:** card "Sua posição" passa a mostrar a **posição geral** + badge de **delta** (▲ subiu / ▼ caiu / —) e o status de visibilidade pública; i18n PT/EN/ES (`overallRank`/`publicYes`/`publicNo`/`rankDeltaSince`).
+- **Pendente:** cron de verdade (scheduler/hosting) para gravar de forma confiável independente de acesso — hoje depende de alguém abrir a página. Registrado no backlog/memória.
+- **Testes:** `test_database` (save/last/delta entre 2 batches, ignora sem-rank, isola por período). Validado end-to-end no DB local (script grava, guard pula 2ª no dia, delta correto).
+
 ### test(academy): seed fixa elimina flakiness do teste de variedade
 - `test_academy_variety` media a variedade dos geradores com o `random` global — cujo estado, na suite completa, vinha "adiantado" por testes anteriores, fazendo o gerador mais apertado (`3bet_pot`, ~80% típico) oscilar abaixo do mínimo de 70% de vez em quando (falha intermitente). `setUp` agora faz `random.seed(20260530)` antes de cada teste → determinístico (3bet_pot fixo em 86%), imune à ordem da suite. Validado com 3 execuções idênticas.
 

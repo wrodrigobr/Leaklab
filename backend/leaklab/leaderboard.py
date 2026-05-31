@@ -165,6 +165,7 @@ def public_view(result: dict, viewer_id: int | None = None) -> dict:
                     "opt_in":       bool(p.get("opt_in")),
                     "handle":       (p.get("handle") or "").strip() or None,
                     "rank":         rank_by_uid.get(viewer_id),  # None se não está no público
+                    "overall_rank": p.get("rank"),               # posição entre TODOS os elegíveis (base do delta)
                 }
                 break
 

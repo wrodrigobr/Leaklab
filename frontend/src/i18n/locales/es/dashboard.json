@@ -78,6 +78,10 @@
     "coachNote": "Tu coach siempre ve tus números, independientemente de esta opción.",
     "myPositionTitle": "Tu posición",
     "myRank": "#{{rank}} en el ranking público",
+    "overallRank": "Posición general: #{{rank}}",
+    "publicYes": "Visible en el ranking público",
+    "publicNo": "Fuera del ranking público — actívalo arriba",
+    "rankDeltaSince": "Variación desde el último registro",
     "notListed": "No estás en el ranking público",
     "notListedCta": "Activa la participación arriba para aparecer.",
     "myScoreLine": "Score {{score}} · {{elo}} ELO"

@@ -60,28 +60,48 @@ function Row({ e, self }: { e: LeaderboardEntry; self?: boolean }) {
   );
 }
 
-/** "Sua posição" — sempre visível pro próprio usuário, mesmo fora do ranking público. */
+/** Variação de posição vs. snapshot anterior (▲ subiu / ▼ caiu / — igual). */
+function RankDeltaBadge({ me }: { me: LeaderboardMe }) {
+  const { t } = useTranslation("dashboard");
+  if (!me.rank_delta) return null;
+  const d = me.rank_delta.delta;
+  const cls = d > 0 ? "text-emerald-400" : d < 0 ? "text-red-400" : "text-muted-foreground";
+  const sym = d > 0 ? "▲" : d < 0 ? "▼" : "—";
+  return (
+    <span className={cn("font-mono text-[11px] tabular-nums", cls)} title={t("leaderboard.rankDeltaSince")}>
+      {sym}{d !== 0 ? ` ${Math.abs(d)}` : ""}
+    </span>
+  );
+}
+
+/** "Sua posição" — posição geral (entre todos os elegíveis) + delta + visibilidade. */
 function MyPosition({ me }: { me: LeaderboardMe }) {
   const { t } = useTranslation("dashboard");
-  const listed = me.rank != null;
+  const hasRank = me.overall_rank != null;
   return (
     <div className="rounded-xl border border-primary/40 bg-primary/[0.04] p-4 space-y-1">
       <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
         {t("leaderboard.myPositionTitle")}
       </div>
-      {listed ? (
-        <div className="font-mono text-lg font-bold text-foreground">
-          {t("leaderboard.myRank", { rank: me.rank })}
-        </div>
+      {hasRank ? (
+        <>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-lg font-bold text-foreground">
+              {t("leaderboard.overallRank", { rank: me.overall_rank })}
+            </span>
+            <RankDeltaBadge me={me} />
+          </div>
+          <div className="font-mono text-[10px] text-muted-foreground">
+            {t("leaderboard.myScoreLine", { score: me.score.toFixed(1), elo: Math.round(me.player_elo) })}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            {me.opt_in ? t("leaderboard.publicYes") : t("leaderboard.publicNo")}
+          </div>
+        </>
       ) : (
         <div className="space-y-0.5">
           <div className="text-sm text-foreground">{t("leaderboard.notListed")}</div>
           <div className="text-xs text-muted-foreground">{t("leaderboard.notListedCta")}</div>
-        </div>
-      )}
-      {me.eligible && (
-        <div className="font-mono text-[10px] text-muted-foreground">
-          {t("leaderboard.myScoreLine", { score: me.score.toFixed(1), elo: Math.round(me.player_elo) })}
         </div>
       )}
     </div>

@@ -874,8 +874,15 @@ export interface LeaderboardEntry {
   reason: string | null;
 }
 // "Sua linha" — sempre presente p/ o próprio usuário (mesmo fora do ranking público)
+export interface RankDelta {
+  current: number;
+  previous: number;
+  delta: number;              // > 0 = subiu de posição (vs. snapshot anterior)
+}
 export interface LeaderboardMe extends Omit<LeaderboardEntry, "rank"> {
   rank: number | null;        // null = não está no ranking público (opt-out ou inelegível)
+  overall_rank: number | null; // posição entre TODOS os elegíveis (existe mesmo opt-out)
+  rank_delta: RankDelta | null; // variação vs. snapshot anterior (null se < 2 snapshots)
   is_self: boolean;
   opt_in: boolean;
   handle: string | null;
