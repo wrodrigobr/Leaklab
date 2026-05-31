@@ -294,6 +294,24 @@ def test_leaderboard_snapshot_and_rank_delta():
     print("OK  test_leaderboard_snapshot_and_rank_delta")
 
 
+def test_coach_students_leaderboard_scope():
+    _clean()
+    coach = repo.create_user('lbcoach', 'lbcoach@t.com', 'p', role='coach')
+    s1 = repo.create_user('lbs1', 'lbs1@t.com', 'p', role='player', coach_id=coach)
+    s2 = repo.create_user('lbs2', 'lbs2@t.com', 'p', role='player', coach_id=coach)
+    repo.create_user('lbother', 'lbother@t.com', 'p', role='player')  # não-aluno
+    res = repo.get_coach_students_leaderboard(coach, 90)
+    ids = {p['user_id'] for p in res['ranked'] + res['ineligible']}
+    assert ids == {s1, s2}                        # só os alunos do coach; 'other' fora
+    assert res['ranked'] == []                    # ninguém elegível (sem dados)
+    assert all(p['reason'] for p in res['ineligible'])           # têm motivo
+    assert {p['display_name'] for p in res['ineligible']} == {'lbs1', 'lbs2'}  # nome real
+    # coach sem alunos → vazio
+    lone = repo.create_user('lonecoach', 'lone@t.com', 'p', role='coach')
+    assert repo.get_coach_students_leaderboard(lone, 90) == {'ranked': [], 'ineligible': []}
+    print("OK  test_coach_students_leaderboard_scope")
+
+
 if __name__ == '__main__':
     tests = [(k,v) for k,v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

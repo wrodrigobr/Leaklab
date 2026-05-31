@@ -893,7 +893,7 @@ export interface LeaderboardResponse {
   eligibility: { min_hands: number; min_tournaments: number; min_gto_decisions: number };
   ranked: LeaderboardEntry[];
   ineligible: LeaderboardEntry[];
-  me: LeaderboardMe | null;
+  me?: LeaderboardMe | null;   // ausente na visão do coach (que não tem "minha posição")
 }
 
 // Preferências de privacidade do ranking (#15 opt-in)
@@ -1454,6 +1454,9 @@ export const coachDashboard = {
 
   students: () =>
     request<{ students: StudentSummary[] }>("/coach/students"),
+
+  studentsLeaderboard: (period = 90) =>
+    request<LeaderboardResponse>(`/coach/students/leaderboard?period=${period}`),
 
   studentLevel: (studentId: number) =>
     request<PlayerLevel>(`/coach/student/${studentId}/level`),

@@ -1887,6 +1887,28 @@ def coach_students():
     return jsonify({'students': enriched})
 
 
+@app.route('/coach/students/leaderboard', methods=['GET'])
+@require_coach
+def coach_students_leaderboard():
+    """Ranking dos PRÓPRIOS alunos do coach (#15 coach view) — nomes reais, sem
+    filtro de opt-in (o coach sempre vê os números), read-only. Não compete entre
+    coaches."""
+    from database.repositories import get_coach_students_leaderboard
+    from leaklab.leaderboard import (
+        W_GTO, W_EVO, W_ENG, W_VOL, MIN_HANDS, MIN_TOURNAMENTS, MIN_GTO_DECISIONS,
+    )
+    period = request.args.get('period', default=90, type=int)
+    result = get_coach_students_leaderboard(g.user_id, period_days=period)
+    return jsonify({
+        'period_days':  period,
+        'weights':      {'gto': W_GTO, 'evolution': W_EVO, 'engagement': W_ENG, 'volume': W_VOL},
+        'eligibility':  {'min_hands': MIN_HANDS, 'min_tournaments': MIN_TOURNAMENTS,
+                         'min_gto_decisions': MIN_GTO_DECISIONS},
+        'ranked':       result['ranked'],
+        'ineligible':   result['ineligible'],
+    })
+
+
 @app.route('/coach/student/<int:student_id>/history', methods=['GET'])
 @require_coach
 def coach_student_history(student_id):

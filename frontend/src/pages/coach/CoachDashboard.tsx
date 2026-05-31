@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Users, TrendingUp, Award, Activity, AlertTriangle,
   Play, Filter, ChevronDown, ChevronUp, LayoutDashboard,
@@ -56,6 +57,74 @@ const TrendIcon = ({ trend }: { trend: string | null }) => {
   if (trend === "stable")    return <Minus        className="size-3.5 text-muted-foreground" />;
   return null;
 };
+
+const RANK_TINT = (rank: number) =>
+  rank === 1 ? "text-yellow-400" : rank === 2 ? "text-slate-300" : rank === 3 ? "text-amber-600" : "text-muted-foreground";
+
+/** Ranking dos próprios alunos (#15 coach view) — nomes reais, sem opt-in, read-only. */
+function CoachStudentsRanking() {
+  const { t } = useTranslation("dashboard");
+  const { data, isLoading } = useQuery({
+    queryKey: ["coach-students-leaderboard"],
+    queryFn: () => coachDashboard.studentsLeaderboard(90),
+  });
+  const ranked = data?.ranked ?? [];
+  const ineligible = data?.ineligible ?? [];
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-hud-surface p-4">
+        <p className="text-sm text-muted-foreground animate-pulse">{t("leaderboard.loading")}</p>
+      </div>
+    );
+  }
+  if (ranked.length === 0 && ineligible.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
+      <div>
+        <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
+          {t("leaderboard.coachRankingTitle")}
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{t("leaderboard.coachRankingHint")}</p>
+      </div>
+
+      {ranked.length > 0 ? (
+        <div className="space-y-1.5">
+          {ranked.map((e) => (
+            <div key={e.user_id} className="flex items-center gap-2.5">
+              <span className={cn("font-mono text-sm font-bold tabular-nums w-5 text-center shrink-0", RANK_TINT(e.rank ?? 0))}>
+                {e.rank}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm text-foreground truncate">{e.display_name}</div>
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  {Math.round(e.player_elo)} ELO · {e.hands.toLocaleString()} · {e.tournaments}t
+                </div>
+              </div>
+              <span className="font-mono text-lg font-bold tabular-nums text-primary shrink-0">{e.score.toFixed(1)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">{t("leaderboard.coachRankingNoneEligible")}</p>
+      )}
+
+      {ineligible.length > 0 && (
+        <div className="border-t border-border/50 pt-2 space-y-1">
+          {ineligible.map((e) => (
+            <div key={e.user_id} className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground truncate">{e.display_name}</span>
+              <span className="font-mono text-[10px] text-amber-400/80 shrink-0">
+                {e.reason ? t(`leaderboard.reason_${e.reason}`, { defaultValue: e.reason }) : ""}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AlunosTab() {
   const navigate = useNavigate();
@@ -233,6 +302,7 @@ function AlunosTab() {
 
       <div className="space-y-4">
         <InviteKeyWidget />
+        <CoachStudentsRanking />
         {impact?.top_leaks && impact.top_leaks.length > 0 && (
           <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
             <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Leaks em comum</p>

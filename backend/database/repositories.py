@@ -4770,24 +4770,31 @@ def mark_all_notifications_read(user_id: int) -> None:
         conn.close()
 
 
-def get_leaderboard_metrics(period_days: int = 90) -> list[dict]:
+def get_leaderboard_metrics(period_days: int = 90,
+                            user_ids: Optional[list[int]] = None) -> list[dict]:
     """Agrega, por usuário, as métricas que alimentam o ranking (#15, fundação):
     mãos, torneios, drills, decisões com gto_label, aderência total e aderência
     início×recente (metades cronológicas) — tudo no período. Funções puras de
     pontuação/ranqueamento ficam em leaklab/leaderboard.py.
-    """
+
+    `user_ids` opcional restringe o cálculo a um conjunto de usuários (usado pela
+    visão do coach, que ranqueia só os próprios alunos)."""
     from datetime import datetime, timedelta
     cutoff = (datetime.utcnow() - timedelta(days=period_days)).strftime("%Y-%m-%d %H:%M:%S")
     _ALIGNED = ("gto_correct", "gto_mixed")
 
     conn = get_conn()
     try:
-        users = _fetchall(conn, _adapt(
-            "SELECT DISTINCT u.id AS id, u.username AS username, "
-            "       u.leaderboard_opt_in AS opt_in, u.leaderboard_handle AS handle "
-            "FROM users u JOIN tournaments t ON t.user_id = u.id "
-            "WHERE t.imported_at >= ?"
-        ), (cutoff,))
+        sql = ("SELECT DISTINCT u.id AS id, u.username AS username, "
+               "       u.leaderboard_opt_in AS opt_in, u.leaderboard_handle AS handle "
+               "FROM users u JOIN tournaments t ON t.user_id = u.id "
+               "WHERE t.imported_at >= ?")
+        params: list = [cutoff]
+        if user_ids:
+            ph = ",".join(["?"] * len(user_ids))
+            sql += f" AND u.id IN ({ph})"
+            params.extend(user_ids)
+        users = _fetchall(conn, _adapt(sql), tuple(params))
 
         out: list[dict] = []
         for u in users:
@@ -4974,6 +4981,34 @@ def get_rank_delta(user_id: int, period_days: int = 90):
         return {"current": current, "previous": previous, "delta": previous - current}
     finally:
         conn.close()
+
+
+def get_coach_students_leaderboard(coach_id: int, period_days: int = 90) -> dict:
+    """Ranking dos PRÓPRIOS alunos do coach (#15 coach view). Diferente do ranking
+    público: ranqueia só os alunos entre si, com **nomes reais** e SEM filtro de
+    opt-in (o coach sempre vê os números do aluno). Alunos sem atividade no período
+    entram como inelegíveis (0 mãos). Read-only — não compete entre coaches."""
+    from leaklab.leaderboard import rank_leaderboard
+    from leaklab.elo_engine import INITIAL_ELO
+
+    students = get_students(coach_id)
+    ids = [s["id"] for s in students]
+    if not ids:
+        return {"ranked": [], "ineligible": []}
+
+    metrics = get_leaderboard_metrics(period_days=period_days, user_ids=ids)
+    present = {m["user_id"] for m in metrics}
+    # alunos sem torneios no período → linha zerada (inelegíveis), para o coach ver todos
+    for s in students:
+        if s["id"] not in present:
+            metrics.append({
+                "user_id": s["id"], "username": s["username"], "display_name": s["username"],
+                "opt_in": False, "handle": None,
+                "hands": 0, "tournaments": 0, "drills": 0, "gto_decisions": 0,
+                "player_elo": INITIAL_ELO, "aligned_pct": 0.0,
+                "aligned_early": 0.0, "aligned_recent": 0.0,
+            })
+    return rank_leaderboard(metrics)
 
 
 def get_decisions_for_elo_by_stake(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:

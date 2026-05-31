@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(leaderboard): coach view — ranking dos próprios alunos (#15)
+- O coach passa a ver um **ranking dos seus alunos** no CoachDashboard (aba Alunos, sidebar). Diferente do ranking público: ranqueia só os alunos **entre si**, com **nomes reais** e **sem filtro de opt-in** (o coach sempre vê os números do aluno — princípio do #15). Read-only, sem competição entre coaches. Alunos sem atividade no período entram como inelegíveis (com motivo), para o coach ver todos.
+- **Backend**: `get_leaderboard_metrics` ganhou filtro opcional `user_ids` (restringe o cálculo a um conjunto); `repositories.get_coach_students_leaderboard(coach_id, period_days)` (alunos do coach via `get_students`, ranqueados entre si, inativos como inelegíveis); endpoint `GET /coach/students/leaderboard` (`@require_coach`).
+- **Frontend**: card `CoachStudentsRanking` (react-query, `coachDashboard.studentsLeaderboard`) — rank + nome + ELO/mãos/torneios + score, e inelegíveis com motivo; i18n PT/EN/ES (`coachRankingTitle`/`coachRankingHint`/`coachRankingNoneEligible`).
+- **Testes**: `test_database` (escopo — só os alunos do próprio coach, não-alunos fora, inativos como inelegíveis com nome real, coach sem alunos → vazio).
+
 ### feat(leaderboard): fundação de snapshots — histórico de posição + delta (#15)
 - O ranking era sempre um retrato do instante (recomputado a cada request), sem memória do passado. Agora há **snapshots**: tabela `leaderboard_snapshots` (user_id, period_days, rank, score, dimensions_json, snapshot_at; migrations PG+SQLite + índice) gravando "fotografias" do ranking — a série temporal que alimenta o histórico e o **delta de posição** ("subiu/caiu X").
 - **Modelo sob-demanda (substituto local do cron):** o `GET /metrics/leaderboard` grava um snapshot ~1/dia (guard `should_take_snapshot`, reusando o ranking já computado, best-effort) e injeta `me.rank_delta` (variação vs. snapshot anterior). `repositories`: `save_leaderboard_snapshot` (aceita `snapshot_at` p/ backfill/testes), `get_last_snapshot_at`, `take_leaderboard_snapshot`, `maybe_take_daily_snapshot`, `get_rank_delta`. `public_view` expõe `me.overall_rank` (posição entre todos os elegíveis — base estável do delta, existe mesmo opt-out).
