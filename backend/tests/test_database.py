@@ -312,6 +312,26 @@ def test_coach_students_leaderboard_scope():
     print("OK  test_coach_students_leaderboard_scope")
 
 
+def test_leaderboard_achievements_grant():
+    _clean()
+    u = repo.create_user('lbach', 'lbach@t.com', 'p')
+    # #1, subiu de posição (delta>0), ELO banda Expert (>=1924) → todos os 5 badges
+    new = {a['key'] for a in repo.grant_leaderboard_achievements(u, rank=1, rank_delta=2, elo=1950)}
+    assert new == {'rank_top10', 'rank_top3', 'rank_first', 'rank_climber', 'elo_expert'}
+    # idempotente — 2ª chamada não concede de novo
+    assert repo.grant_leaderboard_achievements(u, rank=1, rank_delta=2, elo=1950) == []
+    # resolvem título via _ACH_META no get_achievements
+    ach = {a['key']: a['title'] for a in repo.get_achievements(u)}
+    assert 'rank_first' in ach and ach['elo_expert'].startswith('♠')
+    # outro user: rank 7, sem subida (delta 0), ELO baixo → só top10
+    v = repo.create_user('lbach2', 'lbach2@t.com', 'p')
+    nv = {a['key'] for a in repo.grant_leaderboard_achievements(v, rank=7, rank_delta=0, elo=1600)}
+    assert nv == {'rank_top10'}
+    # sem rank (None) e sem elo → nada
+    assert repo.grant_leaderboard_achievements(v, rank=None, rank_delta=None, elo=None) == []
+    print("OK  test_leaderboard_achievements_grant")
+
+
 if __name__ == '__main__':
     tests = [(k,v) for k,v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

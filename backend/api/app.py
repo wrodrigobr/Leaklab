@@ -1434,7 +1434,7 @@ def leaderboard():
     """
     from database.repositories import (
         get_leaderboard_metrics, should_take_snapshot,
-        save_leaderboard_snapshot, get_rank_delta,
+        save_leaderboard_snapshot, get_rank_delta, grant_leaderboard_achievements,
     )
     from leaklab.leaderboard import (
         rank_leaderboard, public_view, W_GTO, W_EVO, W_ENG, W_VOL,
@@ -1451,7 +1451,17 @@ def leaderboard():
         pass
     view = public_view(result, viewer_id=g.user_id)
     if view['me'] is not None:
-        view['me']['rank_delta'] = get_rank_delta(g.user_id, period)
+        me = view['me']
+        me['rank_delta'] = get_rank_delta(g.user_id, period)
+        # Badges de ranking (#15): concede com base na posição/ELO atuais (best-effort).
+        try:
+            rd = me['rank_delta']['delta'] if me.get('rank_delta') else None
+            grant_leaderboard_achievements(
+                g.user_id, rank=me.get('overall_rank'),
+                rank_delta=rd, elo=me.get('player_elo'),
+            )
+        except Exception:
+            pass
     return jsonify({
         'period_days':  period,
         'weights':      {'gto': W_GTO, 'evolution': W_EVO, 'engagement': W_ENG, 'volume': W_VOL},

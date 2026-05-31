@@ -7,6 +7,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(leaderboard): badges de ranking + streaks (#15)
+- **Streaks** já existiam (`add_xp` calcula dias consecutivos via `xp_last_activity`; conquista `streak_7`) — sem retrabalho. O ganho do #15 são **badges de ranking**, agora possíveis com os snapshots/rank_delta:
+  - `rank_top10` 🏅, `rank_top3` 🥉, `rank_first` 👑 (posição geral entre elegíveis), `rank_climber` 📈 (subiu de posição, via `rank_delta`), `elo_expert` ♠ (banda Expert do ELO, ≥1924).
+- **`grant_leaderboard_achievements(user_id, rank, rank_delta, elo)`**: concede (idempotente, UNIQUE user+key) e **notifica** cada novo selo, espelhando o padrão de `_check_and_grant_achievements`. Plugado no `GET /metrics/leaderboard` (best-effort, com base no `me.overall_rank`/`rank_delta`/`player_elo`).
+- **Sem mudança de frontend**: os selos resolvem título/desc via `_ACH_META`, então aparecem sozinhos onde achievements são listados (`/player/achievements`) e no sino de notificações (tipo `achievement`, já genérico). Sem catálogo fixo de chaves no front.
+- **Testes**: `test_database` (limiares top10/top3/#1, climber só com delta>0, elo_expert pela banda, idempotência, resolução via `_ACH_META`).
+
 ### feat(leaderboard): coach view — ranking dos próprios alunos (#15)
 - O coach passa a ver um **ranking dos seus alunos** no CoachDashboard (aba Alunos, sidebar). Diferente do ranking público: ranqueia só os alunos **entre si**, com **nomes reais** e **sem filtro de opt-in** (o coach sempre vê os números do aluno — princípio do #15). Read-only, sem competição entre coaches. Alunos sem atividade no período entram como inelegíveis (com motivo), para o coach ver todos.
 - **Backend**: `get_leaderboard_metrics` ganhou filtro opcional `user_ids` (restringe o cálculo a um conjunto); `repositories.get_coach_students_leaderboard(coach_id, period_days)` (alunos do coach via `get_students`, ranqueados entre si, inativos como inelegíveis); endpoint `GET /coach/students/leaderboard` (`@require_coach`).

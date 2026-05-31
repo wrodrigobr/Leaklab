@@ -3813,6 +3813,12 @@ _ACHIEVEMENT_DEFS = [
     ('first_drill',      '🎮 Primeiro Drill',     'Completou o primeiro drill no Ghost Table'),
     ('streak_7',         '🔥 Semana de Foco',     '7 dias consecutivos de atividade'),
     ('tournaments_10',   '🏆 10 Torneios',        '10 torneios importados e analisados'),
+    # #15 badges de ranking — concedidos por grant_leaderboard_achievements (não pelo fluxo de XP)
+    ('rank_top10',       '🏅 Top 10',             'Entrou no top 10 do ranking de alunos'),
+    ('rank_top3',        '🥉 Pódio',              'Alcançou o top 3 do ranking de alunos'),
+    ('rank_first',       '👑 Nº 1',               'Chegou ao 1º lugar do ranking de alunos'),
+    ('rank_climber',     '📈 Crescente',          'Subiu de posição no ranking'),
+    ('elo_expert',       '♠ Expert GTO',          'Atingiu a banda Expert no rating ELO'),
 ]
 
 _ACH_META = {k: {'title': t, 'desc': d} for k, t, d in _ACHIEVEMENT_DEFS}
@@ -4124,6 +4130,55 @@ def _check_and_grant_achievements(conn, user_id: int, event_type: str,
         except Exception:
             pass
     return new_ach
+
+
+def grant_leaderboard_achievements(user_id: int, rank: Optional[int] = None,
+                                   rank_delta: Optional[int] = None,
+                                   elo: Optional[float] = None) -> list:
+    """Concede conquistas de RANKING (#15 badges), separado do fluxo de XP:
+      - posição: top 10 / top 3 / nº 1 (rank = posição geral atual entre elegíveis)
+      - `rank_climber`: subiu de posição (rank_delta > 0)
+      - `elo_expert`: atingiu a banda Expert (ou acima) no rating ELO
+    Idempotente (UNIQUE user_id+key) e notifica cada nova conquista. Retorna as novas."""
+    conn = get_conn()
+    try:
+        existing = {r['achievement_key'] for r in conn.execute(
+            "SELECT achievement_key FROM achievements WHERE user_id = ?", (user_id,)
+        ).fetchall()}
+
+        candidates: list = []
+        if rank is not None:
+            if rank <= 10 and 'rank_top10' not in existing: candidates.append('rank_top10')
+            if rank <= 3  and 'rank_top3'  not in existing: candidates.append('rank_top3')
+            if rank == 1  and 'rank_first' not in existing: candidates.append('rank_first')
+        if rank_delta and rank_delta > 0 and 'rank_climber' not in existing:
+            candidates.append('rank_climber')
+        if elo is not None and 'elo_expert' not in existing:
+            from leaklab.elo_engine import band_full
+            if band_full(float(elo))[1] in ('Expert', 'Elite'):
+                candidates.append('elo_expert')
+
+        new_ach = []
+        for key in candidates:
+            try:
+                conn.execute(
+                    "INSERT OR IGNORE INTO achievements (user_id, achievement_key) VALUES (?, ?)",
+                    (user_id, key)
+                )
+                meta = _ACH_META.get(key, {'title': key, 'desc': ''})
+                new_ach.append({'key': key, 'title': meta['title'], 'desc': meta['desc']})
+                try:
+                    conn.execute(
+                        "INSERT INTO notifications (user_id, type, payload, link) VALUES (?,?,?,?)",
+                        (user_id, 'achievement', json.dumps({'key': key, 'title': meta['title']}), '/dashboard'))
+                except Exception:
+                    pass
+            except Exception:
+                pass
+        conn.commit()
+        return new_ach
+    finally:
+        conn.close()
 
 
 # ── Coach Applications — BACK-018 ─────────────────────────────────────────────
