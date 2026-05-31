@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs(ranking): nova seção "Ranking de Alunos" na /docs (#15)
+- Nova seção na `/docs` (entre Gamificação e Trajetória) cobrindo os recursos do ranking em nível **conceitual** (o que é e como ler — sem fórmulas/pesos/limiares internos, conforme o padrão das docs): propósito (por aprendizado, não dinheiro), **participação/privacidade** (opt-in + apelido anônimo), **sua posição e variação** (▲/▼/—), **campeões mensais** (hall of fame, anônimos sem opt-in) e **visão do coach**. Cross-link para a página de Rating ELO.
+- A lista de **Conquistas** em Gamificação ganhou os 5 badges de ranking (🏅 Top 10, 🥉 Pódio, 👑 Nº 1, 📈 Crescente, ♠ Expert GTO). Nova entrada no índice/nav lateral + scroll-spy. i18n PT/EN/ES (bloco `ranking.*` + `gamification.ach_*`).
+
 ### feat(leaderboard): hall of fame — campeões mensais (#15)
 - Card **"🏆 Campeões mensais"** na `/leaderboard` (sidebar): o **#1 do snapshot mais recente de cada mês**, mês mais novo primeiro. Aproveita a série de `leaderboard_snapshots`.
 - **Privacidade**: só expõe a identidade de quem está com **opt-in** (via handle/username); campeão sem opt-in aparece como **Anônimo** (flag `anonymous`, localizada no frontend). Consistente com o resto do #15.

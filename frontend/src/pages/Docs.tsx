@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight, TrendingUp } from "lucide-react";
 
-const SECTION_IDS = ["import", "scoring", "indicators", "gto_method", "alignment_matrix", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "career", "cognitive", "twin", "sparring"] as const;
+const SECTION_IDS = ["import", "scoring", "indicators", "gto_method", "alignment_matrix", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin", "sparring"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -613,7 +613,31 @@ export default function Docs() {
                 <li>🎮 {t("gamification.ach_drill")}</li>
                 <li>🔥 {t("gamification.ach_streak")}</li>
                 <li>🏆 {t("gamification.ach_10")}</li>
+                <li>🏅 {t("gamification.ach_top10")}</li>
+                <li>🥉 {t("gamification.ach_top3")}</li>
+                <li>👑 {t("gamification.ach_first_place")}</li>
+                <li>📈 {t("gamification.ach_climber")}</li>
+                <li>♠ {t("gamification.ach_expert")}</li>
               </ul>
+            </Section>
+
+            {/* Ranking de Alunos (#15) */}
+            <Section id="ranking" title={t("ranking.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("ranking.p1") }} />
+
+              <p><strong className="text-foreground">{t("ranking.privacy_title")}</strong></p>
+              <p dangerouslySetInnerHTML={{ __html: t("ranking.privacy") }} />
+
+              <p><strong className="text-foreground">{t("ranking.position_title")}</strong></p>
+              <p dangerouslySetInnerHTML={{ __html: t("ranking.position") }} />
+
+              <p><strong className="text-foreground">{t("ranking.hof_title")}</strong></p>
+              <p>{t("ranking.hof")}</p>
+
+              <p><strong className="text-foreground">{t("ranking.coach_title")}</strong></p>
+              <p>{t("ranking.coach")}</p>
+
+              <p className="text-xs text-muted-foreground">{t("ranking.note")}</p>
             </Section>
 
             {/* Career Trajectory */}
