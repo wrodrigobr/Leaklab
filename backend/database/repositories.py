@@ -5038,6 +5038,44 @@ def get_rank_delta(user_id: int, period_days: int = 90):
         conn.close()
 
 
+def get_hall_of_fame(period_days: int = 90, limit: int = 12) -> list[dict]:
+    """Campeões mensais (#15 hall of fame): o **#1 do snapshot mais recente de cada
+    mês**. Respeita privacidade — só expõe a identidade de quem está com opt-in
+    (via handle/username); campeão sem opt-in aparece como anônimo. Mês mais recente
+    primeiro. Vazio até a série de snapshots cobrir ≥1 mês."""
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(
+            "SELECT s.user_id AS user_id, s.score AS score, s.snapshot_at AS snapshot_at, "
+            "u.username AS username, u.leaderboard_opt_in AS opt_in, "
+            "u.leaderboard_handle AS handle "
+            "FROM leaderboard_snapshots s JOIN users u ON u.id = s.user_id "
+            "WHERE s.period_days = ? AND s.rank = 1 "
+            "ORDER BY s.snapshot_at DESC"
+        ), (period_days,))
+    finally:
+        conn.close()
+
+    out: list[dict] = []
+    seen: set = set()
+    for r in rows:
+        month = str(r["snapshot_at"])[:7]   # YYYY-MM
+        if month in seen:
+            continue                        # já temos o campeão (mais recente) desse mês
+        seen.add(month)
+        opted = bool(r["opt_in"])
+        handle = (r["handle"] or "").strip() or None
+        out.append({
+            "month":     month,
+            "champion":  (handle or r["username"]) if opted else None,
+            "anonymous": not opted,
+            "score":     round(float(r["score"] or 0.0), 1),
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
 def get_coach_students_leaderboard(coach_id: int, period_days: int = 90) -> dict:
     """Ranking dos PRÓPRIOS alunos do coach (#15 coach view). Diferente do ranking
     público: ranqueia só os alunos entre si, com **nomes reais** e SEM filtro de

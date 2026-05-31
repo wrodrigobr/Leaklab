@@ -332,6 +332,25 @@ def test_leaderboard_achievements_grant():
     print("OK  test_leaderboard_achievements_grant")
 
 
+def test_hall_of_fame():
+    _clean()
+    a = repo.create_user('hofa', 'hofa@t.com', 'p')
+    b = repo.create_user('hofb', 'hofb@t.com', 'p')
+    repo.set_leaderboard_prefs(a, True, "Champ")   # opt-in com handle
+    # b fica opt-out (default) → anônimo
+    repo.save_leaderboard_snapshot(90, [{"user_id": b, "rank": 1, "score": 80.0, "dimensions": {}}], snapshot_at="2026-04-15 03:00:00")
+    repo.save_leaderboard_snapshot(90, [{"user_id": a, "rank": 1, "score": 85.0, "dimensions": {}}], snapshot_at="2026-05-10 03:00:00")
+    # snapshot mais novo de maio → usa o mais recente do mês (score 88)
+    repo.save_leaderboard_snapshot(90, [{"user_id": a, "rank": 1, "score": 88.0, "dimensions": {}}], snapshot_at="2026-05-20 03:00:00")
+    hof = repo.get_hall_of_fame(90)
+    assert [h["month"] for h in hof] == ["2026-05", "2026-04"]          # 1 por mês, mais recente 1º
+    assert hof[0]["champion"] == "Champ" and hof[0]["anonymous"] is False and hof[0]["score"] == 88.0
+    assert hof[1]["champion"] is None and hof[1]["anonymous"] is True   # b opt-out → anônimo
+    # período sem snapshots → vazio
+    assert repo.get_hall_of_fame(30) == []
+    print("OK  test_hall_of_fame")
+
+
 if __name__ == '__main__':
     tests = [(k,v) for k,v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

@@ -1473,6 +1473,16 @@ def leaderboard():
     })
 
 
+@app.route('/metrics/hall-of-fame', methods=['GET'])
+@require_auth
+def hall_of_fame():
+    """Campeões mensais do ranking (#15 hall of fame) — #1 de cada mês, com
+    privacidade (anônimo se sem opt-in). Vazio até a série cobrir ≥1 mês."""
+    from database.repositories import get_hall_of_fame
+    period = request.args.get('period', default=90, type=int)
+    return jsonify({'champions': get_hall_of_fame(period_days=period)})
+
+
 @app.route('/player/leaderboard-prefs', methods=['GET'])
 @require_auth
 def leaderboard_prefs_get():

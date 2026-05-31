@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(leaderboard): hall of fame — campeões mensais (#15)
+- Card **"🏆 Campeões mensais"** na `/leaderboard` (sidebar): o **#1 do snapshot mais recente de cada mês**, mês mais novo primeiro. Aproveita a série de `leaderboard_snapshots`.
+- **Privacidade**: só expõe a identidade de quem está com **opt-in** (via handle/username); campeão sem opt-in aparece como **Anônimo** (flag `anonymous`, localizada no frontend). Consistente com o resto do #15.
+- **Backend**: `repositories.get_hall_of_fame(period_days, limit)` (1 por mês via dedup do mais recente); endpoint `GET /metrics/hall-of-fame`. **Frontend**: `HallOfFameCard` (mês formatado por locale via `Intl`), i18n PT/EN/ES (`hofTitle`/`anonymous`).
+- Honesto: rende pouco agora (a série tem ~1 dia), mas a fundação preenche sozinha conforme os meses acumulam. Testes em `test_database` (1/mês, mais recente do mês vence, anônimo sem opt-in, período vazio).
+
 ### feat(leaderboard): badges de ranking + streaks (#15)
 - **Streaks** já existiam (`add_xp` calcula dias consecutivos via `xp_last_activity`; conquista `streak_7`) — sem retrabalho. O ganho do #15 são **badges de ranking**, agora possíveis com os snapshots/rank_delta:
   - `rank_top10` 🏅, `rank_top3` 🥉, `rank_first` 👑 (posição geral entre elegíveis), `rank_climber` 📈 (subiu de posição, via `rank_delta`), `elo_expert` ♠ (banda Expert do ELO, ≥1924).

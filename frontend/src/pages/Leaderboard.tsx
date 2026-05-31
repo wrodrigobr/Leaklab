@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
 import {
   metrics, leaderboardPrefs,
-  LeaderboardResponse, LeaderboardEntry, LeaderboardMe, LeaderboardPrefs,
+  LeaderboardResponse, LeaderboardEntry, LeaderboardMe, LeaderboardPrefs, HallOfFameEntry,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
@@ -105,6 +105,48 @@ function MyPosition({ me }: { me: LeaderboardMe }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Hall of Fame — campeões mensais (#15). Vazio até a série cobrir ≥1 mês. */
+function HallOfFameCard() {
+  const { t, i18n } = useTranslation("dashboard");
+  const [champs, setChamps] = useState<HallOfFameEntry[]>([]);
+  useEffect(() => {
+    metrics.hallOfFame().then((r) => setChamps(r.champions)).catch(() => {});
+  }, []);
+  if (champs.length === 0) return null;
+
+  const fmtMonth = (m: string) => {
+    const d = new Date(`${m}-01T00:00:00`);
+    return isNaN(d.getTime()) ? m : d.toLocaleDateString(i18n.language, { month: "short", year: "numeric" });
+  };
+
+  return (
+    <section className="space-y-2">
+      <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+        {t("leaderboard.hofTitle")}
+      </h3>
+      <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden">
+        {champs.map((c) => (
+          <div key={c.month}
+               className="flex items-center justify-between px-4 py-2 border-t border-border/30 first:border-t-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="shrink-0">🏆</span>
+              <div className="min-w-0">
+                <div className="text-sm text-foreground truncate">
+                  {c.anonymous ? t("leaderboard.anonymous") : c.champion}
+                </div>
+                <div className="font-mono text-[10px] text-muted-foreground">{fmtMonth(c.month)}</div>
+              </div>
+            </div>
+            <span className="font-mono text-sm font-bold tabular-nums text-primary shrink-0">
+              {c.score.toFixed(1)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -226,6 +268,8 @@ function Body({ data, prefs, onSaved }:
             })}</div>
           </div>
         </div>
+
+        <HallOfFameCard />
 
         {data.ineligible.length > 0 && (
           <section className="space-y-2">

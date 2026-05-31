@@ -902,6 +902,14 @@ export interface LeaderboardPrefs {
   handle: string | null;
 }
 
+// Campeões mensais (#15 hall of fame)
+export interface HallOfFameEntry {
+  month: string;            // YYYY-MM
+  champion: string | null;  // null quando anônimo (sem opt-in)
+  anonymous: boolean;
+  score: number;
+}
+
 // ── Notificações in-app ───────────────────────────────────────────────────────
 export interface NotificationItem {
   id: number;
@@ -936,6 +944,9 @@ export const leaderboardPrefs = {
 export const metrics = {
   leaderboard: (period = 90) =>
     request<LeaderboardResponse>(`/metrics/leaderboard?period=${period}`),
+
+  hallOfFame: (period = 90) =>
+    request<{ champions: HallOfFameEntry[] }>(`/metrics/hall-of-fame?period=${period}`),
 
   evolution: (days = 90, lastN?: number) =>
     request<EvolutionResponse>(`/history/evolution?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
