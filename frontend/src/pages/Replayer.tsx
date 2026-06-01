@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, BarChart3 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -981,6 +981,25 @@ const Replayer = () => {
   // Track which hand_id we already auto-requested so we don't spam on step navigation
   const gtoAutoRequestedRef = useRef<string | null>(null);
 
+  // Modo foco / tela cheia (#replayer) — coach revisa o torneio sem o chrome do app.
+  // Mantém mesa, controles e o painel de decisão; some o HudHeader (nav/upload/etc).
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [focusMode, setFocusMode] = useState(false);
+  const enterFocus = () => {
+    setFocusMode(true);
+    rootRef.current?.requestFullscreen?.().catch(() => {}); // degrada p/ modo foco CSS se negado
+  };
+  const exitFocus = () => {
+    setFocusMode(false);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  };
+  // Sai do modo foco quando o usuário deixa o fullscreen nativo (ex.: tecla ESC).
+  useEffect(() => {
+    const onFsChange = () => { if (!document.fullscreenElement) setFocusMode(false); };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
   // Floating Range panel drag state
   const [rangePos, setRangePos]         = useState({ x: 24, y: 96 });
   const isDraggingRange                 = useRef(false);
@@ -1336,20 +1355,36 @@ const Replayer = () => {
   const isCorrect = step.is_hero && !isError && step.type === "action";
 
   return (
-    <div className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
-      <HudHeader />
+    <div ref={rootRef} className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
+      {!focusMode && <HudHeader />}
 
       {/* ── Outer wrapper: top-bar + [table | side-panel] + controls ── */}
-      <div className="flex-1 min-h-0 flex flex-col px-3 md:px-5 pt-2 pb-14 md:pb-2 mx-auto w-full max-w-[1600px]">
+      <div className={cn(
+        "flex-1 min-h-0 flex flex-col px-3 md:px-5 pt-2 pb-14 md:pb-2 mx-auto w-full",
+        focusMode ? "max-w-none" : "max-w-[1600px]",
+      )}>
 
         {/* Top bar */}
         <div className="shrink-0 grid grid-cols-3 items-center mb-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary"
-          >
-            <ArrowLeft className="size-3.5" /> {t("back")}
-          </button>
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Logo LeakLabs — presença de marca no modo foco (HudHeader fica oculto) */}
+            {focusMode && (
+              <span className="flex items-center gap-2 shrink-0">
+                <span className="relative flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-glow">
+                  <BarChart3 className="size-3.5" aria-hidden />
+                </span>
+                <span className="hidden sm:inline text-sm font-semibold tracking-tight uppercase">
+                  LeakLabs<span className="text-primary italic font-light">.ai</span>
+                </span>
+              </span>
+            )}
+            <button
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary"
+            >
+              <ArrowLeft className="size-3.5" /> {t("back")}
+            </button>
+          </div>
 
           {handList.length > 1 && handIdx >= 0 ? (
             <div className="flex items-center justify-center gap-2.5">
@@ -1367,7 +1402,7 @@ const Replayer = () => {
             </div>
           ) : <div />}
 
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end gap-2">
             {replayData?.is_pko && (
               <span
                 className="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ring-1 ring-amber-500/30 text-amber-300"
@@ -1376,6 +1411,15 @@ const Replayer = () => {
                 PKO
               </span>
             )}
+            <button
+              onClick={focusMode ? exitFocus : enterFocus}
+              aria-label={focusMode ? t("focus.exit") : t("focus.enter")}
+              title={focusMode ? t("focus.exit") : t("focus.enter")}
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {focusMode ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+              <span className="hidden sm:inline">{focusMode ? t("focus.exit") : t("focus.enter")}</span>
+            </button>
           </div>
         </div>
 

@@ -8,6 +8,7 @@
   "noData": "Sem dados.",
   "error": "Erro ao carregar o replay.",
   "back": "Voltar",
+  "focus": { "enter": "Tela cheia", "exit": "Sair da tela cheia" },
   "noParams": "Nenhuma mão selecionada. Volte para o torneio e clique em 'Abrir no replayer'.",
   "players": "jogadores",
   "actionLog": "Action Log",

@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): modo foco / tela cheia para revisão de torneio
+- Botão **"Tela cheia"** no top bar do Replayer: entra em **fullscreen real** (Fullscreen API) e oculta o `HudHeader` (nav, fila de upload, notificações, idioma, suporte) — o chrome do app que não serve à sessão de avaliação do coach.
+- **Mantém o essencial**: mesa, controles e o painel de decisão/informações; adiciona o **logo LeakLabs** no top bar do modo foco (presença de marca, já que o header some). Largura passa a usar a tela inteira (sem o cap `max-w-[1600px]`).
+- **Sair**: botão dedicado ou tecla **ESC** (sincronizado via `fullscreenchange`); degrada para modo-foco CSS se o navegador negar o fullscreen. O modo persiste ao navegar entre mãos. i18n PT/EN/ES (`replayer.focus.*`). Disponível para qualquer sessão (não só coach). Type-check + build limpos.
+
 ### docs(ranking): nova seção "Ranking de Alunos" na /docs (#15)
 - Nova seção na `/docs` (entre Gamificação e Trajetória) cobrindo os recursos do ranking em nível **conceitual** (o que é e como ler — sem fórmulas/pesos/limiares internos, conforme o padrão das docs): propósito (por aprendizado, não dinheiro), **participação/privacidade** (opt-in + apelido anônimo), **sua posição e variação** (▲/▼/—), **campeões mensais** (hall of fame, anônimos sem opt-in) e **visão do coach**. Cross-link para a página de Rating ELO.
 - A lista de **Conquistas** em Gamificação ganhou os 5 badges de ranking (🏅 Top 10, 🥉 Pódio, 👑 Nº 1, 📈 Crescente, ♠ Expert GTO). Nova entrada no índice/nav lateral + scroll-spy. i18n PT/EN/ES (bloco `ranking.*` + `gamification.ach_*`).

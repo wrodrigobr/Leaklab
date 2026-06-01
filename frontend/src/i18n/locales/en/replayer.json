@@ -8,6 +8,7 @@
   "noData": "No data.",
   "error": "Error loading replay.",
   "back": "Back",
+  "focus": { "enter": "Fullscreen", "exit": "Exit fullscreen" },
   "noParams": "No hand selected. Return to the tournament and click 'Open in replayer'.",
   "players": "players",
   "actionLog": "Action Log",
