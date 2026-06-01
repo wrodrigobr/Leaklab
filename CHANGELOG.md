@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+## [v0.165.0] — 2026-06-01 — feat: Ranking de Alunos (#15) completo + auditoria de revalidação pré-produção + fixes preflop/GTO
+
+> Destaques: **#15 Ranking de Alunos** end-to-end (opt-in/privacidade, handle único, snapshots/delta + cron local, coach view, badges/streaks, hall of fame, docs); **auditoria de revalidação pré-produção** (drift vs armazenado + scanner de padrões); **fix grave** de classificação preflop (squeeze tratado como vs_RFI); **fix** do lookup postflop (hero_hand corrompido na ingestão de nós); modo foco/tela cheia no Replayer; UX em colunas (rating/leaderboard/docs). Suite: 739 testes.
+
 ### fix(gto): hero_hand corrompido na ingestão de nós (lookup postflop) + recuperação
 - **Root cause**: nós do `solver_cli` eram gravados com `hero_hand` char-split — `["4","A","d","d"]` em vez de `["4d","Ad"]` — porque `insert_gto_nodes` fazia `sorted(hero_hand)` com `hero_hand` chegando como **string** (`sorted("4dAd")`=`['4','A','d','d']`). Como `compute_spot_hash` ordena o hand, esses **137 nós (16%)** ficavam **inalcançáveis** pelo lookup hand-specific (caía no genérico board-level). Bug contínuo (15–29/05), solves desperdiçados.
 - **Fix**: `gto_utils.normalize_cards()` conserta as 3 formas (lista correta / string / char-split) e é aplicado em `compute_spot_hash` e na gravação de `insert_gto_nodes` → ingestão robusta; lookups com lista correta inalterados.
