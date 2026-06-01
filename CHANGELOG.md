@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(preflop-gto): engine consome o cenário `faces_squeeze` + merge add-only do seed
+
+> `analyze_preflop` agora roteia "cold/blind enfrenta open+3bet/squeeze" (`facing_raises>=2 and not hero_was_aggressor`) para o cenário **`faces_squeeze`** (lookup `ranges[bucket][faces_squeeze][hero][3bettor]`, mesma graduação do `vs_3bet`) em vez de `faces_3bet_uncovered`→NULL fixo. Com cobertura → grade real (ex.: cold vs jam a 10bb: AA=call `correct`, 72o=fold, call 72o=`major_leak`); sem cobertura → NULL honesto (mantém a proteção anti "call 45s vs squeeze"). Isso destrava o bucket B (39 NULLs preflop) à medida que o seed o cobre. `merge_seed_ranges.py` funde o JSON do seed no master em modo **add-only** (preenche lacunas, não sobrescreve RFI/vs_RFI/vs_3bet validados; `--overwrite` opcional; backup automático). Suite preflop 26+76 verde.
+
 ### feat(gto-seed): conversor JSONL→master de ranges (classificação correta + faces_squeeze)
 
 > `convert_seed_to_ranges.py` mapeia os checkpoints do seed (`gw_preflop_seed/*.jsonl`) para a estrutura do master (`ranges[bucket][scenario][k1][k2]`). Classificação por **seat-tracking + hero_position real do GW** — não repete o bug do `classify_spot` (que assumia hero=opener em pote de 2 raises). Cobre rfi/vs_rfi/squeeze/vs_3bet e o cenário **novo `faces_squeeze`** (cold/blind enfrenta open+3bet/squeeze — o bucket B dos NULLs preflop). spot_data com `*_pct`/`*_hands`/`hand_freqs` (codes crus) no formato que o `analyze_preflop` consome. Validado: ex. UTG+2 vs jam a 10bb → call só com 99+/AKs (range correto), 0 nós pulados.

@@ -224,11 +224,11 @@ def analyze_preflop(
         scenario = 'vs_3bet'
     elif facing_raises >= 2 and not hero_was_aggressor:
         # Hero (cold caller / blind) enfrenta um pote 3-BET/SQUEEZE sem ter sido o agressor.
-        # NÃO existe range de "defender vs squeeze a frio" na base — então JAMAIS tratar como
-        # vs_rfi (que aplicaria a defesa larga vs open simples e recomendaria, ex., call 45s vs
-        # squeeze, marcando um fold correto como gto_critical). Honesto: sem cobertura GTO.
-        base['scenario'] = 'faces_3bet_uncovered'
-        return base  # available=False
+        # Tem range próprio (faces_squeeze[hero][3bettor], coletado via seed do GW). NUNCA
+        # tratar como vs_rfi (que aplicaria a defesa larga vs open simples e recomendaria,
+        # ex., call 45s vs squeeze, marcando um fold correto como gto_critical). Sem cobertura
+        # no faces_squeeze → lookup retorna base (available=False) = NULL honesto.
+        scenario = 'faces_squeeze'
     elif facing_size > 0:
         # vs_pos pode ser '' quando opener não foi detectado — lookup retornará None → available=False
         scenario = 'vs_rfi'
@@ -558,9 +558,12 @@ def analyze_preflop(
         })
 
     # ── vs 3bet ───────────────────────────────────────────────────────────────
-    elif scenario == 'vs_3bet':
-        # Formato GW v3: ranges[stack][vs_3bet][hero_pos][vs_pos] = spot
-        # Estrutura do spot: raise_hands (4bet), call_hands, allin_hands, hand_freqs.
+    elif scenario in ('vs_3bet', 'faces_squeeze'):
+        # vs_3bet:       ranges[stack][vs_3bet][opener_hero][3bettor] — hero abriu, enfrenta 3bet
+        # faces_squeeze: ranges[stack][faces_squeeze][hero][3bettor] — hero cold/blind enfrenta
+        #                open+3bet/squeeze sem ter aberto. MESMA estrutura de spot e graduação
+        #                (raise_hands=4bet, call_hands, allin_hands, hand_freqs).
+        _section = 'vs_3bet' if scenario == 'vs_3bet' else 'faces_squeeze'
         bucket_fallbacks = {
             '14bb': ['10bb', '20bb'], '17bb': ['20bb', '14bb'],
             '40bb': ['30bb', '50bb'], '60bb': ['50bb', '75bb'],
@@ -570,7 +573,7 @@ def analyze_preflop(
         spot = None
         actual_vs = vs_pos
         for bk_try in candidate_buckets:
-            vs3_try = data.get('ranges', {}).get(bk_try, {}).get('vs_3bet', {})
+            vs3_try = data.get('ranges', {}).get(bk_try, {}).get(_section, {})
             hero_dict = vs3_try.get(pos, {})
             if not hero_dict:
                 continue

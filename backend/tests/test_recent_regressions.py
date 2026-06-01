@@ -211,17 +211,18 @@ def test_vs_3bet_hand_freq_fold_when_out_of_range():
     print("OK  test_vs_3bet_hand_freq_fold_when_out_of_range")
 
 
-# ── 8. Squeeze/3-bet enfrentado a frio NÃO vira vs_RFI (bug "call 45s vs squeeze") ──
+# ── 8. Squeeze/3-bet enfrentado a frio → faces_squeeze (NÃO vs_RFI; bug "call 45s vs squeeze") ──
 def test_faces_squeeze_not_classified_as_vs_rfi():
     base = dict(position='BB', hero_hand_type='54s', stack_bb=29.7, action_taken='fold',
                 facing_size=9.0, vs_position='SB', is_3bet_pot=False)
-    # Sem o sinal (comportamento antigo): NÃO marca como sem-cobertura — caía em vs_rfi.
+    # Sem o sinal (comportamento antigo): caía em vs_rfi (defesa larga vs open simples).
     bug = analyze_preflop(**base)
-    assert bug['scenario'] != 'faces_3bet_uncovered'
-    # Com o sinal (2 raises enfrentados, hero não foi agressor): sem cobertura honesta,
-    # jamais vs_rfi/call — evita recomendar call 45s vs squeeze e marcar fold como crítico.
+    assert bug['scenario'] not in ('faces_3bet_uncovered', 'faces_squeeze')
+    # Com o sinal (2 raises, hero não agressor): roteia pra faces_squeeze. Sem range
+    # coletado pra esse spot ainda → available=False (NULL honesto), jamais vs_rfi/call.
     fixed = analyze_preflop(**base, facing_raises=2, hero_was_aggressor=False)
-    assert fixed['available'] is False and fixed['scenario'] == 'faces_3bet_uncovered'
+    assert fixed['scenario'] == 'faces_squeeze'
+    assert fixed['available'] is False  # sem cobertura no master de teste
     # Hero que FOI agressor (ex.: 3-bettor vs 4-bet) NÃO dispara o guard (pode ter cobertura).
     aggr = analyze_preflop(**base, facing_raises=2, hero_was_aggressor=True)
     assert aggr['scenario'] != 'faces_3bet_uncovered'
