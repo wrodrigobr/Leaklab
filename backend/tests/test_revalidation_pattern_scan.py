@@ -99,14 +99,14 @@ def test_impossible_raise_and_gto_label_no_action():
     print("OK  test_impossible_raise_and_gto_label_no_action")
 
 
-def test_postflop_raise_no_bet_and_multiway():
+def test_postflop_raise_no_bet():
     _uid, tid = _setup()
     _ins(tid, street='flop', best_action='raise', facing_bet=0.0)
-    _ins(tid, street='turn', num_players=4, estimated_equity=0.70)
+    _ins(tid, street='turn', best_action='check', facing_bet=0.0)  # negativo
     pf = _by_key(Scope.for_tournament(tid))
     assert pf['postflop_raise_no_bet'].count == 1
-    assert pf['multiway_highequity'].count == 1
-    print("OK  test_postflop_raise_no_bet_and_multiway")
+    assert 'multiway_highequity' not in pf  # check removido (falso-positivo)
+    print("OK  test_postflop_raise_no_bet")
 
 
 def test_missing_hero_cards_and_postflop_mistake_no_gto():

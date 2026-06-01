@@ -276,11 +276,16 @@ def _drift_against_stored(engine_result: dict, di: dict, hand_id: str,
     drift_fields: list[str] = []
     if s_label  != fresh_label:       drift_fields.append('label')
     if s_best   != fresh_best:        drift_fields.append('best_action')
-    if s_gto_l  != fresh_gto_label:   drift_fields.append('gto_label')
-    if s_gto_a  != fresh_gto_action:  drift_fields.append('gto_action')
-    # Stale-on-uncovered: armazenado tinha gto_label, fresco perdeu cobertura.
-    if s_gto_l is not None and fresh_gto_label is None:
-        drift_fields.append('gto_label:stale->NULL')
+    # gto: o recompute fresco usa o mesmo source do resync só no PREFLOP (ranges).
+    # No POSTFLOP, evaluate_decision faz lookup on-demand de gto_nodes que ERRA
+    # (mismatch de spot_hash/hero_hand) — então um diff postflop NÃO é drift
+    # confiável e NÃO deve disparar "stale->NULL" (apagaria label solver-backed).
+    is_preflop = (di.get('street') or '').lower() == 'preflop'
+    if is_preflop:
+        if s_gto_l  != fresh_gto_label:   drift_fields.append('gto_label')
+        if s_gto_a  != fresh_gto_action:  drift_fields.append('gto_action')
+        if s_gto_l is not None and fresh_gto_label is None:
+            drift_fields.append('gto_label:stale->NULL')
     out.update({'drift': bool(drift_fields), 'drift_fields': drift_fields})
     return out
 

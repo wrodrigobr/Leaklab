@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(revalidation): correção dos achados reais da auditoria + precisão do scanner
+- **`impossible_raise`** (1, crítico): linha com `best_action='jam'` enfrentando all-in (não dá pra jam — o guard atual dá fold). Era **stale**; corrigida para `fold`.
+- **`faces_3bet_leftover`** (2, alto): squeeze-faced-cold residual (HJ cold-calling 3-bet) que o match do `fix_preflop_3bet_misclass` não pegou → gto limpo para NULL.
+- **`gto_critical` stale no preflop** (11): squeeze-faced-cold dando "você cometeu erro crítico" em spots sem cobertura → limpos via novo `scripts/clear_stale_preflop_gto.py` (preflop-only, default só labels HARMFUL `gto_critical`/`minor_deviation`; `--all` p/ qualquer; matching seguro).
+- **`multiway_highequity`**: check **removido** — usava `num_players` (tamanho da mesa), não oponentes ativos no pote (sem coluna) → 45 falsos positivos.
+- **Drift `gto_label` agora confiável só no PREFLOP**: descoberto que o `evaluate_decision` postflop faz lookup on-demand de `gto_nodes` que **erra** (mismatch de spot_hash/hero_hand — inclusive node corrompido `["4","A","d","d"]`), então o "stale→NULL" postflop era **falso alarme** (labels postflop são solver-backed, legítimos). O drift de gto agora só dispara no preflop (fonte = ranges, autoritativa).
+- **Pendências documentadas (não-bugs):** `gto_critical_fold` (69, lista de revisão — folds postflop legítimos), `postflop_mistake_no_gto` (24, gap de cobertura), e o **lookup postflop de gto_nodes** (a investigar — não afeta o que produção exibe, que é o stored). Suite completa verde.
+
 ### feat(revalidation): auditoria pré-produção — drift vs armazenado + scanner de padrões
 - Estende o subsistema `leaklab/revalidation/` (que já compara engine-vs-oracle) com o que faltava pra uma revalidação completa antes de produção:
   - **Drift vs verdicto armazenado** (`orchestrator._fetch_stored_decisions` + `_drift_against_stored`): cada finding carrega `stored_*`/`fresh_*`/`drift`/`drift_fields`; tag especial **`gto_label:stale->NULL`** marca vereditos GTO armazenados que o recompute não produz mais — exatamente o que `reanalyze_all_labels` NÃO corrige (preserva).

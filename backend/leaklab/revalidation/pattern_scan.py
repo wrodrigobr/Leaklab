@@ -68,12 +68,11 @@ _CHECKS = [
      "high", "reanalyze_all_labels.py --apply (guard raise->bet)",
      "d.street != 'preflop' AND d.best_action='raise' AND COALESCE(d.facing_bet,0)=0"),
 
-    ("multiway_highequity", "equity alta em pote multiway (>2 jogadores) sem ajuste",
-     "medium", "reavaliar postflop (build_math_snapshot multiway)",
-     "d.street != 'preflop' AND COALESCE(d.num_players,0) > 2 "
-     "AND COALESCE(d.estimated_equity,0) > 0.55"),
+    # NOTA: removido o check 'multiway_highequity' — usava num_players (tamanho da
+    # MESA), não o nº de oponentes ATIVOS no pote (não há coluna), gerando falsos
+    # positivos (mesa 9-handed que virou heads-up no flop). Inviável sem o dado.
 
-    ("gto_critical_fold", "fold marcado como gto_critical (fold disciplinado virou critico)",
+    ("gto_critical_fold", "fold marcado como gto_critical (revisar; nem todo e bug)",
      "high", "fix_preflop_3bet_misclass.py --apply (overlap squeeze)",
      "d.gto_label='gto_critical' AND d.action_taken='fold'"),
 
