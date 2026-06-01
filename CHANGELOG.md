@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop-gto): roteia "hero abriu + enfrenta 3bet" para vs_3bet + lookup exact-only (sem fallback de 3bettor aleatório)
+
+> Análise dos 99 NULLs preflop revelou que **24 não eram falta de range — eram bug de roteamento**: quando o hero **abre** (RFI) e enfrenta um 3bet, `is_3bet_pot` vem `False` (o flag marca "hero FEZ o 3bet", não "hero ENFRENTA"), então caía em `vs_rfi` sem entrada pro pareamento opener×3bettor → NULL falso. A range `vs_3bet[opener][3bettor]` (GW v3) já cobre o caso. Novo branch em `analyze_preflop`: `hero_was_aggressor and facing_size>0 and vs_pos → vs_3bet`. Recupera 24 grades (verificados por match exato).
+> No mesmo passo, **removido o fallback "qualquer 3bettor"** do lookup vs_3bet: com vs_pos desconhecido ou pareamento inexistente (ex.: `vs_3bet[SB][BTN]` — BTN age antes do SB, não pode 3betá-lo), aplicava a range de um 3bettor aleatório = **veredito GTO falso**. Agora é exact-only → NULL honesto. Isso zerou **16 grades de aproximação** (hero-como-3bettor mal-roteado) que existiam só por causa do fallback. Aplica automaticamente em uploads (`/analyze` → `evaluate_decision` → `save_decisions`). +3 testes de regressão; cobertura preflop 88,7%→89,6%; auditoria de coerência segue 0 conflito / 0 drift.
+> **Follow-up identificado (não corrigido):** o espelho do bucket A — "hero É o 3bettor" (`is_3bet=True`) hoje roteia pra `vs_3bet[3bettor][opener]` (estrutura errada; era o que o fallback mascarava). O correto é gradeá-lo pela frequência de 3bet do `vs_rfi` do defensor. Hoje fica NULL honesto.
+
 ### fix(engine/revalidação): push/fold curtos — guard all-in não rebaixa mais commit para fold; oracle/differ deixam de inflar major_mismatch
 
 > Investigação dos 6 `major_mismatch` short-stack restantes. Causa-raiz: em preflop o engine não computa equity-vs-range (`estimatedHandEquity=None`), então a porta `_eq >= _req` do guard de all-in era código morto que **sempre caía em fold** — rebaixava calls/commits triviais (AK/AJ vs shove). Agora, quando o range GTO recomendava comprometer o stack (`jam`/`call`) e o `jam` é impossível facing all-in, o guard colapsa em **call**, não fold.

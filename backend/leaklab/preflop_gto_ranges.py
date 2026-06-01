@@ -217,6 +217,13 @@ def analyze_preflop(
         scenario = 'squeeze'
     elif is_3bet_pot and vs_pos:
         scenario = 'vs_3bet'
+    elif hero_was_aggressor and facing_size > 0 and vs_pos:
+        # Hero ABRIU (RFI) e agora enfrenta um re-raise (3bet). O flag is_3bet_pot marca
+        # "hero FEZ o 3bet", não "hero ENFRENTA um 3bet" — por isso vem False aqui mesmo
+        # sendo pote de 3bet. Sem este branch caía em vs_rfi (defesa vs open), que não tem
+        # entrada pro pareamento opener×3bettor → NULL falso. A range vs_3bet[opener][3bettor]
+        # já existe (GW v3): pos=hero (opener), vs_pos=3bettor.
+        scenario = 'vs_3bet'
     elif facing_raises >= 2 and not hero_was_aggressor:
         # Hero (cold caller / blind) enfrenta um pote 3-BET/SQUEEZE sem ter sido o agressor.
         # NÃO existe range de "defender vs squeeze a frio" na base — então JAMAIS tratar como
@@ -569,11 +576,11 @@ def analyze_preflop(
             hero_dict = vs3_try.get(pos, {})
             if not hero_dict:
                 continue
-            # Tenta vs_pos exato, depois qualquer 3bettor disponível
+            # Só pareamento EXATO opener×3bettor. SEM fallback "qualquer 3bettor":
+            # com vs_pos desconhecido (ex.: 3bettor não detectado) ou pareamento sem
+            # cobertura, é honesto retornar sem grade (NULL) em vez de aplicar a range
+            # de um 3bettor aleatório — isso fabricaria um veredito GTO falso.
             spot = hero_dict.get(vs_pos)
-            if not spot and hero_dict:
-                actual_vs = next(iter(hero_dict.keys()))
-                spot = hero_dict[actual_vs]
             if spot:
                 break
         if not spot:

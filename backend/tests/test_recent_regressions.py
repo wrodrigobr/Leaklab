@@ -233,6 +233,50 @@ def test_heuristic_borderline_folds_vs_cold_squeeze():
     print("OK  test_heuristic_borderline_folds_vs_cold_squeeze")
 
 
+# ── 8b. Hero ABRIU e enfrenta 3bet → roteia pra vs_3bet (bucket A dos NULLs preflop) ──
+def test_hero_opened_faces_3bet_routes_to_vs_3bet():
+    # is_3bet_pot=False (hero NÃO 3betou — ele abriu), mas hero_was_aggressor=True e
+    # enfrenta um re-raise. Antes caía em vs_rfi sem entrada → NULL falso. Agora vs_3bet.
+    r = analyze_preflop(
+        position='BTN', hero_hand_type='AJo', stack_bb=22, action_taken='call',
+        facing_size=8.0, vs_position='BB', is_3bet_pot=False,
+        hero_was_aggressor=True, facing_raises=1, n_players=9,
+    )
+    assert r.get('available') is True, 'hero-opened-faces-3bet deve achar range vs_3bet'
+    assert r.get('scenario') == 'vs_3bet'
+    print("OK  test_hero_opened_faces_3bet_routes_to_vs_3bet")
+
+
+def test_vs_3bet_exact_pairing_only_no_random_fallback():
+    # Pareamento impossível: SB como "opener" vs BTN como "3bettor" (BTN age antes do SB,
+    # não pode 3betar um open do SB). A range vs_3bet[SB][BTN] não existe. Sem o fallback
+    # "qualquer 3bettor", retorna sem cobertura (NULL honesto) em vez de grade falso.
+    r = analyze_preflop(
+        position='SB', hero_hand_type='AKo', stack_bb=20, action_taken='raise',
+        facing_size=4.0, vs_position='BTN', is_3bet_pot=True, n_players=9,
+    )
+    assert r.get('available') is False, 'pareamento inexistente não deve grade via fallback'
+    # Controle: pareamento válido continua coberto.
+    ok = analyze_preflop(
+        position='UTG+1', hero_hand_type='AJo', stack_bb=20, action_taken='call',
+        facing_size=8.0, vs_position='UTG+2', is_3bet_pot=True, n_players=9,
+    )
+    assert ok.get('available') is True
+    print("OK  test_vs_3bet_exact_pairing_only_no_random_fallback")
+
+
+def test_hero_opened_faces_3bet_unknown_villain_no_false_grade():
+    # 3bettor não detectado (vs_position='unknown'): o branch roteia pra vs_3bet mas o
+    # lookup exato falha → sem grade falso (NULL honesto), pronto pra uploads reais.
+    r = analyze_preflop(
+        position='BTN', hero_hand_type='AJo', stack_bb=22, action_taken='call',
+        facing_size=8.0, vs_position='unknown', is_3bet_pot=False,
+        hero_was_aggressor=True, facing_raises=1, n_players=9,
+    )
+    assert r.get('available') is False, 'vilão desconhecido não pode produzir grade'
+    print("OK  test_hero_opened_faces_3bet_unknown_villain_no_false_grade")
+
+
 # ── 9. spot_hash robusto a hero_hand mal-formado (bug de ingestão solver_cli) ──
 def test_spot_hash_normalizes_hero_hand():
     from leaklab.gto_utils import compute_spot_hash, normalize_cards
@@ -255,13 +299,15 @@ def test_allin_guard_converts_facing_chips_to_bb():
 
     def _di(level_bb, facing_chips):
         return {
+            # Hero abriu CO e enfrenta 3bet do BTN (bucket A, pareamento vs_3bet válido):
+            # KK → jam. Pareamento real (não depende de fallback) p/ o teste do guard.
             'hand_id': 'T', 'street': 'preflop', 'player_action': 'call',
-            'hero_cards': ['Kd', 'Kh'], 'is_3bet': True,
-            'spot': {'spotType': 'preflop', 'position': 'HJ', 'villainPosition': 'UTG+2',
+            'hero_cards': ['Kd', 'Kh'], 'is_3bet': False,
+            'spot': {'spotType': 'preflop', 'position': 'CO', 'villainPosition': 'BTN',
                      'isInPosition': True, 'isMultiway': False, 'effectiveStackBb': 22.0,
                      'potSize': facing_chips, 'facingSize': facing_chips, 'raiseSizeBb': facing_chips,
                      'board': [], 'nPlayers': 9, 'nActiveOpponents': 1,
-                     'preflopRaisesFaced': 1, 'heroWasAggressor': False},
+                     'preflopRaisesFaced': 1, 'heroWasAggressor': True},
             'hand_profile': {'handClass': 'premium', 'showdownValueTier': 'strong',
                              'drawTier': 'none', 'blockerProfile': [], 'rawEquityEstimate': 0.8,
                              'realizedEquityEstimate': 0.8},
