@@ -39,6 +39,7 @@ from leaklab import gto_wizard_client as gw  # noqa: E402
 
 SEED_DIR = BACKEND / "docs" / "gw_preflop_seed"
 NUM_PLAYERS = 9
+DEGRADED_GAPS = 15   # rajada de gaps consecutivos = servidor degradou → para limpo
 DEFAULT_STACKS = [10, 14, 17, 20, 30, 40, 50, 75, 100]  # mesmos buckets do master
 
 
@@ -131,13 +132,24 @@ def walk(depth_bb: int, max_raises: int, min_freq: float,
             resp = fetch_node(pf, depth_bb)
             if not resp:
                 stats["failed"] += 1
+                stats["consec_gaps"] = stats.get("consec_gaps", 0) + 1
                 fh_log(stats, f"  [gap] depth={depth_bb} pf={pf!r}")
+                # Detecção de degradação do servidor: gaps de no-solution genuíno
+                # são esparsos (intercalados com sucessos); uma RAJADA longa de gaps
+                # consecutivos = servidor degradou (precisa restart). Para limpo.
+                if stats["consec_gaps"] >= DEGRADED_GAPS:
+                    print(f"\n⚠️  DEGRADAÇÃO: {DEGRADED_GAPS} gaps consecutivos — servidor "
+                          f"precisa de restart (sudo systemctl restart leaklab-solver). "
+                          f"Parando (resume-safe).", flush=True)
+                    stats["degraded"] = True
+                    break
                 continue
             rec = _node_record(pf, depth_bb, resp)
             fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
             fh.flush()
             done[pf] = rec
             stats["nodes"] += 1
+            stats["consec_gaps"] = 0
             if stats["nodes"] % 25 == 0:
                 print(f"    {depth_bb}bb: +{stats['nodes']} nós | fila={len(queue)} | gaps={stats['failed']}", flush=True)
 
@@ -218,8 +230,14 @@ def main():
         print(f"  {depth_bb}bb done: +{stats['nodes']} nós novos, {stats['failed']} gaps "
               f"(total no arquivo: {len(done)})")
         grand["nodes"] += stats["nodes"]; grand["failed"] += stats["failed"]
+        if stats.get("degraded"):
+            grand["degraded"] = True
+            print("\n>>> SEED PAUSADO por degradação do servidor. Reinicie o serviço no "
+                  "GCP e re-rode o MESMO comando (resume continua de onde parou).")
+            break
 
-    print(f"\nTOTAL: {grand['nodes']} nós novos | {grand['failed']} gaps")
+    tag = " (PAUSADO — degradação)" if grand.get("degraded") else ""
+    print(f"\nTOTAL: {grand['nodes']} nós novos | {grand['failed']} gaps{tag}")
     print(f"Checkpoints em {SEED_DIR}/*.jsonl")
     print("Próximo: converter os JSONL pro formato do master + merge + sync.")
 
