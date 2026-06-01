@@ -152,9 +152,9 @@ def _send_email(subject: str, body: str) -> None:
 # ── CDP auth capture ──────────────────────────────────────────────────────────
 
 def _capture_headers_via_cdp(timeout_s: int = 25) -> Optional[dict]:
-    """Captura headers de auth via a thread-worker ÚNICA do Playwright (definida
-    abaixo) — sem instância concorrente, evitando conflito com os fetches."""
-    res = _pw_run(lambda b: _do_capture_headers(b, timeout_s), timeout_s=timeout_s + 10)
+    """Captura headers de auth via SUBPROCESSO isolado (sem estado compartilhado)."""
+    req = {"mode": "capture", "cdp_port": CDP_PORT, "gw_app": GW_APP, "timeout_s": timeout_s}
+    res = _run_gw_subprocess(req, timeout_s)
     return res.get("headers") if res.get("ok") else None
 
 
@@ -765,10 +765,39 @@ def _pw_run(fn, timeout_s: int) -> dict:
     return box.get("r", {"ok": False, "error": "pw_no_result"})
 
 
+_GW_SUBPROC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_gw_subprocess.py")
+
+
+def _run_gw_subprocess(req: dict, timeout_s: int) -> dict:
+    """Roda o fetch/captura num subprocesso Python ISOLADO. Processo novo a cada
+    chamada elimina QUALQUER estado asyncio/playwright compartilhado — sem o
+    "Sync API inside asyncio loop" que degradava as abordagens in-process após ~N
+    chamadas."""
+    import json as _json
+    try:
+        proc = subprocess.run(
+            [sys.executable, _GW_SUBPROC, _json.dumps(req)],
+            capture_output=True, text=True, timeout=timeout_s + 20)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "subprocess_timeout"}
+    except Exception as e:
+        return {"ok": False, "error": f"subprocess_spawn:{e}"}
+    out = (proc.stdout or "").strip()
+    if not out:
+        return {"ok": False,
+                "error": f"subprocess_no_output rc={proc.returncode}: {(proc.stderr or '')[:200]}"}
+    try:
+        return _json.loads(out.splitlines()[-1])
+    except Exception as e:
+        return {"ok": False, "error": f"subprocess_parse:{e} | {out[:200]}"}
+
+
 def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 25) -> dict:
-    """Fetch in-page via a thread-worker persistente (sem start/stop por chamada)."""
-    return _pw_run(lambda b: _do_page_fetch(b, api_path, params, timeout_s),
-                   timeout_s=timeout_s + 30)
+    """Fetch in-page via subprocesso isolado (à prova de degradação)."""
+    req = {"mode": "fetch", "api_path": api_path, "params": params,
+           "cdp_port": CDP_PORT, "gw_app": GW_APP,
+           "app_defaults": _GW_APP_DEFAULTS, "timeout_s": timeout_s}
+    return _run_gw_subprocess(req, timeout_s)
 
 
 def _do_page_fetch(browser, api_path: str, params: dict, timeout_s: int = 25) -> dict:
