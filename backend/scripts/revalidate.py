@@ -43,6 +43,10 @@ def _parse_args() -> argparse.Namespace:
                    help='Diretório de saída para markdown + json')
     p.add_argument('--no-persist', action='store_true',
                    help='Não grava em revalidation_runs/findings (dry-run)')
+    p.add_argument('--scan-patterns', dest='scan_patterns', action='store_true', default=True,
+                   help='Roda o scanner determinístico de padrões suspeitos (default ON)')
+    p.add_argument('--no-scan-patterns', dest='scan_patterns', action='store_false',
+                   help='Desliga o scanner de padrões')
     p.add_argument('--notes', type=str, default=None,
                    help='Texto livre para anotar no run (ex: "pós-fix #123")')
     return p.parse_args()
@@ -68,11 +72,13 @@ def main() -> int:
         persist=not args.no_persist,
         output_dir=args.output,
         notes=args.notes,
+        scan_patterns=args.scan_patterns,
     )
     _print_summary(result)
     if not args.no_persist:
         print(f'\nRun salvo: id={result.run_id}')
-    print(f'Relatório: {os.path.abspath(args.output)}/revalidation_run_{result.run_id}.md')
+    suffix = result.run_id if result.run_id is not None else 'unsaved'
+    print(f'Relatório: {os.path.abspath(args.output)}/revalidation_run_{suffix}.md')
     return 0
 
 
@@ -93,6 +99,24 @@ def _print_summary(result) -> None:
         pct = n * 100.0 / total
         bar = '#' * int(pct // 2) if pct > 0 else ''
         print(f'    {cat:<18}  {n:>6}  ({pct:5.1f}%)  {bar}')
+
+    # Drift vs armazenado
+    drifted = sum(1 for f in result.findings if f.get('drift'))
+    stale   = sum(1 for f in result.findings
+                  if 'gto_label:stale->NULL' in (f.get('drift_fields') or []))
+    nf      = sum(1 for f in result.findings if not f.get('stored_found'))
+    print()
+    print(f'  Drift vs armazenado: {drifted} divergem (stale gto->NULL: {stale}, '
+          f'não casadas: {nf})')
+
+    # Padrões suspeitos
+    pf = getattr(result, 'pattern_findings', None) or []
+    flagged = [p for p in pf if (p.get('count') or 0) > 0 and p.get('severity') != 'caveat']
+    if flagged:
+        print('  Padrões suspeitos (count>0):')
+        order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+        for p in sorted(flagged, key=lambda x: (order.get(x.get('severity'), 9), -(x.get('count') or 0))):
+            print(f"    [{p.get('severity'):<8}] {p.get('key'):<26} {p.get('count'):>6}")
 
 
 if __name__ == '__main__':

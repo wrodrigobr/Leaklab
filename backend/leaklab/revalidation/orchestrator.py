@@ -67,6 +67,7 @@ class RevalidationResult:
     elapsed_sec: float = 0.0
     errors: list[dict] = field(default_factory=list)
     llm_judge_used: bool = False
+    pattern_findings: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -79,6 +80,7 @@ class RevalidationResult:
             'elapsed_sec':       round(self.elapsed_sec, 2),
             'errors':            list(self.errors),
             'llm_judge_used':    self.llm_judge_used,
+            'pattern_findings':  list(self.pattern_findings),
         }
 
 
@@ -89,13 +91,15 @@ def revalidate(scope: Scope = Scope.all(),
                llm_budget: int = 50,
                persist: bool = True,
                output_dir: Optional[str] = None,
-               notes: Optional[str] = None) -> RevalidationResult:
+               notes: Optional[str] = None,
+               scan_patterns: bool = True) -> RevalidationResult:
     """
     Roda a varredura. Quando persist=True, grava em revalidation_runs/findings.
     Quando output_dir é dado, escreve report.md + report.json no diretório.
     """
     t0 = time.time()
     tournaments = _fetch_tournaments(scope)
+    stored_idx = _fetch_stored_decisions(scope)  # drift vs verdicto armazenado
 
     findings: list[dict] = []
     category_counts: dict[str, int] = defaultdict(int)
@@ -125,7 +129,7 @@ def revalidate(scope: Scope = Scope.all(),
                 continue
             for idx, di in enumerate(dis):
                 try:
-                    rec = _process_decision(tid, hand.hand_id, idx, di)
+                    rec = _process_decision(tid, hand.hand_id, idx, di, stored_idx)
                 except Exception as e:
                     errors.append({
                         'tournament_db_id': tid, 'hand_id': hand.hand_id,
@@ -146,6 +150,16 @@ def revalidate(scope: Scope = Scope.all(),
             log.warning('llm_judge failed: %s', e)
             errors.append({'stage': 'llm_judge', 'error': str(e)})
 
+    # Scanner determinístico de padrões suspeitos (read-only, sobre o dado armazenado)
+    pattern_findings: list[dict] = []
+    if scan_patterns:
+        try:
+            from leaklab.revalidation.pattern_scan import scan_patterns as _scan
+            pattern_findings = [pf.to_dict() for pf in _scan(scope)]
+        except Exception as e:
+            log.warning('pattern_scan failed: %s', e)
+            errors.append({'stage': 'pattern_scan', 'error': str(e)})
+
     run_id = None
     if persist:
         run_id = _persist_run(scope, category_counts, findings,
@@ -165,6 +179,7 @@ def revalidate(scope: Scope = Scope.all(),
         elapsed_sec=time.time() - t0,
         errors=errors,
         llm_judge_used=llm_used,
+        pattern_findings=pattern_findings,
     )
 
     if output_dir:
@@ -177,7 +192,7 @@ def revalidate(scope: Scope = Scope.all(),
 # -- Processamento por decisão ------------------------------------------------
 
 def _process_decision(tournament_db_id: int, hand_id: str, idx: int,
-                      di: dict) -> dict:
+                      di: dict, stored_idx: Optional[dict] = None) -> dict:
     engine_result = evaluate_decision(di)
     oracle_rec    = decide(di)
     gto_info      = engine_result.get('gto') or {}
@@ -191,7 +206,7 @@ def _process_decision(tournament_db_id: int, hand_id: str, idx: int,
     )
 
     spot = di.get('spot') or {}
-    return {
+    rec = {
         'tournament_db_id': tournament_db_id,
         'hand_id':          hand_id,
         'decision_index':   idx,
@@ -209,6 +224,95 @@ def _process_decision(tournament_db_id: int, hand_id: str, idx: int,
         'reasons':          div.reasons,
         'oracle':           oracle_rec.to_dict(),
     }
+    rec.update(_drift_against_stored(engine_result, di, hand_id, stored_idx or {}))
+    return rec
+
+
+def _norm_gto(v) -> Optional[str]:
+    """Normaliza gto_label/action: '' e None viram None (evita drift falso)."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s or None
+
+
+def _drift_against_stored(engine_result: dict, di: dict, hand_id: str,
+                          stored_idx: dict) -> dict:
+    """Compara o recompute FRESCO contra o verdicto ARMAZENADO no banco.
+
+    Marca `drift` quando label/best_action/gto_label/gto_action divergem. A tag
+    especial `gto_label:stale->NULL` cobre o caso em que o stored tem gto_label
+    mas o spot agora é sem-cobertura (available=False) — exatamente o que o
+    reanalyze_all_labels NÃO corrige (preserva o label velho)."""
+    fresh_label = ((engine_result.get('evaluation') or {}).get('label')) or None
+    fresh_best  = engine_result.get('bestAction') or None
+    gto         = engine_result.get('gto') or {}
+    fresh_gto_label  = _norm_gto(gto.get('gto_label')) if gto.get('available') else None
+    fresh_gto_action = _norm_gto(gto.get('gto_action')) if gto.get('available') else None
+
+    key = (hand_id, (di.get('street') or '').lower(),
+           (di.get('player_action') or '').lower())
+    stored = stored_idx.get(key)
+    out: dict = {
+        'fresh_label':       fresh_label,
+        'fresh_best':        fresh_best,
+        'fresh_gto_label':   fresh_gto_label,
+        'fresh_gto_action':  fresh_gto_action,
+        'stored_found':      stored is not None,
+        'stored_ambiguous':  key in stored_idx.get('__dups__', set()),
+    }
+    if not stored:
+        out.update({'drift': False, 'drift_fields': []})
+        return out
+
+    s_label  = stored.get('label') or None
+    s_best   = stored.get('best_action') or None
+    s_gto_l  = _norm_gto(stored.get('gto_label'))
+    s_gto_a  = _norm_gto(stored.get('gto_action'))
+    out.update({'stored_label': s_label, 'stored_best': s_best,
+                'stored_gto_label': s_gto_l, 'stored_gto_action': s_gto_a})
+
+    drift_fields: list[str] = []
+    if s_label  != fresh_label:       drift_fields.append('label')
+    if s_best   != fresh_best:        drift_fields.append('best_action')
+    if s_gto_l  != fresh_gto_label:   drift_fields.append('gto_label')
+    if s_gto_a  != fresh_gto_action:  drift_fields.append('gto_action')
+    # Stale-on-uncovered: armazenado tinha gto_label, fresco perdeu cobertura.
+    if s_gto_l is not None and fresh_gto_label is None:
+        drift_fields.append('gto_label:stale->NULL')
+    out.update({'drift': bool(drift_fields), 'drift_fields': drift_fields})
+    return out
+
+
+def _fetch_stored_decisions(scope: Scope) -> dict:
+    """Indexa os vereditos ARMAZENADOS por (hand_id, street, action_taken) — um
+    único SELECT. Espelha o match LIMIT-1 do pipeline e marca ambiguidade em
+    `__dups__` (mesma chave em 2+ linhas)."""
+    conn = get_conn()
+    try:
+        where, params = "1=1", ()
+        if scope.tournament_db_id is not None:
+            where, params = "d.tournament_id = ?", (scope.tournament_db_id,)
+        elif scope.user_id is not None:
+            where, params = "t.user_id = ?", (scope.user_id,)
+        sql = ("SELECT d.id, d.hand_id, d.street, d.action_taken, d.label, "
+               "d.best_action, d.gto_label, d.gto_action "
+               "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+               f"WHERE {where} ORDER BY d.id")
+        idx: dict = {}
+        dups: set = set()
+        for r in conn.execute(sql, params).fetchall():
+            row = dict(r)
+            k = (row['hand_id'], (row['street'] or '').lower(),
+                 (row['action_taken'] or '').lower())
+            if k in idx:
+                dups.add(k)
+                continue  # mantém o 1º (espelha LIMIT 1)
+            idx[k] = row
+        idx['__dups__'] = dups
+        return idx
+    finally:
+        conn.close()
 
 
 # -- Fetch de torneios --------------------------------------------------------

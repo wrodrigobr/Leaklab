@@ -30,7 +30,9 @@ SUITES = {
                      'test_revalidation_orchestrator.py',
                      'test_revalidation_api.py',
                      'test_revalidation_llm_judge.py',
-                     'test_revalidation_fixtures.py'],
+                     'test_revalidation_fixtures.py',
+                     'test_revalidation_drift.py',
+                     'test_revalidation_pattern_scan.py'],
 }
 
 BASE = os.path.dirname(__file__)

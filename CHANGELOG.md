@@ -7,6 +7,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(revalidation): auditoria pré-produção — drift vs armazenado + scanner de padrões
+- Estende o subsistema `leaklab/revalidation/` (que já compara engine-vs-oracle) com o que faltava pra uma revalidação completa antes de produção:
+  - **Drift vs verdicto armazenado** (`orchestrator._fetch_stored_decisions` + `_drift_against_stored`): cada finding carrega `stored_*`/`fresh_*`/`drift`/`drift_fields`; tag especial **`gto_label:stale->NULL`** marca vereditos GTO armazenados que o recompute não produz mais — exatamente o que `reanalyze_all_labels` NÃO corrige (preserva).
+  - **Scanner determinístico** (`leaklab/revalidation/pattern_scan.py`): 12 checks SQL de integridade/coerência (squeeze leftover, vs_position nulo, conflito label×gto, raise impossível, multiway high-equity, gto_critical em fold, duplicatas, hero_cards ausente, etc.) com count + ids + severidade + remediação. PKO como **caveat**, não divergência.
+  - **Report** ganha 3 seções (Drift, Padrões suspeitos, Plano de correção); CLI `--scan-patterns/--no-scan-patterns`.
+- **Read-only** (`--no-persist`): nada muta no banco. Correções ficam como passo revisado.
+- **2 gaps de ferramenta sinalizados** no relatório: (1) "clear-stale-on-uncovered" geral (hoje só `fix_preflop_3bet_misclass.py`, só squeeze); (2) dedup de decisões duplicadas (inexistente).
+- Testes: `test_revalidation_drift.py` (8) + `test_revalidation_pattern_scan.py` (8). Suites de revalidação existentes (oracle/differ/orchestrator/api/fixtures) sem regressão.
+
 ### fix(preflop): squeeze/3-bet enfrentado a frio era classificado como vs_RFI (erro grave)
 - **Bug**: quando o hero (cold caller / blind) enfrentava um **squeeze** (open + call + 3-bet) ou um 3-bet+, o engine colapsava o spot em **"vs_RFI"** (defesa vs open simples), aplicava o range larguíssimo de BB-vs-SB e recomendava, ex., **call 45s vs squeeze** — marcando um **fold correto como `gto_critical`** (e `small_mistake` no heurístico). Raiz: faltava o sinal "nº de raises de villains enfrentados"; o `is_3bet` do pipeline só significa "hero deu 3-bet".
 - **Fix (3 camadas)**: `hand_state_builder` computa `preflop_raises_faced` + `hero_was_aggressor` da sequência de ações; `analyze_preflop` ganha guard — quando ≥2 raises enfrentados e hero não foi agressor, retorna **sem cobertura** (`faces_3bet_uncovered`, honesto) em vez de vs_RFI; `preflop_range_evaluator` (heurístico) folda borderline em squeeze a frio em vez de "call (set-mine)". Sinal persistido em **`decisions.preflop_raises_faced`** (migration PG+SQLite) e lido por `resync_preflop_all`/`sync_gto_labels` (proxy `hero_was_aggressor≈is_3bet`) p/ não reintroduzir.
