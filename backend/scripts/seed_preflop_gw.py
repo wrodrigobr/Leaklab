@@ -71,21 +71,20 @@ def _actions(resp: dict) -> list[tuple[str, str, float]]:
     return out
 
 
-def fetch_node(pf: str, depth_bb: int, retries: int = 4) -> dict | None:
-    """query_spot_raw com retries — absorve timeouts intermitentes do GW."""
-    last = None
+def fetch_node(pf: str, depth_bb: int, retries: int = 2) -> dict | None:
+    """query_spot_raw com poucos retries — com o subprocesso isolado, timeout é
+    raro; a maioria dos gaps é no-solution genuíno (não adianta insistir muito)."""
     for attempt in range(retries):
         try:
             r = gw.query_spot_raw(
                 preflop_actions=pf, num_players=NUM_PLAYERS, depth_bb=depth_bb,
-                include_strategy=True, timeout=90, use_cache=True,
+                include_strategy=True, timeout=60, use_cache=True,
             )
-        except Exception as e:
-            last = str(e); r = None
+        except Exception:
+            r = None
         if r and r.get("found") and (r.get("hand_freqs") or r.get("hero_hand_freqs")):
             return r
-        last = (r or {}).get("error") if r else last
-        time.sleep(1.5 + attempt)  # backoff
+        time.sleep(1.0)
     return None
 
 
@@ -111,7 +110,7 @@ def _count_aggr(pf: str) -> int:
 
 
 def walk(depth_bb: int, max_raises: int, min_freq: float,
-         done: dict, fh, stats: dict, limit: int = 0) -> None:
+         done: dict, fh, stats: dict, limit: int = 0, max_calls: int = 2) -> None:
     """BFS na árvore preflop (FIFO → nós rasos/comuns primeiro). Começa no RFI
     (UTG, pf vazio) e desce pelas ações que continuam a mão, com os codes exatos
     do GW. `done` = cache pf→registro (resume: nós já buscados expandem instantâneo,
@@ -143,7 +142,10 @@ def walk(depth_bb: int, max_raises: int, min_freq: float,
                 print(f"    {depth_bb}bb: +{stats['nodes']} nós | fila={len(queue)} | gaps={stats['failed']}", flush=True)
 
         # Expande filhos a partir do registro (vale pra cache E pra fetch novo).
+        toks = pf.split("-") if pf else []
         nr = _count_aggr(pf)
+        nc = sum(1 for t in toks if t == "C")     # callers já na linha
+        has_allin = "RAI" in toks
         for a in rec.get("actions", []):
             code = a.get("code"); typ = a.get("type"); freq = a.get("freq", 0.0)
             if not code or freq < min_freq:
@@ -151,6 +153,15 @@ def walk(depth_bb: int, max_raises: int, min_freq: float,
             is_aggr = typ in ("RAISE", "ALLIN")
             if is_aggr and nr + 1 > max_raises:
                 continue                      # corta 5bet+ wars
+            if typ == "CALL":
+                # Poda multiway: o GW MTTGeneralV2 não resolve potes multiway
+                # profundos. Limita callers e não expande call DE all-in (vira
+                # side-pot multiway = dead-end). Não perde os spots úteis
+                # (squeeze/3bet com 1 caller); só corta os becos sem solução.
+                if nc + 1 > max_calls:
+                    continue
+                if has_allin:
+                    continue
             child = f"{pf}-{code}" if pf else code
             if child not in expanded:
                 queue.append(child)
@@ -166,6 +177,7 @@ def main():
     ap.add_argument("--test", action="store_true", help="só 20bb, max-raises=2 (validação)")
     ap.add_argument("--stacks", default="", help="lista ex: 20,30,50 (default: todos)")
     ap.add_argument("--max-raises", type=int, default=4)
+    ap.add_argument("--max-calls", type=int, default=2, help="cap de callers na linha (poda multiway)")
     ap.add_argument("--min-freq", type=float, default=0.005)
     ap.add_argument("--limit", type=int, default=0, help="cap de nós por stack (0=sem limite)")
     args = ap.parse_args()
@@ -201,7 +213,8 @@ def main():
         print(f"\n== {depth_bb}bb == (resume: {len(done)} nós já no cache)")
         stats = {"nodes": 0, "failed": 0}
         with open(out_path, "a", encoding="utf-8") as fh:
-            walk(depth_bb, max_raises, args.min_freq, done, fh, stats, limit=args.limit)
+            walk(depth_bb, max_raises, args.min_freq, done, fh, stats,
+                 limit=args.limit, max_calls=args.max_calls)
         print(f"  {depth_bb}bb done: +{stats['nodes']} nós novos, {stats['failed']} gaps "
               f"(total no arquivo: {len(done)})")
         grand["nodes"] += stats["nodes"]; grand["failed"] += stats["failed"]
