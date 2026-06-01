@@ -699,7 +699,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             and _facing_bb >= _hero_stack_bb * 0.95):
         _eq  = math.get('estimatedHandEquity')
         _req = threshold_pack.get('adjustedRequiredEquity')
-        if _eq is not None and _req is not None and _eq >= _req:
+        _gto_rec = preflop_gto.get('recommended_actions', []) if preflop_gto.get('available') else []
+        if 'jam' in _gto_rec or 'call' in _gto_rec:
+            # O range GTO queria comprometer o stack (jam/call). Facing all-in que
+            # cobre o hero, 'jam' é impossível mas colapsa em 'call' — mesma decisão
+            # de commit. Sem isso o guard caía em fold por equity=None (preflop não
+            # computa equity-vs-range), rebaixando calls triviais (AK/AJ vs shove).
+            _best_action = 'call'
+        elif _eq is not None and _req is not None and _eq >= _req:
             _best_action = 'call'
         else:
             _best_action = 'fold'

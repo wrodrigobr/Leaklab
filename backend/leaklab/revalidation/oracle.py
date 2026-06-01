@@ -154,6 +154,17 @@ def _from_preflop_ranges(decision_input: dict) -> Optional[OracleDecision]:
 
     action = rec[0]
     alts   = [a for a in rec[1:] if a != action]
+
+    # Facing all-in que cobre o hero: 'jam' é impossível (não há como aumentar
+    # sobre um shove que já cobre o stack) — colapsa em 'call', a mesma decisão de
+    # commit. Sem isso o oracle recomendava um jam impossível e divergia do engine
+    # (que corretamente reporta call) em spots de push/fold curtos.
+    level_bb_chips = _as_float(ctx.get('levelBb') or 0.0) or 0.0
+    facing_bb = (facing / level_bb_chips) if level_bb_chips > 0 else 0.0
+    if action == 'jam' and facing_bb > 0 and stack_bb > 0 and facing_bb >= stack_bb * 0.95:
+        action = 'call'
+        alts = [a for a in (['jam'] + alts) if a != 'call']
+
     quality = res.get('action_quality', 'unknown')
     in_rng  = bool(res.get('in_range'))
     rng_pct = res.get('range_pct')

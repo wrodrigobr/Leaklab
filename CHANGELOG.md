@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(engine/revalidação): push/fold curtos — guard all-in não rebaixa mais commit para fold; oracle/differ deixam de inflar major_mismatch
+
+> Investigação dos 6 `major_mismatch` short-stack restantes. Causa-raiz: em preflop o engine não computa equity-vs-range (`estimatedHandEquity=None`), então a porta `_eq >= _req` do guard de all-in era código morto que **sempre caía em fold** — rebaixava calls/commits triviais (AK/AJ vs shove). Agora, quando o range GTO recomendava comprometer o stack (`jam`/`call`) e o `jam` é impossível facing all-in, o guard colapsa em **call**, não fold.
+> Dois ajustes no subsistema de revalidação corrigem a classificação: (1) `differ` deixa de tratar `call` como ação passiva — calar é commit/continuação, não desistência, então `call` vs `jam` não forma mais "swap agressivo↔passivo"; (2) `oracle` colapsa `jam→call` facing all-in que cobre o hero (não dá pra jam sobre um shove). Resultado: `major_mismatch` 6 → **0**, `aligned` 93,2% → **93,7%**.
+
 ## [v0.166.0] — 2026-06-01 — fix(engine): guard de all-in (unidades fichas×bb) — destrava jam do GTO
 
 > Pós-auditoria pré-produção (dado real, seed fake removido): corrige o guard de all-in que comparava `facingSize` (fichas) com `effectiveStackBb` (bb) e rebaixava o `jam` recomendado pelo GTO. Auditoria: `major_mismatch` 25 → 6, `aligned` 91,1% → 93,2%.

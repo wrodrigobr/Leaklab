@@ -278,7 +278,12 @@ def test_allin_guard_converts_facing_chips_to_bb():
     # facing 250 fichas com bb=250 = 1bb: o guard NÃO dispara → honra o jam do GTO.
     assert evaluate_decision(_di(250.0, 250.0)).get('bestAction') == 'jam'
     # facing 2300 fichas com bb=100 = 23bb >= stack 22bb: all-in genuíno → downgrade.
-    assert evaluate_decision(_di(100.0, 2300.0)).get('bestAction') != 'jam'
+    res = evaluate_decision(_di(100.0, 2300.0))
+    assert res.get('bestAction') != 'jam'
+    # E o downgrade do GTO-commit (KK em range de jam) é para CALL, nunca fold:
+    # preflop não computa equity-vs-range (eq=None); sem o branch GTO-aware o guard
+    # caía no else → fold, rebaixando um call/commit trivial.
+    assert res.get('bestAction') == 'call'
     print("OK  test_allin_guard_converts_facing_chips_to_bb")
 
 

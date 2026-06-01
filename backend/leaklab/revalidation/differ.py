@@ -23,7 +23,11 @@ from leaklab.revalidation.oracle import OracleDecision
 
 # Aggressive <-> passive pares que sempre são "major" quando trocados
 _AGGRESSIVE = {'bet', 'raise', 'jam', 'allin', 'shove'}
-_PASSIVE    = {'fold', 'check', 'call'}
+# Ações que abrem mão (desistência). 'call' NÃO entra: calar é continuação/commit
+# — só existe quando há aposta na frente e põe fichas no pote, muito mais próximo
+# de jam/raise do que de fold. Facing all-in, call e jam são a mesma decisão de
+# commit; tratá-los como swap agressivo<->passivo inflava major_mismatch.
+_GIVE_UP    = {'fold', 'check'}
 
 # Tiers de severidade numérica (0..1) para ordenar findings no relatório.
 _SEVERITY_BY_CATEGORY = {
@@ -281,14 +285,17 @@ def classify(engine_result: dict,
 
 def _is_major_swap(ne: str, no: str) -> bool:
     """
-    Major quando engine recomenda agressivo e oracle recomenda passivo (ou vice-versa).
-    fold<->jam, fold<->raise, fold<->bet, check<->jam etc.
+    Major quando um lado desiste (fold/check) e o outro é agressivo (ou vice-versa).
+    fold<->jam, fold<->raise, fold<->bet, check<->jam etc. 'call' não forma swap:
+    é commit/continuação, não desistência (ex.: call vs jam facing all-in = mesma
+    decisão de comprometer o stack). Esses casos caem em minor/acceptable, gated
+    por opp_cost / gto_label.
     """
     a_set = _AGGRESSIVE
-    p_set = _PASSIVE
-    if ne in p_set and no in a_set:
+    g_set = _GIVE_UP
+    if ne in g_set and no in a_set:
         return True
-    if ne in a_set and no in p_set:
+    if ne in a_set and no in g_set:
         return True
     return False
 
