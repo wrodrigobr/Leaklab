@@ -183,27 +183,30 @@ def test_stack_bucket_lower_brackets_intact():
     print("OK  test_stack_bucket_lower_brackets_intact")
 
 
-# ── 7. vs_3bet engine routing ───────────────────────────────────────────────
-def test_vs_3bet_engine_routing():
-    """is_3bet_pot=True deve achar spot vs_3bet com hand_freq."""
+# ── 7. Hero É o 3bettor (3beta um open) → vs_rfi, NÃO vs_3bet ─────────────────
+def test_hero_as_3bettor_routes_to_vs_rfi():
+    """is_3bet_pot=True com hero NÃO-agressor = hero é o 3bettor (3beta um open).
+    É decisão de DEFESA vs open → vs_rfi (que tem a freq de 3bet do defensor),
+    não vs_3bet (resposta do opener). SB 3betando o open do BTN é pareamento real."""
     r = analyze_preflop(
-        position='BTN', hero_hand_type='AKo', stack_bb=20,
-        action_taken='raise', facing_size=4, vs_position='SB',
+        position='SB', hero_hand_type='AKo', stack_bb=25,
+        action_taken='raise', facing_size=5, vs_position='BTN',
         is_3bet_pot=True, n_players=9,
     )
-    assert r.get('available') is True, 'vs_3bet should be available'
-    assert r.get('scenario') == 'vs_3bet'
-    print("OK  test_vs_3bet_engine_routing")
+    assert r.get('available') is True, 'hero-3bettor deve achar range vs_rfi'
+    assert r.get('scenario') == 'vs_rfi', f"esperava vs_rfi, veio {r.get('scenario')}"
+    print("OK  test_hero_as_3bettor_routes_to_vs_rfi")
 
 def test_vs_3bet_hand_freq_fold_when_out_of_range():
-    """Mão fora do range vs_3bet → hand_freq.fold=1.0 (inferido)."""
+    """Mão fora do range vs_3bet → hand_freq.fold=1.0 (inferido). Bucket A: hero
+    abriu BTN e enfrenta 3bet da BB; 72o nunca continua vs 3-bet."""
     r = analyze_preflop(
-        position='UTG+1', hero_hand_type='72o', stack_bb=20,
-        action_taken='fold', facing_size=4, vs_position='UTG+2',
-        is_3bet_pot=True, n_players=9,
+        position='BTN', hero_hand_type='72o', stack_bb=25,
+        action_taken='fold', facing_size=8, vs_position='BB',
+        is_3bet_pot=False, hero_was_aggressor=True, facing_raises=1, n_players=9,
     )
+    assert r.get('scenario') == 'vs_3bet'
     hf = r.get('hand_freq') or {}
-    # 72o nunca está no range de continuação vs 3-bet de EP
     assert hf.get('fold', 0) >= 0.95, f'expected fold ~1.0, got {hf}'
     print("OK  test_vs_3bet_hand_freq_fold_when_out_of_range")
 
@@ -248,18 +251,22 @@ def test_hero_opened_faces_3bet_routes_to_vs_3bet():
 
 
 def test_vs_3bet_exact_pairing_only_no_random_fallback():
-    # Pareamento impossível: SB como "opener" vs BTN como "3bettor" (BTN age antes do SB,
-    # não pode 3betar um open do SB). A range vs_3bet[SB][BTN] não existe. Sem o fallback
-    # "qualquer 3bettor", retorna sem cobertura (NULL honesto) em vez de grade falso.
+    # Bucket A com pareamento impossível: hero ABRIU no SB e "enfrenta 3bet" do UTG —
+    # mas UTG age ANTES do SB, não pode 3betar um open do SB. vs_3bet[SB][UTG] não
+    # existe. Sem o fallback "qualquer 3bettor", retorna sem cobertura (NULL honesto)
+    # em vez de aplicar a range de um 3bettor aleatório (grade falso).
     r = analyze_preflop(
-        position='SB', hero_hand_type='AKo', stack_bb=20, action_taken='raise',
-        facing_size=4.0, vs_position='BTN', is_3bet_pot=True, n_players=9,
+        position='SB', hero_hand_type='AKo', stack_bb=25, action_taken='call',
+        facing_size=8.0, vs_position='UTG', is_3bet_pot=False,
+        hero_was_aggressor=True, facing_raises=1, n_players=9,
     )
+    assert r.get('scenario') == 'vs_3bet'
     assert r.get('available') is False, 'pareamento inexistente não deve grade via fallback'
-    # Controle: pareamento válido continua coberto.
+    # Controle: pareamento bucket A válido (BTN abriu, BB 3bet) continua coberto.
     ok = analyze_preflop(
-        position='UTG+1', hero_hand_type='AJo', stack_bb=20, action_taken='call',
-        facing_size=8.0, vs_position='UTG+2', is_3bet_pot=True, n_players=9,
+        position='BTN', hero_hand_type='AJo', stack_bb=22, action_taken='call',
+        facing_size=8.0, vs_position='BB', is_3bet_pot=False,
+        hero_was_aggressor=True, facing_raises=1, n_players=9,
     )
     assert ok.get('available') is True
     print("OK  test_vs_3bet_exact_pairing_only_no_random_fallback")

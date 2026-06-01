@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop-gto): hero-como-3bettor roteia para vs_rfi (não vs_3bet) — recupera grades reais
+
+> Follow-up do bucket A. Quando o hero **É o 3bettor** (3beta um open, sem ter aberto), a decisão é de **defesa vs open** — deve ser gradeada pela frequência de 3bet do range `vs_rfi[defensor][opener]`, não por `vs_3bet[opener][3bettor]` (resposta do opener, estrutura errada que o fallback frouxo mascarava). Removido o branch `is_3bet_pot → vs_3bet`: hero-3bettor agora flui pra `vs_rfi`. **Recupera 13 grades reais** (ex.: SB jam vs CO open, HJ 3bet vs UTG+1 → `gto_correct`; CO 3bet quando GTO manda call → `gto_critical`) e converte 4 limp-reshove (SB limpa→BB iso→SB jam, sem range GTO) para NULL honesto. Cobertura preflop 89,6%→90,6%; coerência segue 0 conflito / 0 drift; suite 743/743. Aplica em uploads via `evaluate_decision`. Com isso, `is_3bet_pot` só roteia squeeze; os dois lados do 3bet têm scenario correto (opener→vs_3bet, 3bettor→vs_rfi).
+
 ### fix(preflop-gto): roteia "hero abriu + enfrenta 3bet" para vs_3bet + lookup exact-only (sem fallback de 3bettor aleatório)
 
 > Análise dos 99 NULLs preflop revelou que **24 não eram falta de range — eram bug de roteamento**: quando o hero **abre** (RFI) e enfrenta um 3bet, `is_3bet_pot` vem `False` (o flag marca "hero FEZ o 3bet", não "hero ENFRENTA"), então caía em `vs_rfi` sem entrada pro pareamento opener×3bettor → NULL falso. A range `vs_3bet[opener][3bettor]` (GW v3) já cobre o caso. Novo branch em `analyze_preflop`: `hero_was_aggressor and facing_size>0 and vs_pos → vs_3bet`. Recupera 24 grades (verificados por match exato).

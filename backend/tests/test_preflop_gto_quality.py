@@ -273,7 +273,11 @@ def test_scenario_vs_rfi_without_pos_returns_unavailable():
     _check("vs_rfi_without_pos_unavailable", r['available'], False)
 
 def test_scenario_vs_3bet_when_is_3bet_pot():
-    r = analyze_preflop('UTG', 'AA', 40, 'raise', facing_size=9.0, vs_position='BTN', is_3bet_pot=True)
+    # Hero ABRIU no UTG e enfrenta 3bet do BTN (4bet pot) → vs_3bet (resposta do opener).
+    # Roteado por hero_was_aggressor — não por is_3bet_pot (que marca "hero FEZ o 3bet";
+    # esse caso é hero-3bettor e roteia pra vs_rfi).
+    r = analyze_preflop('UTG', 'AA', 40, 'raise', facing_size=9.0, vs_position='BTN',
+                        hero_was_aggressor=True, facing_raises=1)
     _check("scenario_vs_3bet", r['scenario'], 'vs_3bet')
 
 def test_rfi_in_range_correct_action():

@@ -215,8 +215,6 @@ def analyze_preflop(
     # Squeeze: hero é squeezador (raise sobre open + cold caller). Distingue de vs_3bet HU.
     if is_3bet_pot and vs_pos and cal_pos:
         scenario = 'squeeze'
-    elif is_3bet_pot and vs_pos:
-        scenario = 'vs_3bet'
     elif hero_was_aggressor and facing_size > 0 and vs_pos:
         # Hero ABRIU (RFI) e agora enfrenta um re-raise (3bet). O flag is_3bet_pot marca
         # "hero FEZ o 3bet", não "hero ENFRENTA um 3bet" — por isso vem False aqui mesmo
