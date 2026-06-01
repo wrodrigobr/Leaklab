@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto-seed): conversor JSONL→master de ranges (classificação correta + faces_squeeze)
+
+> `convert_seed_to_ranges.py` mapeia os checkpoints do seed (`gw_preflop_seed/*.jsonl`) para a estrutura do master (`ranges[bucket][scenario][k1][k2]`). Classificação por **seat-tracking + hero_position real do GW** — não repete o bug do `classify_spot` (que assumia hero=opener em pote de 2 raises). Cobre rfi/vs_rfi/squeeze/vs_3bet e o cenário **novo `faces_squeeze`** (cold/blind enfrenta open+3bet/squeeze — o bucket B dos NULLs preflop). spot_data com `*_pct`/`*_hands`/`hand_freqs` (codes crus) no formato que o `analyze_preflop` consome. Validado: ex. UTG+2 vs jam a 10bb → call só com 99+/AKs (range correto), 0 nós pulados.
+
 ### fix(gto-server): `_fetch_via_page` roda Playwright sync em thread isolado (imune a event loop)
 
 > O endpoint `/gw-spot` do servidor GTO (GCP, `gto_bot/solver_api/server.py`) falhava com *"Sync API inside the asyncio loop"*. 1ª tentativa (`ThreadPoolExecutor` por chamada) destravou a 1ª chamada mas **degradava após ~N fetches** — `sync_playwright().start()/.stop()` repetido (connect/disconnect CDP por chamada) vaza event loops / processos node. Fix definitivo: **thread-worker única** que cria o Playwright UMA vez, reusa a conexão CDP e processa TODOS os fetches + a captura de auth por uma fila (`_pw_worker_loop`/`_pw_run`), serializados naturalmente. Zero churn de start/stop. Destrava o seed/auto-captura preflop via GW de forma estável.
