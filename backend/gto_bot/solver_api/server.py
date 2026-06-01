@@ -1306,8 +1306,15 @@ if __name__ == '__main__':
     if not API_KEY:
         log.warning('GTO_API_KEY nao definida — endpoint sem autenticacao!')
 
-    # Inicia refresh loop do GTO Wizard em background
-    threading.Thread(target=_refresh_loop, name='gw-auth-refresh', daemon=True).start()
+    # Inicia refresh loop do GTO Wizard em background.
+    # GW_AUTH_REFRESH=0 desliga: o /gw-spot dirige a página via subprocesso e NÃO
+    # usa auth_ok; e o refresh spawna um subprocesso a cada REFRESH_SEC concorrente
+    # com os fetches — suspeito de causar a degradação transitória do spawn (fork
+    # concorrente entre threads). Desligado por padrão durante o seed.
+    if os.environ.get('GW_AUTH_REFRESH', '0') == '1':
+        threading.Thread(target=_refresh_loop, name='gw-auth-refresh', daemon=True).start()
+    else:
+        log.info('gw-auth-refresh DESLIGADO (GW_AUTH_REFRESH=0) — /gw-spot nao usa auth_ok')
 
     log.info('Solver API na porta %d (solver=%s timeout=%ds cdp=%d)',
              PORT, SOLVER_BIN, TIMEOUT, CDP_PORT)
