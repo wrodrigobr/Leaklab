@@ -233,6 +233,22 @@ def test_heuristic_borderline_folds_vs_cold_squeeze():
     print("OK  test_heuristic_borderline_folds_vs_cold_squeeze")
 
 
+# ── 9. spot_hash robusto a hero_hand mal-formado (bug de ingestão solver_cli) ──
+def test_spot_hash_normalizes_hero_hand():
+    from leaklab.gto_utils import compute_spot_hash, normalize_cards
+    # string '4dAd' e char-split ['4','A','d','d'] devem dar o MESMO hash da lista.
+    base = ('flop', 'BTN', ['4c', '7c', 'Kh'])
+    h_list = compute_spot_hash(*base, ['4d', 'Ad'], 80, 0.0)
+    h_str  = compute_spot_hash(*base, 'Ad4d', 80, 0.0)
+    h_bad  = compute_spot_hash(*base, ['4', 'A', 'd', 'd'], 80, 0.0)
+    assert h_list == h_str == h_bad, (h_list, h_str, h_bad)
+    assert normalize_cards('Ad4d') == ['Ad', '4d']
+    assert normalize_cards(['4', 'A', 'd', 'd']) == ['4d', 'Ad']
+    assert normalize_cards(['Ad', '4d']) == ['Ad', '4d']
+    assert normalize_cards([]) == [] and normalize_cards(None) == []
+    print("OK  test_spot_hash_normalizes_hero_hand")
+
+
 # ── Runner ──────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

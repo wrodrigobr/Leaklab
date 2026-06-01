@@ -70,6 +70,27 @@ def bet_bucket(facing_size_bb: float) -> str:
     return "40bb+"
 
 
+def normalize_cards(hand) -> list[str]:
+    """Normaliza uma mão para lista de cartas de 2 chars (ex.: ['4d','Ad']).
+
+    Aceita e conserta as 3 formas que apareceram na base:
+      - lista correta ['4d','Ad'] → inalterada
+      - string '4dAd' (ou 'Ad 4d') → ['4d','Ad']   (evita sorted('4dAd')=['4','A','d','d'])
+      - lista char-split ['4','A','d','d'] (corrupção [r1,r2,s1,s2]) → ['4d','Ad']
+    Lista vazia / None → []. Robusto contra hero_hand mal-formado na ingestão de nós.
+    """
+    if not hand:
+        return []
+    if isinstance(hand, str):
+        s = hand.replace(" ", "")
+        return [s[i:i+2] for i in range(0, len(s), 2)]
+    cards = list(hand)
+    if cards and len(cards) % 2 == 0 and all(isinstance(x, str) and len(x) == 1 for x in cards):
+        half = len(cards) // 2  # [r1,r2,...,s1,s2,...] → [r1s1, r2s2, ...]
+        return [r + s for r, s in zip(cards[:half], cards[half:])]
+    return [str(x) for x in cards]
+
+
 def compute_spot_hash(
     street: str,
     position: str,
@@ -80,14 +101,15 @@ def compute_spot_hash(
 ) -> str:
     """
     Retorna hash SHA256[:16] determinístico do spot.
-    Normalização: street minúsculo, position maiúsculo, listas ordenadas.
+    Normalização: street minúsculo, position maiúsculo, listas ordenadas, hero_hand
+    normalizado para cartas de 2 chars (string/char-split são consertados).
     facing_size_bb distingue spots "sem aposta" de "facing bet" e seus tamanhos.
     """
     canonical = {
         "street":       street.lower(),
         "position":     position.upper(),
         "board":        sorted(board),
-        "hand":         sorted(hero_hand),
+        "hand":         sorted(normalize_cards(hero_hand)),
         "stack_bucket": stack_bucket(hero_stack_bb),
         "bet_bucket":   bet_bucket(facing_size_bb),
     }

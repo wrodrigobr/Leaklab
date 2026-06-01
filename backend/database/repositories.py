@@ -4532,7 +4532,7 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
     if not nodes:
         return 0
 
-    from leaklab.gto_utils import compute_spot_hash, stack_bucket, normalize_gto_action, VALID_POSITIONS
+    from leaklab.gto_utils import compute_spot_hash, stack_bucket, normalize_gto_action, VALID_POSITIONS, normalize_cards
 
     conn = get_conn()
     try:
@@ -4604,7 +4604,9 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 strategy_json = None
 
             # ── Detectar nó preflop agregado ──────────────────────────────────
-            hero_hand = n.get('hero_hand') or []
+            # normalize_cards conserta string '4dAd' e char-split ['4','A','d','d']
+            # antes de hash/armazenamento (evita nós inalcançáveis pelo lookup).
+            hero_hand = normalize_cards(n.get('hero_hand'))
             is_aggregate = False
             if street == 'preflop' and not hero_hand:
                 is_aggregate = True

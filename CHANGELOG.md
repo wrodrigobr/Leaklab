@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto): hero_hand corrompido na ingestão de nós (lookup postflop) + recuperação
+- **Root cause**: nós do `solver_cli` eram gravados com `hero_hand` char-split — `["4","A","d","d"]` em vez de `["4d","Ad"]` — porque `insert_gto_nodes` fazia `sorted(hero_hand)` com `hero_hand` chegando como **string** (`sorted("4dAd")`=`['4','A','d','d']`). Como `compute_spot_hash` ordena o hand, esses **137 nós (16%)** ficavam **inalcançáveis** pelo lookup hand-specific (caía no genérico board-level). Bug contínuo (15–29/05), solves desperdiçados.
+- **Fix**: `gto_utils.normalize_cards()` conserta as 3 formas (lista correta / string / char-split) e é aplicado em `compute_spot_hash` e na gravação de `insert_gto_nodes` → ingestão robusta; lookups com lista correta inalterados.
+- **Recuperação** (`scripts/fix_corrupt_gto_nodes.py`): brute-force do `bet_bucket` (6 valores) p/ casar o hash antigo → re-hash com o hand correto. **86 nós recuperados** (re-hash, voltam a ser alcançáveis), **51 deletados** (49 duplicatas de nós corretos + 2 não-recuperáveis). Corrompidos restantes: **0**.
+- **Diagnóstico de contexto**: o lookup postflop estava **96% saudável** (156/163) — o alarme inicial foi super-generalizado de 1 nó. Restam **7 nós órfãos** (hash de fórmula antiga, pré-`acd7aba`) — desprezível, não afeta produção (exibe o stored). Teste em `test_recent_regressions`.
+
 ### fix(revalidation): correção dos achados reais da auditoria + precisão do scanner
 - **`impossible_raise`** (1, crítico): linha com `best_action='jam'` enfrentando all-in (não dá pra jam — o guard atual dá fold). Era **stale**; corrigida para `fold`.
 - **`faces_3bet_leftover`** (2, alto): squeeze-faced-cold residual (HJ cold-calling 3-bet) que o match do `fix_preflop_3bet_misclass` não pegou → gto limpo para NULL.
