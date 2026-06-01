@@ -14,12 +14,19 @@ regrava os 4 campos JUNTOS (do mesmo recompute) — nunca só o label, evitando
 inconsistência label↔gto (label_gto_conflict). Diferente do sync_label_bestaction
 (que preserva gto de propósito), aqui o objetivo é justamente sincronizar o gto.
 
-Só postflop. Preflop é range-backed e tratado em separado. Matching inequívoco
+Por padrão só postflop (`gto_nodes`). Com `--street preflop` reconcilia o
+preflop range-backed (`analyze_preflop`) — útil após mudanças nas tabelas de
+range / nos params de cenário (ex.: fix de squeeze adicionou `facing_raises`/
+`hero_was_aggressor`, que deixaram phantoms `gto_correct` em spots non-RFI/limp
+agora corretamente `unavailable`). `--street all` faz os dois. Em todos os casos
+o `evaluate_decision` é a fonte autoritativa. Matching inequívoco
 (hand_id, street, action_taken) LIMIT 1 — multi-decision ambíguo é PULADO.
 
 Uso:
-    python scripts/resync_postflop_gto.py            # dry-run
+    python scripts/resync_postflop_gto.py                       # dry-run (postflop)
     python scripts/resync_postflop_gto.py --apply
+    python scripts/resync_postflop_gto.py --street preflop --apply
+    python scripts/resync_postflop_gto.py --street all --apply
 """
 import sys, os, argparse
 from collections import defaultdict, Counter
@@ -39,11 +46,21 @@ def _norm(v):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--street", choices=["preflop", "postflop", "all"],
+                    default="postflop")
     args = ap.parse_args()
+
+    def _in_scope(st):
+        if args.street == "all":
+            return True
+        if args.street == "preflop":
+            return st == "preflop"
+        return st != "preflop"
+
     init_db()
     conn = get_conn()
     try:
-        conn.execute("PRAGMA busy_timeout=8000")
+        conn.execute("PRAGMA busy_timeout=10000")
     except Exception:
         pass
 
@@ -73,7 +90,7 @@ def main():
                 continue
             for di in dis:
                 st = (di.get("street") or "").lower()
-                if st == "preflop":
+                if not _in_scope(st):
                     continue
                 hid = di.get("hand_id", "")
                 act = (di.get("player_action") or "").lower()
@@ -91,11 +108,17 @@ def main():
                     "gto_action": _norm(g.get("gto_action")),
                 })
 
+        if args.street == "all":
+            street_clause = ""
+        elif args.street == "preflop":
+            street_clause = " AND lower(street)='preflop'"
+        else:
+            street_clause = " AND lower(street)!='preflop'"
         stored = defaultdict(list)
         for r in conn.execute(
             "SELECT id, hand_id, street, action_taken, label, best_action, "
             "gto_label, gto_action FROM decisions "
-            "WHERE tournament_id=? AND lower(street)!='preflop'", (tid,)).fetchall():
+            "WHERE tournament_id=?" + street_clause, (tid,)).fetchall():
             d = dict(r)
             stored[(d['hand_id'], (d['street'] or '').lower(),
                     (d['action_taken'] or '').lower())].append(d)
