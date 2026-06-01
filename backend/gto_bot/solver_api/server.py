@@ -152,63 +152,46 @@ def _send_email(subject: str, body: str) -> None:
 # ── CDP auth capture ──────────────────────────────────────────────────────────
 
 def _capture_headers_via_cdp(timeout_s: int = 25) -> Optional[dict]:
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        log.warning("playwright nao instalado")
-        return None
+    """Captura headers de auth via a thread-worker ÚNICA do Playwright (definida
+    abaixo) — sem instância concorrente, evitando conflito com os fetches."""
+    res = _pw_run(lambda b: _do_capture_headers(b, timeout_s), timeout_s=timeout_s + 10)
+    return res.get("headers") if res.get("ok") else None
 
+
+def _do_capture_headers(browser, timeout_s: int = 25) -> dict:
     captured: dict = {}
+    contexts = browser.contexts
+    if not contexts:
+        return {"ok": False, "error": "no_browser_context"}
+
+    page = contexts[0].pages[0] if contexts[0].pages else contexts[0].new_page()
+
+    def on_req(req):
+        if "api.gtowizard.com" not in req.url or captured:
+            return
+        h = dict(req.headers)
+        # GW antigo usava Bearer JWT (authorization); GW atual usa token
+        # ECDSA assinado client-side (google-anal-id). Aceita qualquer um.
+        if "authorization" in h or "google-anal-id" in h:
+            captured.update(h)
+
+    page.on("request", on_req)
     try:
-        pw = sync_playwright().start()
-    except Exception as e:
-        log.debug("playwright start: %s", e)
-        return None
+        page.goto(f"{GW_APP}/solutions", timeout=15000, wait_until="domcontentloaded")
+    except Exception:
+        pass
 
+    deadline = time.time() + timeout_s
+    while not captured and time.time() < deadline:
+        page.wait_for_timeout(400)
     try:
-        try:
-            browser = pw.chromium.connect_over_cdp(f"http://localhost:{CDP_PORT}")
-        except Exception as e:
-            log.debug("CDP connect: %s", e)
-            return None
-
-        contexts = browser.contexts
-        if not contexts:
-            return None
-
-        page = contexts[0].pages[0] if contexts[0].pages else contexts[0].new_page()
-
-        def on_req(req):
-            if "api.gtowizard.com" not in req.url or captured:
-                return
-            h = dict(req.headers)
-            # GW antigo usava Bearer JWT (authorization); GW atual usa token
-            # ECDSA assinado client-side (google-anal-id). Aceita qualquer um.
-            if "authorization" in h or "google-anal-id" in h:
-                captured.update(h)
-
-        page.on("request", on_req)
-        try:
-            page.goto(f"{GW_APP}/solutions", timeout=15000, wait_until="domcontentloaded")
-        except Exception:
-            pass
-
-        deadline = time.time() + timeout_s
-        while not captured and time.time() < deadline:
-            page.wait_for_timeout(400)
-
         page.remove_listener("request", on_req)
-    finally:
-        try:
-            pw.stop()
-        except Exception:
-            pass
+    except Exception:
+        pass
 
-    if not captured:
-        return None
-    if "authorization" in captured or "google-anal-id" in captured:
-        return captured
-    return None
+    if captured and ("authorization" in captured or "google-anal-id" in captured):
+        return {"ok": True, "headers": captured}
+    return {"ok": False}
 
 
 def _refresh_once() -> bool:
@@ -726,141 +709,154 @@ _GW_APP_DEFAULTS = {
 }
 
 
-def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 25) -> dict:
-    """Roda o fetch sync do Playwright num thread DEDICADO (sem event loop).
+# ── Worker dedicado de Playwright ────────────────────────────────────────────
+# sync_playwright().start()/.stop() repetido por chamada (em threads efêmeras)
+# vaza event loops / processos node e degrada após ~N chamadas ("Sync API inside
+# the asyncio loop"). Solução: UMA thread-worker que cria o Playwright UMA vez e
+# reusa a conexão CDP; TODAS as ops (fetch + captura de auth) passam por ela via
+# fila, serializadas naturalmente (single-thread, sem event loop no handler).
+import queue as _queuelib
 
-    sync_playwright().start() lança "Sync API inside the asyncio loop" quando o
-    thread chamador tem um event loop rodando (ex.: o handler HTTP sob asyncio).
-    Isolar num worker thread limpo torna o fetch imune ao contexto do chamador —
-    o thread de refresh de auth já funciona por estar num thread próprio.
-    """
-    import concurrent.futures
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
-        try:
-            return _ex.submit(_fetch_via_page_sync, api_path, params, timeout_s).result(
-                timeout=timeout_s + 20)
-        except concurrent.futures.TimeoutError:
-            return {"ok": False, "error": "page_fetch_thread_timeout"}
+_pw_jobs: "_queuelib.Queue" = _queuelib.Queue()
+_pw_started = False
+_pw_start_lock = threading.Lock()
 
 
-def _fetch_via_page_sync(api_path: str, params: dict, timeout_s: int = 25) -> dict:
-    """
-    Navega a pagina do Chrome para a URL correspondente do app GW
-    e intercepta a response da API que o proprio GW dispara (com
-    auth ECDSA assinada pelo interceptor JS do app).
-
-    Retorna:
-      {ok:true,  status:200, json:{...}}
-      {ok:false, error:"...", status?:int}
-    """
+def _pw_worker_loop() -> None:
+    from playwright.sync_api import sync_playwright
     try:
-        from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
-    except ImportError:
-        return {"ok": False, "error": "playwright_not_installed"}
+        pw = sync_playwright().start()
+    except Exception as e:
+        log.error("pw-worker: falha ao iniciar playwright: %s", e)
+        while True:  # drena a fila reportando erro
+            _fn, box, ev = _pw_jobs.get()
+            box["r"] = {"ok": False, "error": f"playwright_start:{e}"}
+            ev.set()
+    browser = None
+    while True:
+        fn, box, ev = _pw_jobs.get()
+        try:
+            if browser is None or not browser.is_connected():
+                browser = pw.chromium.connect_over_cdp(f"http://localhost:{CDP_PORT}")
+            box["r"] = fn(browser)
+        except Exception as e:
+            box["r"] = {"ok": False, "error": f"pw_worker:{e}"}
+            browser = None  # força reconexão no próximo job
+        finally:
+            ev.set()
 
+
+def _ensure_pw_worker() -> None:
+    global _pw_started
+    with _pw_start_lock:
+        if not _pw_started:
+            threading.Thread(target=_pw_worker_loop, name="pw-fetch", daemon=True).start()
+            _pw_started = True
+
+
+def _pw_run(fn, timeout_s: int) -> dict:
+    """Executa fn(browser) na thread-worker persistente do Playwright."""
+    _ensure_pw_worker()
+    box: dict = {}
+    ev = threading.Event()
+    _pw_jobs.put((fn, box, ev))
+    if not ev.wait(timeout=timeout_s):
+        return {"ok": False, "error": "pw_worker_timeout"}
+    return box.get("r", {"ok": False, "error": "pw_no_result"})
+
+
+def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 25) -> dict:
+    """Fetch in-page via a thread-worker persistente (sem start/stop por chamada)."""
+    return _pw_run(lambda b: _do_page_fetch(b, api_path, params, timeout_s),
+                   timeout_s=timeout_s + 30)
+
+
+def _do_page_fetch(browser, api_path: str, params: dict, timeout_s: int = 25) -> dict:
+    """
+    Navega a pagina logada do GW e intercepta a response da API (auth ECDSA
+    assinada pelo interceptor JS do app). Usa um `browser` CDP PERSISTENTE
+    fornecido pela thread-worker — NÃO faz start/stop do Playwright.
+
+    Retorna {ok:true, status, json} ou {ok:false, error, status?}.
+    """
+    from playwright.sync_api import TimeoutError as PWTimeout
     from urllib.parse import urlencode
 
-    # URL do app: mesmos params da API + defaults da UI
     app_params = {**_GW_APP_DEFAULTS, **params}
     app_url    = f"{GW_APP}/solutions?{urlencode(app_params)}"
 
-    with _page_fetch_lock:
-        try:
-            pw = sync_playwright().start()
-        except Exception as e:
-            return {"ok": False, "error": f"playwright_start:{e}"}
+    contexts = browser.contexts
+    if not contexts:
+        return {"ok": False, "error": "no_browser_context"}
 
-        try:
+    target_page = None
+    for ctx in contexts:
+        for p in ctx.pages:
             try:
-                browser = pw.chromium.connect_over_cdp(f"http://localhost:{CDP_PORT}")
-            except Exception as e:
-                return {"ok": False, "error": f"cdp_connect:{e}"}
-
-            contexts = browser.contexts
-            if not contexts:
-                return {"ok": False, "error": "no_browser_context"}
-
-            target_page = None
-            for ctx in contexts:
-                for p in ctx.pages:
-                    try:
-                        if "gtowizard.com" in (p.url or ""):
-                            target_page = p
-                            break
-                    except Exception:
-                        continue
-                if target_page:
+                if "gtowizard.com" in (p.url or ""):
+                    target_page = p
                     break
+            except Exception:
+                continue
+        if target_page:
+            break
 
-            if target_page is None:
-                try:
-                    target_page = contexts[0].new_page()
-                except Exception as e:
-                    return {"ok": False, "error": f"new_page:{e}"}
+    if target_page is None:
+        try:
+            target_page = contexts[0].new_page()
+        except Exception as e:
+            return {"ok": False, "error": f"new_page:{e}"}
 
-            # Match: API spot-solution com mesmos params essenciais
-            essential = ("gametype", "depth", "preflop_actions", "flop_actions",
-                         "turn_actions", "river_actions", "board")
-            expected = {k: str(params.get(k, "")) for k in essential}
+    essential = ("gametype", "depth", "preflop_actions", "flop_actions",
+                 "turn_actions", "river_actions", "board")
+    expected = {k: str(params.get(k, "")) for k in essential}
 
-            def is_target(resp):
-                try:
-                    if api_path not in resp.url:
-                        return False
-                    if resp.request.method != "GET":
-                        return False  # ignora OPTIONS preflight
-                    # Aceita 200 (com payload) e 204 (sem solucao) — ambos respostas
-                    # validas do GET. Outras (401, 403, 5xx) tambem aceitas pra reportar erro.
-                    for k, v in expected.items():
-                        if f"{k}={v}" not in resp.url and not (v == "" and f"{k}=&" in resp.url + "&"):
-                            return False
-                    return True
-                except Exception:
+    def is_target(resp):
+        try:
+            if api_path not in resp.url:
+                return False
+            if resp.request.method != "GET":
+                return False  # ignora OPTIONS preflight
+            for k, v in expected.items():
+                if f"{k}={v}" not in resp.url and not (v == "" and f"{k}=&" in resp.url + "&"):
                     return False
+            return True
+        except Exception:
+            return False
 
-            try:
-                with target_page.expect_response(is_target, timeout=timeout_s * 1000) as resp_info:
-                    target_page.goto(app_url,
-                                     timeout=timeout_s * 1000,
-                                     wait_until="commit")
-                response = resp_info.value
-            except PWTimeout:
-                return {"ok": False, "error": "timeout_waiting_api_response"}
-            except Exception as e:
-                return {"ok": False, "error": f"navigate:{e}"}
+    try:
+        with target_page.expect_response(is_target, timeout=timeout_s * 1000) as resp_info:
+            target_page.goto(app_url, timeout=timeout_s * 1000, wait_until="commit")
+        response = resp_info.value
+    except PWTimeout:
+        return {"ok": False, "error": "timeout_waiting_api_response"}
+    except Exception as e:
+        return {"ok": False, "error": f"navigate:{e}"}
 
-            try:
-                status = response.status
-            except Exception:
-                status = 0
+    try:
+        status = response.status
+    except Exception:
+        status = 0
 
-            if status == 401:
-                _set_auth_failed("Token expirado (HTTP 401 via navigate)")
-                return {"ok": False, "status": 401, "error": "auth_expired"}
+    if status == 401:
+        _set_auth_failed("Token expirado (HTTP 401 via navigate)")
+        return {"ok": False, "status": 401, "error": "auth_expired"}
+    if status == 204:
+        return {"ok": False, "status": 204, "error": "no_solution_204"}
+    if status < 200 or status >= 300:
+        body_preview = None
+        try:
+            body_preview = response.text()[:300]
+        except Exception:
+            pass
+        return {"ok": False, "status": status, "error": f"http_{status}", "body": body_preview}
 
-            if status == 204:
-                # 204 = sem solucao GW pra esse spot — resposta valida, sem payload
-                return {"ok": False, "status": 204, "error": "no_solution_204"}
+    try:
+        data = response.json()
+    except Exception as e:
+        return {"ok": False, "status": status, "error": f"json_parse:{e}"}
 
-            if status < 200 or status >= 300:
-                body_preview = None
-                try:
-                    body_preview = response.text()[:300]
-                except Exception:
-                    pass
-                return {"ok": False, "status": status, "error": f"http_{status}", "body": body_preview}
-
-            try:
-                data = response.json()
-            except Exception as e:
-                return {"ok": False, "status": status, "error": f"json_parse:{e}"}
-
-            return {"ok": True, "status": status, "json": data, "via": "navigate"}
-        finally:
-            try:
-                pw.stop()
-            except Exception:
-                pass
+    return {"ok": True, "status": status, "json": data, "via": "navigate"}
 
 
 # ── Preflop raise-size snapping ──────────────────────────────────────────────

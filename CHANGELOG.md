@@ -9,7 +9,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### fix(gto-server): `_fetch_via_page` roda Playwright sync em thread isolado (imune a event loop)
 
-> O endpoint `/gw-spot` do servidor GTO (GCP, `gto_bot/solver_api/server.py`) falhava com *"Sync API inside the asyncio loop"* quando o thread do handler HTTP tinha um event loop — `sync_playwright().start()` é proibido nesse contexto. Fix: isolar a chamada num `ThreadPoolExecutor` de 1 worker (thread sempre limpo, sem loop), espelhando o que já funciona no thread de refresh de auth. Destrava o fetch preflop on-demand/seed via GW. Sem mudança de comportamento; só de contexto de execução.
+> O endpoint `/gw-spot` do servidor GTO (GCP, `gto_bot/solver_api/server.py`) falhava com *"Sync API inside the asyncio loop"*. 1ª tentativa (`ThreadPoolExecutor` por chamada) destravou a 1ª chamada mas **degradava após ~N fetches** — `sync_playwright().start()/.stop()` repetido (connect/disconnect CDP por chamada) vaza event loops / processos node. Fix definitivo: **thread-worker única** que cria o Playwright UMA vez, reusa a conexão CDP e processa TODOS os fetches + a captura de auth por uma fila (`_pw_worker_loop`/`_pw_run`), serializados naturalmente. Zero churn de start/stop. Destrava o seed/auto-captura preflop via GW de forma estável.
 
 ### fix(preflop-gto): hero-como-3bettor roteia para vs_rfi (não vs_3bet) — recupera grades reais
 
