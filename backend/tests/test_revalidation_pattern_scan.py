@@ -140,8 +140,13 @@ def test_seed_data_caveat():
     ftid = dict(conn.execute("SELECT id FROM tournaments WHERE tournament_id='FAKE-x'").fetchone())['id']
     conn.commit(); conn.close()
     _ins(ftid, hero_cards='')
-    p = _by_key(Scope.all())['seed_data']
-    assert p.severity == 'caveat' and p.count == 1
+    pf = _by_key(Scope.all())
+    assert pf['seed_data'].severity == 'caveat' and pf['seed_data'].count == 1
+    # exclude_seed (default) NÃO conta a decisão fake em missing_hero_cards
+    assert pf['missing_hero_cards'].count == 0
+    # com include-seed, conta
+    inc = {p.key: p for p in scan_patterns(Scope.all(), exclude_seed=False)}
+    assert inc['missing_hero_cards'].count == 1
     print("OK  test_seed_data_caveat")
 
 

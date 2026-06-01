@@ -92,7 +92,8 @@ def revalidate(scope: Scope = Scope.all(),
                persist: bool = True,
                output_dir: Optional[str] = None,
                notes: Optional[str] = None,
-               scan_patterns: bool = True) -> RevalidationResult:
+               scan_patterns: bool = True,
+               exclude_seed: bool = True) -> RevalidationResult:
     """
     Roda a varredura. Quando persist=True, grava em revalidation_runs/findings.
     Quando output_dir é dado, escreve report.md + report.json no diretório.
@@ -155,7 +156,7 @@ def revalidate(scope: Scope = Scope.all(),
     if scan_patterns:
         try:
             from leaklab.revalidation.pattern_scan import scan_patterns as _scan
-            pattern_findings = [pf.to_dict() for pf in _scan(scope)]
+            pattern_findings = [pf.to_dict() for pf in _scan(scope, exclude_seed=exclude_seed)]
         except Exception as e:
             log.warning('pattern_scan failed: %s', e)
             errors.append({'stage': 'pattern_scan', 'error': str(e)})

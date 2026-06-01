@@ -47,6 +47,8 @@ def _parse_args() -> argparse.Namespace:
                    help='Roda o scanner determinístico de padrões suspeitos (default ON)')
     p.add_argument('--no-scan-patterns', dest='scan_patterns', action='store_false',
                    help='Desliga o scanner de padrões')
+    p.add_argument('--include-seed', dest='exclude_seed', action='store_false', default=True,
+                   help='Inclui o seed FAKE do leaderboard nos checks (default: exclui)')
     p.add_argument('--notes', type=str, default=None,
                    help='Texto livre para anotar no run (ex: "pós-fix #123")')
     return p.parse_args()
@@ -73,6 +75,7 @@ def main() -> int:
         output_dir=args.output,
         notes=args.notes,
         scan_patterns=args.scan_patterns,
+        exclude_seed=args.exclude_seed,
     )
     _print_summary(result)
     if not args.no_persist:

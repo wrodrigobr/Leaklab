@@ -98,13 +98,19 @@ def _scope_where(scope) -> tuple[str, tuple]:
     return "1=1", ()
 
 
-def scan_patterns(scope) -> list[PatternFinding]:
+_SEED_LIKE = "FAKE-%"  # tournament_id dos torneios de seed do leaderboard
+
+
+def scan_patterns(scope, exclude_seed: bool = True) -> list[PatternFinding]:
     base_where, base_params = _scope_where(scope)
+    # Checks de dado REAL excluem o seed fake (default). O caveat seed_data conta o fake.
+    real_where = (f"({base_where}) AND t.tournament_id NOT LIKE '{_SEED_LIKE}'"
+                  if exclude_seed else base_where)
     conn = get_conn()
     out: list[PatternFinding] = []
     try:
         for key, title, severity, remediation, cond in _CHECKS:
-            where = f"({base_where}) AND ({cond})"
+            where = f"({real_where}) AND ({cond})"
             try:
                 cnt = conn.execute(
                     "SELECT COUNT(*) FROM decisions d "
@@ -130,13 +136,13 @@ def scan_patterns(scope) -> list[PatternFinding]:
         # usuários distintos (legítimo) nem multi-decisões (limp-call) que diferem no
         # contexto. Chave precisa inclui tournament_id + pot/facing.
         _dupgrp = ("SELECT 1 FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
-                   f"WHERE {base_where} GROUP BY d.tournament_id, d.hand_id, d.street, "
+                   f"WHERE {real_where} GROUP BY d.tournament_id, d.hand_id, d.street, "
                    "d.action_taken, d.pot_size, d.facing_bet HAVING COUNT(*) > 1")
         try:
             dup_rows = conn.execute(
                 "SELECT d.tournament_id, d.hand_id, d.street FROM decisions d "
                 "JOIN tournaments t ON t.id = d.tournament_id "
-                f"WHERE {base_where} GROUP BY d.tournament_id, d.hand_id, d.street, "
+                f"WHERE {real_where} GROUP BY d.tournament_id, d.hand_id, d.street, "
                 "d.action_taken, d.pot_size, d.facing_bet HAVING COUNT(*) > 1 "
                 f"LIMIT {_SAMPLE}", base_params).fetchall()
             dup_cnt = conn.execute(f"SELECT COUNT(*) FROM ({_dupgrp}) x",

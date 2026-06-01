@@ -14,7 +14,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   - **Report** ganha 3 seções (Drift, Padrões suspeitos, Plano de correção); CLI `--scan-patterns/--no-scan-patterns`.
 - **Read-only** (`--no-persist`): nada muta no banco. Correções ficam como passo revisado.
 - **2 gaps de ferramenta sinalizados** no relatório: (1) "clear-stale-on-uncovered" geral (hoje só `fix_preflop_3bet_misclass.py`, só squeeze); (2) dedup de decisões duplicadas (inexistente).
-- Testes: `test_revalidation_drift.py` (8) + `test_revalidation_pattern_scan.py` (8). Suites de revalidação existentes (oracle/differ/orchestrator/api/fixtures) sem regressão.
+- Testes: `test_revalidation_drift.py` (8) + `test_revalidation_pattern_scan.py` (9). Suites de revalidação existentes (oracle/differ/orchestrator/api/fixtures) sem regressão.
+- **Exclusão de seed** (`exclude_seed=True` default, CLI `--include-seed`): os checks de dado real ignoram torneios FAKE do leaderboard; o caveat `seed_data` os conta à parte. Investigação confirmou que `UNIQUE(user_id, tournament_id)` já existe (0 violações) e não há duplicação real — os "474 duplicates" eram check impreciso + seed. Com seed excluído, o audit real mostra: gto_critical_fold 70, multiway_highequity 45, impossible_raise 1, faces_3bet_leftover 2.
 
 ### fix(preflop): squeeze/3-bet enfrentado a frio era classificado como vs_RFI (erro grave)
 - **Bug**: quando o hero (cold caller / blind) enfrentava um **squeeze** (open + call + 3-bet) ou um 3-bet+, o engine colapsava o spot em **"vs_RFI"** (defesa vs open simples), aplicava o range larguíssimo de BB-vs-SB e recomendava, ex., **call 45s vs squeeze** — marcando um **fold correto como `gto_critical`** (e `small_mistake` no heurístico). Raiz: faltava o sinal "nº de raises de villains enfrentados"; o `is_3bet` do pipeline só significa "hero deu 3-bet".
