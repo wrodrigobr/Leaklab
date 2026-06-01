@@ -119,12 +119,30 @@ def test_missing_hero_cards_and_postflop_mistake_no_gto():
     print("OK  test_missing_hero_cards_and_postflop_mistake_no_gto")
 
 
-def test_duplicate_decisions():
+def test_duplicate_decisions_true_only():
     _uid, tid = _setup()
-    _ins(tid, hand_id='DUP', street='preflop', action_taken='call', label='standard')
-    _ins(tid, hand_id='DUP', street='preflop', action_taken='raise', label='standard')
+    # TRUE dup: dois rows idênticos no contexto (tid+hand+street+action+pot+facing)
+    _ins(tid, hand_id='DUP', street='preflop', action_taken='call', pot_size=10.0, facing_bet=2.0)
+    _ins(tid, hand_id='DUP', street='preflop', action_taken='call', pot_size=10.0, facing_bet=2.0)
+    # multi-decisão legítima: mesmo hand/street/action mas contexto diferente → NÃO é dup
+    _ins(tid, hand_id='LIMP', street='preflop', action_taken='call', pot_size=3.0, facing_bet=0.0)
+    _ins(tid, hand_id='LIMP', street='preflop', action_taken='call', pot_size=12.0, facing_bet=8.0)
     assert _by_key(Scope.for_tournament(tid))['duplicate_decisions'].count == 1
-    print("OK  test_duplicate_decisions")
+    print("OK  test_duplicate_decisions_true_only")
+
+
+def test_seed_data_caveat():
+    _uid, tid = _setup()
+    _ins(tid)  # decisão real (T1 não é FAKE)
+    conn = get_conn()
+    conn.execute("INSERT INTO tournaments (user_id,tournament_id,hero,site) VALUES (?,?,?,?)",
+                 (_uid, 'FAKE-x', 'H', 'pokerstars'))
+    ftid = dict(conn.execute("SELECT id FROM tournaments WHERE tournament_id='FAKE-x'").fetchone())['id']
+    conn.commit(); conn.close()
+    _ins(ftid, hero_cards='')
+    p = _by_key(Scope.all())['seed_data']
+    assert p.severity == 'caveat' and p.count == 1
+    print("OK  test_seed_data_caveat")
 
 
 def test_pko_caveat():

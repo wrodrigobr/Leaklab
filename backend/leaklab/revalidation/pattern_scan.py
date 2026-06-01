@@ -125,27 +125,44 @@ def scan_patterns(scope) -> list[PatternFinding]:
                 continue
             out.append(PatternFinding(key, title, int(cnt or 0), severity, remediation, ids))
 
-        # Duplicate decisions (GROUP BY) — quebra o match LIMIT-1
+        # Duplicate decisions VERDADEIRAS: mesmo (tournament_id, hand_id, street,
+        # action_taken, pot_size, facing_bet). NÃO conta o mesmo torneio importado por
+        # usuários distintos (legítimo) nem multi-decisões (limp-call) que diferem no
+        # contexto. Chave precisa inclui tournament_id + pot/facing.
+        _dupgrp = ("SELECT 1 FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+                   f"WHERE {base_where} GROUP BY d.tournament_id, d.hand_id, d.street, "
+                   "d.action_taken, d.pot_size, d.facing_bet HAVING COUNT(*) > 1")
         try:
             dup_rows = conn.execute(
-                "SELECT d.hand_id, d.street FROM decisions d "
+                "SELECT d.tournament_id, d.hand_id, d.street FROM decisions d "
                 "JOIN tournaments t ON t.id = d.tournament_id "
-                f"WHERE {base_where} GROUP BY d.hand_id, d.street HAVING COUNT(*) > 1 "
+                f"WHERE {base_where} GROUP BY d.tournament_id, d.hand_id, d.street, "
+                "d.action_taken, d.pot_size, d.facing_bet HAVING COUNT(*) > 1 "
                 f"LIMIT {_SAMPLE}", base_params).fetchall()
-            dup_cnt = conn.execute(
-                "SELECT COUNT(*) FROM (SELECT 1 FROM decisions d "
-                "JOIN tournaments t ON t.id = d.tournament_id "
-                f"WHERE {base_where} GROUP BY d.hand_id, d.street HAVING COUNT(*) > 1) x",
-                base_params).fetchone()[0]
-            samples = [f"{dict(r)['hand_id']}/{dict(r)['street']}" for r in dup_rows]
+            dup_cnt = conn.execute(f"SELECT COUNT(*) FROM ({_dupgrp}) x",
+                                   base_params).fetchone()[0]
+            samples = [f"t{dict(r)['tournament_id']}/{dict(r)['hand_id']}/{dict(r)['street']}"
+                       for r in dup_rows]
             out.append(PatternFinding(
-                "duplicate_decisions", "Decisoes duplicadas (mesmo hand_id+street)",
+                "duplicate_decisions", "Decisoes duplicadas reais (mesmo tid+hand+street+action+contexto)",
                 int(dup_cnt or 0), "high",
-                "GAP: sem ferramenta de dedup — quebra o match LIMIT 1", samples))
+                "GAP: sem ferramenta de dedup (só relevante se >0)", samples))
         except Exception as e:
             out.append(PatternFinding("duplicate_decisions",
                                       "Decisoes duplicadas [check indisponivel]", -1,
                                       "high", f"erro: {str(e)[:60]}"))
+
+        # Seed FAKE (leaderboard) — NÃO é dado real; polui métricas de auditoria.
+        try:
+            seed_cnt = conn.execute(
+                "SELECT COUNT(*) FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+                f"WHERE ({base_where}) AND t.tournament_id LIKE 'FAKE-%'", base_params).fetchone()[0]
+        except Exception:
+            seed_cnt = 0
+        out.append(PatternFinding(
+            "seed_data", "Decisoes de seed FAKE (leaderboard) — nao e dado real",
+            int(seed_cnt or 0), "caveat",
+            "seed_fake_leaderboard.py --clean (ou ignorar; explica missing_hero_cards)"))
 
         # PKO com ranges Classic — CAVEAT (aproximacao documentada, nao divergencia)
         try:
