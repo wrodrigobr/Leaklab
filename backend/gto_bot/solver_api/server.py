@@ -727,6 +727,23 @@ _GW_APP_DEFAULTS = {
 
 
 def _fetch_via_page(api_path: str, params: dict, timeout_s: int = 25) -> dict:
+    """Roda o fetch sync do Playwright num thread DEDICADO (sem event loop).
+
+    sync_playwright().start() lança "Sync API inside the asyncio loop" quando o
+    thread chamador tem um event loop rodando (ex.: o handler HTTP sob asyncio).
+    Isolar num worker thread limpo torna o fetch imune ao contexto do chamador —
+    o thread de refresh de auth já funciona por estar num thread próprio.
+    """
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
+        try:
+            return _ex.submit(_fetch_via_page_sync, api_path, params, timeout_s).result(
+                timeout=timeout_s + 20)
+        except concurrent.futures.TimeoutError:
+            return {"ok": False, "error": "page_fetch_thread_timeout"}
+
+
+def _fetch_via_page_sync(api_path: str, params: dict, timeout_s: int = 25) -> dict:
     """
     Navega a pagina do Chrome para a URL correspondente do app GW
     e intercepta a response da API que o proprio GW dispara (com

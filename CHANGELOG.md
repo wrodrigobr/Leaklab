@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(gto-server): `_fetch_via_page` roda Playwright sync em thread isolado (imune a event loop)
+
+> O endpoint `/gw-spot` do servidor GTO (GCP, `gto_bot/solver_api/server.py`) falhava com *"Sync API inside the asyncio loop"* quando o thread do handler HTTP tinha um event loop — `sync_playwright().start()` é proibido nesse contexto. Fix: isolar a chamada num `ThreadPoolExecutor` de 1 worker (thread sempre limpo, sem loop), espelhando o que já funciona no thread de refresh de auth. Destrava o fetch preflop on-demand/seed via GW. Sem mudança de comportamento; só de contexto de execução.
+
 ### fix(preflop-gto): hero-como-3bettor roteia para vs_rfi (não vs_3bet) — recupera grades reais
 
 > Follow-up do bucket A. Quando o hero **É o 3bettor** (3beta um open, sem ter aberto), a decisão é de **defesa vs open** — deve ser gradeada pela frequência de 3bet do range `vs_rfi[defensor][opener]`, não por `vs_3bet[opener][3bettor]` (resposta do opener, estrutura errada que o fallback frouxo mascarava). Removido o branch `is_3bet_pot → vs_3bet`: hero-3bettor agora flui pra `vs_rfi`. **Recupera 13 grades reais** (ex.: SB jam vs CO open, HJ 3bet vs UTG+1 → `gto_correct`; CO 3bet quando GTO manda call → `gto_critical`) e converte 4 limp-reshove (SB limpa→BB iso→SB jam, sem range GTO) para NULL honesto. Cobertura preflop 89,6%→90,6%; coerência segue 0 conflito / 0 drift; suite 743/743. Aplica em uploads via `evaluate_decision`. Com isso, `is_3bet_pot` só roteia squeeze; os dois lados do 3bet têm scenario correto (opener→vs_3bet, 3bettor→vs_rfi).
