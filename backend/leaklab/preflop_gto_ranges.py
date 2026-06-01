@@ -183,6 +183,8 @@ def analyze_preflop(
     is_3bet_pot: bool = False,
     caller_position: str = '', # posição do cold caller (se houver, ativa squeeze lookup)
     n_players: int | None = None,  # tamanho da mesa — usado pra mapping correto pipeline→GW
+    facing_raises: int = 0,    # nº de raises de villains ANTES da decisão do hero (open=1, 3bet=2…)
+    hero_was_aggressor: bool = False,  # hero já deu raise nesta street antes desta decisão
 ) -> dict:
     """
     Retorna análise GTO completa de uma decisão preflop.
@@ -215,6 +217,13 @@ def analyze_preflop(
         scenario = 'squeeze'
     elif is_3bet_pot and vs_pos:
         scenario = 'vs_3bet'
+    elif facing_raises >= 2 and not hero_was_aggressor:
+        # Hero (cold caller / blind) enfrenta um pote 3-BET/SQUEEZE sem ter sido o agressor.
+        # NÃO existe range de "defender vs squeeze a frio" na base — então JAMAIS tratar como
+        # vs_rfi (que aplicaria a defesa larga vs open simples e recomendaria, ex., call 45s vs
+        # squeeze, marcando um fold correto como gto_critical). Honesto: sem cobertura GTO.
+        base['scenario'] = 'faces_3bet_uncovered'
+        return base  # available=False
     elif facing_size > 0:
         # vs_pos pode ser '' quando opener não foi detectado — lookup retornará None → available=False
         scenario = 'vs_rfi'

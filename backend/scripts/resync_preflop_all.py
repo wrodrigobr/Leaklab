@@ -63,7 +63,7 @@ def resync(args) -> None:
         rows = conn.execute(f"""
             SELECT d.id, d.position, d.stack_bb, d.facing_bet, d.is_3bet,
                    d.action_taken, d.best_action, d.hero_cards, d.vs_position,
-                   d.gto_label, d.gto_action
+                   d.gto_label, d.gto_action, d.preflop_raises_faced
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             {where}
@@ -110,6 +110,8 @@ def resync(args) -> None:
                         facing_size=facing_bb,
                         vs_position=vs_pos,
                         is_3bet_pot=is_3bet,
+                        facing_raises=int(r["preflop_raises_faced"] or 0),
+                        hero_was_aggressor=is_3bet,  # proxy DB-only (hero deu 3bet)
                     )
                 except Exception:
                     no_range += 1

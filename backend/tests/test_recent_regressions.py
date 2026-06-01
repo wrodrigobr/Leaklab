@@ -208,6 +208,31 @@ def test_vs_3bet_hand_freq_fold_when_out_of_range():
     print("OK  test_vs_3bet_hand_freq_fold_when_out_of_range")
 
 
+# ── 8. Squeeze/3-bet enfrentado a frio NÃO vira vs_RFI (bug "call 45s vs squeeze") ──
+def test_faces_squeeze_not_classified_as_vs_rfi():
+    base = dict(position='BB', hero_hand_type='54s', stack_bb=29.7, action_taken='fold',
+                facing_size=9.0, vs_position='SB', is_3bet_pot=False)
+    # Sem o sinal (comportamento antigo): NÃO marca como sem-cobertura — caía em vs_rfi.
+    bug = analyze_preflop(**base)
+    assert bug['scenario'] != 'faces_3bet_uncovered'
+    # Com o sinal (2 raises enfrentados, hero não foi agressor): sem cobertura honesta,
+    # jamais vs_rfi/call — evita recomendar call 45s vs squeeze e marcar fold como crítico.
+    fixed = analyze_preflop(**base, facing_raises=2, hero_was_aggressor=False)
+    assert fixed['available'] is False and fixed['scenario'] == 'faces_3bet_uncovered'
+    # Hero que FOI agressor (ex.: 3-bettor vs 4-bet) NÃO dispara o guard (pode ter cobertura).
+    aggr = analyze_preflop(**base, facing_raises=2, hero_was_aggressor=True)
+    assert aggr['scenario'] != 'faces_3bet_uncovered'
+    print("OK  test_faces_squeeze_not_classified_as_vs_rfi")
+
+
+def test_heuristic_borderline_folds_vs_cold_squeeze():
+    from leaklab.preflop_range_evaluator import _recommended_action
+    # 45s (borderline) facing 9bb: vs 3-bet HU → call (set-mine); squeeze a frio → fold.
+    assert _recommended_action('4c5c', 'BB', facing_size=9.0, stack_bb=29.7, faces_3bet=False) == 'call'
+    assert _recommended_action('4c5c', 'BB', facing_size=9.0, stack_bb=29.7, faces_3bet=True) == 'fold'
+    print("OK  test_heuristic_borderline_folds_vs_cold_squeeze")
+
+
 # ── Runner ──────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

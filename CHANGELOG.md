@@ -7,6 +7,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop): squeeze/3-bet enfrentado a frio era classificado como vs_RFI (erro grave)
+- **Bug**: quando o hero (cold caller / blind) enfrentava um **squeeze** (open + call + 3-bet) ou um 3-bet+, o engine colapsava o spot em **"vs_RFI"** (defesa vs open simples), aplicava o range larguíssimo de BB-vs-SB e recomendava, ex., **call 45s vs squeeze** — marcando um **fold correto como `gto_critical`** (e `small_mistake` no heurístico). Raiz: faltava o sinal "nº de raises de villains enfrentados"; o `is_3bet` do pipeline só significa "hero deu 3-bet".
+- **Fix (3 camadas)**: `hand_state_builder` computa `preflop_raises_faced` + `hero_was_aggressor` da sequência de ações; `analyze_preflop` ganha guard — quando ≥2 raises enfrentados e hero não foi agressor, retorna **sem cobertura** (`faces_3bet_uncovered`, honesto) em vez de vs_RFI; `preflop_range_evaluator` (heurístico) folda borderline em squeeze a frio em vez de "call (set-mine)". Sinal persistido em **`decisions.preflop_raises_faced`** (migration PG+SQLite) e lido por `resync_preflop_all`/`sync_gto_labels` (proxy `hero_was_aggressor≈is_3bet`) p/ não reintroduzir.
+- **Correção do dado**: `scripts/fix_preflop_3bet_misclass.py` (backfill da coluna + relabel via pipeline). Rodado local: **36 decisões** corrigidas em 10 torneios — as `gto_critical/call` em folds corretos viraram **NULL + best fold + label standard** (ex.: hand 257045883935, BB 45s vs squeeze).
+- **Testes**: `test_recent_regressions` (guard do squeeze não vira vs_rfi/uncovered + hero-agressor não dispara; heurístico folda borderline a frio). Engine/regression sem quebra de distribuição.
+
 ### feat(replayer): modo foco / tela cheia para revisão de torneio
 - Botão **"Tela cheia"** no top bar do Replayer: entra em **fullscreen real** (Fullscreen API) e oculta o `HudHeader` (nav, fila de upload, notificações, idioma, suporte) — o chrome do app que não serve à sessão de avaliação do coach.
 - **Mantém o essencial**: mesa, controles e o painel de decisão/informações; adiciona o **logo LeakLabs** no top bar do modo foco (presença de marca, já que o header some). Largura passa a usar a tela inteira (sem o cap `max-w-[1600px]`).

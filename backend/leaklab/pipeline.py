@@ -87,6 +87,8 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'board':            state.board or [],
             'nPlayers':         state.metadata.get('n_players'),  # tamanho da mesa
             'nActiveOpponents': state.metadata.get('n_active_opponents', 1),  # opps vivos na street
+            'preflopRaisesFaced': state.metadata.get('preflop_raises_faced', 0),  # 3-bet/squeeze faced
+            'heroWasAggressor':   state.metadata.get('hero_was_aggressor', False),
         },
         'hand_profile': hand_profile,
         'math': {

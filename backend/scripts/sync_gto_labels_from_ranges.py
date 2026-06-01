@@ -302,6 +302,8 @@ def _process_rows(rows: list[dict], conn, dry_run: bool = True, verbose: bool = 
                 vs_position=squeeze_op_pos or vs_pos,
                 is_3bet_pot=is_3bet,
                 caller_position=caller_pos,
+                facing_raises=int(r.get("preflop_raises_faced") or 0),
+                hero_was_aggressor=is_3bet,  # proxy DB-only (hero deu 3bet)
             )
         except Exception:
             skipped += 1
@@ -357,7 +359,7 @@ def sync_tournament(tournament_id: int) -> int:
     try:
         rows = conn.execute("""
             SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet,
-                   action_taken, best_action, hero_cards, vs_position
+                   action_taken, best_action, hero_cards, vs_position, preflop_raises_faced
             FROM decisions
             WHERE tournament_id = ?
               AND street = 'preflop'
@@ -400,7 +402,8 @@ def main():
 
     rows = conn.execute(
         f"SELECT id, hand_id, tournament_id, street, position, stack_bb, facing_bet, is_3bet, "
-        f"action_taken, best_action, hero_cards, vs_position, gto_label, gto_action FROM decisions {where}",
+        f"action_taken, best_action, hero_cards, vs_position, gto_label, gto_action, "
+        f"preflop_raises_faced FROM decisions {where}",
         params
     ).fetchall()
     rows = [dict(r) for r in rows]

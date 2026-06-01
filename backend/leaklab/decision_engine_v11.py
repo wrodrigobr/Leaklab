@@ -208,6 +208,8 @@ def _enrich_preflop_gto(input_data: Dict[str, Any]) -> dict:
             vs_position    = spot.get('villainPosition', ''),
             is_3bet_pot    = bool(input_data.get('is_3bet', False)),
             n_players      = spot.get('nPlayers'),
+            facing_raises      = int(spot.get('preflopRaisesFaced') or 0),
+            hero_was_aggressor = bool(spot.get('heroWasAggressor', False)),
         )
     except Exception as exc:
         _log_gto_miss('preflop', input_data.get('street'), spot.get('position'), str(exc)[:120])

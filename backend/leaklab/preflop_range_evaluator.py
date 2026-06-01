@@ -7,7 +7,14 @@ def evaluate_preflop_range(state: HandState, spot: SpotClassification) -> RangeE
     zone = _classify_range_zone(cards)
     facing_size = float(getattr(state, 'facing_size', 0) or 0)
     stack_bb    = float(getattr(state, 'effective_stack_bb', 0) or getattr(spot, 'effective_stack_bb', 0) or 0)
-    recommended = _recommended_action(cards, state.position, facing_size, stack_bb=stack_bb)
+    # Pote 3-bet/squeeze enfrentado a frio (≥2 raises de villains e hero não foi agressor):
+    # a lógica padrão "borderline → call (set-mine)" é p/ enfrentar UM 3-bet HU, não p/
+    # cold-call de squeeze OOP. Aqui só premiums (core) seguem; borderline folda.
+    md = getattr(state, 'metadata', {}) or {}
+    faces_3bet = (int(md.get('preflop_raises_faced', 0) or 0) >= 2
+                  and not bool(md.get('hero_was_aggressor', False)))
+    recommended = _recommended_action(cards, state.position, facing_size, stack_bb=stack_bb,
+                                      faces_3bet=faces_3bet)
     alternatives = []
     if zone == "borderline_range":
         base_alts = ["call", "fold"] if recommended == "call" else ["raise", "fold"]
@@ -43,7 +50,7 @@ def _classify_range_zone(cards: str) -> str:
 
 
 def _recommended_action(cards: str, position: str, facing_size: float = 0.0,
-                         stack_bb: float = 0.0) -> str:
+                         stack_bb: float = 0.0, faces_3bet: bool = False) -> str:
     """Recomenda ação preflop usando classificação por zona + posição + facing_size + stack.
 
     Regras críticas:
@@ -78,8 +85,10 @@ def _recommended_action(cards: str, position: str, facing_size: float = 0.0,
             # Em IP, premium pode 4-bet; OOP prefere call
             return "raise" if position not in {"BB", "SB", "UTG", "UTG+1", "UTG1"} else "call"
         if zone == "borderline_range":
-            # Borderline facing 3-bet: call (set-mine, implied odds) ou fold
-            return "call"
+            # Borderline facing 3-bet HU: call (set-mine, implied odds). MAS num
+            # pote 3-bet/squeeze enfrentado a frio (cold), borderline não tem preço
+            # — folda (evita "call 45s vs squeeze").
+            return "fold" if faces_3bet else "call"
         return "fold"
 
     # Sem facing ou facing pequeno (steal/limp): lógica RFI/vs_limp original

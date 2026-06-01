@@ -209,6 +209,20 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 villain_position = _infer_position(hand, a.player)
                 break
 
+        # Contexto de multi-raise preflop (3-bet/squeeze): conta raises de villains ANTES do
+        # hero e se o hero já foi agressor. >=2 raises sem o hero ter agredido = pote 3-bet/
+        # squeeze enfrentado a frio — o engine NÃO deve tratar como vs_RFI (defesa vs open).
+        preflop_raises_faced = 0
+        hero_was_aggressor = False
+        if street == 'preflop':
+            for a in actions_before:
+                if a.street != 'preflop' or a.action not in {'raises', 'all-in'}:
+                    continue
+                if a.player == hero:
+                    hero_was_aggressor = True
+                else:
+                    preflop_raises_faced += 1
+
         # Multiway: mais de 2 jogadores ativos na street atual
         active_in_street = set(
             a.player for a in hand.actions
@@ -247,6 +261,8 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'total_decisions': None,  # preenchido depois
                 'n_players': len(hand.players) if hand.players else None,  # tamanho da mesa
                 'n_active_opponents': n_active_opponents,
+                'preflop_raises_faced': preflop_raises_faced,
+                'hero_was_aggressor': hero_was_aggressor,
             },
         )
         states.append(state)

@@ -489,6 +489,9 @@ def _run_migrations(conn):
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS vs_position TEXT",
             # ICM leak detector: ICM tax (chip% − equity ICM%) na mesa final
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS icm_tax_pct REAL",
+            # Squeeze/3-bet fix: nº de raises de villains enfrentados pelo hero preflop
+            # (open=1, 3bet/squeeze=2…). Sinal durável p/ os syncs não tratarem squeeze como vs_RFI.
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS preflop_raises_faced INTEGER",
             # #15 leaderboard — opt-in/privacidade: aparecer no ranking público é consentido
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_handle TEXT",
@@ -984,6 +987,7 @@ def _run_migrations(conn):
             ("estimated_equity", "ALTER TABLE decisions ADD COLUMN estimated_equity REAL"),
             ("vs_position",      "ALTER TABLE decisions ADD COLUMN vs_position      TEXT"),
             ("icm_tax_pct",      "ALTER TABLE decisions ADD COLUMN icm_tax_pct      REAL"),
+            ("preflop_raises_faced", "ALTER TABLE decisions ADD COLUMN preflop_raises_faced INTEGER"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)
