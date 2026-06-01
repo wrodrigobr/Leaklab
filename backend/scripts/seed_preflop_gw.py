@@ -46,7 +46,9 @@ from leaklab import gto_wizard_client as gw  # noqa: E402
 
 SEED_DIR = BACKEND / "docs" / "gw_preflop_seed"
 NUM_PLAYERS = 9
-DEGRADED_GAPS = 15   # rajada de gaps consecutivos = servidor degradou → para limpo
+RECOVER_EVERY = 5    # a cada N gaps consecutivos → pausa de recuperação
+RECOVER_SLEEP = 90   # segundos de pausa pro servidor recuperar da janela transitória
+DEGRADED_GAPS = 20   # gaps consecutivos mesmo após as pausas → desiste (pede restart)
 DEFAULT_STACKS = [10, 14, 17, 20, 30, 40, 50, 75, 100]  # mesmos buckets do master
 
 
@@ -140,16 +142,22 @@ def walk(depth_bb: int, max_raises: int, min_freq: float,
             if not resp:
                 stats["failed"] += 1
                 stats["consec_gaps"] = stats.get("consec_gaps", 0) + 1
+                cg = stats["consec_gaps"]
                 fh_log(stats, f"  [gap] depth={depth_bb} pf={pf!r}")
-                # Detecção de degradação do servidor: gaps de no-solution genuíno
-                # são esparsos (intercalados com sucessos); uma RAJADA longa de gaps
-                # consecutivos = servidor degradou (precisa restart). Para limpo.
-                if stats["consec_gaps"] >= DEGRADED_GAPS:
-                    print(f"\n[!!] DEGRADACAO: {DEGRADED_GAPS} gaps consecutivos - servidor "
-                          f"precisa de restart (sudo systemctl restart leaklab-solver). "
-                          f"Parando (resume-safe).", flush=True)
+                # A degradação do servidor é TRANSITÓRIA (recupera sozinha em ~min).
+                # Uma rajada de gaps = janela ruim: pausa pra recuperar e continua,
+                # em vez de desistir. Só para de vez (pede restart) se persistir após
+                # várias pausas. Gaps de no-solution genuíno são esparsos (não acumulam).
+                if cg >= DEGRADED_GAPS:
+                    print(f"\n[!!] DEGRADACAO persistente ({cg} gaps mesmo após pausas) - "
+                          f"reinicie o servico (sudo systemctl restart leaklab-solver) e "
+                          f"re-rode. Parando (resume-safe).", flush=True)
                     stats["degraded"] = True
                     break
+                if cg % RECOVER_EVERY == 0:
+                    print(f"  ... {cg} gaps seguidos — pausa de {RECOVER_SLEEP}s pro "
+                          f"servidor recuperar (janela transitória)", flush=True)
+                    time.sleep(RECOVER_SLEEP)
                 continue
             rec = _node_record(pf, depth_bb, resp)
             fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
