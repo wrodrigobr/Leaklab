@@ -35,6 +35,13 @@ except Exception:
     pass
 os.environ.setdefault("GTO_WIZARD_ENABLED", "true")
 
+# stdout utf-8 (evita UnicodeEncodeError no redirect pra arquivo no Windows/cp1252)
+try:
+    if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf_8"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 from leaklab import gto_wizard_client as gw  # noqa: E402
 
 SEED_DIR = BACKEND / "docs" / "gw_preflop_seed"
@@ -138,7 +145,7 @@ def walk(depth_bb: int, max_raises: int, min_freq: float,
                 # são esparsos (intercalados com sucessos); uma RAJADA longa de gaps
                 # consecutivos = servidor degradou (precisa restart). Para limpo.
                 if stats["consec_gaps"] >= DEGRADED_GAPS:
-                    print(f"\n⚠️  DEGRADAÇÃO: {DEGRADED_GAPS} gaps consecutivos — servidor "
+                    print(f"\n[!!] DEGRADACAO: {DEGRADED_GAPS} gaps consecutivos - servidor "
                           f"precisa de restart (sudo systemctl restart leaklab-solver). "
                           f"Parando (resume-safe).", flush=True)
                     stats["degraded"] = True
