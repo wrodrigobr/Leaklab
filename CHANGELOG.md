@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(engine): guard de all-in comparava facing (fichas) com stack (bb) — rebaixava jam do GTO
+- A auditoria revelou 25 `major_mismatch` preflop onde o engine rebaixava o **`jam` recomendado pelo GTO** para `call`/`fold`. Causa: o guard "facing all-in" (`decision_engine_v11`) comparava `spot.facingSize` (em **fichas**) com `effectiveStackBb` (em **bb**) — ex.: facing 250 fichas tratado como 250bb >> stack 22bb → o guard disparava espúrio. Fix: converter o facing para bb via `context.levelBb` antes de comparar. O `bestAction` já era gto-first (linha 658); o guard é que o sabotava.
+- **Resultado** (auditoria sobre dado real): `major_mismatch` **25 → 6** (-76%), `aligned` 91,1% → **93,2%**. Os 6 restantes são edge cases de short-stack push/fold (oracle heurístico vs engine), não bugs.
+- **Sync de dado** (`scripts/sync_label_bestaction.py`): re-sincroniza `label`/`best_action` armazenados com o engine corrigido (66 decisões; sem tocar gto node-backed). 2 `label_gto_conflict` resultantes reconciliados via `_gto_label_cap`. Teste de regressão em `test_recent_regressions` (guard usa facing em bb; all-in genuíno ainda rebaixa).
+
 ## [v0.165.0] — 2026-06-01 — feat: Ranking de Alunos (#15) completo + auditoria de revalidação pré-produção + fixes preflop/GTO
 
 > Destaques: **#15 Ranking de Alunos** end-to-end (opt-in/privacidade, handle único, snapshots/delta + cron local, coach view, badges/streaks, hall of fame, docs); **auditoria de revalidação pré-produção** (drift vs armazenado + scanner de padrões); **fix grave** de classificação preflop (squeeze tratado como vs_RFI); **fix** do lookup postflop (hero_hand corrompido na ingestão de nós); modo foco/tela cheia no Replayer; UX em colunas (rating/leaderboard/docs). Suite: 739 testes.

@@ -249,6 +249,39 @@ def test_spot_hash_normalizes_hero_hand():
     print("OK  test_spot_hash_normalizes_hero_hand")
 
 
+# ── 10. guard de all-in usa facing em BB (facingSize está em fichas) ──────────
+def test_allin_guard_converts_facing_chips_to_bb():
+    from leaklab.decision_engine_v11 import evaluate_decision
+
+    def _di(level_bb, facing_chips):
+        return {
+            'hand_id': 'T', 'street': 'preflop', 'player_action': 'call',
+            'hero_cards': ['Kd', 'Kh'], 'is_3bet': True,
+            'spot': {'spotType': 'preflop', 'position': 'HJ', 'villainPosition': 'UTG+2',
+                     'isInPosition': True, 'isMultiway': False, 'effectiveStackBb': 22.0,
+                     'potSize': facing_chips, 'facingSize': facing_chips, 'raiseSizeBb': facing_chips,
+                     'board': [], 'nPlayers': 9, 'nActiveOpponents': 1,
+                     'preflopRaisesFaced': 1, 'heroWasAggressor': False},
+            'hand_profile': {'handClass': 'premium', 'showdownValueTier': 'strong',
+                             'drawTier': 'none', 'blockerProfile': [], 'rawEquityEstimate': 0.8,
+                             'realizedEquityEstimate': 0.8},
+            'math': {'potOddsEquity': 0.3, 'estimatedHandEquity': 0.8, 'rawEquity': 0.8,
+                     'drawProfile': 'none', 'equityAdjustment': 0.0, 'impliedOddsFactor': 1.0,
+                     'reverseImpliedOddsFactor': 1.0, 'pressureScore': 0.5},
+            'range_evaluation': {'recommendedPrimaryAction': 'call',
+                                 'alternativeActions': ['call', 'fold'], 'rangeZone': 'core_range',
+                                 'confidence': 0.7, 'mixWeight': 0.05},
+            'context': {'tournamentStage': 'early', 'icmPressure': 'medium', 'bountyDynamic': False,
+                        'isPko': False, 'readsAvailable': False, 'heroStackBb': 22.0,
+                        'levelBb': level_bb},
+        }
+    # facing 250 fichas com bb=250 = 1bb: o guard NÃO dispara → honra o jam do GTO.
+    assert evaluate_decision(_di(250.0, 250.0)).get('bestAction') == 'jam'
+    # facing 2300 fichas com bb=100 = 23bb >= stack 22bb: all-in genuíno → downgrade.
+    assert evaluate_decision(_di(100.0, 2300.0)).get('bestAction') != 'jam'
+    print("OK  test_allin_guard_converts_facing_chips_to_bb")
+
+
 # ── Runner ──────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

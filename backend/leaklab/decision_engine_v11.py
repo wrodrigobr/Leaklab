@@ -688,7 +688,12 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # Guard: facing all-in que cobre o hero — raise é impossível. Cai pra call/fold
     # baseado em equity vs required. Cobre o bug onde engine sugeria 'raise' em
     # spots multi-all-in ou facing shove cobrindo o stack do hero.
-    _facing_bb = float(spot.get('facingSize') or 0)
+    # IMPORTANTE: spot.facingSize está em FICHAS; effectiveStackBb em BB. Converter
+    # o facing para bb via levelBb antes de comparar (sem isso o guard disparava
+    # espúrio — ex.: facing 250 fichas tratado como 250bb — e rebaixava jam do GTO).
+    _facing_chips = float(spot.get('facingSize') or 0)
+    _bb_chips = float(input_data.get('context', {}).get('levelBb') or 0)
+    _facing_bb = (_facing_chips / _bb_chips) if _bb_chips > 0 else 0.0
     _hero_stack_bb = float(spot.get('effectiveStackBb') or input_data.get('context', {}).get('heroStackBb') or 0)
     if (_best_action in ('raise', 'jam') and _facing_bb > 0 and _hero_stack_bb > 0
             and _facing_bb >= _hero_stack_bb * 0.95):
