@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+## [v0.166.0] — 2026-06-01 — fix(engine): guard de all-in (unidades fichas×bb) — destrava jam do GTO
+
+> Pós-auditoria pré-produção (dado real, seed fake removido): corrige o guard de all-in que comparava `facingSize` (fichas) com `effectiveStackBb` (bb) e rebaixava o `jam` recomendado pelo GTO. Auditoria: `major_mismatch` 25 → 6, `aligned` 91,1% → 93,2%.
+
 ### fix(engine): guard de all-in comparava facing (fichas) com stack (bb) — rebaixava jam do GTO
 - A auditoria revelou 25 `major_mismatch` preflop onde o engine rebaixava o **`jam` recomendado pelo GTO** para `call`/`fold`. Causa: o guard "facing all-in" (`decision_engine_v11`) comparava `spot.facingSize` (em **fichas**) com `effectiveStackBb` (em **bb**) — ex.: facing 250 fichas tratado como 250bb >> stack 22bb → o guard disparava espúrio. Fix: converter o facing para bb via `context.levelBb` antes de comparar. O `bestAction` já era gto-first (linha 658); o guard é que o sabotava.
 - **Resultado** (auditoria sobre dado real): `major_mismatch` **25 → 6** (-76%), `aligned` 91,1% → **93,2%**. Os 6 restantes são edge cases de short-stack push/fold (oracle heurístico vs engine), não bugs.
