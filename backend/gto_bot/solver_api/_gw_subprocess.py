@@ -101,7 +101,17 @@ def _do_fetch(browser, req: dict) -> dict:
             pass
         return np_
 
+    seen_urls = []  # DIAGNÓSTICO: todas as URLs de API que a SPA dispara
+
+    def _collect(resp):
+        try:
+            if api_path in resp.url:
+                seen_urls.append(resp.url)
+        except Exception:
+            pass
+
     def _navigate(page):
+        page.on("response", _collect)
         with page.expect_response(matcher, timeout=timeout_s * 1000) as resp_info:
             page.goto(app_url, timeout=timeout_s * 1000, wait_until="commit")
         return resp_info.value
@@ -136,12 +146,15 @@ def _do_fetch(browser, req: dict) -> dict:
             response = _navigate(target_page)
         except PWTimeout:
             _warm_clean(target_page)
-            return {"ok": False, "error": "timeout_waiting_api_response"}
+            return {"ok": False, "error": "timeout_waiting_api_response",
+                    "app_url": app_url, "seen": seen_urls[-8:]}
         except Exception as e:
             _warm_clean(target_page)
-            return {"ok": False, "error": f"navigate:{e}"}
+            return {"ok": False, "error": f"navigate:{e}",
+                    "app_url": app_url, "seen": seen_urls[-8:]}
     except Exception as e:
-        return {"ok": False, "error": f"navigate:{e}"}
+        return {"ok": False, "error": f"navigate:{e}",
+                "app_url": app_url, "seen": seen_urls[-8:]}
 
     # Pegou o redirect pro Cash → spot MTT sem solução; retorna rápido (sem esperar timeout).
     if is_cash_fallback(response):

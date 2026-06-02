@@ -1103,10 +1103,12 @@ def query_gto_wizard_raw(spot: dict) -> dict:
             _set_auth_failed("Token expirado (HTTP 401 in-page)")
             return {"found": False, "error": "auth_expired"}
         if status in (204, 404):
-            return {"found": False, "error": f"no_solution_{status}", "params": api_params}
+            return {"found": False, "error": f"no_solution_{status}", "params": api_params,
+                    "app_url": fetched.get("app_url"), "seen": fetched.get("seen")}
         return {"found": False,
                 "error": fetched.get("error") or f"http_{status}",
                 "params": api_params,
+                "app_url": fetched.get("app_url"), "seen": fetched.get("seen"),
                 "body": fetched.get("json") if isinstance(fetched.get("json"), str) else None}
 
     data = fetched.get("json")
