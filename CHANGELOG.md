@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs(specs): pasta `docs/specs/` (contratos/invariantes) + `test_invariants.py`
+
+> Base de proteção contra regressão: `docs/specs/` consolida os **contratos** do sistema (README com a filosofia "spec é contrato, não prosa", architecture, invariants, preflop-gto, gto-capture, decision-pipeline, glossary). O documento central `invariants.md` lista os **9 invariantes que nunca podem quebrar** (roteamento preflop, reconciliação label↔gto, NULL honesto, depths válidos, history_spot, sizing 3bet, deploy /opt, cegueira ao sizing do open, hero_won_hand) — cada um amarrado a um teste. Novo `backend/tests/test_invariants.py` (suite engine) guarda 5 invariantes code-testáveis (incl. o que pegaria o bug "call vs squeeze"). Backlog #23 registrado (vereditos sensíveis ao tamanho do open).
+
 ### fix(replay): rótulo do cenário `faces_squeeze` cru + auditoria do bug de squeeze
 
 > O Replayer mostrava "Cenário **faces_squeeze**" (chave interna crua) porque os mapas de rótulo (`scenarioLabel` em `Replayer.tsx`, `SCENARIO_LABEL`/`SCENARIO_TO_TYPE` em `RangePanel.tsx`, e o standalone `leaklab-replayer-v3.html`) não tinham `faces_squeeze` nem `squeeze` → caíam no fallback que exibe a chave. Adicionados: `faces_squeeze`→"vs Squeeze", `squeeze`→"Squeeze", `vs_shove_fallback`→"vs Shove" (termos de poker em inglês, como "vs Open"/"vs 3-Bet"); `SCENARIO_TO_TYPE` mapeia faces_squeeze→'call' (defesa) e squeeze→'3bet'. **Auditoria do fix de squeeze anterior**: dos **40** spots `faces_squeeze` em 5 torneios, **18** o display divergia e **14 eram GRAVES** (correto=fold, mas o Replayer sugeria call/raise — ex.: `T4o BB vs BTN`, `54o`, `Q8o`, `K8o`). Todos resolvidos pelo fix dos 4 call sites; vereditos gravados sempre corretos.
