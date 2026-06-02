@@ -83,7 +83,10 @@ def build_canonical_pf(scenario: str, hero: str, vs: str, threebet: str = _THREE
         acts[v] = threebet
         if h < v:
             acts[h] = _CALL
-            return "-".join(acts)
+            # Hero deu cold-call ANTES do squeeze. No wrap, o OPENER responde primeiro
+            # (não o hero); sem o fold do opener o GW devolve hero=opener e o spot é
+            # keyado errado. Anexa o fold do opener → o cold-caller (hero) é o próximo.
+            return "-".join(acts) + "-" + _FOLD
         return "-".join(acts[:h])
     return None
 

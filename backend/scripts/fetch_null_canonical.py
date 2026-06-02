@@ -92,7 +92,9 @@ def build_pf(scen: str, hero: str, vs: str, threebet: str = THREEBET):
         acts[v] = threebet
         if h < v:                        # hero deu cold-call antes do squeeze → enfrenta no wrap
             acts[h] = CALL
-            return "-".join(acts)
+            # No wrap o OPENER responde primeiro; sem o fold dele o GW devolve
+            # hero=opener (spot keyado errado). Anexa o fold → cold-caller é o next.
+            return "-".join(acts) + "-" + FOLD
         return "-".join(acts[:h])        # hero depois do 3bettor → enfrenta direto (trunca)
     return None
 
