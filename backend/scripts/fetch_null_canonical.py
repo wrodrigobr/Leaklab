@@ -162,20 +162,60 @@ def collect_pairs():
     return pairs
 
 
+def _wait_healthy(max_wait=120):
+    """Espera o box 1-core/1GB voltar a ficar SAUDÁVEL antes do próximo spot: um
+    no-solution pina a única CPU e degrada os fetches seguintes (cascata). Faz poll
+    de RFI até ela voltar RÁPIDA (<12s = box ok) ou até max_wait. Cada poll também
+    exercita a auto-cura do servidor (que recupera a página presa). Garante que cada
+    spot real seja buscado num box saudável — troca velocidade por confiabilidade."""
+    spent = 0.0
+    while spent < max_wait:
+        t = time.time()
+        r = gw.query_spot_raw(preflop_actions="", num_players=9, depth_bb=30,
+                              include_strategy=False, timeout=40, use_cache=False)
+        dt = time.time() - t
+        spent += dt
+        if r and r.get("found") and dt < 12:
+            return True
+        time.sleep(2); spent += 2
+    return False
+
+
+def _fetch_one(pf, depth):
+    """Uma tentativa gentil. Spot solúvel resolve em ~8s com o box saudável;
+    timeout 24s corta no-solution genuíno. Sem warmup (que só adiciona carga ao
+    box 1-core/1GB); o pacing entre spots é quem mantém a saúde."""
+    r = gw.query_spot_raw(preflop_actions=pf, num_players=9, depth_bb=depth,
+                          include_strategy=True, timeout=24, use_cache=False)
+    if r and r.get("found") and r.get("hand_freqs"):
+        return r
+    return None
+
+
+def _depth_rank(bk):
+    """Ordena por profundidade DESCENDENTE — spots profundos (mais prováveis de ter
+    open+3bet+fold solúvel) primeiro, enquanto o box está fresco; os 10/14bb rasos
+    (quase só jam/fold = no-solution que jamma) ficam por último."""
+    return -BUCKET_DEPTH.get(bk, 20)
+
+
 def main():
     pairs = collect_pairs()
     print(f"Pares cobríveis: {len(pairs)} (cobrindo {sum(pairs.values())} decisões NULL)\n")
+    _wait_healthy()  # garante servidor saudável no início
     out = {}; ok = miss = skip = badhero = 0
-    for (bk, scen, hero, vs), cnt in sorted(pairs.items()):
+    ordered = sorted(pairs.items(), key=lambda kv: (_depth_rank(kv[0][0]), kv[0][1], kv[0][2]))
+    for (bk, scen, hero, vs), cnt in ordered:
         pf = build_pf(scen, hero, vs)
         if pf is None:
             print(f"  SKIP   {bk:>5} {scen:<13} {hero:>5} vs {vs:<5} (estruturalmente impossível) x{cnt}")
             skip += 1
             continue
         depth = BUCKET_DEPTH.get(bk, 20)
-        r = gw.query_spot_raw(preflop_actions=pf, num_players=9, depth_bb=depth,
-                              include_strategy=True, timeout=30, use_cache=False)
-        time.sleep(0.2)
+        r = _fetch_one(pf, depth)
+        healthy = _wait_healthy()   # recupera o box antes do próximo spot
+        if not healthy:
+            print(f"  [box degradado — _wait_healthy estourou; seguindo]", flush=True)
         if not (r and r.get("found") and r.get("hand_freqs")):
             print(f"  MISS   {bk:>5} {scen:<13} {hero:>5} vs {vs:<5} pf={pf:<30} (GW sem solução) x{cnt}")
             miss += 1
