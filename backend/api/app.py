@@ -569,6 +569,24 @@ def _analyze_impl():
         name='gw-multiway-warmup',
     ).start()
 
+    # Auto-capture ON-DEMAND de spots preflop NULL cobríveis (faces_squeeze/vs_3bet/
+    # vs_rfi): busca o spot CANÔNICO no GTO Solver, injeta no master de ranges e
+    # re-grada as decisões — fecha os NULLs organicamente conforme spots recorrem.
+    # Tracking evita re-buscar no-solution genuíno; fast-fail não trava o servidor.
+    def _autocapture_preflop(tid: int):
+        try:
+            from leaklab.preflop_autocapture import run_autocapture
+            run_autocapture(tid)
+        except Exception as _e:
+            _log.warning("autocapture preflop FAILED tournament_id=%s err=%s", tid, _e)
+
+    threading.Thread(
+        target=_autocapture_preflop,
+        args=(t_db_id,),
+        daemon=True,
+        name='preflop-autocapture',
+    ).start()
+
     # Recalcula ELO do user — processa todas as decisoes em ordem cronologica.
     # Snapshot inserido em player_elo_history. Idempotente (snapshot novo a
     # cada upload, gera serie temporal pro grafico de evolucao).
