@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs(/docs): nota de cobertura preflop GTO (~95%) na seção de metodologia
+
+> Adicionado parágrafo `gto_method.coverage` (3 locales pt-BR/en/es) na seção "Metodologia de Classificação GTO" do /docs: explica, em nível de **conceito**, que ~95% das decisões pré-flop padrão recebem veredicto GTO e que o que fica de fora (potes limpados, linhas não-padrão) aparece sem classificação — sem expor internos (sizings, snap de depth, etc.). Reflete o fechamento do preflop desta sessão (91,7%→95,1%).
+
 ### fix(preflop-gto): 3bet-shove (RAI) em stacks rasos → cobertura preflop 92,8%→94,4%
 
 > Em stacks RASOS (10/14/20bb, e alguns 30/50bb) o 3bet/squeeze é um SHOVE (`RAI`), não um raise `R6` — o nó com `R6` **não existe** na árvore rasa do GTO Solver (`R2-...-R6-F` a 10bb = no-solution; `R2-...-RAI-F` resolve com 169 mãos). Os MISS de stack raso do backfill eram disso, não gap genuíno do GW. Fix em `build_canonical_pf`/`build_pf` (autocapture + `fetch_null_canonical`): o token do 3bet é parametrizado e tentado na ordem do bucket (`RAI` primeiro nos rasos, `R6` nos fundos) com fallback pro outro. Re-run do backfill: **OK 6→13** (só 3 MISS), +12 faces_squeeze no master → **+14 decisões fechadas, cobertura 92,8%→94,4%** (49 NULLs). O re-grade por ORDEM dentro da mão fechou +2 que o resync `(hand_id,action)` pulava (ambíguos). 0 conflito mantido. Descoberto por reprodução manual do usuário (URL com `RAI` resolvendo a 10bb).

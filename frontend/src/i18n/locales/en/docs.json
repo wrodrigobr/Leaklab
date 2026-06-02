@@ -163,7 +163,8 @@
     "col_bucket": "Reference stack",
     "col_bb_range": "Effective stack covered",
     "p2": "The system <strong>does not display preflop GTO analysis</strong> when it can't identify the opponent's position in the hand history, or when the pot is a 3-bet without an identified opener. In these cases the hand review shows only the postflop analysis (equity + pot odds). <strong>Known SB limitation</strong>: for some stack depths (10bb, 40bb, 75bb) the model only covers fold/raise for the SB. In those spots, completing (limping) with a hand outside the opening range is treated as <em>acceptable</em> — not a mistake — because GTO strategy completes about 53% of SB hands, behavior the simplified model doesn't represent.",
-    "p3": "System guarantee: <strong>we never display contradictory recommendations</strong>. The verdict shown on the main dashboard and in the hand review is always the same — both views are kept in sync automatically."
+    "p3": "System guarantee: <strong>we never display contradictory recommendations</strong>. The verdict shown on the main dashboard and in the hand review is always the same — both views are kept in sync automatically.",
+    "coverage": "<strong>Coverage</strong>: about <strong>95% of standard preflop decisions</strong> receive a GTO verdict. What's left out are situations with no reference solution — limped pots (when nobody raises) and non-standard lines — which appear <strong>without a GTO classification</strong>, and count neither as correct nor as a mistake."
   },
   "alignment_matrix": {
     "title": "Position × Street Heatmap",

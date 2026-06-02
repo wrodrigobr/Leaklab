@@ -163,7 +163,8 @@
     "col_bucket": "Stack de referência",
     "col_bb_range": "Stack efetivo abrangido",
     "p2": "O sistema <strong>não exibe análise GTO pré-flop</strong> quando não consegue identificar a posição do oponente no histórico da mão, ou quando o pote é um 3-bet sem identificar quem abriu. Nesses casos, a revisão da mão mostra apenas a análise pós-flop (equity + pot odds). <strong>Limitação conhecida no SB</strong>: em algumas profundidades de stack (10bb, 40bb, 75bb) o modelo cobre apenas fold/raise para o SB. Nesses spots, completar (limp) com uma mão fora da faixa de abertura é tratado como <em>aceitável</em> — não como erro — porque a estratégia GTO completa cerca de 53% das mãos do SB, comportamento que o modelo simplificado não representa.",
-    "p3": "Garantia do sistema: <strong>nunca exibimos recomendações contraditórias</strong>. O veredicto mostrado no painel principal e na revisão de mãos é sempre o mesmo — as duas telas são mantidas em sincronia automaticamente."
+    "p3": "Garantia do sistema: <strong>nunca exibimos recomendações contraditórias</strong>. O veredicto mostrado no painel principal e na revisão de mãos é sempre o mesmo — as duas telas são mantidas em sincronia automaticamente.",
+    "coverage": "<strong>Cobertura</strong>: cerca de <strong>95% das decisões pré-flop padrão</strong> recebem um veredicto GTO. O que fica de fora são situações sem solução de referência — potes limpados (quando ninguém aumenta) e linhas fora do padrão — que aparecem <strong>sem classificação GTO</strong>, e não contam como acerto nem como erro."
   },
   "alignment_matrix": {
     "title": "Heatmap Posição × Street",

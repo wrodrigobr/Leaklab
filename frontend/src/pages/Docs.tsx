@@ -278,6 +278,7 @@ export default function Docs() {
               />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p3") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("gto_method.coverage") }} />
             </Section>
 
             {/* Alignment Matrix (Heatmap posição × street) */}
