@@ -120,7 +120,8 @@ def _count_aggr(pf: str) -> int:
 
 
 def walk(depth_bb: int, max_raises: int, min_freq: float,
-         done: dict, fh, stats: dict, limit: int = 0, max_calls: int = 2) -> None:
+         done: dict, fh, stats: dict, limit: int = 0, max_calls: int = 2,
+         fetch_delay: float = 0.0) -> None:
     """BFS na árvore preflop (FIFO → nós rasos/comuns primeiro). Começa no RFI
     (UTG, pf vazio) e desce pelas ações que continuam a mão, com os codes exatos
     do GW. `done` = cache pf→registro (resume: nós já buscados expandem instantâneo,
@@ -139,6 +140,8 @@ def walk(depth_bb: int, max_raises: int, min_freq: float,
         rec = done.get(pf)
         if rec is None:                      # nó novo → busca no GW
             resp = fetch_node(pf, depth_bb)
+            if fetch_delay:                  # rate-limit: espaça os spawns de
+                time.sleep(fetch_delay)      # subprocesso (evita pile-up de drivers)
             if not resp:
                 stats["failed"] += 1
                 stats["consec_gaps"] = stats.get("consec_gaps", 0) + 1
@@ -207,6 +210,7 @@ def main():
     ap.add_argument("--max-calls", type=int, default=2, help="cap de callers na linha (poda multiway)")
     ap.add_argument("--min-freq", type=float, default=0.005)
     ap.add_argument("--limit", type=int, default=0, help="cap de nós por stack (0=sem limite)")
+    ap.add_argument("--fetch-delay", type=float, default=0.0, help="seg entre fetches (rate-limit anti-degradação)")
     args = ap.parse_args()
 
     SEED_DIR.mkdir(parents=True, exist_ok=True)
@@ -241,7 +245,7 @@ def main():
         stats = {"nodes": 0, "failed": 0}
         with open(out_path, "a", encoding="utf-8") as fh:
             walk(depth_bb, max_raises, args.min_freq, done, fh, stats,
-                 limit=args.limit, max_calls=args.max_calls)
+                 limit=args.limit, max_calls=args.max_calls, fetch_delay=args.fetch_delay)
         print(f"  {depth_bb}bb done: +{stats['nodes']} nós novos, {stats['failed']} gaps "
               f"(total no arquivo: {len(done)})")
         grand["nodes"] += stats["nodes"]; grand["failed"] += stats["failed"]
