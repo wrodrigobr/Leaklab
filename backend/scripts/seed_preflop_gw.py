@@ -46,9 +46,9 @@ from leaklab import gto_wizard_client as gw  # noqa: E402
 
 SEED_DIR = BACKEND / "docs" / "gw_preflop_seed"
 NUM_PLAYERS = 9
-RECOVER_EVERY = 5    # a cada N gaps consecutivos → pausa de recuperação
-RECOVER_SLEEP = 90   # segundos de pausa pro servidor recuperar da janela transitória
-DEGRADED_GAPS = 20   # gaps consecutivos mesmo após as pausas → desiste (pede restart)
+PROBE_EVERY = 4       # a cada N gaps consecutivos → probe RFI root (destrava a página
+                      # se caiu no default Cash de um spot MTT sem solução)
+MAX_FAILED_PROBES = 4 # probes do root falhando seguidos = degradação/contenção real → para
 DEFAULT_STACKS = [10, 14, 17, 20, 30, 40, 50, 75, 100]  # mesmos buckets do master
 
 
@@ -147,24 +147,27 @@ def walk(depth_bb: int, max_raises: int, min_freq: float,
                 stats["consec_gaps"] = stats.get("consec_gaps", 0) + 1
                 cg = stats["consec_gaps"]
                 fh_log(stats, f"  [gap] depth={depth_bb} pf={pf!r}")
-                # Rajada de gaps pode ser: (a) CLUSTER de no-solution genuíno (caminhos
-                # de árvore que o GW não modela, ex.: SB-limp/min-raise a 10bb → timeout),
-                # ou (b) degradação REAL do servidor. Distingue com um PROBE do RFI root
-                # (sempre solúvel): root responde → cluster, continua; root falha → degradação.
-                if cg >= DEGRADED_GAPS:
+                # Um spot MTT sem solução faz o GW cair no default Cash, que TRAVA a
+                # página e bloqueia os próximos fetches (cascata de gaps). A cada N gaps,
+                # fetch do RFI root (sempre solúvel): navega pra um spot MTT válido e
+                # DESTRAVA a página. Root OK → era no-solution, continua. Root falha N
+                # vezes seguidas → degradação/contenção real → para.
+                if cg % PROBE_EVERY == 0:
                     probe = gw.query_spot_raw(preflop_actions="", num_players=NUM_PLAYERS,
                                               depth_bb=depth_bb, include_strategy=True,
                                               timeout=60, use_cache=False)
                     if probe and probe.get("found"):
-                        print(f"  ... {cg} gaps mas RFI root OK — cluster de no-solution "
-                              f"(caminhos invalidos), continuando", flush=True)
-                        stats["consec_gaps"] = 0
+                        stats["failed_probes"] = 0
+                        stats["consec_gaps"] = 0   # página destravada, segue
                         continue
-                    print(f"\n[!!] DEGRADACAO: {cg} gaps E RFI root falhou - reinicie o "
-                          f"servico (sudo systemctl restart leaklab-solver) e re-rode. "
-                          f"Parando (resume-safe).", flush=True)
-                    stats["degraded"] = True
-                    break
+                    stats["failed_probes"] = stats.get("failed_probes", 0) + 1
+                    if stats["failed_probes"] >= MAX_FAILED_PROBES:
+                        print(f"\n[!!] DEGRADACAO/CONTENCAO real (RFI root falhou "
+                              f"{stats['failed_probes']}x) - pare backends app.py e/ou "
+                              f"reinicie leaklab-solver, depois re-rode. Parando (resume-safe).",
+                              flush=True)
+                        stats["degraded"] = True
+                        break
                 continue
             rec = _node_record(pf, depth_bb, resp)
             fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
@@ -187,6 +190,10 @@ def walk(depth_bb: int, max_raises: int, min_freq: float,
             is_aggr = typ in ("RAISE", "ALLIN")
             if is_aggr and nr + 1 > max_raises:
                 continue                      # corta 5bet+ wars
+            if typ == "ALLIN" and nc >= 1:
+                # jam quando já há caller = pote multiway all-in que o GW MTT NÃO
+                # resolve → o app cai no default Cash e trava a página. Não expande.
+                continue
             if typ == "CALL":
                 # Poda multiway: o GW MTTGeneralV2 não resolve potes multiway
                 # profundos. Limita callers e não expande call DE all-in (vira
