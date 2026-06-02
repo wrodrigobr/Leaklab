@@ -33,22 +33,26 @@ def _do_fetch(browser, req: dict) -> dict:
     contexts = browser.contexts
     if not contexts:
         return {"ok": False, "error": "no_browser_context"}
-    target_page = None
-    for ctx in contexts:
-        for p in ctx.pages:
+    # HIGIENE DE ABA: diagnóstico provou que spots SOLÚVEIS em sequência ficam
+    # rápidos (~8s) — só os NO-SOLUTION deixam a aba presa, e a seleção antiga
+    # ("primeira aba gtowizard") reusava essa aba presa, contaminando os fetches
+    # seguintes (cascata que parecia degradação de recurso, mas a VM é 4 vCPU/16GB).
+    # Correção: abre UMA aba fresca por fetch e fecha as gtowizard antigas/presas.
+    # Cada fetch começa limpo, sem carryover. Auth é do contexto (cookies/localStorage),
+    # persiste ao trocar de aba (GW_AUTH_REFRESH=0 → sem dependência de aba viva).
+    try:
+        target_page = contexts[0].new_page()
+    except Exception as e:
+        return {"ok": False, "error": f"new_page:{e}"}
+    for c in contexts:
+        for p in list(c.pages):
+            if p is target_page:
+                continue
             try:
                 if "gtowizard.com" in (p.url or ""):
-                    target_page = p
-                    break
+                    p.close()
             except Exception:
-                continue
-        if target_page:
-            break
-    if target_page is None:
-        try:
-            target_page = contexts[0].new_page()
-        except Exception as e:
-            return {"ok": False, "error": f"new_page:{e}"}
+                pass
 
     essential = ("gametype", "depth", "preflop_actions", "flop_actions",
                  "turn_actions", "river_actions", "board")
