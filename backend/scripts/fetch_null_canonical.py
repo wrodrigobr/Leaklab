@@ -52,10 +52,18 @@ SEAT = {p: i for i, p in enumerate(SEATS)}
 BUCKET_DEPTH = {"10bb": 10, "14bb": 14, "17bb": 17, "20bb": 20, "30bb": 30,
                 "40bb": 40, "50bb": 50, "75bb": 75, "100bb": 100}
 OPEN, THREEBET, CALL, FOLD = "R2", "R6", "C", "F"
+# Em stacks RASOS o 3bet é shove (RAI), não R6 — o nó R6 não existe na árvore rasa
+# do GW (10bb R2-...-R6-F = no-solution; R2-...-RAI-F resolve). Ordem por bucket.
+THREEBET_ORDER = {
+    "10bb": ["RAI", "R6"], "14bb": ["RAI", "R6"], "17bb": ["RAI", "R6"],
+    "20bb": ["RAI", "R6"], "30bb": ["R6", "RAI"], "40bb": ["R6", "RAI"],
+    "50bb": ["R6", "RAI"], "75bb": ["R6", "RAI"], "100bb": ["R6", "RAI"],
+}
 
 
-def build_pf(scen: str, hero: str, vs: str):
-    """Constrói o preflop_actions canônico; None se estruturalmente impossível."""
+def build_pf(scen: str, hero: str, vs: str, threebet: str = THREEBET):
+    """Constrói o preflop_actions canônico; None se estruturalmente impossível.
+    `threebet` = token do 3bet (R6 ou RAI) — RAI cobre o squeeze-shove raso."""
     if hero not in SEAT or vs not in SEAT:
         return None
     h, v = SEAT[hero], SEAT[vs]
@@ -72,7 +80,7 @@ def build_pf(scen: str, hero: str, vs: str):
             return None
         acts = [FOLD] * 9
         acts[h] = OPEN
-        acts[v] = THREEBET
+        acts[v] = threebet
         return "-".join(acts)            # orbita cheia; hero enfrenta no wrap
     if scen == "faces_squeeze":
         cand = [s for s in range(v) if s != h]   # opener antes do 3bettor, != hero
@@ -81,7 +89,7 @@ def build_pf(scen: str, hero: str, vs: str):
         opener = cand[0]
         acts = [FOLD] * 9
         acts[opener] = OPEN
-        acts[v] = THREEBET
+        acts[v] = threebet
         if h < v:                        # hero deu cold-call antes do squeeze → enfrenta no wrap
             acts[h] = CALL
             return "-".join(acts)
@@ -209,14 +217,24 @@ def main():
     out = {}; ok = miss = skip = badhero = 0
     ordered = sorted(pairs.items(), key=lambda kv: (_depth_rank(kv[0][0]), kv[0][1], kv[0][2]))
     for (bk, scen, hero, vs), cnt in ordered:
-        pf = build_pf(scen, hero, vs)
-        if pf is None:
+        depth = BUCKET_DEPTH.get(bk, 20)
+        # tenta os sizings de 3bet na ordem do bucket (RAI raso / R6 fundo)
+        codes = ["R6"] if scen == "vs_rfi" else THREEBET_ORDER.get(bk, ["R6", "RAI"])
+        r = None; pf = None; built = False
+        for code in codes:
+            pf = build_pf(scen, hero, vs, threebet=code)
+            if pf is None:
+                continue
+            built = True
+            r = _fetch_one(pf, depth)
+            time.sleep(2)   # pacing leve; o fast-fail já evita a cascata
+            if r and r.get("found") and r.get("hand_freqs"):
+                break
+            r = None
+        if not built:
             print(f"  SKIP   {bk:>5} {scen:<13} {hero:>5} vs {vs:<5} (estruturalmente impossível) x{cnt}")
             skip += 1
             continue
-        depth = BUCKET_DEPTH.get(bk, 20)
-        r = _fetch_one(pf, depth)
-        time.sleep(2)   # pacing leve; o fast-fail já evita a cascata (sem _wait_healthy)
         if not (r and r.get("found") and r.get("hand_freqs")):
             print(f"  MISS   {bk:>5} {scen:<13} {hero:>5} vs {vs:<5} pf={pf:<30} (GW sem solução) x{cnt}")
             miss += 1

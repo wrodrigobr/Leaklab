@@ -43,8 +43,19 @@ _OPEN, _THREEBET, _CALL, _FOLD = "R2", "R6", "C", "F"
 _write_lock = threading.Lock()
 
 
-# ── construção do pf canônico (espelha fetch_null_canonical.build_pf) ─────────
-def build_canonical_pf(scenario: str, hero: str, vs: str):
+# Em stacks RASOS o 3bet/squeeze é um SHOVE (RAI), não um raise R6 — o nó com R6
+# não existe na árvore do GW (ex.: 10bb `R2-...-R6-F` = no-solution, mas
+# `R2-...-RAI-F` resolve com 169 mãos). Ordem de tentativa do 3bet por bucket.
+_3BET_ORDER = {
+    "10bb": ["RAI", "R6"], "14bb": ["RAI", "R6"], "17bb": ["RAI", "R6"],
+    "20bb": ["RAI", "R6"], "30bb": ["R6", "RAI"], "40bb": ["R6", "RAI"],
+    "50bb": ["R6", "RAI"], "75bb": ["R6", "RAI"], "100bb": ["R6", "RAI"],
+}
+
+
+def build_canonical_pf(scenario: str, hero: str, vs: str, threebet: str = _THREEBET):
+    """pf canônico por posições. `threebet` = token do 3bet/squeeze (R6 ou RAI),
+    parametrizado pra cobrir o shove raso. vs_rfi não tem 3bet (ignora)."""
     if hero not in _SEAT or vs not in _SEAT:
         return None
     h, v = _SEAT[hero], _SEAT[vs]
@@ -61,7 +72,7 @@ def build_canonical_pf(scenario: str, hero: str, vs: str):
             return None
         acts = [_FOLD] * 9
         acts[h] = _OPEN
-        acts[v] = _THREEBET
+        acts[v] = threebet
         return "-".join(acts)
     if scenario == "faces_squeeze":
         cand = [s for s in range(v) if s != h]
@@ -69,7 +80,7 @@ def build_canonical_pf(scenario: str, hero: str, vs: str):
             return None
         acts = [_FOLD] * 9
         acts[cand[0]] = _OPEN
-        acts[v] = _THREEBET
+        acts[v] = threebet
         if h < v:
             acts[h] = _CALL
             return "-".join(acts)
@@ -196,34 +207,45 @@ def _mark(conn, key, scen, hero, vs, bucket, status, attempts):
 
 # ── captura de UM spot → injeta no master ────────────────────────────────────
 def capture_one(scenario: str, hero: str, vs: str, bucket: str) -> str:
-    """Retorna: captured / no_solution / impossible / error."""
-    pf = build_canonical_pf(scenario, hero, vs)
-    if pf is None:
-        return "impossible"
+    """Retorna: captured / no_solution / impossible / error. Tenta os sizings de
+    3bet na ordem do bucket (RAI raso / R6 fundo) com fallback pro outro."""
     depth = _BUCKET_DEPTH.get(bucket, 20)
-    try:
-        r = gw.query_spot_raw(preflop_actions=pf, num_players=9, depth_bb=depth,
-                              include_strategy=True, timeout=30, use_cache=True,
-                              snap_raises=False, fetch_timeout=15)
-    except Exception as e:
-        log.info("autocapture: erro no fetch %s/%s vs %s @%s: %s", scenario, hero, vs, bucket, e)
-        return "error"
-    if not (r and r.get("found") and r.get("hand_freqs")):
-        return "no_solution"
-    got_hero = r.get("hero_position")
-    rpf = (r.get("spot") or {}).get("preflop_actions") or pf
-    cls = _classify(rpf, got_hero or hero)
-    sec = _SECTION.get(cls["scenario"])
-    if not sec or not cls.get("k1") or not cls.get("k2"):
-        return "no_solution"
-    spot = _spot_data(r)
-    with _write_lock:
-        data = _pgr._load()
-        node = data.setdefault("ranges", {}).setdefault(bucket, {}).setdefault(sec, {})
-        node.setdefault(cls["k1"], {})[cls["k2"]] = spot
-        _persist_ranges(data)
-    log.info("autocapture: CAPTUROU %s[%s][%s]@%s (pf=%s)", sec, cls["k1"], cls["k2"], bucket, rpf)
-    return "captured"
+    # vs_rfi não tem 3bet → 1 candidato; demais tentam RAI/R6 na ordem do bucket
+    codes = [_THREEBET] if scenario == "vs_rfi" else _3BET_ORDER.get(bucket, ["R6", "RAI"])
+    any_built = False
+    last_err = False
+    for code in codes:
+        pf = build_canonical_pf(scenario, hero, vs, threebet=code)
+        if pf is None:
+            continue
+        any_built = True
+        try:
+            r = gw.query_spot_raw(preflop_actions=pf, num_players=9, depth_bb=depth,
+                                  include_strategy=True, timeout=30, use_cache=True,
+                                  snap_raises=False, fetch_timeout=15)
+        except Exception as e:
+            log.info("autocapture: erro no fetch %s/%s vs %s @%s: %s", scenario, hero, vs, bucket, e)
+            last_err = True
+            continue
+        if not (r and r.get("found") and r.get("hand_freqs")):
+            continue
+        got_hero = r.get("hero_position")
+        rpf = (r.get("spot") or {}).get("preflop_actions") or pf
+        cls = _classify(rpf, got_hero or hero)
+        sec = _SECTION.get(cls["scenario"])
+        if not sec or not cls.get("k1") or not cls.get("k2"):
+            continue
+        spot = _spot_data(r)
+        with _write_lock:
+            data = _pgr._load()
+            node = data.setdefault("ranges", {}).setdefault(bucket, {}).setdefault(sec, {})
+            node.setdefault(cls["k1"], {})[cls["k2"]] = spot
+            _persist_ranges(data)
+        log.info("autocapture: CAPTUROU %s[%s][%s]@%s (pf=%s)", sec, cls["k1"], cls["k2"], bucket, rpf)
+        return "captured"
+    if not any_built:
+        return "impossible"
+    return "error" if last_err else "no_solution"
 
 
 # ── coleta dos pares NULL cobríveis de UM torneio ────────────────────────────
