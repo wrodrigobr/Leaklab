@@ -83,12 +83,17 @@ def _actions(resp: dict) -> list[tuple[str, str, float]]:
 
 def fetch_node(pf: str, depth_bb: int, retries: int = 2) -> dict | None:
     """query_spot_raw com poucos retries — com o subprocesso isolado, timeout é
-    raro; a maioria dos gaps é no-solution genuíno (não adianta insistir muito)."""
+    raro; a maioria dos gaps é no-solution genuíno (não adianta insistir muito).
+
+    Timeout CURTO (18s): spot VÁLIDO responde em ~8s; um no-solution que NÃO
+    redireciona pro Cash (caso comum) trava a API MTT até o timeout. Com 18s o
+    dead-end custa ~18s/tentativa (vs 60s antes) — ~3,3x no grind — mantendo
+    margem folgada sobre os válidos. O retry cobre o raro válido-lento."""
     for attempt in range(retries):
         try:
             r = gw.query_spot_raw(
                 preflop_actions=pf, num_players=NUM_PLAYERS, depth_bb=depth_bb,
-                include_strategy=True, timeout=60, use_cache=True,
+                include_strategy=True, timeout=18, use_cache=True,
             )
         except Exception:
             r = None
