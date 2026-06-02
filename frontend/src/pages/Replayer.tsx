@@ -225,6 +225,7 @@ function SidePanels({
     vs_3bet: "vs 3-Bet",
     vs_shove_fallback: t("card.scenVsShoveFallback"),
     squeeze: "Squeeze",
+    faces_squeeze: "vs Squeeze",
     vs_4bet: "vs 4-Bet",
   };
   return (

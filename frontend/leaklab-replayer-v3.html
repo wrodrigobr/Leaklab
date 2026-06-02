@@ -589,8 +589,8 @@ function rpRenderHeuristicCard(ev){
     <div class="rp-card-body">`;
 
   if(hasPreflop){
-    // Cenário
-    const scenMap={rfi:'RFI',vs_rfi:'vs Open',vs_3bet:'vs 3-Bet'};
+    // Cenário (termos de poker em inglês, como vs Open / vs 3-Bet)
+    const scenMap={rfi:'RFI',vs_rfi:'vs Open',vs_3bet:'vs 3-Bet',squeeze:'Squeeze',faces_squeeze:'vs Squeeze',vs_shove_fallback:'vs Shove'};
     const scen=scenMap[pg.scenario]||pg.scenario||'';
     // Quality badge
     const qMap={correct:'green',acceptable:'amber',leak:'red',major_leak:'red',unknown:'muted'};

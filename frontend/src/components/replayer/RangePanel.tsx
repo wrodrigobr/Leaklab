@@ -66,6 +66,8 @@ const SCENARIO_TO_TYPE: Record<string, RangeType> = {
   rfi: 'open',
   vs_rfi: 'call',
   vs_3bet: '3bet',
+  faces_squeeze: 'call',   // cold/blind defende vs squeeze → range de defesa
+  squeeze: '3bet',         // hero é o squeezador (3bet sobre open+caller)
 };
 
 const SCENARIO_LABEL: Record<string, string> = {
@@ -73,6 +75,8 @@ const SCENARIO_LABEL: Record<string, string> = {
   vs_rfi: 'vs Open (defender)',
   vs_3bet: 'vs 3-Bet (continuar)',
   vs_shove_fallback: 'Call vs Shove',
+  faces_squeeze: 'vs Squeeze (defender)',
+  squeeze: 'Squeeze (3-bet sobre open+caller)',
 };
 
 const QUALITY_META: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {

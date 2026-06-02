@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replay): rótulo do cenário `faces_squeeze` cru + auditoria do bug de squeeze
+
+> O Replayer mostrava "Cenário **faces_squeeze**" (chave interna crua) porque os mapas de rótulo (`scenarioLabel` em `Replayer.tsx`, `SCENARIO_LABEL`/`SCENARIO_TO_TYPE` em `RangePanel.tsx`, e o standalone `leaklab-replayer-v3.html`) não tinham `faces_squeeze` nem `squeeze` → caíam no fallback que exibe a chave. Adicionados: `faces_squeeze`→"vs Squeeze", `squeeze`→"Squeeze", `vs_shove_fallback`→"vs Shove" (termos de poker em inglês, como "vs Open"/"vs 3-Bet"); `SCENARIO_TO_TYPE` mapeia faces_squeeze→'call' (defesa) e squeeze→'3bet'. **Auditoria do fix de squeeze anterior**: dos **40** spots `faces_squeeze` em 5 torneios, **18** o display divergia e **14 eram GRAVES** (correto=fold, mas o Replayer sugeria call/raise — ex.: `T4o BB vs BTN`, `54o`, `Q8o`, `K8o`). Todos resolvidos pelo fix dos 4 call sites; vereditos gravados sempre corretos.
+
 ### fix(replay): faces_squeeze sugeria "call" no Replayer (params faltando no recompute)
 
 > O Replayer sugeria **call** num spot de squeeze (ex.: BB 54s enfrenta squeeze do SB a 30bb) enquanto o dashboard corretamente dizia **fold**. Causa: o endpoint `/replay` (e outros 3 paths de display: `/analyze` enriched, coach replay, GTO live override) **recomputavam `analyze_preflop` sem passar `facing_raises` e `hero_was_aggressor`** — sem o sinal `facing_raises>=2`, o roteamento não chegava em `faces_squeeze` e caía em `vs_rfi` (defesa larga do BB), que tem 54s no range → "call". Era o bug "call 45s vs squeeze" que o fix do `facing_raises` resolveu no engine, mas os 4 call sites de display ficaram de fora. Fix: os 4 passam agora `facing_raises` (de `preflopRaisesFaced`/coluna) + `hero_was_aggressor` + `n_players`. Confirmado: `/replay` agora dá `faces_squeeze / fold / correct`, igual ao veredito armazenado. Os vereditos GRAVADOS sempre estiveram certos (via `evaluate_decision`); só o display recomputado divergia. Preflop 76/76, regression 26/26.
