@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): card mostra % de ação DA MÃO do jogador (não do range agregado)
+
+> No `RangePanel`, novo bloco **"Estratégia da sua mão · {mão}"** com barra + % por ação **da carta específica do hero** (de `gto.hand_freq`): 83o → Fold 100%, AKo → Raise 74% / All-in 26%. Antes o card só destacava a legenda do **range agregado** (% de outras mãos), confuso — o jogador tem cartas específicas, a análise deve ser sobre a mão dele. `hand_freq` None → fold puro 100%. O grid 13×13 continua como **referência** da estratégia da posição (com a célula do hero em anel amarelo). Tipo do cenário em `api.ts` ganhou `faces_squeeze`/`squeeze`. Build ✓.
+
 ### docs(specs): pasta `docs/specs/` (contratos/invariantes) + `test_invariants.py`
 
 > Base de proteção contra regressão: `docs/specs/` consolida os **contratos** do sistema (README com a filosofia "spec é contrato, não prosa", architecture, invariants, preflop-gto, gto-capture, decision-pipeline, glossary). O documento central `invariants.md` lista os **9 invariantes que nunca podem quebrar** (roteamento preflop, reconciliação label↔gto, NULL honesto, depths válidos, history_spot, sizing 3bet, deploy /opt, cegueira ao sizing do open, hero_won_hand) — cada um amarrado a um teste. Novo `backend/tests/test_invariants.py` (suite engine) guarda 5 invariantes code-testáveis (incl. o que pegaria o bug "call vs squeeze"). Backlog #23 registrado (vereditos sensíveis ao tamanho do open).

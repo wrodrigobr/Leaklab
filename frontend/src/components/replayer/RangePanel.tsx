@@ -6,6 +6,7 @@ import {
   heroHand, RANGES, normalizePosition, PUSH_FOLD, getPushFoldBucket,
   Position, RangeType, POSITIONS, RANGE_TYPES, RangeSet,
 } from "@/data/ranges";
+import { ACTION_COLORS } from "@/lib/actionColors";
 import { ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
@@ -300,6 +301,43 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
                   </span>
                 )}
               </div>
+
+              {/* % de ação DA MÃO DO JOGADOR (não do range agregado). O jogador
+                  tem cartas específicas — a análise é sobre a mão dele. Fonte:
+                  gto.hand_freq (None = fold puro 100%). */}
+              {(() => {
+                const hf = gto.hand_freq;
+                const raise = hf?.raise ?? 0, call = hf?.call ?? 0, allin = hf?.allin ?? 0;
+                const fold = hf ? (hf.fold ?? Math.max(0, 1 - raise - call - allin)) : 1;
+                const segs = [
+                  { k: "Raise",  v: raise, c: ACTION_COLORS.raise },
+                  { k: "Call",   v: call,  c: ACTION_COLORS.call },
+                  { k: "All-in", v: allin, c: ACTION_COLORS.allin },
+                  { k: "Fold",   v: fold,  c: ACTION_COLORS.fold },
+                ].filter(s => s.v > 0.001);
+                const total = segs.reduce((a, s) => a + s.v, 0) || 1;
+                return (
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/40 px-2.5 py-1.5">
+                    <div className="font-mono text-[9px] font-semibold uppercase tracking-wide text-foreground/70">
+                      Estratégia da sua mão · {hand}
+                    </div>
+                    <div className="flex h-3 w-full overflow-hidden rounded-sm ring-1 ring-border/40">
+                      {segs.map(s => (
+                        <div key={s.k} style={{ width: `${(s.v / total) * 100}%`, background: s.c }}
+                             title={`${s.k} ${(s.v * 100).toFixed(0)}%`} />
+                      ))}
+                    </div>
+                    <div className="flex gap-2.5 flex-wrap font-mono text-[9px] text-muted-foreground">
+                      {segs.map(s => (
+                        <span key={s.k} className="flex items-center gap-1">
+                          <span className="inline-block size-2 rounded-[1px]" style={{ background: s.c }} />
+                          {s.k} <span className="text-foreground font-bold">{(s.v * 100).toFixed(0)}%</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               {gto.reasoning && (
                 <p className="font-mono text-[9px] text-muted-foreground/70 leading-relaxed">
                   {gto.reasoning}
