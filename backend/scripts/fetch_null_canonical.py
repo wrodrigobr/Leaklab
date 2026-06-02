@@ -216,9 +216,7 @@ def main():
             continue
         depth = BUCKET_DEPTH.get(bk, 20)
         r = _fetch_one(pf, depth)
-        healthy = _wait_healthy()   # recupera o box antes do próximo spot
-        if not healthy:
-            print(f"  [box degradado — _wait_healthy estourou; seguindo]", flush=True)
+        time.sleep(2)   # pacing leve; o fast-fail já evita a cascata (sem _wait_healthy)
         if not (r and r.get("found") and r.get("hand_freqs")):
             print(f"  MISS   {bk:>5} {scen:<13} {hero:>5} vs {vs:<5} pf={pf:<30} (GW sem solução) x{cnt}")
             miss += 1

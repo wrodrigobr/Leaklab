@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto-server): fast-fail no-solution destrava captura em massa → cobertura preflop 91,7%→92,8%
+
+> **Causa real da "degradação" do servidor (não era recurso — VM é 4 vCPU/16GB):** um no-solution que PENDURA (GW sem o nó) bloqueia as requisições seguintes pelo tempo do timeout — pior com o snap-retry (2 ciclos = ~90s de janela de bloqueio). Diagnóstico provou: 6 spots solúveis em sequência ficam rápidos (~8s); um único no-solution-timeout cascateava (aba fresca por fetch NÃO resolveu — o travamento é na requisição/sessão do GW). Fix: `fetch_timeout` configurável (`server.py`, 8-60s) + `snap_raises` exposto no client → o `fetch_null_canonical.py` usa `snap_raises=False` (pf canônicos R2/R6 não precisam de snap; pula o 2º ciclo) + `fetch_timeout=15` → no-solution falha em ~9-15s **sem cascata**. Mix solúvel↔no-solution agora 100% limpo. Com isso, o bulk capturou **6 pares** (vs 1 antes) — faces_squeeze 30/50bb (ex.: BB vs BTN cobre 4 decisões) → **+8 decisões NULL fechadas, cobertura 91,9%→92,8%** (63 NULLs restantes), 0 conflito / 0 drift. Os 18 MISS são no-solution GENUÍNOS confirmados (com fast-fail sem cascata, MISS = GW realmente não tem o nó). Restantes: shallow 10/14bb + estruturais → captura on-demand futura.
+
 ### fix(deploy): serviço GTO roda de /opt/leaklab — pulls em ~/leaklab nunca chegavam ao código vivo
 
 > **Causa-raiz de "nenhum fix do servidor pegava":** o systemd `leaklab-solver` tem `WorkingDirectory=/opt/leaklab/backend/gto_bot/solver_api`, mas todos os `git pull` eram em `~/leaklab` (`/home/rodrigo_phpro/leaklab`). Por isso history_spot, auto-cura e perf-Cash não surtiam efeito — o código vivo era antigo. Deploy correto: `cd /opt/leaklab && sudo git pull && sudo systemctl restart leaklab-solver`. Após o pull no lugar certo, o history_spot foi **confirmado end-to-end**: o spot `100bb faces_squeeze LJ vs UTG+2` (antes "no-solution") capturou 169 mãos e cobriu 2 decisões NULL → cobertura preflop **91,7%→91,9%**. Pendência de produção: alinhar o deploy do servidor GTO pra apontar pro checkout versionado.
