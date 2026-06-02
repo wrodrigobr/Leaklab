@@ -1159,6 +1159,16 @@ def player_gto_alignment_matrix():
     return jsonify(get_gto_alignment_matrix(g.user_id, last_n=last_n))
 
 
+@app.route('/player/results-vs-gto', methods=['GET'])
+@require_auth
+def player_results_vs_gto():
+    """Insight #5 'ganhei mas joguei errado' — erros de GTO escondidos atrás de
+    vitorias (resultado != processo)."""
+    from database.repositories import get_results_vs_gto
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    return jsonify(get_results_vs_gto(g.user_id, last_n=last_n))
+
+
 @app.route('/player/spots/drill', methods=['GET'])
 @require_auth
 def player_drill_spots():
@@ -2147,6 +2157,16 @@ def _detect_showdown(raw_text: str, hero: str) -> str | None:
     return 'won' if won_pat.search(raw_text) else 'lost'
 
 
+def _detect_hand_won(raw_text: str, hero: str) -> bool | None:
+    """True se o hero COLETOU o pote nesta mão (ganhou, com ou sem showdown);
+    False caso contrário. None se não dá pra determinar. Diferente de
+    `_detect_showdown` (que só conta showdown) — base do insight results×GTO
+    'ganhei mas joguei errado pelo GTO' (resultado ≠ processo)."""
+    if not hero:
+        return None
+    return bool(re.search(r'\b' + re.escape(hero) + r'\s+collected\b', raw_text))
+
+
 def _analyze_hands(hands):
     results, hand_results, errors = [], {}, []
     for hand in hands:
@@ -2155,6 +2175,7 @@ def _analyze_hands(hands):
             inputs = build_decision_inputs_for_hand(hand)
             hero   = hand.hero or 'Hero'
             sd_result = _detect_showdown(hand.raw_text or '', hero)
+            hero_won  = _detect_hand_won(hand.raw_text or '', hero)
             decisions = []
             for di in inputs:
                 r = evaluate_decision(di)
@@ -2176,6 +2197,7 @@ def _analyze_hands(hands):
                     'note':             interp.get('strategicExplanation', '') or interp.get('mathExplanation', ''),
                     'is_3bet':          di.get('is_3bet', False),
                     'showdown_result':  sd_result,
+                    'hero_won_hand':    hero_won,
                 }
                 # Enriquecer decisões preflop com análise de range GTO
                 if di['street'] == 'preflop':

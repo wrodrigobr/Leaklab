@@ -603,6 +603,24 @@ export interface GtoAlignmentMatrixData {
   cells: GtoAlignmentMatrixCell[];
 }
 
+export interface ResultsVsGtoSpot {
+  position: string;
+  street: string;
+  action: string;
+  n: number;
+}
+
+export interface ResultsVsGtoData {
+  won_critical: number;
+  total_critical: number;
+  pct_critical_hidden: number;
+  won_evaluated: number;
+  pct_won_were_critical: number;
+  total_evaluated: number;
+  result_coverage_pct: number;
+  top_spots: ResultsVsGtoSpot[];
+}
+
 export interface PlayerStatsResponse {
   total_hands: number;
   vpip: number | null;
@@ -994,6 +1012,9 @@ export const metrics = {
 
   gtoAlignmentMatrix: (lastN?: number) =>
     request<GtoAlignmentMatrixData>(`/player/gto-alignment-matrix${lastN != null ? `?last_n=${lastN}` : ""}`),
+
+  resultsVsGto: (lastN?: number) =>
+    request<ResultsVsGtoData>(`/player/results-vs-gto${lastN != null ? `?last_n=${lastN}` : ""}`),
 
   dna: (days = 90) =>
     request<PlayerDnaResponse>(`/player/dna?days=${days}`),

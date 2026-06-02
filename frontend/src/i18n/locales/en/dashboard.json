@@ -276,6 +276,15 @@
     "minor": "Minor deviation",
     "critical": "Critical deviation"
   },
+  "resultsVsGto": {
+    "title": "Results × GTO",
+    "tooltip": "Decisions that were CLEAR GTO mistakes but the hand was won — the result masks the process error. Winning doesn't validate the play.",
+    "headline_label": "clear GTO mistakes in hands you won",
+    "stat_won_were_critical": "of decisions in won hands were clear mistakes",
+    "stat_critical_hidden": "of your clear mistakes were hidden behind wins",
+    "spots_title": "Where it happens most",
+    "coaching": "The result masks the process: winning doesn't mean you played it right. Review these spots even when you win."
+  },
   "gtoAlignment": {
     "title": "GTO Alignment by Street",
     "tooltip": "GTO alignment breakdown by preflop, flop, turn, and river — identifies which phase of the game has the most solver divergence.",

@@ -14,6 +14,7 @@ import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { GtoAlignmentCard } from "@/components/hud/GtoAlignmentCard";
 import { GtoAlignmentMatrixCard } from "@/components/hud/GtoAlignmentMatrixCard";
+import { ResultsVsGtoCard } from "@/components/hud/ResultsVsGtoCard";
 import { GtoQualityCard } from "@/components/hud/GtoQualityCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
 import { OnboardingModal } from "@/components/hud/OnboardingModal";
@@ -28,7 +29,7 @@ import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, GtoAlignmentMatrixData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, GtoAlignmentMatrixData, ResultsVsGtoData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // Module-level cache — survives unmount/remount during SPA navigation
@@ -183,6 +184,12 @@ const Index = () => {
     staleTime: 120_000,
   });
 
+  const { data: resultsVsGtoData } = useQuery<ResultsVsGtoData>({
+    queryKey: ["results-vs-gto", refreshKey, volumeLimit],
+    queryFn: () => metrics.resultsVsGto(volumeLimit ?? undefined),
+    staleTime: 120_000,
+  });
+
   const renderMainRow = (id: MainSection) => {
     if (id === "quality_row") return <GtoQualityCard data={gtoQualityData} pendingGto={pendingGto} />;
     if (id === "bankroll_row") return <BankrollChart />;
@@ -193,6 +200,7 @@ const Index = () => {
           <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />
         </div>
         <GtoAlignmentMatrixCard data={gtoMatrixData} />
+        <ResultsVsGtoCard data={resultsVsGtoData} />
       </div>
     );
     if (id === "dna_row") return <PlayerDnaCard data={dnaData} />;

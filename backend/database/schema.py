@@ -492,6 +492,9 @@ def _run_migrations(conn):
             # Squeeze/3-bet fix: nº de raises de villains enfrentados pelo hero preflop
             # (open=1, 3bet/squeeze=2…). Sinal durável p/ os syncs não tratarem squeeze como vs_RFI.
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS preflop_raises_faced INTEGER",
+            # Results×GTO (#5): hero coletou o pote nesta mão? (1/0/NULL) — base do
+            # insight "ganhei mas joguei errado pelo GTO" (resultado ≠ processo).
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS hero_won_hand INTEGER",
             # #15 leaderboard — opt-in/privacidade: aparecer no ranking público é consentido
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_handle TEXT",
@@ -988,6 +991,7 @@ def _run_migrations(conn):
             ("vs_position",      "ALTER TABLE decisions ADD COLUMN vs_position      TEXT"),
             ("icm_tax_pct",      "ALTER TABLE decisions ADD COLUMN icm_tax_pct      REAL"),
             ("preflop_raises_faced", "ALTER TABLE decisions ADD COLUMN preflop_raises_faced INTEGER"),
+            ("hero_won_hand",    "ALTER TABLE decisions ADD COLUMN hero_won_hand    INTEGER"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)

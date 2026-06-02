@@ -310,6 +310,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 r.get('math', {}).get('estimatedHandEquity'),
                 (r.get('spot', {}).get('villainPosition') or '') or None,
                 r.get('spot', {}).get('preflopRaisesFaced'),
+                (None if r.get('hero_won_hand') is None else (1 if r.get('hero_won_hand') else 0)),
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -319,8 +320,8 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                stack_bb, draw_profile, position, num_players,
                level_sb, level_bb, level_num, note, is_3bet, showdown_result,
                pot_size, facing_bet, gto_label, gto_action, estimated_equity,
-               vs_position, preflop_raises_faced)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               vs_position, preflop_raises_faced, hero_won_hand)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:
@@ -5572,6 +5573,63 @@ def get_gto_alignment_matrix(user_id: int, since_days: int = 90, last_n: int | N
             'positions': POS_ORDER,
             'streets':   STREETS,
             'cells':     cells,
+        }
+    finally:
+        conn.close()
+
+
+def get_results_vs_gto(user_id: int, since_days: int = 90, last_n: int | None = None) -> dict:
+    """Insight #5 results×GTO — 'ganhei mas joguei errado'. Decisões que foram
+    ERRO de GTO (gto_critical) mas a mão foi GANHA (hero coletou o pote): o
+    resultado mascara o erro de processo. Coaching: parar de validar processo
+    ruim pelo resultado. Inclui headline + spots recorrentes para drill-down.
+    Só conta decisões com gto_label (o resto é NULL honesto, fora do cálculo)."""
+    tf, tp = _build_tournament_filter(user_id, since_days, last_n)
+    conn = get_conn()
+    try:
+        def _count(extra: str) -> int:
+            row = _fetchone(conn, _adapt(
+                "SELECT COUNT(*) AS n FROM decisions d "
+                "JOIN tournaments t ON t.id = d.tournament_id "
+                f"WHERE {tf} {extra}"), tp)
+            return row['n'] if row else 0
+
+        gto   = "AND d.gto_label IS NOT NULL AND d.gto_label != ''"
+        crit  = "AND d.gto_label = 'gto_critical'"
+        won   = "AND d.hero_won_hand = 1"
+
+        total_critical  = _count(crit)
+        won_critical    = _count(crit + " " + won)
+        won_evaluated   = _count(gto + " " + won)
+        total_evaluated = _count(gto)
+        # cobertura de resultado: quantas decisões têm o sinal won/lost capturado
+        with_result     = _count("AND d.hero_won_hand IS NOT NULL")
+        total_dec       = _count("")
+
+        rows = _fetchall(conn, _adapt(
+            "SELECT d.position, d.street, d.action_taken, COUNT(*) AS n "
+            "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+            f"WHERE {tf} {crit} {won} "
+            "GROUP BY d.position, d.street, d.action_taken "
+            "ORDER BY n DESC LIMIT 6"), tp)
+        top_spots = [{
+            'position': r['position'] or '?',
+            'street':   r['street'],
+            'action':   r['action_taken'],
+            'n':        r['n'],
+        } for r in rows]
+
+        return {
+            'won_critical':            won_critical,
+            'total_critical':          total_critical,
+            # % dos seus erros claros de GTO que ficaram "escondidos" atrás de vitórias
+            'pct_critical_hidden':     round(won_critical * 100.0 / total_critical, 1) if total_critical else 0.0,
+            'won_evaluated':           won_evaluated,
+            # % das decisões avaliadas em mãos GANHAS que foram erro claro
+            'pct_won_were_critical':   round(won_critical * 100.0 / won_evaluated, 1) if won_evaluated else 0.0,
+            'total_evaluated':         total_evaluated,
+            'result_coverage_pct':     round(with_result * 100.0 / total_dec, 1) if total_dec else 0.0,
+            'top_spots':               top_spots,
         }
     finally:
         conn.close()

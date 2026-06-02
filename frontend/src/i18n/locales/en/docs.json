@@ -125,6 +125,8 @@
     "icm_interpret": "Incorrect decisions under high ICM cost more in the long run.",
     "drift_measures": "Quality decline trend across consecutive sessions",
     "drift_interpret": "Indicates tilt or fatigue. Reviewing recent sessions is recommended.",
+    "resultsgto_measures": "Decisions that were CLEAR GTO mistakes but the hand was won (you collected the pot).",
+    "resultsgto_interpret": "The higher it is, the more results are masking process errors — winning doesn't validate the play. Review these spots even when you win.",
     "p1": "<strong>Leak ROI</strong> combines how often each error spot occurs with the EV cost of getting it wrong there — prioritizing what weighs most over the long run. High-frequency low-cost spots can matter more than rare high-cost spots, and ROI captures that."
   },
   "gto_method": {

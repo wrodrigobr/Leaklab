@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(dashboard #5): "Resultado × GTO" — erros de GTO escondidos atrás de vitórias
+
+> Novo card **Results × GTO** (insight de coaching: *resultado ≠ processo*). Análise revelou que o #5 original (divergência `label`×`gto_label`) ficou **obsoleto** — o engine reconcilia os dois, então concordam por design (2/990 divergentes). O ângulo com valor real é **resultado × GTO**: decisões que foram **erro CLARO de GTO** (`gto_critical`) mas a mão foi **GANHA** (hero coletou o pote) — o resultado mascara o erro de processo. Dados (user 13): **37,6% dos erros claros ficaram escondidos atrás de vitórias**, e **41,5% das decisões em mãos ganhas foram erro claro**. Cadeia completa: coluna `decisions.hero_won_hand` (1/0/NULL, migração) + `_detect_hand_won` (hero collected, com/sem showdown) no `/analyze` + `save_decisions` + backfill (`scripts/backfill_hero_won_hand.py`, 231 mãos ganhas) + `get_results_vs_gto` (headline + spots recorrentes) + endpoint `GET /player/results-vs-gto` + `ResultsVsGtoCard` no Index (seção GTO). i18n pt-BR/en/es (`resultsVsGto.*`) + linha "Resultado × GTO" na tabela de indicadores do /docs. Testes: `test_detect_hand_won` + `test_results_vs_gto_endpoint` (API 42/42, database 22/22). Termos de poker (posição/street/ação) mantidos em inglês.
+
 ### docs(/docs): nota de cobertura preflop GTO (~95%) na seção de metodologia
 
 > Adicionado parágrafo `gto_method.coverage` (3 locales pt-BR/en/es) na seção "Metodologia de Classificação GTO" do /docs: explica, em nível de **conceito**, que ~95% das decisões pré-flop padrão recebem veredicto GTO e que o que fica de fora (potes limpados, linhas não-padrão) aparece sem classificação — sem expor internos (sizings, snap de depth, etc.). Reflete o fechamento do preflop desta sessão (91,7%→95,1%).

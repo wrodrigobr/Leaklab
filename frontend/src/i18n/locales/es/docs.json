@@ -125,6 +125,8 @@
     "icm_interpret": "Las decisiones incorrectas con ICM alto cuestan más a largo plazo.",
     "drift_measures": "Tendencia de caída de calidad en sesiones consecutivas",
     "drift_interpret": "Indica tilt o fatiga. Se recomienda revisar las últimas sesiones.",
+    "resultsgto_measures": "Decisiones que fueron error CLARO de GTO pero la mano se ganó (cobraste el bote).",
+    "resultsgto_interpret": "Cuanto más alto, más enmascara el resultado los errores de proceso — ganar no valida la jugada. Revisá estos spots aunque ganes.",
     "p1": "El <strong>Leak ROI</strong> combina la frecuencia de cada spot de error con el costo en EV de equivocarse allí — priorizando lo que más pesa a largo plazo. Spots frecuentes de bajo costo pueden importar más que spots raros de alto costo, y el ROI captura eso."
   },
   "gto_method": {

@@ -276,6 +276,15 @@
     "minor": "Desviación menor",
     "critical": "Desviación crítica"
   },
+  "resultsVsGto": {
+    "title": "Resultado × GTO",
+    "tooltip": "Decisiones que fueron error CLARO de GTO pero la mano se ganó — el resultado enmascara el error de proceso. Ganar no valida la jugada.",
+    "headline_label": "errores claros de GTO en manos que ganaste",
+    "stat_won_were_critical": "de las decisiones en manos ganadas fueron error claro",
+    "stat_critical_hidden": "de tus errores claros quedaron ocultos tras victorias",
+    "spots_title": "Dónde ocurre más",
+    "coaching": "El resultado enmascara el proceso: ganar no significa que jugaste bien. Revisá estos spots aunque ganes."
+  },
   "gtoAlignment": {
     "title": "Alineamiento GTO por Street",
     "tooltip": "Desglose del alineamiento GTO por preflop, flop, turn y river — identifica en qué fase del juego hay mayor divergencia del solver.",

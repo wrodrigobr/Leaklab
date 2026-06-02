@@ -605,6 +605,46 @@ def test_leaderboard_prefs_default_set_and_conflict():
     print("OK  test_leaderboard_prefs_default_set_and_conflict")
 
 
+def test_detect_hand_won():
+    """_detect_hand_won: True se hero coletou o pote, False senão, None sem hero."""
+    from api.app import _detect_hand_won
+    won  = "Dealt to phpro [Ah Kd]\nphpro: raises 100 to 200\nVilla: folds\nphpro collected 300 from pot"
+    lost = "Dealt to phpro [2c 3d]\nphpro: calls 100\nVilla: shows [As Ad]\nVilla collected 300 from pot"
+    assert _detect_hand_won(won, 'phpro') is True
+    assert _detect_hand_won(lost, 'phpro') is False
+    assert _detect_hand_won(won, '') is None
+    print("OK  test_detect_hand_won")
+
+
+def test_results_vs_gto_endpoint():
+    """Insight #5: won_critical/total_critical/won_evaluated corretos no endpoint."""
+    client = _make_client()
+    token  = _register_and_login(client, 'rvg')
+    conn = schema.get_conn()
+    uid = conn.execute("SELECT id FROM users WHERE email=?", ('testrvg@api.com',)).fetchone()['id']
+    conn.execute("INSERT INTO tournaments (user_id, tournament_id, site, hero, imported_at) "
+                 "VALUES (?,?,?,?,datetime('now'))", (uid, 'TRVG', 'PokerStars', 'phpro'))
+    tid = conn.execute("SELECT id FROM tournaments WHERE tournament_id='TRVG'").fetchone()['id']
+    # h1,h4 = won+critical ; h2 = won+correct ; h3 = lost+critical
+    for hid, won, gto in [('h1', 1, 'gto_critical'), ('h2', 1, 'gto_correct'),
+                          ('h3', 0, 'gto_critical'), ('h4', 1, 'gto_critical')]:
+        conn.execute(
+            "INSERT INTO decisions (tournament_id, hand_id, street, action_taken, best_action, label, "
+            "score, math_penalty, range_penalty, is_3bet, gto_label, hero_won_hand, position) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (tid, hid, 'preflop', 'raise', 'raise', 'standard', 100, 0, 0, 0, gto, won, 'BB'))
+    conn.commit(); conn.close()
+    r = client.get('/player/results-vs-gto', headers=_auth_headers(token))
+    assert r.status_code == 200, r.status_code
+    d = r.get_json()
+    assert d['won_critical']   == 2, d   # h1, h4
+    assert d['total_critical'] == 3, d   # h1, h3, h4
+    assert d['won_evaluated']  == 3, d   # h1, h2, h4 (won + tem gto_label)
+    assert d['pct_critical_hidden'] == round(2 * 100 / 3, 1), d
+    assert len(d['top_spots']) >= 1
+    print("OK  test_results_vs_gto_endpoint")
+
+
 if __name__ == '__main__':
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
