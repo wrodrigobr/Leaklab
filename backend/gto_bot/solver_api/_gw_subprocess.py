@@ -67,14 +67,19 @@ def _do_fetch(browser, req: dict) -> dict:
         except Exception:
             return False
 
-    # DESTRAVA: um spot MTT sem solução faz o GW cair no default Cash (gametype=Cash*)
-    # e a SPA TRAVA. Um goto simples não recupera. Se a página atual está num spot Cash
-    # (presa), força um reset via about:blank antes de navegar pro spot válido — recarrega
-    # a SPA limpa. Barato: só dispara quando detecta o estado preso.
+    # DESTRAVA: um spot MTT sem solução derruba o GW no default Cash (gametype=Cash*)
+    # e a SPA TRAVA num estado profundo que goto/about:blank NÃO recuperam. Se a página
+    # atual está num spot Cash (presa), FECHA a aba presa e abre uma NOVA (mesma sessão
+    # logada do contexto) — bypassa o estado preso. A nova aba carrega o GW limpo no
+    # goto seguinte. Só dispara quando detecta o estado preso (barato).
     try:
-        if "Cash" in (target_page.url or "") or "gametype=Cash" in (target_page.url or ""):
-            target_page.goto("about:blank", timeout=10000, wait_until="commit")
-            target_page.wait_for_timeout(300)
+        if "Cash" in (target_page.url or ""):
+            new_p = contexts[0].new_page()
+            try:
+                target_page.close()
+            except Exception:
+                pass
+            target_page = new_p
     except Exception:
         pass
 
