@@ -218,11 +218,13 @@ def test_faces_squeeze_not_classified_as_vs_rfi():
     # Sem o sinal (comportamento antigo): caía em vs_rfi (defesa larga vs open simples).
     bug = analyze_preflop(**base)
     assert bug['scenario'] not in ('faces_3bet_uncovered', 'faces_squeeze')
-    # Com o sinal (2 raises, hero não agressor): roteia pra faces_squeeze. Sem range
-    # coletado pra esse spot ainda → available=False (NULL honesto), jamais vs_rfi/call.
+    # Com o sinal (2 raises, hero não agressor): roteia pra faces_squeeze. Com o spot
+    # já capturado via GW (squeeze-shove raso = RAI), 54s NÃO está no range de defesa →
+    # fold CORRETO. Jamais o call largo do vs_rfi (o bug original "call 54s vs squeeze").
     fixed = analyze_preflop(**base, facing_raises=2, hero_was_aggressor=False)
     assert fixed['scenario'] == 'faces_squeeze'
-    assert fixed['available'] is False  # sem cobertura no master de teste
+    assert fixed['in_range'] is False
+    assert 'call' not in fixed['recommended_actions']
     # Hero que FOI agressor (ex.: 3-bettor vs 4-bet) NÃO dispara o guard (pode ter cobertura).
     aggr = analyze_preflop(**base, facing_raises=2, hero_was_aggressor=True)
     assert aggr['scenario'] != 'faces_3bet_uncovered'
