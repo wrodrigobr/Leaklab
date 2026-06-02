@@ -89,33 +89,66 @@ def _do_fetch(browser, req: dict) -> dict:
     def matcher(resp):
         return is_target(resp) or is_cash_fallback(resp)
 
-    # DESTRAVA: um spot MTT sem solução derruba o GW no default Cash (gametype=Cash*)
-    # e a SPA TRAVA num estado profundo que goto/about:blank NÃO recuperam. Se a página
-    # atual está num spot Cash (presa), FECHA a aba presa e abre uma NOVA (mesma sessão
-    # logada do contexto) — bypassa o estado preso. A nova aba carrega o GW limpo no
-    # goto seguinte. Só dispara quando detecta o estado preso (barato).
+    def _fresh_tab(old):
+        """Fecha a aba (possivelmente presa) e abre uma NOVA na mesma sessão logada."""
+        try:
+            np_ = contexts[0].new_page()
+        except Exception:
+            return old
+        try:
+            old.close()
+        except Exception:
+            pass
+        return np_
+
+    def _navigate(page):
+        with page.expect_response(matcher, timeout=timeout_s * 1000) as resp_info:
+            page.goto(app_url, timeout=timeout_s * 1000, wait_until="commit")
+        return resp_info.value
+
+    def _warm_clean(page):
+        """Best-effort: deixa a página numa URL MTT limpa (RFI, sempre solúvel) pra que
+        o PRÓXIMO fetch não herde um estado preso. Sem isso, uma navegação travada
+        contamina os fetches seguintes — cascata que hoje só restart resolve."""
+        try:
+            gt = expected.get("gametype") or "MTTGeneralV2"
+            page.goto(f"{gw_app}/solutions?gametype={gt}&depth=32.125&preflop_actions=",
+                      timeout=10000, wait_until="commit")
+        except Exception:
+            pass
+
+    # DESTRAVA inicial: spot MTT sem solução derruba o GW no default Cash (gametype=Cash*)
+    # e a SPA trava num estado profundo. Se a aba atual está presa num Cash, troca por
+    # aba fresca antes de navegar.
     try:
         if "Cash" in (target_page.url or ""):
-            new_p = contexts[0].new_page()
-            try:
-                target_page.close()
-            except Exception:
-                pass
-            target_page = new_p
+            target_page = _fresh_tab(target_page)
     except Exception:
         pass
 
+    # AUTO-CURA: em timeout (o jam), troca por aba FRESCA e retenta UMA vez. Se ainda
+    # falhar, deixa a aba numa URL limpa pro próximo fetch. Quebra a cascata de jam.
     try:
-        with target_page.expect_response(matcher, timeout=timeout_s * 1000) as resp_info:
-            target_page.goto(app_url, timeout=timeout_s * 1000, wait_until="commit")
-        response = resp_info.value
+        response = _navigate(target_page)
     except PWTimeout:
-        return {"ok": False, "error": "timeout_waiting_api_response"}
+        target_page = _fresh_tab(target_page)
+        try:
+            response = _navigate(target_page)
+        except PWTimeout:
+            _warm_clean(target_page)
+            return {"ok": False, "error": "timeout_waiting_api_response"}
+        except Exception as e:
+            _warm_clean(target_page)
+            return {"ok": False, "error": f"navigate:{e}"}
     except Exception as e:
         return {"ok": False, "error": f"navigate:{e}"}
 
     # Pegou o redirect pro Cash → spot MTT sem solução; retorna rápido (sem esperar timeout).
     if is_cash_fallback(response):
+        try:
+            target_page = _fresh_tab(target_page)   # tira a aba do estado Cash já agora
+        except Exception:
+            pass
         return {"ok": False, "status": 204, "error": "no_solution_cash_fallback"}
 
     try:
