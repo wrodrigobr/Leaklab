@@ -1067,6 +1067,16 @@ def query_gto_wizard_raw(spot: dict) -> dict:
         "board":           bd,
     }
 
+    # history_spot = índice do nó que a SPA do GW navega = nº de ações antes da
+    # decisão do hero. O default da UI (_GW_APP_DEFAULTS) é FIXO em 7, que só
+    # funciona p/ linhas de <=7 tokens (o GW clampa p/ baixo e acerta o nó). Com
+    # 8+ ações (ex.: BB enfrenta open+3bet após folds: R2-F-F-F-F-F-R6-F = 8),
+    # history_spot=7 navega pro nó ERRADO (uma ação antes), a SPA pede outro line,
+    # e o interceptor nunca casa o response esperado → timeout = no-solution FALSO.
+    # Calcula dinamicamente pela contagem real de tokens de ação (todas as streets).
+    _hist = sum(len([t for t in s.split("-") if t]) for s in (pf, fl, tn, rv) if s)
+    api_params["history_spot"] = str(_hist)
+
     # Navega no Chrome pra URL do app e intercepta response da API (GW assina via interceptor JS)
     fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params, timeout_s=25)
     log.info("gw-spot via=%s status=%s ok=%s err=%s",
