@@ -2214,6 +2214,9 @@ def _analyze_hands(hands):
                                 facing_size    = float(_spot.get('facingSize') or 0),
                                 vs_position    = _spot.get('villainPosition', ''),
                                 is_3bet_pot    = bool(_spot.get('is3betPot') or di.get('is_3bet', False)),
+                                n_players      = _spot.get('nPlayers'),
+                                facing_raises      = int(_spot.get('preflopRaisesFaced') or 0),
+                                hero_was_aggressor = bool(_spot.get('heroWasAggressor')),
                             )
                     except Exception:
                         pass
@@ -3826,6 +3829,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 vs_position    = spot.get('villainPosition', ''),
                                 is_3bet_pot    = _pf_is_3bet_pot,
                                 n_players      = spot.get('nPlayers'),
+                                # Sem estes dois, faces_squeeze (cold/blind enfrenta open+3bet/
+                                # squeeze) cai em vs_rfi e sugere call largo (bug "call 54s vs
+                                # squeeze"). Alinha o display ao veredito armazenado.
+                                facing_raises      = int(spot.get('preflopRaisesFaced') or 0),
+                                hero_was_aggressor = bool(spot.get('heroWasAggressor')),
                             )
                             # Fallback for call-vs-shove (no vs_3bet data yet):
                             # use RFI range membership as proxy for shove-call quality
@@ -4252,6 +4260,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             action_taken   = _norm(action.action),
                             facing_size    = _facing,
                             vs_position    = (_spot.get('villainPosition') or _spot.get('vsPosition', '')),
+                            is_3bet_pot    = bool(_spot.get('is3betPot') or _spot.get('isThreeBetPot')),
+                            n_players      = _spot.get('nPlayers'),
+                            facing_raises      = int(_spot.get('preflopRaisesFaced') or 0),
+                            hero_was_aggressor = bool(_spot.get('heroWasAggressor')),
                         )
                         # Fallback for call-vs-shove: no specific vs_3bet data in ranges yet.
                         # When facing >= 40% of stack with call, use RFI range membership
@@ -5184,6 +5196,11 @@ def get_decision_gto(decision_id):
                     action_taken = player_action,
                     facing_size  = facing_bb,
                     vs_position  = (dec.get('villain_position') or ''),
+                    n_players    = dec.get('num_players'),
+                    # faces_squeeze precisa do nº de raises enfrentados (coluna armazenada);
+                    # sem isto, squeeze cai em vs_rfi e sugere call largo.
+                    facing_raises = int(dec.get('preflop_raises_faced') or 0),
+                    is_3bet_pot   = bool(dec.get('is_3bet')),
                 )
                 if pf.get('available') and pf.get('recommended_actions'):
                     top_action = pf['recommended_actions'][0]
