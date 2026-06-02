@@ -222,6 +222,8 @@ def query_spot_raw(
     timeout: int = 45,
     use_cache: bool = True,
     cache_only: bool = False,
+    snap_raises: bool = True,
+    fetch_timeout: int | None = None,
 ) -> Optional[dict]:
     """
     Consulta GW via servidor remoto `POST /gw-spot` — suporta qualquer cenário
@@ -295,7 +297,10 @@ def query_spot_raw(
         "board":           board or "",
         "include_strategy":   bool(include_strategy),
         "include_hand_freqs": True,
+        "snap_raises":        bool(snap_raises),
     }
+    if fetch_timeout is not None:
+        payload["fetch_timeout"] = int(fetch_timeout)
     if stacks_bb is not None:
         payload["stacks_bb"] = list(stacks_bb)
     if gametype:

@@ -1077,8 +1077,13 @@ def query_gto_wizard_raw(spot: dict) -> dict:
     _hist = sum(len([t for t in s.split("-") if t]) for s in (pf, fl, tn, rv) if s)
     api_params["history_spot"] = str(_hist)
 
+    # fetch_timeout configurável: no-solution que PENDURA (GW sem o nó) bloqueia as
+    # requisições seguintes pelo tempo do timeout. Captura em massa pode pedir um
+    # timeout CURTO (ex.: 15s) p/ falhar rápido e reduzir a janela de bloqueio.
+    _ft = max(8, min(60, int(spot.get("fetch_timeout", 25))))
+
     # Navega no Chrome pra URL do app e intercepta response da API (GW assina via interceptor JS)
-    fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params, timeout_s=25)
+    fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params, timeout_s=_ft)
     log.info("gw-spot via=%s status=%s ok=%s err=%s",
              fetched.get("via"), fetched.get("status"), fetched.get("ok"), fetched.get("error"))
 
@@ -1093,7 +1098,7 @@ def query_gto_wizard_raw(spot: dict) -> dict:
             log.info("gw-spot: snap %r -> %r, retry", pf, snapped_pf)
             api_params2 = dict(api_params)
             api_params2["preflop_actions"] = snapped_pf
-            fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params2, timeout_s=25)
+            fetched = _fetch_via_page("/v4/solutions/spot-solution/", api_params2, timeout_s=_ft)
             log.info("gw-spot retry via=%s status=%s ok=%s",
                      fetched.get("via"), fetched.get("status"), fetched.get("ok"))
             api_params = api_params2  # propaga preflop_actions corrigido no response

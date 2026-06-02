@@ -182,11 +182,14 @@ def _wait_healthy(max_wait=120):
 
 
 def _fetch_one(pf, depth):
-    """Uma tentativa gentil. Spot solúvel resolve em ~8s com o box saudável;
-    timeout 24s corta no-solution genuíno. Sem warmup (que só adiciona carga ao
-    box 1-core/1GB); o pacing entre spots é quem mantém a saúde."""
+    """Uma tentativa. Spot solúvel resolve em ~8s. snap_raises=False: nossos pf são
+    CANÔNICOS (R2/R6), não precisam de snap de sizing — e pular o snap-retry evita o
+    2º ciclo que pendurava o no-solution por ~90s. fetch_timeout=15: o no-solution
+    que pendura (GW sem o nó) falha rápido no SERVIDOR, encolhendo a janela em que
+    ele bloqueia os fetches seguintes (a causa real da 'degradação')."""
     r = gw.query_spot_raw(preflop_actions=pf, num_players=9, depth_bb=depth,
-                          include_strategy=True, timeout=24, use_cache=False)
+                          include_strategy=True, timeout=30, use_cache=False,
+                          snap_raises=False, fetch_timeout=15)
     if r and r.get("found") and r.get("hand_freqs"):
         return r
     return None
