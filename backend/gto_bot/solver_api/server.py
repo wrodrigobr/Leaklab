@@ -223,8 +223,8 @@ _GW_VALID_DEPTHS: list[int] = sorted([
     21, 22, 23, 24, 25,
     32, 34, 35, 36, 38, 40, 42, 44, 46, 48, 50,
     52, 54, 56, 58, 60,
-    70, 80, 100, 130, 160, 200,
-])
+    80, 100, 130, 160, 200,   # 70bb NÃO existe na árvore simétrica do GW (só 60/80);
+])                            # tê-lo aqui fazia stacks ~65-75bb snapar pro 70 → no-solution
 
 # HU tem depths completamente diferentes — soluções pré-computadas em subset menor.
 _GW_HU_VALID_DEPTHS: list[int] = sorted([
