@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop-gto): RFI fold puro retorna `hand_freq={fold:1.0}` (não None → não cai no agregado)
+
+> Causa-raiz do "Range agregado" aparecer no Decision Card/Replayer: no path RFI v3, mãos **fora do range de abertura** (ex.: 83o, sem entrada no GW) retornavam `hand_freq=None`. O `Replayer.tsx` só usa `hand_freq` quando presente — com None, **caía no fallback do % AGREGADO** do range (Fold 79,8% / Raise 12,7% / Allin 7,5% = distribuição da posição), em vez do veredito da mão (Fold 100%). Fix: `analyze_preflop` (RFI v3) devolve `{fold:1.0}` explícito para mãos out-of-range. Agora o card mostra a estratégia **da carta do jogador** (83o → Fold 100%). Os paths faces_squeeze/vs_3bet já faziam isso. Preflop 76/76, regression 26/26, invariants 5/5.
+
 ### feat(replayer): card mostra % de ação DA MÃO do jogador (não do range agregado)
 
 > No `RangePanel`, novo bloco **"Estratégia da sua mão · {mão}"** com barra + % por ação **da carta específica do hero** (de `gto.hand_freq`): 83o → Fold 100%, AKo → Raise 74% / All-in 26%. Antes o card só destacava a legenda do **range agregado** (% de outras mãos), confuso — o jogador tem cartas específicas, a análise deve ser sobre a mão dele. `hand_freq` None → fold puro 100%. O grid 13×13 continua como **referência** da estratégia da posição (com a célula do hero em anel amarelo). Tipo do cenário em `api.ts` ganhou `faces_squeeze`/`squeeze`. Build ✓.

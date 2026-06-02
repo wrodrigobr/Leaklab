@@ -327,6 +327,7 @@ def analyze_preflop(
                 rec = ['fold']
 
         # hand_freq exato pra RFI (v3 GW) — usado pelo quality classifier por freq
+        # e pela barra "sua mão" do Decision Card/Replayer.
         hand_freq = None
         if is_v3:
             hand_freq_raw = rfi.get('hand_freqs', {}).get(hero_hand_type, {})
@@ -338,6 +339,11 @@ def analyze_preflop(
                     elif code == 'RAI':   hand_freq['allin'] += float(f)
                     elif code.startswith('R'):  hand_freq['raise'] += float(f)
                 hand_freq = {k: round(v, 4) for k, v in hand_freq.items()}
+            else:
+                # Mão SEM entrada no GW v3 = fold puro 100% (out of range). Devolver
+                # {fold:1} explícito (não None) evita o display cair no % AGREGADO do
+                # range — a análise é sobre a carta do jogador, não a posição.
+                hand_freq = {'call': 0.0, 'raise': 0.0, 'allin': 0.0, 'fold': 1.0}
 
         quality = _rfi_quality(action_taken, in_rng, stack_bb,
                                in_limp=in_limp, is_sb=(pos == 'SB'),
