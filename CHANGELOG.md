@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### perf(gto-server): detecção rápida do fallback-Cash corta no-solution de ~25s para ~2s
+
+> O grind do seed preflop era dominado por **timeouts de ~25s em spots MTT sem solução**: o GTO Solver, ao não achar solução, redireciona a SPA para o default Cash (`gametype=Cash*`), cuja chamada de API **não bate** no matcher do alvo (que exige `gametype=MTT…`) → o `expect_response` esperava o timeout INTEIRO por um match que nunca vinha (~25s por dead-end, a ~3,5 nós/min). Fix em `_gw_subprocess.py`: o matcher agora reconhece TAMBÉM o request de fallback-Cash (`is_cash_fallback`) e retorna `no_solution_cash_fallback` (status 204) na hora — ~10x no grind dos dead-ends. Só dispara quando o alvo é MTT (fetch de Cash legítimo não afeta). Compõe com a fresh-tab recovery (que destrava a página presa no fetch seguinte). **Requer deploy no servidor GTO (GCP): `git pull` + restart do `leaklab-solver`.**
+
+### feat(gto-seed): seed de buckets profundos (17–100bb) com poda multiway agressiva
+
+> Run focado do `seed_preflop_gw.py --stacks 17,20,30,40,50,75,100 --max-calls 1` capturou spots dos buckets profundos (faces_squeeze/squeeze) — 6 spots novos no master (17bb). Cobertura preflop estável em 91,7% (os 73 NULLs restantes exigem pares hero×3bettor específicos de stack profundo que o walk limitado ainda não alcança no tempo do timeout-lento — destravados pelo perf acima, que permite o grind completo). Merge add-only; coerência 0 conflito / 0 drift.
+
 ### feat(preflop-gto): engine consome o cenário `faces_squeeze` + merge add-only do seed
 
 > `analyze_preflop` agora roteia "cold/blind enfrenta open+3bet/squeeze" (`facing_raises>=2 and not hero_was_aggressor`) para o cenário **`faces_squeeze`** (lookup `ranges[bucket][faces_squeeze][hero][3bettor]`, mesma graduação do `vs_3bet`) em vez de `faces_3bet_uncovered`→NULL fixo. Com cobertura → grade real (ex.: cold vs jam a 10bb: AA=call `correct`, 72o=fold, call 72o=`major_leak`); sem cobertura → NULL honesto (mantém a proteção anti "call 45s vs squeeze"). Isso destrava o bucket B (39 NULLs preflop) à medida que o seed o cobre. `merge_seed_ranges.py` funde o JSON do seed no master em modo **add-only** (preenche lacunas, não sobrescreve RFI/vs_RFI/vs_3bet validados; `--overwrite` opcional; backup automático). Suite preflop 26+76 verde.

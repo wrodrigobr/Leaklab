@@ -67,6 +67,28 @@ def _do_fetch(browser, req: dict) -> dict:
         except Exception:
             return False
 
+    # FALLBACK-CASH RÁPIDO: um spot MTT sem solução faz a SPA redirecionar pro default
+    # Cash (gametype=Cash*). A chamada da API que SAI é com gametype=Cash — NÃO bate em
+    # is_target (que exige gametype=MTT). Sem detectá-la, ficamos esperando o timeout
+    # INTEIRO (~25s) por um match do alvo que nunca vem. Detectar o request Cash na hora
+    # corta esse no-solution de ~25s pra ~2s (~10x no grind do seed). Só vale quando o
+    # alvo é MTT (esperado != Cash); em fetch de Cash legítimo isto não dispara.
+    exp_gt = expected.get("gametype", "")
+    target_is_mtt = "Cash" not in exp_gt
+
+    def is_cash_fallback(resp):
+        try:
+            if not target_is_mtt or api_path not in resp.url:
+                return False
+            if resp.request.method != "GET":
+                return False
+            return "gametype=Cash" in resp.url
+        except Exception:
+            return False
+
+    def matcher(resp):
+        return is_target(resp) or is_cash_fallback(resp)
+
     # DESTRAVA: um spot MTT sem solução derruba o GW no default Cash (gametype=Cash*)
     # e a SPA TRAVA num estado profundo que goto/about:blank NÃO recuperam. Se a página
     # atual está num spot Cash (presa), FECHA a aba presa e abre uma NOVA (mesma sessão
@@ -84,13 +106,17 @@ def _do_fetch(browser, req: dict) -> dict:
         pass
 
     try:
-        with target_page.expect_response(is_target, timeout=timeout_s * 1000) as resp_info:
+        with target_page.expect_response(matcher, timeout=timeout_s * 1000) as resp_info:
             target_page.goto(app_url, timeout=timeout_s * 1000, wait_until="commit")
         response = resp_info.value
     except PWTimeout:
         return {"ok": False, "error": "timeout_waiting_api_response"}
     except Exception as e:
         return {"ok": False, "error": f"navigate:{e}"}
+
+    # Pegou o redirect pro Cash → spot MTT sem solução; retorna rápido (sem esperar timeout).
+    if is_cash_fallback(response):
+        return {"ok": False, "status": 204, "error": "no_solution_cash_fallback"}
 
     try:
         status = response.status
