@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): equity não contradiz mais o veredito GTO (Fase 1 do EV range-aware)
+
+> No Decision Card, a linha de equity mostrava **"Necess. 46,5% +3,5pp" em verde** ao lado de **"Fold 100% · Correto"** — parecia que o sistema se contradizia. Causa: a equity preflop é heurística **vs mão aleatória** (`_estimate_hand_equity` dá 0,50 fixo p/ par baixo), não vs o range real do squeeze (onde 55 tem ~38% < necessário). **Fase 1 (display guard):** quando há cobertura GTO preflop, o veredito do solver é a fonte de verdade — o `+pp` deixa de ser pintado de verde/vermelho (fica neutro) e a equity ganha o caveat **"vs aleatória"** + tooltip explicando. Resolve a contradição percebida. A Fase 2 (equity range-aware de verdade, via matriz 169×169) está no backlog #27.
+
 ### fix(replayer): label do range por cenário (não "abertura" sempre) + i18n de strings do card
 
 > O Decision Card mostrava **"Range de abertura"** hardcoded em **todos** os cenários — errado em vs RFI / vs 3bet / vs Squeeze, onde o `range_pct` é defesa/continuação, não abertura. Agora o rótulo é por cenário: **abertura** (RFI), **defesa** (vs RFI), **continuação** (vs 3bet / vs Squeeze / vs 4bet), **squeeze**. De quebra, i18n de strings que estavam hardcoded em PT no card ("Estratégia do Solver", "Equity Necessária") — chaves nas 3 locales. Termos de poker (Equity, Pot Odds, Stack, M, ICM, SPR) seguem em inglês por regra.

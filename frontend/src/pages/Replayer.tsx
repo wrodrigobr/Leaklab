@@ -565,7 +565,7 @@ function SidePanels({
             )}
             {eq != null && (
               <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap"
-                title={t("card.equityTip")}>
+                title={showAuditPreflop ? t("card.reqVsRandomTip") : t("card.equityTip")}>
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Equity</span>
                 <span className={cn(
                   "font-bold tabular-nums",
@@ -575,6 +575,7 @@ function SidePanels({
                 )}>{(eq * 100).toFixed(1)}%</span>
                 <span className="text-muted-foreground text-[10px] whitespace-nowrap">
                   {eq >= 0.65 ? t("card.eqStrong") : eq >= 0.50 ? t("card.eqFavorable") : eq >= 0.35 ? t("card.eqMarginal") : t("card.eqWeak")}
+                  {showAuditPreflop && <span className="text-muted-foreground/60"> · {t("card.vsRandom")}</span>}
                 </span>
               </div>
             )}
@@ -587,14 +588,21 @@ function SidePanels({
                   ? t("card.reqTipAdjusted", { potOdds: (poRaw! * 100).toFixed(1) })
                   : t("card.reqTipRaw");
               const label = isImplicit ? t("card.reqMinEv") : t("card.reqNeeded");
+              // Quando há cobertura GTO preflop, o veredito é do solver e a equity é
+              // vs-random (heurística HU) — NÃO sinalizar o +pp em verde/vermelho como
+              // se fosse veredito, senão contradiz o "Fold correto" do GTO. Neutro +
+              // tooltip. (Fase 2 = equity range-aware deixa o número confiável.)
+              const ppMuted = !!showAuditPreflop;
               return (
-                <div className="flex items-center gap-2 font-mono text-[11px]" title={tooltip}>
+                <div className="flex items-center gap-2 font-mono text-[11px]"
+                  title={ppMuted ? t("card.reqVsRandomTip") : tooltip}>
                   <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">{label}</span>
                   <span className="font-bold tabular-nums text-foreground/80">{(reqShown * 100).toFixed(1)}%</span>
                   {eq != null && (
                     <span className={cn(
                       "text-[10px]",
-                      eq >= reqShown ? "text-emerald-400" : "text-red-400"
+                      ppMuted ? "text-muted-foreground/50"
+                        : eq >= reqShown ? "text-emerald-400" : "text-red-400"
                     )}>
                       {eq >= reqShown ? `+${((eq - reqShown) * 100).toFixed(1)}pp` : `${((eq - reqShown) * 100).toFixed(1)}pp`}
                     </span>
