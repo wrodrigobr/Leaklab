@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(data): limpa gto_label stale de potes limpados (downstream)
+
+> Complemento do guard de frontend: as **46 decisões de pote limpado** que tinham `gto_label` **armazenado** (scoring antigo, pré-feature do limp) poluíam gto-alignment, ELO e leak reports — e eram a raiz do veredito stale no card. Novo `scripts/backfill_clear_limp_gto.py` (dry-run por padrão, `--apply`, idempotente, cross-backend) re-avalia cada decisão preflop com `facing_limp` e zera `gto_label`/`gto_action` onde `coverage_reason='limped_pot'`. Rodado local: 46 limpos, re-run = 0 (idempotente). Potes limpados agora ficam **fora** das métricas GTO (NULL honesto), como deveriam.
+
 ### fix(replayer): pro-notes do faces_squeeze (termo + dedup) + bucket de stack "≈"
 
 > **Pro-notes**: no faces_squeeze, a nota reusava `_vs_3bet_notes` e dizia **"vs 3bet"** (errado — é squeeze) e **duplicava o "why"** do card ("fora do range"). Agora `_vs_3bet_notes` é parametrizado por cenário (diz **"squeeze"** no faces_squeeze) e a nota de fold out-of-range correto é **suprimida** (o "why" já explica) — só aparece quando o jogador **desvia** (continua), aí explicando o erro. **Bucket de stack**: o GTO resolve em depths discretos (10/14/.../50/75/100bb); com stack 61,9bb o card mostrava "· 50BB" (parecia erro). Agora prefixa **"≈"** quando o bucket diverge do stack real (**"≈50bb"** = depth resolvido mais próximo). Testes verdes (preflop 76, invariants 8, regression 26).
