@@ -190,8 +190,14 @@ function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
 //    válido (sem overlap, dentro do felt), preferindo o lado outboard.
 const _HW = 84, _HH = 32, _CARD_HW = 64 + 6 / 2, _CH = 96;
 const _CLU_UP = 30, _GAP = 14, _DRX = 20, _DRY = 12;
-const _VB = { x1: 4, y1: 4, x2: 1116, y2: 638 }; // overflow:visible permite y2 folgado
 const _BOARD_B = { x1: CX - (5 * 68 + 4 * 8) / 2, y1: CY - 61, x2: CX + (5 * 68 + 4 * 8) / 2, y2: CY + 49 };
+// feltro verde ≈ elipse rx=414 ry=218 (bg-felt). Os pods ficam na BORDA/rail (fora
+// do feltro), então o dealer precisa vir INBOARD pra dentro do verde. Raios
+// contraídos pela folga do botão (~20×19) p/ o botão caber inteiro.
+const _RXF = 414 - 24, _RYF = 218 - 22;
+function _inFelt(x: number, y: number): boolean {
+  return ((x - CX) / _RXF) ** 2 + ((y - CY) / _RYF) ** 2 <= 1;
+}
 
 function _farAlong(cBx: number, cBy: number, hwB: number, hhB: number,
                    px: number, py: number, ux: number, uy: number): number {
@@ -211,26 +217,28 @@ function placeBetAndDealer(px: number, py: number) {
   );
   const chipX = Math.round(px + (far + _GAP + _CLU_UP) * ux);
   const chipY = Math.round(py + (far + _GAP + _CLU_UP) * uy);
-  // Dealer: 4 candidatos laterais colados no pod; escolhe válido outboard.
+  // Dealer: INBOARD (dentro do feltro) + deslocamento lateral pra livrar cartas e
+  // fichas. Busca (inboard d × lateral L), contida na elipse do feltro, escolhendo
+  // o mais próximo do pod ("colado"). Outboard cairia no rail preto.
+  const tx = -uy, ty = ux;  // tangente
   const podB  = { x1: px - _HW, y1: py - _HH, x2: px + _HW, y2: py + _HH };
   const cby   = (py - _HH) - Math.round(_CH * 0.67);
   const cardB = { x1: px - _CARD_HW, y1: cby, x2: px + _CARD_HW, y2: cby + _CH };
   const cluB  = { x1: chipX - 28, y1: chipY - _CLU_UP, x2: chipX + 28, y2: chipY + 28 };
-  const cand = [
-    { dx: Math.round(px + (_HW + _GAP + _DRX)), dy: py },
-    { dx: Math.round(px - (_HW + _GAP + _DRX)), dy: py },
-    { dx: px, dy: Math.round(py + (_HH + _GAP + _DRY + 7)) },
-    { dx: px, dy: Math.round(py - (_HH + _GAP + _DRY + 7)) },
-  ];
   let best: { dx: number; dy: number; score: number } | null = null;
-  for (const c of cand) {
-    const db = { x1: c.dx - _DRX, y1: c.dy - _DRY, x2: c.dx + _DRX, y2: c.dy + _DRY + 7 };
-    if (_ovl(db, podB) || _ovl(db, cardB) || _ovl(db, cluB) || _ovl(db, _BOARD_B)) continue;
-    if (db.x1 < _VB.x1 || db.x2 > _VB.x2 || db.y1 < _VB.y1 || db.y2 > _VB.y2) continue;
-    const score = Math.hypot(c.dx - CX, c.dy - CY) + (c.dy > py ? 12 : 0);
-    if (!best || score > best.score) best = { dx: c.dx, dy: c.dy, score };
+  for (const d of [40, 54, 68, 84, 100, 116, 132]) {
+    for (const L of [0, 50, -50, 78, -78, 106, -106, 136, -136]) {
+      const dx = Math.round(px + ux * d + tx * L);
+      const dy = Math.round(py + uy * d + ty * L);
+      if (!_inFelt(dx, dy)) continue;
+      const db = { x1: dx - _DRX, y1: dy - _DRY, x2: dx + _DRX, y2: dy + _DRY + 7 };
+      if (_ovl(db, podB) || _ovl(db, cardB) || _ovl(db, cluB) || _ovl(db, _BOARD_B)) continue;
+      const score = -Math.hypot(dx - px, dy - py) - Math.abs(L) * 0.12;
+      if (!best || score > best.score) best = { dx, dy, score };
+    }
   }
-  if (!best) best = { dx: Math.round(px + (_HW + _GAP + _DRX)), dy: py, score: 0 };
+  // fallback: inboard puro (raro — só se nada couber)
+  if (!best) best = { dx: Math.round(px + ux * 70), dy: Math.round(py + uy * 70), score: 0 };
   return { chipX, chipY, dealerX: best.dx, dealerY: best.dy };
 }
 

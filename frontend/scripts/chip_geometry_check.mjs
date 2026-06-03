@@ -25,6 +25,10 @@ function cardBox(p){ const by=p.y-HH, cy=by-Math.round(CH*0.67); return {x1:p.x-
 const cluBox =(cx,by)=>({x1:cx-CLU_HW,y1:by-CLU_UP,x2:cx+CLU_HW,y2:by+CLU_DN});
 const dlrBox =(dx,dy)=>({x1:dx-DRX,y1:dy-DRY,x2:dx+DRX,y2:dy+DRY+7});
 const boardBox={x1:CX-(5*68+4*8)/2,y1:CY-110/2-6,x2:CX+(5*68+4*8)/2,y2:CY+110/2-6};
+// feltro verde ~ elipse rx=414 ry=218 (bg-felt). Botão (raio ~20×19) precisa caber
+// inteiro dentro → contrai os raios pela folga do botão.
+const RXF=414, RYF=218, FELT_MX=24, FELT_MY=22;
+function inFelt(x,y){ return ((x-CX)/(RXF-FELT_MX))**2 + ((y-CY)/(RYF-FELT_MY))**2 <= 1; }
 
 // projeção do half-extent de uma box (centro cB, meio hwB/hhB) sobre u, somada
 // ao deslocamento do centro da box relativo ao pod — dá a distância da borda
@@ -48,24 +52,22 @@ function place(p){
   const cx = Math.round(p.x + (far+GAP+CLU_UP)*ux);
   const by = Math.round(p.y + (far+GAP+CLU_UP)*uy);
 
-  // DEALER: "lateral, colado no pod". 4 candidatos (dir/esq/baixo/cima), colados
-  // na borda do pod + GAP. Escolhe o válido (sem overlap c/ pod/cartas/fichas/board,
-  // dentro do felt), preferindo o lado OUTBOARD (afastado do centro) e mais baixo.
-  const cand=[
-    {dx:Math.round(p.x+(HW+GAP+DRX)), dy:p.y},     // direita
-    {dx:Math.round(p.x-(HW+GAP+DRX)), dy:p.y},     // esquerda
-    {dx:p.x, dy:Math.round(p.y+(HH+GAP+DRY+7))},   // baixo
-    {dx:p.x, dy:Math.round(p.y-(HH+GAP+DRY+7))},   // cima
-  ];
+  // DEALER: INBOARD (sobre o feltro) + deslocamento lateral pra livrar cartas/fichas.
+  // Os pods ficam na BORDA/rail (fora do feltro verde), então o dealer NÃO pode ir
+  // outboard — tem que vir pra DENTRO do feltro. Busca (inboard d × lateral L),
+  // contido na elipse do feltro, escolhendo o mais próximo do pod ("colado").
   let best=null;
-  for(const c of cand){
-    const db=dlrBox(c.dx,c.dy);
-    const bad = overlap(db,podBox(p),0)||overlap(db,cardBox(p),0)||overlap(db,cluBox(cx,by),0)||overlap(db,boardBox,0)||!inside(db);
-    if(bad) continue;
-    // score: outboard (longe do centro) + levemente preferindo abaixo do pod
-    const outboard = Math.hypot(c.dx-CX, c.dy-CY);
-    const score = outboard + (c.dy>p.y?12:0);
-    if(!best||score>best.score) best={dx:c.dx,dy:c.dy,score};
+  for(const d of [40,54,68,84,100,116,132]){
+    for(const L of [0,50,-50,78,-78,106,-106,136,-136]){
+      const dx=Math.round(p.x + ux*d + tx*L);
+      const dy=Math.round(p.y + uy*d + ty*L);
+      if(!inFelt(dx,dy)) continue;
+      const db=dlrBox(dx,dy);
+      if(overlap(db,podBox(p),0)||overlap(db,cardBox(p),0)||overlap(db,cluBox(cx,by),0)||overlap(db,boardBox,0)) continue;
+      const distPod=Math.hypot(dx-p.x,dy-p.y);
+      const score = -distPod - Math.abs(L)*0.12; // perto do pod, menor lateral
+      if(!best||score>best.score) best={dx,dy,score};
+    }
   }
   return {cx,by,dealer:best,ux,uy};
 }
@@ -87,6 +89,7 @@ function validate(seats,heroSeat,label){
       if(overlap(db,cb,0))iss.push('DLR×CHIP');
       if(overlap(db,podBox(p),0))iss.push('DLR×POD');
       if(overlap(db,cardBox(p),0))iss.push('DLR×CARDS');
+      if(!inFelt(r.dealer.dx,r.dealer.dy))iss.push('DLR×FORA-DO-FELTRO');
     }
     if(iss.length)bad++;
     const dl=r.dealer?`(${r.dealer.dx},${r.dealer.dy})`:'—';
