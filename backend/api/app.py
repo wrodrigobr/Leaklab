@@ -2218,6 +2218,7 @@ def _analyze_hands(hands):
                                 facing_raises      = int(_spot.get('preflopRaisesFaced') or 0),
                                 hero_was_aggressor = bool(_spot.get('heroWasAggressor')),
                                 facing_limp        = bool(_spot.get('facingLimp')),
+                                caller_position    = _spot.get('callerPosition', ''),
                             )
                     except Exception:
                         pass
@@ -3839,6 +3840,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 facing_raises      = int(spot.get('preflopRaisesFaced') or 0),
                                 hero_was_aggressor = bool(spot.get('heroWasAggressor')),
                                 facing_limp        = bool(spot.get('facingLimp')),
+                                caller_position    = spot.get('callerPosition', ''),
                             )
                             # Fallback for call-vs-shove (no vs_3bet data yet):
                             # use RFI range membership as proxy for shove-call quality

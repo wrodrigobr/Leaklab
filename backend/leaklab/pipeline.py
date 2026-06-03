@@ -90,6 +90,7 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'preflopRaisesFaced': state.metadata.get('preflop_raises_faced', 0),  # 3-bet/squeeze faced
             'heroWasAggressor':   state.metadata.get('hero_was_aggressor', False),
             'facingLimp':         state.metadata.get('facing_limp', False),  # pote limpado (fora de cobertura GTO)
+            'callerPosition':     state.metadata.get('caller_position', ''),  # cold caller (pra rotear squeeze)
         },
         'hand_profile': hand_profile,
         'math': {

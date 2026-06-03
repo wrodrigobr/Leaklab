@@ -236,6 +236,22 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                     facing_limp = True
                     break
 
+        # Cold caller (pra SQUEEZE): posição de quem PAGOU o open antes do hero agir,
+        # quando houve open + call sem re-raise. O engine usa isso pra rotear um
+        # hero-squeeze (raise sobre open + cold call) ao cenário 'squeeze' em vez de
+        # vs_rfi (range errado). Só relevante quando o hero ainda não foi agressor.
+        caller_position = ''
+        if street == 'preflop' and not hero_was_aggressor:
+            _seen_open = False
+            for a in actions_before:
+                if a.street != 'preflop' or a.player == hero:
+                    continue
+                if a.action in ('raises', 'all-in'):
+                    _seen_open = True
+                elif a.action == 'calls' and _seen_open:
+                    caller_position = _infer_position(hand, a.player)
+                    break
+
         # Multiway: mais de 2 jogadores ativos na street atual
         active_in_street = set(
             a.player for a in hand.actions
@@ -277,6 +293,7 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'preflop_raises_faced': preflop_raises_faced,
                 'hero_was_aggressor': hero_was_aggressor,
                 'facing_limp': facing_limp,
+                'caller_position': caller_position,
             },
         )
         states.append(state)

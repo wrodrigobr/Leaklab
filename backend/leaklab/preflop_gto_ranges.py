@@ -527,59 +527,16 @@ def analyze_preflop(
                                             pct_play, in_rng, action_taken, acoes),
             })
 
-    # ── Squeeze (hero é squeezador em pot 3-way com open + cold call) ────────
-    elif scenario == 'squeeze':
-        key = f"{pos}_squeeze_vs_{vs_pos}_open_{cal_pos}_call"
-        # Lookup: tenta bucket exato primeiro, depois fallback para buckets adjacentes
-        # (vs_squeeze cobre 40/50/75/100bb; 30bb cai pra 40bb, 20bb pra 40bb).
-        candidate_buckets = [bucket]
-        # Fallback inferior (mais conservador) — squeeze cobre 40/50/75/100bb
-        bucket_fallbacks = {
-            '20bb': ['40bb'], '30bb': ['40bb'],  # sobem (único caminho)
-            '40bb': ['50bb'],                     # 40 → 50 (não há inferior em squeeze)
-            '50bb': ['40bb'],                     # 50 → 40 (inferior)
-            '75bb': ['50bb'],                     # 75 → 50 (inferior)
-            '100bb': ['75bb'],                    # 100 → 75 (inferior)
-        }
-        candidate_buckets += bucket_fallbacks.get(bucket, [])
-        spot = None
-        used_bucket = bucket
-        for bk_try in candidate_buckets:
-            vs_sq_try = data.get('ranges', {}).get(bk_try, {}).get('vs_squeeze', {})
-            if key in vs_sq_try:
-                spot = vs_sq_try[key]
-                used_bucket = bk_try
-                break
-        if not spot:
-            return base  # available=False — sem cobertura para essa combinação
-        pct_sq     = float(spot.get('pct_squeeze', 0))
-        pct_call   = float(spot.get('pct_call', 0))
-        hands_4bet = spot.get('hands_4bet', '')
-        hands_call = spot.get('hands_call', '')
-        in_4b      = _in_range(hero_hand_type, hands_4bet)
-        in_cl      = _in_range(hero_hand_type, hands_call)
-        in_rng     = in_4b or in_cl
-        rec        = ['raise', 'jam'] if in_4b else (['call'] if in_cl else ['fold'])
-        quality    = _vs_3bet_quality(action_taken, in_4b, in_cl)  # mesma lógica de 3bet aplicável
-        base.update({
-            'available': True, 'in_range': in_rng,
-            'range_pct': pct_sq,
-            'range_hands': f"squeeze: {hands_4bet} | call: {hands_call}",
-            'recommended_actions': rec, 'action_quality': quality,
-            'hands_4bet': hands_4bet, 'hands_call': hands_call,
-            'pro_notes': [
-                f"Spot multiway: {vs_pos} abriu, {cal_pos} pagou. Hero {pos} decide "
-                f"squeeze/call/fold. Squeeze frequência GTO: {pct_sq:.1%}, call: {pct_call:.1%}."
-            ],
-        })
-
-    # ── vs 3bet ───────────────────────────────────────────────────────────────
-    elif scenario in ('vs_3bet', 'faces_squeeze'):
+    # ── vs 3bet / faces_squeeze / squeeze — MESMA estrutura [hero][opener] no JSON ──
+    elif scenario in ('vs_3bet', 'faces_squeeze', 'squeeze'):
         # vs_3bet:       ranges[stack][vs_3bet][opener_hero][3bettor] — hero abriu, enfrenta 3bet
-        # faces_squeeze: ranges[stack][faces_squeeze][hero][3bettor] — hero cold/blind enfrenta
-        #                open+3bet/squeeze sem ter aberto. MESMA estrutura de spot e graduação
-        #                (raise_hands=4bet, call_hands, allin_hands, hand_freqs).
-        _section = 'vs_3bet' if scenario == 'vs_3bet' else 'faces_squeeze'
+        # faces_squeeze: ranges[stack][faces_squeeze][hero][3bettor] — hero DEFENDE open+3bet/squeeze
+        # squeeze:       ranges[stack][squeeze][hero][opener]        — hero SQUEEZA (raise sobre
+        #                open + cold call). Os três têm a MESMA estrutura de spot e graduação
+        #                (raise_hands, call_hands, allin_hands, hand_freqs). A branch antiga do
+        #                squeeze usava section 'vs_squeeze' + chave flat (formato obsoleto) e nunca
+        #                casava — caía em vs_rfi (range errado). Agora reusa este path.
+        _section = {'vs_3bet': 'vs_3bet', 'faces_squeeze': 'faces_squeeze', 'squeeze': 'squeeze'}[scenario]
         bucket_fallbacks = {
             '14bb': ['10bb', '20bb'], '17bb': ['20bb', '14bb'],
             '40bb': ['30bb', '50bb'], '60bb': ['50bb', '75bb'],
@@ -944,7 +901,7 @@ def _vs_3bet_notes(pos, hand, stack, pct, in_4b, in_cl, action, scenario='vs_3be
     label = _POS.get(pos, pos)
     pct_s = f"{pct*100:.0f}%"
     act   = action.lower()
-    term  = 'squeeze' if scenario == 'faces_squeeze' else '3bet'  # termo correto por cenário
+    term  = 'squeeze' if scenario in ('faces_squeeze', 'squeeze') else '3bet'  # termo correto por cenário
     if in_4b:
         notes.append(f"{hand} do {label} faz 4bet vs {term} — mão no topo do range de continuação ({pct_s} continuam).")
         if act == 'fold':
