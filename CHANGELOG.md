@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(dev): proxy `/replay` colidia com a rota SPA `/replayer` (404 em load direto)
+
+> O proxy do Vite usava o prefixo `/replay`, que casa também com **`/replayer`** (a rota do SPA). Resultado: abrir/recarregar/bookmarkar `localhost:8080/replayer?...` direto caía no 404 do backend (`{"error":"Rota não encontrada"}`) em vez de carregar o SPA — só funcionava navegando de dentro do app (client-side routing). Fix: chave do proxy `/replay` → `/replay/` (a API sempre chama `/replay/{t}/{h}` e `/replay/{id}/gto`, então a barra final preserva o proxy e libera `/replayer`). Descoberto via harness de screenshots do Replayer (`frontend/scripts/replayer_shots.mjs`, Playwright). Validado: `/replayer` serve SPA, `/replay/1/2` → backend 401.
+
 ### feat(replayer): pote limpado rotulado "{pos} vs Limp" em vez de NULL mudo (INV-12)
 
 > Spots de **pote limpado** (limp sem raise: BB-check de opção, over-limp, iso-raise) ficavam `available=False` **silencioso** no Replayer — parecia falta de captura, mas é gap de cenário conhecido (cobrimos só árvores raise-first; backlog #22). `hand_state_builder` agora detecta o limp (`facing_limp`: `calls ≥ ~1bb` sem raise, hero não-agressor), `analyze_preflop` devolve `coverage_reason='limped_pot'`, e o Decision Card mostra **"Sem veredito GTO · {pos} vs Limp"** com tooltip explicando que não é falha de captura. i18n nas 3 locales. Dataset local: 8 spots. Novo invariante **INV-12** (`test_inv_limped_pot_coverage_reason`). Walk genuíno (sem limp) segue `available=False` sem rótulo. Engine 270/270, api verde, tsc ✓.
