@@ -7,9 +7,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
-### fix(preflop-gto): RFI fold puro retorna `hand_freq={fold:1.0}` (não None → não cai no agregado)
+### fix(preflop-gto): `hand_freq` sempre é distribuição válida da mão quando available (INV-10)
 
-> Causa-raiz do "Range agregado" aparecer no Decision Card/Replayer: no path RFI v3, mãos **fora do range de abertura** (ex.: 83o, sem entrada no GW) retornavam `hand_freq=None`. O `Replayer.tsx` só usa `hand_freq` quando presente — com None, **caía no fallback do % AGREGADO** do range (Fold 79,8% / Raise 12,7% / Allin 7,5% = distribuição da posição), em vez do veredito da mão (Fold 100%). Fix: `analyze_preflop` (RFI v3) devolve `{fold:1.0}` explícito para mãos out-of-range. Agora o card mostra a estratégia **da carta do jogador** (83o → Fold 100%). Os paths faces_squeeze/vs_3bet já faziam isso. Preflop 76/76, regression 26/26, invariants 5/5.
+> Causa-raiz do "Range agregado" no Decision Card/Replayer: para mãos **out-of-range** (sem entrada no GW), `analyze_preflop` devolvia `hand_freq=None` (path RFI, ex.: 83o) ou **`{tudo-zero}`** (path vs_rfi, ex.: 82o BTN vs HJ; faces_squeeze). O `Replayer.tsx` só usa `hand_freq` quando soma > 0 — com None/zero **caía no % AGREGADO** do range (distribuição da posição, ex.: "Fold 79,8% / Raise 12,7%") em vez do veredito da carta (Fold 100%). Sweep nas 832 decisões preflop reais achou **223 casos** (222 vs_rfi + 1 faces_squeeze) ainda caindo no agregado. **Fix estrutural** (não patch por-path): normalização única na saída de `analyze_preflop` — `available=True` sem distribuição válida ⇒ fold puro 100%. Novo invariante **INV-10** (`test_inv_hand_freq_distribution`, suite engine) trava a regressão. Sweep pós-fix: 0 inválidos em 832. Engine 268/268.
 
 ### feat(replayer): card mostra % de ação DA MÃO do jogador (não do range agregado)
 

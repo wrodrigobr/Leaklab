@@ -654,6 +654,16 @@ def analyze_preflop(
                                           pct_continua, in_4b, in_cl, action_taken),
         })
 
+    # INV-10 (honestidade do display): quando available=True, hand_freq DEVE ser
+    # uma distribuição válida (soma ~1) da AÇÃO DA MÃO. Vários paths devolvem None
+    # ou tudo-zero para mãos out-of-range — aí o frontend cai no % AGREGADO do
+    # range (distribuição da posição) em vez do veredito da carta do jogador.
+    # Normaliza num só ponto: sem distribuição válida = fold puro 100%.
+    if base.get('available'):
+        _hf = base.get('hand_freq')
+        if not _hf or sum(_hf.values()) < 0.5:
+            base['hand_freq'] = {'call': 0.0, 'raise': 0.0, 'allin': 0.0, 'fold': 1.0}
+
     return base
 
 

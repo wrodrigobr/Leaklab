@@ -89,3 +89,15 @@ As ranges usam o sizing GTO canônico (ex.: open `R2`=2bb). Vs um open **off-tre
 decisões com `hero_won_hand=1 AND gto_label='gto_critical'`.
 
 - **Guarda:** `test_detect_hand_won`, `test_results_vs_gto_endpoint` (suite `api`).
+
+### INV-10 — `hand_freq` é a distribuição da AÇÃO DA MÃO, nunca None/tudo-zero quando `available`
+
+Quando `analyze_preflop` devolve `available=True`, `hand_freq` é a distribuição
+de ação da **carta específica do hero** (`{fold,call,raise,allin}`, soma ~1) — é o
+que o Decision Card e o RangePanel mostram. Mãos **out-of-range** (sem entrada no
+GW) devolviam `None` ou `{tudo-zero}` em vários paths (rfi, vs_rfi, faces_squeeze);
+o frontend então caía no **% AGREGADO do range** (distribuição da posição, ex.:
+"Fold 79,8% / Raise 12,7%") em vez do veredito da mão (Fold 100%). Normalizado num
+só ponto na saída de `analyze_preflop`: sem distribuição válida ⇒ fold puro 100%.
+
+- **Guarda:** `test_inv_hand_freq_distribution` (suite `engine`).

@@ -61,6 +61,35 @@ def test_inv_gw_valid_depths():
     print("OK  test_inv_gw_valid_depths")
 
 
+def test_inv_hand_freq_distribution():
+    """INV-10: quando available=True, hand_freq é a distribuição da AÇÃO DA MÃO e
+    DEVE somar ~1 (nunca None nem tudo-zero). None/tudo-zero faz o display cair no
+    % AGREGADO do range (distribuição da posição) em vez do veredito da carta.
+    Cobre out-of-range em todos os cenários: rfi, vs_rfi, faces_squeeze."""
+    cases = [
+        # (descrição, kwargs) — todas mãos out-of-range (o caso que quebrava)
+        ('rfi 83o',          dict(position='LJ', hero_hand_type='83o', stack_bb=15.4, action_taken='fold',
+                                  facing_size=0.0, vs_position='', is_3bet_pot=False, n_players=9,
+                                  facing_raises=0, hero_was_aggressor=False)),
+        ('vs_rfi 82o BTN',   dict(position='BTN', hero_hand_type='82o', stack_bb=12.1, action_taken='fold',
+                                  facing_size=2.0, vs_position='HJ', is_3bet_pot=False, n_players=9,
+                                  facing_raises=1, hero_was_aggressor=False)),
+        ('faces_squeeze TT', dict(position='HJ', hero_hand_type='TT', stack_bb=20, action_taken='call',
+                                  facing_size=9.0, vs_position='SB', is_3bet_pot=True, n_players=9,
+                                  facing_raises=2, hero_was_aggressor=False)),
+    ]
+    for desc, kw in cases:
+        r = analyze_preflop(**kw)
+        if not r.get('available'):
+            continue
+        hf = r.get('hand_freq')
+        assert hf is not None, f"{desc}: hand_freq=None (cairia no agregado)"
+        s = sum(hf.values())
+        assert s > 0.5, f"{desc}: hand_freq soma {s} (tudo-zero → cairia no agregado): {hf}"
+        assert abs(s - 1.0) < 0.05, f"{desc}: hand_freq não normalizado (soma {s}): {hf}"
+    print("OK  test_inv_hand_freq_distribution")
+
+
 def test_inv_3bet_sizing_order():
     """INV-6: 3bet/squeeze é RAI (shove) em stack raso, R6 (raise) em fundo."""
     from leaklab.preflop_autocapture import _3BET_ORDER
@@ -80,5 +109,5 @@ if __name__ == '__main__':
         except Exception as e:
             import traceback; traceback.print_exc()
             print(f"FAIL {name}: {e}"); failed += 1
-    print(f"\nTotal: {passed+failed} Passed: {passed} Failed: {failed}")
+    print(f"\nTotal: {passed+failed} | Passed: {passed} | Failed: {failed}")
     sys.exit(1 if failed else 0)
