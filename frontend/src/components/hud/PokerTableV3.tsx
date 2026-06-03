@@ -97,7 +97,7 @@ function cardSVG(code: string | null, x: number, y: number, w = 58, h = 84, face
   const rx = Math.round(w * 0.09);
   if (!code || faceDown) {
     // Mesma moldura branca das faces: white rect cheio + verso azul com inset.
-    const m = Math.max(3, Math.round(w * 0.08));
+    const m = Math.max(2, Math.round(w * 0.06));  // borda do verso um pouco menor
     const iw = w - 2 * m, ih = h - 2 * m;
     const irx = Math.max(1, Math.round((rx - m) * 0.7));
     const p = 3, id = `cd${x}${y}`;
@@ -114,7 +114,7 @@ function cardSVG(code: string | null, x: number, y: number, w = 58, h = 84, face
   // Os SVGs do baralho são full-bleed (valor/naipe colados na borda). Desenhamos a
   // moldura branca da carta no tamanho cheio e renderizamos a face com INSET (margem)
   // por dentro → o branco casa com o fundo do SVG e o conteúdo recua da borda.
-  const m = Math.max(3, Math.round(w * 0.08));  // margem ~8% da largura
+  const m = Math.max(2, Math.round(w * 0.045));  // margem ~4,5% da largura (borda fina)
   const iw = w - 2 * m, ih = h - 2 * m;
   const irx = Math.max(1, Math.round((rx - m) * 0.7));
   const cid = `cf${x}${y}`;
