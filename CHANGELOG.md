@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### style(replayer): cartas com margem branca (valor/naipe recuados da borda) + verso emoldurado
+
+> Os SVGs do baralho são full-bleed (valor/naipe colados na borda). Agora o `cardSVG` desenha a **moldura branca da carta** no tamanho cheio e renderiza a face com **inset (~8%)** por dentro (clip arredondado) — o branco casa com o fundo do SVG e o conteúdo recua da borda. O **verso** (face-down) ganhou a mesma moldura branca (white rect + verso azul inset). Cobre hero, vilões e showdown de uma vez.
+
 ### fix(replayer): geometria de bet chips + dealer button sem sobreposições (modelo validado)
 
 > As fichas de aposta e o dealer button usavam um modelo de **fração da distância ao centro** (`t2`/`perpOff`), que numa mesa **oval** dava folgas absolutas inconsistentes (78px a 139px do pod no mesmo `t2`) e — pior — bet e dealer eram calculados **independentemente**, colidindo em quase todos os assentos (101–651px² de interseção no teste), com o dealer invadindo as cartas em bottom seats. Reescrito com modelo **validado numericamente** (`scripts/chip_geometry_check.mjs`, 0 sobreposições em 6/8/9-max e hero em qualquer assento): bet chips ancoram na **borda distante de (pod ∪ cartas)** ao longo do vetor inboard + gap fixo (folga consistente, pula as cartas dos bottom seats); dealer **inboard, contido na elipse do feltro** (busca inboard×lateral escolhendo o ponto válido mais próximo do pod) — os pods ficam na borda/rail, então o dealer precisa vir pra dentro do verde, sem tocar pod/cartas/fichas. Winner chips (showdown) usam a mesma âncora. Confirmado por screenshots reais nos 3 breakpoints.

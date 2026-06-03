@@ -96,17 +96,31 @@ function chipStackSVG(cx: number, bottomY: number, amount: number): string {
 function cardSVG(code: string | null, x: number, y: number, w = 58, h = 84, faceDown = false): string {
   const rx = Math.round(w * 0.09);
   if (!code || faceDown) {
-    const p = 4, id = `cd${x}${y}`;
-    return `<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}"/></clipPath>
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#0c1b36" stroke="#1a3260" stroke-width="1" filter="url(#rp-cshadow)"/>
-    <rect x="${x + p}" y="${y + p}" width="${w - p * 2}" height="${h - p * 2}" rx="${rx - 2}" fill="none" stroke="rgba(140,175,255,0.22)" stroke-width=".9" clip-path="url(#${id})"/>
-    <text x="${x + w / 2}" y="${y + h * 0.45}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.14)" font-family="sans-serif" font-size="${Math.round(w * 0.40)}" clip-path="url(#${id})">♠</text>`;
+    // Mesma moldura branca das faces: white rect cheio + verso azul com inset.
+    const m = Math.max(3, Math.round(w * 0.08));
+    const iw = w - 2 * m, ih = h - 2 * m;
+    const irx = Math.max(1, Math.round((rx - m) * 0.7));
+    const p = 3, id = `cd${x}${y}`;
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#ffffff" filter="url(#rp-cshadow)"/>
+    <clipPath id="${id}"><rect x="${x + m}" y="${y + m}" width="${iw}" height="${ih}" rx="${irx}"/></clipPath>
+    <rect x="${x + m}" y="${y + m}" width="${iw}" height="${ih}" rx="${irx}" fill="#0c1b36" stroke="#1a3260" stroke-width="1"/>
+    <rect x="${x + m + p}" y="${y + m + p}" width="${iw - p * 2}" height="${ih - p * 2}" rx="${Math.max(1, irx - 2)}" fill="none" stroke="rgba(140,175,255,0.22)" stroke-width=".9" clip-path="url(#${id})"/>
+    <text x="${x + w / 2}" y="${y + h * 0.45}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.14)" font-family="sans-serif" font-size="${Math.round(w * 0.34)}" clip-path="url(#${id})">♠</text>`;
   }
   const r = code.slice(0, -1).toUpperCase();
   const suit = code.slice(-1).toLowerCase();
   const rank = RANK_FILE[r] ?? r;
   const file = `${CARDS_BASE}${rank}${SUIT_FILE[suit] ?? suit.toUpperCase()}.svg`;
-  return `<image href="${file}" x="${x}" y="${y}" width="${w}" height="${h}" filter="url(#rp-cshadow)" preserveAspectRatio="xMidYMid meet"/>`;
+  // Os SVGs do baralho são full-bleed (valor/naipe colados na borda). Desenhamos a
+  // moldura branca da carta no tamanho cheio e renderizamos a face com INSET (margem)
+  // por dentro → o branco casa com o fundo do SVG e o conteúdo recua da borda.
+  const m = Math.max(3, Math.round(w * 0.08));  // margem ~8% da largura
+  const iw = w - 2 * m, ih = h - 2 * m;
+  const irx = Math.max(1, Math.round((rx - m) * 0.7));
+  const cid = `cf${x}${y}`;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#ffffff" filter="url(#rp-cshadow)"/>
+    <clipPath id="${cid}"><rect x="${x + m}" y="${y + m}" width="${iw}" height="${ih}" rx="${irx}"/></clipPath>
+    <image href="${file}" x="${x + m}" y="${y + m}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet" clip-path="url(#${cid})"/>`;
 }
 
 function buildLayout(seatNums: number[], heroSeat: number | undefined) {
