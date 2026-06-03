@@ -109,8 +109,10 @@ function cardSVG(code: string | null, x: number, y: number, w = 58, h = 84, face
   const rx = Math.round(fw * 0.09);
   const irx = Math.max(1, Math.round(rx * 0.6));
   if (!code || faceDown) {
+    // Moldura do VERSO em cinza azulado (não branco) — o branco chamava muito
+    // atenção contra o fundo escuro. As faces continuam com moldura branca.
     const p = 3, id = `cd${x}${y}`;
-    return `<rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" rx="${rx}" fill="#ffffff" filter="url(#rp-cshadow)"/>
+    return `<rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" rx="${rx}" fill="#7c8696" filter="url(#rp-cshadow)"/>
     <clipPath id="${id}"><rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" rx="${irx}"/></clipPath>
     <rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" rx="${irx}" fill="#0c1b36" stroke="#1a3260" stroke-width="1"/>
     <rect x="${ix + p}" y="${iy + p}" width="${iw - p * 2}" height="${ih - p * 2}" rx="${Math.max(1, irx - 2)}" fill="none" stroke="rgba(140,175,255,0.22)" stroke-width=".9" clip-path="url(#${id})"/>
