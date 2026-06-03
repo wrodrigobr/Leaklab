@@ -7,9 +7,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
-### style(replayer): cartas com margem branca (valor/naipe recuados da borda) + verso emoldurado
+### style(replayer): cartas com margem branca uniforme, sem contorno cinza + verso emoldurado
 
-> Os SVGs do baralho são full-bleed (valor/naipe colados na borda). Agora o `cardSVG` desenha a **moldura branca da carta** no tamanho cheio e renderiza a face com **inset (~4,5%)** por dentro (clip arredondado) — o branco casa com o fundo do SVG e o conteúdo recua da borda. O **verso** (face-down) ganhou a mesma moldura branca, um pouco mais larga (~6%). Cobre hero, vilões e showdown de uma vez.
+> Os SVGs do baralho são full-bleed (valor/naipe colados na borda) e têm contorno próprio. Agora o `cardSVG`: (1) desenha a **moldura branca ajustada à proporção real do baralho** (~0,69), com margem **uniforme** ao redor — antes preencher o slot todo com `meet` deixava letterbox em cima/baixo (borda superior parecia maior que as laterais); (2) recorta a face levemente ampliada (clip) pra **remover o contorno cinza** do SVG, sobrando só fundo branco + valor/naipe; (3) o **verso** (face-down) ganhou a mesma moldura branca (~6%). Cobre hero, vilões e showdown de uma vez.
 
 ### fix(replayer): geometria de bet chips + dealer button sem sobreposições (modelo validado)
 
