@@ -121,15 +121,12 @@ function cardSVG(code: string | null, x: number, y: number, w = 58, h = 84, face
   const rank = RANK_FILE[r] ?? r;
   const file = `${CARDS_BASE}${rank}${SUIT_FILE[suit] ?? suit.toUpperCase()}.svg`;
   const cid = `cf${x}${y}`;
-  // O SVG do baralho tem um contorno próprio (linha preta/cinza no retângulo da
-  // carta). Desenhamos a imagem levemente AMPLIADA e recortada pelo clip → o
-  // contorno fica fora do clip e some, sobrando só o fundo branco + valor/naipe.
-  const s = 1.07;  // ~3,5% de recorte por lado (corta o contorno do SVG)
-  const dw = Math.round(iw * s), dh = Math.round(ih * s);
-  const dx = ix - Math.round((dw - iw) / 2), dy = iy - Math.round((dh - ih) / 2);
+  // O contorno cinza foi removido na origem (stroke-width:0 no retângulo de fundo
+  // dos SVGs do baralho), então a face é renderizada no tamanho natural — sem
+  // recorte nem overpaint que cortavam o valor/naipe do canto.
   return `<rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" rx="${rx}" fill="#ffffff" filter="url(#rp-cshadow)"/>
     <clipPath id="${cid}"><rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" rx="${irx}"/></clipPath>
-    <image href="${file}" x="${dx}" y="${dy}" width="${dw}" height="${dh}" preserveAspectRatio="xMidYMid meet" clip-path="url(#${cid})"/>`;
+    <image href="${file}" x="${ix}" y="${iy}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet" clip-path="url(#${cid})"/>`;
 }
 
 function buildLayout(seatNums: number[], heroSeat: number | undefined) {
