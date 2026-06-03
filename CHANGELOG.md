@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): RangePanel não aponta mais pra "aba 3bet" inexistente
+
+> Na tela de ranges de uma decisão vs_3bet (ou squeeze), o painel mostrava a mensagem *"…a decisão está na aba 3bet"* — mas a **aba 3bet nunca existe**: o `/preflop-ranges` retorna `vs_3bet=null` para todas as posições/stacks (a grade 13×13 vs 3-bet não é exposta como aba; a range real está em `hand_freqs`, não no endpoint). A mensagem apontava pra uma aba que não renderiza. Fix: a mensagem só diz *"está na aba X"* quando a aba **realmente existe**; senão explica que a range específica está **no card de análise** (frequências da sua mão), ainda não disponível como grade 13×13. (Expor a grade vs_3bet/squeeze como aba = backlog #28.)
+
 ### fix(preflop-gto): cenário SQUEEZE (hero squeezando) — roteamento + lookup corrigidos
 
 > A varredura do Decision Card num spot de squeeze revelou que o cenário **squeeze** (hero faz o squeeze: raise sobre open-raise + cold-call) estava quebrado em **dois níveis**: (1) **roteamento** — `caller_position` (posição do cold caller) não era computado nem threadado, então o hero-squeeze caía em **vs_rfi** (range errado, veredito potencialmente errado); (2) **lookup obsoleto** — a branch do squeeze buscava section `vs_squeeze` + chave flat (`{pos}_squeeze_vs_...`), formato antigo que **nunca casava** com o dado atual (`squeeze[hero][opener]`, idêntico ao faces_squeeze). Fix: `hand_state_builder` detecta o cold caller → `pipeline.callerPosition` → call sites de `/replay` e enriched passam `caller_position`; e a branch do squeeze foi **mesclada** na do vs_3bet/faces_squeeze (section `squeeze`, mesma estrutura). Agora: spot squeeze coberto → estratégia da mão (ex.: AKs UTG+2 vs UTG @20bb = Raise 11% / All-in 89%); spot sem dado → no-coverage honesto (não mais um veredito vs_rfi falso). Testes: preflop 76, invariants 8, regression 26, pipeline 8, tournament 8, multi 14.

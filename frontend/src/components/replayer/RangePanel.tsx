@@ -400,15 +400,27 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
         ))}
       </div>
 
-      {/* Aviso quando a aba ativa não corresponde ao cenário da decisão */}
-      {showGtoCtx && gto?.scenario && SCENARIO_TO_TYPE[gto.scenario] && effectiveType !== SCENARIO_TO_TYPE[gto.scenario] && (
-        <div className="rounded-md border border-amber-500/25 bg-amber-500/5 px-3 py-1.5">
-          <p className="font-mono text-[9px] text-amber-400/80 leading-snug">
-            Esta grade mostra referência ({effectiveType === 'open' ? 'abertura RFI' : effectiveType === '3bet' ? '3-bet' : 'defesa'}).
-            {" "}A decisão desta mão ({SCENARIO_TO_TYPE[gto.scenario] === 'call' ? 'defesa vs open' : SCENARIO_TO_TYPE[gto.scenario] === '3bet' ? 'resposta ao 3-bet' : 'abertura'}) está na aba <strong className="text-amber-400">{availableTypes.find(t => t.id === SCENARIO_TO_TYPE[gto!.scenario])?.label ?? SCENARIO_TO_TYPE[gto.scenario]}</strong>.
-          </p>
-        </div>
-      )}
+      {/* Aviso quando a aba ativa não corresponde ao cenário da decisão. Só aponta
+          "está na aba X" quando essa aba REALMENTE existe — senão dizia pra clicar
+          numa aba inexistente (a grade vs 3-bet ainda não é exposta como aba). */}
+      {(() => {
+        const targetType = gto?.scenario ? SCENARIO_TO_TYPE[gto.scenario] : undefined;
+        if (!showGtoCtx || !targetType || effectiveType === targetType) return null;
+        const refLabel = effectiveType === 'open' ? 'abertura RFI' : effectiveType === '3bet' ? '3-bet' : 'defesa';
+        const decLabel = targetType === 'call' ? 'defesa vs open' : targetType === '3bet' ? 'resposta ao 3-bet' : 'abertura';
+        const targetTab = availableTypes.find(t => t.id === targetType);
+        return (
+          <div className="rounded-md border border-amber-500/25 bg-amber-500/5 px-3 py-1.5">
+            <p className="font-mono text-[9px] text-amber-400/80 leading-snug">
+              {targetTab ? (
+                <>Esta grade mostra referência ({refLabel}). A decisão desta mão ({decLabel}) está na aba <strong className="text-amber-400">{targetTab.label}</strong>.</>
+              ) : (
+                <>Esta grade é só referência ({refLabel}). A range específica desta decisão ({decLabel}) está no card de análise (frequências da sua mão) — ainda não disponível como grade 13×13.</>
+              )}
+            </p>
+          </div>
+        );
+      })()}
 
       {/* Range grid — sempre interativo (tooltips por célula). */}
       {displayRange ? (
