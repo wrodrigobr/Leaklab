@@ -319,11 +319,13 @@ function renderSeatsAndChips(
     const ac = rawAction ? (AC_COLORS[rawAction] ?? "#888") : null;
     if (actText) {
       // Linha 1: ação com cor
-      html += `<text x="${pos.x}" y="${by + 27}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="${isHero ? 17 : 15}" font-weight="700" letter-spacing=".05">${actText}</text>`;
+      html += `<text x="${pos.x}" y="${by + 26}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="${isHero ? 15 : 13.5}" font-weight="700" letter-spacing=".05">${actText}</text>`;
     } else {
-      const maxChars = isHero ? 14 : 13;
+      // Fonte do nome reduzida (estava grande demais no pod); o limite de chars
+      // sobe um pouco já que a fonte menor cabe mais.
+      const maxChars = isHero ? 16 : 15;
       const name = displayName.length > maxChars ? displayName.slice(0, maxChars) + "…" : displayName;
-      html += `<text x="${pos.x}" y="${by + 27}" text-anchor="middle" fill="${isHero ? "#ffffff" : "#ddd8d0"}" font-family="Inter,sans-serif" font-size="${isHero ? 17 : 15}" font-weight="${isHero ? 600 : 500}" letter-spacing=".05">${name}</text>`;
+      html += `<text x="${pos.x}" y="${by + 26}" text-anchor="middle" fill="${isHero ? "#ffffff" : "#ddd8d0"}" font-family="Inter,sans-serif" font-size="${isHero ? 14 : 12.5}" font-weight="${isHero ? 600 : 500}" letter-spacing=".05">${name}</text>`;
     }
 
     // Stack
