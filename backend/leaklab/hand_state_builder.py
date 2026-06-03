@@ -223,6 +223,19 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 else:
                     preflop_raises_faced += 1
 
+        # Pote LIMPADO (limp): villain deu open-limp/over-limp (calls >= ~1bb) e
+        # NÃO houve raise. O hero (tipicamente BB) só completa/dá check de opção.
+        # É uma árvore fora da cobertura GTO (capturamos só árvores raise-first) —
+        # marca o spot p/ o display rotular "{pos} vs Limp" em vez de silêncio.
+        facing_limp = False
+        if street == 'preflop' and preflop_raises_faced == 0 and not hero_was_aggressor:
+            bb_amt = (hand.bb or 0) or 1.0
+            for a in actions_before:
+                if (a.street == 'preflop' and a.player != hero
+                        and a.action == 'calls' and (a.amount or 0) >= bb_amt * 0.9):
+                    facing_limp = True
+                    break
+
         # Multiway: mais de 2 jogadores ativos na street atual
         active_in_street = set(
             a.player for a in hand.actions
@@ -263,6 +276,7 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'n_active_opponents': n_active_opponents,
                 'preflop_raises_faced': preflop_raises_faced,
                 'hero_was_aggressor': hero_was_aggressor,
+                'facing_limp': facing_limp,
             },
         )
         states.append(state)

@@ -287,6 +287,9 @@ export interface ReplayStep {
     hands_4bet?: string;
     hands_call?: string;
     reasoning?: string;
+    // Motivo de available=false quando é gap de cenário conhecido (não falta de captura).
+    // 'limped_pot' = pote limpado (árvore raise-first não cobre) → display "{pos} vs Limp".
+    coverage_reason?: "limped_pot";
   } | null;
   // Score breakdown (all hero actions)
   draw_profile?: string | null;

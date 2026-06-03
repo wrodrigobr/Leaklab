@@ -185,6 +185,7 @@ def analyze_preflop(
     n_players: int | None = None,  # tamanho da mesa — usado pra mapping correto pipeline→GW
     facing_raises: int = 0,    # nº de raises de villains ANTES da decisão do hero (open=1, 3bet=2…)
     hero_was_aggressor: bool = False,  # hero já deu raise nesta street antes desta decisão
+    facing_limp: bool = False,  # pote limpado (limp sem raise) — árvore fora da cobertura GTO
 ) -> dict:
     """
     Retorna análise GTO completa de uma decisão preflop.
@@ -235,6 +236,15 @@ def analyze_preflop(
     else:
         scenario = 'rfi'
     base['scenario'] = scenario
+
+    # Pote LIMPADO (limp sem raise) = árvore fora da cobertura GTO (capturamos só
+    # árvores raise-first: RFI/vs_RFI/vs_3bet/squeeze/faces_squeeze). Iso-raise,
+    # over-limp e BB-check de opção caem todos aqui. Rotula o motivo p/ o display
+    # mostrar "{pos} vs Limp" em vez de um available=False mudo (parece falta de
+    # captura, mas é gap de cenário conhecido — backlog #22).
+    if facing_limp:
+        base['coverage_reason'] = 'limped_pot'
+        return base  # available=False — fora de cobertura (limped pot)
 
     # BB checando em pot não contestado = free play, não é decisão de range
     if scenario == 'rfi' and pos == 'BB' and action_taken.lower() == 'check':

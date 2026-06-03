@@ -115,3 +115,16 @@ existe, o caminho correto é `available=False` (INV-3), não range vazia. Varred
 dos 741 spots reais: 0 suspeitos.
 
 - **Guarda:** `test_inv_no_covered_spot_is_all_fold` (suite `engine`).
+
+### INV-12 — Pote limpado → `available=False` com `coverage_reason='limped_pot'`
+
+A cobertura GTO é só de árvores **raise-first** (RFI/vs-RFI/vs-3bet/squeeze/
+faces-squeeze). **Potes limpados** (limp sem raise: BB-check de opção, over-limp,
+iso-raise) são uma árvore diferente, fora de cobertura por design (backlog #22).
+`hand_state_builder` detecta o limp (`calls ≥ ~1bb` sem raise, hero não-agressor) e
+marca `facing_limp`; `analyze_preflop` então devolve `available=False` **com**
+`coverage_reason='limped_pot'`, e o Replayer rotula "{pos} vs Limp" em vez de um
+NULL mudo (que parecia falta de captura). Um walk genuíno (sem limp) continua
+`available=False` sem `coverage_reason`. Dataset local: 8 spots.
+
+- **Guarda:** `test_inv_limped_pot_coverage_reason` (suite `engine`).

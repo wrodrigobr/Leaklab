@@ -2217,6 +2217,7 @@ def _analyze_hands(hands):
                                 n_players      = _spot.get('nPlayers'),
                                 facing_raises      = int(_spot.get('preflopRaisesFaced') or 0),
                                 hero_was_aggressor = bool(_spot.get('heroWasAggressor')),
+                                facing_limp        = bool(_spot.get('facingLimp')),
                             )
                     except Exception:
                         pass
@@ -3834,6 +3835,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 # squeeze"). Alinha o display ao veredito armazenado.
                                 facing_raises      = int(spot.get('preflopRaisesFaced') or 0),
                                 hero_was_aggressor = bool(spot.get('heroWasAggressor')),
+                                facing_limp        = bool(spot.get('facingLimp')),
                             )
                             # Fallback for call-vs-shove (no vs_3bet data yet):
                             # use RFI range membership as proxy for shove-call quality

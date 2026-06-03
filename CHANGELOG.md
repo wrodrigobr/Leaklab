@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): pote limpado rotulado "{pos} vs Limp" em vez de NULL mudo (INV-12)
+
+> Spots de **pote limpado** (limp sem raise: BB-check de opção, over-limp, iso-raise) ficavam `available=False` **silencioso** no Replayer — parecia falta de captura, mas é gap de cenário conhecido (cobrimos só árvores raise-first; backlog #22). `hand_state_builder` agora detecta o limp (`facing_limp`: `calls ≥ ~1bb` sem raise, hero não-agressor), `analyze_preflop` devolve `coverage_reason='limped_pot'`, e o Decision Card mostra **"Sem veredito GTO · {pos} vs Limp"** com tooltip explicando que não é falha de captura. i18n nas 3 locales. Dataset local: 8 spots. Novo invariante **INV-12** (`test_inv_limped_pot_coverage_reason`). Walk genuíno (sem limp) segue `available=False` sem rótulo. Engine 270/270, api verde, tsc ✓.
+
 ### fix(preflop-gto): `hand_freq` sempre é distribuição válida da mão quando available (INV-10)
 
 > Causa-raiz do "Range agregado" no Decision Card/Replayer: para mãos **out-of-range** (sem entrada no GW), `analyze_preflop` devolvia `hand_freq=None` (path RFI, ex.: 83o) ou **`{tudo-zero}`** (path vs_rfi, ex.: 82o BTN vs HJ; faces_squeeze). O `Replayer.tsx` só usa `hand_freq` quando soma > 0 — com None/zero **caía no % AGREGADO** do range (distribuição da posição, ex.: "Fold 79,8% / Raise 12,7%") em vez do veredito da carta (Fold 100%). Sweep nas 832 decisões preflop reais achou **223 casos** (222 vs_rfi + 1 faces_squeeze) ainda caindo no agregado. **Fix estrutural** (não patch por-path): normalização única na saída de `analyze_preflop` — `available=True` sem distribuição válida ⇒ fold puro 100%. Novo invariante **INV-10** (`test_inv_hand_freq_distribution`, suite engine) trava a regressão. Sweep pós-fix: 0 inválidos em 832. Engine 268/268.

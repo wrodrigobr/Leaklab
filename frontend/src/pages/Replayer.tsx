@@ -532,6 +532,13 @@ function SidePanels({
                 )}
               </>
             )}
+            {!isPostflop && pg && !pg.available && pg.coverage_reason === 'limped_pot' && (
+              <div className="flex flex-wrap gap-1 items-center" title={t("card.limpedPotTip")}>
+                <span className="rounded-md bg-muted/30 ring-1 ring-border/50 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                  {t("card.limpedPot", { pos: pg.position })}
+                </span>
+              </div>
+            )}
             {isPostflop && spr != null && (
               <div className="flex items-center gap-2 font-mono text-[11px]"
                 title={t("card.sprTip")}>

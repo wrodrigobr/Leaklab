@@ -65,6 +65,8 @@
     "freqTitleAggr": "Aggregate range in {{ctx}}",
     "freqDisplayHand": "How GTO plays {{hand}} · {{ctx}}",
     "freqDisplayAggr": "Aggregate range · {{ctx}}",
+    "limpedPot": "No GTO verdict · {{pos}} vs Limp",
+    "limpedPotTip": "Limped pot (limp with no raise). This tree is outside GTO coverage — we only cover raise-first spots (RFI/vs-RFI/3bet/squeeze). Not a capture gap.",
     "sprTip": "SPR (Stack-to-Pot Ratio): effective stack ÷ pot. < 2 = committed; 2–5 = medium; > 5 = deep",
     "sprCommitted": "committed",
     "sprMid": "medium",

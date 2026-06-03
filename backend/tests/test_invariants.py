@@ -90,6 +90,28 @@ def test_inv_hand_freq_distribution():
     print("OK  test_inv_hand_freq_distribution")
 
 
+def test_inv_limped_pot_coverage_reason():
+    """INV-12: pote LIMPADO (limp sem raise) → available=False com
+    coverage_reason='limped_pot', não um NULL mudo. Árvore raise-first não cobre
+    limped pots (backlog #22); o display rotula '{pos} vs Limp' em vez de parecer
+    falta de captura. Sem o flag facing_limp, o spot ficava available=False sem motivo."""
+    # BB com limp no pote (facing_limp=True): rotulado
+    r = analyze_preflop(position='BB', hero_hand_type='95o', stack_bb=11.5,
+                        action_taken='check', facing_size=0.0, vs_position='',
+                        is_3bet_pot=False, n_players=9, facing_raises=0,
+                        hero_was_aggressor=False, facing_limp=True)
+    assert r['available'] is False, r
+    assert r.get('coverage_reason') == 'limped_pot', r.get('coverage_reason')
+    # BB check SEM limp (walk genuíno): available=False, mas SEM rótulo de limp
+    r2 = analyze_preflop(position='BB', hero_hand_type='95o', stack_bb=11.5,
+                         action_taken='check', facing_size=0.0, vs_position='',
+                         is_3bet_pot=False, n_players=9, facing_raises=0,
+                         hero_was_aggressor=False, facing_limp=False)
+    assert r2['available'] is False
+    assert r2.get('coverage_reason') is None, r2.get('coverage_reason')
+    print("OK  test_inv_limped_pot_coverage_reason")
+
+
 def _all_169_hands():
     """Os 169 tipos de mão (13 pares + 78 suited + 78 offsuit)."""
     R = 'AKQJT98765432'
