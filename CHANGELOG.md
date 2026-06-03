@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): label do range por cenário (não "abertura" sempre) + i18n de strings do card
+
+> O Decision Card mostrava **"Range de abertura"** hardcoded em **todos** os cenários — errado em vs RFI / vs 3bet / vs Squeeze, onde o `range_pct` é defesa/continuação, não abertura. Agora o rótulo é por cenário: **abertura** (RFI), **defesa** (vs RFI), **continuação** (vs 3bet / vs Squeeze / vs 4bet), **squeeze**. De quebra, i18n de strings que estavam hardcoded em PT no card ("Estratégia do Solver", "Equity Necessária") — chaves nas 3 locales. Termos de poker (Equity, Pot Odds, Stack, M, ICM, SPR) seguem em inglês por regra.
+
 ### docs: nova seção "Revisão de Mão (Replayer)" no /docs
 
 > Documenta conceitualmente (sem expor internals) como ler o Replayer: a **mesa** (posição de cada jogador UTG/LJ/HJ/CO/BTN/SB/BB, stack, dealer button, suas cartas), o **card de decisão** (mostra a estratégia GTO das **suas cartas específicas** — ex.: Fold 100% ou Raise 74% · All-in 26% — não o range agregado da posição, + veredicto e indicadores), e a **honestidade de cobertura** (potes limpados aparecem como "{pos} vs Limp", checks de opção não são avaliados). Nova entrada no nav + seção em `Docs.tsx`, i18n nas 3 locales.

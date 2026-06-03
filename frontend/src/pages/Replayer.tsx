@@ -228,6 +228,14 @@ function SidePanels({
     faces_squeeze: "vs Squeeze",
     vs_4bet: "vs 4-Bet",
   };
+  // Rótulo do range_pct por cenário: "abertura" só faz sentido no RFI; nos demais
+  // é defesa/continuação/squeeze (antes era "Range de abertura" hardcoded p/ todos).
+  const rangeLabelKey: Record<string, string> = {
+    rfi: "card.rangeOpening", vs_shove_fallback: "card.rangeOpening",
+    vs_rfi: "card.rangeDefense",
+    vs_3bet: "card.rangeContinue", faces_squeeze: "card.rangeContinue", vs_4bet: "card.rangeContinue",
+    squeeze: "card.rangeSqueeze",
+  };
   return (
     <div className="flex flex-col gap-2">
 
@@ -361,7 +369,7 @@ function SidePanels({
           evidence = (
             <div className="space-y-2">
               <div className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                Estratégia do Solver
+                {t("card.solverStrategy")}
               </div>
               <GtoStrategyPanel strategy={stratSorted} playedAction={playedAction} />
             </div>
@@ -377,7 +385,7 @@ function SidePanels({
             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
             : "bg-red-500/10 text-red-400 border border-red-500/20";
           const mathBadgeLabel = `${mathActLabel ?? ''} ${mathActionIsEv ? "+EV" : "−EV"}`.trim();
-          const reqHeader = requiredIsAdjusted ? "Equity Necessária" : "Pot Odds";
+          const reqHeader = requiredIsAdjusted ? t("card.reqEquity") : "Pot Odds";
           const reqTooltip = requiredIsAdjusted
             ? `Equity necessária ajustada por realization e pressão ICM. Pot odds bruto: ${(poRaw! * 100).toFixed(1)}%.`
             : "Equity mínima para call ser break-even (bet ÷ (bet + pot))";
@@ -419,7 +427,7 @@ function SidePanels({
           evidence = (
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Range de abertura</span>
+                <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{t(rangeLabelKey[pg.scenario] ?? "card.rangeOpening")}</span>
                 <span className="font-mono text-[13px] font-bold tabular-nums text-foreground">{(pg.range_pct * 100).toFixed(0)}%</span>
               </div>
               <div className="h-1.5 rounded-full bg-border/50 overflow-hidden">
