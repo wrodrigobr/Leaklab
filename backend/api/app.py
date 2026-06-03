@@ -5533,18 +5533,56 @@ def preflop_ranges():
             'frequencies': frequencies,
         }
 
-    # vs_3bet
-    vs3_raw = bk.get('vs_3bet', {})
-    spot    = vs3_raw.get(f'{pos}_RFI_vs_3bet') or next(
-        (v for k, v in vs3_raw.items() if k.endswith('_RFI_vs_3bet')), None
-    )
-    vs_3bet = None
-    if spot:
-        vs_3bet = {
-            'hands_4bet':    sorted(_expand_range(spot.get('hands_4bet', ''))),
-            'hands_call':    sorted(_expand_range(spot.get('hands_call', ''))),
-            'pct_continua':  float(spot.get('pct_continua', 0)),
+    # Helper: monta grade de ação (frequencies por mão + sets + pcts) a partir de
+    # hand_freqs (formato v3 GW). Usado por vs_3bet e squeeze, cujos *_hands strings
+    # vêm vazios — a range real está em hand_freqs. O RangeGrid colore por frequencies.
+    def _grid_from_freqs(d):
+        freqs = {}
+        for hand, hf in (d.get('hand_freqs') or {}).items():
+            m = {'fold': 0.0, 'call': 0.0, 'raise': 0.0, 'allin': 0.0}
+            for code, f in hf.items():
+                if code == 'F':            m['fold']  += float(f)
+                elif code == 'C':          m['call']  += float(f)
+                elif code == 'RAI':        m['allin'] += float(f)
+                elif code.startswith('R'): m['raise'] += float(f)
+            freqs[hand] = {k: round(v, 4) for k, v in m.items()}
+        call_set  = _expand_range(d.get('call_hands', ''))  or {h for h, f in freqs.items() if f['call']  > 0.01}
+        raise_set = _expand_range(d.get('raise_hands', '')) or {h for h, f in freqs.items() if f['raise'] > 0.01}
+        allin_set = _expand_range(d.get('allin_hands', '')) or {h for h, f in freqs.items() if f['allin'] > 0.01}
+        n = len(freqs) or 1
+        call_pct  = float(d.get('call_pct')  or 0) or sum(f['call']  for f in freqs.values()) / n
+        raise_pct = float(d.get('raise_pct') or 0) or sum(f['raise'] for f in freqs.values()) / n
+        allin_pct = float(d.get('allin_pct') or 0) or sum(f['allin'] for f in freqs.values()) / n
+        return {
+            'raise3bet':   sorted(raise_set | allin_set),
+            'call':        sorted(call_set),
+            'allin':       sorted(allin_set),
+            'pct_play':    round(call_pct + raise_pct + allin_pct, 4),
+            'call_pct':    round(call_pct, 4),
+            'raise_pct':   round(raise_pct, 4),
+            'allin_pct':   round(allin_pct, 4),
+            'hands':       sorted(call_set | raise_set | allin_set),
+            'frequencies': freqs,
         }
+
+    # Busca a section[pos] com fallback de bucket (mesma tabela do analyze_preflop) —
+    # senão spots como 17bb/14bb (sparse) davam None mesmo havendo dado adjacente.
+    _vs3_fallbacks = {'14bb': ['10bb', '20bb'], '17bb': ['20bb', '14bb'],
+                      '40bb': ['30bb', '50bb'], '60bb': ['50bb', '75bb'],
+                      '75bb': ['100bb', '50bb']}
+    def _section_for_pos(section_name):
+        for bk_try in [bucket] + _vs3_fallbacks.get(bucket, []):
+            sec = data.get('ranges', {}).get(bk_try, {}).get(section_name, {})
+            if sec.get(pos):
+                return sec[pos]
+        return {}
+
+    # vs_3bet — keyed por 3bettor (hero=pos é o opener; estrutura vs_3bet[hero][3bettor]).
+    # O formato antigo {pos}_RFI_vs_3bet não existe mais (sempre dava null).
+    vs_3bet = {tbettor: _grid_from_freqs(sp) for tbettor, sp in _section_for_pos('vs_3bet').items()} or None
+
+    # squeeze — hero squeeza; keyed por opener (estrutura squeeze[hero][opener]).
+    squeeze = {opener: _grid_from_freqs(sp) for opener, sp in _section_for_pos('squeeze').items()} or None
 
     return jsonify({
         'position':     pos,
@@ -5553,6 +5591,7 @@ def preflop_ranges():
         'rfi':          rfi,
         'vs_rfi':       vs_rfi,
         'vs_3bet':      vs_3bet,
+        'squeeze':      squeeze,
     })
 
 

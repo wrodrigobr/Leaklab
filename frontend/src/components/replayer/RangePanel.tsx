@@ -32,24 +32,27 @@ interface HandFreqApi {
   raise?: number; call?: number; allin?: number; fold?: number;
 }
 
+// Grade de ação por mão (mesma estrutura p/ vs_rfi, vs_3bet e squeeze).
+interface ActionGrid {
+  hands: string[];
+  raise3bet: string[];
+  call: string[];
+  allin?: string[];
+  pct_play: number;
+  call_pct?: number;
+  raise_pct?: number;
+  allin_pct?: number;
+  acoes?: string[];
+  frequencies?: Record<string, HandFreqApi>;
+}
 interface PreflopRangesResp {
   position: string;
   stack_bb: number;
   stack_bucket: string;
   rfi: { hands: string[]; pct: number; raise_pct?: number; allin_pct?: number; frequencies?: Record<string, HandFreqApi> } | null;
-  vs_rfi: Record<string, {
-    hands: string[];
-    raise3bet: string[];
-    call: string[];
-    allin?: string[];
-    pct_play: number;
-    call_pct?: number;
-    raise_pct?: number;
-    allin_pct?: number;
-    acoes: string[];
-    frequencies?: Record<string, HandFreqApi>;
-  }>;
-  vs_3bet: { hands_4bet: string[]; hands_call: string[]; pct_continua: number } | null;
+  vs_rfi: Record<string, ActionGrid>;
+  vs_3bet: Record<string, ActionGrid> | null;     // keyed por 3bettor
+  squeeze: Record<string, ActionGrid> | null;     // keyed por opener
 }
 
 function fmtAction(a: string): string {
@@ -88,7 +91,7 @@ const QUALITY_META: Record<string, { label: string; color: string; icon: typeof 
   unknown:    { label: 'Sem dados',        color: 'text-muted-foreground', icon: Info     },
 };
 
-function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?: string): RangeSet | null {
+function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?: string, scenario?: string): RangeSet | null {
   if (type === 'open') {
     if (!resp.rfi) return null;
     return {
@@ -99,12 +102,26 @@ function buildRangeFromApi(resp: PreflopRangesResp, type: RangeType, openerPos?:
     };
   }
   if (type === '3bet') {
-    if (!resp.vs_3bet) return null;
+    // squeeze (hero squeeza) usa resp.squeeze[opener]; vs_3bet usa resp.vs_3bet[3bettor].
+    // O vilão (openerPos = gto.vs_position) é a chave em ambos.
+    const isSqueeze = scenario === 'squeeze';
+    const src = isSqueeze ? resp.squeeze : resp.vs_3bet;
+    if (!src) return null;
+    const villains = Object.keys(src);
+    if (!villains.length) return null;
+    const key = (openerPos && src[openerPos]) ? openerPos : villains[0];
+    const g = src[key];
+    const parts: string[] = [];
+    if (g.call_pct  && g.call_pct  > 0.001) parts.push(`Call ${(g.call_pct*100).toFixed(1)}%`);
+    if (g.raise_pct && g.raise_pct > 0.001) parts.push(`${isSqueeze ? 'Squeeze' : '4bet'} ${(g.raise_pct*100).toFixed(1)}%`);
+    if (g.allin_pct && g.allin_pct > 0.001) parts.push(`Allin ${(g.allin_pct*100).toFixed(1)}%`);
     return {
-      label: `vs 3-Bet ${resp.position} (${resp.stack_bucket})`,
-      description: `${(resp.vs_3bet.pct_continua * 100).toFixed(0)}% continuam`,
-      raise: new Set(resp.vs_3bet.hands_4bet),
-      call:  new Set(resp.vs_3bet.hands_call),
+      label: `${isSqueeze ? 'Squeeze vs' : 'vs'} ${key} ${isSqueeze ? 'open' : '3-bet'} · ${resp.position} (${resp.stack_bucket})`,
+      description: `continua ${(g.pct_play*100).toFixed(1)}%${parts.length ? ` · ${parts.join(' / ')}` : ''}`,
+      raise: new Set(g.raise3bet),
+      call:  new Set(g.call),
+      allin: new Set(g.allin ?? []),
+      frequencies: g.frequencies,
     };
   }
   if (type === 'call') {
@@ -185,7 +202,11 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
     if (t.id === 'shove') return isPushZone && !!nashRange && !apiData?.rfi;
     if (apiData) {
       if (t.id === 'open')  return !!apiData.rfi;
-      if (t.id === '3bet')  return !!apiData.vs_3bet;
+      if (t.id === '3bet') {
+        // aba '3bet' serve vs_3bet E squeeze — fonte depende do cenário da decisão
+        const src = gto?.scenario === 'squeeze' ? apiData.squeeze : apiData.vs_3bet;
+        return !!(src && Object.keys(src).length);
+      }
       if (t.id === 'call')  return Object.keys(apiData.vs_rfi).length > 0;
     }
     return staticRange?.[t.id] !== undefined;
@@ -196,7 +217,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
 
   const displayRange: RangeSet | null | undefined = effectiveType === 'shove'
     ? nashRange
-    : (apiData ? buildRangeFromApi(apiData, effectiveType, openerPos) : staticRange?.[effectiveType]);
+    : (apiData ? buildRangeFromApi(apiData, effectiveType, openerPos, gto?.scenario) : staticRange?.[effectiveType]);
 
   const hand = heroHand(heroCards);
 

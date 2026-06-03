@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): grade 13×13 vs 3-bet / squeeze no RangePanel (aba real) — #28
+
+> Complemento do fix anterior: agora a aba **3-BET** existe de verdade e mostra a **grade 13×13 da range de continuação** do spot (não só o RFI de referência). **Backend** (`/preflop-ranges`): o vs_3bet usava a chave obsoleta `{pos}_RFI_vs_3bet` (sempre null); reescrito para a estrutura atual `vs_3bet[hero][3bettor]` (keyed por 3bettor, igual ao vs_rfi) com `frequencies` por mão montadas de `hand_freqs`; adicionado `squeeze[hero][opener]`; ambos com fallback de bucket (mesma tabela do engine). **Frontend** (`RangePanel`): tipo `ActionGrid` compartilhado; `buildRangeFromApi('3bet')` escolhe a fonte por cenário (vs_3bet ou squeeze) e o vilão (`gto.vs_position`), colorindo por `frequencies`; aba '3bet' disponível quando há dado. Confirmado: AJo vs UTG+2 3bet @17bb mostra a range de 4bet/allin (AA/AK/KK/QQ/JJ vermelho) com o hero em fold — 3,3% · 44 combos. api 42/42, gto 38/38.
+
 ### fix(replayer): RangePanel não aponta mais pra "aba 3bet" inexistente
 
 > Na tela de ranges de uma decisão vs_3bet (ou squeeze), o painel mostrava a mensagem *"…a decisão está na aba 3bet"* — mas a **aba 3bet nunca existe**: o `/preflop-ranges` retorna `vs_3bet=null` para todas as posições/stacks (a grade 13×13 vs 3-bet não é exposta como aba; a range real está em `hand_freqs`, não no endpoint). A mensagem apontava pra uma aba que não renderiza. Fix: a mensagem só diz *"está na aba X"* quando a aba **realmente existe**; senão explica que a range específica está **no card de análise** (frequências da sua mão), ainda não disponível como grade 13×13. (Expor a grade vs_3bet/squeeze como aba = backlog #28.)
