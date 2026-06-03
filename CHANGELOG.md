@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): pro-notes do faces_squeeze (termo + dedup) + bucket de stack "≈"
+
+> **Pro-notes**: no faces_squeeze, a nota reusava `_vs_3bet_notes` e dizia **"vs 3bet"** (errado — é squeeze) e **duplicava o "why"** do card ("fora do range"). Agora `_vs_3bet_notes` é parametrizado por cenário (diz **"squeeze"** no faces_squeeze) e a nota de fold out-of-range correto é **suprimida** (o "why" já explica) — só aparece quando o jogador **desvia** (continua), aí explicando o erro. **Bucket de stack**: o GTO resolve em depths discretos (10/14/.../50/75/100bb); com stack 61,9bb o card mostrava "· 50BB" (parecia erro). Agora prefixa **"≈"** quando o bucket diverge do stack real (**"≈50bb"** = depth resolvido mais próximo). Testes verdes (preflop 76, invariants 8, regression 26).
+
 ### fix(replayer): equity não contradiz mais o veredito GTO (Fase 1 do EV range-aware)
 
 > No Decision Card, a linha de equity mostrava **"Necess. 46,5% +3,5pp" em verde** ao lado de **"Fold 100% · Correto"** — parecia que o sistema se contradizia. Causa: a equity preflop é heurística **vs mão aleatória** (`_estimate_hand_equity` dá 0,50 fixo p/ par baixo), não vs o range real do squeeze (onde 55 tem ~38% < necessário). **Fase 1 (display guard):** quando há cobertura GTO preflop, o veredito do solver é a fonte de verdade — o `+pp` deixa de ser pintado de verde/vermelho (fica neutro) e a equity ganha o caveat **"vs aleatória"** + tooltip explicando. Resolve a contradição percebida. A Fase 2 (equity range-aware de verdade, via matriz 169×169) está no backlog #27.

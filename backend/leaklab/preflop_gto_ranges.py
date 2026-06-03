@@ -661,7 +661,7 @@ def analyze_preflop(
             'hand_freq': hf,
             'vs_position': actual_vs,
             'pro_notes':   _vs_3bet_notes(pos, hero_hand_type, stack_bb,
-                                          pct_continua, in_4b, in_cl, action_taken),
+                                          pct_continua, in_4b, in_cl, action_taken, scenario),
         })
 
     # INV-10 (honestidade do display): quando available=True, hand_freq DEVE ser
@@ -927,23 +927,25 @@ def _vs_rfi_notes(pos, vs_pos, hand, stack, pct, in_rng, action, acoes) -> list[
     return notes
 
 
-def _vs_3bet_notes(pos, hand, stack, pct, in_4b, in_cl, action) -> list[str]:
+def _vs_3bet_notes(pos, hand, stack, pct, in_4b, in_cl, action, scenario='vs_3bet') -> list[str]:
     notes = []
     label = _POS.get(pos, pos)
     pct_s = f"{pct*100:.0f}%"
     act   = action.lower()
+    term  = 'squeeze' if scenario == 'faces_squeeze' else '3bet'  # termo correto por cenário
     if in_4b:
-        notes.append(f"{hand} do {label} faz 4bet vs 3bet — mão no topo do range de continuação ({pct_s} continuam).")
+        notes.append(f"{hand} do {label} faz 4bet vs {term} — mão no topo do range de continuação ({pct_s} continuam).")
         if act == 'fold':
-            notes.append(f"Foldar {hand} vs 3bet é grande erro de EV: esta mão está no range de 4bet.")
+            notes.append(f"Foldar {hand} vs {term} é grande erro de EV: esta mão está no range de 4bet.")
     elif in_cl:
-        notes.append(f"{hand} do {label} faz call vs 3bet — range de continuação é {pct_s} das mãos.")
+        notes.append(f"{hand} do {label} faz call vs {term} — range de continuação é {pct_s} das mãos.")
         if act == 'fold':
-            notes.append(f"Foldar {hand} vs 3bet é tight demais — a mão tem equity para continuar.")
+            notes.append(f"Foldar {hand} vs {term} é tight demais — a mão tem equity para continuar.")
     else:
-        notes.append(f"{hand} do {label} deve foldar vs 3bet — fora do range de continuação ({pct_s} continuam).")
+        # Fora do range: o "why" do card já diz "fora do range" → não duplicar. Só
+        # adiciona nota quando o jogador DESVIA (continua), pra explicar o erro.
         if act in ('raise', 'jam', 'call'):
-            notes.append(f"Continuar com {hand} vs 3bet perde EV: a mão não tem equity vs o range de 3bet do oponente.")
+            notes.append(f"Continuar com {hand} vs {term} perde EV: a mão não tem equity vs o range de {term} do oponente.")
     return notes
 
 

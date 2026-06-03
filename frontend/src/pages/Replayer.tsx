@@ -491,11 +491,17 @@ function SidePanels({
                     {(() => {
                       const isRFI = pg!.scenario === 'rfi';
                       const validVs = pg!.vs_position && pg!.vs_position !== 'UNKNOWN' ? pg!.vs_position : null;
+                      // Depth de referência: o GTO resolve em depths discretos (10/14/.../50/75/100bb).
+                      // Quando o bucket diverge do stack real, prefixa "≈" pra não parecer erro
+                      // (ex.: stack 61,9bb → solver usa o depth resolvido mais próximo, ≈50bb).
+                      const bucketNum = parseFloat(pg!.stack_bucket);
+                      const stackRef = (!isNaN(bucketNum) && Math.abs(bucketNum - pg!.stack_bb) > 2)
+                        ? `≈${pg!.stack_bucket}` : pg!.stack_bucket;
                       // Contexto: RFI mostra "abrindo"; vs_RFI/3bet/etc mostra "vs OPENER"
                       const ctxStr = isRFI
-                        ? t("card.ctxOpening", { position: pg!.position, stack: pg!.stack_bucket })
-                        : (validVs ? t("card.ctxVs", { vs: validVs, stack: pg!.stack_bucket })
-                                   : t("card.ctxPlain", { position: pg!.position, stack: pg!.stack_bucket }));
+                        ? t("card.ctxOpening", { position: pg!.position, stack: stackRef })
+                        : (validVs ? t("card.ctxVs", { vs: validVs, stack: stackRef })
+                                   : t("card.ctxPlain", { position: pg!.position, stack: stackRef }));
                       const title = useHandFreq
                         ? t("card.freqTitleHand", { hand: pg!.hand_type, ctx: ctxStr })
                         : t("card.freqTitleAggr", { ctx: ctxStr });
