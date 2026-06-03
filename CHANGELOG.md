@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): FOLD não esmaece no próprio step + cor cinza neutra (não vermelho)
+
+> O texto "FOLD" saía esmaecido porque o pod já recebia `opacity 0.28` (jogador foldado) **no mesmo step** da ação. Agora não escurece enquanto for a ação ativa (`isFolded && !isActive`) — o FOLD aparece em opacidade cheia com a borda dourada, e só apaga nos steps seguintes. A **cor** mudou de vermelho (`#e52020`, perto do all-in `#ff4040` e com cara de "erro") para **cinza neutro** (`#9aa0a8`) — fold é ação passiva.
+
 ### style(replayer): cartas com margem branca uniforme, sem contorno cinza + verso emoldurado
 
 > Os SVGs do baralho são full-bleed (valor/naipe colados na borda) e tinham um contorno próprio (linha cinza). Correções: (1) `cardSVG` desenha a **moldura branca ajustada à proporção real do baralho** (~0,69), com margem **uniforme** ao redor — antes preencher o slot todo com `meet` deixava letterbox em cima/baixo (borda superior parecia maior que as laterais); (2) **contorno cinza removido na origem** — `stroke-width:0` no retângulo de fundo dos 52 SVGs (o índice do canto era colado demais pra recortar/pintar por cima sem cortá-lo), então a face é renderizada no tamanho natural, sem corte; (3) o **verso** (face-down) ganhou moldura **cinza azulado** (`#7c8696`, ~6%) — não branca, que chamava muito atenção contra o fundo escuro. Cobre hero, vilões e showdown de uma vez.

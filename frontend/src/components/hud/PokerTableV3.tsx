@@ -13,7 +13,7 @@ const CX = 560, CY = 340;
 const RX_SEAT = 452, RY_SEAT = 272;
 const CARDS_BASE = "/cards/";
 const AC_COLORS: Record<string, string> = {
-  fold: "#e52020", folds: "#e52020",
+  fold: "#9aa0a8", folds: "#9aa0a8",  // cinza neutro — fold é passivo, não erro
   call: "#3aaa52", calls: "#3aaa52",
   raise: "#c9a840", raises: "#c9a840",
   bet: "#c9a840", bets: "#c9a840",
@@ -294,7 +294,9 @@ function renderSeatsAndChips(
     const heroLost = isHero &&
       ev.type === "showdown" &&
       (ev.summary?.seats?.some(s => s.player === d.player && s.outcome === "lost") ?? false);
-    const opacity = (isFolded || heroLost) ? 0.28 : 1;
+    // Não escurece no PRÓPRIO step do fold (é a ação ativa, com borda dourada) —
+    // senão o texto "FOLD" sai esmaecido. Só apaga nos steps seguintes.
+    const opacity = ((isFolded && !isActive) || heroLost) ? 0.28 : 1;
 
     let bg = "#1c1c1c", bd = "#323232", bdW = 1.5;
     if (isActive) { bd = "#c9a840"; bdW = 3; }
