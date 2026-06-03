@@ -101,3 +101,17 @@ o frontend então caía no **% AGREGADO do range** (distribuição da posição,
 só ponto na saída de `analyze_preflop`: sem distribuição válida ⇒ fold puro 100%.
 
 - **Guarda:** `test_inv_hand_freq_distribution` (suite `engine`).
+
+### INV-11 — Nenhum spot COBERTO é 100%-fold nas 169 mãos
+
+O fold-puro do INV-10 é correto **por construção da range do GW** (mão ausente das
+ranges de call/raise/allin = fold) — desde que o spot esteja realmente carregado.
+Este invariante guarda o acoplamento do qual o INV-10 depende: **`available=True`
+⟹ a range foi carregada de fato (não-trivial)**. Se uma captura parcial gravasse só
+parte do grid, o spot ficaria `available` mas sem nenhuma mão agindo, e a
+normalização do INV-10 mostraria "Fold 100%" até para mãos fortes, silenciosamente.
+Num spot coberto **sempre** há mãos que agem (call/raise/allin). Quando o spot não
+existe, o caminho correto é `available=False` (INV-3), não range vazia. Varredura
+dos 741 spots reais: 0 suspeitos.
+
+- **Guarda:** `test_inv_no_covered_spot_is_all_fold` (suite `engine`).

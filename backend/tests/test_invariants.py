@@ -90,6 +90,53 @@ def test_inv_hand_freq_distribution():
     print("OK  test_inv_hand_freq_distribution")
 
 
+def _all_169_hands():
+    """Os 169 tipos de mão (13 pares + 78 suited + 78 offsuit)."""
+    R = 'AKQJT98765432'
+    hs = []
+    for i, a in enumerate(R):
+        for j, b in enumerate(R):
+            if i == j:   hs.append(a + b)
+            elif i < j:  hs.append(a + b + 's')
+            else:        hs.append(b + a + 'o')
+    return hs
+
+
+def test_inv_no_covered_spot_is_all_fold():
+    """INV-11: nenhum spot COBERTO é 100%-fold nas 169 mãos. Guarda o acoplamento
+    do qual INV-10 depende: `available=True` ⟹ range realmente carregada (não-vazia).
+    Se uma captura parcial gravasse só metade do grid, o spot ficaria available mas
+    sem nenhuma mão agindo — e a normalização do INV-10 mostraria 'Fold 100%' até
+    para mãos fortes, silenciosamente. Em spot coberto SEMPRE há mãos que agem
+    (call/raise/allin). Spots canônicos (rápido); a varredura completa dos 741
+    spots reais deu 0 suspeitos."""
+    spots = [
+        ('rfi LJ 15bb',            dict(position='LJ', stack_bb=15.4, facing_size=0.0,
+                                        vs_position='', is_3bet_pot=False, facing_raises=0,
+                                        hero_was_aggressor=False)),
+        ('vs_rfi BTN vs HJ 12bb',  dict(position='BTN', stack_bb=12.1, facing_size=2.0,
+                                        vs_position='HJ', is_3bet_pot=False, facing_raises=1,
+                                        hero_was_aggressor=False)),
+        ('faces_squeeze CO vs MP1 62bb', dict(position='CO', stack_bb=62.0, facing_size=600.0,
+                                        vs_position='MP1', is_3bet_pot=True, facing_raises=2,
+                                        hero_was_aggressor=False)),
+    ]
+    for label, kw in spots:
+        loaded = acting = 0
+        for hh in _all_169_hands():
+            r = analyze_preflop(hero_hand_type=hh, action_taken='fold', n_players=9, **kw)
+            if not r.get('available'):
+                continue
+            loaded += 1
+            hf = r.get('hand_freq') or {}
+            if (hf.get('call', 0) + hf.get('raise', 0) + hf.get('allin', 0)) > 0.01:
+                acting += 1
+        assert loaded > 100, f"{label}: só {loaded}/169 available — spot deixou de estar coberto?"
+        assert acting > 0, (f"{label}: spot coberto ({loaded}/169) mas 0 mãos agem — "
+                            f"range vazia/parcial; INV-10 mostraria 'Fold 100%' para mãos fortes")
+    print("OK  test_inv_no_covered_spot_is_all_fold")
+
+
 def test_inv_3bet_sizing_order():
     """INV-6: 3bet/squeeze é RAI (shove) em stack raso, R6 (raise) em fundo."""
     from leaklab.preflop_autocapture import _3BET_ORDER
