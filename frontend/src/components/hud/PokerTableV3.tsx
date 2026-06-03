@@ -180,6 +180,60 @@ function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
   return h;
 }
 
+// ── Posicionamento de bet chips + dealer button ────────────────────────────────
+// Geometria validada (scripts/chip_geometry_check.mjs) — 0 sobreposições com pod/cartas/
+// board/entre-si em 6/8/9-max e hero em qualquer assento. Princípio:
+//  • Bet chips: âncora na borda DISTANTE de (pod ∪ cartas) ao longo do vetor
+//    inboard (pod→centro) + GAP fixo. Folga constante em qualquer assento (a fração
+//    do centro falhava porque a mesa é oval); pula as cartas dos bottom seats.
+//  • Dealer: lateral, colado no pod — 4 candidatos (dir/esq/baixo/cima), escolhe o
+//    válido (sem overlap, dentro do felt), preferindo o lado outboard.
+const _HW = 84, _HH = 32, _CARD_HW = 64 + 6 / 2, _CH = 96;
+const _CLU_UP = 30, _GAP = 14, _DRX = 20, _DRY = 12;
+const _VB = { x1: 4, y1: 4, x2: 1116, y2: 638 }; // overflow:visible permite y2 folgado
+const _BOARD_B = { x1: CX - (5 * 68 + 4 * 8) / 2, y1: CY - 61, x2: CX + (5 * 68 + 4 * 8) / 2, y2: CY + 49 };
+
+function _farAlong(cBx: number, cBy: number, hwB: number, hhB: number,
+                   px: number, py: number, ux: number, uy: number): number {
+  return (cBx - px) * ux + (cBy - py) * uy + hwB * Math.abs(ux) + hhB * Math.abs(uy);
+}
+function _ovl(a: {x1:number;y1:number;x2:number;y2:number}, b: {x1:number;y1:number;x2:number;y2:number}): boolean {
+  return a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+}
+function placeBetAndDealer(px: number, py: number) {
+  const dvx = CX - px, dvy = CY - py, len = Math.hypot(dvx, dvy) || 1;
+  const ux = dvx / len, uy = dvy / len;            // inboard (pod→centro)
+  // Bet chips: borda distante de (pod ∪ cartas) ao longo de u + gap.
+  const cardCY = (py - _HH) - Math.round(_CH * 0.67) + _CH / 2;
+  const far = Math.max(
+    _farAlong(px, py, _HW, _HH, px, py, ux, uy),
+    _farAlong(px, cardCY, _CARD_HW, _CH / 2, px, py, ux, uy),
+  );
+  const chipX = Math.round(px + (far + _GAP + _CLU_UP) * ux);
+  const chipY = Math.round(py + (far + _GAP + _CLU_UP) * uy);
+  // Dealer: 4 candidatos laterais colados no pod; escolhe válido outboard.
+  const podB  = { x1: px - _HW, y1: py - _HH, x2: px + _HW, y2: py + _HH };
+  const cby   = (py - _HH) - Math.round(_CH * 0.67);
+  const cardB = { x1: px - _CARD_HW, y1: cby, x2: px + _CARD_HW, y2: cby + _CH };
+  const cluB  = { x1: chipX - 28, y1: chipY - _CLU_UP, x2: chipX + 28, y2: chipY + 28 };
+  const cand = [
+    { dx: Math.round(px + (_HW + _GAP + _DRX)), dy: py },
+    { dx: Math.round(px - (_HW + _GAP + _DRX)), dy: py },
+    { dx: px, dy: Math.round(py + (_HH + _GAP + _DRY + 7)) },
+    { dx: px, dy: Math.round(py - (_HH + _GAP + _DRY + 7)) },
+  ];
+  let best: { dx: number; dy: number; score: number } | null = null;
+  for (const c of cand) {
+    const db = { x1: c.dx - _DRX, y1: c.dy - _DRY, x2: c.dx + _DRX, y2: c.dy + _DRY + 7 };
+    if (_ovl(db, podB) || _ovl(db, cardB) || _ovl(db, cluB) || _ovl(db, _BOARD_B)) continue;
+    if (db.x1 < _VB.x1 || db.x2 > _VB.x2 || db.y1 < _VB.y1 || db.y2 > _VB.y2) continue;
+    const score = Math.hypot(c.dx - CX, c.dy - CY) + (c.dy > py ? 12 : 0);
+    if (!best || score > best.score) best = { dx: c.dx, dy: c.dy, score };
+  }
+  if (!best) best = { dx: Math.round(px + (_HW + _GAP + _DRX)), dy: py, score: 0 };
+  return { chipX, chipY, dealerX: best.dx, dealerY: best.dy };
+}
+
 function renderSeatsAndChips(
   ev: ReplayStep,
   bb: number,
@@ -205,6 +259,7 @@ function renderSeatsAndChips(
     const isFolded = (ev.folded ?? []).includes(d.player);
     const isActive = ev.type === "action" && ev.seat === sn;
     const bx = pos.x - bw / 2, by = pos.y - bh / 2;
+    const seatPlace = placeBetAndDealer(pos.x, pos.y);  // âncoras validadas de bet chips + dealer
     // Hero loses at showdown (muck or beat) → same visual fade as fold
     const heroLost = isHero &&
       ev.type === "showdown" &&
@@ -297,24 +352,9 @@ function renderSeatsAndChips(
     // Dealer button — RENDERIZADO FORA DO GRUPO COM OPACITY pra permanecer
     // visivel quando o BTN folda. Sem opacity wrapper.
     if (isBtn) {
-      const heroPosBtn = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
-      const isAdjacentBtn = heroPosBtn !== null && Math.abs(pos.y - heroPosBtn.y) < 80;
-      // Dealer perto do pod do jogador, mas com folga. perpOff dá separação
-      // lateral; t controla quão longe do pod (no eixo player→centro).
-      const t = isHero ? 0.28 : isAdjacentBtn ? 0.34 : 0.30;
-      const dvx = CX - pos.x, dvy = CY - pos.y;
-      const dlen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
-      // perpSign -1 nos dois casos: dealer fica do lado oposto às cartas/bets
-      // (visualmente "abaixo e à direita" pra seats no quadrante esquerdo
-      // inferior do feltro). Antes hero usava -1 e demais usavam 1 — invertido.
-      const perpSign = -1;
-      const perpDist = isHero ? 90 : 30;
-      const perpX = Math.round(perpSign * (dvy / dlen) * perpDist);
-      const perpY = Math.round(perpSign * (-dvx / dlen) * perpDist);
-      const dbX = Math.round(pos.x + dvx * t) + perpX;
-      // Ajuste vertical fino: dealer sobe 12px (independente da geometria
-      // perpendicular, pra não afetar deslocamento horizontal).
-      const dbY = Math.round(pos.y + dvy * t) + perpY - 12;
+      // Âncora validada (placeBetAndDealer): lateral, colado no pod, sem overlap.
+      const dbX = seatPlace.dealerX;
+      const dbY = seatPlace.dealerY;
       const dRX = 20, dRY = 12, dCH = 7, dN = 4;
       const dTy = dbY, dBy2 = dbY + dCH;
       let btnHtml = `<rect x="${dbX - dRX}" y="${dTy}" width="${dRX * 2}" height="${dCH}" fill="#b4b4b4"/>`;
@@ -338,47 +378,10 @@ function renderSeatsAndChips(
     const isShowdown = ev.type === "showdown";
     const bet = isShowdown ? 0 : (ev.bets?.[sn] ?? 0);
     if (bet > 0) {
-      const dvx = CX - pos.x, dvy = CY - pos.y;
-      const blen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
-      // Hero: mais ao centro; jogadores laterais: mais próximos ao pod
-      const isSide = !isHero && Math.abs(pos.x - CX) > 80;
-      // Seats imediatamente adjacentes ao hero (mesma altura ~) puxados pra frente
-      // pra reforçar separação das cartas. Demais seats inferiores ficam default.
-      const heroPosT2 = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
-      const isAdjT2 = !isHero && pos.dir === "bottom" && heroPosT2 !== null
-                       && Math.abs(pos.y - heroPosT2.y) < 80;
-      // t2 = fração da distância seat→centro. Menor = bets mais próximas ao
-      // pod do jogador. Adjacente ao hero ganha um pouco de avanço (0.42)
-      // pra somar ao perpOff lateral e ficar visualmente equilibrado — antes
-      // estava 0.72 (quase no pot, longe demais do jogador).
-      let t2 = isHero ? 0.46 : isSide ? 0.26 : 0.36;
-      if (isAdjT2) t2 = 0.38;
-      // Hero: offset perpendicular horário (+28px para a direita do ponto de vista do hero).
-      // Seats adjacentes ao hero (parte inferior do feltro, dir='bottom') tambem ganham
-      // offset perpendicular pra nao sobrepor as cartas do jogador.
-      // Sinal: hero usa anti-horario; vizinhos inferiores usam horario (afastam-se
-      // do centro inferior onde o hero está renderizado).
-      let perpOffX = 0, perpOffY = 0;
-      if (isHero) {
-        perpOffX = Math.round((-dvy / blen) * 28);
-        perpOffY = Math.round((dvx / blen) * 28);
-      } else if (pos.dir === "bottom") {
-        // Desvio em direção ao centro só pra seats IMEDIATAMENTE adjacentes ao hero
-        // (cartas dele estão na mesma altura). Seats mais distantes (SB/BB num
-        // 9-max longe do hero) já estão suficientemente afastados sem offset.
-        const heroPos = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
-        const isAdjacentToHero = heroPos !== null && Math.abs(pos.y - heroPos.y) < 80;
-        if (isAdjacentToHero) {
-          // Sign flipped: chip se afasta do hero (esquerdo do hero vai mais
-          // pra esquerda; direito do hero, mais pra direita). Antes estava
-          // invertido — empurrava em direção ao hero, fichas ficavam centrais.
-          const sign = pos.x < CX ? -1 : 1;
-          perpOffX = Math.round(sign * (-dvy / blen) * 24);
-          perpOffY = Math.round(sign * (dvx / blen) * 24);
-        }
-      }
-      const cx2 = Math.round(pos.x + dvx * t2) + perpOffX;
-      const cy2 = Math.round(pos.y + dvy * t2) + perpOffY;
+      // Âncora validada (placeBetAndDealer): borda distante de (pod ∪ cartas) +
+      // gap fixo na direção do centro. Folga consistente, sem tocar pod/cartas.
+      const cx2 = seatPlace.chipX;
+      const cy2 = seatPlace.chipY;
       chipsHtml += chipStackSVG(cx2, cy2, bet);
       const betStr = fmtAmt(bet, bb, unit);
       chipsHtml += `<rect x="${cx2 - 28}" y="${cy2 + 10}" width="56" height="18" rx="9" fill="rgba(0,0,0,0.80)" stroke="rgba(255,255,255,0.15)" stroke-width=".8"/>
@@ -392,28 +395,11 @@ function renderSeatsAndChips(
       if (winner.won <= 0) continue;
       const wpos = layout[winner.seat];
       if (!wpos) continue;
-      const isWinnerHero = ev.seats[winner.seat]?.player === hero;
-      const dvx = CX - wpos.x, dvy = CY - wpos.y;
-      const blen = Math.sqrt(dvx * dvx + dvy * dvy) || 1;
-      const isSide = !isWinnerHero && Math.abs(wpos.x - CX) > 80;
-      // Bottom-side seats avançam mais (t=0.42) pra não sobrepor cartas.
-      const heroPosW = heroSeatNum !== undefined ? layout[heroSeatNum] : null;
-      const isAdjacentW = !isWinnerHero && heroPosW !== null
-                          && Math.abs(wpos.y - heroPosW.y) < 80;
-      const t2 = isWinnerHero ? 0.46 : isAdjacentW ? 0.42 : isSide ? 0.26 : 0.36;
-      // Perp offset: hero usa horário; vizinhos inferiores movem em direção ao centro
-      // (mesma lógica das bets) pra afastar das cartas.
-      let offX = 0, offY = 0;
-      if (isWinnerHero) {
-        offX = Math.round((-dvy / blen) * 28);
-        offY = Math.round((dvx / blen) * 28);
-      } else if (isAdjacentW) {
-        const sign = wpos.x < CX ? 1 : -1;
-        offX = Math.round(sign * (-dvy / blen) * 14);
-        offY = Math.round(sign * (dvx / blen) * 14);
-      }
-      const cx2 = Math.round(wpos.x + dvx * t2) + offX;
-      const cy2 = Math.round(wpos.y + dvy * t2) + offY;
+      // Mesma âncora validada das bet chips (borda distante + gap) — fichas do
+      // vencedor pousam no mesmo ponto limpo, sem sobrepor pod/cartas.
+      const wPlace = placeBetAndDealer(wpos.x, wpos.y);
+      const cx2 = wPlace.chipX;
+      const cy2 = wPlace.chipY;
       chipsHtml += chipStackSVG(cx2, cy2, winner.won);
       const wonStr = fmtAmt(winner.won, bb, unit);
       chipsHtml += `<rect x="${cx2 - 32}" y="${cy2 + 10}" width="64" height="18" rx="9" fill="rgba(0,0,0,0.80)" stroke="rgba(201,168,64,0.35)" stroke-width=".8"/>

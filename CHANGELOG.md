@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): geometria de bet chips + dealer button sem sobreposições (modelo validado)
+
+> As fichas de aposta e o dealer button usavam um modelo de **fração da distância ao centro** (`t2`/`perpOff`), que numa mesa **oval** dava folgas absolutas inconsistentes (78px a 139px do pod no mesmo `t2`) e — pior — bet e dealer eram calculados **independentemente**, colidindo em quase todos os assentos (101–651px² de interseção no teste), com o dealer invadindo as cartas em bottom seats. Reescrito com modelo **validado numericamente** (`scripts/chip_geometry_check.mjs`, 0 sobreposições em 6/8/9-max e hero em qualquer assento): bet chips ancoram na **borda distante de (pod ∪ cartas)** ao longo do vetor inboard + gap fixo (folga consistente, pula as cartas dos bottom seats); dealer "lateral colado no pod" via busca de 4 candidatos que escolhe o lado válido sem overlap. Winner chips (showdown) usam a mesma âncora. Confirmado por screenshots reais nos 3 breakpoints.
+
 ### feat(replayer): rótulos de posição na mesa + layout mobile usável (design pass)
 
 > Revisão de design do Replayer com screenshots reais (harness Playwright `frontend/scripts/replayer_shots.mjs`, 3 breakpoints). Três entregas:

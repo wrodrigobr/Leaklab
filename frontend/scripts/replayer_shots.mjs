@@ -42,9 +42,10 @@ for (const vp of VIEWPORTS) {
     window.history.pushState({}, '', '/replayer?t=3910307458&h=257045965983');
     window.dispatchEvent(new PopStateEvent('popstate'));
   });
-  // espera a mesa (svg) + render imperativo (useEffect innerHTML)
-  await page.waitForSelector('svg', { timeout: 20000 }).catch(() => console.log(`[${vp.name}] no svg`));
-  await sleep(2000);
+  // espera a mesa de verdade (os passos só existem quando a hand carregou — o
+  // spinner de loading também é um <svg>, então esperar 'svg' passa cedo demais)
+  await page.waitForSelector('[aria-label^="Passo "]', { timeout: 25000 }).catch(() => console.log(`[${vp.name}] no steps`));
+  await sleep(2200);
 
   const nSteps = await page.locator('[aria-label^="Passo "]').count();
   console.log(`[${vp.name}] steps detectados: ${nSteps}`);
