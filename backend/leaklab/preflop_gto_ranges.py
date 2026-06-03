@@ -640,10 +640,13 @@ def analyze_preflop(
     # Depth MUITO aproximado: o bucket mais baixo ('10bb') cobre 0–12bb, então um
     # stack de 3–5bb usa o range de 10bb. Sub-6bb facing open é push/fold puro — o
     # range 10bb (com flats) não se aplica bem e pode marcar veredito over-harsh
-    # (ex.: call A6o a 3bb pelas odds vira "major_leak"). Não ser over-harsh: rebaixa
-    # a severidade 1 nível e sinaliza depth_approx (o front já mostra "≈"). Mesma
-    # filosofia do #23 (não punir desvio onde o dado não cobre com precisão).
-    if base.get('available') and bucket == '10bb' and stack_bb < 6 and base.get('scenario') != 'rfi':
+    # (ex.: call A6o a 3bb pelas odds vira "major_leak"). Vale também pro RFI em zona
+    # de push/fold: a <6bb o range de jam é bem mais largo que o de abertura 10bb,
+    # então um shove fora do range 10bb (ex.: K7o UTG @3.8bb) não é erro grave.
+    # Não ser over-harsh: rebaixa a severidade 1 nível e sinaliza depth_approx (o
+    # front já mostra "≈"). Mesma filosofia do #23 (não punir desvio onde o dado não
+    # cobre com precisão).
+    if base.get('available') and bucket == '10bb' and stack_bb < 6:
         _soft = {'major_leak': 'leak', 'leak': 'acceptable'}
         if base.get('action_quality') in _soft:
             base['action_quality'] = _soft[base['action_quality']]
@@ -679,6 +682,12 @@ def _rfi_quality(action: str, in_rng: bool, stack_bb: float, *,
         }
         key = key_map.get(act, act)
         freq = float(hand_freq.get(key, 0))
+        # Push/fold (<6bb): abrir = jammar. O range 10bb separa raise (open) de
+        # allin, mas a essa profundidade um open compromete o stack — raise≈allin.
+        # Sem isso, AA UTG @4bb (range: raise 100%) vira "leak" ao dar shove. Soma
+        # as duas freqs pra creditar o jam de qualquer mão que o GTO abre.
+        if act == 'jam' and stack_bb < 6:
+            freq = float(hand_freq.get('allin', 0)) + float(hand_freq.get('raise', 0))
         if   freq >= 0.30: return 'correct'
         elif freq >= 0.10: return 'acceptable'
         elif freq >= 0.03: return 'leak'
