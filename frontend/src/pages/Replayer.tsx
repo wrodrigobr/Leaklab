@@ -102,9 +102,13 @@ function SidePanels({
     return next;
   });
 
-  const hasGto     = !!step.gto_label;
   const isPostflop = step.street !== 'preflop';
   const pg = step.preflop_gto ?? null;
+  // Cobertura preflop negada explicitamente (ex.: pote limpado "vs Limp"): a análise
+  // AO VIVO manda. Um gto_label ARMAZENADO stale (scoring antigo, pré-feature do limp)
+  // NÃO pode forjar um veredito/badge que contradiz "sem cobertura".
+  const preflopNoCoverage = !isPostflop && !!pg && !pg.available && !!pg.coverage_reason;
+  const hasGto     = !!step.gto_label && !preflopNoCoverage;
 
   // ── Compute these FIRST so verdict can reference live GTO data ───────────────
 
@@ -147,6 +151,14 @@ function SidePanels({
     // Skip non-decision actions (shows, mucks, posts)
     const _actLow = (step.action ?? '').toLowerCase();
     if (_actLow === 'shows' || _actLow === 'show' || _actLow === 'mucks' || _actLow === 'muck' || _actLow === 'posts' || _actLow === 'post') return null;
+    // Sem cobertura GTO ao vivo (pote limpado etc.): banner NEUTRO "sem veredito" —
+    // não exibe o gto_label armazenado stale (que diria DESVIO CRÍTICO contradizendo
+    // o "vs Limp" do corpo). A tag de cobertura abaixo explica o motivo.
+    if (preflopNoCoverage) {
+      return { icon: "·", label: t("card.vNoCoverage"), cls: "text-muted-foreground",
+               borderCls: "border-border", hdrCls: "bg-hud-surface",
+               source: "Preflop", sourceTooltip: t("card.tipNoCoverage") };
+    }
     if (effectiveGtoLabel) {
       const gtoTooltip = t("card.tipGtoSolver");
       const m: Record<string, VInfo> = {
@@ -185,7 +197,9 @@ function SidePanels({
         : isCorrect);
   // idealAction: use live top action when available (overrides stored gto_action which may be stale)
   const liveTopAction = stratSorted.length > 0 ? stratSorted[0].action : null;
-  const idealAction = hasGto
+  const idealAction = preflopNoCoverage
+    ? null  // sem cobertura: não há "ação recomendada" — não exibir caixa "GTO recomenda"
+    : hasGto
     ? (liveTopAction ?? step.gto_action ?? null)
     : (!isPostflop && pg?.available ? pg.recommended_actions.map(fmtAction).join(" / ") : (step.best_action ? fmtAction(step.best_action) : null));
   const showTwoCols = !isActionOk && !!idealAction &&
@@ -254,6 +268,7 @@ function SidePanels({
             return (hf.allin ?? 0) >= (hf.raise ?? 0);
           })();
         const sourceVariant: DecisionSourceVariant =
+          preflopNoCoverage                       ? "na"        :
           step.gto_spot_mismatch                  ? "na"        :
           effectiveGtoLabel                       ? "gto"       :
           (!isPostflop && pg?.available)          ? "preflop"   :
@@ -309,7 +324,11 @@ function SidePanels({
 
         // ──────── Why (1 frase dominante, prioridade descendente) ────────
         let why = "";
-        if (step.gto_spot_mismatch) {
+        if (preflopNoCoverage) {
+          // Sem cobertura GTO (pote limpado etc.): a tag de cobertura abaixo já
+          // explica o motivo; não inventar frase de "porquê" baseada em dado stale.
+          why = "";
+        } else if (step.gto_spot_mismatch) {
           why = step.engine_best === "call"
             ? t("card.whyMismatchFacing")
             : t("card.whyMismatchNoBet");
