@@ -674,6 +674,18 @@ def analyze_preflop(
         if not _hf or sum(_hf.values()) < 0.5:
             base['hand_freq'] = {'call': 0.0, 'raise': 0.0, 'allin': 0.0, 'fold': 1.0}
 
+    # Depth MUITO aproximado: o bucket mais baixo ('10bb') cobre 0–12bb, então um
+    # stack de 3–5bb usa o range de 10bb. Sub-6bb facing open é push/fold puro — o
+    # range 10bb (com flats) não se aplica bem e pode marcar veredito over-harsh
+    # (ex.: call A6o a 3bb pelas odds vira "major_leak"). Não ser over-harsh: rebaixa
+    # a severidade 1 nível e sinaliza depth_approx (o front já mostra "≈"). Mesma
+    # filosofia do #23 (não punir desvio onde o dado não cobre com precisão).
+    if base.get('available') and bucket == '10bb' and stack_bb < 6 and base.get('scenario') != 'rfi':
+        _soft = {'major_leak': 'leak', 'leak': 'acceptable'}
+        if base.get('action_quality') in _soft:
+            base['action_quality'] = _soft[base['action_quality']]
+            base['depth_approx'] = True
+
     return base
 
 

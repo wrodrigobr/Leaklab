@@ -498,10 +498,15 @@ function SidePanels({
                   <span className={cn(
                     "rounded-md ring-1 px-2 py-1 font-mono text-[10px]",
                     pg!.in_range ? "bg-emerald-500/8 ring-emerald-500/30" : "bg-red-500/8 ring-red-500/30"
-                  )}>
+                  )} title={t("card.handRangeTip")}>
                     <span className="text-muted-foreground mr-1">{t("card.indHand")}</span>
                     <span className={cn("font-bold", pg!.in_range ? "text-emerald-400" : "text-red-400")}>
-                      {pg!.hand_type} {pg!.in_range ? '✓' : '✗'}
+                      {pg!.hand_type}
+                    </span>
+                    {/* ✓/✗ é sobre estar NO RANGE (não sobre a ação — isso é o veredito acima).
+                        Rótulo de texto + tooltip pra não confundir verde com "correto". */}
+                    <span className={cn("ml-1", pg!.in_range ? "text-emerald-400/80" : "text-red-400/80")}>
+                      · {pg!.in_range ? t("card.handInRangeTag") : t("card.handOutRangeTag")}
                     </span>
                   </span>
                 </div>

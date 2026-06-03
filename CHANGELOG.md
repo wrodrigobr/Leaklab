@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): chip "Mão · no range/fora" (não confundir com veredito) + não over-harsh sub-6bb
+
+> Achados menores da varredura do Decision Card: **(#2)** o chip "Mão {hand} ✓/✗" usava ✓/✗ que parecia veredito de *ação* — mas é sobre estar **no range**. Ex.: "AJo ✓ + LEAK GRAVE" (mão no range, mas call vs shove foi erro grave) confundia. Trocado por rótulo de texto **"· no range" / "· fora do range"** + tooltip explicando que é range, não correção. **(#4)** o bucket mais baixo ('10bb') cobre 0–12bb, então um stack de 3–5bb usava o range de 10bb (com flats) e podia marcar veredito **over-harsh** (call defensável a 3bb pelas odds virava leak/major). Agora, sub-6bb facing open (não-RFI), a severidade é **rebaixada 1 nível** (major_leak→leak, leak→acceptable) + flag `depth_approx` — mesma filosofia do #23 (não punir onde o dado não cobre com precisão; o "≈" já sinaliza o depth). **(#3)** verificado: o grading por frequência (≥30%=correct) trata ação minoritária ~36% de mão mista como GTO-correta — **intencional** (ambos os lados de uma mista são corretos), sem mudança. Testes: preflop 76, invariants 8, regression 26, tournament 8, multi 14.
+
 ### fix(data): limpa gto_label stale de potes limpados (downstream)
 
 > Complemento do guard de frontend: as **46 decisões de pote limpado** que tinham `gto_label` **armazenado** (scoring antigo, pré-feature do limp) poluíam gto-alignment, ELO e leak reports — e eram a raiz do veredito stale no card. Novo `scripts/backfill_clear_limp_gto.py` (dry-run por padrão, `--apply`, idempotente, cross-backend) re-avalia cada decisão preflop com `facing_limp` e zera `gto_label`/`gto_action` onde `coverage_reason='limped_pot'`. Rodado local: 46 limpos, re-run = 0 (idempotente). Potes limpados agora ficam **fora** das métricas GTO (NULL honesto), como deveriam.
