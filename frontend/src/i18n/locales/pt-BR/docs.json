@@ -8,6 +8,7 @@
     "scoring": "Sistema de Scoring",
     "indicators": "Indicadores",
     "gto_method": "Metodologia GTO",
+    "replayer": "Revisão de Mão",
     "alignment_matrix": "Heatmap Posição × Street",
     "pko_tournaments": "Torneios PKO (Bounty)",
     "mstacks": "Fases de M-Ratio",
@@ -167,6 +168,13 @@
     "p2": "O sistema <strong>não exibe análise GTO pré-flop</strong> quando não consegue identificar a posição do oponente no histórico da mão, ou quando o pote é um 3-bet sem identificar quem abriu. Nesses casos, a revisão da mão mostra apenas a análise pós-flop (equity + pot odds). <strong>Limitação conhecida no SB</strong>: em algumas profundidades de stack (10bb, 40bb, 75bb) o modelo cobre apenas fold/raise para o SB. Nesses spots, completar (limp) com uma mão fora da faixa de abertura é tratado como <em>aceitável</em> — não como erro — porque a estratégia GTO completa cerca de 53% das mãos do SB, comportamento que o modelo simplificado não representa.",
     "p3": "Garantia do sistema: <strong>nunca exibimos recomendações contraditórias</strong>. O veredicto mostrado no painel principal e na revisão de mãos é sempre o mesmo — as duas telas são mantidas em sincronia automaticamente.",
     "coverage": "<strong>Cobertura</strong>: cerca de <strong>95% das decisões pré-flop padrão</strong> recebem um veredicto GTO. O que fica de fora são situações sem solução de referência — potes limpados (quando ninguém aumenta) e linhas fora do padrão — que aparecem <strong>sem classificação GTO</strong>, e não contam como acerto nem como erro."
+  },
+  "replayer": {
+    "title": "Revisão de Mão (Replayer)",
+    "p1": "O <strong>Replayer</strong> reproduz qualquer mão passo a passo e mostra a análise GTO de cada uma das suas decisões. Use os controles para avançar e voltar, ajustar a velocidade e alternar a exibição entre fichas e big blinds (BB).",
+    "p2": "Na mesa, cada jogador exibe a sua <strong>posição</strong> (UTG, LJ, HJ, CO, BTN, SB, BB), o stack e o dealer button — você lê o spot sem precisar contar a partir do botão. Suas cartas ficam destacadas embaixo.",
+    "p3": "O <strong>card de decisão</strong> mostra a estratégia GTO para as <strong>suas cartas específicas</strong>, não o range agregado da posição. Por exemplo, uma mão fora da faixa de abertura aparece como <em>Fold 100%</em>; uma mão forte, como <em>Raise 74% · All-in 26%</em>. Junto vêm o veredicto da sua jogada e os indicadores de apoio (equity, SPR, stack, ICM).",
+    "p4": "Quando não há solução GTO de referência, a revisão é <strong>honesta</strong> e não inventa veredicto. Potes <strong>limpados</strong> aparecem com a marca <em>“{posição} vs Limp”</em> (árvore fora da cobertura), e checks de opção em potes não contestados não são avaliados."
   },
   "alignment_matrix": {
     "title": "Heatmap Posição × Street",

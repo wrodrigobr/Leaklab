@@ -8,6 +8,7 @@
     "scoring": "Scoring System",
     "indicators": "Indicators",
     "gto_method": "GTO Methodology",
+    "replayer": "Hand Review",
     "alignment_matrix": "Position × Street Heatmap",
     "pko_tournaments": "PKO (Bounty) Tournaments",
     "mstacks": "M-Ratio Phases",
@@ -167,6 +168,13 @@
     "p2": "The system <strong>does not display preflop GTO analysis</strong> when it can't identify the opponent's position in the hand history, or when the pot is a 3-bet without an identified opener. In these cases the hand review shows only the postflop analysis (equity + pot odds). <strong>Known SB limitation</strong>: for some stack depths (10bb, 40bb, 75bb) the model only covers fold/raise for the SB. In those spots, completing (limping) with a hand outside the opening range is treated as <em>acceptable</em> — not a mistake — because GTO strategy completes about 53% of SB hands, behavior the simplified model doesn't represent.",
     "p3": "System guarantee: <strong>we never display contradictory recommendations</strong>. The verdict shown on the main dashboard and in the hand review is always the same — both views are kept in sync automatically.",
     "coverage": "<strong>Coverage</strong>: about <strong>95% of standard preflop decisions</strong> receive a GTO verdict. What's left out are situations with no reference solution — limped pots (when nobody raises) and non-standard lines — which appear <strong>without a GTO classification</strong>, and count neither as correct nor as a mistake."
+  },
+  "replayer": {
+    "title": "Hand Review (Replayer)",
+    "p1": "The <strong>Replayer</strong> replays any hand step by step and shows the GTO analysis of each of your decisions. Use the controls to step forward and back, change speed, and switch the display between chips and big blinds (BB).",
+    "p2": "On the table, each player shows their <strong>position</strong> (UTG, LJ, HJ, CO, BTN, SB, BB), stack, and the dealer button — so you can read the spot without counting from the button. Your cards are highlighted at the bottom.",
+    "p3": "The <strong>decision card</strong> shows the GTO strategy for <strong>your exact cards</strong>, not the position's aggregate range. For example, a hand outside the opening range shows <em>Fold 100%</em>; a strong hand shows something like <em>Raise 74% · All-in 26%</em>. Alongside it are your verdict and the supporting indicators (equity, SPR, stack, ICM).",
+    "p4": "When there is no reference GTO solution, the review is <strong>honest</strong> and does not fabricate a verdict. <strong>Limped pots</strong> appear tagged <em>“{position} vs Limp”</em> (a tree outside coverage), and option checks in uncontested pots are not evaluated."
   },
   "alignment_matrix": {
     "title": "Position × Street Heatmap",

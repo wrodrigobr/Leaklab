@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs: nova seção "Revisão de Mão (Replayer)" no /docs
+
+> Documenta conceitualmente (sem expor internals) como ler o Replayer: a **mesa** (posição de cada jogador UTG/LJ/HJ/CO/BTN/SB/BB, stack, dealer button, suas cartas), o **card de decisão** (mostra a estratégia GTO das **suas cartas específicas** — ex.: Fold 100% ou Raise 74% · All-in 26% — não o range agregado da posição, + veredicto e indicadores), e a **honestidade de cobertura** (potes limpados aparecem como "{pos} vs Limp", checks de opção não são avaliados). Nova entrada no nav + seção em `Docs.tsx`, i18n nas 3 locales.
+
 ### fix(replayer): FOLD não esmaece no próprio step + cor cinza neutra (não vermelho)
 
 > O texto "FOLD" saía esmaecido porque o pod já recebia `opacity 0.28` (jogador foldado) **no mesmo step** da ação. Agora não escurece enquanto for a ação ativa (`isFolded && !isActive`) — o FOLD aparece em opacidade cheia com a borda dourada, e só apaga nos steps seguintes. A **cor** mudou de vermelho (`#e52020`, perto do all-in `#ff4040` e com cara de "erro") para **cinza neutro** (`#9aa0a8`) — fold é ação passiva.

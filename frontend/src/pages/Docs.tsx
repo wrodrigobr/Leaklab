@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight, TrendingUp } from "lucide-react";
 
-const SECTION_IDS = ["import", "scoring", "indicators", "gto_method", "alignment_matrix", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin", "sparring"] as const;
+const SECTION_IDS = ["import", "scoring", "indicators", "gto_method", "replayer", "alignment_matrix", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin", "sparring"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -280,6 +280,14 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p3") }} />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.coverage") }} />
+            </Section>
+
+            {/* Replayer — revisão de mão */}
+            <Section id="replayer" title={t("replayer.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("replayer.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("replayer.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("replayer.p3") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("replayer.p4") }} />
             </Section>
 
             {/* Alignment Matrix (Heatmap posição × street) */}
