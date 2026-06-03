@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop-gto): cenário vs_4bet (hero 3betou, enfrenta 4-bet) — roteamento + lookup
+
+> A varredura num spot de vs_4bet revelou o mesmo padrão do squeeze: o dado **vs_4bet existe e é rico** (`vs_4bet[hero][4bettor]`, 30–100bb, todas as combinações de posição), mas o `analyze_preflop` **nunca roteava** pra vs_4bet — uma decisão vs_4bet (hero 3betou e enfrenta um 4-bet) caía em **vs_3bet** (range errado, resposta a 3bet em vez de a 4bet). Fix: novo branch de roteamento (`hero_was_aggressor and facing_raises >= 2` = open + 4bet) **antes** do vs_3bet; `vs_4bet` adicionado à branch de lookup mesclada (section `vs_4bet`, mesma estrutura `[hero][villain]`); pro-note com verbo/termo corretos (hero faz **5bet/jam vs 4bet**, não "4bet vs 4bet"). Validado com mão sintética (CO 3bet AKs, UTG 4bet @50bb): card mostra "Cenário vs 4-Bet", "Range de continuação 69%", "Call 86,1% / Allin 13,1%", veredito ACEITÁVEL (jam é 13% — minoritária válida). Testes: preflop 76, invariants 8, regression 26, tournament 8, multi 14. (Grade vs_4bet no RangePanel = extensão do #28.)
+
 ### feat(replayer): grade 13×13 vs 3-bet / squeeze no RangePanel (aba real) — #28
 
 > Complemento do fix anterior: agora a aba **3-BET** existe de verdade e mostra a **grade 13×13 da range de continuação** do spot (não só o RFI de referência). **Backend** (`/preflop-ranges`): o vs_3bet usava a chave obsoleta `{pos}_RFI_vs_3bet` (sempre null); reescrito para a estrutura atual `vs_3bet[hero][3bettor]` (keyed por 3bettor, igual ao vs_rfi) com `frequencies` por mão montadas de `hand_freqs`; adicionado `squeeze[hero][opener]`; ambos com fallback de bucket (mesma tabela do engine). **Frontend** (`RangePanel`): tipo `ActionGrid` compartilhado; `buildRangeFromApi('3bet')` escolhe a fonte por cenário (vs_3bet ou squeeze) e o vilão (`gto.vs_position`), colorindo por `frequencies`; aba '3bet' disponível quando há dado. Confirmado: AJo vs UTG+2 3bet @17bb mostra a range de 4bet/allin (AA/AK/KK/QQ/JJ vermelho) com o hero em fold — 3,3% · 44 combos. api 42/42, gto 38/38.

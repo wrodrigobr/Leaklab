@@ -216,6 +216,11 @@ def analyze_preflop(
     # Squeeze: hero é squeezador (raise sobre open + cold caller). Distingue de vs_3bet HU.
     if is_3bet_pot and vs_pos and cal_pos:
         scenario = 'squeeze'
+    elif hero_was_aggressor and facing_raises >= 2 and vs_pos:
+        # Hero 3betou (foi agressor) e agora enfrenta um 4-BET (open + 4bet = 2 raises
+        # de villain). A range vs_4bet[hero][4bettor] existe (GW v3, deep stacks). Sem
+        # este branch caía em vs_3bet (range errado — resposta a 3bet, não a 4bet).
+        scenario = 'vs_4bet'
     elif hero_was_aggressor and facing_size > 0 and vs_pos:
         # Hero ABRIU (RFI) e agora enfrenta um re-raise (3bet). O flag is_3bet_pot marca
         # "hero FEZ o 3bet", não "hero ENFRENTA um 3bet" — por isso vem False aqui mesmo
@@ -527,8 +532,8 @@ def analyze_preflop(
                                             pct_play, in_rng, action_taken, acoes),
             })
 
-    # ── vs 3bet / faces_squeeze / squeeze — MESMA estrutura [hero][opener] no JSON ──
-    elif scenario in ('vs_3bet', 'faces_squeeze', 'squeeze'):
+    # ── vs 3bet / faces_squeeze / squeeze / vs_4bet — MESMA estrutura [hero][villain] ──
+    elif scenario in ('vs_3bet', 'faces_squeeze', 'squeeze', 'vs_4bet'):
         # vs_3bet:       ranges[stack][vs_3bet][opener_hero][3bettor] — hero abriu, enfrenta 3bet
         # faces_squeeze: ranges[stack][faces_squeeze][hero][3bettor] — hero DEFENDE open+3bet/squeeze
         # squeeze:       ranges[stack][squeeze][hero][opener]        — hero SQUEEZA (raise sobre
@@ -536,7 +541,8 @@ def analyze_preflop(
         #                (raise_hands, call_hands, allin_hands, hand_freqs). A branch antiga do
         #                squeeze usava section 'vs_squeeze' + chave flat (formato obsoleto) e nunca
         #                casava — caía em vs_rfi (range errado). Agora reusa este path.
-        _section = {'vs_3bet': 'vs_3bet', 'faces_squeeze': 'faces_squeeze', 'squeeze': 'squeeze'}[scenario]
+        _section = {'vs_3bet': 'vs_3bet', 'faces_squeeze': 'faces_squeeze',
+                    'squeeze': 'squeeze', 'vs_4bet': 'vs_4bet'}[scenario]
         bucket_fallbacks = {
             '14bb': ['10bb', '20bb'], '17bb': ['20bb', '14bb'],
             '40bb': ['30bb', '50bb'], '60bb': ['50bb', '75bb'],
@@ -901,7 +907,9 @@ def _vs_3bet_notes(pos, hand, stack, pct, in_4b, in_cl, action, scenario='vs_3be
     label = _POS.get(pos, pos)
     pct_s = f"{pct*100:.0f}%"
     act   = action.lower()
-    term  = 'squeeze' if scenario in ('faces_squeeze', 'squeeze') else '3bet'  # termo correto por cenário
+    # termo do villain (o que o hero enfrenta) e verbo do hero (ação agressiva) por cenário
+    term      = 'squeeze' if scenario in ('faces_squeeze', 'squeeze') else ('4bet' if scenario == 'vs_4bet' else '3bet')
+    hero_verb = '5bet/jam' if scenario == 'vs_4bet' else '4bet'
     if scenario == 'squeeze':
         # Hero É o squeezador (raise/shove sobre open + cold call) — não responde a um.
         if in_4b:
@@ -916,9 +924,9 @@ def _vs_3bet_notes(pos, hand, stack, pct, in_4b, in_cl, action, scenario='vs_3be
             notes.append(f"Squeeze/call com {hand} aqui perde EV: fora do range para esse spot 3-way.")
         return notes
     if in_4b:
-        notes.append(f"{hand} do {label} faz 4bet vs {term} — mão no topo do range de continuação ({pct_s} continuam).")
+        notes.append(f"{hand} do {label} faz {hero_verb} vs {term} — mão no topo do range de continuação ({pct_s} continuam).")
         if act == 'fold':
-            notes.append(f"Foldar {hand} vs {term} é grande erro de EV: esta mão está no range de 4bet.")
+            notes.append(f"Foldar {hand} vs {term} é grande erro de EV: esta mão está no range de {hero_verb}.")
     elif in_cl:
         notes.append(f"{hand} do {label} faz call vs {term} — range de continuação é {pct_s} das mãos.")
         if act == 'fold':
