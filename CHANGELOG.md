@@ -7,6 +7,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): rótulos de posição na mesa + layout mobile usável (design pass)
+
+> Revisão de design do Replayer com screenshots reais (harness Playwright `frontend/scripts/replayer_shots.mjs`, 3 breakpoints). Três entregas:
+> - **Position labels na mesa:** cada cadeira agora mostra a posição (UTG/UTG+1/UTG+2/LJ/HJ/CO/BTN/SB/BB) numa tab no topo do pod — antes só nome+stack, o usuário tinha que contar a partir do dealer button. Hero em dourado; renderizada fora do grupo de opacity (visível mesmo quando o jogador folda, como o dealer button).
+> - **Mobile usável:** o root era `h-dvh overflow-hidden` (viewport fixo) em todos os breakpoints → no celular a mesa era espremida e o **card de análise (o veredito) ficava cortado fora da tela**. Agora mobile rola (`min-h-dvh overflow-y-auto`) e a mesa dimensiona pela largura; o veredito aparece acima da dobra. Desktop mantém o split de viewport fixo (`lg:`).
+> - **`MP` → `LJ`:** a mesa exibia "MP"; o GTO Solver (e o próprio engine, que normaliza `MP→LJ`) usa **LJ (LoJack)** em 9-max. Alinhado o `pos_names` do `/replay` ao Decision Card.
+
 ### fix(dev): proxy `/replay` colidia com a rota SPA `/replayer` (404 em load direto)
 
 > O proxy do Vite usava o prefixo `/replay`, que casa também com **`/replayer`** (a rota do SPA). Resultado: abrir/recarregar/bookmarkar `localhost:8080/replayer?...` direto caía no 404 do backend (`{"error":"Rota não encontrada"}`) em vez de carregar o SPA — só funcionava navegando de dentro do app (client-side routing). Fix: chave do proxy `/replay` → `/replay/` (a API sempre chama `/replay/{t}/{h}` e `/replay/{id}/gto`, então a barra final preserva o proxy e libera `/replayer`). Descoberto via harness de screenshots do Replayer (`frontend/scripts/replayer_shots.mjs`, Playwright). Validado: `/replayer` serve SPA, `/replay/1/2` → backend 401.

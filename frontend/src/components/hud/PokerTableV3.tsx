@@ -267,16 +267,32 @@ function renderSeatsAndChips(
     const sv = (ev as unknown as Record<string, Record<string, number>>)["stacks"]?.[sn] ?? d.stack;
     html += `<text x="${pos.x}" y="${by + 48}" text-anchor="middle" fill="${isHero ? "#c9e8ff" : "#c0bab0"}" font-family="Share Tech Mono,monospace" font-size="15" font-weight="600" letter-spacing=".05">${fmtAmt(sv, bb, unit)}</text>`;
 
-    // Bounty badge (PKO tournaments)
+    // Bounty badge (PKO tournaments) — sobe quando há tab de posição (não colidir)
     if (d.bounty && d.bounty > 0) {
       const bStr = `$${d.bounty.toFixed(2)}`;
       const bw2 = bStr.length * 6.5 + 14;
-      html += `<rect x="${pos.x - bw2 / 2}" y="${by - 22}" width="${bw2}" height="16" rx="8" fill="rgba(245,158,11,0.15)" stroke="rgba(245,158,11,0.50)" stroke-width="1"/>`;
-      html += `<text x="${pos.x}" y="${by - 10}" text-anchor="middle" fill="#fbbf24" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700">💀${bStr}</text>`;
+      const byB = d.pos ? by - 32 : by - 22;
+      html += `<rect x="${pos.x - bw2 / 2}" y="${byB}" width="${bw2}" height="16" rx="8" fill="rgba(245,158,11,0.15)" stroke="rgba(245,158,11,0.50)" stroke-width="1"/>`;
+      html += `<text x="${pos.x}" y="${byB + 12}" text-anchor="middle" fill="#fbbf24" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700">💀${bStr}</text>`;
     }
 
     html += "</g>";  // fecha o grupo do seat (com opacity quando folded)
     seatsHtml += html;
+
+    // Position tab — posição GTO (UTG/MP/CO/BTN/SB/BB) na borda superior do pod.
+    // RENDERIZADA FORA DO GRUPO COM OPACITY (igual ao dealer button) pra permanecer
+    // 100% visível mesmo quando o jogador folda — em análise a posição de quem
+    // foldou importa ("quem abriu/foldou do CO?"). Hero em dourado, vilões neutro.
+    // O usuário não deveria ter que contar a partir do dealer button.
+    if (d.pos) {
+      const pW = d.pos.length * 6.6 + 14;
+      const pY = by - 9;  // sobre a borda superior do pod
+      const pFill   = isHero ? "rgba(201,168,64,0.96)" : "rgba(18,26,42,0.95)";
+      const pStroke = isHero ? "#e3c869" : "rgba(255,255,255,0.26)";
+      const pText   = isHero ? "#1a1206" : "#e8eefc";
+      seatsHtml += `<rect x="${pos.x - pW / 2}" y="${pY}" width="${pW}" height="17" rx="8.5" fill="${pFill}" stroke="${pStroke}" stroke-width="1"/>`;
+      seatsHtml += `<text x="${pos.x}" y="${pY + 12.6}" text-anchor="middle" fill="${pText}" font-family="Inter,sans-serif" font-size="10.5" font-weight="800" letter-spacing=".04">${d.pos}</text>`;
+    }
 
     // Dealer button — RENDERIZADO FORA DO GRUPO COM OPACITY pra permanecer
     // visivel quando o BTN folda. Sem opacity wrapper.

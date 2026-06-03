@@ -1363,7 +1363,7 @@ const Replayer = () => {
   const isCorrect = step.is_hero && !isError && step.type === "action";
 
   return (
-    <div ref={rootRef} className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
+    <div ref={rootRef} className="min-h-dvh lg:h-dvh flex flex-col overflow-y-auto lg:overflow-hidden bg-background hud-scanline">
       {!focusMode && <HudHeader />}
 
       {/* ── Outer wrapper: top-bar + [table | side-panel] + controls ── */}
@@ -1432,13 +1432,14 @@ const Replayer = () => {
         </div>
 
         {/* ── Main row: table (flex-1) + side panel (w-72, desktop only) ── */}
-        <div className="flex-1 min-h-0 flex gap-3">
+        {/* Mobile: coluna com scroll natural (root rola); desktop: row de altura fixa */}
+        <div className="lg:flex-1 lg:min-h-0 flex flex-col lg:flex-row gap-3">
 
           {/* Table column */}
-          <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
-            {/* Mesa — cresce pela altura disponível */}
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <div className="h-full mx-auto aspect-[16/10] max-w-full">
+          <div className="lg:flex-1 min-w-0 lg:min-h-0 flex flex-col gap-2">
+            {/* Mesa — desktop cresce pela altura; mobile dimensiona pela largura (16/10) */}
+            <div className="lg:flex-1 lg:min-h-0 lg:overflow-hidden">
+              <div className="w-full mx-auto aspect-[16/10] max-w-full lg:h-full lg:w-auto">
                 <PokerTableV3
                   step={step}
                   hero={replayData.hero}

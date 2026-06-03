@@ -3744,7 +3744,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     seat_nums = sorted(seats.keys())
     n         = len(seat_nums)
     btn_idx   = seat_nums.index(hand.button_seat) if hand.button_seat in seat_nums else 0
-    pos_names = ['BTN','SB','BB','UTG','UTG+1','UTG+2','MP','HJ','CO']
+    # LJ (não 'MP'): convenção do GTO Solver p/ 9-max e o nome que o engine usa
+    # internamente (preflop_gto_ranges normaliza MP→LJ). Mantém a mesa coerente
+    # com o Decision Card, que já exibe 'LJ'.
+    pos_names = ['BTN','SB','BB','UTG','UTG+1','UTG+2','LJ','HJ','CO']
     positions = {
         s: pos_names[(i - btn_idx) % n] if (i - btn_idx) % n < len(pos_names) else f'P{(i-btn_idx)%n}'
         for i, s in enumerate(seat_nums)
