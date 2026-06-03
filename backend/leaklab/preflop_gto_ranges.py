@@ -902,6 +902,19 @@ def _vs_3bet_notes(pos, hand, stack, pct, in_4b, in_cl, action, scenario='vs_3be
     pct_s = f"{pct*100:.0f}%"
     act   = action.lower()
     term  = 'squeeze' if scenario in ('faces_squeeze', 'squeeze') else '3bet'  # termo correto por cenário
+    if scenario == 'squeeze':
+        # Hero É o squeezador (raise/shove sobre open + cold call) — não responde a um.
+        if in_4b:
+            notes.append(f"{hand} do {label} squeeza (raise/shove sobre open + cold call) — mão no topo do range ({pct_s} squeezam).")
+            if act == 'fold':
+                notes.append(f"Foldar {hand} aqui perde EV: a mão está no range de squeeze.")
+        elif in_cl:
+            notes.append(f"{hand} do {label} faz over-call vs o open + cold call — {pct_s} continuam.")
+            if act == 'fold':
+                notes.append(f"Foldar {hand} aqui é tight demais — a mão tem força para continuar 3-way.")
+        elif act in ('raise', 'jam', 'call'):
+            notes.append(f"Squeeze/call com {hand} aqui perde EV: fora do range para esse spot 3-way.")
+        return notes
     if in_4b:
         notes.append(f"{hand} do {label} faz 4bet vs {term} — mão no topo do range de continuação ({pct_s} continuam).")
         if act == 'fold':
