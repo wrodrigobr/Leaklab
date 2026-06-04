@@ -647,14 +647,19 @@ function SidePanels({
                   ? t("card.reqTipAdjusted", { potOdds: (poRaw! * 100).toFixed(1) })
                   : t("card.reqTipRaw");
               const label = isImplicit ? t("card.reqMinEv") : t("card.reqNeeded");
-              // Quando há cobertura GTO preflop, o veredito é do solver e a equity é
-              // vs-random (heurística HU) — NÃO sinalizar o +pp em verde/vermelho como
-              // se fosse veredito, senão contradiz o "Fold correto" do GTO. Neutro +
-              // tooltip. (Fase 2 = equity range-aware deixa o número confiável.)
-              const ppMuted = !!showAuditPreflop;
+              // Quando o veredito vem do SOLVER (range preflop OU estratégia postflop),
+              // a conta simples equity×necessária NÃO é o veredito — e pode contradizê-lo:
+              // ex.: "DESVIO CRÍTICO" ao apostar com 62% de equity, porque o solver dá
+              // check 100% (range / ruas futuras). Verde/vermelho ali pareceria que a
+              // ação foi +EV. Neutraliza o +pp (cinza) + tooltip contextual. Cor só fica
+              // quando pot odds É a base do veredito (postflop sem solver, vs_shove).
+              const ppMuted = !!showAuditPreflop || !!effectiveGtoLabel;
+              const ppTip = showAuditPreflop ? t("card.reqVsRandomTip")
+                : effectiveGtoLabel ? t("card.reqSolverContextTip")
+                : tooltip;
               return (
                 <div className="flex items-center gap-2 font-mono text-[11px]"
-                  title={ppMuted ? t("card.reqVsRandomTip") : tooltip}>
+                  title={ppTip}>
                   <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">{label}</span>
                   <span className="font-bold tabular-nums text-foreground/80">{(reqShown * 100).toFixed(1)}%</span>
                   {eq != null && (

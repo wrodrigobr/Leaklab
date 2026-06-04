@@ -78,6 +78,7 @@
     "rangeSqueeze": "Squeeze range",
     "vsRandom": "vs random",
     "reqVsRandomTip": "Equity estimated vs a random hand — not vs the opponent's actual range. The verdict comes from your hand's GTO strategy (above). Vs the opponent's range, equity is usually lower.",
+    "reqSolverContextTip": "Pot odds of your action. The verdict comes from the solver strategy (above), which accounts for the whole range and future streets — not just this calculation. That's why the margin is shown neutral.",
     "limpedPot": "{{pos}} vs Limp · limped pot, outside GTO coverage",
     "limpedPotTip": "Limped pot (limp with no raise). This tree is outside GTO coverage — we only cover raise-first spots (RFI/vs-RFI/3bet/squeeze). Not a capture gap.",
     "sprTip": "SPR (Stack-to-Pot Ratio): effective stack ÷ pot. < 2 = committed; 2–5 = medium; > 5 = deep",

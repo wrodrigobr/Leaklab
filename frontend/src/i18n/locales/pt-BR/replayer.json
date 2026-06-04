@@ -78,6 +78,7 @@
     "rangeSqueeze": "Range de squeeze",
     "vsRandom": "vs aleatória",
     "reqVsRandomTip": "Equity estimada vs uma mão aleatória — não vs o range real do oponente. O veredito vem da estratégia GTO da sua mão (acima). Contra o range do oponente, a equity costuma ser menor.",
+    "reqSolverContextTip": "Pot odds da sua ação. O veredito vem da estratégia do solver (acima), que considera o range inteiro e as ruas futuras — não só esta conta. Por isso a margem aparece neutra.",
     "limpedPot": "{{pos}} vs Limp · pote limpado, fora da cobertura GTO",
     "limpedPotTip": "Pote limpado (limp sem raise). É uma árvore fora da cobertura GTO — só cobrimos spots iniciados com raise (RFI/vs-RFI/3bet/squeeze). Não é falha de captura.",
     "sprTip": "SPR (Stack-to-Pot Ratio): stack efetivo ÷ pot. < 2 = comprometido; 2–5 = médio; > 5 = fundo",
