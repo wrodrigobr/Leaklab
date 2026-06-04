@@ -1,7 +1,12 @@
 export type GtoLabel = 'gto_correct' | 'gto_mixed' | 'gto_minor_deviation' | 'gto_critical';
 
 function normAction(a: string): string {
-  return (a ?? '').toLowerCase().replace(/[-_ ]/g, '');
+  const s = (a ?? '').toLowerCase().replace(/[-_ ]/g, '');
+  // shove / jam / all-in são a MESMA ação. A strategy do solver usa 'allin',
+  // mas a ação jogada vem como 'shove' — sem unificar, um shove correto não
+  // casa com 'allin 96%' e cai em gto_critical (falso "DESVIO CRÍTICO").
+  if (s === 'shove' || s === 'jam' || s === 'allin') return 'allin';
+  return s;
 }
 
 /**
