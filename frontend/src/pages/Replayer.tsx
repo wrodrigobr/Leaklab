@@ -12,6 +12,7 @@ import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
+import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource } from "@/lib/cardLogic";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
@@ -217,19 +218,18 @@ function SidePanels({
         : isCorrect);
   // idealAction: use live top action when available (overrides stored gto_action which may be stale)
   const liveTopAction = stratSorted.length > 0 ? stratSorted[0].action : null;
-  const idealAction = preflopNoCoverage
-    ? null  // sem cobertura: não há "ação recomendada" — não exibir caixa "GTO recomenda"
-    : isShoveFb
-    ? (_fbCallEv == null ? null : fmtAction(_fbCallEv ? 'call' : 'fold'))  // pot odds
-    : (!isPostflop && pg?.available)
-    // Preflop coberto: a recomendação vem do RANGE (ação dominante do hand_freq),
-    // não do gto_action armazenado — que reflete o best_action do ENGINE e pode
-    // divergir (ex.: AA squeeze @14bb = Raise 93% no range, mas engine sugere call).
-    // Alinha com o verdict, que já prioriza o range (effectiveGtoLabel=null aqui).
-    ? pg.recommended_actions.map(fmtAction).join(" / ")
-    : hasGto
-    ? (liveTopAction ?? step.gto_action ?? null)
-    : (step.best_action ? fmtAction(step.best_action) : null);
+  // Fonte da "ação recomendada" por prioridade (idealActionSource, testável). Preflop
+  // coberto usa o RANGE (ação dominante do hand_freq) ANTES do gto_action do engine —
+  // senão AA squeeze @14bb mostrava "GTO recomenda Call" em vez de Raise 93%.
+  const _idealSrc = idealActionSource({
+    preflopNoCoverage, isShoveFb, isPostflop, pgAvailable: !!pg?.available, hasGto,
+  });
+  const idealAction =
+      _idealSrc === "none"    ? null
+    : _idealSrc === "potodds" ? (_fbCallEv == null ? null : fmtAction(_fbCallEv ? 'call' : 'fold'))
+    : _idealSrc === "range"   ? pg!.recommended_actions.map(fmtAction).join(" / ")
+    : _idealSrc === "solver"  ? (liveTopAction ?? step.gto_action ?? null)
+    : (step.best_action ? fmtAction(step.best_action) : null);  // engine
   const showTwoCols = !isActionOk && !!idealAction &&
     idealAction.toLowerCase() !== playedAction.toLowerCase();
   const topFreqPct = stratSorted.length > 0
@@ -519,8 +519,8 @@ function SidePanels({
         // Multiway: jogadores ainda no pote = dealt − foldados (acumulado até o passo).
         // O solver postflop é resolvido HEADS-UP; em pote 3+ way a estratégia é
         // aproximação (a equity já é ajustada pelo nº de oponentes). Sinaliza no card.
-        const livePlayers = step.seats ? Object.keys(step.seats).length - (step.folded?.length ?? 0) : null;
-        const isMultiway = isPostflop && livePlayers != null && livePlayers >= 3;
+        const livePlayers = computeLivePlayers(step.seats as Record<string, unknown> | undefined, step.folded);
+        const isMultiway = isMultiwayPot(isPostflop, livePlayers);
 
         const indicators = (
           <>
@@ -677,8 +677,7 @@ function SidePanels({
               // Também neutraliza quando a margem ficaria VERDE (eq ≥ necessária) mas o
               // veredito diz que a ação foi ERRO (ex.: heurística "RAISE +EV vs fold"
               // num spot que o engine manda CALL) — senão o +pp verde contradiz o "ERRO".
-              const _ppContradicts = eq != null && eq >= reqShown && !isActionOk;
-              const ppMuted = !!showAuditPreflop || !!effectiveGtoLabel || _ppContradicts;
+              const ppMuted = isPpMuted({ showAuditPreflop: !!showAuditPreflop, effectiveGtoLabel, eq, reqShown, isActionOk });
               const ppTip = showAuditPreflop ? t("card.reqVsRandomTip")
                 : effectiveGtoLabel ? t("card.reqSolverContextTip")
                 : tooltip;
