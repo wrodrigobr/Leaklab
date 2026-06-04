@@ -286,6 +286,7 @@ def analyze_preflop(
             return base
         # Detecta formato v3 (GW master) vs v2 (RegLife antigo)
         is_v3 = 'open_pct' in rfi or 'raise_hands' in rfi
+        in_complete = False  # SB completa/limpa esta mão (preenchido no v3 via código 'C')
 
         if is_v3:
             # v3: campos open_pct/raise_pct/allin_pct + raise_hands/allin_hands
@@ -307,16 +308,25 @@ def analyze_preflop(
             # Ordem por freq da MÃO específica quando disponível (hand_freqs do GW v3)
             # Inclui FOLD quando freq fold >= 20% (mão mista que GTO frequentemente folda)
             _hf_rfi = rfi.get('hand_freqs', {}).get(hero_hand_type, {})
-            _hf_raise_w = 0.0; _hf_allin_w = 0.0; _hf_fold_w = 0.0
+            _hf_raise_w = 0.0; _hf_allin_w = 0.0; _hf_fold_w = 0.0; _hf_call_w = 0.0
             for code, f in _hf_rfi.items():
                 if code == 'RAI':                _hf_allin_w += float(f)
                 elif code == 'F':                _hf_fold_w  += float(f)
+                elif code == 'C':                _hf_call_w  += float(f)   # SB complete/limp
                 elif code.startswith('R'):       _hf_raise_w += float(f)
+            # SB curto joga limp-or-jam: 'C' (complete) é ação GTO VÁLIDA. O v3 antes
+            # ignorava o complete (só raise/jam) → AKs SB (complete 100%) caía em
+            # rec=fold + "fora do range" + jam=major_leak (card contraditório). Agora
+            # o complete entra no rec e marca a mão como no range.
+            in_complete = _hf_call_w > 0
+            in_rng = in_rng or in_complete
             _opts = []
             if in_allin:
                 _opts.append(('jam',   _hf_allin_w if _hf_allin_w > 0 else float(rfi.get('allin_pct', 0) or 0)))
             if in_raise:
                 _opts.append(('raise', _hf_raise_w if _hf_raise_w > 0 else float(rfi.get('raise_pct', 0) or 0)))
+            if _hf_call_w >= 0.10:
+                _opts.append(('call', _hf_call_w))   # complete/limp do SB
             # Fold como opção GTO quando freq significativa (mão mista entre fold/raise)
             if _hf_fold_w >= 0.20:
                 _opts.append(('fold', _hf_fold_w))
@@ -363,6 +373,11 @@ def analyze_preflop(
         quality = _rfi_quality(action_taken, in_rng, stack_bb,
                                in_limp=in_limp, is_sb=(pos == 'SB'),
                                hand_freq=hand_freq)
+        # SB limp-strategy: jammar/raisear uma mão que o GTO COMPLETA (limpa) é
+        # simplificação de EV próxima (ex.: AKs SB @10bb jam vs limp), não erro
+        # grave. Rebaixa major_leak→leak quando a mão está no range de complete.
+        if (in_complete or in_limp) and action_taken.lower() in ('shove', 'jam', 'allin', 'raise') and quality == 'major_leak':
+            quality = 'leak'
         # Expõe raise/allin/call/fold pct agregados do range — usados pela
         # barra do Decision Card quando hand_freq específica não existe.
         if is_v3:
