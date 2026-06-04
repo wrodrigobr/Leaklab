@@ -514,8 +514,22 @@ function SidePanels({
           : (pg ? Math.max(0, 1 - (pg.range_pct ?? 0)) : 0);
         const hasFreqs = showAuditPreflop && (callPct > 0 || raisePct > 0 || allinPct > 0 || foldPct > 0);
 
+        // Multiway: jogadores ainda no pote = dealt − foldados (acumulado até o passo).
+        // O solver postflop é resolvido HEADS-UP; em pote 3+ way a estratégia é
+        // aproximação (a equity já é ajustada pelo nº de oponentes). Sinaliza no card.
+        const livePlayers = step.seats ? Object.keys(step.seats).length - (step.folded?.length ?? 0) : null;
+        const isMultiway = isPostflop && livePlayers != null && livePlayers >= 3;
+
         const indicators = (
           <>
+            {isMultiway && (
+              <div className="flex items-center gap-2 font-mono text-[11px]"
+                title={effectiveGtoLabel ? t("card.multiwaySolverTip", { n: livePlayers }) : t("card.multiwayTip", { n: livePlayers })}>
+                <span className="rounded-md bg-amber-500/10 ring-1 ring-amber-500/25 px-2 py-1 text-[10px] text-amber-300/90 cursor-help">
+                  {t("card.multiway", { n: livePlayers })}
+                </span>
+              </div>
+            )}
             {showAuditPreflop && (
               <>
                 <div className="flex flex-wrap gap-1 items-center">
@@ -686,7 +700,7 @@ function SidePanels({
           </div>
         ) : null;
 
-        const hasIndicators = showAuditPreflop ||
+        const hasIndicators = showAuditPreflop || isMultiway ||
                               (isPostflop && (spr != null || sizingPct != null)) ||
                               eq != null || (req != null && req > 0) || reqImplicit != null;
 
