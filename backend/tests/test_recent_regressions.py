@@ -114,7 +114,7 @@ def test_multiway_equity_5way_decay():
 def test_multiway_preflop_not_adjusted():
     """Preflop preservado: ranges GTO já lidam com multiway."""
     snap = build_math_snapshot(_state(3, street='preflop'))
-    assert snap.estimated_hand_equity == 0.64  # AA preflop heurística
+    assert snap.estimated_hand_equity == 0.8512  # AA preflop vs-random (tabela exata)
     print("OK  test_multiway_preflop_not_adjusted")
 
 
