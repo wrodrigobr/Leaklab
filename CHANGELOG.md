@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(preflop-gto): vs_rfi — "GTO recomenda" não lista mais ação de freq ~0%
+
+> A reverificação do vs_rfi achou uma imprecisão na caixa **"GTO recomenda"**: **99 BTN vs open @11bb** (GTO jama **Allin 99,9%**, Call 0,1%) recomendava **"Shove / Call"** — o "Call" entrava só porque 99 estava na **string `call_hands`** do range, apesar da freq de call ser ~0. O rec do vs_rfi incluía **toda** ação cuja mão estivesse na string, sem filtro de frequência (a branch mesclada vs_3bet/etc. já filtrava `≥10%`). Fix: o rec do vs_rfi passa a filtrar **≥10%** (igual à mesclada). Confirmado que **todos os 964 spots têm hand_freqs reais** (0 string-only), então o peso é sempre a freq da mão — o filtro é seguro. Agora 99 = "GTO recomenda **Shove**"; mistas legítimas seguem com as 2 ações (KK call/raise, QTo jam/call, KJs jam/call). Engine 270/270. (vs_rfi reverificado: KJs jam=correct, KK 3bet=correct, 99 fold=major_leak — shove↔allin e demais fixes intactos.)
+
 ### docs: /docs Replayer ganha "equity vs aleatória" e "Multiway" (conceitos das varreduras)
 
 > Após a leva de varreduras, atualizei a doc do **Replayer** (`/docs`) com os 2 conceitos novos que o usuário vê no card — em nível conceitual (o que é / como ler), sem expor lógica interna. **p5 — equity "vs aleatória":** o indicador de equity é estimado vs uma mão aleatória (não o range real do oponente, que costuma ser menor); o veredicto vem da estratégia GTO da mão, não desse número. **p6 — Multiway:** em potes 3+ way o card mostra «Multiway · N-way» — a estratégia do solver é resolvida heads-up, então em multiway é aproximação (a equity já vem ajustada pro nº de oponentes). 3 locales (PT/EN/ES), termos de poker em inglês. (p4 já cobria "vs Limp"/pote limpado.) typecheck verde, render confirmado.

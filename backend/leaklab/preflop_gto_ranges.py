@@ -494,7 +494,12 @@ def analyze_preflop(
                 _options.append(('fold', _hf_fold_w))
             _agg_order = {'jam': 4, 'raise': 3, 'call': 2, 'fold': 1}
             _options.sort(key=lambda x: (-x[1], -_agg_order[x[0]]))
-            rec = [a for a, _ in _options] or ['fold']
+            # Filtra por freq ≥10% (igual à branch mesclada). Sem isto, uma ação de
+            # peso ~0 entrava no rec só por a mão estar na STRING do range (ex.: 99 vs
+            # open jama 99.9% mas estava em call_hands → "GTO recomenda Shove / Call").
+            # Todos os 964 spots têm hand_freqs reais (0 string-only), então o peso é
+            # sempre a freq da mão — o filtro é seguro.
+            rec = [a for a, w in _options if w >= 0.10] or ['fold']
 
             # aggr_pct: campo v2 (RegLife) ou computado em v3 (call+raise+allin = não-fold)
             aggr_pct = float(defender.get('aggr_pct', call_pct + raise_pct + allin_pct))
