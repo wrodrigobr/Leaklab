@@ -290,6 +290,9 @@ export interface ReplayStep {
     // Motivo de available=false quando é gap de cenário conhecido (não falta de captura).
     // 'limped_pot' = pote limpado (árvore raise-first não cobre) → display "{pos} vs Limp".
     coverage_reason?: "limped_pot";
+    // Jam/fold curto sobre limp: usa o range de push/fold (mesma decisão; limp = dead
+    // money). Display caveateia "≈ push/fold · limp como dead money".
+    limp_dead_money?: boolean;
   } | null;
   // Score breakdown (all hero actions)
   draw_profile?: string | null;

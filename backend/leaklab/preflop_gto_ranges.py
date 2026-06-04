@@ -248,8 +248,19 @@ def analyze_preflop(
     # mostrar "{pos} vs Limp" em vez de um available=False mudo (parece falta de
     # captura, mas é gap de cenário conhecido — backlog #22).
     if facing_limp:
-        base['coverage_reason'] = 'limped_pot'
-        return base  # available=False — fora de cobertura (limped pot)
+        # A stacks curtos (push/fold), um JAM/FOLD sobre um limp É a MESMA decisão de
+        # push/fold — o limp é só dead money e não cria nó GTO novo (o GTO não
+        # open-limpa de posição não-blind, então não existe árvore vs-limp pra
+        # capturar). Aplica o range de RFI (push/fold) com flag de aproximação. Os
+        # demais potes limpados (deep, ou call/iso-raise) seguem sem cobertura honesta.
+        if stack_bb <= 12 and action_taken.lower() in ('shove', 'jam', 'allin', 'fold'):
+            scenario = 'rfi'
+            base['scenario'] = 'rfi'
+            base['limp_dead_money'] = True   # display: "≈ push/fold · limp = dead money"
+            # cai pro lookup de RFI abaixo (não retorna)
+        else:
+            base['coverage_reason'] = 'limped_pot'
+            return base  # available=False — fora de cobertura (limped pot)
 
     # BB checando em pot não contestado = free play, não é decisão de range
     if scenario == 'rfi' and pos == 'BB' and action_taken.lower() == 'check':
@@ -712,11 +723,12 @@ def _rfi_quality(action: str, in_rng: bool, stack_bb: float, *,
         }
         key = key_map.get(act, act)
         freq = float(hand_freq.get(key, 0))
-        # Push/fold (<6bb): abrir = jammar. O range 10bb separa raise (open) de
-        # allin, mas a essa profundidade um open compromete o stack — raise≈allin.
-        # Sem isso, AA UTG @4bb (range: raise 100%) vira "leak" ao dar shove. Soma
-        # as duas freqs pra creditar o jam de qualquer mão que o GTO abre.
-        if act == 'jam' and stack_bb < 6:
+        # Push/fold (≤12bb = bucket 10bb): abrir = jammar. O range 10bb separa raise
+        # (open/min-raise) de allin, mas em todo o bucket curto um open COMPROMETE o
+        # stack — raise≈allin. Sem isso, QQ BTN @8bb (range: raise 96%) vira "leak" ao
+        # dar shove, sendo que a 8bb jammar é a mesma decisão (você está committed).
+        # Soma as duas freqs pra creditar o jam de qualquer mão que o GTO abre.
+        if act == 'jam' and stack_bb <= 12:
             freq = float(hand_freq.get('allin', 0)) + float(hand_freq.get('raise', 0))
         if   freq >= 0.30: return 'correct'
         elif freq >= 0.10: return 'acceptable'

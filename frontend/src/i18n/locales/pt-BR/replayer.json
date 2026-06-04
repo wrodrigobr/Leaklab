@@ -8,7 +8,10 @@
   "noData": "Sem dados.",
   "error": "Erro ao carregar o replay.",
   "back": "Voltar",
-  "focus": { "enter": "Tela cheia", "exit": "Sair da tela cheia" },
+  "focus": {
+    "enter": "Tela cheia",
+    "exit": "Sair da tela cheia"
+  },
   "noParams": "Nenhuma mão selecionada. Volte para o torneio e clique em 'Abrir no replayer'.",
   "players": "jogadores",
   "actionLog": "Action Log",
@@ -130,7 +133,9 @@
     "statusDoneLoaded": "Análise GTO carregada.",
     "statusDoneNoSolution": "Solver processou mas não retornou solução — spot multiway sem cobertura na árvore GTO atual.",
     "statusError": "Não foi possível calcular GTO para este spot.",
-    "coachCorrect": "Correto"
+    "coachCorrect": "Correto",
+    "limpDeadMoney": "≈ push/fold · limp tratado como dead money",
+    "limpDeadMoneyTip": "Alguém limpou, mas a stack curto um jam/fold sobre o limp é a MESMA decisão de push/fold (o limp é só dead money, não cria um spot GTO novo). Veredito pelo seu range de push/fold."
   },
   "controls": {
     "play": "Reproduzir",

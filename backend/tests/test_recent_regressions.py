@@ -343,6 +343,31 @@ def test_allin_guard_converts_facing_chips_to_bb():
     print("OK  test_allin_guard_converts_facing_chips_to_bb")
 
 
+def test_short_jam_over_limp_uses_pushfold():
+    """Jam curto sobre limp = mesma decisão de push/fold (limp = dead money), não
+    'sem cobertura'. QQ BTN @8bb shove sobre limp deve ser CORRETO via range RFI."""
+    kw = dict(position='BTN', hero_hand_type='QQ', action_taken='shove', facing_size=1.0,
+              vs_position='', is_3bet_pot=False, n_players=9, facing_raises=0,
+              hero_was_aggressor=False, facing_limp=True)
+    r = analyze_preflop(stack_bb=8.0, **kw)
+    assert r.get('available') is True, "jam curto sobre limp deve ter veredito"
+    assert r.get('scenario') == 'rfi'
+    assert r.get('limp_dead_money') is True
+    assert r.get('action_quality') == 'correct', f"QQ jam @8bb = correct, veio {r.get('action_quality')}"
+    # Premium que o range 10bb MIN-RAISA (não jama) ainda é correct ao jammar curto:
+    # QQ RFI puro @8bb (raise≈allin no bucket push/fold, threshold ≤12bb)
+    rfi = analyze_preflop(stack_bb=8.0, **{**kw, 'facing_limp': False, 'facing_size': 0.0})
+    assert rfi.get('scenario') == 'rfi' and rfi.get('action_quality') == 'correct', \
+        f"QQ RFI jam @8bb = correct, veio {rfi.get('action_quality')}"
+    # Pote limpado DEEP (não push/fold) segue sem cobertura honesta
+    deep = analyze_preflop(stack_bb=40.0, **kw)
+    assert deep.get('available') is False and deep.get('coverage_reason') == 'limped_pot'
+    # Call sobre limp (não jam/fold) também segue sem cobertura
+    call = analyze_preflop(stack_bb=8.0, **{**kw, 'action_taken': 'call'})
+    assert call.get('available') is False
+    print("OK  test_short_jam_over_limp_uses_pushfold")
+
+
 # ── Runner ──────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]

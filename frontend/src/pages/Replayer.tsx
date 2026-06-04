@@ -555,6 +555,11 @@ function SidePanels({
                     </span>
                   </span>
                 </div>
+                {pg!.limp_dead_money && (
+                  <div className="font-mono text-[10px] text-amber-300/80" title={t("card.limpDeadMoneyTip")}>
+                    {t("card.limpDeadMoney")}
+                  </div>
+                )}
                 {hasFreqs && (
                   <div className="space-y-1">
                     {(() => {

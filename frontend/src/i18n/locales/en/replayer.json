@@ -8,7 +8,10 @@
   "noData": "No data.",
   "error": "Error loading replay.",
   "back": "Back",
-  "focus": { "enter": "Fullscreen", "exit": "Exit fullscreen" },
+  "focus": {
+    "enter": "Fullscreen",
+    "exit": "Exit fullscreen"
+  },
   "noParams": "No hand selected. Return to the tournament and click 'Open in replayer'.",
   "players": "players",
   "actionLog": "Action Log",
@@ -130,7 +133,9 @@
     "statusDoneLoaded": "GTO analysis loaded.",
     "statusDoneNoSolution": "The solver ran but returned no solution — multiway spot not covered in the current GTO tree.",
     "statusError": "Could not compute GTO for this spot.",
-    "coachCorrect": "Correct"
+    "coachCorrect": "Correct",
+    "limpDeadMoney": "≈ push/fold · limp treated as dead money",
+    "limpDeadMoneyTip": "Someone limped, but short-stacked a jam/fold over the limp is the SAME push/fold decision (the limp is just dead money, not a new GTO spot). Verdict from your push/fold range."
   },
   "controls": {
     "play": "Play",
