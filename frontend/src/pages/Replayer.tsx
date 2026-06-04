@@ -426,8 +426,10 @@ function SidePanels({
           // Math card — usa adjusted_required_equity (mesmo critério do engine).
           // Tooltip mostra pot_odds bruto quando há ajuste relevante para didática.
           const mathCallIsEv  = eq! >= req!;
-          const mathIsFolding = (step.action ?? '').toLowerCase() === 'fold';
-          const mathActionIsEv = mathIsFolding ? !mathCallIsEv : mathCallIsEv;
+          // O badge da AÇÃO segue o veredito (isActionOk), não só "equity ≥ pot odds".
+          // Numa ação agressiva (bet/raise) que o engine marca ERRO mas é "+EV vs fold",
+          // o antigo "RAISE +EV" verde contradizia o "✗ ERRO". Agora bate com o veredito.
+          const mathActionIsEv = isActionOk;
           const mathActLabel  = step.action ? fmtAction(step.action) : null;
           const mathBadgeCls  = mathActionIsEv
             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
@@ -667,7 +669,11 @@ function SidePanels({
               // check 100% (range / ruas futuras). Verde/vermelho ali pareceria que a
               // ação foi +EV. Neutraliza o +pp (cinza) + tooltip contextual. Cor só fica
               // quando pot odds É a base do veredito (postflop sem solver, vs_shove).
-              const ppMuted = !!showAuditPreflop || !!effectiveGtoLabel;
+              // Também neutraliza quando a margem ficaria VERDE (eq ≥ necessária) mas o
+              // veredito diz que a ação foi ERRO (ex.: heurística "RAISE +EV vs fold"
+              // num spot que o engine manda CALL) — senão o +pp verde contradiz o "ERRO".
+              const _ppContradicts = eq != null && eq >= reqShown && !isActionOk;
+              const ppMuted = !!showAuditPreflop || !!effectiveGtoLabel || _ppContradicts;
               const ppTip = showAuditPreflop ? t("card.reqVsRandomTip")
                 : effectiveGtoLabel ? t("card.reqSolverContextTip")
                 : tooltip;
