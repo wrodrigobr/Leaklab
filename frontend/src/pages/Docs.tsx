@@ -288,6 +288,8 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("replayer.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("replayer.p3") }} />
               <p dangerouslySetInnerHTML={{ __html: t("replayer.p4") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("replayer.p5") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("replayer.p6") }} />
             </Section>
 
             {/* Alignment Matrix (Heatmap posição × street) */}

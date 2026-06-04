@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs: /docs Replayer ganha "equity vs aleatória" e "Multiway" (conceitos das varreduras)
+
+> Após a leva de varreduras, atualizei a doc do **Replayer** (`/docs`) com os 2 conceitos novos que o usuário vê no card — em nível conceitual (o que é / como ler), sem expor lógica interna. **p5 — equity "vs aleatória":** o indicador de equity é estimado vs uma mão aleatória (não o range real do oponente, que costuma ser menor); o veredicto vem da estratégia GTO da mão, não desse número. **p6 — Multiway:** em potes 3+ way o card mostra «Multiway · N-way» — a estratégia do solver é resolvida heads-up, então em multiway é aproximação (a equity já vem ajustada pro nº de oponentes). 3 locales (PT/EN/ES), termos de poker em inglês. (p4 já cobria "vs Limp"/pote limpado.) typecheck verde, render confirmado.
+
 ### fix(card): heurística postflop — evidência de EV bate com o veredito (sem "+EV" verde no "ERRO")
 
 > A varredura no postflop **sem cobertura** (path "Heurística") achou uma contradição visual: uma aposta/raise marcada **"✗ ERRO"** (engine recomenda Check/Call) exibia o badge **"RAISE +EV" verde** e a margem **"+pp" verde** — porque a conta simples compara a ação a **fold** ("+EV vs fold"), enquanto o veredito a compara à **melhor jogada**. O usuário via "+EV" e "ERRO" juntos. (Pote limpado e o postflop heurístico de call/fold já eram consistentes; o problema era ação agressiva flagada como erro.) Fix (`Replayer.tsx`): o badge de EV do widget math passa a seguir o **veredito** (`mathActionIsEv = isActionOk`) e o `+pp` é **neutralizado** quando ficaria verde (eq ≥ necessária) mas a ação foi erro (`eq ≥ req && !isActionOk`). Agora um bet/raise-erro mostra "−EV"/+pp cinza, coerente com o "ERRO"; call/fold corretos seguem "+EV" verde. Mesma filosofia do +pp mudo no solver (a evidência não valida em verde uma ação que o veredito reprova). Validado: pfu_bet (ERRO) → +9,1pp agora cinza. typecheck verde. (Pote limpado: varrido, limpo — "Sem veredito GTO · vs Limp" honesto, sem bug.)
