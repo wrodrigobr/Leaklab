@@ -331,7 +331,10 @@ def analyze_preflop(
             if _hf_fold_w >= 0.20:
                 _opts.append(('fold', _hf_fold_w))
             _opts.sort(key=lambda x: -x[1])
-            rec = [a for a, _ in _opts] or ['fold']
+            # Filtra freq ≥10% (igual vs_rfi/mesclada). Sem isto, jam/raise entram só
+            # por membership na string do range, com freq ~0% (ex.: RFI 33 @75bb em
+            # raise_hands → "Fold / Raise" com raise 0,12%). Scanner de invariantes pegou.
+            rec = [a for a, w in _opts if w >= 0.10] or ['fold']
         else:
             # v2 (RegLife antigo): pct + hands + acoes
             pct         = float(rfi.get('combo_pct') or rfi.get('pct', 0))
