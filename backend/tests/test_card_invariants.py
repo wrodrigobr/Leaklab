@@ -8,20 +8,30 @@ o teste quebra com a lista de spots violados.
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts.scan_card_invariants import scan_preflop
+from scripts.scan_card_invariants import scan_preflop, scan_postflop
 
 
-def test_preflop_card_invariants_all_zero():
-    """Nenhum spot coberto produz card internamente contraditório (5 invariantes
-    sobre todos os ~960 spots × 169 mãos)."""
-    viols = scan_preflop(verbose=False)
+def _assert_no_viol(viols, label):
     if viols:
         from collections import Counter
         by = Counter(v.inv for v in viols)
         sample = '\n  '.join(repr(v) for v in viols[:8])
-        raise AssertionError(
-            f"{len(viols)} violações de invariante de card: {dict(by)}\n  {sample}")
-    print(f"OK  test_preflop_card_invariants_all_zero ({0} violações)")
+        raise AssertionError(f"{label}: {len(viols)} violações {dict(by)}\n  {sample}")
+
+
+def test_preflop_card_invariants_all_zero():
+    """Nenhum spot preflop coberto produz card internamente contraditório (5
+    invariantes sobre todos os ~960 spots × 169 mãos)."""
+    _assert_no_viol(scan_preflop(verbose=False), 'preflop')
+    print("OK  test_preflop_card_invariants_all_zero (0 violações)")
+
+
+def test_postflop_card_invariants_all_zero():
+    """Nenhum gto_node postflop produz card contraditório (5 invariantes sobre os
+    ~820 nodes do solver: strategy normalizada, gto_action=dominante, dominante
+    não-crítica, shove↔allin)."""
+    _assert_no_viol(scan_postflop(verbose=False), 'postflop')
+    print("OK  test_postflop_card_invariants_all_zero (0 violações)")
 
 
 # ── shove↔allin (postflop): port da lógica do computeEffectiveGtoLabel ────────

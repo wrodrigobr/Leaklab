@@ -177,9 +177,100 @@ def scan_preflop(verbose=False) -> list[Violation]:
     return violations
 
 
+# ── POSTFLOP: invariantes sobre os gto_nodes (strategy do solver) ─────────────
+def _norm_pf(a: str) -> str:
+    """Normaliza ação do solver: jam/shove/allin→allin; bet_Xbb→bet; raise_Xbb→raise."""
+    s = (a or '').lower().replace('-', '').replace('_', '').replace(' ', '')
+    if s in ('jam', 'shove', 'allin'):
+        return 'allin'
+    if s.startswith('bet'):
+        return 'bet'
+    if s.startswith('rai'):
+        return 'raise'
+    return s
+
+
+def _effective_label_pf(strat_items, played):
+    """Port do computeEffectiveGtoLabel (frontend) — unifica shove↔allin."""
+    if not strat_items:
+        return None
+    pn = _norm_action_fe(played)
+    freq = 0.0
+    for act, f in strat_items:
+        n = _norm_action_fe(act)
+        if n == pn or pn.startswith(n) or n.startswith(pn):
+            freq = float(f); break
+    if freq >= 0.60: return 'gto_correct'
+    if freq >= 0.30: return 'gto_mixed'
+    if freq >= 0.10: return 'gto_minor_deviation'
+    return 'gto_critical'
+
+
+def _norm_action_fe(a: str) -> str:
+    """Igual ao normAction do gtoUtils.ts (só unifica shove/jam/allin)."""
+    s = (a or '').lower().replace('-', '').replace('_', '').replace(' ', '')
+    if s in ('shove', 'jam', 'allin'):
+        return 'allin'
+    return s
+
+
+def scan_postflop(verbose=False) -> list[Violation]:
+    from database.schema import get_conn
+    import json as _json
+    c = get_conn()
+    rows = c.execute("SELECT id, street, position, board, gto_action, strategy_json FROM gto_nodes").fetchall()
+    viols = []
+    for r in rows:
+        d = dict(r)
+        nid = d['id']; sj = d.get('strategy_json')
+        def V(inv, detail):
+            viols.append(Violation(inv, 'postflop', f'node#{nid}', '',
+                                   d.get('street') or '', d.get('position') or '', detail))
+        try:
+            strat = _json.loads(sj) if sj else {}
+        except Exception:
+            V('pf_strategy_parse', f'strategy_json inválido'); continue
+        # Dois formatos de strategy_json: flat {action:{frequency}} e aninhado
+        # {strategy:{action:freq}, preflop_actions:...}. Usa o dict interno no aninhado.
+        src = strat.get('strategy') if isinstance(strat, dict) and isinstance(strat.get('strategy'), dict) else strat
+        items = []
+        if isinstance(src, dict):
+            for a, v in src.items():
+                f = v.get('frequency', 0) if isinstance(v, dict) else v
+                try:
+                    items.append((a, float(f)))
+                except (TypeError, ValueError):
+                    continue
+        if not items:
+            continue
+        tot = sum(f for _, f in items)
+        # INV-P1 strategy normalizada (não all-zero / não duplo)
+        if not (0.5 <= tot <= 1.5):
+            V('pf_strategy_not_normalized', f'sum(freq)={tot:.3f} {strat}')
+            continue
+        # argmax (ação dominante)
+        top_act, top_freq = max(items, key=lambda x: x[1])
+        # INV-P2 gto_action armazenado == ação dominante da strategy (normalizado)
+        ga = d.get('gto_action')
+        if ga and _norm_pf(ga) != _norm_pf(top_act):
+            V('pf_action_not_dominant', f'gto_action={ga} mas dominante={top_act}({top_freq:.2f})')
+        # INV-P3 jogar a AÇÃO DOMINANTE não pode dar veredito crítico
+        if _effective_label_pf(items, top_act) == 'gto_critical':
+            V('pf_dominant_is_critical', f'dominante {top_act}({top_freq:.2f}) → gto_critical')
+        # INV-P4 shove↔allin: se a dominante é allin, jogar SHOVE = correct (não crítico)
+        if _norm_pf(top_act) == 'allin' and top_freq >= 0.60:
+            lab = _effective_label_pf(items, 'shove')
+            if lab != 'gto_correct':
+                V('pf_shove_vs_allin', f'allin dominante {top_freq:.2f} mas shove→{lab} (esperado gto_correct)')
+    if verbose:
+        print(f'  postflop: {len(rows)} nodes varridos', file=sys.stderr)
+    return viols
+
+
 def main():
     show_samples = '--samples' in sys.argv
     viols = scan_preflop(verbose=True)
+    viols += scan_postflop(verbose=True)
     by_inv = defaultdict(list)
     for v in viols:
         by_inv[v.inv].append(v)
@@ -187,11 +278,18 @@ def main():
     print(f'SCANNER DE INVARIANTES DO CARD — {len(viols)} violações')
     print('=' * 60)
     INV_DESC = {
+        # preflop
         'hf_not_normalized':    'hand_freq all-zero / não normalizado (raiz off-tree)',
         'in_range_mismatch':    '"no range" vs continuação real (ex.: SB Call 100% «fora»)',
         'rec_low_freq':         'GTO recomenda ação de freq <10% (ex.: vs_rfi «Shove/Call»)',
         'rec_dominant_mismatch':'ação recomendada dominante ≠ maior freq (idealAction)',
         'fold_quality_too_harsh':'fold graduado mais severo que a freq justifica (off-tree)',
+        # postflop (gto_nodes)
+        'pf_strategy_parse':        'postflop: strategy_json inválido',
+        'pf_strategy_not_normalized':'postflop: strategy do solver all-zero / não normalizada',
+        'pf_action_not_dominant':   'postflop: gto_action armazenado ≠ ação dominante da strategy',
+        'pf_dominant_is_critical':  'postflop: jogar a ação dominante daria DESVIO CRÍTICO',
+        'pf_shove_vs_allin':        'postflop: shove num nó allin-dominante não é correct (shove↔allin)',
     }
     if not viols:
         print('OK 0 violações — todos os invariantes do card mantidos.')
