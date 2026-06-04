@@ -602,6 +602,13 @@ def analyze_preflop(
         elif hand_freqs:
             # Mão fora de todos os ranges de ação → fold puro
             hf = {'fold': 1.0, 'call': 0.0, 'raise': 0.0, 'allin': 0.0}
+        # Entrada all-zero ({F:0,C:0}) = mão de peso 0 (off-tree / 0 combos no nó do
+        # solver). Tratar como fold puro — igual à normalização de saída (INV-10).
+        # Sem isto, _vs_3bet_quality vê 0% em TUDO → major_leak FALSO ao foldar (ex.:
+        # TT faces_squeeze HJ vs SB), enquanto o display normaliza p/ fold:1.0 → card
+        # contraditório ("Fold 100%" + LEAK GRAVE por ter foldado).
+        if sum(hf.values()) < 0.001:
+            hf = {'fold': 1.0, 'call': 0.0, 'raise': 0.0, 'allin': 0.0}
         actions_freq = [
             ('raise', float(hf.get('raise', 0)) or (1.0 if in_4b else 0)),
             ('call',  float(hf.get('call',  0)) or (1.0 if in_cl else 0)),
