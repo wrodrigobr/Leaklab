@@ -108,7 +108,17 @@ function SidePanels({
   // AO VIVO manda. Um gto_label ARMAZENADO stale (scoring antigo, pré-feature do limp)
   // NÃO pode forjar um veredito/badge que contradiz "sem cobertura".
   const preflopNoCoverage = !isPostflop && !!pg && !pg.available && !!pg.coverage_reason;
-  const hasGto     = !!step.gto_label && !preflopNoCoverage;
+  // Call-vs-shove sem dado GTO (heurística): avaliado por POT ODDS (equity vs
+  // necessária), NÃO pelo range de abertura. O fallback reusava o chrome do RFI
+  // ("Range de abertura", "Fold X% agregado", chip "no range") — referência errada
+  // p/ um call. Aqui o card vira uma decisão de math (equity × pot odds), coerente.
+  const isShoveFb = !isPostflop && pg?.scenario === 'vs_shove_fallback' && !!pg?.available;
+  const _fbEq  = step.hand_equity ?? null;
+  const _fbReq = step.adjusted_required_equity ?? step.pot_odds_equity ?? null;
+  const _fbCallEv  = (_fbEq != null && _fbReq != null) ? _fbEq >= _fbReq : null;
+  const _fbActionOk = _fbCallEv == null ? null
+    : ((step.action ?? '').toLowerCase() === 'fold' ? !_fbCallEv : _fbCallEv);
+  const hasGto     = !!step.gto_label && !preflopNoCoverage && !isShoveFb;
 
   // ── Compute these FIRST so verdict can reference live GTO data ───────────────
 
@@ -159,6 +169,14 @@ function SidePanels({
                borderCls: "border-border", hdrCls: "bg-hud-surface",
                source: "Preflop", sourceTooltip: t("card.tipNoCoverage") };
     }
+    // Call-vs-shove heurístico: veredito por pot odds (equity × necessária),
+    // não pelo range de abertura nem por um gto_label armazenado stale.
+    if (isShoveFb && _fbActionOk != null) {
+      const tip = t("card.srcHeuristicTip");
+      return _fbActionOk
+        ? { icon: "✓", label: t("card.vCorrect"),  cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: t("card.srcHeuristic"), sourceTooltip: tip }
+        : { icon: "⚠", label: t("card.vLeak"),     cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: t("card.srcHeuristic"), sourceTooltip: tip };
+    }
     if (effectiveGtoLabel) {
       const gtoTooltip = t("card.tipGtoSolver");
       const m: Record<string, VInfo> = {
@@ -190,7 +208,9 @@ function SidePanels({
 
   // Action comparison (playedAction already computed above)
   // gto_minor_deviation (10-30%) = ação válida na estratégia mista do solver — não é erro
-  const isActionOk = effectiveGtoLabel
+  const isActionOk = isShoveFb
+    ? (_fbActionOk ?? false)
+    : effectiveGtoLabel
     ? (effectiveGtoLabel === "gto_correct" || effectiveGtoLabel === "gto_mixed" || effectiveGtoLabel === "gto_minor_deviation")
     : (!isPostflop && pg?.available
         ? (pg.action_quality === "correct" || pg.action_quality === "acceptable")
@@ -199,6 +219,8 @@ function SidePanels({
   const liveTopAction = stratSorted.length > 0 ? stratSorted[0].action : null;
   const idealAction = preflopNoCoverage
     ? null  // sem cobertura: não há "ação recomendada" — não exibir caixa "GTO recomenda"
+    : isShoveFb
+    ? (_fbCallEv == null ? null : fmtAction(_fbCallEv ? 'call' : 'fold'))  // pot odds
     : hasGto
     ? (liveTopAction ?? step.gto_action ?? null)
     : (!isPostflop && pg?.available ? pg.recommended_actions.map(fmtAction).join(" / ") : (step.best_action ? fmtAction(step.best_action) : null));
@@ -270,6 +292,7 @@ function SidePanels({
         const sourceVariant: DecisionSourceVariant =
           preflopNoCoverage                       ? "na"        :
           step.gto_spot_mismatch                  ? "na"        :
+          isShoveFb                               ? "heuristic" :
           effectiveGtoLabel                       ? "gto"       :
           (!isPostflop && pg?.available)          ? "preflop"   :
           isPfZone                                ? "pushfold"  :
@@ -315,7 +338,7 @@ function SidePanels({
           : null;
         const spr = (step.hero_stack_bb != null && step.pot_bb != null && step.pot_bb > 0)
                     ? step.hero_stack_bb / step.pot_bb : null;
-        const hasMathEvidence = isPostflop && eq != null && req != null && req > 0;
+        const hasMathEvidence = (isPostflop || isShoveFb) && eq != null && req != null && req > 0;
         const requiredIsAdjusted = step.adjusted_required_equity != null &&
                                    poRaw != null &&
                                    Math.abs(step.adjusted_required_equity - poRaw) >= 0.005;
@@ -458,7 +481,7 @@ function SidePanels({
         }
 
         // ──────── Details (toggle): audit trail + pro_notes + indicadores secundários ────────
-        const showAuditPreflop = !isPostflop && pg?.available;
+        const showAuditPreflop = !isPostflop && pg?.available && !isShoveFb;
         const showProNotes = showAuditPreflop && (pg!.pro_notes?.length ?? 0) > 0 &&
                              !(effectiveGtoLabel &&
                                ['gto_correct','gto_mixed','gto_minor_deviation'].includes(effectiveGtoLabel) &&
@@ -605,7 +628,7 @@ function SidePanels({
                 )}>{(eq * 100).toFixed(1)}%</span>
                 <span className="text-muted-foreground text-[10px] whitespace-nowrap">
                   {eq >= 0.65 ? t("card.eqStrong") : eq >= 0.50 ? t("card.eqFavorable") : eq >= 0.35 ? t("card.eqMarginal") : t("card.eqWeak")}
-                  {showAuditPreflop && <span className="text-muted-foreground/60"> · {t("card.vsRandom")}</span>}
+                  {(showAuditPreflop || isShoveFb) && <span className="text-muted-foreground/60"> · {t("card.vsRandom")}</span>}
                 </span>
               </div>
             )}
