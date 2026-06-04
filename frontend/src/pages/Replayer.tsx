@@ -221,9 +221,15 @@ function SidePanels({
     ? null  // sem cobertura: não há "ação recomendada" — não exibir caixa "GTO recomenda"
     : isShoveFb
     ? (_fbCallEv == null ? null : fmtAction(_fbCallEv ? 'call' : 'fold'))  // pot odds
+    : (!isPostflop && pg?.available)
+    // Preflop coberto: a recomendação vem do RANGE (ação dominante do hand_freq),
+    // não do gto_action armazenado — que reflete o best_action do ENGINE e pode
+    // divergir (ex.: AA squeeze @14bb = Raise 93% no range, mas engine sugere call).
+    // Alinha com o verdict, que já prioriza o range (effectiveGtoLabel=null aqui).
+    ? pg.recommended_actions.map(fmtAction).join(" / ")
     : hasGto
     ? (liveTopAction ?? step.gto_action ?? null)
-    : (!isPostflop && pg?.available ? pg.recommended_actions.map(fmtAction).join(" / ") : (step.best_action ? fmtAction(step.best_action) : null));
+    : (step.best_action ? fmtAction(step.best_action) : null);
   const showTwoCols = !isActionOk && !!idealAction &&
     idealAction.toLowerCase() !== playedAction.toLowerCase();
   const topFreqPct = stratSorted.length > 0
