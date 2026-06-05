@@ -70,6 +70,62 @@ def _pko_ranges_for(stack_bb: float, field: str = '200p'):
     return ranges[bucket], stage, node.get('_stage')
 
 
+# ── EV-loss (#24): overlay de EV por mão/ação (bb) ────────────────────────────
+_EVS_FILE = os.path.join(os.path.dirname(__file__), '..', 'docs', 'leaklab_gto_evs.json')
+_evs_data: Optional[dict] = None
+
+
+def _load_evs() -> dict:
+    global _evs_data
+    if _evs_data is None:
+        try:
+            with open(_EVS_FILE, 'r', encoding='utf-8') as f:
+                _evs_data = json.load(f)
+        except FileNotFoundError:
+            _evs_data = {}
+    return _evs_data
+
+
+def _ev_action_code(action_taken: str, hand_ev: dict) -> Optional[str]:
+    """Mapeia a ação do hero pro code do EV ({F, C, R*, RAI})."""
+    at = (action_taken or '').lower()
+    if at == 'fold':
+        return 'F'
+    if at in ('call', 'check', 'complete'):
+        return 'C'
+    if at in ('jam', 'shove', 'allin', 'all-in'):
+        return 'RAI'
+    if at in ('raise', 'bet', '3bet', '4bet', 'squeeze'):
+        rs = [c for c in hand_ev if c.startswith('R') and c != 'RAI']
+        return rs[0] if rs else None
+    return None
+
+
+def _ev_loss_bb(bucket: str, scenario: str, hero: str, vs: str,
+                hero_hand: str, action_taken: str):
+    """ev_loss_bb da mão do hero = max_ação(ev) − ev(ação escolhida), clamp ≥0.
+    Devolve (ev_loss, source) ou (None, None) sem cobertura. Source 'gw_har'."""
+    bk = _load_evs().get('ranges', {}).get(bucket, {})
+    if scenario == 'rfi':
+        spot = bk.get('RFI', {}).get(hero)
+    elif scenario == 'vs_rfi':
+        spot = bk.get('vs_RFI', {}).get(vs, {}).get(hero)
+    elif scenario in ('vs_3bet', 'squeeze', 'vs_4bet', 'faces_squeeze'):
+        spot = bk.get(scenario, {}).get(hero, {}).get(vs)
+    else:
+        spot = None
+    if not spot:
+        return None, None
+    hand_ev = spot.get(hero_hand)
+    if not hand_ev:
+        return None, None
+    code = _ev_action_code(action_taken, hand_ev)
+    if code is None or code not in hand_ev:
+        return None, None
+    best = max(hand_ev.values())
+    return round(max(0.0, best - hand_ev[code]), 3), 'gw_har'
+
+
 # Hardcoded buckets — JSON v3 (GW master) não tem stack_buckets section.
 # Mantém compat com v2 que tinha campo no JSON.
 _DEFAULT_BUCKETS = [
@@ -219,7 +275,29 @@ def _norm_pos(position: str, n_players: int | None = None) -> str:
     return _POS_NORM.get(p, p)
 
 
-def analyze_preflop(
+def _attach_ev_loss(base: dict) -> None:
+    """Anexa ev_loss_bb à análise preflop em QUALQUER caminho de saída (inclui o
+    push/fold que retorna cedo). Só Classic (PKO terá overlay próprio); NULL
+    honesto sem cobertura. Lê tudo do próprio base (pos/vs já normalizados)."""
+    if not base.get('available') or base.get('pko') or base.get('ev_loss_bb') is not None:
+        return
+    elb, esrc = _ev_loss_bb(base.get('stack_bucket'), base.get('scenario'),
+                            base.get('position'), base.get('vs_position') or '',
+                            base.get('hand_type'), base.get('action_taken'))
+    base['ev_loss_bb'] = elb
+    if esrc:
+        base['ev_loss_source'] = esrc
+
+
+def analyze_preflop(*args, **kwargs) -> dict:
+    """Análise GTO preflop + ev_loss_bb (#24). Wrapper fino sobre o _impl pra
+    anexar o EV em todos os returns (RFI/push-fold/vs_rfi/3bet/etc)."""
+    base = _analyze_preflop_impl(*args, **kwargs)
+    _attach_ev_loss(base)
+    return base
+
+
+def _analyze_preflop_impl(
     position: str,
     hero_hand_type: str,      # ex: 'AKo', 'AKs', 'AA'
     stack_bb: float,

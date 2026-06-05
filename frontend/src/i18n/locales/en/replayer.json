@@ -53,6 +53,7 @@
     "gtoMixedTip": "Mixed strategy: GTO frequency 30–60% — valid action, but not dominant in the range",
     "gtoMinorTip": "Minor deviation: GTO frequency 10–30% — infrequent in GTO, but defensible",
     "gtoCriticalTip": "Critical deviation: GTO frequency < 10% — rarely justified by the solver",
+    "evLossTip": "EV lost vs the best play for this hand — how many big blinds you left on the table.",
     "srcHeuristic": "Heuristic",
     "srcGtoTip": "GTO Solver — Nash equilibrium frequencies computed for this spot",
     "srcPreflopTip": "Preflop — GTO opening ranges by position and stack depth",

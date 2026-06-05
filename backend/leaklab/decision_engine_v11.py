@@ -673,7 +673,10 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
                 'major_leak':          'gto_critical',
             }
             _gto_lbl = _QUALITY_TO_GTO_LABEL.get(quality, 'gto_critical')
-            gto = {'available': True, 'gto_label': _gto_lbl, 'gto_action': rec[0] if rec else None}
+            gto = {'available': True, 'gto_label': _gto_lbl, 'gto_action': rec[0] if rec else None,
+                   # #24: bb perdidos vs melhor ação (vem do overlay de EV no analyze_preflop)
+                   'ev_loss_bb':     preflop_gto.get('ev_loss_bb'),
+                   'ev_loss_source': preflop_gto.get('ev_loss_source')}
 
     # Guard: BB pode check grátis quando não há aposta — fold é impossível.
     # Outras posições (UTG/HJ/CO/BTN/SB) estão escolhendo não abrir — fold é correto.

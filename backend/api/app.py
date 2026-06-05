@@ -3649,6 +3649,7 @@ def get_replay(tournament_id, hand_id):
                 'gto_label':    gto_data.get('gto_label'),
                 'gto_action':   gto_data.get('gto_action'),
                 'facing_bet':   gto_data.get('facing_bet'),
+                'ev_loss_bb':   (r.get('gto') or {}).get('ev_loss_bb'),  # #24 (live)
                 '_di':          di,
             })
         hand_decisions = live_decisions
@@ -4350,6 +4351,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          gto_label,
             'gto_action':         preflop_override_action or live_top_act or gto_action,
+            'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
             'preflop_gto':        decision.get('preflop_gto') if decision else None,

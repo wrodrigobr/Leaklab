@@ -236,6 +236,7 @@ export default function Docs() {
                   ["ICM Pressure",       t("indicators.icm_measures"),      t("indicators.icm_interpret")],
                   ["Confidence Drift",   t("indicators.drift_measures"),    t("indicators.drift_interpret")],
                   ["Resultado × GTO",    t("indicators.resultsgto_measures"), t("indicators.resultsgto_interpret")],
+                  ["EV-loss (bb)",       t("indicators.evloss_measures"),   t("indicators.evloss_interpret")],
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("indicators.p1") }} />

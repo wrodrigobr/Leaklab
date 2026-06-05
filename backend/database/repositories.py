@@ -311,6 +311,8 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 (r.get('spot', {}).get('villainPosition') or '') or None,
                 r.get('spot', {}).get('preflopRaisesFaced'),
                 (None if r.get('hero_won_hand') is None else (1 if r.get('hero_won_hand') else 0)),
+                gto.get('ev_loss_bb'),        # #24: bb perdidos vs melhor ação (preflop)
+                gto.get('ev_loss_source'),
             ))
         conn.executemany("""
             INSERT INTO decisions
@@ -320,8 +322,9 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                stack_bb, draw_profile, position, num_players,
                level_sb, level_bb, level_num, note, is_3bet, showdown_result,
                pot_size, facing_bet, gto_label, gto_action, estimated_equity,
-               vs_position, preflop_raises_faced, hero_won_hand)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               vs_position, preflop_raises_faced, hero_won_hand,
+               ev_loss_bb, ev_loss_source)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:

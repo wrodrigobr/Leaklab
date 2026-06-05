@@ -273,6 +273,44 @@ def extract_hand_freqs(counters: dict) -> dict:
     return out
 
 
+def extract_hand_evs(raw: dict) -> dict:
+    """Extrai mapa {hand_name: {action_code: ev}} dos EVs por mão do GW.
+
+    Os `evs` ficam em `action_solutions[a].evs` — array de 169 EVs ALINHADO POR
+    ÍNDICE à ordem das chaves do `simple_hand_counters` do hero (verificado
+    169/169 por vetor de freq). O FOLD tem ev=0 (baseline); raise/call trazem o
+    EV por mão (em bb). Base do `ev_loss_bb` = max_ação(ev) − ev(ação do hero).
+    Skip mãos fold-puras (todos os EVs ~0 ou só fold) p/ compactar.
+    """
+    hero = None
+    for p in raw.get('players_info', []):
+        if (p.get('player') or {}).get('is_hero'):
+            hero = p
+            break
+    if not hero:
+        return {}
+    order = list((hero.get('simple_hand_counters') or {}).keys())
+    if len(order) != 169:
+        return {}
+    out: dict = {}
+    for sol in raw.get('action_solutions', []):
+        code = (sol.get('action') or {}).get('code')
+        evs = sol.get('evs') or []
+        if not code or len(evs) != 169:
+            continue
+        for i, hand in enumerate(order):
+            try:
+                out.setdefault(hand, {})[code] = round(float(evs[i]), 4)
+            except (TypeError, ValueError):
+                continue
+    # compacta: dropa mãos onde toda ação não-fold tem |ev| ~0 (puramente fold)
+    compact = {}
+    for hand, evd in out.items():
+        if any(abs(v) > 1e-4 for c, v in evd.items() if c != 'F'):
+            compact[hand] = evd
+    return compact
+
+
 def parse_spot(raw: dict, params: dict) -> dict:
     """Extrai summary de uma response /spot-solution/.
 
@@ -355,6 +393,8 @@ def parse_spot(raw: dict, params: dict) -> dict:
         # Freq exata por mão (estilo GTO Wizard): {hand: {action_code: freq}}
         # Permite renderização precisa por mão na barra stacked do Decision Card.
         'hand_freqs':  extract_hand_freqs(counters),
+        # EV por mão e por ação (bb) — base do ev_loss_bb (#24).
+        'hand_evs':    extract_hand_evs(raw),
     }
 
 

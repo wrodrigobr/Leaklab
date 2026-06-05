@@ -495,6 +495,9 @@ def _run_migrations(conn):
             # Results×GTO (#5): hero coletou o pote nesta mão? (1/0/NULL) — base do
             # insight "ganhei mas joguei errado pelo GTO" (resultado ≠ processo).
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS hero_won_hand INTEGER",
+            # EV-loss (#24): bb perdidos vs a melhor ação, pra a mão do hero (preflop).
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS ev_loss_bb REAL",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS ev_loss_source TEXT",
             # #15 leaderboard — opt-in/privacidade: aparecer no ranking público é consentido
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_handle TEXT",
@@ -992,6 +995,8 @@ def _run_migrations(conn):
             ("icm_tax_pct",      "ALTER TABLE decisions ADD COLUMN icm_tax_pct      REAL"),
             ("preflop_raises_faced", "ALTER TABLE decisions ADD COLUMN preflop_raises_faced INTEGER"),
             ("hero_won_hand",    "ALTER TABLE decisions ADD COLUMN hero_won_hand    INTEGER"),
+            ("ev_loss_bb",       "ALTER TABLE decisions ADD COLUMN ev_loss_bb       REAL"),
+            ("ev_loss_source",   "ALTER TABLE decisions ADD COLUMN ev_loss_source   TEXT"),
         ]:
             if col not in dec_existing:
                 try: conn.execute(sql)

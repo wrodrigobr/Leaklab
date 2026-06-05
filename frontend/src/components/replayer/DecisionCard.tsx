@@ -73,6 +73,7 @@ interface Props {
   showDetails: boolean;
   onToggleDetails: () => void;
   verdictTooltip?: string;
+  evLossBb?: number | null;          // #24 — bb perdidos vs a melhor ação (preflop)
   fmtAction: (a: string) => string;
 }
 
@@ -101,6 +102,7 @@ export function DecisionCard({
   showDetails,
   onToggleDetails,
   verdictTooltip,
+  evLossBb,
   fmtAction,
 }: Props) {
   const { t } = useTranslation("replayer");
@@ -131,6 +133,22 @@ export function DecisionCard({
           {verdict.icon} {verdict.label}
         </span>
         <div className="flex items-center gap-2">
+          {/* #24 — EV-loss: bb perdidos vs a melhor jogada (preflop) */}
+          {evLossBb != null && evLossBb > 0.05 && (
+            <span
+              className={cn(
+                "inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide ring-1 cursor-help",
+                evLossBb >= 2
+                  ? "text-red-300 bg-red-500/10 ring-red-500/30"
+                  : evLossBb >= 0.5
+                  ? "text-orange-300 bg-orange-500/10 ring-orange-500/30"
+                  : "text-amber-300 bg-amber-500/10 ring-amber-500/30",
+              )}
+              title={t("card.evLossTip")}
+            >
+              −{evLossBb.toFixed(evLossBb >= 10 ? 0 : 1)} bb
+            </span>
+          )}
           <span
             className={cn(
               "inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide ring-1 cursor-help",

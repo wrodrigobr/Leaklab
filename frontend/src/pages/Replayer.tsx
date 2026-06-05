@@ -751,6 +751,7 @@ function SidePanels({
             showDetails={showDetails}
             onToggleDetails={toggleDetails}
             verdictTooltip={effectiveGtoLabel ? GTO_LABEL_TOOLTIP[effectiveGtoLabel] : undefined}
+            evLossBb={step.ev_loss_bb}
             fmtAction={fmtAction}
           />
         );

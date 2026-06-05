@@ -53,6 +53,7 @@
     "gtoMixedTip": "Estrategia mixta: frecuencia GTO 30–60% — acción válida, pero no dominante en el rango",
     "gtoMinorTip": "Desvío leve: frecuencia GTO 10–30% — jugada infrecuente en GTO, pero defendible",
     "gtoCriticalTip": "Desvío crítico: frecuencia GTO < 10% — jugada raramente justificada por el solver",
+    "evLossTip": "EV perdido vs la mejor jugada en esta mano — cuántos big blinds dejaste en la mesa.",
     "srcHeuristic": "Heurística",
     "srcGtoTip": "GTO Solver — frecuencias de equilibrio de Nash calculadas para este spot",
     "srcPreflopTip": "Preflop — rangos de apertura GTO por posición y stack depth",

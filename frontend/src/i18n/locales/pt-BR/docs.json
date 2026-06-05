@@ -141,6 +141,8 @@
     "drift_interpret": "Indica tilt ou fadiga. Revisão das últimas sessões recomendada.",
     "resultsgto_measures": "Decisões que foram erro CLARO de GTO mas a mão foi ganha (você coletou o pote).",
     "resultsgto_interpret": "Quanto maior, mais o resultado está mascarando erros de processo — vencer não valida a jogada. Revise estes spots mesmo quando ganhar.",
+    "evloss_measures": "Quantos big blinds você perdeu vs a melhor jogada GTO naquela decisão (preflop).",
+    "evloss_interpret": "Transforma \"errado\" em \"você vazou X bb\": quantifica o custo da jogada. Quanto maior, mais EV a decisão deixou na mesa; jogadas corretas ficam em 0.",
     "p1": "O <strong>Leak ROI</strong> combina a frequência de cada spot de erro com o custo em EV de errar ali — priorizando o que mais pesa no longo prazo. Spots frequentes de custo baixo podem importar mais que spots raros de custo alto, e o ROI captura isso."
   },
   "gto_method": {
