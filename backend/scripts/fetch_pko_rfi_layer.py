@@ -32,18 +32,20 @@ from scripts.fetch_pko_ranges import (
     RFI_8MAX, gametype_for, _summary_from_strategy, merge_into,
 )
 
-# Estágio → depths candidatos (ordem = probabilidade). Anchors dos HARs primeiro.
+# Estágio → depths candidatos (ordem = probabilidade). Tokens CONFIRMADOS nos HARs
+# reais (START/PCT90.../PCT37/PCT25/BUBBLEMID/T3/T2/FT). Depth canônico ≈ 50bb no
+# mid-game em diante; HAR replay dá só pista (heterogêneo). FT é config-specific.
 STAGE_CANDIDATES = {
     'START':     [100],
     'PCT90':     [90, 100],
-    'PCT70':     [80, 70],
-    'PCT50':     [72, 50],
-    'PCT375':    [60, 50],
+    'PCT70':     [70, 80],
+    'PCT50':     [50, 72],
+    'PCT37':     [50, 54, 40],   # token real (era PCT375); HAR replay 54
     'PCT25':     [50, 40],
     'BUBBLEMID': [50, 40],
-    '3TABLES':   [40, 30],
-    '2TABLES':   [30, 25],
-    'FT':        [100, 50, 30],
+    'T3':        [50, 69, 40],   # token real (era 3TABLES); HAR replay 69
+    'T2':        [50, 88, 40],   # token real (era 2TABLES); HAR replay 88
+    'FT':        [40, 50, 20, 15, 100],  # config-specific; tenta uniforme shallow
 }
 
 
@@ -73,12 +75,13 @@ def _store(pko: dict, field: int, stage: str, depth: float, sd: dict) -> None:
         'RFI', {})[sd['hero']] = sd
 
 
-def run(field: int, fetch_timeout: int, sleep_s: float):
+def run(field: int, fetch_timeout: int, sleep_s: float, only: list[str] | None = None):
     import leaklab.gto_wizard_client as gw
     pko: dict = {}
     stage_depth: dict = {}
     grid: list = []
-    for stage, depths in STAGE_CANDIDATES.items():
+    stages = {k: v for k, v in STAGE_CANDIDATES.items() if not only or k in only}
+    for stage, depths in stages.items():
         gt = gametype_for(field, stage)
         hit = None
         for depth in depths:
@@ -123,6 +126,7 @@ def main():
     ap.add_argument('--fetch-timeout', type=int, default=18)
     ap.add_argument('--sleep', type=float, default=0.4)
     ap.add_argument('--solver-url', default='http://localhost:8765')
+    ap.add_argument('--only', default='', help='subconjunto de estágios (ex: PCT37,T3,T2,FT)')
     ap.add_argument('--output', default=str(BACKEND_DIR / 'docs' / 'ranges_gto' / 'ko' / 'pko_ranges_pilot.json'))
     args = ap.parse_args()
 
@@ -134,7 +138,8 @@ def main():
     st = gw.get_status()
     print(f"proxy={os.environ['GTO_SOLVER_URL']} auth_ok={st.get('auth_ok')} field={args.field}")
 
-    pko, stage_depth, grid = run(args.field, args.fetch_timeout, args.sleep)
+    only = [s.strip() for s in args.only.split(',') if s.strip()]
+    pko, stage_depth, grid = run(args.field, args.fetch_timeout, args.sleep, only or None)
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)

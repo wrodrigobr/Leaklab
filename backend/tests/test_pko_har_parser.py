@@ -43,8 +43,10 @@ def test_parse_gametype_classic_not_pko():
 def test_humanize_stage():
     cases = {
         'START': '100% left', 'PCT90': '90% left', 'PCT70': '70% left',
-        'PCT50': '50% left', 'PCT375': '37.5% left', 'PCT25': '25% left',
-        'BUBBLEMID': 'near bubble', '2TABLES': '2 tables', '3TABLES': '3 tables',
+        'PCT50': '50% left', 'PCT375': '37.5% left', 'PCT37': '37% left',
+        'PCT25': '25% left', 'BUBBLEMID': 'near bubble',
+        '2TABLES': '2 tables', '3TABLES': '3 tables',
+        'T2': '2 tables', 'T3': '3 tables',   # tokens reais do GW p/ tables
         'FT': 'final table',
     }
     for tok, exp in cases.items():

@@ -108,6 +108,9 @@ def humanize_stage(token: str) -> str:
     m = re.match(r'(\d+)TABLES?$', t)
     if m:
         return f'{m.group(1)} tables'
+    m = re.match(r'T(\d+)$', t)               # token real do GW p/ "N tables" (T2/T3)
+    if m:
+        return f'{m.group(1)} tables'
     return token  # desconhecido: preserva cru (nunca perde info)
 
 
