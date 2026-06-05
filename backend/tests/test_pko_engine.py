@@ -114,15 +114,44 @@ def test_pko_squeeze_adds_coverage():
     print("OK  test_pko_squeeze_adds_coverage")
 
 
-def test_pko_only_covered_scenarios():
-    # vs_3bet/vs_4bet (hero abriu e enfrenta re-raise) NÃO foram capturados em PKO
-    # → seguem Classic. Só RFI/vs_RFI/squeeze têm overlay PKO.
+def test_pko_uncovered_below_floor():
+    # Re-raise (vs_3bet) abaixo do floor 45bb → sem PKO, cai no Classic
+    r = analyze_preflop(position='UTG', hero_hand_type='AKs', stack_bb=30,
+                        action_taken='raise', facing_size=8.0, vs_position='BTN',
+                        hero_was_aggressor=True, facing_raises=1, n_players=8, is_pko=True)
+    assert r['scenario'] == 'vs_3bet'
+    assert not r.get('pko'), "PKO aplicado abaixo do floor"
+    print("OK  test_pko_uncovered_below_floor")
+
+
+def test_pko_vs3bet_applied():
+    # vs_3bet: UTG abriu, BTN 3betou, UTG decide — PKO aplicado
     r = analyze_preflop(position='UTG', hero_hand_type='AKs', stack_bb=100,
-                        action_taken='raise', facing_size=12.0, vs_position='BTN',
+                        action_taken='raise', facing_size=8.0, vs_position='BTN',
+                        hero_was_aggressor=True, facing_raises=1, n_players=8, is_pko=True)
+    assert r['scenario'] == 'vs_3bet'
+    assert r['pko'] is True and r['source'] == 'pko_gto' and r['available'] is True
+    print("OK  test_pko_vs3bet_applied")
+
+
+def test_pko_vs4bet_applied():
+    # vs_4bet: BTN 3betou, UTG 4betou, BTN decide — PKO aplicado
+    r = analyze_preflop(position='BTN', hero_hand_type='AKs', stack_bb=100,
+                        action_taken='raise', facing_size=21.0, vs_position='UTG',
                         hero_was_aggressor=True, facing_raises=2, n_players=8, is_pko=True)
-    assert r['scenario'] in ('vs_3bet', 'vs_4bet')
-    assert not r.get('pko'), "PKO aplicado em cenário não capturado"
-    print("OK  test_pko_only_covered_scenarios")
+    assert r['scenario'] == 'vs_4bet'
+    assert r['pko'] is True and r['source'] == 'pko_gto' and r['available'] is True
+    print("OK  test_pko_vs4bet_applied")
+
+
+def test_pko_faces_squeeze_applied():
+    # faces_squeeze: CO cold-callou, BTN squeezou, CO decide — PKO aplicado
+    r = analyze_preflop(position='CO', hero_hand_type='AKs', stack_bb=100,
+                        action_taken='call', facing_size=8.0, vs_position='BTN',
+                        facing_raises=2, hero_was_aggressor=False, n_players=8, is_pko=True)
+    assert r['scenario'] == 'faces_squeeze'
+    assert r['pko'] is True and r['source'] == 'pko_gto' and r['available'] is True
+    print("OK  test_pko_faces_squeeze_applied")
 
 
 def test_out_of_range_hand_folds():

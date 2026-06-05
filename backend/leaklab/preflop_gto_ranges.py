@@ -655,15 +655,16 @@ def analyze_preflop(
         candidate_buckets = [bucket] + bucket_fallbacks.get(bucket, [])
         spot = None
         actual_vs = vs_pos
-        # PKO overlay (squeeze): este bloco lê de data[ranges][bk_try] (não bk_data),
-        # então o swap acima não alcança — injeta a fonte PKO aqui. Só 'squeeze' foi
-        # capturado em PKO (vs_3bet/faces_squeeze/vs_4bet seguem Classic).
-        if is_pko and scenario == 'squeeze':
+        # PKO overlay (squeeze / vs_3bet / faces_squeeze / vs_4bet): este bloco lê de
+        # data[ranges][bk_try] (não bk_data), então o swap acima não alcança — injeta
+        # a fonte PKO aqui. Todos os 4 cenários têm a MESMA chave [hero][villain]
+        # ([pos][vs_pos]) tanto no Classic quanto no PKO, então basta usar _section.
+        if is_pko:
             _pko_bk, _pko_stage, _pko_label = _pko_ranges_for(stack_bb)
             if _pko_bk:
-                _pko_sq = _pko_bk.get('squeeze', {}).get(pos, {}).get(vs_pos)
-                if _pko_sq is not None:
-                    spot = _pko_sq
+                _pko_sp = _pko_bk.get(_section, {}).get(pos, {}).get(vs_pos)
+                if _pko_sp is not None:
+                    spot = _pko_sp
                     base['pko'] = True
                     base['pko_stage'] = _pko_stage
                     base['pko_stage_label'] = _pko_label

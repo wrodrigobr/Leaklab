@@ -29,9 +29,9 @@ OUT = BACKEND_DIR / 'docs' / 'ranges_gto' / 'ko' / 'pko_ranges_pilot.json'
 SEATS = ['UTG', 'UTG+1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']  # ordem de assento 8-max
 
 
-def load_meta():
+def load_meta(field=200):
     """Do RFI capturado: stage→depth e open-code por (stage, posição)."""
-    pr = json.loads(OUT.read_text(encoding='utf-8'))['pko_ranges']['200p']
+    pr = json.loads(OUT.read_text(encoding='utf-8'))['pko_ranges'][f'{field}p']
     stage_depth, open_codes = {}, {}
     for stage, node in pr.items():
         oc, depth = {}, None
@@ -86,18 +86,18 @@ def squeeze_lines(oc):
             yield opener, caller, SEATS[hi], pa
 
 
-def run(scenario, fetch_timeout, sleep_s, only):
+def run(scenario, fetch_timeout, sleep_s, only, field=200):
     import leaklab.gto_wizard_client as gw
-    stage_depth, open_codes = load_meta()
+    stage_depth, open_codes = load_meta(field)
     stages = [s for s in stage_depth if not only or s in only]
     grid = {}
     for stage in stages:
         depth = stage_depth[stage]
-        gt = gametype_for(200, stage)
+        gt = gametype_for(field, stage)
         bucket = depth_to_bucket(depth)
         oc = open_codes[stage]
         pko = {}                          # acumula só este estágio (checkpoint)
-        node = pko.setdefault('200p', {}).setdefault(
+        node = pko.setdefault(f'{field}p', {}).setdefault(
             stage, {'_stage': humanize_stage(stage), 'ranges': {}})
         ok = tot = 0
         print(f"=== {stage} ({humanize_stage(stage)}) @ {depth:.0f}bb ===")
@@ -143,6 +143,7 @@ def run(scenario, fetch_timeout, sleep_s, only):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--scenario', default='vs_rfi', choices=['vs_rfi', 'squeeze', 'both'])
+    ap.add_argument('--field', type=int, default=200)
     ap.add_argument('--fetch-timeout', type=int, default=20)
     ap.add_argument('--sleep', type=float, default=0.3)
     ap.add_argument('--only', default='')
@@ -152,7 +153,7 @@ def main():
         os.environ['GTO_SOLVER_URL'] = args.solver_url
     os.environ.setdefault('GTO_WIZARD_ENABLED', 'true')
     only = [s.strip() for s in args.only.split(',') if s.strip()]
-    run(args.scenario, args.fetch_timeout, args.sleep, only or None)
+    run(args.scenario, args.fetch_timeout, args.sleep, only or None, args.field)
 
 
 if __name__ == '__main__':
