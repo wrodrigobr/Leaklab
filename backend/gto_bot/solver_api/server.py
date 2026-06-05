@@ -238,7 +238,15 @@ _GW_DEPTHS_BY_GAMETYPE: dict[str, list[int]] = {
 
 
 def _snap_to_valid_depth(stack_bb: float, gametype: str = "") -> int:
-    """Retorna o depth válido do GTO Wizard mais próximo ao stack informado."""
+    """Retorna o depth válido do GTO Wizard mais próximo ao stack informado.
+
+    PKO (ICMPKO) tem depths por estágio field-remaining que NÃO seguem a grade
+    simétrica padrão (ex.: 1000p START = 96bb; a grade tem 100/80/60/50, sem 96).
+    Snapar mataria a captura desses estágios → para PKO usa o valor exato
+    (round), deixando o caller passar o depth canônico do estágio. Não afeta os
+    gametypes não-PKO nem o 200p já capturado (o engine lê do JSON, não do proxy)."""
+    if 'ICMPKO' in (gametype or ''):
+        return round(float(stack_bb))
     depths = _GW_DEPTHS_BY_GAMETYPE.get(gametype, _GW_VALID_DEPTHS)
     n = round(float(stack_bb))
     n = min(n, max(depths))
