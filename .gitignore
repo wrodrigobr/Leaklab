@@ -30,6 +30,8 @@ backend/.ssh/
 # HARs e dumps de scraping (privados, podem conter cookies/tokens)
 backend/docs/*.har
 backend/docs/login.har
+# Capturas PKO do GTO Solver (HARs brutos + parse gerado) — locais, fora do git
+backend/docs/ranges_gto/ko/
 backend/docs/gw_*.json
 backend/docs/gw_*.html
 

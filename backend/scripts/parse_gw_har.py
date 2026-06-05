@@ -14,6 +14,7 @@ Suporta múltiplos HARs (concatena dedup por URL):
 from __future__ import annotations
 import argparse
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -73,10 +74,69 @@ NINEMAX_TO_8MAX = {0: 'UTG', 1: 'UTG+1', 2: 'UTG+2', 3: 'LJ', 4: 'HJ', 5: 'CO', 
 EIGHTMAX_TO_9MAX = {'UTG': 0, 'UTG+1': 1, 'UTG+2': 2, 'LJ': 3, 'HJ': 4, 'CO': 5, 'BTN': 6, 'SB': 7, 'BB': 8}
 POSITIONS_9MAX_LIST = ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
 
+# 8-max nativo (PKO do GW é 8-max): pula UTG+2. Confirmado no HAR real — ação
+# pós-UTG+1 → next_position=LJ. Index = ordem do assento a partir de UTG.
+EIGHTMAX_SEAT = {0: 'UTG', 1: 'UTG+1', 2: 'LJ', 3: 'HJ', 4: 'CO', 5: 'BTN', 6: 'SB', 7: 'BB'}
 
-def classify_spot(preflop_actions: str) -> dict:
+
+def seat_map(table_size: int) -> dict:
+    """index do assento (a partir de UTG) → posição, por table size."""
+    if table_size == 8:
+        return EIGHTMAX_SEAT
+    return NINEMAX_TO_8MAX  # 9-max (Classic) é o default
+
+
+def humanize_stage(token: str) -> str:
+    """Token de estágio PKO do gametype → rótulo legível. Tolerante a tokens novos.
+
+    Confirmados nos HARs: START, PCT50, BUBBLEMID, FT. Os demais (PCT90/70/37(5)/25,
+    Ntables) seguem a mesma gramática e são derivados por regex — sem hardcode frágil.
+    """
+    t = (token or '').upper()
+    if t == 'START':
+        return '100% left'
+    if t == 'FT':
+        return 'final table'
+    if t in ('BUBBLEMID', 'BUBBLE', 'NEARBUBBLE', 'NEAR_BUBBLE'):
+        return 'near bubble'
+    m = re.match(r'PCT(\d+)$', t)
+    if m:
+        n = m.group(1)
+        if n == '375':
+            return '37.5% left'
+        return f'{int(n)}% left'
+    m = re.match(r'(\d+)TABLES?$', t)
+    if m:
+        return f'{m.group(1)} tables'
+    return token  # desconhecido: preserva cru (nunca perde info)
+
+
+def parse_gametype(gametype: str) -> dict:
+    """`MTTGeneral_ICMPKO8m200PTSTART` → estrutura PKO. Classic → is_pko False.
+
+    Gramática: MTTGeneral_ICMPKO{table}m{field}PT{STAGE}.
+      table  = jogadores na mesa (8)
+      field  = campo inicial do torneio (200 ou 1000)
+      STAGE  = fase (START/PCT90/PCT70/PCT50/PCT375/PCT25/BUBBLEMID/2TABLES/3TABLES/FT)
+    """
+    m = re.search(r'ICMPKO(\d+)m(\d+)PT([A-Z0-9_]+)$', gametype or '')
+    if not m:
+        return {'is_pko': False, 'table_size': None, 'field_size': None,
+                'stage_token': None, 'stage': None, 'gametype': gametype}
+    return {
+        'is_pko':      True,
+        'table_size':  int(m.group(1)),
+        'field_size':  int(m.group(2)),
+        'stage_token': m.group(3),
+        'stage':       humanize_stage(m.group(3)),
+        'gametype':    gametype,
+    }
+
+
+def classify_spot(preflop_actions: str, table_size: int = 9) -> dict:
     """Categoriza um spot por padrão de preflop_actions.
 
+    `table_size` escolhe o mapa de assentos (9-max Classic ou 8-max PKO).
     Retorna {'scenario': str, 'hero_pos': str|None, 'vs_pos': str|None, 'extra': dict}.
     Scenarios:
         rfi          — hero abre (só Fs antes)
@@ -86,12 +146,13 @@ def classify_spot(preflop_actions: str) -> dict:
         squeeze      — open + call(s) + hero decide (Fs + R2 + C + opt_C + Fs)
         other        — tudo o mais (4-bet+, multiway complexo)
     """
+    smap = seat_map(table_size)
     parts = preflop_actions.split('-') if preflop_actions else []
 
     # RFI: só Fs antes
     if all(p == 'F' for p in parts):
         n_folds = len(parts)
-        hero_pos = NINEMAX_TO_8MAX.get(n_folds)
+        hero_pos = smap.get(n_folds)
         return {'scenario': 'rfi', 'hero_pos': hero_pos, 'vs_pos': None, 'extra': {}}
 
     # Conta raises e calls
@@ -101,12 +162,12 @@ def classify_spot(preflop_actions: str) -> dict:
 
     if len(raises) == 1 and not calls:
         # vs_RFI: 1 raise (opener), hero decide depois
-        opener_idx_9max = raises[0][0]
-        hero_idx_9max   = len(parts)
+        opener_idx = raises[0][0]
+        hero_idx   = len(parts)
         return {
             'scenario': 'vs_rfi',
-            'hero_pos':  NINEMAX_TO_8MAX.get(hero_idx_9max),
-            'vs_pos':    NINEMAX_TO_8MAX.get(opener_idx_9max),
+            'hero_pos':  smap.get(hero_idx),
+            'vs_pos':    smap.get(opener_idx),
             'extra': {}
         }
 
@@ -117,8 +178,8 @@ def classify_spot(preflop_actions: str) -> dict:
         threbettor_idx = raises[1][0]
         return {
             'scenario': 'vs_3bet',
-            'hero_pos': NINEMAX_TO_8MAX.get(opener_idx),   # opener volta a decidir
-            'vs_pos':   NINEMAX_TO_8MAX.get(threbettor_idx),
+            'hero_pos': smap.get(opener_idx),   # opener volta a decidir
+            'vs_pos':   smap.get(threbettor_idx),
             'extra': {'opener': opener_idx, 'threbettor': threbettor_idx}
         }
 
@@ -129,9 +190,9 @@ def classify_spot(preflop_actions: str) -> dict:
         hero_idx = len(parts)
         return {
             'scenario': 'squeeze',
-            'hero_pos': NINEMAX_TO_8MAX.get(hero_idx),
-            'vs_pos':   NINEMAX_TO_8MAX.get(opener_idx),
-            'extra': {'caller_positions': [NINEMAX_TO_8MAX.get(i) for i in caller_idxs]}
+            'hero_pos': smap.get(hero_idx),
+            'vs_pos':   smap.get(opener_idx),
+            'extra': {'caller_positions': [smap.get(i) for i in caller_idxs]}
         }
 
     if len(raises) == 3 and not calls:
@@ -142,8 +203,8 @@ def classify_spot(preflop_actions: str) -> dict:
         # Logo o 4-better é SEMPRE o opener original
         return {
             'scenario': 'vs_4bet',
-            'hero_pos': NINEMAX_TO_8MAX.get(threbettor_idx),  # 3-bettor decide vs 4-bet
-            'vs_pos':   NINEMAX_TO_8MAX.get(opener_idx),       # 4-better = opener original
+            'hero_pos': smap.get(threbettor_idx),  # 3-bettor decide vs 4-bet
+            'vs_pos':   smap.get(opener_idx),       # 4-better = opener original
             'extra': {'opener': opener_idx, '3bettor': threbettor_idx,
                       '4bettor_action_idx': raises[2][0]}
         }
@@ -274,6 +335,7 @@ def parse_spot(raw: dict, params: dict) -> dict:
     return {
         'gametype':    params.get('gametype', [''])[0],
         'depth':       float(params.get('depth', ['0'])[0]),
+        'stacks':      params.get('stacks', [''])[0],
         'preflop_actions': params.get('preflop_actions', [''])[0],
         'actions_summary': actions,
         'raise_pct':   raise_pct,
@@ -291,6 +353,16 @@ def parse_spot(raw: dict, params: dict) -> dict:
         # Permite renderização precisa por mão na barra stacked do Decision Card.
         'hand_freqs':  extract_hand_freqs(counters),
     }
+
+
+def _count_spots(obj) -> int:
+    """Conta folhas de spot (dicts com hand_freqs/preflop_actions) numa subárvore,
+    independente da profundidade de aninhamento do scenario."""
+    if isinstance(obj, dict):
+        if 'preflop_actions' in obj and 'hand_freqs' in obj:
+            return 1
+        return sum(_count_spots(v) for v in obj.values())
+    return 0
 
 
 def depth_to_bucket(depth: float) -> str:
@@ -336,8 +408,44 @@ def process_har(har_path: Path) -> list[dict]:
     return spots
 
 
+def _store_spot(ranges_root: dict, other_list: list, bucket: str, cls: dict, spot_data: dict) -> None:
+    """Roteia um spot parseado para a árvore ranges[bucket][scenario]... ou _other.
+
+    Compartilhado entre o caminho Classic (9-max) e o PKO (8-max) — mesma
+    topologia de saída, só a raiz e o table_size mudam.
+    """
+    scenario = cls['scenario']
+    hero_pos = cls['hero_pos']
+    vs_pos   = cls['vs_pos']
+    if scenario == 'rfi' and hero_pos:
+        ranges_root.setdefault(bucket, {}).setdefault('RFI', {})[hero_pos] = spot_data
+    elif scenario == 'vs_rfi' and hero_pos and vs_pos:
+        # ranges[bucket][vs_RFI][opener][defender]
+        ranges_root.setdefault(bucket, {}).setdefault('vs_RFI', {}).setdefault(vs_pos, {})[hero_pos] = spot_data
+    elif scenario == 'vs_3bet' and hero_pos and vs_pos:
+        # ranges[bucket][vs_3bet][opener_hero][3bettor_villain]
+        ranges_root.setdefault(bucket, {}).setdefault('vs_3bet', {}).setdefault(hero_pos, {})[vs_pos] = spot_data
+    elif scenario == 'vs_4bet' and hero_pos and vs_pos:
+        # ranges[bucket][vs_4bet][3bettor_hero][4bettor_villain]
+        ranges_root.setdefault(bucket, {}).setdefault('vs_4bet', {}).setdefault(hero_pos, {})[vs_pos] = spot_data
+    elif scenario == 'squeeze' and hero_pos and vs_pos:
+        # ranges[bucket][squeeze][hero][opener] — caller positions no extra
+        spot_data['caller_positions'] = cls['extra'].get('caller_positions', [])
+        ranges_root.setdefault(bucket, {}).setdefault('squeeze', {}).setdefault(hero_pos, {})[vs_pos] = spot_data
+    else:
+        spot_data = dict(spot_data)
+        spot_data['scenario'] = scenario
+        spot_data['extra'] = cls['extra']
+        other_list.append(spot_data)
+
+
 def build_ranges_json(all_spots: list[dict]) -> dict:
-    """Agrupa spots por stack/cenário e gera JSON pronto pro engine."""
+    """Agrupa spots por stack/cenário e gera JSON pronto pro engine.
+
+    Classic (9-max) → `ranges[bucket][scenario]...` (intacto).
+    PKO    (8-max)  → `pko_ranges[{field}p][stage]['ranges'][bucket][scenario]...`,
+                      mesma topologia interna — o engine reaproveita o lookup Classic.
+    """
     out = {
         '_metadata': {
             'source': 'gtowizard_api_v4_via_har',
@@ -349,19 +457,25 @@ def build_ranges_json(all_spots: list[dict]) -> dict:
         },
         'ranges': {},
         '_other_spots': [],  # vs_RFI, 3bet, etc — bucketed mas não promovidos pra RFI
+        'pko_ranges': {},    # [field][stage] -> {_stage, _other, ranges{bucket{scenario}}}
     }
 
     # Contadores por categoria
     counters = {'rfi': 0, 'vs_rfi': 0, 'vs_3bet': 0, 'squeeze': 0, '4bet_or_higher': 0, 'other': 0, 'vs_3bet_other': 0}
+    pko_spots = 0
 
     for s in all_spots:
         parsed = parse_spot(s['data'], s['params'])
+        gt = parse_gametype(parsed['gametype'])
         bucket = depth_to_bucket(parsed['depth'])
-        cls = classify_spot(parsed['preflop_actions'])
-        scenario = cls['scenario']
-        hero_pos = cls['hero_pos']
-        vs_pos = cls['vs_pos']
 
+        # PKO é 8-max; Classic 9-max. table_size vem do gametype, fallback p/ n_stacks.
+        if gt['is_pko']:
+            table_size = gt['table_size'] or len([x for x in parsed['stacks'].split('-') if x])
+        else:
+            table_size = 9
+        cls = classify_spot(parsed['preflop_actions'], table_size=table_size)
+        scenario = cls['scenario']
         counters[scenario] = counters.get(scenario, 0) + 1
 
         # Estrutura comum dos dados
@@ -382,30 +496,26 @@ def build_ranges_json(all_spots: list[dict]) -> dict:
             'hand_freqs':  parsed['hand_freqs'],
         }
 
-        if scenario == 'rfi' and hero_pos:
-            out['ranges'].setdefault(bucket, {}).setdefault('RFI', {})[hero_pos] = spot_data
-        elif scenario == 'vs_rfi' and hero_pos and vs_pos:
-            # Estrutura: ranges[bucket][vs_RFI][opener][defender]
-            out['ranges'].setdefault(bucket, {}).setdefault('vs_RFI', {}).setdefault(vs_pos, {})[hero_pos] = spot_data
-        elif scenario == 'vs_3bet' and hero_pos and vs_pos:
-            # ranges[bucket][vs_3bet][opener_hero][3bettor_villain]
-            out['ranges'].setdefault(bucket, {}).setdefault('vs_3bet', {}).setdefault(hero_pos, {})[vs_pos] = spot_data
-        elif scenario == 'vs_4bet' and hero_pos and vs_pos:
-            # ranges[bucket][vs_4bet][3bettor_hero][4bettor_villain]
-            out['ranges'].setdefault(bucket, {}).setdefault('vs_4bet', {}).setdefault(hero_pos, {})[vs_pos] = spot_data
-        elif scenario == 'squeeze' and hero_pos and vs_pos:
-            # ranges[bucket][squeeze][hero][opener] — caller positions estão no extra
-            spot_data['caller_positions'] = cls['extra'].get('caller_positions', [])
-            out['ranges'].setdefault(bucket, {}).setdefault('squeeze', {}).setdefault(hero_pos, {})[vs_pos] = spot_data
+        if gt['is_pko']:
+            # PKO: bounty embutido na estratégia pelo solver; guardamos stacks/stage
+            # pra estágios de stack heterogêneo (PCT50/FT = aproximação ICM).
+            spot_data['stage']    = gt['stage']
+            spot_data['gametype'] = parsed['gametype']
+            spot_data['stacks']   = parsed['stacks']
+            node = out['pko_ranges'].setdefault(f"{gt['field_size']}p", {}).setdefault(
+                gt['stage_token'], {'_stage': gt['stage'], '_other': [], 'ranges': {}})
+            _store_spot(node['ranges'], node['_other'], bucket, cls, spot_data)
+            pko_spots += 1
         else:
-            spot_data['scenario'] = scenario
-            spot_data['extra'] = cls['extra']
-            out['_other_spots'].append(spot_data)
+            _store_spot(out['ranges'], out['_other_spots'], bucket, cls, spot_data)
 
     out['_metadata']['scenarios'] = counters
     out['_metadata']['spots_rfi'] = counters['rfi']
     out['_metadata']['spots_other'] = sum(v for k, v in counters.items() if k != 'rfi')
     out['_metadata']['total_spots'] = sum(counters.values())
+    out['_metadata']['pko_spots'] = pko_spots
+    if not out['pko_ranges']:
+        out.pop('pko_ranges')
     return out
 
 
@@ -447,14 +557,32 @@ def main():
         print(f"  {bucket}: {len(positions)}/7 ({','.join(positions)})")
 
     # Coverage vs_RFI (9-max: 36 pairs por stack)
-    print(f"\nCoverage vs_RFI (defender × opener, 9-max = 36 pairs/stack):")
-    for bucket in sorted(result['ranges'].keys(), key=lambda x: int(x.replace('bb', ''))):
-        vs_rfi = result['ranges'][bucket].get('vs_RFI', {})
-        if not vs_rfi:
-            continue
-        n_pairs = sum(len(defs) for defs in vs_rfi.values())
-        opener_list = list(vs_rfi.keys())
-        print(f"  {bucket}: {n_pairs}/36 pairs (openers: {','.join(opener_list)})")
+    if result.get('ranges'):
+        print(f"\nCoverage vs_RFI (defender × opener, 9-max = 36 pairs/stack):")
+        for bucket in sorted(result['ranges'].keys(), key=lambda x: int(x.replace('bb', ''))):
+            vs_rfi = result['ranges'][bucket].get('vs_RFI', {})
+            if not vs_rfi:
+                continue
+            n_pairs = sum(len(defs) for defs in vs_rfi.values())
+            opener_list = list(vs_rfi.keys())
+            print(f"  {bucket}: {n_pairs}/36 pairs (openers: {','.join(opener_list)})")
+
+    # Coverage PKO (8-max) — field → stage → bucket → scenarios
+    pko = result.get('pko_ranges') or {}
+    if pko:
+        print(f"\nPKO ranges (8-max) — {meta.get('pko_spots', 0)} spots:")
+        for field in sorted(pko.keys()):
+            print(f"  campo {field}:")
+            for stage_tok, node in pko[field].items():
+                rng = node['ranges']
+                scen_counts: dict = {}
+                for b, scens in rng.items():
+                    for sc, subtree in scens.items():
+                        scen_counts[sc] = scen_counts.get(sc, 0) + _count_spots(subtree)
+                buckets = ','.join(sorted(rng.keys(), key=lambda x: int(x.replace('bb', ''))))
+                scen_str = ', '.join(f"{k}={v}" for k, v in scen_counts.items()) or '—'
+                other_n = len(node.get('_other', []))
+                print(f"    {stage_tok:11} ({node['_stage']:12}) buckets=[{buckets}] | {scen_str} | other={other_n}")
 
 
 if __name__ == '__main__':
