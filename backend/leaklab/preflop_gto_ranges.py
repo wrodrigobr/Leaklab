@@ -24,6 +24,52 @@ def _load() -> dict:
     return _data
 
 
+# ── PKO (Progressive Knockout) — ranges do GW por estágio field-remaining ──────
+_PKO_RANGES_FILE = os.path.join(os.path.dirname(__file__), '..', 'docs', 'leaklab_pko_ranges.json')
+_pko_data: Optional[dict] = None
+
+
+def _load_pko() -> dict:
+    global _pko_data
+    if _pko_data is None:
+        try:
+            with open(_PKO_RANGES_FILE, 'r', encoding='utf-8') as f:
+                _pko_data = json.load(f)
+        except FileNotFoundError:
+            _pko_data = {}
+    return _pko_data
+
+
+def _pko_ranges_for(stack_bb: float, field: str = '200p'):
+    """Seleciona o estágio PKO pelo depth e devolve (ranges_do_bucket, stage_token,
+    stage_label) ou (None, None, None).
+
+    No GW o depth é acoplado ao estágio field-remaining; os depths canônicos
+    capturados são START=100, PCT90=90, PCT70=70 e depois um PLATÔ em 50bb
+    (PCT50/PCT37/PCT25/BUBBLEMID/T3). No platô usamos PCT50 (mid-game
+    representativo) — distinguir os estágios de 50bb exige field-remaining, que a
+    hand history não traz. Abaixo de ~45bb não há range PKO (o GW não resolve PKO
+    raso) → devolve None p/ cair no Classic (push/fold). T2/FT são config-specific
+    (stacks heterogêneos, não capturáveis uniforme)."""
+    pko = _load_pko().get('pko_ranges', {}).get(field, {})
+    if not pko or stack_bb < 45:
+        return None, None, None
+    if stack_bb >= 95:
+        stage = 'START'
+    elif stack_bb >= 80:
+        stage = 'PCT90'
+    elif stack_bb >= 60:
+        stage = 'PCT70'
+    else:
+        stage = 'PCT50'
+    node = pko.get(stage)
+    if not node or not node.get('ranges'):
+        return None, None, None
+    ranges = node['ranges']
+    bucket = next(iter(ranges))     # cada estágio tem 1 bucket (o depth canônico)
+    return ranges[bucket], stage, node.get('_stage')
+
+
 # Hardcoded buckets — JSON v3 (GW master) não tem stack_buckets section.
 # Mantém compat com v2 que tinha campo no JSON.
 _DEFAULT_BUCKETS = [
@@ -186,6 +232,7 @@ def analyze_preflop(
     facing_raises: int = 0,    # nº de raises de villains ANTES da decisão do hero (open=1, 3bet=2…)
     hero_was_aggressor: bool = False,  # hero já deu raise nesta street antes desta decisão
     facing_limp: bool = False,  # pote limpado (limp sem raise) — árvore fora da cobertura GTO
+    is_pko: bool = False,  # torneio PKO/bounty — usa ranges PKO do GW (RFI) quando cobertos
 ) -> dict:
     """
     Retorna análise GTO completa de uma decisão preflop.
@@ -265,6 +312,22 @@ def analyze_preflop(
     # BB checando em pot não contestado = free play, não é decisão de range
     if scenario == 'rfi' and pos == 'BB' and action_taken.lower() == 'check':
         return base  # available=False — sem análise
+
+    # ── PKO overlay (RFI) ─────────────────────────────────────────────────────
+    # Em torneio PKO o bounty muda a estratégia (abre-se mais largo). Quando é PKO
+    # e o spot RFI tem cobertura, troca a FONTE de range pra PKO do GW (capturado
+    # por estágio field-remaining) — o resto do grading RFI v3 roda igual. Seleção
+    # do estágio pelo depth (stage↔depth acoplado). Sem cobertura PKO (raso, sem
+    # captura, T2/FT config-specific) → segue no range Classic chipEV abaixo. Hoje
+    # só RFI; vs_RFI/squeeze/etc seguem Classic. field fixo em 200p (única captura).
+    if is_pko and scenario == 'rfi':
+        _pko_bk, _pko_stage, _pko_label = _pko_ranges_for(stack_bb)
+        if _pko_bk and (_pko_bk.get('RFI', {}).get(pos) is not None):
+            bk_data = _pko_bk
+            base['pko'] = True
+            base['pko_stage'] = _pko_stage
+            base['pko_stage_label'] = _pko_label
+            base['source'] = 'pko_gto'
 
     # ── RFI ──────────────────────────────────────────────────────────────────
     if scenario == 'rfi':
