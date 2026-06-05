@@ -219,7 +219,7 @@
     "pre_ft_pko": "Atenuado 1 nivel (bounty alivia bubble)",
     "final_classic": "Presión máxima (ICM puro)",
     "final_pko": "Se mantiene alta (el efecto del bounty sostiene la agresión)",
-    "p2": "Los ajustes para PKO reflejan el cambio cualitativo principal de la teoría de bounty: la equity necesaria para arriesgar el stack baja y la agresión se recompensa más que en un MTT clásico equivalente. En las decisiones de apertura preflop (RFI), el sistema ya consulta rangos GTO específicos de PKO — más amplios que los de un MTT clásico equivalente, reflejando la recompensa del bounty. Los demás escenarios preflop siguen con el rango clásico mientras se amplía la cobertura PKO."
+    "p2": "Los ajustes para PKO reflejan el cambio cualitativo principal de la teoría de bounty: la equity necesaria para arriesgar el stack baja y la agresión se recompensa más que en un MTT clásico equivalente. En las decisiones de apertura (RFI), defensa contra un open (vs open) y squeeze, el sistema consulta rangos GTO específicos de PKO — más amplios que los de un MTT clásico equivalente, reflejando la recompensa del bounty. Los demás escenarios (respuesta a re-raises) siguen con el rango clásico mientras se amplía la cobertura PKO."
   },
   "mstacks": {
     "title": "Fases de M-Ratio",

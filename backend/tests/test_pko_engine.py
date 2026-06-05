@@ -69,14 +69,60 @@ def test_fallback_below_floor():
     print("OK  test_fallback_below_floor")
 
 
-def test_pko_only_rfi_not_vsrfi():
-    # vs_RFI (facing open) com is_pko=True NÃO deve usar PKO (só RFI coberto)
-    r = analyze_preflop(position='BTN', hero_hand_type='99', stack_bb=100,
-                        action_taken='call', facing_size=2.5, vs_position='CO',
+def test_pko_vsrfi_fallback_below_floor():
+    # vs_RFI também respeita o floor de 45bb → abaixo dele cai no Classic
+    r = analyze_preflop(position='BTN', hero_hand_type='99', stack_bb=30,
+                        action_taken='call', facing_size=2.0, vs_position='CO',
                         n_players=8, is_pko=True)
     assert r['scenario'] == 'vs_rfi'
-    assert not r.get('pko'), "PKO aplicado fora de RFI"
-    print("OK  test_pko_only_rfi_not_vsrfi")
+    assert not r.get('pko')  # <45bb → Classic
+    print("OK  test_pko_vsrfi_fallback_below_floor")
+
+
+def test_pko_vsrfi_applied():
+    # vs_RFI: BTN defende vs UTG open, em PKO usa a fonte PKO
+    r = analyze_preflop(position='BTN', hero_hand_type='AKs', stack_bb=100,
+                        action_taken='raise', facing_size=2.1, vs_position='UTG',
+                        n_players=8, is_pko=True)
+    assert r['scenario'] == 'vs_rfi'
+    assert r['pko'] is True and r['source'] == 'pko_gto'
+    assert r['available'] is True and r['in_range'] is True
+    print("OK  test_pko_vsrfi_applied")
+
+
+def test_pko_squeeze_applied():
+    # squeeze: BTN squeeza vs UTG-open + caller, em PKO usa a fonte PKO
+    r = analyze_preflop(position='BTN', hero_hand_type='AKs', stack_bb=100,
+                        action_taken='raise', facing_size=2.1, vs_position='UTG',
+                        caller_position='CO', is_3bet_pot=True, n_players=8, is_pko=True)
+    assert r['scenario'] == 'squeeze'
+    assert r['pko'] is True and r['source'] == 'pko_gto'
+    assert r['available'] is True and r['in_range'] is True
+    print("OK  test_pko_squeeze_applied")
+
+
+def test_pko_squeeze_adds_coverage():
+    # Em alguns spots o Classic não tem squeeze[hero][opener] (NULL); o PKO cobre.
+    cls = analyze_preflop(position='BTN', hero_hand_type='AKs', stack_bb=100,
+                          action_taken='raise', facing_size=2.1, vs_position='UTG',
+                          caller_position='CO', is_3bet_pot=True, n_players=8, is_pko=False)
+    pko = analyze_preflop(position='BTN', hero_hand_type='AKs', stack_bb=100,
+                          action_taken='raise', facing_size=2.1, vs_position='UTG',
+                          caller_position='CO', is_3bet_pot=True, n_players=8, is_pko=True)
+    assert pko['available'] is True and pko['pko'] is True
+    assert cls['available'] is False  # Classic sem cobertura aqui — PKO acrescenta
+    print("OK  test_pko_squeeze_adds_coverage")
+
+
+def test_pko_only_covered_scenarios():
+    # vs_3bet/vs_4bet (hero abriu e enfrenta re-raise) NÃO foram capturados em PKO
+    # → seguem Classic. Só RFI/vs_RFI/squeeze têm overlay PKO.
+    r = analyze_preflop(position='UTG', hero_hand_type='AKs', stack_bb=100,
+                        action_taken='raise', facing_size=12.0, vs_position='BTN',
+                        hero_was_aggressor=True, facing_raises=2, n_players=8, is_pko=True)
+    assert r['scenario'] in ('vs_3bet', 'vs_4bet')
+    assert not r.get('pko'), "PKO aplicado em cenário não capturado"
+    print("OK  test_pko_only_covered_scenarios")
 
 
 def test_out_of_range_hand_folds():

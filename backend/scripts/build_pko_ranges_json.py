@@ -48,6 +48,28 @@ def _enrich(spot: dict) -> dict:
     return out
 
 
+def _is_spot(o) -> bool:
+    return isinstance(o, dict) and 'hand_freqs' in o and 'preflop_actions' in o
+
+
+def _enrich_tree(obj):
+    """Enriquece recursivamente: RFI = {hero: spot}; vs_RFI = {opener:{defender:spot}};
+    squeeze = {hero:{opener:spot}}. Desce até achar o spot (hand_freqs+preflop_actions)."""
+    if _is_spot(obj):
+        return _enrich(obj)
+    if isinstance(obj, dict):
+        return {k: _enrich_tree(v) for k, v in obj.items()}
+    return obj
+
+
+def _count_spots(obj) -> int:
+    if _is_spot(obj):
+        return 1
+    if isinstance(obj, dict):
+        return sum(_count_spots(v) for v in obj.values())
+    return 0
+
+
 def main():
     if not SRC.exists():
         print(f"FONTE não encontrada: {SRC}\n(rode a captura primeiro: scripts/fetch_pko_rfi_layer.py)")
@@ -63,10 +85,9 @@ def main():
             dst_node = out['pko_ranges'].setdefault(field, {}).setdefault(
                 stage, {'_stage': node.get('_stage', stage), 'ranges': {}})
             for bucket, scens in node.get('ranges', {}).items():
-                for sc, heroes in scens.items():
-                    for hero, spot in heroes.items():
-                        dst_node['ranges'].setdefault(bucket, {}).setdefault(sc, {})[hero] = _enrich(spot)
-                        n_spots += 1
+                for sc, subtree in scens.items():
+                    dst_node['ranges'].setdefault(bucket, {})[sc] = _enrich_tree(subtree)
+                    n_spots += _count_spots(subtree)
 
     out['_metadata']['total_spots'] = n_spots
     out['_metadata']['fields'] = sorted(out['pko_ranges'].keys())

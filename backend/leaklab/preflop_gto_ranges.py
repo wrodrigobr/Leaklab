@@ -313,16 +313,23 @@ def analyze_preflop(
     if scenario == 'rfi' and pos == 'BB' and action_taken.lower() == 'check':
         return base  # available=False — sem análise
 
-    # ── PKO overlay (RFI) ─────────────────────────────────────────────────────
-    # Em torneio PKO o bounty muda a estratégia (abre-se mais largo). Quando é PKO
-    # e o spot RFI tem cobertura, troca a FONTE de range pra PKO do GW (capturado
-    # por estágio field-remaining) — o resto do grading RFI v3 roda igual. Seleção
-    # do estágio pelo depth (stage↔depth acoplado). Sem cobertura PKO (raso, sem
-    # captura, T2/FT config-specific) → segue no range Classic chipEV abaixo. Hoje
-    # só RFI; vs_RFI/squeeze/etc seguem Classic. field fixo em 200p (única captura).
-    if is_pko and scenario == 'rfi':
+    # ── PKO overlay (RFI / vs_RFI) ────────────────────────────────────────────
+    # Em torneio PKO o bounty muda a estratégia (abre-se/defende-se mais largo).
+    # Quando é PKO e o spot tem cobertura, troca a FONTE de range pra PKO do GW
+    # (capturado por estágio field-remaining) — o resto do grading v3 roda igual.
+    # RFI e vs_RFI usam bk_data, então basta o swap aqui; squeeze tem hook próprio
+    # (lê de data[ranges][bk_try]). Seleção do estágio pelo depth (stage↔depth
+    # acoplado). Sem cobertura PKO (raso <45bb, sem captura, T2/FT config-specific)
+    # → segue no range Classic chipEV abaixo. field fixo em 200p (única captura).
+    if is_pko and scenario in ('rfi', 'vs_rfi'):
         _pko_bk, _pko_stage, _pko_label = _pko_ranges_for(stack_bb)
-        if _pko_bk and (_pko_bk.get('RFI', {}).get(pos) is not None):
+        _pko_hit = False
+        if _pko_bk:
+            if scenario == 'rfi':
+                _pko_hit = _pko_bk.get('RFI', {}).get(pos) is not None
+            else:  # vs_rfi: [opener][defender]
+                _pko_hit = _pko_bk.get('vs_RFI', {}).get(vs_pos, {}).get(pos) is not None
+        if _pko_hit:
             bk_data = _pko_bk
             base['pko'] = True
             base['pko_stage'] = _pko_stage
@@ -648,7 +655,20 @@ def analyze_preflop(
         candidate_buckets = [bucket] + bucket_fallbacks.get(bucket, [])
         spot = None
         actual_vs = vs_pos
-        for bk_try in candidate_buckets:
+        # PKO overlay (squeeze): este bloco lê de data[ranges][bk_try] (não bk_data),
+        # então o swap acima não alcança — injeta a fonte PKO aqui. Só 'squeeze' foi
+        # capturado em PKO (vs_3bet/faces_squeeze/vs_4bet seguem Classic).
+        if is_pko and scenario == 'squeeze':
+            _pko_bk, _pko_stage, _pko_label = _pko_ranges_for(stack_bb)
+            if _pko_bk:
+                _pko_sq = _pko_bk.get('squeeze', {}).get(pos, {}).get(vs_pos)
+                if _pko_sq is not None:
+                    spot = _pko_sq
+                    base['pko'] = True
+                    base['pko_stage'] = _pko_stage
+                    base['pko_stage_label'] = _pko_label
+                    base['source'] = 'pko_gto'
+        for bk_try in candidate_buckets if spot is None else []:
             vs3_try = data.get('ranges', {}).get(bk_try, {}).get(_section, {})
             hero_dict = vs3_try.get(pos, {})
             if not hero_dict:
