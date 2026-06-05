@@ -625,6 +625,46 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
         conn.close()
 
 
+def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit: int = 10) -> dict:
+    """Leaks ranqueados por EV PERDIDO (bb) — #24/#25 (início do Leak Finder).
+
+    Soma `ev_loss_bb` por spot (posição × street × ação ideal) e ranqueia pelo
+    total de big blinds deixados na mesa — em vez de contagem de erros. Só preflop
+    tem ev_loss hoje. Devolve {leaks:[...], total_ev_loss_bb, n_leaks}."""
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(f"""
+            SELECT
+                COALESCE(d.position,'?')      AS position,
+                d.street                      AS street,
+                d.best_action                 AS ideal_action,
+                COUNT(*)                      AS n,
+                ROUND(SUM(d.ev_loss_bb), 2)   AS total_ev_loss_bb,
+                ROUND(AVG(d.ev_loss_bb), 3)   AS avg_ev_loss_bb
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf}
+              AND d.ev_loss_bb IS NOT NULL AND d.ev_loss_bb > 0.05
+            GROUP BY position, street, ideal_action
+            ORDER BY total_ev_loss_bb DESC
+            LIMIT ?
+        """), tp + (limit,)).fetchall()
+        tot = conn.execute(_adapt(f"""
+            SELECT ROUND(SUM(d.ev_loss_bb), 2) AS tot, COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf} AND d.ev_loss_bb IS NOT NULL AND d.ev_loss_bb > 0.05
+        """), tp).fetchone()
+        return {
+            'leaks': [dict(r) for r in rows],
+            'total_ev_loss_bb': (tot['tot'] or 0.0) if tot else 0.0,
+            'n_leaks':          (tot['n'] or 0) if tot else 0,
+        }
+    finally:
+        conn.close()
+
+
 def get_leak_ranking_gto_first(user_id: int, days: int = 90, last_n: int | None = None,
                                 limit: int = 10) -> dict:
     """Leak ranking unificado: tenta GTO primeiro (gto_label-based), fallback heurístico (label-based).

@@ -925,6 +925,17 @@ def player_leak_roi():
     return jsonify({'source': source, 'leaks': leaks})
 
 
+@app.route('/player/ev-leaks', methods=['GET'])
+@require_auth
+def player_ev_leaks():
+    """#24/#25 — leaks ranqueados por EV perdido (bb), por spot. Início do Leak
+    Finder: prioriza pelo total de big blinds deixados na mesa, não por contagem."""
+    from database.repositories import get_ev_leaks
+    days   = int(request.args.get('days', 90))
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    return jsonify(get_ev_leaks(g.user_id, days, last_n=last_n))
+
+
 @app.route('/player/pressure-profile', methods=['GET'])
 @require_auth
 def player_pressure_profile():
