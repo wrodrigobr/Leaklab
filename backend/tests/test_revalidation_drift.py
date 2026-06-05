@@ -28,12 +28,14 @@ def _engine(label='standard', best='fold', gto_available=True,
     return {'evaluation': {'label': label}, 'bestAction': best, 'gto': gto}
 
 
-def _di(street='preflop', action='fold'):
-    return {'street': street, 'player_action': action}
+def _di(street='preflop', action='fold', vs=''):
+    return {'street': street, 'player_action': action,
+            'spot': {'villainPosition': vs}}
 
 
-def _idx(stored, dups=None):
-    d = {('H1', 'preflop', 'fold'): stored} if stored is not None else {}
+def _idx(stored, dups=None, vs=''):
+    k = ('H1', 'preflop', 'fold', vs.lower())
+    d = {k: stored} if stored is not None else {}
     d['__dups__'] = dups or set()
     return d
 
@@ -54,6 +56,23 @@ def test_label_drift_detected():
     assert r['drift'] is True
     assert 'label' in r['drift_fields'] and 'best_action' in r['drift_fields']
     print("OK  test_label_drift_detected")
+
+
+def test_vs_position_disambiguates():
+    # Dois spots no mesmo (hand,street,action) — só vs_position separa. O fresco
+    # vs=SB deve casar a linha SB (não a CO) → sem drift falso.
+    co = {'label': 'small_mistake', 'best_action': 'fold',
+          'gto_label': 'gto_critical', 'gto_action': 'fold'}
+    sb = {'label': 'standard', 'best_action': 'call',
+          'gto_label': None, 'gto_action': None}
+    idx = {('H1', 'preflop', 'call', 'co'): co,
+           ('H1', 'preflop', 'call', 'sb'): sb, '__dups__': set()}
+    fresh = _engine(label='standard', best='call', gto_available=False)
+    r = _drift_against_stored(fresh, _di(action='call', vs='SB'), 'H1', idx)
+    assert r['stored_found'] is True
+    assert r['stored_label'] == 'standard'   # casou a linha SB, não a CO
+    assert r['drift'] is False and r['drift_fields'] == []
+    print("OK  test_vs_position_disambiguates")
 
 
 def test_stale_gto_uncovered_tagged():
@@ -87,7 +106,7 @@ def test_ambiguous_flag():
     stored = {'label': 'standard', 'best_action': 'fold',
               'gto_label': 'gto_correct', 'gto_action': 'fold'}
     r = _drift_against_stored(_engine(), _di(), 'H1',
-                              _idx(stored, dups={('H1', 'preflop', 'fold')}))
+                              _idx(stored, dups={('H1', 'preflop', 'fold', '')}))
     assert r['stored_ambiguous'] is True
     print("OK  test_ambiguous_flag")
 
@@ -109,19 +128,30 @@ def test_fetch_stored_indexes_and_dups():
     conn.execute("INSERT INTO tournaments (user_id,tournament_id,hero,raw_text,site) "
                  "VALUES (?,?,?,?,?)", (uid, 'TD', 'H', 'raw', 'pokerstars'))
     tid = dict(conn.execute("SELECT id FROM tournaments WHERE tournament_id='TD'").fetchone())['id']
-    _dcols = "(tournament_id,hand_id,street,action_taken,best_action,label,score)"
-    for lbl in ('standard', 'small_mistake'):  # mesma chave 2x → ambíguo
-        conn.execute(f"INSERT INTO decisions {_dcols} VALUES (?,?,?,?,?,?,?)",
-                     (tid, 'HX', 'preflop', 'fold', 'fold', lbl, 0.0))
-    conn.execute(f"INSERT INTO decisions {_dcols} VALUES (?,?,?,?,?,?,?)",
-                 (tid, 'HY', 'flop', 'call', 'call', 'standard', 0.0))
+    _dcols = "(tournament_id,hand_id,street,action_taken,vs_position,best_action,label,score)"
+    # mesma chave 2x COM o mesmo vs_position → ambíguo de verdade
+    for lbl in ('standard', 'small_mistake'):
+        conn.execute(f"INSERT INTO decisions {_dcols} VALUES (?,?,?,?,?,?,?,?)",
+                     (tid, 'HX', 'preflop', 'fold', 'CO', 'fold', lbl, 0.0))
+    # mesma (hand,street,action) mas vs_position DIFERENTE → NÃO é ambíguo
+    conn.execute(f"INSERT INTO decisions {_dcols} VALUES (?,?,?,?,?,?,?,?)",
+                 (tid, 'HZ', 'preflop', 'call', 'CO', 'call', 'standard', 0.0))
+    conn.execute(f"INSERT INTO decisions {_dcols} VALUES (?,?,?,?,?,?,?,?)",
+                 (tid, 'HZ', 'preflop', 'call', 'SB', 'call', 'small_mistake', 0.0))
+    conn.execute(f"INSERT INTO decisions {_dcols} VALUES (?,?,?,?,?,?,?,?)",
+                 (tid, 'HY', 'flop', 'call', '', 'call', 'standard', 0.0))
     conn.commit(); conn.close()
 
     idx = _fetch_stored_decisions(Scope.for_tournament(tid))
-    assert ('HX', 'preflop', 'fold') in idx
-    assert idx[('HX', 'preflop', 'fold')]['label'] == 'standard'  # mantém o 1º
-    assert ('HX', 'preflop', 'fold') in idx['__dups__']           # marcado ambíguo
-    assert ('HY', 'flop', 'call') in idx
+    assert ('HX', 'preflop', 'fold', 'co') in idx
+    assert idx[('HX', 'preflop', 'fold', 'co')]['label'] == 'standard'  # mantém o 1º
+    assert ('HX', 'preflop', 'fold', 'co') in idx['__dups__']           # marcado ambíguo
+    # HZ: 2 spots desambiguados por vs_position → AMBOS indexados, nenhum ambíguo
+    assert idx[('HZ', 'preflop', 'call', 'co')]['label'] == 'standard'
+    assert idx[('HZ', 'preflop', 'call', 'sb')]['label'] == 'small_mistake'
+    assert ('HZ', 'preflop', 'call', 'co') not in idx['__dups__']
+    assert ('HZ', 'preflop', 'call', 'sb') not in idx['__dups__']
+    assert ('HY', 'flop', 'call', '') in idx
     print("OK  test_fetch_stored_indexes_and_dups")
 
 

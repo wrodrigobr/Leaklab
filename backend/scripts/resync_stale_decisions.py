@@ -52,16 +52,21 @@ for row in tournaments:
             hand_id = di.get('hand_id', '')
             spot    = di.get('spot', {})
             act     = (spot.get('actionTaken') or di.get('player_action', '')).lower()
+            # vs_position (villainPosition) desambigua mãos com 2 spots no mesmo
+            # (hand,street,action) — ex.: call vs open e depois call vs shove. Sem
+            # ele, o LIMIT-1 só toca a 1ª linha e a 2ª fica stale.
+            vs      = (spot.get('villainPosition') or '').lower()
             if not hand_id or not act or not street:
                 continue
-            k = (hand_id, street, act)
+            k = (hand_id, street, act, vs)
             if k in seen:
                 continue
             seen.add(k)
             db = conn.execute(
                 "SELECT id, label, best_action, gto_label, gto_action FROM decisions "
-                "WHERE hand_id=? AND street=? AND action_taken=? LIMIT 1",
-                (hand_id, street, act)).fetchone()
+                "WHERE hand_id=? AND street=? AND action_taken=? "
+                "AND LOWER(COALESCE(vs_position,''))=? LIMIT 1",
+                (hand_id, street, act, vs)).fetchone()
             if not db:
                 continue
             did = db['id']

@@ -252,7 +252,8 @@ def _drift_against_stored(engine_result: dict, di: dict, hand_id: str,
     fresh_gto_action = _norm_gto(gto.get('gto_action')) if gto.get('available') else None
 
     key = (hand_id, (di.get('street') or '').lower(),
-           (di.get('player_action') or '').lower())
+           (di.get('player_action') or '').lower(),
+           ((di.get('spot') or {}).get('villainPosition') or '').lower())
     stored = stored_idx.get(key)
     out: dict = {
         'fresh_label':       fresh_label,
@@ -291,9 +292,10 @@ def _drift_against_stored(engine_result: dict, di: dict, hand_id: str,
 
 
 def _fetch_stored_decisions(scope: Scope) -> dict:
-    """Indexa os vereditos ARMAZENADOS por (hand_id, street, action_taken) — um
-    único SELECT. Espelha o match LIMIT-1 do pipeline e marca ambiguidade em
-    `__dups__` (mesma chave em 2+ linhas)."""
+    """Indexa os vereditos ARMAZENADOS por (hand_id, street, action_taken,
+    vs_position) — um único SELECT. O `vs_position` desambigua mãos onde o herói
+    age igual em 2 spots preflop distintos (ex.: call vs open e depois call vs
+    shove). Marca ambiguidade residual em `__dups__` (mesma chave em 2+ linhas)."""
     conn = get_conn()
     try:
         where, params = "1=1", ()
@@ -301,8 +303,8 @@ def _fetch_stored_decisions(scope: Scope) -> dict:
             where, params = "d.tournament_id = ?", (scope.tournament_db_id,)
         elif scope.user_id is not None:
             where, params = "t.user_id = ?", (scope.user_id,)
-        sql = ("SELECT d.id, d.hand_id, d.street, d.action_taken, d.label, "
-               "d.best_action, d.gto_label, d.gto_action "
+        sql = ("SELECT d.id, d.hand_id, d.street, d.action_taken, d.vs_position, "
+               "d.label, d.best_action, d.gto_label, d.gto_action "
                "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
                f"WHERE {where} ORDER BY d.id")
         idx: dict = {}
@@ -310,7 +312,8 @@ def _fetch_stored_decisions(scope: Scope) -> dict:
         for r in conn.execute(sql, params).fetchall():
             row = dict(r)
             k = (row['hand_id'], (row['street'] or '').lower(),
-                 (row['action_taken'] or '').lower())
+                 (row['action_taken'] or '').lower(),
+                 (row['vs_position'] or '').lower())
             if k in idx:
                 dups.add(k)
                 continue  # mantém o 1º (espelha LIMIT 1)
