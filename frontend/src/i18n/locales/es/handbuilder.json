@@ -2,6 +2,11 @@
   "title": "Hand Builder",
   "subtitle": "Recrea una mano (de un video o notas) en pocos clics — posición, stacks y apuestas en bb — y analiza.",
   "common": { "clear": "limpiar" },
+  "import": {
+    "load": "Cargar .txt",
+    "tip": "Carga un hand history .txt para seguir agregando manos donde lo dejaste",
+    "error": "Archivo inválido — usa un hand history PokerStars (con \"PokerStars Hand #…\")."
+  },
   "setup": {
     "table": "Mesa",
     "stackDepth": "Stack",
@@ -28,6 +33,7 @@
   "actions": {
     "title": "Acciones",
     "undo": "Deshacer",
+    "undoTip": "Deshace el último paso (carta, acción, próxima mano, cargar…)",
     "clearHand": "Limpiar mano",
     "confirmClear": "¿Limpiar la mano actual? La mesa y la config se mantienen.",
     "streetComplete": "{{street}} completo",

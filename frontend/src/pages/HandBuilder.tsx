@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Download, Play, Trash2, RotateCcw, FileText, ChevronRight, Star, Settings2, Loader2 } from "lucide-react";
+import { Download, Play, Trash2, RotateCcw, FileText, ChevronRight, Star, Settings2, Loader2, Undo2, Upload } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { tournaments } from "@/lib/api";
+import { importHandHistory } from "@/lib/hhImport";
 import { cn } from "@/lib/utils";
 import {
   generateHandHistory,
@@ -204,6 +205,24 @@ export default function HandBuilder() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeErr, setAnalyzeErr] = useState("");
+  const [importErr, setImportErr] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Histórico pra UNDO: snapshot do estado ANTES de cada mutação discreta (ação,
+  // carta, próxima mão, carregar arquivo…). undo() restaura o último snapshot.
+  const historyRef = useRef<BuilderState[]>([]);
+  const [undoDepth, setUndoDepth] = useState(0);
+  const snapshot = () => {
+    historyRef.current.push(state);
+    if (historyRef.current.length > 60) historyRef.current.shift();
+    setUndoDepth(historyRef.current.length);
+  };
+  const undo = () => {
+    const prev = historyRef.current.pop();
+    if (!prev) return;
+    setState(prev);
+    setUndoDepth(historyRef.current.length);
+  };
 
   useEffect(() => {
     localStorage.setItem("handBuilderDraft", JSON.stringify(state));
@@ -211,6 +230,40 @@ export default function HandBuilder() {
 
   const update = <K extends keyof BuilderState>(key: K, val: BuilderState[K]) =>
     setState(s => ({ ...s, [key]: val }));
+
+  // Carrega um arquivo .txt de hand history pra CONTINUAR: as mãos do arquivo viram
+  // as concluídas e a mesa/blinds/jogadores/button são lidos da última mão, prontos
+  // pra próxima (button rotaciona, hand_id +1).
+  const onLoadFile = async (file: File | null) => {
+    setImportErr("");
+    if (!file) return;
+    const text = await file.text();
+    const imp = importHandHistory(text);
+    if (!imp) { setImportErr(t("import.error")); return; }
+    snapshot();
+    const seatNums = imp.players.map(p => p.seat).sort((a, b) => a - b);
+    const bIdx = seatNums.indexOf(imp.buttonSeat);
+    const nextBtn = seatNums[(bIdx + 1) % seatNums.length] ?? imp.buttonSeat;
+    const uiSize = ([6, 8, 9] as number[]).includes(imp.maxSeats) ? imp.maxSeats : imp.players.length;
+    const heroStack = imp.players.find(p => p.seat === imp.heroSeat)?.stack ?? imp.players[0].stack;
+    setState(s => ({
+      ...s,
+      completedHands: imp.hands,
+      handId: String(Number(imp.handId) + 1),
+      tournamentId: imp.tournamentId,
+      buyIn: imp.buyIn || s.buyIn,
+      level: imp.level,
+      sb: imp.sb, bb: imp.bb, ante: imp.ante,
+      tableSize: uiSize as TableSize,
+      stackBb: Math.max(1, Math.round(heroStack / imp.bb)),
+      players: imp.players,
+      buttonSeat: nextBtn,
+      heroSeat: imp.heroSeat,
+      heroCards: [], actions: [],
+      board: { flop: [], turn: "", river: "" },
+      showWinner: "", winAmount: 0,
+    }));
+  };
 
   const heroPlayer = state.players.find(p => p.seat === state.heroSeat);
   const foldedPlayers = useMemo(() =>
@@ -360,6 +413,7 @@ export default function HandBuilder() {
   const setTableSize = (size: TableSize) => {
     const hasContent = state.actions.length > 0 || state.heroCards.length > 0;
     if (hasContent && !confirm(t("setup.confirmResize"))) return;
+    snapshot();
     const players = buildPlayers(size, state.stackBb);
     setState(s => ({
       ...s,
@@ -390,11 +444,8 @@ export default function HandBuilder() {
     editPlayer(seat, { stack: Math.round(Math.max(0, stackBb) * BB_CHIPS) });
 
   const addAction = (action: ActionType, player: string, amount?: number) => {
+    snapshot();
     update("actions", [...state.actions, { player, street: currentStreet, action, amount }]);
-  };
-  const removeLastAction = () => {
-    if (state.actions.length === 0) return;
-    update("actions", state.actions.slice(0, -1));
   };
 
   const clearCurrentHand = () => {
@@ -402,6 +453,7 @@ export default function HandBuilder() {
       || state.board.flop.length > 0 || state.board.turn || state.board.river
       || state.showWinner || state.winAmount > 0;
     if (hasContent && !confirm(t("actions.confirmClear"))) return;
+    snapshot();
     setState(s => ({
       ...s,
       heroCards: [], actions: [],
@@ -455,6 +507,7 @@ export default function HandBuilder() {
 
   const nextHand = () => {
     if (!hhText) return;
+    snapshot();
     const invested = new Map<string, number>();
     state.players.forEach(p => invested.set(p.name, state.ante));
     if (clockwiseFromSb[0]) invested.set(clockwiseFromSb[0].name, (invested.get(clockwiseFromSb[0].name) ?? 0) + state.sb);
@@ -537,10 +590,27 @@ export default function HandBuilder() {
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader />
       <div className="mx-auto max-w-[1400px] px-6 py-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input ref={fileInputRef} type="file" accept=".txt,text/plain" className="hidden"
+              onChange={e => { onLoadFile(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+            <button onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-background border border-border font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-primary/60 transition-colors"
+              title={t("import.tip")}>
+              <Upload className="size-3" /> {t("import.load")}
+            </button>
+            <button onClick={undo} disabled={undoDepth === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-background border border-border font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-primary/60 transition-colors disabled:opacity-30 disabled:hover:border-border"
+              title={t("actions.undoTip")}>
+              <Undo2 className="size-3" /> {t("actions.undo")}
+            </button>
+          </div>
         </div>
+        {importErr && <p className="text-xs text-destructive font-mono">{importErr}</p>}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* ── Left ─────────────────────────────────────────────────────── */}
@@ -694,7 +764,7 @@ export default function HandBuilder() {
                   label={t("heroCards.label", { pos: positionOf(heroPlayer) })}
                   selected={state.heroCards} count={2} disabled={usedCards}
                   clearLabel={t("common.clear")}
-                  onPick={cards => update("heroCards", cards)}
+                  onPick={cards => { snapshot(); update("heroCards", cards); }}
                 />
               </section>
             )}
@@ -707,9 +777,10 @@ export default function HandBuilder() {
                     {t("actions.title")} · <span className="text-primary">{t(`street.${currentStreet}`)}</span>
                   </h2>
                   <div className="flex items-center gap-1">
-                    <button onClick={removeLastAction} disabled={state.actions.length === 0}
-                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">
-                      <RotateCcw className="size-3" /> {t("actions.undo")}
+                    <button onClick={undo} disabled={undoDepth === 0}
+                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      title={t("actions.undoTip")}>
+                      <Undo2 className="size-3" /> {t("actions.undo")}
                     </button>
                     <button onClick={clearCurrentHand}
                       className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-destructive">
@@ -789,16 +860,16 @@ export default function HandBuilder() {
                 <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("board.title")}</h2>
                 <CardPicker label={t("board.flop")} count={3} selected={state.board.flop}
                   disabled={usedCards} clearLabel={t("common.clear")}
-                  onPick={cards => update("board", { ...state.board, flop: cards })} />
+                  onPick={cards => { snapshot(); update("board", { ...state.board, flop: cards }); }} />
                 {state.board.flop.length === 3 && (
                   <CardPicker label={t("board.turn")} count={1} selected={state.board.turn ? [state.board.turn] : []}
                     disabled={usedCards} clearLabel={t("common.clear")}
-                    onPick={cards => update("board", { ...state.board, turn: cards[0] || "" })} />
+                    onPick={cards => { snapshot(); update("board", { ...state.board, turn: cards[0] || "" }); }} />
                 )}
                 {state.board.turn && (
                   <CardPicker label={t("board.river")} count={1} selected={state.board.river ? [state.board.river] : []}
                     disabled={usedCards} clearLabel={t("common.clear")}
-                    onPick={cards => update("board", { ...state.board, river: cards[0] || "" })} />
+                    onPick={cards => { snapshot(); update("board", { ...state.board, river: cards[0] || "" }); }} />
                 )}
               </section>
             )}
