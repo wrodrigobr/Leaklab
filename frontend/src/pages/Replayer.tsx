@@ -716,6 +716,13 @@ function SidePanels({
                               (isPostflop && (spr != null || sizingPct != null)) ||
                               eq != null || (req != null && req > 0) || reqImplicit != null;
 
+        // #23: ressalva de open off-tree — o vilão abriu maior que o GTO, então a
+        // range de defesa mostrada (vs open mínimo) é mais larga que a correta.
+        const osm = !isPostflop ? pg?.open_size_mismatch : null;
+        const whyFull = osm
+          ? `${why ? why + " " : ""}${t("card.openOversizeCaveat", { facing: osm.facing_bb, canonical: osm.canonical_bb })}`
+          : why;
+
         return (
           <DecisionCard
             verdict={verdict}
@@ -730,7 +737,7 @@ function SidePanels({
             isActionOk={isActionOk}
             evidence={evidence}
             indicators={hasIndicators ? indicators : undefined}
-            why={why}
+            why={whyFull}
             proNotes={proNotes}
             footer={{
               stackBb: step.hero_stack_bb,

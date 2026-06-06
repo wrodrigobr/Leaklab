@@ -121,6 +121,7 @@
     "whyAggrProfit": "{{act}} with equity {{eqPct}}% above the {{reqLabel}} {{reqPct}}% — profitable pressure.",
     "whyAggrRisk": "{{act}} with equity {{eqPct}}% below the {{reqLabel}} {{reqPct}}% — high risk without equity.",
     "whyInRange": "{{hand}} is in the {{scen}} range{{pct}} @ {{bucket}}.",
+    "openOversizeCaveat": "Note: villain opened {{facing}}bb (bigger than the GTO open ~{{canonical}}bb). The defense shown is vs the min-open — vs a larger open the correct defense is tighter, so folding marginal hands is defensible.",
     "whyOutRange": "{{hand}} is outside the {{scen}} range{{pct}} @ {{bucket}}.",
     "whyMultiway": "Multiway spot with no precomputed solver solution — heuristic analysis with moderate confidence.",
     "whyEqStrong": "Strong hand — clear equity advantage.",

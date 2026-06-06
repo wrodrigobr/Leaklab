@@ -112,6 +112,7 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'heroWasAggressor':   state.metadata.get('hero_was_aggressor', False),
             'facingLimp':         state.metadata.get('facing_limp', False),  # pote limpado (fora de cobertura GTO)
             'callerPosition':     state.metadata.get('caller_position', ''),  # cold caller (pra rotear squeeze)
+            'facingToBb':         state.metadata.get('facing_to_bb'),  # #23: open enfrentado em bb (raise-to total)
         },
         'hand_profile': hand_profile,
         'math': {

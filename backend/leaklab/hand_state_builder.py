@@ -149,6 +149,23 @@ def _facing_size_at(actions: List[ParsedAction], hero_index: int,
     return facing
 
 
+_RAISE_TO_RE = re.compile(r"\bto\s+([\d.]+)", re.IGNORECASE)
+
+
+def _facing_to_total_at(actions: List[ParsedAction], hero_index: int,
+                        street: str) -> float:
+    """Tamanho TOTAL ('raise to' X) da última aposta/raise antes do hero — não o
+    incremento. PokerStars loga 'raises 546 to 626' e o parser captura 546 (o
+    incremento); o GW/canônico raciocina sobre o 'to' total (626). Lê o 'to Y' do
+    raw quando presente; senão usa a.amount (formato GG 'raises to Y' já é total)."""
+    total = 0.0
+    for a in actions[:hero_index]:
+        if a.street == street and a.action in {'bets', 'raises', 'all-in'}:
+            m = _RAISE_TO_RE.search(a.raw or '')
+            total = float(m.group(1)) if m else (a.amount or 0.0)
+    return total
+
+
 def _effective_stack(hand: ParsedHand, hero: str,
                      actions_before: List[ParsedAction]) -> float:
     """Stack efetivo em BBs estimado subtraindo o que o hero já colocou."""
@@ -199,6 +216,10 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         actions_before = hand.actions[:idx]
         pot_size = _pot_up_to(hand.actions, idx)
         facing_size = _facing_size_at(hand.actions, idx, street)
+        # Tamanho do open enfrentado em bb ('raise to' total / bb) — usado pra detectar
+        # open off-tree (maior que o GTO) e não marcar fold de defesa como crítico (#23).
+        _bb_amt = (hand.bb or 0) or 1.0
+        facing_to_bb = round(_facing_to_total_at(hand.actions, idx, street) / _bb_amt, 2)
         position = _infer_position(hand, hero)
         eff_stack = _effective_stack(hand, hero, actions_before)
 
@@ -294,6 +315,7 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'hero_was_aggressor': hero_was_aggressor,
                 'facing_limp': facing_limp,
                 'caller_position': caller_position,
+                'facing_to_bb': facing_to_bb,  # #23: tamanho do open enfrentado (bb)
             },
         )
         states.append(state)

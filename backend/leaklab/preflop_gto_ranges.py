@@ -313,6 +313,32 @@ def villain_open_range(position: str, stack_bb: float, n_players: int | None = N
     return out
 
 
+def _canonical_open_bb(bk_data: dict, opener_pos: str) -> Optional[float]:
+    """Tamanho de open canônico do GTO p/ a posição do opener, em bb — lido do código
+    de sizing (R{x}) modal na RFI do opener (ex.: 'R2.1' → 2.1bb). None se o opener
+    abre só jam (RAI, sem R-code) ou sem cobertura. Usado p/ detectar open off-tree
+    (vilão abriu maior que o GTO) e não punir o fold de defesa como crítico (#23)."""
+    rfi = (bk_data.get('RFI') or {}).get(opener_pos)
+    if not isinstance(rfi, dict):
+        return None
+    counts: dict[str, int] = {}
+    for hf in (rfi.get('hand_freqs') or {}).values():
+        for code in hf:
+            if code.startswith('R') and code != 'RAI':
+                counts[code] = counts.get(code, 0) + 1
+    if not counts:
+        return None
+    code = max(counts, key=counts.get)   # R-code modal (ex.: 'R2.1')
+    try:
+        return float(code[1:])
+    except (ValueError, IndexError):
+        return None
+
+
+# Open ≥ este fator do canônico = off-tree "maior que o GTO" (ex.: 2bb→2.8bb+).
+_OPEN_OVERSIZE_FACTOR = 1.4
+
+
 def _attach_ev_loss(base: dict) -> None:
     """Anexa ev_loss_bb à análise preflop em QUALQUER caminho de saída (inclui o
     push/fold que retorna cedo). Só Classic (PKO terá overlay próprio); NULL
@@ -349,6 +375,7 @@ def _analyze_preflop_impl(
     hero_was_aggressor: bool = False,  # hero já deu raise nesta street antes desta decisão
     facing_limp: bool = False,  # pote limpado (limp sem raise) — árvore fora da cobertura GTO
     is_pko: bool = False,  # torneio PKO/bounty — usa ranges PKO do GW (RFI) quando cobertos
+    facing_to_bb: float = 0.0,  # #23: tamanho do open enfrentado (raise-to total, em bb)
 ) -> dict:
     """
     Retorna análise GTO completa de uma decisão preflop.
@@ -721,6 +748,29 @@ def _analyze_preflop_impl(
             # mais preciso que verificar in/out range. Fallback pro modo rec/in_rng.
             quality = _vs_rfi_quality_new(action_taken, in_rng, rec, hand_freq if has_hf else None)
 
+            # #23: open OFF-TREE (vilão abriu MAIOR que o GTO). A range de defesa é
+            # vs o open mínimo canônico; vs um open maior a defesa correta é mais
+            # tight, então foldar uma mão marginal é DEFENSÁVEL — não marcar crítico.
+            # Rebaixa o fold (leak/major_leak → acceptable) e anexa flag pro card.
+            open_caveat = None
+            _canon_open = _canonical_open_bb(bk_data, vs_pos)
+            if (_canon_open and facing_to_bb
+                    and facing_to_bb >= _canon_open * _OPEN_OVERSIZE_FACTOR):
+                open_caveat = {'facing_bb': round(facing_to_bb, 1),
+                               'canonical_bb': _canon_open}
+                # Só rebaixa a DEFESA MARGINAL (call-dominada): vs um open maior, são
+                # essas mãos que viram fold. Mão de VALUE que o GTO defende sobretudo
+                # com agressão (raise/jam > call) NUNCA é fold defensável, mesmo vs open
+                # grande — segue crítico (ex.: AA/KK/QQ/99 que 3betam). Usa a freq EXATA
+                # da mão (hand_freq) quando há; senão cai na presença de raise/jam no rec.
+                if has_hf:
+                    _is_value = (hand_freq.get('raise', 0) + hand_freq.get('allin', 0)) > hand_freq.get('call', 0)
+                else:
+                    _is_value = ('raise' in rec) or ('jam' in rec)
+                if (action_taken.lower() == 'fold' and not _is_value
+                        and quality in ('leak', 'major_leak')):
+                    quality = 'acceptable'
+
             base.update({
                 'available': True, 'in_range': in_rng,
                 'range_pct':    aggr_pct,
@@ -733,6 +783,7 @@ def _analyze_preflop_impl(
                 'hand_freq':  hand_freq,  # freq EXATA da mão hero (use no Decision Card)
                 'fold_hands': fold_hands, 'call_hands': call_hands,
                 'raise_hands': raise_hands, 'allin_hands': allin_hands,
+                'open_size_mismatch': open_caveat,  # #23: open off-tree (None se normal)
                 'pro_notes':  _vs_rfi_notes_new(pos, vs_pos, hero_hand_type, stack_bb,
                                                  aggr_pct, in_rng, rec, action_taken),
             })

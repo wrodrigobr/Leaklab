@@ -121,6 +121,7 @@
     "whyAggrProfit": "{{act}} com equity {{eqPct}}% acima do {{reqLabel}} {{reqPct}}% — pressão lucrativa.",
     "whyAggrRisk": "{{act}} com equity {{eqPct}}% abaixo do {{reqLabel}} {{reqPct}}% — risco alto sem equity.",
     "whyInRange": "{{hand}} está no range {{scen}}{{pct}} @ {{bucket}}.",
+    "openOversizeCaveat": "Obs.: o vilão abriu {{facing}}bb (maior que o open GTO ~{{canonical}}bb). A defesa mostrada é vs o open mínimo — vs um open maior a defesa correta é mais tight, então foldar mãos marginais é defensável.",
     "whyOutRange": "{{hand}} está fora do range {{scen}}{{pct}} @ {{bucket}}.",
     "whyMultiway": "Spot multiway sem solução pré-computada no solver — análise heurística com confiança moderada.",
     "whyEqStrong": "Mão forte — vantagem clara de equity.",

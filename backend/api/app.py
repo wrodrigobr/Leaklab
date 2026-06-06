@@ -3869,6 +3869,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 hero_was_aggressor = bool(spot.get('heroWasAggressor')),
                                 facing_limp        = bool(spot.get('facingLimp')),
                                 caller_position    = spot.get('callerPosition', ''),
+                                # #23: open enfrentado em bb (raise-to total) — pro card
+                                # rebaixar fold de defesa marginal vs open off-tree.
+                                facing_to_bb       = float(spot.get('facingToBb') or 0),
                             )
                             # Fallback for call-vs-shove (no vs_3bet data yet):
                             # use RFI range membership as proxy for shove-call quality
