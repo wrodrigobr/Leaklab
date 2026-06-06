@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Play, Trash2, RotateCcw, FileText, ChevronRight, Star, Settings2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Download, Play, Trash2, RotateCcw, FileText, ChevronRight, Star, Settings2, Loader2 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
+import { tournaments } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   generateHandHistory,
@@ -83,6 +85,7 @@ function CardPicker({
           return (
             <button
               key={card}
+              data-card={card}
               onClick={() => toggle(card)}
               disabled={isDis}
               className={cn(
@@ -196,8 +199,11 @@ const initialState = (): BuilderState => {
 
 export default function HandBuilder() {
   const { t } = useTranslation("handbuilder");
+  const navigate = useNavigate();
   const [state, setState] = useState(initialState);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeErr, setAnalyzeErr] = useState("");
 
   useEffect(() => {
     localStorage.setItem("handBuilderDraft", JSON.stringify(state));
@@ -497,6 +503,19 @@ export default function HandBuilder() {
     if (!confirm(t("preview.confirmReset"))) return;
     localStorage.removeItem("handBuilderDraft");
     setState(initialState());
+  };
+
+  // Analisa a mão recriada direto pelo pipeline e abre o torneio no resultado.
+  const analyzeNow = async () => {
+    if (!fullHhText || analyzing) return;
+    setAnalyzing(true); setAnalyzeErr("");
+    try {
+      const res = await tournaments.analyze(fullHhText);
+      navigate(`/tournaments/${res.tournament_id}`);
+    } catch (e) {
+      setAnalyzeErr(e instanceof Error ? e.message : t("preview.analyzeError"));
+      setAnalyzing(false);
+    }
   };
 
   // Posições em ordem de ação (UTG…BTN, SB, BB) pra exibir os chips de setup.
@@ -837,15 +856,14 @@ export default function HandBuilder() {
               </pre>
 
               {fullHhText && (
-                <a href="/?import=builder"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    localStorage.setItem("pendingImport", fullHhText);
-                    window.location.href = "/?import=builder";
-                  }}
-                  className="flex items-center justify-center gap-1 w-full px-3 py-2 rounded-md bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:bg-primary/90">
-                  <Play className="size-3" /> {t("preview.analyzeNow")}
-                </a>
+                <button onClick={analyzeNow} disabled={analyzing}
+                  className="flex items-center justify-center gap-1 w-full px-3 py-2 rounded-md bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:bg-primary/90 disabled:opacity-60">
+                  {analyzing ? <Loader2 className="size-3 animate-spin" /> : <Play className="size-3" />}
+                  {analyzing ? t("preview.analyzing") : t("preview.analyzeNow")}
+                </button>
+              )}
+              {analyzeErr && (
+                <p className="text-[10px] text-destructive font-mono">{analyzeErr}</p>
               )}
             </section>
           </div>

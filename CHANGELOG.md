@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(hand-builder): "Analisar agora" agora realmente analisa (handoff estava morto)
+
+> Achado no **teste e2e** (Playwright dirigindo o browser real, recriando uma mão). O botão "Analisar agora" gravava o HH em `localStorage.pendingImport` e redirecionava pra `/?import=builder` — mas **nada no app consumia esse flag** (o param se perdia no redirect `/`→`/dashboard`), então a mão recriada nunca era analisada. Agora o botão chama `tournaments.analyze(hh)` direto, com estado de **loading** ("Analisando…") + mensagem de erro amigável, e ao concluir navega pra `/tournaments/:id` (o torneio recém-analisado). Removido o `pendingImport`/`window.location` morto. Adicionado `data-card` nos botões do card picker (hook de teste). **Validado e2e ponta a ponta:** recriei UTG abre 2.5bb → BTN (hero) 3beta 3x → folds → "Analisar agora" → caiu em `/tournaments/999999` com a decisão do hero persistida (`gto_label=gto_correct`). i18n 3 locales (`analyzing`/`analyzeError`); typecheck + build ok.
+
 ### feat(hand-builder): atalhos de sizing contextuais no registro de ações
 
 > Botões de sizing que preenchem o campo de aposta (em bb) conforme o contexto, pra recriar mãos sem fazer conta. **Open preflop** (só o BB na frente): `2bb · 2.5bb · 3bb`. **3bet/raise** (enfrentando uma aposta): `min` (raise mínimo) · `3x` (3× a aposta enfrentada) · `pot` (raise do tamanho do pote = `invested + pote + 2·toCall`). **Bet postflop** (sem aposta na frente): `⅓ · ½ · ⅔ · pot` (fração do pote). O `CurrentActorCard` agora recebe o **pote no momento da ação** (novo `potBefore`: antes + blinds + maior comprometido por jogador por street) e mostra "Pote: X bb" ao lado de Stack/Pra-pagar. Cada atalho preenche o campo (depois clica Bet/Raise) — tooltips i18n explicam cada um. Validado: open 2.5bb; 3bet vs 2.5bb → min 4 / 3x 7.5 / pot 8 bb; bet pot 5.5bb → ⅓ 1.8 / ½ 2.8 / pot 5.5; raise vs 3.7bb → min 7.4 / pot 16.6. typecheck + build + vitest 17/17.

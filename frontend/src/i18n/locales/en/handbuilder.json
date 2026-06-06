@@ -66,6 +66,8 @@
     "plusOne": " + 1 in progress",
     "placeholder": "(choose the table, the hero cards and log the actions to see the HH live)",
     "analyzeNow": "Analyze now",
+    "analyzing": "Analyzing…",
+    "analyzeError": "Couldn't analyze — check the hand and try again.",
     "confirmReset": "Erase everything and start over?"
   }
 }

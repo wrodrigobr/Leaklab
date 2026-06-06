@@ -66,6 +66,8 @@
     "plusOne": " + 1 em andamento",
     "placeholder": "(escolha a mesa, as cartas do hero e registre as ações pra ver o HH em tempo real)",
     "analyzeNow": "Analisar agora",
+    "analyzing": "Analisando…",
+    "analyzeError": "Erro ao analisar — confira a mão e tente de novo.",
     "confirmReset": "Apagar tudo e começar do zero?"
   }
 }
