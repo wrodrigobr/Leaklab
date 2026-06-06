@@ -319,6 +319,8 @@ function SidePanels({
 
         // ──────── Pré-cálculos compartilhados (postflop) ────────
         const eq = step.hand_equity ?? null;
+        // #27: equity vs a RFI range real do opener (vs_rfi) — não vs mão aleatória.
+        const isVsRange = step.equity_source === "vs_range";
         const poRaw = step.pot_odds_equity ?? null;
         // Engine usa adjusted_required_equity (pot_odds + realization_adj + pressure_adj)
         // para classificar. Usamos isso quando disponível — coerência verdict × frase × badge.
@@ -645,7 +647,7 @@ function SidePanels({
             )}
             {eq != null && (
               <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap"
-                title={showAuditPreflop ? t("card.reqVsRandomTip") : t("card.equityTip")}>
+                title={showAuditPreflop ? (isVsRange ? t("card.reqVsRangeTip") : t("card.reqVsRandomTip")) : t("card.equityTip")}>
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Equity</span>
                 <span className={cn(
                   "font-bold tabular-nums",
@@ -655,7 +657,7 @@ function SidePanels({
                 )}>{(eq * 100).toFixed(1)}%</span>
                 <span className="text-muted-foreground text-[10px] whitespace-nowrap">
                   {eq >= 0.65 ? t("card.eqStrong") : eq >= 0.50 ? t("card.eqFavorable") : eq >= 0.35 ? t("card.eqMarginal") : t("card.eqWeak")}
-                  {(showAuditPreflop || isShoveFb) && <span className="text-muted-foreground/60"> · {t("card.vsRandom")}</span>}
+                  {(showAuditPreflop || isShoveFb) && <span className="text-muted-foreground/60"> · {isVsRange ? t("card.vsRange") : t("card.vsRandom")}</span>}
                 </span>
               </div>
             )}
@@ -678,7 +680,7 @@ function SidePanels({
               // veredito diz que a ação foi ERRO (ex.: heurística "RAISE +EV vs fold"
               // num spot que o engine manda CALL) — senão o +pp verde contradiz o "ERRO".
               const ppMuted = isPpMuted({ showAuditPreflop: !!showAuditPreflop, effectiveGtoLabel, eq, reqShown, isActionOk });
-              const ppTip = showAuditPreflop ? t("card.reqVsRandomTip")
+              const ppTip = showAuditPreflop ? (isVsRange ? t("card.reqVsRangeTip") : t("card.reqVsRandomTip"))
                 : effectiveGtoLabel ? t("card.reqSolverContextTip")
                 : tooltip;
               return (

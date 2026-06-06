@@ -60,7 +60,8 @@ def build_math_snapshot(state: HandState) -> MathSnapshot:
     if facing > 0:
         pot_odds_equity = round(facing / (pot + facing), 4) if (pot + facing) > 0 else None
 
-    estimated_equity = _estimate_hand_equity(state.hero_cards, state.board, state.street)
+    villain_range = (state.metadata or {}).get('villain_range') if state.street == 'preflop' else None
+    estimated_equity = _estimate_hand_equity(state.hero_cards, state.board, state.street, villain_range)
     # Ajuste multiway: equity heuristica eh calibrada vs random HU. Em pote
     # 3+way, equity real cai significativamente. Aplica fator empirico em
     # postflop (preflop ja usa ranges GTO especificos por cenario).
@@ -83,7 +84,8 @@ def build_math_snapshot(state: HandState) -> MathSnapshot:
     )
 
 
-def _estimate_hand_equity(hero_cards: str | None, board, street: str) -> float | None:
+def _estimate_hand_equity(hero_cards: str | None, board, street: str,
+                          villain_range: dict | None = None) -> float | None:
     if not hero_cards:
         return None
     ranks = hero_cards[0] + (hero_cards[2] if len(hero_cards) >= 4 else "")
@@ -91,9 +93,19 @@ def _estimate_hand_equity(hero_cards: str | None, board, street: str) -> float |
     broadway = all(r in "TJQKA" for r in ranks)
     suited = len(hero_cards) >= 4 and hero_cards[1] == hero_cards[3]
     if street == "preflop":
+        canon = _canon_hand(hero_cards)
+        # #27 range-aware: contra um open conhecido, equity vs a RANGE GTO real do
+        # villain (tight) — não vs random. Cai no vs-random se não há range/cobertura.
+        if canon and villain_range:
+            try:
+                from leaklab.equity import equity_vs_range
+                eq = equity_vs_range(canon, villain_range)
+                if eq is not None:
+                    return eq
+            except Exception:
+                pass
         # equity exata vs uma mão aleatória (tabela Monte Carlo). É o que o card
         # rotula "vs random". Fallback no heurístico antigo só se a mão não casar.
-        canon = _canon_hand(hero_cards)
         if canon and canon in PREFLOP_EQ_VS_RANDOM:
             return PREFLOP_EQ_VS_RANDOM[canon]
         if pair:

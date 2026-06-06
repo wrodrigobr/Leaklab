@@ -249,6 +249,7 @@ export interface ReplayStep {
   pot_odds_equity?: number;
   adjusted_required_equity?: number;  // engine usa isto (pot_odds + realization_adj + pressure_adj) para classificar
   hand_equity?: number;
+  equity_source?: "vs_range" | "vs_random";  // #27: equity vs range real do opener (vs_rfi) ou vs aleatória
   m_ratio?: number;
   icm_pressure?: string;
   icm_tax_pct?: number | null;  // mesa final: chip% − equity ICM% (>0 pilha grande, <0 short stack)

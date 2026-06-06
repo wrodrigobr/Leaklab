@@ -26,6 +26,27 @@ def _parse_cards(raw) -> list:
 def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> dict:
     """Constrói o input do Decision Engine para um HandState."""
     spot      = classify_spot(state)
+
+    # #27 range-aware: quando o hero DEFENDE contra um único open (vs_rfi), injeta a
+    # RFI range GTO real do opener pra equity vs RANGE (não vs random). Só esse caso
+    # (open simples) — 3bet/4bet têm ranges mais estreitas e ficam no vs-random.
+    if (state.street == 'preflop'
+            and (state.metadata or {}).get('preflop_raises_faced') == 1
+            and state.villain_position and state.villain_position != 'unknown'):
+        try:
+            from .preflop_gto_ranges import villain_open_range
+            mtt = state.metadata.get('mtt_context', {}) or {}
+            vr = villain_open_range(
+                state.villain_position,
+                state.effective_stack_bb or 0.0,
+                state.metadata.get('n_players'),
+                bool(mtt.get('isPko')),
+            )
+            if vr:
+                state.metadata['villain_range'] = vr
+        except Exception:
+            pass
+
     math      = build_math_snapshot(state)
 
     # Injetar equity no metadata — ajustada por draws para postflop
@@ -104,6 +125,9 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'impliedOddsFactor':        math.implied_odds_factor,
             'reverseImpliedOddsFactor': math.reverse_implied_odds_factor,
             'pressureScore':            math.pressure_score,
+            # #27: 'vs_range' quando a equity foi calculada vs a RFI range real do
+            # opener (vs_rfi); 'vs_random' caso contrário (proxy mão aleatória).
+            'equitySource':             'vs_range' if state.metadata.get('villain_range') else 'vs_random',
         },
         'range_evaluation': {
             'recommendedPrimaryAction': range_eval.recommended_primary_action,

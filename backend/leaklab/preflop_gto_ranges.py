@@ -275,6 +275,44 @@ def _norm_pos(position: str, n_players: int | None = None) -> str:
     return _POS_NORM.get(p, p)
 
 
+def villain_open_range(position: str, stack_bb: float, n_players: int | None = None,
+                       is_pko: bool = False) -> dict:
+    """Range de ABERTURA (RFI) do villain numa posição, como {hand_canon: weight}
+    para o cálculo de equity vs range (#27). weight = freq não-fold da mão (raise +
+    allin) quando o GW traz hand_freqs; senão 1.0 por membership em raise/allin_hands.
+
+    Usado quando o hero DEFENDE contra um open: o villain não tem mãos aleatórias,
+    tem a RFI range daquela posição. Vazio ({}) se não há cobertura (cai no
+    vs-random no caller). PKO usa a range PKO do estágio; senão a Classic."""
+    pos = _norm_pos(position, n_players)
+    bk_data = None
+    if is_pko:
+        _pko_bk, _stg, _lbl = _pko_ranges_for(stack_bb)
+        if _pko_bk:
+            bk_data = _pko_bk
+    if bk_data is None:
+        bk_data = _load().get('ranges', {}).get(_stack_bucket(stack_bb), {})
+    rfi = (bk_data.get('RFI') or {}).get(pos)
+    if not rfi:
+        return {}
+    raise_hs = rfi.get('raise_hands', '') or rfi.get('hands', '')
+    allin_hs = rfi.get('allin_hands', '')
+    members = _expand_range(raise_hs) | _expand_range(allin_hs)
+    if not members:
+        return {}
+    hand_freqs = rfi.get('hand_freqs', {}) or {}
+    out: dict[str, float] = {}
+    for h in members:
+        hf = hand_freqs.get(h, {})
+        if hf:
+            w = sum(float(f) for code, f in hf.items()
+                    if code == 'RAI' or (code.startswith('R') and code != 'F'))
+            out[h] = w if w > 0 else 1.0
+        else:
+            out[h] = 1.0
+    return out
+
+
 def _attach_ev_loss(base: dict) -> None:
     """Anexa ev_loss_bb à análise preflop em QUALQUER caminho de saída (inclui o
     push/fold que retorna cedo). Só Classic (PKO terá overlay próprio); NULL
