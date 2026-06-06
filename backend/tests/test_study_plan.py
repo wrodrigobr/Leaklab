@@ -116,8 +116,21 @@ def test_study_plan_cache_key_v2():
     quando fonte muda entre GTO ↔ heurístico)."""
     import inspect
     src = inspect.getsource(generate_study_plan)
-    assert 'study_plan_v5:' in src, "Cache key deve usar prefixo 'study_plan_v5:'"
+    assert 'study_plan_v6:' in src, "Cache key deve usar prefixo 'study_plan_v6:'"
     print("OK  test_study_plan_cache_key_v2")
+
+
+def test_study_plan_uses_ev_leaks():
+    """#24/#25: o plano deve injetar os vazamentos por EV (bb perdidos) no prompt
+    e priorizar por eles. Guard de fonte (sem chamar a LLM)."""
+    import inspect
+    src = inspect.getsource(generate_study_plan)
+    assert 'ev_leaks' in src
+    assert 'Vazamentos por EV PERDIDO' in src
+    assert 'total_ev_loss_bb' in src
+    # o ev_leaks entra no cache key (regenera quando o EV muda)
+    assert "'ev': ev_leaks" in src
+    print("OK  test_study_plan_uses_ev_leaks")
 
 
 def test_study_plan_cache_consistency():

@@ -998,7 +998,8 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
                         user_id: int | None = None,
                         force_new: bool = False,
                         player_stats: dict | None = None,
-                        leak_source: str = 'gto') -> dict:
+                        leak_source: str = 'gto',
+                        ev_leaks: list | None = None) -> dict:
     """
     Gera plano de estudos personalizado baseado nos leaks reais do jogador.
     Retorna dict com cards[], resumo, nível identificado e `source` (gto|heuristic|empty).
@@ -1014,9 +1015,9 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
         k: v for k, v in (player_stats or {}).items()
         if k != 'total_hands' and v is not None
     } if player_stats else {}
-    mem_key = 'study_plan_v5:' + hashlib.md5(
+    mem_key = 'study_plan_v6:' + hashlib.md5(
         json.dumps({'leaks': leaks, 'evo_len': len(evolution), 'stats': stats_fingerprint,
-                    'source': leak_source}, sort_keys=True).encode()
+                    'source': leak_source, 'ev': ev_leaks or []}, sort_keys=True).encode()
     ).hexdigest()
     # Chave DB estável — plano canônico único por aluno
     db_key = 'study_plan_current'
@@ -1058,6 +1059,17 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
         for l in leaks[:8]
     )
 
+    # Vazamentos por EV PERDIDO (#24/#25) — quantos bb cada spot custa. PRIORIDADE
+    # do plano: o leak que mais sangra EV vale mais que vários pequenos.
+    ev_txt = ''
+    if ev_leaks:
+        ev_txt = '\n'.join(
+            f"  - {l.get('position', '?')} {l.get('street', '')} (ideal: {l.get('ideal_action', '')}): "
+            f"−{l.get('total_ev_loss_bb', 0)} bb em {l.get('n', 0)} decisões "
+            f"(−{l.get('avg_ev_loss_bb', 0)} bb/decisão)"
+            for l in ev_leaks[:6]
+        )
+
     # --- HUD stats section (se disponível) ---
     hud_txt = _format_hud_stats_for_prompt(player_stats) if player_stats else ''
 
@@ -1081,12 +1093,16 @@ Analise os dados de performance abaixo e gere um plano de estudos DETALHADO e PE
 {hud_txt}
 **Leaks identificados (por frequência de erro):**{source_note}
 {leaks_txt}
+{('''
+**Vazamentos por EV PERDIDO (bb deixados na mesa — PRIORIZE A ORDEM DO PLANO POR AQUI):**
+Cada spot abaixo mostra quantos big blinds o jogador deixou na mesa vs a melhor jogada GTO. Um leak que custa muito EV (bb) vale mais que um leak frequente porém barato. Ordene o plano do que mais sangra EV pro que menos.
+''' + ev_txt) if ev_txt else ''}
 
 ## Instrução de Coach
 
 Use os HUD Stats comportamentais para enriquecer o diagnóstico: se VPIP alto + PFR baixo, o jogador é loose-passive; se AF abaixo de 2x, o postflop é passivo demais; se Open Limp% acima de 5%, há problema de fold equity pré-flop; se BB Defense baixa, o jogador está sendo exploitado no big blind. Cruze os HUD Stats com os Leaks identificados para gerar módulos muito mais específicos e personalizados.
 
-Gere um plano de estudos com exatamente 6 itens, do leak mais crítico ao menos crítico.
+Gere um plano de estudos com exatamente 6 itens, ordenados pela PRIORIDADE DE EV — comece pelos vazamentos que mais custam bb (lista "Vazamentos por EV PERDIDO" acima, quando disponível); na ausência dela, use a frequência de erro. Quando souber o custo em bb de um leak, cite-o no diagnóstico ("este leak custa ~X bb/decisão").
 Cada item deve ser um módulo de estudo completo com:
 
 1. Título direto e específico ao leak (máx 6 palavras)
@@ -1868,7 +1884,7 @@ def _template_twin(profile: dict, lang: str = 'pt-BR') -> str:
 
 def coach_chat_reply(message: str, leaks: list, evolution: list,
                      hero: str = 'Jogador', frequencies: dict | None = None,
-                     leak_source: str = 'gto') -> str:
+                     leak_source: str = 'gto', ev_leaks: list | None = None) -> str:
     """Responde pergunta do usuário com contexto real de desempenho.
 
     leak_source: 'gto' (default) ou 'heuristic' — origem dos leaks. Informa o Claude
@@ -1889,6 +1905,15 @@ def coach_chat_reply(message: str, leaks: list, evolution: list,
             for l in leaks[:5]
         )
         ctx_parts.append(f"Top leaks detectados{source_note}:\n{leaks_txt}")
+
+    if ev_leaks:
+        evloss_txt = '\n'.join(
+            f"  - {l.get('position', '?')} {l.get('street', '')} (ideal: {l.get('ideal_action', '')}): "
+            f"−{l.get('total_ev_loss_bb', 0)} bb em {l.get('n', 0)} decisões"
+            for l in ev_leaks[:5]
+        )
+        ctx_parts.append("Vazamentos que mais custam EV (bb perdidos vs a melhor jogada — "
+                         "priorize estes ao orientar):\n" + evloss_txt)
 
     if evolution:
         recent = evolution[-5:]

@@ -1891,7 +1891,7 @@ def coach_chat():
 
     message = sanitize_llm_input(message, max_len=1000)
 
-    from database.repositories import get_leak_ranking_gto_first
+    from database.repositories import get_leak_ranking_gto_first, get_ev_leaks as _get_ev_leaks
     days        = 90
     leak_data   = get_leak_ranking_gto_first(g.user_id, days)
     leaks       = leak_data['leaks']
@@ -1899,10 +1899,11 @@ def coach_chat():
     evolution   = get_evolution_metrics(g.user_id, days) or []
     freqs       = get_player_action_frequencies(g.user_id, days)
     hero        = g.user.get('username', 'Jogador')
+    ev_leaks    = _get_ev_leaks(g.user_id, days).get('leaks')   # #24/#25: prioriza por bb
 
     try:
         reply = coach_chat_reply(message, leaks, evolution, hero=hero,
-                                  frequencies=freqs, leak_source=leak_source)
+                                  frequencies=freqs, leak_source=leak_source, ev_leaks=ev_leaks)
         return jsonify({'reply': reply, 'source': leak_source})
     except Exception as e:
         log.exception("coach_chat error")
@@ -2901,9 +2902,11 @@ def coach_student_study_plan(student_id):
         tourns = get_tournaments(student_id, limit=1)
         hero = tourns[0]['hero'] if tourns else 'Aluno'
         force_new = request.args.get('new') == '1'
+        from database.repositories import get_ev_leaks as _get_ev_leaks
+        _ev = _get_ev_leaks(student_id, days).get('leaks')   # #24/#25: prioriza por bb
         plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=student_id,
                                    force_new=force_new, player_stats=player_stats,
-                                   leak_source=leak_source)
+                                   leak_source=leak_source, ev_leaks=_ev)
         return jsonify(plan)
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -3392,9 +3395,11 @@ def study_plan():
         # Aluno com coach não pode forçar regerar — plano é gerenciado pelo coach
         force_new = request.args.get('new') == '1' and not coach_id_val
 
+        from database.repositories import get_ev_leaks as _get_ev_leaks
+        _ev = _get_ev_leaks(g.user_id, days, last_n=last_n).get('leaks')   # #24/#25: prioriza por bb
         plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id,
                                    force_new=force_new, player_stats=player_stats,
-                                   leak_source=leak_source)
+                                   leak_source=leak_source, ev_leaks=_ev)
 
         # Aplicar overrides do coach nos cards para que o aluno veja o mesmo conteúdo
         coach_managed = False
