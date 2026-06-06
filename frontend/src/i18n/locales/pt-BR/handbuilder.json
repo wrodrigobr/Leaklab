@@ -13,7 +13,11 @@
     "positions": "Posições",
     "clickHero": "clique na ⭐ pra marcar o hero",
     "markHero": "Marcar como hero",
-    "confirmResize": "Trocar o tamanho da mesa recria os jogadores e limpa a mão atual. Continuar?"
+    "confirmResize": "Trocar o tamanho da mesa recria os jogadores e limpa a mão atual. Continuar?",
+    "removePos": "Remover posição da mesa",
+    "confirmRemove": "Mudar os jogadores da mesa limpa a mão atual. Continuar?",
+    "nPlayers": "{{n}} jogadores",
+    "addPos": "Adicionar posição"
   },
   "advanced": {
     "title": "Avançado",

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Download, Play, Trash2, RotateCcw, FileText, ChevronRight, Star, Settings2, Loader2, Undo2, Upload } from "lucide-react";
+import { Download, Play, Trash2, RotateCcw, FileText, ChevronRight, Star, Settings2, Loader2, Undo2, Upload, X, Plus } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { tournaments } from "@/lib/api";
 import { importHandHistory } from "@/lib/hhImport";
@@ -443,6 +443,41 @@ export default function HandBuilder() {
   const setPlayerStackBb = (seat: number, stackBb: number) =>
     editPlayer(seat, { stack: Math.round(Math.max(0, stackBb) * BB_CHIPS) });
 
+  // Remove uma posição/jogador da mesa (mesas reais têm 7/5/etc.). Re-deriva
+  // posições pelo nº de jogadores. Reseta a mão atual (ações referenciam jogadores).
+  const removePlayer = (seat: number) => {
+    if (state.players.length <= 2) return;   // mínimo heads-up
+    const hasContent = state.actions.length > 0 || state.heroCards.length > 0;
+    if (hasContent && !confirm(t("setup.confirmRemove"))) return;
+    snapshot();
+    const remaining = state.players.filter(p => p.seat !== seat);
+    const seatNums = remaining.map(p => p.seat).sort((a, b) => a - b);
+    let buttonSeat = state.buttonSeat;
+    if (buttonSeat === seat) buttonSeat = seatNums[seatNums.length - 1];
+    let heroSeat = state.heroSeat;
+    if (heroSeat === seat) heroSeat = buttonSeat;
+    setState(s => ({
+      ...s, players: remaining, buttonSeat, heroSeat,
+      heroCards: [], actions: [], board: { flop: [], turn: "", river: "" }, showWinner: "", winAmount: 0,
+    }));
+  };
+
+  // Adiciona um jogador no próximo assento livre (até 9). Nome único por assento.
+  const addPlayer = () => {
+    if (state.players.length >= 9) return;
+    const hasContent = state.actions.length > 0 || state.heroCards.length > 0;
+    if (hasContent && !confirm(t("setup.confirmRemove"))) return;
+    snapshot();
+    const occupied = new Set(state.players.map(p => p.seat));
+    const seat = Array.from({ length: 9 }, (_, i) => i + 1).find(s => !occupied.has(s));
+    if (!seat) return;
+    setState(s => ({
+      ...s,
+      players: [...s.players, { seat, name: `P${seat}`, stack: Math.round(s.stackBb * BB_CHIPS) }].sort((a, b) => a.seat - b.seat),
+      heroCards: [], actions: [], board: { flop: [], turn: "", river: "" }, showWinner: "", winAmount: 0,
+    }));
+  };
+
   const addAction = (action: ActionType, player: string, amount?: number) => {
     snapshot();
     update("actions", [...state.actions, { player, street: currentStreet, action, amount }]);
@@ -663,12 +698,19 @@ export default function HandBuilder() {
                       <div key={p.seat}
                         className={cn("rounded-lg border p-2 transition-colors",
                           isHero ? "border-primary bg-primary/10" : "border-border bg-background")}>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-1">
                           <span className={cn("font-mono text-xs font-bold", isHero ? "text-primary" : "text-foreground")}>{pos}</span>
-                          <button onClick={() => update("heroSeat", p.seat)} title={t("setup.markHero")}
-                            className={cn("transition-colors", isHero ? "text-primary" : "text-muted-foreground/40 hover:text-primary")}>
-                            <Star className={cn("size-3.5", isHero && "fill-primary")} />
-                          </button>
+                          <div className="flex items-center gap-0.5">
+                            <button onClick={() => update("heroSeat", p.seat)} title={t("setup.markHero")}
+                              className={cn("transition-colors", isHero ? "text-primary" : "text-muted-foreground/40 hover:text-primary")}>
+                              <Star className={cn("size-3.5", isHero && "fill-primary")} />
+                            </button>
+                            <button onClick={() => removePlayer(p.seat)} disabled={state.players.length <= 2}
+                              title={t("setup.removePos")}
+                              className="text-muted-foreground/40 hover:text-destructive transition-colors disabled:opacity-20 disabled:hover:text-muted-foreground/40">
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1 mt-1">
                           <input type="number" min={0} value={toBB(p.stack, state.bb)}
@@ -680,6 +722,13 @@ export default function HandBuilder() {
                       </div>
                     );
                   })}
+                </div>
+                <div className="flex items-center justify-between pt-0.5">
+                  <span className="font-mono text-[10px] text-muted-foreground">{t("setup.nPlayers", { n: state.players.length })}</span>
+                  <button onClick={addPlayer} disabled={state.players.length >= 9}
+                    className="flex items-center gap-1 px-2 py-1 rounded font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary border border-border/50 hover:border-primary/50 disabled:opacity-30 transition-colors">
+                    <Plus className="size-3" /> {t("setup.addPos")}
+                  </button>
                 </div>
               </div>
 
@@ -845,7 +894,9 @@ export default function HandBuilder() {
                   {state.actions.map((a, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs font-mono">
                       <span className="text-muted-foreground w-14">[{t(`street.${a.street}`)}]</span>
-                      <span className="text-foreground flex-1">{a.player}</span>
+                      <span className="text-foreground flex-1">{
+                        (() => { const pl = state.players.find(pp => pp.name === a.player); return pl ? positionOf(pl) : a.player; })()
+                      }</span>
                       <span className="text-primary uppercase">{t(`act.${a.action}`)}</span>
                       {a.amount != null && <span className="tabular-nums text-foreground/70">{fmtBB(a.amount, state.bb)}</span>}
                     </div>

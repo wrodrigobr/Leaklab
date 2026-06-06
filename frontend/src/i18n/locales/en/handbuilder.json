@@ -13,7 +13,11 @@
     "positions": "Positions",
     "clickHero": "click the ⭐ to set the hero",
     "markHero": "Set as hero",
-    "confirmResize": "Changing the table size rebuilds the players and clears the current hand. Continue?"
+    "confirmResize": "Changing the table size rebuilds the players and clears the current hand. Continue?",
+    "removePos": "Remove position from the table",
+    "confirmRemove": "Changing the table's players clears the current hand. Continue?",
+    "nPlayers": "{{n}} players",
+    "addPos": "Add position"
   },
   "advanced": {
     "title": "Advanced",
