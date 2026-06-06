@@ -276,6 +276,17 @@
     "minor": "Minor deviation",
     "critical": "Critical deviation"
   },
+  "leakFinder": {
+    "title": "Leak Finder",
+    "tooltip": "Your leaks prioritized by EV LOST (big blinds left on the table), not by error count. The top is where the most EV escapes — start there.",
+    "headline_label": "left on the table across {{n}} leaked spots",
+    "spots_title": "Biggest leaks by EV",
+    "idealPrefix": "ideal:",
+    "coaching": "Attack top-down: fixing leak #1 is worth more than several small ones. Each row is a recurring spot — review it in the Replayer and train it on the Ghost Table.",
+    "sev_high": "High EV impact",
+    "sev_medium": "Medium EV impact",
+    "sev_low": "Low EV impact"
+  },
   "resultsVsGto": {
     "title": "Results × GTO",
     "tooltip": "Decisions that were CLEAR GTO mistakes but the hand was won — the result masks the process error. Winning doesn't validate the play.",

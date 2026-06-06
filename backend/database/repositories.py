@@ -665,6 +665,29 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
         conn.close()
 
 
+def get_consolidated_leak_report(user_id: int, days: int = 90, last_n: int | None = None,
+                                 limit: int = 6) -> dict:
+    """#25 — Leak Finder consolidado (carro-chefe "LeakLab").
+
+    Síntese priorizada dos vazamentos por **EV perdido** (reusa get_ev_leaks):
+    severidade por bb, total deixado na mesa, e o top leak em destaque. Cada leak
+    traz (posição, street, ação ideal, n, total/avg bb) p/ o card linkar pro
+    drill/revisão. Os rótulos legíveis e o CTA ficam no front (i18n)."""
+    ev = get_ev_leaks(user_id, days, last_n, limit=limit)
+
+    def _sev(bb: float) -> str:
+        return 'high' if bb >= 5 else ('medium' if bb >= 1.5 else 'low')
+
+    leaks = [{**l, 'severity': _sev(l.get('total_ev_loss_bb') or 0)} for l in ev['leaks']]
+    return {
+        'total_ev_loss_bb': ev['total_ev_loss_bb'],
+        'n_leaks':          ev['n_leaks'],
+        'leaks':            leaks,
+        'top_leak':         leaks[0] if leaks else None,
+        'has_ev':           bool(leaks),
+    }
+
+
 def get_leak_ranking_gto_first(user_id: int, days: int = 90, last_n: int | None = None,
                                 limit: int = 10) -> dict:
     """Leak ranking unificado: tenta GTO primeiro (gto_label-based), fallback heurístico (label-based).

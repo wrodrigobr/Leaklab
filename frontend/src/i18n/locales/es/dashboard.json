@@ -276,6 +276,17 @@
     "minor": "Desviación menor",
     "critical": "Desviación crítica"
   },
+  "leakFinder": {
+    "title": "Leak Finder",
+    "tooltip": "Tus leaks priorizados por EV PERDIDO (big blinds dejados en la mesa), no por cantidad de errores. Arriba es donde más EV se escapa — empezá por ahí.",
+    "headline_label": "dejados en la mesa en {{n}} spots con fugas",
+    "spots_title": "Mayores leaks por EV",
+    "idealPrefix": "ideal:",
+    "coaching": "Atacá de arriba hacia abajo: corregir el leak nº 1 vale más que varios pequeños. Cada fila es un spot recurrente — revisalo en el Replayer y entrenalo en el Ghost Table.",
+    "sev_high": "Alto impacto de EV",
+    "sev_medium": "Impacto medio de EV",
+    "sev_low": "Bajo impacto de EV"
+  },
   "resultsVsGto": {
     "title": "Resultado × GTO",
     "tooltip": "Decisiones que fueron error CLARO de GTO pero la mano se ganó — el resultado enmascara el error de proceso. Ganar no valida la jugada.",

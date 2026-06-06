@@ -936,6 +936,17 @@ def player_ev_leaks():
     return jsonify(get_ev_leaks(g.user_id, days, last_n=last_n))
 
 
+@app.route('/player/leak-finder', methods=['GET'])
+@require_auth
+def player_leak_finder():
+    """#25 — Leak Finder consolidado: vazamentos priorizados por EV perdido (bb),
+    com severidade e o top leak em destaque. Carro-chefe da síntese 'LeakLab'."""
+    from database.repositories import get_consolidated_leak_report
+    days   = int(request.args.get('days', 90))
+    last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
+    return jsonify(get_consolidated_leak_report(g.user_id, days, last_n=last_n))
+
+
 @app.route('/player/pressure-profile', methods=['GET'])
 @require_auth
 def player_pressure_profile():

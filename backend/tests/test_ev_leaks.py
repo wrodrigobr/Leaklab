@@ -14,7 +14,7 @@ _TMPDB.close()
 os.environ['LEAKLAB_DB'] = _TMPDB.name
 
 from database.schema import init_db, get_conn
-from database.repositories import get_ev_leaks
+from database.repositories import get_ev_leaks, get_consolidated_leak_report
 init_db()
 
 
@@ -61,6 +61,26 @@ def test_excludes_zero_and_null():
     assert all(l['avg_ev_loss_bb'] > 0 for l in r['leaks'])
     assert not any(l['street'] == 'flop' for l in r['leaks'])
     print("OK  test_excludes_zero_and_null")
+
+
+def test_consolidated_report_severity():
+    # #25: relatório consolidado adiciona severidade + top_leak + has_ev
+    uid = _seed()
+    r = get_consolidated_leak_report(uid, days=3650)
+    assert r['has_ev'] is True and r['n_leaks'] == 3
+    top = r['top_leak']
+    assert top['position'] == 'BB' and top['ideal_action'] == 'call'
+    # BB/call = 4.0bb < 5 → medium; nenhum spot sintético >= 5 → sem 'high' aqui
+    assert top['severity'] == 'medium'
+    # threshold: total >= 5 = high. Reforça um spot grande:
+    c = get_conn()
+    tid = dict(c.execute("SELECT id FROM tournaments WHERE tournament_id='TEV'").fetchone())['id']
+    c.execute("INSERT INTO decisions (tournament_id,hand_id,street,action_taken,best_action,position,label,score,ev_loss_bb) "
+              "VALUES (?,?,?,?,?,?,?,?,?)", (tid, 'H6', 'preflop', 'fold', 'jam', 'UTG', 'clear_mistake', 0.8, 6.0))
+    c.commit(); c.close()
+    r2 = get_consolidated_leak_report(uid, days=3650)
+    assert r2['top_leak']['position'] == 'UTG' and r2['top_leak']['severity'] == 'high'
+    print("OK  test_consolidated_report_severity")
 
 
 if __name__ == '__main__':

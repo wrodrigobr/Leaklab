@@ -142,7 +142,7 @@
     "resultsgto_measures": "Decisiones que fueron error CLARO de GTO pero la mano se ganó (cobraste el bote).",
     "resultsgto_interpret": "Cuanto más alto, más enmascara el resultado los errores de proceso — ganar no valida la jugada. Revisá estos spots aunque ganes.",
     "evloss_measures": "Cuántos big blinds perdiste vs la mejor jugada GTO en esa decisión (preflop).",
-    "evloss_interpret": "Convierte \"incorrecto\" en \"perdiste X bb\": cuantifica el costo de la jugada. Cuanto mayor, más EV dejó la decisión en la mesa; las jugadas correctas quedan en 0.",
+    "evloss_interpret": "Convierte \"incorrecto\" en \"perdiste X bb\": cuantifica el costo de la jugada. Cuanto mayor, más EV dejó la decisión en la mesa; las jugadas correctas quedan en 0. El panel Leak Finder ordena tus spots por ese total de bb perdidos.",
     "p1": "El <strong>Leak ROI</strong> combina la frecuencia de cada spot de error con el costo en EV de equivocarse allí — priorizando lo que más pesa a largo plazo. Spots frecuentes de bajo costo pueden importar más que spots raros de alto costo, y el ROI captura eso."
   },
   "gto_method": {

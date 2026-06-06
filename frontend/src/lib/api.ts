@@ -627,6 +627,24 @@ export interface ResultsVsGtoData {
   top_spots: ResultsVsGtoSpot[];
 }
 
+// #25 — Leak Finder consolidado (vazamentos priorizados por EV perdido em bb)
+export interface LeakFinderLeak {
+  position: string;
+  street: string;
+  ideal_action: string;
+  n: number;
+  total_ev_loss_bb: number;
+  avg_ev_loss_bb: number;
+  severity: "high" | "medium" | "low";
+}
+export interface LeakFinderData {
+  total_ev_loss_bb: number;
+  n_leaks: number;
+  leaks: LeakFinderLeak[];
+  top_leak: LeakFinderLeak | null;
+  has_ev: boolean;
+}
+
 export interface PlayerStatsResponse {
   total_hands: number;
   vpip: number | null;
@@ -1021,6 +1039,9 @@ export const metrics = {
 
   resultsVsGto: (lastN?: number) =>
     request<ResultsVsGtoData>(`/player/results-vs-gto${lastN != null ? `?last_n=${lastN}` : ""}`),
+
+  leakFinder: (lastN?: number) =>
+    request<LeakFinderData>(`/player/leak-finder${lastN != null ? `?last_n=${lastN}` : ""}`),
 
   dna: (days = 90) =>
     request<PlayerDnaResponse>(`/player/dna?days=${days}`),
