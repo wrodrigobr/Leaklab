@@ -478,11 +478,17 @@ export default function HandBuilder() {
       const k = `preflop|${clockwiseFromSb[1].name}`;
       if (byPlayerStreet.has(k)) invested.set(clockwiseFromSb[1].name, (invested.get(clockwiseFromSb[1].name) ?? 0) - state.bb);
     }
-    const updatedPlayers = state.players.map(p => {
-      const lost = invested.get(p.name) ?? 0;
-      const won  = state.showWinner === p.name ? state.winAmount : 0;
-      return { ...p, stack: Math.max(0, p.stack - lost + won) };
-    });
+    // Carryover de stacks só quando há vencedor+pote (tracking de torneio real).
+    // Sem vencedor (comum ao recriar de vídeo), mantém os stacks — você ajusta
+    // por mão pelas posições. Evita "sumir" fichas sem ninguém coletar.
+    const hasWinner = !!state.showWinner && state.winAmount > 0;
+    const updatedPlayers = hasWinner
+      ? state.players.map(p => {
+          const lost = invested.get(p.name) ?? 0;
+          const won  = state.showWinner === p.name ? state.winAmount : 0;
+          return { ...p, stack: Math.max(0, p.stack - lost + won) };
+        })
+      : state.players;
     const seatNums = updatedPlayers.map(p => p.seat).sort((a, b) => a - b);
     const btnIdx = seatNums.indexOf(state.buttonSeat);
     const nextBtn = seatNums[(btnIdx + 1) % seatNums.length] ?? state.buttonSeat;
@@ -505,11 +511,14 @@ export default function HandBuilder() {
     setState(initialState());
   };
 
-  // Analisa a mão recriada direto pelo pipeline e abre o torneio no resultado.
+  // Analisa o torneio recriado e abre o resultado. O builder é DONO do seu
+  // tournament_id, então re-analisar a mesma sessão deve SOBRESCREVER (não dar 409
+  // "já importado") — apaga o torneio anterior com esse id antes de reimportar.
   const analyzeNow = async () => {
     if (!fullHhText || analyzing) return;
     setAnalyzing(true); setAnalyzeErr("");
     try {
+      await tournaments.deleteOne(state.tournamentId).catch(() => {});
       const res = await tournaments.analyze(fullHhText);
       navigate(`/tournaments/${res.tournament_id}`);
     } catch (e) {
@@ -717,13 +726,11 @@ export default function HandBuilder() {
                 ) : handComplete ? (
                   <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/5 p-4 text-center space-y-3">
                     <p className="text-sm font-bold text-emerald-300">{t("actions.handDone")}</p>
-                    <p className="text-xs text-muted-foreground">{t("actions.markWinnerHint")}</p>
-                    {state.showWinner && state.winAmount > 0 && (
-                      <button onClick={nextHand}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-500 text-emerald-950 font-mono text-xs font-bold uppercase tracking-widest hover:bg-emerald-400">
-                        <ChevronRight className="size-3.5" /> {t("actions.nextHand")}
-                      </button>
-                    )}
+                    <p className="text-xs text-muted-foreground">{t("actions.handDoneHint")}</p>
+                    <button onClick={nextHand}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-500 text-emerald-950 font-mono text-xs font-bold uppercase tracking-widest hover:bg-emerald-400">
+                      <ChevronRight className="size-3.5" /> {t("actions.nextHand")}
+                    </button>
                   </div>
                 ) : (
                   <CurrentActorCard
@@ -844,9 +851,10 @@ export default function HandBuilder() {
 
               <div className="flex items-center justify-between text-[10px] font-mono">
                 <span className="text-muted-foreground">
-                  {state.completedHands.length === 0
-                    ? t("preview.handInProgress")
-                    : t("preview.completed", { n: state.completedHands.length, more: hhText ? t("preview.plusOne") : "" })}
+                  {t("preview.handNo", { n: state.completedHands.length + 1 })}
+                  {state.completedHands.length > 0 && (
+                    <span className="text-primary"> · {t("preview.inFile", { n: state.completedHands.length })}</span>
+                  )}
                 </span>
                 <span className="text-primary">#{state.tournamentId}</span>
               </div>
@@ -855,11 +863,18 @@ export default function HandBuilder() {
                 {fullHhText || t("preview.placeholder")}
               </pre>
 
+              {/* Próxima mão — finaliza a atual e começa a próxima (acumula no arquivo) */}
+              <button onClick={nextHand} disabled={state.actions.length === 0}
+                className="flex items-center justify-center gap-1 w-full px-3 py-2 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-500/25 disabled:opacity-30 disabled:hover:bg-emerald-500/15">
+                <ChevronRight className="size-3" /> {t("preview.nextHand")}
+              </button>
+              <p className="text-[9px] text-muted-foreground/70 text-center leading-snug">{t("preview.buildTip")}</p>
+
               {fullHhText && (
                 <button onClick={analyzeNow} disabled={analyzing}
                   className="flex items-center justify-center gap-1 w-full px-3 py-2 rounded-md bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:bg-primary/90 disabled:opacity-60">
                   {analyzing ? <Loader2 className="size-3 animate-spin" /> : <Play className="size-3" />}
-                  {analyzing ? t("preview.analyzing") : t("preview.analyzeNow")}
+                  {analyzing ? t("preview.analyzing") : t("preview.analyzeTournament")}
                 </button>
               )}
               {analyzeErr && (
