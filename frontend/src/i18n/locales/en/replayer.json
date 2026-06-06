@@ -134,6 +134,8 @@
     "statusDoneLoaded": "GTO analysis loaded.",
     "statusDoneNoSolution": "The solver ran but returned no solution — multiway spot not covered in the current GTO tree.",
     "statusError": "Could not compute GTO for this spot.",
+    "quotaExceeded": "You've reached your plan's monthly limit for on-demand GTO analyses.",
+    "quotaUpgradeHint": "Upgrade your plan for unlimited analyses.",
     "coachCorrect": "Correct",
     "limpDeadMoney": "≈ push/fold · limp treated as dead money",
     "limpDeadMoneyTip": "Someone limped, but short-stacked a jam/fold over the limp is the SAME push/fold decision (the limp is just dead money, not a new GTO spot). Verdict from your push/fold range."

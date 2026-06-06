@@ -5765,7 +5765,8 @@ def admin_gto_queue():
 @require_auth
 def player_request_gto(hand_id):
     """Usuário solicita análise GTO para uma mão específica."""
-    from database.repositories import request_gto_for_hand, get_decisions
+    from database.repositories import (request_gto_for_hand, get_decisions,
+                                        can_request_solve, increment_solves, get_quota_status)
     user_id = g.user_id
     body = request.get_json(force=True) or {}
     tournament_id = body.get('tournament_id')
@@ -5777,7 +5778,25 @@ def player_request_gto(hand_id):
     if not t:
         return jsonify({'error': 'Torneio não encontrado'}), 404
 
+    # #26 — cota de solves on-demand por tier. Bloqueia ANTES de enfileirar quando
+    # o plano estourou; 402 sinaliza upsell pro front. Pro/coach = ilimitado.
+    allowed, remaining = can_request_solve(user_id)
+    if not allowed:
+        qs = get_quota_status(user_id)
+        return jsonify({
+            'error':        'solve_quota_exceeded',
+            'message':      'Você atingiu o limite de análises GTO sob demanda do seu plano neste mês.',
+            'solves_used':  qs.get('solves_used'),
+            'solves_limit': (qs.get('limits') or {}).get('solves'),
+            'plan':         qs.get('plan'),
+        }), 402
+
     result = request_gto_for_hand(t['id'], hand_id, user_id)
+    # Consome a cota só quando um solve NOVO entra na fila (idempotente: re-pedir
+    # um já existente não cobra).
+    if result.get('inserted'):
+        increment_solves(user_id)
+        remaining = (remaining - 1) if remaining is not None else None
     status_map = {
         'pending':    'Na fila — análise será processada em breve.',
         'processing': 'Processando agora...',
@@ -5785,10 +5804,11 @@ def player_request_gto(hand_id):
         'error':      'Ocorreu um erro no processamento anterior.',
     }
     return jsonify({
-        'queued':  result['inserted'],
-        'status':  result['status'],
-        'id':      result['id'],
-        'message': status_map.get(result['status'], 'Na fila.'),
+        'queued':           result['inserted'],
+        'status':           result['status'],
+        'id':               result['id'],
+        'message':          status_map.get(result['status'], 'Na fila.'),
+        'solves_remaining': remaining,   # None = ilimitado
     })
 
 

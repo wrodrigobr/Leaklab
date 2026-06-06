@@ -440,6 +440,7 @@ def _run_migrations(conn):
             # Sprint 9 — BACK-010: quota tracking
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS tournaments_this_month INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_calls_this_month     INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS solves_this_month       INTEGER NOT NULL DEFAULT 0",  # #26 cota de solves
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS quota_reset_at          DATE",
             # Sprint 7 — BACK-006: perfil estendido + reviews
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS photo_url         TEXT",
@@ -960,6 +961,7 @@ def _run_migrations(conn):
             ("invited_by_key",          "ALTER TABLE users ADD COLUMN invited_by_key          TEXT"),
             ("tournaments_this_month",  "ALTER TABLE users ADD COLUMN tournaments_this_month  INTEGER NOT NULL DEFAULT 0"),
             ("ai_calls_this_month",     "ALTER TABLE users ADD COLUMN ai_calls_this_month     INTEGER NOT NULL DEFAULT 0"),
+            ("solves_this_month",       "ALTER TABLE users ADD COLUMN solves_this_month       INTEGER NOT NULL DEFAULT 0"),
             ("quota_reset_at",          "ALTER TABLE users ADD COLUMN quota_reset_at          TEXT"),
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),

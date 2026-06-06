@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, BarChart3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, BarChart3, Lock } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -80,7 +80,7 @@ interface SidePanelsProps {
   setAnnOverride: (v: CoachOverrideLabel) => void;
   openAnnotationForm: () => void;
   t: (key: string, opts?: Record<string, unknown>) => string;
-  gtoRequestStatus: "idle" | "requesting" | "queued" | "done" | "error";
+  gtoRequestStatus: "idle" | "requesting" | "queued" | "solver_queued" | "done" | "error" | "quota_exceeded";
   onRequestGto: () => void;
   tournamentId: string;
   handId: string;
@@ -815,6 +815,16 @@ function SidePanels({
               <p className="text-[11px] text-destructive">{t("card.statusError")}</p>
             </div>
           )}
+          {/* #26 — cota de solves estourada: upsell, não erro */}
+          {gtoRequestStatus === "quota_exceeded" && (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-2.5 py-2">
+              <Lock className="size-3.5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="text-[11px] font-semibold text-amber-300">{t("card.quotaExceeded")}</p>
+                <p className="text-[10px] text-amber-300/70">{t("card.quotaUpgradeHint")}</p>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -1090,7 +1100,7 @@ const Replayer = () => {
   const [annMode, setAnnMode]               = useState<"complement" | "replace">("complement");
   const [annAction, setAnnAction]           = useState("");
   const [annOverride, setAnnOverride]       = useState<CoachOverrideLabel>(null);
-  const [gtoRequestStatus, setGtoRequestStatus] = useState<"idle" | "requesting" | "queued" | "solver_queued" | "done" | "error">("idle");
+  const [gtoRequestStatus, setGtoRequestStatus] = useState<"idle" | "requesting" | "queued" | "solver_queued" | "done" | "error" | "quota_exceeded">("idle");
   // Track which hand_id we already auto-requested so we don't spam on step navigation
   const gtoAutoRequestedRef = useRef<string | null>(null);
 
@@ -1369,7 +1379,12 @@ const Replayer = () => {
       }
     } catch (err) {
       console.error("[GTO] erro na solicitação:", err);
-      setGtoRequestStatus("error");
+      // #26 — cota de solves estourada (402) → upsell, não erro genérico
+      if (err instanceof Error && err.message === "solve_quota_exceeded") {
+        setGtoRequestStatus("quota_exceeded");
+      } else {
+        setGtoRequestStatus("error");
+      }
     }
   };
 

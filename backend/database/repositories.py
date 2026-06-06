@@ -2981,9 +2981,9 @@ def get_baseline_comparison(coach_id: int, student_id: int) -> Optional[dict]:
 # ── BACK-010: Quota / freemium ─────────────────────────────────────────────────
 
 PLAN_LIMITS: dict = {
-    'free':    {'tournaments': 2,    'ai_calls': 15,   'ai_coach_chat': False},
-    'pro':     {'tournaments': None, 'ai_calls': None, 'ai_coach_chat': True},
-    'coach':   {'tournaments': None, 'ai_calls': None, 'ai_coach_chat': True},  # interno
+    'free':    {'tournaments': 2,    'ai_calls': 15,   'ai_coach_chat': False, 'solves': 10},
+    'pro':     {'tournaments': None, 'ai_calls': None, 'ai_coach_chat': True,  'solves': None},
+    'coach':   {'tournaments': None, 'ai_calls': None, 'ai_coach_chat': True,  'solves': None},  # interno
 }
 
 
@@ -2993,7 +2993,8 @@ def get_quota_status(user_id: int) -> dict:
     try:
         row = _fetchone(
             conn,
-            """SELECT plan, tournaments_this_month, ai_calls_this_month, quota_reset_at
+            """SELECT plan, tournaments_this_month, ai_calls_this_month,
+                      solves_this_month, quota_reset_at
                FROM users WHERE id = ?""",
             (user_id,),
         )
@@ -3001,7 +3002,8 @@ def get_quota_status(user_id: int) -> dict:
         conn.close()
 
     if not row:
-        return {'plan': 'free', 'tournaments_used': 0, 'ai_calls_used': 0, 'limits': PLAN_LIMITS['free']}
+        return {'plan': 'free', 'tournaments_used': 0, 'ai_calls_used': 0,
+                'solves_used': 0, 'limits': PLAN_LIMITS['free']}
 
     plan   = row.get('plan') or 'free'
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS['free'])
@@ -3009,6 +3011,7 @@ def get_quota_status(user_id: int) -> dict:
         'plan':             plan,
         'tournaments_used': row.get('tournaments_this_month') or 0,
         'ai_calls_used':    row.get('ai_calls_this_month')    or 0,
+        'solves_used':      row.get('solves_this_month')      or 0,
         'limits':           limits,
     }
 
@@ -3029,6 +3032,7 @@ def _maybe_reset_quota(conn, user_id: int) -> None:
             """UPDATE users
                SET tournaments_this_month = 0,
                    ai_calls_this_month    = 0,
+                   solves_this_month      = 0,
                    quota_reset_at         = ?
                WHERE id = ?""",
             (today.isoformat(), user_id),
@@ -3059,6 +3063,38 @@ def increment_ai_calls(user_id: int) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+def increment_solves(user_id: int) -> None:
+    """#26 — conta 1 solve on-demand (GTO sob demanda) no mês do usuário."""
+    conn = get_conn()
+    try:
+        _maybe_reset_quota(conn, user_id)
+        conn.execute(
+            "UPDATE users SET solves_this_month = solves_this_month + 1 WHERE id = ?",
+            (user_id,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def can_request_solve(user_id: int) -> tuple:
+    """#26 — (permitido, restantes) p/ o solve on-demand. restantes=None = ilimitado
+    (pro/coach). Reseta a cota na virada do mês antes de checar."""
+    conn = get_conn()
+    try:
+        _maybe_reset_quota(conn, user_id)
+        conn.commit()
+        row = _fetchone(conn, "SELECT plan, solves_this_month FROM users WHERE id = ?", (user_id,))
+    finally:
+        conn.close()
+    plan  = (row.get('plan') if row else None) or 'free'
+    limit = PLAN_LIMITS.get(plan, PLAN_LIMITS['free']).get('solves')
+    used  = (row.get('solves_this_month') if row else 0) or 0
+    if limit is None:
+        return True, None
+    return used < limit, max(0, limit - used)
 
 
 # ── BACK-015: Payments ────────────────────────────────────────────────────────
