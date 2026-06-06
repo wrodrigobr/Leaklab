@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, Play, Plus, Trash2, RotateCcw, FileText, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Download, Play, Trash2, RotateCcw, FileText, ChevronRight, Star, Settings2 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { cn } from "@/lib/utils";
 import {
@@ -19,19 +20,41 @@ const SUITS: { s: string; label: string; color: string }[] = [
   { s: "c", label: "♣", color: "text-emerald-400" },
 ];
 
-const ALL_CARDS = RANKS.flatMap(r => SUITS.map(s => r + s.s));
+// 1bb = 100 chips internamente. Mantém o builder "bb-native": stacks/apostas
+// são digitados em bb e convertidos pra fichas só na geração do HH (clean: 2.5bb=250).
+const BB_CHIPS = 100;
+const TABLE_SIZES = [6, 8, 9] as const;
+type TableSize = (typeof TABLE_SIZES)[number];
+
+// Nomes de posição autoritativos — espelham backend hand_state_builder._position_names
+// (ordered[0]=SB, [1]=BB, ..., [n-1]=BTN). Garante que o que o builder mostra é
+// exatamente o que a análise atribui pelo assento.
+function positionNames(n: number): string[] {
+  const names: string[] = new Array(n).fill("");
+  names[0] = "SB"; names[1] = "BB";
+  names[n - 1] = "BTN";
+  if (n >= 4) names[n - 2] = "CO";
+  if (n >= 6) names[n - 3] = "HJ";
+  const utgSeq = ["UTG", "UTG+1", "UTG+2", "MP1", "MP2", "MP3"];
+  let ui = 0;
+  for (let i = 2; i < n; i++) {
+    if (!names[i]) { names[i] = utgSeq[ui] ?? `MP${ui + 1}`; ui++; }
+  }
+  return names;
+}
 
 // ── Card picker ────────────────────────────────────────────────────────────────
 
 function CardPicker({
-  selected, onPick, count = 1, disabled = new Set<string>(),
-  label,
+  selected, onPick, count = 1, disabled = new Set<string>(), label, clearLabel, compact = false,
 }: {
   selected: string[];
   onPick: (cards: string[]) => void;
   count: number;
   disabled?: Set<string>;
   label: string;
+  clearLabel: string;
+  compact?: boolean;
 }) {
   const toggle = (card: string) => {
     if (disabled.has(card) && !selected.includes(card)) return;
@@ -42,13 +65,14 @@ function CardPicker({
       else onPick([...selected, card]);
     }
   };
+  const wCls = compact ? "w-8 h-11" : "w-9 h-12";
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>
         <span className="font-mono text-[10px] text-primary">{selected.length}/{count}</span>
         {selected.length > 0 && (
-          <button onClick={() => onPick([])} className="ml-auto text-[10px] text-muted-foreground hover:text-foreground">limpar</button>
+          <button onClick={() => onPick([])} className="ml-auto text-[10px] text-muted-foreground hover:text-foreground">{clearLabel}</button>
         )}
       </div>
       <div className="flex flex-wrap gap-0.5">
@@ -62,7 +86,8 @@ function CardPicker({
               onClick={() => toggle(card)}
               disabled={isDis}
               className={cn(
-                "w-9 h-12 rounded border font-mono text-xs font-bold flex flex-col items-center justify-center transition-all",
+                "rounded border font-mono text-xs font-bold flex flex-col items-center justify-center transition-all",
+                wCls,
                 isSel ? "bg-primary text-primary-foreground border-primary scale-105 shadow-md" :
                 isDis ? "bg-muted/20 text-muted-foreground/40 border-border/30 cursor-not-allowed" :
                 "bg-card border-border hover:border-primary/60 hover:bg-primary/5",
@@ -82,9 +107,9 @@ function CardPicker({
 // ── Action button ─────────────────────────────────────────────────────────────
 
 function ActionButton({
-  action, available, onClick, color, children,
+  available, onClick, color, children,
 }: {
-  action: ActionType; available: boolean;
+  available: boolean;
   onClick: () => void; color: string;
   children: React.ReactNode;
 }) {
@@ -102,22 +127,40 @@ function ActionButton({
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// chips ↔ BB (UI em bb; HH guarda chips)
+const toBB = (chips: number, bb: number): number => Math.round((chips / bb) * 100) / 100;
+const fmtBB = (chips: number, bb: number): string => `${toBB(chips, bb).toFixed(toBB(chips, bb) % 1 === 0 ? 0 : 1)}bb`;
 
-// MAX_SEATS now lives in state (state.maxSeats — 8 or 9)
+// ── Defaults (bb-native: 6-max, 100bb) ──────────────────────────────────────────
+
+const DEFAULT_TABLE: TableSize = 6;
+const DEFAULT_STACK_BB = 100;
+
+function buildPlayers(size: TableSize, stackBb: number): PlayerInput[] {
+  const names = positionNames(size);
+  // assento i (1..N), button no assento N → ordered[0]=seat1=SB ... ordered[N-1]=seatN=BTN.
+  return Array.from({ length: size }, (_, k) => ({
+    seat: k + 1,
+    name: names[k],
+    stack: Math.round(stackBb * BB_CHIPS),
+  }));
+}
 
 const DEFAULTS = {
+  // Torneio/metadados (Avançado) — auto-preenchidos; irrelevantes pra recriar um spot.
   handId: "100000001",
   tournamentId: "999999",
   buyIn: "1.00+0.10",
-  level: "V",
-  sb: 40,
-  bb: 80,
-  ante: 10,
-  maxSeats: 9 as 2 | 6 | 8 | 9,
-  players: [] as PlayerInput[],
-  buttonSeat: 1,
-  heroSeat: 9,
+  level: "I",
+  sb: BB_CHIPS / 2,   // 0.5bb
+  bb: BB_CHIPS,       // 1bb
+  ante: 0,
+  // Mesa (Simples)
+  tableSize: DEFAULT_TABLE as TableSize,
+  stackBb: DEFAULT_STACK_BB,
+  players: buildPlayers(DEFAULT_TABLE, DEFAULT_STACK_BB),
+  buttonSeat: DEFAULT_TABLE,           // BTN no último assento
+  heroSeat: DEFAULT_TABLE,             // hero = BTN por padrão
   heroCards: [] as string[],
   actions: [] as HandAction[],
   board: { flop: [] as string[], turn: "", river: "" },
@@ -126,17 +169,17 @@ const DEFAULTS = {
   completedHands: [] as string[],
 };
 
-const initialState = (): typeof DEFAULTS => {
+type BuilderState = typeof DEFAULTS;
+
+const initialState = (): BuilderState => {
   const stored = typeof window !== "undefined" ? localStorage.getItem("handBuilderDraft") : null;
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
-      // Merge com DEFAULTS pra cobrir campos novos em drafts antigos
       return {
         ...DEFAULTS,
         ...parsed,
-        // Garantir tipos pra arrays/objects aninhados
-        players:        Array.isArray(parsed.players)        ? parsed.players        : DEFAULTS.players,
+        players:        Array.isArray(parsed.players) && parsed.players.length ? parsed.players : DEFAULTS.players,
         heroCards:      Array.isArray(parsed.heroCards)      ? parsed.heroCards      : DEFAULTS.heroCards,
         actions:        Array.isArray(parsed.actions)        ? parsed.actions        : DEFAULTS.actions,
         completedHands: Array.isArray(parsed.completedHands) ? parsed.completedHands : DEFAULTS.completedHands,
@@ -152,14 +195,15 @@ const initialState = (): typeof DEFAULTS => {
 };
 
 export default function HandBuilder() {
+  const { t } = useTranslation("handbuilder");
   const [state, setState] = useState(initialState);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Persist draft
   useEffect(() => {
     localStorage.setItem("handBuilderDraft", JSON.stringify(state));
   }, [state]);
 
-  const update = <K extends keyof typeof state>(key: K, val: (typeof state)[K]) =>
+  const update = <K extends keyof BuilderState>(key: K, val: BuilderState[K]) =>
     setState(s => ({ ...s, [key]: val }));
 
   const heroPlayer = state.players.find(p => p.seat === state.heroSeat);
@@ -168,7 +212,7 @@ export default function HandBuilder() {
     [state.actions]
   );
 
-  // Ordem clockwise a partir do SB (depois do button): [SB, BB, UTG, UTG+1, ..., BTN]
+  // Ordem clockwise a partir do SB (depois do button): [SB, BB, UTG, ..., BTN]
   const clockwiseFromSb = useMemo<PlayerInput[]>(() => {
     if (state.players.length === 0) return [];
     const seatNums = state.players.map(p => p.seat).sort((a, b) => a - b);
@@ -183,21 +227,13 @@ export default function HandBuilder() {
     return ordered;
   }, [state.players, state.buttonSeat]);
 
-  const positionLabel = (player: PlayerInput): string => {
-    const idx = clockwiseFromSb.findIndex(p => p.name === player.name);
+  // Posição autoritativa (mesma lógica do backend) pelo índice clockwise.
+  const positionOf = (player: PlayerInput): string => {
+    const idx = clockwiseFromSb.findIndex(p => p.seat === player.seat);
     if (idx === -1) return "";
-    const n = clockwiseFromSb.length;
-    if (idx === n - 1) return "BTN";
-    if (idx === 0)     return "SB";
-    if (idx === 1)     return "BB";
-    if (idx === 2)     return n > 4 ? "UTG" : "UTG/CO";
-    if (idx === n - 2) return "CO";
-    if (idx === n - 3) return "HJ";
-    if (idx === n - 4) return "LJ";
-    return `UTG+${idx - 2}`;
+    return positionNames(clockwiseFromSb.length)[idx] ?? "";
   };
 
-  // Current street derivada do board
   const currentStreet: Street = useMemo(() => {
     if (state.board.river) return "river";
     if (state.board.turn)  return "turn";
@@ -205,26 +241,19 @@ export default function HandBuilder() {
     return "preflop";
   }, [state.board]);
 
-  // Próximo a agir (auto-rotaciona clockwise a partir do último que agiu).
-  // Usa clockwiseFromSb COMPLETO pra preservar a posição original — necessário
-  // quando o último a agir foldou (ele sai do 'active' mas a posição na ordem
-  // clockwise ainda importa pra calcular o próximo).
   const currentActor = useMemo<PlayerInput | null>(() => {
     if (clockwiseFromSb.length < 2) return null;
     const active = clockwiseFromSb.filter(p => !foldedPlayers.has(p.name));
-    if (active.length <= 1) return null; // hand acabou
+    if (active.length <= 1) return null;
 
     const streetActions = state.actions.filter(a => a.street === currentStreet);
     if (streetActions.length === 0) {
-      // Início da street: preflop começa UTG (idx 2); postflop começa SB (idx 0)
       if (currentStreet === "preflop") return active[2 % active.length] ?? active[0];
       return active[0];
     }
     const lastActor = streetActions[streetActions.length - 1].player;
-    // Posição na ordem CLOCKWISE COMPLETA (inclui foldados)
     const lastIdxFull = clockwiseFromSb.findIndex(p => p.name === lastActor);
     const startFrom = lastIdxFull >= 0 ? lastIdxFull : -1;
-    // Anda clockwise procurando o próximo player que ainda está ativo
     for (let i = 1; i <= clockwiseFromSb.length; i++) {
       const candidate = clockwiseFromSb[(startFrom + i + clockwiseFromSb.length) % clockwiseFromSb.length];
       if (!foldedPlayers.has(candidate.name)) return candidate;
@@ -232,12 +261,10 @@ export default function HandBuilder() {
     return active[0];
   }, [clockwiseFromSb, foldedPlayers, currentStreet, state.actions]);
 
-  // Maior aposta nesta street (pra determinar "facing bet")
   const maxBetThisStreet = useMemo(() => {
     const streetActions = state.actions.filter(a => a.street === currentStreet);
     const blindContext = currentStreet === "preflop";
     let maxBet = blindContext ? state.bb : 0;
-    // Total por player nesta street
     const totalByPlayer = new Map<string, number>();
     if (blindContext) {
       const sbP = clockwiseFromSb[0]; const bbP = clockwiseFromSb[1];
@@ -253,7 +280,6 @@ export default function HandBuilder() {
     return { maxBet, totalByPlayer };
   }, [state.actions, currentStreet, state.sb, state.bb, clockwiseFromSb]);
 
-  // Quanto o currentActor já tem investido nesta street + quanto falta pra call
   const facing = useMemo(() => {
     if (!currentActor) return { invested: 0, toCall: 0, facingBet: false };
     const invested = maxBetThisStreet.totalByPlayer.get(currentActor.name) ?? 0;
@@ -261,23 +287,18 @@ export default function HandBuilder() {
     return { invested, toCall, facingBet: toCall > 0 };
   }, [currentActor, maxBetThisStreet]);
 
-  // Detecta se a street fechou (todos active matched o maxBet OU foldaram OU all-in).
-  // Bloqueia o currentActor card e prompta seleção do próximo board.
   const streetComplete = useMemo<boolean>(() => {
     const active = clockwiseFromSb.filter(p => !foldedPlayers.has(p.name));
-    if (active.length <= 1) return true;  // hand acabou
+    if (active.length <= 1) return true;
     const streetActions = state.actions.filter(a => a.street === currentStreet);
-
-    // Preflop: SB e BB têm posts, mas precisam de ação voluntária (BB tem option).
-    // Para todas as streets, cada player ativo precisa de ao menos 1 ação na street.
     for (const p of active) {
       const playerActions = streetActions.filter(a => a.player === p.name);
       if (playerActions.length === 0) return false;
       const last = playerActions[playerActions.length - 1];
-      if (last.action === "allin") continue;          // all-in não precisa matchar mais
-      if (last.action === "fold")  continue;          // já está fora (não deveria ocorrer aqui)
+      if (last.action === "allin") continue;
+      if (last.action === "fold")  continue;
       const invested = maxBetThisStreet.totalByPlayer.get(p.name) ?? 0;
-      if (invested < maxBetThisStreet.maxBet) return false;  // ainda devendo
+      if (invested < maxBetThisStreet.maxBet) return false;
     }
     return true;
   }, [clockwiseFromSb, foldedPlayers, state.actions, currentStreet, maxBetThisStreet]);
@@ -288,7 +309,6 @@ export default function HandBuilder() {
     return streetComplete && currentStreet === "river";
   }, [clockwiseFromSb, foldedPlayers, streetComplete, currentStreet]);
 
-  // Próxima street pendente (a que precisa do board). Skip se a mão acabou.
   const pendingBoardStreet: Street | null = useMemo(() => {
     if (!streetComplete || handComplete) return null;
     if (currentStreet === "preflop" && state.board.flop.length !== 3) return "flop";
@@ -297,7 +317,6 @@ export default function HandBuilder() {
     return null;
   }, [streetComplete, handComplete, currentStreet, state.board]);
 
-  // Disabled cards = already used
   const usedCards = useMemo(() => {
     const all = new Set<string>();
     state.heroCards.forEach(c => all.add(c));
@@ -307,45 +326,19 @@ export default function HandBuilder() {
     return all;
   }, [state.heroCards, state.board]);
 
-  // Add player
-  const addPlayer = () => {
-    const occupied = new Set(state.players.map(p => p.seat));
-    const nextSeat = Array.from({ length: state.maxSeats }, (_, i) => i + 1).find(s => !occupied.has(s));
-    if (!nextSeat) return;
-    update("players", [...state.players, {
-      seat: nextSeat,
-      name: `Player${state.players.length + 1}`,
-      stack: 3000,
-    }]);
-  };
+  // ── Position-first setup ────────────────────────────────────────────────────
 
-  const removePlayer = (seat: number) => {
-    update("players", state.players.filter(p => p.seat !== seat));
-  };
-
-  const editPlayer = (seat: number, patch: Partial<PlayerInput>) => {
-    update("players", state.players.map(p => p.seat === seat ? { ...p, ...patch } : p));
-  };
-
-  // Add action
-  const addAction = (action: ActionType, player: string, amount?: number) => {
-    update("actions", [...state.actions, { player, street: currentStreet, action, amount }]);
-  };
-
-  const removeLastAction = () => {
-    if (state.actions.length === 0) return;
-    update("actions", state.actions.slice(0, -1));
-  };
-
-  // Limpa só a mão atual (actions, board, hero cards, winner) — mantem players,
-  // button, blinds, tournament config e mãos já completas.
-  const clearCurrentHand = () => {
-    const hasContent = state.actions.length > 0 || state.heroCards.length > 0
-      || state.board.flop.length > 0 || state.board.turn || state.board.river
-      || state.showWinner || state.winAmount > 0;
-    if (hasContent && !confirm("Limpar a mão atual? Players, button e config permanecem.")) return;
+  // Regera a mesa pro tamanho dado (descarta a mão atual). Usado pelos botões 6/8/9.
+  const setTableSize = (size: TableSize) => {
+    const hasContent = state.actions.length > 0 || state.heroCards.length > 0;
+    if (hasContent && !confirm(t("setup.confirmResize"))) return;
+    const players = buildPlayers(size, state.stackBb);
     setState(s => ({
       ...s,
+      tableSize: size,
+      players,
+      buttonSeat: size,
+      heroSeat: size,
       heroCards: [],
       actions: [],
       board: { flop: [], turn: "", river: "" },
@@ -354,7 +347,43 @@ export default function HandBuilder() {
     }));
   };
 
-  // Live HH preview
+  const applyStackToAll = (stackBb: number) => {
+    setState(s => ({
+      ...s,
+      stackBb,
+      players: s.players.map(p => ({ ...p, stack: Math.round(stackBb * BB_CHIPS) })),
+    }));
+  };
+
+  const editPlayer = (seat: number, patch: Partial<PlayerInput>) => {
+    update("players", state.players.map(p => p.seat === seat ? { ...p, ...patch } : p));
+  };
+  const setPlayerStackBb = (seat: number, stackBb: number) =>
+    editPlayer(seat, { stack: Math.round(Math.max(0, stackBb) * BB_CHIPS) });
+
+  const addAction = (action: ActionType, player: string, amount?: number) => {
+    update("actions", [...state.actions, { player, street: currentStreet, action, amount }]);
+  };
+  const removeLastAction = () => {
+    if (state.actions.length === 0) return;
+    update("actions", state.actions.slice(0, -1));
+  };
+
+  const clearCurrentHand = () => {
+    const hasContent = state.actions.length > 0 || state.heroCards.length > 0
+      || state.board.flop.length > 0 || state.board.turn || state.board.river
+      || state.showWinner || state.winAmount > 0;
+    if (hasContent && !confirm(t("actions.confirmClear"))) return;
+    setState(s => ({
+      ...s,
+      heroCards: [], actions: [],
+      board: { flop: [], turn: "", river: "" },
+      showWinner: "", winAmount: 0,
+    }));
+  };
+
+  // ── HH preview ──────────────────────────────────────────────────────────────
+
   const handInput: HandInput | null = useMemo(() => {
     if (!heroPlayer || state.players.length < 2 || state.heroCards.length !== 2) return null;
     return {
@@ -363,7 +392,7 @@ export default function HandBuilder() {
       buyIn: state.buyIn,
       level: state.level,
       sb: state.sb, bb: state.bb, ante: state.ante,
-      maxSeats: state.maxSeats,
+      maxSeats: state.tableSize,
       players: state.players,
       buttonSeat: state.buttonSeat,
       heroName: heroPlayer.name,
@@ -381,8 +410,6 @@ export default function HandBuilder() {
   }, [state, heroPlayer]);
 
   const hhText = handInput ? generateHandHistory(handInput) : "";
-
-  // Conteúdo completo = mãos finalizadas + mão atual (separadas por linha em branco)
   const fullHhText = useMemo(() => {
     const parts = [...state.completedHands];
     if (hhText) parts.push(hhText);
@@ -394,25 +421,16 @@ export default function HandBuilder() {
     const blob = new Blob([fullHhText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `tournament_${state.tournamentId}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    a.href = url; a.download = `tournament_${state.tournamentId}.txt`;
+    a.click(); URL.revokeObjectURL(url);
   };
 
-  // Finaliza a mão atual e prepara a próxima — mantém torneio/players, rotaciona button,
-  // atualiza stacks (deducao do investido + ganhos), incrementa hand_id, limpa actions/board/cards.
   const nextHand = () => {
     if (!hhText) return;
-
-    // 1. Calcula investido por player (somando o maior amount de cada street)
     const invested = new Map<string, number>();
-    // Antes
     state.players.forEach(p => invested.set(p.name, state.ante));
-    // Blinds
     if (clockwiseFromSb[0]) invested.set(clockwiseFromSb[0].name, (invested.get(clockwiseFromSb[0].name) ?? 0) + state.sb);
     if (clockwiseFromSb[1]) invested.set(clockwiseFromSb[1].name, (invested.get(clockwiseFromSb[1].name) ?? 0) + state.bb);
-    // Actions: maior amount por player+street
     const byPlayerStreet = new Map<string, number>();
     for (const a of state.actions) {
       if (a.action === "fold" || a.action === "check") continue;
@@ -420,12 +438,10 @@ export default function HandBuilder() {
       const prev = byPlayerStreet.get(k) ?? 0;
       const v = a.amount ?? 0;
       if (v > prev) {
-        const delta = v - prev;
-        invested.set(a.player, (invested.get(a.player) ?? 0) + delta);
+        invested.set(a.player, (invested.get(a.player) ?? 0) + (v - prev));
         byPlayerStreet.set(k, v);
       }
     }
-    // Pra preflop, SB/BB já tinham contado os blinds — desconta sobreposicao
     if (clockwiseFromSb[0]) {
       const k = `preflop|${clockwiseFromSb[0].name}`;
       if (byPlayerStreet.has(k)) invested.set(clockwiseFromSb[0].name, (invested.get(clockwiseFromSb[0].name) ?? 0) - state.sb);
@@ -434,186 +450,200 @@ export default function HandBuilder() {
       const k = `preflop|${clockwiseFromSb[1].name}`;
       if (byPlayerStreet.has(k)) invested.set(clockwiseFromSb[1].name, (invested.get(clockwiseFromSb[1].name) ?? 0) - state.bb);
     }
-
-    // 2. Atualiza stacks: subtrai investido, adiciona winnings
     const updatedPlayers = state.players.map(p => {
       const lost = invested.get(p.name) ?? 0;
       const won  = state.showWinner === p.name ? state.winAmount : 0;
       return { ...p, stack: Math.max(0, p.stack - lost + won) };
     });
-
-    // 3. Rotaciona button pro próximo seat ocupado clockwise
     const seatNums = updatedPlayers.map(p => p.seat).sort((a, b) => a - b);
     const btnIdx = seatNums.indexOf(state.buttonSeat);
     const nextBtn = seatNums[(btnIdx + 1) % seatNums.length] ?? state.buttonSeat;
-
-    // 4. Incrementa hand_id (preservando padrão numérico)
     const nextHandId = String(Number(state.handId) + 1);
-
     setState(s => ({
       ...s,
       completedHands: [...s.completedHands, hhText],
       handId: nextHandId,
       players: updatedPlayers,
       buttonSeat: nextBtn,
-      heroCards: [],
-      actions: [],
+      heroCards: [], actions: [],
       board: { flop: [], turn: "", river: "" },
-      showWinner: "",
-      winAmount: 0,
+      showWinner: "", winAmount: 0,
     }));
   };
 
   const resetAll = () => {
-    if (!confirm("Apagar toda a mão e começar do zero?")) return;
+    if (!confirm(t("preview.confirmReset"))) return;
     localStorage.removeItem("handBuilderDraft");
     setState(initialState());
   };
+
+  // Posições em ordem de ação (UTG…BTN, SB, BB) pra exibir os chips de setup.
+  const actionOrder = useMemo<PlayerInput[]>(() => {
+    if (clockwiseFromSb.length < 2) return clockwiseFromSb;
+    return [...clockwiseFromSb.slice(2), clockwiseFromSb[0], clockwiseFromSb[1]];
+  }, [clockwiseFromSb]);
 
   return (
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader />
       <div className="mx-auto max-w-[1400px] px-6 py-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Hand Builder</h1>
-          <p className="text-sm text-muted-foreground">
-            Reconstrua manualmente uma mão (de vídeo ou outra fonte) e exporte como hand history PokerStars.
-          </p>
+          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* ── Left: Config ─────────────────────────────────────────────── */}
+          {/* ── Left ─────────────────────────────────────────────────────── */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Stakes/Level */}
-            <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
-              <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                Torneio & Nível
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <label className="space-y-1">
-                  <span className="font-mono text-[10px] text-muted-foreground">Hand ID</span>
-                  <input type="text" value={state.handId}
-                    onChange={e => update("handId", e.target.value)}
-                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono" />
-                </label>
-                <label className="space-y-1">
-                  <span className="font-mono text-[10px] text-muted-foreground">Tournament ID</span>
-                  <input type="text" value={state.tournamentId}
-                    onChange={e => update("tournamentId", e.target.value)}
-                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono" />
-                </label>
-                <label className="space-y-1">
-                  <span className="font-mono text-[10px] text-muted-foreground">Buy-in</span>
-                  <input type="text" value={state.buyIn}
-                    onChange={e => update("buyIn", e.target.value)}
-                    placeholder="1.00+0.10"
-                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono" />
-                </label>
-                <label className="space-y-1">
-                  <span className="font-mono text-[10px] text-muted-foreground">Level (romano)</span>
-                  <input type="text" value={state.level}
-                    onChange={e => update("level", e.target.value)}
-                    placeholder="V"
-                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono" />
-                </label>
-                <label className="space-y-1">
-                  <span className="font-mono text-[10px] text-muted-foreground">SB</span>
-                  <input type="number" value={state.sb}
-                    onChange={e => update("sb", +e.target.value)}
-                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono tabular-nums" />
-                </label>
-                <label className="space-y-1">
-                  <span className="font-mono text-[10px] text-muted-foreground">BB</span>
-                  <input type="number" value={state.bb}
-                    onChange={e => update("bb", +e.target.value)}
-                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono tabular-nums" />
-                </label>
-                <label className="space-y-1">
-                  <span className="font-mono text-[10px] text-muted-foreground">Ante</span>
-                  <input type="number" value={state.ante}
-                    onChange={e => update("ante", +e.target.value)}
-                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono tabular-nums" />
-                </label>
-                <label className="space-y-1">
-                  <span className="font-mono text-[10px] text-muted-foreground">Max seats</span>
-                  <select value={state.maxSeats}
-                    onChange={e => update("maxSeats", +e.target.value as 8 | 9)}
-                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono">
-                    <option value={8}>8-max</option>
-                    <option value={9}>9-max</option>
-                  </select>
-                </label>
-                <label className="space-y-1">
-                  <span className="font-mono text-[10px] text-muted-foreground">BTN Seat</span>
-                  <select value={state.buttonSeat}
-                    onChange={e => update("buttonSeat", +e.target.value)}
-                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono">
-                    {Array.from({ length: state.maxSeats }, (_, i) => i + 1).map(s => (
-                      <option key={s} value={s}>{s}</option>
+
+            {/* Mesa (simples: tamanho + stack) */}
+            <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-4">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                <div className="space-y-1">
+                  <span className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("setup.table")}</span>
+                  <div className="flex gap-1">
+                    {TABLE_SIZES.map(sz => (
+                      <button key={sz} onClick={() => setTableSize(sz)}
+                        className={cn("px-3 py-1.5 rounded-md font-mono text-xs font-bold transition-colors",
+                          state.tableSize === sz ? "bg-primary text-primary-foreground" : "bg-background border border-border hover:border-primary/60")}>
+                        {sz}-max
+                      </button>
                     ))}
-                  </select>
-                </label>
-              </div>
-            </section>
-
-            {/* Players */}
-            <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Jogadores ({state.players.length}/{state.maxSeats})
-                </h2>
-              </div>
-
-              {/* Diagrama de referência: layout 8/9-max — clique seta o BTN */}
-              <SeatLayoutDiagram
-                occupiedSeats={state.players.map(p => p.seat)}
-                buttonSeat={state.buttonSeat}
-                heroSeat={state.heroSeat}
-                maxSeats={state.maxSeats}
-                onSelectButton={(seat) => update("buttonSeat", seat)}
-              />
-
-              <div className="flex items-center justify-end pt-1">
-                <button onClick={addPlayer} disabled={state.players.length >= state.maxSeats}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary/10 text-primary font-mono text-[10px] uppercase tracking-widest hover:bg-primary/20 transition-colors disabled:opacity-30">
-                  <Plus className="size-3" /> Adicionar
-                </button>
-              </div>
-              <div className="space-y-2">
-                {state.players.length === 0 && (
-                  <p className="text-xs text-muted-foreground italic">Adicione ao menos 2 jogadores (incluindo o hero).</p>
-                )}
-                {state.players.map(p => (
-                  <div key={p.seat} className="flex items-center gap-2 text-sm">
-                    <span className="font-mono text-[10px] text-muted-foreground w-8">S{p.seat}</span>
-                    <input type="text" value={p.name}
-                      onChange={e => editPlayer(p.seat, { name: e.target.value })}
-                      className="flex-1 bg-background border border-border rounded px-2 py-1" />
-                    <input type="number" value={p.stack}
-                      onChange={e => editPlayer(p.seat, { stack: +e.target.value })}
-                      className="w-24 bg-background border border-border rounded px-2 py-1 font-mono tabular-nums text-right" />
-                    <label className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-                      <input type="radio" name="hero" checked={p.seat === state.heroSeat}
-                        onChange={() => update("heroSeat", p.seat)} />
-                      hero
-                    </label>
-                    <button onClick={() => removePlayer(p.seat)}
-                      className="text-muted-foreground hover:text-destructive">
-                      <Trash2 className="size-3.5" />
-                    </button>
                   </div>
-                ))}
+                </div>
+                <div className="space-y-1">
+                  <span className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("setup.stackDepth")}</span>
+                  <div className="flex items-center gap-1.5">
+                    <input type="number" min={1} value={state.stackBb}
+                      onChange={e => applyStackToAll(Math.max(1, +e.target.value || 0))}
+                      className="w-20 bg-background border border-border rounded px-2 py-1.5 font-mono tabular-nums text-right text-sm" />
+                    <span className="font-mono text-[11px] text-muted-foreground">bb</span>
+                    <div className="flex gap-1 ml-1">
+                      {[40, 75, 100].map(d => (
+                        <button key={d} onClick={() => applyStackToAll(d)}
+                          className="px-2 py-1 rounded font-mono text-[10px] text-muted-foreground hover:text-primary border border-border/50">{d}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              {/* Posições — clique na estrela pra marcar o hero; edita stack por posição */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("setup.positions")}</span>
+                  <span className="text-[10px] text-muted-foreground">· {t("setup.clickHero")}</span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                  {actionOrder.map(p => {
+                    const pos = positionOf(p);
+                    const isHero = p.seat === state.heroSeat;
+                    const isBtn = p.seat === state.buttonSeat;
+                    return (
+                      <div key={p.seat}
+                        className={cn("rounded-lg border p-2 transition-colors",
+                          isHero ? "border-primary bg-primary/10" : "border-border bg-background")}>
+                        <div className="flex items-center justify-between">
+                          <span className={cn("font-mono text-xs font-bold", isHero ? "text-primary" : "text-foreground")}>{pos}</span>
+                          <button onClick={() => update("heroSeat", p.seat)} title={t("setup.markHero")}
+                            className={cn("transition-colors", isHero ? "text-primary" : "text-muted-foreground/40 hover:text-primary")}>
+                            <Star className={cn("size-3.5", isHero && "fill-primary")} />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1 mt-1">
+                          <input type="number" min={0} value={toBB(p.stack, state.bb)}
+                            onChange={e => setPlayerStackBb(p.seat, +e.target.value || 0)}
+                            className="w-full bg-transparent border-b border-border/40 px-0.5 py-0.5 font-mono tabular-nums text-[11px] text-right focus:border-primary outline-none" />
+                          <span className="font-mono text-[9px] text-muted-foreground">bb</span>
+                        </div>
+                        {isBtn && <span className="block mt-0.5 font-mono text-[8px] text-muted-foreground/60">BTN</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Avançado: metadados de torneio + blinds custom + diagrama */}
+              <details open={showAdvanced} onToggle={e => setShowAdvanced((e.target as HTMLDetailsElement).open)}
+                className="rounded-lg border border-border/50 bg-background/40">
+                <summary className="flex items-center gap-1.5 px-3 py-2 cursor-pointer font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground select-none">
+                  <Settings2 className="size-3" /> {t("advanced.title")}
+                </summary>
+                <div className="p-3 pt-1 space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <label className="space-y-1">
+                      <span className="font-mono text-[10px] text-muted-foreground">{t("advanced.handId")}</span>
+                      <input type="text" value={state.handId} onChange={e => update("handId", e.target.value)}
+                        className="w-full bg-background border border-border rounded px-2 py-1 font-mono" />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="font-mono text-[10px] text-muted-foreground">{t("advanced.tournamentId")}</span>
+                      <input type="text" value={state.tournamentId} onChange={e => update("tournamentId", e.target.value)}
+                        className="w-full bg-background border border-border rounded px-2 py-1 font-mono" />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="font-mono text-[10px] text-muted-foreground">{t("advanced.buyIn")}</span>
+                      <input type="text" value={state.buyIn} onChange={e => update("buyIn", e.target.value)}
+                        className="w-full bg-background border border-border rounded px-2 py-1 font-mono" />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="font-mono text-[10px] text-muted-foreground">{t("advanced.level")}</span>
+                      <input type="text" value={state.level} onChange={e => update("level", e.target.value)}
+                        className="w-full bg-background border border-border rounded px-2 py-1 font-mono" />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="font-mono text-[10px] text-muted-foreground">{t("advanced.sb")}</span>
+                      <input type="number" value={state.sb} onChange={e => update("sb", +e.target.value)}
+                        className="w-full bg-background border border-border rounded px-2 py-1 font-mono tabular-nums" />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="font-mono text-[10px] text-muted-foreground">{t("advanced.bb")}</span>
+                      <input type="number" value={state.bb} onChange={e => update("bb", +e.target.value)}
+                        className="w-full bg-background border border-border rounded px-2 py-1 font-mono tabular-nums" />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="font-mono text-[10px] text-muted-foreground">{t("advanced.ante")}</span>
+                      <input type="number" value={state.ante} onChange={e => update("ante", +e.target.value)}
+                        className="w-full bg-background border border-border rounded px-2 py-1 font-mono tabular-nums" />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="font-mono text-[10px] text-muted-foreground">{t("advanced.btnSeat")}</span>
+                      <select value={state.buttonSeat} onChange={e => update("buttonSeat", +e.target.value)}
+                        className="w-full bg-background border border-border rounded px-2 py-1 font-mono">
+                        {state.players.map(p => p.seat).sort((a, b) => a - b).map(s => (
+                          <option key={s} value={s}>{t("advanced.seat")} {s}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <p className="font-mono text-[9px] text-muted-foreground/70">{t("advanced.note")}</p>
+                  {/* Renomear jogadores (opcional) */}
+                  <div className="space-y-1.5">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("advanced.players")}</span>
+                    {clockwiseFromSb.map(p => (
+                      <div key={p.seat} className="flex items-center gap-2 text-sm">
+                        <span className="font-mono text-[10px] text-muted-foreground w-12">{positionOf(p)}</span>
+                        <input type="text" value={p.name}
+                          onChange={e => editPlayer(p.seat, { name: e.target.value })}
+                          className="flex-1 bg-background border border-border rounded px-2 py-1 text-xs" />
+                        <button onClick={() => update("heroSeat", p.seat)}
+                          className={cn("font-mono text-[10px] px-2 py-1 rounded", p.seat === state.heroSeat ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary")}>
+                          hero
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </details>
             </section>
 
             {/* Hero cards */}
             {heroPlayer && (
               <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
                 <CardPicker
-                  label={`Cartas do hero (${heroPlayer.name})`}
-                  selected={state.heroCards}
-                  count={2}
-                  disabled={usedCards}
+                  label={t("heroCards.label", { pos: positionOf(heroPlayer) })}
+                  selected={state.heroCards} count={2} disabled={usedCards}
+                  clearLabel={t("common.clear")}
                   onPick={cards => update("heroCards", cards)}
                 />
               </section>
@@ -624,57 +654,41 @@ export default function HandBuilder() {
               <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Ações · <span className="text-primary">{currentStreet}</span>
+                    {t("actions.title")} · <span className="text-primary">{t(`street.${currentStreet}`)}</span>
                   </h2>
                   <div className="flex items-center gap-1">
                     <button onClick={removeLastAction} disabled={state.actions.length === 0}
-                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30"
-                      title="Desfaz a última ação registrada">
-                      <RotateCcw className="size-3" /> Desfazer
+                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">
+                      <RotateCcw className="size-3" /> {t("actions.undo")}
                     </button>
                     <button onClick={clearCurrentHand}
-                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-destructive"
-                      title="Limpa a mão atual (mantém players/config/mãos completas)">
-                      <Trash2 className="size-3" /> Limpar mão
+                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-destructive">
+                      <Trash2 className="size-3" /> {t("actions.clearHand")}
                     </button>
                   </div>
                 </div>
 
-                {/* Street complete? Show prompt; else show actor card. */}
                 {streetComplete && pendingBoardStreet ? (
                   <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/5 p-4 text-center space-y-2">
-                    <p className="text-sm font-bold text-amber-300">
-                      {currentStreet === "preflop" ? "Preflop" :
-                       currentStreet === "flop"    ? "Flop"     :
-                       currentStreet === "turn"    ? "Turn"     : "River"} completo
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Selecione as cartas do <strong>{pendingBoardStreet === "flop" ? "flop (3 cartas)" :
-                                                       pendingBoardStreet === "turn" ? "turn (1 carta)" :
-                                                       "river (1 carta)"}</strong> abaixo pra continuar.
-                    </p>
+                    <p className="text-sm font-bold text-amber-300">{t("actions.streetComplete", { street: t(`street.${currentStreet}`) })}</p>
+                    <p className="text-xs text-muted-foreground">{t(`actions.selectBoard.${pendingBoardStreet}`)}</p>
                   </div>
                 ) : handComplete ? (
                   <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/5 p-4 text-center space-y-3">
-                    <p className="text-sm font-bold text-emerald-300">Mão finalizada</p>
-                    <p className="text-xs text-muted-foreground">
-                      Marque o vencedor abaixo. Depois inicie a próxima mão (button rotaciona, stacks atualizam, HH é acumulado).
-                    </p>
+                    <p className="text-sm font-bold text-emerald-300">{t("actions.handDone")}</p>
+                    <p className="text-xs text-muted-foreground">{t("actions.markWinnerHint")}</p>
                     {state.showWinner && state.winAmount > 0 && (
-                      <button
-                        onClick={nextHand}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-500 text-emerald-950 font-mono text-xs font-bold uppercase tracking-widest hover:bg-emerald-400"
-                      >
-                        <ChevronRight className="size-3.5" /> Iniciar próxima mão
+                      <button onClick={nextHand}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-500 text-emerald-950 font-mono text-xs font-bold uppercase tracking-widest hover:bg-emerald-400">
+                        <ChevronRight className="size-3.5" /> {t("actions.nextHand")}
                       </button>
                     )}
                   </div>
                 ) : (
                   <CurrentActorCard
                     actor={currentActor}
-                    positionLabel={currentActor ? positionLabel(currentActor) : ""}
-                    facing={facing}
-                    bb={state.bb}
+                    positionLabel={currentActor ? positionOf(currentActor) : ""}
+                    facing={facing} bb={state.bb}
                     onAddAction={(action, amount) => {
                       if (!currentActor) return;
                       addAction(action, currentActor.name, amount);
@@ -682,7 +696,7 @@ export default function HandBuilder() {
                   />
                 )}
 
-                {/* Status table: quem está vivo, quem foldou, bets */}
+                {/* Status table */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 pt-2 border-t border-border/40">
                   {clockwiseFromSb.map(p => {
                     const folded = foldedPlayers.has(p.name);
@@ -692,10 +706,9 @@ export default function HandBuilder() {
                       <div key={p.seat} className={cn(
                         "flex items-center gap-1.5 px-2 py-1 rounded text-[11px] border transition-colors",
                         isCurrent ? "border-primary bg-primary/10" :
-                        folded    ? "border-border/30 opacity-40 line-through" :
-                                    "border-border/50"
+                        folded    ? "border-border/30 opacity-40 line-through" : "border-border/50"
                       )}>
-                        <span className="font-mono text-[9px] text-muted-foreground w-9">{positionLabel(p)}</span>
+                        <span className="font-mono text-[9px] text-muted-foreground w-12">{positionOf(p)}</span>
                         <span className="font-mono flex-1 truncate">{p.name}</span>
                         {bet > 0 && <span className="font-mono text-[10px] tabular-nums text-foreground/70">{fmtBB(bet, state.bb)}</span>}
                       </div>
@@ -703,16 +716,16 @@ export default function HandBuilder() {
                   })}
                 </div>
 
-                {/* Lista de ações */}
+                {/* Action log */}
                 <div className="space-y-1 max-h-48 overflow-y-auto">
                   {state.actions.length === 0 && (
-                    <p className="text-xs text-muted-foreground italic">Nenhuma ação registrada ainda.</p>
+                    <p className="text-xs text-muted-foreground italic">{t("actions.noActions")}</p>
                   )}
                   {state.actions.map((a, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs font-mono">
-                      <span className="text-muted-foreground w-14">[{a.street}]</span>
+                      <span className="text-muted-foreground w-14">[{t(`street.${a.street}`)}]</span>
                       <span className="text-foreground flex-1">{a.player}</span>
-                      <span className="text-primary uppercase">{a.action}</span>
+                      <span className="text-primary uppercase">{t(`act.${a.action}`)}</span>
                       {a.amount != null && <span className="tabular-nums text-foreground/70">{fmtBB(a.amount, state.bb)}</span>}
                     </div>
                   ))}
@@ -720,23 +733,21 @@ export default function HandBuilder() {
               </section>
             )}
 
-            {/* Board cards */}
+            {/* Board */}
             {state.actions.length > 0 && (
               <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
-                <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Board
-                </h2>
-                <CardPicker label="Flop (3 cartas)" count={3} selected={state.board.flop}
-                  disabled={usedCards}
+                <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("board.title")}</h2>
+                <CardPicker label={t("board.flop")} count={3} selected={state.board.flop}
+                  disabled={usedCards} clearLabel={t("common.clear")}
                   onPick={cards => update("board", { ...state.board, flop: cards })} />
                 {state.board.flop.length === 3 && (
-                  <CardPicker label="Turn (1)" count={1} selected={state.board.turn ? [state.board.turn] : []}
-                    disabled={usedCards}
+                  <CardPicker label={t("board.turn")} count={1} selected={state.board.turn ? [state.board.turn] : []}
+                    disabled={usedCards} clearLabel={t("common.clear")}
                     onPick={cards => update("board", { ...state.board, turn: cards[0] || "" })} />
                 )}
                 {state.board.turn && (
-                  <CardPicker label="River (1)" count={1} selected={state.board.river ? [state.board.river] : []}
-                    disabled={usedCards}
+                  <CardPicker label={t("board.river")} count={1} selected={state.board.river ? [state.board.river] : []}
+                    disabled={usedCards} clearLabel={t("common.clear")}
                     onPick={cards => update("board", { ...state.board, river: cards[0] || "" })} />
                 )}
               </section>
@@ -745,26 +756,23 @@ export default function HandBuilder() {
             {/* Winner */}
             {state.actions.length > 0 && (
               <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
-                <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Resultado
-                </h2>
+                <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("winner.title")}</h2>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <label className="space-y-1">
-                    <span className="font-mono text-[10px] text-muted-foreground">Vencedor</span>
-                    <select value={state.showWinner}
-                      onChange={e => update("showWinner", e.target.value)}
+                    <span className="font-mono text-[10px] text-muted-foreground">{t("winner.player")}</span>
+                    <select value={state.showWinner} onChange={e => update("showWinner", e.target.value)}
                       className="w-full bg-background border border-border rounded px-2 py-1">
-                      <option value="">— escolher —</option>
-                      {state.players.map(p => <option key={p.seat} value={p.name}>{p.name}</option>)}
+                      <option value="">{t("winner.choose")}</option>
+                      {state.players.map(p => <option key={p.seat} value={p.name}>{positionOf(p)} · {p.name}</option>)}
                     </select>
                   </label>
                   <label className="space-y-1">
-                    <span className="font-mono text-[10px] text-muted-foreground">Pote (BB)</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">{t("winner.pot")}</span>
                     <div className="flex items-center gap-1">
-                      <input type="number" step="0.01" value={state.winAmount ? toBB(state.winAmount, state.bb) : ""}
+                      <input type="number" step="0.1" value={state.winAmount ? toBB(state.winAmount, state.bb) : ""}
                         onChange={e => update("winAmount", Math.round((+e.target.value || 0) * state.bb))}
                         className="flex-1 bg-background border border-border rounded px-2 py-1 font-mono tabular-nums text-right" />
-                      <span className="font-mono text-[10px] text-muted-foreground">BB</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">bb</span>
                     </div>
                   </label>
                 </div>
@@ -772,12 +780,12 @@ export default function HandBuilder() {
             )}
           </div>
 
-          {/* ── Right: Preview HH + actions ──────────────────────────────── */}
+          {/* ── Right: preview ───────────────────────────────────────────── */}
           <div className="space-y-4">
             <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3 sticky top-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                  <FileText className="inline size-3 mr-1" /> Hand History
+                  <FileText className="inline size-3 mr-1" /> {t("preview.title")}
                 </h2>
                 <div className="flex items-center gap-2">
                   <button onClick={exportTxt} disabled={!fullHhText}
@@ -786,36 +794,33 @@ export default function HandBuilder() {
                   </button>
                   <button onClick={resetAll}
                     className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase text-muted-foreground hover:text-destructive">
-                    <RotateCcw className="size-3" /> Reset
+                    <RotateCcw className="size-3" /> {t("preview.reset")}
                   </button>
                 </div>
               </div>
 
-              {/* Contador de mãos */}
               <div className="flex items-center justify-between text-[10px] font-mono">
                 <span className="text-muted-foreground">
                   {state.completedHands.length === 0
-                    ? "Mão em construção"
-                    : `${state.completedHands.length} mão(s) concluída(s) + ${hhText ? "1 em andamento" : "—"}`}
+                    ? t("preview.handInProgress")
+                    : t("preview.completed", { n: state.completedHands.length, more: hhText ? t("preview.plusOne") : "" })}
                 </span>
-                <span className="text-primary">tournament #{state.tournamentId}</span>
+                <span className="text-primary">#{state.tournamentId}</span>
               </div>
 
               <pre className="bg-background border border-border/50 rounded p-3 text-[10px] font-mono leading-relaxed text-foreground/80 max-h-[600px] overflow-auto whitespace-pre-wrap">
-                {fullHhText || "(preencha os campos pra ver o HH gerado em tempo real)"}
+                {fullHhText || t("preview.placeholder")}
               </pre>
 
               {fullHhText && (
-                <a
-                  href="/?import=builder"
+                <a href="/?import=builder"
                   onClick={(e) => {
                     e.preventDefault();
                     localStorage.setItem("pendingImport", fullHhText);
                     window.location.href = "/?import=builder";
                   }}
-                  className="flex items-center justify-center gap-1 w-full px-3 py-2 rounded-md bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:bg-primary/90"
-                >
-                  <Play className="size-3" /> Analisar agora
+                  className="flex items-center justify-center gap-1 w-full px-3 py-2 rounded-md bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:bg-primary/90">
+                  <Play className="size-3" /> {t("preview.analyzeNow")}
                 </a>
               )}
             </section>
@@ -826,96 +831,7 @@ export default function HandBuilder() {
   );
 }
 
-// ── Sub-component: seat layout diagram (9-max reference) ─────────────────────
-
-function SeatLayoutDiagram({
-  occupiedSeats, buttonSeat, heroSeat, maxSeats, onSelectButton,
-}: {
-  occupiedSeats: number[];
-  buttonSeat: number;
-  heroSeat: number;
-  maxSeats: number;
-  onSelectButton?: (seat: number) => void;
-}) {
-  // N seats em círculo. Hero na base, demais clockwise.
-  const W = 380, H = 220, CX = W / 2, CY = H / 2;
-  const RX = 150, RY = 80;
-  const occupied = new Set(occupiedSeats);
-  const seats = Array.from({ length: maxSeats }, (_, i) => i + 1);
-  const heroIdx = seats.indexOf(heroSeat);
-  const rotOffset = heroIdx >= 0 ? 180 - (360 / maxSeats) * heroIdx : 0;
-
-  const positions = seats.map((s, i) => {
-    const ang = (-90 + (360 / maxSeats) * i + rotOffset) * Math.PI / 180;
-    return {
-      seat: s,
-      x: CX + RX * Math.cos(ang),
-      y: CY + RY * Math.sin(ang),
-    };
-  });
-
-  return (
-    <div className="flex justify-center py-2">
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: W }}>
-        {/* Feltro */}
-        <ellipse cx={CX} cy={CY} rx={RX + 28} ry={RY + 28} fill="rgba(20,80,40,0.15)" stroke="rgba(20,80,40,0.4)" strokeWidth={1.5} />
-        <ellipse cx={CX} cy={CY} rx={RX + 4} ry={RY + 4} fill="rgba(10,40,20,0.30)" stroke="rgba(40,140,80,0.20)" strokeWidth={1} />
-        <text x={CX} y={CY - 4} textAnchor="middle" fontFamily="monospace" fontSize="10" fill="rgba(255,255,255,0.30)" letterSpacing="2">
-          MESA {maxSeats}-MAX
-        </text>
-        <text x={CX} y={CY + 12} textAnchor="middle" fontFamily="monospace" fontSize="9" fill="rgba(255,255,255,0.45)">
-          (hero seat {heroSeat}, base)
-        </text>
-
-        {/* Seats */}
-        {positions.map(p => {
-          const isOccupied = occupied.has(p.seat);
-          const isBtn = p.seat === buttonSeat;
-          const isHero = p.seat === heroSeat;
-          const clickable = !!onSelectButton && isOccupied;
-          return (
-            <g key={p.seat} style={{ cursor: clickable ? "pointer" : "default" }}
-              onClick={() => clickable && onSelectButton!(p.seat)}>
-              <circle
-                cx={p.x} cy={p.y} r={16}
-                fill={isOccupied ? (isHero ? "rgba(201,168,76,0.25)" : "rgba(59,130,246,0.20)") : "rgba(60,60,60,0.30)"}
-                stroke={isOccupied ? (isHero ? "#c9a84c" : "#3b82f6") : "rgba(120,120,120,0.50)"}
-                strokeWidth={1.5}
-              />
-              <text x={p.x} y={p.y + 4} textAnchor="middle" fontFamily="monospace"
-                fontSize="11" fontWeight="700"
-                fill={isOccupied ? "#fff" : "rgba(180,180,180,0.7)"}>
-                {p.seat}
-              </text>
-              {isBtn && (
-                <>
-                  <circle cx={p.x + 18} cy={p.y - 14} r={7} fill="#f4f0ec" stroke="#222" strokeWidth={1} />
-                  <text x={p.x + 18} y={p.y - 11} textAnchor="middle" fontFamily="monospace" fontSize="8" fontWeight="900" fill="#222">D</text>
-                </>
-              )}
-              {isHero && (
-                <text x={p.x} y={p.y + 30} textAnchor="middle" fontFamily="monospace" fontSize="9" fill="#c9a84c" fontWeight="700">HERO</text>
-              )}
-            </g>
-          );
-        })}
-        {onSelectButton && occupiedSeats.length > 0 && (
-          <text x={W / 2} y={H - 8} textAnchor="middle" fontFamily="monospace" fontSize="9"
-            fill="rgba(255,255,255,0.50)">
-            clique em um seat pra definir o BTN
-          </text>
-        )}
-      </svg>
-    </div>
-  );
-}
-
-
-// ── Sub-component: current actor card ────────────────────────────────────────
-
-// chips ↔ BB conversions (UI mostra BB com 2 casas decimais; HH guarda chips)
-const toBB = (chips: number, bb: number): number => Math.round((chips / bb) * 100) / 100;
-const fmtBB = (chips: number, bb: number): string => `${toBB(chips, bb).toFixed(2)} BB`;
+// ── Current actor card ──────────────────────────────────────────────────────
 
 function CurrentActorCard({
   actor, positionLabel, facing, bb, onAddAction,
@@ -926,15 +842,14 @@ function CurrentActorCard({
   bb: number;
   onAddAction: (action: ActionType, amount?: number) => void;
 }) {
-  // amountBB = valor digitado em big blinds (decimal). Convertido pra chips no submit.
+  const { t } = useTranslation("handbuilder");
   const [amountBB, setAmountBB] = useState<number>(0);
-
   useEffect(() => { setAmountBB(0); }, [actor?.name]);
 
   if (!actor) {
     return (
       <div className="rounded-lg bg-background border border-border/50 p-4 text-center text-sm text-muted-foreground">
-        Mão finalizada (ou só 1 jogador ativo). Avance para o próximo street/board ou registre o vencedor.
+        {t("actions.handOver")}
       </div>
     );
   }
@@ -944,12 +859,9 @@ function CurrentActorCard({
   const canBet   = !facing.facingBet;
   const canRaise = facing.facingBet;
 
-  // Sugestões (em chips)
   const callAmountChips = facing.facingBet ? facing.invested + facing.toCall : 0;
   const minRaiseChips   = facing.facingBet ? facing.invested + facing.toCall * 2 : 0;
   const defaultBetChips = Math.round(bb * 2.5);
-
-  // Versões em BB pra mostrar
   const callAmountBB = toBB(callAmountChips, bb);
   const minRaiseBB   = toBB(minRaiseChips, bb);
   const defaultBetBB = toBB(defaultBetChips, bb);
@@ -974,45 +886,45 @@ function CurrentActorCard({
     <div className="rounded-lg bg-primary/5 border-2 border-primary/30 p-4 space-y-3">
       <div className="flex items-center gap-3">
         <div className="flex flex-col">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-primary">Vez de</span>
-          <span className="text-lg font-bold text-foreground">{actor.name}</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-primary">{t("actions.turn")}</span>
+          <span className="text-lg font-bold text-foreground">{positionLabel}</span>
         </div>
         <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary ring-1 ring-primary/30">
-          {positionLabel} · S{actor.seat}
+          {actor.name}
         </span>
       </div>
 
       <div className="flex items-center gap-4 text-[11px] font-mono">
-        <span><span className="text-muted-foreground">Stack:</span> <span className="tabular-nums text-foreground">{fmtBB(actor.stack, bb)}</span></span>
+        <span><span className="text-muted-foreground">{t("actions.stack")}:</span> <span className="tabular-nums text-foreground">{fmtBB(actor.stack, bb)}</span></span>
         {facing.invested > 0 && (
-          <span><span className="text-muted-foreground">Investido:</span> <span className="tabular-nums text-foreground">{fmtBB(facing.invested, bb)}</span></span>
+          <span><span className="text-muted-foreground">{t("actions.invested")}:</span> <span className="tabular-nums text-foreground">{fmtBB(facing.invested, bb)}</span></span>
         )}
         {facing.facingBet && (
-          <span><span className="text-muted-foreground">Pra pagar:</span> <span className="tabular-nums text-blue-400">{fmtBB(facing.toCall, bb)}</span></span>
+          <span><span className="text-muted-foreground">{t("actions.toCall")}:</span> <span className="tabular-nums text-blue-400">{fmtBB(facing.toCall, bb)}</span></span>
         )}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-1">
-          <input type="number" step="0.01" value={amountBB || ""} onChange={e => setAmountBB(+e.target.value || 0)}
-            placeholder={facing.facingBet ? minRaiseBB.toFixed(2) : defaultBetBB.toFixed(2)}
+          <input type="number" step="0.1" value={amountBB || ""} onChange={e => setAmountBB(+e.target.value || 0)}
+            placeholder={facing.facingBet ? minRaiseBB.toFixed(1) : defaultBetBB.toFixed(1)}
             className="w-24 bg-background border border-border rounded px-2 py-1.5 text-sm font-mono tabular-nums text-right" />
-          <span className="font-mono text-[10px] text-muted-foreground">BB</span>
+          <span className="font-mono text-[10px] text-muted-foreground">bb</span>
         </div>
-        <button onClick={() => setSmart("call")}  disabled={!canCall}  className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">call→</button>
-        <button onClick={() => setSmart("bet")}   disabled={!canBet}   className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">2.5x→</button>
-        <button onClick={() => setSmart("raise")} disabled={!canRaise} className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">min raise→</button>
+        <button onClick={() => setSmart("call")}  disabled={!canCall}  className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">{t("actions.presetCall")}</button>
+        <button onClick={() => setSmart("bet")}   disabled={!canBet}   className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">{t("actions.preset25")}</button>
+        <button onClick={() => setSmart("raise")} disabled={!canRaise} className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">{t("actions.presetMinRaise")}</button>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <ActionButton action="fold"  available color="bg-zinc-500/20 text-zinc-300 hover:bg-zinc-500/30"     onClick={() => submit("fold")}>Fold</ActionButton>
-        <ActionButton action="check" available={canCheck} color="bg-sky-500/20 text-sky-300 hover:bg-sky-500/30"  onClick={() => submit("check")}>Check</ActionButton>
-        <ActionButton action="call"  available={canCall}  color="bg-blue-500/20 text-blue-300 hover:bg-blue-500/30" onClick={() => submit("call")}>
-          Call {callAmountChips > 0 ? `(${callAmountBB.toFixed(2)} BB)` : ""}
+        <ActionButton available color="bg-zinc-500/20 text-zinc-300 hover:bg-zinc-500/30" onClick={() => submit("fold")}>{t("act.fold")}</ActionButton>
+        <ActionButton available={canCheck} color="bg-sky-500/20 text-sky-300 hover:bg-sky-500/30" onClick={() => submit("check")}>{t("act.check")}</ActionButton>
+        <ActionButton available={canCall} color="bg-blue-500/20 text-blue-300 hover:bg-blue-500/30" onClick={() => submit("call")}>
+          {t("act.call")} {callAmountChips > 0 ? `(${callAmountBB.toFixed(1)}bb)` : ""}
         </ActionButton>
-        <ActionButton action="bet"   available={canBet}   color="bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30" onClick={() => submit("bet")}>Bet</ActionButton>
-        <ActionButton action="raise" available={canRaise} color="bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30" onClick={() => submit("raise")}>Raise</ActionButton>
-        <ActionButton action="allin" available color="bg-red-500/20 text-red-300 hover:bg-red-500/30"        onClick={() => submit("allin")}>All-in</ActionButton>
+        <ActionButton available={canBet} color="bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30" onClick={() => submit("bet")}>{t("act.bet")}</ActionButton>
+        <ActionButton available={canRaise} color="bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30" onClick={() => submit("raise")}>{t("act.raise")}</ActionButton>
+        <ActionButton available color="bg-red-500/20 text-red-300 hover:bg-red-500/30" onClick={() => submit("allin")}>{t("act.allin")}</ActionButton>
       </div>
     </div>
   );

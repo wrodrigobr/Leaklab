@@ -18,6 +18,7 @@ import ptBRSparring from './locales/pt-BR/sparring.json';
 import ptBRTraining from './locales/pt-BR/training.json';
 import ptBRAcademy from './locales/pt-BR/academy.json';
 import ptBROnboarding from './locales/pt-BR/onboarding.json';
+import ptBRHandbuilder from './locales/pt-BR/handbuilder.json';
 
 import enCommon from './locales/en/common.json';
 import enDashboard from './locales/en/dashboard.json';
@@ -35,6 +36,7 @@ import enSparring from './locales/en/sparring.json';
 import enTraining from './locales/en/training.json';
 import enAcademy from './locales/en/academy.json';
 import enOnboarding from './locales/en/onboarding.json';
+import enHandbuilder from './locales/en/handbuilder.json';
 
 import esCommon from './locales/es/common.json';
 import esDashboard from './locales/es/dashboard.json';
@@ -52,6 +54,7 @@ import esSparring from './locales/es/sparring.json';
 import esTraining from './locales/es/training.json';
 import esAcademy from './locales/es/academy.json';
 import esOnboarding from './locales/es/onboarding.json';
+import esHandbuilder from './locales/es/handbuilder.json';
 
 i18n
   .use(LanguageDetector)
@@ -75,6 +78,7 @@ i18n
         training: ptBRTraining,
         academy: ptBRAcademy,
         onboarding: ptBROnboarding,
+        handbuilder: ptBRHandbuilder,
       },
       en: {
         common: enCommon,
@@ -93,6 +97,7 @@ i18n
         training: enTraining,
         academy: enAcademy,
         onboarding: enOnboarding,
+        handbuilder: enHandbuilder,
       },
       es: {
         common: esCommon,
@@ -111,6 +116,7 @@ i18n
         training: esTraining,
         academy: esAcademy,
         onboarding: esOnboarding,
+        handbuilder: esHandbuilder,
       },
     },
     fallbackLng: 'pt-BR',

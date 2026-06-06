@@ -1,0 +1,66 @@
+{
+  "title": "Hand Builder",
+  "subtitle": "Recreate a hand (from a video or notes) in a few clicks — position, stacks and bets in bb — then analyze.",
+  "common": { "clear": "clear" },
+  "setup": {
+    "table": "Table",
+    "stackDepth": "Stack",
+    "positions": "Positions",
+    "clickHero": "click the ⭐ to set the hero",
+    "markHero": "Set as hero",
+    "confirmResize": "Changing the table size rebuilds the players and clears the current hand. Continue?"
+  },
+  "advanced": {
+    "title": "Advanced",
+    "handId": "Hand ID",
+    "tournamentId": "Tournament ID",
+    "buyIn": "Buy-in",
+    "level": "Level (roman)",
+    "sb": "SB (chips)",
+    "bb": "BB (chips)",
+    "ante": "Ante (chips)",
+    "btnSeat": "BTN seat",
+    "seat": "Seat",
+    "note": "Metadata only to generate the PokerStars-format hand history — it doesn't affect the spot analysis. 1bb = 100 chips.",
+    "players": "Rename players"
+  },
+  "heroCards": { "label": "Hero cards ({{pos}})" },
+  "actions": {
+    "title": "Actions",
+    "undo": "Undo",
+    "clearHand": "Clear hand",
+    "confirmClear": "Clear the current hand? Table and config stay.",
+    "streetComplete": "{{street}} complete",
+    "selectBoard": {
+      "flop": "Select the 3 flop cards below to continue.",
+      "turn": "Select the turn card below to continue.",
+      "river": "Select the river card below to continue."
+    },
+    "handDone": "Hand complete",
+    "markWinnerHint": "Mark the winner below. Then start the next hand (button rotates, stacks update).",
+    "nextHand": "Start next hand",
+    "noActions": "No actions logged yet.",
+    "handOver": "Hand over (or only 1 active player). Advance the board or mark the winner.",
+    "turn": "To act",
+    "stack": "Stack",
+    "invested": "Invested",
+    "toCall": "To call",
+    "presetCall": "call→",
+    "preset25": "2.5x→",
+    "presetMinRaise": "min raise→"
+  },
+  "street": { "preflop": "preflop", "flop": "flop", "turn": "turn", "river": "river" },
+  "act": { "fold": "Fold", "check": "Check", "call": "Call", "bet": "Bet", "raise": "Raise", "allin": "All-in" },
+  "board": { "title": "Board", "flop": "Flop (3 cards)", "turn": "Turn (1)", "river": "River (1)" },
+  "winner": { "title": "Result", "player": "Winner", "choose": "— choose —", "pot": "Pot (bb)" },
+  "preview": {
+    "title": "Hand History",
+    "reset": "Reset",
+    "handInProgress": "Hand in progress",
+    "completed": "{{n}} hand(s) done{{more}}",
+    "plusOne": " + 1 in progress",
+    "placeholder": "(choose the table, the hero cards and log the actions to see the HH live)",
+    "analyzeNow": "Analyze now",
+    "confirmReset": "Erase everything and start over?"
+  }
+}
