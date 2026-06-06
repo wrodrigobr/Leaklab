@@ -1186,13 +1186,21 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
         return result
 
     except Exception as e:
-        # Fallback: retornar estrutura vazia com erro
+        # Fallback: NUNCA vazar o erro cru da API (ex.: "400 ... anthropic ...") pro
+        # cliente — loga internamente e devolve um código estável. O front mostra
+        # uma mensagem amigável ("IA temporariamente indisponível").
+        try:
+            import logging as _lg
+            _lg.getLogger('leaklab.llm_explainer').warning(
+                "generate_study_plan falhou (IA indisponível?): %s", str(e)[:200])
+        except Exception:
+            pass
         return {
             'nivel': 'intermediario',
-            'resumo': 'Análise indisponível no momento.',
+            'resumo': 'Plano com IA temporariamente indisponível.',
             'cards': [],
             'source': leak_source,
-            'error': str(e),
+            'error': 'ai_unavailable',
         }
 
 

@@ -3396,7 +3396,7 @@ def study_plan():
         force_new = request.args.get('new') == '1' and not coach_id_val
 
         from database.repositories import get_ev_leaks as _get_ev_leaks
-        _ev = _get_ev_leaks(g.user_id, days, last_n=last_n).get('leaks')   # #24/#25: prioriza por bb
+        _ev = _get_ev_leaks(g.user_id, days).get('leaks')   # #24/#25: prioriza por bb
         plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id,
                                    force_new=force_new, player_stats=player_stats,
                                    leak_source=leak_source, ev_leaks=_ev)

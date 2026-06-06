@@ -23,7 +23,9 @@
     "firstTime": "Pode levar alguns segundos na primeira vez."
   },
   "error": {
-    "noTournaments": "Importe pelo menos um torneio para gerar um plano personalizado."
+    "noTournaments": "Importe pelo menos um torneio para gerar um plano personalizado.",
+    "aiUnavailable": "O gerador de IA está temporariamente indisponível. Seus dados estão salvos — tente gerar o plano novamente em instantes.",
+    "retryHint": "Tente novamente em instantes. Se você ainda não importou nenhum torneio, importe primeiro."
   },
   "kpis": {
     "level": "Nível",

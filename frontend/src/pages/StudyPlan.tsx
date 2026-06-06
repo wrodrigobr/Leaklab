@@ -190,7 +190,9 @@ const StudyPlanPage = () => {
     try {
       const data = await study.plan(90, force);
       if (data.error && !data.cards?.length) {
-        setErrorMsg(data.error);
+        // Falha de geração (ex.: IA indisponível / sem saldo) — NUNCA vazar o erro
+        // cru da API pro usuário; mostra mensagem amigável e mantém o resto da tela.
+        setErrorMsg(t("error.aiUnavailable"));
         setLoadState("error");
         return;
       }
@@ -328,7 +330,7 @@ const StudyPlanPage = () => {
           <GraduationCap className="size-6 text-muted-foreground" />
           <p className="text-sm text-destructive text-center max-w-sm">{errorMsg}</p>
           <p className="text-xs text-muted-foreground text-center max-w-xs">
-            {t("error.noTournaments")}
+            {t("error.retryHint")}
           </p>
           <button
             onClick={() => fetchPlan()}

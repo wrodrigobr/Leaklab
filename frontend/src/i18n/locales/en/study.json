@@ -23,7 +23,9 @@
     "firstTime": "This may take a few seconds the first time."
   },
   "error": {
-    "noTournaments": "Import at least one tournament to generate a personalized plan."
+    "noTournaments": "Import at least one tournament to generate a personalized plan.",
+    "aiUnavailable": "The AI generator is temporarily unavailable. Your data is saved — try generating the plan again in a moment.",
+    "retryHint": "Try again in a moment. If you haven't imported any tournament yet, import one first."
   },
   "kpis": {
     "level": "Level",

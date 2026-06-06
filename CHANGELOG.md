@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(study-plan): IA indisponível não estoura erro pro usuário + corrige `last_n` no /study/plan
+
+> Dois fixes na geração do plano: **(1)** `name 'last_n' is not defined` — ao ligar o `get_ev_leaks` no `/study/plan` eu copiei `last_n=last_n` de um template, mas esse endpoint só tem `days` → 500 ao gerar. Removido (usa só `days`; os outros 2 callers já estavam certos). **(2) Erro da API Anthropic vazava pro usuário** (ex.: sem saldo → "400 Client Error ... anthropic.com" na tela). Agora: o backend (`generate_study_plan`) loga o erro real e devolve um **código estável `ai_unavailable`** (nunca o `str(e)` cru); o front (`StudyPlan.tsx`) mostra mensagem amigável **"O gerador de IA está temporariamente indisponível — seus dados estão salvos, tente novamente"** e troca o hint enganoso "importe um torneio" por um retry honesto. i18n 3 locales (`study.aiUnavailable`/`retryHint`). Princípio: falha de IA é transitória e não deve assustar o usuário nem sugerir que ele perdeu dados.
+
 ### feat(ev-loss): plano de estudos + AI Coach priorizam por EV perdido (fecha o ciclo do #24/#25)
 
 > O EV-loss agora **alimenta os geradores de IA** — não fica só no card. `generate_study_plan` e `coach_chat_reply` ganharam `ev_leaks` (do `get_ev_leaks`): o prompt recebe a seção **"Vazamentos por EV PERDIDO (bb deixados na mesa)"** com instrução explícita pra **ordenar o plano pela prioridade de EV** (o leak que mais sangra bb vale mais que um frequente porém barato) e citar o custo em bb no diagnóstico. Ligado em `/study/plan`, plano do coach pro aluno (`/coach/student/<id>/study-plan`) e no AI Coach chat (`/coach/chat`). Cache key do plano v5→**v6** (regenera os planos antigos sem EV; entra `ev_leaks` na chave). Testes: `test_study_plan_uses_ev_leaks` + cache key v6; suíte llm 44/44. Assim o plano deixa de priorizar por contagem de erros e passa a priorizar por **bb perdidos** — o sinal que o #24 trouxe.
