@@ -45,9 +45,14 @@
     "stack": "Stack",
     "invested": "Invertido",
     "toCall": "Para pagar",
-    "presetCall": "call→",
-    "preset25": "2.5x→",
-    "presetMinRaise": "min raise→"
+    "pot": "Bote",
+    "szMin": "min",
+    "szOpen": "Tamaño de apertura (open)",
+    "szMinTip": "Raise mínimo",
+    "sz3xTip": "3× la apuesta enfrentada",
+    "szPotRaiseTip": "Raise del tamaño del bote",
+    "szPotFracTip": "Apuesta como fracción del bote",
+    "szPotTip": "Apuesta del tamaño del bote"
   },
   "street": { "preflop": "preflop", "flop": "flop", "turn": "turn", "river": "river" },
   "act": { "fold": "Fold", "check": "Check", "call": "Call", "bet": "Bet", "raise": "Raise", "allin": "All-in" },

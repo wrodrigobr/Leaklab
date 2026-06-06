@@ -287,6 +287,28 @@ export default function HandBuilder() {
     return { invested, toCall, facingBet: toCall > 0 };
   }, [currentActor, maxBetThisStreet]);
 
+  // Pote no momento da ação do currentActor (em fichas): antes + blinds + maior
+  // comprometido por jogador em cada street até a atual (inclui as apostas já feitas
+  // nesta street). Base dos atalhos de sizing pot-relative.
+  const potBefore = useMemo(() => {
+    let pot = state.ante * state.players.length;
+    const streets: Street[] = ["preflop", "flop", "turn", "river"];
+    for (const st of streets) {
+      const committed = new Map<string, number>();
+      if (st === "preflop") {
+        if (clockwiseFromSb[0]) committed.set(clockwiseFromSb[0].name, state.sb);
+        if (clockwiseFromSb[1]) committed.set(clockwiseFromSb[1].name, state.bb);
+      }
+      for (const a of state.actions.filter(x => x.street === st)) {
+        if (a.action === "fold" || a.action === "check") continue;
+        committed.set(a.player, Math.max(committed.get(a.player) ?? 0, a.amount ?? 0));
+      }
+      for (const v of committed.values()) pot += v;
+      if (st === currentStreet) break;
+    }
+    return pot;
+  }, [state.actions, state.ante, state.players.length, state.sb, state.bb, clockwiseFromSb, currentStreet]);
+
   const streetComplete = useMemo<boolean>(() => {
     const active = clockwiseFromSb.filter(p => !foldedPlayers.has(p.name));
     if (active.length <= 1) return true;
@@ -689,6 +711,8 @@ export default function HandBuilder() {
                     actor={currentActor}
                     positionLabel={currentActor ? positionOf(currentActor) : ""}
                     facing={facing} bb={state.bb}
+                    pot={potBefore} maxBet={maxBetThisStreet.maxBet}
+                    isPreflop={currentStreet === "preflop"}
                     onAddAction={(action, amount) => {
                       if (!currentActor) return;
                       addAction(action, currentActor.name, amount);
@@ -833,13 +857,26 @@ export default function HandBuilder() {
 
 // ── Current actor card ──────────────────────────────────────────────────────
 
+// Botão de atalho de sizing (preenche o campo de aposta em bb).
+function SizeBtn({ label, onClick, title }: { label: string; onClick: () => void; title?: string }) {
+  return (
+    <button onClick={onClick} title={title}
+      className="px-2 py-1 rounded border border-border/60 font-mono text-[10px] font-bold text-muted-foreground hover:text-primary hover:border-primary/60 transition-colors">
+      {label}
+    </button>
+  );
+}
+
 function CurrentActorCard({
-  actor, positionLabel, facing, bb, onAddAction,
+  actor, positionLabel, facing, bb, pot, maxBet, isPreflop, onAddAction,
 }: {
   actor: PlayerInput | null;
   positionLabel: string;
   facing: { invested: number; toCall: number; facingBet: boolean };
   bb: number;
+  pot: number;        // pote no momento da ação (fichas)
+  maxBet: number;     // maior aposta da street (fichas)
+  isPreflop: boolean;
   onAddAction: (action: ActionType, amount?: number) => void;
 }) {
   const { t } = useTranslation("handbuilder");
@@ -861,17 +898,20 @@ function CurrentActorCard({
 
   const callAmountChips = facing.facingBet ? facing.invested + facing.toCall : 0;
   const minRaiseChips   = facing.facingBet ? facing.invested + facing.toCall * 2 : 0;
-  const defaultBetChips = Math.round(bb * 2.5);
+  const defaultBetBB    = 2.5;
   const callAmountBB = toBB(callAmountChips, bb);
   const minRaiseBB   = toBB(minRaiseChips, bb);
-  const defaultBetBB = toBB(defaultBetChips, bb);
 
-  const setSmart = (action: ActionType) => {
-    if (action === "call")  setAmountBB(callAmountBB);
-    if (action === "bet")   setAmountBB(amountBB || defaultBetBB);
-    if (action === "raise") setAmountBB(amountBB || minRaiseBB);
-    if (action === "allin") setAmountBB(toBB(actor.stack + facing.invested, bb));
-  };
+  // ── Atalhos de sizing contextuais (preenchem o campo em bb) ─────────────────
+  const r1 = (x: number) => Math.round(x * 10) / 10;
+  const potBb    = toBB(pot, bb);
+  const maxBetBb = toBB(maxBet, bb);
+  // open = preflop e ninguém raisou além do BB (só o BB é a "aposta")
+  const openContext    = isPreflop && facing.facingBet && maxBetBb <= 1.01;
+  const reraiseContext = facing.facingBet && !openContext;          // 3bet+/raise postflop
+  const betContext     = !facing.facingBet;                        // bet postflop (ou BB option)
+  // pot-size raise "to" (contribuição total na street) = invested + pote + 2·toCall
+  const potRaiseBb = r1(toBB(facing.invested + pot + 2 * facing.toCall, bb));
 
   const submit = (action: ActionType) => {
     const needsAmount = action === "bet" || action === "raise" || action === "call" || action === "allin";
@@ -894,8 +934,9 @@ function CurrentActorCard({
         </span>
       </div>
 
-      <div className="flex items-center gap-4 text-[11px] font-mono">
+      <div className="flex items-center gap-4 text-[11px] font-mono flex-wrap">
         <span><span className="text-muted-foreground">{t("actions.stack")}:</span> <span className="tabular-nums text-foreground">{fmtBB(actor.stack, bb)}</span></span>
+        <span><span className="text-muted-foreground">{t("actions.pot")}:</span> <span className="tabular-nums text-foreground">{fmtBB(pot, bb)}</span></span>
         {facing.invested > 0 && (
           <span><span className="text-muted-foreground">{t("actions.invested")}:</span> <span className="tabular-nums text-foreground">{fmtBB(facing.invested, bb)}</span></span>
         )}
@@ -904,16 +945,28 @@ function CurrentActorCard({
         )}
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* Atalhos de sizing (preenchem o campo; depois clique Bet/Raise) */}
+      <div className="flex items-center gap-1.5 flex-wrap">
         <div className="flex items-center gap-1">
           <input type="number" step="0.1" value={amountBB || ""} onChange={e => setAmountBB(+e.target.value || 0)}
-            placeholder={facing.facingBet ? minRaiseBB.toFixed(1) : defaultBetBB.toFixed(1)}
-            className="w-24 bg-background border border-border rounded px-2 py-1.5 text-sm font-mono tabular-nums text-right" />
+            placeholder={openContext ? defaultBetBB.toFixed(1) : facing.facingBet ? minRaiseBB.toFixed(1) : r1(potBb / 2).toFixed(1)}
+            className="w-20 bg-background border border-border rounded px-2 py-1.5 text-sm font-mono tabular-nums text-right" />
           <span className="font-mono text-[10px] text-muted-foreground">bb</span>
         </div>
-        <button onClick={() => setSmart("call")}  disabled={!canCall}  className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">{t("actions.presetCall")}</button>
-        <button onClick={() => setSmart("bet")}   disabled={!canBet}   className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">{t("actions.preset25")}</button>
-        <button onClick={() => setSmart("raise")} disabled={!canRaise} className="text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground disabled:opacity-30">{t("actions.presetMinRaise")}</button>
+        {openContext && [2, 2.5, 3].map(v => (
+          <SizeBtn key={v} label={`${v}bb`} onClick={() => setAmountBB(v)} title={t("actions.szOpen")} />
+        ))}
+        {reraiseContext && (<>
+          <SizeBtn label={t("actions.szMin")} onClick={() => setAmountBB(r1(minRaiseBB))} title={t("actions.szMinTip")} />
+          <SizeBtn label="3x" onClick={() => setAmountBB(r1(3 * maxBetBb))} title={t("actions.sz3xTip")} />
+          <SizeBtn label="pot" onClick={() => setAmountBB(potRaiseBb)} title={t("actions.szPotRaiseTip")} />
+        </>)}
+        {betContext && (<>
+          <SizeBtn label="⅓" onClick={() => setAmountBB(r1(potBb / 3))} title={t("actions.szPotFracTip")} />
+          <SizeBtn label="½" onClick={() => setAmountBB(r1(potBb / 2))} title={t("actions.szPotFracTip")} />
+          <SizeBtn label="⅔" onClick={() => setAmountBB(r1(potBb * 2 / 3))} title={t("actions.szPotFracTip")} />
+          <SizeBtn label="pot" onClick={() => setAmountBB(r1(potBb))} title={t("actions.szPotTip")} />
+        </>)}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
