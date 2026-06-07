@@ -103,6 +103,7 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'isMultiway':       state.is_multiway,
             'effectiveStackBb': state.effective_stack_bb,
             'potSize':          state.pot_size,
+            'potBb':            round(state.pot_size / (state.metadata.get('bb') or 1), 2),  # pote em bb (p/ SPR)
             'facingSize':       state.facing_size,
             'raiseSizeBb':      state.facing_size,
             'board':            state.board or [],

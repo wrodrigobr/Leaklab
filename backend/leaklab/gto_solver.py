@@ -281,16 +281,18 @@ def lookup_gto(
     except Exception as _gw_err:
         log.debug("gto_wizard: query_spot exception — %s", _gw_err)
 
-    # 4. Fallback: solver remoto (servidor Google Cloud /solve)
-    # O solver CFR só suporta postflop — preflop sem board causaria HTTP 500
-    if street_l == 'preflop':
-        if _db_fallback_strategy:
-            return {'found': True, 'source': 'postflop_db_partial',
-                    'strategy': _db_fallback_strategy,
-                    'exploitability_pct': None, 'spot_hash': spot_hash, 'queued': False}
-        return {'found': False, 'source': 'solver_unavailable',
-                'strategy': [], 'exploitability_pct': None,
-                'spot_hash': spot_hash, 'queued': False}
+    # 4. SEM fallback para o solver Texas (CFR remoto) — DESABILITADO p/ postflop e
+    # preflop. O Texas roda capped a stack curto e dá recs ruins em spots fundos; usamos
+    # SÓ o GTO Wizard (acima). Sem cobertura GW → não-encontrado (cai no heurístico).
+    if _db_fallback_strategy:
+        return {'found': True, 'source': 'postflop_db_partial',
+                'strategy': _db_fallback_strategy,
+                'exploitability_pct': None, 'spot_hash': spot_hash, 'queued': False}
+    return {'found': False, 'source': 'solver_unavailable',
+            'strategy': [], 'exploitability_pct': None,
+            'spot_hash': spot_hash, 'queued': False}
+
+    # --- solver Texas (CFR remoto) DESABILITADO — inalcançável (return acima) ---
 
     oop_range = _DEFAULT_RANGES.get(vs_position.upper(), _DEFAULT_RANGE_WIDE)
     ip_range  = _DEFAULT_RANGES.get(position_u, _DEFAULT_RANGE_WIDE)

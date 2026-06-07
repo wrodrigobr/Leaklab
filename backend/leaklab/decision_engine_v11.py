@@ -276,19 +276,25 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
         if facing_bb == 0.0:
             hashes.append(compute_spot_hash(street, position, board, [], stack_bb, 0.0))
 
-        # Prioridade 1: nó com strategy_json (dados completos)
+        # IGNORA nós do solver Texas (source='solver_cli') no postflop: ele roda capped
+        # a stack curto (~20bb) e dá recs ruins em spots fundos (ex.: shove de 150bb).
+        # Usa SÓ GTO Wizard (mais confiável); sem cobertura GW → heurístico.
+        def _ok(n):
+            return bool(n) and (n.get('source') != 'solver_cli')
+
+        # Prioridade 1: nó GW com strategy_json (dados completos)
         node = None
         for h in hashes:
             n = get_gto_node(h)
-            if n and n.get('strategy_json'):
+            if _ok(n) and n.get('strategy_json'):
                 node = n
                 break
 
-        # Prioridade 2: nó parcial (só top action)
+        # Prioridade 2: nó GW parcial (só top action)
         if not node:
             for h in hashes:
                 n = get_gto_node(h)
-                if n:
+                if _ok(n):
                     node = n
                     break
 
@@ -326,6 +332,18 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
                 _log_gto_miss('postflop', street, position, f'strategy freq_sum={freq_sum:.3f} (corrompido)')
                 strategy = []
                 node = None
+
+        # Guard: jam/allin de nó postflop é INVÁLIDO quando o SPR é alto (stack >> pote).
+        # O solver postflop roda capped a stack curto (~20bb), onde jogar all-in no flop
+        # pode ser top; servido pra um spot FUNDO (ex.: 150bb, SPR ~9) vira "shove de
+        # 150bb", que nunca é GTO. Rejeita e cai no heurístico em vez de recomendar shove.
+        if _norm_gto_action(top_action) == 'allin':
+            pot_bb = float(spot.get('potBb') or 0.0)
+            spr = (stack_bb / pot_bb) if pot_bb > 0 else 0.0
+            if spr > 3.0:
+                _log_gto_miss('postflop', street, position,
+                              f'jam rejeitado: SPR={spr:.1f} (stack {stack_bb:.0f}bb / pote {pot_bb:.1f}bb)')
+                return {'available': False}
 
         # Classificação: usa frequência real da ação jogada quando possível
         if strategy:
