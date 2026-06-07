@@ -1,8 +1,9 @@
-"""Reprocessa torneios construídos no Hand Builder: troca os NOMES dos jogadores no
-raw_text pela POSIÇÃO real da mão (hero → "Hero"), derivada de assento+button (mesma
-lógica do engine `_infer_position` e do `/replay`). Corrige mãos antigas onde o nome
-era um rótulo posicional STALE (ex.: "UTG+1" no assento que é BTN), que o Replayer
-exibia competindo com a posição.
+"""Reprocessa torneios construídos no Hand Builder. Dois fixes nas mãos do builder:
+  (1) NOMES dos jogadores no raw_text → POSIÇÃO real da mão (hero → "Hero"), derivada
+      de assento+button. Corrige rótulos stale (ex.: "UTG+1" no assento que é BTN).
+  (2) 'calls X' → incremento correto (o gerador antigo gravava o TOTAL; ex.: open 200
+      + 'calls 857' somava 1057 em vez de igualar a 857 → vira 'calls 657').
+Ambos recalculam da estrutura → idempotentes. Mesma lógica do engine/`/replay`.
 
 SÓ toca mãos claramente do builder (todos os nomes em {posições} ∪ {P1..P9, Hero}) —
 uploads reais (nicks de gente) são ignorados. As DECISÕES não mudam (já guardam a
@@ -80,19 +81,60 @@ def remap_hand(hand_text):
     return text, True, True
 
 
+_CALL_RE  = re.compile(r'^(.+?): calls (\d+)')
+_RAISE_RE = re.compile(r'^(.+?): raises \d+ to (\d+)')
+_BET_RE   = re.compile(r'^(.+?): bets (\d+)')
+_BLIND_RE = re.compile(r'^(.+?): posts (?:small|big) blind (\d+)')
+
+
+def fix_call_increments(hand_text):
+    """Corrige 'calls X' onde X era o TOTAL (bug do gerador) — deveria ser o INCREMENTO
+    (o que falta pra igualar a aposta). Recalcula da ESTRUTURA das apostas (não do X
+    atual), então é idempotente: mãos já corretas (X = incremento) não mudam."""
+    committed, max_bet, changed, out = {}, 0, False, []
+    for line in hand_text.split('\n'):
+        if line.startswith('*** ') and ('FLOP' in line or 'TURN' in line or 'RIVER' in line):
+            committed, max_bet = {}, 0
+            out.append(line); continue
+        mb = _BLIND_RE.match(line)
+        mr = _RAISE_RE.match(line)
+        mt = _BET_RE.match(line)
+        mc = _CALL_RE.match(line)
+        if mb:
+            p, amt = mb.group(1), int(mb.group(2))
+            committed[p] = committed.get(p, 0) + amt
+            max_bet = max(max_bet, committed[p])
+        elif mr:
+            p, to = mr.group(1), int(mr.group(2))
+            committed[p] = to; max_bet = max(max_bet, to)
+        elif mt and not mc:
+            p, amt = mt.group(1), int(mt.group(2))
+            committed[p] = amt; max_bet = max(max_bet, amt)
+        elif mc:
+            p, y = mc.group(1), int(mc.group(2))
+            correct = max(0, max_bet - committed.get(p, 0))
+            committed[p] = max_bet
+            if correct != y:
+                line = f'{p}: calls {correct}' + line[mc.end():]
+                changed = True
+        out.append(line)
+    return '\n'.join(out), changed
+
+
 def process_raw(raw):
-    """Remapeia todas as mãos builder do raw_text. Devolve (novo_raw, n_changed, n_builder, n_total)."""
+    """Remapeia nomes + corrige call increments das mãos builder. Devolve
+    (novo_raw, n_changed, n_builder, n_total)."""
     parts = re.split(r'(?=PokerStars Hand #)', raw)
     out, n_changed, n_builder, n_total = [], 0, 0, 0
     for p in parts:
-        if not p.strip():
-            out.append(p); continue
-        if not p.startswith('PokerStars Hand #'):
+        if not p.strip() or not p.startswith('PokerStars Hand #'):
             out.append(p); continue
         n_total += 1
-        new, changed, is_builder = remap_hand(p)
-        if is_builder: n_builder += 1
-        if changed: n_changed += 1
+        new, changed_n, is_builder = remap_hand(p)
+        if is_builder:
+            n_builder += 1
+            new, changed_c = fix_call_increments(new)
+            if changed_n or changed_c: n_changed += 1
         out.append(new)
     return ''.join(out), n_changed, n_builder, n_total
 

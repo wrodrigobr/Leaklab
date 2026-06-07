@@ -104,7 +104,14 @@ function actionLine(a: HandAction, runningStreetBet: Map<string, number>): strin
   switch (a.action) {
     case 'fold':  return `${a.player}: folds`;
     case 'check': return `${a.player}: checks`;
-    case 'call':  return `${a.player}: calls ${a.amount ?? 0}`;
+    case 'call': {
+      // PokerStars: "calls X" — X = INCREMENTO (o que falta pra igualar), não o total.
+      // Sem subtrair o já investido na street (ex.: o próprio open), o call somaria de
+      // novo o open (open 200 + "calls 857" = 1057 em vez de igualar a 857).
+      const prev = runningStreetBet.get(a.player) ?? 0;
+      const total = a.amount ?? 0;
+      return `${a.player}: calls ${Math.max(0, total - prev)}`;
+    }
     case 'bet':   return `${a.player}: bets ${a.amount ?? 0}`;
     case 'raise': {
       // PokerStars: "raises X to Y" — X = increment, Y = total apostado nesta street

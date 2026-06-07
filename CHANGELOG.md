@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(hand-builder): "calls" agora é o incremento, não o total (somava o open de novo)
+
+> Bug no `hhGenerator`: a linha de call usava `a.amount` (o TOTAL investido na street) em vez do INCREMENTO. Então, ao pagar um 3bet depois do próprio open, somava o open de novo — open 200 + `calls 857` = 1057 (10.6bb) no Replayer, em vez de igualar a 857 (8.6bb). Agora a linha de call desconta o já investido na street (`calls 657`), igual a `raise` já fazia — blinds postados contam como investimento (BB pagando open de 250 → `calls 150`). `hhGenerator.test.ts` (3: call após open, cold call, BB descontando o blind). Mãos JÁ salvas corrigidas pelo `scripts/fix_builder_tournament_names.py` (agora também recalcula call increments da estrutura das apostas — idempotente; só mãos builder, uploads reais intactos): tid 999999 → `Hero: calls 657`, pot 2357 consistente. typecheck + build + vitest 30/30.
+
 ### chore(scripts): fix_builder_tournament_names — reprocessa torneios do builder já salvos
 
 > Mãos construídas no builder ANTES do fix de naming têm nomes posicionais stale no `raw_text` (ex.: o assento que é BTN chamado "UTG+1"), que o Replayer exibia competindo com a posição. `scripts/fix_builder_tournament_names.py` reprocessa: detecta mãos do builder (todos os nomes em {posições} ∪ {P1..P9, Hero} — uploads reais com nicks são IGNORADOS), reescreve cada nome no `raw_text` pela posição derivada (assento+button, hero → "Hero") com substituição via placeholders (sem colisão), e atualiza `tournaments.hero`. Dry-run por padrão, `--apply` grava; idempotente. As decisões não mudam (já guardam a posição certa); só `raw_text` (que o `/replay` re-parseia) e o `hero`. Rodado local: tid 999999 (5 mãos) → button=BTN/hero=Hero, `_build_replay_data` confirma pos==nome em todos os assentos. Outros 10 torneios (uploads reais) intactos.
