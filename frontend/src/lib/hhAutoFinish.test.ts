@@ -20,8 +20,9 @@ describe("hhAutoFinish", () => {
     expect(deriveStreet({ flop: ["As", "Kd", "2c"], turn: "", river: "" })).toBe("flop");
   });
 
-  it("folda todos os ativos restantes pra um vencedor (hero já foldou)", () => {
+  it("último agressor leva o pote; demais ativos foldam (hero já foldou)", () => {
     // UTG raise, HJ call, CO call, BTN(hero) FOLD, SB fold, BB fold → ativos: UTG,HJ,CO
+    // último agressor ativo = UTG (única aposta/raise) → UTG vence, IGNORA o rand
     const acts: HandAction[] = [
       { player: "UTG", street: "preflop", action: "raise", amount: 250 },
       { player: "HJ", street: "preflop", action: "call", amount: 250 },
@@ -30,17 +31,38 @@ describe("hhAutoFinish", () => {
       { player: "SB", street: "preflop", action: "fold" },
       { player: "BB", street: "preflop", action: "fold" },
     ];
-    const res = autoFinishAfterFold(base(acts), () => 0)!; // rand=0 → 1º ativo (UTG)
-    expect(res).toBeTruthy();
+    const res = autoFinishAfterFold(base(acts), () => 0.99)!; // rand alto, mas ignorado
     expect(res.winnerName).toBe("UTG");
-    // novos folds: HJ e CO (os outros 2 ativos)
     const added = res.actions.slice(acts.length);
     expect(added.map(a => a.player).sort()).toEqual(["CO", "HJ"]);
     expect(added.every(a => a.action === "fold")).toBe(true);
-    // só o vencedor sobra ativo → mão resolvida
     const folded = new Set(res.actions.filter(a => a.action === "fold").map(a => a.player));
     const active = clockwiseFromSb(players, 6).filter(p => !folded.has(p.name));
     expect(active.map(p => p.name)).toEqual(["UTG"]);
+  });
+
+  it("com 3-bet, o ÚLTIMO agressor (3-bettor) leva o pote", () => {
+    // UTG raise, CO 3bet, BTN(hero) fold, SB/BB/UTG fold → último agressor ativo = CO
+    const acts: HandAction[] = [
+      { player: "UTG", street: "preflop", action: "raise", amount: 250 },
+      { player: "CO", street: "preflop", action: "raise", amount: 750 },
+      { player: "BTN", street: "preflop", action: "fold" },
+    ];
+    const res = autoFinishAfterFold(base(acts), () => 0)!;
+    expect(res.winnerName).toBe("CO");
+  });
+
+  it("sem agressão (pote limpado) → fallback aleatório", () => {
+    // SB completa, BB check, BTN(hero) já foldou antes — sem bet/raise → usa rand
+    const acts: HandAction[] = [
+      { player: "BTN", street: "preflop", action: "fold" },
+      { player: "SB", street: "preflop", action: "call", amount: 100 },
+      { player: "BB", street: "preflop", action: "check" },
+    ];
+    // ativos: UTG,HJ,CO,SB,BB (5) — rand=0 → primeiro ativo na ordem clockwise (SB)
+    const r0 = autoFinishAfterFold(base(acts), () => 0)!;
+    const r9 = autoFinishAfterFold(base(acts), () => 0.99)!;
+    expect(r0.winnerName).not.toBe(r9.winnerName); // rand realmente decide no fallback
   });
 
   it("pote = antes + blinds + comprometido (UTG/HJ/CO 2.5bb cada)", () => {
@@ -54,19 +76,6 @@ describe("hhAutoFinish", () => {
     ];
     // SB 50 + BB 100 + UTG 250 + HJ 250 + CO 250 = 900
     expect(totalPot(base(acts))).toBe(900);
-  });
-
-  it("escolhe vencedor por rand (último ativo)", () => {
-    const acts: HandAction[] = [
-      { player: "UTG", street: "preflop", action: "raise", amount: 250 },
-      { player: "HJ", street: "preflop", action: "call", amount: 250 },
-      { player: "CO", street: "preflop", action: "call", amount: 250 },
-      { player: "BTN", street: "preflop", action: "fold" },
-      { player: "SB", street: "preflop", action: "fold" },
-      { player: "BB", street: "preflop", action: "fold" },
-    ];
-    const res = autoFinishAfterFold(base(acts), () => 0.99)!; // último ativo (CO)
-    expect(res.winnerName).toBe("CO");
   });
 
   it("resultado gera um HH válido (parseável) com vencedor", () => {

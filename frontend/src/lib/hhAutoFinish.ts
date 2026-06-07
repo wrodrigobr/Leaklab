@@ -59,8 +59,12 @@ export function totalPot(s: FinishInput): number {
   return pot;
 }
 
-// Finaliza a mão: villains ativos restantes foldam pra um vencedor aleatório.
-// `rand` injetável pra teste (default Math.random).
+const AGGRESSIVE = new Set(["bet", "raise", "allin"]);
+
+// Finaliza a mão: villains ativos restantes foldam e o ÚLTIMO AGRESSOR ainda ativo
+// leva o pote (o mais realista — quem fez a última aposta/raise vence quando todos
+// desistem). Fallback: pote sem agressão (limpado/checado) → vencedor aleatório
+// entre os ativos (`rand` injetável pra teste).
 export function autoFinishAfterFold(s: FinishInput, rand: () => number = Math.random): FinishResult | null {
   const cw = clockwiseFromSb(s.players, s.buttonSeat);
   if (cw.length < 2) return null;
@@ -68,14 +72,23 @@ export function autoFinishAfterFold(s: FinishInput, rand: () => number = Math.ra
   const active = cw.filter(p => !folded.has(p.name));
   const street = deriveStreet(s.board);
   const actions = [...s.actions];
-  let winner: PlayerInput;
+  let winner: PlayerInput | undefined;
   if (active.length <= 1) {
     winner = active[0] ?? cw[cw.length - 1];
   } else {
-    winner = active[Math.floor(rand() * active.length) % active.length];
+    // último agressor ainda ativo (varre as ações de trás pra frente)
+    for (let i = s.actions.length - 1; i >= 0 && !winner; i--) {
+      const a = s.actions[i];
+      if (AGGRESSIVE.has(a.action) && !folded.has(a.player)) {
+        winner = active.find(p => p.name === a.player);
+      }
+    }
+    // sem agressor ativo → aleatório entre os ativos
+    if (!winner) winner = active[Math.floor(rand() * active.length) % active.length];
     for (const p of active) {
       if (p.seat !== winner.seat) actions.push({ player: p.name, street, action: "fold" });
     }
   }
+  if (!winner) return null;
   return { actions, winnerName: winner.name, potChips: totalPot(s) };
 }
