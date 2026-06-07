@@ -3773,14 +3773,22 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     seat_nums = sorted(seats.keys())
     n         = len(seat_nums)
     btn_idx   = seat_nums.index(hand.button_seat) if hand.button_seat in seat_nums else 0
-    # LJ (não 'MP'): convenção do GTO Solver p/ 9-max e o nome que o engine usa
-    # internamente (preflop_gto_ranges normaliza MP→LJ). Mantém a mesa coerente
-    # com o Decision Card, que já exibe 'LJ'.
-    pos_names = ['BTN','SB','BB','UTG','UTG+1','UTG+2','LJ','HJ','CO']
-    positions = {
-        s: pos_names[(i - btn_idx) % n] if (i - btn_idx) % n < len(pos_names) else f'P{(i-btn_idx)%n}'
-        for i, s in enumerate(seat_nums)
-    }
+    # Posição autoritativa = mesma derivação do engine (_infer_position) e do builder:
+    # ordena CLOCKWISE a partir do SB (assento depois do button) e nomeia por índice.
+    # A antiga tabela "forward" (BTN,SB,BB,UTG,UTG+1,...) só batia em 9-max e rotulava
+    # errado o miolo das mesas menores (6-max dava UTG+1/UTG+2 em vez de HJ/CO).
+    # 'LJ' (não 'MP1') p/ casar com o Decision Card / GTO Solver.
+    ordered = [seat_nums[(btn_idx + 1 + k) % n] for k in range(n)]  # [SB, BB, ..., BTN]
+    _pn = {0: 'SB', 1: 'BB', n - 1: 'BTN'}
+    if n >= 4: _pn[n - 2] = 'CO'
+    if n >= 6: _pn[n - 3] = 'HJ'
+    _seq = ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'MP2', 'MP3']
+    _si = 0
+    for k in range(2, n):
+        if k not in _pn:
+            _pn[k] = _seq[_si] if _si < len(_seq) else f'P{k}'
+            _si += 1
+    positions = {ordered[k]: _pn[k] for k in range(n)}
 
     # Mapear erros por (street, action_taken) — inclui dados matemáticos do engine
     # Normalizar: banco usa 'fold','call','raise'; parser usa 'folds','calls','raises'

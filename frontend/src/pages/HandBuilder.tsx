@@ -39,7 +39,8 @@ function positionNames(n: number): string[] {
   names[n - 1] = "BTN";
   if (n >= 4) names[n - 2] = "CO";
   if (n >= 6) names[n - 3] = "HJ";
-  const utgSeq = ["UTG", "UTG+1", "UTG+2", "MP1", "MP2", "MP3"];
+  // 'LJ' (não 'MP1') — convenção de exibição do GTO Solver / Decision Card / replay.
+  const utgSeq = ["UTG", "UTG+1", "UTG+2", "LJ", "MP2", "MP3"];
   let ui = 0;
   for (let i = 2; i < n; i++) {
     if (!names[i]) { names[i] = utgSeq[ui] ?? `MP${ui + 1}`; ui++; }
@@ -533,6 +534,12 @@ export default function HandBuilder() {
 
   const handInput: HandInput | null = useMemo(() => {
     if (!heroPlayer || state.players.length < 2 || state.heroCards.length !== 2) return null;
+    // Nomes de SAÍDA = posição da mão (hero = "Hero"). O nome interno é neutro (P*);
+    // no HH/replayer o nome passa a BATER com a posição, então não há label posicional
+    // stale. Hero "Hero" é estável entre mãos → /analyze (por-mão) agrupa certo.
+    const displayName = (p: PlayerInput) => p.seat === state.heroSeat ? "Hero" : (positionOf(p) || p.name);
+    const nameMap = new Map(state.players.map(p => [p.name, displayName(p)]));
+    const map = (nm: string) => nameMap.get(nm) ?? nm;
     return {
       handId: state.handId,
       tournamentId: state.tournamentId,
@@ -540,18 +547,18 @@ export default function HandBuilder() {
       level: state.level,
       sb: state.sb, bb: state.bb, ante: state.ante,
       maxSeats: state.tableSize,
-      players: state.players,
+      players: state.players.map(p => ({ ...p, name: displayName(p) })),
       buttonSeat: state.buttonSeat,
-      heroName: heroPlayer.name,
+      heroName: "Hero",
       heroCards: state.heroCards.join(" "),
-      actions: state.actions,
+      actions: state.actions.map(a => ({ ...a, player: map(a.player) })),
       board: {
         flop: state.board.flop.length === 3 ? state.board.flop : undefined,
         turn: state.board.turn || undefined,
         river: state.board.river || undefined,
       },
       winner: state.showWinner && state.winAmount > 0
-        ? { player: state.showWinner, amount: state.winAmount }
+        ? { player: map(state.showWinner), amount: state.winAmount }
         : undefined,
     };
   }, [state, heroPlayer]);
