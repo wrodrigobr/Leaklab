@@ -17,7 +17,8 @@
     "removePos": "Remove position from the table",
     "confirmRemove": "Changing the table's players clears the current hand. Continue?",
     "nPlayers": "{{n}} players",
-    "addPos": "Add position"
+    "addPos": "Add position",
+    "heroPosition": "Hero position this hand"
   },
   "advanced": {
     "title": "Advanced",

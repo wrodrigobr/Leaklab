@@ -584,57 +584,36 @@ export default function HandBuilder() {
     setState(s => ({ ...s, actions: res.actions, showWinner: res.winnerName, winAmount: res.potChips }));
   };
 
+  // Próxima mão: salva no arquivo e limpa a mão. NÃO roda o button nem mexe nos
+  // stacks — recriação de vídeo é NÃO-sequencial (você seleciona mãos avulsas), então
+  // a mesa (button/stacks/hero) fica como você deixou e você ajusta a posição do hero
+  // e os stacks por mão. (Carryover/rotação automáticos imporiam valores errados.)
   const nextHand = () => {
     if (!hhText) return;
     snapshot();
-    const invested = new Map<string, number>();
-    state.players.forEach(p => invested.set(p.name, state.ante));
-    if (clockwiseFromSb[0]) invested.set(clockwiseFromSb[0].name, (invested.get(clockwiseFromSb[0].name) ?? 0) + state.sb);
-    if (clockwiseFromSb[1]) invested.set(clockwiseFromSb[1].name, (invested.get(clockwiseFromSb[1].name) ?? 0) + state.bb);
-    const byPlayerStreet = new Map<string, number>();
-    for (const a of state.actions) {
-      if (a.action === "fold" || a.action === "check") continue;
-      const k = `${a.street}|${a.player}`;
-      const prev = byPlayerStreet.get(k) ?? 0;
-      const v = a.amount ?? 0;
-      if (v > prev) {
-        invested.set(a.player, (invested.get(a.player) ?? 0) + (v - prev));
-        byPlayerStreet.set(k, v);
-      }
-    }
-    if (clockwiseFromSb[0]) {
-      const k = `preflop|${clockwiseFromSb[0].name}`;
-      if (byPlayerStreet.has(k)) invested.set(clockwiseFromSb[0].name, (invested.get(clockwiseFromSb[0].name) ?? 0) - state.sb);
-    }
-    if (clockwiseFromSb[1]) {
-      const k = `preflop|${clockwiseFromSb[1].name}`;
-      if (byPlayerStreet.has(k)) invested.set(clockwiseFromSb[1].name, (invested.get(clockwiseFromSb[1].name) ?? 0) - state.bb);
-    }
-    // Carryover de stacks só quando há vencedor+pote (tracking de torneio real).
-    // Sem vencedor (comum ao recriar de vídeo), mantém os stacks — você ajusta
-    // por mão pelas posições. Evita "sumir" fichas sem ninguém coletar.
-    const hasWinner = !!state.showWinner && state.winAmount > 0;
-    const updatedPlayers = hasWinner
-      ? state.players.map(p => {
-          const lost = invested.get(p.name) ?? 0;
-          const won  = state.showWinner === p.name ? state.winAmount : 0;
-          return { ...p, stack: Math.max(0, p.stack - lost + won) };
-        })
-      : state.players;
-    const seatNums = updatedPlayers.map(p => p.seat).sort((a, b) => a - b);
-    const btnIdx = seatNums.indexOf(state.buttonSeat);
-    const nextBtn = seatNums[(btnIdx + 1) % seatNums.length] ?? state.buttonSeat;
-    const nextHandId = String(Number(state.handId) + 1);
     setState(s => ({
       ...s,
       completedHands: [...s.completedHands, hhText],
-      handId: nextHandId,
-      players: updatedPlayers,
-      buttonSeat: nextBtn,
+      handId: String(Number(s.handId) + 1),
       heroCards: [], actions: [],
       board: { flop: [], turn: "", river: "" },
       showWinner: "", winAmount: 0,
     }));
+  };
+
+  // Define o button pra que o HERO (assento fixo) fique na posição escolhida —
+  // respeita a posição do hero que você seleciona, sem mover o hero de assento
+  // (mantém a identidade dele estável entre as mãos do arquivo).
+  const setHeroPosition = (targetPos: string) => {
+    const seatNums = state.players.map(p => p.seat).sort((a, b) => a - b);
+    const n = seatNums.length;
+    const ti = positionNames(n).indexOf(targetPos);
+    const heroIdx = seatNums.indexOf(state.heroSeat);
+    if (ti === -1 || heroIdx === -1) return;
+    // clockwiseFromSb[k] = seatNums[(btnIdx+1+k) % n]; queremos clockwise[ti] = heroSeat
+    const btnIdx = (((heroIdx - 1 - ti) % n) + n) % n;
+    snapshot();
+    update("buttonSeat", seatNums[btnIdx]);
   };
 
   const resetAll = () => {
@@ -774,6 +753,28 @@ export default function HandBuilder() {
                     <Plus className="size-3" /> {t("setup.addPos")}
                   </button>
                 </div>
+
+                {/* Posição do hero nesta mão — define o button (mãos não-sequenciais) */}
+                {heroPlayer && (() => {
+                  const pn = positionNames(state.players.length);
+                  const order = [...pn.slice(2), pn[0], pn[1]].filter(Boolean);
+                  const heroPos = positionOf(heroPlayer);
+                  return (
+                    <div className="space-y-1 pt-2 border-t border-border/40">
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("setup.heroPosition")}</span>
+                      <div className="flex gap-1 flex-wrap">
+                        {order.map(pos => (
+                          <button key={pos} onClick={() => setHeroPosition(pos)}
+                            className={cn("px-2.5 py-1 rounded-md font-mono text-[11px] font-bold transition-colors",
+                              pos === heroPos ? "bg-primary text-primary-foreground"
+                                : "bg-background border border-border text-muted-foreground hover:border-primary/60 hover:text-foreground")}>
+                            {pos}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Avançado: metadados de torneio + blinds custom + diagrama */}

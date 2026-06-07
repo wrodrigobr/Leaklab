@@ -17,7 +17,8 @@
     "removePos": "Remover posição da mesa",
     "confirmRemove": "Mudar os jogadores da mesa limpa a mão atual. Continuar?",
     "nPlayers": "{{n}} jogadores",
-    "addPos": "Adicionar posição"
+    "addPos": "Adicionar posição",
+    "heroPosition": "Posição do hero nesta mão"
   },
   "advanced": {
     "title": "Avançado",
