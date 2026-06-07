@@ -48,7 +48,7 @@
     },
     "handDone": "Mano finalizada",
     "markWinnerHint": "Marca el ganador abajo. Luego inicia la próxima mano (el button rota, los stacks se actualizan).",
-    "handDoneHint": "Marca el ganador y el bote (opcional), luego clic en Próxima mano. El button rota y la mano se añade al archivo del torneo.",
+    "handDoneHint": "Bote y ganador detectados automáticamente. Clic en Próxima mano (en showdown, confirma el ganador en Resultado).",
     "nextHand": "Iniciar próxima mano",
     "heroFoldedHint": "El hero foldeó — el resto no afecta el análisis. Finaliza con los villanos foldeando (el último agresor se lleva el bote).",
     "autoFinish": "Finalizar mano",
@@ -70,7 +70,11 @@
   "street": { "preflop": "preflop", "flop": "flop", "turn": "turn", "river": "river" },
   "act": { "fold": "Fold", "check": "Check", "call": "Call", "bet": "Bet", "raise": "Raise", "allin": "All-in" },
   "board": { "title": "Board", "flop": "Flop (3 cartas)", "turn": "Turn (1)", "river": "River (1)" },
-  "winner": { "title": "Resultado", "player": "Ganador", "choose": "— elegir —", "pot": "Bote (bb)" },
+  "winner": {
+    "title": "Resultado", "player": "Ganador", "choose": "— elegir —", "pot": "Bote (bb)",
+    "potShort": "Bote", "detected": "(detectado)", "calculated": "(calculado)",
+    "showdownChoose": "Showdown ({{n}}) — elige el ganador"
+  },
   "preview": {
     "title": "Hand History",
     "reset": "Reset",

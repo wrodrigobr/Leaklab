@@ -5,7 +5,7 @@ import { Download, Play, Trash2, RotateCcw, FileText, ChevronRight, Star, Settin
 import { HudHeader } from "@/components/hud/HudHeader";
 import { tournaments } from "@/lib/api";
 import { importHandHistory } from "@/lib/hhImport";
-import { autoFinishAfterFold } from "@/lib/hhAutoFinish";
+import { autoFinishAfterFold, totalPot } from "@/lib/hhAutoFinish";
 import { cn } from "@/lib/utils";
 import {
   generateHandHistory,
@@ -393,6 +393,33 @@ export default function HandBuilder() {
 
   // Hero já registrou um fold nesta mão → resto é irrelevante pra análise.
   const heroFolded = !!heroPlayer && foldedPlayers.has(heroPlayer.name);
+
+  // Pote final (fichas), 100% calculado das ações — nunca precisa digitar.
+  const finalPotChips = useMemo(() => totalPot({
+    players: state.players, buttonSeat: state.buttonSeat, actions: state.actions,
+    sb: state.sb, bb: state.bb, ante: state.ante, board: state.board,
+  }), [state.players, state.buttonSeat, state.actions, state.sb, state.bb, state.ante, state.board]);
+
+  // Jogadores ainda ativos (não foldaram). 1 ativo = mão ganha por desistência
+  // (vencedor auto-detectável); 2+ no fim = showdown (vencedor depende das cartas).
+  const activePlayers = useMemo(
+    () => clockwiseFromSb.filter(p => !foldedPlayers.has(p.name)),
+    [clockwiseFromSb, foldedPlayers]
+  );
+  const isShowdown = handComplete && activePlayers.length >= 2;
+
+  // Auto-preenche vencedor + pote quando a mão fecha (sem sobrescrever escolha
+  // manual ou o auto-finish do hero-fold). Vencedor só auto quando 1 ativo sobra;
+  // no showdown fica vazio pra você escolher (cartas dos vilões são desconhecidas).
+  useEffect(() => {
+    if (!handComplete) return;
+    if (state.showWinner || state.winAmount > 0) return;
+    setState(s => ({
+      ...s,
+      winAmount: finalPotChips,
+      showWinner: activePlayers.length === 1 ? activePlayers[0].name : "",
+    }));
+  }, [handComplete, finalPotChips, activePlayers, state.showWinner, state.winAmount]);
 
   const pendingBoardStreet: Street | null = useMemo(() => {
     if (!streetComplete || handComplete) return null;
@@ -952,28 +979,34 @@ export default function HandBuilder() {
               </section>
             )}
 
-            {/* Winner */}
-            {state.actions.length > 0 && (
-              <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
+            {/* Resultado — vencedor + pote auto-detectados; só escolhe no showdown */}
+            {handComplete && (
+              <section className="rounded-xl border border-border bg-hud-surface p-4 space-y-2">
                 <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("winner.title")}</h2>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <label className="space-y-1">
-                    <span className="font-mono text-[10px] text-muted-foreground">{t("winner.player")}</span>
-                    <select value={state.showWinner} onChange={e => update("showWinner", e.target.value)}
-                      className="w-full bg-background border border-border rounded px-2 py-1">
-                      <option value="">{t("winner.choose")}</option>
-                      {state.players.map(p => <option key={p.seat} value={p.name}>{positionOf(p)} · {p.name}</option>)}
-                    </select>
-                  </label>
-                  <label className="space-y-1">
-                    <span className="font-mono text-[10px] text-muted-foreground">{t("winner.pot")}</span>
-                    <div className="flex items-center gap-1">
-                      <input type="number" step="0.1" value={state.winAmount ? toBB(state.winAmount, state.bb) : ""}
-                        onChange={e => update("winAmount", Math.round((+e.target.value || 0) * state.bb))}
-                        className="flex-1 bg-background border border-border rounded px-2 py-1 font-mono tabular-nums text-right" />
-                      <span className="font-mono text-[10px] text-muted-foreground">bb</span>
-                    </div>
-                  </label>
+                <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm">
+                  {isShowdown ? (
+                    <label className="space-y-1">
+                      <span className="font-mono text-[10px] text-amber-300">{t("winner.showdownChoose", { n: activePlayers.length })}</span>
+                      <select value={state.showWinner} onChange={e => update("showWinner", e.target.value)}
+                        className="w-full bg-background border border-amber-500/40 rounded px-2 py-1">
+                        <option value="">{t("winner.choose")}</option>
+                        {activePlayers.map(p => <option key={p.seat} value={p.name}>{positionOf(p)} · {p.name}</option>)}
+                      </select>
+                    </label>
+                  ) : (
+                    <span className="font-mono">
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{t("winner.player")}: </span>
+                      <span className="font-bold text-foreground">{
+                        (() => { const w = state.players.find(p => p.name === state.showWinner); return w ? positionOf(w) : "—"; })()
+                      }</span>
+                      <span className="ml-1 text-[10px] text-emerald-400/70">{t("winner.detected")}</span>
+                    </span>
+                  )}
+                  <span className="font-mono">
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{t("winner.potShort")}: </span>
+                    <span className="font-bold tabular-nums text-foreground">{fmtBB(finalPotChips, state.bb)}</span>
+                    <span className="ml-1 text-[10px] text-muted-foreground/60">{t("winner.calculated")}</span>
+                  </span>
                 </div>
               </section>
             )}
