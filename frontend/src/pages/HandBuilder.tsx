@@ -142,11 +142,12 @@ const DEFAULT_TABLE: TableSize = 6;
 const DEFAULT_STACK_BB = 100;
 
 function buildPlayers(size: TableSize, stackBb: number): PlayerInput[] {
-  const names = positionNames(size);
-  // assento i (1..N), button no assento N → ordered[0]=seat1=SB ... ordered[N-1]=seatN=BTN.
+  // Nome = id NEUTRO por assento (P1..PN). A POSIÇÃO é sempre derivada do
+  // assento+button (positionOf) e não do nome — evita um nome posicional ("BTN")
+  // virar stale e divergir da posição real quando o button anda. button no assento N.
   return Array.from({ length: size }, (_, k) => ({
     seat: k + 1,
-    name: names[k],
+    name: `P${k + 1}`,
     stack: Math.round(stackBb * BB_CHIPS),
   }));
 }
@@ -932,8 +933,7 @@ export default function HandBuilder() {
                         isCurrent ? "border-primary bg-primary/10" :
                         folded    ? "border-border/30 opacity-40 line-through" : "border-border/50"
                       )}>
-                        <span className="font-mono text-[9px] text-muted-foreground w-12">{positionOf(p)}</span>
-                        <span className="font-mono flex-1 truncate">{p.name}</span>
+                        <span className="font-mono flex-1 font-bold text-foreground">{positionOf(p)}</span>
                         {bet > 0 && <span className="font-mono text-[10px] tabular-nums text-foreground/70">{fmtBB(bet, state.bb)}</span>}
                       </div>
                     );
@@ -990,7 +990,7 @@ export default function HandBuilder() {
                       <select value={state.showWinner} onChange={e => update("showWinner", e.target.value)}
                         className="w-full bg-background border border-amber-500/40 rounded px-2 py-1">
                         <option value="">{t("winner.choose")}</option>
-                        {activePlayers.map(p => <option key={p.seat} value={p.name}>{positionOf(p)} · {p.name}</option>)}
+                        {activePlayers.map(p => <option key={p.seat} value={p.name}>{positionOf(p)}</option>)}
                       </select>
                     </label>
                   ) : (
@@ -1144,9 +1144,6 @@ function CurrentActorCard({
           <span className="font-mono text-[10px] uppercase tracking-widest text-primary">{t("actions.turn")}</span>
           <span className="text-lg font-bold text-foreground">{positionLabel}</span>
         </div>
-        <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary ring-1 ring-primary/30">
-          {actor.name}
-        </span>
       </div>
 
       <div className="flex items-center gap-4 text-[11px] font-mono flex-wrap">
