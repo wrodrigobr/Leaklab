@@ -50,6 +50,8 @@
     "markWinnerHint": "Mark the winner below. Then start the next hand (button rotates, stacks update).",
     "handDoneHint": "Mark the winner and pot (optional), then click Next hand. The button rotates and the hand is added to the tournament file.",
     "nextHand": "Start next hand",
+    "heroFoldedHint": "The hero folded — the rest of the hand doesn't affect the analysis.",
+    "autoFinish": "Finish randomly",
     "noActions": "No actions logged yet.",
     "handOver": "Hand over (or only 1 active player). Advance the board or mark the winner.",
     "turn": "To act",

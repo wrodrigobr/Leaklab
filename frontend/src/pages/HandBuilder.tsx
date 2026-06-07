@@ -5,6 +5,7 @@ import { Download, Play, Trash2, RotateCcw, FileText, ChevronRight, Star, Settin
 import { HudHeader } from "@/components/hud/HudHeader";
 import { tournaments } from "@/lib/api";
 import { importHandHistory } from "@/lib/hhImport";
+import { autoFinishAfterFold } from "@/lib/hhAutoFinish";
 import { cn } from "@/lib/utils";
 import {
   generateHandHistory,
@@ -390,6 +391,9 @@ export default function HandBuilder() {
     return streetComplete && currentStreet === "river";
   }, [clockwiseFromSb, foldedPlayers, streetComplete, currentStreet]);
 
+  // Hero já registrou um fold nesta mão → resto é irrelevante pra análise.
+  const heroFolded = !!heroPlayer && foldedPlayers.has(heroPlayer.name);
+
   const pendingBoardStreet: Street | null = useMemo(() => {
     if (!streetComplete || handComplete) return null;
     if (currentStreet === "preflop" && state.board.flop.length !== 3) return "flop";
@@ -538,6 +542,18 @@ export default function HandBuilder() {
     const a = document.createElement("a");
     a.href = url; a.download = `tournament_${state.tournamentId}.txt`;
     a.click(); URL.revokeObjectURL(url);
+  };
+
+  // Hero já foldou → o resto da mão não afeta a análise. Resolve aleatoriamente:
+  // villains restantes foldam pra um vencedor aleatório (acaba na street atual).
+  const autoFinish = () => {
+    const res = autoFinishAfterFold({
+      players: state.players, buttonSeat: state.buttonSeat, actions: state.actions,
+      sb: state.sb, bb: state.bb, ante: state.ante, board: state.board,
+    });
+    if (!res) return;
+    snapshot();
+    setState(s => ({ ...s, actions: res.actions, showWinner: res.winnerName, winAmount: res.potChips }));
   };
 
   const nextHand = () => {
@@ -837,6 +853,17 @@ export default function HandBuilder() {
                     </button>
                   </div>
                 </div>
+
+                {/* Hero foldou → o resto não afeta a análise: finaliza aleatoriamente */}
+                {heroFolded && !handComplete && (
+                  <div className="rounded-lg border-2 border-sky-500/40 bg-sky-500/5 p-3 flex items-center gap-3">
+                    <p className="text-xs text-muted-foreground flex-1">{t("actions.heroFoldedHint")}</p>
+                    <button onClick={autoFinish}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-500/40 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-sky-500/30">
+                      <ChevronRight className="size-3.5" /> {t("actions.autoFinish")}
+                    </button>
+                  </div>
+                )}
 
                 {streetComplete && pendingBoardStreet ? (
                   <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/5 p-4 text-center space-y-2">
