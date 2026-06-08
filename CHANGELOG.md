@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### style(brand): crop do viewBox do logo horizontal (centraliza + aumenta) + header da landing
+
+> O logo `grindlab_final_horizontal.svg` parecia "sentado alto" no header (menos respiro em cima que embaixo). Diagnóstico via `getBBox()`: a arte ocupa só ~y6→79 do viewBox de altura 100 (whitespace topo **6** vs base **21**) — o box estava centralizado (folgas 8/9px), mas a arte dentro do SVG não. **Fix não-destrutivo:** crop do `viewBox` `0 0 283 100` → `8 4.4 263 76` (limites reais da arte + ~1.5 de margem simétrica; nenhuma arte alterada). Resultado: a arte passa a preencher o box → **centralizada e ~22% maior** no mesmo `h-class` (logo no header: 136→166px de largura). Beneficia as **5 telas** que usam o logo (header logado, landing, login, replayer, coach-apply). **Header da landing** (pré-login): logo `h-8`→`h-12` e barra `py-3`→`h-16` p/ ficar **idêntico ao header logado** (medido: ambos 48px alto × 166px, folgas 8/9). Validado: build OK, sem clip, screenshots conferidos.
+
 ### feat(landing): hero banner por idioma do usuário (i18n)
 
 > O hero da landing usava uma imagem única (`grindlab_og_1200x630.png`). Agora seleciona a versão por idioma — `grindlab_og_en/es/ptbr.png` — via `i18n.language` (base da locale: `pt-BR`→pt; fallback EN). Validado: pt-BR→ptbr, en→en, es→es. **Nota sobre o `og:image` social** (`index.html`): esse é lido por crawlers (WhatsApp/FB/Twitter) que não rodam JS nem têm "usuário/idioma" — não dá pra trocar por idioma do usuário client-side; ficaria por URL/locale + edge (não feito agora).

@@ -24,9 +24,9 @@ function Navbar() {
   const { t } = useTranslation("landing");
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link to="/" className="flex items-center">
-          <img src={logoHorizontal} alt="GrindLab" className="h-8 w-auto" />
+          <img src={logoHorizontal} alt="GrindLab" className="h-12 w-auto" />
         </Link>
         <nav className="flex items-center gap-3">
           <Link
