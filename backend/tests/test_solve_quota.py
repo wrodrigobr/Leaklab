@@ -43,13 +43,18 @@ def test_free_limit_blocks():
     print(f"OK  test_free_limit_blocks (free={lim})")
 
 
-def test_pro_unlimited():
+def test_pro_monthly_unlimited_daily_capped():
+    # Fase 2: Pro é ilimitado no MÊS, mas tem teto DIÁRIO de 20 solves (fair-use anti-abuso).
     uid = _mk_user('pro')
-    for _ in range(50):
+    for _ in range(5):
         increment_solves(uid)
     allowed, rem = can_request_solve(uid)
-    assert allowed is True and rem is None   # ilimitado
-    print("OK  test_pro_unlimited")
+    assert allowed is True and rem == 15     # 20/dia − 5 usados
+    for _ in range(15):
+        increment_solves(uid)
+    allowed, rem = can_request_solve(uid)
+    assert allowed is False and rem == 0     # 20/20 no dia → bloqueia
+    print("OK  test_pro_monthly_unlimited_daily_capped")
 
 
 def test_monthly_reset_zeroes_solves():

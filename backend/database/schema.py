@@ -442,6 +442,10 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_calls_this_month     INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS solves_this_month       INTEGER NOT NULL DEFAULT 0",  # #26 cota de solves
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS quota_reset_at          DATE",
+            # Fase 2 planos — tetos DIÁRIOS (fair-use anti-abuso) + reset diário
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_chat_today           INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS solves_today            INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS quota_day_reset_at       DATE",
             # Sprint 7 — BACK-006: perfil estendido + reviews
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS photo_url         TEXT",
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS experience_years  INTEGER",
@@ -963,6 +967,9 @@ def _run_migrations(conn):
             ("ai_calls_this_month",     "ALTER TABLE users ADD COLUMN ai_calls_this_month     INTEGER NOT NULL DEFAULT 0"),
             ("solves_this_month",       "ALTER TABLE users ADD COLUMN solves_this_month       INTEGER NOT NULL DEFAULT 0"),
             ("quota_reset_at",          "ALTER TABLE users ADD COLUMN quota_reset_at          TEXT"),
+            ("ai_chat_today",           "ALTER TABLE users ADD COLUMN ai_chat_today           INTEGER NOT NULL DEFAULT 0"),
+            ("solves_today",            "ALTER TABLE users ADD COLUMN solves_today            INTEGER NOT NULL DEFAULT 0"),
+            ("quota_day_reset_at",      "ALTER TABLE users ADD COLUMN quota_day_reset_at       TEXT"),
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),

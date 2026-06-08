@@ -2989,9 +2989,12 @@ def get_baseline_comparison(coach_id: int, student_id: int) -> Optional[dict]:
 # IA avançada (Strategic Twin, Cognitive Failures, Leak Causal Map, Career). Tetos DIÁRIOS
 # do Pro (ai_chat/dia, solves/dia) entram na fase 2 (fair-use anti-abuso).
 PLAN_LIMITS: dict = {
-    'free':    {'tournaments': 2,   'ai_calls': 15,  'ai_coach_chat': False, 'solves': 5,    'advanced_insights': False},
-    'pro':     {'tournaments': 200, 'ai_calls': 300, 'ai_coach_chat': True,  'solves': None, 'advanced_insights': True},
-    'coach':   {'tournaments': None, 'ai_calls': None, 'ai_coach_chat': True, 'solves': None, 'advanced_insights': True},  # interno
+    'free':    {'tournaments': 2,   'ai_calls': 15,  'ai_coach_chat': False, 'solves': 5,    'advanced_insights': False,
+                'ai_chat_per_day': 0,  'solves_per_day': None, 'max_pending_solves': 3},
+    'pro':     {'tournaments': 200, 'ai_calls': 300, 'ai_coach_chat': True,  'solves': None, 'advanced_insights': True,
+                'ai_chat_per_day': 50, 'solves_per_day': 20,   'max_pending_solves': 10},
+    'coach':   {'tournaments': None, 'ai_calls': None, 'ai_coach_chat': True, 'solves': None, 'advanced_insights': True,
+                'ai_chat_per_day': None, 'solves_per_day': None, 'max_pending_solves': None},  # interno
 }
 
 
@@ -3074,12 +3077,14 @@ def increment_ai_calls(user_id: int) -> None:
 
 
 def increment_solves(user_id: int) -> None:
-    """#26 — conta 1 solve on-demand (GTO sob demanda) no mês do usuário."""
+    """#26 — conta 1 solve on-demand no MÊS e no DIA (fase 2) do usuário."""
     conn = get_conn()
     try:
         _maybe_reset_quota(conn, user_id)
+        _maybe_reset_daily_quota(conn, user_id)
         conn.execute(
-            "UPDATE users SET solves_this_month = solves_this_month + 1 WHERE id = ?",
+            "UPDATE users SET solves_this_month = solves_this_month + 1, "
+            "solves_today = solves_today + 1 WHERE id = ?",
             (user_id,),
         )
         conn.commit()
@@ -3088,21 +3093,105 @@ def increment_solves(user_id: int) -> None:
 
 
 def can_request_solve(user_id: int) -> tuple:
-    """#26 — (permitido, restantes) p/ o solve on-demand. restantes=None = ilimitado
-    (pro/coach). Reseta a cota na virada do mês antes de checar."""
+    """#26 — (permitido, restantes) p/ o solve on-demand. Checa cota MENSAL e teto DIÁRIO
+    (fase 2 — fair-use do Pro); restantes = o menor dos dois (None = ilimitado). Reseta as
+    cotas (mês e dia) antes de checar."""
     conn = get_conn()
     try:
         _maybe_reset_quota(conn, user_id)
+        _maybe_reset_daily_quota(conn, user_id)
         conn.commit()
-        row = _fetchone(conn, "SELECT plan, solves_this_month FROM users WHERE id = ?", (user_id,))
+        row = _fetchone(conn, "SELECT plan, solves_this_month, solves_today FROM users WHERE id = ?", (user_id,))
+    finally:
+        conn.close()
+    plan   = (row.get('plan') if row else None) or 'free'
+    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS['free'])
+    m_lim  = limits.get('solves')
+    d_lim  = limits.get('solves_per_day')
+    m_used = (row.get('solves_this_month') if row else 0) or 0
+    d_used = (row.get('solves_today') if row else 0) or 0
+    rem = None
+    if m_lim is not None:
+        if m_used >= m_lim:
+            return False, 0
+        rem = m_lim - m_used
+    if d_lim is not None:
+        if d_used >= d_lim:
+            return False, 0
+        d_rem = d_lim - d_used
+        rem = d_rem if rem is None else min(rem, d_rem)
+    return True, rem
+
+
+def _maybe_reset_daily_quota(conn, user_id: int) -> None:
+    """Se o dia virou, zera os contadores DIÁRIOS (ai_chat_today, solves_today)."""
+    from datetime import date
+    today = date.today().isoformat()
+    row = _fetchone(conn, "SELECT quota_day_reset_at FROM users WHERE id = ?", (user_id,))
+    if not row:
+        return
+    stored = (row.get('quota_day_reset_at') or '')[:10]  # 'YYYY-MM-DD'
+    if stored != today:
+        conn.execute(
+            "UPDATE users SET ai_chat_today = 0, solves_today = 0, quota_day_reset_at = ? WHERE id = ?",
+            (today, user_id),
+        )
+
+
+def increment_ai_chat(user_id: int) -> None:
+    """Conta 1 mensagem do AI Coach Chat no dia (fase 2 — teto diário do Pro)."""
+    conn = get_conn()
+    try:
+        _maybe_reset_daily_quota(conn, user_id)
+        conn.execute("UPDATE users SET ai_chat_today = ai_chat_today + 1 WHERE id = ?", (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def can_send_ai_chat(user_id: int) -> tuple:
+    """(permitido, restantes) p/ AI Coach Chat no DIA. None = ilimitado (coach)."""
+    conn = get_conn()
+    try:
+        _maybe_reset_daily_quota(conn, user_id)
+        conn.commit()
+        row = _fetchone(conn, "SELECT plan, ai_chat_today FROM users WHERE id = ?", (user_id,))
     finally:
         conn.close()
     plan  = (row.get('plan') if row else None) or 'free'
-    limit = PLAN_LIMITS.get(plan, PLAN_LIMITS['free']).get('solves')
-    used  = (row.get('solves_this_month') if row else 0) or 0
+    limit = PLAN_LIMITS.get(plan, PLAN_LIMITS['free']).get('ai_chat_per_day')
+    used  = (row.get('ai_chat_today') if row else 0) or 0
     if limit is None:
         return True, None
     return used < limit, max(0, limit - used)
+
+
+def count_user_pending_solves(user_id: int) -> int:
+    """Jobs de solve ainda ativos do usuário (anti-flood da fila compartilhada)."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn,
+            "SELECT COUNT(*) AS n FROM gto_hand_requests "
+            "WHERE requested_by = ? AND status IN ('pending', 'solver_queued')", (user_id,))
+        return (row.get('n') if row else 0) or 0
+    finally:
+        conn.close()
+
+
+def can_enqueue_solve(user_id: int) -> tuple:
+    """(permitido, pendentes, cap) — limita jobs de solve simultâneos por usuário pra um
+    aluno não monopolizar a fila/VM do solver. cap None = sem limite (coach)."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, "SELECT plan FROM users WHERE id = ?", (user_id,))
+    finally:
+        conn.close()
+    plan = (row.get('plan') if row else None) or 'free'
+    cap  = PLAN_LIMITS.get(plan, PLAN_LIMITS['free']).get('max_pending_solves')
+    if cap is None:
+        return True, 0, None
+    pending = count_user_pending_solves(user_id)
+    return pending < cap, pending, cap
 
 
 # ── BACK-015: Payments ────────────────────────────────────────────────────────

@@ -1915,6 +1915,15 @@ def coach_chat():
             'upgrade_required': True,
         }), 402
 
+    # Fase 2 — teto DIÁRIO (fair-use anti-abuso/bot). 429 (não é upsell — Pro já tem acesso).
+    from database.repositories import can_send_ai_chat, increment_ai_chat
+    _chat_ok, _chat_rem = can_send_ai_chat(g.user_id)
+    if not _chat_ok:
+        return jsonify({
+            'error': 'ai_chat_daily_limit',
+            'message': 'Você atingiu o limite diário de mensagens do AI Coach Chat. Tente novamente amanhã.',
+        }), 429
+
     message = sanitize_llm_input(message, max_len=1000)
 
     from database.repositories import get_leak_ranking_gto_first, get_ev_leaks as _get_ev_leaks
@@ -1930,6 +1939,7 @@ def coach_chat():
     try:
         reply = coach_chat_reply(message, leaks, evolution, hero=hero,
                                   frequencies=freqs, leak_source=leak_source, ev_leaks=ev_leaks)
+        increment_ai_chat(g.user_id)   # conta a mensagem no teto diário
         return jsonify({'reply': reply, 'source': leak_source})
     except Exception as e:
         log.exception("coach_chat error")
@@ -5804,7 +5814,8 @@ def admin_gto_queue():
 def player_request_gto(hand_id):
     """Usuário solicita análise GTO para uma mão específica."""
     from database.repositories import (request_gto_for_hand, get_decisions,
-                                        can_request_solve, increment_solves, get_quota_status)
+                                        can_request_solve, increment_solves, get_quota_status,
+                                        can_enqueue_solve)
     user_id = g.user_id
     body = request.get_json(force=True) or {}
     tournament_id = body.get('tournament_id')
@@ -5828,6 +5839,16 @@ def player_request_gto(hand_id):
             'solves_limit': (qs.get('limits') or {}).get('solves'),
             'plan':         qs.get('plan'),
         }), 402
+
+    # Fase 2 — limite de fila por usuário: 1 aluno não pode monopolizar a fila/VM do solver.
+    _q_ok, _q_pending, _q_cap = can_enqueue_solve(user_id)
+    if not _q_ok:
+        return jsonify({
+            'error':   'solve_queue_full',
+            'message': f'Você já tem {_q_pending} análises GTO na fila (máx {_q_cap}). Aguarde concluir antes de pedir mais.',
+            'pending': _q_pending,
+            'cap':     _q_cap,
+        }), 429
 
     result = request_gto_for_hand(t['id'], hand_id, user_id)
     # Consome a cota só quando um solve NOVO entra na fila (idempotente: re-pedir
