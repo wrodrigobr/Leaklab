@@ -4588,7 +4588,7 @@ def get_gto_node_by_spot(street: str, board: list, position: str) -> Optional[di
 
 
 _GTO_VALID_STREETS   = {'preflop', 'flop', 'turn', 'river'}
-_GTO_VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
+_GTO_VALID_POSITIONS = {'UTG', 'UTG1', 'UTG2', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'}
 _GTO_VALID_ACTIONS   = {'fold', 'check', 'call', 'bet', 'raise', 'jam', 'allin', 'shove', 'all-in', 'all_in'}
 _gto_log = __import__('logging').getLogger('leaklab.gto')
 

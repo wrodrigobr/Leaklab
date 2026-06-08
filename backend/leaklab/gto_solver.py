@@ -364,8 +364,14 @@ def lookup_gto(
     # hero IP só é servido com o main.rs patcheado (flag TEXAS_HERO_IP) E facing==0
     # (o patch IP cobre só o nó de c-bet). Senão, bloqueia → heurístico.
     _ip_blocked = _hero_ip and not (_TEXAS_HERO_IP and facing_size_bb == 0.0)
+    # Guard de consistência street×board: o nº de cartas precisa bater com a street
+    # (flop=3, turn=4, river=5). Spots inconsistentes (ex.: 'river' com 4 cartas — bug
+    # de parser onde a carta de river some) fariam o solver_cli abortar (500). Pula.
+    _nb = len([c for c in board if c])
+    _board_mismatch = _nb != {'flop': 3, 'turn': 4, 'river': 5}.get(street_l, -1)
     if (street_l == 'preflop' or not board or hero_stack_bb > 60.0
-            or _vs in ('', 'UNKNOWN') or _ip_blocked or _facing_unconvertible):
+            or _vs in ('', 'UNKNOWN') or _ip_blocked or _facing_unconvertible
+            or _board_mismatch):
         if _db_fallback_strategy:
             return {'found': True, 'source': 'postflop_db_partial',
                     'strategy': _db_fallback_strategy,
