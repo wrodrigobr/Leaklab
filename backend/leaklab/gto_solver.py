@@ -93,6 +93,24 @@ def _solver_params_for_stack(stack_bb: float) -> dict:
         }
 
 
+def _canon_solver_action(label: str, facing_size_bb: float) -> str:
+    """Normaliza o label de ação do solver_cli (ex.: 'bet_50pct', 'bet_2.5x') pro conjunto
+    canônico {check,call,fold,bet,raise,allin} que o insert_gto_nodes/engine aceitam. Um
+    label de aposta vira 'raise' quando há aposta a enfrentar (facing>0) e 'bet' quando o
+    hero abre a ação (facing==0). Sem isso, o nó é rejeitado ('ações inválidas')."""
+    a = (label or '').lower().strip()
+    if 'check' in a:
+        return 'check'
+    if a == 'call':
+        return 'call'
+    if a == 'fold':
+        return 'fold'
+    if 'allin' in a or 'all-in' in a or 'all_in' in a or 'jam' in a or 'shove' in a:
+        return 'allin'
+    # bet_50pct / bet_2.5x / raise_* / *x / *pct → bet ou raise conforme o contexto
+    return 'raise' if (facing_size_bb or 0) > 0 else 'bet'
+
+
 def _solver_binary() -> Optional[str]:
     global _SOLVER_AVAILABLE
     if _SOLVER_AVAILABLE is None:
@@ -281,18 +299,24 @@ def lookup_gto(
     except Exception as _gw_err:
         log.debug("gto_wizard: query_spot exception — %s", _gw_err)
 
-    # 4. SEM fallback para o solver Texas (CFR remoto) — DESABILITADO p/ postflop e
-    # preflop. O Texas roda capped a stack curto e dá recs ruins em spots fundos; usamos
-    # SÓ o GTO Wizard (acima). Sem cobertura GW → não-encontrado (cai no heurístico).
-    if _db_fallback_strategy:
-        return {'found': True, 'source': 'postflop_db_partial',
-                'strategy': _db_fallback_strategy,
-                'exploitability_pct': None, 'spot_hash': spot_hash, 'queued': False}
-    return {'found': False, 'source': 'solver_unavailable',
-            'strategy': [], 'exploitability_pct': None,
-            'spot_hash': spot_hash, 'queued': False}
+    # 4. Fallback para o solver Texas (CFR remoto) — REATIVADO p/ postflop HU, COM TRAVAS.
+    # O bug do "shove de 150bb" era DEPTH (solve capado a 20bb servido a spot fundo via o
+    # bucket de stack), NÃO o solver. Agora o solve roda no depth REAL
+    # (_solver_params_for_stack, effective_stack capado a 60bb). Travas:
+    #   (a) só POSTFLOP com board (preflop usa preflop_db/GW);
+    #   (b) só stack ≤ 60bb — acima, o cap de 60bb viraria aproximação → heurístico honesto
+    #       (o engine NUNCA serve solver_cli > 60bb; ver _postflop_gto_lookup);
+    #   (c) o engine aplica o guard de SPR (jam postflop só com SPR ≤ 3) ao ler o nó.
+    if street_l == 'preflop' or not board or hero_stack_bb > 60.0:
+        if _db_fallback_strategy:
+            return {'found': True, 'source': 'postflop_db_partial',
+                    'strategy': _db_fallback_strategy,
+                    'exploitability_pct': None, 'spot_hash': spot_hash, 'queued': False}
+        return {'found': False, 'source': 'solver_unavailable',
+                'strategy': [], 'exploitability_pct': None,
+                'spot_hash': spot_hash, 'queued': False}
 
-    # --- solver Texas (CFR remoto) DESABILITADO — inalcançável (return acima) ---
+    # --- solver Texas (CFR remoto) — postflop HU, depth real ≤60bb ---
 
     oop_range = _DEFAULT_RANGES.get(vs_position.upper(), _DEFAULT_RANGE_WIDE)
     ip_range  = _DEFAULT_RANGES.get(position_u, _DEFAULT_RANGE_WIDE)
@@ -314,32 +338,29 @@ def lookup_gto(
     remote = _call_remote_solver(solver_payload)
     if remote:
         exploit = remote.get('exploitability_pct')
-        strategy_detail = remote.get('strategy_detail')  # {action: {frequency, combos}}
-        # Normalize strategy: prefer strategy_detail, fallback to strategy dict/list
-        if strategy_detail and isinstance(strategy_detail, dict):
-            strategy_list = [
-                {'action': k, 'frequency': v['frequency'], 'combos': v.get('combos'),
-                 'ev_bb': None, 'exploitability_pct': exploit}
-                for k, v in strategy_detail.items()
-            ]
-        else:
-            strategy_raw = remote.get('strategy')
-            if isinstance(strategy_raw, dict):
-                strategy_list = [
-                    {'action': k, 'frequency': v, 'combos': None,
-                     'ev_bb': None, 'exploitability_pct': exploit}
-                    for k, v in strategy_raw.items()
-                ]
-            elif isinstance(strategy_raw, list):
-                strategy_list = strategy_raw
+        # Normaliza os labels do solver (bet_50pct/bet_2.5x → bet/raise) pro conjunto
+        # canônico e AGREGA por ação (senão o insert rejeita 'ações inválidas'). Aceita
+        # strategy_detail {action:{frequency,combos}} ou strategy {action:freq}.
+        raw_detail = remote.get('strategy_detail') or remote.get('strategy') or {}
+        strategy_detail: dict = {}
+        for k, v in raw_detail.items():
+            ck = _canon_solver_action(k, facing_size_bb)
+            if isinstance(v, dict):
+                freq = float(v.get('frequency', 0) or 0); combos = v.get('combos')
             else:
-                strategy_list = [{
-                    'action':             remote['primary_action'],
-                    'frequency':          remote['primary_freq'],
-                    'combos':             None,
-                    'ev_bb':              remote.get('ev'),
-                    'exploitability_pct': exploit,
-                }]
+                freq = float(v or 0); combos = None
+            if ck in strategy_detail:
+                strategy_detail[ck]['frequency'] += freq
+            else:
+                strategy_detail[ck] = {'frequency': freq, 'combos': combos}
+        primary_action = _canon_solver_action(remote.get('primary_action', ''), facing_size_bb)
+        primary_freq   = (strategy_detail.get(primary_action, {}).get('frequency')
+                          or float(remote.get('primary_freq', 0) or 0))
+        strategy_list = [
+            {'action': k, 'frequency': v['frequency'], 'combos': v.get('combos'),
+             'ev_bb': None, 'exploitability_pct': exploit}
+            for k, v in strategy_detail.items()
+        ]
         insert_gto_nodes([{
             'street':          street_l,
             'position':        position_u,
@@ -347,16 +368,15 @@ def lookup_gto(
             'hero_hand':       hero_hand,
             'hero_stack_bb':   hero_stack_bb,
             'facing_size_bb':  facing_size_bb,
-            'gto_action':      remote['primary_action'],
-            'gto_freq':        remote['primary_freq'],
+            'gto_action':      primary_action,
+            'gto_freq':        primary_freq,
             'ev_diff':         remote.get('ev'),
             'exploitability_pct': float(exploit) if exploit else None,
             'iterations':      remote.get('iterations'),
             'strategy_detail': strategy_detail,
         }])
         log.info("GTO remote solve: %s → %s %.0f%% (exploit=%.2f%%)",
-                 spot_hash, remote['primary_action'],
-                 remote['primary_freq'] * 100, exploit or 0)
+                 spot_hash, primary_action, primary_freq * 100, exploit or 0)
         return {
             'found':              True,
             'source':             'remote_solver',

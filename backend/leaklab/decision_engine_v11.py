@@ -276,11 +276,17 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
         if facing_bb == 0.0:
             hashes.append(compute_spot_hash(street, position, board, [], stack_bb, 0.0))
 
-        # IGNORA nós do solver Texas (source='solver_cli') no postflop: ele roda capped
-        # a stack curto (~20bb) e dá recs ruins em spots fundos (ex.: shove de 150bb).
-        # Usa SÓ GTO Wizard (mais confiável); sem cobertura GW → heurístico.
+        # Nós do solver Texas (source='solver_cli') REATIVADOS no postflop, COM TRAVA de
+        # depth: o solve agora roda no stack REAL (cap 60bb), não mais capado a 20bb. Só
+        # confia em solver_cli quando o spot é ≤60bb (acima seria aproximação do cap → cai
+        # no GW/heurístico). O guard de SPR abaixo ainda rejeita jams indevidos de qualquer
+        # fonte. GTO Wizard segue preferido quando existir (precisão maior).
         def _ok(n):
-            return bool(n) and (n.get('source') != 'solver_cli')
+            if not n:
+                return False
+            if n.get('source') == 'solver_cli':
+                return stack_bb <= 60.0
+            return True
 
         # Prioridade 1: nó GW com strategy_json (dados completos)
         node = None
