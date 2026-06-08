@@ -141,7 +141,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
         <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 md:px-8">
           <div className="flex items-center gap-6 md:gap-10">
             <a href="/dashboard" className="flex items-center group" aria-label="GrindLab home">
-              <img src={logoHorizontal} alt="GrindLab" className="h-10 w-auto" />
+              <img src={logoHorizontal} alt="GrindLab" className="h-12 w-auto" />
             </a>
 
             <nav className="hidden md:flex items-center gap-1" aria-label="Primary">

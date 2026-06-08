@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### style(header): logo GrindLab h-10 → h-12 (48px no header de 64px)
+
+> A pedido do usuário, mais um aumento do logo do header. `h-10` (40px) → `h-12` (48px) — ocupa ~75% da altura da barra (`h-16`/64px), com ~8px de respiro de cada lado (teto confortável sem crescer a barra). Validado: logo medido 48×136px, header 65px, balanceado com a nav, zero erros.
+
 ### refactor(dashboard): diferencia os 2 cards de leak em papéis distintos (sem remover)
 
 > Auditoria: `LeakFinder` e `LeaksPanel` pareciam duplicados (ambos "lista de top leaks"), mas têm taxonomias diferentes no backend (`get_ev_leaks` agrupa por posição×street×ação e ordena por EV-bb; `get_leak_roi_impact` agrupa por spot `street/ação`, com drill/trend/`/study` amarrados a essa chave) — merge real seria caro. Optado por **mantê-los com papéis distintos e não-contraditórios**: **Leak Finder = diagnóstico de EV** (onde você perde mais bb — *o quê corrigir*); **Fila de Treino** (ex-"Top Leaks Detectados") **= plano de treino** (progresso no Ghost Table, trend, atalho Estudar — *e agora*). Recast só de `leaks.title`/`leaks.tooltip` nas 3 locales (PT/EN/ES) deixando o papel óbvio e referenciando o Leak Finder como o diagnóstico. Para o espírito casar, `get_leak_roi_impact` agora **ordena a fila por impacto de EV** (`ev_loss_monthly`, empate→`priority_score` p/ robustez com buy_in=0) e re-numera `priority_rank`. Validado: 3 JSON OK, backend compila, ordenação EV-desc confirmada com dados reais (user 13). Nenhum card removido.
