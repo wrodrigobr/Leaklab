@@ -93,6 +93,44 @@ def _solver_params_for_stack(stack_bb: float) -> dict:
         }
 
 
+# Ordem de ação postflop (primeiro→último a agir). Quem age por ÚLTIMO está IN POSITION.
+_POSTFLOP_ORDER = {'SB': 0, 'BB': 1, 'UTG': 2, 'UTG+1': 3, 'UTG+2': 4,
+                   'LJ': 5, 'HJ': 6, 'CO': 7, 'BTN': 8}
+
+# Liga o suporte a hero IP (c-bet) no Texas postflop. Default OFF: só vale DEPOIS que o
+# main.rs com `hero_is_ip` for buildado/deployado na VM (senão o binário antigo ignora a
+# flag e devolve o player 0 = OOP = jogador errado). Flip p/ '1' após o deploy.
+_TEXAS_HERO_IP = os.environ.get('TEXAS_HERO_IP', '0') == '1'
+
+
+def _postflop_hero_is_ip(hero_pos: str, vs_pos: str) -> bool:
+    """True se o hero está IN POSITION (age depois do vilão) no postflop. Determina qual
+    jogador é OOP(player 0)/IP(player 1) no solve. O solver_cli SÓ devolve o player 0 (OOP),
+    então hoje só servimos spots em que o hero é OOP (ver gate no lookup_gto)."""
+    h = _POSTFLOP_ORDER.get((hero_pos or '').upper().strip(), 99)
+    v = _POSTFLOP_ORDER.get((vs_pos or '').upper().strip(), -1)
+    return h > v
+
+
+def _captured_range_str(position: str, stack_bb: float, kind: str, opener: str = '') -> Optional[str]:
+    """Notação de range REAL capturada do GW (P0 fix 2.3) pra alimentar o solver Texas em
+    vez das _DEFAULT_RANGES genéricas. kind='rfi' → range de abertura da posição; kind=
+    'call_vs_rfi' → range de call do defensor vs o open do `opener`. None se sem cobertura."""
+    try:
+        from leaklab.preflop_gto_ranges import _load, _stack_bucket
+        bk = _load().get('ranges', {}).get(_stack_bucket(stack_bb), {})
+        pos = (position or '').upper().strip()
+        if kind == 'rfi':
+            node = (bk.get('RFI') or {}).get(pos) or {}
+            return node.get('raise_hands') or None
+        if kind == 'call_vs_rfi' and opener:
+            node = ((bk.get('vs_RFI') or {}).get((opener or '').upper().strip()) or {}).get(pos) or {}
+            return node.get('call_hands') or None
+    except Exception:
+        return None
+    return None
+
+
 def _canon_solver_action(label: str, facing_size_bb: float) -> str:
     """Normaliza o label de ação do solver_cli (ex.: 'bet_50pct', 'bet_2.5x') pro conjunto
     canônico {check,call,fold,bet,raise,allin} que o insert_gto_nodes/engine aceitam. Um
@@ -133,6 +171,7 @@ def lookup_gto(
     facing_size_bb: float = 0.0,
     pot_bb: float = 0.0,
     num_players: int = 9,
+    bb_chips: float = 0.0,
     block_remote: bool = True,
 ) -> dict:
     """
@@ -307,7 +346,26 @@ def lookup_gto(
     #   (b) só stack ≤ 60bb — acima, o cap de 60bb viraria aproximação → heurístico honesto
     #       (o engine NUNCA serve solver_cli > 60bb; ver _postflop_gto_lookup);
     #   (c) o engine aplica o guard de SPR (jam postflop só com SPR ≤ 3) ao ler o nó.
-    if street_l == 'preflop' or not board or hero_stack_bb > 60.0:
+    # GATE do Texas postflop (P0 — correção). Só resolvemos os spots que o pipeline
+    # atual faz CERTO; o resto cai no heurístico (honesto):
+    #   - street postflop com board e stack ≤60bb (cap do solver);
+    #   - vilão conhecido (precisa pra montar a range adversária);
+    #   - hero é OOP (player 0). O solver_cli SÓ devolve a estratégia do player 0; com o
+    #     hero IP, o nó seria a estratégia do VILÃO → bug do "jogador errado". Liberado
+    #     quando o main.rs ler hero_player (fix Rust);
+    #   - facing: o solver navega em BB, mas `facing_size_bb` chega em FICHAS. Converte via
+    #     `bb_chips` (fix 2.2). Se facing>0 e bb_chips não veio → não dá pra converter →
+    #     fica fora (sem navegação errada). NOTA: o hash ainda usa facing em fichas (bucket
+    #     grosso "40bb+"); distinguir sizes finos é P1.
+    _vs = (vs_position or '').upper().strip()
+    _hero_ip = _postflop_hero_is_ip(position_u, _vs)
+    _facing_solver_bb = (facing_size_bb / bb_chips) if (bb_chips and bb_chips > 0) else facing_size_bb
+    _facing_unconvertible = facing_size_bb > 0.0 and not (bb_chips and bb_chips > 0)
+    # hero IP só é servido com o main.rs patcheado (flag TEXAS_HERO_IP) E facing==0
+    # (o patch IP cobre só o nó de c-bet). Senão, bloqueia → heurístico.
+    _ip_blocked = _hero_ip and not (_TEXAS_HERO_IP and facing_size_bb == 0.0)
+    if (street_l == 'preflop' or not board or hero_stack_bb > 60.0
+            or _vs in ('', 'UNKNOWN') or _ip_blocked or _facing_unconvertible):
         if _db_fallback_strategy:
             return {'found': True, 'source': 'postflop_db_partial',
                     'strategy': _db_fallback_strategy,
@@ -316,11 +374,21 @@ def lookup_gto(
                 'strategy': [], 'exploitability_pct': None,
                 'spot_hash': spot_hash, 'queued': False}
 
-    # --- solver Texas (CFR remoto) — postflop HU, depth real ≤60bb ---
-
-    oop_range = _DEFAULT_RANGES.get(vs_position.upper(), _DEFAULT_RANGE_WIDE)
-    ip_range  = _DEFAULT_RANGES.get(position_u, _DEFAULT_RANGE_WIDE)
-    effective_pot = pot_bb if pot_bb > 0 else max(facing_size_bb * 2 + 2, 4.0)
+    # --- solver Texas (CFR remoto) — postflop HU, hero OOP (player 0), depth real ≤60bb ---
+    # Ranges atribuídas aos jogadores CORRETOS (hero=OOP, vilão=IP) e, quando há cobertura,
+    # REAIS do GW (2.3): HU SRP típico → o vilão IP abriu (RFI) e o hero OOP pagou (call vs
+    # RFI). Fallback pras _DEFAULT_RANGES genéricas quando o GW não cobre o cenário.
+    if _hero_ip:
+        # hero é IP (opener/c-bettor); vilão é OOP (caller/defender)
+        ip_pos, oop_pos = position_u, _vs
+    else:
+        # hero é OOP (caller/defender); vilão é IP (opener)
+        ip_pos, oop_pos = _vs, position_u
+    ip_range  = (_captured_range_str(ip_pos, hero_stack_bb, 'rfi')
+                 or _DEFAULT_RANGES.get(ip_pos, _DEFAULT_RANGE_WIDE))                       # IP = opener (RFI)
+    oop_range = (_captured_range_str(oop_pos, hero_stack_bb, 'call_vs_rfi', opener=ip_pos)
+                 or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE))                      # OOP = caller (call vs RFI)
+    effective_pot = pot_bb if pot_bb > 0 else max(_facing_solver_bb * 2 + 2, 4.0)
 
     _params = _solver_params_for_stack(hero_stack_bb)
     solver_payload = {
@@ -332,7 +400,8 @@ def lookup_gto(
         'effective_stack_bb':        _params['effective_stack_bb'],
         'max_iterations':            _params['max_iterations'],
         'target_exploitability_pct': _params['target_exploitability_pct'],
-        'facing_size_bb':            facing_size_bb,
+        'facing_size_bb':            _facing_solver_bb,   # 2.2: solver navega em BB
+        'hero_is_ip':                _hero_ip,            # main.rs lê player 1 quando IP
     }
 
     remote = _call_remote_solver(solver_payload)

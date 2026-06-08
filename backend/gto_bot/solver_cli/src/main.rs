@@ -54,6 +54,10 @@ struct Input {
     /// no nó onde IP apostou closest_to(facing_size_bb) após OOP checar.
     #[serde(default)]
     facing_size_bb:            f64,
+    /// hero está IN POSITION? Se true, lê a estratégia do IP (player 1) no nó de c-bet
+    /// (root → OOP check → IP to act). Default false (hero OOP = player 0). Só facing==0.
+    #[serde(default)]
+    hero_is_ip:                bool,
 }
 
 fn default_iters()  -> u32 { 1500 }
@@ -184,27 +188,35 @@ fn run(inp: &Input) -> Result<Output, String> {
     let final_exploit = solve(&mut game, inp.max_iterations, target_chips, false);
     let exploit_pct   = (final_exploit as f64 / pot_chips as f64) * 100.0;
 
-    // Se facing_size_bb > 0: navega para o nó onde OOP enfrenta aposta do IP
-    // Percurso: root (OOP check) → IP bet closest_to(facing_size_bb) → OOP to act
+    // Jogador do HERO no solver: OOP=0, IP=1. Navega até o nó de DECISÃO do hero:
+    //   - hero IP (facing==0): root → OOP check → IP age (c-bet) — lê player 1;
+    //   - hero OOP + facing>0: root → OOP check → IP bet closest(facing) → OOP enfrenta;
+    //   - hero OOP + facing==0: root (OOP primeira ação).
+    let hero_player: usize = if inp.hero_is_ip { 1 } else { 0 };
     let facing_chips  = (inp.facing_size_bb * 100.0).round() as i32;
-    let facing_node   = inp.facing_size_bb > 0.0
-        && navigate_to_facing_bet(&mut game, facing_chips);
-
-    // Pot de referência para labels de ação:
-    // se navegamos para facing-bet, o pot aumentou com a aposta do IP
-    let label_pot = if facing_node {
-        pot_chips + facing_chips
+    let (facing_node, ip_node) = if inp.hero_is_ip {
+        (false, inp.facing_size_bb == 0.0 && navigate_to_ip_decision(&mut game))
+    } else if inp.facing_size_bb > 0.0 {
+        (navigate_to_facing_bet(&mut game, facing_chips), false)
     } else {
-        pot_chips
+        (false, false)
     };
+    // hero IP só suportado no nó de c-bet (facing==0). Se não navegou, aborta (o wrapper
+    // cai no heurístico em vez de devolver a estratégia do jogador errado).
+    if inp.hero_is_ip && !ip_node {
+        return Err("hero_is_ip: facing>0 IP nao suportado (sem no de c-bet)".to_string());
+    }
 
-    // Estratégia no nó atual (OOP = player 0)
+    // Pot de referência para labels: se navegamos pro facing-bet, o pot subiu com a aposta.
+    let label_pot = if facing_node { pot_chips + facing_chips } else { pot_chips };
+
+    // Estratégia no nó atual = jogador da vez (já navegamos até o nó do HERO).
     game.cache_normalized_weights();
     let strategy = game.strategy();
     let actions  = game.available_actions();
-    let hands    = game.private_cards(0);
-    let evs      = game.expected_values(0);
-    let weights  = game.normalized_weights(0);
+    let hands    = game.private_cards(hero_player);
+    let evs      = game.expected_values(hero_player);
+    let weights  = game.normalized_weights(hero_player);
 
     let num_actions = actions.len();
     let num_hands   = hands.len();
@@ -281,6 +293,17 @@ fn run(inp: &Input) -> Result<Output, String> {
 
 /// Avança o game tree de OOP check → IP bet closest_to(facing_chips).
 /// Retorna true se conseguiu navegar, false se o nó não existe na árvore.
+/// Navega root → OOP check → IP to act (nó de DECISÃO de c-bet do IP). Só facing==0.
+/// Depois disso, game.strategy()/private_cards(1) são do IP (hero IP).
+fn navigate_to_ip_decision(game: &mut PostFlopGame) -> bool {
+    let root_actions = game.available_actions();
+    match root_actions.iter().position(|a| matches!(a, Action::Check)) {
+        Some(i) => { game.play(i); true }   // OOP checa → IP age (c-bet)
+        None    => false,
+    }
+}
+
+
 fn navigate_to_facing_bet(game: &mut PostFlopGame, facing_chips: i32) -> bool {
     // Passo 1: OOP precisa de uma ação Check disponível
     let root_actions = game.available_actions();
