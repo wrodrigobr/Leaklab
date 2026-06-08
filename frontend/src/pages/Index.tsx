@@ -30,6 +30,7 @@ import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
+import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, GtoAlignmentMatrixData, ResultsVsGtoData, LeakFinderData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -115,6 +116,9 @@ const Index = () => {
   const handleUpload = () => setRefreshKey((k) => k + 1);
 
   const { sections, updateSections, reset: resetLayout } = useDashboardLayout();
+  const bentoRef = useRef<HTMLElement>(null);
+  // masonry real: cada card ocupa N linhas pela sua altura → curtos liberam o vão, dense empacota
+  useMasonryRows(bentoRef, [sections]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -377,8 +381,9 @@ const Index = () => {
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={sections} strategy={rectSortingStrategy}>
                 <section
+                  ref={bentoRef}
                   aria-label="Dashboard"
-                  className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-12 lg:grid-flow-dense items-start"
+                  className="grid grid-cols-1 gap-x-6 gap-y-6 md:grid-cols-2 lg:grid-cols-12 lg:grid-flow-dense lg:auto-rows-[8px] lg:gap-y-0 items-start"
                 >
                   {sections.map((id) => {
                     const node = renderCard(id);

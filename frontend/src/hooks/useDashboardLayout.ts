@@ -18,24 +18,28 @@ export const DEFAULT_SECTIONS: DashSection[] = [
   "dna", "pressure", "icm", "leaks", "causal_map", "twin",
 ];
 
-// Span por tipo de conteúdo (12 cols no lg). base=1-col (full), md=2-col (full p/ largos),
-// lg=bento. Os largos (gráficos/matriz/leakfinder) ocupam md:2; os compactos, md:1.
+// Masonry de 2 COLUNAS uniformes: TODO card ocupa metade (lg:col-span-6 = 6 de 12 → 2 por
+// linha). Largura uniforme é o que torna o masonry (useMasonryRows) realmente gap-free e a
+// posição estável — full-width vira "barreira" que dessincroniza as colunas e reabre vãos.
+// 676px é largura ótima p/ tudo (matriz 13×13, time-series, listas, radares). Se algum card
+// precisar de full-width no futuro, troque pontualmente p/ lg:col-span-12 (ciente do gap).
+// base=1-col, md=2-col (default span-1), lg=2-col via span-6.
 export const SECTION_SPAN: Record<DashSection, string> = {
-  quality:    "lg:col-span-4",                  // score GTO
-  alignment:  "lg:col-span-4",                  // breakdown
-  position:   "lg:col-span-4",                  // breakdown
-  matrix:     "md:col-span-2 lg:col-span-6",    // matriz 2D
-  leakfinder: "md:col-span-2 lg:col-span-6",    // carro-chefe (lista) — span-6
-  results:    "md:col-span-2 lg:col-span-6",    // comparação
-  bankroll:   "md:col-span-2 lg:col-span-8",    // time-series
-  career:     "md:col-span-2 lg:col-span-8",    // time-series
-  cognitive:  "md:col-span-2 lg:col-span-6",    // comparação
-  dna:        "lg:col-span-4",                  // radar
-  pressure:   "lg:col-span-4",                  // radar
-  icm:        "lg:col-span-4",                  // lista
-  leaks:      "lg:col-span-4",                  // lista
-  causal_map: "md:col-span-2 lg:col-span-8",    // grafo/mapa
-  twin:       "lg:col-span-4",                  // lista
+  quality:    "lg:col-span-6",
+  alignment:  "lg:col-span-6",
+  position:   "lg:col-span-6",
+  matrix:     "lg:col-span-6",
+  leakfinder: "lg:col-span-6",
+  results:    "lg:col-span-6",
+  bankroll:   "lg:col-span-6",
+  career:     "lg:col-span-6",
+  cognitive:  "lg:col-span-6",
+  dna:        "lg:col-span-6",
+  pressure:   "lg:col-span-6",
+  icm:        "lg:col-span-6",
+  leaks:      "lg:col-span-6",
+  causal_map: "lg:col-span-6",
+  twin:       "lg:col-span-6",
 };
 
 interface SavedLayout {

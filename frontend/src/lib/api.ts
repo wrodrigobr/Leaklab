@@ -2112,9 +2112,12 @@ export const digest = {
 
 // ── Dashboard preferences — UX-017 ───────────────────────────────────────────
 
+// Bento: lista única de cards. Campos antigos {main,sidebar} mantidos opcionais só p/
+// ler layouts salvos antes do redesenho (migram pro default no hook).
 export interface DashboardLayoutData {
-  main: string[];
-  sidebar: string[];
+  sections?: string[];
+  main?: string[];
+  sidebar?: string[];
 }
 
 export const preferences = {
