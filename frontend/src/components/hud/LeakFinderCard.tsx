@@ -15,7 +15,7 @@ const SEV_CLR: Record<LeakFinderLeak["severity"], string> = {
 };
 
 /**
- * Leak Finder consolidado (#25) — carro-chefe "LeakLab".
+ * Leak Finder consolidado (#25) — carro-chefe "GrindLab".
  * Vazamentos priorizados pelo EV PERDIDO (bb deixados na mesa), não por contagem
  * de erros. Reusa get_ev_leaks (#24). Cada leak linka pro estudo/drill do spot.
  */

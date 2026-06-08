@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 
 /**
- * /docs/rating — explica a teoria ELO e como adaptamos pro LeakLab.
+ * /docs/rating — explica a teoria ELO e como adaptamos pro GrindLab.
  * Conteúdo via i18n (namespace `docs`, bloco `rating.*`). Prosa com markup usa
  * dangerouslySetInnerHTML (mesmo padrão de Docs.tsx). Ícones/ranges são neutros
  * de idioma e ficam no componente; só nomes de banda e textos vêm do i18n.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { BarChart3, Loader2, GraduationCap, User } from "lucide-react";
+import { Loader2, GraduationCap, User } from "lucide-react";
+import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 
@@ -52,13 +53,8 @@ const Login = () => {
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
-            <span className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow">
-              <BarChart3 className="size-6" aria-hidden />
-            </span>
+            <img src={logoHorizontal} alt="GrindLab" className="h-10 w-auto" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            LeakLabs<span className="text-primary italic font-light">.ai</span>
-          </h1>
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest-2">
             Tactical Tournament Intelligence
           </p>
@@ -137,7 +133,7 @@ const Login = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="coach@leaklabs.ai"
+                placeholder="coach@pokergrindlab.com"
                 required
                 autoComplete="email"
                 className={inputClass}
@@ -180,7 +176,7 @@ const Login = () => {
         </div>
 
         <p className="text-center font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
-          Análise tática • LeakLabs AI Engine
+          Análise tática • GrindLab AI Engine
         </p>
       </div>
     </div>

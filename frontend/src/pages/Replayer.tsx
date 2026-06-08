@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, BarChart3, Lock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, Lock } from "lucide-react";
+import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -1504,16 +1505,9 @@ const Replayer = () => {
         {/* Top bar */}
         <div className="shrink-0 grid grid-cols-3 items-center mb-2">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Logo LeakLabs — presença de marca no modo foco (HudHeader fica oculto) */}
+            {/* Logo GrindLab — presença de marca no modo foco (HudHeader fica oculto) */}
             {focusMode && (
-              <span className="flex items-center gap-2 shrink-0">
-                <span className="relative flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-glow">
-                  <BarChart3 className="size-3.5" aria-hidden />
-                </span>
-                <span className="hidden sm:inline text-sm font-semibold tracking-tight uppercase">
-                  LeakLabs<span className="text-primary italic font-light">.ai</span>
-                </span>
-              </span>
+              <img src={logoHorizontal} alt="GrindLab" className="h-7 w-auto shrink-0" />
             )}
             <button
               onClick={() => navigate(-1)}
