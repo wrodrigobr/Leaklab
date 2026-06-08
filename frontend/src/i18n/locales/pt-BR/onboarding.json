@@ -6,7 +6,7 @@
   "finish": "Importar primeiro torneio",
   "steps": {
     "welcome": {
-      "title": "Bem-vindo ao PokerLeakLab!",
+      "title": "Bem-vindo ao GrindLab!",
       "desc": "A plataforma de coaching IA que analisa cada decisão do seu jogo, identifica seus leaks e monta um plano de estudos personalizado para você evoluir como jogador."
     },
     "upload": {

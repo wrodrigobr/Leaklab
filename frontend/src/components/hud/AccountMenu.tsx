@@ -118,7 +118,7 @@ export function AccountMenu() {
             <div className="px-4 py-3 border-b border-border space-y-2.5">
               <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Uso este mês</p>
               <UsageBar used={user.tournaments_used ?? 0} limit={limits.tournaments} label="Torneios" />
-              <UsageBar used={user.ai_calls_used ?? 0}   limit={limits.ai_calls}    label="Análises LeakLabs" />
+              <UsageBar used={user.ai_calls_used ?? 0}   limit={limits.ai_calls}    label="Análises GrindLab" />
               {plan === "free" && (
                 <button
                   onClick={() => { setOpen(false); setCheckoutPlan("pro"); }}

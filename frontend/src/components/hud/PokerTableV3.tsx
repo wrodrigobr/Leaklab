@@ -520,7 +520,7 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
           <ellipse cx="560" cy="340" rx="403" ry="207" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5" />
           <ellipse cx="560" cy="340" rx="414" ry="218" fill="url(#bg-vig)" />
           <text x="560" y="351" textAnchor="middle" fill="rgba(255,255,255,0.022)"
-                fontFamily="Inter,sans-serif" fontSize="58" fontWeight="800" letterSpacing="16">LEAKLAB</text>
+                fontFamily="Inter,sans-serif" fontSize="58" fontWeight="800" letterSpacing="16">GRINDLAB</text>
         </svg>
       </div>
 

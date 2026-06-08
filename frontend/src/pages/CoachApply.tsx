@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BarChart3, GraduationCap, Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
+import { GraduationCap, Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
+import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { coachApplyApi } from "@/lib/api";
 
 const inputClass =
@@ -79,13 +80,8 @@ export default function CoachApply() {
       <div className="w-full max-w-lg space-y-8">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
-            <span className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow">
-              <BarChart3 className="size-6" />
-            </span>
+            <img src={logoHorizontal} alt="GrindLab" className="h-10 w-auto" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            LeakLabs<span className="text-primary italic font-light">.ai</span>
-          </h1>
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest-2">
             Candidatura de Coach
           </p>

@@ -7,7 +7,7 @@
     "badge": "Powered by Claude AI",
     "title1": "Stop leaking chips",
     "title2": "in the same spots.",
-    "subtitle": "LeakLabs analyzes every decision in your tournament history, identifies your most costly error patterns, and delivers a study plan built from your real data — not generic theory everyone already knows.",
+    "subtitle": "GrindLab analyzes every decision in your tournament history, identifies your most costly error patterns, and delivers a study plan built from your real data — not generic theory everyone already knows.",
     "ctaStart": "Start free",
     "ctaPlans": "View plans",
     "levels": "7 progression levels — from Beginner to Elite"
@@ -22,14 +22,14 @@
     "heading": "From HH file to precise diagnosis",
     "step1Title": "Import your history",
     "step1Desc": "Upload the .txt file from any tournament (PokerStars or GGPoker). Multiple files supported at once.",
-    "step2Title": "LeakLabs prioritizes your mistakes",
+    "step2Title": "GrindLab prioritizes your mistakes",
     "step2Desc": "Each decision is evaluated by equity, position, and MTT/SNG context. The detection engine crosses frequency with impact — and shows you exactly what's costing you chips.",
     "step3Title": "Improve with focus on what matters",
     "step3Desc": "Study plan built on your own error patterns — not generic content. Track progression through the 7-level system."
   },
   "features": {
     "eyebrow": "Features",
-    "heading": "Why LeakLabs is different",
+    "heading": "Why GrindLab is different",
     "f1Title": "Your data, not generic theory",
     "f1Desc": "The diagnosis is built on your own tournaments. Every identified leak exists in your real history.",
     "f2Title": "Prioritized by financial impact",
@@ -54,11 +54,11 @@
     "ctaSubscribe": "Subscribe to {{name}}",
     "manualActivation": "Paid plans activated manually by email within 24h · No credit card required",
     "freeF1": "2 tournaments/month",
-    "freeF2": "15 LeakLabs analyses/month",
+    "freeF2": "15 GrindLab analyses/month",
     "freeF3": "Access to all analysis features",
     "freeF4": "✗ No AI Coach Chat",
     "proF1": "Unlimited tournaments",
-    "proF2": "Unlimited LeakLabs analyses",
+    "proF2": "Unlimited GrindLab analyses",
     "proF3": "AI Coach Chat (contextual conversation)",
     "proF4": "Personalized study plan",
     "proF5": "Coaches marketplace",
@@ -70,7 +70,7 @@
     "btn": "Create free account"
   },
   "footer": {
-    "copyright": "© 2026 LeakLabs · Tactical Tournament Intelligence",
+    "copyright": "© 2026 GrindLab · Tactical Tournament Intelligence",
     "login": "Log in →"
   }
 }

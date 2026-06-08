@@ -400,7 +400,7 @@ export const tournaments = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `leaklab-report-${tournamentId}.${ext}`;
+    a.download = `grindlab-report-${tournamentId}.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

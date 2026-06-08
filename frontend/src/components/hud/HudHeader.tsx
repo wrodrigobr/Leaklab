@@ -1,4 +1,5 @@
-import { Activity, BarChart3, Bot, Dumbbell, GraduationCap, Globe, LayoutDashboard, Medal, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, LifeBuoy, X } from "lucide-react";
+import { Activity, Bot, Dumbbell, GraduationCap, Globe, LayoutDashboard, Medal, Shield, Swords, Trophy, UploadCloud, Users, UserCircle, MessageSquare, LifeBuoy, X } from "lucide-react";
+import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -139,13 +140,8 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
       <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 md:px-8">
           <div className="flex items-center gap-6 md:gap-10">
-            <a href="/dashboard" className="flex items-center gap-2 md:gap-2.5 group" aria-label="LeakLabs home">
-              <span className="relative flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-glow">
-                <BarChart3 className="size-4" aria-hidden />
-              </span>
-              <span className="text-base md:text-lg font-semibold tracking-tight uppercase">
-                LeakLabs<span className="text-primary italic font-light">.ai</span>
-              </span>
+            <a href="/dashboard" className="flex items-center group" aria-label="GrindLab home">
+              <img src={logoHorizontal} alt="GrindLab" className="h-8 w-auto" />
             </a>
 
             <nav className="hidden md:flex items-center gap-1" aria-label="Primary">

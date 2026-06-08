@@ -143,7 +143,7 @@ function SummaryContent({ text }: { text: string }) {
       <div className="p-5 space-y-4">
         <AiText>{text}</AiText>
         <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground text-center pt-2">
-          LeakLabs AI Coach
+          GrindLab AI Coach
         </p>
       </div>
     );
@@ -161,7 +161,7 @@ function SummaryContent({ text }: { text: string }) {
         <SummarySection key={i} text={section} />
       ))}
       <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground text-center pt-2">
-        LeakLabs AI Coach
+        GrindLab AI Coach
       </p>
     </div>
   );

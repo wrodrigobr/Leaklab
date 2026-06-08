@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,9 +9,9 @@
 
 @layer base {
   :root {
-    /* Core surfaces */
-    --background: 222 47% 4%;
-    --foreground: 210 20% 92%;
+    /* Core surfaces — GrindLab: bg #0A0E1A, light #E3E8EC */
+    --background: 225 44% 7%;
+    --foreground: 206 19% 91%;
 
     --card: 222 47% 7%;
     --card-foreground: 210 20% 92%;
@@ -90,6 +90,13 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Space Grotesk', system-ui, sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* GrindLab: headings em Chakra Petch Bold. Componentes da HUD que usam .font-mono
+     (JetBrains Mono) ou .font-heading explícito têm precedência sobre esta regra. */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Chakra Petch', 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 700;
   }
 
   .font-mono {

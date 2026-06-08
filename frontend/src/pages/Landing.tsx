@@ -5,6 +5,7 @@ import {
   Check, Zap, Shield, BookOpen, Target, Activity,
 } from "lucide-react";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
+import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 
 const LEVELS = ["Iniciante", "Estudante", "Grinder", "Regular", "Sólido", "Expert", "Elite"] as const;
 
@@ -15,13 +16,8 @@ function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-        <Link to="/" className="flex items-center gap-2.5">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-glow">
-            <BarChart3 className="size-4" />
-          </span>
-          <span className="font-semibold text-foreground tracking-tight">
-            LeakLabs<span className="text-primary italic font-light">.ai</span>
-          </span>
+        <Link to="/" className="flex items-center">
+          <img src={logoHorizontal} alt="GrindLab" className="h-8 w-auto" />
         </Link>
         <nav className="flex items-center gap-3">
           <Link
@@ -211,7 +207,7 @@ function PricingSection() {
       badge: t("plans.grinder") as string | null,
       features: [t("plans.proF1"), t("plans.proF2"), t("plans.proF3"), t("plans.proF4"), t("plans.proF5"), t("plans.proF6")],
       cta: t("plans.ctaSubscribe", { name: "Pro" }),
-      href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20LeakLabs%20Pro",
+      href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20GrindLab%20Pro",
     },
   ];
   return (
@@ -308,7 +304,7 @@ function Footer() {
             <BarChart3 className="size-3.5" />
           </span>
           <span className="font-semibold text-sm text-foreground">
-            LeakLabs<span className="text-primary italic font-light">.ai</span>
+            GrindLab<span className="text-primary italic font-light">.ai</span>
           </span>
         </div>
         <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">

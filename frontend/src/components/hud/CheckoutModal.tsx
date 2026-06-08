@@ -15,7 +15,7 @@ const PLAN_INFO = {
     colorClass: "text-primary border-primary/30 bg-primary/5",
     features: [
       "Torneios ilimitados",
-      "Análises LeakLabs ilimitadas",
+      "Análises GrindLab ilimitadas",
       "AI Coach Chat (conversa contextual)",
       "Plano de estudos personalizado",
       "Acesso ao marketplace de coaches",
