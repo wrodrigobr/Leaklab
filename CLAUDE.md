@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 PokerLeakLab — an AI-powered poker coaching platform. Users upload PokerStars or GGPoker hand history files; the backend parses them, evaluates each decision (equity, position, MTT context), and uses Claude Haiku to generate explanations and study plans. Results are stored per-user and visualized in a React SPA frontend.
 
+## Marca
+
+**Produto: GrindLab** (ex-LeakLabs). Domínio: `pokergrindlab.com`.
+- **Assets:** `src/assets/brand/` — nunca recriar logos manualmente, sempre usar os SVGs de lá.
+- **Cores:** teal `#2DD4BF`, light `#E3E8EC`, bg `#0A0E1A`.
+- **Headings:** Chakra Petch Bold.
+- **Rebranding é VISUAL apenas.** NÃO alterar: nomes de variáveis internas, schema de banco, rotas de API, nomes de pacotes/repositório (`leaklab`, `LEAKLAB_SECRET`, `leaklab-solver`, etc.), lógica de negócio. Só o que o usuário VÊ vira "GrindLab".
+
 ## Commands
 
 ### Running the backend
