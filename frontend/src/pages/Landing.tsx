@@ -6,7 +6,15 @@ import {
 } from "lucide-react";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
-import heroBanner from "@/assets/brand/grindlab_og_1200x630.png";
+import heroEn from "@/assets/brand/grindlab_og_en.png";
+import heroEs from "@/assets/brand/grindlab_og_es.png";
+import heroPt from "@/assets/brand/grindlab_og_ptbr.png";
+
+// Hero da landing por idioma do usuário (i18n). Base da locale: pt-BR→pt, etc.
+const HERO_BY_LANG: Record<string, string> = { en: heroEn, es: heroEs, pt: heroPt };
+function heroForLang(lang?: string): string {
+  return HERO_BY_LANG[(lang || "en").split("-")[0].toLowerCase()] ?? heroEn;
+}
 
 const LEVELS = ["Iniciante", "Estudante", "Grinder", "Regular", "Sólido", "Expert", "Elite"] as const;
 
@@ -40,7 +48,8 @@ function Navbar() {
 }
 
 function HeroSection() {
-  const { t } = useTranslation("landing");
+  const { t, i18n } = useTranslation("landing");
+  const heroBanner = heroForLang(i18n.language);
   return (
     <section className="relative flex min-h-dvh flex-col items-center justify-center px-6 pt-20 pb-16 text-center overflow-hidden">
       <div

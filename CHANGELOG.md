@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(landing): hero banner por idioma do usuário (i18n)
+
+> O hero da landing usava uma imagem única (`grindlab_og_1200x630.png`). Agora seleciona a versão por idioma — `grindlab_og_en/es/ptbr.png` — via `i18n.language` (base da locale: `pt-BR`→pt; fallback EN). Validado: pt-BR→ptbr, en→en, es→es. **Nota sobre o `og:image` social** (`index.html`): esse é lido por crawlers (WhatsApp/FB/Twitter) que não rodam JS nem têm "usuário/idioma" — não dá pra trocar por idioma do usuário client-side; ficaria por URL/locale + edge (não feito agora).
+
 ### refactor(dashboard): remove IcmBreakdown (redundante com PressureProfile)
 
 > Auditoria de baixo valor: `IcmBreakdown` (barras de `standard_rate` por nível de ICM high/med/low/none) e `PressureProfileCard` (barras de `avg_score` por nível de pressão none/low/med/high vs baseline + detecção de colapso) usam **o mesmo eixo** (no MTT, pressão = ICM) — e o Pressure é estritamente mais rico (baseline-relativo + colapso + resumo). IcmBreakdown era uma versão fraca/redundante → **removido** (`DashSection`/`DEFAULT_SECTIONS`/`SECTION_SPAN` + render + import; `evo.icm` não tinha outro consumidor, `evo` permanece). Dashboard 13→12 cards; masonry absorve. **Pressure+Twin NÃO foram mesclados** (revendo a ideia inicial): são lentes estruturalmente distintas (curva-por-nível+colapso vs lista de spots custosos), merge prejudicaria ambos. Validado: tsc (só erros pré-existentes), 12 cards, zero erros.
