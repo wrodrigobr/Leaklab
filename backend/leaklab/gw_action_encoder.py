@@ -33,9 +33,29 @@ Limitações conhecidas (não cobertas neste módulo):
 """
 from __future__ import annotations
 
+import re
 from typing import List, Optional
 
 from .models import ParsedHand, ParsedAction
+
+# "raises X to Y" (PokerStars) → captura o TOTAL Y. GG ("raises to Y") idem.
+_RAISE_TO_TOTAL = re.compile(r"\bto\s+([\d.]+)", re.IGNORECASE)
+
+# Ordem canônica do board que o GW exige na URL da API: flop por rank DESCENDENTE,
+# desempate de naipe s>h>d>c; turn/river anexados na ordem de distribuição (sem
+# re-ordenar). O matcher do servidor (is_target) casa o `board=` EXATO, então enviar
+# fora dessa ordem → GW nunca responde → subprocess_timeout.
+_RANK_ORDER = {r: i for i, r in enumerate("AKQJT98765432")}
+_SUIT_ORDER = {"s": 0, "h": 1, "d": 2, "c": 3}
+
+
+def gw_board_order(board: list[str]) -> list[str]:
+    """Reordena o board pra ordem canônica do GW (flop rank-desc + suit s,h,d,c;
+    turn/river preservados). Não muda o hash do engine (que faz sorted())."""
+    cards = [str(c).strip() for c in (board or []) if len(str(c).strip()) >= 2]
+    flop = sorted(cards[:3],
+                  key=lambda c: (_RANK_ORDER.get(c[0].upper(), 99), _SUIT_ORDER.get(c[1].lower(), 9)))
+    return flop + cards[3:]
 
 
 # Posições GW por mesa size (espelha _TABLE_CONFIG no solver_api/server.py)
@@ -107,7 +127,18 @@ def _action_token(action: ParsedAction, bb: float, hero_stack_before: float) -> 
     if a in ("calls", "call"):
         return "C"
     if a in ("raises", "raise", "bets", "bet"):
-        return f"R{_encode_amount_bb(action.amount, bb)}"
+        # PokerStars loga 'raises X to Y' onde amount=X (INCREMENTO). O GW raciocina
+        # sobre o 'raise to' TOTAL (Y). Lê o 'to Y' do raw quando presente; senão
+        # usa amount (bets postflop e GG 'raises to Y' já são totais).
+        amt = action.amount
+        if a in ("raises", "raise"):
+            m = _RAISE_TO_TOTAL.search(action.raw or "")
+            if m:
+                try:
+                    amt = float(m.group(1))
+                except ValueError:
+                    pass
+        return f"R{_encode_amount_bb(amt, bb)}"
     if a in ("all-in", "allin", "shove"):
         # GW codifica all-in como RAI (independente do tamanho)
         return "RAI"
@@ -141,6 +172,32 @@ def encode_preflop_actions(hand: ParsedHand, stop_index: int) -> str:
             continue
         tokens.append(tok)
 
+    return "-".join(tokens)
+
+
+def encode_street_actions(hand: ParsedHand, street: str, stop_index: int) -> str:
+    """
+    Constrói a string de ações GW de UMA street (flop/turn/river) pra mão `hand`,
+    considerando o estado ANTES da action `hand.actions[stop_index]` (a decisão do
+    hero que vai ser consultada). Mesma tokenização do preflop (X/C/F/R{x.y}/RAI),
+    só muda o filtro de street. Retorna '' se ninguém agiu nessa street ainda.
+
+    Usada pra montar flop_actions/turn_actions no fetch postflop via /gw-spot.
+    """
+    if stop_index < 0 or stop_index > len(hand.actions):
+        raise ValueError(f"stop_index {stop_index} fora de range (0..{len(hand.actions)})")
+
+    bb = hand.bb or 1.0
+    tokens: List[str] = []
+    for i, act in enumerate(hand.actions):
+        if i >= stop_index:
+            break
+        if act.street != street:
+            continue
+        tok = _action_token(act, bb, hero_stack_before=0.0)
+        if tok is None:
+            continue
+        tokens.append(tok)
     return "-".join(tokens)
 
 

@@ -74,7 +74,9 @@
   "winner": {
     "title": "Resultado", "player": "Vencedor", "choose": "— escolher —", "pot": "Pote (bb)",
     "potShort": "Pote", "detected": "(detectado)", "calculated": "(calculado)",
-    "showdownChoose": "Showdown ({{n}}) — escolha o vencedor"
+    "showdownChoose": "Showdown ({{n}}) — marque o(s) vencedor(es)",
+    "split": "Empate — pote dividido entre {{n}}",
+    "tieHint": "Marque 2+ para empate (split do pote)"
   },
   "preview": {
     "title": "Hand History",

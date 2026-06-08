@@ -75,6 +75,9 @@ export interface HandInput {
   // Showdown (opcional)
   shows?:        { player: string; cards: string }[];  // "Ah Kd"
   winner?:       { player: string; amount: number; handDesc?: string };
+  // Empate: 2+ vencedores dividindo o pote (cada um leva sua fração). Quando
+  // presente, tem precedência sobre `winner`.
+  winners?:      { player: string; amount: number }[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -203,8 +206,14 @@ export function generateHandHistory(input: HandInput): string {
       lines.push(`${s.player}: shows [${s.cards}]`);
     }
   }
-  if (input.winner) {
-    lines.push(`${input.winner.player} collected ${input.winner.amount} from pot`);
+  // Vencedor(es): empate (`winners`) tem precedência; senão o `winner` único.
+  const wins = (input.winners && input.winners.length > 0)
+    ? input.winners
+    : (input.winner ? [input.winner] : []);
+  const wonBy = new Map<string, number>();
+  for (const w of wins) wonBy.set(w.player, (wonBy.get(w.player) ?? 0) + w.amount);
+  for (const w of wins) {
+    lines.push(`${w.player} collected ${w.amount} from pot`);
   }
 
   // 8. Summary
@@ -222,8 +231,8 @@ export function generateHandHistory(input: HandInput): string {
     const folded = input.actions.some(a =>
       a.player === p.name && a.action === 'fold'
     );
-    if (input.winner?.player === p.name) {
-      lines.push(`Seat ${p.seat}: ${p.name}${tag} collected (${input.winner.amount})`);
+    if (wonBy.has(p.name)) {
+      lines.push(`Seat ${p.seat}: ${p.name}${tag} collected (${wonBy.get(p.name)})`);
     } else if (folded) {
       lines.push(`Seat ${p.seat}: ${p.name}${tag} folded before Flop (didn't bet)`);
     } else {

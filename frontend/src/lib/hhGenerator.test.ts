@@ -49,3 +49,26 @@ describe("hhGenerator — call = incremento (não total)", () => {
     expect(hh).toContain("P2: calls 150");        // 250 − 100 (BB postado)
   });
 });
+
+describe("hhGenerator — empate / split do pote", () => {
+  it("2 vencedores geram 2 linhas 'collected' e 2 no summary", () => {
+    const hh = generateHandHistory(hi({
+      board: { flop: ["Ah", "Kd", "Qc"], turn: "Jd", river: "Tc" }, // straight no board → split
+      winners: [{ player: "Hero", amount: 500 }, { player: "P5", amount: 500 }],
+    }));
+    expect(hh).toContain("Hero collected 500 from pot");
+    expect(hh).toContain("P5 collected 500 from pot");
+    expect(hh).toContain("Hero (small blind) collected (500)");
+    expect(hh).toContain("collected (500)");
+    // os demais que não venceram não levam pote
+    expect(hh).not.toContain("P3 collected");
+  });
+
+  it("winner único (campo legado) continua funcionando", () => {
+    const hh = generateHandHistory(hi({
+      winner: { player: "Hero", amount: 900 },
+    }));
+    expect(hh).toContain("Hero collected 900 from pot");
+    expect(hh).toContain("collected (900)");
+  });
+});

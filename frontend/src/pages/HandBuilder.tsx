@@ -171,7 +171,7 @@ const DEFAULTS = {
   heroCards: [] as string[],
   actions: [] as HandAction[],
   board: { flop: [] as string[], turn: "", river: "" },
-  showWinner: "",
+  winners: [] as string[],   // vencedor(es) do showdown; 2+ = empate/split do pote
   winAmount: 0,
   completedHands: [] as string[],
 };
@@ -264,7 +264,7 @@ export default function HandBuilder() {
       heroSeat: imp.heroSeat,
       heroCards: [], actions: [],
       board: { flop: [], turn: "", river: "" },
-      showWinner: "", winAmount: 0,
+      winners: [], winAmount: 0,
     }));
   };
 
@@ -273,6 +273,14 @@ export default function HandBuilder() {
     new Set(state.actions.filter(a => a.action === "fold").map(a => a.player)),
     [state.actions]
   );
+
+  // Jogadores all-in: última ação na mão foi "allin" (sem fichas restantes). Não
+  // agem mais — o board corre sozinho (run-out) até o showdown.
+  const allInPlayers = useMemo(() => {
+    const last = new Map<string, ActionType>();
+    for (const a of state.actions) last.set(a.player, a.action);
+    return new Set([...last.entries()].filter(([, act]) => act === "allin").map(([p]) => p));
+  }, [state.actions]);
 
   // Ordem clockwise a partir do SB (depois do button): [SB, BB, UTG, ..., BTN]
   const clockwiseFromSb = useMemo<PlayerInput[]>(() => {
@@ -349,6 +357,21 @@ export default function HandBuilder() {
     return { invested, toCall, facingBet: toCall > 0 };
   }, [currentActor, maxBetThisStreet]);
 
+  // Betting FECHADO: ≤1 jogador ativo ainda com fichas (resto all-in) e ele já igualou
+  // a aposta. A partir daí não há mais o que apostar — o board corre sozinho até o
+  // showdown (só preenche as cartas, sem pedir ação a cada street).
+  const bettingClosed = useMemo<boolean>(() => {
+    const active = clockwiseFromSb.filter(p => !foldedPlayers.has(p.name));
+    if (active.length < 2) return false;                 // decidida por fold, não run-out
+    const canAct = active.filter(p => !allInPlayers.has(p.name));
+    if (canAct.length === 0) return true;                // todos all-in
+    if (canAct.length === 1) {                           // único com fichas: fecha se já igualou
+      const invested = maxBetThisStreet.totalByPlayer.get(canAct[0].name) ?? 0;
+      return invested >= maxBetThisStreet.maxBet;
+    }
+    return false;
+  }, [clockwiseFromSb, foldedPlayers, allInPlayers, maxBetThisStreet]);
+
   // Pote no momento da ação do currentActor (em fichas): antes + blinds + maior
   // comprometido por jogador em cada street até a atual (inclui as apostas já feitas
   // nesta street). Base dos atalhos de sizing pot-relative.
@@ -374,6 +397,7 @@ export default function HandBuilder() {
   const streetComplete = useMemo<boolean>(() => {
     const active = clockwiseFromSb.filter(p => !foldedPlayers.has(p.name));
     if (active.length <= 1) return true;
+    if (bettingClosed) return true;   // all-in: sem mais apostas, board corre sozinho
     const streetActions = state.actions.filter(a => a.street === currentStreet);
     for (const p of active) {
       const playerActions = streetActions.filter(a => a.player === p.name);
@@ -385,7 +409,7 @@ export default function HandBuilder() {
       if (invested < maxBetThisStreet.maxBet) return false;
     }
     return true;
-  }, [clockwiseFromSb, foldedPlayers, state.actions, currentStreet, maxBetThisStreet]);
+  }, [clockwiseFromSb, foldedPlayers, state.actions, currentStreet, maxBetThisStreet, bettingClosed]);
 
   const handComplete = useMemo<boolean>(() => {
     const active = clockwiseFromSb.filter(p => !foldedPlayers.has(p.name));
@@ -415,13 +439,13 @@ export default function HandBuilder() {
   // no showdown fica vazio pra você escolher (cartas dos vilões são desconhecidas).
   useEffect(() => {
     if (!handComplete) return;
-    if (state.showWinner || state.winAmount > 0) return;
+    if (state.winners.length > 0 || state.winAmount > 0) return;
     setState(s => ({
       ...s,
       winAmount: finalPotChips,
-      showWinner: activePlayers.length === 1 ? activePlayers[0].name : "",
+      winners: activePlayers.length === 1 ? [activePlayers[0].name] : [],
     }));
-  }, [handComplete, finalPotChips, activePlayers, state.showWinner, state.winAmount]);
+  }, [handComplete, finalPotChips, activePlayers, state.winners, state.winAmount]);
 
   const pendingBoardStreet: Street | null = useMemo(() => {
     if (!streetComplete || handComplete) return null;
@@ -457,7 +481,7 @@ export default function HandBuilder() {
       heroCards: [],
       actions: [],
       board: { flop: [], turn: "", river: "" },
-      showWinner: "",
+      winners: [],
       winAmount: 0,
     }));
   };
@@ -491,7 +515,7 @@ export default function HandBuilder() {
     if (heroSeat === seat) heroSeat = buttonSeat;
     setState(s => ({
       ...s, players: remaining, buttonSeat, heroSeat,
-      heroCards: [], actions: [], board: { flop: [], turn: "", river: "" }, showWinner: "", winAmount: 0,
+      heroCards: [], actions: [], board: { flop: [], turn: "", river: "" }, winners: [], winAmount: 0,
     }));
   };
 
@@ -507,7 +531,7 @@ export default function HandBuilder() {
     setState(s => ({
       ...s,
       players: [...s.players, { seat, name: `P${seat}`, stack: Math.round(s.stackBb * BB_CHIPS) }].sort((a, b) => a.seat - b.seat),
-      heroCards: [], actions: [], board: { flop: [], turn: "", river: "" }, showWinner: "", winAmount: 0,
+      heroCards: [], actions: [], board: { flop: [], turn: "", river: "" }, winners: [], winAmount: 0,
     }));
   };
 
@@ -519,14 +543,14 @@ export default function HandBuilder() {
   const clearCurrentHand = () => {
     const hasContent = state.actions.length > 0 || state.heroCards.length > 0
       || state.board.flop.length > 0 || state.board.turn || state.board.river
-      || state.showWinner || state.winAmount > 0;
+      || state.winners.length > 0 || state.winAmount > 0;
     if (hasContent && !confirm(t("actions.confirmClear"))) return;
     snapshot();
     setState(s => ({
       ...s,
       heroCards: [], actions: [],
       board: { flop: [], turn: "", river: "" },
-      showWinner: "", winAmount: 0,
+      winners: [], winAmount: 0,
     }));
   };
 
@@ -557,8 +581,14 @@ export default function HandBuilder() {
         turn: state.board.turn || undefined,
         river: state.board.river || undefined,
       },
-      winner: state.showWinner && state.winAmount > 0
-        ? { player: map(state.showWinner), amount: state.winAmount }
+      // Vencedor(es): 1 = pote inteiro; 2+ = empate, divide o pote igualmente (resto
+      // em fichas vai pro primeiro). Cada vencedor vira uma linha "collected".
+      winners: (state.winners.length > 0 && state.winAmount > 0)
+        ? state.winners.map((nm, i) => ({
+            player: map(nm),
+            amount: Math.floor(state.winAmount / state.winners.length)
+                    + (i === 0 ? state.winAmount % state.winners.length : 0),
+          }))
         : undefined,
     };
   }, [state, heroPlayer]);
@@ -588,7 +618,7 @@ export default function HandBuilder() {
     });
     if (!res) return;
     snapshot();
-    setState(s => ({ ...s, actions: res.actions, showWinner: res.winnerName, winAmount: res.potChips }));
+    setState(s => ({ ...s, actions: res.actions, winners: res.winnerName ? [res.winnerName] : [], winAmount: res.potChips }));
   };
 
   // Próxima mão: salva no arquivo e limpa a mão. NÃO roda o button nem mexe nos
@@ -604,7 +634,7 @@ export default function HandBuilder() {
       handId: String(Number(s.handId) + 1),
       heroCards: [], actions: [],
       board: { flop: [], turn: "", river: "" },
-      showWinner: "", winAmount: 0,
+      winners: [], winAmount: 0,
     }));
   };
 
@@ -993,19 +1023,31 @@ export default function HandBuilder() {
                 <h2 className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("winner.title")}</h2>
                 <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm">
                   {isShowdown ? (
-                    <label className="space-y-1">
+                    <div className="space-y-1">
                       <span className="font-mono text-[10px] text-amber-300">{t("winner.showdownChoose", { n: activePlayers.length })}</span>
-                      <select value={state.showWinner} onChange={e => update("showWinner", e.target.value)}
-                        className="w-full bg-background border border-amber-500/40 rounded px-2 py-1">
-                        <option value="">{t("winner.choose")}</option>
-                        {activePlayers.map(p => <option key={p.seat} value={p.name}>{positionOf(p)}</option>)}
-                      </select>
-                    </label>
+                      <div className="flex flex-wrap gap-2">
+                        {activePlayers.map(p => {
+                          const on = state.winners.includes(p.name);
+                          return (
+                            <button key={p.seat} type="button"
+                              onClick={() => update("winners", on ? state.winners.filter(n => n !== p.name) : [...state.winners, p.name])}
+                              className={`px-2 py-1 rounded border font-mono text-[11px] tracking-wide transition-colors ${on ? "border-amber-500 bg-amber-500/20 text-amber-200" : "border-border text-muted-foreground hover:border-amber-500/40"}`}>
+                              {positionOf(p)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span className="block font-mono text-[10px] text-emerald-400/80">
+                        {state.winners.length >= 2
+                          ? t("winner.split", { n: state.winners.length })
+                          : t("winner.tieHint")}
+                      </span>
+                    </div>
                   ) : (
                     <span className="font-mono">
                       <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{t("winner.player")}: </span>
                       <span className="font-bold text-foreground">{
-                        (() => { const w = state.players.find(p => p.name === state.showWinner); return w ? positionOf(w) : "—"; })()
+                        (() => { const w = state.players.find(p => p.name === state.winners[0]); return w ? positionOf(w) : "—"; })()
                       }</span>
                       <span className="ml-1 text-[10px] text-emerald-400/70">{t("winner.detected")}</span>
                     </span>
