@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Coins, Layers, Percent, Target, GraduationCap, Brain, RotateCcw, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { SortableContext, rectSortingStrategy, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { KpiCard } from "@/components/hud/KpiCard";
 import { LeaksPanel } from "@/components/hud/LeaksPanel";
@@ -29,7 +29,7 @@ import { CareerGraphCard } from "@/components/hud/CareerGraphCard";
 import { CognitiveFailureCard } from "@/components/hud/CognitiveFailureCard";
 import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
-import { useDashboardLayout, MainSection, SidebarSection } from "@/hooks/useDashboardLayout";
+import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
 import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, GtoAlignmentMatrixData, ResultsVsGtoData, LeakFinderData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -114,27 +114,19 @@ const Index = () => {
 
   const handleUpload = () => setRefreshKey((k) => k + 1);
 
-  const { layout, updateMain, updateSidebar, reset: resetLayout } = useDashboardLayout();
+  const { sections, updateSections, reset: resetLayout } = useDashboardLayout();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const handleMainDragEnd = (e: DragEndEvent) => {
+  const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const from = layout.main.indexOf(active.id as MainSection);
-    const to   = layout.main.indexOf(over.id   as MainSection);
-    if (from !== -1 && to !== -1) updateMain(arrayMove(layout.main, from, to));
-  };
-
-  const handleSidebarDragEnd = (e: DragEndEvent) => {
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
-    const from = layout.sidebar.indexOf(active.id as SidebarSection);
-    const to   = layout.sidebar.indexOf(over.id   as SidebarSection);
-    if (from !== -1 && to !== -1) updateSidebar(arrayMove(layout.sidebar, from, to));
+    const from = sections.indexOf(active.id as DashSection);
+    const to   = sections.indexOf(over.id   as DashSection);
+    if (from !== -1 && to !== -1) updateSections(arrayMove(sections, from, to));
   };
 
   // KPIs derived from tourns — slice to last N when volumeLimit is set
@@ -197,68 +189,28 @@ const Index = () => {
     staleTime: 120_000,
   });
 
-  const renderMainRow = (id: MainSection) => {
-    if (id === "quality_row") return <GtoQualityCard data={gtoQualityData} pendingGto={pendingGto} />;
-    if (id === "bankroll_row") return <BankrollChart />;
-    if (id === "street_row") return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <GtoAlignmentCard data={gtoAlignmentData} pendingGto={pendingGto} />
-          <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />
-        </div>
-        <GtoAlignmentMatrixCard data={gtoMatrixData} />
-        <LeakFinderCard data={leakFinderData} />
-        <ResultsVsGtoCard data={resultsVsGtoData} />
-      </div>
-    );
-    if (id === "dna_row") return <PlayerDnaCard data={dnaData} />;
-    if (id === "drill_row") return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <PressureProfileCard data={pressureData} />
-        <IcmBreakdown icm={evo?.icm} />
-      </div>
-    );
-    if (id === "insight_row") return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} />
-        <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />
-      </div>
-    );
-    return null;
-  };
-
-  const renderSidebarCard = (id: SidebarSection) => {
-    if (id === "leaks") return (
-      <DraggableCard key={id} id={id}>
-        <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />
-      </DraggableCard>
-    );
-    if (id === "pressure") return (
-      <DraggableCard key={id} id={id}>
-        <PressureProfileCard data={pressureData} />
-      </DraggableCard>
-    );
-    if (id === "icm") return (
-      <DraggableCard key={id} id={id}>
-        <IcmBreakdown icm={evo?.icm} />
-      </DraggableCard>
-    );
-    if (id === "causal_map") return leakGraph && leakGraph.nodes.length >= 3 ? (
-      <DraggableCard key={id} id={id}>
-        <LeakCausalMap
-          nodes={leakGraph.nodes}
-          edges={leakGraph.edges}
-          narrative={leakGraph.narrative}
-        />
-      </DraggableCard>
-    ) : <div key={id} />;
-    if (id === "level") return null;
-    if (id === "twin") return (
-      <DraggableCard key={id} id={id}>
-        <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />
-      </DraggableCard>
-    );
-    return null;
+  // Bento: cada card individual (achatado). null → não renderiza (ex.: causal_map sem grafo).
+  const renderCard = (id: DashSection) => {
+    switch (id) {
+      case "quality":    return <GtoQualityCard data={gtoQualityData} pendingGto={pendingGto} />;
+      case "alignment":  return <GtoAlignmentCard data={gtoAlignmentData} pendingGto={pendingGto} />;
+      case "position":   return <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />;
+      case "matrix":     return <GtoAlignmentMatrixCard data={gtoMatrixData} />;
+      case "leakfinder": return <LeakFinderCard data={leakFinderData} />;
+      case "results":    return <ResultsVsGtoCard data={resultsVsGtoData} />;
+      case "bankroll":   return <BankrollChart />;
+      case "career":     return <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} />;
+      case "cognitive":  return <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />;
+      case "dna":        return <PlayerDnaCard data={dnaData} />;
+      case "pressure":   return <PressureProfileCard data={pressureData} />;
+      case "icm":        return <IcmBreakdown icm={evo?.icm} />;
+      case "leaks":      return <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />;
+      case "causal_map": return (leakGraph && leakGraph.nodes.length >= 3)
+        ? <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={leakGraph.narrative} />
+        : null;
+      case "twin":       return <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />;
+      default:           return null;
+    }
   };
 
   return (
@@ -421,29 +373,25 @@ const Index = () => {
 
             <PlayerStatsCard stats={playerStats} />
 
-            <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-              {/* ── Main column (sortable rows) ──────────────────────────────── */}
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMainDragEnd}>
-                <SortableContext items={layout.main} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-6 lg:col-span-8">
-                    {layout.main.map((id) => (
-                      <DraggableCard key={id} id={id}>
-                        {renderMainRow(id)}
+            {/* ── Bento: grid único 12-col com packing (grid-flow-dense) ──────── */}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={sections} strategy={rectSortingStrategy}>
+                <section
+                  aria-label="Dashboard"
+                  className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-12 lg:grid-flow-dense items-start"
+                >
+                  {sections.map((id) => {
+                    const node = renderCard(id);
+                    if (!node) return null;   // ex.: causal_map sem grafo suficiente
+                    return (
+                      <DraggableCard key={id} id={id} className={SECTION_SPAN[id]}>
+                        {node}
                       </DraggableCard>
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-
-              {/* ── Sidebar (sortable cards) ─────────────────────────────────── */}
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSidebarDragEnd}>
-                <SortableContext items={layout.sidebar} strategy={verticalListSortingStrategy}>
-                  <aside className="space-y-6 lg:col-span-4 order-first lg:order-none">
-                    {layout.sidebar.map(renderSidebarCard)}
-                  </aside>
-                </SortableContext>
-              </DndContext>
-            </section>
+                    );
+                  })}
+                </section>
+              </SortableContext>
+            </DndContext>
           </>
         )}
       </main>
