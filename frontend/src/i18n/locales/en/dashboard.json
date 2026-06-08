@@ -129,8 +129,8 @@
     "empty": "Import tournaments to activate AI confidence analysis."
   },
   "leaks": {
-    "tooltip": "Spots with the most GTO solver divergence, ranked by frequency × severity. Classifications are based on static ranges and solver data. Falls back to heuristic analysis if no GTO coverage is available.",
-    "title": "Top Leaks Detected",
+    "tooltip": "A training plan for your leaks: Ghost Table drill progress, trend, and a study shortcut for each, ordered by EV impact. The diagnosis of where you lose EV is in the Leak Finder.",
+    "title": "Training Queue",
     "study": "Study",
     "studyLabel": "Study leak {{spot}}",
     "doing": "{{street}} — should {{action}}",

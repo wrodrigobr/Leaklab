@@ -129,8 +129,8 @@
     "empty": "Importa torneos para activar el análisis de confianza de la IA."
   },
   "leaks": {
-    "tooltip": "Spots con mayor divergencia del solver GTO, ordenados por frecuencia × severidad. Las clasificaciones se basan en rangos estáticos y datos del solver. Usa análisis heurístico si no hay cobertura GTO disponible.",
-    "title": "Top Leaks Detectados",
+    "tooltip": "Plan de entrenamiento de tus leaks: progreso en el Ghost Table, tendencia y atajo para estudiar cada uno, ordenados por impacto de EV. El diagnóstico de dónde pierdes EV está en el Leak Finder.",
+    "title": "Cola de Entrenamiento",
     "study": "Estudiar",
     "studyLabel": "Estudiar leak {{spot}}",
     "doing": "{{street}} — debería dar {{action}}",

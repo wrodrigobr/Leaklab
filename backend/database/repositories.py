@@ -620,6 +620,11 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
             r['drill_count']    = d.get('count', 0)
             r['drill_accuracy'] = d.get('accuracy')
             result.append(r)
+        # Fila de treino priorizada por impacto de EV ($/mês) p/ alinhar com o Leak Finder
+        # (diagnóstico por EV-bb). Empate cai no priority_score (robusto quando buy_in=0).
+        result.sort(key=lambda r: (r.get('ev_loss_monthly') or 0, r.get('priority_score') or 0), reverse=True)
+        for i, r in enumerate(result, 1):
+            r['priority_rank'] = i
         return result
     finally:
         conn.close()
