@@ -389,6 +389,7 @@ export default function Docs() {
 
             {/* Causal Map */}
             <Section id="causal_map" title={t("causal_map.title")}>
+              <p className="!mt-0"><Badge color="bg-primary/10 text-primary ring-1 ring-primary/20">{t("proOnly")}</Badge></p>
               <p dangerouslySetInnerHTML={{ __html: t("causal_map.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("causal_map.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("causal_map.p3") }} />
@@ -655,6 +656,7 @@ export default function Docs() {
 
             {/* Career Trajectory */}
             <Section id="career" title={t("career.title")}>
+              <p className="!mt-0"><Badge color="bg-primary/10 text-primary ring-1 ring-primary/20">{t("proOnly")}</Badge></p>
               <p dangerouslySetInnerHTML={{ __html: t("career.p1") }} />
               <Table
                 headers={[t("career.table.col_term"), t("career.table.col_meaning")]}
@@ -670,6 +672,7 @@ export default function Docs() {
 
             {/* Cognitive Failure Mapper */}
             <Section id="cognitive" title={t("cognitive.title")}>
+              <p className="!mt-0"><Badge color="bg-primary/10 text-primary ring-1 ring-primary/20">{t("proOnly")}</Badge></p>
               <p dangerouslySetInnerHTML={{ __html: t("cognitive.p1") }} />
               <Table
                 headers={[t("cognitive.table.col_pattern"), t("cognitive.table.col_trigger"), t("cognitive.table.col_signal")]}
@@ -688,6 +691,7 @@ export default function Docs() {
 
             {/* Strategic Patterns */}
             <Section id="twin" title={t("twin.title")}>
+              <p className="!mt-0"><Badge color="bg-primary/10 text-primary ring-1 ring-primary/20">{t("proOnly")}</Badge></p>
               <p dangerouslySetInnerHTML={{ __html: t("twin.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("twin.p2") }} />
               <Table
