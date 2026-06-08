@@ -10,7 +10,6 @@ import { LeaksPanel } from "@/components/hud/LeaksPanel";
 import { BankrollChart } from "@/components/hud/BankrollChart";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { GtoPositionCard } from "@/components/hud/GtoPositionCard";
-import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { ResultsVsGtoCard } from "@/components/hud/ResultsVsGtoCard";
 import { LeakFinderCard } from "@/components/hud/LeakFinderCard";
@@ -197,7 +196,6 @@ const Index = () => {
       case "cognitive":  return <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />;
       case "dna":        return <PlayerDnaCard data={dnaData} />;
       case "pressure":   return <PressureProfileCard data={pressureData} />;
-      case "icm":        return <IcmBreakdown icm={evo?.icm} />;
       case "leaks":      return <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />;
       case "causal_map": return (leakGraph && leakGraph.nodes.length >= 3)
         ? <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={leakGraph.narrative} />

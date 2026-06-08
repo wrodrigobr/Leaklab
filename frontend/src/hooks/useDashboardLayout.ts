@@ -6,7 +6,7 @@ import { preferences } from "@/lib/api";
 export type DashSection =
   | "quality" | "position" | "leakfinder" | "results"
   | "bankroll" | "career" | "cognitive" | "dna"
-  | "pressure" | "icm" | "leaks" | "causal_map" | "twin";
+  | "pressure" | "leaks" | "causal_map" | "twin";
 
 export const DEFAULT_SECTIONS: DashSection[] = [
   // Status / análise GTO
@@ -15,7 +15,7 @@ export const DEFAULT_SECTIONS: DashSection[] = [
   // Resultado / evolução
   "bankroll", "career", "cognitive",
   // Perfil / risco
-  "dna", "pressure", "icm", "leaks", "causal_map", "twin",
+  "dna", "pressure", "leaks", "causal_map", "twin",
 ];
 
 // Masonry de 2 COLUNAS uniformes: TODO card ocupa metade (lg:col-span-6 = 6 de 12 → 2 por
@@ -34,7 +34,6 @@ export const SECTION_SPAN: Record<DashSection, string> = {
   cognitive:  "lg:col-span-6",
   dna:        "lg:col-span-6",
   pressure:   "lg:col-span-6",
-  icm:        "lg:col-span-6",
   leaks:      "lg:col-span-6",
   causal_map: "lg:col-span-6",
   twin:       "lg:col-span-6",

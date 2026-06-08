@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### refactor(dashboard): remove IcmBreakdown (redundante com PressureProfile)
+
+> Auditoria de baixo valor: `IcmBreakdown` (barras de `standard_rate` por nível de ICM high/med/low/none) e `PressureProfileCard` (barras de `avg_score` por nível de pressão none/low/med/high vs baseline + detecção de colapso) usam **o mesmo eixo** (no MTT, pressão = ICM) — e o Pressure é estritamente mais rico (baseline-relativo + colapso + resumo). IcmBreakdown era uma versão fraca/redundante → **removido** (`DashSection`/`DEFAULT_SECTIONS`/`SECTION_SPAN` + render + import; `evo.icm` não tinha outro consumidor, `evo` permanece). Dashboard 13→12 cards; masonry absorve. **Pressure+Twin NÃO foram mesclados** (revendo a ideia inicial): são lentes estruturalmente distintas (curva-por-nível+colapso vs lista de spots custosos), merge prejudicaria ambos. Validado: tsc (só erros pré-existentes), 12 cards, zero erros.
+
 ### style(header): logo GrindLab h-10 → h-12 (48px no header de 64px)
 
 > A pedido do usuário, mais um aumento do logo do header. `h-10` (40px) → `h-12` (48px) — ocupa ~75% da altura da barra (`h-16`/64px), com ~8px de respiro de cada lado (teto confortável sem crescer a barra). Validado: logo medido 48×136px, header 65px, balanceado com a nav, zero erros.
