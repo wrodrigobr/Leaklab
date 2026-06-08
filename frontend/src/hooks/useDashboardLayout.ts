@@ -4,14 +4,14 @@ import { preferences } from "@/lib/api";
 // Bento: lista ÚNICA de cards (achatada). Cada card tem um span por tamanho de conteúdo
 // (ver SECTION_SPAN). Substitui o antigo modelo de 2 colunas {main, sidebar}.
 export type DashSection =
-  | "quality" | "alignment" | "position" | "matrix" | "leakfinder" | "results"
+  | "quality" | "position" | "leakfinder" | "results"
   | "bankroll" | "career" | "cognitive" | "dna"
   | "pressure" | "icm" | "leaks" | "causal_map" | "twin";
 
 export const DEFAULT_SECTIONS: DashSection[] = [
   // Status / análise GTO
-  "quality", "alignment", "position",
-  "matrix", "leakfinder", "results",
+  "quality", "position",
+  "leakfinder", "results",
   // Resultado / evolução
   "bankroll", "career", "cognitive",
   // Perfil / risco
@@ -26,9 +26,7 @@ export const DEFAULT_SECTIONS: DashSection[] = [
 // base=1-col, md=2-col (default span-1), lg=2-col via span-6.
 export const SECTION_SPAN: Record<DashSection, string> = {
   quality:    "lg:col-span-6",
-  alignment:  "lg:col-span-6",
   position:   "lg:col-span-6",
-  matrix:     "lg:col-span-6",
   leakfinder: "lg:col-span-6",
   results:    "lg:col-span-6",
   bankroll:   "lg:col-span-6",

@@ -12,8 +12,6 @@ import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { GtoPositionCard } from "@/components/hud/GtoPositionCard";
 import { IcmBreakdown } from "@/components/hud/IcmBreakdown";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
-import { GtoAlignmentCard } from "@/components/hud/GtoAlignmentCard";
-import { GtoAlignmentMatrixCard } from "@/components/hud/GtoAlignmentMatrixCard";
 import { ResultsVsGtoCard } from "@/components/hud/ResultsVsGtoCard";
 import { LeakFinderCard } from "@/components/hud/LeakFinderCard";
 import { GtoQualityCard } from "@/components/hud/GtoQualityCard";
@@ -31,7 +29,7 @@ import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
-import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, GtoAlignmentMatrixData, ResultsVsGtoData, LeakFinderData } from "@/lib/api";
+import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // Module-level cache — survives unmount/remount during SPA navigation
@@ -169,12 +167,6 @@ const Index = () => {
     staleTime: 120_000,
   });
 
-  const { data: gtoMatrixData } = useQuery<GtoAlignmentMatrixData>({
-    queryKey: ["gto-matrix", refreshKey, volumeLimit],
-    queryFn: () => metrics.gtoAlignmentMatrix(volumeLimit ?? undefined),
-    staleTime: 120_000,
-  });
-
   const { data: gtoQualityData } = useQuery<GtoQualityData>({
     queryKey: ["gto-quality", refreshKey, volumeLimit],
     queryFn: () => metrics.gtoQuality(volumeLimit ?? undefined),
@@ -197,9 +189,7 @@ const Index = () => {
   const renderCard = (id: DashSection) => {
     switch (id) {
       case "quality":    return <GtoQualityCard data={gtoQualityData} pendingGto={pendingGto} />;
-      case "alignment":  return <GtoAlignmentCard data={gtoAlignmentData} pendingGto={pendingGto} />;
       case "position":   return <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />;
-      case "matrix":     return <GtoAlignmentMatrixCard data={gtoMatrixData} />;
       case "leakfinder": return <LeakFinderCard data={leakFinderData} />;
       case "results":    return <ResultsVsGtoCard data={resultsVsGtoData} />;
       case "bankroll":   return <BankrollChart />;
