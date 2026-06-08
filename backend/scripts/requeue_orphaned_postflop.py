@@ -23,6 +23,13 @@ try:
     sys.stdout.reconfigure(encoding='utf-8')
 except Exception:
     pass
+# Carrega o .env (igual ao app.py) pra o guard de GTO_SOLVER_URL refletir a config real
+# — o worker que faz o solve roda com o .env carregado e roteia pro GCP.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+except Exception:
+    pass
 from database.schema import get_conn
 
 _POSTFLOP = {'flop', 'turn', 'river'}
@@ -46,11 +53,17 @@ def main():
     ap.add_argument('--apply', action='store_true')
     ap.add_argument('--allow-local', action='store_true',
                     help='permite re-enqueue mesmo sem GTO_SOLVER_URL (solve local). NÃO recomendado.')
+    ap.add_argument('--limit', type=int, default=0,
+                    help='re-enfileira no máximo N órfãos (0 = todos). Útil p/ lotes controlados.')
     args = ap.parse_args()
 
     conn = get_conn()
     orphans = find_orphans(conn)
-    print(f"Spots POSTFLOP órfãos (job 'done' sem nó GTO): {len(orphans)}")
+    total = len(orphans)
+    if args.limit and args.limit > 0:
+        orphans = orphans[:args.limit]
+    print(f"Spots POSTFLOP órfãos (job 'done' sem nó GTO): {total}"
+          + (f" — re-enfileirando {len(orphans)} (--limit)" if args.limit else ""))
 
     if not args.apply:
         print("\nDRY-RUN — nada alterado. Use --apply para resetar → pending.")

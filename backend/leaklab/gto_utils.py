@@ -37,9 +37,24 @@ VALID_GTO_ACTIONS = {'fold', 'check', 'call', 'bet', 'raise', 'jam'}
 
 
 def normalize_gto_action(action: str) -> str:
-    """Normaliza string de ação GTO para o conjunto canônico {fold,check,call,bet,raise,jam}."""
+    """Normaliza string de ação GTO para o conjunto canônico {fold,check,call,bet,raise,jam}.
+
+    Cobre também os labels PARAMETRIZADOS do solver (bet_50pct, raise_119pct, raise_2.5x,
+    *pct, *x → bet/raise). Sem isso, o strategy_json do solver_cli era rejeitado em
+    insert_gto_nodes por 'ações inválidas' → nó não persistia (causa de ~89% dos jobs
+    'done' sem nó). O strategy_json ARMAZENADO mantém o size original; só a validação e o
+    gto_action canônico usam a forma colapsada."""
     a = (action or '').lower().strip()
-    return _ACTION_NORM.get(a, a)
+    if a in _ACTION_NORM:
+        return _ACTION_NORM[a]
+    if a in VALID_GTO_ACTIONS:
+        return a
+    if a.startswith('bet'):
+        return 'bet'
+    if (a.startswith('raise') or a.startswith('3bet') or a.startswith('4bet')
+            or a.startswith('5bet') or a.endswith('pct') or a.endswith('x')):
+        return 'raise'
+    return a
 
 
 def stack_bucket(bb: float) -> str:
