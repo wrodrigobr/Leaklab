@@ -6506,6 +6506,10 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
             # Não pula: re-analisa sempre para corrigir gto_action de nós parciais antigos
 
             spot = di.get('spot', {})
+            # potSize vem em FICHAS → converter p/ BB pelo level_bb (senão pot 100x inflado
+            # → SPR colapsa → solver degenera em all-in; mesma classe do bug do enqueue).
+            _lvl_bb = float(db_dec.get('level_bb') or 1) or 1
+            _pot_bb = round(float(spot.get('potSize', 0) or 0) / _lvl_bb, 2)
             gto = lookup_gto(
                 street          = di['street'],
                 position        = spot.get('position', ctx.get('position', '')),
@@ -6515,7 +6519,7 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                 action_seq      = ctx.get('actionSeq', 'rfi'),
                 vs_position     = spot.get('villainPosition', ctx.get('vsPosition', '')),
                 facing_size_bb  = float(db_dec.get('facing_bet', 0) or 0),
-                pot_bb          = float(spot.get('potSize', 0) or 0),
+                pot_bb          = _pot_bb,
                 num_players     = int(db_dec.get('num_players', 9) or 9),
             )
 
@@ -6887,7 +6891,12 @@ def _enqueue_postflop_spots(results: list) -> None:
 
             from leaklab.gto_solver import _DEFAULT_RANGES, _DEFAULT_RANGE_WIDE, _priority, _solver_params_for_stack
             vs_pos   = spot.get('villainPosition', ctx.get('vsPosition', '')).upper()
-            pot_bb   = float(spot.get('potSize') or facing * 2 + 2 or 4.0)
+            # pot em BB: potSize vem em FICHAS (igual facingSize) → dividir por _level_bb.
+            # Sem isso o pot_bb ficava ~100x inflado → SPR colapsava → o solver forçava
+            # all-in (estratégia degenerada + exploitability 0.0% fake). Mesmo /_level_bb
+            # do facing acima.
+            _pot_chips = float(spot.get('potSize') or 0)
+            pot_bb   = round(_pot_chips / _level_bb, 2) if _pot_chips > 0 else (facing * 2 + 2 or 4.0)
             _params  = _solver_params_for_stack(stack)
             payload  = _json.dumps({
                 'street':                    d['street'],
