@@ -28,6 +28,7 @@ import { StrategicTwinCard } from "@/components/hud/StrategicTwinCard";
 import { DraggableCard } from "@/components/hud/DraggableCard";
 import { useDashboardLayout, DashSection, SECTION_SPAN } from "@/hooks/useDashboardLayout";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
+import { ProLockCard } from "@/components/hud/ProLockCard";
 import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -38,6 +39,8 @@ const Index = () => {
   const { user, refreshUser } = useAuth();
   const { t, i18n } = useTranslation("dashboard");
   const { t: tc } = useTranslation("common");
+  // Insights avançados de IA são exclusivos do Pro (espelha o gate do backend). Free vê lock.
+  const isFree = (user?.plan || "free") === "free";
   const [showLinkCoach, setShowLinkCoach]   = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !user?.onboarding_completed);
   const [showSupport, setShowSupport]       = useState(false);
@@ -192,15 +195,17 @@ const Index = () => {
       case "leakfinder": return <LeakFinderCard data={leakFinderData} />;
       case "results":    return <ResultsVsGtoCard data={resultsVsGtoData} />;
       case "bankroll":   return <BankrollChart />;
-      case "career":     return <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} />;
-      case "cognitive":  return <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />;
+      case "career":     return isFree ? <ProLockCard feature={tc("proLock.career")} /> : <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} />;
+      case "cognitive":  return isFree ? <ProLockCard feature={tc("proLock.cognitive")} /> : <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />;
       case "dna":        return <PlayerDnaCard data={dnaData} />;
       case "pressure":   return <PressureProfileCard data={pressureData} />;
       case "leaks":      return <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />;
-      case "causal_map": return (leakGraph && leakGraph.nodes.length >= 3)
-        ? <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={leakGraph.narrative} />
-        : null;
-      case "twin":       return <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />;
+      case "causal_map": return isFree
+        ? <ProLockCard feature={tc("proLock.causalMap")} />
+        : (leakGraph && leakGraph.nodes.length >= 3)
+          ? <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={leakGraph.narrative} />
+          : null;
+      case "twin":       return isFree ? <ProLockCard feature={tc("proLock.twin")} /> : <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />;
       default:           return null;
     }
   };

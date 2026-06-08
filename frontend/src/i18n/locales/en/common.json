@@ -1,4 +1,13 @@
 {
+  "proLock": {
+    "badge": "Pro feature",
+    "desc": "Advanced AI insights — available on the Pro plan.",
+    "cta": "Upgrade",
+    "career": "Strategic Career",
+    "cognitive": "Cognitive Failures",
+    "causalMap": "Leak Causal Map",
+    "twin": "Strategic Twin"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "tournaments": "Tournaments",

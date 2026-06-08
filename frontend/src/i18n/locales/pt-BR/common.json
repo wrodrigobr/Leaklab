@@ -1,4 +1,13 @@
 {
+  "proLock": {
+    "badge": "Recurso Pro",
+    "desc": "Insights avançados de IA — disponível no plano Pro.",
+    "cta": "Fazer upgrade",
+    "career": "Carreira Estratégica",
+    "cognitive": "Falhas Cognitivas",
+    "causalMap": "Mapa Causal de Leaks",
+    "twin": "Gêmeo Estratégico"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "tournaments": "Torneios",
