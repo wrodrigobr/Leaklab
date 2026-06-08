@@ -314,13 +314,8 @@ function Footer() {
   return (
     <footer className="border-t border-border bg-hud-surface/30 py-8 px-6">
       <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <BarChart3 className="size-3.5" />
-          </span>
-          <span className="font-semibold text-sm text-foreground">
-            GrindLab<span className="text-primary italic font-light">.ai</span>
-          </span>
+        <div className="flex items-center">
+          <img src={logoHorizontal} alt="GrindLab Poker" className="h-7 w-auto" />
         </div>
         <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
           {t("footer.copyright")}

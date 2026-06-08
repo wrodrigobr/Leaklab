@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(brand): rodapé da landing usa o logo oficial (era wordmark "GrindLab.ai")
+
+> O rodapé da landing mostrava um wordmark manual *"GrindLab**.ai**"* (ícone genérico `BarChart3` + texto) — nome errado (o produto é **GrindLab Poker**) e fora da diretriz de marca (sempre usar o SVG oficial). Substituído pelo logo `grindlab_final_horizontal.svg` (`h-7`), que já exibe "GrindLab POKER". O copyright (`© 2026 GrindLab · …`) já estava correto. Validado: rodapé renderiza o logo, sem ".ai", tsc OK.
+
 ### chore(gto): script de limpeza do bug de pot_bb (purga + re-análise + re-solve postflop)
 
 > Os nós `solver_cli` postflop existentes foram gerados com o pot bugado (fichas) → degenerados. Novo `scripts/cleanup_postflop_pot_bug.py`: (1) **purga** todos os nós `solver_cli` postflop; (2) **re-analisa** cada torneio do `raw_text` (`parse → build_decision_inputs_for_hand`) e, por spot postflop, monta o spot com o **pot correto** (usa `spot['potBb']`/`['facingToBb']`, já em BB — robusto, sem depender de `level_bb`), solve no GCP e insere. **Validado no spot do usuário** (flop 5h6hQd, A♣J♦): antes *all-in 92.5% / 0.0% fake*; agora **check 98.5% / 2.14% real** (sem aposta) e **fold 64% · raise 17% · call 14% · allin 5% / 2.25% real** (vs aposta) — estratégias mistas coerentes. Garantias: só `solver_cli` postflop; **preflop GW e `gto_wizard` intocados**; solve exige `GTO_SOLVER_URL` (GCP). `--tournament` p/ targetar, `--apply` p/ executar.
