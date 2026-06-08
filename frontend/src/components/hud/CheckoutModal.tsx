@@ -16,6 +16,7 @@ const PLAN_INFO = {
     features: [
       "Torneios ilimitados",
       "Análises GrindLab ilimitadas",
+      "Insights avançados de IA (Strategic Twin, Cognitive, Causal Map)",
       "AI Coach Chat (conversa contextual)",
       "Plano de estudos personalizado",
       "Acesso ao marketplace de coaches",

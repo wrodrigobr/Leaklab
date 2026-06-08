@@ -220,7 +220,7 @@ function PricingSection() {
       period: t("plans.period"),
       highlight: true,
       badge: t("plans.grinder") as string | null,
-      features: [t("plans.proF1"), t("plans.proF2"), t("plans.proF3"), t("plans.proF4"), t("plans.proF5"), t("plans.proF6")],
+      features: [t("plans.proF1"), t("plans.proF2"), t("plans.proF7"), t("plans.proF3"), t("plans.proF4"), t("plans.proF5"), t("plans.proF6")],
       cta: t("plans.ctaSubscribe", { name: "Pro" }),
       href: "mailto:rodrigo.phpro@gmail.com?subject=Assinar%20GrindLab%20Pro",
     },

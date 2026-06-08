@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### copy(plans): cards de preço só listam o que ESTÁ incluso + refletem o gating
+
+> A pedido do usuário, os cards de plano (landing + CheckoutModal) agora listam **apenas features inclusas** (sem itens negativos tipo "✗ Sem AI Coach Chat"). O Free dizia *"Acesso a todas as features de análise"* — **falso** após o gating da fase 1 (insights avançados viraram Pro). Free agora: 2 torneios/mês · 15 análises/mês · **"Análise GTO, leaks e estatísticas"** · **"5 solves GTO sob demanda/mês"** (positivo, era o "✗ Sem AI Coach Chat"). Pro ganha **"Insights avançados de IA (Strategic Twin, Cognitive, Causal Map)"** como diferencial (logo após os "ilimitados"). 3 locales (PT/EN/ES) + a lista hardcoded do CheckoutModal. Validado: JSON OK, tsc OK, sem negativos, cards renderizam balanceados.
+
 ### feat(plans): fase 1 — calibra limites Free/Pro + gateia insights avançados (Pro)
 
 > Definição de planos pré-prod (controle de custo de IA/solver). **`PLAN_LIMITS`** ajustado: **Free** = 2 torneios/mês · 15 chamadas IA/mês · **5 solves GTO/mês** (era 10 — a VM do solver é escassa) · sem AI Coach Chat · **sem insights avançados**. **Pro** (R$99/mês) deixa de ser "ilimitado" literal e ganha **fair-use**: 200 torneios/mês · 300 chamadas IA/mês · AI Coach Chat · solves ilimitados (teto diário vem na fase 2) · insights avançados. Nova flag `advanced_insights` + helper `_check_advanced_insights` → **gateia 4 endpoints** (`/player/career`, `/player/cognitive-failures`, `/player/strategic-twin`, `/player/leak-graph`) com **402 `upgrade_required`** pra Free — esses cards de IA "inteligente" eram abertos a todos e **sem cota** (brecha de custo) e agora viram diferencial Pro. Os helpers de cota existentes já enforçam limite numérico (`limit is not None and used >= limit`), então os tetos do Pro passam a valer automaticamente. Validado: testes de cota 4/4, API 42/42. **Fase 2** (tetos diários ai_chat/solves + limite de fila por usuário no solver) e **fase 3** (UX de upgrade nos cards + /docs) a seguir.

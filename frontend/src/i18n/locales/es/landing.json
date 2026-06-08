@@ -55,14 +55,15 @@
     "manualActivation": "Planes pagos activados manualmente por email en 24h · Sin tarjeta de crédito requerida",
     "freeF1": "2 torneos por mes",
     "freeF2": "15 análisis GrindLab/mes",
-    "freeF3": "Acceso a todas las funciones de análisis",
-    "freeF4": "✗ Sin AI Coach Chat",
+    "freeF3": "Análisis GTO, leaks y estadísticas",
+    "freeF4": "5 solves GTO bajo demanda/mes",
     "proF1": "Torneos ilimitados",
     "proF2": "Análisis GrindLab ilimitados",
     "proF3": "AI Coach Chat (conversación contextual)",
     "proF4": "Plan de estudio personalizado",
     "proF5": "Marketplace de coaches",
-    "proF6": "Soporte prioritario"
+    "proF6": "Soporte prioritario",
+    "proF7": "Insights avanzados de IA (Strategic Twin, Cognitive, Causal Map)"
   },
   "cta": {
     "heading": "Tus leaks ya existen. Solo que no sabes cuáles son.",
