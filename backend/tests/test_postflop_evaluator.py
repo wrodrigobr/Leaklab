@@ -254,19 +254,31 @@ def test_genuine_errors_preserved():
     from leaklab.parser import parse_pokerstars_file
     hands = parse_pokerstars_file(TOURNAMENT_FILE)
 
+    # Conta a DETECÇÃO do heurístico (mathPenalty real), NÃO o label final. Motivo: a
+    # cobertura GTO (nós Texas postflop) pode AMOLECER o label de alguns (ex.: um fold que
+    # o GTO endossa vira gto_mixed/gto_correct em vez de small/clear_mistake), mas o math
+    # penalty persiste — o erro genuíno não é "perdido", só contextualizado pelo GTO. Antes
+    # este teste lia o label final e era NÃO-HERMÉTICO (dependia de quais nós GTO estavam no
+    # DB); contar o penalty é estável (só depende do heurístico + do torneio fixo).
     genuine_errors = 0
+    still_labeled_mistake = 0
     for hand in hands:
         for di in build_decision_inputs_for_hand(hand):
             if di['street'] == 'preflop':
                 continue
             r = evaluate_decision(di)
             bd = r['evaluation']['scoreBreakdown']
-            if bd['mathPenalty'] > 0 and r['evaluation']['label'] in ('small_mistake', 'clear_mistake'):
+            if bd['mathPenalty'] > 0:
                 genuine_errors += 1
+                if r['evaluation']['label'] in ('small_mistake', 'clear_mistake'):
+                    still_labeled_mistake += 1
 
-    # Deve ter pelo menos 7 erros genuínos (eram 9 antes)
-    assert genuine_errors >= 7, f"Erros genuínos desapareceram: {genuine_errors}"
-    print(f"OK  test_genuine_errors_preserved | {genuine_errors} erros genuínos")
+    # O heurístico deve seguir detectando os erros de math (eram 9; ~11 hoje), e ao menos
+    # alguns devem continuar rotulados como mistake (os spots sem override GTO).
+    assert genuine_errors >= 7, f"Detecção de erros genuínos (mathPenalty) caiu: {genuine_errors}"
+    assert still_labeled_mistake >= 1, f"Nenhum erro genuíno ficou rotulado mistake: {still_labeled_mistake}"
+    print(f"OK  test_genuine_errors_preserved | {genuine_errors} detectados (mathPenalty), "
+          f"{still_labeled_mistake} ainda mistake")
 
 
 def test_preflop_unaffected():
