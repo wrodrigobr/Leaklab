@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(plans): fase 1 — calibra limites Free/Pro + gateia insights avançados (Pro)
+
+> Definição de planos pré-prod (controle de custo de IA/solver). **`PLAN_LIMITS`** ajustado: **Free** = 2 torneios/mês · 15 chamadas IA/mês · **5 solves GTO/mês** (era 10 — a VM do solver é escassa) · sem AI Coach Chat · **sem insights avançados**. **Pro** (R$99/mês) deixa de ser "ilimitado" literal e ganha **fair-use**: 200 torneios/mês · 300 chamadas IA/mês · AI Coach Chat · solves ilimitados (teto diário vem na fase 2) · insights avançados. Nova flag `advanced_insights` + helper `_check_advanced_insights` → **gateia 4 endpoints** (`/player/career`, `/player/cognitive-failures`, `/player/strategic-twin`, `/player/leak-graph`) com **402 `upgrade_required`** pra Free — esses cards de IA "inteligente" eram abertos a todos e **sem cota** (brecha de custo) e agora viram diferencial Pro. Os helpers de cota existentes já enforçam limite numérico (`limit is not None and used >= limit`), então os tetos do Pro passam a valer automaticamente. Validado: testes de cota 4/4, API 42/42. **Fase 2** (tetos diários ai_chat/solves + limite de fila por usuário no solver) e **fase 3** (UX de upgrade nos cards + /docs) a seguir.
+
 ### fix(brand): rodapé da landing usa o logo oficial (era wordmark "GrindLab.ai")
 
 > O rodapé da landing mostrava um wordmark manual *"GrindLab**.ai**"* (ícone genérico `BarChart3` + texto) — nome errado (o produto é **GrindLab Poker**) e fora da diretriz de marca (sempre usar o SVG oficial). Substituído pelo logo `grindlab_final_horizontal.svg` (`h-7`), que já exibe "GrindLab POKER". O copyright (`© 2026 GrindLab · …`) já estava correto. Validado: rodapé renderiza o logo, sem ".ai", tsc OK.

@@ -2985,10 +2985,13 @@ def get_baseline_comparison(coach_id: int, student_id: int) -> Optional[dict]:
 
 # ── BACK-010: Quota / freemium ─────────────────────────────────────────────────
 
+# Limites por plano. None = ilimitado (mensal). 'advanced_insights' gateia os cards de
+# IA avançada (Strategic Twin, Cognitive Failures, Leak Causal Map, Career). Tetos DIÁRIOS
+# do Pro (ai_chat/dia, solves/dia) entram na fase 2 (fair-use anti-abuso).
 PLAN_LIMITS: dict = {
-    'free':    {'tournaments': 2,    'ai_calls': 15,   'ai_coach_chat': False, 'solves': 10},
-    'pro':     {'tournaments': None, 'ai_calls': None, 'ai_coach_chat': True,  'solves': None},
-    'coach':   {'tournaments': None, 'ai_calls': None, 'ai_coach_chat': True,  'solves': None},  # interno
+    'free':    {'tournaments': 2,   'ai_calls': 15,  'ai_coach_chat': False, 'solves': 5,    'advanced_insights': False},
+    'pro':     {'tournaments': 200, 'ai_calls': 300, 'ai_coach_chat': True,  'solves': None, 'advanced_insights': True},
+    'coach':   {'tournaments': None, 'ai_calls': None, 'ai_coach_chat': True, 'solves': None, 'advanced_insights': True},  # interno
 }
 
 

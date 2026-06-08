@@ -261,6 +261,20 @@ def _check_ai_quota(user_id: int):
         }), 402
     return None
 
+
+def _check_advanced_insights(user_id: int):
+    """Retorna 402 se o plano não inclui os insights de IA avançada (Strategic Twin,
+    Cognitive Failures, Leak Causal Map, Career) — exclusivos do Pro. None caso contrário."""
+    status = get_quota_status(user_id)
+    if not status['limits'].get('advanced_insights', False):
+        return jsonify({
+            'error': 'Insights avançados de IA são exclusivos do plano Pro.',
+            'upgrade_required': True,
+            'feature': 'advanced_insights',
+            'plan': status['plan'],
+        }), 402
+    return None
+
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 @app.route('/auth/register', methods=['POST'])
@@ -1440,6 +1454,9 @@ def player_dna():
 @app.route('/player/leak-graph', methods=['GET'])
 @require_auth
 def player_leak_graph():
+    gate = _check_advanced_insights(g.user_id)
+    if gate:
+        return gate
     days = int(request.args.get('days', 90))
     lang = request.args.get('lang', 'pt-BR')
     return jsonify(get_leak_graph_data(g.user_id, days=days, lang=lang))
@@ -1448,6 +1465,9 @@ def player_leak_graph():
 @app.route('/player/career', methods=['GET'])
 @require_auth
 def player_career():
+    gate = _check_advanced_insights(g.user_id)
+    if gate:
+        return gate
     from leaklab.llm_explainer import generate_career_narrative
     lang       = request.args.get('lang', 'pt-BR')
     projection = get_career_projection(g.user_id)
@@ -1459,6 +1479,9 @@ def player_career():
 @app.route('/player/cognitive-failures', methods=['GET'])
 @require_auth
 def player_cognitive_failures():
+    gate = _check_advanced_insights(g.user_id)
+    if gate:
+        return gate
     from leaklab.llm_explainer import generate_cognitive_narrative
     lang   = request.args.get('lang', 'pt-BR')
     days   = int(request.args.get('days', 90))
@@ -1694,6 +1717,9 @@ def academy_gto_preflop_submit():
 @app.route('/player/strategic-twin', methods=['GET'])
 @require_auth
 def player_strategic_twin():
+    gate = _check_advanced_insights(g.user_id)
+    if gate:
+        return gate
     from leaklab.llm_explainer import generate_twin_narrative
     lang    = request.args.get('lang', 'pt-BR')
     days    = int(request.args.get('days', 180))
