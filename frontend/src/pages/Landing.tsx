@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
+import heroBanner from "@/assets/brand/grindlab_og_1200x630.png";
 
 const LEVELS = ["Iniciante", "Estudante", "Grinder", "Regular", "Sólido", "Expert", "Elite"] as const;
 
@@ -52,6 +53,11 @@ function HeroSection() {
       <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[500px] rounded-full bg-primary/8 blur-3xl" />
 
       <div className="relative space-y-6 max-w-3xl">
+        <img
+          src={heroBanner}
+          alt="GrindLab"
+          className="mx-auto w-full max-w-2xl rounded-2xl border border-border/40 shadow-elevated"
+        />
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">
           {t("hero.title1")}<br />
           <span className="text-primary">{t("hero.title2")}</span>
