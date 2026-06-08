@@ -6638,45 +6638,12 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
 
 
 def _mark_failed_solver_jobs_as_wizard_pending() -> int:
-    """
-    Varre gto_solver_queue com status='failed' e marca as decisões
-    correspondentes como wizard_pending para o fallback ao GTO Wizard.
-    Retorna número de decisões marcadas.
-    """
-    from database.schema import get_conn
-    from database.repositories import _fetchall, _adapt
-    conn = get_conn()
-    marked = 0
-    try:
-        failed_jobs = _fetchall(conn, _adapt("""
-            SELECT spot_hash, spot_json FROM gto_solver_queue WHERE status = 'failed'
-        """))
-        for job in failed_jobs:
-            try:
-                import json as _j
-                spot = _j.loads(job['spot_json'] or '{}')
-                street   = spot.get('street', '')
-                board    = spot.get('board', [])
-                position = spot.get('position', '')
-                stack    = float(spot.get('hero_stack_bb') or spot.get('effective_stack_bb') or 0)
-                facing   = float(spot.get('facing_size_bb', 0) or 0)
-                if not street or not position or stack <= 0:
-                    continue
-                # Encontrar decisões que correspondam a este spot
-                conn.execute(_adapt("""
-                    UPDATE decisions SET gto_label = 'wizard_pending'
-                    WHERE street = ? AND position = ?
-                      AND (gto_label IS NULL OR gto_label = 'wizard_pending')
-                      AND ABS(CAST(stack_bb AS REAL) - ?) < 5
-                      AND ABS(COALESCE(CAST(facing_bet AS REAL), 0) - ?) < 1
-                """), (street, position, stack, facing))
-                marked += conn.total_changes
-            except Exception:
-                continue
-        conn.commit()
-    finally:
-        conn.close()
-    return marked
+    """APOSENTADO. O fallback pro GTO Wizard foi descontinuado: o GW foi cancelado e
+    só resolvia HU, então spots que o solver local não cobre (multiway postflop, etc.)
+    não têm para onde ir — ficam como "sem cobertura" (gto_label NULL), que é o estado
+    honesto. Antes, esta função re-marcava esses jobs falhos como wizard_pending a cada
+    ciclo do worker, deixando o indicador "processando" preso pra sempre. No-op agora."""
+    return 0
 
 
 def _gto_hand_worker_loop():
@@ -6701,10 +6668,10 @@ def _gto_hand_worker_loop():
                 )
                 log.info("GTO hand worker: req_id=%s → %s (done=%s queued=%s)", req['id'], status, n_done, n_queued)
 
-            # Fallback: marcar decisões cujos jobs do cloud solver falharam
-            wizard_marked = _mark_failed_solver_jobs_as_wizard_pending()
-            if wizard_marked:
-                log.info("GTO fallback: %d decisoes marcadas como wizard_pending", wizard_marked)
+            # Fallback pro GTO Wizard APOSENTADO: GW foi cancelado e só resolvia HU.
+            # Spots que o solver local não cobre (multiway postflop, etc.) ficam como
+            # "sem cobertura" (gto_label NULL) — estado honesto — em vez de wizard_pending
+            # eterno (que fazia o indicador "processando" mentir pra sempre).
 
             # Intervalo adaptativo: ciclo rápido se havia pendentes, normal se fila vazia
             time.sleep(5 if pending else 30)
