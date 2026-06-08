@@ -53,7 +53,7 @@ const Login = () => {
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
-            <img src={logoHorizontal} alt="GrindLab" className="h-10 w-auto" />
+            <img src={logoHorizontal} alt="GrindLab" className="h-14 w-auto" />
           </div>
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest-2">
             Tactical Tournament Intelligence
