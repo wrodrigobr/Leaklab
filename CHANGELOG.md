@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): mensagem de "sem cobertura GTO" não afirma mais "multiway" em spots HU
+
+> No replayer, um spot postflop **sem nó GTO** mostrava *"Solver processou mas não retornou solução — spot **multiway** sem cobertura"* (`card.statusDoneNoSolution`) e *"Spot **multiway** sem solução..."* (`card.whyMultiway`) — mas esses textos eram um **catch-all hardcoded**: apareciam pra QUALQUER postflop sem cobertura, sem checar o nº de jogadores no pote (`livePlayers`). Resultado: um spot **heads-up** (ex.: Hero vs BTN no flop) era rotulado como "multiway", confundindo o diagnóstico. Fix: reescrito "multiway" → "postflop" nos dois textos (3 locales PT/EN/ES). O sinal de multiway **real** continua correto e separado — o badge `card.multiway` ("Multiway · N-way") só aparece quando `livePlayers ≥ 3`. (Fix 1 de 2; o Fix 2 — por que o nó GTO não é persistido em ~89% dos jobs `done` — está em investigação.)
+
 ### style(brand): crop do viewBox do logo horizontal (centraliza + aumenta) + header da landing
 
 > O logo `grindlab_final_horizontal.svg` parecia "sentado alto" no header (menos respiro em cima que embaixo). Diagnóstico via `getBBox()`: a arte ocupa só ~y6→79 do viewBox de altura 100 (whitespace topo **6** vs base **21**) — o box estava centralizado (folgas 8/9px), mas a arte dentro do SVG não. **Fix não-destrutivo:** crop do `viewBox` `0 0 283 100` → `8 4.4 263 76` (limites reais da arte + ~1.5 de margem simétrica; nenhuma arte alterada). Resultado: a arte passa a preencher o box → **centralizada e ~22% maior** no mesmo `h-class` (logo no header: 136→166px de largura). Beneficia as **5 telas** que usam o logo (header logado, landing, login, replayer, coach-apply). **Header da landing** (pré-login): logo `h-8`→`h-12` e barra `py-3`→`h-16` p/ ficar **idêntico ao header logado** (medido: ambos 48px alto × 166px, folgas 8/9). Validado: build OK, sem clip, screenshots conferidos.
