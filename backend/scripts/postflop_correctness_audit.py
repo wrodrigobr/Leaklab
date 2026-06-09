@@ -99,18 +99,39 @@ def main():
     state['phases']['snapshot'] = len(snap)
 
     # ── B. backup + purga dos solver_cli postflop ───────────────────────────────
+    # Guard de re-execução: se a purga já foi feita (sentinel), NÃO purgar de novo
+    # (senão apagaria os 46 nós corretos já recriados). Re-runs só refazem D/E/F.
     ph = ','.join('?' for _ in _POSTFLOP)
-    purged = [dict(r) for r in conn.execute(
-        f"SELECT * FROM gto_nodes WHERE source='solver_cli' AND lower(street) IN ({ph})", _POSTFLOP)]
-    with open(os.path.join(OUT_DIR, 'purged_solver_cli_nodes_backup.json'), 'w', encoding='utf-8') as f:
-        json.dump(purged, f, ensure_ascii=False)
-    conn.execute(f"DELETE FROM gto_nodes WHERE source='solver_cli' AND lower(street) IN ({ph})", _POSTFLOP)
-    conn.commit()
+    sentinel = os.path.join(OUT_DIR, '.purge_done')
+    resume = os.path.exists(sentinel)          # re-run: nós já corretos → não re-solvar
+    if resume:
+        purged = []
+        log("B. purga já realizada (sentinel) — pulando re-purga; re-rodando análise/auditoria")
+    else:
+        purged = [dict(r) for r in conn.execute(
+            f"SELECT * FROM gto_nodes WHERE source='solver_cli' AND lower(street) IN ({ph})", _POSTFLOP)]
+        with open(os.path.join(OUT_DIR, 'purged_solver_cli_nodes_backup.json'), 'w', encoding='utf-8') as f:
+            json.dump(purged, f, ensure_ascii=False)
+        conn.execute(f"DELETE FROM gto_nodes WHERE source='solver_cli' AND lower(street) IN ({ph})", _POSTFLOP)
+        conn.commit()
+        open(sentinel, 'w').close()
     gw_keep = conn.execute(
         f"SELECT COUNT(*) c FROM gto_nodes WHERE source='gto_wizard' AND lower(street) IN ({ph})", _POSTFLOP
     ).fetchone()['c']
-    log(f"B. purgados {len(purged)} nós solver_cli postflop (backup salvo). gto_wizard intactos: {gw_keep}")
-    state['phases']['purged'] = len(purged)
+    # contagem ORIGINAL de purgados — estável entre re-runs (.orig_purge_count é gravado
+    # na 1ª purga real e nunca sobrescrito; evita subcontagem quando o backup é regravado)
+    n_purged = len(purged)
+    _ocp = os.path.join(OUT_DIR, '.orig_purge_count')
+    if not resume and n_purged and not os.path.exists(_ocp):
+        with open(_ocp, 'w') as f:
+            f.write(str(n_purged))
+    try:
+        with open(_ocp) as f:
+            n_purged = int(f.read().strip()) or n_purged
+    except Exception:
+        pass
+    log(f"B. purgados {n_purged} nós solver_cli postflop (backup salvo). gto_wizard intactos: {gw_keep}")
+    state['phases']['purged'] = n_purged
     state['phases']['gw_postflop_kept'] = gw_keep
     conn.close()
 
@@ -153,8 +174,8 @@ def main():
                 if not solvable:
                     skip_reason[cat] += 1
                     continue
-                if get_gto_node(h):
-                    cached += 1
+                if resume or get_gto_node(h):
+                    cached += 1                 # resume: já solvado na 1ª passada
                     continue
                 t0 = time.time()
                 try:
@@ -216,9 +237,10 @@ def main():
                 g = r.get('gto') or {}
                 nl = (r.get('evaluation') or {}).get('label') or row['label']
                 nb = r.get('bestAction') or row['best_action']
-                ng = g.get('gto_label') if g.get('available') else row['gto_label']
-                na = g.get('gto_action') if g.get('available') else row['gto_action']
-                ng = ng or row['gto_label']; na = na or row['gto_action']
+                # CLEAR-STALE: sem nó ao vivo → gto_label/action viram NULL (heurístico honesto).
+                # Não preservar o label antigo — era a fonte de vereditos GTO sem nó por trás.
+                ng = g.get('gto_label') if g.get('available') else None
+                na = g.get('gto_action') if g.get('available') else None
                 if (nl, nb, ng, na) != (row['label'], row['best_action'], row['gto_label'], row['gto_action']):
                     conn.execute("UPDATE decisions SET label=?,best_action=?,gto_label=?,gto_action=? WHERE id=?",
                                  (nl, nb, ng, na, row['id']))
@@ -298,6 +320,8 @@ def _build_audit(snap, raws):
         "SELECT exploitability_pct FROM gto_nodes WHERE source='solver_cli' AND exploitability_pct IS NOT NULL")]
     n_solver = conn.execute("SELECT COUNT(*) c FROM gto_nodes WHERE source='solver_cli' AND lower(street) IN ('flop','turn','river')").fetchone()['c']
     n_gw = conn.execute("SELECT COUNT(*) c FROM gto_nodes WHERE source='gto_wizard' AND lower(street) IN ('flop','turn','river')").fetchone()['c']
+    honest_cov = conn.execute("SELECT COUNT(*) c FROM decisions WHERE lower(street) IN ('flop','turn','river') AND gto_label IS NOT NULL AND gto_label!=''").fetchone()['c']
+    total_pf = conn.execute("SELECT COUNT(*) c FROM decisions WHERE lower(street) IN ('flop','turn','river')").fetchone()['c']
     conn.close()
     expl_sorted = sorted(expl)
     def pct(p):
@@ -312,6 +336,7 @@ def _build_audit(snap, raws):
         'expl_med': pct(0.5), 'expl_p90': pct(0.9),
         'expl_max': expl_sorted[-1] if expl_sorted else None,
         'n_solver_postflop': n_solver, 'n_gw_postflop': n_gw,
+        'honest_cov': honest_cov, 'total_pf': total_pf,
     }
 
 
@@ -389,10 +414,10 @@ small{{color:var(--mut)}}
 
 <h2>Resumo</h2>
 <div class=kpis>
-  <div class=kpi><div class=n>{state['phases'].get('purged',0)}</div><div class=l>nós solver_cli purgados (potencial jogador errado)</div></div>
-  <div class=kpi><div class=n>{res.get('solved',0)}</div><div class=l>spots re-solvados corretos (via lookup_gto)</div></div>
-  <div class=kpi><div class=n>{res.get('cached',0)}</div><div class=l>já cobertos (GW — intactos)</div></div>
-  <div class=kpi><div class=n>{audit['changed_count']}</div><div class=l>decisões com veredito alterado pós-correção</div></div>
+  <div class=kpi><div class=n>{state['phases'].get('purged',0)}</div><div class=l>nós solver_cli suspeitos removidos (potencial jogador errado)</div></div>
+  <div class=kpi><div class=n>{audit['n_solver_postflop']}</div><div class=l>nós re-solvados e verificados corretos (via lookup_gto)</div></div>
+  <div class=kpi><div class=n>{audit['honest_cov']}/{audit['total_pf']}</div><div class=l>decisões postflop com cobertura GTO real (nó por trás)</div></div>
+  <div class=kpi><div class=n>{audit['n_gw_postflop']}</div><div class=l>capturas GTO Wizard intactas (a mina de ouro)</div></div>
 </div>
 
 <h2>1. Bug crítico encontrado e corrigido — “jogador errado” (hero IP)</h2>
@@ -423,10 +448,14 @@ heads-up e cobre hero OOP + hero IP no nó de c-bet; multiway, hero IP enfrentan
 e spots sem vilão definido usam avaliação heurística — e isso é sinalizado ao jogador, não é dado errado.</small></p>
 </div>
 
-<h2>3. Impacto — decisões que mudaram de veredito após a correção</h2>
+<h2>3. Impacto — vereditos reconciliados após a correção</h2>
 <div class=card>
-<p>{audit['changed_count']} decisões postflop tiveram <code>gto_label</code> e/ou <code>label</code>
-recalculados (inclui os que ganharam cobertura correta e os que deixaram de servir um nó suspeito).</p>
+<p>Das {audit['total_pf']} decisões postflop, <b>{audit['honest_cov']}</b> têm cobertura GTO com
+um nó real por trás; o restante é <b>heurístico honesto</b> (deep&gt;60bb, multiway, hero IP
+enfrentando aposta, sem vilão) — e isso é sinalizado, não um veredito GTO falso. Importante:
+labels GTO antigos que tinham ficado <i>órfãos</i> (sem nó, após a remoção dos suspeitos) foram
+<b>zerados</b> em vez de preservados — não servimos veredito GTO sem solve por trás. Abaixo, exemplos
+de decisões cujo <code>gto_label</code>/<code>label</code> mudou nesta passada de reconciliação.</p>
 <table><tr><th>Mão</th><th>Street/Ação</th><th>Pos</th><th>GTO label</th><th>Label</th></tr>
 {ch_rows or '<tr><td colspan=5><small>sem amostras</small></td></tr>'}
 </table>
