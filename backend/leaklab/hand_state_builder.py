@@ -4,16 +4,18 @@ from typing import Optional, List
 from .models import ParsedHand, HandState, ParsedAction
 
 # ── Board por street ──────────────────────────────────────────────────────────
-# PokerStars format:
-#   FLOP:  *** FLOP ***  [7s 6s 2c]
-#   TURN:  *** TURN ***  [7s 6s 2c] [Jd]
-#   RIVER: *** RIVER *** [7s 6s 2c Jd] [Kh]
-# Each regex captures the previous board (group 1) and the new card (group 2).
+# PokerStars/GGPoker têm DOIS formatos de linha de board, ambos válidos:
+#   combinado: *** RIVER *** [7s 6s 2c Jd] [Kh]          (cartas anteriores + nova)
+#   separado:  *** RIVER *** [7s 6s 2c] [Jd] [Kh]        (um colchete por street)
+# Por isso capturamos o RESTO da linha após o marcador e extraímos TODOS os
+# colchetes (igual a parser._extract_board) — assumir só 2 grupos descartava a
+# carta do river no formato separado.
 _BOARD_STREET_RE = {
-    'flop':  re.compile(r'\*\*\* FLOP \*\*\* \[([^\]]+)\]'),
-    'turn':  re.compile(r'\*\*\* TURN \*\*\* \[([^\]]+)\] \[([^\]]+)\]'),
-    'river': re.compile(r'\*\*\* RIVER \*\*\* \[([^\]]+)\] \[([^\]]+)\]'),
+    'flop':  re.compile(r'\*\*\* FLOP \*\*\*([^\n]*)'),
+    'turn':  re.compile(r'\*\*\* TURN \*\*\*([^\n]*)'),
+    'river': re.compile(r'\*\*\* RIVER \*\*\*([^\n]*)'),
 }
+_BOARD_CARDS_RE = re.compile(r'\[([^\]]+)\]')
 
 def _board_for_street(raw_text: str, street: str) -> list:
     """Retorna o board acumulado até aquela street (inclusivo)."""
@@ -23,11 +25,12 @@ def _board_for_street(raw_text: str, street: str) -> list:
     m = pattern.search(raw_text)
     if not m:
         return []
-    if m.lastindex == 1:
-        # Flop: apenas um grupo
-        return m.group(1).split()
-    # Turn/River: combina cartas anteriores + nova carta da street
-    return m.group(1).split() + m.group(2).split()
+    # Extrai TODOS os colchetes da linha da street (1 grupo no flop, 2+ no turn/river,
+    # cobrindo o formato separado [flop] [turn] [river] e o combinado [flop+turn] [river]).
+    cards = []
+    for grp in _BOARD_CARDS_RE.findall(m.group(1)):
+        cards.extend(grp.replace(',', ' ').split())
+    return cards
 
 
 

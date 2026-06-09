@@ -118,6 +118,26 @@ def test_pipeline_multiple_hands():
     print("OK  test_pipeline_multiple_hands")
 
 
+def test_board_for_street_separated_brackets():
+    """Regressão: river no formato SEPARADO '[flop] [turn] [river]' (3 colchetes).
+    A regex antiga só combinava 2 grupos → descartava a carta do river (board de 4
+    cartas no river) → o spot postflop nunca casava nó GTO ('processando' eterno)."""
+    from leaklab.hand_state_builder import _board_for_street
+    raw_sep = ("*** FLOP *** [5c 4d Ad]\n"
+               "*** TURN *** [5c 4d Ad] [Qh]\n"
+               "*** RIVER *** [5c 4d Ad] [Qh] [Td]\n")
+    assert _board_for_street(raw_sep, 'flop')  == ['5c', '4d', 'Ad']
+    assert _board_for_street(raw_sep, 'turn')  == ['5c', '4d', 'Ad', 'Qh']
+    assert _board_for_street(raw_sep, 'river') == ['5c', '4d', 'Ad', 'Qh', 'Td']
+    # Formato COMBINADO '[flop+turn] [river]' continua funcionando
+    raw_comb = ("*** FLOP *** [7s 6s 2c]\n"
+                "*** TURN *** [7s 6s 2c] [Jd]\n"
+                "*** RIVER *** [7s 6s 2c Jd] [Kh]\n")
+    assert _board_for_street(raw_comb, 'turn')  == ['7s', '6s', '2c', 'Jd']
+    assert _board_for_street(raw_comb, 'river') == ['7s', '6s', '2c', 'Jd', 'Kh']
+    print("OK  test_board_for_street_separated_brackets")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
