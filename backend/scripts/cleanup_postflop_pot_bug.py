@@ -35,6 +35,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--apply', action='store_true')
     ap.add_argument('--tournament', type=int, default=0, help='só este tournament_id (0 = todos)')
+    ap.add_argument('--no-purge', action='store_true',
+                    help='NÃO purga (resume): mantém os nós corretos já feitos e só solva os que faltam')
     args = ap.parse_args()
 
     from leaklab.parser import parse_hand_history
@@ -58,10 +60,13 @@ def main():
         print("⛔ GTO_SOLVER_URL/API_KEY ausentes — solver é no GCP. Abortado.")
         return
 
-    # 1) PURGA (só solver_cli postflop)
-    conn.execute(f"DELETE FROM gto_nodes WHERE source='solver_cli' AND lower(street) IN ({ph})", _POSTFLOP)
-    conn.commit()
-    print(f"Purgados: {n_deg} nós.")
+    # 1) PURGA (só solver_cli postflop) — pulada no resume (--no-purge mantém os corretos)
+    if args.no_purge:
+        print(f"--no-purge: mantendo os {n_deg} nós existentes; só solva os que faltam.")
+    else:
+        conn.execute(f"DELETE FROM gto_nodes WHERE source='solver_cli' AND lower(street) IN ({ph})", _POSTFLOP)
+        conn.commit()
+        print(f"Purgados: {n_deg} nós.")
 
     # 2) RE-ANALISA + RE-SOLVA
     q = "SELECT id FROM tournaments WHERE raw_text IS NOT NULL"
@@ -72,8 +77,18 @@ def main():
     print(f"Torneios a re-analisar: {len(tids)}")
 
     solved = rejected = failed = seen = 0
-    done_hashes = set()
-    for tid in tids:
+    consec_fail = 0
+    CIRCUIT = 8   # falhas SEGUIDAS → aborta (GCP caiu) em vez de moer horas em timeouts
+    # pré-popula com os nós já existentes → o loop pula spots já solvados (resume sem re-fazer)
+    done_hashes = {
+        r['spot_hash'] for r in conn.execute(
+            f"SELECT spot_hash FROM gto_nodes WHERE source='solver_cli' AND lower(street) IN ({ph})",
+            _POSTFLOP)
+    }
+    class _GcpDown(Exception):
+        pass
+    try:
+      for tid in tids:
         raw = conn.execute("SELECT raw_text FROM tournaments WHERE id=?", (tid,)).fetchone()['raw_text']
         try:
             hands = parse_hand_history(raw)
@@ -117,11 +132,15 @@ def main():
                               'street': st, 'board': board},
                 }
                 try:
-                    res = _call_remote_solver(payload, timeout=180)
+                    res = _call_remote_solver(payload, timeout=90)
                 except Exception:
                     res = None
                 if not res:
-                    failed += 1; continue
+                    failed += 1; consec_fail += 1
+                    if consec_fail >= CIRCUIT:
+                        raise _GcpDown()
+                    continue
+                consec_fail = 0   # GCP respondeu (zera o circuit-breaker)
                 exploit = res.get('exploitability') or res.get('exploitability_pct')
                 if exploit is None or float(exploit) > GTO_EXPLOITABILITY_THRESHOLD:
                     rejected += 1; continue
@@ -139,6 +158,9 @@ def main():
                     rejected += 1
                 if seen % 25 == 0:
                     print(f"  ... {seen} spots | {solved} solved, {rejected} rejected, {failed} failed")
+    except _GcpDown:
+        print(f"\n⛔ ABORTADO: {consec_fail} solves falharam seguidos — o GCP provavelmente caiu de novo. "
+              f"Reinicie o leaklab-solver e re-rode (o progresso até aqui foi salvo).")
 
     print(f"\nFIM: {seen} spots postflop | {solved} solved (+nó), {rejected} rejected, {failed} failed.")
     print("Preflop GW / gto_wizard intocados.")
