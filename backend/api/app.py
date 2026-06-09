@@ -4192,9 +4192,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         _spot = _di.get('spot', {})
         _ctx  = _di.get('context', {})
 
-        # Fetch full GTO strategy for display (all actions with freq + combos)
+        # Fetch full GTO strategy for display (all actions with freq + combos).
+        # Também tenta quando NÃO há gto_label armazenado mas é decisão postflop do
+        # hero: o nó pode ter nascido depois do import (re-solve / fix de board), e
+        # sem isto o card ficava preso em "processando" pra sempre (o stored label
+        # nunca era atualizado). Nesse caso usa lookup SÓ LOCAL (block_remote=True)
+        # pra não disparar um solve remoto lento dentro do /replay.
         gto_strategy = None
-        if decision and gto_label and not gto_spot_mismatch:
+        _hero_postflop = (action.player == hero and action.street != 'preflop')
+        if decision and not gto_spot_mismatch and (gto_label or _hero_postflop):
             try:
                 from leaklab.gto_solver import lookup_gto as _lookup_gto
                 _gto_result = _lookup_gto(
@@ -4207,7 +4213,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     vs_position    = _spot.get('villainPosition', _ctx.get('vsPosition', '')),
                     facing_size_bb = float(decision.get('facing_bet', 0) or 0),
                     pot_bb         = float(_spot.get('potSize', 0) or 0),
-                    block_remote   = False,
+                    block_remote   = (not gto_label),
                 )
                 if _gto_result.get('found') and _gto_result.get('strategy'):
                     gto_strategy = _gto_result['strategy']
@@ -4291,19 +4297,23 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 else:
                     is_error        = True
                     reconciled_best = live_top_act
+                # Alinha o gto_label/action DO STEP com a estratégia ao vivo (ground truth).
+                # Sem isto, um spot cujo label armazenado é None (nó nascido após o import)
+                # ficava com gto_label=None no step → hasGto=False → "processando" eterno.
+                _live_lbl_step = (
+                    'gto_correct'         if live_freq >= 0.60 else
+                    'gto_mixed'           if live_freq >= 0.30 else
+                    'gto_minor_deviation' if live_freq >= 0.10 else
+                    'gto_critical'
+                )
+                gto_label  = _live_lbl_step
+                gto_action = live_top_act or gto_action
                 # Persiste o veredicto do solver — ele tem prioridade sobre RegLife.
                 # Preflop usa analyze_preflop (ranges estáticos), nunca gto_nodes agregados.
                 # O bloco preflop_override abaixo persiste os valores corretos para preflop.
                 if action.street != 'preflop':
                     try:
                         from database.repositories import update_decision_gto as _upd_gto
-                        # Thresholds alinhados com effectiveGtoLabel do frontend
-                        _live_gto_label = (
-                            'gto_correct'         if live_freq >= 0.60 else
-                            'gto_mixed'           if live_freq >= 0.30 else
-                            'gto_minor_deviation' if live_freq >= 0.10 else
-                            'gto_critical'
-                        )
                         _dec_id = next(
                             (d.get('id') for d in _db_hand
                              if _norm(d.get('street','')) == _norm(action.street)
@@ -4311,7 +4321,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             None,
                         )
                         if _dec_id:
-                            _upd_gto(_dec_id, _live_gto_label, live_top_act)
+                            _upd_gto(_dec_id, _live_lbl_step, live_top_act)
                     except Exception:
                         pass
 
