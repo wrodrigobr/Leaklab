@@ -4212,8 +4212,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     action_seq     = _ctx.get('actionSeq', 'rfi'),
                     vs_position    = _spot.get('villainPosition', _ctx.get('vsPosition', '')),
                     facing_size_bb = float(decision.get('facing_bet', 0) or 0),
-                    pot_bb         = float(_spot.get('potSize', 0) or 0),
+                    pot_bb         = float(_spot.get('potBb', 0) or 0),     # BB, não fichas (potSize)
                     block_remote   = (not gto_label),
+                    allow_remote_solve = False,   # /replay é READ-ONLY: nunca solva na requisição
                 )
                 if _gto_result.get('found') and _gto_result.get('strategy'):
                     gto_strategy = _gto_result['strategy']
@@ -4445,8 +4446,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     gto_coverage = 'multiway'
                 elif not _vsu or _vsu == 'UNKNOWN':
                     gto_coverage = 'no_villain'
-                elif _stk > 60:
-                    gto_coverage = 'deep'
+                elif _stk > 200:
+                    gto_coverage = 'deep'           # >200bb: nem aproximação (Opção B vai até 200)
                 else:
                     try:
                         from leaklab.gto_solver import _postflop_hero_is_ip
@@ -4470,7 +4471,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          gto_label,
             'gto_action':         preflop_override_action or live_top_act or gto_action,
-            'gto_depth_capped':   gto_depth_capped,   # opção B: GTO aproximado (depth >60bb)
+            # Opção B: derivado AO VIVO (não da coluna armazenada, que a re-análise não
+            # atualiza) — postflop coberto com stack >60bb é aproximação capada em 60bb.
+            'gto_depth_capped':   (action.street != 'preflop' and bool(gto_label)
+                                   and float(_spot.get('effectiveStackBb') or 0) > 60.0),
             'bet_intent':         (decision.get('bet_intent') if decision else None),  # intenção da aposta (value/blefe/meio)
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'gto_strategy':       gto_strategy,

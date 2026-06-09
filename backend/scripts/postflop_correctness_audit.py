@@ -75,12 +75,14 @@ def classify(sp):
         return 'multiway', False
     if not vs or vs == 'UNKNOWN':
         return 'sem_vilao', False
-    if stack > 60:
-        return 'deep>60', False
+    if stack > 200:
+        return 'too_deep', False             # nem a aproximação da Opção B (cap 60, máx 200)
     ip = _postflop_hero_is_ip(pos, vs)
     if ip and facing > 0:
         return 'IP_facing_bet', False        # patch IP cobre só c-bet (facing==0)
-    return ('IP_cbet' if ip else 'OOP'), True
+    # deep (60–200bb) é SOLVÁVEL como aproximação (Opção B: solve no cap de 60 + selo)
+    cat = ('IP_cbet' if ip else 'OOP') + ('_deep' if stack > 60 else '')
+    return cat, True
 
 
 def main():

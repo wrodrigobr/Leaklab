@@ -110,7 +110,7 @@
     "noCoverageTitle": "No GTO coverage",
     "noCoverage": {
       "multiway": "Multiway pot: even when you open the action, you're betting into 2+ players — equity and responses are multiway. The solver is heads-up and can't model that, so the verdict here is heuristic, with equity adjusted for the number of opponents.",
-      "deep": "Stack above 60bb: the depth is beyond what the solver handles today (server memory limit). Heuristic verdict until we have a larger server.",
+      "deep": "Stack above 200bb: extreme depth, beyond even the solver's approximation. Heuristic verdict until we have a larger server.",
       "ip_facing_bet": "You're in position facing a bet: the solver's IP support only covers the c-bet (when the action reaches you with no bet). Heuristic verdict here.",
       "no_villain": "No defined villain to build the opposing range — the verdict is heuristic."
     },

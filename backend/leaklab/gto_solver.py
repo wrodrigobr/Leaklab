@@ -173,6 +173,7 @@ def lookup_gto(
     num_players: int = 9,
     bb_chips: float = 0.0,
     block_remote: bool = True,
+    allow_remote_solve: bool = True,
 ) -> dict:
     """
     Ponto de entrada único para consultas GTO.
@@ -369,7 +370,11 @@ def lookup_gto(
     # de parser onde a carta de river some) fariam o solver_cli abortar (500). Pula.
     _nb = len([c for c in board if c])
     _board_mismatch = _nb != {'flop': 3, 'turn': 4, 'river': 5}.get(street_l, -1)
-    if (street_l == 'preflop' or not board or hero_stack_bb > 60.0
+    # Opção B (decidida pelo usuário): spots fundos (>60bb) são SOLVADOS no cap de 60bb
+    # (_solver_params já capa effective_stack) e SERVIDOS como aproximação, com selo
+    # "≈ Aproximação" (depth_capped no _enrich_gto). Acima de 200bb nem aproxima → heurístico.
+    # O guard de SPR/allin no engine continua rejeitando shove fundo degenerado.
+    if (street_l == 'preflop' or not board or hero_stack_bb > 200.0
             or _vs in ('', 'UNKNOWN') or _ip_blocked or _facing_unconvertible
             or _board_mismatch):
         if _db_fallback_strategy:
@@ -395,6 +400,16 @@ def lookup_gto(
     oop_range = (_captured_range_str(oop_pos, hero_stack_bb, 'call_vs_rfi', opener=ip_pos)
                  or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE))                      # OOP = caller (call vs RFI)
     effective_pot = pot_bb if pot_bb > 0 else max(_facing_solver_bb * 2 + 2, 4.0)
+
+    # Read-only: quem chama com allow_remote_solve=False (ex.: /replay) NÃO dispara um
+    # solve Texas dentro da requisição — solve é caro e, com params errados (pot em
+    # fichas), gera nós degenerados. Sem nó local, devolve "sem cobertura" (heurístico).
+    if not allow_remote_solve:
+        if _db_fallback_strategy:
+            return {'found': True, 'source': 'postflop_db_partial', 'strategy': _db_fallback_strategy,
+                    'exploitability_pct': None, 'spot_hash': spot_hash, 'queued': False}
+        return {'found': False, 'source': 'solver_skipped', 'strategy': [],
+                'exploitability_pct': None, 'spot_hash': spot_hash, 'queued': False}
 
     _params = _solver_params_for_stack(hero_stack_bb)
     solver_payload = {
