@@ -157,9 +157,14 @@ def classify_bet_intent(*, player_action: str, street: str, hero_cards, board,
     else:
         intent = 'bluff'                      # ar
 
-    # ── árbitro: GTO aposta essa mão? ────────────────────────────────────────────
+    # ── árbitro: GTO aprova essa aposta? ─────────────────────────────────────────
+    gto_label    = (gto or {}).get('gto_label')
     gto_bet_freq = _gto_bet_freq((gto or {}).get('strategy')) if (gto and gto.get('available')) else None
-    if gto_bet_freq is not None:
+    if gto_label in ('gto_correct', 'gto_mixed'):
+        # O nó GTO já classifica a ação como parte do range (mesmo que mista/baixa
+        # frequência): não é leak — coerente com o selo de avaliação da mão.
+        justified = True
+    elif gto_bet_freq is not None:
         justified = gto_bet_freq >= 0.25
     else:
         # sem nó: value e semi-blefe são defensáveis; o "meio" raramente.

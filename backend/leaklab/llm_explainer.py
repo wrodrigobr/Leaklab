@@ -459,18 +459,18 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
         bi = d.get('bet_intent') or {}
         if bi.get('intent'):
             _intent_pt = {
-                'value_showdown':   'VALUE (showdown) — aposta pra extrair call de mãos piores',
-                'value_protection': 'VALUE + PROTEÇÃO — mão forte mas vulnerável; a aposta nega equity de draw do vilão',
-                'semi_bluff':       'SEMI-BLEFE — sem mão feita forte, mas com draw que melhora (fold equity + outs)',
-                'middle':           'O MEIO (leak clássico) — mão mediana com showdown value; apostar value-corta: só pior folda, só melhor paga',
-                'bluff':            'BLEFE — pior mão; objetivo é fazer melhor foldar',
+                'value_showdown':   'APOSTA POR VALOR — a mão é forte; aposta pra que mãos piores paguem e o hero lucre com elas',
+                'value_protection': 'VALOR + PROTEÇÃO — a mão está na frente mas o board pode dar projeto ao vilão; a aposta cobra caro pra ele continuar e protege a mão (flop/turn)',
+                'semi_bluff':       'SEMI-BLEFE — ainda sem mão feita, mas com projeto (flush/sequência) que pode completar; a aposta pode levar fold agora e, se pagar, ainda há cartas pra melhorar',
+                'middle':           'FORÇA MÉDIA — mão boa pra ganhar de um blefe no showdown, mas fraca demais pra apostar por valor; ao apostar, as piores foldam e só as melhores pagam (o hero só leva call quando está atrás), então quase sempre dar check é melhor',
+                'bluff':            'BLEFE — a mão provavelmente está atrás; aposta pra fazer uma mão melhor foldar',
             }
-            _il = ["\n── INTENÇÃO DA APOSTA (enquadramento value/blefe) ──"]
+            _il = ["\n── INTENÇÃO DA APOSTA (por que apostar: valor ou blefe?) ──"]
             _il.append(f"Intenção classificada: {_intent_pt.get(bi['intent'], bi['intent'])}")
             if bi.get('gto_bet_freq') is not None:
-                _il.append(f"Frequência de aposta do GTO neste spot: {round(bi['gto_bet_freq'] * 100, 1)}%")
+                _il.append(f"Frequência com que o GTO aposta esta mão neste spot: {round(bi['gto_bet_freq'] * 100, 1)}%")
             if bi.get('is_leak'):
-                _il.append("⚠ Aposta sem fundamento: o GTO prefere check/passar — não é spot de value nem de blefe lucrativo.")
+                _il.append("⚠ A aposta não tem um objetivo claro: o GTO prefere dar check aqui — não é spot de valor nem de blefe lucrativo. Explique isso ao aluno em linguagem simples.")
             bet_intent_block = '\n'.join(_il) + '\n'
 
         decisions_data.append(

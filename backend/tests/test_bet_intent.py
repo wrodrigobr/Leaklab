@@ -163,6 +163,30 @@ def test_intent_middle_justified_by_gto():
     print("OK  test_intent_middle_justified_by_gto")
 
 
+def test_intent_middle_mixed_not_leak():
+    # GTO classifica como misto (gto_mixed) mesmo apostando só 21% → NÃO é leak
+    # (coerente com o selo de avaliação; evita marcar vermelho um spot misto).
+    gto = {'available': True, 'gto_label': 'gto_mixed', 'strategy': [
+        {'action': 'bet_50pct', 'frequency': 0.21}, {'action': 'check', 'frequency': 0.79}]}
+    r = classify_bet_intent(player_action='bet', street='flop', hero_cards=['Jc', 'Th'],
+                            board=['6s', '9c', 'Jh'], equity=0.36, equity_adj=0.04, stack_bb=50, position='CO', gto=gto)
+    assert r['intent'] == 'middle'
+    assert r['justified'] is True
+    assert r['is_leak'] is False
+    print("OK  test_intent_middle_mixed_not_leak")
+
+
+def test_intent_middle_critical_is_leak():
+    # GTO crítico (quase nunca aposta) → continua sendo leak
+    gto = {'available': True, 'gto_label': 'gto_critical', 'strategy': [
+        {'action': 'bet_50pct', 'frequency': 0.02}, {'action': 'check', 'frequency': 0.98}]}
+    r = classify_bet_intent(player_action='bet', street='flop', hero_cards=['Jc', 'Th'],
+                            board=['6s', '9c', 'Jh'], equity=0.36, equity_adj=0.04, stack_bb=50, position='CO', gto=gto)
+    assert r['intent'] == 'middle'
+    assert r['is_leak'] is True
+    print("OK  test_intent_middle_critical_is_leak")
+
+
 def test_intent_value_never_leak():
     # Mão de value não é flagada como leak pelo intent (o gto_label cobre isso à parte)
     gto = {'available': True, 'strategy': [{'action': 'check', 'frequency': 1.0}]}

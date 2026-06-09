@@ -90,18 +90,18 @@
     "depthCappedTip": "Approximate GTO: in very deep spots (above ~60bb) the solver returns an approximation. Direction is reliable; exact frequencies may vary.",
     "betIntentGtoFreq": "GTO bets {{pct}}%",
     "betIntent": {
-      "value_showdown": "Value (showdown)",
-      "value_protection": "Value + Protection",
+      "value_showdown": "Value bet",
+      "value_protection": "Value + protection",
       "semi_bluff": "Semi-bluff",
-      "middle": "The middle (leak)",
+      "middle": "Medium strength",
       "bluff": "Bluff"
     },
     "betIntentTip": {
-      "value_showdown": "Value bet: you want a call from worse hands than yours.",
-      "value_protection": "Value + protection: strong but vulnerable hand; the bet denies the villain's draw equity (only on flop/turn).",
-      "semi_bluff": "Semi-bluff: no strong made hand, but a draw that improves — combines fold equity with outs.",
-      "middle": "‘The middle’: a medium hand with showdown value. Betting value-cuts (only worse folds, only better calls) — GTO prefers to check here.",
-      "bluff": "Bluff: worse hand; the goal is to make better hands fold."
+      "value_showdown": "Your hand is strong. You bet so that worse hands call and you profit from them.",
+      "value_protection": "Your hand is ahead, but the board can give your opponent a draw. Betting charges them to continue and protects your hand (only makes sense on the flop and turn).",
+      "semi_bluff": "You don't have a made hand yet, but you have a draw (flush or straight) that can complete. The bet can make your opponent fold now — and if they call, you still have cards to improve.",
+      "middle": "A medium-strength hand: good enough to beat a bluff at showdown, but too weak to bet for value. If you bet, worse hands fold and only better hands call — so you only get called when you're behind. Most of the time, checking is better.",
+      "bluff": "Your hand is probably behind. You bet to make your opponent fold a better hand."
     },
     "multiwaySolverTip": "Multiway pot ({{n}} players in the pot). The solver strategy is solved heads-up — multiway it's an approximation: frequencies and ranges shift with more opponents. Equity is already adjusted for multiway.",
     "multiwayTip": "Multiway pot ({{n}} players in the pot). Equity is adjusted for the number of opponents; the verdict here is heuristic (pot odds).",

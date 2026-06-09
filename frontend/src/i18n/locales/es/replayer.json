@@ -90,18 +90,18 @@
     "depthCappedTip": "GTO aproximado: en spots muy profundos (por encima de ~60bb) el solver devuelve una aproximación. La dirección es confiable; las frecuencias exactas pueden variar.",
     "betIntentGtoFreq": "GTO apuesta {{pct}}%",
     "betIntent": {
-      "value_showdown": "Value (showdown)",
-      "value_protection": "Value + Protección",
+      "value_showdown": "Apuesta por valor",
+      "value_protection": "Valor + protección",
       "semi_bluff": "Semi-bluff",
-      "middle": "El medio (leak)",
+      "middle": "Fuerza media",
       "bluff": "Bluff"
     },
     "betIntentTip": {
-      "value_showdown": "Apuesta por value: quieres call de manos peores que la tuya.",
-      "value_protection": "Value + protección: mano fuerte pero vulnerable a draw; la apuesta niega la equity del rival (solo en flop/turn).",
-      "semi_bluff": "Semi-bluff: sin mano hecha fuerte, pero con un draw que mejora — combina fold equity con outs.",
-      "middle": "‘El medio’: mano media con showdown value. Apostar value-corta (solo peor foldea, solo mejor paga) — el GTO prefiere check aquí.",
-      "bluff": "Bluff: peor mano; el objetivo es hacer foldear a las mejores."
+      "value_showdown": "Tu mano es fuerte. Apuestas para que las manos peores paguen y saques valor de ellas.",
+      "value_protection": "Tu mano va por delante, pero el board puede dar proyecto al rival. Apostar le cobra caro continuar y protege tu mano (solo tiene sentido en el flop y el turn).",
+      "semi_bluff": "Aún no tienes mano hecha, pero tienes un proyecto (color o escalera) que puede completar. La apuesta puede hacer foldear al rival ahora — y si paga, todavía tienes cartas para mejorar.",
+      "middle": "Una mano de fuerza media: buena para ganar a un bluff en el showdown, pero demasiado floja para apostar por valor. Si apuestas, las manos peores foldean y solo las mejores pagan — es decir, solo te pagan cuando vas por detrás. La mayoría de las veces, hacer check es mejor.",
+      "bluff": "Tu mano probablemente va por detrás. Apuestas para hacer foldear al rival una mano mejor."
     },
     "multiwaySolverTip": "Bote multiway ({{n}} jugadores en el bote). La estrategia del solver se resuelve heads-up — en multiway es una aproximación: las frecuencias y los rangos cambian con más oponentes. La equity ya está ajustada para el multiway.",
     "multiwayTip": "Bote multiway ({{n}} jugadores en el bote). La equity está ajustada para el número de oponentes; el veredicto aquí es heurístico (pot odds).",
