@@ -105,7 +105,15 @@
     },
     "blockHand": "Sua mão",
     "blockCost": "Custo",
+    "blockMargin": "Margem",
     "blockGeo": "Geometria",
+    "noCoverageTitle": "Sem cobertura GTO",
+    "noCoverage": {
+      "multiway": "Pote multiway: mesmo abrindo a ação, você aposta dentro de 2+ jogadores — a equity e as respostas são multiway. O solver é heads-up e não modela isso, então aqui o veredito é heurístico, com a equity ajustada para o número de oponentes.",
+      "deep": "Stack acima de 60bb: a profundidade está além do que o solver resolve hoje (limite de memória do servidor). Veredito heurístico até termos um servidor maior.",
+      "ip_facing_bet": "Você está em posição enfrentando uma aposta: o suporte do solver a spots IP cobre só o c-bet (quando a ação chega sem aposta). Aqui o veredito é heurístico.",
+      "no_villain": "Sem um vilão definido para montar a range adversária — o veredito é heurístico."
+    },
     "costAligned": "alinhado ao solver",
     "costMinor": "desvio leve",
     "costCritical": "desvio caro",

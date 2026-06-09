@@ -582,7 +582,7 @@ function SidePanels({
                   {pp != null && (
                     <div className="flex items-baseline gap-2.5 font-mono text-[11px]"
                       title={effectiveGtoLabel ? t("card.reqSolverContextTip") : t("card.reqTipImplicit")}>
-                      <span className={lblCls}>{t("card.blockCost")}</span>
+                      <span className={lblCls}>{pp >= 0 ? t("card.blockMargin") : t("card.blockCost")}</span>
                       <span className="flex-1 min-w-0">
                         <span className={cn("font-bold tabular-nums", ppMuted ? "text-muted-foreground/60" : pp >= 0 ? "text-emerald-400" : "text-red-400")}>
                           {pp >= 0 ? `+${pp.toFixed(1)}` : pp.toFixed(1)}pp
@@ -831,9 +831,33 @@ function SidePanels({
       })()}
 
 
-      {/* ── GTO em processamento automático (postflop, sem label ainda) ── */}
+      {/* ── Cobertura GTO postflop ──────────────────────────────────────
+          Spots que o solver heads-up NÃO cobre (multiway, deep>60bb, hero IP
+          enfrentando aposta, sem vilão) mostram uma nota HONESTA estática — não
+          "Processando" (que sugere que vai resolver) nem auto-solve inútil.
+          Só 'pending' (solvável, nó ainda não existe) mostra o fluxo de solve. */}
       {step.is_hero && step.type === "action" && isPostflop && !hasGto
-        && step.action !== "shows" && step.action !== "mucks" && (
+        && step.action !== "shows" && step.action !== "mucks"
+        && (() => {
+          const cov = (step as { gto_coverage?: string }).gto_coverage;
+          if (cov && ["multiway", "deep", "ip_facing_bet", "no_villain"].includes(cov)) {
+            return (
+              <section className="rounded-xl border border-border/60 bg-hud-surface p-3">
+                <div className="flex items-start gap-2">
+                  <Info className="size-3.5 text-muted-foreground/70 shrink-0 mt-px" />
+                  <div className="space-y-0.5">
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                      {t("card.noCoverageTitle")}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground/85 leading-relaxed">
+                      {t(`card.noCoverage.${cov}`)}
+                    </p>
+                  </div>
+                </div>
+              </section>
+            );
+          }
+          return (
         <section className="rounded-xl border border-border bg-hud-surface p-3 space-y-2.5">
           <div className="flex items-center gap-2">
             <FlaskConical className="size-4 shrink-0 text-muted-foreground" />
@@ -899,7 +923,8 @@ function SidePanels({
             </div>
           )}
         </section>
-      )}
+          );
+        })()}
 
 
       {/* ── Coach annotation (coach editing student hand) ── */}
@@ -1494,10 +1519,15 @@ const Replayer = () => {
   useEffect(() => {
     if (!replayData || !handId) return;
     const steps = replayData.timeline ?? [];
-    const hasPostflopHeroNoGto = steps.some(s =>
-      s.is_hero && s.type === "action" && s.street !== "preflop" && !s.gto_label &&
-      s.action !== "shows" && s.action !== "mucks"
-    );
+    // Só auto-solva spots SOLVÁVEIS sem nó ainda ('pending'). Multiway, deep>60bb,
+    // hero IP enfrentando aposta e sem-vilão são heurísticos por design (o solver é
+    // heads-up) — nunca terão cobertura, então não dispara requisição inútil.
+    const hasPostflopHeroNoGto = steps.some(s => {
+      const cov = (s as { gto_coverage?: string }).gto_coverage;
+      return s.is_hero && s.type === "action" && s.street !== "preflop" && !s.gto_label &&
+        s.action !== "shows" && s.action !== "mucks" &&
+        (cov === "pending" || cov === undefined);
+    });
     if (!hasPostflopHeroNoGto) return;
     if (gtoAutoRequestedRef.current === handId) return;
     if (gtoRequestStatus !== "idle") return;

@@ -4428,6 +4428,33 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 except Exception:
                     pass
 
+        # Por que (não) há cobertura GTO neste step postflop do hero — sinal honesto
+        # pro card mostrar a razão CERTA em vez de "Processando" eterno em spots que
+        # o solver heads-up nunca cobre (multiway, deep>60bb, hero IP enfrentando
+        # aposta, sem vilão). 'pending' = solvável, nó ainda não existe.
+        gto_coverage = None
+        if action.player == hero and action.street != 'preflop' and action.action not in ('shows', 'mucks', 'posts'):
+            if gto_label:
+                gto_coverage = 'covered'
+            else:
+                _nopp = int(_spot.get('nActiveOpponents') or 1)
+                _vsu  = (_spot.get('villainPosition') or '').upper()
+                _stk  = float(_spot.get('effectiveStackBb') or 0)
+                _fac  = float(_spot.get('facingSize') or 0)
+                if _nopp > 1:
+                    gto_coverage = 'multiway'
+                elif not _vsu or _vsu == 'UNKNOWN':
+                    gto_coverage = 'no_villain'
+                elif _stk > 60:
+                    gto_coverage = 'deep'
+                else:
+                    try:
+                        from leaklab.gto_solver import _postflop_hero_is_ip
+                        _ip = _postflop_hero_is_ip((_spot.get('position') or '').upper(), _vsu)
+                    except Exception:
+                        _ip = False
+                    gto_coverage = 'ip_facing_bet' if (_ip and _fac > 0) else 'pending'
+
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,
@@ -4435,6 +4462,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'action':             _normalize_action(action.action),
             'amount':             amt,
             'is_hero':            action.player == hero,
+            'gto_coverage':       gto_coverage,   # covered|multiway|deep|ip_facing_bet|no_villain|pending
             'is_error':           is_error,
             'error_label':        decision.get('label')                             if decision else None,
             'error_score':        round(float(decision.get('score', 0)), 3)         if decision else None,
