@@ -535,6 +535,13 @@ function SidePanels({
                 </span>
               </div>
             )}
+            {(step as { gto_depth_capped?: boolean }).gto_depth_capped && (
+              <div className="flex items-center gap-2 font-mono text-[11px]" title={t("card.depthCappedTip")}>
+                <span className="rounded-md bg-primary/10 ring-1 ring-primary/25 px-2 py-1 text-[10px] text-primary/90 cursor-help">
+                  {t("card.depthCapped")}
+                </span>
+              </div>
+            )}
             {showAuditPreflop && (
               <>
                 <div className="flex flex-wrap gap-1 items-center">

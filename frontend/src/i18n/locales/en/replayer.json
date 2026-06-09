@@ -86,6 +86,8 @@
     "reqVsRangeTip": "Equity estimated vs the opponent's actual GTO opening range (not vs a random hand) — from the hand-vs-hand equity matrix. The verdict comes from your hand's GTO strategy (above).",
     "reqSolverContextTip": "Pot odds of your action. The verdict comes from the solver strategy (above), which accounts for the whole range and future streets — not just this calculation. That's why the margin is shown neutral.",
     "multiway": "Multiway · {{n}}-way",
+    "depthCapped": "≈ Approximation",
+    "depthCappedTip": "Approximate GTO: the solve is capped at 60bb (VM RAM limit) and served to this deeper spot. Direction is reliable; exact frequencies may vary. A bigger server makes it exact.",
     "multiwaySolverTip": "Multiway pot ({{n}} players in the pot). The solver strategy is solved heads-up — multiway it's an approximation: frequencies and ranges shift with more opponents. Equity is already adjusted for multiway.",
     "multiwayTip": "Multiway pot ({{n}} players in the pot). Equity is adjusted for the number of opponents; the verdict here is heuristic (pot odds).",
     "limpedPot": "{{pos}} vs Limp · limped pot, outside GTO coverage",

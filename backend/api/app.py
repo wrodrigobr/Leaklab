@@ -2971,7 +2971,8 @@ def coach_student_replay(student_id, tournament_id, hand_id):
     _db_hand_c = [d for d in _db_all_c if str(d.get('hand_id')) == str(hand_id)]
     _gto_idx_c = {
         (d.get('street',''), (d.get('action_taken','') or '').rstrip('s') or d.get('action_taken','')):
-        {'gto_label': d.get('gto_label'), 'gto_action': d.get('gto_action')}
+        {'gto_label': d.get('gto_label'), 'gto_action': d.get('gto_action'),
+         'gto_depth_capped': d.get('gto_depth_capped')}
         for d in _db_hand_c if d.get('gto_label')
     }
     try:
@@ -2990,6 +2991,7 @@ def coach_student_replay(student_id, tournament_id, hand_id):
                 'breakdown': r['evaluation'].get('scoreBreakdown', {}),
                 'gto_label':  gto_data.get('gto_label'),
                 'gto_action': gto_data.get('gto_action'),
+                'gto_depth_capped': 1 if (gto_data.get('depth_capped') or gto_data.get('gto_depth_capped')) else 0,
             })
         hand_decisions = live_decisions
     except Exception:
@@ -3684,7 +3686,7 @@ def get_replay(tournament_id, hand_id):
     _gto_index   = {
         (d.get('street',''), (d.get('action_taken','') or '').rstrip('s') or d.get('action_taken','')):
         {'gto_label': d.get('gto_label'), 'gto_action': d.get('gto_action'),
-         'facing_bet': d.get('facing_bet')}
+         'facing_bet': d.get('facing_bet'), 'gto_depth_capped': d.get('gto_depth_capped')}
         for d in _db_hand if d.get('gto_label')
     }
 
@@ -3711,6 +3713,7 @@ def get_replay(tournament_id, hand_id):
                 'breakdown':    r['evaluation'].get('scoreBreakdown', {}),
                 'gto_label':    gto_data.get('gto_label'),
                 'gto_action':   gto_data.get('gto_action'),
+                'gto_depth_capped': 1 if (gto_data.get('depth_capped') or gto_data.get('gto_depth_capped')) else 0,
                 'facing_bet':   gto_data.get('facing_bet'),
                 'ev_loss_bb':   (r.get('gto') or {}).get('ev_loss_bb'),  # #24 (live)
                 '_di':          di,
@@ -4137,6 +4140,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # GTO reconciliation — solver é fonte autoritativa quando disponível
         gto_label   = decision.get('gto_label')  if decision else None
         gto_action  = decision.get('gto_action') if decision else None
+        gto_depth_capped = bool(decision.get('gto_depth_capped')) if decision else False  # opção B: aprox >60bb
         engine_best = decision.get('best_action') if decision else None
 
         # Detectar incompatibilidade de spot GTO:
@@ -4426,6 +4430,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
             'gto_label':          gto_label,
             'gto_action':         preflop_override_action or live_top_act or gto_action,
+            'gto_depth_capped':   gto_depth_capped,   # opção B: GTO aproximado (depth >60bb)
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,

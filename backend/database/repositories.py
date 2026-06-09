@@ -307,6 +307,7 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                 facing_bet_bb,
                 gto.get('gto_label') if gto.get('available') else None,
                 gto.get('gto_action') if gto.get('available') else None,
+                1 if (gto.get('available') and gto.get('depth_capped')) else 0,
                 r.get('math', {}).get('estimatedHandEquity'),
                 (r.get('spot', {}).get('villainPosition') or '') or None,
                 r.get('spot', {}).get('preflopRaisesFaced'),
@@ -321,10 +322,10 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
                math_penalty, range_penalty, m_ratio, icm_pressure, icm_tax_pct,
                stack_bb, draw_profile, position, num_players,
                level_sb, level_bb, level_num, note, is_3bet, showdown_result,
-               pot_size, facing_bet, gto_label, gto_action, estimated_equity,
+               pot_size, facing_bet, gto_label, gto_action, gto_depth_capped, estimated_equity,
                vs_position, preflop_raises_faced, hero_won_hand,
                ev_loss_bb, ev_loss_source)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, rows)
         conn.commit()
     finally:

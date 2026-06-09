@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): opção B — selo "≈ Aproximação" no replayer (persistência + display)
+
+> Completa a opção B: o flag `depth_capped` (GTO aproximado em spots >60bb) agora é **persistido e exibido**. Schema: coluna `gto_depth_capped` (decisions, nos 2 backends + migrações). Gravado no `save_decisions` (INSERT da análise) e via resync. O replayer (`/replay`) surfaceia `gto_depth_capped` no step (live path via `_gto_index` + stored), e o `Replayer.tsx` mostra um **selo "≈ Aproximação"** (badge teal) com tooltip explicando que o solve é capado a 60bb (limite de RAM) e servido a um spot mais fundo — direção confiável, frequências exatas podem variar; com servidor maior vira exato. i18n `card.depthCapped`/`depthCappedTip` (3 locales). Validado: o spot do usuário (flop 5h6hQd, 152bb) retorna `gto_correct` + `gto_depth_capped=True` na API do replay; build OK.
+
 ### feat(gto): opção B — aproximação por profundidade (>60bb) + fix do facing FICHAS→BB no engine
 
 > Dois fixes no `_enrich_gto` (decision_engine, o lookup que computa o `gto_label` postflop): **(1)** o guard só confiava em nós `solver_cli` quando `stack ≤ 60bb` (cap de RAM do solve), então **spots fundos (>60bb) ficavam sem `gto_label`**. Opção B: passa a servir o solve capado a 60bb como **aproximação** até 200bb, marcando `depth_capped=True` (o guard de SPR/allin continua rejeitando shove fundo → a aproximação só vale pras ações depth-robustas: check/bet/call/fold/raise). **(2)** Bug de unidade: o hash do nó usava `facingSize` (**fichas**) em vez de `facingToBb` (**BB**) → `bet_bucket` errado → **nenhuma decisão postflop com aposta** (fold/call/raise vs bet) casava o nó → `gto_label` perdido em TODO facing>0. Corrigido. Validado no spot do usuário (flop 5h6hQd, 152bb): check → **gto_correct**, fold vs 4.9bb → **gto_correct** (GTO folda 64%), ambos `depth_capped`. **Nota:** o cap de 60bb é limite de RAM/CPU da VM — com servidor maior (64GB+) dá pra subir o cap e tornar o GTO profundo EXATO em vez de aproximado.

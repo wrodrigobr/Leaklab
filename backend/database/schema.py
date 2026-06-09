@@ -488,6 +488,7 @@ def _run_migrations(conn):
             # GTO-005: integração solver → decisions
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_label  TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_action TEXT",
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_depth_capped INTEGER NOT NULL DEFAULT 0",  # opção B: GTO aproximado (>60bb)
             # GTO-006: armazenar equity estimada para re-avaliação
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS estimated_equity REAL",
             # GTO-007: posição do opener para spots vs_RFI
@@ -999,6 +1000,7 @@ def _run_migrations(conn):
             ("facing_bet",       "ALTER TABLE decisions ADD COLUMN facing_bet       REAL"),
             ("gto_label",        "ALTER TABLE decisions ADD COLUMN gto_label        TEXT"),
             ("gto_action",       "ALTER TABLE decisions ADD COLUMN gto_action       TEXT"),
+            ("gto_depth_capped", "ALTER TABLE decisions ADD COLUMN gto_depth_capped INTEGER NOT NULL DEFAULT 0"),
             ("estimated_equity", "ALTER TABLE decisions ADD COLUMN estimated_equity REAL"),
             ("vs_position",      "ALTER TABLE decisions ADD COLUMN vs_position      TEXT"),
             ("icm_tax_pct",      "ALTER TABLE decisions ADD COLUMN icm_tax_pct      REAL"),
