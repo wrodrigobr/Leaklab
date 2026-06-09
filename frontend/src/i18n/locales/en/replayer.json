@@ -88,6 +88,21 @@
     "multiway": "Multiway · {{n}}-way",
     "depthCapped": "≈ Approximation",
     "depthCappedTip": "Approximate GTO: in very deep spots (above ~60bb) the solver returns an approximation. Direction is reliable; exact frequencies may vary.",
+    "betIntentGtoFreq": "GTO bets {{pct}}%",
+    "betIntent": {
+      "value_showdown": "Value (showdown)",
+      "value_protection": "Value + Protection",
+      "semi_bluff": "Semi-bluff",
+      "middle": "The middle (leak)",
+      "bluff": "Bluff"
+    },
+    "betIntentTip": {
+      "value_showdown": "Value bet: you want a call from worse hands than yours.",
+      "value_protection": "Value + protection: strong but vulnerable hand; the bet denies the villain's draw equity (only on flop/turn).",
+      "semi_bluff": "Semi-bluff: no strong made hand, but a draw that improves — combines fold equity with outs.",
+      "middle": "‘The middle’: a medium hand with showdown value. Betting value-cuts (only worse folds, only better calls) — GTO prefers to check here.",
+      "bluff": "Bluff: worse hand; the goal is to make better hands fold."
+    },
     "multiwaySolverTip": "Multiway pot ({{n}} players in the pot). The solver strategy is solved heads-up — multiway it's an approximation: frequencies and ranges shift with more opponents. Equity is already adjusted for multiway.",
     "multiwayTip": "Multiway pot ({{n}} players in the pot). Equity is adjusted for the number of opponents; the verdict here is heuristic (pot odds).",
     "limpedPot": "{{pos}} vs Limp · limped pot, outside GTO coverage",

@@ -454,6 +454,25 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
             lines.append(f"Fonte: {gto_source}")
             gto_solver_block = '\n'.join(lines) + '\n'
 
+        # Bloco INTENÇÃO da aposta (value / proteção / semi-blefe / blefe / "o meio")
+        bet_intent_block = ''
+        bi = d.get('bet_intent') or {}
+        if bi.get('intent'):
+            _intent_pt = {
+                'value_showdown':   'VALUE (showdown) — aposta pra extrair call de mãos piores',
+                'value_protection': 'VALUE + PROTEÇÃO — mão forte mas vulnerável; a aposta nega equity de draw do vilão',
+                'semi_bluff':       'SEMI-BLEFE — sem mão feita forte, mas com draw que melhora (fold equity + outs)',
+                'middle':           'O MEIO (leak clássico) — mão mediana com showdown value; apostar value-corta: só pior folda, só melhor paga',
+                'bluff':            'BLEFE — pior mão; objetivo é fazer melhor foldar',
+            }
+            _il = ["\n── INTENÇÃO DA APOSTA (enquadramento value/blefe) ──"]
+            _il.append(f"Intenção classificada: {_intent_pt.get(bi['intent'], bi['intent'])}")
+            if bi.get('gto_bet_freq') is not None:
+                _il.append(f"Frequência de aposta do GTO neste spot: {round(bi['gto_bet_freq'] * 100, 1)}%")
+            if bi.get('is_leak'):
+                _il.append("⚠ Aposta sem fundamento: o GTO prefere check/passar — não é spot de value nem de blefe lucrativo.")
+            bet_intent_block = '\n'.join(_il) + '\n'
+
         decisions_data.append(
             f"DECISÃO {i+1} de {len(decisions)}:\n"
             f"Cartas: {cards_fmt} | Board no momento: {board_fmt}\n"
@@ -480,6 +499,7 @@ REGRAS OBRIGATÓRIAS — NÃO VIOLE
             + pattern_note
             + pfgto_block
             + gto_solver_block
+            + bet_intent_block
         )
 
     user_message = (

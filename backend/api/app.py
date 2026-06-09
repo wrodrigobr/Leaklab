@@ -2992,6 +2992,7 @@ def coach_student_replay(student_id, tournament_id, hand_id):
                 'gto_label':  gto_data.get('gto_label'),
                 'gto_action': gto_data.get('gto_action'),
                 'gto_depth_capped': 1 if (gto_data.get('depth_capped') or gto_data.get('gto_depth_capped')) else 0,
+                'bet_intent': r.get('bet_intent'),
             })
         hand_decisions = live_decisions
     except Exception:
@@ -3716,6 +3717,7 @@ def get_replay(tournament_id, hand_id):
                 'gto_depth_capped': 1 if (gto_data.get('depth_capped') or gto_data.get('gto_depth_capped')) else 0,
                 'facing_bet':   gto_data.get('facing_bet'),
                 'ev_loss_bb':   (r.get('gto') or {}).get('ev_loss_bb'),  # #24 (live)
+                'bet_intent':   r.get('bet_intent'),
                 '_di':          di,
             })
         hand_decisions = live_decisions
@@ -4431,6 +4433,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'gto_label':          gto_label,
             'gto_action':         preflop_override_action or live_top_act or gto_action,
             'gto_depth_capped':   gto_depth_capped,   # opção B: GTO aproximado (depth >60bb)
+            'bet_intent':         (decision.get('bet_intent') if decision else None),  # intenção da aposta (value/blefe/meio)
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,

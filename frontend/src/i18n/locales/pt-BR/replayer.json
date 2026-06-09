@@ -88,6 +88,21 @@
     "multiway": "Multiway · {{n}}-way",
     "depthCapped": "≈ Aproximação",
     "depthCappedTip": "GTO aproximado: em spots muito profundos (acima de ~60bb) o solver entrega uma aproximação. A direção é confiável; as frequências exatas podem variar.",
+    "betIntentGtoFreq": "GTO aposta {{pct}}%",
+    "betIntent": {
+      "value_showdown": "Value (showdown)",
+      "value_protection": "Value + Proteção",
+      "semi_bluff": "Semi-blefe",
+      "middle": "O meio (leak)",
+      "bluff": "Blefe"
+    },
+    "betIntentTip": {
+      "value_showdown": "Aposta por value: você quer call de mãos piores que a sua.",
+      "value_protection": "Value + proteção: mão forte mas vulnerável a draw; a aposta nega a equity do vilão (só faz sentido no flop/turn).",
+      "semi_bluff": "Semi-blefe: sem mão feita forte, mas com draw que melhora — combina fold equity com outs.",
+      "middle": "‘O meio’: mão mediana com showdown value. Apostar value-corta (só pior folda, só melhor paga) — o GTO prefere check aqui.",
+      "bluff": "Blefe: pior mão; o objetivo é fazer melhor foldar."
+    },
     "multiwaySolverTip": "Pote multiway ({{n}} jogadores no pote). A estratégia do solver é resolvida heads-up — em multiway é uma aproximação: frequências e ranges mudam com mais oponentes. A equity já está ajustada para o multiway.",
     "multiwayTip": "Pote multiway ({{n}} jogadores no pote). A equity está ajustada para o número de oponentes; o veredito aqui é heurístico (pot odds).",
     "limpedPot": "{{pos}} vs Limp · pote limpado, fora da cobertura GTO",

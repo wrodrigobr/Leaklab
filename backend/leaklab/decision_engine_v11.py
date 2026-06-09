@@ -757,6 +757,22 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
             final_score = 0.0
 
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
+
+    # Intenção da aposta/raise postflop (value / proteção / semi-blefe / blefe / "o meio").
+    # Só preenche em aposta agressiva postflop; None caso contrário.
+    from leaklab.bet_intent import classify_bet_intent
+    bet_intent = classify_bet_intent(
+        player_action=input_data.get("player_action"),
+        street=street,
+        hero_cards=input_data.get("hero_cards"),
+        board=spot.get("board"),
+        equity=math.get("estimatedHandEquity"),
+        equity_adj=math.get("equityAdjustment"),
+        stack_bb=spot.get("effectiveStackBb"),
+        position=spot.get("position"),
+        gto=gto,
+    )
+
     return {
         "handId": input_data["hand_id"],
         "bestAction": _best_action,
@@ -782,6 +798,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         },
         "interpretation": interpretation,
         "gto": gto,
+        "bet_intent": bet_intent,
         "preflop_gto": preflop_gto if preflop_gto.get('available') else None,
         "debug": {
             "rangeZone": range_eval.get("rangeZone"),

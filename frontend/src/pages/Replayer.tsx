@@ -542,6 +542,25 @@ function SidePanels({
                 </span>
               </div>
             )}
+            {(() => {
+              const bi = (step as { bet_intent?: { intent: string; is_leak: boolean; gto_bet_freq: number | null } }).bet_intent;
+              if (!bi?.intent) return null;
+              const tone = bi.is_leak
+                ? "bg-red-500/10 ring-red-500/30 text-red-300/90"
+                : bi.intent.startsWith("value")
+                ? "bg-emerald-500/10 ring-emerald-500/30 text-emerald-300/90"
+                : bi.intent === "semi_bluff"
+                ? "bg-sky-500/10 ring-sky-500/30 text-sky-300/90"
+                : "bg-amber-500/10 ring-amber-500/25 text-amber-300/90";
+              return (
+                <div className="flex items-center gap-2 font-mono text-[11px]" title={t(`card.betIntentTip.${bi.intent}`)}>
+                  <span className={cn("rounded-md ring-1 px-2 py-1 text-[10px] cursor-help", tone)}>
+                    {t(`card.betIntent.${bi.intent}`)}
+                    {bi.gto_bet_freq != null ? ` · ${t("card.betIntentGtoFreq", { pct: Math.round(bi.gto_bet_freq * 100) })}` : ""}
+                  </span>
+                </div>
+              );
+            })()}
             {showAuditPreflop && (
               <>
                 <div className="flex flex-wrap gap-1 items-center">
