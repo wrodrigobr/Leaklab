@@ -87,7 +87,7 @@
     "reqSolverContextTip": "Pot odds de tu acción. El veredicto viene de la estrategia del solver (arriba), que considera todo el rango y las calles futuras — no solo este cálculo. Por eso el margen se muestra neutro.",
     "multiway": "Multiway · {{n}}-way",
     "depthCapped": "≈ Aproximación",
-    "depthCappedTip": "GTO aproximado: el solve está capado en 60bb (límite de RAM de la VM) y servido a este spot más profundo. La dirección es confiable; las frecuencias exactas pueden variar. Con un servidor mayor, se vuelve exacto.",
+    "depthCappedTip": "GTO aproximado: en spots muy profundos (por encima de ~60bb) el solver devuelve una aproximación. La dirección es confiable; las frecuencias exactas pueden variar.",
     "multiwaySolverTip": "Bote multiway ({{n}} jugadores en el bote). La estrategia del solver se resuelve heads-up — en multiway es una aproximación: las frecuencias y los rangos cambian con más oponentes. La equity ya está ajustada para el multiway.",
     "multiwayTip": "Bote multiway ({{n}} jugadores en el bote). La equity está ajustada para el número de oponentes; el veredicto aquí es heurístico (pot odds).",
     "limpedPot": "{{pos}} vs Limp · bote con limp, fuera de cobertura GTO",
