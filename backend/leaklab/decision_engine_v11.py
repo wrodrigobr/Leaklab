@@ -256,7 +256,9 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
     position      = spot.get('position', '')
     hero_hand     = input_data.get('hero_cards', [])
     stack_bb      = float(spot.get('effectiveStackBb') or 20.0)
-    facing_bb     = float(spot.get('facingSize') or 0.0)
+    # facingToBb (BB) — NÃO facingSize (fichas): o hash do nó usa o facing em BB. Usar fichas
+    # dava bet_bucket errado → nenhum spot com aposta casava o nó (gto_label perdido).
+    facing_bb     = float(spot.get('facingToBb') or 0.0)
     player_action = input_data.get('player_action', '')
     equity        = input_data.get('math', {}).get('estimatedHandEquity')
 
@@ -281,11 +283,17 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
         # confia em solver_cli quando o spot é ≤60bb (acima seria aproximação do cap → cai
         # no GW/heurístico). O guard de SPR abaixo ainda rejeita jams indevidos de qualquer
         # fonte. GTO Wizard segue preferido quando existir (precisão maior).
+        # Opção B: o solve do Texas roda capado em 60bb (limite de RAM). Antes só servíamos
+        # ≤60bb; agora servimos como APROXIMAÇÃO até _APPROX_MAX_BB, marcando depth_capped
+        # (o frontend mostra selo "aproximação"). O guard de SPR/allin abaixo ainda rejeita
+        # shove fundo — então só servimos a aproximação onde ela é razoável (check/bet/call/etc).
+        _SOLVE_CAP_BB  = 60.0
+        _APPROX_MAX_BB = 200.0
         def _ok(n):
             if not n:
                 return False
             if n.get('source') == 'solver_cli':
-                return stack_bb <= 60.0
+                return stack_bb <= _APPROX_MAX_BB
             return True
 
         # Prioridade 1: nó GW com strategy_json (dados completos)
@@ -358,6 +366,8 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
             gto_label  = _gto_classify(player_action, top_action, top_freq, equity)
             played_freq = top_freq if _gto_action_matches(player_action, top_action) else (1.0 - top_freq)
 
+        # Aproximação por profundidade: nó solver_cli (capado a 60bb) servido a um spot > 60bb.
+        depth_capped = (node.get('source') == 'solver_cli') and stack_bb > _SOLVE_CAP_BB
         return {
             'available':    True,
             'gto_action':   top_action,
@@ -367,6 +377,7 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
             'exploitability': node.get('exploitability_pct'),
             'gto_label':    gto_label,
             'source':       node.get('source', 'postflop_db'),
+            'depth_capped': depth_capped,
         }
 
     except Exception as exc:
