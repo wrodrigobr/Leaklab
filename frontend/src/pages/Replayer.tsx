@@ -542,22 +542,73 @@ function SidePanels({
                 </span>
               </div>
             )}
-            {(() => {
+            {/* POSTFLOP — Slot 4 em 3 blocos que contam a história: SUA MÃO → CUSTO → GEOMETRIA.
+                (preflop mantém o layout próprio abaixo; equity/req ficam gated em !isPostflop) */}
+            {isPostflop && (eq != null || spr != null || sizingPct != null) && (() => {
               const bi = (step as { bet_intent?: { intent: string; is_leak: boolean; gto_bet_freq: number | null } }).bet_intent;
-              if (!bi?.intent) return null;
-              const tone = bi.is_leak
-                ? "bg-red-500/10 ring-red-500/30 text-red-300/90"
-                : bi.intent.startsWith("value")
-                ? "bg-emerald-500/10 ring-emerald-500/30 text-emerald-300/90"
-                : bi.intent === "semi_bluff"
-                ? "bg-sky-500/10 ring-sky-500/30 text-sky-300/90"
-                : "bg-amber-500/10 ring-amber-500/25 text-amber-300/90";
+              const intentTone = !bi?.intent ? "" : bi.is_leak ? "text-red-300"
+                : bi.intent.startsWith("value") ? "text-emerald-300"
+                : bi.intent === "semi_bluff" ? "text-sky-300" : "text-amber-300";
+              const eqColor = eq == null ? "" : eq >= 0.65 ? "text-emerald-400" : eq >= 0.50 ? "text-foreground" : eq >= 0.35 ? "text-amber-400" : "text-red-400";
+              const eqQual = eq == null ? "" : eq >= 0.65 ? t("card.eqStrong") : eq >= 0.50 ? t("card.eqFavorable") : eq >= 0.35 ? t("card.eqMarginal") : t("card.eqWeak");
+              const reqShown = (req != null && req > 0) ? req : reqImplicit;
+              const pp = (eq != null && reqShown != null) ? (eq - reqShown) * 100 : null;
+              const ppMuted = pp == null ? true : isPpMuted({ showAuditPreflop: false, effectiveGtoLabel, eq: eq!, reqShown: reqShown!, isActionOk });
+              const costQual = effectiveGtoLabel === "gto_critical" ? t("card.costCritical")
+                : effectiveGtoLabel === "gto_minor_deviation" ? t("card.costMinor")
+                : (effectiveGtoLabel === "gto_correct" || effectiveGtoLabel === "gto_mixed") ? t("card.costAligned")
+                : (pp != null && pp >= 0) ? t("card.costPlus") : t("card.costMinus");
+              const lblCls = "w-[74px] shrink-0 uppercase text-[9px] tracking-wider text-muted-foreground/60 pt-px";
               return (
-                <div className="flex items-center gap-2 font-mono text-[11px]" title={t(`card.betIntentTip.${bi.intent}`)}>
-                  <span className={cn("rounded-md ring-1 px-2 py-1 text-[10px] cursor-help", tone)}>
-                    {t(`card.betIntent.${bi.intent}`)}
-                    {bi.gto_bet_freq != null ? ` · ${t("card.betIntentGtoFreq", { pct: Math.round(bi.gto_bet_freq * 100) })}` : ""}
-                  </span>
+                <div className="space-y-1">
+                  {/* SUA MÃO — intenção + equity (a leitura que explica o porquê) */}
+                  {(eq != null || bi?.intent) && (
+                    <div className="flex items-baseline gap-2.5 font-mono text-[11px]"
+                      title={bi?.intent ? t(`card.betIntentTip.${bi.intent}`) : t("card.equityTip")}>
+                      <span className={lblCls}>{t("card.blockHand")}</span>
+                      <span className="flex-1 min-w-0">
+                        {bi?.intent && <span className={cn("font-bold", intentTone)}>{t(`card.betIntent.${bi.intent}`)}</span>}
+                        {bi?.intent && eq != null && <span className="text-muted-foreground/40"> · </span>}
+                        {eq != null && (
+                          <>
+                            <span className={cn("font-bold tabular-nums", eqColor)}>{(eq * 100).toFixed(0)}%</span>
+                            <span className="text-muted-foreground/70"> {eqQual}</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {/* CUSTO — o desvio importa? (promovido: é a punchline de um 'Desvio Leve') */}
+                  {pp != null && (
+                    <div className="flex items-baseline gap-2.5 font-mono text-[11px]"
+                      title={effectiveGtoLabel ? t("card.reqSolverContextTip") : t("card.reqTipImplicit")}>
+                      <span className={lblCls}>{t("card.blockCost")}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className={cn("font-bold tabular-nums", ppMuted ? "text-muted-foreground/60" : pp >= 0 ? "text-emerald-400" : "text-red-400")}>
+                          {pp >= 0 ? `+${pp.toFixed(1)}` : pp.toFixed(1)}pp
+                        </span>
+                        <span className="text-muted-foreground/70"> · {costQual}</span>
+                      </span>
+                    </div>
+                  )}
+                  {/* GEOMETRIA — SPR + sizing (a forma da aposta/pote; contexto) */}
+                  {(spr != null || sizingPct != null) && (
+                    <div className="flex items-baseline gap-2.5 font-mono text-[11px]" title={t("card.sprTip")}>
+                      <span className={lblCls}>{t("card.blockGeo")}</span>
+                      <span className="flex-1 min-w-0">
+                        {spr != null && (
+                          <>
+                            <span className={cn("font-bold tabular-nums", sprColor)}>SPR {spr.toFixed(1)}</span>
+                            {sprLabel && <span className={cn(sprColor)}> {sprLabel}</span>}
+                          </>
+                        )}
+                        {spr != null && sizingPct != null && <span className="text-muted-foreground/40"> · </span>}
+                        {sizingPct != null && (
+                          <span className="text-foreground/80"><span className="font-bold tabular-nums">{sizingPct}%</span> <span className="text-muted-foreground/70">{t("card.ofPot")}</span></span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -656,23 +707,9 @@ function SidePanels({
                 </span>
               </div>
             )}
-            {isPostflop && spr != null && (
-              <div className="flex items-center gap-2 font-mono text-[11px]"
-                title={t("card.sprTip")}>
-                <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">SPR</span>
-                <span className={cn("font-bold tabular-nums", sprColor)}>{spr.toFixed(1)}</span>
-                {sprLabel && <span className={cn("uppercase text-[10px]", sprColor)}>{sprLabel}</span>}
-              </div>
-            )}
-            {isPostflop && sizingPct != null && (
-              <div className="flex items-center gap-2 font-mono text-[11px]"
-                title={t("card.sizingTip")}>
-                <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Sizing</span>
-                <span className="font-bold tabular-nums text-foreground">{sizingPct}%</span>
-                <span className="text-muted-foreground text-[10px]">{t("card.ofPot")}</span>
-              </div>
-            )}
-            {eq != null && (
+            {/* SPR/Sizing/Equity/Mín.EV de postflop migraram pro bloco de 3 (acima).
+                Aqui ficam só os de PREFLOP (gated !isPostflop). */}
+            {!isPostflop && eq != null && (
               <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap"
                 title={showAuditPreflop ? (isVsRange ? t("card.reqVsRangeTip") : t("card.reqVsRandomTip")) : t("card.equityTip")}>
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Equity</span>
@@ -688,7 +725,7 @@ function SidePanels({
                 </span>
               </div>
             )}
-            {((req != null && req > 0) || reqImplicit != null) && (() => {
+            {!isPostflop && ((req != null && req > 0) || reqImplicit != null) && (() => {
               const reqShown = (req != null && req > 0) ? req : reqImplicit!;
               const isImplicit = !(req != null && req > 0);
               const tooltip = isImplicit
