@@ -147,6 +147,53 @@ def test_finalize_calling_station():
     print("OK  test_finalize_calling_station")
 
 
+# ── Fase 3: exploit ──────────────────────────────────────────────────────────────
+
+def _prof(arch, conf='high', **stats):
+    return {'archetype': arch, 'confidence': conf, 'hands': 40, 'stats': stats}
+
+
+def test_exploit_dont_bluff_station():
+    from leaklab.opponent_stats import compute_exploit
+    ex = compute_exploit(action='bet', best_action='check', bet_intent={'intent': 'middle'},
+                         street='river', profile=_prof('calling_station', wtsd_pct=0.78))
+    assert ex and ex['key'] == 'dont_bluff_station' and ex['severity'] == 'high'
+    assert ex['params']['stat'] == 'wtsd' and ex['params']['pct'] == 78
+    print("OK  test_exploit_dont_bluff_station")
+
+
+def test_exploit_requires_high_confidence():
+    from leaklab.opponent_stats import compute_exploit
+    ex = compute_exploit(action='bet', best_action='check', bet_intent={'intent': 'middle'},
+                         street='river', profile=_prof('calling_station', conf='low', wtsd_pct=0.78))
+    assert ex is None     # amostra não-confiável → nenhum exploit
+    print("OK  test_exploit_requires_high_confidence")
+
+
+def test_exploit_facing_station_strength():
+    from leaklab.opponent_stats import compute_exploit
+    ex = compute_exploit(action='call', best_action='fold', bet_intent=None,
+                         street='turn', profile=_prof('calling_station', wtsd_pct=0.5))
+    assert ex and ex['key'] == 'station_bets_strength'
+    print("OK  test_exploit_facing_station_strength")
+
+
+def test_exploit_call_wider_vs_maniac():
+    from leaklab.opponent_stats import compute_exploit
+    ex = compute_exploit(action='fold', best_action='fold', bet_intent=None,
+                         street='flop', profile=_prof('maniac', af=4.2))
+    assert ex and ex['key'] == 'call_wider_aggro' and ex['params']['af'] == 4.2
+    print("OK  test_exploit_call_wider_vs_maniac")
+
+
+def test_exploit_none_when_no_match():
+    from leaklab.opponent_stats import compute_exploit
+    ex = compute_exploit(action='check', best_action='check', bet_intent=None,
+                         street='flop', profile=_prof('tag', vpip_pct=0.2))
+    assert ex is None
+    print("OK  test_exploit_none_when_no_match")
+
+
 if __name__ == '__main__':
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

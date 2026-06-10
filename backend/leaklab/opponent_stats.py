@@ -238,3 +238,51 @@ def finalize(acc: dict) -> dict:
 def build_profiles(hands) -> dict:
     """Pipeline completo: mãos → perfis por jogador."""
     return finalize(accumulate(hands))
+
+
+# ── Fase 3: camada de EXPLOIT (ajuste sobre o GTO conforme o perfil do vilão) ─────
+
+def compute_exploit(*, action: str, best_action: str, bet_intent: Optional[dict],
+                    street: str, profile: Optional[dict]) -> Optional[dict]:
+    """Sugere o desvio EXPLOITATIVO vs o vilão do spot — ajuste sobre o veredito GTO,
+    nunca um substituto. Retorna {key, params, severity} ou None.
+
+    Disciplina (igual ao resto): SÓ dispara com `confidence='high'` (arquétipo confiável)
+    e cada regra carrega o STAT que a justifica. Sem amostra → None (sem palpite)."""
+    if not profile or profile.get('confidence') != 'high':
+        return None
+    arch = profile.get('archetype')
+    s = profile.get('stats') or {}
+    act = (action or '').lower().strip()
+    best = (best_action or '').lower().strip()
+    intent = (bet_intent or {}).get('intent')
+
+    fcb, wtsd, af, vpip = s.get('foldcbet_pct'), s.get('wtsd_pct'), s.get('af'), s.get('vpip_pct')
+    is_bluff = intent in ('bluff', 'semi_bluff', 'middle')          # aposta que QUER fold
+    is_value = intent in ('value_showdown', 'value_protection')
+    facing   = act in ('call', 'calls', 'fold', 'folds') or best in ('call', 'fold')
+
+    # 1. Blefe vs calling station → NÃO blefar (o exploit mais valioso)
+    if is_bluff and arch == 'calling_station':
+        if wtsd is not None:
+            return {'key': 'dont_bluff_station', 'params': {'stat': 'wtsd', 'pct': round(wtsd * 100)}, 'severity': 'high'}
+        if fcb is not None:
+            return {'key': 'dont_bluff_station', 'params': {'stat': 'fcb', 'pct': round(fcb * 100)}, 'severity': 'high'}
+    # 2. Mão de valor vs station → apostar maior/mais fino (pagam demais)
+    if is_value and arch == 'calling_station':
+        p = {'pct': round(wtsd * 100)} if wtsd is not None else {}
+        return {'key': 'value_thicker_station', 'params': p, 'severity': 'medium'}
+    # 3. Enfrentando aposta de station (jogador passivo apostando = força) → overfold
+    if facing and arch == 'calling_station':
+        return {'key': 'station_bets_strength', 'params': {}, 'severity': 'high'}
+    # 4. Enfrentando aposta de maniac/LAG (agride muito) → pagar mais largo
+    if facing and arch in ('maniac', 'lag') and af is not None:
+        return {'key': 'call_wider_aggro', 'params': {'af': af}, 'severity': 'medium'}
+    # 5. Enfrentando aposta de nit (range de aposta tight) → foldar marginais
+    if facing and arch == 'nit':
+        p = {'pct': round(vpip * 100)} if vpip is not None else {}
+        return {'key': 'overfold_nit', 'params': p, 'severity': 'medium'}
+    # 6. Não enfrentando aposta, sem valor, vs nit foldão → blefar mais
+    if (not facing) and (not is_value) and arch == 'nit' and fcb is not None and fcb > 0.55:
+        return {'key': 'bluff_more_nit', 'params': {'pct': round(fcb * 100)}, 'severity': 'medium'}
+    return None

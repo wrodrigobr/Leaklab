@@ -3734,6 +3734,7 @@ def get_replay(tournament_id, hand_id):
     # no torneio). t['id'] é o id LOCAL — mesma chave do opponent_profiles.
     try:
         from database.repositories import get_opponent_profiles as _get_opp
+        from leaklab.opponent_stats import compute_exploit as _exploit
         _opp_map = {p['player']: {'archetype': p['archetype'], 'confidence': p['confidence'],
                                   'hands': p['hands'], 'stats': p['stats']}
                     for p in _get_opp(t['id'])}
@@ -3741,7 +3742,15 @@ def get_replay(tournament_id, hand_id):
             for _st in replay.get('timeline', []):
                 _vn = _st.get('villain_name')
                 if _vn and _vn in _opp_map:
-                    _st['villain_profile'] = _opp_map[_vn]
+                    _prof = _opp_map[_vn]
+                    _st['villain_profile'] = _prof
+                    # Fase 3: ajuste exploitativo sobre o veredito (só com amostra high)
+                    if _st.get('is_hero'):
+                        _ex = _exploit(action=_st.get('action'), best_action=_st.get('best_action'),
+                                       bet_intent=_st.get('bet_intent'), street=_st.get('street'),
+                                       profile=_prof)
+                        if _ex:
+                            _st['exploit'] = _ex
     except Exception:
         pass
 

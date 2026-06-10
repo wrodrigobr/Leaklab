@@ -125,6 +125,15 @@
       "lag": "Loose and aggressive. Call wider; careful not to over-fold to his pressure.",
       "maniac": "Hyper-aggressive. Call and re-raise wider for value; let him bluff."
     },
+    "exploitTitle": "Adjustment vs opponent",
+    "exploit": {
+      "dont_bluff_station": "Calling station — don't bluff here. Even if GTO bluffs, against him worse hands don't fold: the bluff is −EV. Bet for value only.",
+      "value_thicker_station": "Calling station — bet bigger and thinner for value. He pays off too much; thin value prints more than vs GTO.",
+      "station_bets_strength": "Careful: a passive player betting usually has a strong hand. Fold marginals you'd call vs an aggressor.",
+      "call_wider_aggro": "He's very aggressive / bluffs a lot (AF {{af}}). Call wider and don't over-fold to his pressure.",
+      "overfold_nit": "Nit — tight betting range, rarely bluffs. Fold your marginals here.",
+      "bluff_more_nit": "Folding nit — you can bluff more. He gives up too much; cheap bluffs profit."
+    },
     "rationaleTitle": "Why this is the best play",
     "rationale": {
       "check_marginal": "Weak/medium hand ({{eq}}%) with no strong draw. Betting doesn't extract value (worse hands fold, better ones call) and there's no profitable bluff — checking controls the pot.",

@@ -576,6 +576,22 @@ function SidePanels({
                 </div>
               );
             })()}
+            {/* HUD Fase 3: AJUSTE exploitativo sobre o veredito (só com amostra confiável). */}
+            {(() => {
+              const ex = (step as { exploit?: { key: string; params: Record<string, unknown>; severity: string } }).exploit;
+              if (!ex?.key) return null;
+              const high = ex.severity === "high";
+              return (
+                <div className={cn("rounded-lg ring-1 px-2.5 py-2", high ? "bg-red-500/8 ring-red-500/25" : "bg-amber-500/8 ring-amber-500/25")}>
+                  <p className={cn("font-mono text-[9px] font-bold uppercase tracking-wider mb-0.5", high ? "text-red-300/90" : "text-amber-300/90")}>
+                    ⚡ {t("card.exploitTitle")}
+                  </p>
+                  <p className="text-[11.5px] text-foreground/85 leading-relaxed">
+                    {t(`card.exploit.${ex.key}`, ex.params)}
+                  </p>
+                </div>
+              );
+            })()}
             {/* Racional da jogada recomendada — em spots HEURÍSTICOS (sem barras de
                 estratégia GTO pra explicar), diz POR QUE check/bet/call/fold é o ideal. */}
             {isPostflop && !hasGto && (() => {

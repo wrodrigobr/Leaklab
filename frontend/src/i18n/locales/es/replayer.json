@@ -125,6 +125,15 @@
       "lag": "Suelto y agresivo. Paga más amplio; cuidado con foldear de más a su presión.",
       "maniac": "Hiper-agresivo. Paga y re-sube más amplio por valor; déjalo farolear."
     },
+    "exploitTitle": "Ajuste vs oponente",
+    "exploit": {
+      "dont_bluff_station": "Calling station — no farolees aquí. Aunque el GTO farolee, contra él las peores no foldean: el farol es −EV. Apuesta solo por valor.",
+      "value_thicker_station": "Calling station — apuesta más grande y más fino por valor. Paga demasiado; el thin value rinde más que vs GTO.",
+      "station_bets_strength": "Cuidado: un jugador pasivo apostando suele tener mano fuerte. Foldea marginales que pagarías vs un agresivo.",
+      "call_wider_aggro": "Es muy agresivo / farolea mucho (AF {{af}}). Paga más amplio y no foldees de más a su presión.",
+      "overfold_nit": "Nit — rango de apuesta tight, rara vez farolea. Foldea tus marginales aquí.",
+      "bluff_more_nit": "Nit que foldea mucho — puedes farolear más. Se rinde demasiado; los faroles baratos rinden."
+    },
     "rationaleTitle": "Por qué esta es la mejor jugada",
     "rationale": {
       "check_marginal": "Mano floja/media ({{eq}}%) sin proyecto fuerte. Apostar no extrae valor (las peores foldean, las mejores pagan) y no hay bluff rentable — hacer check controla el bote.",
