@@ -2993,6 +2993,7 @@ def coach_student_replay(student_id, tournament_id, hand_id):
                 'gto_action': gto_data.get('gto_action'),
                 'gto_depth_capped': 1 if (gto_data.get('depth_capped') or gto_data.get('gto_depth_capped')) else 0,
                 'bet_intent': r.get('bet_intent'),
+                'reco_rationale': r.get('reco_rationale'),
             })
         hand_decisions = live_decisions
     except Exception:
@@ -3718,6 +3719,7 @@ def get_replay(tournament_id, hand_id):
                 'facing_bet':   gto_data.get('facing_bet'),
                 'ev_loss_bb':   (r.get('gto') or {}).get('ev_loss_bb'),  # #24 (live)
                 'bet_intent':   r.get('bet_intent'),
+                'reco_rationale': r.get('reco_rationale'),
                 '_di':          di,
             })
         hand_decisions = live_decisions
@@ -4476,6 +4478,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'gto_depth_capped':   (action.street != 'preflop' and bool(gto_label)
                                    and float(_spot.get('effectiveStackBb') or 0) > 60.0),
             'bet_intent':         (decision.get('bet_intent') if decision else None),  # intenção da aposta (value/blefe/meio)
+            'reco_rationale':     (decision.get('reco_rationale') if decision else None),  # por que a ação recomendada
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,

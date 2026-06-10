@@ -107,6 +107,21 @@
     "blockCost": "Cost",
     "blockMargin": "Margin",
     "blockGeo": "Geometry",
+    "rationaleTitle": "Why this is the best play",
+    "rationale": {
+      "check_marginal": "Weak/medium hand ({{eq}}%) with no strong draw. Betting doesn't extract value (worse hands fold, better ones call) and there's no profitable bluff — checking controls the pot.",
+      "check_marginal_mw": "Weak/medium hand ({{eq}}%) with no strong draw, in a {{n}}-way pot. Betting value-cuts and bluffing into several players rarely works — checking controls the pot.",
+      "check_strong": "Strong hand: checking can induce a bet from the villain or control the pot size (the board doesn't need protection).",
+      "bet_value": "Strong hand ({{eq}}%): value bet — you want worse hands to call.",
+      "bet_protection": "Strong hand, but the board is wet: bet for value and protect, charging the villain's draws.",
+      "bet_semibluff": "Strong draw: semi-bluff — fold equity now, and outs to complete if called.",
+      "bet_thin": "Thin value bet: extracts from slightly worse hands, with caution.",
+      "call_odds": "Equity {{eq}}% covers the pot odds (~{{req}}% required): calling has value.",
+      "fold_no_odds": "Equity {{eq}}% below the ~{{req}}% the pot requires: no price to continue.",
+      "raise_value": "Strong hand: raise for value and protection, building the pot.",
+      "raise_semibluff": "Strong draw: raise as a semi-bluff — fold equity + outs.",
+      "shove_commit": "Short stack or committed pot: shoving maximizes fold equity and realizes your equity with no tough decisions later."
+    },
     "noCoverageTitle": "No GTO coverage",
     "noCoverage": {
       "multiway": "Multiway pot: even when you open the action, you're betting into 2+ players — equity and responses are multiway. The solver is heads-up and can't model that, so the verdict here is heuristic, with equity adjusted for the number of opponents.",

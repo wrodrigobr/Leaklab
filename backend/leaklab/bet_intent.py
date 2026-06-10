@@ -172,3 +172,55 @@ def classify_bet_intent(*, player_action: str, street: str, hero_cards, board,
 
     is_leak = (not justified) and intent in ('middle', 'bluff')
     return {'intent': intent, 'justified': justified, 'is_leak': is_leak, 'gto_bet_freq': gto_bet_freq}
+
+
+def explain_recommendation(*, best_action: str, hero_cards, board,
+                           equity: Optional[float], equity_adj: Optional[float],
+                           position: str, n_opponents: Optional[int],
+                           facing_bb: Optional[float], required_equity: Optional[float],
+                           street: str) -> Optional[dict]:
+    """Racional CONCISO (chave i18n + params) de POR QUE a ação recomendada é essa, em
+    spots postflop — sobretudo os heurísticos (sem GTO), onde não há barras de estratégia
+    pra explicar. Determinístico, espelha a lógica do engine (força de mão + projeto +
+    board + nº de oponentes + pot odds). O frontend renderiza via `card.rationale.<key>`.
+
+    Retorna {key, params} ou None (não-postflop / sem ação)."""
+    act = (best_action or '').lower().strip()
+    st  = (street or '').lower().strip()
+    if st not in ('flop', 'turn', 'river') or not act:
+        return None
+
+    cat         = made_hand_category(hero_cards, board)        # value | middle | air
+    strong_draw = float(equity_adj or 0.0) >= 0.15
+    wet         = _board_wet(board)
+    mw          = int(n_opponents or 1) > 1
+    params      = {'eq': round(float(equity or 0.0) * 100)}
+    if mw:
+        params['n'] = int(n_opponents or 1) + 1                 # "3-way" = 3 jogadores
+    if required_equity:
+        params['req'] = round(float(required_equity) * 100)
+
+    if act in ('check', 'checks'):
+        if cat == 'value' and not (wet and st != 'river'):
+            key = 'check_strong'
+        else:
+            key = 'check_marginal_mw' if mw else 'check_marginal'
+    elif act in ('bet', 'bets'):
+        if cat == 'value':
+            key = 'bet_protection' if (wet and st != 'river') else 'bet_value'
+        elif strong_draw:
+            key = 'bet_semibluff'
+        else:
+            key = 'bet_thin'
+    elif act in ('call', 'calls'):
+        key = 'call_odds'
+    elif act in ('fold', 'folds'):
+        key = 'fold_no_odds'
+    elif act in ('raise', 'raises'):
+        key = 'raise_semibluff' if (strong_draw and cat != 'value') else 'raise_value'
+    elif act in ('allin', 'all-in', 'all_in', 'jam', 'shove'):
+        key = 'shove_commit'
+    else:
+        return None
+
+    return {'key': key, 'params': params, 'action': act}

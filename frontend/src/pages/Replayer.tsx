@@ -527,6 +527,22 @@ function SidePanels({
 
         const indicators = (
           <>
+            {/* Racional da jogada recomendada — em spots HEURÍSTICOS (sem barras de
+                estratégia GTO pra explicar), diz POR QUE check/bet/call/fold é o ideal. */}
+            {isPostflop && !hasGto && (() => {
+              const rr = (step as { reco_rationale?: { key: string; params: Record<string, unknown>; action: string } }).reco_rationale;
+              if (!rr?.key) return null;
+              return (
+                <div className="rounded-lg bg-primary/5 ring-1 ring-primary/15 px-2.5 py-2">
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-primary/70 mb-0.5">
+                    {t("card.rationaleTitle")}
+                  </p>
+                  <p className="text-[11.5px] text-foreground/85 leading-relaxed">
+                    {t(`card.rationale.${rr.key}`, rr.params)}
+                  </p>
+                </div>
+              );
+            })()}
             {isMultiway && (
               <div className="flex items-center gap-2 font-mono text-[11px]"
                 title={effectiveGtoLabel ? t("card.multiwaySolverTip", { n: livePlayers }) : t("card.multiwayTip", { n: livePlayers })}>

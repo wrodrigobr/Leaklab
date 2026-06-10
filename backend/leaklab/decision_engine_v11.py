@@ -760,7 +760,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Intenção da aposta/raise postflop (value / proteção / semi-blefe / blefe / "o meio").
     # Só preenche em aposta agressiva postflop; None caso contrário.
-    from leaklab.bet_intent import classify_bet_intent
+    from leaklab.bet_intent import classify_bet_intent, explain_recommendation
     bet_intent = classify_bet_intent(
         player_action=input_data.get("player_action"),
         street=street,
@@ -771,6 +771,21 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         stack_bb=spot.get("effectiveStackBb"),
         position=spot.get("position"),
         gto=gto,
+    )
+
+    # Racional da AÇÃO RECOMENDADA (por que check/bet/call/fold/raise) — sobretudo p/
+    # spots heurísticos (sem GTO), onde não há barras de estratégia explicando.
+    reco_rationale = explain_recommendation(
+        best_action=_best_action,
+        hero_cards=input_data.get("hero_cards"),
+        board=spot.get("board"),
+        equity=math.get("estimatedHandEquity"),
+        equity_adj=math.get("equityAdjustment"),
+        position=spot.get("position"),
+        n_opponents=spot.get("nActiveOpponents"),
+        facing_bb=math.get("facingToBb") or spot.get("facingSize"),
+        required_equity=threshold_pack.get("adjustedRequiredEquity") or math.get("potOddsEquity"),
+        street=street,
     )
 
     return {
@@ -799,6 +814,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         "interpretation": interpretation,
         "gto": gto,
         "bet_intent": bet_intent,
+        "reco_rationale": reco_rationale,
         "preflop_gto": preflop_gto if preflop_gto.get('available') else None,
         "debug": {
             "rangeZone": range_eval.get("rangeZone"),

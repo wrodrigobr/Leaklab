@@ -107,6 +107,21 @@
     "blockCost": "Custo",
     "blockMargin": "Margem",
     "blockGeo": "Geometria",
+    "rationaleTitle": "Por que essa é a melhor jogada",
+    "rationale": {
+      "check_marginal": "Mão fraca/média ({{eq}}%) sem projeto forte. Apostar não extrai valor (as piores foldam, as melhores pagam) e não há blefe lucrativo — check controla o pote.",
+      "check_marginal_mw": "Mão fraca/média ({{eq}}%) sem projeto forte, em pote {{n}}-way. Apostar value-corta e blefar contra vários raramente passa — check controla o pote.",
+      "check_strong": "Mão forte: dar check pode induzir uma aposta do vilão ou controlar o tamanho do pote (o board não pede proteção).",
+      "bet_value": "Mão forte ({{eq}}%): aposta por valor — você quer que mãos piores paguem.",
+      "bet_protection": "Mão forte, mas o board é molhado: aposta por valor e protege, cobrando caro pelos projetos do vilão.",
+      "bet_semibluff": "Projeto forte: semi-blefe — fold equity agora, e outs pra completar se pagarem.",
+      "bet_thin": "Aposta fina por valor: extrai de mãos um pouco piores, com cautela.",
+      "call_odds": "Equity {{eq}}% cobre as pot odds (~{{req}}% exigidos): pagar tem valor.",
+      "fold_no_odds": "Equity {{eq}}% abaixo dos ~{{req}}% que o pote exige: sem preço pra continuar.",
+      "raise_value": "Mão forte: raise por valor e proteção, construindo o pote.",
+      "raise_semibluff": "Projeto forte: raise como semi-blefe — fold equity + outs.",
+      "shove_commit": "Stack curto ou pote comprometido: all-in maximiza fold equity e realiza a equity sem decisões difíceis depois."
+    },
     "noCoverageTitle": "Sem cobertura GTO",
     "noCoverage": {
       "multiway": "Pote multiway: mesmo abrindo a ação, você aposta dentro de 2+ jogadores — a equity e as respostas são multiway. O solver é heads-up e não modela isso, então aqui o veredito é heurístico, com a equity ajustada para o número de oponentes.",
