@@ -225,7 +225,10 @@
       "open_iso_small": "el iso sobre un limp debería ser mayor ({{ideal}}).",
       "postflop_ok": "igual al solver (~{{gto}}% del bote)",
       "postflop_too_big": "demasiado grande — el solver usa ~{{gto}}% del bote aquí",
-      "postflop_too_small": "demasiado pequeña — el solver usa ~{{gto}}% del bote aquí"
+      "postflop_too_small": "demasiado pequeña — el solver usa ~{{gto}}% del bote aquí",
+      "3bet_ok": "{{pos}} estándar ({{ideal}} del open)",
+      "3bet_big": "{{pos}}: demasiado grande — el estándar es {{ideal}} del open",
+      "3bet_small": "{{pos}}: demasiado pequeño — el estándar es {{ideal}} del open; un 3-bet corto le da al open un precio demasiado bueno para pagar"
     },
     "threebetLabel": "3-bet",
     "threebetIntent": {

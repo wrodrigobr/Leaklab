@@ -607,6 +607,21 @@ function SidePanels({
                 </div>
               );
             })()}
+            {/* Sizing do 3-bet (#3): tamanho do 3-bet do hero como múltiplo do open (IP 3x/OOP 4x). */}
+            {(() => {
+              const sz = (step as { threebet_sizing?: { key: string; status: string; params: { ratio: number; ideal: string; pos: string } } }).threebet_sizing;
+              if (!sz?.key) return null;
+              const ok = sz.status === "ok";
+              return (
+                <div className="flex items-baseline gap-2.5 font-mono text-[11px]" title={t(`card.sizingAdvice.${sz.key}`, sz.params)}>
+                  <span className="w-[74px] shrink-0 uppercase text-[9px] tracking-wider text-muted-foreground/60 pt-px">{t("card.sizingLabel")}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className={cn("font-bold tabular-nums", ok ? "text-emerald-400/90" : "text-amber-300")}>{sz.params.ratio}x</span>
+                    <span className="text-muted-foreground/70"> · {t(`card.sizingAdvice.${sz.key}`, sz.params)}</span>
+                  </span>
+                </div>
+              );
+            })()}
             {/* Sizing postflop (Fase 2): tamanho da aposta do hero vs o size do próprio nó GTO. */}
             {(() => {
               const sz = (step as { postflop_sizing?: { key: string; status: string; params: { hero: number; gto: number } } }).postflop_sizing;

@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from leaklab.sizing_advisor import (analyze_open_sizing as A,
                                     gto_main_bet_size_pct as G,
                                     analyze_postflop_sizing as P,
+                                    analyze_3bet_sizing as B,
                                     _size_label_to_pct as L)
 
 
@@ -103,6 +104,58 @@ def test_postflop_none_when_missing():
     assert P(hero_pct=50, gto_pct=None) is None
     assert P(hero_pct=50, gto_pct=0) is None
     print("OK  test_postflop_none_when_missing")
+
+
+# ── #3: sizing do 3-bet (relativo ao open) ───────────────────────────────────
+
+def test_3bet_ip_ok():
+    # open 2,5bb, 3-bet IP pra 7,5bb = 3.0x → ok
+    r = B(to_bb=7.5, open_to_bb=2.5, is_ip=True)
+    assert r['key'] == '3bet_ok' and r['status'] == 'ok' and r['params']['pos'] == 'IP'
+    print("OK  test_3bet_ip_ok")
+
+
+def test_3bet_oop_ok():
+    # open 2,5bb, 3-bet OOP pra 10bb = 4.0x → ok
+    r = B(to_bb=10.0, open_to_bb=2.5, is_ip=False)
+    assert r['key'] == '3bet_ok' and r['params']['pos'] == 'OOP'
+    print("OK  test_3bet_oop_ok")
+
+
+def test_3bet_ip_too_small():
+    # IP a 2.4x (< 2.6) → pequeno
+    r = B(to_bb=6.0, open_to_bb=2.5, is_ip=True)
+    assert r['key'] == '3bet_small' and r['status'] == 'warn'
+    print("OK  test_3bet_ip_too_small")
+
+
+def test_3bet_oop_size_is_ip_too_big():
+    # 3.0x serve IP, mas OOP (ideal 4x) 3.0x ainda é pequeno (< 3.4)
+    r = B(to_bb=7.5, open_to_bb=2.5, is_ip=False)
+    assert r['key'] == '3bet_small'
+    print("OK  test_3bet_oop_size_is_ip_too_big")
+
+
+def test_3bet_too_big():
+    # IP a 5x → grande
+    r = B(to_bb=12.5, open_to_bb=2.5, is_ip=True)
+    assert r['key'] == '3bet_big'
+    print("OK  test_3bet_too_big")
+
+
+def test_3bet_squeeze_raises_band():
+    # squeeze IP: banda sobe (~4x). 4.0x que seria 'big' sem squeeze vira 'ok'
+    assert B(to_bb=10.0, open_to_bb=2.5, is_ip=True)['key'] == '3bet_big'
+    r = B(to_bb=10.0, open_to_bb=2.5, is_ip=True, squeeze=True)
+    assert r['key'] == '3bet_ok' and 'squeeze' in r['params']['ideal']
+    print("OK  test_3bet_squeeze_raises_band")
+
+
+def test_3bet_none_when_missing():
+    assert B(to_bb=None, open_to_bb=2.5, is_ip=True) is None
+    assert B(to_bb=7.5, open_to_bb=0, is_ip=True) is None
+    assert B(to_bb=7.5, open_to_bb=None, is_ip=True) is None
+    print("OK  test_3bet_none_when_missing")
 
 
 if __name__ == '__main__':

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(sizing): #3 — tamanho do 3-bet vs padrão (IP ~3x / OOP ~4x, squeeze sobe)
+
+> Fecha o conceito de 3bet-light com o sizing. `sizing_advisor.analyze_3bet_sizing` mede o 3-bet do hero como **múltiplo do open enfrentado**: IP ~3x, OOP ~4x (OOP cobra mais p/ negar realização e levar fold), squeeze (cold caller no meio) sobe ~1x. Dados do spot: `facingToBb` (open em bb), `isInPosition`, `callerPosition` (squeeze). Só raise enfrentando exatamente 1 raise (jam tem size forçado → fora). Bloco "Sizing" no card mostra "3,0x · IP no padrão (~3x do open)" / âmbar quando desvia. Validado real: 28 três-bets (3,0–3,3x IP, 3,5x OOP → todos ok). +7 testes (22 no `test_sizing_advisor`); api 42/42. **3bet-light agora completo: correção (range GW) + rótulo de intenção + 3bet% por oportunidades + sizing.**
+
 ### fix(stats): 3bet% do hero — denominador corrigido pra base de oportunidades
 
 > O 3bet% do hero (`/metrics/player-stats` → `three_bet`, exibido no PlayerStatsCard) usava o denominador **errado**: `is_3bet` ÷ **todas** as mãos preflop. O padrão (HM/PT) é `is_3bet` ÷ **oportunidades** (mãos enfrentando um open, `facing_bet > 0`) — usar todas dilui o número ~3–5× e mascara overaggression. Nos dados reais do hero o stat saltou de **5,1% (parecia saudável, dentro de 4–8%) → 10,0% (overaggressive)** com 460 oportunidades. Agora gateado em ≥12 oportunidades (mesmo gate do `opponent_stats`) e expõe `three_bet_opp`. Tooltip do card explicita o denominador. database/api verdes. **Próximo no 3bet-light: #3 sizing do 3-bet (IP ~3x / OOP ~4x), junto da Fase 3 do sizing.**

@@ -86,6 +86,43 @@ def gto_main_bet_size_pct(strategy, pot_bb: Optional[float] = None) -> Optional[
     return round(best_pct) if best_pct is not None else None
 
 
+# ── #3: sizing do 3-BET (relativo ao open enfrentado) ────────────────────────────
+
+_3BET_IP_LO,  _3BET_IP_HI  = 2.6, 3.6      # IP  ~3x o open
+_3BET_OOP_LO, _3BET_OOP_HI = 3.4, 4.6      # OOP ~4x o open (cobra mais, nega realização)
+_SQUEEZE_BONUS = 1.0                        # cold caller no meio: sobe ~1x por caller
+
+
+def analyze_3bet_sizing(*, to_bb: Optional[float], open_to_bb: Optional[float],
+                        is_ip: bool, squeeze: bool = False) -> Optional[dict]:
+    """Classifica o tamanho de um 3-BET do hero, medido como múltiplo do OPEN enfrentado.
+
+    Teoria: 3-bet IP ~3x o open; OOP ~4x (OOP cobra mais p/ negar realização e levar fold).
+    Squeeze (cold caller no meio) sobe ~1x por caller. 3-bet JAM (shove) não entra — o
+    tamanho é forçado.
+
+      key: 3bet_ok | 3bet_big | 3bet_small ; status: ok | warn
+    """
+    if to_bb is None or open_to_bb is None or open_to_bb <= 0 or to_bb <= 0:
+        return None
+    ratio = to_bb / open_to_bb
+    if is_ip:
+        lo, hi, ideal = _3BET_IP_LO, _3BET_IP_HI, '~3x'
+    else:
+        lo, hi, ideal = _3BET_OOP_LO, _3BET_OOP_HI, '~4x'
+    if squeeze:
+        lo += _SQUEEZE_BONUS
+        hi += _SQUEEZE_BONUS
+        ideal = ('~4x' if is_ip else '~5x') + ' (squeeze)'
+
+    p = {'ratio': round(ratio, 1), 'ideal': ideal, 'pos': 'IP' if is_ip else 'OOP'}
+    if ratio > hi:
+        return {'key': '3bet_big', 'status': 'warn', 'params': p}
+    if ratio < lo:
+        return {'key': '3bet_small', 'status': 'warn', 'params': p}
+    return {'key': '3bet_ok', 'status': 'ok', 'params': p}
+
+
 def analyze_postflop_sizing(*, hero_pct: Optional[float], gto_pct: Optional[float]) -> Optional[dict]:
     """Compara o tamanho da aposta do hero (% pote) com o tamanho principal do nó GTO.
     Tolerância relativa (~25%) — sizing é por famílias, não valor exato."""

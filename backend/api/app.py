@@ -4518,6 +4518,26 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             except Exception:
                 pass
 
+        # Sizing do 3-BET (#3): tamanho do 3-bet do hero como múltiplo do open enfrentado
+        # (IP ~3x, OOP ~4x; squeeze sobe). Só raise enfrentando exatamente 1 raise (não jam).
+        threebet_sizing = None
+        if (action.player == hero and action.street == 'preflop'
+                and action.action == 'raises' and decision
+                and int(_spot.get('preflopRaisesFaced') or 0) == 1):
+            try:
+                import re as _re_3b
+                _m3 = _re_3b.search(r'to\s+([\d.]+)', action.raw or '')
+                _bb3 = float(hand.bb or _ctx.get('levelBb') or 0)
+                _open_to = _spot.get('facingToBb')
+                if _m3 and _bb3 > 0 and _open_to:
+                    from leaklab.sizing_advisor import analyze_3bet_sizing as _szb
+                    threebet_sizing = _szb(to_bb=float(_m3.group(1)) / _bb3,
+                                           open_to_bb=float(_open_to),
+                                           is_ip=bool(_spot.get('isInPosition')),
+                                           squeeze=bool(_spot.get('callerPosition')))
+            except Exception:
+                pass
+
         # Sizing POSTFLOP (Fase 2): tamanho da aposta do hero vs o size principal do nó GTO.
         # O nó já traz os tamanhos (bet_33pct, bet_75pct…) com frequência — compara direto.
         postflop_sizing = None
@@ -4560,6 +4580,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'reco_rationale':     (decision.get('reco_rationale') if decision else None),  # por que a ação recomendada
             'villain_name':       (_di.get('spot', {}).get('villainName') if decision else None),  # HUD: vilão do spot
             'sizing_advice':      sizing_advice,   # Fase 1: análise do tamanho do open
+            'threebet_sizing':    threebet_sizing,   # #3: tamanho do 3-bet vs open (IP 3x/OOP 4x)
             'postflop_sizing':    postflop_sizing,   # Fase 2: aposta do hero vs size do nó GTO
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'gto_strategy':       gto_strategy,
