@@ -525,6 +525,18 @@ def _analyze_impl():
         is_pko=any(getattr(h, 'is_pko', False) for h in hands) if hands else False,
     )
     save_decisions(t_db_id, results)
+
+    # HUD: computa e persiste os perfis de comportamento dos oponentes deste torneio
+    # (alimenta as Fases 2-3: perfil do vilão + exploit no card). Bônus — nunca bloqueia
+    # o /analyze; try/except garante que um erro aqui não derruba o upload.
+    try:
+        from leaklab.opponent_stats import build_profiles as _build_profiles
+        from database.repositories import upsert_opponent_profile as _upsert_prof
+        for _pname, _prof in _build_profiles(hands).items():
+            if _pname and _pname != hero:
+                _upsert_prof(t_db_id, _pname, _prof)
+    except Exception:
+        log.exception("opponent_profiles: compute falhou (não bloqueia o /analyze)")
     try:
         increment_tournament_count(g.user_id)
     except Exception:
