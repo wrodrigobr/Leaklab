@@ -116,7 +116,7 @@ const ROW2: StatDef[] = [
     label: "3BET",
     unit: "%",
     range: { min: 4, max: 8, label: "4–8%" },
-    tooltip: "3-Bet% — % de mãos em que o hero re-raised pré-flop (quando já havia um raise antes). MTT ideal: 4–8%. Abaixo de 3% = muito passivo; acima de 10% = overaggressive pré-flop.",
+    tooltip: "3-Bet% — das vezes em que ENFRENTOU um open pré-flop (oportunidades de 3-bet), % em que o hero re-raised. Denominador = mãos enfrentando um raise, não todas as mãos. MTT ideal: 4–8%. Abaixo de 3% = muito passivo; acima de 10% = overaggressive pré-flop.",
   },
   {
     key: "w_at_sd",

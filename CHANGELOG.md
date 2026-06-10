@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(stats): 3bet% do hero — denominador corrigido pra base de oportunidades
+
+> O 3bet% do hero (`/metrics/player-stats` → `three_bet`, exibido no PlayerStatsCard) usava o denominador **errado**: `is_3bet` ÷ **todas** as mãos preflop. O padrão (HM/PT) é `is_3bet` ÷ **oportunidades** (mãos enfrentando um open, `facing_bet > 0`) — usar todas dilui o número ~3–5× e mascara overaggression. Nos dados reais do hero o stat saltou de **5,1% (parecia saudável, dentro de 4–8%) → 10,0% (overaggressive)** com 460 oportunidades. Agora gateado em ≥12 oportunidades (mesmo gate do `opponent_stats`) e expõe `three_bet_opp`. Tooltip do card explicita o denominador. database/api verdes. **Próximo no 3bet-light: #3 sizing do 3-bet (IP ~3x / OOP ~4x), junto da Fase 3 do sizing.**
+
 ### feat(3bet): rótulo de intenção do 3-bet — valor / merge / light(blefe)
 
 > Ensina o conceito de **3-bet light**. A *correção* do 3-bet já era coberta pela range preflop do GW (a porção light está dentro do range polarizado); faltava o rótulo que diz QUE TIPO de 3-bet é. `bet_intent.threebet_strength_tier` classifica pela força preflop: **valor** (QQ+, AK — domina o continuing range), **merge/valor fino** (77–JJ, AQ/AJ, A6s+, broadways suited Q+, KQo), **light/blefe** (A2s–A5s, 22–66, suited connectors, mãos fracas — 3-beta por fold equity + blocker). `classify_3bet_intent` anexa `justified` pelo veredito GTO (intenção ≠ correção). Computado no engine (raise preflop enfrentando exatamente 1 raise = 3-bet/squeeze), flui via `live_decisions` → `_build_replay_data`, e aparece no card como bloco **"3-bet"** (verde valor / âmbar merge / azul light, com tooltip explicando o porquê, incl. "vs calling station não funciona"). Validado real: 11 três-bets (KK→valor, AQo/KQo/KJs→merge, A8o/ATo→light), inclusive 3-bet jams. +7 testes (32 no `test_bet_intent`).

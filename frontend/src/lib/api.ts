@@ -660,6 +660,7 @@ export interface PlayerStatsResponse {
   fold_to_3bet: number | null;
   wtsd: number | null;
   three_bet: number | null;
+  three_bet_opp?: number;
   w_at_sd: number | null;
   fold_to_flop_bet: number | null;
   bb_defense: number | null;

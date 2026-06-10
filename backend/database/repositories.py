@@ -1284,11 +1284,13 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
             WHERE {tf}
         """), tp).fetchone()
 
-        # ── 3BET%: hands where hero 3-bet / total preflop hands ──────────────
+        # ── 3BET%: hands where hero 3-bet / OPORTUNIDADES (preflop enfrentando um
+        # raise). Denominador padrão HM/PT = faced-a-raise (facing_bet>0), NÃO todas
+        # as mãos preflop — usar todas dilui o número ~3-5× e mascara overaggression.
         tbet_row = conn.execute(_adapt(f"""
             SELECT
                 COUNT(DISTINCT CASE WHEN d.is_3bet = TRUE THEN d.hand_id END) AS three_bet_n,
-                COUNT(DISTINCT d.hand_id) AS total_n
+                COUNT(DISTINCT CASE WHEN d.facing_bet > 0 THEN d.hand_id END) AS opp_n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.street = 'preflop'
@@ -1375,8 +1377,8 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
         faced_3b_n  = f3b.get('faced_3bet_n', 0) or 0
         saw_flop    = wt.get('saw_flop', 0) or 0
         saw_river   = wt.get('saw_river', 0) or 0
-        three_bet_n = tb.get('three_bet_n', 0) or 0
-        pf_total    = tb.get('total_n', 0) or 0
+        three_bet_n   = tb.get('three_bet_n', 0) or 0
+        three_bet_opp = tb.get('opp_n', 0) or 0
         sd_won      = wsd.get('sd_won', 0) or 0
         sd_total    = wsd.get('sd_total', 0) or 0
         ftfb_n      = ftfb.get('ftfb_n', 0) or 0
@@ -1396,7 +1398,8 @@ def get_player_stats(user_id: int, days: int = 90, last_n: int | None = None) ->
             'cbet_pct':         round(cbet_n / cbet_opp * 100, 1)      if cbet_opp > 0    else None,
             'fold_to_3bet':     round(f3b_n / faced_3b_n * 100, 1)    if faced_3b_n > 0  else None,
             'wtsd':             round(saw_river / saw_flop * 100, 1)   if saw_flop > 0    else None,
-            'three_bet':        round(three_bet_n / pf_total * 100, 1) if pf_total > 0    else None,
+            'three_bet':        round(three_bet_n / three_bet_opp * 100, 1) if three_bet_opp >= 12 else None,
+            'three_bet_opp':    three_bet_opp,
             'w_at_sd':          round(sd_won / sd_total * 100, 1)      if sd_total > 0    else None,
             'fold_to_flop_bet': round(ftfb_n / ftfb_total * 100, 1)   if ftfb_total > 0  else None,
             'bb_defense':       round(bb_def_n / bb_def_t * 100, 1)   if bb_def_t > 0    else None,
