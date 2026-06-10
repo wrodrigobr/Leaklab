@@ -137,6 +137,8 @@ export interface Tournament {
   coach_reviewed?: boolean;
   labels_reconciled_at?: string | null;
   gto_coverage_pct?: number;
+  preflop_coverage_pct?: number | null;
+  postflop_coverage_pct?: number | null;
 }
 
 export interface TournamentsResponse {

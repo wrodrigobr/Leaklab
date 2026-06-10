@@ -207,18 +207,31 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                           {t("table.gtoPending")}
                         </span>
                       ) : analyzed ? (
-                        <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
-                          <CheckCircle2 className="size-3" aria-hidden />
-                          {t("table.analyzed")}
-                          {row.gto_coverage_pct != null && row.gto_coverage_pct > 0 && (
-                            <span
-                              className="ml-1 text-[9px] font-normal opacity-70"
-                              title={t("table.gtoCoverageTooltip")}
-                            >
-                              · {t("table.gtoCoverage", { pct: Math.round(row.gto_coverage_pct) })}
+                        <div className="inline-flex flex-col items-start gap-0.5">
+                          {/* qualidade da sessão — o número que mais importa */}
+                          <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20"
+                            title={t("table.qualityTooltip")}>
+                            <CheckCircle2 className="size-3" aria-hidden />
+                            {row.standard_pct != null
+                              ? t("table.qualitySolid", { pct: Math.round(row.standard_pct) })
+                              : t("table.analyzed")}
+                          </span>
+                          {/* cobertura GTO separada: preflop (GW ~imediato) · postflop (cresce, em análise) */}
+                          {(row.preflop_coverage_pct != null || row.postflop_coverage_pct != null) && (
+                            <span className="font-mono text-[9px] font-normal text-muted-foreground/70" title={t("table.gtoSplitTooltip")}>
+                              GTO
+                              {row.preflop_coverage_pct != null && ` · ${t("table.covPre", { pct: Math.round(row.preflop_coverage_pct) })}`}
+                              {row.postflop_coverage_pct != null && (
+                                <>
+                                  {" · "}{t("table.covPost", { pct: Math.round(row.postflop_coverage_pct) })}
+                                  {row.postflop_coverage_pct < 95 && (
+                                    <span className="text-warning/80"> · {t("table.gtoAnalyzing")}</span>
+                                  )}
+                                </>
+                              )}
                             </span>
                           )}
-                        </span>
+                        </div>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20">
                           <Clock className="size-3 animate-pulse" aria-hidden />

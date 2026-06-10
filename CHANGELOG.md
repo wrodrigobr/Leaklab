@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(table): chip do torneio — qualidade + cobertura GTO separada (pré/pós, postflop "em análise")
+
+> Resolve a confusão do "44% GTO" de vez. O chip de status agora lidera com a **qualidade da sessão** (`standard_pct` — "80% sólido", o número que importa) e mostra a **cobertura GTO separada por street**: *"GTO · pré 92% · pós 10% · em análise"*. **Preflop** vem das ranges do GTO Wizard (cobertura ~imediata no upload, ~92%); **postflop** é resolvido sob demanda no GCP e **cresce com o tempo** — então é marcado **"em análise"** (postflop < 95%) em vez de cravar um % final, como o usuário pediu. Backend: `get_tournaments` passou a computar `preflop_coverage_pct`/`postflop_coverage_pct` (SUM por street). Frontend: chip redesenhado (qualidade no topo + split), tooltip explicando que postflop cresce conforme você revisa as mãos. i18n `table.qualitySolid/covPre/covPost/gtoAnalyzing/*Tooltip` (3 locales). Validado no #27 (std 80, pré 91.5%, pós 10.3%). tsc/JSON OK.
+
 ### copy(table): "44% GTO" → "cobertura GTO 44%" (era lido como nota de qualidade)
 
 > O chip de status do torneio mostrava "✓ Analisado · {{pct}}% GTO" — a `gto_coverage_pct` (% de decisões COM nó GTO; o resto é heurístico). Mas "44% GTO" parecia uma **nota de qualidade**, contradizendo a narrativa ("80% das decisões dentro do padrão"). São métricas distintas: 44% = **cobertura** (quanto da sessão o solver analisou), 80% = **qualidade** (standard_pct, quantas decisões foram sólidas). Label reescrito pra **"cobertura GTO {{pct}}%"** (common + dashboard, 3 locales) — desambigua sem mudar o dado.

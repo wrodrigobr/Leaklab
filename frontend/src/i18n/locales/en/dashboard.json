@@ -184,7 +184,13 @@
     "hBuyin": "Buy-in",
     "hPlace": "Place",
     "hResult": "Result",
-    "hStatus": "Status"
+    "hStatus": "Status",
+    "qualitySolid": "{{pct}}% solid",
+    "qualityTooltip": "Session quality: % of decisions on standard (no mistake), by the GTO/heuristic verdict.",
+    "covPre": "pre {{pct}}%",
+    "covPost": "post {{pct}}%",
+    "gtoAnalyzing": "in progress",
+    "gtoSplitTooltip": "GTO coverage. Preflop uses the GTO Wizard ranges (near-instant). Postflop is solved on demand on the server — coverage grows as you review your hands."
   },
   "decisions": {
     "title": "Decision Quality",
@@ -319,12 +325,12 @@
     "nextAt": "{{next}} at {{pct}}%",
     "names": {
       "beginner": "Beginner",
-      "student":  "Student",
-      "grinder":  "Grinder",
-      "regular":  "Regular",
-      "solid":    "Solid",
-      "expert":   "Expert",
-      "elite":    "Elite"
+      "student": "Student",
+      "grinder": "Grinder",
+      "regular": "Regular",
+      "solid": "Solid",
+      "expert": "Expert",
+      "elite": "Elite"
     }
   },
   "playerStats": {
@@ -422,8 +428,8 @@
     "perMonth": "{{n}} tournaments/month",
     "analyzedCount": "{{n}} tournaments analyzed",
     "projection": "Projection"
-  }
-  ,"cognitiveFailure": {
+  },
+  "cognitiveFailure": {
     "tooltip": "Detects emotional patterns that affect sequential decision quality — for example, becoming overly aggressive right after folding several hands in a row. Identifying the trigger is the first step to correcting it.",
     "title": "Cognitive Patterns",
     "noData": "Insufficient data. Import more tournaments to detect cognitive patterns.",
@@ -462,24 +468,24 @@
     "nDecisions": "{{n}} decisions",
     "costlyTitle": "Costliest spots",
     "actions": {
-      "jam":   "Shove",
+      "jam": "Shove",
       "allin": "Shove",
-      "fold":  "Fold",
-      "call":  "Call",
+      "fold": "Fold",
+      "call": "Call",
       "raise": "Raise",
-      "bet":   "Bet",
+      "bet": "Bet",
       "check": "Check"
     },
     "streets": {
       "preflop": "Preflop",
-      "flop":    "Flop",
-      "turn":    "Turn",
-      "river":   "River"
+      "flop": "Flop",
+      "turn": "Turn",
+      "river": "River"
     },
     "icm": {
-      "low":      "Low ICM",
-      "medium":   "Medium ICM",
-      "high":     "High ICM",
+      "low": "Low ICM",
+      "medium": "Medium ICM",
+      "high": "High ICM",
       "critical": "Critical ICM"
     }
   }

@@ -354,7 +354,11 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
                    COUNT(CASE WHEN d.label = 'clear_mistake' THEN 1 END) AS clear_count,
                    COUNT(CASE WHEN d.label = 'small_mistake' THEN 1 END) AS small_count,
                    COUNT(d.id) AS total_decisions_count,
-                   SUM(CASE WHEN d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS with_gto_count
+                   SUM(CASE WHEN d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS with_gto_count,
+                   SUM(CASE WHEN lower(d.street)='preflop' THEN 1 ELSE 0 END) AS pre_total,
+                   SUM(CASE WHEN lower(d.street)='preflop' AND d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS pre_gto,
+                   SUM(CASE WHEN lower(d.street) IN ('flop','turn','river') THEN 1 ELSE 0 END) AS post_total,
+                   SUM(CASE WHEN lower(d.street) IN ('flop','turn','river') AND d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS post_gto
             FROM tournaments t
             LEFT JOIN decisions d ON d.tournament_id = t.id
             WHERE t.user_id = ?
@@ -368,6 +372,11 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             tot = t.pop('total_decisions_count', 0) or 0
             wg = t.pop('with_gto_count', 0) or 0
             t['gto_coverage_pct'] = round(wg * 100.0 / tot, 1) if tot else 0.0
+            # cobertura GTO separada por street (preflop = ranges GW ~instant; postflop = solve)
+            pre_t = t.pop('pre_total', 0) or 0;  pre_g = t.pop('pre_gto', 0) or 0
+            post_t = t.pop('post_total', 0) or 0; post_g = t.pop('post_gto', 0) or 0
+            t['preflop_coverage_pct']  = round(pre_g * 100.0 / pre_t, 1) if pre_t else None
+            t['postflop_coverage_pct'] = round(post_g * 100.0 / post_t, 1) if post_t else None
             result.append(t)
         return result
     finally:

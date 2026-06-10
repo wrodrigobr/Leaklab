@@ -184,7 +184,13 @@
     "hBuyin": "Buy-in",
     "hPlace": "Posição",
     "hResult": "Resultado",
-    "hStatus": "Status"
+    "hStatus": "Status",
+    "qualitySolid": "{{pct}}% sólido",
+    "qualityTooltip": "Qualidade da sessão: % de decisões dentro do padrão (sem erro), pelo veredito GTO/heurístico.",
+    "covPre": "pré {{pct}}%",
+    "covPost": "pós {{pct}}%",
+    "gtoAnalyzing": "em análise",
+    "gtoSplitTooltip": "Cobertura GTO. Preflop usa as ranges do GTO Wizard (cobertura ~imediata). Postflop é resolvido sob demanda no servidor — a cobertura cresce conforme você revisa as mãos."
   },
   "decisions": {
     "title": "Qualidade das Decisões",
@@ -319,12 +325,12 @@
     "nextAt": "{{next}} em {{pct}}%",
     "names": {
       "beginner": "Iniciante",
-      "student":  "Estudante",
-      "grinder":  "Grinder",
-      "regular":  "Regular",
-      "solid":    "Sólido",
-      "expert":   "Expert",
-      "elite":    "Elite"
+      "student": "Estudante",
+      "grinder": "Grinder",
+      "regular": "Regular",
+      "solid": "Sólido",
+      "expert": "Expert",
+      "elite": "Elite"
     }
   },
   "playerStats": {
@@ -422,8 +428,8 @@
     "perMonth": "{{n}} torneios/mês",
     "analyzedCount": "{{n}} torneios analisados",
     "projection": "Projeção"
-  }
-  ,"cognitiveFailure": {
+  },
+  "cognitiveFailure": {
     "tooltip": "Detecta padrões emocionais que afetam a qualidade das suas decisões em sequência — por exemplo, jogar agressivamente demais logo após dobrar várias mãos seguidas. Identificar o gatilho é o primeiro passo para corrigi-lo.",
     "title": "Padrões Cognitivos",
     "noData": "Dados insuficientes. Importe mais torneios para detectar padrões cognitivos.",
@@ -462,24 +468,24 @@
     "nDecisions": "{{n}} decisões",
     "costlyTitle": "Spots mais custosos",
     "actions": {
-      "jam":   "Shove",
+      "jam": "Shove",
       "allin": "Shove",
-      "fold":  "Fold",
-      "call":  "Call",
+      "fold": "Fold",
+      "call": "Call",
       "raise": "Raise",
-      "bet":   "Bet",
+      "bet": "Bet",
       "check": "Check"
     },
     "streets": {
       "preflop": "Preflop",
-      "flop":    "Flop",
-      "turn":    "Turn",
-      "river":   "River"
+      "flop": "Flop",
+      "turn": "Turn",
+      "river": "River"
     },
     "icm": {
-      "low":      "ICM baixo",
-      "medium":   "ICM médio",
-      "high":     "ICM alto",
+      "low": "ICM baixo",
+      "medium": "ICM médio",
+      "high": "ICM alto",
       "critical": "ICM crítico"
     }
   }
