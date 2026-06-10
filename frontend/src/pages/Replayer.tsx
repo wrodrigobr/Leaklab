@@ -607,6 +607,21 @@ function SidePanels({
                 </div>
               );
             })()}
+            {/* Sizing postflop (Fase 2): tamanho da aposta do hero vs o size do próprio nó GTO. */}
+            {(() => {
+              const sz = (step as { postflop_sizing?: { key: string; status: string; params: { hero: number; gto: number } } }).postflop_sizing;
+              if (!sz?.key) return null;
+              const ok = sz.status === "ok";
+              return (
+                <div className="flex items-baseline gap-2.5 font-mono text-[11px]" title={t(`card.sizingAdvice.${sz.key}`, sz.params)}>
+                  <span className="w-[74px] shrink-0 uppercase text-[9px] tracking-wider text-muted-foreground/60 pt-px">{t("card.sizingLabel")}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className={cn("font-bold tabular-nums", ok ? "text-emerald-400/90" : "text-amber-300")}>{sz.params.hero}%</span>
+                    <span className="text-muted-foreground/70"> · {t(`card.sizingAdvice.${sz.key}`, sz.params)}</span>
+                  </span>
+                </div>
+              );
+            })()}
             {/* Racional da jogada recomendada — em spots HEURÍSTICOS (sem barras de
                 estratégia GTO pra explicar), diz POR QUE check/bet/call/fold é o ideal. */}
             {isPostflop && !hasGto && (() => {

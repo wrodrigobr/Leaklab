@@ -222,7 +222,10 @@
       "open_ok": "standard ({{ideal}})",
       "open_big": "too big — standard is {{ideal}}; smaller risks less and controls the pot.",
       "open_sb_small": "vs BB, size up to {{ideal}} — a min-open gives the BB too good a price to complete.",
-      "open_iso_small": "iso over a limp should be bigger ({{ideal}})."
+      "open_iso_small": "iso over a limp should be bigger ({{ideal}}).",
+      "postflop_ok": "matches the solver (~{{gto}}% pot)",
+      "postflop_too_big": "too big — the solver uses ~{{gto}}% pot here",
+      "postflop_too_small": "too small — the solver uses ~{{gto}}% pot here"
     }
   },
   "controls": {

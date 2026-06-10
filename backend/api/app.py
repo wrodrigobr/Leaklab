@@ -4517,6 +4517,24 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             except Exception:
                 pass
 
+        # Sizing POSTFLOP (Fase 2): tamanho da aposta do hero vs o size principal do nó GTO.
+        # O nó já traz os tamanhos (bet_33pct, bet_75pct…) com frequência — compara direto.
+        postflop_sizing = None
+        if (action.player == hero and action.street != 'preflop'
+                and action.action in ('bets', 'raises') and decision and gto_strategy):
+            try:
+                from leaklab.sizing_advisor import (gto_main_bet_size_pct as _gms,
+                                                    analyze_postflop_sizing as _pfs)
+                _amt = float(amt or 0)
+                _pot_before = float(pot) - _amt           # pot ANTES da aposta (pot já inclui o amt)
+                if _amt > 0 and _pot_before > 0:
+                    _bbv = float(hand.bb or _ctx.get('levelBb') or 0)
+                    _pre_bb = (_pot_before / _bbv) if _bbv > 0 else None
+                    postflop_sizing = _pfs(hero_pct=_amt / _pot_before * 100.0,
+                                           gto_pct=_gms(gto_strategy, _pre_bb))
+            except Exception:
+                pass
+
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,
@@ -4540,6 +4558,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'reco_rationale':     (decision.get('reco_rationale') if decision else None),  # por que a ação recomendada
             'villain_name':       (_di.get('spot', {}).get('villainName') if decision else None),  # HUD: vilão do spot
             'sizing_advice':      sizing_advice,   # Fase 1: análise do tamanho do open
+            'postflop_sizing':    postflop_sizing,   # Fase 2: aposta do hero vs size do nó GTO
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,

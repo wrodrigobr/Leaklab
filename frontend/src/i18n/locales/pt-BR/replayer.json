@@ -222,7 +222,10 @@
       "open_ok": "padrão ({{ideal}})",
       "open_big": "grande demais — o padrão é {{ideal}}; abrir menor arrisca menos e controla o pote.",
       "open_sb_small": "vs BB, suba pra {{ideal}} — abrir min dá preço bom demais pro BB completar.",
-      "open_iso_small": "iso sobre limp deveria ser maior ({{ideal}})."
+      "open_iso_small": "iso sobre limp deveria ser maior ({{ideal}}).",
+      "postflop_ok": "no padrão do solver (~{{gto}}% do pote)",
+      "postflop_too_big": "grande demais — o solver usa ~{{gto}}% do pote aqui",
+      "postflop_too_small": "pequena demais — o solver usa ~{{gto}}% do pote aqui"
     }
   },
   "controls": {
