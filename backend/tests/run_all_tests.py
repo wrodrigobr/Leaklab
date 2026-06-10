@@ -17,7 +17,7 @@ SUITES = {
                   'test_preflop_gto_quality.py', 'test_recent_regressions.py', 'test_icm.py',
                   'test_elo_engine.py', 'test_leaderboard.py', 'test_invariants.py',
                   'test_equity_range_aware.py', 'test_preflop_open_size.py',
-                  'test_bet_intent.py', 'test_opponent_stats.py'],
+                  'test_bet_intent.py', 'test_opponent_stats.py', 'test_sizing_advisor.py'],
     'database':  ['test_database.py', 'test_coach_system.py', 'test_notifications.py',
                   'test_solve_quota.py'],
     'llm':       ['test_llm_explainer.py', 'test_study_plan.py'],

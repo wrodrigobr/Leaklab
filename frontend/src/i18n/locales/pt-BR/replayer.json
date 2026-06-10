@@ -216,7 +216,14 @@
     "quotaUpgradeHint": "Faça upgrade do plano para análises ilimitadas.",
     "coachCorrect": "Correto",
     "limpDeadMoney": "≈ push/fold · limp tratado como dead money",
-    "limpDeadMoneyTip": "Alguém limpou, mas a stack curto um jam/fold sobre o limp é a MESMA decisão de push/fold (o limp é só dead money, não cria um spot GTO novo). Veredito pelo seu range de push/fold."
+    "limpDeadMoneyTip": "Alguém limpou, mas a stack curto um jam/fold sobre o limp é a MESMA decisão de push/fold (o limp é só dead money, não cria um spot GTO novo). Veredito pelo seu range de push/fold.",
+    "sizingLabel": "Sizing",
+    "sizingAdvice": {
+      "open_ok": "padrão ({{ideal}})",
+      "open_big": "grande demais — o padrão é {{ideal}}; abrir menor arrisca menos e controla o pote.",
+      "open_sb_small": "vs BB, suba pra {{ideal}} — abrir min dá preço bom demais pro BB completar.",
+      "open_iso_small": "iso sobre limp deveria ser maior ({{ideal}})."
+    }
   },
   "controls": {
     "play": "Reproduzir",

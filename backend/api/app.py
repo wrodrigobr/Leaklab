@@ -4499,6 +4499,24 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                         _ip = False
                     gto_coverage = 'ip_facing_bet' if (_ip and _fac > 0) else 'pending'
 
+        # Sizing do OPEN (Fase 1): tamanho do open preflop do hero vs o padrão de teoria
+        # (~2bb; SBxBB sobe). O size sai do raw ("raises X to Y" → Y/bb), não do amount (=BY).
+        sizing_advice = None
+        if (action.player == hero and action.street == 'preflop'
+                and action.action in ('raises', 'all-in') and decision
+                and int(_spot.get('preflopRaisesFaced') or 0) == 0):
+            try:
+                import re as _re_sz
+                _mz = _re_sz.search(r'to\s+([\d.]+)', action.raw or '')
+                _bbz = float(hand.bb or _ctx.get('levelBb') or 0)
+                if _mz and _bbz > 0:
+                    from leaklab.sizing_advisor import analyze_open_sizing as _szadv
+                    sizing_advice = _szadv(to_bb=float(_mz.group(1)) / _bbz,
+                                           position=(_spot.get('position') or ''),
+                                           facing_limp=bool(_spot.get('facingLimp')))
+            except Exception:
+                pass
+
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,
@@ -4521,6 +4539,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'bet_intent':         (decision.get('bet_intent') if decision else None),  # intenção da aposta (value/blefe/meio)
             'reco_rationale':     (decision.get('reco_rationale') if decision else None),  # por que a ação recomendada
             'villain_name':       (_di.get('spot', {}).get('villainName') if decision else None),  # HUD: vilão do spot
+            'sizing_advice':      sizing_advice,   # Fase 1: análise do tamanho do open
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
