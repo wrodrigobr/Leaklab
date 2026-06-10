@@ -226,6 +226,22 @@
       "postflop_ok": "igual al solver (~{{gto}}% del bote)",
       "postflop_too_big": "demasiado grande — el solver usa ~{{gto}}% del bote aquí",
       "postflop_too_small": "demasiado pequeña — el solver usa ~{{gto}}% del bote aquí"
+    },
+    "threebetLabel": "3-bet",
+    "threebetIntent": {
+      "value_3bet": "valor",
+      "merge_3bet": "valor fino",
+      "light_3bet": "light (bluff)"
+    },
+    "threebetGloss": {
+      "value_3bet": "domina el rango que continúa — quiere fichas en el medio",
+      "merge_3bet": "saca valor de peores y niega equity — en el límite",
+      "light_3bet": "poco showdown — 3-bet por fold equity + blockers"
+    },
+    "threebetTip": {
+      "value_3bet": "3-bet de valor: tu mano domina el rango que paga/4-betea. Quieres construir el bote y meter fichas.",
+      "merge_3bet": "3-bet de merge (valor fino): mano en el límite — saca valor de peores que pagan y niega equity a las que foldean. Cuidado vs rangos muy fuertes.",
+      "light_3bet": "3-bet light (bluff): mano de poco showdown que 3-betea por fold equity y por bloquear el valor del rival (ej.: A5s bloquea AA/AK). Necesita suficientes folds — vs un calling station no funciona."
     }
   },
   "controls": {

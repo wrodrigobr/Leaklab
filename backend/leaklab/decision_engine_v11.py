@@ -760,7 +760,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Intenção da aposta/raise postflop (value / proteção / semi-blefe / blefe / "o meio").
     # Só preenche em aposta agressiva postflop; None caso contrário.
-    from leaklab.bet_intent import classify_bet_intent, explain_recommendation
+    from leaklab.bet_intent import classify_bet_intent, explain_recommendation, classify_3bet_intent
     bet_intent = classify_bet_intent(
         player_action=input_data.get("player_action"),
         street=street,
@@ -772,6 +772,16 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         position=spot.get("position"),
         gto=gto,
     )
+
+    # Intenção de um 3-BET preflop (valor / merge / light-blefe) — só em raise preflop
+    # enfrentando exatamente 1 raise (o open). Ensina o PORQUÊ do 3-bet light.
+    threebet_intent = None
+    if (input_data.get('is_3bet') and street == 'preflop'
+            and int(spot.get('preflopRaisesFaced') or 0) == 1):
+        threebet_intent = classify_3bet_intent(
+            hero_cards=input_data.get("hero_cards"),
+            gto=gto,
+        )
 
     # Racional da AÇÃO RECOMENDADA (por que check/bet/call/fold/raise) — sobretudo p/
     # spots heurísticos (sem GTO), onde não há barras de estratégia explicando.
@@ -814,6 +824,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         "interpretation": interpretation,
         "gto": gto,
         "bet_intent": bet_intent,
+        "threebet_intent": threebet_intent,
         "reco_rationale": reco_rationale,
         "preflop_gto": preflop_gto if preflop_gto.get('available') else None,
         "debug": {

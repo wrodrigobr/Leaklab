@@ -174,6 +174,71 @@ def classify_bet_intent(*, player_action: str, street: str, hero_cards, board,
     return {'intent': intent, 'justified': justified, 'is_leak': is_leak, 'gto_bet_freq': gto_bet_freq}
 
 
+def threebet_strength_tier(hero_cards) -> Optional[str]:
+    """Tier de força PREFLOP de uma mão num 3-bet: 'value' | 'merge' | 'light'.
+
+    Enquadra o 3-bet pela sua INTENÇÃO (não pela correção, que é o veredito):
+      value  — domina o range que continua e quer fichas no meio: QQ+, AK.
+      merge  — valor fino / showdown decente no meio do range: 77–JJ, AQ/AJ, A6s+,
+               broadways suited (KQs…JTs? não), KQo. Extrai de pior e nega equity.
+      light  — a porção de BLEFE: pouco showdown, 3-beta por fold equity + blocker.
+               A2s–A5s (wheel aces), 22–66, suited connectors e qualquer mão fraca.
+    """
+    ranks = _ranks_of(hero_cards)
+    if len(ranks) < 2:
+        return None
+    a, b = _rv(ranks[0]), _rv(ranks[1])
+    if a == 0 or b == 0:
+        return None
+    hi, lo = max(a, b), min(a, b)
+    suits  = _suits_of(hero_cards)
+    suited = len(suits) == 2 and suits[0] == suits[1]
+    pair   = hi == lo
+
+    # VALUE — QQ+ e AK
+    if pair and hi >= 12:
+        return 'value'
+    if hi == 14 and lo == 13:
+        return 'value'
+
+    # MERGE — showdown decente / valor fino no meio do range
+    if pair and hi >= 7:                          # 77–JJ
+        return 'merge'
+    if hi == 14 and lo >= 11:                     # AJ, AQ (s/o)
+        return 'merge'
+    if hi == 14 and suited and lo >= 6:           # A6s–ATs
+        return 'merge'
+    if suited and hi >= 12 and lo >= 10:          # KQs/KJs/KTs/QJs/QTs/JTs(=11,10) broadway suited
+        return 'merge'
+    if hi == 13 and lo == 12:                     # KQo
+        return 'merge'
+
+    # LIGHT — porção de blefe (residual): A2s–A5s, 22–66, connectors, mãos fracas
+    return 'light'
+
+
+def classify_3bet_intent(*, hero_cards, gto: Optional[dict] = None) -> Optional[dict]:
+    """Intenção de um 3-BET preflop do hero: valor / merge / light(blefe).
+
+    Retorna {intent, tier, justified} ou None (sem cartas).
+      intent: value_3bet | merge_3bet | light_3bet
+      justified: True/False se há veredito GTO; None se sem cobertura (light precisa de
+                 read de fold equity — não dá pra cravar leak sem o range).
+    """
+    tier = threebet_strength_tier(hero_cards)
+    if tier is None:
+        return None
+    intent = {'value': 'value_3bet', 'merge': 'merge_3bet', 'light': 'light_3bet'}[tier]
+    gl = (gto or {}).get('gto_label')
+    if gl in ('gto_correct', 'gto_mixed'):
+        justified = True
+    elif gl in ('gto_minor', 'gto_critical'):
+        justified = False
+    else:
+        justified = None
+    return {'intent': intent, 'tier': tier, 'justified': justified}
+
+
 def explain_recommendation(*, best_action: str, hero_cards, board,
                            equity: Optional[float], equity_adj: Optional[float],
                            position: str, n_opponents: Optional[int],

@@ -622,6 +622,21 @@ function SidePanels({
                 </div>
               );
             })()}
+            {/* Intenção do 3-BET (preflop): valor / merge / light(blefe) — ensina o PORQUÊ. */}
+            {(() => {
+              const ti = (step as { threebet_intent?: { intent: string; tier: string; justified: boolean | null } }).threebet_intent;
+              if (!ti?.intent) return null;
+              const tone = ti.tier === "value" ? "text-emerald-300" : ti.tier === "merge" ? "text-amber-300" : "text-sky-300";
+              return (
+                <div className="flex items-baseline gap-2.5 font-mono text-[11px]" title={t(`card.threebetTip.${ti.intent}`)}>
+                  <span className="w-[74px] shrink-0 uppercase text-[9px] tracking-wider text-muted-foreground/60 pt-px">{t("card.threebetLabel")}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className={cn("font-bold", tone)}>{t(`card.threebetIntent.${ti.intent}`)}</span>
+                    <span className="text-muted-foreground/70"> · {t(`card.threebetGloss.${ti.intent}`)}</span>
+                  </span>
+                </div>
+              );
+            })()}
             {/* Racional da jogada recomendada — em spots HEURÍSTICOS (sem barras de
                 estratégia GTO pra explicar), diz POR QUE check/bet/call/fold é o ideal. */}
             {isPostflop && !hasGto && (() => {

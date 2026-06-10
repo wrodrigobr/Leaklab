@@ -9,7 +9,8 @@ middle / bluff) com o árbitro GTO (justified / is_leak).
 import sys, os, traceback
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from leaklab.bet_intent import made_hand_category, classify_bet_intent, _board_wet
+from leaklab.bet_intent import (made_hand_category, classify_bet_intent, _board_wet,
+                                threebet_strength_tier, classify_3bet_intent)
 
 
 # ── Tier de força de mão ────────────────────────────────────────────────────────
@@ -195,6 +196,52 @@ def test_intent_value_never_leak():
     assert r['intent'].startswith('value')
     assert r['is_leak'] is False
     print("OK  test_intent_value_never_leak")
+
+
+# ── 3-bet intent (valor / merge / light) ─────────────────────────────────────
+
+def test_3bet_tier_value_premiums():
+    for c in (['Ah', 'As'], ['Kh', 'Ks'], ['Qd', 'Qc'], ['Ah', 'Kd'], ['As', 'Ks']):
+        assert threebet_strength_tier(c) == 'value', c
+    print("OK  test_3bet_tier_value_premiums")
+
+
+def test_3bet_tier_merge_middle():
+    for c in (['Jh', 'Js'], ['9h', '9s'], ['Ah', 'Qd'], ['Ah', 'Jh'],   # JJ,99,AQo,AJs
+              ['Ah', 'Th'], ['Kh', 'Qh'], ['Kd', 'Qc'], ['Qh', 'Th']):   # ATs,KQs,KQo,QTs
+        assert threebet_strength_tier(c) == 'merge', c
+    print("OK  test_3bet_tier_merge_middle")
+
+
+def test_3bet_tier_light_bluffs():
+    for c in (['Ah', '5h'], ['Ad', '4d'], ['6h', '6s'], ['3h', '3s'],   # A5s,A4s,66,33
+              ['7h', '6h'], ['9s', '8s'], ['7d', '2c'], ['Jh', 'Th']):   # 76s,98s,72o,JTs
+        assert threebet_strength_tier(c) == 'light', c
+    print("OK  test_3bet_tier_light_bluffs")
+
+
+def test_3bet_intent_justified_by_gto():
+    r = classify_3bet_intent(hero_cards=['Ah', '5h'], gto={'gto_label': 'gto_mixed'})
+    assert r['intent'] == 'light_3bet' and r['tier'] == 'light' and r['justified'] is True
+    print("OK  test_3bet_intent_justified_by_gto")
+
+
+def test_3bet_intent_unjustified_critical():
+    r = classify_3bet_intent(hero_cards=['7d', '2c'], gto={'gto_label': 'gto_critical'})
+    assert r['intent'] == 'light_3bet' and r['justified'] is False
+    print("OK  test_3bet_intent_unjustified_critical")
+
+
+def test_3bet_intent_no_coverage_none_justified():
+    r = classify_3bet_intent(hero_cards=['Ah', 'As'], gto={})
+    assert r['intent'] == 'value_3bet' and r['justified'] is None
+    print("OK  test_3bet_intent_no_coverage_none_justified")
+
+
+def test_3bet_intent_none_without_cards():
+    assert classify_3bet_intent(hero_cards=[]) is None
+    assert threebet_strength_tier(['Ah']) is None
+    print("OK  test_3bet_intent_none_without_cards")
 
 
 if __name__ == '__main__':

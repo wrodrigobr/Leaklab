@@ -226,6 +226,22 @@
       "postflop_ok": "matches the solver (~{{gto}}% pot)",
       "postflop_too_big": "too big — the solver uses ~{{gto}}% pot here",
       "postflop_too_small": "too small — the solver uses ~{{gto}}% pot here"
+    },
+    "threebetLabel": "3-bet",
+    "threebetIntent": {
+      "value_3bet": "value",
+      "merge_3bet": "thin value",
+      "light_3bet": "light (bluff)"
+    },
+    "threebetGloss": {
+      "value_3bet": "dominates the continuing range — wants chips in the middle",
+      "merge_3bet": "gets value from worse and denies equity — borderline",
+      "light_3bet": "little showdown — 3-bets for fold equity + blockers"
+    },
+    "threebetTip": {
+      "value_3bet": "Value 3-bet: your hand dominates the range that calls/4-bets. You want to build the pot and get chips in.",
+      "merge_3bet": "Merge (thin-value) 3-bet: a borderline hand — gets value from worse hands that call and denies equity to those that fold. Careful vs very strong ranges.",
+      "light_3bet": "Light (bluff) 3-bet: a low-showdown hand that 3-bets for fold equity and to block the villains value (e.g. A5s blocks AA/AK). It needs enough folds — vs a calling station it doesnt work."
     }
   },
   "controls": {

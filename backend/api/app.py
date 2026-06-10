@@ -3731,6 +3731,7 @@ def get_replay(tournament_id, hand_id):
                 'facing_bet':   gto_data.get('facing_bet'),
                 'ev_loss_bb':   (r.get('gto') or {}).get('ev_loss_bb'),  # #24 (live)
                 'bet_intent':   r.get('bet_intent'),
+                'threebet_intent': r.get('threebet_intent'),  # intenção do 3-bet (valor/merge/light)
                 'reco_rationale': r.get('reco_rationale'),
                 '_di':          di,
             })
@@ -4555,6 +4556,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'gto_depth_capped':   (action.street != 'preflop' and bool(gto_label)
                                    and float(_spot.get('effectiveStackBb') or 0) > 60.0),
             'bet_intent':         (decision.get('bet_intent') if decision else None),  # intenção da aposta (value/blefe/meio)
+            'threebet_intent':    (decision.get('threebet_intent') if decision else None),  # intenção do 3-bet (valor/merge/light)
             'reco_rationale':     (decision.get('reco_rationale') if decision else None),  # por que a ação recomendada
             'villain_name':       (_di.get('spot', {}).get('villainName') if decision else None),  # HUD: vilão do spot
             'sizing_advice':      sizing_advice,   # Fase 1: análise do tamanho do open
