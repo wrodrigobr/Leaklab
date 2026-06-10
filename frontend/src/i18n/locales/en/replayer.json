@@ -110,7 +110,7 @@
     "rationaleTitle": "Why this is the best play",
     "rationale": {
       "check_marginal": "Weak/medium hand ({{eq}}%) with no strong draw. Betting doesn't extract value (worse hands fold, better ones call) and there's no profitable bluff — checking controls the pot.",
-      "check_marginal_mw": "Weak/medium hand ({{eq}}%) with no strong draw, in a {{n}}-way pot. Betting value-cuts and bluffing into several players rarely works — checking controls the pot.",
+      "check_marginal_mw": "Weak/medium hand ({{eq}}%) with no strong draw, in a {{n}}-way pot. Betting doesn't extract value (worse hands fold, better ones call) and bluffing into several players rarely works — checking controls the pot.",
       "check_strong": "Strong hand: checking can induce a bet from the villain or control the pot size (the board doesn't need protection).",
       "bet_value": "Strong hand ({{eq}}%): value bet — you want worse hands to call.",
       "bet_protection": "Strong hand, but the board is wet: bet for value and protect, charging the villain's draws.",

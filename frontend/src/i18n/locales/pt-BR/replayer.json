@@ -110,7 +110,7 @@
     "rationaleTitle": "Por que essa é a melhor jogada",
     "rationale": {
       "check_marginal": "Mão fraca/média ({{eq}}%) sem projeto forte. Apostar não extrai valor (as piores foldam, as melhores pagam) e não há blefe lucrativo — check controla o pote.",
-      "check_marginal_mw": "Mão fraca/média ({{eq}}%) sem projeto forte, em pote {{n}}-way. Apostar value-corta e blefar contra vários raramente passa — check controla o pote.",
+      "check_marginal_mw": "Mão fraca/média ({{eq}}%) sem projeto forte, em pote {{n}}-way. Apostar não extrai valor (as piores foldam, as melhores pagam) e, contra vários, blefar raramente funciona — check controla o pote.",
       "check_strong": "Mão forte: dar check pode induzir uma aposta do vilão ou controlar o tamanho do pote (o board não pede proteção).",
       "bet_value": "Mão forte ({{eq}}%): aposta por valor — você quer que mãos piores paguem.",
       "bet_protection": "Mão forte, mas o board é molhado: aposta por valor e protege, cobrando caro pelos projetos do vilão.",

@@ -110,7 +110,7 @@
     "rationaleTitle": "Por qué esta es la mejor jugada",
     "rationale": {
       "check_marginal": "Mano floja/media ({{eq}}%) sin proyecto fuerte. Apostar no extrae valor (las peores foldean, las mejores pagan) y no hay bluff rentable — hacer check controla el bote.",
-      "check_marginal_mw": "Mano floja/media ({{eq}}%) sin proyecto fuerte, en un bote de {{n}} jugadores. Apostar value-corta y farolear contra varios rara vez funciona — check controla el bote.",
+      "check_marginal_mw": "Mano floja/media ({{eq}}%) sin proyecto fuerte, en un bote de {{n}} jugadores. Apostar no extrae valor (las peores foldean, las mejores pagan) y farolear contra varios rara vez funciona — check controla el bote.",
       "check_strong": "Mano fuerte: hacer check puede inducir una apuesta del rival o controlar el tamaño del bote (el board no pide protección).",
       "bet_value": "Mano fuerte ({{eq}}%): apuesta por valor — quieres que las manos peores paguen.",
       "bet_protection": "Mano fuerte, pero el board está mojado: apuesta por valor y protege, cobrando los proyectos del rival.",
