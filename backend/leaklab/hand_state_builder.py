@@ -286,6 +286,16 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         # Usado para ajustar equity heuristica vs HU em postflop multiway.
         n_active_opponents = max(0, len(active_in_street) - 1)  # exclui hero
 
+        # Vilão em HU postflop quando ele deu CHECK (hero é o agressor): o loop acima só
+        # captura quem APOSTOU antes do hero; com o vilão dando check, ficava 'unknown' →
+        # o spot caía em "sem vilão" e PERDIA a cobertura GTO (ex.: c-bet HU num pote que
+        # começou multiway e afunilou). Se há exatamente 1 oponente vivo na street, ele É
+        # o vilão — resolve a posição pra alimentar a range adversária no solver.
+        if villain_position == 'unknown' and n_active_opponents == 1 and street != 'preflop':
+            _opp = next((p for p in active_in_street if p != hero), None)
+            if _opp:
+                villain_position = _infer_position(hand, _opp)
+
         # Board correto para a street atual
         board_at_street = _board_for_street(
             hand.raw_text if hasattr(hand, 'raw_text') else '',
