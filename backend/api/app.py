@@ -4215,8 +4215,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     vs_position    = _spot.get('villainPosition', _ctx.get('vsPosition', '')),
                     facing_size_bb = float(decision.get('facing_bet', 0) or 0),
                     pot_bb         = float(_spot.get('potBb', 0) or 0),     # BB, não fichas (potSize)
-                    block_remote   = (not gto_label),
-                    allow_remote_solve = False,   # /replay é READ-ONLY: nunca solva na requisição
+                    # READ-ONLY: block_remote=False faz o lookup_gto dar short-circuit (sem
+                    # GW nem Texas) quando NÃO há nó local. O `(not gto_label)` antigo passava
+                    # block_remote=True em spot não-coberto → caía na query GW (timeout 20s,
+                    # GW 'degraded') → /replay travava 20–80s. Coberto retorna o nó cacheado antes.
+                    block_remote   = False,
+                    allow_remote_solve = False,   # defensivo: nunca solva na requisição
                 )
                 if _gto_result.get('found') and _gto_result.get('strategy'):
                     gto_strategy = _gto_result['strategy']
