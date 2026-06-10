@@ -2220,7 +2220,15 @@ def _enrich_note(row: dict) -> str:
 def _detect_showdown(raw_text: str, hero: str) -> str | None:
     """Retorna 'won', 'lost' ou None se o hero não chegou ao showdown.
     Só conta showdown se o hero mostrou cartas (participou efetivamente).
+
+    Fonte primária: a seção SUMMARY ("Seat N: Hero showed [...] and won/lost") —
+    formato comum a PokerStars e GGPoker. Fallback: a linha de AÇÃO "Hero: shows
+    [...]" + "Hero collected" (variante onde o summary não traz o veredito).
     """
+    from leaklab.parser import _extract_showdown_result
+    res = _extract_showdown_result(raw_text, hero)
+    if res is not None:
+        return res
     shows_pat = re.compile(r'\b' + re.escape(hero) + r'\s*:\s*shows?\b')
     if not shows_pat.search(raw_text):
         return None

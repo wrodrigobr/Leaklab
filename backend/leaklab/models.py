@@ -27,6 +27,7 @@ class ParsedHand:
     raw_text: str = ""
     bounties: Dict[str, float] = field(default_factory=dict)   # player -> bounty value
     is_pko:   bool = False                                     # PKO/Bounty tournament flag
+    showdown_result: Optional[str] = None                      # 'won'|'lost'|None (hero no showdown)
 
 
 @dataclass

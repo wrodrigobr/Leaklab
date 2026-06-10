@@ -109,6 +109,19 @@ def test_leak_correlator_runs():
     print(f"OK  test_leak_correlator_runs | {total_buckets} buckets")
 
 
+def test_extract_showdown_result():
+    """W$SD depende disto: lê o veredito do hero na seção SUMMARY (won/lost/None)."""
+    from leaklab.parser import _extract_showdown_result as SD
+    won = "*** SUMMARY ***\nSeat 3: b75bd8ef (button) showed [8c 8h] and won (780) with three of a kind\nSeat 4: Hero showed [Ac Kd] and won (260) with a pair"
+    lost = "*** SUMMARY ***\nSeat 4: Hero showed [6c Ad] and lost with Ace high\nSeat 6: 9c913301 showed [Qc Kd] and won (780)"
+    folded = "*** SUMMARY ***\nSeat 4: Hero folded before Flop\nSeat 6: 9c913301 showed [Qc Kd] and won (780)"
+    assert SD(won, 'Hero') == 'won'
+    assert SD(lost, 'Hero') == 'lost'
+    assert SD(folded, 'Hero') is None          # foldou: não chegou ao showdown
+    assert SD(won, None) is None
+    print("OK  test_extract_showdown_result")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

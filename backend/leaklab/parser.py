@@ -1,6 +1,6 @@
 from __future__ import annotations
 import re
-from typing import List
+from typing import List, Optional
 from .models import ParsedHand, ParsedAction
 
 # ── PokerStars patterns ───────────────────────────────────────────────────────
@@ -212,7 +212,35 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
         raw_text=raw_text,
         bounties=bounties,
         is_pko=is_pko,
+        showdown_result=_extract_showdown_result(raw_text, hero_name),
     )
+
+
+# Linha de summary do showdown (PokerStars/GGPoker):
+#   "Seat 4: Hero showed [6c Ad] and lost with Ace high"
+#   "Seat 3: b75bd8ef (button) showed [8c 8h] and won (780) with three of a kind"
+_SD_SUMMARY_RE = re.compile(
+    r"^Seat\s+\d+:\s+(?P<player>.+?)\s+(?:\([^)]*\)\s+)?showed\s+\[", re.IGNORECASE
+)
+
+
+def _extract_showdown_result(raw_text: str, hero: str | None) -> Optional[str]:
+    """Resultado do hero NO SHOWDOWN: 'won' | 'lost' | None (não chegou/não revelou).
+
+    Lê a seção SUMMARY: a linha do hero com 'showed [...]' + 'and won'/'and lost'.
+    None quando o hero não revelou (foldou antes / ganhou sem showdown) — assim o
+    denominador do W$SD conta só showdowns de verdade."""
+    if not hero:
+        return None
+    for line in raw_text.splitlines():
+        m = _SD_SUMMARY_RE.match(line.strip())
+        if m and m.group("player").strip() == hero:
+            low = line.lower()
+            if "and won" in low or "won (" in low:
+                return "won"
+            if "and lost" in low or " lost " in low:
+                return "lost"
+    return None
 
 
 # ── PartyGaming dialect parser (888poker / PartyPoker) ────────────────────────

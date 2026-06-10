@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(stats): W$SD vazio no dashboard — showdown_result nunca era populado
+
+> O indicador **W$SD** (`w_at_sd`, PlayerStatsCard) vinha vazio ("—"): a coluna `showdown_result` estava NULL em **todas** as 1467 decisions. `_detect_showdown` só reconhecia o formato de AÇÃO do PokerStars (`Hero: shows [...]`), mas estes dados (GGPoker) revelam as cartas só na seção **SUMMARY** (`Seat 4: Hero showed [...] and lost`, passado, sem `:` após o nome) → nunca casava → None. Novo `parser._extract_showdown_result` lê o SUMMARY (won/lost/None pelo veredito do hero; formato comum a PokerStars e GGPoker), exposto em `ParsedHand.showdown_result`; `_detect_showdown` agora delega a ele (mantém o fallback antigo). Backfill das 1467 decisions existentes (56 showdowns: 34 won / 22 lost) → **W$SD = 60,7%**. Uploads futuros populam automático. +1 teste; suíte completa 886/886.
+
 ### feat(sizing): Fase 3 — sizing postflop por heurística de textura (spots SEM nó GTO)
 
 > Fecha o plano de sizing. Em spots postflop **sem cobertura GTO** (multiway/deep/sem nó) não há solver pra comparar — então `sizing_advisor.analyze_postflop_texture_sizing` dá um guia heurístico: board **seco** → aposta pequena (~33%, range bet — sem draw pra cobrar); **molhado** → maior (~66%, cobra os projetos); **muito molhado** (flush/straight) → grande (~85%+). `_board_texture` classifica dry/wet/very_wet por naipes+conexão; nudge IP/OOP + SPR baixo (comprometido tolera menor). **Bandas LARGAS de propósito** — em spot sem solver a latitude é grande, então só sinaliza OUTLIER claro (a aposta minúscula que não cobra o draw, o overbet sem motivo), não cada desvio do alvo de teoria; o `ideal` é o que o tooltip ensina. Só `bets` (não raises). Bloco "Sizing" no card mostra "33% · board molhado — pequena demais; o padrão é ~66%". Validado real: dos bets postflop sem nó, 15 ok / 11 flag (todos apostas ≤38% em board molhado — padrão real de small-ball do hero). +9 testes (29 no `test_sizing_advisor`); api 42/42.
