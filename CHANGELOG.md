@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### copy(table): "44% GTO" → "cobertura GTO 44%" (era lido como nota de qualidade)
+
+> O chip de status do torneio mostrava "✓ Analisado · {{pct}}% GTO" — a `gto_coverage_pct` (% de decisões COM nó GTO; o resto é heurístico). Mas "44% GTO" parecia uma **nota de qualidade**, contradizendo a narrativa ("80% das decisões dentro do padrão"). São métricas distintas: 44% = **cobertura** (quanto da sessão o solver analisou), 80% = **qualidade** (standard_pct, quantas decisões foram sólidas). Label reescrito pra **"cobertura GTO {{pct}}%"** (common + dashboard, 3 locales) — desambigua sem mudar o dado.
+
 ### feat(hud): Fase 3 — camada de EXPLOIT no card (ajuste vs GTO conforme o vilão)
 
 > O ouro do HUD: o card agora mostra um bloco **"⚡ Ajuste vs oponente"** que sugere o desvio **exploitativo** sobre o veredito GTO/heurístico, conforme o perfil do vilão. `opponent_stats.compute_exploit(action, best_action, bet_intent, street, profile)` retorna `{key, params, severity}` com 6 regras ancoradas em stat: **dont_bluff_station** (blefe vs station → desista, é −EV), **value_thicker_station** (value vs station → aposte maior/fino), **station_bets_strength** (station apostando = força → overfold), **call_wider_aggro** (vs maniac/LAG → pague mais largo), **overfold_nit** (vs nit → folde marginais), **bluff_more_nit** (nit foldão → blefe mais). **Disciplina inegociável: só dispara com `confidence='high'`** (arquétipo confiável) e cada regra carrega o stat que a justifica — sem amostra, nada (não substitui o GTO, é ajuste). Integrado no `/replay` (computa por step a partir do contexto da decisão + `villain_profile`); frontend mostra o bloco em vermelho (severity high) ou âmbar (medium), logo abaixo do perfil. i18n `card.exploit*` (3 locales). **Validado em dados reais:** hero vs `Croesy0822` (calling station, high) → `station_bets_strength` dispara ("passivo apostando = força, overfold"). `test_opponent_stats` +5 (14 total); api 42/42. Conclui as Fases 1-3 do HUD de oponente.

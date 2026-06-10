@@ -58,7 +58,7 @@
     "pending": "En cola",
     "gtoPending": "Análisis GTO en curso",
     "gtoPendingTooltip": "El sync GTO aún no se completó. Los KPIs pueden cambiar cuando termine.",
-    "gtoCoverage": "{{pct}}% GTO",
+    "gtoCoverage": "cobertura GTO {{pct}}%",
     "gtoCoverageTooltip": "Porcentaje de decisiones de este torneo con análisis GTO disponible.",
     "active": "Activo",
     "inactive": "Inactivo",

@@ -175,7 +175,7 @@
     "inQueue": "In queue",
     "gtoPending": "GTO analysis in progress",
     "gtoPendingTooltip": "GTO sync hasn't completed for this tournament yet. KPIs may change once analysis finishes.",
-    "gtoCoverage": "{{pct}}% GTO",
+    "gtoCoverage": "GTO coverage {{pct}}%",
     "gtoCoverageTooltip": "Percentage of this tournament's decisions with GTO analysis available. The rest use heuristic classification.",
     "open": "Open {{id}}",
     "actions": "Actions",
