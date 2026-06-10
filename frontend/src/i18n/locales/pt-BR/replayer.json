@@ -107,6 +107,24 @@
     "blockCost": "Custo",
     "blockMargin": "Margem",
     "blockGeo": "Geometria",
+    "villainTitle": "Oponente",
+    "villainHands": "{{n}} mãos",
+    "villainSampleLow": "amostra baixa",
+    "villainSampleLowTip": "Poucas mãos vistas deste jogador — sem leitura confiável ainda. Os reads só aparecem com amostra suficiente.",
+    "archetype": {
+      "calling_station": "Calling station",
+      "nit": "Nit",
+      "tag": "TAG",
+      "lag": "LAG",
+      "maniac": "Maníaco"
+    },
+    "archetypeHint": {
+      "calling_station": "Paga demais. Blefes rendem menos; aposte por valor mais fino e desista dos blefes.",
+      "nit": "Muito tight e foldão. Respeite a agressão dele; blefe mais e pague menos.",
+      "tag": "Sólido (tight-agressivo). Joga perto do GTO — poucos vazamentos a explorar.",
+      "lag": "Solto e agressivo. Pague mais largo; cuidado em foldar demais à pressão dele.",
+      "maniac": "Hiper agressivo. Pague e re-aumente mais largo por valor; deixe ele blefar."
+    },
     "rationaleTitle": "Por que essa é a melhor jogada",
     "rationale": {
       "check_marginal": "Mão fraca/média ({{eq}}%) sem projeto forte. Apostar não extrai valor (as piores foldam, as melhores pagam) e não há blefe lucrativo — check controla o pote.",

@@ -107,6 +107,24 @@
     "blockCost": "Coste",
     "blockMargin": "Margen",
     "blockGeo": "Geometría",
+    "villainTitle": "Oponente",
+    "villainHands": "{{n}} manos",
+    "villainSampleLow": "muestra baja",
+    "villainSampleLowTip": "Pocas manos vistas de este jugador — aún sin lectura confiable. Las lecturas solo aparecen con muestra suficiente.",
+    "archetype": {
+      "calling_station": "Calling station",
+      "nit": "Nit",
+      "tag": "TAG",
+      "lag": "LAG",
+      "maniac": "Maníaco"
+    },
+    "archetypeHint": {
+      "calling_station": "Paga demasiado. Los bluffs rinden menos; apuesta por valor más fino y abandona los bluffs.",
+      "nit": "Muy tight y foldea mucho. Respeta su agresión; farolea más y paga menos.",
+      "tag": "Sólido (tight-agresivo). Juega cerca del GTO — pocos leaks que explotar.",
+      "lag": "Suelto y agresivo. Paga más amplio; cuidado con foldear de más a su presión.",
+      "maniac": "Hiper-agresivo. Paga y re-sube más amplio por valor; déjalo farolear."
+    },
     "rationaleTitle": "Por qué esta es la mejor jugada",
     "rationale": {
       "check_marginal": "Mano floja/media ({{eq}}%) sin proyecto fuerte. Apostar no extrae valor (las peores foldean, las mejores pagan) y no hay bluff rentable — hacer check controla el bote.",

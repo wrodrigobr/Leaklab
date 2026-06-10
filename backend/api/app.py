@@ -3729,6 +3729,22 @@ def get_replay(tournament_id, hand_id):
 
     # Construir replay data (parte pesada — vai pro cache)
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
+
+    # HUD Fase 2: anexa o perfil de comportamento do vilão a cada step (lookup por nome
+    # no torneio). t['id'] é o id LOCAL — mesma chave do opponent_profiles.
+    try:
+        from database.repositories import get_opponent_profiles as _get_opp
+        _opp_map = {p['player']: {'archetype': p['archetype'], 'confidence': p['confidence'],
+                                  'hands': p['hands'], 'stats': p['stats']}
+                    for p in _get_opp(t['id'])}
+        if _opp_map:
+            for _st in replay.get('timeline', []):
+                _vn = _st.get('villain_name')
+                if _vn and _vn in _opp_map:
+                    _st['villain_profile'] = _opp_map[_vn]
+    except Exception:
+        pass
+
     _replay_cache_set(_cache_key, dict(replay))
 
     # Incluir anotações do coach para o aluno visualizar no replay (rapido, fora do cache)
@@ -4483,6 +4499,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                    and float(_spot.get('effectiveStackBb') or 0) > 60.0),
             'bet_intent':         (decision.get('bet_intent') if decision else None),  # intenção da aposta (value/blefe/meio)
             'reco_rationale':     (decision.get('reco_rationale') if decision else None),  # por que a ação recomendada
+            'villain_name':       (_di.get('spot', {}).get('villainName') if decision else None),  # HUD: vilão do spot
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,

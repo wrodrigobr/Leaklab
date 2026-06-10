@@ -107,6 +107,24 @@
     "blockCost": "Cost",
     "blockMargin": "Margin",
     "blockGeo": "Geometry",
+    "villainTitle": "Opponent",
+    "villainHands": "{{n}} hands",
+    "villainSampleLow": "low sample",
+    "villainSampleLowTip": "Few hands seen from this player — no reliable read yet. Reads only appear with enough sample.",
+    "archetype": {
+      "calling_station": "Calling station",
+      "nit": "Nit",
+      "tag": "TAG",
+      "lag": "LAG",
+      "maniac": "Maniac"
+    },
+    "archetypeHint": {
+      "calling_station": "Calls too much. Bluffs work less; value-bet thinner and give up the bluffs.",
+      "nit": "Very tight and folds a lot. Respect his aggression; bluff more and pay off less.",
+      "tag": "Solid (tight-aggressive). Plays close to GTO — few leaks to exploit.",
+      "lag": "Loose and aggressive. Call wider; careful not to over-fold to his pressure.",
+      "maniac": "Hyper-aggressive. Call and re-raise wider for value; let him bluff."
+    },
     "rationaleTitle": "Why this is the best play",
     "rationale": {
       "check_marginal": "Weak/medium hand ({{eq}}%) with no strong draw. Betting doesn't extract value (worse hands fold, better ones call) and there's no profitable bluff — checking controls the pot.",

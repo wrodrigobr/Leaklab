@@ -228,8 +228,10 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
 
         # Determinar villain_position: quem fez a última aposta antes do hero
         villain_position = 'unknown'
+        villain_name = None
         for a in reversed(actions_before):
             if a.player != hero and a.action in {'bets', 'raises', 'all-in'}:
+                villain_name = a.player
                 villain_position = _infer_position(hand, a.player)
                 break
 
@@ -294,6 +296,7 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         if villain_position == 'unknown' and n_active_opponents == 1 and street != 'preflop':
             _opp = next((p for p in active_in_street if p != hero), None)
             if _opp:
+                villain_name = _opp
                 villain_position = _infer_position(hand, _opp)
 
         # Board correto para a street atual
@@ -328,6 +331,7 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'hero_was_aggressor': hero_was_aggressor,
                 'facing_limp': facing_limp,
                 'caller_position': caller_position,
+                'villain_name': villain_name,   # HUD: nome do vilão do spot (lookup do perfil)
                 'facing_to_bb': facing_to_bb,  # #23: tamanho do open enfrentado (bb)
             },
         )

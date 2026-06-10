@@ -99,6 +99,7 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'spotType':         spot.spot_type,
             'position':         state.position,
             'villainPosition':  state.villain_position,
+            'villainName':      state.metadata.get('villain_name'),
             'isInPosition':     state.is_in_position,
             'isMultiway':       state.is_multiway,
             'effectiveStackBb': state.effective_stack_bb,
