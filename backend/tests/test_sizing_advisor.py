@@ -5,6 +5,8 @@ from leaklab.sizing_advisor import (analyze_open_sizing as A,
                                     gto_main_bet_size_pct as G,
                                     analyze_postflop_sizing as P,
                                     analyze_3bet_sizing as B,
+                                    analyze_postflop_texture_sizing as TX,
+                                    _board_texture as TEX,
                                     _size_label_to_pct as L)
 
 
@@ -156,6 +158,56 @@ def test_3bet_none_when_missing():
     assert B(to_bb=7.5, open_to_bb=0, is_ip=True) is None
     assert B(to_bb=7.5, open_to_bb=None, is_ip=True) is None
     print("OK  test_3bet_none_when_missing")
+
+
+# ── Fase 3: sizing postflop por textura (sem nó GTO) ─────────────────────────
+
+def test_texture_dry_wet_verywet():
+    assert TEX(['Kh', '7d', '2c']) == 'dry'           # rainbow desconexo
+    assert TEX(['Kh', '8h', '3c']) == 'wet'           # 2-flush (h) desconexo
+    assert TEX(['Jh', 'Th', '9h']) == 'very_wet'      # monotone
+    assert TEX(['Qh', 'Jd', 'Tc']) == 'wet'           # conexão sem flush
+    print("OK  test_texture_dry_wet_verywet")
+
+
+def test_tex_dry_small_bet_ok():
+    # board seco, c-bet 33% IP → ok
+    r = TX(hero_pct=33, board=['Kh', '7d', '2c'], is_ip=True)
+    assert r['key'] == 'tex_ok' and r['params']['tex'] == 'dry'
+    print("OK  test_tex_dry_small_bet_ok")
+
+
+def test_tex_dry_overbet_flagged():
+    # board seco, apostou 90% → grande demais
+    r = TX(hero_pct=90, board=['Kh', '7d', '2c'], is_ip=True)
+    assert r['key'] == 'tex_big' and r['status'] == 'warn'
+    print("OK  test_tex_dry_overbet_flagged")
+
+
+def test_tex_wet_needs_bigger():
+    # board muito molhado, apostou só 30% → pequena demais (não cobra os draws)
+    r = TX(hero_pct=30, board=['Jh', 'Th', '9h'], is_ip=True)
+    assert r['key'] == 'tex_small'
+    print("OK  test_tex_wet_needs_bigger")
+
+
+def test_tex_wet_big_bet_ok():
+    r = TX(hero_pct=80, board=['Jh', 'Th', '9h'], is_ip=True)
+    assert r['key'] == 'tex_ok' and r['params']['tex'] == 'very_wet'
+    print("OK  test_tex_wet_big_bet_ok")
+
+
+def test_tex_low_spr_tolerates_small():
+    # board molhado: dinky (<28) flaga; com SPR baixo a banda abre e 24% passa (comprometido)
+    assert TX(hero_pct=24, board=['Kh', '8h', '3c'], is_ip=True)['key'] == 'tex_small'
+    assert TX(hero_pct=24, board=['Kh', '8h', '3c'], is_ip=True, spr=2.0)['key'] == 'tex_ok'
+    print("OK  test_tex_low_spr_tolerates_small")
+
+
+def test_tex_none_preflop_or_missing():
+    assert TX(hero_pct=50, board=[], is_ip=True) is None
+    assert TX(hero_pct=None, board=['Kh', '7d', '2c'], is_ip=True) is None
+    print("OK  test_tex_none_preflop_or_missing")
 
 
 if __name__ == '__main__':

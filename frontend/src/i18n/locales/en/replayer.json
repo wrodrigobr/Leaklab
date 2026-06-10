@@ -228,7 +228,10 @@
       "postflop_too_small": "too small — the solver uses ~{{gto}}% pot here",
       "3bet_ok": "{{pos}} standard ({{ideal}} the open)",
       "3bet_big": "{{pos}}: too big — standard is {{ideal}} the open",
-      "3bet_small": "{{pos}}: too small — standard is {{ideal}} the open; a small 3-bet gives the open too good a price to call"
+      "3bet_small": "{{pos}}: too small — standard is {{ideal}} the open; a small 3-bet gives the open too good a price to call",
+      "tex_ok": "{{tex}} board — standard ({{ideal}} pot)",
+      "tex_big": "{{tex}} board — too big; standard is {{ideal}} pot",
+      "tex_small": "{{tex}} board — too small; standard is {{ideal}} pot"
     },
     "threebetLabel": "3-bet",
     "threebetIntent": {
@@ -245,6 +248,16 @@
       "value_3bet": "Value 3-bet: your hand dominates the range that calls/4-bets. You want to build the pot and get chips in.",
       "merge_3bet": "Merge (thin-value) 3-bet: a borderline hand — gets value from worse hands that call and denies equity to those that fold. Careful vs very strong ranges.",
       "light_3bet": "Light (bluff) 3-bet: a low-showdown hand that 3-bets for fold equity and to block the villains value (e.g. A5s blocks AA/AK). It needs enough folds — vs a calling station it doesnt work."
+    },
+    "sizingTexture": {
+      "dry": "dry",
+      "wet": "wet",
+      "very_wet": "very wet"
+    },
+    "sizingTextureTip": {
+      "dry": "Dry board (no draws): bet SMALL (~33%) — range bet. No draws to charge, so bet cheap with your whole range.",
+      "wet": "Wet board (draws possible): bet BIGGER (~66%) — charges the opponents draws and denies equity.",
+      "very_wet": "Very wet board (flush/straight possible): bet BIG (~85%+) — polarize and charge the draws to the max."
     }
   },
   "controls": {

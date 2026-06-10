@@ -135,3 +135,63 @@ def analyze_postflop_sizing(*, hero_pct: Optional[float], gto_pct: Optional[floa
     if ratio <= 0.6:
         return {'key': 'postflop_too_small', 'status': 'warn', 'params': p}
     return {'key': 'postflop_ok', 'status': 'ok', 'params': p}
+
+
+# ── Fase 3: sizing POSTFLOP por HEURÍSTICA de textura (spots SEM nó GTO) ───────────
+
+# Banda (% do pote) por textura, baseline IP. Bandas LARGAS de propósito: em spots SEM
+# solver a latitude é grande (small range-bets em board molhado são defensáveis). Só
+# sinaliza OUTLIER claro — a aposta minúscula que não cobra o draw, ou o overbet sem motivo.
+# O `ideal` (alvo de teoria) é o que o tooltip ensina; a banda é só o gate de "claramente off".
+_TEX_BAND = {
+    'dry':      (12, 70,  '~33%'),    # seco/estático: range bet pequeno; flag só overbet
+    'wet':      (28, 100, '~66%'),    # molhado: cobra os projetos; flag dinky ou enorme
+    'very_wet': (35, 135, '~85%'),    # muito molhado (flush/straight): flag só o claramente pequeno/grande
+}
+
+
+def _board_texture(board) -> str:
+    """'dry' | 'wet' | 'very_wet' — quão dinâmico é o board (quanto draw permite)."""
+    from collections import Counter
+    from leaklab.bet_intent import _ranks_of, _suits_of
+    ranks = _ranks_of(board)
+    suits = _suits_of(board)
+    if len(ranks) < 3:
+        return 'dry'
+    maxsuit  = max(Counter(suits).values()) if suits else 0
+    monotone = maxsuit >= 3
+    twoflush = maxsuit == 2
+    _R = '23456789TJQKA'
+    idx = sorted({_R.index(r) for r in ranks if r in _R})
+    connected = any(idx[i + 1] - idx[i] <= 2 for i in range(len(idx) - 1)) if len(idx) >= 2 else False
+    if monotone or (twoflush and connected):
+        return 'very_wet'
+    if twoflush or connected:
+        return 'wet'
+    return 'dry'
+
+
+def analyze_postflop_texture_sizing(*, hero_pct: Optional[float], board, is_ip: bool,
+                                    spr: Optional[float] = None) -> Optional[dict]:
+    """Heurística de sizing postflop quando NÃO há nó GTO (multiway/deep/sem cobertura).
+    Board seco → aposta pequena; molhado → grande. OOP aposta um pouco maior; SPR baixo
+    (comprometido) tolera tamanhos menores.
+
+      key: tex_ok | tex_big | tex_small ; params.tex: dry|wet|very_wet
+    """
+    from leaklab.bet_intent import _ranks_of
+    if hero_pct is None or hero_pct <= 0 or len(_ranks_of(board)) < 3:
+        return None
+    tex = _board_texture(board)
+    lo, hi, ideal = _TEX_BAND[tex]
+    if not is_ip:
+        lo += 6; hi += 6                         # OOP aposta um pouco maior
+    if spr is not None and spr < 2.5:
+        lo = max(8, lo - 10)                     # SPR baixo: size menor aceitável (comprometido)
+
+    p = {'hero': round(hero_pct), 'ideal': ideal, 'tex': tex}
+    if hero_pct > hi:
+        return {'key': 'tex_big', 'status': 'warn', 'params': p}
+    if hero_pct < lo:
+        return {'key': 'tex_small', 'status': 'warn', 'params': p}
+    return {'key': 'tex_ok', 'status': 'ok', 'params': p}

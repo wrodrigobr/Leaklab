@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(sizing): Fase 3 — sizing postflop por heurística de textura (spots SEM nó GTO)
+
+> Fecha o plano de sizing. Em spots postflop **sem cobertura GTO** (multiway/deep/sem nó) não há solver pra comparar — então `sizing_advisor.analyze_postflop_texture_sizing` dá um guia heurístico: board **seco** → aposta pequena (~33%, range bet — sem draw pra cobrar); **molhado** → maior (~66%, cobra os projetos); **muito molhado** (flush/straight) → grande (~85%+). `_board_texture` classifica dry/wet/very_wet por naipes+conexão; nudge IP/OOP + SPR baixo (comprometido tolera menor). **Bandas LARGAS de propósito** — em spot sem solver a latitude é grande, então só sinaliza OUTLIER claro (a aposta minúscula que não cobra o draw, o overbet sem motivo), não cada desvio do alvo de teoria; o `ideal` é o que o tooltip ensina. Só `bets` (não raises). Bloco "Sizing" no card mostra "33% · board molhado — pequena demais; o padrão é ~66%". Validado real: dos bets postflop sem nó, 15 ok / 11 flag (todos apostas ≤38% em board molhado — padrão real de small-ball do hero). +9 testes (29 no `test_sizing_advisor`); api 42/42.
+
 ### feat(sizing): #3 — tamanho do 3-bet vs padrão (IP ~3x / OOP ~4x, squeeze sobe)
 
 > Fecha o conceito de 3bet-light com o sizing. `sizing_advisor.analyze_3bet_sizing` mede o 3-bet do hero como **múltiplo do open enfrentado**: IP ~3x, OOP ~4x (OOP cobra mais p/ negar realização e levar fold), squeeze (cold caller no meio) sobe ~1x. Dados do spot: `facingToBb` (open em bb), `isInPosition`, `callerPosition` (squeeze). Só raise enfrentando exatamente 1 raise (jam tem size forçado → fora). Bloco "Sizing" no card mostra "3,0x · IP no padrão (~3x do open)" / âmbar quando desvia. Validado real: 28 três-bets (3,0–3,3x IP, 3,5x OOP → todos ok). +7 testes (22 no `test_sizing_advisor`); api 42/42. **3bet-light agora completo: correção (range GW) + rótulo de intenção + 3bet% por oportunidades + sizing.**

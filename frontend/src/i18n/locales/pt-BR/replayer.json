@@ -228,7 +228,10 @@
       "postflop_too_small": "pequena demais — o solver usa ~{{gto}}% do pote aqui",
       "3bet_ok": "{{pos}} no padrão ({{ideal}} do open)",
       "3bet_big": "{{pos}}: grande demais — o padrão é {{ideal}} do open",
-      "3bet_small": "{{pos}}: pequeno demais — o padrão é {{ideal}} do open; 3-bet curto dá preço bom demais pro open pagar"
+      "3bet_small": "{{pos}}: pequeno demais — o padrão é {{ideal}} do open; 3-bet curto dá preço bom demais pro open pagar",
+      "tex_ok": "board {{tex}} — no padrão ({{ideal}} do pote)",
+      "tex_big": "board {{tex}} — grande demais; o padrão é {{ideal}} do pote",
+      "tex_small": "board {{tex}} — pequena demais; o padrão é {{ideal}} do pote"
     },
     "threebetLabel": "3-bet",
     "threebetIntent": {
@@ -245,6 +248,16 @@
       "value_3bet": "3-bet de valor: sua mão domina o range que paga/4-beta. Você quer construir o pote e levar fichas pro meio.",
       "merge_3bet": "3-bet de merge (valor fino): mão na fronteira — extrai de piores que pagam e nega equity às que foldam. Cuidado contra ranges muito fortes.",
       "light_3bet": "3-bet light (blefe): mão de pouco showdown que 3-beta pela fold equity e por bloquear o valor do vilão (ex.: A5s bloqueia AA/AK). Precisa que o vilão folde o bastante — contra calling station, não funciona."
+    },
+    "sizingTexture": {
+      "dry": "seco",
+      "wet": "molhado",
+      "very_wet": "muito molhado"
+    },
+    "sizingTextureTip": {
+      "dry": "Board seco (sem projetos): aposta PEQUENA (~33%) — range bet. Não há draw pra cobrar, então aposta barato com o range todo.",
+      "wet": "Board molhado (permite draws): aposta MAIOR (~66%) — cobra caro os projetos do vilão e nega equity.",
+      "very_wet": "Board muito molhado (flush/straight possível): aposta GRANDE (~85%+) — polariza e cobra os draws ao máximo."
     }
   },
   "controls": {

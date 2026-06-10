@@ -4556,6 +4556,26 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             except Exception:
                 pass
 
+        # Sizing POSTFLOP por HEURÍSTICA (Fase 3): só quando NÃO há nó GTO (multiway/deep/
+        # sem cobertura). Board seco→pequeno, molhado→grande; nudge IP/OOP e SPR. Só 'bets'.
+        postflop_texture_sizing = None
+        if (action.player == hero and action.street != 'preflop'
+                and action.action == 'bets' and decision and not gto_strategy):
+            try:
+                from leaklab.sizing_advisor import analyze_postflop_texture_sizing as _txs
+                _amt = float(amt or 0)
+                _pot_before = float(pot) - _amt
+                _potbb = float(_spot.get('potBb') or 0)
+                _eff   = float(_spot.get('effectiveStackBb') or 0)
+                if _amt > 0 and _pot_before > 0:
+                    postflop_texture_sizing = _txs(
+                        hero_pct=_amt / _pot_before * 100.0,
+                        board=(_spot.get('board') or []),
+                        is_ip=bool(_spot.get('isInPosition')),
+                        spr=(_eff / _potbb) if _potbb > 0 else None)
+            except Exception:
+                pass
+
         timeline.append(snap({
             'type':               'action',
             'player':             action.player,
@@ -4582,6 +4602,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'sizing_advice':      sizing_advice,   # Fase 1: análise do tamanho do open
             'threebet_sizing':    threebet_sizing,   # #3: tamanho do 3-bet vs open (IP 3x/OOP 4x)
             'postflop_sizing':    postflop_sizing,   # Fase 2: aposta do hero vs size do nó GTO
+            'postflop_texture_sizing': postflop_texture_sizing,   # Fase 3: heurística de textura (sem nó)
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
