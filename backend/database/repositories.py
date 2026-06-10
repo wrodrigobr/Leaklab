@@ -6456,3 +6456,51 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
         return 0
     finally:
         conn.close()
+
+
+# ── HUD Fase 1: perfis de comportamento de oponente ──────────────────────────────
+
+def upsert_opponent_profile(tournament_id: int, player_name: str, profile: dict) -> None:
+    """Salva/atualiza o perfil de um jogador num torneio (idempotente por
+    tournament_id+player_name). `profile` é o dict do opponent_stats.finalize."""
+    import json as _json
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("""
+            INSERT INTO opponent_profiles
+                (tournament_id, player_name, hands_seen, archetype, confidence, stats_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(tournament_id, player_name) DO UPDATE SET
+                hands_seen = excluded.hands_seen,
+                archetype  = excluded.archetype,
+                confidence = excluded.confidence,
+                stats_json = excluded.stats_json
+        """), (tournament_id, player_name,
+               int(profile.get('hands', 0)),
+               profile.get('archetype', 'unknown'),
+               profile.get('confidence', 'insufficient'),
+               _json.dumps(profile, ensure_ascii=False)))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_opponent_profiles(tournament_id: int, min_hands: int = 0) -> list:
+    """Perfis de oponentes de um torneio, ordenados por amostra (mãos vistas)."""
+    import json as _json
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(
+            "SELECT player_name, hands_seen, archetype, confidence, stats_json "
+            "FROM opponent_profiles WHERE tournament_id = ? AND hands_seen >= ? "
+            "ORDER BY hands_seen DESC"
+        ), (tournament_id, min_hands))
+        return [{
+            'player':     r['player_name'],
+            'hands':      r['hands_seen'],
+            'archetype':  r['archetype'],
+            'confidence': r['confidence'],
+            'stats':      _json.loads(r['stats_json'] or '{}'),
+        } for r in rows]
+    finally:
+        conn.close()

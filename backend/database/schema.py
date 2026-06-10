@@ -701,6 +701,23 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, created_at)")
         except Exception: pass
+        # HUD Fase 1 — perfis de comportamento de oponente (torneio × jogador) (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS opponent_profiles (
+                    id            SERIAL PRIMARY KEY,
+                    tournament_id INTEGER   NOT NULL,
+                    player_name   TEXT      NOT NULL,
+                    hands_seen    INTEGER   NOT NULL DEFAULT 0,
+                    archetype     TEXT      NOT NULL DEFAULT 'unknown',
+                    confidence    TEXT      NOT NULL DEFAULT 'insufficient',
+                    stats_json    TEXT      NOT NULL DEFAULT '{}',
+                    updated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+                    UNIQUE(tournament_id, player_name)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_oppprof_tourney ON opponent_profiles(tournament_id)")
+        except Exception: pass
         # #15 leaderboard — snapshots diários (histórico de posição + delta). Hoje
         # gravados sob demanda (sem cron real ainda — ver memória/backlog).
         try:
@@ -1260,6 +1277,21 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, created_at)")
+        # HUD Fase 1 — perfis de comportamento de oponente (torneio × jogador) (SQLite)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS opponent_profiles (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                tournament_id INTEGER NOT NULL,
+                player_name   TEXT    NOT NULL,
+                hands_seen    INTEGER NOT NULL DEFAULT 0,
+                archetype     TEXT    NOT NULL DEFAULT 'unknown',
+                confidence    TEXT    NOT NULL DEFAULT 'insufficient',
+                stats_json    TEXT    NOT NULL DEFAULT '{}',
+                updated_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(tournament_id, player_name)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_oppprof_tourney ON opponent_profiles(tournament_id)")
         # #15 leaderboard — snapshots diários (histórico de posição + delta).
         # Gravados sob demanda por enquanto (sem cron real ainda — ver backlog).
         conn.execute("""
