@@ -5581,6 +5581,20 @@ def get_decisions_for_spot(user_id: int, street: str | None = None,
         conn.close()
 
 
+def get_decisions_for_hand(tournament_id: int, hand_id: str) -> list[dict]:
+    """Todas as decisões de uma mesma mão, em ordem de street. Contexto para o
+    deep-dive agêntico de uma decisão (entender a mão inteira, não só um street)."""
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            _adapt("SELECT * FROM decisions WHERE tournament_id = ? AND hand_id = ? ORDER BY id"),
+            (tournament_id, hand_id),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
 def get_gto_quality_breakdown(user_id: int, since_days: int = 90, last_n: int | None = None) -> dict:
     """Distribuição de gto_label para o usuário nos últimos since_days dias (ou last_n torneios)."""
     tf, tp = _build_tournament_filter(user_id, since_days, last_n)

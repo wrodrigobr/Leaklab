@@ -2512,6 +2512,213 @@ def coach_chat_reply_agentic(message: str, user_id: int, hero: str = 'Jogador',
     return {'reply': reply, 'source': leak_source_seen or 'agentic', 'tools_used': tools_used}
 
 
+# ── Deep dive de uma mão flagada — loop agêntico (tool use) ─────────────────────
+#
+# analyze_single_decision (single-shot) crava um nó GTO genérico no prompt e pede
+# pro modelo ESTIMAR equity/pot odds. O deep-dive substitui estimativa por
+# investigação: o modelo chama lookup_gto com a MÃO REAL do hero (estratégia +
+# EV por ação, verdade do solver), puxa a mão INTEIRA (todos os streets) e o
+# HISTÓRICO do jogador neste mesmo spot (é leak recorrente ou pontual?). Saída em
+# Markdown (mesmo contrato {analysis} do single-shot → frontend inalterado).
+#
+# As 3 ferramentas são parametrizadas pela decisão fixa no servidor — o modelo
+# escolhe O QUE investigar, nunca monta params (evita lookup_gto com args errados).
+
+def _decision_to_gto_params(decision: dict) -> dict:
+    """Deriva os parâmetros de lookup_gto a partir de uma decisão do banco."""
+    street = (decision.get('street') or 'preflop').lower()
+    hc     = (decision.get('hero_cards') or '').replace(' ', '')
+    hero_hand = [hc[i:i+2] for i in range(0, len(hc), 2)][:2] if hc else []
+    try:
+        board_raw = decision.get('board', '[]')
+        board = json.loads(board_raw) if isinstance(board_raw, str) else (board_raw or [])
+    except Exception:
+        board = []
+    board = (board[:3] if street == 'flop' else board[:4] if street == 'turn'
+             else board[:5] if street == 'river' else [])
+    level_bb     = float(decision.get('level_bb') or 0)
+    stack_bb     = float(decision.get('stack_bb') or 100)
+    facing_chips = float(decision.get('facing_bet') or 0)
+    pot_chips    = float(decision.get('pot_size') or 0)
+    is_3bet      = bool(decision.get('is_3bet'))
+    vs_position  = decision.get('vs_position') or ''
+    action_seq   = 'rfi'
+    if street == 'preflop':
+        action_seq = 'vs_3bet' if is_3bet else ('vs_rfi' if vs_position else 'rfi')
+    return {
+        'street':         street,
+        'position':       decision.get('position') or '',
+        'board':          board,
+        'hero_hand':      hero_hand,
+        'hero_stack_bb':  stack_bb,
+        'action_seq':     action_seq,
+        'vs_position':    vs_position,
+        'facing_size_bb': (facing_chips / level_bb) if level_bb else 0.0,
+        'pot_bb':         (pot_chips / level_bb) if level_bb else 0.0,
+        'num_players':    int(decision.get('num_players') or 9),
+        'pot_type':       '3bet' if is_3bet else '',
+    }
+
+
+_DEEPDIVE_TOOLS = [
+    {
+        'name': 'get_gto_solution',
+        'description': (
+            'Retorna a solução GTO REAL do solver para ESTE spot exato, com a mão do hero: '
+            'estratégia (ações com frequência e EV em bb) e qualidade da convergência. '
+            'Use SEMPRE antes de falar de frequências/EV — é verdade objetiva, não estime. '
+            'Se found=false, não há solução no banco para este spot; aí sim estime e diga isso.'
+        ),
+        'input_schema': {'type': 'object', 'properties': {}},
+    },
+    {
+        'name': 'get_full_hand',
+        'description': (
+            'Retorna TODAS as decisões desta mesma mão (todos os streets), para você entender '
+            'a história completa — não só o street isolado. Use para conectar a linha do hero '
+            'através dos streets.'
+        ),
+        'input_schema': {'type': 'object', 'properties': {}},
+    },
+    {
+        'name': 'get_my_history_here',
+        'description': (
+            'Retorna outras decisões do jogador no MESMO spot (street + posição) com erro GTO/EV. '
+            'Use para dizer se este erro é RECORRENTE (padrão a corrigir) ou pontual.'
+        ),
+        'input_schema': {'type': 'object', 'properties': {}},
+    },
+]
+
+
+def _run_deepdive_tool(name: str, decision: dict, user_id: int) -> str:
+    """Executa uma ferramenta do deep-dive, escopada à decisão fixa e ao user_id."""
+    from database import repositories as _repo
+    if name == 'get_gto_solution':
+        from leaklab.gto_solver import lookup_gto
+        params = _decision_to_gto_params(decision)
+        sol = lookup_gto(**params, block_remote=True, allow_remote_solve=False)
+        return json.dumps({
+            'found':              sol.get('found'),
+            'source':             sol.get('source'),
+            'strategy':           sol.get('strategy'),
+            'exploitability_pct': sol.get('exploitability_pct'),
+            'hand_strategy':      sol.get('hand_strategy'),
+        }, ensure_ascii=False, default=str)
+    if name == 'get_full_hand':
+        rows = _repo.get_decisions_for_hand(decision.get('tournament_id'), decision.get('hand_id'))
+        keep = ('street', 'position', 'hero_cards', 'board', 'action_taken',
+                'best_action', 'gto_action', 'gto_label', 'score', 'ev_loss_bb')
+        return json.dumps([{k: r.get(k) for k in keep} for r in rows],
+                          ensure_ascii=False, default=str)
+    if name == 'get_my_history_here':
+        rows = _repo.get_decisions_for_spot(
+            user_id, street=decision.get('street'), position=decision.get('position'),
+            days=180, limit=10)
+        return json.dumps(rows, ensure_ascii=False, default=str)
+    return json.dumps({'error': f'ferramenta desconhecida: {name}'})
+
+
+_DEEPDIVE_FORMAT = """Use EXATAMENTE este formato Markdown (texto corrido, ZERO JSON, zero chaves, zero colchetes):
+
+### ❌ O Erro
+3-4 frases: o que foi feito e por que é (ou não é) erro neste contexto específico.
+
+### 📐 A Matemática
+- **Equity estimada:** X%  •  **Pot odds exigidas:** Y%  •  **Equity ajustada (ICM/posição/draw):** Z%
+- **Déficit/Superávit:** ±N pp — a ação tomada era [correta/incorreta]
+- **EV:** ação tomada vs ação correta (em bb), use os números do solver quando houver
+
+### 🧠 GTO Solver
+Se get_gto_solution retornou found=true: ação recomendada, distribuição de frequências e EV por ação (dados do solver = verdade), e se o hero ALINHOU ou DIVERGIU. Se found=false, diga que não há solução no banco e que a análise é estimada. Omita a seção inteira só no preflop sem dados.
+
+### 🧭 O Contexto
+M ratio, stack em bb, ICM e posição — implicação prática de cada um para este spot.
+
+### 🔁 Padrão
+Se get_my_history_here mostrar outras ocorrências, diga se é um leak RECORRENTE e quão caro; senão, trate como pontual.
+
+### ✅ A Ação Correta
+**[AÇÃO]** — 4-5 frases: por que é superior, objetivo estratégico, o que acontece contra os ranges do oponente.
+
+### 💡 A Lição
+Uma regra prática memorável. **Negrito** no conceito-chave."""
+
+
+def deep_dive_decision_agentic(decision: dict, user_id: int, max_iterations: int = 6) -> str:
+    """Deep dive de uma decisão via loop agêntico. Retorna Markdown (mesmo contrato
+    de analyze_single_decision). O modelo investiga GTO real + mão completa + histórico
+    antes de escrever."""
+    street     = (decision.get('street') or 'preflop')
+    hero_cards = decision.get('hero_cards') or '—'
+    try:
+        board_raw  = decision.get('board', '[]')
+        board_list = json.loads(board_raw) if isinstance(board_raw, str) else (board_raw or [])
+        board_str  = ' '.join(board_list) if board_list else '—'
+    except Exception:
+        board_str = '—'
+    stack_bb = decision.get('stack_bb')
+    desc = (
+        f"Decisão a analisar a fundo:\n"
+        f"Street: {street.upper()}  |  Cartas: {hero_cards}  |  Board: {board_str}\n"
+        f"Posição: {decision.get('position') or '—'}  |  "
+        f"Stack: {f'{stack_bb:.0f} bb' if stack_bb else '—'}  |  "
+        f"M: {decision.get('m_ratio') or '—'}  |  ICM: {decision.get('icm_pressure') or 'low'}\n"
+        f"Ação tomada: {decision.get('action_taken') or '—'}  |  "
+        f"Ação recomendada: {decision.get('best_action') or '—'}  |  "
+        f"GTO: {decision.get('gto_label') or decision.get('gto_action') or '—'}\n"
+        f"Avaliação: {decision.get('label') or 'standard'} (score {float(decision.get('score') or 0):.3f})\n\n"
+        "Investigue com as ferramentas (solução GTO real, mão completa, seu histórico no spot) "
+        "e então escreva a análise."
+    )
+    system = (
+        "Você é um coach de poker MTT de elite fazendo um DEEP DIVE de uma decisão. "
+        "Você tem ferramentas — use-as antes de afirmar números: get_gto_solution (estratégia/EV "
+        "reais do solver para esta mão), get_full_hand (todos os streets desta mão), "
+        "get_my_history_here (se o erro se repete). Não estime o que o solver pode te dizer.\n\n"
+        + _DEEPDIVE_FORMAT +
+        f"\n\nPortuguês do Brasil, tom técnico e direto. {_POKER_TERMS_EN} "
+        "Nunca mencione 'GTO Wizard' — use sempre 'GTO Solver'."
+    )
+
+    messages: list[dict] = [{'role': 'user', 'content': desc}]
+    for _ in range(max_iterations):
+        data = _call_llm_api_full({
+            'model':      'claude-haiku-4-5-20251001',
+            'max_tokens': 1600,
+            'system':     system,
+            'messages':   messages,
+            'tools':      _DEEPDIVE_TOOLS,
+        })
+        content = data.get('content', [])
+        messages.append({'role': 'assistant', 'content': content})
+        if data.get('stop_reason') != 'tool_use':
+            return ''.join(b['text'] for b in content if b.get('type') == 'text').strip()
+        tool_results = []
+        for b in content:
+            if b.get('type') != 'tool_use':
+                continue
+            try:
+                result_str = _run_deepdive_tool(b.get('name', ''), decision, user_id)
+            except Exception as e:
+                result_str = json.dumps({'error': str(e)})
+            tool_results.append({
+                'type':        'tool_result',
+                'tool_use_id': b.get('id'),
+                'content':     result_str,
+            })
+        messages.append({'role': 'user', 'content': tool_results})
+
+    # Esgotou iterações — força resposta final sem ferramentas.
+    return _call_llm_api({
+        'model':      'claude-haiku-4-5-20251001',
+        'max_tokens': 1600,
+        'system':     system,
+        'messages':   messages + [{'role': 'user',
+                                   'content': 'Escreva a análise agora, sem mais ferramentas.'}],
+    })
+
+
 def analyze_single_decision(decision: dict) -> str:
     """Análise focada de uma única decisão de mão pelo Coach IA.
 

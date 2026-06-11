@@ -3288,7 +3288,12 @@ def analyze_decision():
 
     decision = dict(row)
 
-    cache_key = f"decision:{decision_id}"
+    # Deep-dive agêntico (investiga GTO real + mão completa + histórico) é o caminho
+    # preferido; cache em chave própria (:deep). Flag DEEP_DIVE_AGENTIC=0 desliga;
+    # qualquer falha cai no single-shot legado.
+    agentic = os.getenv('DEEP_DIVE_AGENTIC', '1') == '1'
+    cache_key = f"decision:{decision_id}:deep" if agentic else f"decision:{decision_id}"
+
     cached = get_llm_cache(g.user_id, cache_key)
     if cached and not data.get('force_new'):
         return jsonify({'analysis': cached, 'cached': True})
@@ -3297,8 +3302,19 @@ def analyze_decision():
     if ai_err:
         return ai_err
 
-    from leaklab.llm_explainer import analyze_single_decision
-    analysis = analyze_single_decision(decision)
+    analysis = None
+    if agentic:
+        try:
+            from leaklab.llm_explainer import deep_dive_decision_agentic
+            analysis = deep_dive_decision_agentic(decision, g.user_id)
+        except Exception:
+            log.exception("analyze_decision deep-dive error; fallback para single-shot")
+            cache_key = f"decision:{decision_id}"   # cai na chave legada
+
+    if analysis is None:
+        from leaklab.llm_explainer import analyze_single_decision
+        analysis = analyze_single_decision(decision)
+
     try:
         increment_ai_calls(g.user_id)
     except Exception:
