@@ -31,8 +31,11 @@ interface Props {
 }
 
 // Ordem fixa opinada (UX-2 refinará): qualidade/diagnóstico → evolução → perfis → IA (Pro)
+// "leakfinder" fica FORA do V2: o ranking "Leaks por custo" (hero) o substitui —
+// duplicaria a mesma informação em dois formatos (feedback do usuário).
+// No clássico ele continua. "leaks" (LeaksPanel antigo) idem, já excluído.
 const CARD_ORDER = [
-  "quality", "leakfinder", "results", "bankroll", "position",
+  "quality", "results", "bankroll", "position",
   "dna", "pressure", "career", "cognitive", "twin", "causal_map",
 ];
 

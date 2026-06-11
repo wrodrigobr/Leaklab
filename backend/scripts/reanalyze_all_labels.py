@@ -68,7 +68,8 @@ for row in tournaments:
             seen_decisions.add(dedup_key)
 
             db_row = conn.execute(
-                """SELECT id, label, best_action, gto_label, gto_action FROM decisions
+                """SELECT id, label, best_action, gto_label, gto_action,
+                          ev_loss_bb, ev_loss_source FROM decisions
                    WHERE hand_id = ? AND street = ? AND action_taken = ?
                    LIMIT 1""",
                 (hand_id, street, act)
@@ -91,16 +92,27 @@ for row in tournaments:
                 new_gtoact = gto_dict.get('gto_action') if gto_dict.get('available') else old_gtoact
                 if not new_gtolbl: new_gtolbl = old_gtolbl
                 if not new_gtoact: new_gtoact = old_gtoact
+                # Fase 3 / #24 postflop: a re-análise também sincroniza o EV loss —
+                # sem isto, decisões antigas nunca ganham ev_loss_bb (só re-upload),
+                # e o card "onde você sangra" fica só com o preflop do overlay.
+                old_evloss = db_row['ev_loss_bb']
+                old_evsrc  = db_row['ev_loss_source']
+                new_evloss = gto_dict.get('ev_loss_bb')
+                new_evsrc  = gto_dict.get('ev_loss_source')
+                if new_evloss is None:
+                    new_evloss, new_evsrc = old_evloss, old_evsrc
             except Exception:
                 continue
 
             total_checked += 1
             changed = (new_label != old_label or new_best != old_best or
-                       new_gtolbl != old_gtolbl or new_gtoact != old_gtoact)
+                       new_gtolbl != old_gtolbl or new_gtoact != old_gtoact or
+                       new_evloss != old_evloss)
             if changed:
                 conn.execute(
-                    "UPDATE decisions SET label = ?, best_action = ?, gto_label = ?, gto_action = ? WHERE id = ?",
-                    (new_label, new_best, new_gtolbl, new_gtoact, did)
+                    "UPDATE decisions SET label = ?, best_action = ?, gto_label = ?, "
+                    "gto_action = ?, ev_loss_bb = ?, ev_loss_source = ? WHERE id = ?",
+                    (new_label, new_best, new_gtolbl, new_gtoact, new_evloss, new_evsrc, did)
                 )
                 hand_updated += 1
                 total_updated += 1

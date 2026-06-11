@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(ev): re-análise agora persiste ev_loss_bb + V2 sem leak finder duplicado ✅
+
+> Dois feedbacks do usuário. **(1) "Onde você sangra" só mostrava preflop:** causa raiz — `reanalyze_all_labels.py` atualizava label/ação mas NÃO o `ev_loss_bb`, então decisões postflop existentes nunca ganhavam EV (só re-upload). O script agora sincroniza `ev_loss_bb`/`ev_loss_source` do `result['gto']` (preservando o antigo quando o novo é None — não apaga EV preflop do overlay). Fluxo completo: campanha de precompute → reanalyze → streets postflop aparecem no card. **(2) Leak finder duplicado no V2:** o ranking "Leaks por custo" do hero SUBSTITUI o `LeakFinderCard` — removido do `CARD_ORDER` do V2 (no clássico continua intacto).
+
 ### fix(dashboard): dots do carrossel de IA invisíveis sobre o fundo azul ✅
 
 > Feedback do usuário: os indicadores de página do `V2AiInsightsCard` usavam `bg-muted/40` — contraste ~zero sobre o gradiente azul do card. Dots refeitos na família do azul (inativo `blue-200/25` + ring `blue-300/40`; ativo `blue-300` com ring e scale), tamanho up pra `size-2` (toque melhor) + tooltip com o nome do insight.
