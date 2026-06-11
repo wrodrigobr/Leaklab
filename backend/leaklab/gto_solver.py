@@ -747,25 +747,16 @@ def _call_solver(bin_path: str, spot: dict, timeout: int = 300) -> Optional[dict
     # permitindo que Rayon crie threads sem restrições (sem isso: ~10x mais lento).
     _BREAKAWAY = 0x01000000 if os.name == 'nt' else 0
     try:
-        import tempfile
-        with tempfile.NamedTemporaryFile(
-            mode='w', encoding='utf-8', suffix='.json', delete=False
-        ) as f:
-            f.write(json.dumps(spot))
-            tmp_path = f.name
-        try:
-            with open(tmp_path, 'r', encoding='utf-8') as stdin_f:
-                proc = subprocess.run(
-                    [bin_path],
-                    stdin=stdin_f,
-                    capture_output=True,
-                    text=True,
-                    encoding='utf-8',
-                    timeout=timeout,
-                    creationflags=_BREAKAWAY,
-                )
-        finally:
-            os.unlink(tmp_path)
+        # stdin direto (sem temp file): elimina I/O em disco e lixo órfão em %TEMP%
+        proc = subprocess.run(
+            [bin_path],
+            input=json.dumps(spot),
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            timeout=timeout,
+            creationflags=_BREAKAWAY,
+        )
         if proc.returncode != 0:
             log.error("solver_cli exit=%d stderr: %s", proc.returncode, proc.stderr[:500])
             return None

@@ -185,8 +185,24 @@ fn run(inp: &Input) -> Result<Output, String> {
     let use_compression = mem_32bit > 1_073_741_824;
     game.allocate_memory(use_compression);
 
-    let final_exploit = solve(&mut game, inp.max_iterations, target_chips, false);
-    let exploit_pct   = (final_exploit as f64 / pot_chips as f64) * 100.0;
+    // Loop manual (espelha postflop_solver::solve) para CONTAR as iterações reais:
+    // o solve() da lib não devolve quantas iterações rodou, e o campo `iterations`
+    // do output ecoava max_iterations (mentia). Exploitability checada a cada 10
+    // iterações — mesma cadência do solve() upstream.
+    let mut final_exploit  = compute_exploitability(&game);
+    let mut iterations_run = 0u32;
+    for t in 0..inp.max_iterations {
+        if final_exploit <= target_chips {
+            break;
+        }
+        solve_step(&game, t);
+        iterations_run += 1;
+        if (t + 1) % 10 == 0 || t + 1 == inp.max_iterations {
+            final_exploit = compute_exploitability(&game);
+        }
+    }
+    finalize(&mut game);
+    let exploit_pct = (final_exploit as f64 / pot_chips as f64) * 100.0;
 
     // Jogador do HERO no solver: OOP=0, IP=1. Navega até o nó de DECISÃO do hero:
     //   - hero IP  + facing==0: root → OOP check → IP age (c-bet) — lê player 1;
@@ -289,7 +305,7 @@ fn run(inp: &Input) -> Result<Output, String> {
         primary_freq:    (primary_freq * 1000.0).round() / 1000.0,
         ev:              (avg_ev * 100.0).round() / 100.0,
         exploitability:  (exploit_pct * 100.0).round() / 100.0,
-        iterations:      inp.max_iterations,
+        iterations:      iterations_run,
         strategy:        strategy_map,
         strategy_detail: strategy_detail_map,
         total_combos:    (total_weight * 100.0).round() / 100.0,

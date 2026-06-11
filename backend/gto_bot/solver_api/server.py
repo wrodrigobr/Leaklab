@@ -33,7 +33,6 @@ import smtplib
 import ssl
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 from email.mime.text import MIMEText
@@ -1196,28 +1195,22 @@ def query_gto_wizard_raw(spot: dict) -> dict:
 # ── Solver local ──────────────────────────────────────────────────────────────
 
 def solve(spot: dict) -> dict:
-    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', suffix='.json', delete=False) as f:
-        json.dump(spot, f)
-        tmp = f.name
-    try:
-        with open(tmp, 'r', encoding='utf-8') as stdin_f:
-            proc = subprocess.run(
-                [SOLVER_BIN],
-                stdin=stdin_f,
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                timeout=TIMEOUT,
-            )
-        if proc.returncode != 0:
-            err = proc.stderr[:500] if proc.stderr else 'solver_cli error'
-            raise RuntimeError(f'solver exit={proc.returncode}: {err}')
-        result = json.loads(proc.stdout)
-        if 'exploitability' in result and 'exploitability_pct' not in result:
-            result['exploitability_pct'] = result['exploitability']
-        return result
-    finally:
-        os.unlink(tmp)
+    # stdin direto (sem temp file): elimina I/O em disco e lixo órfão em /tmp
+    proc = subprocess.run(
+        [SOLVER_BIN],
+        input=json.dumps(spot),
+        capture_output=True,
+        text=True,
+        encoding='utf-8',
+        timeout=TIMEOUT,
+    )
+    if proc.returncode != 0:
+        err = proc.stderr[:500] if proc.stderr else 'solver_cli error'
+        raise RuntimeError(f'solver exit={proc.returncode}: {err}')
+    result = json.loads(proc.stdout)
+    if 'exploitability' in result and 'exploitability_pct' not in result:
+        result['exploitability_pct'] = result['exploitability']
+    return result
 
 
 # ── HTTP Handler ──────────────────────────────────────────────────────────────
