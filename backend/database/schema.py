@@ -760,6 +760,8 @@ def _run_migrations(conn):
             "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS iterations INTEGER",
             "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS strategy_json TEXT",
             "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS is_aggregate BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE gto_nodes ADD COLUMN IF NOT EXISTS tree_hash TEXT",
+            "CREATE INDEX IF NOT EXISTS idx_gto_nodes_tree ON gto_nodes(tree_hash)",
         ]:
             try: conn.execute(sql)
             except Exception: pass
@@ -809,6 +811,12 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_queue_status ON gto_solver_queue(status, priority)")
         except Exception: pass
+        # Fase 1 (plano solver): tree_hash na fila — dedup de solves por árvore (Postgres)
+        for sql in [
+            "ALTER TABLE gto_solver_queue ADD COLUMN IF NOT EXISTS tree_hash TEXT",
+        ]:
+            try: conn.execute(sql)
+            except Exception: pass
 
         # player_elo_history (Postgres) — espelha SQLite
         try:
@@ -1333,10 +1341,12 @@ def _run_migrations(conn):
             ("iterations",         "ALTER TABLE gto_nodes ADD COLUMN iterations INTEGER"),
             ("strategy_json",      "ALTER TABLE gto_nodes ADD COLUMN strategy_json TEXT"),
             ("is_aggregate",       "ALTER TABLE gto_nodes ADD COLUMN is_aggregate INTEGER NOT NULL DEFAULT 0"),
+            ("tree_hash",          "ALTER TABLE gto_nodes ADD COLUMN tree_hash TEXT"),
         ]:
             if col not in gto_existing:
                 try: conn.execute(sql)
                 except Exception: pass
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_nodes_tree ON gto_nodes(tree_hash)")
         # gto_preflop_ranges (SQLite) — populada APENAS por solver verificado
         conn.execute("""
             CREATE TABLE IF NOT EXISTS gto_preflop_ranges (
@@ -1382,6 +1392,11 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_queue_status ON gto_solver_queue(status, priority)")
+        # Fase 1 (plano solver): tree_hash na fila — dedup de solves por árvore
+        q_existing = {r[1] for r in conn.execute('PRAGMA table_info(gto_solver_queue)').fetchall()}
+        if 'tree_hash' not in q_existing:
+            try: conn.execute("ALTER TABLE gto_solver_queue ADD COLUMN tree_hash TEXT")
+            except Exception: pass
 
         # player_elo_history (SQLite) — snapshots de ELO calculados ao longo do
         # tempo. Cada linha é o estado do ELO do user em um momento (apos

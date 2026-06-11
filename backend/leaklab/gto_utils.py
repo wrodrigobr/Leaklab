@@ -238,3 +238,58 @@ def _parse_hand_str(s: str):
         if c in ('s', 'o'):
             return r1, r2, c
     return None, None, None
+
+
+# ── Fase 1 (plano solver): identidade da ÁRVORE (tree_hash) + isomorfismo ──────
+
+_ISO_SUITS = 'cdhs'
+
+
+def canonical_board_key(board) -> str:
+    """Forma canônica do board sob permutação de naipes (isomorfismo de suits).
+
+    `As Kd 2c` e `Ah Kc 2d` são o MESMO jogo estrategicamente — esta função devolve
+    a mesma chave para ambos. Flop é tratado como conjunto (ordenado); turn e river
+    preservam posição (são streets distintas). Implementação: aplica as 24
+    permutações de naipes e retorna a menor string lexicográfica — canônica por
+    construção, sem casos especiais.
+    """
+    from itertools import permutations
+    cards = [str(c).strip() for c in (board or []) if c and len(str(c).strip()) >= 2]
+    flop, rest = cards[:3], cards[3:]
+    best = None
+    for perm in permutations(_ISO_SUITS):
+        mp = dict(zip(_ISO_SUITS, perm))
+        mapped_flop = sorted(c[0].upper() + mp.get(c[1].lower(), c[1].lower()) for c in flop)
+        key = ','.join(mapped_flop)
+        if rest:
+            key += '|' + '|'.join(c[0].upper() + mp.get(c[1].lower(), c[1].lower()) for c in rest)
+        if best is None or key < best:
+            best = key
+    return best or ''
+
+
+def compute_tree_hash(payload: dict) -> str:
+    """Hash SHA256[:16] da ÁRVORE de jogo — identidade do SOLVE, não do spot.
+
+    Diferente do spot_hash, NÃO inclui a mão do hero (ela não é input do solver —
+    dois spots na mesma árvore com mãos diferentes eram re-solvados à toa) e usa o
+    board CANÔNICO por isomorfismo de naipes. Os campos são exatamente o que muda
+    o resultado do solve + a navegação até o nó do hero: street, board canônico,
+    ranges, pot, stack efetivo, facing e hero_is_ip. max_iterations e target ficam
+    de fora (afetam convergência/qualidade, não a identidade do jogo).
+    `payload` = o dict enviado ao solver_cli (solver_payload do lookup_gto).
+    """
+    canonical = {
+        'street':     (payload.get('street') or '').lower().strip(),
+        'board':      canonical_board_key(payload.get('board') or []),
+        'oop_range':  (payload.get('oop_range') or '').strip(),
+        'ip_range':   (payload.get('ip_range') or '').strip(),
+        'pot_bb':     round(float(payload.get('pot_bb') or 0.0), 2),
+        'stack_bb':   round(float(payload.get('effective_stack_bb') or 0.0), 2),
+        'facing_bb':  round(float(payload.get('facing_size_bb') or 0.0), 2),
+        'hero_is_ip': bool(payload.get('hero_is_ip')),
+    }
+    return hashlib.sha256(
+        json.dumps(canonical, sort_keys=True).encode()
+    ).hexdigest()[:16]

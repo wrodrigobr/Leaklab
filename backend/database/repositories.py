@@ -4687,6 +4687,30 @@ def get_gto_node(spot_hash: str) -> Optional[dict]:
         conn.close()
 
 
+def get_gto_node_by_tree_hash(tree_hash: str) -> Optional[dict]:
+    """Fase 1 (plano solver): lookup pela identidade da ÁRVORE — sem hero_hand e com
+    board canônico por isomorfismo de naipes (compute_tree_hash). A mesma árvore já
+    solvada (outra mão do hero, ou board isomorfo) é REUSADA em vez de re-solvada.
+    Exige strategy_json (nó completo) e prefere a menor exploitability."""
+    if not tree_hash:
+        return None
+    conn = get_conn()
+    try:
+        return _fetchone(conn, _adapt("""
+            SELECT spot_hash, tree_hash, street, position, board, hero_hand, stack_bucket,
+                   gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
+                   strategy_json, COALESCE(is_aggregate, 0) AS is_aggregate
+            FROM gto_nodes
+            WHERE tree_hash = ?
+              AND strategy_json IS NOT NULL
+              AND exploitability_pct IS NOT NULL AND exploitability_pct <= ?
+            ORDER BY exploitability_pct ASC
+            LIMIT 1
+        """), (tree_hash, GTO_EXPLOITABILITY_THRESHOLD))
+    finally:
+        conn.close()
+
+
 def get_gto_node_by_spot(street: str, board: list, position: str) -> Optional[dict]:
     """Lookup GTO usando street + board (ordenado) + posição do hero."""
     import hashlib
@@ -4843,8 +4867,8 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 INSERT OR REPLACE INTO gto_nodes
                     (spot_hash, street, position, board, hero_hand, stack_bucket,
                      gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
-                     strategy_json, is_aggregate)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     strategy_json, is_aggregate, tree_hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """), (
                 spot_hash,
                 street,
@@ -4860,6 +4884,7 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 source,
                 strategy_json,
                 1 if is_aggregate else 0,
+                n.get('tree_hash'),
             ))
             count += 1
         conn.commit()
@@ -6014,13 +6039,24 @@ def get_preflop_stats() -> dict:
 
 # ── GTO Solver Queue ──────────────────────────────────────────────────────────
 
-def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5) -> bool:
+def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5,
+                        tree_hash: str = None) -> bool:
     """
     Adiciona spot à fila do solver. Retorna True se inserido ou reenfileirado.
     Spots com status done/failed/requeued são resetados para pending (permite
     reprocessamento após fixes de hash ou mudança de parâmetros).
     Spots pending/running não são alterados.
+
+    Fase 1 (plano solver): tree_hash (identidade da árvore, sem hero_hand + board
+    canônico) é computado do spot_json quando não fornecido — permite ao worker
+    REUSAR nós de árvores já solvadas em vez de re-solvar (dedup).
     """
+    if tree_hash is None:
+        try:
+            from leaklab.gto_utils import compute_tree_hash
+            tree_hash = compute_tree_hash(json.loads(spot_json))
+        except Exception:
+            tree_hash = None
     conn = get_conn()
     try:
         existing = _fetchone(conn, _adapt("SELECT id, status FROM gto_solver_queue WHERE spot_hash = ?"), (spot_hash,))
@@ -6028,16 +6064,16 @@ def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5) -> bo
             if existing['status'] in ('done', 'failed', 'requeued'):
                 conn.execute(_adapt("""
                     UPDATE gto_solver_queue
-                    SET status='pending', spot_json=?, priority=?
+                    SET status='pending', spot_json=?, priority=?, tree_hash=?
                     WHERE spot_hash=?
-                """), (spot_json, priority, spot_hash))
+                """), (spot_json, priority, tree_hash, spot_hash))
                 conn.commit()
                 return True
             return False  # pending ou running — não reprocessar
         conn.execute(_adapt("""
-            INSERT INTO gto_solver_queue (spot_hash, spot_json, status, priority)
-            VALUES (?, ?, 'pending', ?)
-        """), (spot_hash, spot_json, priority))
+            INSERT INTO gto_solver_queue (spot_hash, spot_json, status, priority, tree_hash)
+            VALUES (?, ?, 'pending', ?, ?)
+        """), (spot_hash, spot_json, priority, tree_hash))
         conn.commit()
         return True
     finally:
@@ -6049,7 +6085,7 @@ def get_next_solver_job() -> Optional[dict]:
     conn = get_conn()
     try:
         row = _fetchone(conn, _adapt("""
-            SELECT id, spot_hash, spot_json
+            SELECT id, spot_hash, spot_json, tree_hash
             FROM gto_solver_queue
             WHERE status = 'pending'
             ORDER BY priority DESC, requested_at ASC

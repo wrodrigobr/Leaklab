@@ -482,6 +482,56 @@ def lookup_gto(
         'hero_is_ip':                _hero_ip,            # main.rs lê player 1 quando IP
     }
 
+    # ── Fase 1 (plano solver): dedup por tree_hash ────────────────────────────
+    # Mesma ÁRVORE já solvada (outra mão do hero na mesma situação, ou board
+    # isomorfo por permutação de naipes) → copia o nó existente em vez de pagar
+    # outro solve CFR. A estratégia agregada da range é invariante à mão do hero
+    # (que não é input do solver) e à permutação de naipes.
+    from leaklab.gto_utils import compute_tree_hash
+    from database.repositories import get_gto_node_by_tree_hash
+    tree_hash = compute_tree_hash(solver_payload)
+    _tnode = get_gto_node_by_tree_hash(tree_hash)
+    if _tnode and _tnode.get('strategy_json'):
+        try:
+            _t_detail = json.loads(_tnode['strategy_json'])
+        except Exception:
+            _t_detail = None
+        if _t_detail:
+            insert_gto_nodes([{
+                'street':          street_l,
+                'position':        position_u,
+                'board':           board,
+                'hero_hand':       hero_hand,
+                'hero_stack_bb':   hero_stack_bb,
+                'facing_size_bb':  facing_size_bb,
+                'spot_hash':       spot_hash,
+                'tree_hash':       tree_hash,
+                'gto_action':      _tnode['gto_action'],
+                'gto_freq':        _tnode['gto_freq'],
+                'ev_diff':         _tnode.get('ev_diff'),
+                'exploitability_pct': _tnode.get('exploitability_pct'),
+                'iterations':      _tnode.get('iterations'),
+                'source':          _tnode.get('source') or 'solver_cli',
+                'strategy_json':   _tnode['strategy_json'],
+            }])
+            _t_list = []
+            for _k, _v in _t_detail.items():
+                _freq   = _v.get('frequency', 0.0) if isinstance(_v, dict) else float(_v or 0)
+                _combos = _v.get('combos') if isinstance(_v, dict) else None
+                _t_list.append({'action': _k, 'frequency': _freq, 'combos': _combos,
+                                'ev_bb': _tnode.get('ev_diff'),
+                                'exploitability_pct': _tnode.get('exploitability_pct')})
+            _t_list.sort(key=lambda s: s['frequency'], reverse=True)
+            log.info("GTO tree-cache hit: %s <- tree %s (sem re-solve)", spot_hash, tree_hash)
+            return {
+                'found':              True,
+                'source':             'tree_cache',
+                'strategy':           _t_list,
+                'exploitability_pct': _tnode.get('exploitability_pct'),
+                'spot_hash':          spot_hash,
+                'queued':             False,
+            }
+
     remote = _call_remote_solver(solver_payload)
     if remote:
         exploit = remote.get('exploitability_pct')
@@ -516,6 +566,7 @@ def lookup_gto(
             'hero_stack_bb':   hero_stack_bb,
             'facing_size_bb':  facing_size_bb,
             'spot_hash':       spot_hash,   # Fase 2: hash 3bet-aware (_eff_pot) — não recomputa sem pot_type
+            'tree_hash':       tree_hash,   # Fase 1 (plano solver): identidade da árvore p/ dedup
             'gto_action':      primary_action,
             'gto_freq':        primary_freq,
             'ev_diff':         remote.get('ev'),
@@ -614,7 +665,7 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
     Prioridade: solver remoto (GTO_SOLVER_URL) → solver local (Rust binário).
     Threshold de aceitação: production=10%, test=50%.
 
-    Retorna {solved, rejected, failed}
+    Retorna {solved, rejected, failed, copied} — copied = nós reusados via tree_hash (Fase 1)
     """
     tier = os.environ.get('SOLVER_TIER', '')
     if not tier:
@@ -633,15 +684,51 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
     else:
         log.info("run_solver_worker: usando solver LOCAL (%s)", bin_path)
 
-    solved = rejected = failed = 0
+    solved = rejected = failed = copied = 0
 
     for _ in range(max_jobs):
         job = get_next_solver_job()
         if not job:
             break
 
+        job       = dict(job)
         spot_hash = job['spot_hash']
         spot      = json.loads(job['spot_json'])
+
+        # ── Fase 1 (plano solver): dedup por tree_hash — árvore já solvada →
+        # copia o nó existente para este spot_hash, sem pagar outro solve CFR.
+        try:
+            from leaklab.gto_utils import compute_tree_hash
+            from database.repositories import get_gto_node_by_tree_hash
+            _th = job.get('tree_hash') or compute_tree_hash(spot)
+        except Exception:
+            _th = None
+        if _th:
+            _existing = get_gto_node_by_tree_hash(_th)
+            if _existing and _existing.get('strategy_json'):
+                _meta    = spot.get('_meta', {})
+                _copied = insert_gto_nodes([{
+                    'spot_hash':       spot_hash,
+                    'tree_hash':       _th,
+                    'street':          spot.get('street', ''),
+                    'position':        spot.get('position') or _meta.get('position', ''),
+                    'board':           spot.get('board', []),
+                    'hero_hand':       spot.get('hero_hand') or _meta.get('hero_hand', []),
+                    'hero_stack_bb':   spot.get('hero_stack_bb') or _meta.get('hero_stack_bb', 30.0),
+                    'facing_size_bb':  spot.get('facing_size_bb') or _meta.get('facing_size_bb', 0.0),
+                    'gto_action':      _existing['gto_action'],
+                    'gto_freq':        _existing['gto_freq'],
+                    'ev_diff':         _existing.get('ev_diff'),
+                    'exploitability_pct': _existing.get('exploitability_pct'),
+                    'iterations':      _existing.get('iterations'),
+                    'source':          _existing.get('source') or 'solver_cli',
+                    'strategy_json':   _existing['strategy_json'],
+                }])
+                if _copied:
+                    mark_solver_job_done(spot_hash, 'done')
+                    copied += 1
+                    log.info("GTO tree-cache copy: %s <- tree %s (sem solve)", spot_hash, _th)
+                    continue
 
         try:
             stack   = spot.get('effective_stack_bb', 30.0)
@@ -680,6 +767,7 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
             hero_stack   = spot.get('hero_stack_bb') or meta.get('hero_stack_bb', 30.0)
             inserted = insert_gto_nodes([{
                 'spot_hash':         spot_hash,
+                'tree_hash':         _th,
                 'street':            spot['street'],
                 'position':          position,
                 'board':             spot.get('board', []),
@@ -712,7 +800,7 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
             mark_solver_job_done(spot_hash, 'failed')
             failed += 1
 
-    return {'solved': solved, 'rejected': rejected, 'failed': failed}
+    return {'solved': solved, 'rejected': rejected, 'failed': failed, 'copied': copied}
 
 
 def _requeue_with_more_iterations(spot_hash: str, spot: dict) -> None:
