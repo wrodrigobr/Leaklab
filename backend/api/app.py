@@ -2985,9 +2985,9 @@ def coach_student_study_plan(student_id):
         force_new = request.args.get('new') == '1'
         from database.repositories import get_ev_leaks as _get_ev_leaks
         _ev = _get_ev_leaks(student_id, days).get('leaks')   # #24/#25: prioriza por bb
-        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=student_id,
-                                   force_new=force_new, player_stats=player_stats,
-                                   leak_source=leak_source, ev_leaks=_ev)
+        plan = _gen_study_plan(leaks, evolution, icm, hero=hero, user_id=student_id,
+                               force_new=force_new, player_stats=player_stats,
+                               leak_source=leak_source, ev_leaks=_ev)
         return jsonify(plan)
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -3442,6 +3442,26 @@ def _template_hand_analysis(d) -> str:
 
 
 
+def _gen_study_plan(leaks, evolution, icm, *, hero, user_id, force_new,
+                    player_stats, leak_source, ev_leaks):
+    """Plano de estudos: prefere o loop agêntico (investiga cada leak em profundidade),
+    cai no single-shot legado em qualquer falha. Flag STUDY_PLAN_AGENTIC=0 desliga."""
+    from leaklab.llm_explainer import generate_study_plan
+    if os.getenv('STUDY_PLAN_AGENTIC', '1') == '1':
+        try:
+            from leaklab.llm_explainer import generate_study_plan_agentic
+            return generate_study_plan_agentic(
+                leaks, evolution, icm, hero=hero, user_id=user_id,
+                force_new=force_new, player_stats=player_stats,
+                leak_source=leak_source, ev_leaks=ev_leaks)
+        except Exception:
+            log.exception("study_plan agentic error; fallback para single-shot")
+    return generate_study_plan(
+        leaks, evolution, icm, hero=hero, user_id=user_id,
+        force_new=force_new, player_stats=player_stats,
+        leak_source=leak_source, ev_leaks=ev_leaks)
+
+
 @app.route('/study/plan', methods=['GET'])
 @require_auth
 def study_plan():
@@ -3482,9 +3502,9 @@ def study_plan():
 
         from database.repositories import get_ev_leaks as _get_ev_leaks
         _ev = _get_ev_leaks(g.user_id, days).get('leaks')   # #24/#25: prioriza por bb
-        plan = generate_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id,
-                                   force_new=force_new, player_stats=player_stats,
-                                   leak_source=leak_source, ev_leaks=_ev)
+        plan = _gen_study_plan(leaks, evolution, icm, hero=hero, user_id=g.user_id,
+                               force_new=force_new, player_stats=player_stats,
+                               leak_source=leak_source, ev_leaks=_ev)
 
         # Aplicar overrides do coach nos cards para que o aluno veja o mesmo conteúdo
         coach_managed = False

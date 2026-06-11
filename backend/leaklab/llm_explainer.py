@@ -1224,6 +1224,289 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
         }
 
 
+# ── Plano de estudos — loop agêntico (tool use + structured output) ─────────────
+#
+# Diferença de altitude vs o coach chat: aqui NÃO faz sentido buscar os dados de
+# resumo sob demanda — um plano de estudos é um diagnóstico COMPLETO e sempre quer
+# leaks + EV + HUD. Esses ficam pré-carregados (como no single-shot legado). O que
+# o loop adiciona é INVESTIGAÇÃO DE PROFUNDIDADE VARIÁVEL: para cada leak top, o
+# modelo pode puxar as MÃOS REAIS por trás dele e o detalhe de alinhamento GTO, e
+# então escrever um módulo ancorado nos dados do jogador — não conselho genérico.
+# A saída final é estruturada via a ferramenta terminal submit_study_plan (o schema
+# é validado pela API → JSON sempre válido, sem strip de markdown nem recuperação).
+
+def _build_study_diagnosis_block(leaks: list, evolution: list, icm: dict,
+                                 hero: str, player_stats: dict | None,
+                                 leak_source: str, ev_leaks: list | None) -> str:
+    """Monta o bloco de diagnóstico (dados do jogador) compartilhado pelo prompt."""
+    total_dec  = sum((e.get('decisions_count') or 0) for e in evolution) or 1
+    avg_score  = sum((e.get('avg_score') or 0) * (e.get('decisions_count') or 0)
+                     for e in evolution) / total_dec
+    avg_std    = sum((e.get('standard_pct') or 0) * (e.get('decisions_count') or 0)
+                     for e in evolution) / total_dec
+    avg_clear  = sum((e.get('clear_pct') or 0) * (e.get('decisions_count') or 0)
+                     for e in evolution) / total_dec
+    n_torneios = len(evolution)
+    icm_weak   = max(icm.items(),
+                     key=lambda x: 1 - x[1].get('standard_rate', 1),
+                     default=('—', {}))[0] if icm else '—'
+
+    leaks_txt = '\n'.join(
+        f"  - {l['spot']}: {l['n']} ocorrências, score médio {l['avg_score']:.3f} "
+        f"({'crítico' if l['avg_score'] >= .36 else 'moderado' if l['avg_score'] >= .20 else 'leve'})"
+        for l in leaks[:8]
+    )
+    ev_txt = ''
+    if ev_leaks:
+        ev_txt = '\n'.join(
+            f"  - {l.get('position', '?')} {l.get('street', '')} (ideal: {l.get('ideal_action', '')}): "
+            f"−{l.get('total_ev_loss_bb', 0)} bb em {l.get('n', 0)} decisões "
+            f"(−{l.get('avg_ev_loss_bb', 0)} bb/decisão)"
+            for l in ev_leaks[:6]
+        )
+    hud_txt = _format_hud_stats_for_prompt(player_stats) if player_stats else ''
+    source_note = {
+        'gto':       '\n(Leaks via análise GTO — comparação direta com solver. Alta confiança.)',
+        'heuristic': '\n(Leaks via análise heurística do engine — confiança moderada.)',
+        'empty':     '',
+    }.get(leak_source, '')
+
+    block = f"""## Dados do Jogador ({hero})
+
+**Métricas gerais ({n_torneios} torneios analisados):**
+- Score médio de erro: {avg_score:.4f} (meta: abaixo de 0.08)
+- Standard% (decisões corretas): {avg_std:.1f}% (meta: acima de 80%)
+- Erros claros: {avg_clear:.1f}% (meta: abaixo de 5%)
+- Pior fase ICM: pressão {icm_weak}
+{hud_txt}
+**Leaks identificados (por frequência de erro):**{source_note}
+{leaks_txt}"""
+    if ev_txt:
+        block += ("\n\n**Vazamentos por EV PERDIDO (bb deixados na mesa — PRIORIZE A ORDEM "
+                  "DO PLANO POR AQUI):**\n" + ev_txt)
+    return block
+
+
+_STUDY_PLAN_CARD_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'prioridade':  {'type': 'string', 'description': 'p1..p6, na ordem de prioridade de EV.'},
+        'icone':       {'type': 'string', 'description': 'Um naipe: ♠ ♥ ♦ ♣'},
+        'titulo':      {'type': 'string', 'description': 'Título direto e específico ao leak (máx 6 palavras).'},
+        'diagnostico': {'type': 'string', 'description': 'Raiz do problema e impacto em EV/bb. Cite o custo em bb e as mãos reais investigadas quando houver.'},
+        'conceitos':   {'type': 'array', 'items': {'type': 'string'}, 'description': '2-4 conceitos teóricos a dominar.'},
+        'recursos': {
+            'type': 'object',
+            'properties': {
+                'livros': {'type': 'array', 'items': {'type': 'string'}},
+                'videos': {'type': 'array', 'items': {'type': 'string'}},
+                'curso':  {'type': 'string', 'description': 'Nome do curso/treinamento, ou string vazia.'},
+            },
+        },
+        'exercicio': {'type': 'string', 'description': 'Rotina prática concreta e mensurável para hoje.'},
+        'metrica':   {'type': 'string', 'description': 'Como medir o progresso neste leak.'},
+        'spot':      {'type': 'string', 'description': 'street/action do leak principal.'},
+    },
+    'required': ['prioridade', 'titulo', 'diagnostico', 'conceitos', 'exercicio', 'metrica', 'spot'],
+}
+
+_STUDY_TOOLS = [
+    {
+        'name': 'get_leak_hands',
+        'description': (
+            'Retorna as mãos REAIS do jogador por trás de um leak: as decisões com erro '
+            'GTO ou EV perdido em um street/posição específicos, da que mais sangra para a '
+            'que menos. Use para ancorar o diagnóstico de um módulo em mãos concretas (cartas, '
+            'board, ação tomada vs ideal, bb perdidos) em vez de conselho genérico.'
+        ),
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'street':   {'type': 'string', 'description': 'preflop|flop|turn|river (opcional).'},
+                'position': {'type': 'string', 'description': 'Posição do hero, ex: BTN, SB, BB, CO (opcional).'},
+            },
+        },
+    },
+    {
+        'name': 'get_gto_alignment',
+        'description': (
+            'Retorna o detalhamento de alinhamento GTO do jogador (% correto/mixed/desvio leve/'
+            'crítico) quebrado por street ou por posição. Use para localizar ONDE exatamente o '
+            'desvio se concentra antes de escrever o módulo.'
+        ),
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'by': {'type': 'string', 'enum': ['street', 'position'], 'description': 'Eixo do breakdown.'},
+            },
+        },
+    },
+    {
+        'name': 'submit_study_plan',
+        'description': (
+            'Entrega o plano de estudos final. Chame UMA vez, no fim, depois de investigar os '
+            'leaks top. Exatamente 6 cards, ordenados por prioridade de EV.'
+        ),
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'nivel':  {'type': 'string', 'enum': ['iniciante', 'intermediario', 'avancado']},
+                'resumo': {'type': 'string', 'description': '2-3 frases sobre o perfil de erros e o caminho de evolução.'},
+                'cards':  {'type': 'array', 'items': _STUDY_PLAN_CARD_SCHEMA},
+            },
+            'required': ['nivel', 'resumo', 'cards'],
+        },
+    },
+]
+
+
+def _run_study_tool(name: str, user_id: int, tool_input: dict) -> str:
+    """Executa uma ferramenta investigativa do plano, escopada ao user_id."""
+    from database import repositories as _repo
+    if name == 'get_leak_hands':
+        rows = _repo.get_decisions_for_spot(
+            user_id,
+            street=tool_input.get('street') or None,
+            position=tool_input.get('position') or None,
+            days=90, limit=8,
+        )
+        return json.dumps(rows, ensure_ascii=False, default=str)
+    if name == 'get_gto_alignment':
+        if tool_input.get('by') == 'position':
+            data = _repo.get_gto_alignment_by_position(user_id)
+        else:
+            data = _repo.get_gto_alignment_by_street(user_id)
+        return json.dumps(data, ensure_ascii=False, default=str)
+    return json.dumps({'error': f'ferramenta desconhecida: {name}'})
+
+
+def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
+                                hero: str = 'Jogador',
+                                user_id: int | None = None,
+                                force_new: bool = False,
+                                player_stats: dict | None = None,
+                                leak_source: str = 'gto',
+                                ev_leaks: list | None = None,
+                                max_iterations: int = 8) -> dict:
+    """Gera o plano de estudos via loop agêntico. Mesma assinatura/retorno de
+    generate_study_plan, mas o modelo investiga cada leak em profundidade antes de
+    sintetizar. Cache compartilhado com o gerador legado (db_key estável por aluno).
+    """
+    import hashlib
+
+    stats_fingerprint = {
+        k: v for k, v in (player_stats or {}).items()
+        if k != 'total_hands' and v is not None
+    } if player_stats else {}
+    mem_key = 'study_plan_agentic_v1:' + hashlib.md5(
+        json.dumps({'leaks': leaks, 'evo_len': len(evolution), 'stats': stats_fingerprint,
+                    'source': leak_source, 'ev': ev_leaks or []}, sort_keys=True).encode()
+    ).hexdigest()
+    db_key = 'study_plan_current'   # mesmo do legado — plano canônico único por aluno
+
+    if not force_new:
+        if mem_key in _cache:
+            return json.loads(_cache[mem_key])
+        if user_id is not None:
+            try:
+                from database.repositories import get_llm_cache
+                cached = get_llm_cache(user_id, db_key)
+                if cached:
+                    _cache[mem_key] = cached
+                    return json.loads(cached)
+            except Exception:
+                pass
+
+    def _finalize(plan: dict) -> dict:
+        plan = dict(plan)
+        plan['source'] = leak_source
+        result_str = json.dumps(plan, ensure_ascii=False)
+        _cache[mem_key] = result_str
+        if user_id is not None:
+            try:
+                from database.repositories import set_llm_cache
+                set_llm_cache(user_id, db_key, result_str)
+            except Exception:
+                pass
+        return plan
+
+    diagnosis = _build_study_diagnosis_block(
+        leaks, evolution, icm, hero, player_stats, leak_source, ev_leaks)
+
+    system = (
+        "Você é um coach profissional de poker MTT com 15+ anos de experiência, "
+        "especialista em identificar e corrigir leaks em torneios.\n\n"
+        "Você tem ferramentas para INVESTIGAR a fundo cada leak do aluno antes de montar "
+        "o plano: get_leak_hands (mãos reais por trás de um leak) e get_gto_alignment "
+        "(onde o desvio se concentra). Investigue os 2-3 leaks que mais custam EV — cite "
+        "mãos e números reais no diagnóstico — e SÓ ENTÃO chame submit_study_plan com "
+        "exatamente 6 cards ordenados por prioridade de EV. Não invente mãos: se uma "
+        "ferramenta voltar vazia, baseie-se nos dados de resumo.\n\n"
+        f"Português do Brasil. {_POKER_TERMS_EN}"
+    )
+    user_msg = (
+        diagnosis +
+        "\n\n## Tarefa\nInvestigue os leaks que mais sangram EV e gere um plano de estudos "
+        "com 6 módulos, cada um ancorado em mãos/números reais do jogador quando possível. "
+        "Cruze os HUD Stats com os leaks para personalizar. Termine chamando submit_study_plan."
+    )
+
+    messages: list[dict] = [{'role': 'user', 'content': user_msg}]
+
+    for _ in range(max_iterations):
+        data = _call_llm_api_full({
+            'model':      'claude-haiku-4-5-20251001',
+            'max_tokens': 6000,
+            'system':     system,
+            'messages':   messages,
+            'tools':      _STUDY_TOOLS,
+        })
+        content = data.get('content', [])
+        messages.append({'role': 'assistant', 'content': content})
+
+        tool_uses = [b for b in content if b.get('type') == 'tool_use']
+        # Se o modelo entregou o plano, captura e retorna.
+        for b in tool_uses:
+            if b.get('name') == 'submit_study_plan':
+                return _finalize(b.get('input') or {})
+
+        if data.get('stop_reason') != 'tool_use' or not tool_uses:
+            break   # respondeu em texto sem submeter — força o submit abaixo
+
+        tool_results = []
+        for b in tool_uses:
+            try:
+                result_str = _run_study_tool(b.get('name', ''), user_id, b.get('input') or {})
+            except Exception as e:
+                result_str = json.dumps({'error': str(e)})
+            tool_results.append({
+                'type':        'tool_result',
+                'tool_use_id': b.get('id'),
+                'content':     result_str,
+            })
+        messages.append({'role': 'user', 'content': tool_results})
+
+    # Esgotou iterações / respondeu em texto: força a entrega estruturada.
+    data = _call_llm_api_full({
+        'model':       'claude-haiku-4-5-20251001',
+        'max_tokens':  6000,
+        'system':      system,
+        'messages':    messages + [{
+            'role': 'user',
+            'content': 'Entregue o plano agora chamando submit_study_plan.',
+        }],
+        'tools':       _STUDY_TOOLS,
+        'tool_choice': {'type': 'tool', 'name': 'submit_study_plan'},
+    })
+    for b in data.get('content', []):
+        if b.get('type') == 'tool_use' and b.get('name') == 'submit_study_plan':
+            return _finalize(b.get('input') or {})
+
+    # Não deveria chegar aqui (tool_choice força a tool); fallback defensivo.
+    return {'nivel': 'intermediario', 'resumo': 'Plano com IA temporariamente indisponível.',
+            'cards': [], 'source': leak_source, 'error': 'ai_unavailable'}
+
+
 def coach_replay_decision(street, action_taken, best_action,
                            hero_cards=None, board=None,
                            hand_equity=None, pot_odds=None,

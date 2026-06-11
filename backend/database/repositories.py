@@ -5544,6 +5544,43 @@ def get_gto_stats() -> dict:
         conn.close()
 
 
+def get_decisions_for_spot(user_id: int, street: str | None = None,
+                           position: str | None = None, days: int = 90,
+                           limit: int = 8) -> list[dict]:
+    """Mãos reais por trás de um leak: decisões com erro de um spot específico.
+
+    Usado pelo gerador de plano de estudos agêntico para ancorar cada módulo em
+    mãos concretas do jogador (em vez de conselho genérico). Retorna apenas
+    decisões com desvio GTO ou EV perdido, da que mais sangra para a que menos.
+    """
+    tf, tp = _build_tournament_filter(user_id, days)
+    conds  = [tf]
+    params = list(tp)
+    if street:
+        conds.append("d.street = ?");   params.append(street)
+    if position:
+        conds.append("d.position = ?"); params.append(position)
+    conds.append("(d.gto_label IN ('gto_critical','gto_minor_deviation') "
+                 "OR COALESCE(d.ev_loss_bb, 0) > 0.05)")
+    where = ' AND '.join(conds)
+    params.append(limit)
+    conn = get_conn()
+    try:
+        rows = _fetchall(conn, _adapt(f"""
+            SELECT d.street, d.position, d.hero_cards, d.board, d.action_taken,
+                   COALESCE(d.gto_action, d.best_action) AS ideal_action,
+                   d.gto_label, d.ev_loss_bb, d.m_ratio, d.icm_pressure, d.stack_bb
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {where}
+            ORDER BY COALESCE(d.ev_loss_bb, 0) DESC
+            LIMIT ?
+        """), params)
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
 def get_gto_quality_breakdown(user_id: int, since_days: int = 90, last_n: int | None = None) -> dict:
     """Distribuição de gto_label para o usuário nos últimos since_days dias (ou last_n torneios)."""
     tf, tp = _build_tournament_filter(user_id, since_days, last_n)
