@@ -6169,6 +6169,19 @@ def get_ev_summary(user_id: int) -> dict:
             'ev_per_100':    (round(float(r['loss']) / r['n'] * 100.0, 1) if r['n'] >= 5 else None),
         } for r in srows]
 
+        # Sangria por street (bb perdidos) — card "onde você sangra" do V2
+        st_rows = _fetchall(conn, _adapt(f"""
+            SELECT street, COUNT(*) AS cnt, COALESCE(SUM(ev_loss_bb),0) AS loss
+            FROM decisions
+            WHERE tournament_id IN ({ph_all}) AND ev_loss_bb > 0.05
+            GROUP BY street"""), tuple(tids))
+        _order = {'preflop': 0, 'flop': 1, 'turn': 2, 'river': 3}
+        by_street = sorted([{
+            'street':  r['street'],
+            'count':   r['cnt'],
+            'loss_bb': round(float(r['loss']), 1),
+        } for r in st_rows], key=lambda x: _order.get(x['street'], 9))
+
         # Cobertura GTO por street group (% decisões com gto_label) — anéis do V2
         cov = _fetchall(conn, _adapt(f"""
             SELECT CASE WHEN street = 'preflop' THEN 'pre' ELSE 'post' END AS grp,
@@ -6192,6 +6205,7 @@ def get_ev_summary(user_id: int) -> dict:
             'series':            series,
             'coverage':          {'preflop_pct': coverage.get('pre'),
                                   'postflop_pct': coverage.get('post')},
+            'by_street':         by_street,
         }
     finally:
         conn.close()

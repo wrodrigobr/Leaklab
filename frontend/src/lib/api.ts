@@ -1011,6 +1011,7 @@ export interface EvSummary {
   top_leaks?: EvLeak[];
   series?: { tournament_id: number; name: string; ev_per_100: number | null }[];
   coverage?: { preflop_pct: number | null; postflop_pct: number | null };
+  by_street?: { street: string; count: number; loss_bb: number }[];
 }
 
 export const metrics = {

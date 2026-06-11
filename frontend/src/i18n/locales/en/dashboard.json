@@ -513,6 +513,14 @@
     "covTitle": "Solver coverage",
     "covPre": "Preflop",
     "covPost": "Postflop",
-    "covNote": "Postflop grows on its own: the solver queue resolves spots as you review hands."
+    "covNote": "Postflop grows on its own: the solver queue resolves spots as you review hands.",
+    "streetTitle": "Where you bleed (bb by street)",
+    "streetSpots": "{{n}} spots",
+    "aiTitle": "AI Insight",
+    "aiTwin": "Strategic Twin",
+    "aiCognitive": "Cognitive pattern",
+    "aiCareer": "Career projection",
+    "aiCausal": "Causal map",
+    "aiLocked": "AI insights (Strategic Twin, cognitive patterns, career projection) are a Pro feature. Upgrade to unlock them."
   }
 }

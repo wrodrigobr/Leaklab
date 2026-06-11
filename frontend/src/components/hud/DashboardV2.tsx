@@ -7,6 +7,8 @@ import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { SECTION_SPAN, DashSection } from "@/hooks/useDashboardLayout";
 import { V2EvTrendCard } from "@/components/hud/V2EvTrendCard";
 import { V2CoverageCard } from "@/components/hud/V2CoverageCard";
+import { V2StreetEvCard } from "@/components/hud/V2StreetEvCard";
+import { V2AiInsightsCard, AiInsight } from "@/components/hud/V2AiInsightsCard";
 
 /**
  * DashboardV2 — UX-1 (specs/ux-proposal-2026.html), modelo "v2 chaveável".
@@ -24,6 +26,8 @@ interface Props {
   hasData: boolean;
   renderCard: (id: string) => React.ReactNode;
   onBackToClassic: () => void;
+  aiInsights?: AiInsight[];
+  aiLocked?: boolean;
 }
 
 // Ordem fixa opinada (UX-2 refinará): qualidade/diagnóstico → evolução → perfis → IA (Pro)
@@ -32,7 +36,7 @@ const CARD_ORDER = [
   "dna", "pressure", "career", "cognitive", "twin", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackToClassic }: Props) {
+export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackToClassic, aiInsights = [], aiLocked = false }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -175,6 +179,8 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
           >
             <div className="lg:col-span-8"><V2EvTrendCard evSummary={s} /></div>
             <div className="lg:col-span-4"><V2CoverageCard evSummary={s} /></div>
+            <div className="lg:col-span-7"><V2AiInsightsCard insights={aiInsights} locked={aiLocked} /></div>
+            <div className="lg:col-span-5"><V2StreetEvCard evSummary={s} /></div>
             {CARD_ORDER.map((id) => {
               const card = renderCard(id);
               return card ? (

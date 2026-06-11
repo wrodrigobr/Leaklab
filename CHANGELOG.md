@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(dashboard): UX-2 onda 2 — "onde você sangra" por street + carrossel de insights da IA ✅
+
+> **(1) `V2StreetEvCard`:** bb perdidos por street em barras horizontais com escala compartilhada e cor por street (preflop roxo → river vermelho) — 1 olhada mostra onde o estudo rende mais. Backend: `get_ev_summary` ganhou `by_street` (SUM(ev_loss_bb)>0.05 por street, ordem canônica; validado com dados semeados). **(2) `V2AiInsightsCard`:** as narrativas de IA (Strategic Twin, padrão cognitivo, projeção de carreira, mapa causal) consolidadas num CARROSSEL premium (gradiente azul, setas + dots, aspas de citação) — 1 slot rotativo no lugar de 4 cards gigantes, como no mock; usuário Free vê lock com CTA Pro (`aiLocked`); os cards completos seguem na grade abaixo. O Index monta as narrativas dos dados JÁ buscados (zero fetch novo) e passa ao V2. Layout: carrossel col-7 + street col-5 na segunda linha do bento. i18n `v2.street*/ai*` (3 locales). Cards exclusivos do V2 — v1 congelado intacto.
+
 ### feat(dashboard): UX-2 onda 1 — gráficos modernos no V2 (área de EV + anéis de cobertura) ✅
 
 > Usuário liberou remodelagem total dos cards do V2 (incl. novos tipos de gráfico, benchmark de tecnologia). Método combinado: ondas com validação visual — esta é a onda 1, com dados já disponíveis. **(1) `V2EvTrendCard`:** evolução do EV perdido/100 por torneio em AreaChart (recharts, gradiente vermelho translúcido, grid pontilhado discreto, tooltip dark — linguagem Linear/Vercel; "menor = melhor"). **(2) `V2CoverageCard`:** cobertura do solver em ANÉIS radiais (conic-gradient puro, sem lib) pre/post + nota viva de "postflop cresce sozinho". Backend: `get_ev_summary` ganhou `series` (EV/100 por torneio, últimos 12, gate de 5 decisões por ponto) e `coverage` (% decisões com gto_label por street group) — validado com dados semeados. Cards novos são EXCLUSIVOS do V2 (componentes próprios; os compartilhados com o v1 não foram tocados — congelamento respeitado). i18n `v2.trend*/cov*` (3 locales).

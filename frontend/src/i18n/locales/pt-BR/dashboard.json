@@ -513,6 +513,14 @@
     "covTitle": "Cobertura do solver",
     "covPre": "Preflop",
     "covPost": "Postflop",
-    "covNote": "O postflop cresce sozinho: a fila do solver resolve os spots conforme você revisa mãos."
+    "covNote": "O postflop cresce sozinho: a fila do solver resolve os spots conforme você revisa mãos.",
+    "streetTitle": "Onde você sangra (bb por street)",
+    "streetSpots": "{{n}} spots",
+    "aiTitle": "Insight da IA",
+    "aiTwin": "Strategic Twin",
+    "aiCognitive": "Padrão cognitivo",
+    "aiCareer": "Projeção de carreira",
+    "aiCausal": "Mapa causal",
+    "aiLocked": "Os insights de IA (Strategic Twin, padrões cognitivos, projeção de carreira) são um recurso Pro. Faça upgrade para destravá-los."
   }
 }

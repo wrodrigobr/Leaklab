@@ -235,6 +235,13 @@ const Index = () => {
         hasData={hasData}
         renderCard={renderCard}
         onBackToClassic={toggleDashV2}
+        aiLocked={isFree}
+        aiInsights={[
+          twinData?.narrative      && { key: "twin",      title: t("v2.aiTwin"),      text: twinData.narrative },
+          cognitiveData?.narrative && { key: "cognitive", title: t("v2.aiCognitive"), text: cognitiveData.narrative },
+          careerData?.narrative    && { key: "career",    title: t("v2.aiCareer"),    text: careerData.narrative },
+          leakGraph?.narrative     && { key: "causal",    title: t("v2.aiCausal"),    text: leakGraph.narrative },
+        ].filter(Boolean) as { key: string; title: string; text: string }[]}
       />
     );
   }
