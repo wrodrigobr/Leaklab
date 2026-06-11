@@ -1085,7 +1085,7 @@ function SidePanels({
 
 
       {/* ── Coach annotation (coach editing student hand) ── */}
-      {studentId && step?.is_hero && step?.is_error && currentDecisionId && (
+      {studentId && step?.is_hero && currentDecisionId && (
         <section className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -1559,20 +1559,22 @@ const Replayer = () => {
   // Coach annotation for current step — must be before early returns (Rules of Hooks)
   const coachAnnotation = useMemo(() => {
     const annotations = replayData?.coach_annotations;
-    if (!annotations || !step?.is_error) return null;
+    // Anotações disponíveis em QUALQUER spot do hero — não só nos erros. O coach
+    // pode comentar uma jogada correta/marginal também (reforço, contexto, leak fino).
+    if (!annotations) return null;
     return Object.values(annotations).find(
-      (a) => a.street === step.street && a.action_taken === step.action
+      (a) => a.street === step?.street && a.action_taken === step?.action
     ) ?? null;
-  }, [replayData?.coach_annotations, step?.is_error, step?.street, step?.action]);
+  }, [replayData?.coach_annotations, step?.street, step?.action]);
 
-  // decision_id for annotation save/delete (coaches only)
+  // decision_id for annotation save/delete (coaches only) — todo spot do hero, não só erro
   const currentDecisionId = useMemo(() => {
-    if (!studentId || !step?.is_error || !step.is_hero) return null;
+    if (!studentId || !step?.is_hero) return null;
     if (coachAnnotation) return coachAnnotation.decision_id;
     return decisions.find(
       (d) => d.hand_id === handId && d.street === step.street && d.action_taken === step.action
     )?.id ?? null;
-  }, [studentId, step?.is_error, step?.is_hero, step?.street, step?.action, coachAnnotation, decisions, handId]);
+  }, [studentId, step?.is_hero, step?.street, step?.action, coachAnnotation, decisions, handId]);
 
   const saveAnn = useMutation({
     mutationFn: () => coachDashboard.upsertAnnotation(studentId!, {
