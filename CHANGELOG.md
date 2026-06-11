@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replay): nó GTO errado em decisão postflop que ENFRENTA aposta (recomendava "Bet" impossível)
+
+> Bug sistêmico no /replay: numa decisão postflop **enfrentando uma aposta** (call/fold/raise), o card mostrava o nó de **PRIMEIRA AÇÃO** (bet/check) — recomendando "Bet", que é impossível quando há aposta na frente, e marcando o fold/call do hero como "Desvio Crítico". Causa: o override do /replay passava `facing_size_bb = decision.get('facing_bet')` ao `lookup_gto`, mas esse campo vem do **nó já casado** (=0 no nó de aposta), não do spot real → o hash batia no nó de facing=0 (bet/check). Corrigido pra usar o facing REAL do spot (`facingToBb`, em BB) — exatamente o que o `decision_engine` já usava (por isso o engine sempre esteve certo; só o override do display divergia). Ex.: flop fold enfrentando 4,9bb saía "Desvio Crítico / GTO recomenda Bet"; agora `gto_correct` com **fold 61% / call 19% / raise 15% / allin 5%** (o fold é a ação GTO mais comum). Preflop não é afetado (lookup_gto preflop ignora `facing_size_bb`). api 42/42.
+
 ### fix(stats): W$SD vazio no dashboard — showdown_result nunca era populado
 
 > O indicador **W$SD** (`w_at_sd`, PlayerStatsCard) vinha vazio ("—"): a coluna `showdown_result` estava NULL em **todas** as 1467 decisions. `_detect_showdown` só reconhecia o formato de AÇÃO do PokerStars (`Hero: shows [...]`), mas estes dados (GGPoker) revelam as cartas só na seção **SUMMARY** (`Seat 4: Hero showed [...] and lost`, passado, sem `:` após o nome) → nunca casava → None. Novo `parser._extract_showdown_result` lê o SUMMARY (won/lost/None pelo veredito do hero; formato comum a PokerStars e GGPoker), exposto em `ParsedHand.showdown_result`; `_detect_showdown` agora delega a ele (mantém o fallback antigo). Backfill das 1467 decisions existentes (56 showdowns: 34 won / 22 lost) → **W$SD = 60,7%**. Uploads futuros populam automático. +1 teste; suíte completa 886/886.

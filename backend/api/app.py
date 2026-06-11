@@ -4259,7 +4259,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     hero_stack_bb  = float(_spot.get('effectiveStackBb', _ctx.get('heroStackBb', 20.0)) or 20.0),
                     action_seq     = _ctx.get('actionSeq', 'rfi'),
                     vs_position    = _spot.get('villainPosition', _ctx.get('vsPosition', '')),
-                    facing_size_bb = float(decision.get('facing_bet', 0) or 0),
+                    # facing REAL do spot (facingToBb, em BB) — NÃO decision.get('facing_bet'),
+                    # que vem do nó já casado (=0 no nó de aposta) e fazia o lookup devolver o
+                    # nó de PRIMEIRA AÇÃO (bet/check) num spot que ENFRENTA aposta (call/fold/
+                    # raise). Mesmo facing que o engine usa (decision_engine: facingToBb).
+                    facing_size_bb = float(_spot.get('facingToBb') or 0),
                     pot_bb         = float(_spot.get('potBb', 0) or 0),     # BB, não fichas (potSize)
                     # READ-ONLY: block_remote=False faz o lookup_gto dar short-circuit (sem
                     # GW nem Texas) quando NÃO há nó local. O `(not gto_label)` antigo passava
