@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(dashboard): DashboardV2 sem vãos — masonry real na grade de cards ✅
+
+> Feedback do usuário: cards curtos deixavam blocos vazios na grade do V2 (grid 2-col com linhas esticadas pela altura do vizinho). Reusada a solução já existente do clássico: `useMasonryRows` (mede a altura real de cada card e seta `grid-row-end: span N`) + `grid-flow-dense` + spans de coluna do `SECTION_SPAN` — cards curtos liberam o vão e a grade empacota densa, mantendo a ORDEM fixa opinada do V2 (sem drag). Registrada também a decisão do usuário: os cards do V2 têm liberdade total de remodelagem (não precisam manter o visual atual) — vira o escopo do UX-2.
+
 ### feat(dashboard): DashboardV2 atrás de toggle — hero "Hoje" com EV/100 e leaks por CUSTO (UX-1) ✅
 
 > Segunda entrega do redesign (specs/ux-proposal-2026.html), mesmo modelo v2 chaveável do card do replayer: `DashboardV2` nasce AO LADO do Index clássico (v1 byte-intocado; toggle persistido `dashboard_v2`, pills de ida/volta nos dois layouts). **Hero "Hoje"** responde a pergunta certa em 3s: **EV perdido/100 decisões** (métrica-líder — só possível com o ev_loss_bb hand-aware; tendência últimos 5 torneios vs 5 anteriores; gate de 10 decisões pra taxa honesta), **% de decisões sólidas**, e **CTA do leak mais caro** ("FOLD quando o melhor era CALL · flop · −4,2bb → Treinar agora" → /training). **Leaks por CUSTO**: novo `GET /player/ev-summary` (`get_ev_summary`) agrupa decisões por (street, jogou, melhor) e rankeia por SUM(ev_loss_bb) com share do prejuízo (pareto) — contagem de erros vira dinheiro. Abaixo do hero, os cards existentes REUSADOS em ordem fixa opinada via o próprio `renderCard` do Index (zero duplicação; masonry arrastável fica só no clássico). i18n `v2.*` em dashboard.json (3 locales). Validado: get_ev_summary funcional com dados semeados (ranking/share/tendência conferidos), py_compile, esbuild parse, JSONs ok; tsc/build no CI.

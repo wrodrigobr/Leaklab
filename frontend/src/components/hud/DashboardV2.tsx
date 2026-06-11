@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { TrendingDown, Target, Zap } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { EvSummary } from "@/lib/api";
+import { useMasonryRows } from "@/hooks/useMasonryRows";
+import { SECTION_SPAN, DashSection } from "@/hooks/useDashboardLayout";
 
 /**
  * DashboardV2 — UX-1 (specs/ux-proposal-2026.html), modelo "v2 chaveável".
@@ -30,6 +32,10 @@ const CARD_ORDER = [
 
 export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackToClassic }: Props) {
   const { t } = useTranslation("dashboard");
+  // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
+  // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
+  const gridRef = useRef<HTMLElement>(null);
+  useMasonryRows(gridRef, [evSummary, hasData]);
   const s = evSummary;
   const trendDelta =
     s?.ev_per_100_recent != null && s?.ev_per_100_prev != null
@@ -161,10 +167,17 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
 
         {/* ── Cards existentes em ordem fixa (reuso via renderCard) ─────── */}
         {hasData && (
-          <section className="grid gap-4 md:grid-cols-2">
+          <section
+            ref={gridRef}
+            className="grid grid-cols-1 gap-x-6 gap-y-6 md:grid-cols-2 lg:grid-cols-12 lg:grid-flow-dense lg:auto-rows-[8px] lg:gap-y-0 items-start"
+          >
             {CARD_ORDER.map((id) => {
               const card = renderCard(id);
-              return card ? <div key={id}>{card}</div> : null;
+              return card ? (
+                <div key={id} className={SECTION_SPAN[id as DashSection] ?? "lg:col-span-6"}>
+                  {card}
+                </div>
+              ) : null;
             })}
           </section>
         )}
