@@ -507,6 +507,12 @@
     "ctaButton": "▶ Treinar agora",
     "leaksTitle": "Leaks por custo (bb perdidos)",
     "leakSpots": "{{n}} spots",
-    "leakShare": "{{pct}}% do total"
+    "leakShare": "{{pct}}% do total",
+    "trendTitle": "Evolução do EV perdido / 100",
+    "trendHint": "menor = melhor",
+    "covTitle": "Cobertura do solver",
+    "covPre": "Preflop",
+    "covPost": "Postflop",
+    "covNote": "O postflop cresce sozinho: a fila do solver resolve os spots conforme você revisa mãos."
   }
 }

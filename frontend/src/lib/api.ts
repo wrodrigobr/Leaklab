@@ -1009,6 +1009,8 @@ export interface EvSummary {
   standard_pct?: number | null;
   total_loss_bb?: number;
   top_leaks?: EvLeak[];
+  series?: { tournament_id: number; name: string; ev_per_100: number | null }[];
+  coverage?: { preflop_pct: number | null; postflop_pct: number | null };
 }
 
 export const metrics = {

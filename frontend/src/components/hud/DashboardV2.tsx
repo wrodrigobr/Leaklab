@@ -5,6 +5,8 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { EvSummary } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { SECTION_SPAN, DashSection } from "@/hooks/useDashboardLayout";
+import { V2EvTrendCard } from "@/components/hud/V2EvTrendCard";
+import { V2CoverageCard } from "@/components/hud/V2CoverageCard";
 
 /**
  * DashboardV2 — UX-1 (specs/ux-proposal-2026.html), modelo "v2 chaveável".
@@ -171,6 +173,8 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
             ref={gridRef}
             className="grid grid-cols-1 gap-x-6 gap-y-6 md:grid-cols-2 lg:grid-cols-12 lg:grid-flow-dense lg:auto-rows-[8px] lg:gap-y-0 items-start"
           >
+            <div className="lg:col-span-8"><V2EvTrendCard evSummary={s} /></div>
+            <div className="lg:col-span-4"><V2CoverageCard evSummary={s} /></div>
             {CARD_ORDER.map((id) => {
               const card = renderCard(id);
               return card ? (

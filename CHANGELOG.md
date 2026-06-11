@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(dashboard): UX-2 onda 1 — gráficos modernos no V2 (área de EV + anéis de cobertura) ✅
+
+> Usuário liberou remodelagem total dos cards do V2 (incl. novos tipos de gráfico, benchmark de tecnologia). Método combinado: ondas com validação visual — esta é a onda 1, com dados já disponíveis. **(1) `V2EvTrendCard`:** evolução do EV perdido/100 por torneio em AreaChart (recharts, gradiente vermelho translúcido, grid pontilhado discreto, tooltip dark — linguagem Linear/Vercel; "menor = melhor"). **(2) `V2CoverageCard`:** cobertura do solver em ANÉIS radiais (conic-gradient puro, sem lib) pre/post + nota viva de "postflop cresce sozinho". Backend: `get_ev_summary` ganhou `series` (EV/100 por torneio, últimos 12, gate de 5 decisões por ponto) e `coverage` (% decisões com gto_label por street group) — validado com dados semeados. Cards novos são EXCLUSIVOS do V2 (componentes próprios; os compartilhados com o v1 não foram tocados — congelamento respeitado). i18n `v2.trend*/cov*` (3 locales).
+
 ### fix(dashboard): DashboardV2 sem vãos — masonry real na grade de cards ✅
 
 > Feedback do usuário: cards curtos deixavam blocos vazios na grade do V2 (grid 2-col com linhas esticadas pela altura do vizinho). Reusada a solução já existente do clássico: `useMasonryRows` (mede a altura real de cada card e seta `grid-row-end: span N`) + `grid-flow-dense` + spans de coluna do `SECTION_SPAN` — cards curtos liberam o vão e a grade empacota densa, mantendo a ORDEM fixa opinada do V2 (sem drag). Registrada também a decisão do usuário: os cards do V2 têm liberdade total de remodelagem (não precisam manter o visual atual) — vira o escopo do UX-2.

@@ -6153,6 +6153,33 @@ def get_ev_summary(user_id: int) -> dict:
                              if loss_all > 0 else 0),
         } for l in leaks]
 
+        # Série por torneio (últimos 12, ordem cronológica) — sparkline de tendência
+        last12 = tids[:12]
+        ph12 = ','.join('?' * len(last12))
+        srows = _fetchall(conn, _adapt(f"""
+            SELECT d.tournament_id AS tid, t.tournament_name AS name,
+                   COUNT(d.ev_loss_bb) AS n, COALESCE(SUM(d.ev_loss_bb),0) AS loss
+            FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
+            WHERE d.tournament_id IN ({ph12})
+            GROUP BY d.tournament_id, t.tournament_name
+            ORDER BY d.tournament_id ASC"""), tuple(last12))
+        series = [{
+            'tournament_id': r['tid'],
+            'name':          (r['name'] or '')[:24],
+            'ev_per_100':    (round(float(r['loss']) / r['n'] * 100.0, 1) if r['n'] >= 5 else None),
+        } for r in srows]
+
+        # Cobertura GTO por street group (% decisões com gto_label) — anéis do V2
+        cov = _fetchall(conn, _adapt(f"""
+            SELECT CASE WHEN street = 'preflop' THEN 'pre' ELSE 'post' END AS grp,
+                   COUNT(*) AS tot,
+                   SUM(CASE WHEN gto_label IS NOT NULL AND gto_label != '' THEN 1 ELSE 0 END) AS covd
+            FROM decisions WHERE tournament_id IN ({ph_all})
+            GROUP BY CASE WHEN street = 'preflop' THEN 'pre' ELSE 'post' END"""), tuple(tids))
+        coverage = {}
+        for r in cov:
+            coverage[r['grp']] = round(r['covd'] / r['tot'] * 100.0, 1) if r['tot'] else None
+
         return {
             'has_data':          True,
             'decisions_with_ev': n_all,
@@ -6162,6 +6189,9 @@ def get_ev_summary(user_id: int) -> dict:
             'standard_pct':      standard_pct,
             'total_loss_bb':     round(loss_all, 1),
             'top_leaks':         top_leaks,
+            'series':            series,
+            'coverage':          {'preflop_pct': coverage.get('pre'),
+                                  'postflop_pct': coverage.get('post')},
         }
     finally:
         conn.close()

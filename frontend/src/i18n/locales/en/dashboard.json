@@ -507,6 +507,12 @@
     "ctaButton": "▶ Train now",
     "leaksTitle": "Leaks by cost (bb lost)",
     "leakSpots": "{{n}} spots",
-    "leakShare": "{{pct}}% of total"
+    "leakShare": "{{pct}}% of total",
+    "trendTitle": "EV lost / 100 over time",
+    "trendHint": "lower = better",
+    "covTitle": "Solver coverage",
+    "covPre": "Preflop",
+    "covPost": "Postflop",
+    "covNote": "Postflop grows on its own: the solver queue resolves spots as you review hands."
   }
 }
