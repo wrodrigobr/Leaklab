@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GrindLab — Proposta UX 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#2DD4BF; --teal-dim:#2DD4BF22; --bg:#0A0E1A; --bg2:#0F1526; --bg3:#151D33;
+    --light:#E3E8EC; --mut:#8B96A8; --line:#1E2A45; --amber:#FBBF24; --red:#F87171;
+    --green:#34D399; --blue:#60A5FA; --purple:#A78BFA;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--light);font-family:Inter,sans-serif;font-size:14px;line-height:1.55}
+  h1,h2,h3,.brand{font-family:'Chakra Petch',sans-serif}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 24px}
+
+  /* ── meta (anotações da proposta) ── */
+  .meta{background:linear-gradient(180deg,#0d1322,#0A0E1A);border-bottom:1px solid var(--line);padding:40px 0 28px}
+  .meta h1{font-size:26px;color:var(--teal)}
+  .meta p{color:var(--mut);max-width:880px;margin-top:10px}
+  .principles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px}
+  .principle{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .principle b{color:var(--teal);font-size:12px;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px}
+  .principle span{color:var(--mut);font-size:12px}
+
+  .section-title{margin:48px 0 6px;font-size:20px;color:var(--light)}
+  .section-sub{color:var(--mut);margin-bottom:18px;max-width:860px}
+
+  /* pins de anotação */
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;
+       background:var(--teal);color:#06281f;font-weight:700;font-size:12px;font-family:'JetBrains Mono';vertical-align:top;margin-left:6px;cursor:default}
+  .notes{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .note{background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--mut)}
+  .note b{color:var(--light)}
+  .note .crit{color:var(--amber)}
+
+  /* ── MOCK: chrome ── */
+  .mock{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg);box-shadow:0 20px 60px #00000066}
+  .mock-bar{display:flex;gap:6px;padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--line)}
+  .dot{width:10px;height:10px;border-radius:50%;background:#2a3552}
+
+  /* header do app */
+  .hud{display:flex;align-items:center;gap:22px;padding:12px 22px;border-bottom:1px solid var(--line);background:#0C1120}
+  .brand{color:var(--teal);font-weight:700;font-size:16px;letter-spacing:.02em}
+  .brand small{color:var(--mut);font-weight:600;font-size:9px;letter-spacing:.3em;display:block}
+  .nav{display:flex;gap:18px;font-size:13px;color:var(--mut)}
+  .nav .on{color:var(--light);border-bottom:2px solid var(--teal);padding-bottom:2px}
+  .hud-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .cta{background:var(--teal);color:#06281f;font-weight:700;border-radius:8px;padding:7px 14px;font-size:13px}
+  .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--blue))}
+
+  /* HERO strip */
+  .hero{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:14px;padding:20px 22px;background:
+        radial-gradient(1200px 300px at 20% -50%, #2DD4BF14, transparent),#0C1120;border-bottom:1px solid var(--line)}
+  .hero-card{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .hero-card .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--mut)}
+  .big{font-family:'Chakra Petch';font-size:34px;font-weight:700;line-height:1.1;margin-top:4px}
+  .pos{color:var(--green)} .neg{color:var(--red)} .teal{color:var(--teal)} .amber{color:var(--amber)}
+  .delta{font-size:11px;color:var(--mut);margin-top:2px}
+  .hero-cta{display:flex;flex-direction:column;justify-content:center;gap:10px;background:linear-gradient(135deg,#103b34,#0F1526);border:1px solid #2DD4BF55}
+  .hero-cta b{font-size:14px}
+  .hero-cta .btn{background:var(--teal);color:#06281f;font-weight:700;padding:9px 12px;border-radius:8px;text-align:center;font-size:13px}
+  .hero-cta .sub{font-size:11px;color:var(--mut)}
+
+  /* BENTO */
+  .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;padding:20px 22px}
+  .b{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:16px;position:relative}
+  .b h3{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--mut);margin-bottom:12px;display:flex;align-items:center}
+  .c6{grid-column:span 6}.c4{grid-column:span 4}.c8{grid-column:span 8}.c12{grid-column:span 12}.c3{grid-column:span 3}
+
+  /* leaks por custo */
+  .leak{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;border:1px solid transparent}
+  .leak:hover{border-color:var(--line);background:var(--bg3)}
+  .leak .rank{font-family:'Chakra Petch';font-size:18px;color:var(--mut);width:20px}
+  .leak .name{flex:1}.leak .name b{display:block;font-size:13px}
+  .leak .name span{font-size:11px;color:var(--mut)}
+  .leak .cost{font-family:'JetBrains Mono';font-weight:600;color:var(--red);font-size:14px;text-align:right}
+  .leak .cost small{display:block;color:var(--mut);font-weight:400;font-size:10px}
+  .leak .train{border:1px solid var(--teal);color:var(--teal);border-radius:7px;padding:5px 10px;font-size:11px;font-weight:600;white-space:nowrap}
+  .bar-row{height:4px;border-radius:2px;background:var(--bg3);margin-top:6px;overflow:hidden}
+  .bar-row i{display:block;height:100%;border-radius:2px;background:var(--red)}
+
+  /* gráfico fake */
+  .chart{height:170px;position:relative}
+  .chart svg{width:100%;height:100%}
+  .axis{font-size:9px;fill:var(--mut);font-family:'JetBrains Mono'}
+
+  /* coverage ring */
+  .ring-wrap{display:flex;gap:18px;align-items:center}
+  .ringbox{text-align:center}
+  .ring{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+        font-family:'Chakra Petch';font-weight:700;font-size:18px}
+  .r1{background:conic-gradient(var(--teal) 0 92%, var(--bg3) 92% 100%)}
+  .r2{background:conic-gradient(var(--blue) 0 64%, var(--bg3) 64% 100%)}
+  .ring i{width:64px;height:64px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-style:normal}
+  .ringbox p{font-size:10px;color:var(--mut);margin-top:6px;text-transform:uppercase;letter-spacing:.08em}
+
+  /* insight IA */
+  .insight{background:linear-gradient(135deg,#15203c,#0F1526);border:1px solid #60A5FA33}
+  .insight .tag{display:inline-block;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--blue);
+                border:1px solid #60A5FA55;padding:2px 8px;border-radius:20px;margin-bottom:10px}
+  .insight p{font-size:13px;color:var(--light)}
+  .insight .nav-dots{display:flex;gap:6px;margin-top:12px}
+  .insight .nav-dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+  .insight .nav-dots i:first-child{background:var(--blue)}
+
+  .plan-step{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--line);font-size:12px}
+  .plan-step:last-child{border:0}
+  .plan-step .n{width:18px;height:18px;border-radius:50%;border:1px solid var(--teal);color:var(--teal);
+                display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:1px}
+  .plan-step.done .n{background:var(--teal);color:#06281f}
+  .plan-step.done span{color:var(--mut);text-decoration:line-through}
+
+  /* replayer mock */
+  .rep{display:grid;grid-template-columns:1.6fr 1fr;gap:0;min-height:430px}
+  .table-area{background:radial-gradient(600px 320px at 50% 40%, #101a30, #0A0E1A);display:flex;align-items:center;justify-content:center;position:relative;border-right:1px solid var(--line)}
+  /* Mesa estilo sala real (decisão de produto: professores GRAVAM análises sobre ela —
+     feltro, rail e fichas são cenário de vídeo, não decoração) */
+  .felt{width:80%;height:64%;border-radius:50%/46%;position:relative;
+        background:radial-gradient(ellipse at 50% 38%, #1d6b52 0%, #15523f 45%, #0e3a2d 100%);
+        border:7px solid #2b1d12;
+        box-shadow:inset 0 0 70px #00000099, inset 0 0 18px #00000077, 0 14px 40px #000000aa, 0 0 0 2px #4a352220;}
+  .felt::before{content:"GRINDLAB";position:absolute;top:24%;left:50%;transform:translateX(-50%);
+        font-family:'Chakra Petch';font-weight:700;letter-spacing:.4em;font-size:11px;color:#ffffff14}
+  .chipstack{position:absolute;display:flex;flex-direction:column-reverse;gap:1px}
+  .chip{width:14px;height:5px;border-radius:3px;background:linear-gradient(180deg,#e35d5d,#a33);border-bottom:1px solid #00000066}
+  .chip.t{background:linear-gradient(180deg,#41dfc6,#1d8d7c)}
+  .dealerbtn{position:absolute;width:16px;height:16px;border-radius:50%;background:#F4F6F8;color:#0A0E1A;
+        font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px #00000088}
+  .cards-board{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);display:flex;gap:5px}
+  .pcard{width:34px;height:48px;border-radius:5px;background:#F4F6F8;color:#0A0E1A;display:flex;align-items:center;justify-content:center;
+         font-family:'JetBrains Mono';font-weight:600;font-size:13px}
+  .pcard.r{color:#C0392B}
+  .potlbl{position:absolute;top:62%;left:50%;transform:translateX(-50%);font-size:11px;color:var(--mut)}
+  .seat{position:absolute;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:10px;color:var(--mut)}
+  .seat.hero{border-color:var(--teal);color:var(--light)}
+  .decision{padding:18px}
+  .dblock{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg2)}
+  .dblock .dh{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:8px;display:flex;align-items:center}
+  .verdict{display:flex;align-items:center;gap:10px}
+  .verdict .vbadge{background:#3a1d1d;border:1px solid var(--red);color:var(--red);font-weight:700;border-radius:7px;padding:4px 10px;font-size:12px}
+  .verdict .vcost{font-family:'JetBrains Mono';color:var(--red);font-weight:600;font-size:18px}
+  .verdict .vcost small{color:var(--mut);font-size:10px;display:block;font-weight:400}
+  .sbar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:11px}
+  .sbar .t{width:42px;color:var(--mut);font-family:'JetBrains Mono';font-size:10px}
+  .sbar .track{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+  .sbar .track i{display:block;height:100%}
+  .sbar .pc{width:34px;text-align:right;font-family:'JetBrains Mono';font-size:10px;color:var(--mut)}
+  .hand-block{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px}
+  .hand-block .hh{font-size:9px;letter-spacing:.12em;color:var(--teal);text-transform:uppercase;margin-bottom:6px}
+
+  .ask{background:var(--bg3);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--mut);display:flex;gap:8px;align-items:center}
+  .ask .k{margin-left:auto;font-family:'JetBrains Mono';font-size:10px;border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+
+  /* tabela comparativa final */
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+  td b{color:var(--teal)}
+  .phase{color:var(--mut);font-size:12px}
+
+  footer{color:var(--mut);font-size:12px;padding:30px 0;text-align:center}
+  @media(max-width:900px){.principles{grid-template-columns:1fr 1fr}.hero{grid-template-columns:1fr 1fr}.bento{grid-template-columns:1fr}.c6,.c4,.c8,.c12,.c3{grid-column:span 1}.notes{grid-template-columns:1fr}.rep{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="meta">
+  <div class="wrap">
+    <h1>GrindLab — Proposta de Redesign 2026</h1>
+    <p>Documento de proposta (nada foi implementado). Análise do layout atual + referências de mercado
+       (GTO Wizard pós-redesign, Linear/Vercel para densidade de dados, Whoop/Strava para "score do dia",
+       Duolingo para hábito) aplicadas ao diferencial novo do GrindLab: <b style="color:var(--teal)">EV em bb por decisão, da SUA mão</b> — nenhum tracker tem isso.</p>
+    <div class="principles">
+      <div class="principle"><b>1 pergunta acima da dobra</b><span>"Quanto estou perdendo e o que treino agora?" — respondida em 3 segundos, sem rolar.</span></div>
+      <div class="principle"><b>EV é a moeda</b><span>Tudo rankeado por bb perdidos, não por contagem de erros. É o que só nós temos.</span></div>
+      <div class="principle"><b>Hierarquia fixa, não masonry</b><span>Arrastar cards transfere o trabalho de design pro aluno. Layout opinado; personalização vira preferência, não estrutura.</span></div>
+      <div class="principle"><b>IA explica, não decora</b><span>Narrativas da IA em 1 lugar rotativo, não 4 cards gigantes competindo. Pergunte-me-tudo via ⌘K.</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ════════════════ MOCK 1: DASHBOARD ════════════════ -->
+  <h2 class="section-title">Tela 1 — Dashboard "Hoje"</h2>
+  <p class="section-sub">Crítica do atual: ~14 cards de mesmo peso visual em masonry arrastável — Career, Cognitive, Twin, DNA, Pressure, Stats, Leaks, GTO Quality… competem por atenção e nenhum responde "o que eu faço agora". A proposta reorganiza em <b>hero de decisão → ação → evidência → exploração</b>.</p>
+
+  <div class="mock">
+    <div class="mock-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+
+    <div class="hud">
+      <div class="brand">GRINDLAB<small>POKER</small></div>
+      <nav class="nav">
+        <span class="on">Hoje</span><span>Torneios</span><span>Treino</span><span>Evolução</span><span>Coach</span>
+      </nav>
+      <div class="hud-right">
+        <div class="ask" style="padding:6px 10px">🔍 Pergunte à IA… <span class="k">⌘K</span></div>
+        <span class="cta">＋ Importar mãos</span>
+        <div class="avatar"></div>
+      </div>
+    </div>
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-card">
+        <div class="lbl">EV perdido / 100 mãos <span class="pin">1</span></div>
+        <div class="big neg">−6,4 bb</div>
+        <div class="delta">▼ 1,8 bb vs semana passada — melhorando</div>
+        <div class="bar-row" style="margin-top:10px"><i style="width:58%"></i></div>
+      </div>
+      <div class="hero-card">
+        <div class="lbl">GrindScore <span class="pin">2</span></div>
+        <div class="big teal">78</div>
+        <div class="delta">82% das decisões sólidas · nível 12</div>
+      </div>
+      <div class="hero-card">
+        <div class="lbl">Streak de estudo</div>
+        <div class="big amber">🔥 6 dias</div>
+        <div class="delta">12 drills hoje · meta 15</div>
+      </div>
+      <div class="hero-card hero-cta">
+        <b>Seu leak mais caro hoje <span class="pin">3</span></b>
+        <span class="sub">Fold demais vs c-bet no BB — custou <b style="color:var(--red)">9,2bb</b> em 3 sessões</span>
+        <span class="btn">▶ Treinar este spot agora</span>
+      </div>
+    </div>
+
+    <!-- BENTO -->
+    <div class="bento">
+      <div class="b c6">
+        <h3>Leaks por custo (bb perdidos) <span class="pin">4</span></h3>
+        <div class="leak">
+          <span class="rank">1</span>
+          <div class="name"><b>Overfold vs c-bet no BB</b><span>23 spots · flop · tendência ↑</span>
+            <div class="bar-row"><i style="width:92%"></i></div></div>
+          <div class="cost">−9,2bb<small>30% do total</small></div>
+          <span class="train">Treinar</span>
+        </div>
+        <div class="leak">
+          <span class="rank">2</span>
+          <div class="name"><b>3-bet light demais OOP</b><span>11 spots · preflop · tendência →</span>
+            <div class="bar-row"><i style="width:64%"></i></div></div>
+          <div class="cost">−6,4bb<small>21% do total</small></div>
+          <span class="train">Treinar</span>
+        </div>
+        <div class="leak">
+          <span class="rank">3</span>
+          <div class="name"><b>Bet pequena em board molhado</b><span>9 spots · turn · tendência ↓</span>
+            <div class="bar-row"><i style="width:48%"></i></div></div>
+          <div class="cost">−4,8bb<small>16% do total</small></div>
+          <span class="train">Treinar</span>
+        </div>
+      </div>
+
+      <div class="b c6">
+        <h3>Evolução do EV (últimas 12 sessões) <span class="pin">5</span></h3>
+        <div class="chart">
+          <svg viewBox="0 0 460 150" preserveAspectRatio="none">
+            <line x1="0" y1="120" x2="460" y2="120" stroke="#1E2A45" stroke-width="1"/>
+            <line x1="0" y1="70" x2="460" y2="70" stroke="#1E2A45" stroke-width="1" stroke-dasharray="3"/>
+            <line x1="0" y1="20" x2="460" y2="20" stroke="#1E2A45" stroke-width="1" stroke-dasharray="3"/>
+            <path d="M0,128 L40,122 L80,125 L120,110 L160,113 L200,98 L240,104 L280,86 L320,90 L360,72 L400,66 L460,52"
+                  fill="none" stroke="#2DD4BF" stroke-width="2.5"/>
+            <path d="M0,128 L40,122 L80,125 L120,110 L160,113 L200,98 L240,104 L280,86 L320,90 L360,72 L400,66 L460,52 L460,150 L0,150 Z"
+                  fill="url(#g)" opacity="0.25"/>
+            <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#2DD4BF"/><stop offset="1" stop-color="transparent"/></linearGradient></defs>
+            <text x="6" y="16" class="axis">−2bb/100</text>
+            <text x="6" y="66" class="axis">−6bb/100</text>
+            <text x="6" y="116" class="axis">−10bb/100</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="b c4">
+        <h3>Cobertura do solver <span class="pin">6</span></h3>
+        <div class="ring-wrap">
+          <div class="ringbox"><div class="ring r1"><i>92%</i></div><p>Preflop</p></div>
+          <div class="ringbox"><div class="ring r2"><i>64%</i></div><p>Postflop</p></div>
+          <div style="font-size:11px;color:var(--mut)">31 spots em análise na fila — cobertura cresce sozinha conforme você revisa mãos.</div>
+        </div>
+      </div>
+
+      <div class="b c4 insight">
+        <span class="tag">✦ Insight da IA</span>
+        <p>"Sob pressão de ICM você fica 2,3× mais passivo no turn. Seus folds nessa fase custaram 4,1bb esta semana — é padrão emocional, não técnico."</p>
+        <div class="nav-dots"><i></i><i></i><i></i><i></i></div>
+        <div style="font-size:10px;color:var(--mut);margin-top:8px">Strategic Twin · Cognitive · Causal Map · Career num só lugar <span class="pin">7</span></div>
+      </div>
+
+      <div class="b c4">
+        <h3>Plano de estudo <span class="pin">8</span></h3>
+        <div class="plan-step done"><span class="n">✓</span><span>Revisar 5 mãos de BB defense</span></div>
+        <div class="plan-step"><span class="n">2</span><span>Drill: 15 spots vs c-bet (Ghost Table)</span></div>
+        <div class="plan-step"><span class="n">3</span><span>Sparring: refazer mão #100000009</span></div>
+        <div class="plan-step"><span class="n">4</span><span>Ler: por que 3-bet light OOP sangra EV</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b>① EV perdido/100 como métrica-líder.</b> É o nosso diferencial técnico recém-construído (solver por mão). Vira o número que o aluno acompanha como um trader acompanha P&L. <span class="crit">Hoje: enterrado em cards de contagem de erros.</span></div>
+    <div class="note"><b>② GrindScore.</b> Renomeia/consolida o score 0–100 existente no padrão Whoop ("recovery score"): um número diário, com tendência. Reusa standard_pct + ELO já calculados.</div>
+    <div class="note"><b>③ CTA único de ação.</b> O leak mais caro vira UM botão que abre o Ghost Table já filtrado naquele spot (SRS existente). Fecha o loop diagnóstico→treino em 1 clique. <span class="crit">Hoje: diagnóstico e treino vivem em menus separados.</span></div>
+    <div class="note"><b>④ Ranking por CUSTO, não contagem.</b> "23 erros" não motiva; "−9,2bb (30% do prejuízo)" sim. Barra de pareto mostra concentração — tipicamente 3 leaks ≈ 60% do custo. Botão treinar por linha.</div>
+    <div class="note"><b>⑤ Um gráfico só, com significado.</b> Evolução do EV/100 substitui os 3–4 gráficos atuais (bankroll, career, ELO) acima da dobra; os outros migram para a aba Evolução.</div>
+    <div class="note"><b>⑥ Cobertura honesta e visual.</b> Os anéis substituem o chip de texto. "Em análise" vira estado vivo (a fila SJF nova resolve rivers em segundos — dá pra mostrar crescendo em tempo real).</div>
+    <div class="note"><b>⑦ IA: 4 cards → 1 carrossel.</b> Twin, Cognitive, Causal e Career narrativas rotacionam num slot só, estilo "daily insight". Clique expande. Reduz ~60% da altura da página e dá ar premium (é o bloco Pro). </div>
+    <div class="note"><b>⑧ Plano de estudo como checklist viva.</b> O study plan existente vira passos curtos e marcáveis (Duolingo). Cada passo é um deep-link (drill, sparring, doc).</div>
+    <div class="note"><b>⌘K — Pergunte à IA.</b> Command palette (padrão Linear/Notion): "por que fold aqui é caro?", "mostra minhas mãos de 3-bet pot" — roteia pro coach chat com contexto. Diferencial de "produto IA" imediato na percepção.</div>
+    <div class="note"><b>Mobile.</b> O hero vira 2×2, bento empilha na ordem de prioridade (já correta por construção). O masonry atual quebra em touch — a hierarquia fixa resolve de graça o Sprint AY.</div>
+  </div>
+
+  <!-- ════════════════ MOCK 2: REPLAYER ════════════════ -->
+  <h2 class="section-title">Tela 2 — Replayer: card lateral (a mesa NÃO muda)</h2>
+  <p class="section-sub"><b style="color:var(--amber)">Decisão registrada (Rodrigo, 2026-06-11): a mesa atual permanece exatamente como está</b> — feltro, fichas e detalhes são cenário de gravação dos professores. O escopo desta tela é SÓ o card lateral de informações: veredito + custo em bb como manchete, "Sua mão vs Range" como evidência central, e o porquê em 1 frase. A mesa desenhada abaixo é ilustrativa, não proposta.</p>
+
+  <div class="mock">
+    <div class="mock-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+    <div class="rep">
+      <div class="table-area">
+        <div class="felt">
+          <div class="cards-board">
+            <span class="pcard">K♠</span><span class="pcard r">7♥</span><span class="pcard">2♣</span>
+            <span class="pcard r" style="opacity:.35">?</span><span class="pcard" style="opacity:.35">?</span>
+          </div>
+          <div class="potlbl">POTE 6,5 bb</div>
+          <div class="chipstack" style="top:55%;left:48%"><span class="chip"></span><span class="chip"></span><span class="chip t"></span></div>
+          <div class="chipstack" style="top:30%;left:58%"><span class="chip t"></span><span class="chip"></span></div>
+          <div class="dealerbtn" style="top:26%;left:64%">D</div>
+          <div class="seat hero" style="bottom:-6px;left:50%;transform:translateX(-50%)">VOCÊ · BB · A♥Q♥ · 38bb</div>
+          <div class="seat" style="top:-6px;left:50%;transform:translateX(-50%)">BTN · 42bb · apostou 3,2bb</div>
+        </div>
+      </div>
+      <div class="decision">
+        <div class="dblock">
+          <div class="dh">Veredito <span class="pin">1</span></div>
+          <div class="verdict">
+            <span class="vbadge">DESVIO</span>
+            <div class="vcost">−0,8 bb<small>custo desta decisão (EV da sua mão)</small></div>
+          </div>
+        </div>
+        <div class="dblock">
+          <div class="dh">O que o solver faz · range <span class="pin">2</span></div>
+          <div class="sbar"><span class="t">Call</span><div class="track"><i style="width:55%;background:var(--green)"></i></div><span class="pc">55%</span></div>
+          <div class="sbar"><span class="t">Fold</span><div class="track"><i style="width:31%;background:var(--mut)"></i></div><span class="pc">31%</span></div>
+          <div class="sbar"><span class="t">Raise</span><div class="track"><i style="width:14%;background:var(--amber)"></i></div><span class="pc">14%</span></div>
+          <div class="hand-block">
+            <div class="hh">Sua mão · A♥Q♥ <span class="pin">3</span></div>
+            <div class="sbar"><span class="t">Call</span><div class="track"><i style="width:88%;background:var(--green)"></i></div><span class="pc">88%</span></div>
+            <div class="sbar"><span class="t">Fold</span><div class="track"><i style="width:4%;background:var(--mut)"></i></div><span class="pc" style="color:var(--red)">−0,8bb</span></div>
+          </div>
+        </div>
+        <div class="dblock">
+          <div class="dh">Por quê <span class="pin">4</span></div>
+          <p style="font-size:12px;color:var(--light)">Com top pair e kicker forte você está à frente da range de c-bet do BTN — e ele c-beta 78% aqui (perfil LAG). Foldar entrega equity demais; a range pode foldar às vezes, <b>a sua mão não</b>.</p>
+        </div>
+        <div class="ask">✦ Perguntar à IA sobre este spot <span class="k">⌘K</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b>① Custo em bb como manchete.</b> O badge sozinho ("Desvio") não ensina magnitude. −0,8bb contextualiza na hora — e soma com o total do dashboard. Verde quando 0 ("jogou o máximo EV").</div>
+    <div class="note"><b>② Range = contexto, ③ Sua mão = veredito.</b> A inversão pedagógica que o solver novo permite: as barras da range explicam o spot; as da mão julgam a decisão. Custo da ação errada inline (já implementado no commit b7ef4fb — este mock mostra o destino visual).</div>
+    <div class="note"><b>④ "Por quê" em 1 frase</b> funde o racional heurístico + perfil do vilão (HUD) já existentes num parágrafo único — sem 5 indicadores soltos. Detalhes (SPR, equity, sizing) colapsam num "ver matemática".</div>
+    <div class="note"><b>Mesa realista — decisão de produto.</b> Professores GRAVAM análises sobre a mesa: feltro, fichas, rail e sombras são cenário de vídeo (o aluno reconhece o ambiente real; o valor de produção do vídeo é o valor percebido da plataforma). O que agregar PARA a câmera: contraste alto carta/feltro (legível a 1080p comprimido pelo YouTube), highlight pulsante na ação corrente, fichas de aposta com valor SEMPRE legível, e a marca GrindLab no feltro — <b>todo vídeo compartilhado vira marketing</b>.</div>
+    <div class="note"><b>Modo Gravação (novo, para coaches).</b> Um toggle que prepara a mesa para captura: esconde painéis laterais (mesa full-bleed 16:9), cursor-spotlight, ferramenta de desenho sobre a mesa (setas/círculos, padrão telestrator de transmissão PokerGO), pausa com overlay de ranges, e atalhos de navegação por street. Reusa o replayer inteiro; é uma camada, não outra mesa.</div>
+  </div>
+
+  <!-- ════════════════ ROADMAP ════════════════ -->
+  <h2 class="section-title">Implementação sugerida (sem big-bang)</h2>
+  <table>
+    <tr><th>Fase</th><th>Entrega</th><th>Reusa</th><th>Esforço</th></tr>
+    <tr><td class="phase">UX-1</td><td><b>Hero "Hoje"</b> + ranking de leaks por custo</td><td>decisions.ev_loss_bb (novo), standard_pct, leak finder</td><td>~3 dias</td></tr>
+    <tr><td class="phase">UX-2</td><td><b>Bento fixo</b> substitui masonry; IA em carrossel; anéis de cobertura</td><td>todos os cards atuais (recompostos, não reescritos)</td><td>~4 dias</td></tr>
+    <tr><td class="phase">UX-3</td><td><b>Card lateral do replayer v2</b>: custo como manchete + "por quê" unificado (mesa intocada)</td><td>card 3-blocos + hand_strategy + reco_rationale + HUD vilão</td><td>~2 dias</td></tr>
+    <tr><td class="phase">UX-4</td><td><b>⌘K</b> Pergunte à IA com contexto da tela</td><td>coach chat existente (quota Pro já enforced)</td><td>~2 dias</td></tr>
+  </table>
+  <p style="color:var(--mut);margin-top:14px;font-size:13px">Riscos: (a) ranking por custo precisa de densidade de ev_loss — depende da campanha de precompute rodar antes do UX-1; (b) usuários do masonry atual perdem persistência de ordem — manter como preferência "layout clássico" por 1 versão.</p>
+
+</div>
+<footer>GrindLab · proposta UX 2026 · gerada para avaliação — nenhuma tela do produto foi alterada</footer>
+</body>
+</html>

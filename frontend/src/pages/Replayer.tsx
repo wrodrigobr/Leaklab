@@ -9,6 +9,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
+import { DecisionCardV2 } from "@/components/replayer/DecisionCardV2";
 import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/DecisionCard";
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
@@ -101,6 +102,16 @@ function SidePanels({
   const toggleDetails = () => setShowDetails(prev => {
     const next = !prev;
     localStorage.setItem('replayer_show_details', String(next));
+    return next;
+  });
+  // UX-3: card v2 atrás de toggle persistido — v1 intocado, troca instantânea
+  // sem deploy (decisão de produto: layouts novos nascem como v2 chaveável).
+  const [cardV2, setCardV2] = useState<boolean>(
+    () => localStorage.getItem('replayer_card_v2') === 'true'
+  );
+  const toggleCardV2 = () => setCardV2(prev => {
+    const next = !prev;
+    localStorage.setItem('replayer_card_v2', String(next));
     return next;
   });
 
@@ -951,8 +962,19 @@ function SidePanels({
           ? `${why ? why + " " : ""}${t("card.openOversizeCaveat", { facing: osm.facing_bb, canonical: osm.canonical_bb })}`
           : why;
 
+        const CardImpl = cardV2 ? DecisionCardV2 : DecisionCard;
         return (
-          <DecisionCard
+          <>
+          <div className="flex justify-end -mb-2">
+            <button
+              onClick={toggleCardV2}
+              className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60 hover:text-teal-300 transition-colors"
+              title={t("card.v2ToggleTip")}
+            >
+              {cardV2 ? t("card.v2ToggleOn") : t("card.v2ToggleOff")}
+            </button>
+          </div>
+          <CardImpl
             verdict={verdict}
             source={{
               label: SOURCE_LABEL[sourceVariant],
@@ -991,6 +1013,7 @@ function SidePanels({
             evLossBb={step.ev_loss_bb}
             fmtAction={fmtAction}
           />
+          </>
         );
       })()}
 
