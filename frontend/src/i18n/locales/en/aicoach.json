@@ -36,5 +36,13 @@
     "avgScore": "Avg score",
     "stdPct": "% Standard",
     "topLeaks": "Top leaks"
+  },
+  "tools": {
+    "consulted": "Looked up",
+    "get_top_leaks": "leaks",
+    "get_ev_leaks": "EV lost",
+    "get_player_stats": "stats",
+    "get_action_frequencies": "frequencies",
+    "get_recent_tournaments": "progress"
   }
 }

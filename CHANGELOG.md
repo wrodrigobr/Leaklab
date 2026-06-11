@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(ai-coach): AI Coach Chat reescrito como loop agêntico (tool use) ✅
+
+> Mudança de arquitetura: o AI Coach Chat deixou de ser single-shot (todo o contexto do aluno — leaks, EV, frequências, evolução — pré-carregado no system prompt a cada mensagem) e passou a ser um **loop agêntico**. O modelo recebe 5 ferramentas (`get_top_leaks`, `get_ev_leaks`, `get_player_stats`, `get_action_frequencies`, `get_recent_tournaments`) e busca SOB DEMANDA apenas o dado relevante à pergunta — perguntas conceituais não disparam nenhuma query. Loop manual em `coach_chat_reply_agentic` (Haiku 4.5, raw HTTP, máx 6 iterações + síntese final forçada). Segurança: `user_id` injetado pelo servidor a cada execução de ferramenta — o modelo escolhe QUAL dado, nunca DE QUEM. Endpoint `/coach/chat` prefere o loop e cai no single-shot legado em qualquer falha (flag `COACH_CHAT_AGENTIC`, default on). Frontend (`AICoach.tsx`) ganhou chip "Consultou: leaks/EV/…" por resposta, tornando o loop visível; i18n `tools.*` nas 3 locales. Verificado: 44 testes llm + 75 api verdes, loop e dispatch de tools testados isoladamente.
+
 ### fix(ev): re-análise agora persiste ev_loss_bb + V2 sem leak finder duplicado ✅
 
 > Dois feedbacks do usuário. **(1) "Onde você sangra" só mostrava preflop:** causa raiz — `reanalyze_all_labels.py` atualizava label/ação mas NÃO o `ev_loss_bb`, então decisões postflop existentes nunca ganhavam EV (só re-upload). O script agora sincroniza `ev_loss_bb`/`ev_loss_source` do `result['gto']` (preservando o antigo quando o novo é None — não apaga EV preflop do overlay). Fluxo completo: campanha de precompute → reanalyze → streets postflop aparecem no card. **(2) Leak finder duplicado no V2:** o ranking "Leaks por custo" do hero SUBSTITUI o `LeakFinderCard` — removido do `CARD_ORDER` do V2 (no clássico continua intacto).

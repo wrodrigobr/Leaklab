@@ -2007,6 +2007,228 @@ def coach_chat_reply(message: str, leaks: list, evolution: list,
         return f'Coach temporariamente indisponível. Erro: {str(e)}'
 
 
+# ── AI Coach — loop agêntico (tool use) ─────────────────────────────────────────
+#
+# Em vez de pré-carregar TODOS os dados do aluno no system prompt (como faz
+# coach_chat_reply acima), aqui o modelo recebe ferramentas e busca apenas o
+# dado de que precisa para responder a pergunta. O loop:
+#   modelo → pede tool → executamos no DB → devolvemos resultado → modelo → ...
+# até o modelo parar de pedir ferramentas (stop_reason != 'tool_use').
+#
+# Segurança: o user_id é injetado pelo servidor a cada execução de ferramenta.
+# O modelo escolhe QUAL dado consultar, nunca DE QUEM — não há como ele acessar
+# dados de outro usuário.
+
+_COACH_TOOLS = [
+    {
+        'name': 'get_top_leaks',
+        'description': (
+            'Retorna o ranking dos principais leaks (erros recorrentes) do aluno, '
+            'priorizado por análise GTO quando disponível. Use quando o aluno '
+            'perguntar sobre seus maiores erros, pontos fracos, ou o que estudar.'
+        ),
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'days': {'type': 'integer', 'description': 'Janela em dias (padrão 90).'},
+            },
+        },
+    },
+    {
+        'name': 'get_ev_leaks',
+        'description': (
+            'Retorna os spots onde o aluno mais perde EV (big blinds perdidos vs a '
+            'melhor jogada), do mais caro ao mais barato. Use quando o aluno perguntar '
+            'onde está perdendo mais fichas, qual erro custa mais caro, ou pedir '
+            'prioridade de estudo por impacto financeiro.'
+        ),
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'days': {'type': 'integer', 'description': 'Janela em dias (padrão 90).'},
+            },
+        },
+    },
+    {
+        'name': 'get_player_stats',
+        'description': (
+            'Retorna as estatísticas agregadas do aluno: VPIP, PFR, 3-bet%, c-bet%, '
+            'aggression factor, WTSD, fold to 3-bet, etc. Use quando o aluno perguntar '
+            'sobre suas tendências ou um stat específico.'
+        ),
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'days': {'type': 'integer', 'description': 'Janela em dias (padrão 90).'},
+            },
+        },
+    },
+    {
+        'name': 'get_action_frequencies',
+        'description': (
+            'Retorna a frequência de cada ação (fold/call/raise/etc) do aluno quebrada '
+            'por street e por posição. Use quando o aluno perguntar com que frequência '
+            'faz uma ação em um street ou posição específica.'
+        ),
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'days': {'type': 'integer', 'description': 'Janela em dias (padrão 90).'},
+            },
+        },
+    },
+    {
+        'name': 'get_recent_tournaments',
+        'description': (
+            'Retorna métricas de evolução por torneio recente (score médio, % de jogadas '
+            'standard). Use quando o aluno perguntar sobre evolução, desempenho recente '
+            'ou tendência ao longo do tempo.'
+        ),
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'days': {'type': 'integer', 'description': 'Janela em dias (padrão 90).'},
+            },
+        },
+    },
+]
+
+
+def _run_coach_tool(name: str, user_id: int, tool_input: dict) -> tuple[str, str | None]:
+    """Executa uma ferramenta do coach escopada ao user_id. Retorna (json_str, leak_source).
+
+    leak_source só é preenchido por get_top_leaks (para o frontend saber a origem).
+    """
+    from database import repositories as _repo
+
+    days = tool_input.get('days', 90)
+    try:
+        days = max(1, min(365, int(days)))
+    except (TypeError, ValueError):
+        days = 90
+
+    leak_source: str | None = None
+    if name == 'get_top_leaks':
+        data = _repo.get_leak_ranking_gto_first(user_id, days)
+        leak_source = data.get('source')
+        result = {'source': leak_source, 'leaks': data.get('leaks', [])[:6]}
+    elif name == 'get_ev_leaks':
+        result = {'leaks': _repo.get_ev_leaks(user_id, days).get('leaks', [])[:6]}
+    elif name == 'get_player_stats':
+        result = _repo.get_player_stats(user_id, days)
+    elif name == 'get_action_frequencies':
+        result = _repo.get_player_action_frequencies(user_id, days)
+    elif name == 'get_recent_tournaments':
+        result = (_repo.get_evolution_metrics(user_id, days) or [])[-8:]
+    else:
+        return (json.dumps({'error': f'ferramenta desconhecida: {name}'}), None)
+
+    return (json.dumps(result, ensure_ascii=False, default=str), leak_source)
+
+
+def _call_llm_api_full(payload: dict) -> dict:
+    """Como _call_llm_api, mas devolve o JSON completo da resposta.
+
+    Necessário para o loop de tool use, que precisa de stop_reason e dos blocos
+    de conteúdo (não só do texto).
+    """
+    import requests as _req
+    resp = _req.post(
+        'https://api.anthropic.com/v1/messages',
+        json=payload,
+        headers={
+            'Content-Type':      'application/json',
+            'anthropic-version': '2023-06-01',
+            'x-api-key':         _api_key(),
+        },
+        timeout=90,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def coach_chat_reply_agentic(message: str, user_id: int, hero: str = 'Jogador',
+                             max_iterations: int = 6) -> dict:
+    """Responde a pergunta do aluno via loop agêntico com ferramentas.
+
+    O modelo busca sob demanda apenas os dados relevantes à pergunta, em vez de
+    receber tudo pré-carregado. Retorna {reply, source, tools_used}.
+    """
+    safe_message = sanitize_llm_input(message, max_len=1000)
+
+    system = (
+        f"Você é o Coach IA do PokerLeaks, assistente tático de poker MTT de elite. "
+        f"Seu aluno é {hero}.\n\n"
+        "Você tem ferramentas para consultar os dados reais de desempenho do aluno "
+        "(leaks, EV perdido, estatísticas, frequências, evolução). SEMPRE que a pergunta "
+        "depender desses dados, chame a ferramenta apropriada antes de responder — nunca "
+        "invente números. Para perguntas conceituais gerais de estratégia, responda "
+        "direto, sem ferramentas. Não chame a mesma ferramenta duas vezes para a mesma "
+        "pergunta.\n\n"
+        "Seja direto e técnico. Português do Brasil. "
+        f"{_POKER_TERMS_EN} Máximo 350 palavras."
+    )
+
+    messages: list[dict] = [{'role': 'user', 'content': safe_message}]
+    tools_used: list[str] = []
+    leak_source_seen: str | None = None
+
+    for _ in range(max_iterations):
+        payload = {
+            'model':      'claude-haiku-4-5-20251001',
+            'max_tokens': 1024,
+            'system':     system,
+            'messages':   messages,
+            'tools':      _COACH_TOOLS,
+        }
+        data    = _call_llm_api_full(payload)
+        content = data.get('content', [])
+        messages.append({'role': 'assistant', 'content': content})
+
+        if data.get('stop_reason') != 'tool_use':
+            reply = ''.join(
+                b['text'] for b in content if b.get('type') == 'text'
+            ).strip()
+            return {
+                'reply':       reply,
+                'source':      leak_source_seen or 'agentic',
+                'tools_used':  tools_used,
+            }
+
+        tool_results: list[dict] = []
+        for block in content:
+            if block.get('type') != 'tool_use':
+                continue
+            tname = block.get('name', '')
+            if tname not in tools_used:
+                tools_used.append(tname)
+            try:
+                result_str, src = _run_coach_tool(tname, user_id, block.get('input') or {})
+                if src:
+                    leak_source_seen = src
+            except Exception as e:
+                result_str = json.dumps({'error': str(e)})
+            tool_results.append({
+                'type':        'tool_result',
+                'tool_use_id': block.get('id'),
+                'content':     result_str,
+            })
+        messages.append({'role': 'user', 'content': tool_results})
+
+    # Esgotou as iterações — força uma resposta final sem ferramentas.
+    payload = {
+        'model':      'claude-haiku-4-5-20251001',
+        'max_tokens': 700,
+        'system':     system,
+        'messages':   messages + [{
+            'role': 'user',
+            'content': 'Responda agora com base no que você já consultou, sem mais ferramentas.',
+        }],
+    }
+    reply = _call_llm_api(payload)
+    return {'reply': reply, 'source': leak_source_seen or 'agentic', 'tools_used': tools_used}
+
+
 def analyze_single_decision(decision: dict) -> str:
     """Análise focada de uma única decisão de mão pelo Coach IA.
 

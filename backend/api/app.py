@@ -1945,7 +1945,25 @@ def coach_chat():
         }), 429
 
     message = sanitize_llm_input(message, max_len=1000)
+    hero    = g.user.get('username', 'Jogador')
 
+    # Caminho preferido: loop agêntico (o modelo busca só o dado relevante via tools).
+    # Flag COACH_CHAT_AGENTIC=0 desliga; qualquer falha cai no single-shot legado.
+    if os.getenv('COACH_CHAT_AGENTIC', '1') == '1':
+        try:
+            from leaklab.llm_explainer import coach_chat_reply_agentic
+            result = coach_chat_reply_agentic(message, g.user_id, hero=hero)
+            increment_ai_chat(g.user_id)   # conta a mensagem no teto diário
+            return jsonify({
+                'reply':      result['reply'],
+                'source':     result.get('source', 'agentic'),
+                'tools_used': result.get('tools_used', []),
+            })
+        except Exception:
+            log.exception("coach_chat agentic error; fallback para single-shot")
+            # cai no caminho legado abaixo
+
+    # Single-shot legado: pré-carrega todo o contexto no prompt.
     from database.repositories import get_leak_ranking_gto_first, get_ev_leaks as _get_ev_leaks
     days        = 90
     leak_data   = get_leak_ranking_gto_first(g.user_id, days)
@@ -1953,7 +1971,6 @@ def coach_chat():
     leak_source = leak_data['source']
     evolution   = get_evolution_metrics(g.user_id, days) or []
     freqs       = get_player_action_frequencies(g.user_id, days)
-    hero        = g.user.get('username', 'Jogador')
     ev_leaks    = _get_ev_leaks(g.user_id, days).get('leaks')   # #24/#25: prioriza por bb
 
     try:

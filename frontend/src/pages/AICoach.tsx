@@ -10,6 +10,7 @@ interface Msg {
   id: number;
   role: "user" | "ai";
   content: string;
+  tools?: string[];
 }
 
 const AICoach = () => {
@@ -75,7 +76,10 @@ const AICoach = () => {
 
     try {
       const res = await coach.chat(trimmed);
-      setMessages((m) => [...m, { id: Date.now() + 1, role: "ai", content: res.reply }]);
+      setMessages((m) => [
+        ...m,
+        { id: Date.now() + 1, role: "ai", content: res.reply, tools: res.tools_used },
+      ]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("context.loading");
       setMessages((m) => [
@@ -136,6 +140,21 @@ const AICoach = () => {
                 {m.role === "ai" ? (
                   <div className="max-w-[80%] rounded-lg border border-border bg-hud-elevated px-4 py-3">
                     <AiText>{m.content}</AiText>
+                    {m.tools && m.tools.length > 0 && (
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-border/50 pt-2">
+                        <span className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
+                          {t("tools.consulted")}
+                        </span>
+                        {m.tools.map((tool) => (
+                          <span
+                            key={tool}
+                            className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[9px] text-primary ring-1 ring-primary/20"
+                          >
+                            {t(`tools.${tool}`, tool.replace(/_/g, " "))}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="max-w-[80%] rounded-lg bg-primary px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-primary-foreground">

@@ -36,5 +36,13 @@
     "avgScore": "Score médio",
     "stdPct": "% Standard",
     "topLeaks": "Top leaks"
+  },
+  "tools": {
+    "consulted": "Consultou",
+    "get_top_leaks": "leaks",
+    "get_ev_leaks": "EV perdido",
+    "get_player_stats": "estatísticas",
+    "get_action_frequencies": "frequências",
+    "get_recent_tournaments": "evolução"
   }
 }

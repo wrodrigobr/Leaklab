@@ -1343,7 +1343,11 @@ export interface CoachContext {
 
 export const coach = {
   chat: (message: string) =>
-    request<{ reply: string; source?: 'gto' | 'heuristic' | 'empty' }>("/coach/chat", {
+    request<{
+      reply: string;
+      source?: 'gto' | 'heuristic' | 'empty' | 'agentic';
+      tools_used?: string[];
+    }>("/coach/chat", {
       method: "POST",
       body: JSON.stringify({ message }),
     }),
