@@ -7186,7 +7186,14 @@ def _solver_queue_worker_loop():
                 log.info("Solver queue worker resultado: %s", result)
         except Exception:
             log.exception("Solver queue worker loop error")
-        time.sleep(60)
+        # Fase 2 (plano solver): event-driven — o enqueue acorda o worker na hora;
+        # o timeout de 60s vira só varredura de segurança (resets, retries).
+        try:
+            from leaklab.solver_signals import solver_queue_event
+            solver_queue_event.wait(timeout=60)
+            solver_queue_event.clear()
+        except Exception:
+            time.sleep(60)
 
 
 if __name__ == '__main__':

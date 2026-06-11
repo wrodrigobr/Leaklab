@@ -608,7 +608,10 @@ def lookup_gto(
 
 
 def _priority(street: str) -> int:
-    return {'preflop': 8, 'flop': 6, 'turn': 5, 'river': 4}.get(street, 5)
+    # Fase 2 (plano solver): shortest-job-first — river/turn solvem em segundos,
+    # flop fundo leva minutos. Processar os baratos primeiro minimiza a espera
+    # média da fila (antes flop>turn>river: os caros bloqueavam os baratos).
+    return {'preflop': 8, 'river': 7, 'turn': 6, 'flop': 5}.get(street, 5)
 
 
 def is_simple_spot(street: str, board: list[str], stack_bb: float, facing_size_bb: float = 0.0) -> bool:

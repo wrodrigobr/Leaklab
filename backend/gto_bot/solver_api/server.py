@@ -36,7 +36,7 @@ import sys
 import threading
 import time
 from email.mime.text import MIMEText
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional
 
 logging.basicConfig(
@@ -51,6 +51,15 @@ PORT       = int(os.environ.get('GTO_PORT', '8765'))
 SOLVER_BIN = os.path.join(os.path.dirname(__file__), '..', 'solver_cli', 'target', 'release', 'solver_cli')
 TIMEOUT    = int(os.environ.get('GTO_TIMEOUT', '300'))
 CDP_PORT   = int(os.environ.get('CDP_PORT', '9222'))
+
+# Fase 2 (plano solver): o servidor era HTTPServer single-thread — um solve de
+# minutos bloqueava /health, /gw-spot e os demais solves no backlog TCP. Agora
+# ThreadingHTTPServer + semáforo: até MAX_SOLVES CFRs simultâneos, cada um com
+# RAYON_THREADS threads (MAX_SOLVES × RAYON_THREADS ≈ vCPUs, sem oversubscription).
+MAX_SOLVES    = max(1, int(os.environ.get('GTO_MAX_CONCURRENT_SOLVES', '2')))
+RAYON_THREADS = max(1, int(os.environ.get(
+    'GTO_RAYON_THREADS', str(max(1, (os.cpu_count() or 4) // MAX_SOLVES)))))
+_solve_sem = threading.BoundedSemaphore(MAX_SOLVES)
 REFRESH_SEC = int(os.environ.get('GTO_REFRESH_SEC', '180'))
 
 GW_APP       = "https://app.gtowizard.com"
@@ -1195,15 +1204,19 @@ def query_gto_wizard_raw(spot: dict) -> dict:
 # ── Solver local ──────────────────────────────────────────────────────────────
 
 def solve(spot: dict) -> dict:
-    # stdin direto (sem temp file): elimina I/O em disco e lixo órfão em /tmp
-    proc = subprocess.run(
-        [SOLVER_BIN],
-        input=json.dumps(spot),
-        capture_output=True,
-        text=True,
-        encoding='utf-8',
-        timeout=TIMEOUT,
-    )
+    # stdin direto (sem temp file): elimina I/O em disco e lixo órfão em /tmp.
+    # Semáforo limita CFRs simultâneos (RAM/CPU); RAYON_NUM_THREADS divide os
+    # cores entre os solves concorrentes.
+    with _solve_sem:
+        proc = subprocess.run(
+            [SOLVER_BIN],
+            input=json.dumps(spot),
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            timeout=TIMEOUT,
+            env={**os.environ, 'RAYON_NUM_THREADS': str(RAYON_THREADS)},
+        )
     if proc.returncode != 0:
         err = proc.stderr[:500] if proc.stderr else 'solver_cli error'
         raise RuntimeError(f'solver exit={proc.returncode}: {err}')
@@ -1334,7 +1347,12 @@ if __name__ == '__main__':
     else:
         log.info('gw-auth-refresh DESLIGADO (GW_AUTH_REFRESH=0) — /gw-spot nao usa auth_ok')
 
-    log.info('Solver API na porta %d (solver=%s timeout=%ds cdp=%d)',
-             PORT, SOLVER_BIN, TIMEOUT, CDP_PORT)
-    server = HTTPServer(('0.0.0.0', PORT), Handler)
+    log.info('Solver API na porta %d (solver=%s timeout=%ds cdp=%d '
+             'max_solves=%d rayon_threads=%d)',
+             PORT, SOLVER_BIN, TIMEOUT, CDP_PORT, MAX_SOLVES, RAYON_THREADS)
+
+    class _Server(ThreadingHTTPServer):
+        daemon_threads = True
+
+    server = _Server(('0.0.0.0', PORT), Handler)
     server.serve_forever()

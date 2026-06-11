@@ -6039,6 +6039,16 @@ def get_preflop_stats() -> dict:
 
 # ── GTO Solver Queue ──────────────────────────────────────────────────────────
 
+def _notify_solver_enqueue() -> bool:
+    """Fase 2 (plano solver): acorda o worker na hora (em vez do tick de 60s)."""
+    try:
+        from leaklab.solver_signals import notify_solver_queue
+        notify_solver_queue()
+    except Exception:
+        pass
+    return True
+
+
 def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5,
                         tree_hash: str = None) -> bool:
     """
@@ -6068,14 +6078,14 @@ def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5,
                     WHERE spot_hash=?
                 """), (spot_json, priority, tree_hash, spot_hash))
                 conn.commit()
-                return True
+                return _notify_solver_enqueue()
             return False  # pending ou running — não reprocessar
         conn.execute(_adapt("""
             INSERT INTO gto_solver_queue (spot_hash, spot_json, status, priority, tree_hash)
             VALUES (?, ?, 'pending', ?, ?)
         """), (spot_hash, spot_json, priority, tree_hash))
         conn.commit()
-        return True
+        return _notify_solver_enqueue()
     finally:
         conn.close()
 
