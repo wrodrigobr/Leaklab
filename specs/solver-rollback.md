@@ -25,8 +25,10 @@ TEXAS_HERO_IP_FACING=1
 ssh <vm>
 cd /opt/leaklab/backend/gto_bot/solver_cli/target/release
 cp solver_cli solver_cli.baseline-20260611        # binário atual intocado
-cp /opt/leaklab/backend/gto_bot/.env /opt/leaklab/.env.baseline-20260611
+# As env vars da VM vivem no systemd unit (não há .env na VM):
+sudo cp /etc/systemd/system/leaklab-solver.service /opt/leaklab/leaklab-solver.service.baseline-20260611
 ```
+> ✅ Executado em 2026-06-11 (binário + unit).
 
 ## Como voltar ao estado atual (rollback completo)
 
