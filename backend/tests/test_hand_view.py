@@ -142,6 +142,52 @@ def test_engine_verdict_hand_aware():
     print("OK  test_engine_verdict_hand_aware")
 
 
+def test_postflop_ev_loss_persisted_to_decisions():
+    """Fio completo do #24 postflop: _enrich_gto.ev_loss_bb → result['gto'] →
+    save_decisions → coluna decisions.ev_loss_bb (+source 'solver_hand')."""
+    repo = _setup_db()
+    stack = 40.0
+    hero = ['Ah', 'Qh']
+    sh = compute_spot_hash('flop', 'BB', _STORED_BOARD, hero, stack, 0.0)
+    repo.insert_gto_nodes([{
+        'spot_hash': sh, 'tree_hash': 'th_e2e', 'street': 'flop', 'position': 'BB',
+        'board': _STORED_BOARD, 'hero_hand': hero, 'hero_stack_bb': stack,
+        'facing_size_bb': 0.0, 'gto_action': 'check', 'gto_freq': 0.65,
+        'exploitability_pct': 0.5, 'source': 'solver_cli',
+        'strategy_detail': {'check': {'frequency': 0.65}, 'bet': {'frequency': 0.35}},
+    }])
+    repo.upsert_tree_strategy('th_e2e', _STORED_BOARD, _ACTIONS, _HAND_TABLE)
+
+    os.environ['GTO_HAND_AWARE'] = '1'
+    from leaklab.decision_engine_v11 import _enrich_gto
+    g = _enrich_gto({'street': 'flop', 'player_action': 'check', 'hero_cards': hero,
+                     'math': {}, 'spot': {'board': _STORED_BOARD, 'position': 'BB',
+                                          'effectiveStackBb': stack, 'facingToBb': 0.0}})
+    assert g['ev_loss_bb'] == 0.5 and g['ev_loss_source'] == 'solver_hand', g
+
+    import database.repositories as _repo
+    conn = _repo.get_conn()
+    conn.execute("INSERT INTO tournaments (user_id, tournament_id, site, tournament_name, hero) "
+                 "VALUES (1,'t1','GG','t','hero')")
+    conn.commit()
+    tid = conn.execute("SELECT id FROM tournaments ORDER BY id DESC LIMIT 1").fetchone()[0]
+    conn.close()
+    repo.save_decisions(tid, [{
+        'handId': 'h1', 'street': 'flop', 'hero_cards': 'Ah Qh', 'board': _STORED_BOARD,
+        'actionTaken': 'check', 'bestAction': 'bet',
+        'evaluation': {'label': 'marginal', 'mistakeScore': 0.2, 'scoreBreakdown': {}},
+        'spot': {'board': _STORED_BOARD, 'position': 'BB', 'effectiveStackBb': stack},
+        'math': {'estimatedHandEquity': 0.6}, 'context': {}, 'position': 'BB',
+        'gto': g,
+    }])
+    conn = _repo.get_conn()
+    row = conn.execute("SELECT ev_loss_bb, ev_loss_source FROM decisions "
+                       "WHERE tournament_id=?", (tid,)).fetchone()
+    conn.close()
+    assert row and row['ev_loss_bb'] == 0.5 and row['ev_loss_source'] == 'solver_hand',         (dict(row) if row else None)
+    print("OK  test_postflop_ev_loss_persisted_to_decisions")
+
+
 if __name__ == '__main__':
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

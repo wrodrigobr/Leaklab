@@ -424,6 +424,10 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
             'hand_aware':   bool(hand_strategy),
             'hand_strategy': hand_strategy,
             'ev_loss_bb':   ev_loss_bb,
+            # proveniência do EV (#24 estendido ao postflop): 'solver_hand' = EV da
+            # MÃO específica no nó CFR (gto_tree_strategies) — save_decisions persiste
+            # na coluna decisions.ev_loss_source junto do ev_loss_bb.
+            'ev_loss_source': ('solver_hand' if ev_loss_bb is not None else None),
         }
 
     except Exception as exc:
