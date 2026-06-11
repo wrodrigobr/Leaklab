@@ -422,7 +422,13 @@ function SidePanels({
               <div className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
                 {t("card.solverStrategy")}
               </div>
-              <GtoStrategyPanel strategy={stratSorted} playedAction={playedAction} />
+              <GtoStrategyPanel
+                strategy={stratSorted}
+                playedAction={playedAction}
+                handStrategy={step.hand_strategy ?? null}
+                handTitle={t("card.handStrat")}
+                handTip={t("card.handStratTip")}
+              />
             </div>
           );
         } else if (hasMathEvidence) {

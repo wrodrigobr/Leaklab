@@ -74,6 +74,8 @@
     "freqTitleAggr": "Range agregado em {{ctx}}",
     "freqDisplayHand": "Como GTO joga {{hand}} · {{ctx}}",
     "freqDisplayAggr": "Range agregado · {{ctx}}",
+    "handStrat": "Sua mão",
+    "handStratTip": "Frequência e EV desta mão específica no nó do solver — as barras acima são a média da range inteira. O valor em bb ao lado é quanto cada ação rende (âmbar = custo vs a melhor ação da mão).",
     "solverStrategy": "Estratégia do Solver",
     "reqEquity": "Equity Necessária",
     "rangeOpening": "Range de abertura",

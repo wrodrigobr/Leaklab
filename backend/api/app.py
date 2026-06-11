@@ -4247,6 +4247,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # nunca era atualizado). Nesse caso usa lookup SÓ LOCAL (block_remote=True)
         # pra não disparar um solve remoto lento dentro do /replay.
         gto_strategy = None
+        live_hand_strategy = None   # Fase 3: estratégia da mão específica (card)
         _hero_postflop = (action.player == hero and action.street != 'preflop')
         if decision and not gto_spot_mismatch and (gto_label or _hero_postflop):
             try:
@@ -4277,6 +4278,19 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 )
                 if _gto_result.get('found') and _gto_result.get('strategy'):
                     gto_strategy = _gto_result['strategy']
+                    # Fase 3 (item 4): visão da MÃO p/ o card ("Sua mão: check 100%")
+                    _hv = _gto_result.get('hand_strategy')
+                    if _hv and _hv.get('actions'):
+                        _hc = _di.get('hero_cards') or []
+                        live_hand_strategy = {
+                            'hand': ''.join(_hc) if len(_hc) == 2 else '',
+                            'actions': [
+                                {'action': a, 'frequency': v.get('frequency'),
+                                 'ev_bb': v.get('ev_bb'),
+                                 'ev_loss_bb': v.get('ev_loss_bb')}
+                                for a, v in _hv['actions'].items()
+                            ],
+                        }
             except Exception:
                 pass
 
@@ -4619,6 +4633,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'postflop_sizing':    postflop_sizing,   # Fase 2: aposta do hero vs size do nó GTO
             'postflop_texture_sizing': postflop_texture_sizing,   # Fase 3: heurística de textura (sem nó)
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
+            'hand_strategy':      live_hand_strategy,   # Fase 3: freq/EV da MÃO do hero
             'gto_strategy':       gto_strategy,
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
             'preflop_gto':        decision.get('preflop_gto') if decision else None,

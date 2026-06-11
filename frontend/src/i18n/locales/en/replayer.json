@@ -74,6 +74,8 @@
     "freqTitleAggr": "Aggregate range in {{ctx}}",
     "freqDisplayHand": "How GTO plays {{hand}} · {{ctx}}",
     "freqDisplayAggr": "Aggregate range · {{ctx}}",
+    "handStrat": "Your hand",
+    "handStratTip": "Frequency and EV of this specific hand at the solver node — the bars above are the average of the whole range. The bb value shows what each action yields (amber = cost vs the hand\u0027s best action).",
     "solverStrategy": "Solver Strategy",
     "reqEquity": "Required Equity",
     "rangeOpening": "Opening range",

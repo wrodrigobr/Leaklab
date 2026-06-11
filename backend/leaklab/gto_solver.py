@@ -389,6 +389,10 @@ def lookup_gto(
                     'exploitability_pct': node.get('exploitability_pct'),
                     'spot_hash':          spot_hash,
                     'queued':             False,
+                    # Fase 3: visão da MÃO do hero (gto_tree_strategies via tree_hash;
+                    # None p/ nós antigos sem tabela — UI cai no agregado)
+                    'hand_strategy': hand_view_for_spot(
+                        node.get('tree_hash'), board, hero_hand),
                 }
         # Nó parcial: sem strategy_json — salva como fallback, continua para GTO Wizard
         action = node.get('gto_action')

@@ -4,10 +4,26 @@ import { cn } from "@/lib/utils";
 import { GtoMixedBadge } from "./GtoMixedBadge";
 import { ACTION_COLORS, actionKey } from "@/lib/actionColors";
 
+export interface HandStrategyData {
+  hand: string;
+  actions: { action: string; frequency: number | null; ev_bb: number | null; ev_loss_bb: number | null }[];
+}
+
 interface Props {
   strategy: GtoStrategyAction[];
   playedAction?: string | null;
   compact?: boolean;
+  /** Fase 3: estratégia da MÃO específica do hero (freq + EV por ação) */
+  handStrategy?: HandStrategyData | null;
+  handTitle?: string;
+  handTip?: string;
+}
+
+const SUIT_GLYPH: Record<string, string> = { c: "♣", d: "♦", h: "♥", s: "♠" };
+
+function prettyHand(hand: string): string {
+  return (hand || "").replace(/([2-9TJQKA])([cdhs])/gi,
+    (_, r: string, s: string) => r.toUpperCase() + (SUIT_GLYPH[s.toLowerCase()] ?? s));
 }
 
 
@@ -40,8 +56,28 @@ function labelForBase(base: string): string {
   }
 }
 
-export function GtoStrategyPanel({ strategy, playedAction, compact }: Props) {
+export function GtoStrategyPanel({ strategy, playedAction, compact, handStrategy, handTitle, handTip }: Props) {
   if (!strategy || strategy.length === 0) return null;
+
+  // Fase 3: agrega a estratégia da MÃO por ação-base (mesma regra das barras da
+  // range). EV por base = MAIOR EV entre os sizes (melhor execução da classe).
+  const handAgg = (() => {
+    const acts = handStrategy?.actions ?? [];
+    if (!acts.length) return [] as { action: string; label: string; frequency: number; ev: number | null }[];
+    const m = new Map<string, { freq: number; ev: number | null }>();
+    for (const r of acts) {
+      const b = baseAction(r.action);
+      const slot = m.get(b) ?? { freq: 0, ev: null };
+      slot.freq += r.frequency || 0;
+      if (r.ev_bb != null) slot.ev = slot.ev == null ? r.ev_bb : Math.max(slot.ev, r.ev_bb);
+      m.set(b, slot);
+    }
+    return Array.from(m.entries())
+      .map(([base, v]) => ({ action: base, label: labelForBase(base), frequency: v.freq, ev: v.ev }))
+      .sort((a, b) => b.frequency - a.frequency);
+  })();
+  const handBestEv = handAgg.reduce<number | null>(
+    (mx, r) => (r.ev != null && (mx == null || r.ev > mx) ? r.ev : mx), null);
 
   // Agrega por ação-base (bet_1.1bb + bet_2.5bb → "bet" com freq somada)
   const aggMap = new Map<string, { freq: number; evWeighted: number; evTotal: number }>();
@@ -139,6 +175,41 @@ export function GtoStrategyPanel({ strategy, playedAction, compact }: Props) {
           </div>
         );
       })}
+
+      {/* Fase 3 — bloco "Sua mão": frequência/EV da mão ESPECÍFICA do hero,
+          em contraste com as barras da range acima. Só quando a tabela por mão
+          da árvore existe (gto_tree_strategies). */}
+      {handAgg.length > 0 && (
+        <div className="pt-1.5 mt-1 border-t border-border/40 space-y-1" title={handTip}>
+          <div className="font-mono text-[8px] uppercase tracking-wide text-teal-300/90">
+            {handTitle || "Sua mão"} · {prettyHand(handStrategy!.hand)}
+          </div>
+          {handAgg.map((row) => {
+            const pct = Math.round(row.frequency * 100);
+            const actColor = ACTION_COLORS[actionKey(row.action)];
+            const loss = handBestEv != null && row.ev != null ? handBestEv - row.ev : null;
+            return (
+              <div key={`hand-${row.action}`} className="flex items-center gap-2">
+                <div className="flex-1 h-1 rounded-full bg-muted/15 overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: actColor }} />
+                </div>
+                <span className="font-mono shrink-0 text-[8px]" style={{ color: actColor }}>
+                  {row.label}
+                </span>
+                <span className="font-mono shrink-0 w-7 text-right text-[8px] text-foreground/90">
+                  {pct}%
+                </span>
+                <span className={cn(
+                  "font-mono shrink-0 w-12 text-right text-[8px]",
+                  loss != null && loss > 0.05 ? "text-amber-400/90" : "text-muted-foreground/60"
+                )}>
+                  {loss != null && loss > 0.05 ? `−${loss.toFixed(1)}bb` : (row.ev != null ? `${row.ev.toFixed(1)}bb` : "")}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Mixed strategy badge — when ≥2 actions have ≥10% frequency.
           Texto "Fold 85% · Raise 15%" removido: redundante com as barras acima. */}

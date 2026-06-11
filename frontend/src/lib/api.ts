@@ -258,6 +258,11 @@ export interface ReplayStep {
   hero_stack_bb?: number;
   // GTO analysis (postflop hero actions only)
   gto_strategy?: GtoStrategyAction[] | null;
+  // Fase 3: estratégia da MÃO específica do hero (freq/EV por ação no nó CFR)
+  hand_strategy?: {
+    hand: string;
+    actions: { action: string; frequency: number | null; ev_bb: number | null; ev_loss_bb: number | null }[];
+  } | null;
   gto_label?: "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical" | null;
   gto_action?: string | null;
   engine_best?: string | null;  // engine suggestion when it conflicts with GTO reconciliation
