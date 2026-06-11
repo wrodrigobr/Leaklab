@@ -47,6 +47,16 @@ def test_hash_varies_by_street():
     h2 = compute_spot_hash('turn', 'BTN', ['Ks', 'Qd', '2c'], [], 25.0, 0.0)
     _ok('hash_varies_street', h1 != h2)
 
+def test_hash_pot_type_backward_compat():
+    # Fase 2: pot_type ''/'srp' NÃO muda o hash (backward-compat); '3bet' muda (sem colisão).
+    base = compute_spot_hash('flop', 'BTN', ['Ks', 'Qd', '2c'], ['As', 'Kd'], 25.0, 5.0)
+    same_empty = compute_spot_hash('flop', 'BTN', ['Ks', 'Qd', '2c'], ['As', 'Kd'], 25.0, 5.0, '')
+    same_srp   = compute_spot_hash('flop', 'BTN', ['Ks', 'Qd', '2c'], ['As', 'Kd'], 25.0, 5.0, 'srp')
+    diff_3bet  = compute_spot_hash('flop', 'BTN', ['Ks', 'Qd', '2c'], ['As', 'Kd'], 25.0, 5.0, '3bet')
+    _ok('hash_pot_type_backward_compat',
+        base == same_empty and base == same_srp and base != diff_3bet,
+        f'base={base} empty={same_empty} srp={same_srp} 3bet={diff_3bet}')
+
 def test_hash_varies_by_position():
     h1 = compute_spot_hash('flop', 'BTN', ['Ks', 'Qd', '2c'], [], 25.0, 0.0)
     h2 = compute_spot_hash('flop', 'CO',  ['Ks', 'Qd', '2c'], [], 25.0, 0.0)

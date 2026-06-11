@@ -299,6 +299,20 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 villain_name = _opp
                 villain_position = _infer_position(hand, _opp)
 
+        # Estrutura do pote PREFLOP (pra ranges 3-bet no solver postflop): posição do 1º
+        # raiser (opener) e do 2º raiser DISTINTO (3-bettor), + pot_type pelo nº de raises.
+        # 'srp' (1 raise) é o legado; '3bet' (2) usa ranges vs_RFI.raise / vs_3bet.call.
+        _pf_raisers = []
+        for a in hand.actions:
+            if a.street == 'preflop' and a.action in ('raises', 'all-in') and a.player not in _pf_raisers:
+                _pf_raisers.append(a.player)
+        _n_pf_raises = sum(1 for a in hand.actions
+                           if a.street == 'preflop' and a.action in ('raises', 'all-in'))
+        preflop_opener   = _infer_position(hand, _pf_raisers[0]) if len(_pf_raisers) >= 1 else ''
+        preflop_3bettor  = _infer_position(hand, _pf_raisers[1]) if len(_pf_raisers) >= 2 else ''
+        pot_type = ('limped' if _n_pf_raises == 0 else 'srp' if _n_pf_raises == 1
+                    else '3bet' if _n_pf_raises == 2 else '4bet')
+
         # Board correto para a street atual
         board_at_street = _board_for_street(
             hand.raw_text if hasattr(hand, 'raw_text') else '',
@@ -333,6 +347,9 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'caller_position': caller_position,
                 'villain_name': villain_name,   # HUD: nome do vilão do spot (lookup do perfil)
                 'facing_to_bb': facing_to_bb,  # #23: tamanho do open enfrentado (bb)
+                'pot_type': pot_type,           # Fase 2: srp|3bet|4bet|limped (ranges do solver)
+                'preflop_opener': preflop_opener,     # posição do 1º raiser
+                'preflop_3bettor': preflop_3bettor,   # posição do 2º raiser (3-bettor)
             },
         )
         states.append(state)

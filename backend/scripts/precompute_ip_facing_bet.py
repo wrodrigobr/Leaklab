@@ -64,7 +64,9 @@ for tr in trows:
             if key not in spots:
                 spots[key] = dict(street=di['street'], position=pos, board=board,
                                   hero_hand=di.get('hero_cards') or [], hero_stack_bb=stack,
-                                  vs_position=vs, pot_bb=float(sp.get('potBb') or 0), facing=ftb)
+                                  vs_position=vs, pot_bb=float(sp.get('potBb') or 0), facing=ftb,
+                                  pot_type=sp.get('potType', ''), opener=sp.get('preflopOpener', ''),
+                                  threebettor=sp.get('preflop3bettor', ''))
 
 print(f"Spots IP-facing-bet únicos: {len(spots)}")
 
@@ -74,7 +76,9 @@ t0 = time.time()
 for i, (key, s) in enumerate(spots.items(), 1):
     common = dict(street=s['street'], position=s['position'], board=s['board'],
                   hero_hand=s['hero_hand'], hero_stack_bb=s['hero_stack_bb'],
-                  vs_position=s['vs_position'], pot_bb=s['pot_bb'])
+                  vs_position=s['vs_position'], pot_bb=s['pot_bb'],
+                  pot_type=s.get('pot_type', ''), opener=s.get('opener', ''),
+                  threebettor=s.get('threebettor', ''))
     # já coberto? (read-only)
     pre = lookup_gto(facing_size_bb=s['facing'], allow_remote_solve=False, block_remote=False, **common)
     if pre.get('found'):

@@ -136,6 +136,35 @@ def _captured_range_str(position: str, stack_bb: float, kind: str, opener: str =
     return None
 
 
+def _captured_3bet_ranges(opener: str, threebettor: str, stack_bb: float):
+    """Ranges REAIS de pote 3-bet (Fase 2). Retorna (range_3bettor, range_caller) ou
+    (None, None) se sem cobertura. range_3bettor = quem 3-betou (vs_RFI[opener][3bettor]
+    .raise_hands); range_caller = o opener que pagou o 3-bet (vs_3bet[opener][3bettor]
+    .call_hands)."""
+    try:
+        from leaklab.preflop_gto_ranges import _load, _stack_bucket
+        bk = _load().get('ranges', {}).get(_stack_bucket(stack_bb), {})
+        op = (opener or '').upper().strip()
+        tb = (threebettor or '').upper().strip()
+        if not op or not tb:
+            return None, None
+        r_3b = (((bk.get('vs_RFI') or {}).get(op) or {}).get(tb) or {}).get('raise_hands') or None
+        r_call = (((bk.get('vs_3bet') or {}).get(op) or {}).get(tb) or {}).get('call_hands') or None
+        return r_3b, r_call
+    except Exception:
+        return None, None
+
+
+def _effective_pot_type(pot_type: str, opener: str, threebettor: str, stack_bb: float) -> str:
+    """pot_type EFETIVO pro hash/ranges: '3bet' só quando é pote 3-bet E há ranges 3-bet
+    capturadas pros dois jogadores; senão '' (comporta-se como SRP — hash legado). 4bet e
+    spots sem range caem em '' (aproximação SRP, paridade com o legado)."""
+    if (pot_type or '').lower().strip() != '3bet':
+        return ''
+    r_3b, r_call = _captured_3bet_ranges(opener, threebettor, stack_bb)
+    return '3bet' if (r_3b and r_call) else ''
+
+
 def _canon_solver_action(label: str, facing_size_bb: float) -> str:
     """Normaliza o label de ação do solver_cli (ex.: 'bet_50pct', 'bet_2.5x') pro conjunto
     canônico {check,call,fold,bet,raise,allin} que o insert_gto_nodes/engine aceitam. Um
@@ -179,6 +208,9 @@ def lookup_gto(
     bb_chips: float = 0.0,
     block_remote: bool = True,
     allow_remote_solve: bool = True,
+    pot_type: str = '',
+    opener: str = '',
+    threebettor: str = '',
 ) -> dict:
     """
     Ponto de entrada único para consultas GTO.
@@ -203,7 +235,9 @@ def lookup_gto(
     position_u = position.upper()
     sb         = stack_bucket(hero_stack_bb)
     hand_type  = hand_to_type(hero_hand)
-    spot_hash  = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, facing_size_bb)
+    # Fase 2: pot_type efetivo ('3bet' só com ranges 3-bet capturadas; senão '' = SRP/legado)
+    _eff_pot   = _effective_pot_type(pot_type, opener, threebettor, hero_stack_bb)
+    spot_hash  = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, facing_size_bb, _eff_pot)
 
     # 1. Preflop — só retorna se houver dados verificados
     if street_l == 'preflop' and hand_type:
@@ -234,21 +268,27 @@ def lookup_gto(
     #      (evita retornar nó de "sem aposta" quando hero enfrenta aposta → gto_spot_mismatch)
     # NOTA: fallback hash_no_facing (facing=0 com hero_hand) foi removido — causava mismatches
     #       quando hero enfrentava aposta mas só havia nó sem-aposta para aquela mão específica.
-    hash_generic    = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, facing_size_bb)
-    hash_generic_nf = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, 0.0)
-    # Prefer nodes with full strategy_json; fall through if exact match has none
-    _n_exact   = get_gto_node(spot_hash)
-    _n_generic = get_gto_node(hash_generic) if hash_generic != spot_hash else None
-    _n_nf      = (get_gto_node(hash_generic_nf) if facing_size_bb == 0 and hash_generic_nf != hash_generic else None)
-    # Pick best node: prefer strategy_json > primary action only
     def _has_strategy(n):
         return n and n.get('strategy_json')
-    node = (
-        (_n_exact   if _has_strategy(_n_exact)   else None)
-        or (_n_generic if _has_strategy(_n_generic) else None)
-        or (_n_nf      if _has_strategy(_n_nf)      else None)
-        or _n_exact or _n_generic or _n_nf
-    )
+
+    def _pick_node(pt: str):
+        """Melhor nó pra um pot_type: exato > genérico (sem hero_hand) > sem-facing."""
+        h_exact = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, facing_size_bb, pt)
+        h_gen   = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, facing_size_bb, pt)
+        h_nf    = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, 0.0, pt)
+        ne  = get_gto_node(h_exact)
+        ng  = get_gto_node(h_gen) if h_gen != h_exact else None
+        nnf = (get_gto_node(h_nf) if facing_size_bb == 0 and h_nf != h_gen else None)
+        best = ((ne if _has_strategy(ne) else None) or (ng if _has_strategy(ng) else None)
+                or (nnf if _has_strategy(nnf) else None) or ne or ng or nnf)
+        return best, h_exact
+
+    node, _ = _pick_node(_eff_pot)
+    # Fallback SRP: SÓ em read-only (ex.: /replay). Pote 3-bet sem nó 3-bet solvado → serve o
+    # nó SRP (aproximação), nunca pior que o legado. Quando SOLVANDO (precompute,
+    # allow_remote_solve=True) NÃO cai no SRP — segue pro solve do nó 3-bet de verdade.
+    if node is None and _eff_pot == '3bet' and not allow_remote_solve:
+        node, _ = _pick_node('')
     # Nó com estratégia completa (strategy_json) → retorna imediatamente
     # Nó apenas com primary action (sem strategy_json) → salva como fallback e tenta GTO Wizard
     _db_fallback_strategy = None
@@ -403,10 +443,19 @@ def lookup_gto(
     else:
         # hero é OOP (caller/defender); vilão é IP (opener)
         ip_pos, oop_pos = _vs, position_u
-    ip_range  = (_captured_range_str(ip_pos, hero_stack_bb, 'rfi')
-                 or _DEFAULT_RANGES.get(ip_pos, _DEFAULT_RANGE_WIDE))                       # IP = opener (RFI)
-    oop_range = (_captured_range_str(oop_pos, hero_stack_bb, 'call_vs_rfi', opener=ip_pos)
-                 or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE))                      # OOP = caller (call vs RFI)
+
+    if _eff_pot == '3bet':
+        # Pote 3-bet (Fase 2): o 3-bettor recebe a range de 3-bet; o opener que pagou recebe
+        # a range de call-vs-3bet (capada, mais forte que a RFI larga do SRP). Mapeia por posição.
+        _r3b, _rcall = _captured_3bet_ranges(opener, threebettor, hero_stack_bb)
+        _by_pos = {(opener or '').upper(): _rcall, (threebettor or '').upper(): _r3b}
+        ip_range  = _by_pos.get(ip_pos)  or _DEFAULT_RANGES.get(ip_pos,  _DEFAULT_RANGE_WIDE)
+        oop_range = _by_pos.get(oop_pos) or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE)
+    else:
+        ip_range  = (_captured_range_str(ip_pos, hero_stack_bb, 'rfi')
+                     or _DEFAULT_RANGES.get(ip_pos, _DEFAULT_RANGE_WIDE))                   # IP = opener (RFI)
+        oop_range = (_captured_range_str(oop_pos, hero_stack_bb, 'call_vs_rfi', opener=ip_pos)
+                     or _DEFAULT_RANGES.get(oop_pos, _DEFAULT_RANGE_WIDE))                  # OOP = caller (call vs RFI)
     effective_pot = pot_bb if pot_bb > 0 else max(_facing_solver_bb * 2 + 2, 4.0)
 
     # Read-only: quem chama com allow_remote_solve=False (ex.: /replay) NÃO dispara um
@@ -466,6 +515,7 @@ def lookup_gto(
             'hero_hand':       hero_hand,
             'hero_stack_bb':   hero_stack_bb,
             'facing_size_bb':  facing_size_bb,
+            'spot_hash':       spot_hash,   # Fase 2: hash 3bet-aware (_eff_pot) — não recomputa sem pot_type
             'gto_action':      primary_action,
             'gto_freq':        primary_freq,
             'ev_diff':         remote.get('ev'),

@@ -113,12 +113,17 @@ def compute_spot_hash(
     hero_hand: list[str],
     hero_stack_bb: float,
     facing_size_bb: float = 0.0,
+    pot_type: str = '',
 ) -> str:
     """
     Retorna hash SHA256[:16] determinístico do spot.
     Normalização: street minúsculo, position maiúsculo, listas ordenadas, hero_hand
     normalizado para cartas de 2 chars (string/char-split são consertados).
     facing_size_bb distingue spots "sem aposta" de "facing bet" e seus tamanhos.
+
+    pot_type distingue a estrutura preflop (ranges diferentes): '' / 'srp' = pote
+    single-raised (chave OMITIDA → hash IDÊNTICO ao legado, backward-compat); '3bet'/
+    '4bet' = pote re-raised (chave incluída → hash distinto, não colide com os nós SRP).
     """
     canonical = {
         "street":       street.lower(),
@@ -128,6 +133,9 @@ def compute_spot_hash(
         "stack_bucket": stack_bucket(hero_stack_bb),
         "bet_bucket":   bet_bucket(facing_size_bb),
     }
+    _pt = (pot_type or '').lower().strip()
+    if _pt in ('3bet', '4bet'):          # SRP/limped/'' → omite (hash legado preservado)
+        canonical["pot_type"] = _pt
     return hashlib.sha256(
         json.dumps(canonical, sort_keys=True).encode()
     ).hexdigest()[:16]

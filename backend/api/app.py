@@ -4271,6 +4271,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     # GW 'degraded') → /replay travava 20–80s. Coberto retorna o nó cacheado antes.
                     block_remote   = False,
                     allow_remote_solve = False,   # defensivo: nunca solva na requisição
+                    pot_type       = _spot.get('potType', ''),            # Fase 2: pote 3-bet
+                    opener         = _spot.get('preflopOpener', ''),
+                    threebettor    = _spot.get('preflop3bettor', ''),
                 )
                 if _gto_result.get('found') and _gto_result.get('strategy'):
                     gto_strategy = _gto_result['strategy']

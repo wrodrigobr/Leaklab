@@ -115,6 +115,9 @@ def build_decision_input(state: HandState, hand: 'ParsedHand | None' = None) -> 
             'facingLimp':         state.metadata.get('facing_limp', False),  # pote limpado (fora de cobertura GTO)
             'callerPosition':     state.metadata.get('caller_position', ''),  # cold caller (pra rotear squeeze)
             'facingToBb':         state.metadata.get('facing_to_bb'),  # #23: open enfrentado em bb (raise-to total)
+            'potType':            state.metadata.get('pot_type', 'srp'),       # Fase 2: srp|3bet|4bet|limped
+            'preflopOpener':      state.metadata.get('preflop_opener', ''),    # posição do opener
+            'preflop3bettor':     state.metadata.get('preflop_3bettor', ''),   # posição do 3-bettor
         },
         'hand_profile': hand_profile,
         'math': {

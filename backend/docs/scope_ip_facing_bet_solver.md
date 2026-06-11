@@ -1,5 +1,10 @@
 # Scope — cobertura GTO para hero IP enfrentando aposta (postflop)
 
+> **STATUS: Fase 1 ✅ DEPLOYADA + Fase 2 ✅ IMPLEMENTADA.** Fase 1 (navigate_to_ip_facing_bet
+> no main.rs, deployado + flag + precompute). Fase 2 (ranges de pote 3-bet via hash backward-
+> compat — `compute_spot_hash` com `pot_type`; 3-bettor=`vs_RFI.raise`, caller=`vs_3bet.call`;
+> precompute_3bet_pots.py). Único pendente: 4-bet pots (1%) usam aproximação SRP.
+
 ## Problema
 
 Quando o hero é **IP** e **enfrenta uma aposta** postflop (ex.: pote 3-bet, BB c-beta o flop,

@@ -268,15 +268,23 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
     try:
         import json as _json
         from leaklab.gto_utils import compute_spot_hash
+        from leaklab.gto_solver import _effective_pot_type
         from database.repositories import get_gto_node
 
-        # Mesmas variantes de hash que lookup_gto() usa
-        hashes = [
-            compute_spot_hash(street, position, board, hero_hand, stack_bb, facing_bb),
-            compute_spot_hash(street, position, board, [],        stack_bb, facing_bb),
-        ]
-        if facing_bb == 0.0:
-            hashes.append(compute_spot_hash(street, position, board, [], stack_bb, 0.0))
+        # Fase 2: pot_type efetivo — prefere o nó de pote 3-bet (ranges corretas) e cai no
+        # nó SRP (aproximação/legado) se o 3-bet ainda não foi solvado. '' = hash legado.
+        _eff_pot = _effective_pot_type(spot.get('potType', ''), spot.get('preflopOpener', ''),
+                                       spot.get('preflop3bettor', ''), stack_bb)
+
+        def _variants(pt):
+            hs = [compute_spot_hash(street, position, board, hero_hand, stack_bb, facing_bb, pt),
+                  compute_spot_hash(street, position, board, [],        stack_bb, facing_bb, pt)]
+            if facing_bb == 0.0:
+                hs.append(compute_spot_hash(street, position, board, [], stack_bb, 0.0, pt))
+            return hs
+
+        # Mesmas variantes de hash que lookup_gto() usa (3-bet primeiro, SRP como fallback)
+        hashes = (_variants('3bet') if _eff_pot == '3bet' else []) + _variants('')
 
         # Nós do solver Texas (source='solver_cli') REATIVADOS no postflop, COM TRAVA de
         # depth: o solve agora roda no stack REAL (cap 60bb), não mais capado a 20bb. Só
