@@ -901,9 +901,10 @@ function SidePanels({
               // veredito diz que a ação foi ERRO (ex.: heurística "RAISE +EV vs fold"
               // num spot que o engine manda CALL) — senão o +pp verde contradiz o "ERRO".
               const ppMuted = isPpMuted({ showAuditPreflop: !!showAuditPreflop, effectiveGtoLabel, eq, reqShown, isActionOk });
-              const ppTip = showAuditPreflop ? (isVsRange ? t("card.reqVsRangeTip") : t("card.reqVsRandomTip"))
-                : effectiveGtoLabel ? t("card.reqSolverContextTip")
-                : tooltip;
+              // A linha de equity NECESSÁRIA explica a equity necessária / margem — NÃO
+              // reusa reqVsRandom/Range (que descrevem a equity ESTIMADA, já na linha acima).
+              // Antes, em modo audit ambas as linhas mostravam o MESMO texto (vs random/range).
+              const ppTip = effectiveGtoLabel ? t("card.reqSolverContextTip") : tooltip;
               return (
                 <div className="flex items-center gap-2 font-mono text-[11px]"
                   title={ppTip}>
