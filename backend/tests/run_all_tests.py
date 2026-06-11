@@ -25,6 +25,7 @@ SUITES = {
     'regression':['test_tournament.py', 'test_multi_decision.py', 'test_partygaming_parser.py'],
     'academy':   ['test_academy_variety.py'],
     'gto':       ['test_tree_hash.py',
+                  'test_hand_view.py',
                   'test_gto_comparison.py',
                   'test_gto_utils_comprehensive.py',
                   'test_gto_enrichment.py',

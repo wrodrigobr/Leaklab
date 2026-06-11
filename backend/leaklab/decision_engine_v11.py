@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Dict, Any
 import logging as _logging
+import os
 
 _gto_log = _logging.getLogger('leaklab.gto')
 
@@ -367,8 +368,42 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
                               f'jam rejeitado: SPR={spr:.1f} (stack {stack_bb:.0f}bb / pote {pot_bb:.1f}bb)')
                 return {'available': False}
 
-        # Classificação: usa frequência real da ação jogada quando possível
-        if strategy:
+        # ── Fase 3 (plano solver): veredito HAND-AWARE ────────────────────────
+        # A classificação usava a frequência AGREGADA da range — mas num K72r a
+        # range checa 60% enquanto AA aposta 90%. Quando a tabela por mão da
+        # árvore existe (gto_tree_strategies, populada pelo binário novo), o
+        # veredito usa a frequência/EV DA MÃO DO HERO. Gated por GTO_HAND_AWARE
+        # (default ON — sem tabela cai no agregado, comportamento idêntico ao
+        # legado; binário antigo nunca popula a tabela → no-op).
+        hand_view = None
+        ev_loss_bb = None
+        if (node.get('tree_hash') and hero_hand
+                and os.environ.get('GTO_HAND_AWARE', '1') == '1'):
+            try:
+                from leaklab.gto_solver import hand_view_for_spot
+                hand_view = hand_view_for_spot(node['tree_hash'], board, hero_hand)
+            except Exception:
+                hand_view = None
+
+        hand_strategy = None
+        if hand_view and hand_view.get('actions'):
+            hand_strategy = [
+                {'action': a, 'frequency': v['frequency'], 'ev_bb': v['ev_bb']}
+                for a, v in hand_view['actions'].items()
+            ]
+            hand_strategy.sort(key=lambda s: s['frequency'], reverse=True)
+            # EV loss da ação JOGADA (bb): melhor EV da mão − EV da ação escolhida
+            _played = _norm_gto_action(player_action)
+            for a, v in hand_view['actions'].items():
+                an = _norm_gto_action(a)
+                if an == _played or an.startswith(_played) or _played.startswith(an):
+                    if ev_loss_bb is None or v['ev_loss_bb'] < ev_loss_bb:
+                        ev_loss_bb = v['ev_loss_bb']
+
+        # Classificação: mão específica (Fase 3) > frequência da range > top action
+        if hand_strategy:
+            gto_label, played_freq = _gto_classify_from_strategy(player_action, hand_strategy)
+        elif strategy:
             gto_label, played_freq = _gto_classify_from_strategy(player_action, strategy)
         else:
             gto_label  = _gto_classify(player_action, top_action, top_freq, equity)
@@ -386,6 +421,9 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
             'gto_label':    gto_label,
             'source':       node.get('source', 'postflop_db'),
             'depth_capped': depth_capped,
+            'hand_aware':   bool(hand_strategy),
+            'hand_strategy': hand_strategy,
+            'ev_loss_bb':   ev_loss_bb,
         }
 
     except Exception as exc:

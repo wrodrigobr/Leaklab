@@ -69,6 +69,17 @@ struct ActionDetail {
     combos:    f64,
 }
 
+/// Fase 3 (plano solver): linha da tabela POR MÃO — frequência e EV de cada ação
+/// para um combo específico do hero. `freqs`/`evs` seguem a ordem de `actions`
+/// do Output. EVs em BB (chips/100), pesos normalizados do range.
+#[derive(Serialize)]
+struct HandDetail {
+    hand:   String,     // ex.: "AhKd"
+    weight: f64,        // peso normalizado do combo no range
+    freqs:  Vec<f64>,   // frequência por ação
+    evs:    Vec<f64>,   // EV por ação, em BB
+}
+
 #[derive(Serialize)]
 struct Output {
     primary_action:   String,
@@ -80,6 +91,10 @@ struct Output {
     strategy_detail:  HashMap<String, ActionDetail>,
     total_combos:     f64,
     facing_node:      bool,   // true quando facing_size_bb navegou com sucesso
+    /// Fase 3: ordem canônica das ações (chave p/ freqs/evs do hand_table)
+    actions:          Vec<String>,
+    /// Fase 3: estratégia + EV por MÃO do range do hero (veredito hand-aware)
+    hand_table:       Vec<HandDetail>,
 }
 
 #[derive(Serialize)]
@@ -300,6 +315,41 @@ fn run(inp: &Input) -> Result<Output, String> {
         }
     }
 
+    // ── Fase 3 (plano solver): tabela POR MÃO ────────────────────────────────
+    // O veredito da plataforma usava só a frequência AGREGADA da range — mas num
+    // K72r a range checa 60% enquanto AA aposta 90%. expected_values_detail dá
+    // EV de cada ação para cada combo (mesmo layout de índice da strategy:
+    // hand + action*num_hands). Custo: 1 traversal extra, ~zero vs o solve.
+    let ev_detail = game.expected_values_detail(hero_player);
+    let action_labels: Vec<String> =
+        actions.iter().map(|a| action_label(a, label_pot)).collect();
+    let mut hand_table: Vec<HandDetail> = Vec::with_capacity(num_hands);
+    for hand_idx in 0..num_hands {
+        let w = weights[hand_idx] as f64;
+        if w <= 0.0 {
+            continue;   // combo bloqueado pelo board / fora do range
+        }
+        let (c1, c2) = hands[hand_idx];
+        let combo = format!(
+            "{}{}",
+            card_to_string(c1).unwrap_or_default(),
+            card_to_string(c2).unwrap_or_default()
+        );
+        let mut freqs_h = Vec::with_capacity(num_actions);
+        let mut evs_h   = Vec::with_capacity(num_actions);
+        for action_idx in 0..num_actions {
+            let idx = hand_idx + action_idx * num_hands;
+            freqs_h.push((strategy[idx] as f64 * 1000.0).round() / 1000.0);
+            evs_h.push((ev_detail[idx] as f64).round() / 100.0);   // chips → BB, 2 casas
+        }
+        hand_table.push(HandDetail {
+            hand:   combo,
+            weight: (w * 10000.0).round() / 10000.0,
+            freqs:  freqs_h,
+            evs:    evs_h,
+        });
+    }
+
     Ok(Output {
         primary_action,
         primary_freq:    (primary_freq * 1000.0).round() / 1000.0,
@@ -310,6 +360,8 @@ fn run(inp: &Input) -> Result<Output, String> {
         strategy_detail: strategy_detail_map,
         total_combos:    (total_weight * 100.0).round() / 100.0,
         facing_node,
+        actions:         action_labels,
+        hand_table,
     })
 }
 

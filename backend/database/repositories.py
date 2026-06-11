@@ -4673,7 +4673,7 @@ def get_gto_node(spot_hash: str) -> Optional[dict]:
     conn = get_conn()
     try:
         return _fetchone(conn, _adapt("""
-            SELECT spot_hash, street, position, board, hero_hand, stack_bucket,
+            SELECT spot_hash, tree_hash, street, position, board, hero_hand, stack_bucket,
                    gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
                    strategy_json, COALESCE(is_aggregate, 0) AS is_aggregate
             FROM gto_nodes
@@ -6047,6 +6047,48 @@ def _notify_solver_enqueue() -> bool:
     except Exception:
         pass
     return True
+
+
+def upsert_tree_strategy(tree_hash: str, board: list, actions: list, hand_table: list) -> bool:
+    """Fase 3 (plano solver): grava a tabela POR MÃO de um solve (freq+EV por ação
+    por combo), keyed por tree_hash. `board` = board DO SOLVE (referência p/ mapear
+    mãos de spots isomorfos via iso_suit_map)."""
+    if not (tree_hash and actions and hand_table):
+        return False
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("""
+            INSERT OR REPLACE INTO gto_tree_strategies (tree_hash, board, actions, hand_table)
+            VALUES (?, ?, ?, ?)
+        """), (tree_hash, json.dumps(list(board or [])),
+               json.dumps(list(actions)), json.dumps(hand_table)))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def get_tree_strategy(tree_hash: str) -> Optional[dict]:
+    """Fase 3: lê a tabela por mão da árvore. {board, actions, hand_table} ou None."""
+    if not tree_hash:
+        return None
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT board, actions, hand_table FROM gto_tree_strategies WHERE tree_hash = ?"
+        ), (tree_hash,))
+        if not row:
+            return None
+        try:
+            return {
+                'board':      json.loads(row['board']),
+                'actions':    json.loads(row['actions']),
+                'hand_table': json.loads(row['hand_table']),
+            }
+        except Exception:
+            return None
+    finally:
+        conn.close()
 
 
 def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5,

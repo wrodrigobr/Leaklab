@@ -293,3 +293,37 @@ def compute_tree_hash(payload: dict) -> str:
     return hashlib.sha256(
         json.dumps(canonical, sort_keys=True).encode()
     ).hexdigest()[:16]
+
+
+def iso_suit_map(board_from, board_to):
+    """Fase 3 (plano solver): permutação de naipes que transforma `board_from` em
+    `board_to` (boards isomorfos). Retorna dict {naipe_from: naipe_to} ou None se
+    não são isomorfos. Flop comparado como conjunto; turn/river posicionais —
+    mesma semântica do canonical_board_key."""
+    from itertools import permutations
+
+    def _norm(board):
+        cards = [str(c).strip() for c in (board or []) if c and len(str(c).strip()) >= 2]
+        return [c[0].upper() + c[1].lower() for c in cards]
+
+    a, b = _norm(board_from), _norm(board_to)
+    if len(a) != len(b):
+        return None
+    bf, br = a[:3], a[3:]
+    tf, tr = b[:3], b[3:]
+    for perm in permutations(_ISO_SUITS):
+        mp = dict(zip(_ISO_SUITS, perm))
+        if sorted(c[0] + mp[c[1]] for c in bf) == sorted(tf) and \
+           [c[0] + mp[c[1]] for c in br] == tr:
+            return mp
+    return None
+
+
+def map_cards_suits(cards, suit_map):
+    """Aplica a permutação de naipes (de iso_suit_map) a uma lista de cartas."""
+    out = []
+    for c in cards or []:
+        c = str(c).strip()
+        if len(c) >= 2:
+            out.append(c[0].upper() + suit_map.get(c[1].lower(), c[1].lower()))
+    return out

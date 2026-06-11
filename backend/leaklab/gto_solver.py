@@ -192,6 +192,71 @@ def _solver_binary() -> Optional[str]:
     return _SOLVER_BIN if _SOLVER_AVAILABLE else None
 
 
+# ── Fase 3 (plano solver): visão POR MÃO da árvore solvada ────────────────────
+
+def _store_tree_strategy(tree_hash: str, board: list, result: dict) -> None:
+    """Persiste a tabela por mão (hand_table/actions do solver_cli) keyed por
+    tree_hash. Best-effort: binário antigo (sem hand_table) → no-op."""
+    try:
+        if tree_hash and result.get('hand_table') and result.get('actions'):
+            from database.repositories import upsert_tree_strategy
+            upsert_tree_strategy(tree_hash, board, result['actions'], result['hand_table'])
+    except Exception as e:
+        log.debug("tree_strategy store falhou: %s", e)
+
+
+def hand_view_for_spot(tree_hash: str, spot_board: list, hero_hand: list) -> Optional[dict]:
+    """Extrai a estratégia + EVs DA MÃO DO HERO a partir da tabela por mão da
+    árvore (gto_tree_strategies). O board armazenado pode ser um ISOMORFO do
+    board do spot (Fase 1) — a mão é mapeada pelos naipes via iso_suit_map.
+
+    Retorna {'actions': {label: {'frequency','ev_bb','ev_loss_bb'}},
+             'best_action', 'best_ev_bb', 'weight'} ou None (sem tabela /
+    mão fora do range / boards não-isomorfos)."""
+    if not (tree_hash and hero_hand and len(hero_hand) >= 2):
+        return None
+    try:
+        from database.repositories import get_tree_strategy
+        from leaklab.gto_utils import iso_suit_map, map_cards_suits, normalize_cards
+        ts = get_tree_strategy(tree_hash)
+        if not ts:
+            return None
+        # mapeia a mão do spot → naipes do board ARMAZENADO (solve original)
+        smap = iso_suit_map(spot_board, ts['board'])
+        if smap is None:
+            return None
+        mapped = map_cards_suits(normalize_cards(hero_hand), smap)
+        if len(mapped) < 2:
+            return None
+        key = frozenset(mapped)
+        row = None
+        for h in ts['hand_table']:
+            hs = h.get('hand') or ''
+            if len(hs) >= 4 and frozenset((hs[0:2], hs[2:4])) == key:
+                row = h
+                break
+        if row is None:
+            return None   # mão do hero fora do range usado no solve
+        acts = ts['actions']
+        freqs, evs = row.get('freqs') or [], row.get('evs') or []
+        if len(acts) != len(freqs) or len(acts) != len(evs):
+            return None
+        best_ev = max(evs) if evs else 0.0
+        out = {}
+        for i, a in enumerate(acts):
+            out[a] = {
+                'frequency':  freqs[i],
+                'ev_bb':      evs[i],
+                'ev_loss_bb': round(best_ev - evs[i], 2),
+            }
+        best_action = max(out, key=lambda k: out[k]['frequency'])
+        return {'actions': out, 'best_action': best_action,
+                'best_ev_bb': best_ev, 'weight': row.get('weight')}
+    except Exception as e:
+        log.debug("hand_view_for_spot falhou: %s", e)
+        return None
+
+
 # ── Lookup principal ───────────────────────────────────────────────────────────
 
 def lookup_gto(
@@ -530,6 +595,7 @@ def lookup_gto(
                 'exploitability_pct': _tnode.get('exploitability_pct'),
                 'spot_hash':          spot_hash,
                 'queued':             False,
+                'hand_strategy':      hand_view_for_spot(tree_hash, board, hero_hand),
             }
 
     remote = _call_remote_solver(solver_payload)
@@ -574,6 +640,7 @@ def lookup_gto(
             'iterations':      remote.get('iterations'),
             'strategy_detail': strategy_detail,
         }])
+        _store_tree_strategy(tree_hash, board, remote)   # Fase 3: tabela por mão
         log.info("GTO remote solve: %s → %s %.0f%% (exploit=%.2f%%)",
                  spot_hash, primary_action, primary_freq * 100, exploit or 0)
         return {
@@ -583,6 +650,7 @@ def lookup_gto(
             'exploitability_pct': float(exploit) if exploit else None,
             'spot_hash':          spot_hash,
             'queued':             False,
+            'hand_strategy':      hand_view_for_spot(tree_hash, board, hero_hand),
         }
 
     # GTO Wizard e solver remoto indisponíveis — usa nó parcial do DB como último recurso
@@ -750,6 +818,9 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
                 mark_solver_job_done(spot_hash, 'failed')
                 failed += 1
                 continue
+
+            # Fase 3: persiste a tabela por mão do solve (keyed por tree_hash)
+            _store_tree_strategy(_th, spot.get('board', []), result)
 
             # Normaliza chave: solver local usa 'exploitability', remoto usa 'exploitability_pct'
             exploit = result.get('exploitability') or result.get('exploitability_pct')

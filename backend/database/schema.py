@@ -817,6 +817,18 @@ def _run_migrations(conn):
         ]:
             try: conn.execute(sql)
             except Exception: pass
+        # Fase 3 (plano solver): tabela por mão da árvore (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS gto_tree_strategies (
+                    tree_hash   TEXT PRIMARY KEY,
+                    board       TEXT NOT NULL,
+                    actions     TEXT NOT NULL,
+                    hand_table  TEXT NOT NULL,
+                    created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+        except Exception: pass
 
         # player_elo_history (Postgres) — espelha SQLite
         try:
@@ -1347,6 +1359,18 @@ def _run_migrations(conn):
                 try: conn.execute(sql)
                 except Exception: pass
         conn.execute("CREATE INDEX IF NOT EXISTS idx_gto_nodes_tree ON gto_nodes(tree_hash)")
+        # Fase 3 (plano solver): tabela por mão da ÁRVORE (freq+EV por ação por combo).
+        # Keyed por tree_hash: 1 row por solve; qualquer spot isomorfo extrai a SUA mão
+        # daqui via iso_suit_map (veredito hand-aware + EV loss em bb).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS gto_tree_strategies (
+                tree_hash   TEXT PRIMARY KEY,
+                board       TEXT NOT NULL,
+                actions     TEXT NOT NULL,
+                hand_table  TEXT NOT NULL,
+                created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
         # gto_preflop_ranges (SQLite) — populada APENAS por solver verificado
         conn.execute("""
             CREATE TABLE IF NOT EXISTS gto_preflop_ranges (
