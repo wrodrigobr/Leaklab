@@ -60,12 +60,17 @@ export function V2AiInsightsCard({ insights, locked }: Props) {
             “{cur.text}”
           </p>
           {insights.length > 1 && (
-            <div className="flex items-center gap-1.5 mt-3">
+            <div className="flex items-center gap-2 mt-3">
               {insights.map((ins, i) => (
                 <button
                   key={ins.key}
                   onClick={() => setIdx(i)}
-                  className={`size-1.5 rounded-full transition-colors ${i === idx ? "bg-blue-300" : "bg-muted/40 hover:bg-muted/70"}`}
+                  title={ins.title}
+                  className={`size-2 rounded-full transition-all ${
+                    i === idx
+                      ? "bg-blue-300 ring-2 ring-blue-300/40 scale-110"
+                      : "bg-blue-200/25 ring-1 ring-blue-300/40 hover:bg-blue-200/60"
+                  }`}
                   aria-label={ins.title}
                 />
               ))}

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(dashboard): dots do carrossel de IA invisíveis sobre o fundo azul ✅
+
+> Feedback do usuário: os indicadores de página do `V2AiInsightsCard` usavam `bg-muted/40` — contraste ~zero sobre o gradiente azul do card. Dots refeitos na família do azul (inativo `blue-200/25` + ring `blue-300/40`; ativo `blue-300` com ring e scale), tamanho up pra `size-2` (toque melhor) + tooltip com o nome do insight.
+
 ### feat(dashboard): UX-2 onda 2 — "onde você sangra" por street + carrossel de insights da IA ✅
 
 > **(1) `V2StreetEvCard`:** bb perdidos por street em barras horizontais com escala compartilhada e cor por street (preflop roxo → river vermelho) — 1 olhada mostra onde o estudo rende mais. Backend: `get_ev_summary` ganhou `by_street` (SUM(ev_loss_bb)>0.05 por street, ordem canônica; validado com dados semeados). **(2) `V2AiInsightsCard`:** as narrativas de IA (Strategic Twin, padrão cognitivo, projeção de carreira, mapa causal) consolidadas num CARROSSEL premium (gradiente azul, setas + dots, aspas de citação) — 1 slot rotativo no lugar de 4 cards gigantes, como no mock; usuário Free vê lock com CTA Pro (`aiLocked`); os cards completos seguem na grade abaixo. O Index monta as narrativas dos dados JÁ buscados (zero fetch novo) e passa ao V2. Layout: carrossel col-7 + street col-5 na segunda linha do bento. i18n `v2.street*/ai*` (3 locales). Cards exclusivos do V2 — v1 congelado intacto.
