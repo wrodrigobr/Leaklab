@@ -488,5 +488,25 @@
       "high": "ICM alto",
       "critical": "ICM crítico"
     }
+  },
+  "v2": {
+    "eyebrow": "Hoy",
+    "backToClassic": "layout: nuevo ✦ (volver al clásico)",
+    "tryNew": "probar el nuevo layout ✦",
+    "toggleTip": "Alterna entre el dashboard clásico y el nuevo (EV en bb como métrica principal). Preferencia guardada en este navegador.",
+    "evLabel": "EV perdido / 100 decisiones",
+    "evImproving": "vs período anterior — mejorando",
+    "evWorsening": "vs período anterior — empeorando",
+    "evBasis": "base: {{n}} decisiones analizadas",
+    "evNoData": "Sin datos de EV todavía — importa manos y espera el análisis del solver.",
+    "solidLabel": "Decisiones sólidas",
+    "solidSub": "dentro del estándar del solver/engine",
+    "ctaLabel": "Tu leak más caro",
+    "insteadOf": "cuando lo mejor era",
+    "ctaNoLeak": "Ningún leak con costo medido todavía.",
+    "ctaButton": "▶ Entrenar ahora",
+    "leaksTitle": "Leaks por costo (bb perdidos)",
+    "leakSpots": "{{n}} spots",
+    "leakShare": "{{pct}}% del total"
   }
 }

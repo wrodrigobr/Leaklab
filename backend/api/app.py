@@ -933,6 +933,14 @@ def player_level():
     return jsonify(get_player_level(g.user_id))
 
 
+@app.route('/player/ev-summary', methods=['GET'])
+@require_auth
+def player_ev_summary():
+    """UX-1: hero do DashboardV2 — EV/100, tendência, % sólidas e top leaks por CUSTO."""
+    from database.repositories import get_ev_summary
+    return jsonify(get_ev_summary(g.user_id))
+
+
 @app.route('/player/leak-roi', methods=['GET'])
 @require_auth
 def player_leak_roi():

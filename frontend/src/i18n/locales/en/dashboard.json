@@ -488,5 +488,25 @@
       "high": "High ICM",
       "critical": "Critical ICM"
     }
+  },
+  "v2": {
+    "eyebrow": "Today",
+    "backToClassic": "layout: new ✦ (back to classic)",
+    "tryNew": "try the new layout ✦",
+    "toggleTip": "Switches between the classic dashboard and the new one (EV in bb as the lead metric). Preference saved in this browser.",
+    "evLabel": "EV lost / 100 decisions",
+    "evImproving": "vs previous period — improving",
+    "evWorsening": "vs previous period — getting worse",
+    "evBasis": "basis: {{n}} analyzed decisions",
+    "evNoData": "No EV data yet — import hands and wait for solver analysis.",
+    "solidLabel": "Solid decisions",
+    "solidSub": "within solver/engine standard",
+    "ctaLabel": "Your most expensive leak",
+    "insteadOf": "when the best was",
+    "ctaNoLeak": "No leak with measured cost yet.",
+    "ctaButton": "▶ Train now",
+    "leaksTitle": "Leaks by cost (bb lost)",
+    "leakSpots": "{{n}} spots",
+    "leakShare": "{{pct}}% of total"
   }
 }

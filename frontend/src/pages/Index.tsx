@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { HudHeader } from "@/components/hud/HudHeader";
+import { DashboardV2 } from "@/components/hud/DashboardV2";
 import { KpiCard } from "@/components/hud/KpiCard";
 import { LeaksPanel } from "@/components/hud/LeaksPanel";
 import { BankrollChart } from "@/components/hud/BankrollChart";
@@ -115,6 +116,22 @@ const Index = () => {
 
   const handleUpload = () => setRefreshKey((k) => k + 1);
 
+  // UX-1: DashboardV2 atrás de toggle persistido (modelo v2 chaveável — v1 intocado)
+  const [dashV2, setDashV2] = useState<boolean>(
+    () => localStorage.getItem("dashboard_v2") === "true"
+  );
+  const toggleDashV2 = () => setDashV2((prev) => {
+    const next = !prev;
+    localStorage.setItem("dashboard_v2", String(next));
+    return next;
+  });
+  const { data: evSummary } = useQuery({
+    queryKey: ["ev-summary", refreshKey],
+    queryFn: metrics.evSummary,
+    staleTime: 120_000,
+    enabled: dashV2,
+  });
+
   const { sections, updateSections, reset: resetLayout } = useDashboardLayout();
   const bentoRef = useRef<HTMLElement>(null);
   // masonry real: cada card ocupa N linhas pela sua altura → curtos liberam o vão, dense empacota
@@ -210,6 +227,18 @@ const Index = () => {
     }
   };
 
+  if (dashV2) {
+    return (
+      <DashboardV2
+        onUpload={handleUpload}
+        evSummary={evSummary ?? null}
+        hasData={hasData}
+        renderCard={renderCard}
+        onBackToClassic={toggleDashV2}
+      />
+    );
+  }
+
   return (
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader onUpload={handleUpload} />
@@ -241,6 +270,13 @@ const Index = () => {
             </div>
             {hasData && (
               <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleDashV2}
+                  className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60 hover:text-teal-300 transition-colors"
+                  title={t("v2.toggleTip")}
+                >
+                  {t("v2.tryNew")}
+                </button>
                 {/* Volume filter */}
                 <div className="flex items-center gap-px rounded-md ring-1 ring-border overflow-hidden">
                   {([null, 20, 50, 100] as (number | null)[]).map((val) => {

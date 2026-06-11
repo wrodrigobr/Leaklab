@@ -995,7 +995,25 @@ export const leaderboardPrefs = {
     }),
 };
 
+// UX-1: hero do DashboardV2 — EV/100, tendência e leaks por CUSTO (bb)
+export interface EvLeak {
+  street: string; action_taken: string; best_action: string;
+  count: number; loss_bb: number; share_pct: number;
+}
+export interface EvSummary {
+  has_data: boolean;
+  decisions_with_ev?: number;
+  ev_per_100?: number | null;
+  ev_per_100_recent?: number | null;
+  ev_per_100_prev?: number | null;
+  standard_pct?: number | null;
+  total_loss_bb?: number;
+  top_leaks?: EvLeak[];
+}
+
 export const metrics = {
+  evSummary: () => request<EvSummary>(`/player/ev-summary`),
+
   leaderboard: (period = 90) =>
     request<LeaderboardResponse>(`/metrics/leaderboard?period=${period}`),
 

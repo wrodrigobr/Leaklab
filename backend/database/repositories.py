@@ -6091,6 +6091,82 @@ def get_tree_strategy(tree_hash: str) -> Optional[dict]:
         conn.close()
 
 
+def get_ev_summary(user_id: int) -> dict:
+    """UX-1 (plano pós-solver): resumo de EV para o hero do DashboardV2.
+
+    EV/100 = bb perdidos por 100 decisões ANALISADAS (com ev_loss_bb — solver
+    hand-aware postflop + overlay preflop). Tendência: últimos 5 torneios vs os
+    5 anteriores. top_leaks: padrões (street + jogou + melhor) rankeados por
+    CUSTO em bb, não por contagem — o diferencial da plataforma."""
+    conn = get_conn()
+    try:
+        tids = [r['id'] for r in _fetchall(conn, _adapt(
+            "SELECT id FROM tournaments WHERE user_id = ? ORDER BY id DESC"), (user_id,))]
+        if not tids:
+            return {'has_data': False}
+
+        def _ev_per_100(id_list):
+            if not id_list:
+                return None, 0
+            ph = ','.join('?' * len(id_list))
+            row = _fetchone(conn, _adapt(f"""
+                SELECT COUNT(ev_loss_bb) AS with_ev, COALESCE(SUM(ev_loss_bb),0) AS loss
+                FROM decisions WHERE tournament_id IN ({ph})"""), tuple(id_list))
+            n = row['with_ev'] or 0
+            if n < 10:
+                return None, n   # amostra pequena demais pra taxa honesta
+            return round(float(row['loss']) / n * 100.0, 1), n
+
+        ev100_all,  n_all  = _ev_per_100(tids)
+        ev100_cur,  _      = _ev_per_100(tids[:5])
+        ev100_prev, _      = _ev_per_100(tids[5:10])
+
+        ph_all = ','.join('?' * len(tids))
+        srow = _fetchone(conn, _adapt(f"""
+            SELECT COUNT(*) AS total,
+                   SUM(CASE WHEN label = 'standard' THEN 1 ELSE 0 END) AS std
+            FROM decisions WHERE tournament_id IN ({ph_all})"""), tuple(tids))
+        standard_pct = (round(srow['std'] / srow['total'] * 100.0, 1)
+                        if srow and srow['total'] else None)
+
+        leaks = _fetchall(conn, _adapt(f"""
+            SELECT street, action_taken, best_action,
+                   COUNT(*) AS cnt, SUM(ev_loss_bb) AS loss_bb
+            FROM decisions
+            WHERE tournament_id IN ({ph_all})
+              AND ev_loss_bb IS NOT NULL AND ev_loss_bb > 0.05
+              AND best_action IS NOT NULL AND best_action != ''
+            GROUP BY street, action_taken, best_action
+            ORDER BY loss_bb DESC LIMIT 5"""), tuple(tids))
+        total_loss = sum(float(l['loss_bb'] or 0) for l in leaks) or None
+        lrow = _fetchone(conn, _adapt(f"""
+            SELECT COALESCE(SUM(ev_loss_bb),0) AS s FROM decisions
+            WHERE tournament_id IN ({ph_all}) AND ev_loss_bb > 0.05"""), tuple(tids))
+        loss_all = float(lrow['s'] or 0) if lrow else 0.0
+        top_leaks = [{
+            'street':       l['street'],
+            'action_taken': l['action_taken'],
+            'best_action':  l['best_action'],
+            'count':        l['cnt'],
+            'loss_bb':      round(float(l['loss_bb'] or 0), 1),
+            'share_pct':    (round(float(l['loss_bb'] or 0) / loss_all * 100.0)
+                             if loss_all > 0 else 0),
+        } for l in leaks]
+
+        return {
+            'has_data':          True,
+            'decisions_with_ev': n_all,
+            'ev_per_100':        ev100_all,
+            'ev_per_100_recent': ev100_cur,
+            'ev_per_100_prev':   ev100_prev,
+            'standard_pct':      standard_pct,
+            'total_loss_bb':     round(loss_all, 1),
+            'top_leaks':         top_leaks,
+        }
+    finally:
+        conn.close()
+
+
 def enqueue_solver_spot(spot_hash: str, spot_json: str, priority: int = 5,
                         tree_hash: str = None) -> bool:
     """
