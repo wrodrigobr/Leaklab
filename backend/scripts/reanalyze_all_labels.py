@@ -14,6 +14,11 @@ from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision
 
 conn = get_conn()
+# DB dev tem o app.py vivo (WAL) — espera o lock em vez de falhar na hora.
+try:
+    conn.execute('PRAGMA busy_timeout=30000')
+except Exception:
+    pass
 
 tournaments = conn.execute(
     "SELECT id, tournament_id FROM tournaments WHERE raw_text IS NOT NULL ORDER BY id"
