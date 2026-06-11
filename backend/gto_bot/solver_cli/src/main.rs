@@ -189,22 +189,30 @@ fn run(inp: &Input) -> Result<Output, String> {
     let exploit_pct   = (final_exploit as f64 / pot_chips as f64) * 100.0;
 
     // Jogador do HERO no solver: OOP=0, IP=1. Navega até o nó de DECISÃO do hero:
-    //   - hero IP (facing==0): root → OOP check → IP age (c-bet) — lê player 1;
-    //   - hero OOP + facing>0: root → OOP check → IP bet closest(facing) → OOP enfrenta;
+    //   - hero IP  + facing==0: root → OOP check → IP age (c-bet) — lê player 1;
+    //   - hero IP  + facing>0:  root → OOP bet closest(facing) → IP age (enfrenta aposta);
+    //   - hero OOP + facing>0:  root → OOP check → IP bet closest(facing) → OOP enfrenta;
     //   - hero OOP + facing==0: root (OOP primeira ação).
     let hero_player: usize = if inp.hero_is_ip { 1 } else { 0 };
     let facing_chips  = (inp.facing_size_bb * 100.0).round() as i32;
-    let (facing_node, ip_node) = if inp.hero_is_ip {
-        (false, inp.facing_size_bb == 0.0 && navigate_to_ip_decision(&mut game))
+    let (facing_node, nav_ok) = if inp.hero_is_ip {
+        if inp.facing_size_bb > 0.0 {
+            // hero IP enfrentando aposta: OOP aposta no root → IP responde
+            let ok = navigate_to_ip_facing_bet(&mut game, facing_chips);
+            (ok, ok)          // o pot subiu com a aposta do OOP → facing_node
+        } else {
+            (false, navigate_to_ip_decision(&mut game))
+        }
     } else if inp.facing_size_bb > 0.0 {
-        (navigate_to_facing_bet(&mut game, facing_chips), false)
+        let ok = navigate_to_facing_bet(&mut game, facing_chips);
+        (ok, ok)
     } else {
-        (false, false)
+        (false, true)         // hero OOP primeira ação (root) — sempre ok
     };
-    // hero IP só suportado no nó de c-bet (facing==0). Se não navegou, aborta (o wrapper
-    // cai no heurístico em vez de devolver a estratégia do jogador errado).
-    if inp.hero_is_ip && !ip_node {
-        return Err("hero_is_ip: facing>0 IP nao suportado (sem no de c-bet)".to_string());
+    // Se a navegação até o nó do hero falhou, aborta (o wrapper cai no heurístico em vez
+    // de devolver a estratégia do jogador errado).
+    if !nav_ok {
+        return Err("navegacao ate o no do hero falhou".to_string());
     }
 
     // Pot de referência para labels: se navegamos pro facing-bet, o pot subiu com a aposta.
@@ -300,6 +308,29 @@ fn navigate_to_ip_decision(game: &mut PostFlopGame) -> bool {
     match root_actions.iter().position(|a| matches!(a, Action::Check)) {
         Some(i) => { game.play(i); true }   // OOP checa → IP age (c-bet)
         None    => false,
+    }
+}
+
+
+/// Navega root → OOP bet closest_to(facing_chips) → IP age (hero IP enfrentando aposta).
+/// Para hero IP + facing>0 (ex.: pote 3-bet, OOP c-beta, IP responde). Retorna false se o
+/// OOP não tem ação de aposta no root (aí o nó não existe na árvore). Depois disso,
+/// game.strategy()/private_cards(1) são do IP.
+fn navigate_to_ip_facing_bet(game: &mut PostFlopGame, facing_chips: i32) -> bool {
+    let root_actions = game.available_actions();
+    let best = root_actions.iter().enumerate()
+        .filter_map(|(i, a)| {
+            let chips = match a {
+                Action::Bet(c) | Action::Raise(c) | Action::AllIn(c) => *c as i32,
+                _ => return None,
+            };
+            Some((i, (chips - facing_chips).abs()))
+        })
+        .min_by_key(|(_, diff)| *diff);
+
+    match best {
+        Some((bet_idx, _)) => { game.play(bet_idx); true }   // OOP aposta → IP age
+        None => { game.back_to_root(); false }               // OOP não pode apostar no root
     }
 }
 

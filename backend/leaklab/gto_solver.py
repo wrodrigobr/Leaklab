@@ -102,6 +102,11 @@ _POSTFLOP_ORDER = {'SB': 0, 'BB': 1, 'UTG': 2, 'UTG+1': 3, 'UTG+2': 4,
 # flag e devolve o player 0 = OOP = jogador errado). Flip p/ '1' após o deploy.
 _TEXAS_HERO_IP = os.environ.get('TEXAS_HERO_IP', '0') == '1'
 
+# Liga o suporte a hero IP ENFRENTANDO APOSTA (root → OOP bet → IP age). Default OFF:
+# só vale DEPOIS do deploy do main.rs com navigate_to_ip_facing_bet (senão o binário antigo
+# aborta facing>0 IP). Flip p/ '1' após o deploy. Requer _TEXAS_HERO_IP também ligado.
+_TEXAS_HERO_IP_FACING = os.environ.get('TEXAS_HERO_IP_FACING', '0') == '1'
+
 
 def _postflop_hero_is_ip(hero_pos: str, vs_pos: str) -> bool:
     """True se o hero está IN POSITION (age depois do vilão) no postflop. Determina qual
@@ -362,9 +367,12 @@ def lookup_gto(
     _hero_ip = _postflop_hero_is_ip(position_u, _vs)
     _facing_solver_bb = (facing_size_bb / bb_chips) if (bb_chips and bb_chips > 0) else facing_size_bb
     _facing_unconvertible = facing_size_bb > 0.0 and not (bb_chips and bb_chips > 0)
-    # hero IP só é servido com o main.rs patcheado (flag TEXAS_HERO_IP) E facing==0
-    # (o patch IP cobre só o nó de c-bet). Senão, bloqueia → heurístico.
-    _ip_blocked = _hero_ip and not (_TEXAS_HERO_IP and facing_size_bb == 0.0)
+    # hero IP servido com o main.rs patcheado (TEXAS_HERO_IP): c-bet (facing==0) sempre;
+    # facing>0 (IP enfrentando aposta, root → OOP bet → IP age) só com TEXAS_HERO_IP_FACING
+    # (requer o binário novo com navigate_to_ip_facing_bet deployado). Senão, heurístico.
+    _ip_blocked = _hero_ip and not (
+        _TEXAS_HERO_IP and (facing_size_bb == 0.0 or _TEXAS_HERO_IP_FACING)
+    )
     # Guard de consistência street×board: o nº de cartas precisa bater com a street
     # (flop=3, turn=4, river=5). Spots inconsistentes (ex.: 'river' com 4 cartas — bug
     # de parser onde a carta de river some) fariam o solver_cli abortar (500). Pula.

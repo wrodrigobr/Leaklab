@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(solver): Fase 1 — cobertura GTO p/ hero IP enfrentando aposta (postflop)
+
+> Fecha a lacuna em que hero IP enfrentando aposta (ex.: pote 3-bet, OOP c-beta, IP dá flat call) não tinha veredito GTO (era bloqueado de propósito). Novo `navigate_to_ip_facing_bet` no `solver_cli/src/main.rs` (root → OOP bet closest(facing) → IP age) + reescrita do bloco de navegação do `run()` (4 casos agora). Liberado no `gto_solver.py` atrás do flag `TEXAS_HERO_IP_FACING` (default OFF — rollout seguro, igual `TEXAS_HERO_IP`; com flag off a lógica é idêntica à anterior). **Validado no binário novo:** OOP root → `check/bet_50pct`; IP enfrentando aposta → `fold/call/raise_83pct/allin` (jogador certo, sem o bug de "jogador errado"). gto 229/229. **Pendente:** deploy do binário na VM + ligar o flag + precompute dos nós IP-facing-bet (read-only não solva na request). **Caveat (ver `docs/scope_ip_facing_bet_solver.md`):** ranges ainda são SRP — paridade com a cobertura OOP atual; correção de ranges de pote 3-bet é Fase 2.
+
 ### fix(replay): tooltip da equity NECESSÁRIA repetia o texto da equity ESTIMADA
 
 > No card preflop em modo audit, a linha de equity estimada e a de equity necessária mostravam o MESMO tooltip (`reqVsRandom/Range`, que descreve a equity *estimada* vs aleatória/range). A linha necessária reusava o override de `showAuditPreflop`. Removido: a necessária agora usa `reqSolverContextTip` (spot com solver — margem neutra, coerente com `isPpMuted=true` em audit) ou o tooltip de break-even (`reqTipRaw/Adjusted/Implicit`). Os dois ficam distintos.
