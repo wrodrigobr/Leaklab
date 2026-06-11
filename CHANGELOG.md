@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replay): tooltip da equity NECESSÁRIA repetia o texto da equity ESTIMADA
+
+> No card preflop em modo audit, a linha de equity estimada e a de equity necessária mostravam o MESMO tooltip (`reqVsRandom/Range`, que descreve a equity *estimada* vs aleatória/range). A linha necessária reusava o override de `showAuditPreflop`. Removido: a necessária agora usa `reqSolverContextTip` (spot com solver — margem neutra, coerente com `isPpMuted=true` em audit) ou o tooltip de break-even (`reqTipRaw/Adjusted/Implicit`). Os dois ficam distintos.
+
+### feat(coach): bloco de anotação em TODO spot do hero, não só nos erros
+
+> O bloco de anotação do coach só aparecia quando a decisão era erro (gate `is_error` em `coachAnnotation`, `currentDecisionId` e no render). Removido o gate: o coach pode anotar qualquer spot do hero (jogada correta/marginal também — reforço, contexto, leak fino). O `decision_id` resolve da lista completa de decisões (`get_decisions` retorna todas); o backend já devolve `coach_annotations` de todas as decisões da mão. Mantido o gate `is_hero`.
+
 ### chore(reanalyze): re-análise dos labels do banco após o fix de facing-bet
 
 > Rodado `reanalyze_all_labels.py` pra sincronizar os labels armazenados com o engine corrigido: 1460 decisões verificadas, **76 atualizadas**. Os spots postflop que enfrentam aposta tinham label `None` (não populado) ou desatualizado — agora preenchidos com o nó vs-bet correto (ex.: o flop fold vs 4,9bb da mão de referência: `None → gto_correct`; **36 folds facing-bet** que constavam como "mistake" viraram `standard`; None caiu de 87→61, sendo os 61 restantes genuinamente sem cobertura). Isso corrige o **dashboard/leak-finder/stats** (que leem o label armazenado) — o card do replayer já estava certo pelo fix do override. Script ganhou `PRAGMA busy_timeout=30000` (DB dev roda com o app.py vivo em WAL).
