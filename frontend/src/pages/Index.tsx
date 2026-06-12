@@ -253,6 +253,16 @@ const Index = () => {
         gtoQuality={gtoQualityData}
         gtoPosition={gtoPositionData}
         pendingGto={pendingGto}
+        showEmpty={tournsLoaded && !hasData}
+        kpis={{ roi, itmPct, totalEvents, totalHands }}
+        playerStats={playerStats}
+        drift={driftData?.drift_detected && !driftDismissed
+          ? { detected: true, sessions: driftData.affected_sessions }
+          : null}
+        onDismissDrift={() => {
+          if (driftKey) localStorage.setItem(driftKey, "1");
+          setDriftDismissed(true);
+        }}
         aiLocked={isFree}
         aiInsights={[
           twinData?.narrative      && { key: "twin",      title: t("v2.aiTwin"),      text: twinData.narrative },

@@ -1,7 +1,9 @@
 import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { TrendingDown, Target, Zap } from "lucide-react";
+import { TrendingDown, Target, Zap, Brain } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
+import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
+import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { EvSummary, GtoQualityData, GtoPositionData } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { SECTION_SPAN, DashSection } from "@/hooks/useDashboardLayout";
@@ -34,6 +36,12 @@ interface Props {
   pendingGto?: number;
   aiInsights?: AiInsight[];
   aiLocked?: boolean;
+  /** onboarding sem dados (tournsLoaded && !hasData) — mesmo EmptyDashboard do clássico */
+  showEmpty?: boolean;
+  kpis?: { roi: number | null; itmPct: number | null; totalEvents: number; totalHands: number };
+  playerStats?: React.ComponentProps<typeof PlayerStatsCard>["stats"];
+  drift?: { detected: boolean; sessions: number } | null;
+  onDismissDrift?: () => void;
 }
 
 // Ordem fixa opinada (UX-2 onda 3) — clusters temáticos em pares de linha:
@@ -45,7 +53,7 @@ const CARD_ORDER = [
   "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackToClassic, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false }: Props) {
+export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackToClassic, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -76,6 +84,35 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
             {t("v2.backToClassic")}
           </button>
         </div>
+
+        {showEmpty ? (
+          <EmptyDashboard onComplete={onUpload} />
+        ) : (
+        <>
+
+        {/* ── Alerta de drift cognitivo (mesma detecção do clássico, visual V2) ── */}
+        {drift?.detected && (
+          <div className="flex items-start justify-between gap-3 rounded-xl ring-1 ring-amber-500/30 bg-amber-500/5 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <Brain className="size-4 text-amber-400 shrink-0 mt-0.5" aria-hidden />
+              <div>
+                <p className="text-sm font-medium text-foreground">{t("drift.alertTitle")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t("drift.alertDesc", { n: drift.sessions })}
+                </p>
+              </div>
+            </div>
+            {onDismissDrift && (
+              <button
+                onClick={onDismissDrift}
+                className="shrink-0 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={t("drift.dismiss")}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ── HERO "Hoje" ───────────────────────────────────────────────── */}
         <section className="grid gap-3 md:grid-cols-3">
@@ -149,6 +186,35 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
           </div>
         </section>
 
+        {/* ── KPIs secundários (ROI / ITM / volume) — chips compactos ───── */}
+        {kpis && hasData && (
+          <section className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl ring-1 ring-border bg-card/60 px-4 py-2.5">
+              <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("kpis.roi")}</div>
+              <div className={`font-mono text-lg font-bold tabular-nums ${
+                kpis.roi == null ? "text-muted-foreground" : kpis.roi >= 0 ? "text-teal-300" : "text-red-400"
+              }`}>
+                {kpis.roi != null ? `${kpis.roi >= 0 ? "+" : ""}${kpis.roi.toFixed(1)}%` : "—"}
+              </div>
+            </div>
+            <div className="rounded-xl ring-1 ring-border bg-card/60 px-4 py-2.5">
+              <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("kpis.itm")}</div>
+              <div className="font-mono text-lg font-bold tabular-nums text-foreground">
+                {kpis.itmPct != null ? `${kpis.itmPct.toFixed(0)}%` : "—"}
+              </div>
+            </div>
+            <div className="rounded-xl ring-1 ring-border bg-card/60 px-4 py-2.5">
+              <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("kpis.events")}</div>
+              <div className="font-mono text-lg font-bold tabular-nums text-foreground">
+                {kpis.totalEvents}
+                <span className="ml-1.5 font-normal text-[10px] text-muted-foreground">
+                  {t("kpis.eventsHint", { hands: kpis.totalHands.toLocaleString() })}
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* ── Leaks por custo ──────────────────────────────────────────── */}
         {s?.top_leaks && s.top_leaks.length > 0 && (
           <section className="rounded-xl ring-1 ring-border bg-card/60 p-4">
@@ -180,6 +246,11 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
           </section>
         )}
 
+        {/* ── HUD Stats (VPIP/PFR/…) — faixa completa, casca V2 ──────────── */}
+        {hasData && playerStats && playerStats.total_hands > 0 && (
+          <PlayerStatsCard stats={playerStats} v2 />
+        )}
+
         {/* ── Cards existentes em ordem fixa (reuso via renderCard) ─────── */}
         {hasData && (
           <section
@@ -203,6 +274,9 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
               ) : null;
             })}
           </section>
+        )}
+
+        </>
         )}
       </main>
     </div>

@@ -20,6 +20,7 @@ interface PlayerStats {
 
 interface Props {
   stats?: PlayerStats | null;
+  v2?: boolean;
 }
 
 interface StatDef {
@@ -251,11 +252,13 @@ const CONFIDENCE_CLS: Record<"low" | "medium" | "high", string> = {
   high:   "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30",
 };
 
-export function PlayerStatsCard({ stats }: Props) {
+export function PlayerStatsCard({ stats, v2 = false }: Props) {
   const { t } = useTranslation("dashboard");
   const conf = stats && stats.total_hands > 0 ? sampleConfidence(stats.total_hands) : null;
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-hud-surface shadow-elevated">
+    <div className={v2
+      ? "overflow-hidden rounded-xl ring-1 ring-border bg-card/60"
+      : "overflow-hidden rounded-xl border border-border bg-hud-surface shadow-elevated"}>
       <div className="flex items-center justify-between border-b border-border px-6 py-3">
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />

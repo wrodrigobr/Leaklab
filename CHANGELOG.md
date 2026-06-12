@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(dashboard): UX-2 onda 6 — paridade completa do V2 com o clássico (KPIs, HUD stats, drift, onboarding) ✅
+
+> Fecha os 4 elementos que o clássico tinha e o V2 não: **(1) EmptyDashboard** — usuário sem dados agora vê o onboarding completo no V2 (antes: hero vazio com "sem dados"); **(2) strip de KPIs** sob o hero — ROI (verde/vermelho por sinal), ITM% e eventos+mãos em 3 chips compactos (reuso das chaves `kpis.*`); **(3) Player HUD Stats** (VPIP/PFR/AF/C-Bet/3-bet/W$SD/BB Defense/Steal/etc com barras de range vs referência MTT e badge de confiança amostral) — faixa completa com prop `v2` (casca ring, clássico intacto, sem duplicar o componente de 300 linhas); **(4) alerta de drift cognitivo** — mesma detecção/dismiss-por-fingerprint do clássico, visual V2 (ring âmbar). Tudo via props novas do DashboardV2 (`showEmpty`/`kpis`/`playerStats`/`drift`); zero i18n novo (reuso total). Verificado ao vivo no preview: banner de drift renderizou com dados reais do usuário de teste ("2 sessões abaixo do baseline"), HUD stats presente, grade sem overlaps; typecheck verde. Com isso o V2 tem TODA a informação do clássico — nenhum card ou indicador órfão.
+
 ### fix(header): mensagens unificadas — coach chat + suporte num único ícone (mobile sem sobreposição) ✅
 
 > Feedback do usuário: no mobile os dois ícones de mensagem (suporte + chat do coach) sobrepunham o logotipo (somados ao sino/idioma/conta, os controles passavam de 375px). Consolidação: **um único botão "Mensagens"** com badge somado (não-lidas do coach + respostas de suporte). Aluno COM coach → mini-menu com 2 itens ("Mensagens do Coach" / "Suporte"), cada um com seu badge; SEM coach (ou coach role) → clique abre o suporte direto, sem menu. Esc e clique-fora fecham. Medido a 375px: logo termina em 182px, controles começam em 185px — sem sobreposição, sem overflow; fluxo clicado de ponta a ponta no preview (menu → item → painel correto abre). "Suporte" hardcoded virou i18n (`messages.*` em common, 3 locales). Desktop ganha o mesmo ícone único (1 slot a menos no header).
