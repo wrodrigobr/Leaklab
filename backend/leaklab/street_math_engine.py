@@ -117,12 +117,78 @@ def _estimate_hand_equity(hero_cards: str | None, board, street: str,
         if suited:
             return 0.39
         return 0.33
-    # crude postflop heuristic
+    # Postflop: estimar a partir da MÃO FEITA contra o board (não mais cego ao board).
+    # O heurístico antigo (pair=0.58 / broadway=0.41 / else=0.29) só enxergava PAR DE
+    # BOLSO — qualquer mão que pareava o board (top/middle/bottom pair, dois pares,
+    # trinca) caía em 0.29 igual a lixo (bug do par de J em K-6-J marcado fold/erro;
+    # mesmo parente do bug da wheel). Agora classifica via eval7 e mapeia pra escala
+    # "vs range típica de continuação". Draws e multiway são aplicados por cima
+    # (draw_detector + fator multiway em build_math_snapshot), como antes.
+    made = _postflop_made_equity(hero_cards, board)
+    if made is not None:
+        return made
+    # Fallback (board incompleto/parse falhou): heurístico antigo conservador.
     if pair:
         return 0.58
     if broadway:
         return 0.41
     return 0.29
+
+
+def _postflop_made_equity(hero_cards: str | None, board) -> float | None:
+    """Equity postflop estimada a partir da força da MÃO FEITA do hero vs uma range
+    típica de continuação (HU, pré-ajuste de draws/multiway). eval7 classifica a mão
+    de 5–7 cartas; pares são refinados por posição relativa ao board (overpair / top /
+    middle / bottom / underpair) porque a equity de um par depende fortemente disso.
+    Retorna None se não der pra avaliar (board < 3 cartas, parse inválido, eval7 off)."""
+    try:
+        import eval7
+    except Exception:
+        return None
+    try:
+        if isinstance(hero_cards, str):
+            hero = [hero_cards[i:i+2] for i in range(0, len(hero_cards), 2)]
+        else:
+            hero = list(hero_cards or [])
+        hero = [str(c) for c in hero if c and len(str(c)) >= 2][:2]
+        brd  = [str(c) for c in (board or []) if c and len(str(c)) >= 2][:5]
+        if len(hero) < 2 or len(brd) < 3:
+            return None
+        ht = eval7.handtype(eval7.evaluate([eval7.Card(c) for c in hero + brd]))
+        hr = sorted((_RANK_ORD.index(c[0]) for c in hero if c[0] in _RANK_ORD), reverse=True)
+        br = sorted((_RANK_ORD.index(c[0]) for c in brd  if c[0] in _RANK_ORD), reverse=True)
+        if len(hr) < 2 or not br:
+            return None
+        bmax, bmin = br[0], br[-1]
+
+        strong = {'Straight Flush': 0.95, 'Quads': 0.95, 'Full House': 0.92,
+                  'Flush': 0.82, 'Straight': 0.80, 'Trips': 0.82, 'Two Pair': 0.72}
+        if ht in strong:
+            return strong[ht]
+
+        if ht == 'Pair':
+            if hero[0][0] == hero[1][0]:                       # par de bolso
+                return 0.66 if hr[0] > bmax else 0.42          # overpair vs underpair
+            paired = [r for r in hr if r in br]                # par com o board
+            if paired:
+                pr   = paired[0]
+                kick = max((r for r in hr if r != pr), default=0)
+                if pr >= bmax:
+                    return 0.62 if kick >= _RANK_ORD.index('Q') else 0.56   # top pair
+                if pr <= bmin:
+                    return 0.42                                             # bottom pair
+                return 0.50                                                 # middle pair
+            return 0.40                                        # par só no board (joga kicker)
+
+        # High Card: valor por overcards vivos (potencial de melhorar).
+        over = sum(1 for r in hr if r > bmax)
+        if over >= 2:
+            return 0.34
+        if over == 1:
+            return 0.28
+        return 0.20
+    except Exception:
+        return None
 
 
 def _estimate_pressure(state: HandState) -> float:

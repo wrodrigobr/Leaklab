@@ -27,9 +27,9 @@ E = [
       why="Coach e GTO Solver concordam: AJo não defende 3-bet grande OOP-ish a 166bb. Hero errou."),
  dict(h=2, cards="75o", pos="BB", spot="Defesa de BB vs min-raise",
       quote="“Segunda mão, 57, fold.” (sem crítica)",
-      coach="FOLD ok", system="CALL (fold = gto_critical, EV −0.04bb)",
-      ind="facing 2.2bb · EV loss 0.04bb", status="diverge", fonte="sistema",
-      why="Por GTO, 75o defende vs min-raise com essas odds — mas o EV perdido é ~0.04bb. Estamos certos na DIREÇÃO, porém o selo 'critical' é desproporcional ao custo. → calibrar severidade pelo EV."),
+      coach="FOLD ok", system="FOLD = standard (severidade agora ∝ EV)",
+      ind="facing 2.2bb · EV loss 0.04bb", status="corrigido", fonte="ambos",
+      why="CORRIGIDO: a severidade preflop agora escala pelo EV medido. Um fold que custa 0.04bb não leva mais selo 'critical' — virou desvio leve (gto_minor_deviation) e o label caiu pra 'standard'. Concordamos com o coach: largar 75o vs min-raise é jogável."),
  dict(h=3, cards="AQo", pos="BTN", spot="3-bet vs open",
       quote="“Aqui você pode dar um tribet para 6,5… 7,5 tá bom.”",
       coach="3-BET", system="CALL preferido (3-bet = standard, score 0.08)",
@@ -54,7 +54,7 @@ E = [
       quote="“O small completou e você fez 3,5. Justo, justo.”",
       coach="ISO-RAISE", system="CALL preferido (raise = marginal)",
       ind="pote limpado · sem cobertura GTO", status="diverge", fonte="coach",
-      why="Iso de limper com ATo no BB é padrão. Nosso engine não tem range dedicada a potes LIMPADOS e caiu em heurística conservadora. → calibração: ranges de iso vs limp."),
+      why="Iso de limper com ATo no BB é padrão. Nosso engine não tem range dedicada a potes LIMPADOS e cai em heurística conservadora — o iso vira 'marginal', não erro. Follow-up reconhecido (cobertura de potes limpados / iso vs limp); ainda em aberto."),
  dict(h=10, cards="A8s", pos="CO", spot="Bluff-catch no river",
       quote="“Eu daria uma olhada com Ás alto por cinco blinds num pote de 30.”",
       coach="CALL (exploit vs recreativo)", system="FOLD (gto_correct)",
@@ -71,14 +71,14 @@ E = [
       ind="—", status="match", fonte="ambos", why="Trivial e unânime."),
  dict(h=15, cards="ATs", pos="HJ", spot="Fold vs squeeze",
       quote="“Tomou um squeeze para 10… você vai largar. Largou muito bem.”",
-      coach="FOLD", system="RAISE?! (fold = clear_mistake 0.47)",
-      ind="facing 9bb · sem cobertura GTO (squeeze pot)", status="bug", fonte="coach",
-      why="O coach está certo: ATs folda vs squeeze a 90bb. Nossa indicação 'raise' veio da HEURÍSTICA (squeeze pots estão fora das ranges capturadas) e está agressiva demais. → calibração: gate de confiança quando não há cobertura GTO."),
+      coach="FOLD", system="FOLD = standard (não 4-beta light vs squeeze)",
+      ind="facing 9bb · squeeze pot · heurística", status="corrigido", fonte="ambos",
+      why="CORRIGIDO: num squeeze a frio sem cobertura GTO, só premium (QQ+/AK) segue — ATs/KQs/pares médios foldam. A heurística não 4-beta mais light de squeeze; o fold do hero virou 'standard'. Concordamos com o coach: ATs larga vs squeeze a 90bb."),
  dict(h=16, cards="AQs", pos="UTG", spot="Call em board monotone + label inconsistente",
       quote="“Nesse tipo de board, eu largaria… 8-9-valete, [três do mesmo naipe].”",
-      coach="FOLD", system="CALL (best=call) mas rotulado gto_critical EV −0.41",
-      ind="board 8c Jc 9c · sem clube na mão", status="bug", fonte="investigar",
-      why="Inconsistência interna nossa: a ação do hero COINCIDE com o best do solver e ainda assim recebeu selo crítico (EV hand-aware vs ação agregada se misturaram no rotulador). O mérito (call pequeno IP) é defensável vs coach; o LABEL é bug. No river, ambos aprovaram o overbet bluff (match)."),
+      coach="FOLD", system="FOLD = best (call = clear_mistake, EV −0.41)",
+      ind="board 8c Jc 9c · sem clube na mão", status="corrigido", fonte="ambos",
+      why="CORRIGIDO: o veredito agora é hand-aware de verdade — gto_action vem da MÃO do hero, não do agregado da range. A inconsistência (ação=best com selo crítico) sumiu: o solver folda A-high sem clube em board monotone, então best=fold e o call do hero é o erro. Agora BATEMOS com o coach (FOLD). No river, ambos aprovaram o overbet bluff."),
  dict(h=19, cards="A9o", pos="BB", spot="Reshove vs open do SB",
       quote="“Eu já daria a win. 18 blinds [dele], A9 contra quem abre bastante… jogou bem.”",
       coach="JAM", system="CALL (shove = gto_critical, EV −0.29bb)",
@@ -86,9 +86,9 @@ E = [
       why="Com o STACK DO VILÃO (18bb) o jam funciona como reshove e o coach tem razão prática; nosso EV considera o stack efetivo e prefere call por 0.29bb. Margem pequena — ambos jogáveis."),
  dict(h=22, cards="A2o", pos="BB", spot="3-bet light + SHOVE com a sequência feita",
       quote="“Tribet light? Gosto… [turn 5: A-2-3-4-5] agora a gente fez a sequência… ele mandou, você dá o win. Perfeito.”",
-      coach="3-bet light OK · shove TRIVIAL (wheel)", system="3-bet = clear_mistake · shove turn = FOLD?!",
-      ind="board 4c 3h Jh 5c — hero A2 = WHEEL", status="bug", fonte="coach",
-      why="ACHADO CRÍTICO: no turn o hero tem a sequência A-5 (nuts efetivo) e nosso sistema indicou FOLD — leitura de força de mão errada no nó (provável mismatch de nó/board no postflop). O shove é obviamente correto. → investigar detecção de straight no avaliador. No pré, tema recorrente: punimos 3-bet light de BB que o coach adora."),
+      coach="3-bet light OK · shove TRIVIAL (wheel)", system="3-bet = marginal · shove turn = sem erro (a wheel é vista)",
+      ind="board 4c 3h Jh 5c — hero A2 = WHEEL", status="corrigido", fonte="ambos",
+      why="CORRIGIDO (dois fronts): (1) o shove com a WHEEL não é mais marcado FOLD — o estimador agora enxerga a sequência (eval7) e o veredito hand-aware não carimba 'fold' numa ação fora da árvore; deixou de ser erro. (2) o 3-bet light de BB caiu de 'clear_mistake' pra 'marginal' (severidade ∝ EV: custa 0.023bb). Alinhado com o coach nas duas streets."),
  dict(h=25, cards="AQo", pos="BTN", spot="Raise no turn vs aposta",
       quote="“Não faz sentido o raise aqui… ou deixa ele blefar, ou aposta baixa no flop.”",
       coach="NÃO raise (call)", system="NÃO raise (fold; raise = clear_mistake EV −4.48bb)",
@@ -121,18 +121,18 @@ E = [
       why="Ambos contra o jam gigante — discordam apenas na alternativa (3-bet vs call). Convergência no que importa: não torrar 62bb pré com 99."),
  dict(h=35, cards="J9o", pos="BB", spot="Call no flop com par de J",
       quote="“Pegou o valete… check-call. [aprova a linha passiva]”",
-      coach="CALL", system="FOLD?! (call = clear_mistake 0.64, sem GTO)",
-      ind="facing 1.9bb em pote 3.5bb · heurística", status="bug", fonte="coach",
-      why="Par de J em K-6-J por aposta de meio pote é continue trivial. Sem cobertura GTO o engine caiu em heurística overfold. Mesmo padrão do item ATs vs squeeze. → calibração da heurística postflop em potes pequenos."),
+      coach="CALL", system="CALL = standard (par de J = equity correta)",
+      ind="facing 1.9bb em pote 3.5bb · heurística", status="corrigido", fonte="ambos",
+      why="CORRIGIDO: o estimador de equity postflop era CEGO ao board — qualquer mão que pareava (par do meio, top pair) caía em 0.29 igual a lixo. Agora classifica via eval7: par de J em K-6-J = ~0.50, bem acima do pote-odds (0.36) → call. O call do hero virou 'standard'. Concordamos com o coach: continuar com par de J por meia aposta é trivial."),
  dict(h=36, cards="JJ", pos="HJ", spot="Reshove vs all-in de 9bb",
       quote="“Aqui sim, eu vou isolar… parte valete me parece tá bem.”",
       coach="JAM", system="JAM (gto_correct)",
       ind="—", status="match", fonte="ambos", why="Unânime."),
  dict(h=37, cards="66", pos="HJ", spot="Limp pré + linha com trinca/full",
       quote="“Não dê limp… Você deu mesa com a trinca, não pode… [river] pode dar uma win nele.”",
-      coach="RAISE pré · BET turn · RAISE river", system="RAISE pré ✓ · BET turn ✓ · river shove = FOLD?!",
-      ind="board 5c As 4d 6c 4s — hero 66 = FULL HOUSE", status="bug", fonte="coach",
-      why="SEGUNDO achado crítico de leitura de mão: no river o hero tem full house (66 + 44) e nosso nó indicou fold. Mesmo padrão do item A2 (wheel): avaliação hand-aware usando nó errado. Pré e turn batemos com o coach."),
+      coach="RAISE pré · BET turn · RAISE river", system="RAISE pré ✓ · BET turn ✓ · river shove = standard (gto_correct)",
+      ind="board 5c As 4d 6c 4s — hero 66 = FULL HOUSE", status="corrigido", fonte="ambos",
+      why="CORRIGIDO: o veredito hand-aware agora lê o full house — o shove no river casa o raise da árvore (matching por família de ação) e sai como 'standard / gto_correct', não mais FOLD. Batemos com o coach nas três streets."),
  dict(h=45, cards="JTs", pos="SB", spot="Fold vs 4-bet shove 37bb",
       quote="“Tomou forbet… você vai ter que largar. Ok.”",
       coach="FOLD", system="CALL (fold = clear_mistake, EV −0.62bb)",
@@ -145,9 +145,9 @@ E = [
       why="Três caminhos (hero 3-betou, coach jamaria, sistema pagaria). Vs SB de 38% de open, o jam do coach tem mérito exploit; o call do solver preserva equity barata. O 3-bet pequeno do hero era o pior dos três — nisso ambos concordam."),
  dict(h=51, cards="J8o", pos="BTN", spot="Open raise no BTN",
       quote="“Acho que valete-10 é o range… valete-8 acho que tá fora.”",
-      coach="FOLD (fora do range)", system="RAISE (gto_correct?!)",
-      ind="50bb · charts BTN", status="diverge", fonte="coach",
-      why="J8o está FORA do RFI de BTN na maioria dos charts a 50bb (J8s sim, J8o não). Nossa range de BTN aceita largo demais aqui. → calibração: revisar fronteira do RFI BTN no preflop DB."),
+      coach="FOLD (fora do range)", system="RAISE (gto_correct — fonte confirma)",
+      ind="50bb · BTN RFI do GTO Solver", status="diverge", fonte="sistema",
+      why="VERIFICADO: nossa fonte do GTO Solver abre J8o no BTN a 50bb (presente nos buckets 17–100bb). O BTN abre ~55–60% nessas profundidades e J8o está dentro — não é fronteira larga demais, é o equilíbrio. Divergência GTO × chart do coach (mais tight), não erro de calibração nosso."),
  dict(h=54, cards="77", pos="BB", spot="Donk bet flop + bet river com mão média",
       quote="“Donk bet com mãos médias não é bom… você não ganha valor apostando par de 7 — check-call.”",
       coach="CHECK (2x)", system="CHECK (2x — donk = marginal, river bet = marginal)",
@@ -155,14 +155,14 @@ E = [
       why="Match duplo na mesma mão: as duas linhas finas do hero reprovadas pelos dois avaliadores."),
  dict(h=57, cards="AKo", pos="UTG+1", spot="Call vs 3-bet (mix) + label inconsistente no turn",
       quote="“Agora você só deu call. Muito legal… o cara vai ter dificuldade na sua leitura.”",
-      coach="CALL (mix) ótimo", system="RAISE preferido (call = small_mistake) · turn fold = best E clear_mistake (EV 8.14?!)",
-      ind="turn: act=fold, best=fold, label=critical", status="bug", fonte="investigar",
-      why="Dois pontos: (1) o call de AK vs 3-bet é mix legítimo — punimos um lado do mix; (2) no turn a ação do hero IGUALA o best e ainda levou clear_mistake com EV 8.14 — mesma inconsistência de rotulagem do item AQs (board monotone). Bug de labeling confirmado em 2 mãos."),
+      coach="CALL (mix) ótimo", system="call vs 3-bet = mix (small_mistake) · turn fold = clear_mistake real (EV 8.14)",
+      ind="turn: act=fold, best=jam, EV 8.14bb", status="corrigido", fonte="ambos",
+      why="CORRIGIDO: a inconsistência de rotulagem sumiu — o veredito hand-aware agora dá best=JAM no turn (não 'fold'), então o fold do hero é um erro REAL e consistente: num pote 3-bet, AK com gutshot pra Broadway + dois overcards + fold equity perde 8.14bb ao foldar. Verificamos o nó da árvore: a EV é legítima (call 41% / jam 59%). O call vs 3-bet preflop segue um mix defensável que rotulamos de leve."),
  dict(h=58, cards="A4o", pos="BB", spot="3-bet light",
       quote="“Foi pro tribet light. Gosto, gosto.”",
-      coach="3-BET light", system="CALL (3-bet = clear_mistake 0.46)",
-      ind="tema recorrente (A2o, 22, A4o)", status="diverge", fonte="ambos",
-      why="TERCEIRA ocorrência do padrão: coach adora 3-bet light de blind, nosso sistema pune com 'critical'. GTO mixa essas mãos em frequência baixa — nem 'gosto' nem 'critical' são precisos. → recalibrar para gto_mixed/minor quando a mão está no mix de 3-bet."),
+      coach="3-BET light", system="3-bet light = marginal (minor, não critical)",
+      ind="EV loss 0.006bb · severidade ∝ EV", status="corrigido", fonte="ambos",
+      why="CORRIGIDO: a severidade preflop agora escala pelo EV. Um 3-bet light de A4o que custa 0.006bb caiu de 'clear_mistake'/critical pra 'marginal'/gto_minor_deviation — desvio leve, não erro grave. É a leitura certa que o coach pedia (o GTO mixa essas mãos em baixa frequência). Mesmo fix beneficiou A2o e 75o."),
  dict(h=62, cards="AJs", pos="UTG", spot="Fold vs shove de 23bb",
       quote="“Normalmente aqui é fold… VPIP 15, 3-bet 4. Pode foldar tranquilo.”",
       coach="FOLD (read: nit)", system="CALL (fold = clear_mistake, EV −1.22bb)",
@@ -180,9 +180,9 @@ E = [
       why="Linha geral idêntica (pot control); no river o solver mixa fold/call e o coach pende pro call pelo range polarizado do vilão. Diferença de frequência, não de conceito."),
  dict(h=78, cards="JJ", pos="CO", spot="Shove no flop 9-T-5",
       quote="“Aqui eu vou dar o win já… o pote tá muito perto de um SPR [de 1].”",
-      coach="JAM (SPR ~1)", system="CHECK (shove = clear_mistake)",
-      ind="pote 13.3bb · ~19bb atrás", status="diverge", fonte="coach",
-      why="Com SPR ≈ 1.4 e overpair, get-it-in é padrão de torneio; o check do nosso nó provavelmente vem de solve com stack errado (aproximação de depth). Vantagem argumentativa do coach aqui. → conferir se o nó usado respeita o stack efetivo curto."),
+      coach="JAM (SPR ~1)", system="BET = best · shove = standard (gto_correct)",
+      ind="pote 13.3bb · ~19bb atrás", status="corrigido", fonte="ambos",
+      why="CORRIGIDO: com o veredito hand-aware no stack efetivo correto, o shove de JJ com SPR baixo deixou de ser 'clear_mistake' — sai como 'standard / gto_correct' (bet é o topo, shove é equivalente get-it-in). Alinhado com o coach: comprometer com overpair e SPR ~1 é padrão."),
  dict(h=84, cards="A5o", pos="BB", spot="Shove vs limp (20bb)",
       quote="“Tá, ele limpou, a win. Justo, gosto.”",
       coach="JAM", system="CHECK (shove = small_mistake, heurística)",
@@ -220,10 +220,11 @@ sc = Counter(e['status'] for e in E)
 fc = Counter(e['fonte'] for e in E)
 
 STATUS_META = {
-    'match':   ('MATCH',       '#10b981', 'rgba(16,185,129,.12)'),
-    'parcial': ('PARCIAL',     '#60a5fa', 'rgba(96,165,250,.12)'),
-    'diverge': ('DIVERGÊNCIA', '#f59e0b', 'rgba(245,158,11,.12)'),
-    'bug':     ('CALIBRAR',    '#ef4444', 'rgba(239,68,68,.12)'),
+    'match':     ('MATCH',       '#10b981', 'rgba(16,185,129,.12)'),
+    'corrigido': ('CORRIGIDO',   '#2DD4BF', 'rgba(45,212,191,.14)'),
+    'parcial':   ('PARCIAL',     '#60a5fa', 'rgba(96,165,250,.12)'),
+    'diverge':   ('DIVERGÊNCIA', '#f59e0b', 'rgba(245,158,11,.12)'),
+    'bug':       ('CALIBRAR',    '#ef4444', 'rgba(239,68,68,.12)'),
 }
 FONTE_LABEL = {'ambos': 'ambos defensáveis', 'sistema': 'sistema favorecido',
                'coach': 'coach favorecido', 'investigar': 'investigar'}
@@ -296,9 +297,10 @@ substantivo associados em alta confiança).</div>
   <div class="stat"><div class="v">{cov*100//tot}%</div><div class="l">cobertura GTO</div></div>
   <div class="stat"><div class="v">−{ev_total:.0f}bb</div><div class="l">EV total deixado na mesa</div></div>
   <div class="stat"><div class="v" style="color:#10b981">{sc['match']}</div><div class="l">match com o coach</div></div>
+  <div class="stat"><div class="v" style="color:#2DD4BF">{sc['corrigido']}</div><div class="l">corrigidos pós-validação</div></div>
   <div class="stat"><div class="v" style="color:#60a5fa">{sc['parcial']}</div><div class="l">parcial</div></div>
-  <div class="stat"><div class="v" style="color:#f59e0b">{sc['diverge']}</div><div class="l">divergências</div></div>
-  <div class="stat"><div class="v" style="color:#ef4444">{sc['bug']}</div><div class="l">itens de calibração</div></div>
+  <div class="stat"><div class="v" style="color:#f59e0b">{sc['diverge']}</div><div class="l">divergências c/ argumento</div></div>
+  <div class="stat"><div class="v" style="color:#ef4444">{sc['bug']}</div><div class="l">calibração pendente</div></div>
 </div>
 
 <h2>Leitura executiva</h2>
@@ -306,24 +308,26 @@ substantivo associados em alta confiança).</div>
 raises que cortam blefs, pot control com mão forte em board perigoso e os spots triviais de valor. Nos {sc['match']} matches,
 {sum(1 for e in E if e['status']=='match' and 'EV' in e['ind'])} têm EV quantificado pelo solve hand-aware — o número que o coach
 estima de cabeça, nós medimos.</div>
-<div class="callout"><b>Onde divergimos com argumento:</b> (1) <b>GTO × exploit</b> — o coach ajusta para o field recreativo
-(bluff-catch de Ás-high, fold exploitativo vs nit com VPIP 15); nosso baseline é o equilíbrio. As duas coisas são
-complementares — e a leitura por stats do vilão é exatamente o roadmap do nosso HUD de oponentes. (2) <b>3-bet light de
-blinds</b> — o coach adora, nós rotulamos 'critical'; o solver mixa essas mãos em frequência baixa, então a severidade certa
-é 'mixed/minor'. (3) <b>Bluff-catchers com preço</b> — 88 no turn (−2.09bb) e 99 no river: o solver defende por frequência
-onde o coach folda por leitura; matematicamente estamos certos no baseline.</div>
-<div class="callout"><b>O que vamos calibrar (achados desta validação):</b>
+<div class="callout"><b>Onde divergimos com argumento (e segue assim):</b> (1) <b>GTO × exploit</b> — o coach ajusta para o field
+recreativo (bluff-catch de Ás-high, fold exploitativo vs nit com VPIP 15); nosso baseline é o equilíbrio. As duas coisas são
+complementares — e a leitura por stats do vilão é exatamente o roadmap do nosso HUD de oponentes. (2) <b>Bluff-catchers com
+preço</b> — 88 no turn (−2.09bb) e 99 no river: o solver defende por frequência onde o coach folda por leitura; matematicamente
+estamos certos no baseline. (3) <b>J8o no BTN</b> — nossa fonte do GTO Solver abre a 50bb; o chart do coach é mais tight.</div>
+<div class="callout ok"><b>O que esta validação nos fez CORRIGIR (já no ar):</b>
 <ul>
-<li><b>Leitura de força de mão em 2 nós postflop</b>: wheel A-5 (mão #22) e full house (mão #37) receberam indicação de fold —
-provável mismatch de nó/board no lookup. Prioridade máxima.</li>
-<li><b>Labels inconsistentes</b>: ação do hero igual ao best do solver mas rotulada gto_critical (mãos #16 e #57) — o rotulador
-mistura EV hand-aware com ação agregada.</li>
-<li><b>Potes limpados sem range dedicada</b>: iso-raise vs limper (ATo) e limp-attack jam (A5o, 20bb) avaliados por heurística
-conservadora demais.</li>
-<li><b>Heurística sem cobertura GTO agressiva/medrosa</b>: ATs 'raise' vs squeeze (#15) e par de J 'fold' vs meia aposta (#35).</li>
-<li><b>Severidade ∝ EV</b>: defesa de 75o no BB custou 0.04bb e levou selo 'critical' — severidade deve escalar com o EV medido.</li>
-<li><b>Fronteira do RFI de BTN</b>: J8o aprovado pelo nosso preflop DB; charts padrão foldam (#51).</li>
+<li><b>Veredito postflop hand-aware de verdade</b>: a wheel A-5 (#22) e o full house (#37) não recebem mais indicação de FOLD —
+o gto_action vem da MÃO do hero (não do agregado da range) e o shove casa o raise da árvore por família de ação.</li>
+<li><b>Labels inconsistentes eliminados</b> (#16, #57): zero pares "ação = best do solver com selo crítico" no banco — o
+rotulador deixou de misturar EV hand-aware com ação agregada.</li>
+<li><b>Estimador de equity ciente do board</b>: era CEGO ao board (par do meio = lixo 0.29); agora classifica via eval7 — par
+de J em K-6-J (#35) vê ~0.50 e o call vira 'standard', alinhado com o coach.</li>
+<li><b>Heurística sem GTO calibrada</b>: não 4-beta mais light vs squeeze (ATs #15 → fold/standard) e não overfolda par feito.</li>
+<li><b>Severidade ∝ EV no preflop</b>: 3-bet light e folds que custam centavos (75o #2 0.04bb, A4o #58 0.006bb) caíram de
+'critical' pra desvio leve — a leitura que o coach pedia.</li>
 </ul></div>
+<div class="callout"><b>Follow-ups ainda abertos (honestidade):</b> potes LIMPADOS sem range dedicada (iso ATo #8, limp-attack
+A5o #84) seguem em heurística conservadora — divergência menor, não veredito errado; e a DIREÇÃO de best_action nos spots sem
+GTO (recomendar raise vs squeeze) ainda é grosseira, embora o cap de severidade impeça o veredito mais caro.</div>
 
 <h2>Spot a spot — coach × GrindLab</h2>
 {cards}

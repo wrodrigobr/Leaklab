@@ -49,6 +49,18 @@ def _classify_range_zone(cards: str) -> str:
     return "outside_range"
 
 
+def _is_squeeze_premium(cards: str) -> bool:
+    """Mãos que seguem (4-bet/call) vs um squeeze a frio: QQ+ e AK. Tudo abaixo
+    (JJ/TT/AQs/ATs/KQs/pares médios) folda a frio sem cobertura GTO — 4-bet light
+    de squeeze é exatamente o erro que marcava o fold do hero como erro grave."""
+    if len(cards) < 4:
+        return False
+    r1, r2 = cards[0], cards[2]
+    if r1 == r2 and r1 in "QKA":          # QQ, KK, AA
+        return True
+    return {r1, r2} == {"A", "K"}          # AKs / AKo
+
+
 def _recommended_action(cards: str, position: str, facing_size: float = 0.0,
                          stack_bb: float = 0.0, faces_3bet: bool = False) -> str:
     """Recomenda ação preflop usando classificação por zona + posição + facing_size + stack.
@@ -81,6 +93,12 @@ def _recommended_action(cards: str, position: str, facing_size: float = 0.0,
     # (era 3bb antes, mas iso típicos são 2-2.5x e estavam fora do critério).
     if facing_size >= 2.0:
         if zone == "core_range":
+            # Squeeze/3-bet a FRIO (cold, hero não foi agressor): 'core_range' agrega
+            # 88–AA + todo broadway suited, mas vs um squeeze só PREMIUM (QQ+/AK) segue
+            # — 4-betar ATs/KQs/99 light a frio é o erro que marcávamos o fold do hero
+            # como clear_mistake (ATs vs squeeze do review #27). Não-premium folda.
+            if faces_3bet and not _is_squeeze_premium(cards):
+                return "fold"
             # Pares 88-AA + broadway suited → call ou 4-bet conforme posição
             # Em IP, premium pode 4-bet; OOP prefere call
             return "raise" if position not in {"BB", "SB", "UTG", "UTG+1", "UTG1"} else "call"

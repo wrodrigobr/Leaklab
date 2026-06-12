@@ -90,16 +90,23 @@ def _state(n_opp: int, street='flop'):
         metadata={'n_active_opponents': n_opp},
     )
 
+# Base postflop de AhAd em 7s-2c-9d: OVERPAIR. O estimador agora é ciente do board
+# (eval7 + refino de par) e valoriza overpair em 0.66 — antes era 0.58 cego ao board
+# (heurística que só via "par de bolso", sem distinguir overpair de underpair). Estes
+# testes validam o DECAIMENTO multiway (mecanismo), não o valor absoluto: a razão
+# HU→3way→5way segue idêntica, só a constante-base subiu pro valor correto.
+_AA_OVERPAIR_BASE = 0.66
+
 def test_multiway_equity_hu_unchanged():
-    """HU (1 opp) — equity heurística não é ajustada."""
+    """HU (1 opp) — equity heurística não é ajustada pelo fator multiway."""
     snap = build_math_snapshot(_state(1))
-    assert snap.estimated_hand_equity == 0.58  # AA postflop heurística
+    assert snap.estimated_hand_equity == _AA_OVERPAIR_BASE  # AA overpair (board-aware)
     print("OK  test_multiway_equity_hu_unchanged")
 
 def test_multiway_equity_3way_decay():
-    """3-way (2 opps) → 77% do HU. AA 0.58 → ~0.45."""
+    """3-way (2 opps) → 77% do HU. AA overpair 0.66 → ~0.51."""
     snap = build_math_snapshot(_state(2))
-    expected = round(0.58 / (1.0 + 0.3 * 1), 4)
+    expected = round(_AA_OVERPAIR_BASE / (1.0 + 0.3 * 1), 4)
     assert abs(snap.estimated_hand_equity - expected) < 0.001, \
         f'expected {expected}, got {snap.estimated_hand_equity}'
     print("OK  test_multiway_equity_3way_decay")
@@ -107,7 +114,7 @@ def test_multiway_equity_3way_decay():
 def test_multiway_equity_5way_decay():
     """5-way (4 opps) → 53% do HU."""
     snap = build_math_snapshot(_state(4))
-    expected = round(0.58 / (1.0 + 0.3 * 3), 4)
+    expected = round(_AA_OVERPAIR_BASE / (1.0 + 0.3 * 3), 4)
     assert abs(snap.estimated_hand_equity - expected) < 0.001
     print("OK  test_multiway_equity_5way_decay")
 
