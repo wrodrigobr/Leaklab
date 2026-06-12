@@ -598,6 +598,11 @@ export default function GhostTable() {
                           {t(`valSource.${lastResult.validation_source}`)}
                         </span>
                       )}
+                      {(lastResult.xp?.gained ?? 0) > 0 && (
+                        <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-300 ring-1 ring-amber-400/30">
+                          +{lastResult.xp!.gained} XP
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">{t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}</p>
                   </div>
@@ -991,6 +996,11 @@ export default function GhostTable() {
                 : "bg-teal-400/10 text-teal-300 ring-teal-400/25"
                   )}>
                     {t(`valSource.${lastResult.validation_source}`)}
+                  </span>
+                )}
+                {(lastResult.xp?.gained ?? 0) > 0 && (
+                  <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-300 ring-1 ring-amber-400/30">
+                    +{lastResult.xp!.gained} XP
                   </span>
                 )}
               </div>

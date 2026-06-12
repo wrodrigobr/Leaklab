@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gamification): XP do drill visível nos treinos — chip "+25 XP" no veredito ✅
+
+> Complemento da entrega do XP de drill: o backend passou a conceder e devolver o bloco `xp` no submit, mas o front não exibia nada — recompensa invisível não gamifica. Agora: `DrillSubmitResult` tipa o bloco `xp`; Ghost Table mostra chip âmbar "+25 XP" ao lado do veredito (nos dois layouts); Sparring anexa "· +25 XP" à fonte do veredito no coach card. Sem i18n novo (XP é símbolo universal). Database 54 verde no estado mergeado; typecheck verde.
+
 ### fix(gamification): XP de drill finalmente concedido — drill_completed + drill_mastered ligados ao submit ✅
 
 > Auditoria dos treinos revelou que os eventos `drill_completed` (25 XP) e `drill_mastered` (100 XP) existiam em `_XP_AMOUNTS` desde o Sprint Q mas NUNCA eram disparados — `/player/spots/drill/submit` (Ghost Table E Sparring, que reusa o endpoint) salvava a sessão sem chamar `add_xp()`; o /docs prometia o XP que o código não dava. Agora: **(1) drill_completed** a cada submit correto, com gate anti-farm de 1× por dia por decisão (compara `drilled_at` da última sessão); **(2) drill_mastered** quando o SRS atinge o intervalo máximo (60d) pela PRIMEIRA vez naquela decisão — re-subir ao teto após reset por erro não re-concede (lookup por sessão prévia com interval=60); **(3)** resposta do submit ganha bloco `xp` (events/gained/total/new_achievements) pronto pro front exibir. Achievement `first_drill` (🎮) destrava de verdade agora — o gatilho `drill_completed`/`drill_mastered` em `_check_and_grant_achievements` estava órfão junto. Docs: descrição do evento nas 3 locales explicita acerto + 1×/dia/spot. Testes novos: 2 na suite database (gates first_today/mastered_once) + 1 na api (fluxo completo: 25 XP → anti-farm 0 XP → mastery 125 XP, persistência em users.xp_total). api 76 + database 54 verdes.

@@ -250,6 +250,8 @@ function CoachCard({ result, gtoData, gtoLoading, step, t }: CoachCardProps) {
     verdict = { ...verdict, source: t(`valSource.${result.validation_source}`) };
   }
 
+  const xpGained = result.xp?.gained ?? 0;
+
   // ── Action comparison ─────────────────────────────────────────────────────
   const playedAction = result.new_action;
   const idealAction  = hasGto && gtoData
@@ -284,7 +286,7 @@ function CoachCard({ result, gtoData, gtoLoading, step, t }: CoachCardProps) {
           {result.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
         </span>
         <span className="font-mono text-[9px] text-muted-foreground/45 uppercase tracking-wider">
-          {verdict.source}
+          {verdict.source}{xpGained > 0 ? ` · +${xpGained} XP` : ""}
         </span>
       </div>
 

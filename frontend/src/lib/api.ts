@@ -761,6 +761,8 @@ export interface DrillSubmitResult {
   gto_strategy?: GtoStrategyAction[];             // mix completo (% por ação) p/ o veredito
   // origem do gabarito: solver hand-aware > range agregada > gto armazenado > heurística
   validation_source?: "gto_hand" | "gto_range" | "gto_stored" | "heuristic";
+  // gamificação: XP concedido neste submit (drill_completed 1×/dia/decisão; drill_mastered 1×/decisão)
+  xp?: { events: string[]; gained: number; total: number | null; new_achievements: string[] };
 }
 
 export interface DrillAnalysisResult {
