@@ -13,6 +13,10 @@ import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { GtoPositionCard } from "@/components/hud/GtoPositionCard";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { ResultsVsGtoCard } from "@/components/hud/ResultsVsGtoCard";
+import { V2ResultsCard } from "@/components/hud/V2ResultsCard";
+import { V2PressureCard } from "@/components/hud/V2PressureCard";
+import { V2CognitiveCard } from "@/components/hud/V2CognitiveCard";
+import { V2TwinCard } from "@/components/hud/V2TwinCard";
 import { LeakFinderCard } from "@/components/hud/LeakFinderCard";
 import { GtoQualityCard } from "@/components/hud/GtoQualityCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
@@ -213,19 +217,27 @@ const Index = () => {
       case "quality":    return <GtoQualityCard data={gtoQualityData} pendingGto={pendingGto} />;
       case "position":   return <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />;
       case "leakfinder": return <LeakFinderCard data={leakFinderData} />;
-      case "results":    return <ResultsVsGtoCard data={resultsVsGtoData} />;
+      case "results":    return v2 ? <V2ResultsCard data={resultsVsGtoData} /> : <ResultsVsGtoCard data={resultsVsGtoData} />;
       case "bankroll":   return <BankrollChart />;
       case "career":     return isFree ? <ProLockCard feature={tc("proLock.career")} /> : <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} hideNarrative={v2} />;
-      case "cognitive":  return isFree ? <ProLockCard feature={tc("proLock.cognitive")} /> : <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} hideNarrative={v2} />;
+      case "cognitive":  return isFree
+        ? <ProLockCard feature={tc("proLock.cognitive")} />
+        : v2
+          ? <V2CognitiveCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />
+          : <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />;
       case "dna":        return <PlayerDnaCard data={dnaData} />;
-      case "pressure":   return <PressureProfileCard data={pressureData} />;
+      case "pressure":   return v2 ? <V2PressureCard data={pressureData} /> : <PressureProfileCard data={pressureData} />;
       case "leaks":      return <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />;
       case "causal_map": return isFree
         ? <ProLockCard feature={tc("proLock.causalMap")} />
         : (leakGraph && leakGraph.nodes.length >= 3)
           ? <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={v2 ? undefined : leakGraph.narrative} />
           : null;
-      case "twin":       return isFree ? <ProLockCard feature={tc("proLock.twin")} /> : <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} hideNarrative={v2} />;
+      case "twin":       return isFree
+        ? <ProLockCard feature={tc("proLock.twin")} />
+        : v2
+          ? <V2TwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />
+          : <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />;
       default:           return null;
     }
   };
