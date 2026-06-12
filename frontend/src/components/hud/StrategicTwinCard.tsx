@@ -64,7 +64,7 @@ function SpotRow({ spot, avgRate, t }: { spot: TwinSpot; avgRate: number; t: (k:
   );
 }
 
-export function StrategicTwinCard({ data }: { data: StrategicTwinProfile }) {
+export function StrategicTwinCard({ data, hideNarrative = false }: { data: StrategicTwinProfile; hideNarrative?: boolean }) {
   const { t } = useTranslation("dashboard");
 
   if (data.insufficient_data) {
@@ -131,7 +131,7 @@ export function StrategicTwinCard({ data }: { data: StrategicTwinProfile }) {
           </>
         )}
 
-        {data.narrative && (
+        {data.narrative && !hideNarrative && (
           <div className="border-t border-border/50 pt-3">
             <AiText size="xs">{data.narrative}</AiText>
           </div>

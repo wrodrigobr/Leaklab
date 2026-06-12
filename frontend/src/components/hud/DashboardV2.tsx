@@ -2,13 +2,16 @@ import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { TrendingDown, Target, Zap } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
-import { EvSummary } from "@/lib/api";
+import { EvSummary, GtoQualityData, GtoPositionData } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { SECTION_SPAN, DashSection } from "@/hooks/useDashboardLayout";
 import { V2EvTrendCard } from "@/components/hud/V2EvTrendCard";
 import { V2CoverageCard } from "@/components/hud/V2CoverageCard";
 import { V2StreetEvCard } from "@/components/hud/V2StreetEvCard";
 import { V2AiInsightsCard, AiInsight } from "@/components/hud/V2AiInsightsCard";
+import { V2QualityCard } from "@/components/hud/V2QualityCard";
+import { V2PositionCard } from "@/components/hud/V2PositionCard";
+import { V2BankrollCard } from "@/components/hud/V2BankrollCard";
 
 /**
  * DashboardV2 — UX-1 (specs/ux-proposal-2026.html), modelo "v2 chaveável".
@@ -24,22 +27,25 @@ interface Props {
   onUpload: () => void;
   evSummary: EvSummary | null;
   hasData: boolean;
-  renderCard: (id: string) => React.ReactNode;
+  renderCard: (id: string, opts?: { v2?: boolean }) => React.ReactNode;
   onBackToClassic: () => void;
+  gtoQuality?: GtoQualityData | null;
+  gtoPosition?: GtoPositionData | null;
+  pendingGto?: number;
   aiInsights?: AiInsight[];
   aiLocked?: boolean;
 }
 
-// Ordem fixa opinada (UX-2 refinará): qualidade/diagnóstico → evolução → perfis → IA (Pro)
-// "leakfinder" fica FORA do V2: o ranking "Leaks por custo" (hero) o substitui —
-// duplicaria a mesma informação em dois formatos (feedback do usuário).
-// No clássico ele continua. "leaks" (LeaksPanel antigo) idem, já excluído.
+// Ordem fixa opinada (UX-2 onda 3) — clusters temáticos em pares de linha:
+// resultado (bankroll×results) → perfil (dna×twin) → pressão (pressure×cognitive)
+// → futuro (career×causal_map). quality/position/bankroll viraram cards V2
+// próprios (hard-coded abaixo, com spans dedicados). "leakfinder" e "leaks"
+// seguem FORA: o ranking "Leaks por custo" do hero os substitui (duplicidade).
 const CARD_ORDER = [
-  "quality", "results", "bankroll", "position",
-  "dna", "pressure", "career", "cognitive", "twin", "causal_map",
+  "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackToClassic, aiInsights = [], aiLocked = false }: Props) {
+export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackToClassic, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -184,8 +190,12 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
             <div className="lg:col-span-4"><V2CoverageCard evSummary={s} /></div>
             <div className="lg:col-span-7"><V2AiInsightsCard insights={aiInsights} locked={aiLocked} /></div>
             <div className="lg:col-span-5"><V2StreetEvCard evSummary={s} /></div>
+            {/* UX-2 onda 3 — medição GTO (anel + barras) e resultado financeiro */}
+            <div className="lg:col-span-4"><V2QualityCard data={gtoQuality} pendingGto={pendingGto} /></div>
+            <div className="lg:col-span-8"><V2PositionCard data={gtoPosition} /></div>
+            <div className="lg:col-span-6"><V2BankrollCard /></div>
             {CARD_ORDER.map((id) => {
-              const card = renderCard(id);
+              const card = renderCard(id, { v2: true });
               return card ? (
                 <div key={id} className={SECTION_SPAN[id as DashSection] ?? "lg:col-span-6"}>
                   {card}

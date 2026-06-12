@@ -144,9 +144,10 @@ function EloMiniCurve({ points, color }: { points: number[]; color: string }) {
 
 interface Props {
   data: CareerProjection;
+  hideNarrative?: boolean;
 }
 
-export function CareerGraphCard({ data }: Props) {
+export function CareerGraphCard({ data, hideNarrative = false }: Props) {
   const { t, i18n } = useTranslation("dashboard");
   const [elo, setElo] = useState<EloResponse | null>(null);
   const [curve, setCurve] = useState<EloCurveResponse | null>(null);
@@ -391,7 +392,7 @@ export function CareerGraphCard({ data }: Props) {
         )}
 
         {/* LLM Narrative */}
-        {data.narrative && (
+        {data.narrative && !hideNarrative && (
           <div className="border-t border-border pt-3">
             <AiText size="xs">{data.narrative}</AiText>
           </div>

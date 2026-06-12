@@ -521,6 +521,9 @@
     "aiCognitive": "Patrón cognitivo",
     "aiCareer": "Proyección de carrera",
     "aiCausal": "Mapa causal",
-    "aiLocked": "Los insights de IA (Strategic Twin, patrones cognitivos, proyección de carrera) son un recurso Pro. Haz upgrade para desbloquearlos."
+    "aiLocked": "Los insights de IA (Strategic Twin, patrones cognitivos, proyección de carrera) son un recurso Pro. Haz upgrade para desbloquearlos.",
+    "posCritical": "{{pct}}% crít.",
+    "posHint": "alineado% por posición — verde ≥70, ámbar ≥50, rojo debajo",
+    "bankSeries": "ganancia acumulada"
   }
 }

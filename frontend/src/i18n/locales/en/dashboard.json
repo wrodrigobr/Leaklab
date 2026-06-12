@@ -521,6 +521,9 @@
     "aiCognitive": "Cognitive pattern",
     "aiCareer": "Career projection",
     "aiCausal": "Causal map",
-    "aiLocked": "AI insights (Strategic Twin, cognitive patterns, career projection) are a Pro feature. Upgrade to unlock them."
+    "aiLocked": "AI insights (Strategic Twin, cognitive patterns, career projection) are a Pro feature. Upgrade to unlock them.",
+    "posCritical": "{{pct}}% crit.",
+    "posHint": "aligned% by position — green ≥70, amber ≥50, red below",
+    "bankSeries": "cumulative profit"
   }
 }

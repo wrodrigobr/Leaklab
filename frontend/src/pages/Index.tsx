@@ -205,24 +205,27 @@ const Index = () => {
   });
 
   // Bento: cada card individual (achatado). null → não renderiza (ex.: causal_map sem grafo).
-  const renderCard = (id: DashSection) => {
+  // opts.v2: no V2 as narrativas de IA já vivem no carrossel (V2AiInsightsCard) —
+  // os cards completos escondem o texto duplicado e mostram só o detalhe único.
+  const renderCard = (id: DashSection, opts?: { v2?: boolean }) => {
+    const v2 = opts?.v2 ?? false;
     switch (id) {
       case "quality":    return <GtoQualityCard data={gtoQualityData} pendingGto={pendingGto} />;
       case "position":   return <GtoPositionCard data={gtoPositionData} pendingGto={pendingGto} />;
       case "leakfinder": return <LeakFinderCard data={leakFinderData} />;
       case "results":    return <ResultsVsGtoCard data={resultsVsGtoData} />;
       case "bankroll":   return <BankrollChart />;
-      case "career":     return isFree ? <ProLockCard feature={tc("proLock.career")} /> : <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} />;
-      case "cognitive":  return isFree ? <ProLockCard feature={tc("proLock.cognitive")} /> : <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />;
+      case "career":     return isFree ? <ProLockCard feature={tc("proLock.career")} /> : <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} hideNarrative={v2} />;
+      case "cognitive":  return isFree ? <ProLockCard feature={tc("proLock.cognitive")} /> : <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} hideNarrative={v2} />;
       case "dna":        return <PlayerDnaCard data={dnaData} />;
       case "pressure":   return <PressureProfileCard data={pressureData} />;
       case "leaks":      return <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />;
       case "causal_map": return isFree
         ? <ProLockCard feature={tc("proLock.causalMap")} />
         : (leakGraph && leakGraph.nodes.length >= 3)
-          ? <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={leakGraph.narrative} />
+          ? <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={v2 ? undefined : leakGraph.narrative} />
           : null;
-      case "twin":       return isFree ? <ProLockCard feature={tc("proLock.twin")} /> : <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />;
+      case "twin":       return isFree ? <ProLockCard feature={tc("proLock.twin")} /> : <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} hideNarrative={v2} />;
       default:           return null;
     }
   };
@@ -235,6 +238,9 @@ const Index = () => {
         hasData={hasData}
         renderCard={renderCard}
         onBackToClassic={toggleDashV2}
+        gtoQuality={gtoQualityData}
+        gtoPosition={gtoPositionData}
+        pendingGto={pendingGto}
         aiLocked={isFree}
         aiInsights={[
           twinData?.narrative      && { key: "twin",      title: t("v2.aiTwin"),      text: twinData.narrative },

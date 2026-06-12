@@ -66,7 +66,7 @@ function PatternRow({ pattern }: { pattern: CognitivePattern }) {
   );
 }
 
-export function CognitiveFailureCard({ data }: { data: CognitiveFailureData }) {
+export function CognitiveFailureCard({ data, hideNarrative = false }: { data: CognitiveFailureData; hideNarrative?: boolean }) {
   const { t } = useTranslation("dashboard");
 
   if (data.insufficient_data || data.patterns.length === 0) {
@@ -108,7 +108,7 @@ export function CognitiveFailureCard({ data }: { data: CognitiveFailureData }) {
           <PatternRow key={p.type} pattern={p} />
         ))}
 
-        {data.narrative && (
+        {data.narrative && !hideNarrative && (
           <div className="border-t border-border/50 pt-3">
             <AiText size="xs">{data.narrative}</AiText>
           </div>
