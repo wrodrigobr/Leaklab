@@ -17,9 +17,12 @@ OUT  = os.path.join(os.path.dirname(__file__), '..', 'docs', 'coach_review_t27.h
 TID  = 388
 
 # ── Entradas curadas: associação transcrição ↔ mão ↔ veredito ─────────────────
-# status: match | parcial | diverge | bug
+# status: match | corrigido | parcial | diverge | bug
 # fonte_certa: quem a análise final favorece — 'ambos' | 'sistema' | 'coach' | 'investigar'
-E = [
+# NOTA: esta lista é a SEMENTE. Na 1ª execução ela é gravada em docs/coach_review_t27_spots.json
+# (junto de stubs das mãos ao flop sem comentário). Depois disso o JSON é a FONTE DE VERDADE
+# editável — edite lá e regenere; mexer nesta semente não tem mais efeito (o JSON já existe).
+_SEED = [
  dict(h=1, cards="AJo", pos="UTG", spot="Call do 3-bet preflop",
       quote="“Tribet alto. Pode largar. Você acompanhou… eu acho um pouco agressivo.”",
       coach="FOLD vs 3-bet", system="FOLD (call = gto_critical)",
@@ -216,8 +219,70 @@ gtoc = Counter((r.get('gto_label') or 'sem_gto') for r in rows)
 ev_total = sum(r['ev_loss_bb'] for r in rows if r.get('ev_loss_bb'))
 cov = sum(1 for r in rows if r.get('gto_label'))
 
-sc = Counter(e['status'] for e in E)
-fc = Counter(e['fonte'] for e in E)
+# ── Spots EDITÁVEIS (docs/coach_review_t27_spots.json) ────────────────────────
+# 1ª execução: grava {37 curados + stubs das mãos ao flop sem comentário} no JSON.
+# Depois: o JSON manda — edite um spot, ou preencha um stub 'pendente' com a fala do
+# coach (quote+coach) e troque o status, e ele passa a ser publicado no relatório.
+SPOTS_FILE = os.path.join(os.path.dirname(__file__), '..', 'docs', 'coach_review_t27_spots.json')
+
+def _build_stubs(rows):
+    """Stub editável p/ cada mão que foi ao flop e ainda não tem comentário do coach
+    associado — com NOSSO veredito pré-preenchido (a parte do coach fica em branco)."""
+    from collections import defaultdict
+    sev = {'standard': 0, 'marginal': 1, 'small_mistake': 2, 'clear_mistake': 3}
+    byh = defaultdict(list)
+    for r in rows:
+        byh[r['hand_id']].append(r)
+    assoc = {e['h'] for e in _SEED}
+    stubs = []
+    for hid, ds in byh.items():
+        if not ({d['street'] for d in ds} & {'flop', 'turn', 'river'}):
+            continue
+        h = int(hid) - 100000000
+        if h in assoc:
+            continue
+        worst = max(ds, key=lambda d: sev.get(d['label'], 0))
+        pre = next((d for d in ds if d['street'] == 'preflop'), ds[0])
+        ev = f" · EV −{worst['ev_loss_bb']:.2f}bb" if worst.get('ev_loss_bb') else ""
+        try:
+            board = ' '.join(json.loads(worst.get('board') or '[]'))
+        except Exception:
+            board = ''
+        stubs.append({
+            'h': h, 'cards': pre['hero_cards'], 'pos': pre['position'] or '?',
+            'spot': '(preencher: que linha o coach comentou nesta mão)',
+            'quote': '', 'coach': '',
+            'system': f"{worst['street']}/{worst['action_taken']} = {worst['label']}{ev}",
+            'ind': f"board {board}" if board else '—',
+            'status': 'pendente', 'fonte': 'investigar', 'why': '',
+        })
+    return sorted(stubs, key=lambda e: e['h'])
+
+if os.path.exists(SPOTS_FILE):
+    with io.open(SPOTS_FILE, encoding='utf-8') as _f:
+        _doc = json.load(_f)
+    E = _doc['spots'] if isinstance(_doc, dict) else _doc
+    print(f"spots carregados de {os.path.basename(SPOTS_FILE)} ({len(E)} entradas — suas edições respeitadas)")
+else:
+    E = _SEED + _build_stubs(rows)
+    _HELP = ("EDITÁVEL — fonte de verdade dos spots da validação coach × GrindLab (torneio #27). "
+             "Edite qualquer campo e rode 'python scripts/build_coach_review_t27.py' pra regenerar o HTML. "
+             "Campos: h=nº da mão; cards/pos/spot=identificação; quote=fala do coach; coach=veredito do coach; "
+             "system=nosso veredito; ind=indicadores; why=meu entendimento/racional (edite à vontade); "
+             "status=match|corrigido|parcial|diverge|bug (publicados) OU pendente (stub no worklist, NÃO publicado); "
+             "fonte=ambos|sistema|coach|investigar. Um stub 'pendente' só entra no relatório quando você preencher "
+             "'quote'+'coach' e trocar o status pra um dos publicados. Pra remover um spot, apague o objeto.")
+    with io.open(SPOTS_FILE, 'w', encoding='utf-8') as _f:
+        json.dump({'_help': _HELP, 'spots': E}, _f, ensure_ascii=False, indent=2)
+    print(f"spots SEMEADOS em {os.path.basename(SPOTS_FILE)} ({len(E)} entradas: {len(_SEED)} curados + {len(E)-len(_SEED)} stubs) — edite e rode de novo")
+
+# Só publica spots COM veredito do coach; stubs 'pendente' ficam no JSON como worklist.
+_PUBLISHED_STATUSES = {'match', 'corrigido', 'parcial', 'diverge', 'bug'}
+PUB  = [e for e in E if e.get('status') in _PUBLISHED_STATUSES and e.get('coach')]
+PEND = [e for e in E if e not in PUB]
+
+sc = Counter(e['status'] for e in PUB)
+fc = Counter(e['fonte'] for e in PUB)
 
 STATUS_META = {
     'match':     ('MATCH',       '#10b981', 'rgba(16,185,129,.12)'),
@@ -247,7 +312,7 @@ def card_html(e):
       <div class="verdict"><span class="verdict-t">Veredito ({FONTE_LABEL[e['fonte']]}):</span> {e['why']}</div>
     </div>"""
 
-cards = '\n'.join(card_html(e) for e in E)
+cards = '\n'.join(card_html(e) for e in PUB)
 
 html = f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8">
@@ -289,7 +354,7 @@ html = f"""<!DOCTYPE html>
 
 <h1><b>GrindLab</b> × Review do Coach — Torneio #27 (Big $22 · PokerStars)</h1>
 <div class="sub">Validação cruzada: cada veredito do coach no vídeo foi associado ao spot correspondente e comparado com a avaliação
-do engine + GTO Solver da GrindLab. Associação por ordem cronológica + âncoras de cartas/board ({len(E)} spots com comentário
+do engine + GTO Solver da GrindLab. Associação por ordem cronológica + âncoras de cartas/board ({len(PUB)} spots com comentário
 substantivo associados em alta confiança).</div>
 
 <div class="stats">
@@ -306,7 +371,7 @@ substantivo associados em alta confiança).</div>
 <h2>Leitura executiva</h2>
 <div class="callout ok"><b>Onde convergimos:</b> nos erros caros o alinhamento é alto — c-bet multiway, calls sem equity,
 raises que cortam blefs, pot control com mão forte em board perigoso e os spots triviais de valor. Nos {sc['match']} matches,
-{sum(1 for e in E if e['status']=='match' and 'EV' in e['ind'])} têm EV quantificado pelo solve hand-aware — o número que o coach
+{sum(1 for e in PUB if e['status']=='match' and 'EV' in e['ind'])} têm EV quantificado pelo solve hand-aware — o número que o coach
 estima de cabeça, nós medimos.</div>
 <div class="callout"><b>Onde divergimos com argumento (e segue assim):</b> (1) <b>GTO × exploit</b> — o coach ajusta para o field
 recreativo (bluff-catch de Ás-high, fold exploitativo vs nit com VPIP 15); nosso baseline é o equilíbrio. As duas coisas são
@@ -329,16 +394,23 @@ de J em K-6-J (#35) vê ~0.50 e o call vira 'standard', alinhado com o coach.</l
 A5o #84) seguem em heurística conservadora — divergência menor, não veredito errado; e a DIREÇÃO de best_action nos spots sem
 GTO (recomendar raise vs squeeze) ainda é grosseira, embora o cap de severidade impeça o veredito mais caro.</div>
 
+<div class="callout"><b>Validação expansível ({len(PEND)} mãos aguardando o coach):</b> de {len(PUB)+len(PEND)} mãos que foram ao
+flop neste torneio, {len(PUB)} têm comentário do coach associado (acima) e <b>{len(PEND)} ainda não</b> — estas estão no arquivo
+editável <code>docs/coach_review_t27_spots.json</code> como stubs 'pendente', já com o NOSSO veredito pré-preenchido e o lado do
+coach em branco. Preencha a fala do coach (campos <code>quote</code> + <code>coach</code>), troque o <code>status</code>, regenere,
+e a mão entra na validação. O mesmo arquivo permite corrigir o entendimento de qualquer spot já publicado.</div>
+
 <h2>Spot a spot — coach × GrindLab</h2>
 {cards}
 
 <div class="foot">Gerado pela GrindLab a partir do hand history importado (123 mãos · {tot} decisões) e da transcrição do review.
 Indicadores: EV em big blinds via solve hand-aware do GTO Solver; severidade pelo rotulador do engine v11.
-Os {len(E)} spots acima são os com comentário substantivo do coach e associação de alta confiança — saudações triviais,
+Os {len(PUB)} spots acima são os com comentário substantivo do coach e associação de alta confiança — saudações triviais,
 fold rápidos sem comentário e segmentos ambíguos da transcrição automática ficaram de fora por honestidade metodológica.</div>
 </div></body></html>"""
 
 io.open(OUT, 'w', encoding='utf-8').write(html)
 print(f"OK: {OUT}")
-print(f"entradas={len(E)} status={dict(sc)} fontes={dict(fc)}")
+print(f"publicados={len(PUB)} status={dict(sc)} fontes={dict(fc)}")
+print(f"pendentes (worklist no JSON)={len(PEND)} — preencha quote+coach+status p/ publicar")
 print(f"torneio: {tot} decisões, cobertura GTO {cov*100//tot}%, EV total -{ev_total:.0f}bb")
