@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<title>GrindLab × Coach Review — Torneio #27 (Big $22)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root { --bg:#0A0E1A; --card:#0F1526; --ring:#1E2A45; --teal:#2DD4BF; --txt:#E3E8EC; --mut:#8B96A8; }
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--txt); font:14px/1.55 'Segoe UI',system-ui,sans-serif; margin:0; padding:32px 16px; }
+  .wrap { max-width:980px; margin:0 auto; }
+  h1 { font-size:22px; letter-spacing:.5px; } h1 b { color:var(--teal); }
+  .sub { color:var(--mut); font-size:12px; margin-bottom:24px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:18px 0 28px; }
+  .stat { background:var(--card); border:1px solid var(--ring); border-radius:12px; padding:12px 14px; }
+  .stat .v { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .stat .l { font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--mut); margin-top:2px; }
+  h2 { font-size:14px; text-transform:uppercase; letter-spacing:.15em; color:var(--teal); margin:34px 0 12px; }
+  .hand { background:var(--card); border:1px solid var(--ring); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .hand-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .hand-id { font-family:Consolas,monospace; font-size:11px; color:var(--mut); }
+  .hand-cards { font-family:Consolas,monospace; font-weight:700; color:var(--teal); }
+  .hand-spot { font-size:12px; color:var(--txt); flex:1; }
+  .badge { font-family:Consolas,monospace; font-size:10px; font-weight:700; letter-spacing:.08em; padding:3px 10px; border-radius:999px; }
+  .quote { font-style:italic; color:#b9c2d0; font-size:12.5px; border-left:3px solid var(--ring); padding-left:10px; margin:8px 0 12px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:640px) { .grid2 { grid-template-columns:1fr; } }
+  .panel { border-radius:10px; padding:10px 12px; font-size:13px; }
+  .panel-t { font-family:Consolas,monospace; font-size:9px; letter-spacing:.15em; margin-bottom:4px; opacity:.8; }
+  .coach { background:rgba(245,158,11,.07); border:1px solid rgba(245,158,11,.25); } .coach .panel-t { color:#f59e0b; }
+  .system { background:rgba(45,212,191,.07); border:1px solid rgba(45,212,191,.25); } .system .panel-t { color:var(--teal); }
+  .ind { font-family:Consolas,monospace; font-size:10.5px; color:var(--mut); margin-top:5px; }
+  .verdict { margin-top:10px; font-size:12.5px; color:#cfd6e0; border-top:1px dashed var(--ring); padding-top:9px; }
+  .verdict-t { color:var(--teal); font-weight:600; }
+  .callout { background:rgba(239,68,68,.06); border:1px solid rgba(239,68,68,.3); border-radius:12px; padding:14px 16px; margin:10px 0; font-size:13px; }
+  .callout.ok { background:rgba(16,185,129,.06); border-color:rgba(16,185,129,.3); }
+  ul { margin:6px 0; padding-left:20px; } li { margin:5px 0; }
+  .foot { color:var(--mut); font-size:11px; margin-top:30px; border-top:1px solid var(--ring); padding-top:12px; }
+</style></head><body><div class="wrap">
+
+<h1><b>GrindLab</b> × Review do Coach — Torneio #27 (Big $22 · PokerStars)</h1>
+<div class="sub">Validação cruzada: cada veredito do coach no vídeo foi associado ao spot correspondente e comparado com a avaliação
+do engine + GTO Solver da GrindLab. Associação por ordem cronológica + âncoras de cartas/board (37 spots com comentário
+substantivo associados em alta confiança).</div>
+
+<div class="stats">
+  <div class="stat"><div class="v">345</div><div class="l">decisões avaliadas</div></div>
+  <div class="stat"><div class="v">91%</div><div class="l">cobertura GTO</div></div>
+  <div class="stat"><div class="v">−47bb</div><div class="l">EV total deixado na mesa</div></div>
+  <div class="stat"><div class="v" style="color:#10b981">13</div><div class="l">match com o coach</div></div>
+  <div class="stat"><div class="v" style="color:#60a5fa">2</div><div class="l">parcial</div></div>
+  <div class="stat"><div class="v" style="color:#f59e0b">16</div><div class="l">divergências</div></div>
+  <div class="stat"><div class="v" style="color:#ef4444">6</div><div class="l">itens de calibração</div></div>
+</div>
+
+<h2>Leitura executiva</h2>
+<div class="callout ok"><b>Onde convergimos:</b> nos erros caros o alinhamento é alto — c-bet multiway, calls sem equity,
+raises que cortam blefs, pot control com mão forte em board perigoso e os spots triviais de valor. Nos 13 matches,
+7 têm EV quantificado pelo solve hand-aware — o número que o coach
+estima de cabeça, nós medimos.</div>
+<div class="callout"><b>Onde divergimos com argumento:</b> (1) <b>GTO × exploit</b> — o coach ajusta para o field recreativo
+(bluff-catch de Ás-high, fold exploitativo vs nit com VPIP 15); nosso baseline é o equilíbrio. As duas coisas são
+complementares — e a leitura por stats do vilão é exatamente o roadmap do nosso HUD de oponentes. (2) <b>3-bet light de
+blinds</b> — o coach adora, nós rotulamos 'critical'; o solver mixa essas mãos em frequência baixa, então a severidade certa
+é 'mixed/minor'. (3) <b>Bluff-catchers com preço</b> — 88 no turn (−2.09bb) e 99 no river: o solver defende por frequência
+onde o coach folda por leitura; matematicamente estamos certos no baseline.</div>
+<div class="callout"><b>O que vamos calibrar (achados desta validação):</b>
+<ul>
+<li><b>Leitura de força de mão em 2 nós postflop</b>: wheel A-5 (mão #22) e full house (mão #37) receberam indicação de fold —
+provável mismatch de nó/board no lookup. Prioridade máxima.</li>
+<li><b>Labels inconsistentes</b>: ação do hero igual ao best do solver mas rotulada gto_critical (mãos #16 e #57) — o rotulador
+mistura EV hand-aware com ação agregada.</li>
+<li><b>Potes limpados sem range dedicada</b>: iso-raise vs limper (ATo) e limp-attack jam (A5o, 20bb) avaliados por heurística
+conservadora demais.</li>
+<li><b>Heurística sem cobertura GTO agressiva/medrosa</b>: ATs 'raise' vs squeeze (#15) e par de J 'fold' vs meia aposta (#35).</li>
+<li><b>Severidade ∝ EV</b>: defesa de 75o no BB custou 0.04bb e levou selo 'critical' — severidade deve escalar com o EV medido.</li>
+<li><b>Fronteira do RFI de BTN</b>: J8o aprovado pelo nosso preflop DB; charts padrão foldam (#51).</li>
+</ul></div>
+
+<h2>Spot a spot — coach × GrindLab</h2>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #1</span>
+        <span class="hand-cards">AJo · UTG</span>
+        <span class="hand-spot">Call do 3-bet preflop</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Tribet alto. Pode largar. Você acompanhou… eu acho um pouco agressivo.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD vs 3-bet</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>FOLD (call = gto_critical)<div class="ind">facing 8.6bb · 166bb deep</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Coach e GTO Solver concordam: AJo não defende 3-bet grande OOP-ish a 166bb. Hero errou.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #2</span>
+        <span class="hand-cards">75o · BB</span>
+        <span class="hand-spot">Defesa de BB vs min-raise</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Segunda mão, 57, fold.” (sem crítica)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD ok</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL (fold = gto_critical, EV −0.04bb)<div class="ind">facing 2.2bb · EV loss 0.04bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (sistema favorecido):</span> Por GTO, 75o defende vs min-raise com essas odds — mas o EV perdido é ~0.04bb. Estamos certos na DIREÇÃO, porém o selo 'critical' é desproporcional ao custo. → calibrar severidade pelo EV.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #3</span>
+        <span class="hand-cards">AQo · BTN</span>
+        <span class="hand-spot">3-bet vs open</span>
+        <span class="badge" style="color:#60a5fa;background:rgba(96,165,250,.12);border:1px solid #60a5fa55">PARCIAL</span>
+      </div>
+      <div class="quote">🎙 “Aqui você pode dar um tribet para 6,5… 7,5 tá bom.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>3-BET</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL preferido (3-bet = standard, score 0.08)<div class="ind">vs open 2.2bb · 116bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Spot de mix real: solver mistura call/3-bet com AQo no BTN. As duas indicações são jogáveis; nenhuma é erro.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #4</span>
+        <span class="hand-cards">A6s · BTN</span>
+        <span class="hand-spot">Flat vs open + linha pós-flop</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Não gosto. Eu simplesmente foldaria… eventualmente tribet light.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD (ou 3-bet light)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL (gto_correct)<div class="ind">facing 2.0bb · 195bb deep</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (sistema favorecido):</span> A6s no BTN vs open está no range de defesa por chart GTO (mix call/3-bet; fold é a pior das três). A objeção do coach é exploit ('ele não disputa bem') — válida como ajuste, não como baseline. No river ambos criticaram a aposta do hero (match).</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #5</span>
+        <span class="hand-cards">A2s · BB</span>
+        <span class="hand-spot">Call no flop com A-high vs bet + caller</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Não me parece que você tá bem não.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>FOLD (call = clear_mistake, EV −0.79bb)<div class="ind">facing 4bb em pote 13bb · EV −0.79bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Concordância total com EV mensurado: A-high multiway sem equity não continua.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #7</span>
+        <span class="hand-cards">AQo · UTG+1</span>
+        <span class="hand-spot">C-bet multiway + barrel no turn</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Pode dar mesa. Tá muita gente na mão… Você deu CBET ainda? Não me parece bom… não aconselho.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>CHECK (não c-bet multiway)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CHECK (turn barrel = gto_critical, EV −0.82bb)<div class="ind">3 jogadores · EV turn −0.82bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Match forte nas duas streets: c-bet sem equity em campo multiway é punido pelos dois.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #8</span>
+        <span class="hand-cards">ATo · BB</span>
+        <span class="hand-spot">Iso-raise vs limper</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “O small completou e você fez 3,5. Justo, justo.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>ISO-RAISE</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL preferido (raise = marginal)<div class="ind">pote limpado · sem cobertura GTO</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (coach favorecido):</span> Iso de limper com ATo no BB é padrão. Nosso engine não tem range dedicada a potes LIMPADOS e caiu em heurística conservadora. → calibração: ranges de iso vs limp.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #10</span>
+        <span class="hand-cards">A8s · CO</span>
+        <span class="hand-spot">Bluff-catch no river</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Eu daria uma olhada com Ás alto por cinco blinds num pote de 30.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>CALL (exploit vs recreativo)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>FOLD (gto_correct)<div class="ind">facing 5bb em pote 28bb · pot odds 15%</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Pelo preço (15%), o call exploit do coach é defensável contra campo que blefa demais; pelo solver, A-high está abaixo do bluff-catching range. GTO × exploit documentado — não é erro de nenhum lado.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #12</span>
+        <span class="hand-cards">55 · CO</span>
+        <span class="hand-spot">Fold vs 3-bet (set-mine)</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Você tem que pagar… 4 blinds tá barato, potencial de ganhar 80.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>CALL (implied odds)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>FOLD (gto_correct)<div class="ind">facing 6bb · stacks 100bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Matematicamente o set-mine pede ~15:1 implícitas — 100bb atrás chega perto, MAS exige realizar tudo. Solver folda 55 vs 3-bet nesse sizing; o call do coach é exploit contra quem paga demais pós-flop. Divergência legítima.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #13</span>
+        <span class="hand-cards">QQ · BB</span>
+        <span class="hand-spot">3-bet por valor</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Você tem que proteger a sua mão… tá correto aqui o tribet.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>3-BET</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>3-BET (gto_correct)<div class="ind">—</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Trivial e unânime.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #15</span>
+        <span class="hand-cards">ATs · HJ</span>
+        <span class="hand-spot">Fold vs squeeze</span>
+        <span class="badge" style="color:#ef4444;background:rgba(239,68,68,.12);border:1px solid #ef444455">CALIBRAR</span>
+      </div>
+      <div class="quote">🎙 “Tomou um squeeze para 10… você vai largar. Largou muito bem.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>RAISE?! (fold = clear_mistake 0.47)<div class="ind">facing 9bb · sem cobertura GTO (squeeze pot)</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (coach favorecido):</span> O coach está certo: ATs folda vs squeeze a 90bb. Nossa indicação 'raise' veio da HEURÍSTICA (squeeze pots estão fora das ranges capturadas) e está agressiva demais. → calibração: gate de confiança quando não há cobertura GTO.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #16</span>
+        <span class="hand-cards">AQs · UTG</span>
+        <span class="hand-spot">Call em board monotone + label inconsistente</span>
+        <span class="badge" style="color:#ef4444;background:rgba(239,68,68,.12);border:1px solid #ef444455">CALIBRAR</span>
+      </div>
+      <div class="quote">🎙 “Nesse tipo de board, eu largaria… 8-9-valete, [três do mesmo naipe].”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL (best=call) mas rotulado gto_critical EV −0.41<div class="ind">board 8c Jc 9c · sem clube na mão</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (investigar):</span> Inconsistência interna nossa: a ação do hero COINCIDE com o best do solver e ainda assim recebeu selo crítico (EV hand-aware vs ação agregada se misturaram no rotulador). O mérito (call pequeno IP) é defensável vs coach; o LABEL é bug. No river, ambos aprovaram o overbet bluff (match).</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #19</span>
+        <span class="hand-cards">A9o · BB</span>
+        <span class="hand-spot">Reshove vs open do SB</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Eu já daria a win. 18 blinds [dele], A9 contra quem abre bastante… jogou bem.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>JAM</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL (shove = gto_critical, EV −0.29bb)<div class="ind">hero 40bb · vilão ~18bb · EV −0.29bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Com o STACK DO VILÃO (18bb) o jam funciona como reshove e o coach tem razão prática; nosso EV considera o stack efetivo e prefere call por 0.29bb. Margem pequena — ambos jogáveis.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #22</span>
+        <span class="hand-cards">A2o · BB</span>
+        <span class="hand-spot">3-bet light + SHOVE com a sequência feita</span>
+        <span class="badge" style="color:#ef4444;background:rgba(239,68,68,.12);border:1px solid #ef444455">CALIBRAR</span>
+      </div>
+      <div class="quote">🎙 “Tribet light? Gosto… [turn 5: A-2-3-4-5] agora a gente fez a sequência… ele mandou, você dá o win. Perfeito.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>3-bet light OK · shove TRIVIAL (wheel)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>3-bet = clear_mistake · shove turn = FOLD?!<div class="ind">board 4c 3h Jh 5c — hero A2 = WHEEL</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (coach favorecido):</span> ACHADO CRÍTICO: no turn o hero tem a sequência A-5 (nuts efetivo) e nosso sistema indicou FOLD — leitura de força de mão errada no nó (provável mismatch de nó/board no postflop). O shove é obviamente correto. → investigar detecção de straight no avaliador. No pré, tema recorrente: punimos 3-bet light de BB que o coach adora.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #25</span>
+        <span class="hand-cards">AQo · BTN</span>
+        <span class="hand-spot">Raise no turn vs aposta</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Não faz sentido o raise aqui… ou deixa ele blefar, ou aposta baixa no flop.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>NÃO raise (call)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>NÃO raise (fold; raise = clear_mistake EV −4.48bb)<div class="ind">EV −4.48bb (maior erro do torneio)</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Ambos condenam o raise — divergem só no plano B (coach: call; sistema: fold). O hero cortou os blefs do vilão exatamente como o coach descreveu.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #26</span>
+        <span class="hand-cards">AKs · BB</span>
+        <span class="hand-spot">Shove river com A-high</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Aqui você vai dar o win, tentar tirar ele da mão.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>JAM (blef)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CHECK (shove = gto_critical)<div class="ind">pote 23bb · vilão slow-play trinca</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (sistema favorecido):</span> O resultado deu razão ao solver: vilão tinha trinca e não folda nada melhor. AK-high no river vira bluff-catcher; jam só tira mãos que já perdiam. Argumento de fold equity do coach não se sustenta contra range que chega ao river.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #28</span>
+        <span class="hand-cards">99 · UTG</span>
+        <span class="hand-spot">Bluff-catch river vs aposta de meio pote</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Me parece que tá perdendo… pode foldar. Você deu call ainda.” (vilão tinha A7 — chegou)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL (gto_correct)<div class="ind">facing 6.8bb em pote 17.8bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (sistema favorecido):</span> O coach leu certo ESTA mão (vilão tinha valor), mas pelo preço (28%) 99 precisa defender parte das vezes ou vira alvo de blef. Resultado ≠ processo: o call é correto em frequência.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #31</span>
+        <span class="hand-cards">77 · BB</span>
+        <span class="hand-spot">Calls no turn e river vs triple barrel</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Pode largar… difícil dar o call, hein? Você pagou… e acertou. Blef completo.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD/FOLD</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>FOLD/FOLD (EV −1.94 / −1.73bb)<div class="ind">EV turn −1.94bb · river −1.73bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> A vitrine de 'processo > resultado': hero pagou tudo e GANHOU de um blef — e mesmo assim coach E sistema marcam os dois calls como erro. Alinhamento perfeito com EV quantificado.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #32</span>
+        <span class="hand-cards">88 · BTN</span>
+        <span class="hand-spot">Fold no turn vs barrel</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “E agora você vai largar, né? Ok. Justo. Essa é a linha que eu usaria.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL (fold = clear_mistake, EV −2.09bb)<div class="ind">facing 5.8bb em pote 15bb · EV −2.09bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (sistema favorecido):</span> Maior divergência quantificada a nosso favor: 88 em T-2-T-J é bluff-catcher com preço de 28%; o solve hand-aware mede 2.09bb deixados na mesa. O 'justo' do coach é overfold.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #33</span>
+        <span class="hand-cards">99 · CO</span>
+        <span class="hand-spot">Open-shove 62bb</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Não manda win por cima não… tribet para seis, se ele der [all-in] você paga.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>3-BET pequeno</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL/3-bet (shove = small_mistake, EV −1.08bb)<div class="ind">62bb efetivos · EV −1.08bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Ambos contra o jam gigante — discordam apenas na alternativa (3-bet vs call). Convergência no que importa: não torrar 62bb pré com 99.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #35</span>
+        <span class="hand-cards">J9o · BB</span>
+        <span class="hand-spot">Call no flop com par de J</span>
+        <span class="badge" style="color:#ef4444;background:rgba(239,68,68,.12);border:1px solid #ef444455">CALIBRAR</span>
+      </div>
+      <div class="quote">🎙 “Pegou o valete… check-call. [aprova a linha passiva]”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>CALL</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>FOLD?! (call = clear_mistake 0.64, sem GTO)<div class="ind">facing 1.9bb em pote 3.5bb · heurística</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (coach favorecido):</span> Par de J em K-6-J por aposta de meio pote é continue trivial. Sem cobertura GTO o engine caiu em heurística overfold. Mesmo padrão do item ATs vs squeeze. → calibração da heurística postflop em potes pequenos.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #36</span>
+        <span class="hand-cards">JJ · HJ</span>
+        <span class="hand-spot">Reshove vs all-in de 9bb</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Aqui sim, eu vou isolar… parte valete me parece tá bem.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>JAM</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>JAM (gto_correct)<div class="ind">—</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Unânime.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #37</span>
+        <span class="hand-cards">66 · HJ</span>
+        <span class="hand-spot">Limp pré + linha com trinca/full</span>
+        <span class="badge" style="color:#ef4444;background:rgba(239,68,68,.12);border:1px solid #ef444455">CALIBRAR</span>
+      </div>
+      <div class="quote">🎙 “Não dê limp… Você deu mesa com a trinca, não pode… [river] pode dar uma win nele.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>RAISE pré · BET turn · RAISE river</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>RAISE pré ✓ · BET turn ✓ · river shove = FOLD?!<div class="ind">board 5c As 4d 6c 4s — hero 66 = FULL HOUSE</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (coach favorecido):</span> SEGUNDO achado crítico de leitura de mão: no river o hero tem full house (66 + 44) e nosso nó indicou fold. Mesmo padrão do item A2 (wheel): avaliação hand-aware usando nó errado. Pré e turn batemos com o coach.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #45</span>
+        <span class="hand-cards">JTs · SB</span>
+        <span class="hand-spot">Fold vs 4-bet shove 37bb</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Tomou forbet… você vai ter que largar. Ok.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL (fold = clear_mistake, EV −0.62bb)<div class="ind">facing 37bb · pote 45.5bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Pelo preço o call de JTs é levemente +EV vs range de shove largo; vs 4-bet apertado, fold. Depende 100% do read — divergência fina (0.62bb), ambos defensáveis.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #50</span>
+        <span class="hand-cards">22 · BB</span>
+        <span class="hand-spot">3-bet light vs SB</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Eu vou dar o all-in no semiblef… o tribet com par baixo é o problema.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>JAM (semibluff)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL (3-bet = clear_mistake)<div class="ind">vilão 25bb abre 38% do SB</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Três caminhos (hero 3-betou, coach jamaria, sistema pagaria). Vs SB de 38% de open, o jam do coach tem mérito exploit; o call do solver preserva equity barata. O 3-bet pequeno do hero era o pior dos três — nisso ambos concordam.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #51</span>
+        <span class="hand-cards">J8o · BTN</span>
+        <span class="hand-spot">Open raise no BTN</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Acho que valete-10 é o range… valete-8 acho que tá fora.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD (fora do range)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>RAISE (gto_correct?!)<div class="ind">50bb · charts BTN</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (coach favorecido):</span> J8o está FORA do RFI de BTN na maioria dos charts a 50bb (J8s sim, J8o não). Nossa range de BTN aceita largo demais aqui. → calibração: revisar fronteira do RFI BTN no preflop DB.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #54</span>
+        <span class="hand-cards">77 · BB</span>
+        <span class="hand-spot">Donk bet flop + bet river com mão média</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Donk bet com mãos médias não é bom… você não ganha valor apostando par de 7 — check-call.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>CHECK (2x)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CHECK (2x — donk = marginal, river bet = marginal)<div class="ind">—</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Match duplo na mesma mão: as duas linhas finas do hero reprovadas pelos dois avaliadores.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #57</span>
+        <span class="hand-cards">AKo · UTG+1</span>
+        <span class="hand-spot">Call vs 3-bet (mix) + label inconsistente no turn</span>
+        <span class="badge" style="color:#ef4444;background:rgba(239,68,68,.12);border:1px solid #ef444455">CALIBRAR</span>
+      </div>
+      <div class="quote">🎙 “Agora você só deu call. Muito legal… o cara vai ter dificuldade na sua leitura.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>CALL (mix) ótimo</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>RAISE preferido (call = small_mistake) · turn fold = best E clear_mistake (EV 8.14?!)<div class="ind">turn: act=fold, best=fold, label=critical</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (investigar):</span> Dois pontos: (1) o call de AK vs 3-bet é mix legítimo — punimos um lado do mix; (2) no turn a ação do hero IGUALA o best e ainda levou clear_mistake com EV 8.14 — mesma inconsistência de rotulagem do item AQs (board monotone). Bug de labeling confirmado em 2 mãos.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #58</span>
+        <span class="hand-cards">A4o · BB</span>
+        <span class="hand-spot">3-bet light</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Foi pro tribet light. Gosto, gosto.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>3-BET light</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL (3-bet = clear_mistake 0.46)<div class="ind">tema recorrente (A2o, 22, A4o)</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> TERCEIRA ocorrência do padrão: coach adora 3-bet light de blind, nosso sistema pune com 'critical'. GTO mixa essas mãos em frequência baixa — nem 'gosto' nem 'critical' são precisos. → recalibrar para gto_mixed/minor quando a mão está no mix de 3-bet.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #62</span>
+        <span class="hand-cards">AJs · UTG</span>
+        <span class="hand-spot">Fold vs shove de 23bb</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Normalmente aqui é fold… VPIP 15, 3-bet 4. Pode foldar tranquilo.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD (read: nit)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CALL (fold = clear_mistake, EV −1.22bb)<div class="ind">facing 23bb · vilão VPIP 15/3bet 4</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (coach favorecido):</span> Caso-modelo de stats > baseline: vs população, AJs paga 23bb (+1.22bb); vs ESTE vilão (3-bet 4%), o fold do coach é claramente melhor. Nosso sistema acerta o baseline mas não usa o perfil do vilão — é exatamente o que o HUD de oponentes (fase 2+) vai cobrir.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #64</span>
+        <span class="hand-cards">Q8s · BTN</span>
+        <span class="hand-spot">Open fold no BTN</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Não vejo motivos para foldar… o raise para dois aqui estaria legal.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>RAISE</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>RAISE (fold = small_mistake, EV −0.50bb)<div class="ind">EV −0.50bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Coach e sistema corrigem o hero juntos, com EV na mesa.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #65</span>
+        <span class="hand-cards">KK · BTN</span>
+        <span class="hand-spot">Pot control com KK em board de Ás</span>
+        <span class="badge" style="color:#60a5fa;background:rgba(96,165,250,.12);border:1px solid #60a5fa55">PARCIAL</span>
+      </div>
+      <div class="quote">🎙 “Controlou o pote, não deu c-bet com par de rei no bote com Ás. Importante isso.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>CHECK flop · CALL river</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CHECK-ish · FOLD river (mixed)<div class="ind">board Ad 9d 4s 9c 7s</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Linha geral idêntica (pot control); no river o solver mixa fold/call e o coach pende pro call pelo range polarizado do vilão. Diferença de frequência, não de conceito.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #78</span>
+        <span class="hand-cards">JJ · CO</span>
+        <span class="hand-spot">Shove no flop 9-T-5</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Aqui eu vou dar o win já… o pote tá muito perto de um SPR [de 1].”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>JAM (SPR ~1)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CHECK (shove = clear_mistake)<div class="ind">pote 13.3bb · ~19bb atrás</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (coach favorecido):</span> Com SPR ≈ 1.4 e overpair, get-it-in é padrão de torneio; o check do nosso nó provavelmente vem de solve com stack errado (aproximação de depth). Vantagem argumentativa do coach aqui. → conferir se o nó usado respeita o stack efetivo curto.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #84</span>
+        <span class="hand-cards">A5o · BB</span>
+        <span class="hand-spot">Shove vs limp (20bb)</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Tá, ele limpou, a win. Justo, gosto.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>JAM</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>CHECK (shove = small_mistake, heurística)<div class="ind">20bb · pote limpado · sem GTO</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (coach favorecido):</span> Limp-attack com Ax a 20bb é linha padrão de MTT. De novo o ponto cego de POTES LIMPADOS (mesmo do iso ATo): sem range dedicada, a heurística subestima agressão correta.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #85</span>
+        <span class="hand-cards">KQo · CO</span>
+        <span class="hand-spot">Call no turn com overcards em board de flush</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Você vai ter que foldar. Você deu call ainda? Não gosto.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>FOLD</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>FOLD (call = clear_mistake, EV −2.48bb)<div class="ind">EV −2.48bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Match com EV alto: pagar sem equity em board monotone custou caro e os dois marcaram.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #81</span>
+        <span class="hand-cards">QQ · BTN</span>
+        <span class="hand-spot">5-bet shove vs 3-bet</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “40 blinds dá para dar forbet 16, 17… quiser dar [all-in] pode também.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>4-BET (jam aceitável)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>JAM (gto_correct)<div class="ind">41bb</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Sistema valida o jam como ótimo; coach prefere 4-bet menor mas aceita — mesma região de EV.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #94</span>
+        <span class="hand-cards">AQo · SB</span>
+        <span class="hand-spot">Bet de valor com quadra no board</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Você deu limp e fez o nuts no river… apostou por valor e tomou call. Muito bem.”</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>BET valor</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>BET (gto_correct)<div class="ind">board 3h 6d 6c 6s 6h</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Unânime.</div>
+    </div>
+
+<div class="foot">Gerado pela GrindLab a partir do hand history importado (123 mãos · 345 decisões) e da transcrição do review.
+Indicadores: EV em big blinds via solve hand-aware do GTO Solver; severidade pelo rotulador do engine v11.
+Os 37 spots acima são os com comentário substantivo do coach e associação de alta confiança — saudações triviais,
+fold rápidos sem comentário e segmentos ambíguos da transcrição automática ficaram de fora por honestidade metodológica.</div>
+</div></body></html>

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(validation): relatório coach × GrindLab — torneio #27 validado contra review profissional ✅
+
+> Desafio do usuário: cruzar a transcrição do review de um coach (YouTube, Big $22) com as nossas avaliações do MESMO torneio (tournament_id='27', 123 mãos, 345 decisões, 91% cobertura GTO, −47bb de EV total medido). Transcrição automática decodificada ("reis para dois"=raise 2x, "tribet"=3-bet, "mesa"=check, "Mais/I"=Ás...), 37 spots com comentário substantivo associados em alta confiança e comparados veredito a veredito. **Resultado: 13 matches (incl. todos os erros caros — c-bet multiway, calls sem equity, processo>resultado nos calls pagos do 77), 16 divergências argumentadas (GTO×exploit, 3-bet light de blinds, bluff-catchers por frequência) e 6 achados de CALIBRAÇÃO nossos**, sendo 2 bugs graves confirmados no banco: wheel A-5 e full house avaliados como FOLD no all-in (mismatch de nó postflop), labels inconsistentes (ação==best com selo critical, 2×), potes limpados sem range (iso/limp-attack), heurística sem-GTO mal calibrada (ATs raise vs squeeze; par de J fold vs meia aposta), severidade desproporcional ao EV (75o BB: critical com −0.04bb) e J8o no RFI de BTN. Relatório visual standalone em `backend/docs/coach_review_t27.html` (dark GrindLab, painéis coach×sistema por mão, badges match/divergência/calibrar, leitura executiva) — pronto pra apresentar ao coach como parceiro. Gerador: `backend/scripts/build_coach_review_t27.py`.
+
 ### feat(gamification): XP do drill visível nos treinos — chip "+25 XP" no veredito ✅
 
 > Complemento da entrega do XP de drill: o backend passou a conceder e devolver o bloco `xp` no submit, mas o front não exibia nada — recompensa invisível não gamifica. Agora: `DrillSubmitResult` tipa o bloco `xp`; Ghost Table mostra chip âmbar "+25 XP" ao lado do veredito (nos dois layouts); Sparring anexa "· +25 XP" à fonte do veredito no coach card. Sem i18n novo (XP é símbolo universal). Database 54 verde no estado mergeado; typecheck verde.
