@@ -138,13 +138,18 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 md:px-8">
-          <div className="flex items-center gap-6 md:gap-10">
-            <a href="/dashboard" className="flex items-center group" aria-label="GrindLab home">
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-3 px-4 md:px-8">
+          <div className="flex min-w-0 items-center gap-6 md:gap-10">
+            <a href="/dashboard" className="flex shrink-0 items-center group" aria-label="GrindLab home">
               <img src={logoHorizontal} alt="GrindLab" className="h-12 w-auto" />
             </a>
 
-            <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
+            {/* min-w-0 + overflow-x-auto: entre md (768) e ~1280 o nav completo não cabe —
+                rola horizontalmente DENTRO do header em vez de estourar a página inteira. */}
+            <nav
+              className="hidden md:flex items-center gap-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              aria-label="Primary"
+            >
               {navItems.map((item) => {
                 const activePaths = item.activePaths ?? [item.to];
                 const isActive = activePaths.some((p) => location.pathname === p);
@@ -154,7 +159,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                     to={item.to}
                     end={item.end ?? item.to === "/"}
                     className={() =>
-                      `relative flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium tracking-wide uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      `relative flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium tracking-wide uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                         isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                       }`
                     }
@@ -170,7 +175,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
             </nav>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex shrink-0 items-center gap-2 md:gap-3">
             <input
               ref={inputRef}
               type="file"
@@ -186,7 +191,8 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
                 className="hidden sm:inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/30 hover:bg-primary/20 transition-colors focus-visible:outline-none"
               >
                 <UploadCloud className="size-3.5" />
-                {t("actions.import")}
+                {/* faixa md–lg é apertada (nav rolável): label só ≥lg, ícone basta antes */}
+                <span className="hidden lg:inline">{t("actions.import")}</span>
               </button>
             )}
 
