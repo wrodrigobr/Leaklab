@@ -88,10 +88,18 @@ for row in tournaments:
                 new_label = (result.get('evaluation') or {}).get('label') or old_label
                 new_best  = result.get('bestAction') or old_best
                 gto_dict  = result.get('gto') or {}
-                new_gtolbl = gto_dict.get('gto_label') if gto_dict.get('available') else old_gtolbl
-                new_gtoact = gto_dict.get('gto_action') if gto_dict.get('available') else old_gtoact
-                if not new_gtolbl: new_gtolbl = old_gtolbl
-                if not new_gtoact: new_gtoact = old_gtoact
+                if gto_dict.get('ungradeable_action'):
+                    # Ação fora da árvore solvada (ex.: shove em árvore sem branch de
+                    # raise): o nó NÃO grade essa ação. Limpa os campos GTO antigos —
+                    # mantê-los preservava o 'fold/gto_critical' podre gravado antes
+                    # do fix (shove com a wheel no torneio 388).
+                    new_gtolbl = None
+                    new_gtoact = None
+                else:
+                    new_gtolbl = gto_dict.get('gto_label') if gto_dict.get('available') else old_gtolbl
+                    new_gtoact = gto_dict.get('gto_action') if gto_dict.get('available') else old_gtoact
+                    if not new_gtolbl: new_gtolbl = old_gtolbl
+                    if not new_gtoact: new_gtoact = old_gtoact
                 # Fase 3 / #24 postflop: a re-análise também sincroniza o EV loss —
                 # sem isto, decisões antigas nunca ganham ev_loss_bb (só re-upload),
                 # e o card "onde você sangra" fica só com o preflop do overlay.
@@ -99,7 +107,7 @@ for row in tournaments:
                 old_evsrc  = db_row['ev_loss_source']
                 new_evloss = gto_dict.get('ev_loss_bb')
                 new_evsrc  = gto_dict.get('ev_loss_source')
-                if new_evloss is None:
+                if new_evloss is None and not gto_dict.get('ungradeable_action'):
                     new_evloss, new_evsrc = old_evloss, old_evsrc
             except Exception:
                 continue

@@ -69,6 +69,34 @@ def _norm_gto_action(a: str) -> str:
     return a
 
 
+def _action_family(a: str) -> str:
+    """Colapsa um label de ação (inclusive parametrizado: bet_50pct, raise_103pct)
+    para a família canônica {fold,check,call,bet,raise,allin}."""
+    from leaklab.gto_utils import normalize_gto_action
+    fam = normalize_gto_action(a or '')
+    return 'allin' if fam == 'jam' else fam
+
+
+def _match_strategy_entries(player_action: str, strategy: list) -> list:
+    """Entradas da estratégia que correspondem à ação jogada, por FAMÍLIA de ação.
+
+    Um shove (allin) é um raise/bet no maior sizing — quando a árvore não tem
+    ação allin explícita, casa com as ações 'raise' (facing bet) ou, na falta,
+    'bet'. Sem isso, shove vs árvore com raise_103pct dava freq 0 → gto_critical
+    mesmo quando o hand-view dizia raise 100% (bug do full house no river).
+    """
+    played = _action_family(player_action)
+    fams = [(s, _action_family(s.get('action', ''))) for s in strategy]
+    exact = [s for s, f in fams if f == played]
+    if exact or played != 'allin':
+        return exact
+    for fallback in ('raise', 'bet'):
+        hits = [s for s, f in fams if f == fallback]
+        if hits:
+            return hits
+    return []
+
+
 def _gto_action_matches(player_action: str, gto_action: str) -> bool:
     """Verifica se a ação do jogador corresponde à ação GTO primária."""
     p = _norm_gto_action(player_action)
@@ -91,18 +119,14 @@ def _gto_classify_from_strategy(player_action: str, strategy: list) -> tuple:
 
     Retorna (gto_label, played_freq).
     """
-    played_norm = _norm_gto_action(player_action)
-    played_freq = 0.0
-    played_ev: float | None = None
-
-    for s in strategy:
-        act  = _norm_gto_action(s.get('action', ''))
-        freq = float(s.get('frequency') or 0.0)
-        if act == played_norm or played_norm.startswith(act) or act.startswith(played_norm):
-            if freq > played_freq:
-                played_freq = freq
-                ev = s.get('ev_bb')
-                played_ev = float(ev) if ev is not None else None
+    matched = _match_strategy_entries(player_action, strategy)
+    played_freq = max((float(s.get('frequency') or 0.0) for s in matched), default=0.0)
+    # EV da ação jogada: melhor EV entre as entradas casadas — INCLUSIVE freq 0.
+    # O matcher antigo só registrava EV quando freq > 0; uma ação com freq 0.0 e
+    # ev_diff pequeno (ex.: check 0% mas -0.25bb) caía em ev_diff=None →
+    # gto_critical indevido (bug dos labels inconsistentes do torneio 388).
+    _evs = [float(s['ev_bb']) for s in matched if s.get('ev_bb') is not None]
+    played_ev: float | None = max(_evs) if _evs else None
 
     # EV diff vs top action (positivo = jogador perdeu EV)
     ev_diff: float | None = None
@@ -388,17 +412,39 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
         hand_strategy = None
         if hand_view and hand_view.get('actions'):
             hand_strategy = [
-                {'action': a, 'frequency': v['frequency'], 'ev_bb': v['ev_bb']}
+                {'action': a, 'frequency': v['frequency'], 'ev_bb': v['ev_bb'],
+                 'ev_loss_bb': v['ev_loss_bb']}
                 for a, v in hand_view['actions'].items()
             ]
             hand_strategy.sort(key=lambda s: s['frequency'], reverse=True)
-            # EV loss da ação JOGADA (bb): melhor EV da mão − EV da ação escolhida
-            _played = _norm_gto_action(player_action)
-            for a, v in hand_view['actions'].items():
-                an = _norm_gto_action(a)
-                if an == _played or an.startswith(_played) or _played.startswith(an):
-                    if ev_loss_bb is None or v['ev_loss_bb'] < ev_loss_bb:
-                        ev_loss_bb = v['ev_loss_bb']
+            # EV loss da ação JOGADA (bb): melhor EV da mão − EV da ação escolhida.
+            # Mesmo matcher por família da classificação (shove casa raise/bet).
+            for s in _match_strategy_entries(player_action, hand_strategy):
+                if ev_loss_bb is None or s['ev_loss_bb'] < ev_loss_bb:
+                    ev_loss_bb = s['ev_loss_bb']
+
+        # Veredito hand-aware TAMBÉM para a ação recomendada: quando a tabela por
+        # mão existe, gto_action/gto_freq são da MÃO DO HERO — não do agregado da
+        # range. Servir o agregado aqui dizia "GTO: fold" para um shove com a
+        # wheel (a RANGE folda 65%, mas A2 especificamente dá call 100%) e gerava
+        # pares incoerentes action_taken == gto_action com gto_label=gto_critical.
+        if hand_strategy:
+            from leaklab.gto_utils import normalize_gto_action
+            top_action = normalize_gto_action(hand_strategy[0]['action'])
+            top_freq   = hand_strategy[0]['frequency']
+
+        # Guard: ação agressiva FORA da árvore solvada. Algumas árvores não têm
+        # branch de raise (só fold/call) — um shove aí não é gradeável: freq 0 não
+        # significa "GTO nunca faz", significa "a árvore nunca OFERECEU". Cai no
+        # heurístico em vez de carimbar gto_critical (bug do shove com a wheel).
+        _grade_strategy = hand_strategy or strategy
+        if (_grade_strategy
+                and _action_family(player_action) in ('bet', 'raise', 'allin')
+                and not _match_strategy_entries(player_action, _grade_strategy)):
+            _log_gto_miss('postflop', street, position,
+                          f'ação {player_action!r} fora da árvore '
+                          f'({[s["action"] for s in _grade_strategy]})')
+            return {'available': False, 'ungradeable_action': True}
 
         # Classificação: mão específica (Fase 3) > frequência da range > top action
         if hand_strategy:
@@ -805,6 +851,19 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         if _norm_gto_action(input_data["player_action"]) == _norm_gto_action(_best_action):
             label = 'standard'
             final_score = 0.0
+
+    # Guard: mão MONSTRO (quads/boat/flush/straight/set) jogada agressivamente SEM
+    # veredito do solver. O estimador heurístico de equity não enxerga mão feita
+    # (a wheel A2 em 4-3-J-5 era avaliada como "OESD, 29%") e punia o shove por
+    # valor como small/clear mistake. Bet/raise por valor com monstro é, no pior
+    # caso, questão de sizing — cap em 'marginal'. Quando há veredito GTO, ele manda.
+    if (street != 'preflop' and not gto.get('available')
+            and _action_family(input_data["player_action"]) in ('bet', 'raise', 'allin')
+            and label in ('small_mistake', 'clear_mistake')):
+        from leaklab.bet_intent import is_monster_hand
+        if is_monster_hand(input_data.get('hero_cards'), spot.get('board')):
+            label = 'marginal'
+            final_score = min(final_score, 0.18)
 
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
 

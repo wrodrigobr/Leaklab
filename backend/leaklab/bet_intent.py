@@ -31,6 +31,43 @@ def _rv(r) -> int:
     return _RANKS.index(r) + 2 if r in _RANKS else 0
 
 
+def is_monster_hand(hero_cards, board) -> bool:
+    """Mão MONSTRO do herói: quads / full house / flush (herói) / straight (herói) /
+    set-trips. Subconjunto do tier 'value' de made_hand_category — usado pelo engine
+    como guard de sanidade (apostar/raisar monstro por valor nunca é erro grave)."""
+    hr = [_rv(r) for r in _ranks_of(hero_cards)]
+    br = [_rv(r) for r in _ranks_of(board)]
+    hs = _suits_of(hero_cards)
+    bs = _suits_of(board)
+    if not hr or not br:
+        return False
+    all_rv = hr + br
+    from collections import Counter
+    rank_cnt = Counter(all_rv)
+    sorted_cnt = sorted(rank_cnt.values(), reverse=True)
+
+    # quads / full house
+    if sorted_cnt and sorted_cnt[0] >= 4:
+        return True
+    if len(sorted_cnt) >= 2 and sorted_cnt[0] >= 3 and sorted_cnt[1] >= 2:
+        return True
+    # flush com carta do herói
+    all_sv = hs + bs
+    for s in set(all_sv):
+        if all_sv.count(s) >= 5 and hs.count(s) >= 1:
+            return True
+    # straight com carta do herói (Ace low incluso)
+    uniq = sorted(set(all_rv) | ({1} if 14 in all_rv else set()))
+    for i in range(len(uniq) - 4):
+        w = uniq[i:i + 5]
+        if w[4] - w[0] == 4 and len(set(w)) == 5 and any((h == 14 and 1 in w) or h in w for h in hr):
+            return True
+    # set / trips
+    if any(rank_cnt.get(h, 0) >= 3 for h in set(hr)):
+        return True
+    return False
+
+
 def made_hand_category(hero_cards, board) -> str:
     """Tier de força da mão FEITA do herói (não conta draws): 'value' | 'middle' | 'air'.
     Espelha a lógica do academy._hand_bucket, mas separa o bucket-3 (two-pair/overpair/set =
@@ -42,31 +79,15 @@ def made_hand_category(hero_cards, board) -> str:
     """
     hr = [_rv(r) for r in _ranks_of(hero_cards)]
     br = [_rv(r) for r in _ranks_of(board)]
-    hs = _suits_of(hero_cards)
-    bs = _suits_of(board)
     if not hr or not br:
         return 'air'
     all_rv = hr + br
     from collections import Counter
     rank_cnt = Counter(all_rv)
-    sorted_cnt = sorted(rank_cnt.values(), reverse=True)
 
     # Monster: quads / full house / flush (herói) / straight (herói) / set
-    if sorted_cnt and sorted_cnt[0] >= 4:
+    if is_monster_hand(hero_cards, board):
         return 'value'
-    if len(sorted_cnt) >= 2 and sorted_cnt[0] >= 3 and sorted_cnt[1] >= 2:
-        return 'value'
-    all_sv = hs + bs
-    for s in set(all_sv):
-        if all_sv.count(s) >= 5 and hs.count(s) >= 1:
-            return 'value'
-    uniq = sorted(set(all_rv) | ({1} if 14 in all_rv else set()))
-    for i in range(len(uniq) - 4):
-        w = uniq[i:i + 5]
-        if w[4] - w[0] == 4 and len(set(w)) == 5 and any((h == 14 and 1 in w) or h in w for h in hr):
-            return 'value'
-    if any(rank_cnt.get(h, 0) >= 3 for h in set(hr)):
-        return 'value'                                  # set / trips
 
     # Dois pares REAIS do herói: ele precisa segurar carta em ≥2 pares distintos.
     # (Par totalmente no board — ex. KK em K-Q-K — é compartilhado: não conta pro herói.)
