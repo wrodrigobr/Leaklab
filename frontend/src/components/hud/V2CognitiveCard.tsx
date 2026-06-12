@@ -22,13 +22,24 @@ function SeverityIcon({ severity }: { severity: string }) {
   return <Info className={cls} style={{ color }} />;
 }
 
-function PatternRow({ pattern }: { pattern: CognitivePattern }) {
+function PatternRow({ pattern, maxFreq, dominant = false }: { pattern: CognitivePattern; maxFreq: number; dominant?: boolean }) {
   const { t } = useTranslation("dashboard");
-  const barWidth = Math.min(100, Math.round(pattern.frequency * 200));
+  // Escala RELATIVA ao padrão mais frequente (o antigo freq*200 desenhava 60% de
+  // barra para 30% de frequência — escala invisível ao usuário, mentira visual).
+  const barWidth = Math.max(4, Math.round((pattern.frequency / (maxFreq || 1)) * 100));
   const sev = SEVERITY[pattern.severity] ?? SEVERITY.low;
 
   return (
-    <div className="space-y-1.5">
+    <div className={dominant
+      ? "space-y-1.5 rounded-lg px-3 py-2.5"
+      : "space-y-1.5"}
+      style={dominant ? { background: `${sev.color}0d`, borderColor: sev.color, boxShadow: `inset 0 0 0 1px ${sev.color}40` } : undefined}
+    >
+      {dominant && (
+        <div className="font-mono text-[9px] uppercase tracking-widest" style={{ color: sev.color }}>
+          {t("v2.cogDominant")}
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <SeverityIcon severity={pattern.severity} />
@@ -91,11 +102,20 @@ export function V2CognitiveCard({ data }: { data: CognitiveFailureData }) {
         </span>
       </div>
 
-      <div className="space-y-4">
-        {data.patterns.map((p) => (
-          <PatternRow key={p.type} pattern={p} />
-        ))}
-      </div>
+      {(() => {
+        const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
+        const ordered = [...data.patterns].sort(
+          (a, b) => (sevRank[a.severity] ?? 3) - (sevRank[b.severity] ?? 3) || b.frequency - a.frequency
+        );
+        const maxFreq = Math.max(...ordered.map((p) => p.frequency), 0.01);
+        return (
+          <div className="space-y-4">
+            {ordered.map((p, i) => (
+              <PatternRow key={p.type} pattern={p} maxFreq={maxFreq} dominant={i === 0} />
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }

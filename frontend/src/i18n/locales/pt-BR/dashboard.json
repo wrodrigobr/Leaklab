@@ -427,7 +427,12 @@
     "already": "Já atingido",
     "perMonth": "{{n}} torneios/mês",
     "analyzedCount": "{{n}} torneios analisados",
-    "projection": "Projeção"
+    "projection": "Projeção",
+    "allTime": "Histórico",
+    "recentForm": "Forma recente",
+    "allTimeRating": "Rating histórico",
+    "recentRating": "Rating recente",
+    "toNext": "{{n}} pra {{band}}"
   },
   "cognitiveFailure": {
     "tooltip": "Detecta padrões emocionais que afetam a qualidade das suas decisões em sequência — por exemplo, jogar agressivamente demais logo após dobrar várias mãos seguidas. Identificar o gatilho é o primeiro passo para corrigi-lo.",
@@ -529,6 +534,8 @@
     "causalEpicenterDesc": "conectado a {{n}} outros leaks — corrigir este derruba a cadeia",
     "causalTogether": "juntos em {{n}} mãos",
     "causalSpot": "{{action}} no {{street}}",
-    "causalConclusion": "O que isto significa: seus erros não acontecem isolados — \"{{a}}\" e \"{{b}}\" apareceram nas mesmas mãos {{n}} vezes, sinal de que um desencadeia o outro. O ponto de maior alavancagem é \"{{epi}}\": está ligado a {{deg}} outros leaks, e corrigi-lo tende a derrubar a cadeia inteira."
+    "causalConclusion": "O que isto significa: seus erros não acontecem isolados — \"{{a}}\" e \"{{b}}\" apareceram nas mesmas mãos {{n}} vezes, sinal de que um desencadeia o outro. O ponto de maior alavancagem é \"{{epi}}\": está ligado a {{deg}} outros leaks, e corrigi-lo tende a derrubar a cadeia inteira.",
+    "careerDelta": "{{delta}} vs histórico",
+    "cogDominant": "Padrão dominante"
   }
 }

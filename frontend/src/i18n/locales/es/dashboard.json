@@ -427,7 +427,12 @@
     "already": "Ya alcanzado",
     "perMonth": "{{n}} torneos/mes",
     "analyzedCount": "{{n}} torneos analizados",
-    "projection": "Proyección"
+    "projection": "Proyección",
+    "allTime": "Histórico",
+    "recentForm": "Forma reciente",
+    "allTimeRating": "Rating histórico",
+    "recentRating": "Rating reciente",
+    "toNext": "{{n}} para {{band}}"
   },
   "cognitiveFailure": {
     "tooltip": "Detecta patrones emocionales que afectan la calidad de decisiones en secuencia — por ejemplo, volverse demasiado agresivo justo después de doblar varias manos seguidas. Identificar el gatillo es el primer paso para corregirlo.",
@@ -529,6 +534,8 @@
     "causalEpicenterDesc": "conectado a {{n}} otros leaks — corregir este rompe la cadena",
     "causalTogether": "juntos en {{n}} manos",
     "causalSpot": "{{action}} en el {{street}}",
-    "causalConclusion": "Qué significa esto: tus errores no ocurren aislados — \"{{a}}\" y \"{{b}}\" aparecieron en las mismas manos {{n}} veces, señal de que uno desencadena el otro. El punto de mayor palanca es \"{{epi}}\": está ligado a {{deg}} otros leaks, y corregirlo tiende a derribar toda la cadena."
+    "causalConclusion": "Qué significa esto: tus errores no ocurren aislados — \"{{a}}\" y \"{{b}}\" aparecieron en las mismas manos {{n}} veces, señal de que uno desencadena el otro. El punto de mayor palanca es \"{{epi}}\": está ligado a {{deg}} otros leaks, y corregirlo tiende a derribar toda la cadena.",
+    "careerDelta": "{{delta}} vs histórico",
+    "cogDominant": "Patrón dominante"
   }
 }

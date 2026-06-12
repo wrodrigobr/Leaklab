@@ -427,7 +427,12 @@
     "already": "Already reached",
     "perMonth": "{{n}} tournaments/month",
     "analyzedCount": "{{n}} tournaments analyzed",
-    "projection": "Projection"
+    "projection": "Projection",
+    "allTime": "All-time",
+    "recentForm": "Recent form",
+    "allTimeRating": "All-time rating",
+    "recentRating": "Recent rating",
+    "toNext": "{{n}} to {{band}}"
   },
   "cognitiveFailure": {
     "tooltip": "Detects emotional patterns that affect sequential decision quality — for example, becoming overly aggressive right after folding several hands in a row. Identifying the trigger is the first step to correcting it.",
@@ -529,6 +534,8 @@
     "causalEpicenterDesc": "connected to {{n}} other leaks — fixing this one breaks the chain",
     "causalTogether": "together in {{n}} hands",
     "causalSpot": "{{action}} on the {{street}}",
-    "causalConclusion": "What this means: your mistakes don't happen in isolation — \"{{a}}\" and \"{{b}}\" showed up in the same hands {{n}} times, a sign one triggers the other. The highest-leverage point is \"{{epi}}\": it's linked to {{deg}} other leaks, and fixing it tends to bring the whole chain down."
+    "causalConclusion": "What this means: your mistakes don't happen in isolation — \"{{a}}\" and \"{{b}}\" showed up in the same hands {{n}} times, a sign one triggers the other. The highest-leverage point is \"{{epi}}\": it's linked to {{deg}} other leaks, and fixing it tends to bring the whole chain down.",
+    "careerDelta": "{{delta}} vs all-time",
+    "cogDominant": "Dominant pattern"
   }
 }

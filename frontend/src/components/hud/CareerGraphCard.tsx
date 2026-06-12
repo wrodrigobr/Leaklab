@@ -235,7 +235,7 @@ export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Pro
                          style={{ width: `${elo.next_band.progress * 100}%`, background: elo.overall.band_color }} />
                   </div>
                   <span className="font-mono text-[9px] text-muted-foreground">
-                    {elo.next_band.elo_to_go.toFixed(0)} pra {elo.next_band.label}
+                    {t("career.toNext", { n: elo.next_band.elo_to_go.toFixed(0), band: elo.next_band.label })}
                   </span>
                 </div>
               )}
@@ -251,7 +251,7 @@ export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Pro
           <div className="space-y-1">
             <EloMiniCurve points={curve.recent.map(p => p.elo)} color={elo?.overall.band_color ?? "hsl(var(--primary))"} />
             <span className="font-mono text-[9px] text-muted-foreground">
-              Rating recente
+              {t("career.recentRating")}
             </span>
           </div>
         ) : data.series_history && data.series_history.length > 1 ? (
@@ -279,11 +279,36 @@ export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Pro
           const AllIcon = LEVEL_ICONS[allBand.label];
           const recBand = elo.overall;
           const RecIcon = LEVEL_ICONS[recBand.band_label];
+          // V2: o bloco hero do topo JÁ É a forma recente (mesmo número + mesma
+          // barra) — repetir num box é duplicação. Vira uma linha compacta só com
+          // o histórico + delta da forma vs ele. Clássico mantém os dois boxes.
+          if (v2) {
+            const delta = Math.round(recBand.elo - allTimeElo);
+            return (
+              <div className="flex items-center justify-between gap-3 rounded-lg ring-1 ring-border/60 bg-background/40 px-3 py-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground shrink-0">
+                    {t("career.allTime")}
+                  </span>
+                  {AllIcon && <AllIcon size={14} className="shrink-0" />}
+                  <span className="font-mono text-sm font-bold tabular-nums" style={{ color: allBand.color }}>
+                    {allTimeElo.toFixed(0)}
+                  </span>
+                  <span className="font-mono text-[10px]" style={{ color: allBand.color }}>{allBand.label}</span>
+                </div>
+                <span className={`font-mono text-[10px] font-bold tabular-nums shrink-0 ${
+                  delta >= 0 ? "text-emerald-400" : "text-red-400"
+                }`}>
+                  {t("v2.careerDelta", { delta: `${delta >= 0 ? "+" : ""}${delta}` })}
+                </span>
+              </div>
+            );
+          }
           return (
             <div className="grid grid-cols-2 gap-3">
               {/* Histórico */}
               <div className="rounded-lg border border-border bg-background p-3 space-y-1.5">
-                <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Histórico</p>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("career.allTime")}</p>
                 <div className="flex items-center gap-1.5">
                   {AllIcon && <AllIcon size={16} className="shrink-0" />}
                   <span className="font-mono text-sm font-bold" style={{ color: allBand.color }}>{allBand.label}</span>
@@ -291,11 +316,11 @@ export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Pro
                 <p className="font-mono text-lg font-bold tabular-nums" style={{ color: allBand.color }}>
                   {allTimeElo.toFixed(0)} <span className="text-[9px] text-muted-foreground font-normal">ELO</span>
                 </p>
-                <p className="font-mono text-[9px] text-muted-foreground/60">Rating histórico</p>
+                <p className="font-mono text-[9px] text-muted-foreground/60">{t("career.allTimeRating")}</p>
               </div>
               {/* Forma recente */}
               <div className="rounded-lg border border-border bg-background p-3 space-y-1.5">
-                <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Forma recente</p>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("career.recentForm")}</p>
                 <div className="flex items-center gap-1.5">
                   {RecIcon && <RecIcon size={16} className="shrink-0" />}
                   <span className="font-mono text-sm font-bold" style={{ color: recBand.band_color }}>{recBand.band_label}</span>
@@ -310,11 +335,11 @@ export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Pro
                            style={{ width: `${elo.next_band.progress * 100}%`, background: recBand.band_color }} />
                     </div>
                     <p className="font-mono text-[9px] text-muted-foreground/70">
-                      {elo.next_band.elo_to_go.toFixed(0)} pra {elo.next_band.label}
+                      {t("career.toNext", { n: elo.next_band.elo_to_go.toFixed(0), band: elo.next_band.label })}
                     </p>
                   </>
                 ) : (
-                  <p className="font-mono text-[9px] text-muted-foreground/60">Rating recente</p>
+                  <p className="font-mono text-[9px] text-muted-foreground/60">{t("career.recentRating")}</p>
                 )}
               </div>
             </div>
