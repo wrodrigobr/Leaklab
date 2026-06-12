@@ -1292,17 +1292,36 @@ def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
 
     top_action = row.get('gto_action') or row.get('best_action') or 'fold'
     strat = {}
+    source = 'gto_stored'   # decisions.gto_action sem nó vivo
     if node:
-        if node.get('strategy_json'):
+        # Hand-aware primeiro (gotcha das frequências agregadas): num K72r a range
+        # checa 60% mas AA aposta 95% — validar pela range daria "correto" indevido.
+        # Quando a árvore por mão existe (gto_tree_strategies), usa a frequência
+        # DA MÃO do hero; agregado é fallback.
+        hand_view = None
+        if node.get('tree_hash') and hero_hand and street != 'preflop':
+            try:
+                from leaklab.gto_solver import hand_view_for_spot
+                hand_view = hand_view_for_spot(node['tree_hash'], board_for_hash, hero_hand)
+            except Exception:
+                hand_view = None
+        if hand_view and hand_view.get('actions'):
+            strat = {a: {'frequency': v.get('frequency', 0)} for a, v in hand_view['actions'].items()}
+            top_action = max(strat, key=lambda k: strat[k].get('frequency', 0))
+            source = 'gto_hand'
+        elif node.get('strategy_json'):
             try:
                 strat = _j.loads(node['strategy_json'])
                 top_action = max(strat, key=lambda k: strat[k].get('frequency', 0))
+                source = 'gto_range'
             except Exception:
                 strat = {}
                 if node.get('gto_action'):
                     top_action = node['gto_action']
+                    source = 'gto_range'
         elif node.get('gto_action'):
             top_action = node['gto_action']
+            source = 'gto_range'
 
     def _norm_action(raw: str) -> str:
         raw = (raw or '').lower()
@@ -1334,7 +1353,7 @@ def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
                 freqs[_na] = freqs.get(_na, 0.0) + float((_info or {}).get('frequency', 0) or 0)
             except Exception:
                 pass
-        return a, freqs
+        return a, freqs, source
     return a
 
 
@@ -1371,8 +1390,9 @@ def player_drill_submit():
     # Usa live GTO node lookup quando cobertura GTO disponível (mesmo pipeline do Replayer).
     # Evita erros por decisions.gto_action desatualizado ou hash match incorreto.
     gto_freqs: dict = {}
+    validation_source = 'heuristic'   # sem cobertura GTO: gradeia vs best_action do engine
     if gto_action and gto_label not in ('wizard_pending', ''):
-        best_action, gto_freqs = _resolve_best_action_from_node(row, return_strategy=True)
+        best_action, gto_freqs, validation_source = _resolve_best_action_from_node(row, return_strategy=True)
     else:
         best_action = _norm_drill(best_action)
         # Guard: raise sem aposta anterior é semanticamente "bet"
@@ -1392,7 +1412,7 @@ def player_drill_submit():
     facing_bet = float(row.get('facing_bet') or 0)
     stack_bb   = float(row.get('stack_bb') or 9999)
     call_jam_equiv = False
-    if not top_match and facing_bet > 0 and stack_bb > 0 and facing_bet >= stack_bb * 0.95:
+    if not top_match and facing_bet > 0 and stack_bb > 0 and facing_bet >= stack_bb * 0.90:
         if norm_new in ('call', 'jam') and best_action in ('call', 'jam'):
             call_jam_equiv = True
 
@@ -1449,6 +1469,7 @@ def player_drill_submit():
         'mixed':             is_mixed_line,
         'gto_tier':          gto_tier,
         'gto_strategy':      gto_strategy,
+        'validation_source': validation_source,   # gto_hand | gto_range | gto_stored | heuristic
         'delta':             result['delta'],
         'next_drill_at':     result['next_drill_at'],
         'srs_interval_days': result['srs_interval_days'],

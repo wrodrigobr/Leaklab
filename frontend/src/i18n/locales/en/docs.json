@@ -270,7 +270,9 @@
     "p5": "<strong>Pressure Mode</strong> adds a 30-second countdown per decision. When the timer reaches zero, a fold is automatically recorded and the hit streak resets. The streak is shown with a 🔥 badge during the session and on the final summary.",
     "result_hit": "Hit",
     "result_miss": "Miss",
-    "result_mastery": "Mastery"
+    "result_mastery": "Mastery",
+    "validation": "Every answer is validated against the GTO Solver. When your exact hand's analysis exists, grading uses ITS strategy (\"Solver · your hand\" badge); otherwise the range strategy for the spot (\"Solver · range\"). Without solver coverage, validation falls back to the engine heuristic — and the amber badge makes that explicit. Plays inside the solver's mix count as correct (mixed line); outside the mix, error.",
+    "variety": "Spots come from YOUR mistakes (not random hands), prioritized by severity and spaced repetition (SRS) — and each session varies spot types so you don't repeat the same situation ten times."
   },
   "compare": {
     "title": "Tournament Comparison",
@@ -508,6 +510,7 @@
     "phase_summary": "Summary",
     "phase_summary_desc": "After all decisions: overall accuracy, per-decision outcome summary, and a button to play a new hand.",
     "p2": "The auto-selected hand contains one of your worst mistakes in the last 90 days, preferring hands with multiple decisions to form a full narrative arc (preflop → flop → turn/river). Each new session sets aside already-played hands until you have worked through the rest.",
-    "p3": "Every answer adjusts when you'll see the spot again (spaced repetition): correct answers advance the review interval [3, 7, 14, 28, 60 days] and wrong answers reset it to 3 days. <strong>Sparring integrates directly with the Ghost Table</strong> — the same spots appear in both modes as the review is scheduled."
+    "p3": "Every answer adjusts when you'll see the spot again (spaced repetition): correct answers advance the review interval [3, 7, 14, 28, 60 days] and wrong answers reset it to 3 days. <strong>Sparring integrates directly with the Ghost Table</strong> — the same spots appear in both modes as the review is scheduled.",
+    "validation": "Sparring hands are your real hands with full solver coverage — prioritizing those containing one of your mistakes. Each play is validated with the same standard as Ghost Table, with the badge showing the source (your hand, range, or heuristic)."
   }
 }

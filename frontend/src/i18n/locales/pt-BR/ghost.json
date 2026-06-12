@@ -96,5 +96,11 @@
     "timedOut": "Tempo esgotado — fold automático",
     "streakLabel": "Streak final"
   },
-  "backToTraining": "Treino"
+  "backToTraining": "Treino",
+  "valSource": {
+    "gto_hand": "Solver · sua mão",
+    "gto_range": "Solver · range",
+    "gto_stored": "Solver",
+    "heuristic": "Heurística — sem solver"
+  }
 }

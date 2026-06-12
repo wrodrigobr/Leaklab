@@ -270,7 +270,9 @@
     "p5": "El <strong>Modo Presión</strong> agrega un cronómetro de 30 segundos por decisión. Cuando el tiempo llega a cero, se registra un fold automáticamente y el streak de aciertos se reinicia. El streak se muestra con un sello 🔥 durante la sesión y en el resumen final.",
     "result_hit": "Acierto",
     "result_miss": "Error",
-    "result_mastery": "Mastery"
+    "result_mastery": "Mastery",
+    "validation": "Cada respuesta se valida contra el GTO Solver. Cuando existe el análisis de tu mano exacta, la corrección usa SU estrategia (sello \"Solver · tu mano\"); si no, la estrategia de la range para el spot (\"Solver · range\"). Sin cobertura del solver, la validación es heurística del engine — y el sello ámbar lo deja explícito. Jugadas dentro del mix del solver cuentan como correctas (línea mixta); fuera del mix, error.",
+    "variety": "Los spots vienen de TUS errores (no manos aleatorias), priorizados por severidad y repetición espaciada (SRS) — y cada sesión varía los tipos de spot para que no repitas la misma situación diez veces."
   },
   "compare": {
     "title": "Comparativo de Torneos",
@@ -508,6 +510,7 @@
     "phase_summary": "Resumen",
     "phase_summary_desc": "Al finalizar todas las decisiones: precisión global, resumen por decisión con resultado, botón para jugar una nueva mano.",
     "p2": "La mano autoseleccionada contiene uno de tus peores errores de los últimos 90 días, priorizando manos con varias decisiones para formar un arco narrativo completo (preflop → flop → turn/river). En cada nueva sesión, las manos ya jugadas se dejan de lado hasta que pases por las demás.",
-    "p3": "Cada respuesta ajusta cuándo verás el spot de nuevo (repetición espaciada): los aciertos avanzan el intervalo de revisión [3, 7, 14, 28, 60 días] y los errores lo reinician en 3 días. El <strong>Sparring se integra directamente con el Ghost Table</strong> — los mismos spots aparecen en ambos modos según se programe la revisión."
+    "p3": "Cada respuesta ajusta cuándo verás el spot de nuevo (repetición espaciada): los aciertos avanzan el intervalo de revisión [3, 7, 14, 28, 60 días] y los errores lo reinician en 3 días. El <strong>Sparring se integra directamente con el Ghost Table</strong> — los mismos spots aparecen en ambos modos según se programe la revisión.",
+    "validation": "Las manos del Sparring son tus manos reales con cobertura completa del solver — priorizando las que contienen un error tuyo. Cada jugada se valida con el mismo estándar del Ghost Table, con el sello indicando la fuente (tu mano, range o heurística)."
   }
 }

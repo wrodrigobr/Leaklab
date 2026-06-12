@@ -553,6 +553,8 @@ export default function Docs() {
             <Section id="ghost" title={t("ghost.title")}>
               <p dangerouslySetInnerHTML={{ __html: t("ghost.p1") }} />
               <p>{t("ghost.p2")}</p>
+              <p>{t("ghost.variety")}</p>
+              <p>{t("ghost.validation")}</p>
               <Table
                 headers={[t("ghost.col_result"), t("ghost.col_next")]}
                 rows={[
@@ -709,6 +711,7 @@ export default function Docs() {
             {/* Sparring Mode */}
             <Section id="sparring" title={t("sparring.title")}>
               <p dangerouslySetInnerHTML={{ __html: t("sparring.p1") }} />
+              <p>{t("sparring.validation")}</p>
               <Table
                 headers={[t("sparring.col_phase"), t("sparring.col_desc")]}
                 rows={[

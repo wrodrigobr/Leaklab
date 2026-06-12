@@ -969,7 +969,10 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
         params = [user_id, user_id, now_str]
         if street: params.append(street)
         if spot:   params.append(spot)
-        params.append(limit)
+        # Busca 3x candidatos: a diversificação (máx 2 por grupo street/ação) é
+        # aplicada em Python preservando a ordem SRS — evita sessão monótona com
+        # 10 repetições do mesmo tipo de spot.
+        params.append(limit * 3)
 
         rows = conn.execute(_adapt(f"""
             SELECT
@@ -1007,6 +1010,28 @@ def get_drill_spots(user_id: int, limit: int = 10, street: str = None, spot: str
                 d.score DESC
             LIMIT ?
         """), params).fetchall()
+
+        # Diversificação: na 1ª passada cada grupo (street, best_action) entra no
+        # máximo 2x; se não encher o lote, a 2ª passada completa sem o teto.
+        if not spot:
+            picked, seen_groups = [], {}
+            for row in rows:
+                grp = (row['street'], row['best_action'])
+                if seen_groups.get(grp, 0) < 2:
+                    picked.append(row)
+                    seen_groups[grp] = seen_groups.get(grp, 0) + 1
+                if len(picked) >= limit:
+                    break
+            if len(picked) < limit:
+                chosen_ids = {r['id'] for r in picked}
+                for row in rows:
+                    if row['id'] not in chosen_ids:
+                        picked.append(row)
+                        if len(picked) >= limit:
+                            break
+            rows = picked
+        else:
+            rows = rows[:limit]
 
         now = datetime.utcnow()
         result = []
@@ -1899,20 +1924,25 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
             # Foco em spots 100% GTO: mãos em que TODA decisão tem gto_action.
             # Prioriza mãos com várias decisões (arco preflop→river) e randomiza.
             def _pick_gto_hand(min_decisions, qparams, clause):
+                # Leak-first: mãos que CONTÊM um erro GTO do jogador vêm antes
+                # (treinar os próprios leaks); RANDOM() dentro do grupo garante
+                # variedade — não é sempre a mesma mão de pior score.
                 return conn.execute(_adapt(f"""
                     SELECT sub.hand_id, sub.tournament_id
                     FROM (
                         SELECT d.hand_id, d.tournament_id,
                                COUNT(*) AS total,
                                SUM(CASE WHEN d.gto_action IS NOT NULL AND d.gto_action != ''
-                                        THEN 1 ELSE 0 END) AS covered
+                                        THEN 1 ELSE 0 END) AS covered,
+                               SUM(CASE WHEN d.gto_label IN ('gto_minor_deviation','gto_critical')
+                                        THEN 1 ELSE 0 END) AS mistakes
                         FROM decisions d
                         JOIN tournaments t ON t.id = d.tournament_id
                         WHERE t.user_id = ? {clause}
                         GROUP BY d.hand_id, d.tournament_id
                         HAVING total = covered AND total >= {int(min_decisions)}
                     ) sub
-                    ORDER BY RANDOM()
+                    ORDER BY CASE WHEN sub.mistakes > 0 THEN 0 ELSE 1 END ASC, RANDOM()
                     LIMIT 1
                 """), qparams).fetchone()
 

@@ -245,6 +245,11 @@ function CoachCard({ result, gtoData, gtoLoading, step, t }: CoachCardProps) {
       : { icon: "✗", label: t("result.wrong"),   cls: "text-destructive", borderCls: "border-destructive/40", hdrCls: "bg-destructive/5",  source: "Engine" };
   }
 
+  // Fonte real da validação (hand-aware > range > stored > heurística)
+  if (result.validation_source) {
+    verdict = { ...verdict, source: t(`valSource.${result.validation_source}`) };
+  }
+
   // ── Action comparison ─────────────────────────────────────────────────────
   const playedAction = result.new_action;
   const idealAction  = hasGto && gtoData

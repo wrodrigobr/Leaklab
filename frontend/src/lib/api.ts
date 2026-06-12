@@ -759,6 +759,8 @@ export interface DrillSubmitResult {
   mixed?: boolean;     // acerto numa linha mista co-ótima (não é a #1, freq ≥ 30%)
   gto_tier?: "correct" | "deviation" | "error";  // acerto / desvio defensável / erro
   gto_strategy?: GtoStrategyAction[];             // mix completo (% por ação) p/ o veredito
+  // origem do gabarito: solver hand-aware > range agregada > gto armazenado > heurística
+  validation_source?: "gto_hand" | "gto_range" | "gto_stored" | "heuristic";
 }
 
 export interface DrillAnalysisResult {

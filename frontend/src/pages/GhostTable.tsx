@@ -588,6 +588,16 @@ export default function GhostTable() {
                       </p>
                       {lastResult.mixed && <GtoMixedBadge label="gto_mixed" size="xs" />}
                       {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
+                      {lastResult.validation_source && (
+                        <span className={cn(
+                          "rounded-full px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider ring-1",
+                          lastResult.validation_source === "heuristic"
+                            ? "bg-amber-500/10 text-amber-400 ring-amber-500/30"
+                            : "bg-teal-400/10 text-teal-300 ring-teal-400/25"
+                        )}>
+                          {t(`valSource.${lastResult.validation_source}`)}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">{t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}</p>
                   </div>
@@ -973,6 +983,16 @@ export default function GhostTable() {
                 </p>
                 {lastResult.mixed && <GtoMixedBadge label="gto_mixed" size="xs" />}
                 {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
+                {lastResult.validation_source && (
+                  <span className={cn(
+                    "rounded-full px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider ring-1",
+                    lastResult.validation_source === "heuristic"
+                ? "bg-amber-500/10 text-amber-400 ring-amber-500/30"
+                : "bg-teal-400/10 text-teal-300 ring-teal-400/25"
+                  )}>
+                    {t(`valSource.${lastResult.validation_source}`)}
+                  </span>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 {t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}
