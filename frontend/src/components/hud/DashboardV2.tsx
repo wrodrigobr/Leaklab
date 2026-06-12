@@ -246,10 +246,10 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
           </section>
         )}
 
-        {/* ── HUD Stats (VPIP/PFR/…) — faixa completa, casca V2 ──────────── */}
-        {hasData && playerStats && playerStats.total_hands > 0 && (
-          <PlayerStatsCard stats={playerStats} v2 />
-        )}
+        {/* ── HUD Stats (VPIP/PFR/…) — faixa completa, casca V2. SEM gate por
+            total_hands: o card tem estado vazio próprio — esconder silenciosamente
+            quando a query atrasa fazia ele "sumir" do V2. ─────────────────── */}
+        {hasData && <PlayerStatsCard stats={playerStats} v2 />}
 
         {/* ── Cards existentes em ordem fixa (reuso via renderCard) ─────── */}
         {hasData && (

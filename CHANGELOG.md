@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(hud-stats): sempre visível no V2 + faixa completa na visão do coach ✅
+
+> Feedback do usuário: "o HUD precisa estar no V2... infos valiosas para o jogador E para o coach". Dois problemas reais: **(1) No V2** o card existia (onda 6) mas com gate `playerStats.total_hands > 0` — se a query atrasasse/falhasse, o card sumia SILENCIOSAMENTE (diferente do clássico, que sempre renderiza e deixa o componente mostrar o estado vazio). Gate removido: `hasData && <PlayerStatsCard v2 />` — visível sempre. **(2) Na visão do coach** (`StudentDetail`), o aluno aparecia com 8 pílulas cruas (StatPill) — sem faixas de referência MTT, sem cor de status, sem badge de confiança amostral, e faltando 4 stats (Fold vs Bet, BB Defense, Steal, Open Limp). Substituídas pela MESMA faixa completa `PlayerStatsCard v2` do dashboard do aluno — o coach lê na hora o que está fora da linha, com a mesma régua que o aluno vê. StatPill morto removido. Typecheck verde.
+
 ### feat(dashboard): mapa causal intuitivo no V2 — "quando você erra A, erra B junto" ✅
 
 > Feedback do usuário: o mapa causal (grafo circular SVG com nós e arestas) é confuso — linguagem de engenheiro, não de jogador. Novo `V2CausalMapCard` (V2-exclusivo; clássico mantém o grafo): **(1) Epicentro** — o leak mais conectado (maior degree, desempate por severidade/frequência) destacado num bloco teal: "conectado a N outros leaks — corrigir este derruba a cadeia"; **(2) Relações rankeadas** — as 5 conexões mais fortes como linhas "chip A → chip B" (chips com cor de severidade) + barra de força da correlação em % + "juntos em N mãos". Mesma informação do grafo (nodes/edges/correlation/co_occurrences), zero topologia pra decodificar. Sem narrativa (carrossel). i18n `v2.causal*` nas 3 locales. Typecheck verde; validação visual pendente do refresh do usuário (browser do preview degradou no ambiente — servidores ok).

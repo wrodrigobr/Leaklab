@@ -11,6 +11,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { formatAction } from "@/lib/utils";
 import { PlayingCard } from "@/components/hud/PlayingCard";
 import { LevelCard } from "@/components/hud/LevelCard";
+import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { coachDashboard, CoachTemplate, CoachMessage, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation, CoachOverrideLabel, ActivityEvent, ProgressReport } from "@/lib/api";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -29,15 +30,6 @@ const LABEL_COLOR: Record<string, string> = {
 const SCORE_COLOR = (s: number) =>
   s >= 80 ? "text-primary" : s >= 60 ? "text-amber-400" : "text-destructive";
 
-function StatPill({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-background px-4 py-3 text-center space-y-0.5">
-      <p className="font-mono text-[9px] font-bold uppercase tracking-widest-2 text-muted-foreground">{label}</p>
-      <p className="text-xl font-bold text-foreground">{value}</p>
-      {sub && <p className="font-mono text-[9px] text-muted-foreground">{sub}</p>}
-    </div>
-  );
-}
 
 // ── tabs ──────────────────────────────────────────────────────────────────────
 
@@ -127,19 +119,10 @@ function OverviewTab({ studentId }: { studentId: number }) {
       <div className="space-y-6 lg:col-span-8">
         {levelData?.level && <LevelCard data={levelData} compact showStudyLink={false} />}
 
-        {/* HUD stats */}
-        {s && (
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
-            <StatPill label="VPIP"  value={s.vpip  != null ? `${s.vpip}%`  : "—"} sub="Voluntário" />
-            <StatPill label="PFR"   value={s.pfr   != null ? `${s.pfr}%`   : "—"} sub="Preflop raise" />
-            <StatPill label="AF"    value={s.af     != null ? `${s.af}x`    : "—"} sub="Agressão" />
-            <StatPill label="3BET"  value={s.three_bet != null ? `${s.three_bet}%` : "—"} sub="Re-raise PF" />
-            <StatPill label="F3B"   value={s.fold_to_3bet != null ? `${s.fold_to_3bet}%` : "—"} sub="Fold to 3bet" />
-            <StatPill label="C-Bet" value={s.cbet_pct != null ? `${s.cbet_pct}%` : "—"} sub="C-bet flop" />
-            <StatPill label="WTSD"  value={s.wtsd   != null ? `${s.wtsd}%`  : "—"} sub="Vai a SD" />
-            <StatPill label="W$SD"  value={s.w_at_sd != null ? `${s.w_at_sd}%` : "—"} sub="Ganha SD" />
-          </div>
-        )}
+        {/* HUD stats — faixa completa (mesma do dashboard do aluno): 12 stats com
+            faixas de referência MTT, cor de status e badge de confiança amostral —
+            leitura instantânea pro coach do que está fora da linha. */}
+        {s && <PlayerStatsCard stats={s} v2 />}
 
         {/* Evolution chart */}
         {chartData.length > 0 && (
