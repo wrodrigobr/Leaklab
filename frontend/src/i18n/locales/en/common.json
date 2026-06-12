@@ -118,5 +118,9 @@
       "billing": "Billing / Subscription",
       "other": "Other"
     }
+  },
+  "messages": {
+    "button": "Messages",
+    "support": "Support"
   }
 }

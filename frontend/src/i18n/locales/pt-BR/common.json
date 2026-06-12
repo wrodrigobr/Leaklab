@@ -118,5 +118,9 @@
       "billing": "Cobrança / Assinatura",
       "other": "Outro"
     }
+  },
+  "messages": {
+    "button": "Mensagens",
+    "support": "Suporte"
   }
 }
