@@ -304,7 +304,7 @@
     "col_xp": "XP",
     "event_import": "Importar e analisar um torneio",
     "event_exercise": "Completar um exercício corretamente",
-    "event_drill": "Completar um drill no Ghost Table",
+    "event_drill": "Acertar um drill no Ghost Table (1× por dia por spot)",
     "event_mastery": "Atingir mastery em um spot",
     "levels_title": "Nível é calculado a partir do seu rating ELO (aderência GTO, forma recente):",
     "col_level": "Nível",

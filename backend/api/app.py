@@ -1459,7 +1459,28 @@ def player_drill_submit():
         new_score=new_score,
         original_score=original_score,
     )
+
+    # XP — drill_completed só na 1ª vez do dia por decisão (anti-farm);
+    # drill_mastered quando o SRS atinge o intervalo máximo pela 1ª vez.
+    xp_events = []
+    if is_correct and result.get('first_drill_today'):
+        xp_events.append('drill_completed')
+    if result.get('mastered_now'):
+        xp_events.append('drill_mastered')
+    xp_gained, xp_total, new_achievements = 0, None, []
+    for ev in xp_events:
+        xp_res = add_xp(g.user_id, ev)
+        xp_gained += xp_res.get('xp_gained', 0)
+        xp_total   = xp_res.get('xp_total', xp_total)
+        new_achievements.extend(xp_res.get('new_achievements', []))
+
     return jsonify({
+        'xp': {
+            'events':           xp_events,
+            'gained':           xp_gained,
+            'total':            xp_total,
+            'new_achievements': new_achievements,
+        },
         'is_correct':        is_correct,
         'best_action':       best_action,
         'new_action':        new_action,

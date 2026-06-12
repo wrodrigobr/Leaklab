@@ -1066,12 +1066,15 @@ def save_drill_session(user_id: int, decision_id: int, new_action: str,
     conn = get_conn()
     try:
         last = conn.execute(_adapt("""
-            SELECT srs_interval_days FROM drill_sessions
+            SELECT srs_interval_days, drilled_at FROM drill_sessions
             WHERE user_id = ? AND decision_id = ?
             ORDER BY drilled_at DESC LIMIT 1
         """), (user_id, decision_id)).fetchone()
 
         last_interval = (last['srs_interval_days'] or 3) if last else 3
+        # Anti-farm de XP: 1ª vez do dia (UTC, como drilled_at) por decisão.
+        today = datetime.utcnow().date().isoformat()
+        first_drill_today = not (last and str(last['drilled_at'] or '')[:10] == today)
 
         if is_correct:
             try:
@@ -1081,6 +1084,17 @@ def save_drill_session(user_id: int, decision_id: int, new_action: str,
                 new_interval = min(last_interval * 2, _SRS_INTERVALS[-1])
         else:
             new_interval = _SRS_INTERVALS[0]
+
+        # Mastered = atingiu o intervalo máximo do SRS pela 1ª vez nesta decisão
+        # (sessões antigas no teto bloqueiam re-grant — inclusive após reset por erro).
+        mastered_now = False
+        if new_interval == _SRS_INTERVALS[-1]:
+            prior_max = conn.execute(_adapt("""
+                SELECT 1 FROM drill_sessions
+                WHERE user_id = ? AND decision_id = ? AND srs_interval_days = ?
+                LIMIT 1
+            """), (user_id, decision_id, _SRS_INTERVALS[-1])).fetchone()
+            mastered_now = prior_max is None
 
         next_drill_at = (datetime.utcnow() + timedelta(days=new_interval)).isoformat()
 
@@ -1100,6 +1114,8 @@ def save_drill_session(user_id: int, decision_id: int, new_action: str,
             'is_correct':        is_correct,
             'next_drill_at':     next_drill_at,
             'srs_interval_days': new_interval,
+            'first_drill_today': first_drill_today,
+            'mastered_now':      mastered_now,
         }
     finally:
         conn.close()

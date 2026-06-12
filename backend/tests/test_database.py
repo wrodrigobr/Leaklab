@@ -351,6 +351,68 @@ def test_hall_of_fame():
     print("OK  test_hall_of_fame")
 
 
+# ── Drill XP — gates de gamificação (drill_completed / drill_mastered) ────────
+
+def _drill_decision():
+    _clean()
+    uid  = repo.create_user('drillx', 'drillx@t.com', 'p')
+    t_id = repo.save_tournament(uid, 'TDRILL', 'phpro', _metrics())
+    d = {'handId':'H1','street':'preflop','actionTaken':'call','bestAction':'fold',
+         'hero_cards':'AsKh','board':[],'draw_profile':'',
+         'evaluation':{'label':'clear_mistake','mistakeScore':.40,'scoreBreakdown':{'mathPenalty':.2,'rangePenalty':0}},
+         'context':{'icmPressure':'low','mRatio':12.0,'heroStackBb':30.0}}
+    repo.save_decisions(t_id, [d])
+    conn = sch.get_conn()
+    did = conn.execute("SELECT id FROM decisions WHERE tournament_id = ?", (t_id,)).fetchone()[0]
+    conn.close()
+    return uid, did
+
+
+def test_drill_first_today_gate():
+    uid, did = _drill_decision()
+    r1 = repo.save_drill_session(uid, did, 'fold', 0.02, 0.40)
+    assert r1['is_correct'] is True
+    assert r1['first_drill_today'] is True
+    assert r1['mastered_now'] is False
+    assert r1['srs_interval_days'] == 7
+    # 2º drill da mesma decisão no mesmo dia → gate anti-farm fecha
+    r2 = repo.save_drill_session(uid, did, 'fold', 0.02, 0.40)
+    assert r2['first_drill_today'] is False
+    print("OK  test_drill_first_today_gate")
+
+
+def test_drill_mastered_once_per_decision():
+    uid, did = _drill_decision()
+    conn = sch.get_conn()
+    # histórico simulado: drill de ontem já no penúltimo intervalo (28d)
+    conn.execute("INSERT INTO drill_sessions (user_id, decision_id, new_action, new_score, "
+                 "original_score, delta, drilled_at, srs_interval_days) "
+                 "VALUES (?,?,?,?,?,?,datetime('now','-1 day'),28)",
+                 (uid, did, 'fold', 0.02, 0.40, -0.38))
+    conn.commit(); conn.close()
+
+    r = repo.save_drill_session(uid, did, 'fold', 0.02, 0.40)
+    assert r['srs_interval_days'] == 60
+    assert r['mastered_now'] is True
+    assert r['first_drill_today'] is True   # último drill foi ontem
+
+    # acerto já no teto → não re-concede mastery
+    r2 = repo.save_drill_session(uid, did, 'fold', 0.02, 0.40)
+    assert r2['srs_interval_days'] == 60 and r2['mastered_now'] is False
+
+    # erro reseta o intervalo…
+    r3 = repo.save_drill_session(uid, did, 'call', 0.40, 0.40)
+    assert r3['srs_interval_days'] == 3 and r3['mastered_now'] is False
+    # …e nova subida ao teto também não re-concede (mastery é 1× por decisão)
+    conn = sch.get_conn()
+    conn.execute("UPDATE drill_sessions SET srs_interval_days = 28, drilled_at = datetime('now','-1 day') "
+                 "WHERE id = (SELECT MAX(id) FROM drill_sessions)")
+    conn.commit(); conn.close()
+    r4 = repo.save_drill_session(uid, did, 'fold', 0.02, 0.40)
+    assert r4['srs_interval_days'] == 60 and r4['mastered_now'] is False
+    print("OK  test_drill_mastered_once_per_decision")
+
+
 if __name__ == '__main__':
     tests = [(k,v) for k,v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

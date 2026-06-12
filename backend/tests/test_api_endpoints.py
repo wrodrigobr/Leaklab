@@ -645,6 +645,63 @@ def test_results_vs_gto_endpoint():
     print("OK  test_results_vs_gto_endpoint")
 
 
+def test_drill_submit_awards_xp():
+    """Gamificação: drill correto → drill_completed (25 XP, 1×/dia/decisão);
+    SRS no teto pela 1ª vez → drill_mastered (100 XP); first_drill destravado."""
+    client = _make_client()
+    token  = _register_and_login(client, 'dxp')
+    conn = schema.get_conn()
+    uid = conn.execute("SELECT id FROM users WHERE email=?", ('testdxp@api.com',)).fetchone()['id']
+    conn.execute("INSERT INTO tournaments (user_id, tournament_id, site, hero, imported_at) "
+                 "VALUES (?,?,?,?,datetime('now'))", (uid, 'TDXP', 'PokerStars', 'phpro'))
+    tid = conn.execute("SELECT id FROM tournaments WHERE tournament_id='TDXP'").fetchone()['id']
+    dids = []
+    for hid in ('hd1', 'hd2'):
+        cur = conn.execute(
+            "INSERT INTO decisions (tournament_id, hand_id, street, action_taken, best_action, label, "
+            "score, math_penalty, range_penalty, is_3bet, position, pot_size, facing_bet) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (tid, hid, 'preflop', 'call', 'fold', 'clear_mistake', 0.40, 0.2, 0, 0, 'CO', 6.0, 2.5))
+        dids.append(cur.lastrowid)
+    # hd2 já vem de histórico SRS: drill de ontem no penúltimo intervalo (28d)
+    conn.execute("INSERT INTO drill_sessions (user_id, decision_id, new_action, new_score, "
+                 "original_score, delta, drilled_at, srs_interval_days) "
+                 "VALUES (?,?,?,?,?,?,datetime('now','-1 day'),28)",
+                 (uid, dids[1], 'fold', 0.02, 0.40, -0.38))
+    conn.commit(); conn.close()
+
+    # 1º drill correto do dia → drill_completed + achievement first_drill
+    r = client.post('/player/spots/drill/submit',
+                    json={'decision_id': dids[0], 'new_action': 'fold'}, headers=_auth_headers(token))
+    assert r.status_code == 200, r.get_json()
+    d = r.get_json()
+    assert d['is_correct'] is True, d
+    assert d['xp']['events'] == ['drill_completed'], d['xp']
+    assert d['xp']['gained'] == 25, d['xp']
+    assert 'first_drill' in [a['key'] for a in d['xp']['new_achievements']], d['xp']
+
+    # mesma decisão no mesmo dia → anti-farm: sem novo XP
+    r2 = client.post('/player/spots/drill/submit',
+                     json={'decision_id': dids[0], 'new_action': 'fold'}, headers=_auth_headers(token))
+    d2 = r2.get_json()
+    assert d2['xp']['events'] == [] and d2['xp']['gained'] == 0, d2['xp']
+
+    # decisão que atinge o teto do SRS → drill_completed + drill_mastered (125 XP)
+    r3 = client.post('/player/spots/drill/submit',
+                     json={'decision_id': dids[1], 'new_action': 'fold'}, headers=_auth_headers(token))
+    d3 = r3.get_json()
+    assert d3['srs_interval_days'] == 60, d3
+    assert d3['xp']['events'] == ['drill_completed', 'drill_mastered'], d3['xp']
+    assert d3['xp']['gained'] == 125, d3['xp']
+
+    # XP total persistido no usuário (25 + 125)
+    conn = schema.get_conn()
+    xp = conn.execute("SELECT xp_total FROM users WHERE id=?", (uid,)).fetchone()['xp_total']
+    conn.close()
+    assert xp == 150, xp
+    print("OK  test_drill_submit_awards_xp")
+
+
 if __name__ == '__main__':
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
