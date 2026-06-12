@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(dashboard): trajetória de carreira como ESCADA visual no V2 ✅
+
+> Análise profunda do card a pedido do usuário. Estrutura de dados está sã (projeção ELO-unificada desde 2026-05-28 — milestones SÃO as bands, régua única). As 3 fraquezas eram de formato: **(1) Milestones eram 4 linhas de texto** — o card chama "Trajetória" mas não desenhava trajetória. No V2 viraram uma ESCADA vertical: linha conectando as bands, ● preenchido na cor = alcançado (✓ verde), ◉ anel na cor = próximo alvo (≈ N meses), ○ apagado = fora de alcance no ritmo atual. **(2) Curva de ELO sem escala** (forma pura) — a legenda agora mostra "1400 → 1480" no V2. **(3) Blocking leaks ilegíveis** ("flop/fold" cru) — reuso do template `v2.causalSpot` → "Fold no flop"; zero chave i18n nova. Clássico congelado mantém os formatos antigos. Typecheck verde.
+
 ### fix(dashboard): carreira sem ELO triplicado + padrões cognitivos com escala honesta e dominante ✅
 
 > Análise crítica dos dois cards a pedido do usuário. **Trajetória de Carreira:** o ELO aparecia 3× no mesmo card — bloco hero do topo (forma recente), box "Forma recente" (MESMO número + MESMA barra de progresso duplicada) e box "Histórico". No V2 os dois boxes viraram UMA linha compacta: "Histórico: [band] 1430 · +50 vs histórico" (delta colorido) — o hero já é a forma recente; ~90px de altura recuperados no card mais alto da grade. Clássico mantém os dois boxes (congelado). De quebra, 5 strings hardcoded em PT ("Histórico", "Forma recente", "Rating recente/histórico", "X pra Banda") viraram i18n `career.*` nas 3 locales — PT byte-idêntico, EN/ES deixam de exibir português. **Padrões Cognitivos (V2):** a barra usava `freq*200` — 30% de frequência desenhava 60% de barra (escala invisível = mentira visual); agora é RELATIVA ao padrão mais frequente. E ganhou hierarquia: padrões ordenados por severidade>frequência, o primeiro destacado como "Padrão dominante" (bloco tingido na cor da severidade — mesma linguagem do epicentro do causal). Typecheck verde.

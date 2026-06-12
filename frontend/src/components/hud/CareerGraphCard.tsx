@@ -252,6 +252,11 @@ export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Pro
             <EloMiniCurve points={curve.recent.map(p => p.elo)} color={elo?.overall.band_color ?? "hsl(var(--primary))"} />
             <span className="font-mono text-[9px] text-muted-foreground">
               {t("career.recentRating")}
+              {v2 && curve.recent.length > 1 && (
+                <span className="ml-2 tabular-nums text-foreground/70">
+                  {curve.recent[0].elo.toFixed(0)} → {curve.recent[curve.recent.length - 1].elo.toFixed(0)}
+                </span>
+              )}
             </span>
           </div>
         ) : data.series_history && data.series_history.length > 1 ? (
@@ -374,24 +379,57 @@ export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Pro
             <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground flex items-center gap-1">
               <TrendingUp className="size-3" /> {t("career.milestones")}
             </p>
-            <div className="space-y-1">
+            <div className={v2 ? "relative" : "space-y-1"}>
+              {/* V2: ESCADA — linha vertical conectando as bands; ● alcançado,
+                  ◉ próximo (anel na cor), ○ futuro/fora de alcance. */}
+              {v2 && <span className="absolute left-[5px] top-2 bottom-2 w-px bg-border/60" aria-hidden />}
               {data.milestones.slice(0, 4).map((m) => {
                 const Icon = LEVEL_ICONS[m.level_name];
                 const mColor = MILESTONE_COLOR[m.level_slug] ?? "text-muted-foreground";
                 const mName = t(`level.names.${m.level_slug}`, { defaultValue: m.level_name });
+                const status = !m.reachable
+                  ? t("career.notReachable").split(" — ")[0]
+                  : m.months_needed === 0
+                  ? t("career.already")
+                  : t("career.monthsAway", { n: m.months_needed });
+                if (!v2) {
+                  return (
+                    <div key={m.level_slug} className="flex items-center justify-between text-[11px]">
+                      <span className={cn("flex items-center gap-1.5 font-mono font-semibold", mColor)}>
+                        {Icon && <Icon size={11} />}
+                        {mName}
+                        <span className="text-muted-foreground font-normal">({m.threshold} ELO)</span>
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{status}</span>
+                    </div>
+                  );
+                }
+                const reached = m.reachable && m.months_needed === 0;
+                const isNext  = m.reachable && (m.months_needed ?? 0) > 0
+                  && data.milestones!.slice(0, 4).find(x => x.reachable && (x.months_needed ?? 0) > 0)?.level_slug === m.level_slug;
                 return (
-                  <div key={m.level_slug} className="flex items-center justify-between text-[11px]">
-                    <span className={cn("flex items-center gap-1.5 font-mono font-semibold", mColor)}>
+                  <div key={m.level_slug} className="relative flex items-center justify-between gap-2 py-1 pl-5 text-[11px]">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute left-0 top-1/2 -translate-y-1/2 size-[11px] rounded-full border-2",
+                        reached ? "bg-current border-current" : isNext ? "bg-background border-current" : "bg-background border-border",
+                        reached || isNext ? mColor : "text-border"
+                      )}
+                    />
+                    <span className={cn(
+                      "flex items-center gap-1.5 font-mono font-semibold min-w-0",
+                      m.reachable ? mColor : "text-muted-foreground/50"
+                    )}>
                       {Icon && <Icon size={11} />}
-                      {mName}
-                      <span className="text-muted-foreground font-normal">({m.threshold} ELO)</span>
+                      <span className="truncate">{mName}</span>
+                      <span className="text-muted-foreground font-normal shrink-0">({m.threshold})</span>
                     </span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {!m.reachable
-                        ? t("career.notReachable").split(" — ")[0]
-                        : m.months_needed === 0
-                        ? t("career.already")
-                        : t("career.monthsAway", { n: m.months_needed })}
+                    <span className={cn(
+                      "font-mono text-[10px] tabular-nums shrink-0",
+                      reached ? "text-emerald-400" : isNext ? "text-foreground/80" : "text-muted-foreground/60"
+                    )}>
+                      {reached ? "✓ " : isNext ? "≈ " : ""}{status}
                     </span>
                   </div>
                 );
@@ -409,7 +447,13 @@ export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Pro
             <ul className="space-y-0.5">
               {data.blocking_leaks.map((lk) => (
                 <li key={lk.spot} className="flex items-center justify-between text-[11px]">
-                  <span className="text-foreground truncate">{lk.spot}</span>
+                  <span className="text-foreground truncate">{(() => {
+                    if (!v2) return lk.spot;
+                    const [st, act] = lk.spot.split("/");
+                    return st && act
+                      ? t("v2.causalSpot", { action: act.charAt(0).toUpperCase() + act.slice(1), street: st })
+                      : lk.spot;
+                  })()}</span>
                   <span className="font-mono text-[10px] text-muted-foreground shrink-0 ml-2">{lk.n}×</span>
                 </li>
               ))}
