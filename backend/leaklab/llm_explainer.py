@@ -1636,7 +1636,7 @@ _POKER_TERMS_EN = (
     "Termos técnicos de poker SEMPRE em inglês: "
     "fold, call, raise, bet, check, shove, preflop, flop, turn, river, "
     "hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, "
-    "board, position, IP, OOP, shove, reshove, open, limp, squeeze. "
+    "board, position, IP, OOP, shove, reshove, open, limp, squeeze. Para all-in agressivo use SEMPRE 'shove' — nunca 'jam'. "
     "NUNCA use 'rua' ou 'ruas' — sempre 'street' ou 'streets'. "
     "Para conjugar ações em português, use a forma 'dando raise', 'dando bet', 'dando fold' — "
     "NUNCA 'raisando', 'bettando', 'foldando' ou qualquer aportuguesamento de termos ingleses."

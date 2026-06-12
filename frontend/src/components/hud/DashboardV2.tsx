@@ -6,6 +6,7 @@ import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { EvSummary, GtoQualityData, GtoPositionData } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
+import { formatAction } from "@/lib/utils";
 import { SECTION_SPAN, DashSection } from "@/hooks/useDashboardLayout";
 import { V2EvTrendCard } from "@/components/hud/V2EvTrendCard";
 import { V2CoverageCard } from "@/components/hud/V2CoverageCard";
@@ -167,9 +168,9 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
               </div>
               {topLeak ? (
                 <div className="mt-1 text-[13px] text-foreground">
-                  <span className="font-mono font-bold uppercase">{topLeak.action_taken}</span>
+                  <span className="font-mono font-bold uppercase">{formatAction(topLeak.action_taken)}</span>
                   <span className="text-muted-foreground"> {t("v2.insteadOf")} </span>
-                  <span className="font-mono font-bold uppercase text-teal-300">{topLeak.best_action}</span>
+                  <span className="font-mono font-bold uppercase text-teal-300">{formatAction(topLeak.best_action)}</span>
                   <span className="text-muted-foreground"> · {topLeak.street} · </span>
                   <span className="font-mono font-bold text-red-400">−{topLeak.loss_bb.toFixed(1)}bb</span>
                 </div>
@@ -227,9 +228,9 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
                   <span className="font-mono text-base font-bold text-muted-foreground/60 w-5">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px]">
-                      <span className="font-mono font-bold uppercase">{l.action_taken}</span>
+                      <span className="font-mono font-bold uppercase">{formatAction(l.action_taken)}</span>
                       <span className="text-muted-foreground"> → </span>
-                      <span className="font-mono font-bold uppercase text-teal-300">{l.best_action}</span>
+                      <span className="font-mono font-bold uppercase text-teal-300">{formatAction(l.best_action)}</span>
                       <span className="text-muted-foreground text-[11px]"> · {l.street} · {t("v2.leakSpots", { n: l.count })}</span>
                     </div>
                     <div className="mt-1 h-1 rounded-full bg-muted/20 overflow-hidden">

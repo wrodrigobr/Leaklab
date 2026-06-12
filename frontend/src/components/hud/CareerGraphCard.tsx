@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { TrendingUp, TrendingDown, Minus, Target, AlertCircle, ChevronRight } from "lucide-react";
 import { CareerProjection, CareerMilestone, metrics, EloResponse, EloCurveResponse } from "@/lib/api";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
-import { cn } from "@/lib/utils";
+import { cn, formatAction } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
 import { AiText } from "@/components/ui/AiText";
 
@@ -451,7 +451,7 @@ export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Pro
                     if (!v2) return lk.spot;
                     const [st, act] = lk.spot.split("/");
                     return st && act
-                      ? t("v2.causalSpot", { action: act.charAt(0).toUpperCase() + act.slice(1), street: st })
+                      ? t("v2.causalSpot", { action: formatAction(act), street: st })
                       : lk.spot;
                   })()}</span>
                   <span className="font-mono text-[10px] text-muted-foreground shrink-0 ml-2">{lk.n}×</span>

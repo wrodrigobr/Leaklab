@@ -2,6 +2,7 @@ import { GitFork, ArrowRight, Crosshair } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HudTooltip } from "./HudTooltip";
 import type { LeakNode, LeakEdge } from "./LeakCausalMap";
+import { formatAction } from "@/lib/utils";
 
 /**
  * V2CausalMapCard — UX-2. Versão V2 do mapa causal SEM o grafo circular
@@ -21,8 +22,7 @@ const SEVERITY_BADGE: Record<string, string> = {
 function spotLabel(node: LeakNode, t: (k: string, o?: object) => string): string {
   const parts = (node.id || "").split("/");
   if (parts.length === 2 && parts[0] && parts[1]) {
-    const action = parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
-    return t("v2.causalSpot", { action, street: parts[0] });
+    return t("v2.causalSpot", { action: formatAction(parts[1]), street: parts[0] });
   }
   return node.label.replace(/[_-]+/g, " ");
 }

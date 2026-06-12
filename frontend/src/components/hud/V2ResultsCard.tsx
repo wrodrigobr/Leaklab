@@ -2,6 +2,7 @@ import { Info, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HudTooltip } from "./HudTooltip";
 import type { ResultsVsGtoData } from "@/lib/api";
+import { formatAction } from "@/lib/utils";
 
 /**
  * V2ResultsCard — UX-2 onda 4. Versão V2 do ResultsVsGtoCard ("ganhei mas
@@ -77,7 +78,7 @@ export function V2ResultsCard({ data }: { data?: ResultsVsGtoData | null }) {
               <div key={i} className="flex items-center justify-between text-[11px]">
                 <span className="font-mono text-foreground/80">
                   <span className="text-teal-300/80">{s.position}</span>
-                  {" · "}{s.street}{" · "}{s.action}
+                  {" · "}{s.street}{" · "}{formatAction(s.action)}
                 </span>
                 <span className="font-mono tabular-nums text-muted-foreground">×{s.n}</span>
               </div>
