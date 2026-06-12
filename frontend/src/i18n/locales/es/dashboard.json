@@ -528,6 +528,7 @@
     "causalEpicenter": "Epicentro",
     "causalEpicenterDesc": "conectado a {{n}} otros leaks — corregir este rompe la cadena",
     "causalTogether": "juntos en {{n}} manos",
-    "causalHint": "cuando ocurre el leak de la izquierda, el de la derecha tiende a venir junto — fuerza de la relación en %"
+    "causalSpot": "{{action}} en el {{street}}",
+    "causalConclusion": "Qué significa esto: tus errores no ocurren aislados — \"{{a}}\" y \"{{b}}\" aparecieron en las mismas manos {{n}} veces, señal de que uno desencadena el otro. El punto de mayor palanca es \"{{epi}}\": está ligado a {{deg}} otros leaks, y corregirlo tiende a derribar toda la cadena."
   }
 }

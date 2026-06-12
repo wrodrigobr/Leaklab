@@ -528,6 +528,7 @@
     "causalEpicenter": "Epicenter",
     "causalEpicenterDesc": "connected to {{n}} other leaks — fixing this one breaks the chain",
     "causalTogether": "together in {{n}} hands",
-    "causalHint": "when the left leak happens, the right one tends to follow — relation strength in %"
+    "causalSpot": "{{action}} on the {{street}}",
+    "causalConclusion": "What this means: your mistakes don't happen in isolation — \"{{a}}\" and \"{{b}}\" showed up in the same hands {{n}} times, a sign one triggers the other. The highest-leverage point is \"{{epi}}\": it's linked to {{deg}} other leaks, and fixing it tends to bring the whole chain down."
   }
 }

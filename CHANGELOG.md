@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(causal): nomes legíveis nos chips + conclusão do que a análise significa ✅
+
+> Dois feedbacks do usuário no mapa causal V2. **(1) Abreviações ruins ("FL Fold"):** o label do backend vem abreviado (street 2 letras + ação), ilegível pro jogador. O `node.id` carrega o spot cru (`flop/fold`) — o front agora reconstrói o nome legível via template i18n `v2.causalSpot` ("Fold no flop" / "Fold on the flop" / "Fold en el flop"; streets e ações seguem em inglês — termos de poker). Backend intocado (o clássico continua usando o label abreviado no grafo, onde cabe). **(2) Conclusão:** novo parágrafo "O que isto significa" no rodapé do card — síntese DETERMINÍSTICA dos próprios dados (relação mais forte: "A e B apareceram nas mesmas mãos N vezes, sinal de que um desencadeia o outro" + epicentro: "ligado a N outros leaks, corrigi-lo derruba a cadeia"). Sem chamada de LLM e sem duplicar o carrossel (que tem a narrativa de IA aprofundada) — conteúdos distintos. Substitui o hint genérico de leitura. i18n nas 3 locales. Typecheck verde.
+
 ### fix(hud-stats): sempre visível no V2 + faixa completa na visão do coach ✅
 
 > Feedback do usuário: "o HUD precisa estar no V2... infos valiosas para o jogador E para o coach". Dois problemas reais: **(1) No V2** o card existia (onda 6) mas com gate `playerStats.total_hands > 0` — se a query atrasasse/falhasse, o card sumia SILENCIOSAMENTE (diferente do clássico, que sempre renderiza e deixa o componente mostrar o estado vazio). Gate removido: `hasData && <PlayerStatsCard v2 />` — visível sempre. **(2) Na visão do coach** (`StudentDetail`), o aluno aparecia com 8 pílulas cruas (StatPill) — sem faixas de referência MTT, sem cor de status, sem badge de confiança amostral, e faltando 4 stats (Fold vs Bet, BB Defense, Steal, Open Limp). Substituídas pela MESMA faixa completa `PlayerStatsCard v2` do dashboard do aluno — o coach lê na hora o que está fora da linha, com a mesma régua que o aluno vê. StatPill morto removido. Typecheck verde.

@@ -15,19 +15,28 @@ const SEVERITY_BADGE: Record<string, string> = {
   minor:    "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/25",
 };
 
-function prettyLabel(label: string): string {
-  return label.replace(/[_-]+/g, " ");
+/** Nome legível do spot a partir do node.id ("flop/fold" → "Fold no flop").
+ *  O label do backend vem abreviado ("FL Fold") — ilegível pro jogador.
+ *  Streets e ações ficam em inglês (termos de poker); só o conector é i18n. */
+function spotLabel(node: LeakNode, t: (k: string, o?: object) => string): string {
+  const parts = (node.id || "").split("/");
+  if (parts.length === 2 && parts[0] && parts[1]) {
+    const action = parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
+    return t("v2.causalSpot", { action, street: parts[0] });
+  }
+  return node.label.replace(/[_-]+/g, " ");
 }
 
-function NodeChip({ node }: { node: LeakNode }) {
+function NodeChip({ node, t }: { node: LeakNode; t: (k: string, o?: object) => string }) {
+  const name = spotLabel(node, t);
   return (
     <span
-      className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide truncate ${
+      className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-bold tracking-wide truncate ${
         SEVERITY_BADGE[node.severity] ?? SEVERITY_BADGE.minor
       }`}
-      title={`${prettyLabel(node.label)} · ${node.n}x`}
+      title={`${name} · ${node.n}x`}
     >
-      {prettyLabel(node.label)}
+      {name}
     </span>
   );
 }
@@ -68,7 +77,7 @@ export function V2CausalMapCard({ nodes, edges }: { nodes: LeakNode[]; edges: Le
             <Crosshair className="size-3" /> {t("v2.causalEpicenter")}
           </div>
           <div className="mt-1 flex items-center gap-2 flex-wrap">
-            <NodeChip node={epicenter} />
+            <NodeChip node={epicenter} t={t} />
             <span className="text-[11px] text-muted-foreground">
               {t("v2.causalEpicenterDesc", { n: epicenter.degree })}
             </span>
@@ -83,9 +92,9 @@ export function V2CausalMapCard({ nodes, edges }: { nodes: LeakNode[]; edges: Le
           return (
             <div key={i}>
               <div className="flex items-center gap-2 min-w-0">
-                <NodeChip node={byId[e.source]} />
+                <NodeChip node={byId[e.source]} t={t} />
                 <ArrowRight className="size-3.5 shrink-0 text-muted-foreground/60" />
-                <NodeChip node={byId[e.target]} />
+                <NodeChip node={byId[e.target]} t={t} />
                 <span className="ml-auto font-mono text-[11px] font-bold tabular-nums shrink-0 text-foreground/80">
                   {pct}%
                 </span>
@@ -109,9 +118,19 @@ export function V2CausalMapCard({ nodes, edges }: { nodes: LeakNode[]; edges: Le
         })}
       </div>
 
-      <p className="mt-3 pt-2 border-t border-border/30 font-mono text-[9px] text-muted-foreground/70">
-        {t("v2.causalHint")}
-      </p>
+      {/* Conclusão determinística: o que esta análise significa, nos SEUS dados.
+          (A narrativa de IA aprofundada vive no carrossel — isto é a síntese.) */}
+      {relations.length > 0 && epicenter && (
+        <p className="mt-3 pt-2.5 border-t border-border/30 text-[11px] leading-relaxed text-muted-foreground">
+          {t("v2.causalConclusion", {
+            a: spotLabel(byId[relations[0].source], t),
+            b: spotLabel(byId[relations[0].target], t),
+            n: relations[0].co_occurrences,
+            epi: spotLabel(epicenter, t),
+            deg: epicenter.degree,
+          })}
+        </p>
+      )}
     </div>
   );
 }
