@@ -276,6 +276,7 @@ def lookup_gto(
     pot_type: str = '',
     opener: str = '',
     threebettor: str = '',
+    require_hand_aware: bool = False,
 ) -> dict:
     """
     Ponto de entrada único para consultas GTO.
@@ -382,18 +383,24 @@ def lookup_gto(
                 })
             if strategy_list:
                 strategy_list.sort(key=lambda s: s['frequency'], reverse=True)
-                return {
-                    'found':    True,
-                    'source':   'postflop_db',
-                    'strategy': strategy_list,
-                    'exploitability_pct': node.get('exploitability_pct'),
-                    'spot_hash':          spot_hash,
-                    'queued':             False,
-                    # Fase 3: visão da MÃO do hero (gto_tree_strategies via tree_hash;
-                    # None p/ nós antigos sem tabela — UI cai no agregado)
-                    'hand_strategy': hand_view_for_spot(
-                        node.get('tree_hash'), board, hero_hand),
-                }
+                _hv = hand_view_for_spot(node.get('tree_hash'), board, hero_hand)
+                # require_hand_aware: um nó AGREGADO (sem tabela por-mão) não satisfaz
+                # quem precisa do ev_loss por mão. Se há solve real à frente
+                # (allow_remote_solve + block_remote), NÃO retorna o agregado — cai pro
+                # solve Texas que gera o hand_table. Default (flag off) = inalterado.
+                if not (require_hand_aware and _hv is None
+                        and allow_remote_solve and block_remote):
+                    return {
+                        'found':    True,
+                        'source':   'postflop_db',
+                        'strategy': strategy_list,
+                        'exploitability_pct': node.get('exploitability_pct'),
+                        'spot_hash':          spot_hash,
+                        'queued':             False,
+                        # Fase 3: visão da MÃO do hero (gto_tree_strategies via tree_hash;
+                        # None p/ nós antigos sem tabela — UI cai no agregado)
+                        'hand_strategy': _hv,
+                    }
         # Nó parcial: sem strategy_json — salva como fallback, continua para GTO Wizard
         action = node.get('gto_action')
         if action:
@@ -420,7 +427,9 @@ def lookup_gto(
     # 3. Miss — tenta GTO Wizard primeiro (se habilitado e auth disponível)
     try:
         from leaklab.gto_wizard_client import query_spot as _gw_query
-        _gw = _gw_query(
+        # require_hand_aware pula o GW: ele devolve estratégia agregada SEM tabela
+        # por-mão → vai direto pro solver Texas, que gera o hand_table.
+        _gw = None if require_hand_aware else _gw_query(
             street         = street_l,
             position       = position_u,
             board          = board,

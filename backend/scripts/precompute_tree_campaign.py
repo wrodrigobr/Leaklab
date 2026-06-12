@@ -124,12 +124,16 @@ for i, (key, c) in enumerate(ordered, 1):
                   threebettor=s.get('threebettor', ''))
     pre = lookup_gto(facing_size_bb=s['facing'], bb_chips=1.0,
                      allow_remote_solve=False, block_remote=False, **common)
-    if pre.get('found'):
+    # Só pula se JÁ tem a tabela POR MÃO (hand_strategy). Um nó agregado (strategy_json
+    # sem tree_hash, vindo do worker antigo) tinha 'found' mas NÃO dá ev_loss por mão —
+    # antes pulava aqui e o river/turn/flop ficava sem EV. Agora força o solve hand-aware.
+    if pre.get('found') and pre.get('hand_strategy'):
         already += 1
         continue
     try:
         r = lookup_gto(facing_size_bb=s['facing'], bb_chips=1.0,
-                       allow_remote_solve=True, block_remote=True, **common)
+                       allow_remote_solve=True, block_remote=True,
+                       require_hand_aware=True, **common)
         src = r.get('source')
         if r.get('found') and src == 'tree_cache':
             copied += 1
