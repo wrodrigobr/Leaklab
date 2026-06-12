@@ -247,7 +247,16 @@ _LABEL_SEV = {'standard': 0, 'marginal': 1, 'small_mistake': 2, 'clear_mistake':
 _SEV_LABEL = {0: 'standard', 1: 'marginal', 2: 'small_mistake', 3: 'clear_mistake'}
 
 
-def _preflop_gto_label_adjust(label: str, quality: str) -> str:
+# Tema 1: limiar de EV abaixo do qual um 'leak'/'major_leak' preflop é desvio de
+# baixo custo, não erro grave. O postflop já escala severidade por EV (ver
+# _gto_classify_from_strategy, tiers 0.15/0.30bb); o preflop nunca recebeu isso.
+# 0.12bb separa limpo os casos validados pelo coach (75o 0.04 / A2o 0.023 /
+# A4o 0.006 → desvio leve) do 3-bet de par baixo que o próprio coach critica
+# (22 a 0.281bb → permanece small_mistake).
+_PREFLOP_EV_MINOR_BB = 0.12
+
+
+def _preflop_gto_label_adjust(label: str, quality: str, ev_loss_bb: float | None = None) -> str:
     """
     Ajusta label preflop pelo range GTO.
 
@@ -255,6 +264,11 @@ def _preflop_gto_label_adjust(label: str, quality: str) -> str:
     acceptable → cap em 'marginal'  (subótimo mas defensável)
     leak       → floor em 'small_mistake' (não capeia clear_mistake)
     major_leak → floor em 'small_mistake' (não capeia clear_mistake)
+
+    Tema 1 (recalibração coach #27): quando o EV perdido medido é < _PREFLOP_EV_MINOR_BB,
+    o 'leak'/'major_leak' é tratado como desvio LEVE — cap em 'marginal' em vez de
+    floor em 'small_mistake'. Sem isso, um 3-bet light que custa 0.006bb levava o
+    mesmo selo de um erro de vários bb.
     """
     cur = _LABEL_SEV.get(label, 1)
     if quality == 'correct':
@@ -262,6 +276,8 @@ def _preflop_gto_label_adjust(label: str, quality: str) -> str:
     if quality == 'acceptable':
         return _SEV_LABEL[min(cur, _LABEL_SEV['marginal'])]
     if quality in ('leak', 'major_leak'):
+        if ev_loss_bb is not None and ev_loss_bb < _PREFLOP_EV_MINOR_BB:
+            return _SEV_LABEL[min(cur, _LABEL_SEV['marginal'])]
         return _SEV_LABEL[max(cur, _LABEL_SEV['small_mistake'])]
     return label
 
@@ -784,15 +800,23 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # GTO enrichment preflop: range GTO por posição/stack — ajusta label e best_action
     preflop_gto = _enrich_preflop_gto(input_data)
     if preflop_gto.get('available'):
-        quality = preflop_gto.get('action_quality', 'unknown')
-        label   = _preflop_gto_label_adjust(label, quality)
+        quality   = preflop_gto.get('action_quality', 'unknown')
+        _pf_evloss = preflop_gto.get('ev_loss_bb')
+        # Tema 1: a severidade do label preflop agora considera o EV perdido medido.
+        label   = _preflop_gto_label_adjust(label, quality, _pf_evloss)
         rec     = preflop_gto.get('recommended_actions', [])
         if rec:
             _best_action = rec[0]   # sobrescreve com ação GTO recomendada
+        # Tema 1: 'leak'/'major_leak' de baixo custo (EV < limiar) é desvio LEVE — o
+        # gto_label crítico é rebaixado e o score capeado em 'marginal'. Sem isto, um
+        # 3-bet light de 0.006bb saía como gto_critical/clear_mistake (igual a um erro
+        # de vários bb). 22 a 0.281bb fica acima do limiar e segue small_mistake.
+        _low_cost_leak = (quality in ('leak', 'major_leak') and _pf_evloss is not None
+                          and _pf_evloss < _PREFLOP_EV_MINOR_BB)
         # Consistência score/label: recalcular final_score para bater com novo label
         if quality == 'correct':
             final_score = min(final_score, 0.08)    # cap em 'standard'
-        elif quality == 'acceptable':
+        elif quality == 'acceptable' or _low_cost_leak:
             final_score = min(final_score, 0.18)    # cap em 'marginal'
         # Persistir gto_label/gto_action preflop no DB (save_decisions lê result['gto'])
         if quality and quality != 'unknown':
@@ -805,9 +829,12 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
                 'major_leak':          'gto_critical',
             }
             _gto_lbl = _QUALITY_TO_GTO_LABEL.get(quality, 'gto_critical')
+            # Tema 1: rebaixa o gto_label crítico quando o custo de EV é minúsculo.
+            if _low_cost_leak and _gto_lbl == 'gto_critical':
+                _gto_lbl = 'gto_minor_deviation'
             gto = {'available': True, 'gto_label': _gto_lbl, 'gto_action': rec[0] if rec else None,
                    # #24: bb perdidos vs melhor ação (vem do overlay de EV no analyze_preflop)
-                   'ev_loss_bb':     preflop_gto.get('ev_loss_bb'),
+                   'ev_loss_bb':     _pf_evloss,
                    'ev_loss_source': preflop_gto.get('ev_loss_source')}
 
     # Guard: BB pode check grátis quando não há aposta — fold é impossível.
@@ -864,6 +891,32 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         if is_monster_hand(input_data.get('hero_cards'), spot.get('board')):
             label = 'marginal'
             final_score = min(final_score, 0.18)
+
+    # Tema 2 (recalibração coach #27) — REDE DE SEGURANÇA estreita: cap em
+    # 'small_mistake' SÓ onde o estimador de equity heurístico é o input não-confiável
+    # que carrega o veredito. NÃO é cap cego de "sem GTO" — uma violação de pot odds
+    # limpa (call 41% com required subindo por ICM) é clear_mistake legítimo mesmo
+    # sem solver, e math-clear não passa pelo estimador. Dois gatilhos documentados:
+    #   (a) POSTFLOP com mão FEITA (par+): o estimador subvaloriza mão feita (wheel,
+    #       full house, par de J em K-6-J marcado clear_mistake). is_monster_hand já
+    #       cobre o monstro jogado agressivo acima; aqui pegamos call/fold com par+.
+    #   (b) PREFLOP em pote de SQUEEZE/cold multi-raise (raisesFaced>=2) sem cobertura:
+    #       a equity vs-random engana (ATs mostra 64% vs aleatória, folda vs squeeze) e
+    #       o range evaluator recomendava raise → fold virava clear_mistake.
+    # Sem solver pra confirmar, nesses dois casos o custo de um falso-grave supera o
+    # de um falso-leve. NÃO é o fix real (a direção de best_action segue errada) — é o
+    # teto que impede o veredito mais caro. Ver tarefa do estimador de equity.
+    if label == 'clear_mistake' and not gto.get('available') and not preflop_gto.get('available'):
+        _suspect_equity = False
+        if street != 'preflop':
+            from leaklab.bet_intent import made_hand_category
+            _suspect_equity = made_hand_category(
+                input_data.get('hero_cards'), spot.get('board')) in ('value', 'middle')
+        elif int(spot.get('preflopRaisesFaced') or 0) >= 2:
+            _suspect_equity = True
+        if _suspect_equity:
+            label = 'small_mistake'
+            final_score = min(final_score, 0.35)
 
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
 
