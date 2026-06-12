@@ -17,6 +17,7 @@ import { V2ResultsCard } from "@/components/hud/V2ResultsCard";
 import { V2PressureCard } from "@/components/hud/V2PressureCard";
 import { V2CognitiveCard } from "@/components/hud/V2CognitiveCard";
 import { V2TwinCard } from "@/components/hud/V2TwinCard";
+import { V2CausalMapCard } from "@/components/hud/V2CausalMapCard";
 import { LeakFinderCard } from "@/components/hud/LeakFinderCard";
 import { GtoQualityCard } from "@/components/hud/GtoQualityCard";
 import { AcceptCoachModal } from "@/components/hud/AcceptCoachModal";
@@ -231,7 +232,9 @@ const Index = () => {
       case "causal_map": return isFree
         ? <ProLockCard feature={tc("proLock.causalMap")} v2={v2} />
         : (leakGraph && leakGraph.nodes.length >= 3)
-          ? <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={v2 ? undefined : leakGraph.narrative} v2={v2} />
+          ? v2
+            ? <V2CausalMapCard nodes={leakGraph.nodes} edges={leakGraph.edges} />
+            : <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={leakGraph.narrative} />
           : null;
       case "twin":       return isFree
         ? <ProLockCard feature={tc("proLock.twin")} v2={v2} />

@@ -524,6 +524,10 @@
     "aiLocked": "Os insights de IA (Strategic Twin, padrões cognitivos, projeção de carreira) são um recurso Pro. Faça upgrade para destravá-los.",
     "posCritical": "{{pct}}% crít.",
     "posHint": "alinhado% por posição — verde ≥70, âmbar ≥50, vermelho abaixo",
-    "bankSeries": "lucro acumulado"
+    "bankSeries": "lucro acumulado",
+    "causalEpicenter": "Epicentro",
+    "causalEpicenterDesc": "conectado a {{n}} outros leaks — corrigir este derruba a cadeia",
+    "causalTogether": "juntos em {{n}} mãos",
+    "causalHint": "quando o leak da esquerda acontece, o da direita tende a vir junto — força da relação em %"
   }
 }

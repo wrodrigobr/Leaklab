@@ -524,6 +524,10 @@
     "aiLocked": "AI insights (Strategic Twin, cognitive patterns, career projection) are a Pro feature. Upgrade to unlock them.",
     "posCritical": "{{pct}}% crit.",
     "posHint": "aligned% by position — green ≥70, amber ≥50, red below",
-    "bankSeries": "cumulative profit"
+    "bankSeries": "cumulative profit",
+    "causalEpicenter": "Epicenter",
+    "causalEpicenterDesc": "connected to {{n}} other leaks — fixing this one breaks the chain",
+    "causalTogether": "together in {{n}} hands",
+    "causalHint": "when the left leak happens, the right one tends to follow — relation strength in %"
   }
 }
