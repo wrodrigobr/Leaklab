@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(dashboard): UX-2 onda 5 — casca V2 nos cards pesados compartilhados (dna, career, causal map, ProLock) ✅
+
+> Fecha o último resquício visual do V2: `dna`, `career` e `causal_map` são modernos por dentro (radar, sparkline+milestones, grafo SVG) mas usavam a casca legacy (`border bg-hud-surface`), destoando da grade. Duplicá-los como cards V2 seria drift de manutenção (são os 3 componentes mais pesados do dashboard) — em vez disso, prop **`v2`** aditiva (default false → clássico byte-idêntico, mesmo precedente do `hideNarrative`) que troca SÓ a casca externa para `ring-1 ring-border bg-card/60`. `ProLockCard` (visto por usuário Free no lugar de career/cognitive/twin/causal) ganhou o mesmo tratamento. `renderCard` propaga o flag. Com isso o V2 é 100% consistente: toda a grade fala `ring bg-card/60` + barras de gradiente + anéis + recharts. Zero i18n novo, zero mudança no clássico. Typecheck verde.
+
 ### feat(dashboard): UX-2 onda 4 — últimos 4 cards legacy do V2 modernizados ✅
 
 > Fecha a modernização visual do V2: `results`, `pressure`, `cognitive` e `twin` ganharam versões V2-exclusivas (clássico congelado intacto), trocadas via o flag `v2` do `renderCard` — ProLock continua num lugar só. **`V2ResultsCard`**: os dois percentuais ("% das vitórias com erro crítico" / "% dos críticos escondidos") viraram barras de gradiente em vez de caixinhas. **`V2PressureCard`**: barras com gradiente coloridas pelo delta vs baseline + tick teal marcando o baseline (linguagem do marcador de média do twin). **`V2CognitiveCard`** e **`V2TwinCard`**: casca V2 (`ring bg-card/60`), barras de gradiente, badges em pílula — e SEM o bloco de narrativa (a narrativa vive só no carrossel de IA, completando o dedup da onda 3 por construção). Zero chaves i18n novas (reuso total dos namespaces `resultsVsGto.*`/`pressure.*`/`cognitiveFailure.*`/`strategicTwin.*`). Com isso, TODOS os cards do V2 falam a mesma linguagem visual; não há mais "era legacy" na grade. Typecheck verde.

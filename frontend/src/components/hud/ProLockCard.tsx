@@ -10,13 +10,13 @@ import { useAuth } from "@/lib/auth";
  * atualiza o plano e o dashboard troca o lock pelo card real. Mantém o mesmo "shell" visual
  * dos outros cards (rounded-xl border bg-hud-surface) pra não quebrar o grid masonry.
  */
-export function ProLockCard({ feature }: { feature: string }) {
+export function ProLockCard({ feature, v2 = false }: { feature: string; v2?: boolean }) {
   const { t } = useTranslation("common");
   const { refreshUser } = useAuth();
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-xl border border-primary/20 bg-hud-surface p-5 flex flex-col items-center justify-center text-center gap-3 min-h-[180px]">
+    <div className={`rounded-xl p-5 flex flex-col items-center justify-center text-center gap-3 min-h-[180px] ${v2 ? "ring-1 ring-primary/20 bg-card/60" : "border border-primary/20 bg-hud-surface"}`}>
       <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/25">
         <Lock className="size-4 text-primary" aria-hidden />
       </span>

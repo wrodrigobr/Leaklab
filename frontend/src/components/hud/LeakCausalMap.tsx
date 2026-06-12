@@ -25,6 +25,7 @@ interface Props {
   nodes: LeakNode[];
   edges: LeakEdge[];
   narrative?: string;
+  v2?: boolean;
 }
 
 const SEVERITY_FILL: Record<string, string> = {
@@ -69,7 +70,7 @@ interface TooltipState {
   py: number;
 }
 
-export function LeakCausalMap({ nodes, edges, narrative }: Props) {
+export function LeakCausalMap({ nodes, edges, narrative, v2 = false }: Props) {
   const { t } = useTranslation("dashboard");
   const [selected, setSelected] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -97,7 +98,7 @@ export function LeakCausalMap({ nodes, edges, narrative }: Props) {
   };
 
   return (
-    <div className="rounded-xl border border-border bg-hud-surface overflow-hidden">
+    <div className={v2 ? "rounded-xl ring-1 ring-border bg-card/60 overflow-hidden" : "rounded-xl border border-border bg-hud-surface overflow-hidden"}>
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
           <GitFork className="size-3" aria-hidden />

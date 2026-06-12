@@ -219,22 +219,22 @@ const Index = () => {
       case "leakfinder": return <LeakFinderCard data={leakFinderData} />;
       case "results":    return v2 ? <V2ResultsCard data={resultsVsGtoData} /> : <ResultsVsGtoCard data={resultsVsGtoData} />;
       case "bankroll":   return <BankrollChart />;
-      case "career":     return isFree ? <ProLockCard feature={tc("proLock.career")} /> : <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} hideNarrative={v2} />;
+      case "career":     return isFree ? <ProLockCard feature={tc("proLock.career")} v2={v2} /> : <CareerGraphCard data={careerData ?? { insufficient_data: true, tournament_count: 0 }} hideNarrative={v2} v2={v2} />;
       case "cognitive":  return isFree
-        ? <ProLockCard feature={tc("proLock.cognitive")} />
+        ? <ProLockCard feature={tc("proLock.cognitive")} v2={v2} />
         : v2
           ? <V2CognitiveCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />
           : <CognitiveFailureCard data={cognitiveData ?? { insufficient_data: true, patterns: [], total_decisions: 0 }} />;
-      case "dna":        return <PlayerDnaCard data={dnaData} />;
+      case "dna":        return <PlayerDnaCard data={dnaData} v2={v2} />;
       case "pressure":   return v2 ? <V2PressureCard data={pressureData} /> : <PressureProfileCard data={pressureData} />;
       case "leaks":      return <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />;
       case "causal_map": return isFree
-        ? <ProLockCard feature={tc("proLock.causalMap")} />
+        ? <ProLockCard feature={tc("proLock.causalMap")} v2={v2} />
         : (leakGraph && leakGraph.nodes.length >= 3)
-          ? <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={v2 ? undefined : leakGraph.narrative} />
+          ? <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={v2 ? undefined : leakGraph.narrative} v2={v2} />
           : null;
       case "twin":       return isFree
-        ? <ProLockCard feature={tc("proLock.twin")} />
+        ? <ProLockCard feature={tc("proLock.twin")} v2={v2} />
         : v2
           ? <V2TwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />
           : <StrategicTwinCard data={twinData ?? { insufficient_data: true, total_decisions: 0 }} />;

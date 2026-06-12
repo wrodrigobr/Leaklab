@@ -145,9 +145,10 @@ function EloMiniCurve({ points, color }: { points: number[]; color: string }) {
 interface Props {
   data: CareerProjection;
   hideNarrative?: boolean;
+  v2?: boolean;
 }
 
-export function CareerGraphCard({ data, hideNarrative = false }: Props) {
+export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Props) {
   const { t, i18n } = useTranslation("dashboard");
   const [elo, setElo] = useState<EloResponse | null>(null);
   const [curve, setCurve] = useState<EloCurveResponse | null>(null);
@@ -161,7 +162,7 @@ export function CareerGraphCard({ data, hideNarrative = false }: Props) {
 
   if (data.insufficient_data) {
     return (
-      <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-2">
+      <div className={v2 ? "rounded-xl ring-1 ring-border bg-card/60 p-5 space-y-2" : "rounded-xl border border-border bg-hud-surface p-5 space-y-2"}>
         <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1.5">
           <Target className="size-3" /> {t("career.eyebrow")}
         </p>
@@ -195,7 +196,7 @@ export function CareerGraphCard({ data, hideNarrative = false }: Props) {
   const EloIcon = elo ? LEVEL_ICONS[elo.overall.band_label] : null;
 
   return (
-    <div className="rounded-xl border border-border bg-hud-surface overflow-hidden">
+    <div className={v2 ? "rounded-xl ring-1 ring-border bg-card/60 overflow-hidden" : "rounded-xl border border-border bg-hud-surface overflow-hidden"}>
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">

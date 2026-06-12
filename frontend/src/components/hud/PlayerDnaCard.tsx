@@ -8,6 +8,7 @@ import type { PlayerDnaResponse } from "@/lib/api";
 
 interface Props {
   data: PlayerDnaResponse | null;
+  v2?: boolean;
 }
 
 const ARCHETYPE_COLORS: Record<string, string> = {
@@ -26,12 +27,12 @@ const ARCHETYPE_DOT: Record<string, string> = {
   Balanced:          "bg-violet-400",
 };
 
-export function PlayerDnaCard({ data }: Props) {
+export function PlayerDnaCard({ data, v2 = false }: Props) {
   const { t } = useTranslation("dashboard");
 
   if (!data?.dna) {
     return (
-      <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
+      <div className={v2 ? "rounded-xl ring-1 ring-border bg-card/60 p-5" : "rounded-xl border border-border bg-hud-surface p-5 hud-glare"}>
         <div className="mb-3 flex items-center gap-1.5">
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
             {t("dna.title")}
@@ -69,7 +70,7 @@ export function PlayerDnaCard({ data }: Props) {
   const badgeColor = ARCHETYPE_COLORS[archetype] ?? ARCHETYPE_COLORS.TAG;
 
   return (
-    <div className="rounded-xl border border-border bg-hud-surface p-5 hud-glare">
+    <div className={v2 ? "rounded-xl ring-1 ring-border bg-card/60 p-5" : "rounded-xl border border-border bg-hud-surface p-5 hud-glare"}>
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
