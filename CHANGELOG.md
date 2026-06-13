@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(coach): revisão de torneio do aluno com qualidade visual + mãos não-aderentes marcadas
+
+> Na tela do coach, clicar num torneio do aluno agora abre a MESMA view rica do aluno (`TournamentDetail` — cartas SVG por mão, board, filtros) em vez da tabela simples, via `/tournaments/:id?student=<id>`. `TournamentDetail` ficou ciente do aluno: busca via `coachDashboard.studentTournament` no modo coach, links de replay carregam `&student=`, e cada mão ganha um **badge de aderência coach × sistema** + filtro "só não-aderentes". A lógica de aderência (match/divergência) saiu do script offline pra um módulo compartilhado `leaklab/coach_adherence.py` (fonte única script + endpoint); o endpoint `/coach/student/<id>/tournament/<tid>` passou a devolver `adherence` por decisão. Validado: t27 marca 29 decisões não-aderentes. tsc ok.
+
 ### fix(engine): teto heurístico em pote limpado/iso — iso-raise sobre limp não é erro
 
 > Em spots SEM cobertura GTO, preflop, onde o hero AGRIDE sem aposta enfrentada (iso sobre limp, SB-complete-raise, shove sobre limps) a heurística recomendava PASSIVO (check/call) e flagava a agressão padrão como erro — ex.: QQ raisando sobre limp virava small_mistake, A5o shove 20bb idem. Cap em marginal quando: sem GTO + preflop + facingSize==0 + ação agressiva + best passivo. NÃO afeta erros heurísticos confiáveis por math (call ruim/fold claro — não-agressivos), nem c-bet multiway postflop (#7, onde a heurística check costuma estar certa e o coach concorda), nem spots cobertos. engine 362/362; alinhamento coach #27 73,9%→75,6%, rígidos 15→13.
