@@ -27,7 +27,8 @@ def norm(a):
 # coach critica, o texto menciona a ação do HERO, não a recomendada).
 _APPROVE = re.compile(r'perfeit|jogou (muito )?bem|muito bem|bem jogad|aprov|gost(o|ei|a )|'
                       r'\bcerto\b|correto|\blegal\b|[óo]tim|justo|excelente|t[áa] bom|t[áa] correto|'
-                      r'tranquil|sem erro|trivial|un[âa]nime|\bboa\b|\bbom\b|sem cr[íi]tica|ideal', re.I)
+                      r'tranquil|sem erro|trivial|un[âa]nime|\bboa\b|\bbom\b|sem cr[íi]tica|ideal|'
+                      r'beleza|passou|\bok\b|importante isso|paci[êe]ncia', re.I)
 _CRIT = re.compile(r'deveria|recomendo|n[ãa]o gosto|larga(r|ria)?|pode largar|errad|for[çc]ad|'
                    r'desnecess|estranh|confus|sem sentido|pecou|abusiv|demais|problema|n[ãa]o aconselho|'
                    r'n[ãa]o recomend|cortou|caro\b|evita|\bruim|prefiro|preferia|tomaria|tem que|alto demais|'
@@ -36,14 +37,39 @@ _CRIT = re.compile(r'deveria|recomendo|n[ãa]o gosto|larga(r|ria)?|pode largar|e
 SYS_MISTAKE_LABELS = {'small_mistake', 'clear_mistake'}
 SYS_MISTAKE_GTO = {'gto_minor_deviation', 'gto_critical'}
 
+# ação ENDOSSADA pelo coach extraída do texto (slang BR) — None se não dá pra inferir
+def _parse_rec(t):
+    t = (t or '').lower()
+    if re.search(r'\b(jam|shove|all-?in|dar(ia)? (o |a )?win|manda(r)? win|all in)\b', t): return 'allin'
+    if re.search(r'\b(3-?bet|tribet|re-?raise|reraise|iso-?raise|4-?bet|forbet|5-?bet)\b', t): return 'raise'
+    if re.search(r'\b(fold|larga(r|ria)?|largo|foldar(ia|am|ado)?|joga(r)? fora)\b', t): return 'fold'
+    if re.search(r'\b(aposta(r|ndo)?|c-?bet|barrel|lead|donk|value|\bbet\b|blocking bet|apostei)\b', t): return 'bet'
+    if re.search(r'\b(check-?call|check-?fold|dar mesa|da mesa|pot control|\bcheck\b|controlou)\b', t): return 'check'
+    if re.search(r'\b(call|pagar|paga|pago|acompanha)\b', t): return 'call'
+    return None
+
+# crítica FORTE: o coach desaprova mesmo quando a ação mencionada bate a do hero
+# (ex.: "pagou demais", "não gosto", "deveria ter...", "desnecessária")
+_STRONG_CRIT = re.compile(r'demais|n[ãa]o gosto|deveria|errad|desnecess|estranh|confus|sem sentido|'
+                          r'pecou|caro\b|problema|n[ãa]o aconselho|n[ãa]o recomend|spew|cortou|abusiv|'
+                          r'alto demais|baixo demais|prefiro|preferia|tomaria|n[ãa]o (faz sentido|me parece)', re.I)
+
 def coach_says_mistake(dec, ann):
     """True/False/None — o coach considera a jogada do hero um erro? None = comentário neutro.
-    Prioridade: override_label > coach_action (vs ação do hero) > sentimento do texto."""
+    override_label > coach_action > ação ENDOSSADA no texto (vs a do hero) > sentimento.
+    Chave: o coach mencionar a MESMA ação do hero é APROVAÇÃO ('larga' + hero foldou), a não
+    ser que haja crítica forte ('pagou demais')."""
     if ann['coach_override_label']:
         return ann['coach_override_label'] in SYS_MISTAKE_LABELS
-    if ann['coach_action']:
-        return norm(ann['coach_action']) != norm(dec['action_taken'])
+    hero = norm(dec['action_taken'])
     t = ann['comment'] or ''
+    rec = norm(ann['coach_action']) if ann['coach_action'] else _parse_rec(t)
+    strong = bool(_STRONG_CRIT.search(t))
+    # parse SÓ pra detectar APROVAÇÃO (ação endossada == ação do hero, sem crítica forte).
+    # NÃO uso rec!=hero do texto livre p/ afirmar erro (over-gera: descreve a linha). Pro
+    # resto, sentimento.
+    if rec and rec == hero and not strong:
+        return False
     ap, cr = len(_APPROVE.findall(t)), len(_CRIT.findall(t))
     if ap == 0 and cr == 0:
         return None
