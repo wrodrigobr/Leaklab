@@ -31,6 +31,8 @@ SUITES = {
                   'test_gto_enrichment.py',
                   'test_api_gto_endpoints.py',
                   'test_card_invariants.py',
+                  'test_card_verdict.py',
+                  'test_multiway_divergence.py',
                   'test_pko_har_parser.py',
                   'test_pko_engine.py',
                   'test_ev_loss.py',

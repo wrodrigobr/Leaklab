@@ -4475,37 +4475,23 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             else gto_strategy
         )
         if _recon_strat and not gto_spot_mismatch:
-            acted_norm   = _norm(action.action)
-            live_freq    = 0.0
-            live_top_freq = 0.0
-            for _gs in _recon_strat:
-                _gs_act  = _norm(_gs.get('action', ''))
-                _gs_freq = float(_gs.get('frequency') or 0)
-                if (_gs_act == acted_norm
-                        or acted_norm.startswith(_gs_act)
-                        or _gs_act.startswith(acted_norm)):
-                    live_freq = _gs_freq
-                if _gs_freq > live_top_freq:
-                    live_top_freq = _gs_freq
-                    live_top_act  = _gs.get('action')
-            if live_top_act:
-                if live_freq >= 0.30:
-                    is_error        = False
-                    reconciled_best = acted_norm
-                else:
-                    is_error        = True
-                    reconciled_best = live_top_act
-                # Alinha o gto_label/action DO STEP com a estratégia ao vivo (ground truth).
-                # Sem isto, um spot cujo label armazenado é None (nó nascido após o import)
-                # ficava com gto_label=None no step → hasGto=False → "processando" eterno.
-                _live_lbl_step = (
-                    'gto_correct'         if live_freq >= 0.60 else
-                    'gto_mixed'           if live_freq >= 0.30 else
-                    'gto_minor_deviation' if live_freq >= 0.10 else
-                    'gto_critical'
-                )
-                gto_label  = _live_lbl_step
-                gto_action = live_top_act or gto_action
+            from leaklab.card_verdict import reconcile_verdict as _reconcile
+            acted_norm = _norm(action.action)
+            # Reconciliação PURA (leaklab/card_verdict, testada): a estratégia da MÃO
+            # tem prioridade sobre o range agregado. Sem isto a recomendação pegava a
+            # ação modal do range (ex.: fold 63%) em vez da da mão (raise 93%).
+            _v = _reconcile(
+                gto_strategy,
+                (live_hand_strategy or {}).get('actions'),
+                action.action,
+                gto_action,
+            )
+            if _v:
+                live_top_act    = _v['live_top_act']
+                is_error        = _v['is_error']
+                reconciled_best = _v['reconciled_best']
+                gto_label       = _v['gto_label']
+                gto_action      = _v['gto_action']
                 # Persiste o veredicto do solver — ele tem prioridade sobre RegLife.
                 # Preflop usa analyze_preflop (ranges estáticos), nunca gto_nodes agregados.
                 # O bloco preflop_override abaixo persiste os valores corretos para preflop.
@@ -4519,7 +4505,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             None,
                         )
                         if _dec_id:
-                            _upd_gto(_dec_id, _live_lbl_step, live_top_act)
+                            _upd_gto(_dec_id, gto_label, live_top_act)
                     except Exception:
                         pass
 

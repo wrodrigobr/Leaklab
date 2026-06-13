@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### refactor+test(replayer): reconciliação do /replay extraída para módulo puro testável
+
+> A reconciliação que o `/replay` faz ao vivo (estratégia → veredito, que **persiste** `gto_label`/`gto_action` no banco) era inline em `api/app.py` e **sem teste direto** — a camada onde o bug A2s morava. Extraída para `leaklab/card_verdict.reconcile_verdict` (pura): mão tem prioridade sobre range, `played_freq`/`live_top_act`/`gto_label`/`is_error`/`reconciled_best` num só lugar. `app.py` religado a ela (comportamento idêntico). Novo `test_card_verdict.py` (11 testes): caso-âncora mão 5, shove↔allin, sizing por prefixo, fallbacks, + 3 invariantes sobre matriz de 180 casos (recomendação sempre da mão; label sempre consistente com a freq; nunca recomenda contra jogada aprovada).
+
+### audit+test(gto): divergência range×mão medida em dado real — 28,5% das mãos
+
+> Auditoria dirigida (`scripts/audit_multiway_divergence.py`) à impressão digital do bug: onde a ação modal do range ≠ a da mão. Em dado real são **51.565 de 180.961 mãos solved (28,5%)** — sob a lógica antiga, TODAS recebiam a recomendação do range em vez da própria mão (não era edge case). Extremos típicos: range `check 64%` / mão `bet 100%`, range `call 51%` / mão `fold 100%`. `test_multiway_divergence.py` (3 testes) reconstrói as estratégias reais de cada árvore e prova que `reconcile_verdict` segue a MÃO em 500 nós divergentes reais + a freq vem da mão (não do range). Fecha os 2 últimos itens do plano de prevenção. gto 263/263, api 76/76.
+
 ### ux(replayer): widget de estratégia mostra só a MÃO do hero (range agregado removido)
 
 > Decorrência do fix do veredito: exibir o range inteiro ("fold 63%") ao lado da mão ("raise 93%") era a própria fonte da confusão — duas distribuições diferentes no mesmo card. Agora o `GtoStrategyPanel` mostra **apenas a estratégia da mão específica** (barras + EV/perda por ação, com header "Sua mão · A♣2♣"). O range agregado só aparece como **fallback** quando não há tabela por mão (nó postflop sem `gto_tree_strategies` — raro). Uma régua só, a que de fato julga a decisão.
