@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### ux(replayer): widget de estratégia mostra só a MÃO do hero (range agregado removido)
+
+> Decorrência do fix do veredito: exibir o range inteiro ("fold 63%") ao lado da mão ("raise 93%") era a própria fonte da confusão — duas distribuições diferentes no mesmo card. Agora o `GtoStrategyPanel` mostra **apenas a estratégia da mão específica** (barras + EV/perda por ação, com header "Sua mão · A♣2♣"). O range agregado só aparece como **fallback** quando não há tabela por mão (nó postflop sem `gto_tree_strategies` — raro). Uma régua só, a que de fato julga a decisão.
+
+### test(card): bateria pesada de coerência sobre dado real — trava a classe do bug A2s
+
+> `scan_card_invariants` ganhou `scan_hand_tree`: varre **todas as ~180k (árvore × mão)** de `gto_tree_strategies` — a fonte que o card agora usa pro veredito — checando freqs normalizadas, alinhadas às ações, e que a ação dominante da mão nunca é crítica (senão o card se autocontradiz). Sweep total agora cobre 175k spots preflop + 873 nós postflop + 180.961 mãos → **0 violações**. Dois testes novos em `test_card_invariants.py` (suite gto): `test_hand_tree_card_invariants_all_zero` (dado real) + `test_verdict_from_hand_not_range` (trava a regra lógica: havendo mão, o veredito vem dela; espelha `cardLogic.verdictStrategy`). gto 249/249, vitest 35/35.
+
 ### fix(replayer): veredito postflop vem da estratégia da MÃO, não da ação modal do range
 
 > O Decision Card julgava a jogada do hero pela ação **modal do range agregado** (`gto_strategy`) em vez da estratégia da **mão específica** (`hand_strategy`). Num nó multiway aproximado isso gera contradição gritante: o range folda 63% → header "GTO recomenda Fold", mas A♣2♣ (bloqueador + draw) **levanta 93%** no mesmo nó. A `hand_strategy` ("Fase 3") tinha sido adicionada só para exibição; a lógica de veredito nunca migrou pra ela. Fix nas duas pontas: **frontend** — nova `cardLogic.verdictStrategy(isPostflop, handActions, range)` (pura, testada) alimenta `effectiveGtoLabel`/`liveTopAction`/`evDiff`/`topFreqPct`; **backend** — a reconciliação do `/replay` (que PERSISTE `gto_label`/`gto_action`) passou a usar `live_hand_strategy` quando disponível, deixando de sobrescrever `gto_action=raise` correto por `fold` do range. O widget segue mostrando range + mão lado a lado (contexto). Regra travada por teste de regressão (mão 5 t27: range fold 63% / mão raise 93% → recomenda raise, call do hero = gto_critical por 6%). vitest 19/19, tsc ok.

@@ -8,7 +8,7 @@ o teste quebra com a lista de spots violados.
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts.scan_card_invariants import scan_preflop, scan_postflop
+from scripts.scan_card_invariants import scan_preflop, scan_postflop, scan_hand_tree
 
 
 def _assert_no_viol(viols, label):
@@ -55,6 +55,38 @@ def _effective_label(strategy, played):
     if freq >= 0.30: return 'gto_mixed'
     if freq >= 0.10: return 'gto_minor_deviation'
     return 'gto_critical'
+
+
+def test_hand_tree_card_invariants_all_zero():
+    """A estratégia da MÃO específica (gto_tree_strategies) — fonte que o card AGORA
+    usa pro veredito (fix do bug A2s/mão 5) — nunca produz card autocontraditório:
+    freqs normalizadas, alinhadas às ações, e a ação dominante da mão não é crítica.
+    Varre TODAS as ~180k (árvore × mão)."""
+    _assert_no_viol(scan_hand_tree(verbose=False), 'hand_tree')
+    print("OK  test_hand_tree_card_invariants_all_zero (0 violações)")
+
+
+def test_verdict_from_hand_not_range():
+    """Bug da mão 5: o card julgava pela ação modal do RANGE agregado em vez da MÃO.
+    Trava a regra: havendo estratégia da mão, o veredito vem DELA. Espelha a
+    cardLogic.verdictStrategy (frontend) — recomendação = dominante da MÃO, e a freq
+    da ação jogada é a da MÃO, não a do range."""
+    # Nó multiway aproximado: range folda 63%, mas A2s LEVANTA 93%.
+    range_strat = [{'action': 'fold', 'frequency': 0.63},
+                   {'action': 'raise', 'frequency': 0.34},
+                   {'action': 'call', 'frequency': 0.03}]
+    hand_strat  = [{'action': 'raise', 'frequency': 0.93},
+                   {'action': 'call', 'frequency': 0.06},
+                   {'action': 'fold', 'frequency': 0.01}]
+    # a estratégia que JULGA é a da mão
+    verdict_src = hand_strat  # verdictStrategy(isPostflop=True, hand, range)
+    top = max(verdict_src, key=lambda s: s['frequency'])['action']
+    assert top == 'raise', f"recomendação deve vir da mão (raise), veio {top}"
+    # e o call do hero é julgado pela freq DELE na MÃO (6% → crítico), não no range (3%)
+    assert _effective_label(hand_strat, 'call') == 'gto_critical'
+    # contraprova: se (erradamente) usasse o range, recomendaria fold
+    assert max(range_strat, key=lambda s: s['frequency'])['action'] == 'fold'
+    print("OK  test_verdict_from_hand_not_range")
 
 
 def test_shove_matches_allin_strategy_not_critical():

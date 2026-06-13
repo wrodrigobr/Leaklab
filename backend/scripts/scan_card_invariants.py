@@ -267,10 +267,69 @@ def scan_postflop(verbose=False) -> list[Violation]:
     return viols
 
 
+# ── HAND-TREE: invariantes sobre a estratégia da MÃO específica ───────────────
+# O bug da mão 5 (A2s): o card julgava pela ação modal do RANGE agregado em vez da
+# estratégia da MÃO. scan_postflop valida o nó agregado; este valida a tabela por mão
+# (gto_tree_strategies) — a fonte que o card AGORA usa pro veredito. Garante que cada
+# (árvore × mão) produz um card coerente: freqs normalizadas, dimensão certa, e jogar
+# a própria ação dominante da mão nunca daria "DESVIO CRÍTICO".
+def scan_hand_tree(verbose=False) -> list[Violation]:
+    from database.schema import get_conn
+    import json as _json
+    c = get_conn()
+    rows = c.execute(
+        "SELECT tree_hash, board, actions, hand_table FROM gto_tree_strategies").fetchall()
+    viols = []
+    n_hands = 0
+    for r in rows:
+        d = dict(r)
+        th = d['tree_hash']
+        try:
+            actions = _json.loads(d['actions']) if d.get('actions') else []
+            table   = _json.loads(d['hand_table']) if d.get('hand_table') else []
+        except Exception:
+            viols.append(Violation('ht_parse', 'hand_tree', f'tree#{th}', '', '', '', 'json inválido'))
+            continue
+        if not actions or not table:
+            continue
+        bases = [_norm_pf(a) for a in actions]
+        for ent in table:
+            hand  = ent.get('hand', '')
+            freqs = ent.get('freqs') or []
+            def V(inv, detail, _h=hand):
+                viols.append(Violation(inv, 'hand_tree', f'tree#{th}', '', '', _h, detail))
+            # INV-H1 freqs alinhadas às ações da árvore
+            if len(freqs) != len(actions):
+                V('ht_len_mismatch', f'len(freqs)={len(freqs)} ≠ len(actions)={len(actions)}')
+                continue
+            tot = sum(float(f) for f in freqs)
+            # INV-H2 estratégia da mão normalizada (não all-zero / não duplo)
+            if not (0.5 <= tot <= 1.5):
+                V('ht_not_normalized', f'sum(freqs)={tot:.3f} actions={actions}')
+                continue
+            # agrega por ação-base (igual ao handAgg do widget: bet_75pct+bet_1.1bb→bet)
+            agg = {}
+            for b, f in zip(bases, freqs):
+                agg[b] = agg.get(b, 0.0) + float(f)
+            n_hands += 1
+            top_base = max(agg, key=lambda k: agg[k])
+            top_freq = agg[top_base]
+            # INV-H3 jogar a AÇÃO DOMINANTE da própria mão não pode dar veredito crítico.
+            # (é a recomendação que o card mostra — se ela mesma cair em <10%, o card se
+            #  autocontradiz: "GTO recomenda X" com X marcado DESVIO CRÍTICO.)
+            if top_freq < 0.10:
+                V('ht_dominant_critical',
+                  f'dominante {top_base} freq={top_freq:.3f} (<10%) → card recomendaria ação crítica')
+    if verbose:
+        print(f'  hand_tree: {len(rows)} árvores, {n_hands} mãos varridas', file=sys.stderr)
+    return viols
+
+
 def main():
     show_samples = '--samples' in sys.argv
     viols = scan_preflop(verbose=True)
     viols += scan_postflop(verbose=True)
+    viols += scan_hand_tree(verbose=True)
     by_inv = defaultdict(list)
     for v in viols:
         by_inv[v.inv].append(v)
@@ -290,6 +349,11 @@ def main():
         'pf_action_not_dominant':   'postflop: gto_action armazenado ≠ ação dominante da strategy',
         'pf_dominant_is_critical':  'postflop: jogar a ação dominante daria DESVIO CRÍTICO',
         'pf_shove_vs_allin':        'postflop: shove num nó allin-dominante não é correct (shove↔allin)',
+        # hand-tree (gto_tree_strategies) — fonte do veredito por mão
+        'ht_parse':             'hand-tree: actions/hand_table json inválido',
+        'ht_len_mismatch':      'hand-tree: freqs da mão desalinhadas das ações da árvore',
+        'ht_not_normalized':    'hand-tree: estratégia da mão all-zero / não normalizada',
+        'ht_dominant_critical': 'hand-tree: ação dominante da mão tem freq <10% (card recomendaria ação crítica)',
     }
     if not viols:
         print('OK 0 violações — todos os invariantes do card mantidos.')

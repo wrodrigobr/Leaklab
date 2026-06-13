@@ -102,11 +102,21 @@ export function GtoStrategyPanel({ strategy, playedAction, compact, handStrategy
     }))
     .sort((a, b) => b.frequency - a.frequency);
 
-  const topRow = sorted[0];
+  // A estratégia EXIBIDA é a da MÃO específica do hero quando existe — nunca o range
+  // agregado ao lado. Mostrar "range folda 63%" junto de "sua mão levanta 93%" confunde:
+  // o veredito é SEMPRE da mão. O range (`sorted`) só aparece como fallback quando não há
+  // tabela por mão (nó postflop sem gto_tree_strategies — raro).
+  const usingHand = handAgg.length > 0;
+  const primary = usingHand
+    ? handAgg.map(r => ({ action: r.action, label: r.label, frequency: r.frequency, ev_bb: r.ev }))
+    : sorted;
+  const primaryBestEv = usingHand ? handBestEv : (sorted[0]?.ev_bb ?? null);
+
+  const topRow = primary[0];
   const topEv = topRow?.ev_bb ?? null;
 
   const playedBase = playedAction ? baseAction(playedAction) : null;
-  const playedRow = playedBase ? sorted.find(r => r.action === playedBase) : null;
+  const playedRow = playedBase ? primary.find(r => r.action === playedBase) : null;
   const playedEv = playedRow?.ev_bb ?? null;
 
   const opportunityCost =
@@ -116,7 +126,12 @@ export function GtoStrategyPanel({ strategy, playedAction, compact, handStrategy
 
   return (
     <div className="space-y-2">
-      {sorted.map((row, idx) => {
+      {usingHand && (
+        <div className="font-mono text-[8px] uppercase tracking-wide text-teal-300/90" title={handTip}>
+          {handTitle || "Sua mão"} · {prettyHand(handStrategy!.hand)}
+        </div>
+      )}
+      {primary.map((row, idx) => {
         const isPlayed = playedBase != null && row.action === playedBase;
         const isTop = idx === 0;
         const isTopAndPlayed = isTop && isPlayed;
@@ -163,6 +178,19 @@ export function GtoStrategyPanel({ strategy, playedAction, compact, handStrategy
               )}>
                 {pct}%
               </span>
+              {/* EV/loss da MÃO — só quando exibindo a estratégia da mão (tem EV por ação) */}
+              {usingHand && (() => {
+                const loss = primaryBestEv != null && row.ev_bb != null ? primaryBestEv - row.ev_bb : null;
+                return (
+                  <span className={cn(
+                    "font-mono shrink-0 w-12 text-right",
+                    compact ? "text-[8px]" : "text-[9px]",
+                    loss != null && loss > 0.05 ? "text-amber-400/90" : "text-muted-foreground/60"
+                  )}>
+                    {loss != null && loss > 0.05 ? `−${loss.toFixed(1)}bb` : (row.ev_bb != null ? `${row.ev_bb.toFixed(1)}bb` : "")}
+                  </span>
+                );
+              })()}
               {/* played checkmark */}
               {isPlayed && (
                 <CheckCircle2 className={cn(
@@ -176,44 +204,9 @@ export function GtoStrategyPanel({ strategy, playedAction, compact, handStrategy
         );
       })}
 
-      {/* Fase 3 — bloco "Sua mão": frequência/EV da mão ESPECÍFICA do hero,
-          em contraste com as barras da range acima. Só quando a tabela por mão
-          da árvore existe (gto_tree_strategies). */}
-      {handAgg.length > 0 && (
-        <div className="pt-1.5 mt-1 border-t border-border/40 space-y-1" title={handTip}>
-          <div className="font-mono text-[8px] uppercase tracking-wide text-teal-300/90">
-            {handTitle || "Sua mão"} · {prettyHand(handStrategy!.hand)}
-          </div>
-          {handAgg.map((row) => {
-            const pct = Math.round(row.frequency * 100);
-            const actColor = ACTION_COLORS[actionKey(row.action)];
-            const loss = handBestEv != null && row.ev != null ? handBestEv - row.ev : null;
-            return (
-              <div key={`hand-${row.action}`} className="flex items-center gap-2">
-                <div className="flex-1 h-1 rounded-full bg-muted/15 overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: actColor }} />
-                </div>
-                <span className="font-mono shrink-0 text-[8px]" style={{ color: actColor }}>
-                  {row.label}
-                </span>
-                <span className="font-mono shrink-0 w-7 text-right text-[8px] text-foreground/90">
-                  {pct}%
-                </span>
-                <span className={cn(
-                  "font-mono shrink-0 w-12 text-right text-[8px]",
-                  loss != null && loss > 0.05 ? "text-amber-400/90" : "text-muted-foreground/60"
-                )}>
-                  {loss != null && loss > 0.05 ? `−${loss.toFixed(1)}bb` : (row.ev != null ? `${row.ev.toFixed(1)}bb` : "")}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {/* Mixed strategy badge — when ≥2 actions have ≥10% frequency.
           Texto "Fold 85% · Raise 15%" removido: redundante com as barras acima. */}
-      {sorted.filter(r => r.frequency >= 0.10).length >= 2 && (
+      {primary.filter(r => r.frequency >= 0.10).length >= 2 && (
         <div className="flex items-center gap-2 pt-0.5">
           <GtoMixedBadge label="spot_mixed" size={compact ? "xs" : "sm"} />
         </div>
