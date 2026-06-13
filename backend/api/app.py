@@ -2945,8 +2945,19 @@ def coach_student_tournament(student_id, tournament_id):
     if not t:
         return jsonify({'error': 'Torneio não encontrado'}), 404
     decisions = get_decisions(t['id'])
+    # Aderência coach × sistema por decisão (marca mãos não-aderentes na tela do coach).
+    from leaklab.coach_adherence import classify as _adh_classify
+    _ann_map = {a['decision_id']: a for a in get_annotations_for_decisions([d['id'] for d in decisions])}
     for d in decisions:
         d['note'] = _enrich_note(d)
+        _ann = _ann_map.get(d['id'])
+        if _ann:
+            _kind, _rec = _adh_classify(d, _ann)
+            d['adherence'] = _kind                         # match_ok|match_erro|diverge_rigido|diverge_perdido|comentario
+            d['coach_comment'] = _ann.get('comment')
+            d['coach_action'] = _ann.get('coach_action')
+        else:
+            d['adherence'] = None
     return jsonify({'tournament': t, 'decisions': decisions})
 
 

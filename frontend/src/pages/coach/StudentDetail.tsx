@@ -342,7 +342,7 @@ function TournamentsTab({ studentId }: { studentId: number }) {
       {tournaments.map((t) => (
         <button
           key={t.id}
-          onClick={() => setSelectedTid(t.tournament_id)}
+          onClick={() => navigate(`/tournaments/${t.tournament_id}?student=${studentId}`)}
           className="w-full flex items-center justify-between rounded-lg border border-border bg-hud-surface px-4 py-3 hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
         >
           <div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
@@ -30,7 +30,7 @@ import { TournamentAiReport } from "@/components/hud/TournamentAiReport";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AiText } from "@/components/ui/AiText";
 import { cn, formatAction } from "@/lib/utils";
-import { tournaments, metrics, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse } from "@/lib/api";
+import { tournaments, metrics, coachDashboard, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse } from "@/lib/api";
 
 type Severity = "critical" | "major" | "minor" | "ok";
 type Street = "Pré-flop" | "Flop" | "Turn" | "River" | "Outros";
@@ -59,6 +59,8 @@ interface Hand {
   gtoLabel?: string | null;
   gtoAction?: string | null;
   hasPostflop?: boolean;
+  divergent?: boolean;            // coach mode: alguma decisão não-aderente (coach × sistema)
+  adherence?: string | null;      // categoria representativa (diverge_*/match_*/comentario)
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -170,6 +172,11 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
       gtoLabel: worst.gto_label ?? null,
       gtoAction: worst.gto_action ?? null,
       hasPostflop: decs.some((d) => d.street === "flop" || d.street === "turn" || d.street === "river"),
+      divergent: decs.some((d) => d.adherence === "diverge_rigido" || d.adherence === "diverge_perdido"),
+      adherence: (decs.find((d) => d.adherence === "diverge_perdido")
+        ?? decs.find((d) => d.adherence === "diverge_rigido")
+        ?? decs.find((d) => d.adherence === "match_erro")
+        ?? decs.find((d) => d.adherence != null))?.adherence ?? null,
     });
   });
   return hands;
@@ -200,6 +207,10 @@ const STREETS: (Street | "all")[] = ["all", "Pré-flop", "Flop", "Turn", "River"
 
 const TournamentDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const coachStudentId = searchParams.get("student");   // coach revisando o aluno (modo coach)
+  const replayHref = (handId: string) =>
+    `/replayer?t=${id}&h=${handId}${coachStudentId ? `&student=${coachStudentId}` : ""}`;
   const navigate = useNavigate();
   const { t } = useTranslation("tournaments");
   const { t: tc } = useTranslation("common");
@@ -225,6 +236,7 @@ const TournamentDetail = () => {
   const [query, setQuery] = useState("");
   const [street, setStreet] = useState<Street | "all">("all");
   const [resultFilter, setResultFilter] = useState<"all" | "correct" | "attention" | "error" | "pending">("all");
+  const [onlyDiverg, setOnlyDiverg] = useState(false);   // coach mode: filtrar mãos não-aderentes
   const [analyses, setAnalyses] = useState<Record<number, string>>({});
   const [analysisLoading, setAnalysisLoading] = useState<Record<number, boolean>>({});
   const [phaseAnalysis, setPhaseAnalysis] = useState<PhaseData[]>([]);
@@ -253,18 +265,23 @@ const TournamentDetail = () => {
 
   useEffect(() => {
     if (!id) return;
-    tournaments
-      .get(id)
+    // Modo coach (?student=): busca o torneio DO ALUNO (com aderência por decisão); senão o próprio.
+    const fetchTournament = coachStudentId
+      ? coachDashboard.studentTournament(Number(coachStudentId), id)
+      : tournaments.get(id);
+    fetchTournament
       .then((r) => {
         setTournament(r.tournament);
         setHands(groupByHand(r.decisions));
       })
       .catch(() => null)
       .finally(() => setLoading(false));
-    tournaments.phaseAnalysis(id).then((r) => setPhaseAnalysis(r.phase_analysis)).catch(() => null);
-    tournaments.textureAnalysis(id).then((r) => setTextureAnalysis(r.texture_analysis)).catch(() => null);
-    tournaments.narrative(id).then(setNarrative).catch(() => null);
-  }, [id]);
+    if (!coachStudentId) {   // análises são user-scoped; pulam no modo coach
+      tournaments.phaseAnalysis(id).then((r) => setPhaseAnalysis(r.phase_analysis)).catch(() => null);
+      tournaments.textureAnalysis(id).then((r) => setTextureAnalysis(r.texture_analysis)).catch(() => null);
+      tournaments.narrative(id).then(setNarrative).catch(() => null);
+    }
+  }, [id, coachStudentId]);
 
   useEffect(() => {
     if (!tournament?.id) return;
@@ -274,6 +291,7 @@ const TournamentDetail = () => {
   const filtered = useMemo(
     () =>
       hands.filter((h) => {
+        if (onlyDiverg && !h.divergent) return false;   // coach mode: só não-aderentes
         if (street !== "all" && h.street !== street) return false;
         if (resultFilter !== "all") {
           // Usa GTO quando disponível, engine como fallback
@@ -299,8 +317,9 @@ const TournamentDetail = () => {
         }
         return true;
       }),
-    [hands, query, resultFilter, street]
+    [hands, query, resultFilter, street, onlyDiverg]
   );
+  const divergCount = useMemo(() => hands.filter((h) => h.divergent).length, [hands]);
 
   const stats = useMemo(() => ({
     total:    hands.length,
@@ -376,7 +395,7 @@ const TournamentDetail = () => {
                 )}
               </div>
               <button
-                onClick={() => hands[0] && navigate(`/replayer?t=${id}&h=${hands[0].id}`)}
+                onClick={() => hands[0] && navigate(replayHref(hands[0].id))}
                 disabled={!hands.length}
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--primary)/0.5)] transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -682,6 +701,21 @@ const TournamentDetail = () => {
             })()}
           </section>
 
+          {coachStudentId && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-500/5 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="size-4 text-amber-300" aria-hidden />
+                <span className="text-sm text-foreground">Revisão do coach — <b className="text-amber-300">{divergCount}</b> mão(s) não-aderente(s) (coach × sistema)</span>
+              </div>
+              <button
+                onClick={() => setOnlyDiverg((v) => !v)}
+                className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider ring-1 transition-colors",
+                  onlyDiverg ? "bg-amber-400/20 text-amber-200 ring-amber-400/50" : "bg-background/40 text-muted-foreground ring-border hover:text-foreground")}
+              >
+                <Filter className="size-3" aria-hidden /> {onlyDiverg ? "mostrando só divergências" : "só não-aderentes"}
+              </button>
+            </div>
+          )}
           <section className="grid grid-cols-1 gap-3">
             {filtered.map((h) => {
               const meta = SEVERITY_META[h.category];
@@ -719,6 +753,18 @@ const TournamentDetail = () => {
                             {meta.label}
                           </span>
                         )}
+                        {coachStudentId && h.adherence && (() => {
+                          const A: Record<string, [string, string]> = {
+                            diverge_perdido: ["⚠ NÃO ADERENTE · coach aponta", "bg-red-500/10 text-red-400 ring-red-400/40"],
+                            diverge_rigido:  ["⚠ NÃO ADERENTE · nós flagamos", "bg-amber-500/10 text-amber-300 ring-amber-400/40"],
+                            match_erro:      ["coach confirma o erro", "bg-sky-500/10 text-sky-300 ring-sky-400/30"],
+                            match_ok:        ["aderente", "bg-primary/10 text-primary ring-primary/30"],
+                            comentario:      ["coach comentou", "bg-muted/30 text-muted-foreground ring-border"],
+                          };
+                          const [lbl, cls] = A[h.adherence] ?? ["", ""];
+                          if (!lbl) return null;
+                          return <span className={cn("inline-flex items-center rounded-sm px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ring-1", cls)}>{lbl}</span>;
+                        })()}
                         {h.hasAnnotation && (
                           <span className="inline-flex items-center gap-1 rounded-sm bg-violet-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-violet-400 ring-1 ring-violet-400/30">
                             <GraduationCap className="size-3" aria-hidden />
@@ -809,7 +855,7 @@ const TournamentDetail = () => {
                           </div>
                           <div className="flex items-center gap-3">
                             <Link
-                              to={`/replayer?t=${id}&h=${h.id}`}
+                              to={replayHref(h.id)}
                               className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-primary transition-colors"
                             >
                               <PlayCircle className="size-3" aria-hidden />
@@ -832,7 +878,7 @@ const TournamentDetail = () => {
                     ) : (
                       <div className="flex items-center justify-end gap-2">
                         <Link
-                          to={`/replayer?t=${id}&h=${h.id}`}
+                          to={replayHref(h.id)}
                           className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-secondary px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground hover:border-primary/30"
                         >
                           <PlayCircle className="size-3.5" aria-hidden />

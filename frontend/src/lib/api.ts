@@ -204,6 +204,10 @@ export interface TournamentDecision {
   has_annotation?: boolean;
   gto_label: "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical" | null;
   gto_action: string | null;
+  // Aderência coach × sistema (só no endpoint do coach) — marca mãos não-aderentes.
+  adherence?: "match_ok" | "match_erro" | "diverge_rigido" | "diverge_perdido" | "comentario" | null;
+  coach_comment?: string | null;
+  coach_action?: string | null;
 }
 
 export interface ReplaySeat {
