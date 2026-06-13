@@ -25,10 +25,11 @@ def norm(a):
 
 # Aprovação / crítica do coach pela LINGUAGEM (mais robusto que extrair a ação — quando o
 # coach critica, o texto menciona a ação do HERO, não a recomendada).
-_APPROVE = re.compile(r'perfeit|jogou (muito )?bem|muito bem|bem jogad|aprov|gost(o|ei|a )|'
+_APPROVE = re.compile(r'perfeit|jogou (muito )?bem|muito bem|bem jogad|aprov|(?<!n[ãa]o )gost(o|ei|a )|'
                       r'\bcerto\b|correto|\blegal\b|[óo]tim|justo|excelente|t[áa] bom|t[áa] correto|'
-                      r'tranquil|sem erro|trivial|un[âa]nime|\bboa\b|\bbom\b|sem cr[íi]tica|ideal|'
+                      r'tranquil|sem erro|trivial|un[âa]nime|\bboa\b|\bbom\b|sem cr[íi]tica|'
                       r'beleza|passou|\bok\b|importante isso|paci[êe]ncia', re.I)
+# "ideal" sai: "o ideal seria [outra ação]" é CRÍTICA, não aprovação.
 _CRIT = re.compile(r'deveria|recomendo|n[ãa]o gosto|larga(r|ria)?|pode largar|errad|for[çc]ad|'
                    r'desnecess|estranh|confus|sem sentido|pecou|abusiv|demais|problema|n[ãa]o aconselho|'
                    r'n[ãa]o recomend|cortou|caro\b|evita|\bruim|prefiro|preferia|tomaria|tem que|alto demais|'
@@ -67,8 +68,12 @@ def coach_says_mistake(dec, ann):
     strong = bool(_STRONG_CRIT.search(t))
     # parse SÓ pra detectar APROVAÇÃO (ação endossada == ação do hero, sem crítica forte).
     # NÃO uso rec!=hero do texto livre p/ afirmar erro (over-gera: descreve a linha). Pro
-    # resto, sentimento.
-    if rec and rec == hero and not strong:
+    # resto, sentimento. Guarda de NEGAÇÃO: "não [ação]" (ex.: "não vejo motivos pra foldar")
+    # nega a aprovação dessa ação.
+    _neg_kw = {'fold': r'fold|larga', 'call': r'call|pag', 'bet': r'aposta|bet|c-?bet',
+               'check': r'check|mesa', 'raise': r'3-?bet|raise|tribet', 'allin': r'all|jam|shove|win'}
+    _negated = rec and re.search(r'n[ãa]o\b[^.]{0,30}(' + _neg_kw.get(rec, rec) + ')', t, re.I)
+    if rec and rec == hero and not strong and not _negated:
         return False
     ap, cr = len(_APPROVE.findall(t)), len(_CRIT.findall(t))
     if ap == 0 and cr == 0:
