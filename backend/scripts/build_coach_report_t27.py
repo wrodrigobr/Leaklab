@@ -50,7 +50,10 @@ def coach_says_mistake(dec, ann):
     return cr > ap
 
 def classify(dec, ann):
-    sys_mistake = (dec['label'] in SYS_MISTAKE_LABELS) or (dec['gto_label'] in SYS_MISTAKE_GTO)
+    # "erro do sistema" = a SEVERIDADE do veredito (label) que o usuário vê — não o
+    # gto_label (frequência do solver). Após a calibração por EV, um gto_critical de baixo
+    # custo vira marginal/standard → deixa de ser "erro" aqui (coerente com o card).
+    sys_mistake = dec['label'] in SYS_MISTAKE_LABELS
     cm = coach_says_mistake(dec, ann)
     rec = norm(ann['coach_action']) if ann['coach_action'] else None
     if cm is None:
@@ -78,7 +81,7 @@ for d in decs:
     if ann:
         kind, rec, sysm = classify(d, ann)
     else:
-        kind, rec, sysm = 'sem_anotacao', None, ((d['label'] in SYS_MISTAKE_LABELS) or (d['gto_label'] in SYS_MISTAKE_GTO))
+        kind, rec, sysm = 'sem_anotacao', None, (d['label'] in SYS_MISTAKE_LABELS)
     rows.append((d, ann, kind, rec, sysm))
 
 cnt = Counter(r[2] for r in rows)
