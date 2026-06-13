@@ -22,15 +22,15 @@ h2{font-family:'Chakra Petch',monospace;color:#E3E8EC;font-size:18px;margin:30px
 
 <h2>Pontos de calibragem — como chegar mais perto do coach</h2>
 <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:12px 16px;margin:8px 0 16px">
-<p style="color:#cbd5e1;font-size:13px;margin:4px 0"><b style="color:#f59e0b">1. Estamos severos demais em spots agressivos/curtos preflop + sizing.</b> Dos 18 casos que flagamos e o coach aprova, <b style="color:#ef4444">10 foram chamados por nós de erro GRAVE</b> (clear_mistake/critical) — reshoves, folds vs 4-bet, 3-bets marginais que o coach considera linha padrão. Ação: rebaixar severidade desses spots (já em curso na recalibração por EV). 13 dos 18 são preflop.</p>
+<p style="color:#cbd5e1;font-size:13px;margin:4px 0"><b style="color:#f59e0b">1. Estamos severos demais em spots agressivos/curtos preflop + sizing.</b> Dos 18 casos que flagamos e o coach aprova, <b style="color:#ef4444">2 foram chamados por nós de erro GRAVE</b> (clear_mistake/critical) — reshoves, folds vs 4-bet, 3-bets marginais que o coach considera linha padrão. Ação: rebaixar severidade desses spots (já em curso na recalibração por EV). 13 dos 18 são preflop.</p>
 <p style="color:#cbd5e1;font-size:13px;margin:4px 0"><b style="color:#ef4444">2. O coach joga mais tight/exploit que o GTO baseline.</b> Dos 28 casos que ele aponta e nós aprovamos, 14 são preflop (folda mãos marginais como A6s, set-mine, calls/folds por read). <b>Cuidado:</b> nem todos são bug nosso — muitos são preferência EXPLOITATIVA do coach (vs recreativo/nit) que o GTO não modela. Não tightem cego rumo a ele; revise caso a caso quais são leak real vs exploit.</p>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
 <div>
   <h3 style="color:#f59e0b;font-size:15px">⚠️ Rígidos demais (18) — nós flagamos, coach aprova</h3>
-  <p style="color:#94a3b8;font-size:12.5px">RELAXAR. 10 chamados de erro grave. Por street: {'preflop': 13, 'flop': 3, 'river': 1, 'turn': 1}</p>
-  <ul style="padding-left:18px;margin:6px 0"><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#2 5c7h</b> preflop/fold: sistema diz <b>standard</b>/gto_minor_deviation, coach recomenda <b>fold</b>. <span style="color:#94a3b8">Segunda mão, 57, fold.” (sem crítica) — FOLD ok</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#4 6cAc</b> flop/bet: sistema diz <b>small_mistake</b>/gto_minor_deviation, coach recomenda <b>bet</b>. <span style="color:#94a3b8">Aqui o jogador apostou corretamente na minha visão, entre 2,5 e 3bb. Porém estamos recomendando uma aposta mais alta, ~8</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#4 6cAc</b> river/bet: sistema diz <b>clear_mistake</b>/gto_critical, coach recomenda <b>check</b>. <span style="color:#94a3b8">Me parece uma aposta desnecessária e alta. Tomaria call de par de kei ou par de valete. Acho que nao consegue extrair an</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#19 As9d</b> preflop/shove: sistema diz <b>clear_mistake</b>/gto_critical, coach recomenda <b>allin</b>. <span style="color:#94a3b8">Eu já daria a win. 18 blinds [dele], A9 contra quem abre bastante… jogou bem. — JAM</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#32 8s8d</b> turn/fold: sistema diz <b>clear_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">E agora você vai largar, né? Ok. Justo. Essa é a linha que eu usaria. — FOLD</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#40 AdJd</b> flop/call: sistema diz <b>small_mistake</b>/gto_minor_deviation, coach recomenda <b>call</b>. <span style="color:#94a3b8">As-valete de ouro, flush draw com over - so call, nao precisa voltar. Voce fez o flush maior e dominava.” (~25:09) — cal</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#41 KsTs</b> preflop/raise: sistema diz <b>marginal</b>/gto_minor_deviation, coach recomenda <b></b>. <span style="color:#94a3b8">Temos um raise pra 2 do botão. Sugiro o call mas foi pro 3bet. Gosto também. Gosto do 3bet por blefe, é que o call seria</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#45 TsJs</b> preflop/fold: sistema diz <b>clear_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">Tomou forbet… você vai ter que largar. Ok. — FOLD</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#55 5h6h</b> preflop/call: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b></b>. <span style="color:#94a3b8">Aqui deveria ter dado mini raise, 2bb, e vc deu limp. Não gosto.
-Bateu nada, voce vai apostar por blefe, 1 ou 1.2bb...ap</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#58 Ac4s</b> preflop/raise: sistema diz <b>marginal</b>/gto_minor_deviation, coach recomenda <b>raise</b>. <span style="color:#94a3b8">Foi pro tribet light. Gosto, gosto. — 3-BET light</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#59 QhQs</b> preflop/shove: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b></b>. <span style="color:#94a3b8">O cara deu raise pra 2, vc tem que dar um 3bet por valor, 6.5 ou 7bb. Voce mandou all in, tá bom...ele tem só 18BB sobra</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#62 AdJd</b> preflop/fold: sistema diz <b>clear_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">Normalmente aqui é fold… VPIP 15, 3-bet 4. Pode foldar tranquilo. — FOLD (read: nit)</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#71 Kh2h</b> preflop/raise: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b></b>. <span style="color:#94a3b8">Voce fez um 3bet light, olha. Não é as posições que eu gosto, mas o stack é o stack ideal. Voce lider contra o segundo d</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#84 As5h</b> preflop/shove: sistema diz <b>small_mistake</b>/, coach recomenda <b>allin</b>. <span style="color:#94a3b8">Tá, ele limpou, all in. Justo, gosto. — JAM</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#88 TcTh</b> preflop/fold: sistema diz <b>clear_mistake</b>/gto_critical, coach recomenda <b></b>. <span style="color:#94a3b8">Raise pra 2, tomou Call do botão.
+  <p style="color:#94a3b8;font-size:12.5px">RELAXAR. 2 chamados de erro grave. Por street: {'preflop': 13, 'flop': 3, 'river': 1, 'turn': 1}</p>
+  <ul style="padding-left:18px;margin:6px 0"><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#2 5c7h</b> preflop/fold: sistema diz <b>standard</b>/gto_minor_deviation, coach recomenda <b>fold</b>. <span style="color:#94a3b8">Segunda mão, 57, fold.” (sem crítica) — FOLD ok</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#4 6cAc</b> flop/bet: sistema diz <b>marginal</b>/gto_minor_deviation, coach recomenda <b>bet</b>. <span style="color:#94a3b8">Aqui o jogador apostou corretamente na minha visão, entre 2,5 e 3bb. Porém estamos recomendando uma aposta mais alta, ~8</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#4 6cAc</b> river/bet: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>check</b>. <span style="color:#94a3b8">Me parece uma aposta desnecessária e alta. Tomaria call de par de kei ou par de valete. Acho que nao consegue extrair an</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#19 As9d</b> preflop/shove: sistema diz <b>marginal</b>/gto_critical, coach recomenda <b>allin</b>. <span style="color:#94a3b8">Eu já daria a win. 18 blinds [dele], A9 contra quem abre bastante… jogou bem. — JAM</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#32 8s8d</b> turn/fold: sistema diz <b>clear_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">E agora você vai largar, né? Ok. Justo. Essa é a linha que eu usaria. — FOLD</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#40 AdJd</b> flop/call: sistema diz <b>marginal</b>/gto_minor_deviation, coach recomenda <b>call</b>. <span style="color:#94a3b8">As-valete de ouro, flush draw com over - so call, nao precisa voltar. Voce fez o flush maior e dominava.” (~25:09) — cal</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#41 KsTs</b> preflop/raise: sistema diz <b>marginal</b>/gto_minor_deviation, coach recomenda <b></b>. <span style="color:#94a3b8">Temos um raise pra 2 do botão. Sugiro o call mas foi pro 3bet. Gosto também. Gosto do 3bet por blefe, é que o call seria</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#45 TsJs</b> preflop/fold: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">Tomou forbet… você vai ter que largar. Ok. — FOLD</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#55 5h6h</b> preflop/call: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b></b>. <span style="color:#94a3b8">Aqui deveria ter dado mini raise, 2bb, e vc deu limp. Não gosto.
+Bateu nada, voce vai apostar por blefe, 1 ou 1.2bb...ap</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#58 Ac4s</b> preflop/raise: sistema diz <b>marginal</b>/gto_minor_deviation, coach recomenda <b>raise</b>. <span style="color:#94a3b8">Foi pro tribet light. Gosto, gosto. — 3-BET light</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#59 QhQs</b> preflop/shove: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b></b>. <span style="color:#94a3b8">O cara deu raise pra 2, vc tem que dar um 3bet por valor, 6.5 ou 7bb. Voce mandou all in, tá bom...ele tem só 18BB sobra</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#62 AdJd</b> preflop/fold: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>fold</b>. <span style="color:#94a3b8">Normalmente aqui é fold… VPIP 15, 3-bet 4. Pode foldar tranquilo. — FOLD (read: nit)</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#71 Kh2h</b> preflop/raise: sistema diz <b>marginal</b>/gto_critical, coach recomenda <b></b>. <span style="color:#94a3b8">Voce fez um 3bet light, olha. Não é as posições que eu gosto, mas o stack é o stack ideal. Voce lider contra o segundo d</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#84 As5h</b> preflop/shove: sistema diz <b>small_mistake</b>/, coach recomenda <b>allin</b>. <span style="color:#94a3b8">Tá, ele limpou, all in. Justo, gosto. — JAM</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#88 TcTh</b> preflop/fold: sistema diz <b>clear_mistake</b>/gto_critical, coach recomenda <b></b>. <span style="color:#94a3b8">Raise pra 2, tomou Call do botão.
 Voce deu cbet no flop, ok, passou, boa.</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#111 Ad8d</b> preflop/call: sistema diz <b>small_mistake</b>/gto_critical, coach recomenda <b>call</b>. <span style="color:#94a3b8">As-8, par de 8 vs 3-bet, call-down - ele tava light com A4. Nao e facil jogar A8, mas acabou sendo um bom call.” (~53:02</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#121 6dQs</b> flop/raise: sistema diz <b>small_mistake</b>/gto_minor_deviation, coach recomenda <b>raise</b>. <span style="color:#94a3b8">Dama-seis defendeu, bateu a dama, ele apostou bem baixinho — quando o c-bet é muito baixo você pode dar mais raises, mes</span></li><li style="margin:6px 0;color:#cbd5e1;font-size:13px"><b style="color:#f59e0b">#122 JcTc</b> preflop/bet: sistema diz <b>small_mistake</b>/, coach recomenda <b></b>. <span style="color:#94a3b8">raise pra 2, ele deu call. Flop bateu uma broca, vc vai dar um cbet 1BB e pouquinho. Voce mandou 2BB ok, ele pagou.
 No t</span></li></ul>
 </div>
@@ -67,7 +67,7 @@ Perdem</span></li></ul>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#38bdf822;color:#38bdf8;border:1px solid #38bdf855;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · erro</span></td>
         </tr><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>check</b> → veredito <b>small_mistake</b> · GTO gto_minor_deviation · sugere <b>bet</b> · EV 0.26bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>check</b> → veredito <b>marginal</b> · GTO gto_minor_deviation · sugere <b>bet</b> · EV 0.26bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr></table>
@@ -108,12 +108,12 @@ Perdem</span></li></ul>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#ef444422;color:#ef4444;border:1px solid #ef444455;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">DIVERGE · perdido</span></td>
         </tr><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>small_mistake</b> · GTO gto_minor_deviation · sugere <b>check</b> · EV 0.02bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>marginal</b> · GTO gto_minor_deviation · sugere <b>check</b> · EV 0.02bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Aqui o jogador apostou corretamente na minha visão, entre 2,5 e 3bb. Porém estamos recomendando uma aposta mais alta, ~85% do pot...achei muito elevada em um pote multiway. <span style="color:#2DD4BF">[coach: bet]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">DIVERGE · rígido</span></td>
         </tr><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">river</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>check</b> · EV 0.34bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>check</b> · EV 0.34bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Me parece uma aposta desnecessária e alta. Tomaria call de par de kei ou par de valete. Acho que nao consegue extrair anto apostando com o A6 <span style="color:#2DD4BF">[coach: check]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">DIVERGE · rígido</span></td>
         </tr></table>
@@ -125,12 +125,12 @@ Perdem</span></li></ul>
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>call</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>raise</b> · EV 0.79bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>call</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>raise</b> · EV 0.79bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Call com A alto neste board nao parece uma boa jogada, não deu pra entender qual o plano do jogador, mas em um pote multiway com este tamanho de aposta, nao parece uma jogada aceitável <span style="color:#2DD4BF">[coach: fold]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#38bdf822;color:#38bdf8;border:1px solid #38bdf855;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · erro</span></td>
         </tr><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">river</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>check</b> → veredito <b>small_mistake</b> · GTO gto_minor_deviation · sugere <b>bet</b> · EV 0.29bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>check</b> → veredito <b>marginal</b> · GTO gto_minor_deviation · sugere <b>bet</b> · EV 0.29bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Aqui entendo que o jogador deveria ter feito uma aposta por valor, visto que  virou o A no river, talvez algo em torno de 6 ou 6,5BB. <span style="color:#2DD4BF">[coach: bet]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#38bdf822;color:#38bdf8;border:1px solid #38bdf855;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · erro</span></td>
         </tr></table>
@@ -164,7 +164,7 @@ Perdem</span></li></ul>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#38bdf822;color:#38bdf8;border:1px solid #38bdf855;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · erro</span></td>
         </tr><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">turn</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>check</b> · EV 0.82bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>check</b> · EV 0.82bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Não recomendamos ficar apostando sempre, vamos usar mãos que dão mais equidade. Neste caso até um AT teria mais equidade para uma aposta <span style="color:#2DD4BF">[coach: check]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#38bdf822;color:#38bdf8;border:1px solid #38bdf855;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · erro</span></td>
         </tr></table>
@@ -200,7 +200,7 @@ Perdem</span></li></ul>
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">turn</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>small_mistake</b> · GTO gto_minor_deviation · sugere <b>check</b> · EV 0.29bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>marginal</b> · GTO gto_minor_deviation · sugere <b>check</b> · EV 0.29bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr><tr>
@@ -258,7 +258,7 @@ Perdem</span></li></ul>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#2DD4BF22;color:#2DD4BF;border:1px solid #2DD4BF55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · ok</span></td>
         </tr><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">turn</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>small_mistake</b> · GTO gto_minor_deviation · sugere <b>check</b> · EV 0.02bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>marginal</b> · GTO gto_minor_deviation · sugere <b>check</b> · EV 0.02bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr></table>
@@ -282,7 +282,7 @@ Perdem</span></li></ul>
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>call</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>fold</b> · EV 0.41bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>call</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>fold</b> · EV 0.41bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Nesse tipo de board, eu largaria… 8-9-valete, [três do mesmo naipe]. — FOLD <span style="color:#2DD4BF">[coach: fold]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#38bdf822;color:#38bdf8;border:1px solid #38bdf855;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · erro</span></td>
         </tr></table>
@@ -318,7 +318,7 @@ Perdem</span></li></ul>
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">preflop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>shove</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>call</b> · EV 0.29bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>shove</b> → veredito <b>marginal</b> · GTO gto_critical · sugere <b>call</b> · EV 0.29bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Eu já daria a win. 18 blinds [dele], A9 contra quem abre bastante… jogou bem. — JAM <span style="color:#2DD4BF">[coach: allin]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">DIVERGE · rígido</span></td>
         </tr></table>
@@ -335,7 +335,7 @@ Perdem</span></li></ul>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#2DD4BF22;color:#2DD4BF;border:1px solid #2DD4BF55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · ok</span></td>
         </tr><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">river</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>check</b> · EV 1.32bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>check</b> · EV 1.32bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr></table>
@@ -412,7 +412,7 @@ Perdem</span></li></ul>
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">turn</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>check</b> · EV 1.09bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>check</b> · EV 1.09bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr><tr>
@@ -569,7 +569,7 @@ Perdem</span></li></ul>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">turn</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>check</b> → veredito <b>small_mistake</b> · GTO gto_minor_deviation · sugere <b>bet</b> · EV 0.25bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>check</b> → veredito <b>marginal</b> · GTO gto_minor_deviation · sugere <b>bet</b> · EV 0.25bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr><tr>
@@ -610,7 +610,7 @@ Perdem</span></li></ul>
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>call</b> → veredito <b>small_mistake</b> · GTO gto_minor_deviation · sugere <b>raise</b> · EV 0.17bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>call</b> → veredito <b>marginal</b> · GTO gto_minor_deviation · sugere <b>raise</b> · EV 0.17bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">As-valete de ouro, flush draw com over - so call, nao precisa voltar. Voce fez o flush maior e dominava.” (~25:09) — call ok; flush maior dominava <span style="color:#2DD4BF">[coach: call]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">DIVERGE · rígido</span></td>
         </tr></table>
@@ -671,7 +671,7 @@ Perdem</span></li></ul>
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">preflop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>fold</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>call</b> · EV 0.62bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>fold</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>call</b> · EV 0.62bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Tomou forbet… você vai ter que largar. Ok. — FOLD <span style="color:#2DD4BF">[coach: fold]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">DIVERGE · rígido</span></td>
         </tr></table>
@@ -740,7 +740,7 @@ Voce apostou 10bb, boa, gosto. Provavel que ele tinha algum tipo de draw ou duas
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">preflop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>raise</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>call</b> · EV 0.28bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>raise</b> → veredito <b>marginal</b> · GTO gto_critical · sugere <b>call</b> · EV 0.28bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Eu vou dar o all-in no semiblef… o tribet com par baixo é o problema. — JAM (semibluff) <span style="color:#2DD4BF">[coach: allin]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#38bdf822;color:#38bdf8;border:1px solid #38bdf855;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · erro</span></td>
         </tr></table>
@@ -894,7 +894,7 @@ Isso, foldou...gosto</td>
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">preflop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>fold</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>call</b> · EV 1.22bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>fold</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>call</b> · EV 1.22bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Normalmente aqui é fold… VPIP 15, 3-bet 4. Pode foldar tranquilo. — FOLD (read: nit) <span style="color:#2DD4BF">[coach: fold]</span></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">DIVERGE · rígido</span></td>
         </tr></table>
@@ -954,7 +954,7 @@ Isso, foldou...gosto</td>
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">river</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>check</b> · EV 0.65bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>bet</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>check</b> · EV 0.65bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Flop dos sonhos com flush draw... mas a dobra do board: agora voce nao pode voltar mais, so call. Nao gosto da volta.” (~39:19) — no river so call; raise foi ruim</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#38bdf822;color:#38bdf8;border:1px solid #38bdf855;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · erro</span></td>
         </tr></table>
@@ -1015,7 +1015,7 @@ Ele foldou, ok...mas veja, essa aposta nao te trouxe mais fichas, vc só arrisco
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">preflop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>raise</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>fold</b> · EV 0.13bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>raise</b> → veredito <b>marginal</b> · GTO gto_critical · sugere <b>fold</b> · EV 0.13bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">Voce fez um 3bet light, olha. Não é as posições que eu gosto, mas o stack é o stack ideal. Voce lider contra o segundo da mesa, não é a mesa final ainda. Passou, ok, boa.</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">DIVERGE · rígido</span></td>
         </tr></table>
@@ -1027,7 +1027,7 @@ Ele foldou, ok...mas veja, essa aposta nao te trouxe mais fichas, vc só arrisco
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>check</b> → veredito <b>small_mistake</b> · GTO gto_minor_deviation · sugere <b>bet</b> · EV 0.01bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>check</b> → veredito <b>marginal</b> · GTO gto_minor_deviation · sugere <b>bet</b> · EV 0.01bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr><tr>
@@ -1273,7 +1273,7 @@ Voce deu cbet no flop, ok, passou, boa.</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#2DD4BF22;color:#2DD4BF;border:1px solid #2DD4BF55;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">MATCH · ok</span></td>
         </tr><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>raise</b> → veredito <b>small_mistake</b> · GTO gto_minor_deviation · sugere <b>fold</b> · EV 0.01bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>raise</b> → veredito <b>marginal</b> · GTO gto_minor_deviation · sugere <b>fold</b> · EV 0.01bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr></table>
@@ -1536,7 +1536,7 @@ Com este stack eu só daria call, mas passou, ok.</td>
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">flop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>call</b> → veredito <b>small_mistake</b> · GTO gto_minor_deviation · sugere <b>raise</b></td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>call</b> → veredito <b>marginal</b> · GTO gto_minor_deviation · sugere <b>raise</b></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr><tr>
@@ -1647,7 +1647,7 @@ voce deu o all in, ok, passou, perfeito. Nao pode ficar com medo de jogar as mao
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">turn</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>shove</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>raise</b> · EV 0.73bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>shove</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>raise</b> · EV 0.73bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px">K8 no big, defendeu na reta final, bateu o 8 e trincou no turn — esse tipo de mão eu saio de lead por valor.” (~55:28) — lead/jam por valor (trinca)</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#94a3b822;color:#94a3b8;border:1px solid #94a3b855;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">COMENTÁRIO</span></td>
         </tr></table>
@@ -1659,7 +1659,7 @@ voce deu o all in, ok, passou, perfeito. Nao pode ficar com medo de jogar as mao
       </div>
       <table style="width:100%;border-collapse:collapse"><tr>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#cbd5e1;white-space:nowrap;font:600 12px monospace">preflop</td>
-          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>raise</b> → veredito <b>clear_mistake</b> · GTO gto_critical · sugere <b>fold</b> · EV 0.33bb</td>
+          <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12.5px"><b>raise</b> → veredito <b>small_mistake</b> · GTO gto_critical · sugere <b>fold</b> · EV 0.33bb</td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:13px"><i style="color:#475569">— sem comentário —</i></td>
           <td style="padding:8px 10px;border-top:1px solid #1e293b;text-align:right"><span style="background:#33415522;color:#334155;border:1px solid #33415555;border-radius:6px;padding:2px 8px;font:600 11px/1.4 monospace;white-space:nowrap">—</span></td>
         </tr><tr>

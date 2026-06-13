@@ -154,8 +154,9 @@ def cal_list(items, color):
 # padrões de calibragem (agrupa divergências por street + severidade)
 rig_street = Counter(r[0]['street'] for r in rigido)
 per_street = Counter(r[0]['street'] for r in perdido)
-# rígidos que NÓS chamamos de erro GRAVE (clear/critical) mas o coach aprova = pior over-flag
-rig_grave = [r for r in rigido if r[0]['label']=='clear_mistake' or r[0]['gto_label']=='gto_critical']
+# rígidos que NÓS chamamos de erro GRAVE (severidade clear_mistake) mas o coach aprova.
+# 'grave' = a SEVERIDADE (label), não o gto_label (frequência do solver, mantida intacta).
+rig_grave = [r for r in rigido if r[0]['label']=='clear_mistake']
 rig_pre = sum(1 for r in rigido if r[0]['street']=='preflop')
 per_pre = sum(1 for r in perdido if r[0]['street']=='preflop')
 sustenta = cnt['match_erro']   # coach confirma um erro que NÓS flagamos

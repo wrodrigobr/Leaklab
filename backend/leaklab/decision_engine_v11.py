@@ -282,6 +282,29 @@ def _preflop_gto_label_adjust(label: str, quality: str, ev_loss_bb: float | None
     return label
 
 
+# Teto de severidade pelo EV (recalibração coach #27): um erro só é GRAVE se custar EV
+# real. Uma ação de baixa frequência GTO (gto_critical) que custa quase nada é spot
+# misto/marginal, não erro grave — o coach aprova justamente esses. Capeia (nunca eleva):
+#   EV < 0.30bb → no máximo 'marginal'   (custo ínfimo)
+#   EV < 1.50bb → no máximo 'small_mistake' (custo real mas pequeno)
+#   EV >= 1.50bb → mantém (erro grave de verdade — ex.: fold de TT a 4.4bb fica clear)
+# NÃO toca o gto_label (frequência é fato do solver); só a severidade do veredito.
+_EV_CEIL_MARGINAL_BB = 0.30
+_EV_CEIL_SMALL_BB    = 1.50
+_LABEL_MAX_SCORE = {'standard': 0.08, 'marginal': 0.18, 'small_mistake': 0.35, 'clear_mistake': 1.0}
+
+
+def _ev_severity_ceiling(label: str, ev_loss_bb: float | None) -> str:
+    if ev_loss_bb is None:
+        return label
+    cur = _LABEL_SEV.get(label, 1)
+    if ev_loss_bb < _EV_CEIL_MARGINAL_BB:
+        return _SEV_LABEL[min(cur, _LABEL_SEV['marginal'])]
+    if ev_loss_bb < _EV_CEIL_SMALL_BB:
+        return _SEV_LABEL[min(cur, _LABEL_SEV['small_mistake'])]
+    return label
+
+
 def _enrich_gto(input_data: Dict[str, Any]) -> dict:
     """
     Lookup GTO postflop usando o mesmo hash que lookup_gto() — mesmos nós do banco.
@@ -917,6 +940,14 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         if _suspect_equity:
             label = 'small_mistake'
             final_score = min(final_score, 0.35)
+
+    # Teto de severidade por EV (final): rebaixa veredito grave de baixo custo (gto_critical
+    # que custa ~0 = spot misto, não erro grave). gto_label fica intacto.
+    _eff_ev = gto.get('ev_loss_bb') if gto.get('available') else None
+    _label_pre_ceil = label
+    label = _ev_severity_ceiling(label, _eff_ev)
+    if label != _label_pre_ceil:
+        final_score = min(final_score, _LABEL_MAX_SCORE[label])
 
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
 
