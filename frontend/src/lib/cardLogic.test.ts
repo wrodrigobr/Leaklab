@@ -5,7 +5,42 @@ import {
   isMultiwayPot,
   isPpMuted,
   idealActionSource,
+  verdictStrategy,
 } from "./cardLogic";
+
+// ── veredito vem da MÃO, não do range agregado (bug mão 5: A2s) ────────────────
+describe("verdictStrategy — mão específica > range agregado", () => {
+  // Nó multiway aproximado: o RANGE folda 63%, mas A2s (bloqueador + draw) LEVANTA 93%.
+  const range = [
+    { action: "fold", frequency: 0.63, ev_bb: 0 },
+    { action: "raise", frequency: 0.34, ev_bb: 0.4 },
+    { action: "call", frequency: 0.03, ev_bb: -0.8 },
+  ];
+  const hand = [
+    { action: "raise", frequency: 0.93, ev_bb: 1.5 },
+    { action: "call", frequency: 0.06, ev_bb: -0.8 },
+    { action: "fold", frequency: 0.01, ev_bb: -1.5 },
+  ];
+
+  it("postflop com hand_strategy → recomenda a ação modal da MÃO (raise), não do range (fold)", () => {
+    const v = verdictStrategy(true, hand, [...range].sort((a, b) => b.frequency - a.frequency));
+    expect(v[0].action).toBe("raise");           // header diria "GTO recomenda Raise"
+    expect(v[0].frequency).toBeCloseTo(0.93);
+    // e o call do hero é julgado pela freq DELE na mão (6%), não no range (3%)
+    expect(computeEffectiveGtoLabel(v, null, "call")).toBe("gto_critical"); // 6% < 10%
+  });
+
+  it("postflop SEM hand_strategy → cai no range", () => {
+    const sorted = [...range].sort((a, b) => b.frequency - a.frequency);
+    expect(verdictStrategy(true, null, sorted)).toBe(sorted);
+    expect(verdictStrategy(true, [], sorted)).toBe(sorted);
+  });
+
+  it("preflop (range estático) nunca usa hand_strategy", () => {
+    const sorted = [...range].sort((a, b) => b.frequency - a.frequency);
+    expect(verdictStrategy(false, hand, sorted)).toBe(sorted);
+  });
+});
 
 // ── shove↔allin (varredura turn) ──────────────────────────────────────────────
 describe("computeEffectiveGtoLabel — shove↔allin", () => {

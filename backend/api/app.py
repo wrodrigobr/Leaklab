@@ -4464,11 +4464,21 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # Re-evaluate is_error/reconciled_best using LIVE strategy (overrides stored gto_label)
         # Stored label may come from a mismatched or stale node; live frequency is ground truth.
         live_top_act = None
-        if gto_strategy and not gto_spot_mismatch:
+        # Veredito do hero vem da estratégia da MÃO específica (postflop solved node),
+        # não do range agregado. Ex.: o range folda 63%, mas A2s levanta 93% → a
+        # recomendação para ESTA mão é raise e o call é desvio de raise (não de fold).
+        # Sem isto, live_top_act pegava a ação modal do range (fold) e persistia
+        # gto_action=fold por cima do gto_action=raise correto.
+        _recon_strat = (
+            live_hand_strategy['actions']
+            if live_hand_strategy and live_hand_strategy.get('actions')
+            else gto_strategy
+        )
+        if _recon_strat and not gto_spot_mismatch:
             acted_norm   = _norm(action.action)
             live_freq    = 0.0
             live_top_freq = 0.0
-            for _gs in gto_strategy:
+            for _gs in _recon_strat:
                 _gs_act  = _norm(_gs.get('action', ''))
                 _gs_freq = float(_gs.get('frequency') or 0)
                 if (_gs_act == acted_norm

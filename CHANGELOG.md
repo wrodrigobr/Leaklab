@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): veredito postflop vem da estratégia da MÃO, não da ação modal do range
+
+> O Decision Card julgava a jogada do hero pela ação **modal do range agregado** (`gto_strategy`) em vez da estratégia da **mão específica** (`hand_strategy`). Num nó multiway aproximado isso gera contradição gritante: o range folda 63% → header "GTO recomenda Fold", mas A♣2♣ (bloqueador + draw) **levanta 93%** no mesmo nó. A `hand_strategy` ("Fase 3") tinha sido adicionada só para exibição; a lógica de veredito nunca migrou pra ela. Fix nas duas pontas: **frontend** — nova `cardLogic.verdictStrategy(isPostflop, handActions, range)` (pura, testada) alimenta `effectiveGtoLabel`/`liveTopAction`/`evDiff`/`topFreqPct`; **backend** — a reconciliação do `/replay` (que PERSISTE `gto_label`/`gto_action`) passou a usar `live_hand_strategy` quando disponível, deixando de sobrescrever `gto_action=raise` correto por `fold` do range. O widget segue mostrando range + mão lado a lado (contexto). Regra travada por teste de regressão (mão 5 t27: range fold 63% / mão raise 93% → recomenda raise, call do hero = gto_critical por 6%). vitest 19/19, tsc ok.
+
+### fix(coach): coach_action ("Ação correta") agora é AUTORITATIVO na aderência
+
+> Quando o coach marcava a "Ação correta" diferente da do hero, o classificador NÃO a usava como veredito — caía no sentimento ruidoso do texto livre (ex.: comentário com "legal" virava falsa aprovação). Agora `coach_action` setado → `coach_says_mistake = (coach_action != hero)`, autoritativo, antes de qualquer parse de texto (idem override). Fix em `coach_adherence.py` (módulo) + cópia inline do `build_coach_report_t27.py`. Das 33 divergências do t27: 18 têm campo explícito (confiável), 15 são só-texto (frágeis — exigem o coach setar a "Ação correta").
+
 ### feat(coach): revisão de torneio do aluno com qualidade visual + mãos não-aderentes marcadas
 
 > Na tela do coach, clicar num torneio do aluno agora abre a MESMA view rica do aluno (`TournamentDetail` — cartas SVG por mão, board, filtros) em vez da tabela simples, via `/tournaments/:id?student=<id>`. `TournamentDetail` ficou ciente do aluno: busca via `coachDashboard.studentTournament` no modo coach, links de replay carregam `&student=`, e cada mão ganha um **badge de aderência coach × sistema** + filtro "só não-aderentes". A lógica de aderência (match/divergência) saiu do script offline pra um módulo compartilhado `leaklab/coach_adherence.py` (fonte única script + endpoint); o endpoint `/coach/student/<id>/tournament/<tid>` passou a devolver `adherence` por decisão. Validado: t27 marca 29 decisões não-aderentes. tsc ok.

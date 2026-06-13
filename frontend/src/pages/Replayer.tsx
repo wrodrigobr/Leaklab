@@ -14,7 +14,7 @@ import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
-import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource } from "@/lib/cardLogic";
+import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy } from "@/lib/cardLogic";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
@@ -141,6 +141,11 @@ function SidePanels({
     ? [...step.gto_strategy].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0))
     : [];
 
+  // VEREDITO/RECOMENDAÇÃO postflop: estratégia da MÃO específica do hero (hand_strategy),
+  // não o range agregado. Regra pura + testada em cardLogic.verdictStrategy. O widget
+  // continua mostrando o range (contexto) + a mão lado a lado; só o veredito vira da mão.
+  const verdictStrat = verdictStrategy(isPostflop, step.hand_strategy?.actions, stratSorted);
+
   const normalizeGtoAction = (s: string) => {
     const l = s.toLowerCase();
     if (l === 'shove' || l === 'jam' || l === 'allin' || l === 'all-in' || l === 'all in') return 'allin';
@@ -157,7 +162,7 @@ function SidePanels({
   // an aggregate node (fold 72% = entire range folds) — not hand-specific.
   // Using it would mark KK as "Desvio Leve" when the range-based analysis says "Correto".
   const effectiveGtoLabel = hasGto && (isPostflop || !pg?.available)
-    ? computeEffectiveGtoLabel(stratSorted, step.gto_label, step.action)
+    ? computeEffectiveGtoLabel(verdictStrat, step.gto_label, step.action)
     : null;
 
   // ── Unified verdict: GTO Solver > Range > Engine ────────────────────────────
@@ -229,7 +234,7 @@ function SidePanels({
         ? (pg.action_quality === "correct" || pg.action_quality === "acceptable")
         : isCorrect);
   // idealAction: use live top action when available (overrides stored gto_action which may be stale)
-  const liveTopAction = stratSorted.length > 0 ? stratSorted[0].action : null;
+  const liveTopAction = verdictStrat.length > 0 ? verdictStrat[0].action : null;
   // Fonte da "ação recomendada" por prioridade (idealActionSource, testável). Preflop
   // coberto usa o RANGE (ação dominante do hand_freq) ANTES do gto_action do engine —
   // senão AA squeeze @14bb mostrava "GTO recomenda Call" em vez de Raise 93%.
@@ -244,13 +249,13 @@ function SidePanels({
     : (step.best_action ? fmtAction(step.best_action) : null);  // engine
   const showTwoCols = !isActionOk && !!idealAction &&
     idealAction.toLowerCase() !== playedAction.toLowerCase();
-  const topFreqPct = stratSorted.length > 0
-    ? ((stratSorted[0].frequency ?? 0) * 100).toFixed(0) : null;
+  const topFreqPct = verdictStrat.length > 0
+    ? ((verdictStrat[0].frequency ?? 0) * 100).toFixed(0) : null;
   const evDiff = (() => {
-    if (!stratSorted.length) return null;
-    const top = stratSorted[0].ev_bb;
+    if (!verdictStrat.length) return null;
+    const top = verdictStrat[0].ev_bb;
     if (top == null) return null;
-    const playerEv = stratSorted.find(s => isPlayedAct(s.action))?.ev_bb ?? null;
+    const playerEv = verdictStrat.find(s => isPlayedAct(s.action))?.ev_bb ?? null;
     if (playerEv == null) return null;
     const d = top - playerEv;
     return Math.abs(d) >= 0.05 ? d : null;

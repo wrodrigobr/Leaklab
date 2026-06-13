@@ -36,6 +36,27 @@ export function isPpMuted(p: {
 }
 
 /**
+ * Qual estratégia JULGA a decisão do hero. Princípio inviolável: o veredito de UMA
+ * mão vem da estratégia DESSA mão (hand_strategy do nó solved), NUNCA da ação modal
+ * do range agregado (gto_strategy). O range descreve o CONJUNTO ("fold 63%" = % do
+ * range inteiro que desiste); a mão diz o que fazer com ESTAS 2 cartas ("A2s raise
+ * 93%"). Num nó multiway aproximado os dois divergem fortemente — julgar pelo range
+ * marcava "GTO recomenda Fold" numa mão que o solver LEVANTA 93%. Postflop com
+ * hand_strategy → mão; senão (preflop usa range estático; postflop sem mão) → range.
+ */
+export interface StratAction { action: string; frequency?: number | null; ev_bb?: number | null }
+export function verdictStrategy(
+  isPostflop: boolean,
+  handActions: StratAction[] | null | undefined,
+  rangeSorted: StratAction[],
+): StratAction[] {
+  if (isPostflop && handActions?.length) {
+    return [...handActions].sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0));
+  }
+  return rangeSorted;
+}
+
+/**
  * De qual FONTE vem a "ação recomendada" (idealAction), por prioridade. O fix do
  * squeeze: preflop COBERTO usa o RANGE (ação dominante do hand_freq) ANTES do
  * gto_action armazenado (engine) — senão um spot coberto mostrava a ação do
