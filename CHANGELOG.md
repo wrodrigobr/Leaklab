@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(engine): teto heurístico em pote limpado/iso — iso-raise sobre limp não é erro
+
+> Em spots SEM cobertura GTO, preflop, onde o hero AGRIDE sem aposta enfrentada (iso sobre limp, SB-complete-raise, shove sobre limps) a heurística recomendava PASSIVO (check/call) e flagava a agressão padrão como erro — ex.: QQ raisando sobre limp virava small_mistake, A5o shove 20bb idem. Cap em marginal quando: sem GTO + preflop + facingSize==0 + ação agressiva + best passivo. NÃO afeta erros heurísticos confiáveis por math (call ruim/fold claro — não-agressivos), nem c-bet multiway postflop (#7, onde a heurística check costuma estar certa e o coach concorda), nem spots cobertos. engine 362/362; alinhamento coach #27 73,9%→75,6%, rígidos 15→13.
+
 ### fix(engine): teto de severidade por EV — erro só é GRAVE se custar EV real (calibração coach #27)
 
 > O coach aprovava 15 spots que nós marcávamos como erro grave (`clear_mistake`/`gto_critical`): reshoves, folds vs 4-bet, 3-bets marginais. A causa: `gto_critical` (ação de baixa FREQUÊNCIA no GTO) mantinha `clear_mistake` mesmo custando ~0 EV — o `_gto_label_cap` só fazia floor, nunca teto. Novo `_ev_severity_ceiling` (geral, pre+postflop, passo final): EV < 0,30bb → no máx `marginal`; EV < 1,50bb → no máx `small_mistake`; ≥1,50bb mantém grave. **Não toca o `gto_label`** (frequência é fato do solver) — só a severidade do veredito. Resultado: clear_mistake global **72→37**; dos 15 graves do #27, **13 rebaixados** (custo baixo) e **2 mantidos** (custo real: fold de 88 no turn a 2,09bb, fold de TT a 4,37bb — a aprovação do coach ali é exploit/read, não calibragem). Relatório `coach_review_t27.html` regenerado (graves over-flagados 15→2). engine 362/362.

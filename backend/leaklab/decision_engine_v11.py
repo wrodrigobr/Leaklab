@@ -949,6 +949,22 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if label != _label_pre_ceil:
         final_score = min(final_score, _LABEL_MAX_SCORE[label])
 
+    # Teto HEURÍSTICO p/ POTE LIMPADO: sem nó GTO E pote limpado (o hero iso-raisa/aposta/
+    # shova sobre limps) a heurística recomenda PASSIVO (check/call/fold) e flaga a agressão
+    # padrão como erro. Aí cap em 'marginal' — iso-raisar sobre limp não é erro grave; o card
+    # já rotula "heurística". NÃO afeta erros heurísticos confiáveis por math (call ruim, fold
+    # claro — não-agressivos) nem spots cobertos por GTO.
+    # Preflop, hero agride SEM aposta enfrentada (iso sobre limp / SB-complete-raise / open
+    # sem cobertura) e a heurística recomenda passivo → cap. (facingLimp não pega SB-complete,
+    # que é call < 1bb; facingSize==0 cobre todos.) Postflop multiway fica de fora (lá a
+    # heurística 'check multiway' costuma estar certa — ex.: c-bet 8-way).
+    _aggr_act = _norm_gto_action(input_data.get('player_action', '')) in ('raise', 'bet', 'allin')
+    if (not gto.get('available') and _LABEL_SEV.get(label, 1) > _LABEL_SEV['marginal']
+            and street == 'preflop' and float(spot.get('facingSize') or 0) == 0 and _aggr_act
+            and _best_action in ('check', 'call', 'fold')):
+        label = 'marginal'
+        final_score = min(final_score, _LABEL_MAX_SCORE['marginal'])
+
     interpretation = build_interpretation(input_data, label, threshold_pack["adjustedRequiredEquity"])
 
     # Intenção da aposta/raise postflop (value / proteção / semi-blefe / blefe / "o meio").
