@@ -1615,9 +1615,13 @@ const Replayer = () => {
       coach_override_label: annOverride,
     }),
     onSuccess: (saved: CoachAnnotation) => {
+      // A resposta da API NÃO traz street/action_taken (são da tabela decisions, não da
+      // anotação); o match do card é por (street, action). Sem isso, a anotação recém-salva
+      // "sumia" até o refresh (que re-busca com esses campos). Injeta os do step atual.
+      const enriched = { ...saved, street: step?.street, action_taken: step?.action };
       setReplayData((prev) => prev ? {
         ...prev,
-        coach_annotations: { ...prev.coach_annotations, [String(saved.decision_id)]: saved },
+        coach_annotations: { ...prev.coach_annotations, [String(saved.decision_id)]: enriched },
       } : prev);
       setAnnotating(false);
     },
