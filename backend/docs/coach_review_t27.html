@@ -38,23 +38,23 @@
 
 <h1><b>GrindLab</b> × Review do Coach — Torneio #27 (Big $22 · PokerStars)</h1>
 <div class="sub">Validação cruzada: cada veredito do coach no vídeo foi associado ao spot correspondente e comparado com a avaliação
-do engine + GTO Solver da GrindLab. Associação por ordem cronológica + âncoras de cartas/board (37 spots com comentário
+do engine + GTO Solver da GrindLab. Associação por ordem cronológica + âncoras de cartas/board (46 spots com comentário
 substantivo associados em alta confiança).</div>
 
 <div class="stats">
   <div class="stat"><div class="v">345</div><div class="l">decisões avaliadas</div></div>
   <div class="stat"><div class="v">91%</div><div class="l">cobertura GTO</div></div>
   <div class="stat"><div class="v">−47bb</div><div class="l">EV total deixado na mesa</div></div>
-  <div class="stat"><div class="v" style="color:#10b981">13</div><div class="l">match com o coach</div></div>
+  <div class="stat"><div class="v" style="color:#10b981">16</div><div class="l">match com o coach</div></div>
   <div class="stat"><div class="v" style="color:#2DD4BF">9</div><div class="l">corrigidos pós-validação</div></div>
-  <div class="stat"><div class="v" style="color:#60a5fa">2</div><div class="l">parcial</div></div>
-  <div class="stat"><div class="v" style="color:#f59e0b">13</div><div class="l">divergências c/ argumento</div></div>
+  <div class="stat"><div class="v" style="color:#60a5fa">3</div><div class="l">parcial</div></div>
+  <div class="stat"><div class="v" style="color:#f59e0b">18</div><div class="l">divergências c/ argumento</div></div>
   <div class="stat"><div class="v" style="color:#ef4444">0</div><div class="l">calibração pendente</div></div>
 </div>
 
 <h2>Leitura executiva</h2>
 <div class="callout ok"><b>Onde convergimos:</b> nos erros caros o alinhamento é alto — c-bet multiway, calls sem equity,
-raises que cortam blefs, pot control com mão forte em board perigoso e os spots triviais de valor. Nos 13 matches,
+raises que cortam blefs, pot control com mão forte em board perigoso e os spots triviais de valor. Nos 16 matches,
 7 têm EV quantificado pelo solve hand-aware — o número que o coach
 estima de cabeça, nós medimos.</div>
 <div class="callout"><b>Onde divergimos com argumento (e segue assim):</b> (1) <b>GTO × exploit</b> — o coach ajusta para o field
@@ -78,8 +78,8 @@ de J em K-6-J (#35) vê ~0.50 e o call vira 'standard', alinhado com o coach.</l
 A5o #84) seguem em heurística conservadora — divergência menor, não veredito errado; e a DIREÇÃO de best_action nos spots sem
 GTO (recomendar raise vs squeeze) ainda é grosseira, embora o cap de severidade impeça o veredito mais caro.</div>
 
-<div class="callout"><b>Validação expansível (50 mãos aguardando o coach):</b> de 87 mãos que foram ao
-flop neste torneio, 37 têm comentário do coach associado (acima) e <b>50 ainda não</b> — estas estão no arquivo
+<div class="callout"><b>Validação expansível (41 mãos aguardando o coach):</b> de 87 mãos que foram ao
+flop neste torneio, 46 têm comentário do coach associado (acima) e <b>41 ainda não</b> — estas estão no arquivo
 editável <code>docs/coach_review_t27_spots.json</code> como stubs 'pendente', já com o NOSSO veredito pré-preenchido e o lado do
 coach em branco. Preencha a fala do coach (campos <code>quote</code> + <code>coach</code>), troque o <code>status</code>, regenere,
 e a mão entra na validação. O mesmo arquivo permite corrigir o entendimento de qualquer spot já publicado.</div>
@@ -641,8 +641,143 @@ e a mão entra na validação. O mesmo arquivo permite corrigir o entendimento d
       <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Unânime.</div>
     </div>
 
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #6</span>
+        <span class="hand-cards">7hAh · BTN</span>
+        <span class="hand-spot">Comentário do coach (vídeo do review)</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “A7s de botão, tomou um 3-bet e deu call… me parece que você joga de forma passiva. Não gosto.” (~3:44)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>não gosta do call do 3-bet</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>preflop call = standard / gto_correct<div class="ind">board 3s Jh 7d 2d Qh</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (coach favorecido):</span> Divergência de leitura: o coach acha o call do 3-bet com A7s no BTN largo/passivo demais (ajuste exploit/tight); nosso GTO valida o call como standard. Mesmo tema do HUD de oponentes — baseline de equilíbrio vs read do field.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #9</span>
+        <span class="hand-cards">ThJh · BTN</span>
+        <span class="hand-spot">Comentário do coach (vídeo do review)</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “10-valete naipado de botão, tomou um 3-bet que acompanhou. Bateu duas pontas + flush draw.” (~5:27)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>não apostar o turn (tem equidade)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>turn bet = standard / gto_correct<div class="ind">board Qh Tc Kc 8h</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Divergência fina de frequência: o coach prefere não apostar o turn (realizar equity com a mão que já tem muito potencial); nosso nó valida o bet como gto_correct. Ambos jogáveis.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #11</span>
+        <span class="hand-cards">6d4d · BB</span>
+        <span class="hand-spot">Comentário do coach (vídeo do review)</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “64 suited no big, defendeu. Duas pontas — check-raise aqui eu gosto, é uma mão que tem equidade.” (~7:18)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>gosta do check-raise (tem equidade)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>flop raise = standard / gto_mixed<div class="ind">board 5c Ks 7h</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Match: o coach aprova o check-raise do hero com as duas pontas; nosso nó marca o raise como gto_mixed (parte do range). Concordância na agressão com equity.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #24</span>
+        <span class="hand-cards">2h3h · SB</span>
+        <span class="hand-spot">Comentário do coach (vídeo do review)</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “32 suited completou o big e deu check — esse tipo de mão, quando completa, você tem que apostar, tentar roubar.” (~15:29)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>deveria apostar (blef ao completar)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>checks flop/turn/river = standard / gto_correct<div class="ind">board Jh 5s 6c Ah 2c</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Divergência GTO×exploit: o coach quer blefar ao completar do SB; nosso solver valida os checks (32o sem equity não blefa em frequência). Estilo agressivo vs baseline.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #53</span>
+        <span class="hand-cards">QdTd · UTG</span>
+        <span class="hand-spot">Comentário do coach (vídeo do review)</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “10-dama de UTG, o big defendeu, bateu seu 10 — c-bet, vai puxando.” (~30:52)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>c-bet por valor aprovado</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>flop bet = standard / gto_correct<div class="ind">board 2h Ts 3d</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Match: c-bet por valor com top pair aprovado pelos dois.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #99</span>
+        <span class="hand-cards">KsKc · SB</span>
+        <span class="hand-spot">Comentário do coach (vídeo do review)</span>
+        <span class="badge" style="color:#60a5fa;background:rgba(96,165,250,.12);border:1px solid #60a5fa55">PARCIAL</span>
+      </div>
+      <div class="quote">🎙 “Par de rei 3-bet, tomou call, bateu a trinca — é provável que ele não tenha nada; dá um c-bet bem baixinho ou até check.” (~49:33)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>slow-play: c-bet baixo ou check</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>turn/river bet = marginal / gto_mixed<div class="ind">board 6d Kh 9c 9s 6s</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Alinhado no conceito (pot-control/induzir com a trinca): o coach recomenda c-bet mínimo ou check; nosso nó marca os bets do hero como marginal (check levemente melhor). Mesma direção, diferença de sizing.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #118</span>
+        <span class="hand-cards">Ks8d · BB</span>
+        <span class="hand-spot">Comentário do coach (vídeo do review)</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “K8 no big, defendeu na reta final, bateu o 8 e trincou no turn — esse tipo de mão eu saio de lead por valor.” (~55:28)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>lead/jam por valor (trinca)</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>turn shove = clear_mistake / gto_critical (EV −0.73bb)<div class="ind">board 8c Ad Tc 8h 7s</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Divergência GTO×exploit COM EV medido: o coach gosta do jam por valor da trinca contra um vilão que aposta toda mão; nosso solver mede que o overbet-shove deixa 0.73bb vs um raise menor (trinca de kicker fraco). Coach explora o calling station, solver maximiza vs range balanceado.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #121</span>
+        <span class="hand-cards">6dQs · SB</span>
+        <span class="hand-spot">Comentário do coach (vídeo do review)</span>
+        <span class="badge" style="color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid #f59e0b55">DIVERGÊNCIA</span>
+      </div>
+      <div class="quote">🎙 “Dama-seis defendeu, bateu a dama, ele apostou bem baixinho — quando o c-bet é muito baixo você pode dar mais raises, mesmo com dama-seis.” (~57:03)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>raise vs c-bet pequeno aprovado</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>flop raise = small_mistake / gto_minor_deviation<div class="ind">board 7d 9s Qc 4c</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Divergência leve: o coach aprova o raise de top pair vs um c-bet pequeno (exploit de sizing); nosso nó marca como desvio menor (gto_minor_deviation). Os dois no campo do defensável.</div>
+    </div>
+
+    <div class="hand">
+      <div class="hand-head">
+        <span class="hand-id">MÃO #123</span>
+        <span class="hand-cards">QcQs · BB</span>
+        <span class="hand-spot">Comentário do coach (vídeo do review)</span>
+        <span class="badge" style="color:#10b981;background:rgba(16,185,129,.12);border:1px solid #10b98155">MATCH</span>
+      </div>
+      <div class="quote">🎙 “Dama-dama, você tá dominando ele — call, e ele deu a win no river. Eu daria o call ainda, vai ter muitos blefes dele.” (~57:56)</div>
+      <div class="grid2">
+        <div class="panel coach"><div class="panel-t">COACH</div>QQ domina; pagar o jam do river</div>
+        <div class="panel system"><div class="panel-t">GRINDLAB</div>river call = standard / gto_correct<div class="ind">board 3h 9s 7d 6h 4c</div></div>
+      </div>
+      <div class="verdict"><span class="verdict-t">Veredito (ambos defensáveis):</span> Match na decisão-chave: o coach manda pagar o all-in do river com QQ pelo range polarizado/blef do vilão; nosso solver valida o call como gto_correct. (Vilão tinha broca — call certo.)</div>
+    </div>
+
 <div class="foot">Gerado pela GrindLab a partir do hand history importado (123 mãos · 345 decisões) e da transcrição do review.
 Indicadores: EV em big blinds via solve hand-aware do GTO Solver; severidade pelo rotulador do engine v11.
-Os 37 spots acima são os com comentário substantivo do coach e associação de alta confiança — saudações triviais,
+Os 46 spots acima são os com comentário substantivo do coach e associação de alta confiança — saudações triviais,
 fold rápidos sem comentário e segmentos ambíguos da transcrição automática ficaram de fora por honestidade metodológica.</div>
 </div></body></html>
