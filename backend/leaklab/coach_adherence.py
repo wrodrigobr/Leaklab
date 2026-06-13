@@ -47,8 +47,13 @@ def coach_says_mistake(dec, ann):
     if ann['coach_override_label']:
         return ann['coach_override_label'] in SYS_MISTAKE_LABELS
     hero = norm(dec['action_taken'])
+    # coach_action setado é AUTORITATIVO (a "Ação correta" que o coach marcou no replayer):
+    # recomenda ação DIFERENTE do hero → erro; mesma ação → aprova. Sem cair no texto livre.
+    if ann['coach_action']:
+        return norm(ann['coach_action']) != hero
+    # só texto livre (fragil): parse pra aprovação + sentimento.
     t = ann['comment'] or ''
-    rec = norm(ann['coach_action']) if ann['coach_action'] else _parse_rec(t)
+    rec = _parse_rec(t)
     strong = bool(_STRONG_CRIT.search(t))
     _neg_kw = {'fold': r'fold|larga', 'call': r'call|pag', 'bet': r'aposta|bet|c-?bet',
                'check': r'check|mesa', 'raise': r'3-?bet|raise|tribet', 'allin': r'all|jam|shove|win'}

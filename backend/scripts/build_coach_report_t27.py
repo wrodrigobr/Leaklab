@@ -63,8 +63,10 @@ def coach_says_mistake(dec, ann):
     if ann['coach_override_label']:
         return ann['coach_override_label'] in SYS_MISTAKE_LABELS
     hero = norm(dec['action_taken'])
+    if ann['coach_action']:                      # AUTORITATIVO: a "Ação correta" que o coach marcou
+        return norm(ann['coach_action']) != hero
     t = ann['comment'] or ''
-    rec = norm(ann['coach_action']) if ann['coach_action'] else _parse_rec(t)
+    rec = _parse_rec(t)
     strong = bool(_STRONG_CRIT.search(t))
     # parse SÓ pra detectar APROVAÇÃO (ação endossada == ação do hero, sem crítica forte).
     # NÃO uso rec!=hero do texto livre p/ afirmar erro (over-gera: descreve a linha). Pro
