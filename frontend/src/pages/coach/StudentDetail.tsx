@@ -12,6 +12,7 @@ import { formatAction } from "@/lib/utils";
 import { PlayingCard } from "@/components/hud/PlayingCard";
 import { LevelCard } from "@/components/hud/LevelCard";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
+import { SiteLogo } from "@/components/hud/SiteLogo";
 import { coachDashboard, CoachTemplate, CoachMessage, StudentWorstDecision, StudyCard, StudyOverride, CoachAnnotation, CoachOverrideLabel, ActivityEvent, ProgressReport } from "@/lib/api";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -250,6 +251,15 @@ function OverviewTab({ studentId }: { studentId: number }) {
 
 // ── Tournaments tab ────────────────────────────────────────────────────────────
 
+function tourBadge(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes("spin")) return "Spin&Go";
+  if (n.includes("satellite") || n.includes("satélite")) return "SAT";
+  if (n.includes("knockout") || n.includes("bounty") || /\bpko\b/.test(n) || /\bko\b/.test(n)) return "KO";
+  if (n.includes("sit & go") || n.includes("sit&go") || n.startsWith("sng") || /\bsng\b/.test(n)) return "SNG";
+  return "MTT";
+}
+
 function TournamentsTab({ studentId }: { studentId: number }) {
   const { data: history, isLoading } = useQuery({
     queryKey: ["coach-student-history", studentId],
@@ -345,10 +355,15 @@ function TournamentsTab({ studentId }: { studentId: number }) {
           onClick={() => navigate(`/tournaments/${t.tournament_id}?student=${studentId}`)}
           className="w-full flex items-center justify-between rounded-lg border border-border bg-hud-surface px-4 py-3 hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
         >
-          <div>
-            <p className="font-mono text-xs text-muted-foreground">{t.site} • {t.tournament_id}</p>
-            <p className="text-sm font-medium text-foreground">{t.tournament_name ?? t.site}</p>
-            <p className="font-mono text-[10px] text-muted-foreground">{t.hands_count} mãos · {t.decisions_count} decisões</p>
+          <div className="flex items-center gap-3 min-w-0">
+            <SiteLogo site={t.site} size={20} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-foreground truncate">{t.tournament_name ?? t.site}</p>
+                <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">{tourBadge(t.tournament_name ?? "")}</span>
+              </div>
+              <p className="font-mono text-[10px] text-muted-foreground">{t.site} • {t.tournament_id} · {t.hands_count} mãos · {t.decisions_count} decisões</p>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
