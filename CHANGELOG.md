@@ -7,6 +7,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+## [v0.167.0] — 2026-06-14 — feat(replayer): fallback multiway (equity vs range) + card/badge multiway-aware coerentes
+
 ### fix(replayer): não mostrar racional "X é a melhor jogada" contra uma jogada aprovada
 
 > No card, o bloco "Por que essa é a melhor jogada" (reco_rationale) mostrava o racional da AÇÃO IDEAL do engine mesmo quando o veredito APROVAVA a jogada (diferente) do hero — ex.: mão 4, bet marginal multiway → veredito ✓ Correto, mas o texto argumentava "check controla o pote" (contradição confusa). Agora o racional só aparece como REFORÇO (hero jogou o ideal) ou CORRETIVO (erro flagado); quando a jogada é aceitável mas o engine prefere outra ação (`isActionOk && rr.action !== ação do hero`), é omitido. As pills de equity/margem (53%, +31pp) seguem, coerentes com o ✓.
