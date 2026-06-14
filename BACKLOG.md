@@ -135,6 +135,32 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ---
 
+### [FEAT-19] — Modo Gravação da mesa (para coaches) *(adiado — "depois", sem sprint comprometida)*
+
+**Valor:** Coaches gravam aulas/conteúdo a partir do replayer, mas a mesa não está preparada para captura (chrome ao redor, sem ferramentas de marcação). Um "Modo Gravação" transforma o replayer num palco limpo estilo transmissão (PokerGO), reutilizando todo o replayer existente — **é uma camada, não outra mesa**.
+
+**Premissa técnica (validada na análise):** o replayer já tem `focusMode` (`Replayer.tsx:1427` — fullscreen nativo + esconde `HudHeader` + solta `max-w`). O Modo Gravação é `focusMode` turbinado: mesma `PokerTableV3`, mesmos controles, + overlays visuais. O telestrator desenha em coordenadas de TELA (anotação por cima), não precisa casar com as coords SVG da mesa.
+
+**O que construir (por fases, cada uma entregável):**
+- **Fase 1 — Palco limpo:** toggle `recMode`; mesa full-bleed **16:9** (trocar `aspect-[16/10]`); esconder `SidePanels` + card de decisão; atalhos de teclado por **street** (pula pro 1º step de preflop/flop/turn/river — reusa `stepIdx` + `step.street`). *Já útil para gravar.*
+- **Fase 2 — Telestrator (o item caro):** **SVG overlay** absoluto sobre a mesa + barra de ferramentas (seta, círculo, caneta livre, cor, undo, limpar). SVG > canvas (vetor, fácil add/remove de formas, sem raster).
+- **Fase 3 — Cursor-spotlight:** overlay com `radial-gradient` mask seguindo o mouse (escurece tudo menos um círculo). Toggle on/off.
+- **Fase 4 — Pause + overlay de ranges:** ao pausar, mostra a matriz de range do spot por cima/ao lado (reusa os dados que o card já busca).
+
+**Frontend (touch points):**
+- `frontend/src/pages/Replayer.tsx` — estado `recMode` (estende `focusMode`); gating do `SidePanels`/card; container 16:9; handlers de teclado por street.
+- `frontend/src/components/replayer/TableTelestrator.tsx` (novo) — overlay SVG de desenho + toolbar.
+- `frontend/src/components/replayer/CursorSpotlight.tsx` (novo) — overlay de spotlight.
+- i18n `replayer.json` (PT/EN/ES) para labels das ferramentas.
+
+**Riscos/gotchas:** (1) telestrator é o grosso do esforço — o resto é casca; (2) `pointer-events` entre spotlight e caneta (gerenciar por z-index/ferramenta ativa); (3) decisão de UX: limpar desenho ao trocar de street (recomendado) vs manter; (4) "overlay de ranges" só preflop tem matriz pronta — postflop exigiria renderizar a estratégia do nó; (5) desktop-only (esconder toggle no mobile).
+
+**Decisões pendentes (confirmar antes de codar):** acesso só-coach? · telestrator limpa por street? · overlay de ranges só preflop ou também postflop?
+
+**Esforço estimado:** Fase 1 ~6h · Fase 2 ~16h · Fase 3 ~4h · Fase 4 ~8h (escopo a definir)
+
+---
+
 ## Backlog Futuro (não priorizar agora)
 
 | Item | Motivo de adiar |
