@@ -68,11 +68,15 @@ def main():
                   f" VPIP={_pct(s['vpip_pct'])} PFR={_pct(s['pfr_pct'])}"
                   f" cbet={_pct(s['cbet_pct'])} fcb={_pct(s['foldcbet_pct'])}"
                   f" AF={s['af'] if s['af'] is not None else '—'} WTSD={_pct(s['wtsd_pct'])}")
-        # persiste TODOS os perfis do torneio (não só o top-8 impresso)
-        if args.apply:
+        # persiste TODOS os perfis do torneio (não só o top-8 impresso) — EXCETO
+        # torneios anonimizados (posição como nome): o HUD não deve servir reads que
+        # misturam jogadores diferentes no mesmo assento.
+        if args.apply and not anon:
             for p, s in ranked:
                 upsert_opponent_profile(tid, p, s)
                 tot_persisted += 1
+        elif anon:
+            print(f"  → NÃO persistido (anonimizado): {len(ranked)} perfis pulados")
 
     print(f"\n{'='*60}")
     print(f"Total: {tot_players} perfis de oponente | persistidos: {tot_persisted}"

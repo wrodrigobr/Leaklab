@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(hud): não exibir perfil de oponente quando o nome é uma POSIÇÃO (dados anonimizados)
+
+> Verificação do HUD de oponentes (Fases 1-3): confirmado funcionando end-to-end — o `/replay` anexa `villain_profile` (arquétipo + stats gateados) e o card renderiza o bloco "Oponente" + "⚡ Ajuste vs oponente" (validado no torneio 151: `SuKKinho` TAG high-conf, VPIP 18% / PFR 15%). Porém torneios **anonimizados** (GG anônimo / demos onde o nome do jogador é a POSIÇÃO — SB/BTN/HJ…) geravam perfis keyed por assento, que misturam jogadores diferentes → reads sem significado. Fix: helper `opponent_stats.is_position_name`; o attach do `/replay` pula vilões cujo nome é posição; `compute_opponent_profiles` não persiste torneios anonimizados; limpeza dos 17 perfis-posição já gravados. Resultado: tid 151 mostra HUD (23 steps/20 mãos), t27 (anonimizado) não mostra (0). opponent_stats 14/14.
+
 ### feat(brand): logo GrindLab no verso das cartas + marca no feltro da mesa (replayer)
 
 > Exposição de marca na mesa (PokerTableV3). (1) Verso das cartas: o símbolo ♠ deu lugar ao **logo GrindLab** (só o ícone, `grindlab_icon_traced.svg` — teal + claro, legível no verso azul-escuro), centralizado. (2) Feltro: os **placeholders tracejados** dos slots de board ainda não revelados foram removidos; o board mostra só as cartas reais e, embaixo, o **wordmark GrindLab** (`grindlab_final_horizontal.svg`) como marca-d'água no feltro (antes havia um texto branco a 2,2%, praticamente invisível). As cartas comunitárias, quando saem, são desenhadas por cima. Build ok, tsc limpo.

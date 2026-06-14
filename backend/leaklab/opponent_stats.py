@@ -28,6 +28,17 @@ GATES = {
 }
 MIN_HANDS_FOR_TYPE = 20          # mínimo de mãos vistas p/ arriscar um arquétipo
 
+# Rótulos de POSIÇÃO usados como "nome" em dados anonimizados (GG anônimo, demos). Um
+# perfil keyed por posição agrega jogadores diferentes no mesmo assento → sem significado.
+_POSITION_LABELS = {'SB', 'BB', 'UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'MP', 'MP1', 'MP2'}
+
+
+def is_position_name(name) -> bool:
+    """True se o 'nome' do jogador é na verdade um rótulo de posição (dados anonimizados).
+    Nesses casos o HUD não deve exibir read — não é um jogador real."""
+    return bool(name) and str(name).strip().upper() in _POSITION_LABELS
+
+
 _VOLUNTARY = {'calls', 'raises', 'all-in'}
 _AGGR = {'bets', 'raises', 'all-in'}
 _POSTFLOP = ('flop', 'turn', 'river')
