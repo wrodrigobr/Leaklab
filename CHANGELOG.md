@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(coach): anotações/aderência escopadas pelo coach que visualiza + authz no /level
+
+> Auditoria da tela do coach (visão do aluno): os dados exibidos vêm corretamente do ALUNO — history/stats/breakdown/level/worst/tournament/replay usam `student_id` (não o id do coach), as mesmas funções do dashboard do próprio aluno, e as queries do front são keyed por `studentId` (sem mistura de cache entre alunos). Dois gaps latentes corrigidos (não afetavam o cenário atual de 1 coach, mas quebrariam com um 2º): (1) `get_annotations_for_decisions` não filtrava por coach — a constraint permite vários coaches por decisão, então o mapa por `decision_id`/o JOIN do worst-decisions podia pegar a anotação/override de OUTRO coach; agora `coach_id=g.user_id` em `coach_student_tournament`, `coach_student_replay` e no JOIN de `worst-decisions`; (2) `/coach/student/<id>/level` não tinha `_verify_student` (qualquer coach via o nível de qualquer aluno). Validado: coach 6 × aluno 13 / t27 → 130 decisões anotadas, badges idênticos ao relatório calibrado. api 76/76, coach_system 20/20.
+
 ### refactor(ui): DashboardV2 vira padrão (sem toggle); card do replayer fixa o clássico
 
 > Decisão de produto após avaliação dos layouts: **dashboard** adota o **V2** como padrão (masonry 2 colunas) e remove os botões de troca ("experimentar novo" no clássico + "voltar ao clássico" no V2) — o dashboard clássico vira código latente, não renderizado. **Card do replayer** faz o oposto: remove o toggle de layout e **fixa o clássico** (v1), considerado mais bonito e com mais informação relevante; `DecisionCardV2.tsx` removido. tsc/build ok.

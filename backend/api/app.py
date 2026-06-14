@@ -1956,6 +1956,8 @@ def player_drill_analysis(decision_id: int):
 @app.route('/coach/student/<int:student_id>/level', methods=['GET'])
 @require_coach
 def student_level(student_id: int):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não encontrado'}), 404
     return jsonify(get_player_level(student_id))
 
 
@@ -2947,7 +2949,7 @@ def coach_student_tournament(student_id, tournament_id):
     decisions = get_decisions(t['id'])
     # Aderência coach × sistema por decisão (marca mãos não-aderentes na tela do coach).
     from leaklab.coach_adherence import classify as _adh_classify
-    _ann_map = {a['decision_id']: a for a in get_annotations_for_decisions([d['id'] for d in decisions])}
+    _ann_map = {a['decision_id']: a for a in get_annotations_for_decisions([d['id'] for d in decisions], coach_id=g.user_id)}
     for d in decisions:
         d['note'] = _enrich_note(d)
         _ann = _ann_map.get(d['id'])
@@ -2979,12 +2981,12 @@ def coach_student_worst_decisions(student_id):
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             LEFT JOIN coach_hand_annotations a
-                   ON a.decision_id = d.id AND a.student_id = t.user_id
+                   ON a.decision_id = d.id AND a.student_id = t.user_id AND a.coach_id = ?
             WHERE t.user_id = ?
               AND COALESCE(a.coach_override_label, d.label) IN ('clear_mistake', 'small_mistake')
             ORDER BY d.score DESC
             LIMIT ?
-        """, (student_id, limit)).fetchall()
+        """, (g.user_id, student_id, limit)).fetchall()
     finally:
         conn.close()
     return jsonify({'decisions': [dict(r) for r in rows]})
@@ -3135,7 +3137,8 @@ def coach_student_replay(student_id, tournament_id, hand_id):
     db_decisions = _db_all_c
     hand_db_decisions = [d for d in db_decisions if str(d.get('hand_id')) == str(hand_id)]
     if hand_db_decisions:
-        ann_list = get_annotations_for_decisions([d['id'] for d in hand_db_decisions])
+        # Visão do COACH: só as anotações DELE (g.user_id) — não de outro coach do aluno.
+        ann_list = get_annotations_for_decisions([d['id'] for d in hand_db_decisions], coach_id=g.user_id)
         ann_map = {str(a['decision_id']): a for a in ann_list}
         replay['coach_annotations'] = {
             str(d['id']): {**ann_map[str(d['id'])],

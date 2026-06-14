@@ -2700,17 +2700,23 @@ def get_annotations(coach_id: int, student_id: int) -> list:
         conn.close()
 
 
-def get_annotations_for_decisions(decision_ids: list) -> list:
-    """Retorna anotações para um conjunto de decision_ids (usado pelo replayer)."""
+def get_annotations_for_decisions(decision_ids: list, coach_id: Optional[int] = None) -> list:
+    """Retorna anotações para um conjunto de decision_ids (usado pelo replayer).
+    `coach_id` opcional: quando o COACH revisa o aluno, filtra pelas anotações DELE
+    (a constraint permite vários coaches por decisão — sem o filtro, um mapa por
+    decision_id pegaria a anotação de outro coach). Visão do aluno passa None (mostra
+    o feedback do(s) coach(es) dele)."""
     if not decision_ids:
         return []
     conn = get_conn()
     try:
         placeholders_str = ','.join(['?' for _ in decision_ids])
-        rows = conn.execute(
-            f"SELECT * FROM coach_hand_annotations WHERE decision_id IN ({placeholders_str})",
-            tuple(decision_ids),
-        ).fetchall()
+        sql = f"SELECT * FROM coach_hand_annotations WHERE decision_id IN ({placeholders_str})"
+        params = list(decision_ids)
+        if coach_id is not None:
+            sql += " AND coach_id = ?"
+            params.append(coach_id)
+        rows = conn.execute(sql, tuple(params)).fetchall()
         return [dict(r) for r in rows]
     finally:
         conn.close()
