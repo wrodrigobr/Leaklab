@@ -93,6 +93,7 @@
     "mwRequired": "Necessário",
     "srcMultiway": "Multiway",
     "tipMultiwayEstimate": "Pote multiway: o solver é heads-up e não resolve 3-way+. Aqui o veredito vem de uma estimativa independente — equity da sua mão vs a range de continuação dos oponentes (Monte Carlo) + pot odds + ajuste de realização. É estimativa, não GTO.",
+    "whyMultiwayEstimate": "Pote multiway: o solver é heads-up. O veredito vem de uma estimativa — a equity da sua mão vs a range de continuação dos oponentes, contra as pot odds, com ajuste de realização para o número de jogadores.",
     "reqEquity": "Equity Necessária",
     "rangeOpening": "Range de abertura",
     "rangeDefense": "Range de defesa",

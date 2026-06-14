@@ -387,7 +387,11 @@ function SidePanels({
 
         // ──────── Why (1 frase dominante, prioridade descendente) ────────
         let why = "";
-        if (preflopNoCoverage) {
+        if (step.multiway_advice) {
+          // Estimativa multiway: o why HU (ex.: "Call lucrativo 37% ≥ 24%") usa a equity
+          // vs aleatória/HU e CONTRADIZ o fold. A frase aqui é a da estimativa multiway.
+          why = t("card.whyMultiwayEstimate");
+        } else if (preflopNoCoverage) {
           // Sem cobertura GTO (pote limpado etc.): a tag de cobertura abaixo já
           // explica o motivo; não inventar frase de "porquê" baseada em dado stale.
           why = "";

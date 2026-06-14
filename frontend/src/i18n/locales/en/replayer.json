@@ -93,6 +93,7 @@
     "mwRequired": "Required",
     "srcMultiway": "Multiway",
     "tipMultiwayEstimate": "Multiway pot: the solver is heads-up and doesn't solve 3-way+. Here the verdict comes from an independent estimate — your hand's equity vs the opponents' continuing range (Monte Carlo) + pot odds + a realization adjustment. It's an estimate, not GTO.",
+    "whyMultiwayEstimate": "Multiway pot: the solver is heads-up. The verdict comes from an estimate — your hand's equity vs the opponents' continuing range, against the pot odds, with a realization adjustment for the number of players.",
     "reqEquity": "Required Equity",
     "rangeOpening": "Opening range",
     "rangeDefense": "Defense range",
