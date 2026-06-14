@@ -607,55 +607,8 @@ function SidePanels({
 
         const indicators = (
           <>
-            {/* HUD Fase 2: perfil de comportamento do vilão do spot (com selo de amostra). */}
-            {(() => {
-              const vp = (step as { villain_profile?: { archetype: string; confidence: string; hands: number; stats: Record<string, number | null> } }).villain_profile;
-              if (!vp) return null;
-              const arch = vp.archetype;
-              const lowSample = vp.confidence === "insufficient" || arch === "unknown";
-              const tone: Record<string, string> = {
-                calling_station: "text-amber-300 bg-amber-500/10 ring-amber-500/30",
-                nit: "text-sky-300 bg-sky-500/10 ring-sky-500/30",
-                tag: "text-emerald-300 bg-emerald-500/10 ring-emerald-500/30",
-                lag: "text-orange-300 bg-orange-500/10 ring-orange-500/30",
-                maniac: "text-red-300 bg-red-500/10 ring-red-500/30",
-              };
-              const s = vp.stats || {};
-              const vn = (step as { villain_name?: string }).villain_name;
-              const stat = (lbl: string, v: number | null | undefined) =>
-                v == null ? null : (
-                  <span key={lbl}><span className="text-muted-foreground/60">{lbl} </span>
-                    <span className="font-bold tabular-nums">{Math.round(v * 100)}%</span></span>
-                );
-              return (
-                <div className="rounded-lg bg-background/40 ring-1 ring-border/40 px-2.5 py-2 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                      {t("card.villainTitle")}{vn ? ` · ${vn}` : ""} · {t("card.villainHands", { n: vp.hands })}
-                    </span>
-                    {!lowSample && tone[arch] ? (
-                      <span className={cn("rounded-md ring-1 px-2 py-0.5 text-[10px] font-bold cursor-help", tone[arch])}
-                        title={t(`card.archetypeHint.${arch}`)}>
-                        {t(`card.archetype.${arch}`)}
-                      </span>
-                    ) : (
-                      <span className="rounded-md ring-1 ring-border/50 bg-muted/30 px-2 py-0.5 text-[10px] text-muted-foreground/70 cursor-help"
-                        title={t("card.villainSampleLowTip")}>
-                        {t("card.villainSampleLow")}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[11px]">
-                    {stat("VPIP", s.vpip_pct)}
-                    {stat("PFR", s.pfr_pct)}
-                    {stat("c-bet", s.cbet_pct)}
-                    {stat("F→cb", s.foldcbet_pct)}
-                    {s.af != null && <span><span className="text-muted-foreground/60">AF </span><span className="font-bold tabular-nums">{s.af}</span></span>}
-                    {stat("WTSD", s.wtsd_pct)}
-                  </div>
-                </div>
-              );
-            })()}
+            {/* O perfil/stats do oponente (HUD) saiu do card — agora vive na MESA (box por
+                assento, estilo HM). Aqui fica só o AJUSTE exploitativo (acionável). */}
             {/* HUD Fase 3: AJUSTE exploitativo sobre o veredito (só com amostra confiável). */}
             {(() => {
               const ex = (step as { exploit?: { key: string; params: Record<string, unknown>; severity: string } }).exploit;
