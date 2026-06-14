@@ -755,6 +755,14 @@ function SidePanels({
             {isPostflop && !hasGto && !step.multiway_advice && (() => {
               const rr = (step as { reco_rationale?: { key: string; params: Record<string, unknown>; action: string } }).reco_rationale;
               if (!rr?.key) return null;
+              // Não mostrar "X é a melhor jogada" quando o veredito APROVA a jogada (diferente)
+              // do hero — contradiz (ex.: bet ✓, mas o racional argumenta check). O racional só
+              // faz sentido como REFORÇO (hero jogou o ideal) ou CORRETIVO (erro), não contra
+              // uma jogada aceitável. Em spot marginal multiway, o engine prefere outra ação
+              // mas a do hero é OK — aí o texto confunde.
+              const _played = (step.action ?? '').toLowerCase().replace(/s$/, '');
+              const _rrAct  = (rr.action ?? '').toLowerCase().replace(/s$/, '');
+              if (isActionOk && _rrAct && _rrAct !== _played) return null;
               return (
                 <div className="rounded-lg bg-primary/5 ring-1 ring-primary/15 px-2.5 py-2">
                   <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-primary/70 mb-0.5">

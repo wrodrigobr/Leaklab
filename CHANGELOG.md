@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(replayer): não mostrar racional "X é a melhor jogada" contra uma jogada aprovada
+
+> No card, o bloco "Por que essa é a melhor jogada" (reco_rationale) mostrava o racional da AÇÃO IDEAL do engine mesmo quando o veredito APROVAVA a jogada (diferente) do hero — ex.: mão 4, bet marginal multiway → veredito ✓ Correto, mas o texto argumentava "check controla o pote" (contradição confusa). Agora o racional só aparece como REFORÇO (hero jogou o ideal) ou CORRETIVO (erro flagado); quando a jogada é aceitável mas o engine prefere outra ação (`isActionOk && rr.action !== ação do hero`), é omitido. As pills de equity/margem (53%, +31pp) seguem, coerentes com o ✓.
+
 ### fix(replayer): card multiway deferido usa a SEVERIDADE do engine, não o gto_label HU
 
 > Completa o card = badge. Em pote multiway onde o advisor DEFERE (decisão próxima, sem alta confiança), o card caía no solver HU e mostrava o `gto_label` de frequência (ex.: h4 — bet aprovado pelo coach aparecia ⚠ DESVIO CRÍTICO), enquanto o badge usava a severidade EV-capada (`marginal` → aderente). Agora o backend, para QUALQUER spot multiway postflop do hero (`n_active_opponents>=2`), zera os campos HU (`gto_label`/`gto_strategy`/`hand_strategy`/`gto_depth_capped`) — o solver HU não é confiável multiway — e expõe `n_active_opponents`. Quando o advisor é claro → veredito multiway; quando defere → veredito pela **severidade do engine** (`error_label` EV-capado), idêntico ao badge. Frontend: branch de veredito por severidade (✗ clear / ⚠ small / ✓ resto, fonte "Engine") + chip "engine" + "Processando" suprimido em multiway. Resultado: h4/h6 → ✓ (marginal/standard), h5 → ⚠ multiway, h7 → ⚠ (small_mistake) — todos batendo o badge. api 76/76, tsc/vitest ok.
