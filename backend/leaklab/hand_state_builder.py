@@ -278,23 +278,24 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                     caller_position = _infer_position(hand, a.player)
                     break
 
-        # Multiway: mais de 2 jogadores ativos na street atual
-        active_in_street = set(
-            a.player for a in hand.actions
-            if a.street == street and a.action not in {'shows', 'mucks'}
-        )
-        is_multiway = len(active_in_street) > 2
-        # Numero exato de oponentes ainda vivos no pote no momento da decisao do hero.
-        # Usado para ajustar equity heuristica vs HU em postflop multiway.
-        n_active_opponents = max(0, len(active_in_street) - 1)  # exclui hero
+        # Oponentes ainda no pote NO MOMENTO da decisão do hero — não no início da street.
+        # O que importa é quando a ação CHEGA no hero: um vilão que foldou ANTES do hero
+        # agir (ex.: agressor c-beta, CO folda, hero raise) NÃO conta. Sem isto o spot
+        # virava falso multiway (ex.: mão 11: HU no raise, mas contava 2 oponentes).
+        # = todos os distribuídos − quem já foldou até este ponto (actions_before).
+        folded_so_far = set(a.player for a in actions_before if a.action == 'folds')
+        _dealt = set(a.player for a in hand.actions if a.action not in {'shows', 'mucks'})
+        still_in_now = _dealt - folded_so_far
+        n_active_opponents = max(0, len(still_in_now) - 1)  # exclui hero (ainda no pote)
+        is_multiway = n_active_opponents >= 2
 
         # Vilão em HU postflop quando ele deu CHECK (hero é o agressor): o loop acima só
         # captura quem APOSTOU antes do hero; com o vilão dando check, ficava 'unknown' →
         # o spot caía em "sem vilão" e PERDIA a cobertura GTO (ex.: c-bet HU num pote que
-        # começou multiway e afunilou). Se há exatamente 1 oponente vivo na street, ele É
-        # o vilão — resolve a posição pra alimentar a range adversária no solver.
+        # começou multiway e afunilou). Se há exatamente 1 oponente vivo, ele É o vilão —
+        # resolve a posição pra alimentar a range adversária no solver.
         if villain_position == 'unknown' and n_active_opponents == 1 and street != 'preflop':
-            _opp = next((p for p in active_in_street if p != hero), None)
+            _opp = next((p for p in still_in_now if p != hero), None)
             if _opp:
                 villain_name = _opp
                 villain_position = _infer_position(hand, _opp)

@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(engine): contagem de oponentes ativos no MOMENTO da decisão (não no início da street)
+
+> `n_active_opponents` (e `is_multiway`) contava todos que agiram na street inteira — incluindo quem foldou **antes** de a ação chegar no hero. Resultado: falso multiway quando o pote afunilava (mão 11: hero dá check 3-way, agressor c-beta, CO **folda**, hero **raise** — agora HU, mas contava 2 oponentes → o fallback multiway recomendava fold errado num spot que virou heads-up). Correção em `hand_state_builder`: conta os que **ainda não foldaram até a decisão** (`actions_before`) = distribuídos − foldados. Agora a mão 11 flop-check é multiway (correto, CO ainda no pote) e flop-raise é HU (CO já foldou) → volta ao solver HU. Mão 5 (genuíno 3-way) intacta. engine 362/362.
+
 ### fix(replayer): card coerente quando a estimativa multiway está ativa
 
 > Com o fallback multiway ativo, o veredito virava Fold mas várias seções ainda liam dados do engine/solver HU e **contradiziam** o fold: o racional "mão forte: raise por valor", a pill "Sua mão 37% marginal" (equity HU vs a estimativa 27%), a margem "+13,2pp · com folga" (pot odds HU, oposta a "realiza 19% < 24%"), o selo "≈ Aproximação" (do solve HU capado), a seção "Análise GTO · Processando" (porque zeramos o `gto_label`) e o texto do toggle de detalhes ("Call lucrativo — equity 37% supera pot odds 24%"). Além de a fonte do veredito mostrar "Heurística" em vez de "Multiway". Análise do card inteiro (não remendo pontual): nova variante de fonte `multiway` (chip teal "Multiway") em `DecisionCard`/`DecisionCardV2`, e cada seção derivada do HU agora é ocultada/substituída quando há `multiway_advice` — incl. o `why` do toggle, que passa a explicar a estimativa (`whyMultiwayEstimate`, i18n PT/EN/ES). Restam só a estimativa multiway, o selo "Multiway · {n}-way" e a geometria (SPR/stack/M/ICM). Removida a duplicação de "Recomendado Fold". tsc ok, vitest 35/35.
