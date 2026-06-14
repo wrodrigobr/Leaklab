@@ -121,7 +121,7 @@ function cardSVG(code: string | null, x: number, y: number, w = 58, h = 84, face
     <clipPath id="${id}"><rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" rx="${irx}"/></clipPath>
     <rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" rx="${irx}" fill="#0c1b36" stroke="#1a3260" stroke-width="1"/>
     <rect x="${ix + p}" y="${iy + p}" width="${iw - p * 2}" height="${ih - p * 2}" rx="${Math.max(1, irx - 2)}" fill="none" stroke="rgba(140,175,255,0.22)" stroke-width=".9" clip-path="url(#${id})"/>
-    <image href="${logoIcon}" x="${lx}" y="${ly}" width="${lw}" height="${lh}" preserveAspectRatio="xMidYMid meet" opacity="0.85" clip-path="url(#${id})"/>`;
+    <image href="${logoIcon}" x="${lx}" y="${ly}" width="${lw}" height="${lh}" preserveAspectRatio="xMidYMid meet" opacity="0.5" clip-path="url(#${id})"/>`;
   }
   const r = code.slice(0, -1).toUpperCase();
   const suit = code.slice(-1).toLowerCase();
@@ -524,8 +524,8 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
           <ellipse cx="560" cy="340" rx="414" ry="218" fill="url(#bg-vig)" />
           {/* Marca GrindLab no feltro (exposição de marca) — atrás do board; as cartas
               comunitárias, quando saem, são desenhadas no layer de conteúdo por cima. */}
-          <image href={logoWordmark} x="385" y="305" width="350" height="70"
-                 preserveAspectRatio="xMidYMid meet" opacity="0.20" />
+          <image href={logoWordmark} x="310" y="286" width="500" height="108"
+                 preserveAspectRatio="xMidYMid meet" opacity="0.22" />
         </svg>
       </div>
 
