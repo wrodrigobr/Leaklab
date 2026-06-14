@@ -412,10 +412,9 @@ function renderSeatsAndChips(
     // HUD estilo Holdem Manager — box de stats abaixo do pod, p/ vilões com perfil.
     // Fora do grupo com opacity: permanece visível mesmo quando o jogador folda.
     // Só quando há amostra real (VPIP gateado) — sem "–/–/–" poluindo a mesa.
-    // Assentos de baixo: box ACIMA do pod (abaixo estouraria a borda da mesa).
+    // SEMPRE abaixo do pod (preferência do usuário), nunca acima.
     if (showHud && !isHero && profiles[d.player]?.stats?.vpip_pct != null) {
-      const boxY = pos.dir === "bottom" ? (by - HUD_H - 6) : (by + bh + 5);
-      seatsHtml += renderHudBox(pos.x, boxY, profiles[d.player], hudTips[d.player] ?? "");
+      seatsHtml += renderHudBox(pos.x, by + bh + 5, profiles[d.player], hudTips[d.player] ?? "");
     }
 
     // Position tab — posição GTO (UTG/MP/CO/BTN/SB/BB) na borda superior do pod.
