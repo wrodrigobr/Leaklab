@@ -66,11 +66,62 @@ def coach_says_mistake(dec, ann):
     return cr > ap
 
 
+def _g(d, k, default=None):
+    """Acesso seguro p/ dict OU sqlite3.Row (sem .get); None vira default."""
+    try:
+        v = d[k]
+    except (KeyError, IndexError, TypeError):
+        return default
+    return default if v is None else v
+
+
+def _multiway_sys_mistake(dec):
+    """Veredito do sistema em pote MULTIWAY postflop — mesma fonte do card do replayer
+    (multiway_advisor: equity vs range de continuação + pot odds). Retorna True/False
+    (hero desviou da ação recomendada) ou None quando não se aplica (HU / preflop / sem
+    dados / sem eval7). Mantém o badge da aderência alinhado com o card."""
+    try:
+        n_opp = _g(dec, 'n_active_opponents')
+        street = str(_g(dec, 'street', '')).lower()
+        if n_opp is None or int(n_opp) < 2 or street in ('', 'preflop'):
+            return None
+        board = _g(dec, 'board')
+        if isinstance(board, str):
+            import json as _json
+            board = _json.loads(board) if board.strip().startswith('[') else board.split()
+        hero = str(_g(dec, 'hero_cards', '')).replace(' ', '')
+        if not board or len(board) < 3 or len(hero) != 4:
+            return None
+        # `board` armazenado é o board FINAL (5 cartas) — trunca pra street da decisão,
+        # senão o flop "enxerga" turn/river e a equity fica errada (ex.: A2c no flop 944
+        # vira dois pares com K/A futuros → raise, quando no flop é A-alto → fold).
+        board = board[:{'flop': 3, 'turn': 4, 'river': 5}.get(street, len(board))]
+        from leaklab.multiway_advisor import advise_multiway, is_hero_leak
+        # is_in_position igual ao /replay (_is_in_position): hero IP se BTN/CO/HJ. Sem isto,
+        # a penalidade de realização OOP diverge e o badge não bate com o card.
+        _pos = str(_g(dec, 'position', '')).upper()
+        adv = advise_multiway(
+            hero, list(board),
+            float(_g(dec, 'pot_size', 0) or 0),
+            float(_g(dec, 'facing_bet', 0) or 0),
+            int(n_opp),
+            is_in_position=(_pos in ('BTN', 'CO', 'HJ')),
+            street=street,
+        )
+        # is_hero_leak devolve None quando o advisor NÃO tem alta confiança (decisão
+        # próxima) → defere ao label/engine (sem over-flag). True/False só nos casos claros.
+        return is_hero_leak(adv, _g(dec, 'action_taken', ''))
+    except Exception:
+        return None
+
+
 def classify(dec, ann):
-    """Categoria de aderência. 'erro do sistema' = label (severidade), não gto_label.
+    """Categoria de aderência. 'erro do sistema' = label (severidade), não gto_label —
+    EXCETO em pote multiway postflop, onde vem do multiway_advisor (mesma fonte do card).
     Retorna (kind, coach_rec) — kind em: match_ok | match_erro | diverge_rigido |
     diverge_perdido | comentario."""
-    sys_mistake = dec['label'] in SYS_MISTAKE_LABELS
+    _mw = _multiway_sys_mistake(dec)
+    sys_mistake = _mw if _mw is not None else (_g(dec, 'label') in SYS_MISTAKE_LABELS)
     cm = coach_says_mistake(dec, ann)
     rec = norm(ann['coach_action']) if ann['coach_action'] else None
     if cm is None:

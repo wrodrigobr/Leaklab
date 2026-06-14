@@ -17,6 +17,10 @@ OUT = os.path.join(os.path.dirname(__file__), '..', 'docs', 'coach_review_t27.ht
 
 c = sqlite3.connect(DB); c.row_factory = sqlite3.Row
 
+# Multiway-aware: o "erro do sistema" em pote 3-way+ vem do multiway_advisor (mesma fonte
+# do card do replayer), não do label HU armazenado. Reusa o helper do módulo compartilhado.
+from leaklab.coach_adherence import _multiway_sys_mistake as _mw_sys
+
 def norm(a):
     if not a: return ''
     a = a.lower().rstrip('s')
@@ -86,7 +90,8 @@ def classify(dec, ann):
     # "erro do sistema" = a SEVERIDADE do veredito (label) que o usuário vê — não o
     # gto_label (frequência do solver). Após a calibração por EV, um gto_critical de baixo
     # custo vira marginal/standard → deixa de ser "erro" aqui (coerente com o card).
-    sys_mistake = dec['label'] in SYS_MISTAKE_LABELS
+    _mw = _mw_sys(dec)
+    sys_mistake = _mw if _mw is not None else (dec['label'] in SYS_MISTAKE_LABELS)
     cm = coach_says_mistake(dec, ann)
     rec = norm(ann['coach_action']) if ann['coach_action'] else None
     if cm is None:
@@ -98,7 +103,8 @@ def classify(dec, ann):
 
 # ── coleta ────────────────────────────────────────────────────────────────────────────
 decs = c.execute('''SELECT id, hand_id, street, action_taken, hero_cards, position, label,
-    gto_label, gto_action, best_action, ev_loss_bb, score
+    gto_label, gto_action, best_action, ev_loss_bb, score,
+    board, pot_size, facing_bet, n_active_opponents
     FROM decisions WHERE tournament_id=? ORDER BY hand_id, rowid''', (TID,)).fetchall()
 anns = {r['decision_id']: r for r in c.execute(
     '''SELECT a.* FROM coach_hand_annotations a JOIN decisions d ON d.id=a.decision_id
@@ -114,7 +120,8 @@ for d in decs:
     if ann:
         kind, rec, sysm = classify(d, ann)
     else:
-        kind, rec, sysm = 'sem_anotacao', None, (d['label'] in SYS_MISTAKE_LABELS)
+        _mw0 = _mw_sys(d)
+        kind, rec, sysm = 'sem_anotacao', None, (_mw0 if _mw0 is not None else (d['label'] in SYS_MISTAKE_LABELS))
     rows.append((d, ann, kind, rec, sysm))
 
 cnt = Counter(r[2] for r in rows)

@@ -4663,11 +4663,15 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     )
                 except Exception:
                     multiway_advice = None
+            # Só SOBREPÕE o solver HU quando o veredito multiway é de ALTA confiança
+            # (is_clear). Decisões próximas (bet vs check marginal) caem no engine HU —
+            # sem over-flag. Quando não-claro, descarta o advice (card mantém o HU).
+            if multiway_advice and not multiway_advice.get('is_clear'):
+                multiway_advice = None
             if multiway_advice:
-                # o veredito do card passa a vir da estimativa multiway, não do nó HU
-                _acted_mw = _norm(action.action)
+                from leaklab.multiway_advisor import is_hero_leak as _mw_leak
                 _adv_mw   = _norm(multiway_advice['action'])
-                is_error        = (_acted_mw != _adv_mw)
+                is_error        = bool(_mw_leak(multiway_advice, action.action))
                 reconciled_best = _adv_mw
                 gto_action      = multiway_advice['action']
                 live_top_act    = multiway_advice['action']

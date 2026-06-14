@@ -32,6 +32,15 @@ _BASE_RANGE = (
 )
 
 
+def norm_action(a) -> str:
+    """rstrip 's' + unifica all-in/allin/jam/shove → 'allin'."""
+    a = (a or '').strip().lower()
+    if not a:
+        return ''
+    a = a[:-1] if a.endswith('s') else a
+    return 'allin' if a in ('all-in', 'allin', 'jam', 'shove') else a
+
+
 def _card_str(c) -> str:
     return str(c)
 
@@ -133,9 +142,27 @@ def _realization_tax(raw_eq: float, is_in_position, n_opp: int,
     return min(tax, 0.15)
 
 
+_ADVISE_CACHE = {}
+
+
 def advise_multiway(hero_cards, board, pot_bb, to_call_bb, n_opponents,
                     is_in_position=None, street='flop', eff_stack_bb=None,
                     n_sims=12000):
+    """Wrapper cacheado (determinístico por entrada) — evita re-rodar o Monte Carlo
+    quando o mesmo spot é avaliado em várias superfícies (card + aderência)."""
+    _key = (str(hero_cards), tuple(board or []), round(float(pot_bb or 0), 2),
+            round(float(to_call_bb or 0), 2), int(n_opponents or 0), is_in_position,
+            street, n_sims)
+    if _key not in _ADVISE_CACHE:
+        _ADVISE_CACHE[_key] = _advise_impl(hero_cards, board, pot_bb, to_call_bb,
+                                           n_opponents, is_in_position, street,
+                                           eff_stack_bb, n_sims)
+    return _ADVISE_CACHE[_key]
+
+
+def _advise_impl(hero_cards, board, pot_bb, to_call_bb, n_opponents,
+                 is_in_position=None, street='flop', eff_stack_bb=None,
+                 n_sims=12000):
     """
     Recomendação multiway independente do solver HU. Retorna dict ou None
     (quando indisponível: sem eval7, sem board, n_opp<2, hero_cards inválidas).
@@ -170,27 +197,35 @@ def advise_multiway(hero_cards, board, pot_bb, to_call_bb, n_opponents,
     required = (call / (pot + call)) if (facing and (pot + call) > 0) else None
 
     # Limiares: agredir multiway exige mão FORTE (só valor/proteção). Marginal paga ou passa.
-    STRONG = 0.62   # equity crua vs range de continuação que justifica value bet/raise
+    STRONG = 0.62      # equity crua vs range de continuação que justifica value bet/raise
+    FOLD_MARGIN = 0.03 # folga abaixo das pot odds p/ chamar o fold de CLARO
+    # is_clear = veredito de ALTA confiança que VALE sobrepor o solver HU. Decisões próximas
+    # (bet vs check marginal, fold no limite) NÃO sobrepõem — caem no engine, sem over-flag.
     if facing:
-        if realized < (required or 0):
-            action = 'fold'
-            why = f'realiza {realized*100:.0f}% < {required*100:.0f}% necessário ({n_opp} vilões)'
-        elif raw >= STRONG:
-            action = 'raise'
+        req = required or 0
+        if realized < req - FOLD_MARGIN:
+            action, is_clear = 'fold', True
+            why = f'realiza {realized*100:.0f}% < {req*100:.0f}% necessário ({n_opp} vilões)'
+        elif raw >= STRONG and realized > req:
+            action, is_clear = 'raise', True
             why = f'{raw*100:.0f}% vs range de continuação → valor/proteção'
+        elif realized >= req:
+            action, is_clear = 'call', False
+            why = f'realiza {realized*100:.0f}% ≥ {req*100:.0f}%, decisão próxima'
         else:
-            action = 'call'
-            why = f'realiza {realized*100:.0f}% ≥ {required*100:.0f}%, mas sem força p/ agredir multiway'
+            action, is_clear = 'fold', False
+            why = f'realiza {realized*100:.0f}% ~ {req*100:.0f}% necessário, fold marginal'
     else:
         if raw >= STRONG:
-            action = 'bet'
+            action, is_clear = 'bet', True
             why = f'{raw*100:.0f}% vs range de continuação → aposta por valor'
         else:
-            action = 'check'
-            why = f'{raw*100:.0f}% vs {n_opp} vilões — sem valor claro multiway, controla o pote'
+            action, is_clear = 'check', False
+            why = f'{raw*100:.0f}% vs {n_opp} vilões — bet vs check é próximo multiway'
 
     return {
         'action': action,
+        'is_clear': is_clear,
         'equity': round(raw, 4),
         'realized_eq': round(realized, 4),
         'required_eq': round(required, 4) if required is not None else None,
@@ -198,3 +233,22 @@ def advise_multiway(hero_cards, board, pot_bb, to_call_bb, n_opponents,
         'rationale': why,
         'confidence': 'estimate',
     }
+
+
+def is_hero_leak(adv, hero_action):
+    """Dado o veredito multiway e a ação do hero, a jogada é um LEAK claro? Só quando
+    adv['is_clear'] (alta confiança); senão None → defere ao engine/label (sem over-flag).
+      fold recomendado  → continuar (call/raise/bet) é leak
+      bet  recomendado  → não apostar valor (check/fold) é leak
+      raise recomendado → foldar mão forte é leak (pagar é aceitável)"""
+    if not adv or not adv.get('is_clear'):
+        return None
+    h = norm_action(hero_action)
+    a = norm_action(adv.get('action'))
+    if a == 'fold':
+        return h in ('call', 'raise', 'bet', 'allin')
+    if a == 'bet':
+        return h in ('check', 'fold')
+    if a == 'raise':
+        return h == 'fold'
+    return h != a

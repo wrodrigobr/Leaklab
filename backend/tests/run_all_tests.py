@@ -19,7 +19,7 @@ SUITES = {
                   'test_equity_range_aware.py', 'test_preflop_open_size.py',
                   'test_bet_intent.py', 'test_opponent_stats.py', 'test_sizing_advisor.py'],
     'database':  ['test_database.py', 'test_coach_system.py', 'test_notifications.py',
-                  'test_solve_quota.py'],
+                  'test_solve_quota.py', 'test_coach_adherence_multiway.py'],
     'llm':       ['test_llm_explainer.py', 'test_study_plan.py'],
     'api':       ['test_api_endpoints.py', 'test_subscription.py', 'test_partygaming_financials.py'],
     'regression':['test_tournament.py', 'test_multi_decision.py', 'test_partygaming_parser.py'],
