@@ -1939,6 +1939,7 @@ const Replayer = () => {
                   revealedCards={revealedCards}
                   profiles={replayData.opponent_profiles}
                   showHud={showHud}
+                  hudLegend={t("hudLegend")}
                 />
               </div>
             </div>

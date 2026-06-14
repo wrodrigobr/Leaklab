@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(hud): box do HUD com c-bet/fold-to-cbet/AF/WTSD + tooltip de legenda
+
+> O box do HUD da mesa cresceu para **2 linhas**: preflop (VPIP/PFR/3-bet · mãos) e postflop (**c-bet / fold-to-c-bet / AF / WTSD**). Tooltip nativo (`<title>` SVG) ao passar o mouse explica cada abreviação (legenda i18n PT/EN/ES). Stats sem amostra aparecem vazios ("–"). Placement dir-aware: nos assentos de baixo o box vai ACIMA do pod (abaixo estouraria a borda da mesa). tsc/build ok.
+
 ### feat(hud): HUD estilo Holdem Manager na mesa (box por jogador) + toggle + visão do coach
 
 > Antes o perfil do oponente só aparecia no card de decisão. Agora há um **HUD na MESA** (PokerTableV3): um box compacto **abaixo de cada assento** com `VPIP/PFR/3-bet · mãos`, cor por arquétipo (TAG/LAG/nit/station/maniac), estilo Holdem Manager. **Toggle mostrar/ocultar** (botão "HUD", ícone Users, persiste em localStorage; só aparece quando o torneio tem perfis). Só renderiza box para jogadores com **amostra real** (VPIP gateado) — sem "–/–/–" poluindo. Backend: `_attach_opponent_hud` (helper compartilhado) expõe `replay['opponent_profiles']` (mapa nome→perfil, só nomes reais) e passou a rodar **também na visão do coach** (`coach_student_replay`) — antes só o aluno via o HUD. i18n PT/EN/ES. Validado no tid 151: 45 perfis no payload (`7SkYy` TAG 235h → 21/14/4). api 76/76, tsc/build ok.

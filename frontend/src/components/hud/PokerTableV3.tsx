@@ -272,21 +272,30 @@ type OppProfile = { archetype: string; confidence: string; hands: number; stats:
 const _ARCH_COLOR: Record<string, string> = {
   calling_station: "#fbbf24", nit: "#7dd3fc", tag: "#34d399", lag: "#fb923c", maniac: "#f87171",
 };
+const HUD_W = 168, HUD_H = 40;
 function _hudPct(v: number | null | undefined): string {
   return v == null ? "–" : String(Math.round(v * 100));
 }
-/** Box compacto de stats (VPIP/PFR/3B + mãos) ancorado abaixo do pod do jogador. */
-function renderHudBox(cx: number, topY: number, prof: OppProfile): string {
+function _xmlEsc(s: string): string {
+  return (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+/** Box de stats estilo Holdem Manager (2 linhas): preflop (VPIP/PFR/3B) + postflop
+ *  (c-bet/fold-to-cbet/AF/WTSD) + nº de mãos. `<title>` = tooltip nativo com a legenda. */
+function renderHudBox(cx: number, topY: number, prof: OppProfile, legend: string): string {
   const s = prof.stats || {};
   const lowSample = prof.confidence === "insufficient" || prof.archetype === "unknown";
   const col = lowSample ? "#9aa0a8" : (_ARCH_COLOR[prof.archetype] ?? "#9aa0a8");
-  const main = `${_hudPct(s.vpip_pct)}/${_hudPct(s.pfr_pct)}/${_hudPct(s.threebet_pct)}`;
-  const w = 104, h = 22, x = cx - w / 2;
+  const x = cx - HUD_W / 2;
+  const af = s.af == null ? "–" : (typeof s.af === "number" ? s.af.toFixed(1) : s.af);
+  const line1 = `${_hudPct(s.vpip_pct)}/${_hudPct(s.pfr_pct)}/${_hudPct(s.threebet_pct)}`;
+  const line2 = `cb${_hudPct(s.cbet_pct)} fcb${_hudPct(s.foldcbet_pct)} AF${af} wtsd${_hudPct(s.wtsd_pct)}`;
   return `<g>
-    <rect x="${x}" y="${topY}" width="${w}" height="${h}" rx="5" fill="rgba(8,14,26,0.94)" stroke="${col}" stroke-width="1.1"/>
-    <circle cx="${x + 9}" cy="${topY + h / 2}" r="3.2" fill="${col}"/>
-    <text x="${x + 17}" y="${topY + h / 2 + 3.6}" fill="#e2e8f4" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700" letter-spacing=".02">${main}</text>
-    <text x="${x + w - 7}" y="${topY + h / 2 + 3.4}" text-anchor="end" fill="#8893a6" font-family="Share Tech Mono,monospace" font-size="9">${prof.hands}h</text>
+    <title>${_xmlEsc(legend)}</title>
+    <rect x="${x}" y="${topY}" width="${HUD_W}" height="${HUD_H}" rx="6" fill="rgba(8,14,26,0.95)" stroke="${col}" stroke-width="1.1"/>
+    <circle cx="${x + 10}" cy="${topY + 13}" r="3.4" fill="${col}"/>
+    <text x="${x + 19}" y="${topY + 16.5}" fill="#e6edf8" font-family="Share Tech Mono,monospace" font-size="12" font-weight="700" letter-spacing=".02">${line1}</text>
+    <text x="${x + HUD_W - 8}" y="${topY + 16}" text-anchor="end" fill="#8893a6" font-family="Share Tech Mono,monospace" font-size="9.5">${prof.hands}h</text>
+    <text x="${x + 10}" y="${topY + 32}" fill="#aeb8c9" font-family="Share Tech Mono,monospace" font-size="10" letter-spacing=".01">${line2}</text>
   </g>`;
 }
 
@@ -300,6 +309,7 @@ function renderSeatsAndChips(
   revealedCards: Record<string, string[]> = {},
   profiles: Record<string, OppProfile> = {},
   showHud: boolean = false,
+  hudLegend: string = "",
 ): { seats: string; chips: string } {
   const seatNums = Object.keys(ev.seats).map(Number).sort((a, b) => a - b);
   const heroSeatNum = seatNums.find((sn) => ev.seats[sn]?.player === hero);
@@ -399,8 +409,10 @@ function renderSeatsAndChips(
     // HUD estilo Holdem Manager — box de stats abaixo do pod, p/ vilões com perfil.
     // Fora do grupo com opacity: permanece visível mesmo quando o jogador folda.
     // Só quando há amostra real (VPIP gateado) — sem "–/–/–" poluindo a mesa.
+    // Assentos de baixo: box ACIMA do pod (abaixo estouraria a borda da mesa).
     if (showHud && !isHero && profiles[d.player]?.stats?.vpip_pct != null) {
-      seatsHtml += renderHudBox(pos.x, by + bh + 5, profiles[d.player]);
+      const boxY = pos.dir === "bottom" ? (by - HUD_H - 6) : (by + bh + 5);
+      seatsHtml += renderHudBox(pos.x, boxY, profiles[d.player], hudLegend);
     }
 
     // Position tab — posição GTO (UTG/MP/CO/BTN/SB/BB) na borda superior do pod.
@@ -490,12 +502,13 @@ interface Props {
   playerAliases?: Record<string, string>;
   /** seat_str → cards shown at showdown; empty array = mucked (no cards rendered) */
   revealedCards?: Record<string, string[]>;
-  /** HUD HM-style: perfil por nome de jogador + flag de exibição */
+  /** HUD HM-style: perfil por nome de jogador + flag de exibição + legenda (tooltip) */
   profiles?: Record<string, OppProfile>;
   showHud?: boolean;
+  hudLegend?: string;
 }
 
-export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false }: Props) {
+export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false, hudLegend = "" }: Props) {
   const boardRef = useRef<SVGGElement>(null);
   const potRef   = useRef<SVGGElement>(null);
   const seatsRef = useRef<SVGGElement>(null);
@@ -507,10 +520,10 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
     // Suppress center pot when chips are being displaced to winners
     const hasWinners = step.type === "showdown" && (step.summary?.winners?.length ?? 0) > 0;
     potRef.current!.innerHTML  = hasWinners ? "" : renderPot(step.pot ?? 0, bb, betUnit);
-    const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards, revealedCards, profiles, showHud);
+    const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards, revealedCards, profiles, showHud, hudLegend);
     seatsRef.current!.innerHTML = seats;
     chipsRef.current!.innerHTML = chips;
-  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards, profiles, showHud]);
+  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards, profiles, showHud, hudLegend]);
 
   return (
     <div
