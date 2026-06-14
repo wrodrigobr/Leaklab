@@ -116,6 +116,10 @@ function SidePanels({
   });
 
   const isPostflop = step.street !== 'preflop';
+  // Spot multiway postflop: o solver HU não é confiável (backend zera gto_label/strategy).
+  // Quando o advisor multiway DEFERE (sem multiway_advice), o veredito vem da SEVERIDADE
+  // do engine (error_label EV-capado), não do gto_label de frequência HU. Card = badge.
+  const isMultiwayStep = isPostflop && (step.n_active_opponents ?? 0) >= 2;
   const pg = step.preflop_gto ?? null;
   // Cobertura preflop negada explicitamente (ex.: pote limpado "vs Limp"): a análise
   // AO VIVO manda. Um gto_label ARMAZENADO stale (scoring antigo, pré-feature do limp)
@@ -198,6 +202,16 @@ function SidePanels({
       return ok
         ? { icon: "✓", label: t("card.vCorrect"), cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: t("card.srcMultiway"), sourceTooltip: tip }
         : { icon: "⚠", label: t("card.vLeak"),    cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: t("card.srcMultiway"), sourceTooltip: tip };
+    }
+    // Multiway onde o advisor DEFERIU (decisão próxima): sem solver HU confiável, o veredito
+    // vem da SEVERIDADE do engine (EV-capada) — não do gto_label de frequência HU (que diria
+    // 'crítico' num spot que o coach aprova). Mantém card = badge de aderência.
+    if (isMultiwayStep && !step.multiway_advice) {
+      const tip = t("card.srcEngineTip");
+      const sev = step.error_label;
+      if (sev === "clear_mistake") return { icon: "✗", label: t("card.vError"),   cls: "text-destructive", borderCls: "border-destructive/40", hdrCls: "bg-destructive/5", source: "Engine", sourceTooltip: tip };
+      if (sev === "small_mistake") return { icon: "⚠", label: t("card.vLeak"),    cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Engine", sourceTooltip: tip };
+      return { icon: "✓", label: t("card.vCorrect"), cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Engine", sourceTooltip: tip };
     }
     // Call-vs-shove heurístico: veredito por pot odds (equity × necessária),
     // não pelo range de abertura nem por um gto_label armazenado stale.
@@ -326,6 +340,7 @@ function SidePanels({
           })();
         const sourceVariant: DecisionSourceVariant =
           step.multiway_advice                    ? "multiway"  :
+          (isMultiwayStep && !step.gto_label)     ? "engine"    :  // multiway deferido → severidade do engine
           preflopNoCoverage                       ? "na"        :
           step.gto_spot_mismatch                  ? "na"        :
           isShoveFb                               ? "heuristic" :
@@ -1077,7 +1092,7 @@ function SidePanels({
           enfrentando aposta, sem vilão) mostram uma nota HONESTA estática — não
           "Processando" (que sugere que vai resolver) nem auto-solve inútil.
           Só 'pending' (solvável, nó ainda não existe) mostra o fluxo de solve. */}
-      {step.is_hero && step.type === "action" && isPostflop && !hasGto && !step.multiway_advice
+      {step.is_hero && step.type === "action" && isPostflop && !hasGto && !isMultiwayStep
         && step.action !== "shows" && step.action !== "mucks"
         && (() => {
           const cov = (step as { gto_coverage?: string }).gto_coverage;

@@ -250,6 +250,7 @@ export interface ReplayStep {
   is_error?: boolean;
   error_label?: string;
   error_score?: number;
+  n_active_opponents?: number | null;  // >=2 = pote multiway (card usa severidade do engine, não gto HU)
   best_action?: string;
   // error details
   pot_odds_equity?: number;

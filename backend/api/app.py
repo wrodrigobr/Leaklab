@@ -4644,10 +4644,14 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # Substitui a recomendação HU por equity-vs-range (eval7) + pot odds + realização.
         # É ESTIMATIVA honesta (rotulada), tem prioridade sobre o nó HU neste spot.
         multiway_advice = None
+        _mw_spot = False        # spot multiway postflop do hero (solver HU é unreliable aqui)
+        _mw_nopp = 0
         if (action.player == hero and action.street != 'preflop' and decision
                 and action.action in ('bets', 'raises', 'calls', 'checks', 'folds')):
             _nopp_mw = int(_spot.get('nActiveOpponents') or 0)
+            _mw_nopp = _nopp_mw
             if _nopp_mw >= 2:
+                _mw_spot = True
                 try:
                     from leaklab.multiway_advisor import advise_multiway as _amw
                     _hc_mw = ''.join(_di.get('hero_cards') or [])
@@ -4663,11 +4667,9 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                     )
                 except Exception:
                     multiway_advice = None
-            # Só SOBREPÕE o solver HU quando o veredito multiway é de ALTA confiança
-            # (is_clear). Decisões próximas (bet vs check marginal) caem no engine HU —
-            # sem over-flag. Quando não-claro, descarta o advice (card mantém o HU).
-            if multiway_advice and not multiway_advice.get('is_clear'):
-                multiway_advice = None
+                # Só SOBREPÕE com ALTA confiança (is_clear). Decisão próxima → defere ao engine.
+                if multiway_advice and not multiway_advice.get('is_clear'):
+                    multiway_advice = None
             if multiway_advice:
                 from leaklab.multiway_advisor import is_hero_leak as _mw_leak
                 _adv_mw   = _norm(multiway_advice['action'])
@@ -4675,6 +4677,14 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 reconciled_best = _adv_mw
                 gto_action      = multiway_advice['action']
                 live_top_act    = multiway_advice['action']
+            elif _mw_spot:
+                # Multiway onde o advisor DEFERIU: o solver HU não é confiável aqui, então o
+                # veredito vem da SEVERIDADE do engine (label EV-capado) — NÃO do gto_label de
+                # frequência HU (que diria 'crítico' num spot que o coach aprova). Card = badge.
+                _sev_mw = decision.get('label')
+                is_error = _sev_mw in ('small_mistake', 'clear_mistake')
+                reconciled_best = decision.get('best_action') or reconciled_best
+                gto_action = decision.get('best_action') or gto_action
 
         # Sizing do OPEN (Fase 1): tamanho do open preflop do hero vs o padrão de teoria
         # (~2bb; SBxBB sobe). O size sai do raw ("raises X to Y" → Y/bb), não do amount (=BY).
@@ -4765,11 +4775,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'error_score':        round(float(decision.get('score', 0)), 3)         if decision else None,
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
-            'gto_label':          (None if multiway_advice else gto_label),
+            'gto_label':          (None if _mw_spot else gto_label),
             'gto_action':         preflop_override_action or live_top_act or gto_action,
+            'n_active_opponents': (_mw_nopp or None),   # >=2 = multiway (card usa severidade, não gto HU)
             # Opção B: derivado AO VIVO (não da coluna armazenada, que a re-análise não
             # atualiza) — postflop coberto com stack >60bb é aproximação capada em 60bb.
-            'gto_depth_capped':   (action.street != 'preflop' and bool(gto_label)
+            'gto_depth_capped':   (not _mw_spot and action.street != 'preflop' and bool(gto_label)
                                    and float(_spot.get('effectiveStackBb') or 0) > 60.0),
             'bet_intent':         (decision.get('bet_intent') if decision else None),  # intenção da aposta (value/blefe/meio)
             'threebet_intent':    (decision.get('threebet_intent') if decision else None),  # intenção do 3-bet (valor/merge/light)
@@ -4783,8 +4794,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'multiway_advice':    multiway_advice,   # fallback multiway: equity-vs-range (estimativa, não GTO HU)
             # com estimativa multiway ativa, esconde as barras HU (o artefato que estamos
             # substituindo) — o card mostra a estimativa, não "raise 93%" do solver HU.
-            'hand_strategy':      (None if multiway_advice else live_hand_strategy),   # Fase 3: freq/EV da MÃO do hero
-            'gto_strategy':       (None if multiway_advice else gto_strategy),
+            'hand_strategy':      (None if _mw_spot else live_hand_strategy),   # Fase 3: freq/EV da MÃO do hero
+            'gto_strategy':       (None if _mw_spot else gto_strategy),
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
             'preflop_gto':        decision.get('preflop_gto') if decision else None,
             'desc':           f"{action.player}: {_normalize_action(action.action)}"
