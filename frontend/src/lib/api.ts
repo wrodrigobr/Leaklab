@@ -367,6 +367,15 @@ export interface ReplayData {
   is_pko?: boolean;
   timeline: ReplayStep[];
   coach_annotations?: Record<string, CoachAnnotation>;
+  // HUD estilo Holdem Manager: perfil por jogador (nome → stats) p/ box na mesa
+  opponent_profiles?: Record<string, OpponentProfile>;
+}
+
+export interface OpponentProfile {
+  archetype: string;
+  confidence: string;
+  hands: number;
+  stats: Record<string, number | null>;
 }
 
 export const tournaments = {

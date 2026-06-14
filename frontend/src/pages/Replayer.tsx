@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, Lock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, Lock, Users } from "lucide-react";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
@@ -1455,6 +1455,9 @@ const Replayer = () => {
   const [speed, setSpeed]           = useState(1);
   const [handList, setHandList]     = useState<string[]>([]);
   const [betUnit, setBetUnit]       = useState<"chips" | "bb">("bb");
+  const [showHud, setShowHud]       = useState<boolean>(
+    () => localStorage.getItem('replayer_show_hud') !== 'false'   // HUD HM-style: ligado por padrão
+  );
   const [decisions, setDecisions]   = useState<TournamentDecision[]>([]);
   const [showRange, setShowRange]           = useState(false);
   const [annotating, setAnnotating]         = useState(false);
@@ -1934,6 +1937,8 @@ const Replayer = () => {
                   betUnit={betUnit}
                   playerAliases={playerAliases}
                   revealedCards={revealedCards}
+                  profiles={replayData.opponent_profiles}
+                  showHud={showHud}
                 />
               </div>
             </div>
@@ -2024,6 +2029,19 @@ const Replayer = () => {
                       )}>{u}</button>
                   ))}
                 </div>
+                {/* HUD HM-style: liga/desliga os boxes de stats dos vilões na mesa.
+                    Só aparece quando há perfis (torneio com nomes reais rastreados). */}
+                {replayData.opponent_profiles && Object.keys(replayData.opponent_profiles).length > 0 && (
+                  <button
+                    onClick={() => setShowHud(v => { const n = !v; localStorage.setItem('replayer_show_hud', String(n)); return n; })}
+                    title={t("hudToggleTip")}
+                    className={cn(
+                      "flex items-center gap-1 rounded-sm px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors ring-1 focus-visible:outline-none",
+                      showHud ? "bg-primary/15 text-primary ring-primary/30" : "text-muted-foreground ring-border hover:text-foreground"
+                    )}>
+                    <Users className="size-3" /> HUD
+                  </button>
+                )}
               </div>
             </div>
 

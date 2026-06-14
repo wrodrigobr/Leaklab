@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(hud): HUD estilo Holdem Manager na mesa (box por jogador) + toggle + visão do coach
+
+> Antes o perfil do oponente só aparecia no card de decisão. Agora há um **HUD na MESA** (PokerTableV3): um box compacto **abaixo de cada assento** com `VPIP/PFR/3-bet · mãos`, cor por arquétipo (TAG/LAG/nit/station/maniac), estilo Holdem Manager. **Toggle mostrar/ocultar** (botão "HUD", ícone Users, persiste em localStorage; só aparece quando o torneio tem perfis). Só renderiza box para jogadores com **amostra real** (VPIP gateado) — sem "–/–/–" poluindo. Backend: `_attach_opponent_hud` (helper compartilhado) expõe `replay['opponent_profiles']` (mapa nome→perfil, só nomes reais) e passou a rodar **também na visão do coach** (`coach_student_replay`) — antes só o aluno via o HUD. i18n PT/EN/ES. Validado no tid 151: 45 perfis no payload (`7SkYy` TAG 235h → 21/14/4). api 76/76, tsc/build ok.
+
 ### fix(hud): não exibir perfil de oponente quando o nome é uma POSIÇÃO (dados anonimizados)
 
 > Verificação do HUD de oponentes (Fases 1-3): confirmado funcionando end-to-end — o `/replay` anexa `villain_profile` (arquétipo + stats gateados) e o card renderiza o bloco "Oponente" + "⚡ Ajuste vs oponente" (validado no torneio 151: `SuKKinho` TAG high-conf, VPIP 18% / PFR 15%). Porém torneios **anonimizados** (GG anônimo / demos onde o nome do jogador é a POSIÇÃO — SB/BTN/HJ…) geravam perfis keyed por assento, que misturam jogadores diferentes → reads sem significado. Fix: helper `opponent_stats.is_position_name`; o attach do `/replay` pula vilões cujo nome é posição; `compute_opponent_profiles` não persiste torneios anonimizados; limpeza dos 17 perfis-posição já gravados. Resultado: tid 151 mostra HUD (23 steps/20 mãos), t27 (anonimizado) não mostra (0). opponent_stats 14/14.

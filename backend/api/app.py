@@ -3047,6 +3047,38 @@ def coach_student_study_plan(student_id):
         return jsonify({'error': str(e)}), 500
 
 
+def _attach_opponent_hud(replay, local_tid):
+    """HUD de oponente (Fases 2-3): anexa `villain_profile` (arquétipo + stats gateados) e
+    `exploit` a cada step do timeline, por lookup do `villain_name` nos opponent_profiles do
+    torneio. Pula nomes que são POSIÇÃO (dados anonimizados → read sem significado). Fonte
+    ÚNICA do HUD — usada pela visão do aluno (get_replay) e do coach (coach_student_replay).
+    Nunca bloqueia o /replay (exceção engolida)."""
+    try:
+        from database.repositories import get_opponent_profiles as _get_opp
+        from leaklab.opponent_stats import compute_exploit as _exploit, is_position_name as _is_pos
+        _opp_map = {p['player']: {'archetype': p['archetype'], 'confidence': p['confidence'],
+                                  'hands': p['hands'], 'stats': p['stats']}
+                    for p in _get_opp(local_tid)}
+        if not _opp_map:
+            return
+        # Mapa completo pro HUD da MESA (estilo Holdem Manager: 1 box por assento) — só
+        # nomes reais (não posição). O front casa pelo nome do jogador no assento.
+        replay['opponent_profiles'] = {n: pr for n, pr in _opp_map.items() if not _is_pos(n)}
+        for _st in replay.get('timeline', []):
+            _vn = _st.get('villain_name')
+            if _vn and _vn in _opp_map and not _is_pos(_vn):   # nome=posição → anonimizado, pula
+                _prof = _opp_map[_vn]
+                _st['villain_profile'] = _prof
+                if _st.get('is_hero'):                          # Fase 3: exploit só no step do hero
+                    _ex = _exploit(action=_st.get('action'), best_action=_st.get('best_action'),
+                                   bet_intent=_st.get('bet_intent'), street=_st.get('street'),
+                                   profile=_prof)
+                    if _ex:
+                        _st['exploit'] = _ex
+    except Exception:
+        pass
+
+
 @app.route('/coach/student/<int:student_id>/replay/<tournament_id>/<hand_id>', methods=['GET'])
 @require_coach
 def coach_student_replay(student_id, tournament_id, hand_id):
@@ -3097,6 +3129,8 @@ def coach_student_replay(student_id, tournament_id, hand_id):
     except Exception:
         hand_decisions = _db_hand_c
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
+    # HUD de oponente na visão do COACH — mesma fonte do aluno (perfil + exploit por step).
+    _attach_opponent_hud(replay, t['id'])
     # Attach coach annotations for decisions in this hand
     db_decisions = _db_all_c
     hand_db_decisions = [d for d in db_decisions if str(d.get('hand_id')) == str(hand_id)]
@@ -3865,30 +3899,9 @@ def get_replay(tournament_id, hand_id):
     # Construir replay data (parte pesada — vai pro cache)
     replay = _build_replay_data(target, hand_decisions, t.get('hero', target.hero))
 
-    # HUD Fase 2: anexa o perfil de comportamento do vilão a cada step (lookup por nome
-    # no torneio). t['id'] é o id LOCAL — mesma chave do opponent_profiles.
-    try:
-        from database.repositories import get_opponent_profiles as _get_opp
-        from leaklab.opponent_stats import compute_exploit as _exploit, is_position_name as _is_pos
-        _opp_map = {p['player']: {'archetype': p['archetype'], 'confidence': p['confidence'],
-                                  'hands': p['hands'], 'stats': p['stats']}
-                    for p in _get_opp(t['id'])}
-        if _opp_map:
-            for _st in replay.get('timeline', []):
-                _vn = _st.get('villain_name')
-                # nome=posição (dados anonimizados) → não exibe HUD (não é jogador real)
-                if _vn and _vn in _opp_map and not _is_pos(_vn):
-                    _prof = _opp_map[_vn]
-                    _st['villain_profile'] = _prof
-                    # Fase 3: ajuste exploitativo sobre o veredito (só com amostra high)
-                    if _st.get('is_hero'):
-                        _ex = _exploit(action=_st.get('action'), best_action=_st.get('best_action'),
-                                       bet_intent=_st.get('bet_intent'), street=_st.get('street'),
-                                       profile=_prof)
-                        if _ex:
-                            _st['exploit'] = _ex
-    except Exception:
-        pass
+    # HUD Fase 2-3: perfil do vilão + exploit por step. t['id'] = id LOCAL (chave do
+    # opponent_profiles). Mesma fonte do aluno e do coach (helper compartilhado).
+    _attach_opponent_hud(replay, t['id'])
 
     _replay_cache_set(_cache_key, dict(replay))
 

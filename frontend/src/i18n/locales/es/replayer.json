@@ -356,5 +356,6 @@
       "marginal": "Marginal",
       "standard": "Estándar"
     }
-  }
+  },
+  "hudToggleTip": "Mostrar/ocultar el HUD de stats de los jugadores en la mesa (VPIP/PFR/3-bet · manos). Estilo Holdem Manager — solo aparece para jugadores con muestra rastreada."
 }

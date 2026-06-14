@@ -267,6 +267,29 @@ function placeBetAndDealer(px: number, py: number) {
   return { chipX, chipY, dealerX: best.dx, dealerY: best.dy };
 }
 
+// ── HUD estilo Holdem Manager (box de stats por jogador na mesa) ────────────────
+type OppProfile = { archetype: string; confidence: string; hands: number; stats: Record<string, number | null> };
+const _ARCH_COLOR: Record<string, string> = {
+  calling_station: "#fbbf24", nit: "#7dd3fc", tag: "#34d399", lag: "#fb923c", maniac: "#f87171",
+};
+function _hudPct(v: number | null | undefined): string {
+  return v == null ? "–" : String(Math.round(v * 100));
+}
+/** Box compacto de stats (VPIP/PFR/3B + mãos) ancorado abaixo do pod do jogador. */
+function renderHudBox(cx: number, topY: number, prof: OppProfile): string {
+  const s = prof.stats || {};
+  const lowSample = prof.confidence === "insufficient" || prof.archetype === "unknown";
+  const col = lowSample ? "#9aa0a8" : (_ARCH_COLOR[prof.archetype] ?? "#9aa0a8");
+  const main = `${_hudPct(s.vpip_pct)}/${_hudPct(s.pfr_pct)}/${_hudPct(s.threebet_pct)}`;
+  const w = 104, h = 22, x = cx - w / 2;
+  return `<g>
+    <rect x="${x}" y="${topY}" width="${w}" height="${h}" rx="5" fill="rgba(8,14,26,0.94)" stroke="${col}" stroke-width="1.1"/>
+    <circle cx="${x + 9}" cy="${topY + h / 2}" r="3.2" fill="${col}"/>
+    <text x="${x + 17}" y="${topY + h / 2 + 3.6}" fill="#e2e8f4" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700" letter-spacing=".02">${main}</text>
+    <text x="${x + w - 7}" y="${topY + h / 2 + 3.4}" text-anchor="end" fill="#8893a6" font-family="Share Tech Mono,monospace" font-size="9">${prof.hands}h</text>
+  </g>`;
+}
+
 function renderSeatsAndChips(
   ev: ReplayStep,
   bb: number,
@@ -275,6 +298,8 @@ function renderSeatsAndChips(
   aliases: Record<string, string>,
   heroCards: string[],
   revealedCards: Record<string, string[]> = {},
+  profiles: Record<string, OppProfile> = {},
+  showHud: boolean = false,
 ): { seats: string; chips: string } {
   const seatNums = Object.keys(ev.seats).map(Number).sort((a, b) => a - b);
   const heroSeatNum = seatNums.find((sn) => ev.seats[sn]?.player === hero);
@@ -371,6 +396,13 @@ function renderSeatsAndChips(
     html += "</g>";  // fecha o grupo do seat (com opacity quando folded)
     seatsHtml += html;
 
+    // HUD estilo Holdem Manager — box de stats abaixo do pod, p/ vilões com perfil.
+    // Fora do grupo com opacity: permanece visível mesmo quando o jogador folda.
+    // Só quando há amostra real (VPIP gateado) — sem "–/–/–" poluindo a mesa.
+    if (showHud && !isHero && profiles[d.player]?.stats?.vpip_pct != null) {
+      seatsHtml += renderHudBox(pos.x, by + bh + 5, profiles[d.player]);
+    }
+
     // Position tab — posição GTO (UTG/MP/CO/BTN/SB/BB) na borda superior do pod.
     // RENDERIZADA FORA DO GRUPO COM OPACITY (igual ao dealer button) pra permanecer
     // 100% visível mesmo quando o jogador folda — em análise a posição de quem
@@ -458,9 +490,12 @@ interface Props {
   playerAliases?: Record<string, string>;
   /** seat_str → cards shown at showdown; empty array = mucked (no cards rendered) */
   revealedCards?: Record<string, string[]>;
+  /** HUD HM-style: perfil por nome de jogador + flag de exibição */
+  profiles?: Record<string, OppProfile>;
+  showHud?: boolean;
 }
 
-export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {} }: Props) {
+export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false }: Props) {
   const boardRef = useRef<SVGGElement>(null);
   const potRef   = useRef<SVGGElement>(null);
   const seatsRef = useRef<SVGGElement>(null);
@@ -472,10 +507,10 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
     // Suppress center pot when chips are being displaced to winners
     const hasWinners = step.type === "showdown" && (step.summary?.winners?.length ?? 0) > 0;
     potRef.current!.innerHTML  = hasWinners ? "" : renderPot(step.pot ?? 0, bb, betUnit);
-    const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards, revealedCards);
+    const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards, revealedCards, profiles, showHud);
     seatsRef.current!.innerHTML = seats;
     chipsRef.current!.innerHTML = chips;
-  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards]);
+  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards, profiles, showHud]);
 
   return (
     <div

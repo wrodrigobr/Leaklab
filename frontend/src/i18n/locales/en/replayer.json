@@ -83,7 +83,7 @@
     "v2ShowMath": "Show the math (SPR, equity, sizing)",
     "v2HideMath": "Hide the math",
     "handStrat": "Your hand",
-    "handStratTip": "Frequency and EV of this specific hand at the solver node — the bars above are the average of the whole range. The bb value shows what each action yields (amber = cost vs the hand\u0027s best action).",
+    "handStratTip": "Frequency and EV of this specific hand at the solver node — the bars above are the average of the whole range. The bb value shows what each action yields (amber = cost vs the hand's best action).",
     "solverStrategy": "Solver Strategy",
     "mwTitle": "Multiway estimate",
     "mwDisclaimer": "The solver is heads-up. In 3-way+ pots we use equity vs the continuing range + pot odds — an estimate, not GTO.",
@@ -356,5 +356,6 @@
       "marginal": "Marginal",
       "standard": "Standard"
     }
-  }
+  },
+  "hudToggleTip": "Show/hide the player stats HUD on the table (VPIP/PFR/3-bet · hands). Holdem Manager style — only shown for players with a tracked sample."
 }
