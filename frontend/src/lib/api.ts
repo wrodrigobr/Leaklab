@@ -269,6 +269,17 @@ export interface ReplayStep {
   } | null;
   gto_label?: "gto_correct" | "gto_mixed" | "gto_minor_deviation" | "gto_critical" | null;
   gto_action?: string | null;
+  // Fallback multiway: recomendação independente do solver HU (equity-vs-range + pot odds).
+  // É ESTIMATIVA (não GTO). Quando presente, é a fonte do veredito do card.
+  multiway_advice?: {
+    action: "fold" | "call" | "raise" | "check" | "bet";
+    equity: number;            // equity crua vs range de continuação (0..1)
+    realized_eq: number;       // após penalidade de realização multiway
+    required_eq: number | null; // pot odds necessárias (null quando não enfrenta aposta)
+    n_opponents: number;
+    rationale: string;
+    confidence: "estimate";
+  } | null;
   engine_best?: string | null;  // engine suggestion when it conflicts with GTO reconciliation
   gto_spot_mismatch?: boolean | null;  // GTO action incompatible with game state (e.g. check when facing a bet)
   // Preflop range analysis (preflop hero actions only)

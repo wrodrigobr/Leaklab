@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(replayer): fallback MULTIWAY — recomendação independente do solver HU
+
+> Fecha a causa-raiz dos nós multiway aproximados (28,5% das mãos): em pote 3-way+ o solver é HU e recomenda agressão que multiway é erro (mão 5 — A♣2♣ "levanta 93%" HU, mas 3-way é fold). Novo `leaklab/multiway_advisor.py`: estima a equity da mão do hero **vs a range de continuação** dos oponentes (Monte Carlo eval7, board-filtrado por par+/draw) + **pot odds** + **penalidade de realização** multiway → ação correta (fold/call/raise/check/bet) com os números. É **estimativa honesta, rotulada (não GTO)**. Integrado no `/replay`: para decisões postflop do hero com 2+ vilões, substitui o veredito do nó HU (zera barras HU/label, seta `best_action`/`is_error`/`gto_action` pela estimativa) e expõe `multiway_advice`. Frontend: novo branch de veredito (fonte "Multiway"), bloco de evidência com equity/realização/necessário + disclaimer, i18n PT/EN/ES. Validado end-to-end na mão 5: `call` → **Recomendado Fold** (realiza 19% < 24% necessário), batendo o coach; `check` primeiro a agir → correto. `test_multiway_advisor.py` (9 testes, determinístico). gto 272/272, vitest 35/35, tsc ok.
+
 ### refactor+test(replayer): reconciliação do /replay extraída para módulo puro testável
 
 > A reconciliação que o `/replay` faz ao vivo (estratégia → veredito, que **persiste** `gto_label`/`gto_action` no banco) era inline em `api/app.py` e **sem teste direto** — a camada onde o bug A2s morava. Extraída para `leaklab/card_verdict.reconcile_verdict` (pura): mão tem prioridade sobre range, `played_freq`/`live_top_act`/`gto_label`/`is_error`/`reconciled_best` num só lugar. `app.py` religado a ela (comportamento idêntico). Novo `test_card_verdict.py` (11 testes): caso-âncora mão 5, shove↔allin, sizing por prefixo, fallbacks, + 3 invariantes sobre matriz de 180 casos (recomendação sempre da mão; label sempre consistente com a freq; nunca recomenda contra jogada aprovada).

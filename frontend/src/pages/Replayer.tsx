@@ -15,7 +15,7 @@ import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy } from "@/lib/cardLogic";
-import { ACTION_COLORS } from "@/lib/actionColors";
+import { ACTION_COLORS, actionKey } from "@/lib/actionColors";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
 // ── Card parsing ──────────────────────────────────────────────────────────────
@@ -186,6 +186,18 @@ function SidePanels({
       return { icon: "·", label: t("card.vNoCoverage"), cls: "text-muted-foreground",
                borderCls: "border-border", hdrCls: "bg-hud-surface",
                source: "Preflop", sourceTooltip: t("card.tipNoCoverage") };
+    }
+    // Fallback MULTIWAY: o solver é HU; em pote 3-way+ o veredito vem de uma estimativa
+    // independente (equity vs range de continuação + pot odds). Tem prioridade sobre o
+    // nó HU (que o backend já zerou quando há multiway_advice).
+    if (step.multiway_advice) {
+      const tip = t("card.tipMultiwayEstimate");
+      const _pl = (step.action ?? '').toLowerCase().replace(/s$/, '');
+      const _adv = step.multiway_advice.action;
+      const ok = _pl === _adv || _pl.startsWith(_adv) || _adv.startsWith(_pl);
+      return ok
+        ? { icon: "✓", label: t("card.vCorrect"), cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: t("card.srcMultiway"), sourceTooltip: tip }
+        : { icon: "⚠", label: t("card.vLeak"),    cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: t("card.srcMultiway"), sourceTooltip: tip };
     }
     // Call-vs-shove heurístico: veredito por pot odds (equity × necessária),
     // não pelo range de abertura nem por um gto_label armazenado stale.
@@ -431,7 +443,37 @@ function SidePanels({
 
         // ──────── Evidence (1 widget, escolhido por contexto) ────────
         let evidence: React.ReactNode = null;
-        if (!step.gto_spot_mismatch && stratSorted.length >= 1 && (isPostflop || !pg?.available)) {
+        if (step.multiway_advice) {
+          // Estimativa multiway (substitui as barras HU, que o backend zerou): equity da
+          // mão vs range de continuação + pot odds. Rotulada como estimativa, não GTO.
+          const mw = step.multiway_advice;
+          const row = (label: string, val: string) => (
+            <div className="flex items-center justify-between text-[9px] font-mono">
+              <span className="text-muted-foreground">{label}</span>
+              <span className="text-foreground/90">{val}</span>
+            </div>
+          );
+          evidence = (
+            <div className="space-y-2">
+              <div className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("card.mwTitle")}
+              </div>
+              <div className="rounded-md border border-border/50 bg-hud-surface/40 p-2 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[9px] uppercase text-muted-foreground">{t("card.mwRecommends")}</span>
+                  <span className="font-mono text-xs font-bold" style={{ color: ACTION_COLORS[actionKey(mw.action)] }}>
+                    {fmtAction(mw.action)}
+                  </span>
+                </div>
+                {row(t("card.mwEquity"), `${Math.round(mw.equity * 100)}%`)}
+                {row(t("card.mwRealized"), `${Math.round(mw.realized_eq * 100)}%`)}
+                {mw.required_eq != null && row(t("card.mwRequired"), `${Math.round(mw.required_eq * 100)}%`)}
+                <p className="font-mono text-[8px] text-muted-foreground/70 pt-0.5">{mw.rationale}</p>
+              </div>
+              <p className="font-mono text-[8px] text-amber-400/70">{t("card.mwDisclaimer")}</p>
+            </div>
+          );
+        } else if (!step.gto_spot_mismatch && stratSorted.length >= 1 && (isPostflop || !pg?.available)) {
           // Solver strategy widget (postflop GTO ou preflop sem range)
           evidence = (
             <div className="space-y-2">

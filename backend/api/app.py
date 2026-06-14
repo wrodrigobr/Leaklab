@@ -4639,6 +4639,39 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                         _ip = False
                     gto_coverage = 'ip_facing_bet' if (_ip and _fac > 0) else 'pending'
 
+        # FALLBACK MULTIWAY: o solver é HU e em pote 3-way+ recomenda agressão que
+        # multiway costuma ser erro (mão 5: A2c levanta 93% HU, mas 3-way é fold).
+        # Substitui a recomendação HU por equity-vs-range (eval7) + pot odds + realização.
+        # É ESTIMATIVA honesta (rotulada), tem prioridade sobre o nó HU neste spot.
+        multiway_advice = None
+        if (action.player == hero and action.street != 'preflop' and decision
+                and action.action in ('bets', 'raises', 'calls', 'checks', 'folds')):
+            _nopp_mw = int(_spot.get('nActiveOpponents') or 0)
+            if _nopp_mw >= 2:
+                try:
+                    from leaklab.multiway_advisor import advise_multiway as _amw
+                    _hc_mw = ''.join(_di.get('hero_cards') or [])
+                    multiway_advice = _amw(
+                        _hc_mw,
+                        _spot.get('board') or [],
+                        float(_spot.get('potBb') or 0),
+                        float(_spot.get('facingToBb') or 0),
+                        _nopp_mw,
+                        is_in_position=_spot.get('isInPosition'),
+                        street=action.street,
+                        eff_stack_bb=float(_spot.get('effectiveStackBb') or 0),
+                    )
+                except Exception:
+                    multiway_advice = None
+            if multiway_advice:
+                # o veredito do card passa a vir da estimativa multiway, não do nó HU
+                _acted_mw = _norm(action.action)
+                _adv_mw   = _norm(multiway_advice['action'])
+                is_error        = (_acted_mw != _adv_mw)
+                reconciled_best = _adv_mw
+                gto_action      = multiway_advice['action']
+                live_top_act    = multiway_advice['action']
+
         # Sizing do OPEN (Fase 1): tamanho do open preflop do hero vs o padrão de teoria
         # (~2bb; SBxBB sobe). O size sai do raw ("raises X to Y" → Y/bb), não do amount (=BY).
         sizing_advice = None
@@ -4728,7 +4761,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'error_score':        round(float(decision.get('score', 0)), 3)         if decision else None,
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
-            'gto_label':          gto_label,
+            'gto_label':          (None if multiway_advice else gto_label),
             'gto_action':         preflop_override_action or live_top_act or gto_action,
             # Opção B: derivado AO VIVO (não da coluna armazenada, que a re-análise não
             # atualiza) — postflop coberto com stack >60bb é aproximação capada em 60bb.
@@ -4743,8 +4776,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'postflop_sizing':    postflop_sizing,   # Fase 2: aposta do hero vs size do nó GTO
             'postflop_texture_sizing': postflop_texture_sizing,   # Fase 3: heurística de textura (sem nó)
             'ev_loss_bb':         (decision.get('ev_loss_bb') if decision else None),  # #24
-            'hand_strategy':      live_hand_strategy,   # Fase 3: freq/EV da MÃO do hero
-            'gto_strategy':       gto_strategy,
+            'multiway_advice':    multiway_advice,   # fallback multiway: equity-vs-range (estimativa, não GTO HU)
+            # com estimativa multiway ativa, esconde as barras HU (o artefato que estamos
+            # substituindo) — o card mostra a estimativa, não "raise 93%" do solver HU.
+            'hand_strategy':      (None if multiway_advice else live_hand_strategy),   # Fase 3: freq/EV da MÃO do hero
+            'gto_strategy':       (None if multiway_advice else gto_strategy),
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
             'preflop_gto':        decision.get('preflop_gto') if decision else None,
             'desc':           f"{action.player}: {_normalize_action(action.action)}"
