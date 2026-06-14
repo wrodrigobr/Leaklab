@@ -45,6 +45,7 @@ const SOURCE_VARIANT_CLS: Record<DecisionSourceVariant, string> = {
   engine:    "text-muted-foreground bg-background/40 ring-border/50",
   heuristic: "text-muted-foreground bg-muted/40 ring-border/60",
   pushfold:  "text-amber-300 bg-amber-500/10 ring-amber-500/30",
+  multiway:  "text-teal-300 bg-teal-500/10 ring-teal-500/30",
   na:        "text-orange-400 bg-orange-500/10 ring-orange-500/30",
 };
 

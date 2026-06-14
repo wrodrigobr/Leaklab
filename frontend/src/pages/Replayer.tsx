@@ -15,7 +15,7 @@ import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
 import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy } from "@/lib/cardLogic";
-import { ACTION_COLORS, actionKey } from "@/lib/actionColors";
+import { ACTION_COLORS } from "@/lib/actionColors";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
 // ── Card parsing ──────────────────────────────────────────────────────────────
@@ -325,6 +325,7 @@ function SidePanels({
             return (hf.allin ?? 0) >= (hf.raise ?? 0);
           })();
         const sourceVariant: DecisionSourceVariant =
+          step.multiway_advice                    ? "multiway"  :
           preflopNoCoverage                       ? "na"        :
           step.gto_spot_mismatch                  ? "na"        :
           isShoveFb                               ? "heuristic" :
@@ -335,7 +336,8 @@ function SidePanels({
                                                     "engine";
         const SOURCE_LABEL: Record<DecisionSourceVariant, string> = {
           gto: "Solver", preflop: "Preflop", engine: "Engine",
-          heuristic: t("card.srcHeuristic"), pushfold: "Push/Fold", na: "Spot N/A",
+          heuristic: t("card.srcHeuristic"), pushfold: "Push/Fold",
+          multiway: t("card.srcMultiway"), na: "Spot N/A",
         };
         const SOURCE_TOOLTIP: Record<DecisionSourceVariant, string> = {
           gto: t("card.srcGtoTip"),
@@ -343,6 +345,7 @@ function SidePanels({
           engine: t("card.srcEngineTip"),
           heuristic: t("card.srcHeuristicTip"),
           pushfold: t("card.srcPushfoldTip"),
+          multiway: t("card.tipMultiwayEstimate"),
           na: t("card.srcNaTip"),
         };
 
@@ -459,12 +462,6 @@ function SidePanels({
                 {t("card.mwTitle")}
               </div>
               <div className="rounded-md border border-border/50 bg-hud-surface/40 p-2 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[9px] uppercase text-muted-foreground">{t("card.mwRecommends")}</span>
-                  <span className="font-mono text-xs font-bold" style={{ color: ACTION_COLORS[actionKey(mw.action)] }}>
-                    {fmtAction(mw.action)}
-                  </span>
-                </div>
                 {row(t("card.mwEquity"), `${Math.round(mw.equity * 100)}%`)}
                 {row(t("card.mwRealized"), `${Math.round(mw.realized_eq * 100)}%`)}
                 {mw.required_eq != null && row(t("card.mwRequired"), `${Math.round(mw.required_eq * 100)}%`)}
@@ -733,8 +730,10 @@ function SidePanels({
               );
             })()}
             {/* Racional da jogada recomendada — em spots HEURÍSTICOS (sem barras de
-                estratégia GTO pra explicar), diz POR QUE check/bet/call/fold é o ideal. */}
-            {isPostflop && !hasGto && (() => {
+                estratégia GTO pra explicar), diz POR QUE check/bet/call/fold é o ideal.
+                Com estimativa multiway, NÃO mostra (o reco_rationale vem do engine HU e
+                contradiz o fold — ex.: "mão forte: raise"). A estimativa tem seu racional. */}
+            {isPostflop && !hasGto && !step.multiway_advice && (() => {
               const rr = (step as { reco_rationale?: { key: string; params: Record<string, unknown>; action: string } }).reco_rationale;
               if (!rr?.key) return null;
               return (
@@ -756,7 +755,7 @@ function SidePanels({
                 </span>
               </div>
             )}
-            {(step as { gto_depth_capped?: boolean }).gto_depth_capped && (
+            {!step.multiway_advice && (step as { gto_depth_capped?: boolean }).gto_depth_capped && (
               <div className="flex items-center gap-2 font-mono text-[11px]" title={t("card.depthCappedTip")}>
                 <span className="rounded-md bg-primary/10 ring-1 ring-primary/25 px-2 py-1 text-[10px] text-primary/90 cursor-help">
                   {t("card.depthCapped")}
@@ -782,8 +781,10 @@ function SidePanels({
               const lblCls = "w-[74px] shrink-0 uppercase text-[9px] tracking-wider text-muted-foreground/60 pt-px";
               return (
                 <div className="space-y-1">
-                  {/* SUA MÃO — intenção + equity (a leitura que explica o porquê) */}
-                  {(eq != null || bi?.intent) && (
+                  {/* SUA MÃO — intenção + equity (a leitura que explica o porquê).
+                      Com estimativa multiway, oculto: a equity HU (vs aleatória/range HU)
+                      diverge da estimativa multiway (ex.: 37% vs 27%) e confunde. */}
+                  {!step.multiway_advice && (eq != null || bi?.intent) && (
                     <div className="flex items-baseline gap-2.5 font-mono text-[11px]"
                       title={bi?.intent ? t(`card.betIntentTip.${bi.intent}`) : t("card.equityTip")}>
                       <span className={lblCls}>{t("card.blockHand")}</span>
@@ -799,8 +800,10 @@ function SidePanels({
                       </span>
                     </div>
                   )}
-                  {/* CUSTO — o desvio importa? (promovido: é a punchline de um 'Desvio Leve') */}
-                  {pp != null && (
+                  {/* CUSTO — o desvio importa? (promovido: é a punchline de um 'Desvio Leve').
+                      Com estimativa multiway, oculto: a margem +pp usa equity/req HU e
+                      contradiz o fold ("+13pp com folga" vs realiza 19% < 24%). */}
+                  {!step.multiway_advice && pp != null && (
                     <div className="flex items-baseline gap-2.5 font-mono text-[11px]"
                       title={effectiveGtoLabel ? t("card.reqSolverContextTip") : t("card.reqTipImplicit")}>
                       <span className={lblCls}>{pp >= 0 ? t("card.blockMargin") : t("card.blockCost")}</span>
@@ -1070,7 +1073,7 @@ function SidePanels({
           enfrentando aposta, sem vilão) mostram uma nota HONESTA estática — não
           "Processando" (que sugere que vai resolver) nem auto-solve inútil.
           Só 'pending' (solvável, nó ainda não existe) mostra o fluxo de solve. */}
-      {step.is_hero && step.type === "action" && isPostflop && !hasGto
+      {step.is_hero && step.type === "action" && isPostflop && !hasGto && !step.multiway_advice
         && step.action !== "shows" && step.action !== "mucks"
         && (() => {
           const cov = (step as { gto_coverage?: string }).gto_coverage;
