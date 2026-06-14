@@ -7,9 +7,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
-### feat(hud): box do HUD com c-bet/fold-to-cbet/AF/WTSD + tooltip de legenda
+### refactor(hud): box MÍNIMO na mesa + detalhe completo no hover (era denso/confuso)
 
-> O box do HUD da mesa cresceu para **2 linhas**: preflop (VPIP/PFR/3-bet · mãos) e postflop (**c-bet / fold-to-c-bet / AF / WTSD**). Tooltip nativo (`<title>` SVG) ao passar o mouse explica cada abreviação (legenda i18n PT/EN/ES). Stats sem amostra aparecem vazios ("–"). Placement dir-aware: nos assentos de baixo o box vai ACIMA do pod (abaixo estouraria a borda da mesa). tsc/build ok.
+> A 1ª versão empilhava 7 stats cifradas (`cb55 fcb40 AF2.1 wtsd28`) num box largo que sobrepunha assentos — confuso. Redesenhado (escolha do usuário): na mesa o box mostra só **arquétipo + VPIP/PFR** (limpo, ~116px, menos sobreposição); ao **passar o mouse**, o `<title>` traz o painel completo **rotulado** — nome · arquétipo · mãos, e VPIP/PFR/3-bet · c-bet/fold→c-bet · AF/WTSD. Termos de poker não traduzidos; conectivos i18n PT/EN/ES (`hudHands`). Placement dir-aware mantido. tsc/build ok.
 
 ### feat(hud): HUD estilo Holdem Manager na mesa (box por jogador) + toggle + visão do coach
 

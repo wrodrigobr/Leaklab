@@ -272,30 +272,33 @@ type OppProfile = { archetype: string; confidence: string; hands: number; stats:
 const _ARCH_COLOR: Record<string, string> = {
   calling_station: "#fbbf24", nit: "#7dd3fc", tag: "#34d399", lag: "#fb923c", maniac: "#f87171",
 };
-const HUD_W = 168, HUD_H = 40;
+const HUD_W = 116, HUD_H = 33;
+const _ARCH_SHORT: Record<string, string> = {
+  calling_station: "Station", nit: "Nit", tag: "TAG", lag: "LAG", maniac: "Maniac",
+};
 function _hudPct(v: number | null | undefined): string {
   return v == null ? "–" : String(Math.round(v * 100));
 }
 function _xmlEsc(s: string): string {
   return (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-/** Box de stats estilo Holdem Manager (2 linhas): preflop (VPIP/PFR/3B) + postflop
- *  (c-bet/fold-to-cbet/AF/WTSD) + nº de mãos. `<title>` = tooltip nativo com a legenda. */
-function renderHudBox(cx: number, topY: number, prof: OppProfile, legend: string): string {
+/** Box MÍNIMO de HUD (estilo Holdem Manager): arquétipo + VPIP/PFR. O detalhe completo
+ *  (todas as stats rotuladas) vem no `<title>` (tooltip nativo) ao passar o mouse. */
+function renderHudBox(cx: number, topY: number, prof: OppProfile, tip: string): string {
   const s = prof.stats || {};
   const lowSample = prof.confidence === "insufficient" || prof.archetype === "unknown";
   const col = lowSample ? "#9aa0a8" : (_ARCH_COLOR[prof.archetype] ?? "#9aa0a8");
+  const arch = lowSample ? "?" : (_ARCH_SHORT[prof.archetype] ?? prof.archetype);
   const x = cx - HUD_W / 2;
-  const af = s.af == null ? "–" : (typeof s.af === "number" ? s.af.toFixed(1) : s.af);
-  const line1 = `${_hudPct(s.vpip_pct)}/${_hudPct(s.pfr_pct)}/${_hudPct(s.threebet_pct)}`;
-  const line2 = `cb${_hudPct(s.cbet_pct)} fcb${_hudPct(s.foldcbet_pct)} AF${af} wtsd${_hudPct(s.wtsd_pct)}`;
-  return `<g>
-    <title>${_xmlEsc(legend)}</title>
+  return `<g style="cursor:help">
+    <title>${_xmlEsc(tip)}</title>
     <rect x="${x}" y="${topY}" width="${HUD_W}" height="${HUD_H}" rx="6" fill="rgba(8,14,26,0.95)" stroke="${col}" stroke-width="1.1"/>
-    <circle cx="${x + 10}" cy="${topY + 13}" r="3.4" fill="${col}"/>
-    <text x="${x + 19}" y="${topY + 16.5}" fill="#e6edf8" font-family="Share Tech Mono,monospace" font-size="12" font-weight="700" letter-spacing=".02">${line1}</text>
-    <text x="${x + HUD_W - 8}" y="${topY + 16}" text-anchor="end" fill="#8893a6" font-family="Share Tech Mono,monospace" font-size="9.5">${prof.hands}h</text>
-    <text x="${x + 10}" y="${topY + 32}" fill="#aeb8c9" font-family="Share Tech Mono,monospace" font-size="10" letter-spacing=".01">${line2}</text>
+    <circle cx="${x + 11}" cy="${topY + 12}" r="3.4" fill="${col}"/>
+    <text x="${x + 20}" y="${topY + 15.5}" fill="${col}" font-family="Inter,sans-serif" font-size="11" font-weight="800" letter-spacing=".03">${arch}</text>
+    <text x="${x + HUD_W - 8}" y="${topY + 15}" text-anchor="end" fill="#8893a6" font-family="Share Tech Mono,monospace" font-size="9">${prof.hands}h</text>
+    <text x="${x + 11}" y="${topY + 28}" font-family="Share Tech Mono,monospace" font-size="10.5">
+      <tspan fill="#7e8a9e">VPIP </tspan><tspan fill="#e6edf8" font-weight="700">${_hudPct(s.vpip_pct)}</tspan><tspan fill="#7e8a9e">  PFR </tspan><tspan fill="#e6edf8" font-weight="700">${_hudPct(s.pfr_pct)}</tspan>
+    </text>
   </g>`;
 }
 
@@ -309,7 +312,7 @@ function renderSeatsAndChips(
   revealedCards: Record<string, string[]> = {},
   profiles: Record<string, OppProfile> = {},
   showHud: boolean = false,
-  hudLegend: string = "",
+  hudTips: Record<string, string> = {},
 ): { seats: string; chips: string } {
   const seatNums = Object.keys(ev.seats).map(Number).sort((a, b) => a - b);
   const heroSeatNum = seatNums.find((sn) => ev.seats[sn]?.player === hero);
@@ -412,7 +415,7 @@ function renderSeatsAndChips(
     // Assentos de baixo: box ACIMA do pod (abaixo estouraria a borda da mesa).
     if (showHud && !isHero && profiles[d.player]?.stats?.vpip_pct != null) {
       const boxY = pos.dir === "bottom" ? (by - HUD_H - 6) : (by + bh + 5);
-      seatsHtml += renderHudBox(pos.x, boxY, profiles[d.player], hudLegend);
+      seatsHtml += renderHudBox(pos.x, boxY, profiles[d.player], hudTips[d.player] ?? "");
     }
 
     // Position tab — posição GTO (UTG/MP/CO/BTN/SB/BB) na borda superior do pod.
@@ -502,13 +505,13 @@ interface Props {
   playerAliases?: Record<string, string>;
   /** seat_str → cards shown at showdown; empty array = mucked (no cards rendered) */
   revealedCards?: Record<string, string[]>;
-  /** HUD HM-style: perfil por nome de jogador + flag de exibição + legenda (tooltip) */
+  /** HUD HM-style: perfil por nome de jogador + flag de exibição + tooltips (nome→texto) */
   profiles?: Record<string, OppProfile>;
   showHud?: boolean;
-  hudLegend?: string;
+  hudTips?: Record<string, string>;
 }
 
-export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false, hudLegend = "" }: Props) {
+export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false, hudTips = {} }: Props) {
   const boardRef = useRef<SVGGElement>(null);
   const potRef   = useRef<SVGGElement>(null);
   const seatsRef = useRef<SVGGElement>(null);
@@ -520,10 +523,10 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
     // Suppress center pot when chips are being displaced to winners
     const hasWinners = step.type === "showdown" && (step.summary?.winners?.length ?? 0) > 0;
     potRef.current!.innerHTML  = hasWinners ? "" : renderPot(step.pot ?? 0, bb, betUnit);
-    const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards, revealedCards, profiles, showHud, hudLegend);
+    const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards, revealedCards, profiles, showHud, hudTips);
     seatsRef.current!.innerHTML = seats;
     chipsRef.current!.innerHTML = chips;
-  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards, profiles, showHud, hudLegend]);
+  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards, profiles, showHud, hudTips]);
 
   return (
     <div

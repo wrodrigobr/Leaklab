@@ -1458,6 +1458,25 @@ const Replayer = () => {
   const [showHud, setShowHud]       = useState<boolean>(
     () => localStorage.getItem('replayer_show_hud') !== 'false'   // HUD HM-style: ligado por padrão
   );
+  // Tooltip completo do HUD (hover) por jogador — todas as stats rotuladas. Termos de
+  // poker (VPIP/PFR/3-bet/c-bet/AF/WTSD) não se traduzem; só os conectivos são i18n.
+  const hudTips = useMemo<Record<string, string>>(() => {
+    const profs = replayData?.opponent_profiles ?? {};
+    const pp = (v: number | null | undefined) => (v == null ? "–" : `${Math.round(v * 100)}%`);
+    const out: Record<string, string> = {};
+    for (const [name, p] of Object.entries(profs)) {
+      const s = p.stats ?? {};
+      const af = s.af == null ? "–" : (typeof s.af === "number" ? s.af.toFixed(1) : String(s.af));
+      const low = p.confidence === "insufficient" || p.archetype === "unknown";
+      const arch = low ? t("card.villainSampleLow") : t(`card.archetype.${p.archetype}`, p.archetype);
+      out[name] =
+        `${name} · ${arch} · ${p.hands} ${t("hudHands")}\n` +
+        `VPIP ${pp(s.vpip_pct)}   PFR ${pp(s.pfr_pct)}   3-bet ${pp(s.threebet_pct)}\n` +
+        `c-bet ${pp(s.cbet_pct)}   fold→c-bet ${pp(s.foldcbet_pct)}\n` +
+        `AF ${af}   WTSD ${pp(s.wtsd_pct)}`;
+    }
+    return out;
+  }, [replayData?.opponent_profiles, t]);
   const [decisions, setDecisions]   = useState<TournamentDecision[]>([]);
   const [showRange, setShowRange]           = useState(false);
   const [annotating, setAnnotating]         = useState(false);
@@ -1939,7 +1958,7 @@ const Replayer = () => {
                   revealedCards={revealedCards}
                   profiles={replayData.opponent_profiles}
                   showHud={showHud}
-                  hudLegend={t("hudLegend")}
+                  hudTips={hudTips}
                 />
               </div>
             </div>
