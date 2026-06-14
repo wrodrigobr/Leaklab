@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### refactor(ui): DashboardV2 vira padrão (sem toggle); card do replayer fixa o clássico
+
+> Decisão de produto após avaliação dos layouts: **dashboard** adota o **V2** como padrão (masonry 2 colunas) e remove os botões de troca ("experimentar novo" no clássico + "voltar ao clássico" no V2) — o dashboard clássico vira código latente, não renderizado. **Card do replayer** faz o oposto: remove o toggle de layout e **fixa o clássico** (v1), considerado mais bonito e com mais informação relevante; `DecisionCardV2.tsx` removido. tsc/build ok.
+
 ### refactor(hud): box MÍNIMO na mesa + detalhe completo no hover (era denso/confuso)
 
 > A 1ª versão empilhava 7 stats cifradas (`cb55 fcb40 AF2.1 wtsd28`) num box largo que sobrepunha assentos — confuso. Redesenhado (escolha do usuário): na mesa o box mostra só **arquétipo + VPIP/PFR** (limpo, ~116px, menos sobreposição); ao **passar o mouse**, o `<title>` traz o painel completo **rotulado** — nome · arquétipo · mãos, e VPIP/PFR/3-bet · c-bet/fold→c-bet · AF/WTSD. Termos de poker não traduzidos; conectivos i18n PT/EN/ES (`hudHands`). Placement dir-aware mantido. tsc/build ok.

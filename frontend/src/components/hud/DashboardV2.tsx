@@ -31,7 +31,6 @@ interface Props {
   evSummary: EvSummary | null;
   hasData: boolean;
   renderCard: (id: string, opts?: { v2?: boolean }) => React.ReactNode;
-  onBackToClassic: () => void;
   gtoQuality?: GtoQualityData | null;
   gtoPosition?: GtoPositionData | null;
   pendingGto?: number;
@@ -54,7 +53,7 @@ const CARD_ORDER = [
   "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackToClassic, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
+export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuality = null, gtoPosition = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -77,13 +76,6 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, onBackTo
             <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
             {t("v2.eyebrow")}
           </div>
-          <button
-            onClick={onBackToClassic}
-            className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60 hover:text-teal-300 transition-colors"
-            title={t("v2.toggleTip")}
-          >
-            {t("v2.backToClassic")}
-          </button>
         </div>
 
         {showEmpty ? (

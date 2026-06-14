@@ -121,15 +121,10 @@ const Index = () => {
 
   const handleUpload = () => setRefreshKey((k) => k + 1);
 
-  // UX-1: DashboardV2 atrás de toggle persistido (modelo v2 chaveável — v1 intocado)
-  const [dashV2, setDashV2] = useState<boolean>(
-    () => localStorage.getItem("dashboard_v2") === "true"
-  );
-  const toggleDashV2 = () => setDashV2((prev) => {
-    const next = !prev;
-    localStorage.setItem("dashboard_v2", String(next));
-    return next;
-  });
+  // DashboardV2 é o layout PADRÃO (decisão de produto). O clássico abaixo permanece como
+  // código latente (não renderizado) — sem toggle. useState mantém dashV2 como variável de
+  // runtime (não literal) p/ o branch do clássico não virar código inalcançável no lint.
+  const [dashV2] = useState<boolean>(true);
   const { data: evSummary } = useQuery({
     queryKey: ["ev-summary", refreshKey],
     queryFn: metrics.evSummary,
@@ -252,7 +247,6 @@ const Index = () => {
         evSummary={evSummary ?? null}
         hasData={hasData}
         renderCard={renderCard}
-        onBackToClassic={toggleDashV2}
         gtoQuality={gtoQualityData}
         gtoPosition={gtoPositionData}
         pendingGto={pendingGto}
@@ -308,13 +302,6 @@ const Index = () => {
             </div>
             {hasData && (
               <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleDashV2}
-                  className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60 hover:text-teal-300 transition-colors"
-                  title={t("v2.toggleTip")}
-                >
-                  {t("v2.tryNew")}
-                </button>
                 {/* Volume filter */}
                 <div className="flex items-center gap-px rounded-md ring-1 ring-border overflow-hidden">
                   {([null, 20, 50, 100] as (number | null)[]).map((val) => {
