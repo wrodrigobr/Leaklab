@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(brand): logo GrindLab no verso das cartas + marca no feltro da mesa (replayer)
+
+> Exposição de marca na mesa (PokerTableV3). (1) Verso das cartas: o símbolo ♠ deu lugar ao **logo GrindLab** (só o ícone, `grindlab_icon_traced.svg` — teal + claro, legível no verso azul-escuro), centralizado. (2) Feltro: os **placeholders tracejados** dos slots de board ainda não revelados foram removidos; o board mostra só as cartas reais e, embaixo, o **wordmark GrindLab** (`grindlab_final_horizontal.svg`) como marca-d'água no feltro (antes havia um texto branco a 2,2%, praticamente invisível). As cartas comunitárias, quando saem, são desenhadas por cima. Build ok, tsc limpo.
+
 ## [v0.167.0] — 2026-06-14 — feat(replayer): fallback multiway (equity vs range) + card/badge multiway-aware coerentes
 
 ### fix(replayer): não mostrar racional "X é a melhor jogada" contra uma jogada aprovada

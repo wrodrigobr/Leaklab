@@ -7,6 +7,8 @@
  */
 import { useEffect, useRef } from "react";
 import type { ReplayStep } from "@/lib/api";
+import logoWordmark from "@/assets/brand/grindlab_final_horizontal.svg";
+import logoIcon from "@/assets/brand/grindlab_icon_traced.svg";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CX = 560, CY = 340;
@@ -112,11 +114,14 @@ function cardSVG(code: string | null, x: number, y: number, w = 58, h = 84, face
     // Moldura do VERSO em cinza azulado (não branco) — o branco chamava muito
     // atenção contra o fundo escuro. As faces continuam com moldura branca.
     const p = 3, id = `cd${x}${y}`;
+    // Logo GrindLab (só o ícone) centralizado no verso, no lugar do antigo ♠.
+    const lw = Math.round(iw * 0.6), lh = Math.round(ih * 0.42);
+    const lx = ix + Math.round((iw - lw) / 2), ly = iy + Math.round((ih - lh) / 2);
     return `<rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" rx="${rx}" fill="#7c8696" filter="url(#rp-cshadow)"/>
     <clipPath id="${id}"><rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" rx="${irx}"/></clipPath>
     <rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" rx="${irx}" fill="#0c1b36" stroke="#1a3260" stroke-width="1"/>
     <rect x="${ix + p}" y="${iy + p}" width="${iw - p * 2}" height="${ih - p * 2}" rx="${Math.max(1, irx - 2)}" fill="none" stroke="rgba(140,175,255,0.22)" stroke-width=".9" clip-path="url(#${id})"/>
-    <text x="${fx + fw / 2}" y="${fy + fh * 0.45}" text-anchor="middle" dominant-baseline="central" fill="rgba(140,175,255,0.14)" font-family="sans-serif" font-size="${Math.round(w * 0.34)}" clip-path="url(#${id})">♠</text>`;
+    <image href="${logoIcon}" x="${lx}" y="${ly}" width="${lw}" height="${lh}" preserveAspectRatio="xMidYMid meet" opacity="0.85" clip-path="url(#${id})"/>`;
   }
   const r = code.slice(0, -1).toUpperCase();
   const suit = code.slice(-1).toLowerCase();
@@ -152,13 +157,11 @@ function renderBoard(cards: string[]): string {
   const sx = CX - totalW / 2;
   const y = CY - H / 2 - 6;
   let h = "";
-  for (let i = 0; i < 5; i++) {
+  // Só renderiza as cartas REVELADAS — sem placeholders tracejados nos slots vazios
+  // (o feltro mostra a marca GrindLab embaixo até o board sair).
+  for (let i = 0; i < cards.length && i < 5; i++) {
     const x = sx + i * (W + GAP);
-    if (i < cards.length) {
-      h += cardSVG(cards[i], x, y, W, H);
-    } else {
-      h += `<rect x="${x}" y="${y}" width="${W}" height="${H}" rx="4" fill="rgba(0,0,0,0.18)" stroke="rgba(255,255,255,0.07)" stroke-width="1" stroke-dasharray="5 4"/>`;
-    }
+    h += cardSVG(cards[i], x, y, W, H);
   }
   return h;
 }
@@ -519,8 +522,10 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
           <ellipse cx="560" cy="340" rx="414" ry="218" fill="url(#bg-felt)" />
           <ellipse cx="560" cy="340" rx="403" ry="207" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5" />
           <ellipse cx="560" cy="340" rx="414" ry="218" fill="url(#bg-vig)" />
-          <text x="560" y="351" textAnchor="middle" fill="rgba(255,255,255,0.022)"
-                fontFamily="Inter,sans-serif" fontSize="58" fontWeight="800" letterSpacing="16">GRINDLAB</text>
+          {/* Marca GrindLab no feltro (exposição de marca) — atrás do board; as cartas
+              comunitárias, quando saem, são desenhadas no layer de conteúdo por cima. */}
+          <image href={logoWordmark} x="385" y="305" width="350" height="70"
+                 preserveAspectRatio="xMidYMid meet" opacity="0.20" />
         </svg>
       </div>
 
