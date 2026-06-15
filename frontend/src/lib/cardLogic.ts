@@ -3,6 +3,23 @@
 // regressão silenciosa. O Replayer importa e usa estas funções (não duplica).
 export { computeEffectiveGtoLabel } from "./gtoUtils";
 
+/**
+ * Veredito de DISPLAY em 3 níveis (Correto / Aceitável / Erro) — FEAT-20.
+ * Dirigido pela SEVERIDADE (`label`/`error_label`, já EV-capada), NÃO pela frequência
+ * (gto_label, que vira contexto). Fonte única no front; espelha `leaklab/verdict.py`.
+ *   standard → correct · marginal → acceptable · small/clear_mistake → error · resto → null
+ */
+export type VerdictLevel = "correct" | "acceptable" | "error";
+export function verdictLevel(label: string | null | undefined): VerdictLevel | null {
+  switch ((label ?? "").trim().toLowerCase()) {
+    case "standard":      return "correct";
+    case "marginal":      return "acceptable";
+    case "small_mistake":
+    case "clear_mistake": return "error";
+    default:              return null;
+  }
+}
+
 /** Jogadores ainda no pote = assentos com cartas − foldados (acumulado no step). */
 export function livePlayers(
   seats: Record<string, unknown> | undefined | null,

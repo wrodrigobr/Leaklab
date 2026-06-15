@@ -161,6 +161,28 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ---
 
+### [FEAT-20] — Colapsar veredito para 3 níveis (Correto / Aceitável / Erro) *(EM ANDAMENTO — Fase 1)*
+
+**Valor:** Hoje duas escalas sobrepostas dirigem o display — `gto_label` (frequência: correct/mixed/minor/**critical**) e `label` (severidade EV: standard/marginal/small/clear). A dualidade é a raiz dos bugs card≠badge e do over-flag ("crítico num +0,01bb"). Colapsar **o display** para 3 níveis dirigidos por **severidade (EV)** encerra a dualidade e faz **card = badge por construção**.
+
+**Decisão central:** colapso é **só no DISPLAY**. A magnitude interna (4 níveis de `label`/`gto_label`) **permanece** — ELO (`elo_engine`), leaderboard, ranking de leaks, study/recommendation, cognitive_mapper dependem dela. A **frequência deixa de ser veredito** (vira contexto nas barras de estratégia).
+
+**Mapa:** standard→**Correto** · marginal→**Aceitável** · small_mistake/clear_mistake→**Erro**.
+
+**Fases:**
+- **Fase 1 ✅ (em andamento):** fonte única do mapeamento — `leaklab/verdict.py:verdict3(label)` (back) + `cardLogic.verdictLevel(label)` (front, puro+testado).
+- **Fase 2:** card do replayer — trocar as ~8 ramificações de veredito por 3, dirigido por `error_label` (severidade); barras de frequência viram contexto. `DecisionCard` + i18n (PT/EN/ES).
+- **Fase 3:** demais superfícies — `TournamentDetail` (badges), `StudentDetail`/`CoachDashboard`, `DecisionQualityCard` (4→3 fatias), relatório do coach. Ranking de leaks ordena por **bb perdidos**.
+- **Fase 4:** `/docs` (metodologia 4→3 níveis, conceitual) + ajuste de testes (`test_card_invariants`, `cardLogic.test`, adherence).
+
+**NÃO muda:** `label`/`gto_label` armazenados, engine, ELO, ranking — magnitude interna intacta.
+
+**Decisões (defaults assumidos):** nomes Correto/Aceitável/Erro; `marginal`→Aceitável; ranking por bb perdidos; barras de frequência mantidas como contexto.
+
+**Esforço estimado:** Fase 1 ~3h · Fase 2 ~10h · Fase 3 ~10h · Fase 4 ~4h
+
+---
+
 ## Backlog Futuro (não priorizar agora)
 
 | Item | Motivo de adiar |

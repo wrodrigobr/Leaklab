@@ -6,7 +6,25 @@ import {
   isPpMuted,
   idealActionSource,
   verdictStrategy,
+  verdictLevel,
 } from "./cardLogic";
+
+// ── FEAT-20: veredito de display em 3 níveis (Correto/Aceitável/Erro) ──────────
+describe("verdictLevel — colapso 4 severidades → 3 níveis", () => {
+  it("standard → correct", () => expect(verdictLevel("standard")).toBe("correct"));
+  it("marginal → acceptable", () => expect(verdictLevel("marginal")).toBe("acceptable"));
+  it("small_mistake → error", () => expect(verdictLevel("small_mistake")).toBe("error"));
+  it("clear_mistake → error", () => expect(verdictLevel("clear_mistake")).toBe("error"));
+  it("desconhecido/None → null", () => {
+    expect(verdictLevel(null)).toBeNull();
+    expect(verdictLevel(undefined)).toBeNull();
+    expect(verdictLevel("")).toBeNull();
+    expect(verdictLevel("gto_critical")).toBeNull(); // frequência NÃO é veredito
+  });
+  it("normaliza caixa/espaço", () => {
+    expect(verdictLevel(" Small_Mistake ")).toBe("error");
+  });
+});
 
 // ── veredito vem da MÃO, não do range agregado (bug mão 5: A2s) ────────────────
 describe("verdictStrategy — mão específica > range agregado", () => {
