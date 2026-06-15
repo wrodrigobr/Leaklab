@@ -2838,6 +2838,15 @@ def coach_students_v2():
     return jsonify({'students': enriched})
 
 
+@app.route('/coach/recent-activity', methods=['GET'])
+@require_coach
+def coach_recent_activity():
+    """P2 — feed cross-aluno: torneios recentes de todos os alunos do coach."""
+    from database.repositories import get_coach_recent_activity
+    limit = min(int(request.args.get('limit', 20)), 50)
+    return jsonify({'activity': get_coach_recent_activity(g.user_id, limit)})
+
+
 # ── Student endpoints ─────────────────────────────────────────────────────────
 
 @app.route('/student/link-coach', methods=['POST'])

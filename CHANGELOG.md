@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(coach): cockpit P2 — feed cross-aluno de torneios recentes
+
+> Fecha o "o que meus alunos jogaram esta semana?" sem entrar aluno por aluno. Novo card **Atividade recente** na sidebar da aba Alunos: lista os torneios mais recentes de **todos** os alunos do coach (aluno · torneio · data · **score** colorido · **⚠ N críticas**), cada item clicável → abre o torneio do aluno (`/tournaments/{id}?student=`). **Backend:** `GET /coach/recent-activity?limit=` → `get_coach_recent_activity(coach_id, limit)` — **1 query** (torneios dos alunos JOIN users, ordenados por `imported_at DESC`, com subquery de `n_critical`). tsc/build ok, coach_system 20/20. Validado (feed dos alunos aluno/phpro ordenado por import).
+
 ### feat(coach): cockpit P1b — sinais de "precisa de atenção" na lista de alunos
 
 > Segue o cockpit ([`specs/coach-cockpit.md`](specs/coach-cockpit.md)): cada aluno ganha os sinais de triagem que faltavam pro coach saber **quem precisa dele sem clicar**. Na linha: badge **⚠ N** (mãos críticas — small/clear — ainda **sem anotação deste coach**) e **✉ N** (mensagens do aluno **não lidas**). Novo filtro **⚠ Atenção (N)** = aluno com crítica pendente OU não-lida OU última sessão = Erro (`verdictLevelFromScore`). **Backend:** `get_students_attention_signals(coach_id)` — **2 queries agregadas** (sem N+1): `critical_pending` (decisões small/clear `NOT EXISTS` anotação do coach) + `unread` (mensagens `sender_role='student' AND read_at IS NULL`); ambos anexados em `GET /coach/students`. tsc/build ok, coach_system 20/20. Validado: phpro 15 críticas pendentes, aluno 88.

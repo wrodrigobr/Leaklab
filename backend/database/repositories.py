@@ -232,6 +232,34 @@ def get_students_attention_signals(coach_id: int) -> dict:
         conn.close()
 
 
+def get_coach_recent_activity(coach_id: int, limit: int = 20) -> list:
+    """P2 — feed cross-aluno: torneios recentes de TODOS os alunos do coach, ordenados por
+    importação. Um lugar pra ver 'o que meus alunos jogaram', sem entrar aluno por aluno."""
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt("""
+            SELECT t.id           AS tournament_db_id,
+                   t.tournament_id,
+                   t.tournament_name,
+                   t.site,
+                   t.avg_score,
+                   t.imported_at,
+                   t.user_id       AS student_id,
+                   u.username      AS student_username,
+                   (SELECT COUNT(*) FROM decisions d
+                     WHERE d.tournament_id = t.id
+                       AND d.label IN ('small_mistake','clear_mistake')) AS n_critical
+            FROM tournaments t
+            JOIN users u ON u.id = t.user_id
+            WHERE u.coach_id = ?
+            ORDER BY t.imported_at DESC
+            LIMIT ?
+        """), (coach_id, limit)).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
 # ── Tournaments ───────────────────────────────────────────────────────────────
 
 def save_tournament(user_id: int, tournament_id: str, hero: str,

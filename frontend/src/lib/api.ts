@@ -1569,6 +1569,18 @@ export interface ProgressReport {
   fixed_leaks: LeakSpot[];
 }
 
+export interface CoachActivityItem {
+  tournament_db_id: number;
+  tournament_id: string;
+  tournament_name: string | null;
+  site: string;
+  avg_score: number | null;
+  imported_at: string;
+  student_id: number;
+  student_username: string;
+  n_critical: number;
+}
+
 export const coachDashboard = {
   inviteKey: () =>
     request<{ invite_key: string }>("/coach/invite-key"),
@@ -1584,6 +1596,9 @@ export const coachDashboard = {
 
   students: () =>
     request<{ students: StudentSummary[] }>("/coach/students"),
+
+  recentActivity: (limit = 20) =>
+    request<{ activity: CoachActivityItem[] }>(`/coach/recent-activity?limit=${limit}`),
 
   studentsLeaderboard: (period = 90) =>
     request<LeaderboardResponse>(`/coach/students/leaderboard?period=${period}`),

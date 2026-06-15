@@ -103,7 +103,7 @@ adicionar `referred_count` e `next_tier` (faixa seguinte + quantos faltam — de
   duplicada que sombreava a v2 (trend não chegava ao front).
 - **P1b ✅:** `critical_pending` (small/clear sem anotação do coach) + `unread` no payload (`get_students_attention_signals`,
   2 queries agregadas) + badges ⚠/✉ na linha + filtro **⚠ Atenção (N)** (crítica pendente OU não-lida OU última sessão = Erro).
-- **P2 — feed cross-aluno de torneios:** novo endpoint + card na sidebar.
+- **P2 ✅:** feed cross-aluno de torneios — `GET /coach/recent-activity` (`get_coach_recent_activity`, 1 query: torneios de todos os alunos ordenados por import, com score + n_critical) + card "Atividade recente" na sidebar da aba Alunos (clica → torneio do aluno).
 - **P3 — paridade da aba Torneios do aluno:** dar à aba Torneios do `StudentDetail` a riqueza da
   `Tournaments.tsx` do jogador (busca/filtro por sala/sort/stats/badges).
 

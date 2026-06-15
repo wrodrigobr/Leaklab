@@ -155,6 +155,11 @@ function AlunosTab() {
     queryKey: ["coach-finance-summary"],
     queryFn: coachFinance.summary,
   });
+  // P2: feed cross-aluno de torneios recentes
+  const { data: activity } = useQuery({
+    queryKey: ["coach-recent-activity"],
+    queryFn: () => coachDashboard.recentActivity(20),
+  });
 
   const [search,  setSearch]  = useState("");
   const [status,  setStatus]  = useState<"all" | "active" | "inactive" | "attention">("all");
@@ -379,6 +384,38 @@ function AlunosTab() {
       </div>
 
       <div className="space-y-4">
+        {/* P2 — feed cross-aluno: o que os alunos jogaram (sem entrar aluno por aluno) */}
+        {activity?.activity && activity.activity.length > 0 && (
+          <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-2.5">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Atividade recente</p>
+            <div className="space-y-0.5">
+              {activity.activity.slice(0, 12).map((a) => (
+                <button
+                  key={a.tournament_db_id}
+                  onClick={() => navigate(`/tournaments/${a.tournament_id}?student=${a.student_id}`)}
+                  className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-primary/5 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-foreground truncate">{a.student_username}</p>
+                    <p className="font-mono text-[9px] text-muted-foreground truncate">
+                      {(a.tournament_name ?? a.site)} · {new Date(a.imported_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {a.n_critical > 0 && (
+                      <span className="inline-flex items-center gap-0.5 font-mono text-[9px] font-bold text-red-400" title={`${a.n_critical} mão(s) crítica(s)`}>
+                        <AlertTriangle className="size-2.5" />{a.n_critical}
+                      </span>
+                    )}
+                    <span className={cn("font-mono text-[10px] tabular-nums", scoreCls(a.avg_score))}>
+                      {a.avg_score != null ? a.avg_score.toFixed(2) : "—"}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <InviteKeyWidget />
         <CoachStudentsRanking />
         {impact?.top_leaks && impact.top_leaks.length > 0 && (
