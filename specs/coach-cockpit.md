@@ -98,10 +98,11 @@ adicionar `referred_count` e `next_tier` (faixa seguinte + quantos faltam — de
 ---
 
 ## 6. Faseamento
-- **P1a — cockpit base (frontend + extensão barata):** score última sessão, unifica "ativo" (precisa
-  `plan`+`is_active_paid` no payload), faixa de topo com comp (reusa finance summary + next_tier).
-  *Maior ROI, quase tudo já disponível.*
-- **P1b — sinais de atenção:** `critical_pending` + `unread` no payload + filtro/ordenação "precisa de atenção".
+- **P1a ✅ (commit 51a20b4):** faixa de topo (indicados/ativos·R$/valor/próxima faixa) + coluna Score +
+  selo Indicado + Status 3 estados + definição única de "ativo". Bônus: removida rota `/coach/students`
+  duplicada que sombreava a v2 (trend não chegava ao front).
+- **P1b ✅:** `critical_pending` (small/clear sem anotação do coach) + `unread` no payload (`get_students_attention_signals`,
+  2 queries agregadas) + badges ⚠/✉ na linha + filtro **⚠ Atenção (N)** (crítica pendente OU não-lida OU última sessão = Erro).
 - **P2 — feed cross-aluno de torneios:** novo endpoint + card na sidebar.
 - **P3 — paridade da aba Torneios do aluno:** dar à aba Torneios do `StudentDetail` a riqueza da
   `Tournaments.tsx` do jogador (busca/filtro por sala/sort/stats/badges).

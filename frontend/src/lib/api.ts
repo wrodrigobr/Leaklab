@@ -1451,6 +1451,8 @@ export interface StudentSummary {
   plan?: string;                 // P1a cockpit
   is_active_paid?: boolean;      // ativo que conta na comp (pro + import 30d)
   is_referred?: boolean;         // indicado (aprox. por invited_by_key até SEC-01)
+  critical_pending?: number;     // P1b: decisões small/clear sem anotação do coach
+  unread?: number;               // P1b: mensagens do aluno não lidas
 }
 
 export interface CoachImpactStudent {

@@ -51,6 +51,11 @@ const isActivePaid = (s: StudentSummary): boolean => s.is_active_paid === true;
 function scoreCls(score: number | null | undefined): string {
   return score == null ? "text-muted-foreground" : VERDICT_META[verdictLevelFromScore(score)].textCls;
 }
+// P1b: "precisa de atenção" = crítica pendente OU mensagem não lida OU última sessão = Erro.
+const needsAttention = (s: StudentSummary): boolean =>
+  (s.critical_pending ?? 0) > 0 ||
+  (s.unread ?? 0) > 0 ||
+  (s.recent_tournament?.avg_score != null && verdictLevelFromScore(s.recent_tournament.avg_score) === "error");
 
 function fmtImport(s: StudentSummary): string {
   const d = s.recent_tournament?.imported_at ?? s.recent_tournament?.played_at;
@@ -152,7 +157,7 @@ function AlunosTab() {
   });
 
   const [search,  setSearch]  = useState("");
-  const [status,  setStatus]  = useState<"all" | "active" | "inactive">("all");
+  const [status,  setStatus]  = useState<"all" | "active" | "inactive" | "attention">("all");
   const [sortKey, setSortKey] = useState<SortKey>("username");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page,    setPage]    = useState(0);
@@ -162,8 +167,9 @@ function AlunosTab() {
   const filtered = allStudents
     .filter((s) => {
       if (search && !s.username.toLowerCase().includes(search.toLowerCase())) return false;
-      if (status === "active"   && !isActivePaid(s)) return false;
-      if (status === "inactive" &&  isActivePaid(s)) return false;
+      if (status === "active"    && !isActivePaid(s)) return false;
+      if (status === "inactive"  &&  isActivePaid(s)) return false;
+      if (status === "attention" && !needsAttention(s)) return false;
       return true;
     })
     .sort((a, b) => {
@@ -247,18 +253,24 @@ function AlunosTab() {
               className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
           </div>
-          {(["all", "active", "inactive"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => { setStatus(s); setPage(0); }}
-              className={cn(
-                "rounded-md px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest-2 transition-colors",
-                status === s ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "border border-border text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {s === "all" ? "Todos" : s === "active" ? "Ativos" : "Inativos"}
-            </button>
-          ))}
+          {(["all", "active", "inactive", "attention"] as const).map((s) => {
+            const attnCount = s === "attention" ? allStudents.filter(needsAttention).length : 0;
+            const isAttn = s === "attention";
+            return (
+              <button
+                key={s}
+                onClick={() => { setStatus(s); setPage(0); }}
+                className={cn(
+                  "rounded-md px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest-2 transition-colors",
+                  status === s
+                    ? (isAttn ? "bg-amber-400/15 text-amber-400 ring-1 ring-amber-400/40" : "bg-primary/10 text-primary ring-1 ring-primary/30")
+                    : (isAttn && attnCount > 0 ? "border border-amber-400/30 text-amber-400 hover:text-amber-300" : "border border-border text-muted-foreground hover:text-foreground")
+                )}
+              >
+                {s === "all" ? "Todos" : s === "active" ? "Ativos" : s === "inactive" ? "Inativos" : `⚠ Atenção${attnCount > 0 ? ` (${attnCount})` : ""}`}
+              </button>
+            );
+          })}
         </div>
 
         {isLoading && <p className="text-sm text-muted-foreground animate-pulse py-4">Carregando…</p>}
@@ -299,6 +311,16 @@ function AlunosTab() {
                         <span className="font-medium text-foreground">{s.username}</span>
                         {s.is_referred && (
                           <span className="hidden sm:inline-flex items-center rounded-sm bg-violet-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-violet-400 ring-1 ring-violet-400/30" title="Indicado pelo seu convite">Indicado</span>
+                        )}
+                        {(s.critical_pending ?? 0) > 0 && (
+                          <span className="inline-flex items-center gap-0.5 rounded-sm bg-red-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-red-400 ring-1 ring-red-500/30" title={`${s.critical_pending} mão(s) crítica(s) sem sua anotação`}>
+                            <AlertTriangle className="size-2.5" /> {s.critical_pending}
+                          </span>
+                        )}
+                        {(s.unread ?? 0) > 0 && (
+                          <span className="inline-flex items-center gap-0.5 rounded-sm bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-400 ring-1 ring-amber-400/30" title={`${s.unread} mensagem(ns) não lida(s)`}>
+                            <MessageSquare className="size-2.5" /> {s.unread}
+                          </span>
                         )}
                       </div>
                     </td>

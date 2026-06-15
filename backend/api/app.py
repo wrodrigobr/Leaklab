@@ -2803,8 +2803,10 @@ def coach_students_v2():
     régua do payout), `is_referred` (indicado — aproximação por invited_by_key até o SEC-01),
     `plan`. O score da última sessão já vem em recent_tournament.avg_score."""
     import datetime as _dt
+    from database.repositories import get_students_attention_signals
     _cutoff = (_dt.datetime.utcnow() - _dt.timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
     students = get_students(g.user_id)
+    _attn = get_students_attention_signals(g.user_id)   # P1b: {sid: {critical_pending, unread}}
     enriched = []
     for s in students:
         tournaments = get_tournaments(s['id'], limit=5)
@@ -2825,6 +2827,8 @@ def coach_students_v2():
             'trend': trend,
             'is_active_paid': is_active_paid,
             'is_referred': bool(s.get('invited_by_key')),
+            'critical_pending': (_attn.get(s['id']) or {}).get('critical_pending', 0),
+            'unread': (_attn.get(s['id']) or {}).get('unread', 0),
         })
     # Ordenar: alunos com piores scores primeiro (mais precisam de atenção)
     enriched.sort(

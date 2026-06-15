@@ -200,6 +200,38 @@ def get_students(coach_id: int) -> List[dict]:
         conn.close()
 
 
+def get_students_attention_signals(coach_id: int) -> dict:
+    """P1b — sinais de triagem por aluno (2 queries agregadas, sem N+1):
+    `critical_pending` = decisões small/clear ainda SEM anotação deste coach; `unread` =
+    mensagens do aluno não lidas. Retorna {student_id: {'critical_pending', 'unread'}}."""
+    conn = get_conn()
+    try:
+        crit = conn.execute(_adapt("""
+            SELECT t.user_id AS student_id, COUNT(*) AS n
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE t.user_id IN (SELECT id FROM users WHERE coach_id = ?)
+              AND d.label IN ('small_mistake','clear_mistake')
+              AND NOT EXISTS (
+                  SELECT 1 FROM coach_hand_annotations a
+                  WHERE a.decision_id = d.id AND a.coach_id = ?
+              )
+            GROUP BY t.user_id
+        """), (coach_id, coach_id)).fetchall()
+        crit_map = {r['student_id']: r['n'] for r in crit}
+        unread = conn.execute(_adapt("""
+            SELECT student_id,
+                   SUM(CASE WHEN sender_role='student' AND read_at IS NULL THEN 1 ELSE 0 END) AS n
+            FROM coach_messages WHERE coach_id = ? GROUP BY student_id
+        """), (coach_id,)).fetchall()
+        unread_map = {r['student_id']: (r['n'] or 0) for r in unread}
+        ids = set(crit_map) | set(unread_map)
+        return {sid: {'critical_pending': crit_map.get(sid, 0),
+                      'unread': unread_map.get(sid, 0)} for sid in ids}
+    finally:
+        conn.close()
+
+
 # ── Tournaments ───────────────────────────────────────────────────────────────
 
 def save_tournament(user_id: int, tournament_id: str, hero: str,
