@@ -97,7 +97,7 @@ bg `#0A0E1A` · teal `#2DD4BF` (acento/CTA) · Chakra Petch (títulos/números g
 
 ## 9. Faseamento
 
-- **V2-1 — Comando (home):** vitais + **fila de ação** + atividade. *Maior ROI — vira worklist.* (1 endpoint de fila + layout)
+- **V2-1 ✅ — Comando (home):** nova aba **Comando** (default) = vitais (ativos·R$/a receber+próxima faixa/indicados/total/precisam atenção) + **Fila de Ação** priorizada (críticas → churn → não-lidas → conversão, cada com CTA deep-link) + atividade recente. **Sem endpoint novo:** a fila é agregada no front a partir do payload já enriquecido de `/coach/students` (critical_pending/unread/trend/is_active_paid/plan) — mais barato que a spec original sugeria e sem N+1. Churn = `trend==='worsening' && is_active_paid`. *(tsc/build ok.)*
 - **V2-2 — Gráficos da turma:** distribuição, receita-no-tempo, heatmap. (1 endpoint cohort-analytics + SVG/recharts)
 - **V2-3 — Roster V2:** matriz com sparklines + selos + ordenação "precisa de atenção". (front sobre payload já pronto)
 - **V2-4 — Aluno detalhe V2:** hero + abas elevadas. (estilo; reusa dados)

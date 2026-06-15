@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -7,6 +7,7 @@ import {
   Play, Filter, ChevronDown, ChevronUp, LayoutDashboard,
   BarChart2, CheckCircle2, Clock, MessageSquare,
   Search, ChevronLeft, ChevronRight as ChevronRightIcon, TrendingDown, Minus,
+  Gauge, Zap,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
@@ -669,9 +670,116 @@ function LeaksTab() {
 
 // ── Tabs definition ───────────────────────────────────────────────────────────
 
-type Tab = "alunos" | "urgente" | "leaks" | "financeiro" | "efetividade" | "mensagens";
+// ── Comando (home V2-1) — vitais + fila de ação + atividade ──────────────────
+// Fila de ação é agregada NO FRONT a partir do payload já enriquecido de /coach/students
+// (critical_pending, unread, trend, is_active_paid, plan) — sem endpoint novo.
+type QueueKind = "critical" | "churn" | "unread" | "convert";
+const QUEUE_PRI: Record<QueueKind, number> = { critical: 0, churn: 1, unread: 2, convert: 3 };
+const QUEUE_META: Record<QueueKind, { ic: string; icCls: string; pri: string; priCls: string; tab?: string; cta: string }> = {
+  critical: { ic: "⚠", icCls: "bg-red-500/10 text-red-400",    pri: "alto",    priCls: "bg-red-500/10 text-red-400",    tab: "worst",     cta: "Revisar" },
+  churn:    { ic: "📉", icCls: "bg-amber-400/10 text-amber-400", pri: "risco",   priCls: "bg-amber-400/10 text-amber-400",                  cta: "Abrir" },
+  unread:   { ic: "✉", icCls: "bg-sky-500/10 text-sky-400",     pri: "médio",   priCls: "bg-sky-500/10 text-sky-400",     tab: "mensagens", cta: "Responder" },
+  convert:  { ic: "$", icCls: "bg-amber-400/10 text-amber-400",  pri: "receita", priCls: "bg-amber-400/10 text-amber-400",                  cta: "Converter" },
+};
+
+function ComandoTab() {
+  const navigate = useNavigate();
+  const { data: studentsData } = useQuery({ queryKey: ["coach-students"], queryFn: coachDashboard.students });
+  const { data: finance }      = useQuery({ queryKey: ["coach-finance-summary"], queryFn: coachFinance.summary });
+  const { data: activity }     = useQuery({ queryKey: ["coach-recent-activity"], queryFn: () => coachDashboard.recentActivity(20) });
+  const students = studentsData?.students ?? [];
+
+  const queue = useMemo(() => {
+    const items: { kind: QueueKind; sid: number; name: string; title: string; sub: string }[] = [];
+    for (const s of students) {
+      if ((s.critical_pending ?? 0) > 0)
+        items.push({ kind: "critical", sid: s.id, name: s.username, title: `${s.critical_pending} mãos críticas sem sua anotação`, sub: "revise e anote as decisões pendentes" });
+      if (s.trend === "worsening" && s.is_active_paid)
+        items.push({ kind: "churn", sid: s.id, name: s.username, title: "em queda — risco de churn", sub: "piorando nas últimas sessões · pro ativo" });
+      if ((s.unread ?? 0) > 0)
+        items.push({ kind: "unread", sid: s.id, name: s.username, title: `${s.unread} mensagem(ns) não lida(s)`, sub: "o aluno está esperando resposta" });
+      if (!s.is_active_paid && isActive(s) && (s.plan ?? "free") !== "pro")
+        items.push({ kind: "convert", sid: s.id, name: s.username, title: "recente mas free", sub: "importou em 30d, não conta no repasse" });
+    }
+    return items.sort((a, b) => QUEUE_PRI[a.kind] - QUEUE_PRI[b.kind]);
+  }, [students]);
+
+  const attnCount = students.filter(needsAttention).length;
+
+  return (
+    <div className="space-y-4">
+      {/* Vitais */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-px overflow-hidden rounded-xl border border-border bg-border">
+        <div className="bg-hud-surface p-4"><div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Ativos · conta R$</div><div className="mt-1 font-mono text-2xl font-light tabular-nums text-primary">{finance?.active_students ?? students.filter(isActivePaid).length}</div><div className="font-mono text-[10px] text-muted-foreground/70">de {finance?.referred_count ?? students.length} indicados</div></div>
+        <div className="bg-hud-surface p-4"><div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">A receber</div><div className="mt-1 font-mono text-2xl font-light tabular-nums text-foreground">{finance ? fmtCents(finance.amount_cents) : "—"}</div><div className="font-mono text-[10px] text-muted-foreground/70">{finance?.next_tier ? `faltam ${finance.next_tier.needed} → ${fmtCents(finance.next_tier.rate_cents)}/al` : "faixa máxima ✓"}</div></div>
+        <div className="bg-hud-surface p-4"><div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Indicados</div><div className="mt-1 font-mono text-2xl font-light tabular-nums text-violet-400">{finance?.referred_count ?? students.length}</div><div className="font-mono text-[10px] text-muted-foreground/70">{students.length} vinculados</div></div>
+        <div className="bg-hud-surface p-4"><div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Total alunos</div><div className="mt-1 font-mono text-2xl font-light tabular-nums text-foreground">{students.length}</div><div className="font-mono text-[10px] text-muted-foreground/70">na sua turma</div></div>
+        <div className={cn("bg-hud-surface p-4", attnCount > 0 && "ring-1 ring-amber-400/30")}><div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Precisam de atenção</div><div className={cn("mt-1 font-mono text-2xl font-light tabular-nums", attnCount > 0 ? "text-amber-400" : "text-primary")}>{attnCount}</div><div className="font-mono text-[10px] text-muted-foreground/70">na fila abaixo</div></div>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {/* Fila de ação */}
+        <div className="md:col-span-2 rounded-xl border border-border bg-hud-surface p-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Zap className="size-3.5 text-primary" />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Fila de ação</span>
+            <span className="ml-auto font-mono text-[10px] text-muted-foreground/60">{queue.length} item(ns) · priorizada</span>
+          </div>
+          {queue.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">Tudo em dia. Nenhuma ação pendente. 🎯</p>
+          ) : (
+            <div className="space-y-1.5">
+              {queue.slice(0, 14).map((q, i) => {
+                const m = QUEUE_META[q.kind];
+                return (
+                  <button key={i} onClick={() => navigate(`/coach-dashboard/student/${q.sid}${m.tab ? `?tab=${m.tab}` : ""}`)}
+                    className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 px-3 py-2.5 text-left hover:border-primary/40 hover:bg-primary/5 transition-all">
+                    <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg font-bold", m.icCls)}>{m.ic}</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate"><b>{q.name}</b> · {q.title}</p>
+                      <p className="font-mono text-[10px] text-muted-foreground truncate">{q.sub}</p>
+                    </div>
+                    <span className={cn("shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider", m.priCls)}>{m.pri}</span>
+                    <span className="shrink-0 font-mono text-[11px] font-bold text-primary">{m.cta} →</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Atividade recente */}
+        <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-2.5">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Atividade recente</p>
+          {!activity?.activity?.length ? (
+            <p className="text-xs text-muted-foreground py-4">Sem torneios recentes.</p>
+          ) : (
+            <div className="space-y-0.5">
+              {activity.activity.slice(0, 12).map((a) => (
+                <button key={a.tournament_db_id} onClick={() => navigate(`/tournaments/${a.tournament_id}?student=${a.student_id}`)}
+                  className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-primary/5 transition-colors">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-foreground truncate">{a.student_username}</p>
+                    <p className="font-mono text-[9px] text-muted-foreground truncate">{(a.tournament_name ?? a.site)} · {new Date(a.imported_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {a.n_critical > 0 && <span className="font-mono text-[9px] font-bold text-red-400">⚠{a.n_critical}</span>}
+                    <span className={cn("font-mono text-[10px] tabular-nums", scoreCls(a.avg_score))}>{a.avg_score != null ? a.avg_score.toFixed(2) : "—"}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type Tab = "comando" | "alunos" | "urgente" | "leaks" | "financeiro" | "efetividade" | "mensagens";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
+  { id: "comando",      label: "Comando",          icon: Gauge },
   { id: "alunos",       label: "Alunos",           icon: Users },
   { id: "urgente",      label: "Atenção Urgente",  icon: AlertTriangle },
   { id: "leaks",        label: "Leaks Sistêmicos", icon: LayoutDashboard },
@@ -1005,7 +1113,7 @@ function FinanceiroTab() {
 }
 
 export default function CoachDashboard() {
-  const [tab, setTab] = useState<Tab>("alunos");
+  const [tab, setTab] = useState<Tab>("comando");
 
   const { data: impact, isLoading: loadingImpact } = useQuery({
     queryKey: ["coach-impact"],
@@ -1069,6 +1177,7 @@ export default function CoachDashboard() {
           ))}
         </div>
 
+        {tab === "comando"      && <ComandoTab />}
         {tab === "alunos"       && <AlunosTab />}
         {tab === "urgente"      && <UrgentTab />}
         {tab === "leaks"        && <LeaksTab />}

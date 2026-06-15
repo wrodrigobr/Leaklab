@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(coach): Coach Command Center V2-1 — aba "Comando" com Fila de Ação
+
+> Primeira fase do dashboard do coach V2 ([`specs/coach-dashboard-v2.md`](specs/coach-dashboard-v2.md) + mockup `.html`): nova aba **Comando** (agora a home/default do coach) que transforma o painel de *relatório* em *worklist*. **Vitais** no topo (Ativos·R$ · A receber + próxima faixa · Indicados · Total · **Precisam de atenção**). **Fila de Ação** priorizada — o diferencial: para cada aluno gera itens **⚠ críticas pendentes** (alto) → **📉 risco de churn** (`trend='worsening'` + ativo) → **✉ não-lidas** (médio) → **$ conversão** (recente mas free), cada um com CTA deep-link (`?tab=worst`/`?tab=mensagens`/detalhe). **Atividade recente** ao lado (feed cross-aluno do P2). **Sem endpoint novo:** a fila é agregada no front a partir do payload já enriquecido de `/coach/students` (P1a/P1b) — mais barato que a spec sugeria e sem N+1. As 6 abas anteriores seguem; Comando é aditivo. tsc/build ok.
+
 ### feat(coach): cockpit P3 — aba Torneios do aluno com paridade ao do jogador
 
 > Fecha o cockpit. A aba **Torneios** do `StudentDetail` ganhou a riqueza que só a `Tournaments.tsx` do jogador tinha: **stats strip** (Eventos · Investido · Lucro · ROI), **busca** por nome/id, **filtro por sala** e **ordenação** (data/score/lucro), além de **badges** (Revisado pelo coach · Pendente quando sem score). **Bug latente corrigido:** o score do torneio (`avg_score`, escala 0-1 menor=melhor) era pintado com `SCORE_COLOR` (que espera 0-100) → aparecia **sempre vermelho**; agora usa `verdictLevelFromScore` (verde/sky/vermelho correto) tanto na lista quanto no cabeçalho do detalhe. Frontend-only. tsc/build ok. *(Cockpit do coach: P1a/P1b/P2/P3 concluídos.)*
