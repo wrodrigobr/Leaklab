@@ -353,11 +353,33 @@ def _attach_ev_loss(base: dict) -> None:
         base['ev_loss_source'] = esrc
 
 
+def _normalize_facing_allin(base: dict, action_taken: str) -> None:
+    """Enfrentando um ALL-IN, não se pode AUMENTAR — a linha agressiva do GTO (jam/shove/
+    raise) se executa CHAMANDO. Então: (a) a recomendação 'jam'/'raise' vira 'call'; (b) o
+    CALL do hero (ou um shove redundante) é CORRETO se a mão está no range agressivo (= o
+    jam). Fora do range (deveria foldar), pagar segue leak. Corrige o falso 'Desvio Crítico'
+    em call vs all-in (mão 113: AKs paga o 4-bet shove = a jogada agressiva do GTO)."""
+    if not base.get('available'):
+        return
+    rec = base.get('recommended_actions') or []
+    if not any(a in ('jam', 'shove', 'allin', 'all-in', 'raise') for a in rec):
+        return  # GTO não manda agredir (ex.: fold) — pagar o all-in segue leak
+    base['recommended_actions'] = ['call']          # facing all-in: a agressão = call
+    if (action_taken or '').lower() in ('call', 'jam', 'shove', 'allin', 'all-in'):
+        base['action_quality'] = 'correct'
+        base['in_range'] = True
+        base['ev_loss_bb'] = 0.0
+
+
 def analyze_preflop(*args, **kwargs) -> dict:
     """Análise GTO preflop + ev_loss_bb (#24). Wrapper fino sobre o _impl pra
     anexar o EV em todos os returns (RFI/push-fold/vs_rfi/3bet/etc)."""
+    facing_allin = bool(kwargs.pop('facing_allin', False))
     base = _analyze_preflop_impl(*args, **kwargs)
     _attach_ev_loss(base)
+    if facing_allin:
+        _act = kwargs.get('action_taken') or (args[3] if len(args) > 3 else '')
+        _normalize_facing_allin(base, _act)
     return base
 
 

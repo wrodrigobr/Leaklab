@@ -4100,6 +4100,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 # #23: open enfrentado em bb (raise-to total) — pro card
                                 # rebaixar fold de defesa marginal vs open off-tree.
                                 facing_to_bb       = float(spot.get('facingToBb') or 0),
+                                facing_allin       = bool(spot.get('facingAllin', False)),
                             )
                             # Fallback for call-vs-shove (no vs_3bet data yet):
                             # use RFI range membership as proxy for shove-call quality
@@ -4564,6 +4565,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                             n_players      = _spot.get('nPlayers'),
                             facing_raises      = int(_spot.get('preflopRaisesFaced') or 0),
                             hero_was_aggressor = bool(_spot.get('heroWasAggressor')),
+                            facing_allin       = bool(_spot.get('facingAllin', False)),
                         )
                         # Fallback for call-vs-shove: no specific vs_3bet data in ranges yet.
                         # When facing >= 40% of stack with call, use RFI range membership

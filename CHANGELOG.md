@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(engine): enfrentando um ALL-IN, call ≡ jam — corrige falso "Desvio Crítico"
+
+> Mão 113 (t27): hero 3-betou A♠K♠, BTN deu 4-bet **shove (all-in)**, hero deu **call** — o sistema flagava "Desvio Crítico" com recomendação **all-in**. Mas não se pode AUMENTAR um all-in: o call já cobre o shove (excedente volta), então o call **é** a jogada agressiva do GTO. Fix: `hand_state_builder` detecta `facing_allin` (a aposta enfrentada é um all-in) → spot `facingAllin`; `analyze_preflop` normaliza — enfrentando all-in, a recomendação `jam/raise` vira `call` e o call do hero é **correto** se a mão está no range agressivo (fora do range, pagar segue leak). Propagado ao engine + ao override do `/replay`. Re-análise corrigiu **18 decisões** (113 + outras call/shove vs all-in: small_mistake→standard, gto_critical→gto_correct). engine 362/362, api 76/76.
+
 ### fix(coach): anotações/aderência escopadas pelo coach que visualiza + authz no /level
 
 > Auditoria da tela do coach (visão do aluno): os dados exibidos vêm corretamente do ALUNO — history/stats/breakdown/level/worst/tournament/replay usam `student_id` (não o id do coach), as mesmas funções do dashboard do próprio aluno, e as queries do front são keyed por `studentId` (sem mistura de cache entre alunos). Dois gaps latentes corrigidos (não afetavam o cenário atual de 1 coach, mas quebrariam com um 2º): (1) `get_annotations_for_decisions` não filtrava por coach — a constraint permite vários coaches por decisão, então o mapa por `decision_id`/o JOIN do worst-decisions podia pegar a anotação/override de OUTRO coach; agora `coach_id=g.user_id` em `coach_student_tournament`, `coach_student_replay` e no JOIN de `worst-decisions`; (2) `/coach/student/<id>/level` não tinha `_verify_student` (qualquer coach via o nível de qualquer aluno). Validado: coach 6 × aluno 13 / t27 → 130 decisões anotadas, badges idênticos ao relatório calibrado. api 76/76, coach_system 20/20.

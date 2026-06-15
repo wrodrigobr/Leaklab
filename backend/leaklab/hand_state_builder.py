@@ -226,13 +226,17 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
         position = _infer_position(hand, hero)
         eff_stack = _effective_stack(hand, hero, actions_before)
 
-        # Determinar villain_position: quem fez a última aposta antes do hero
+        # Determinar villain_position: quem fez a última aposta antes do hero.
+        # facing_allin = a aposta/raise que o hero enfrenta É um all-in (não dá pra aumentar
+        # um all-in → call = a jogada agressiva máxima; usado p/ não flagar call vs shove).
         villain_position = 'unknown'
         villain_name = None
+        facing_allin = False
         for a in reversed(actions_before):
             if a.player != hero and a.action in {'bets', 'raises', 'all-in'}:
                 villain_name = a.player
                 villain_position = _infer_position(hand, a.player)
+                facing_allin = (a.action == 'all-in')
                 break
 
         # Contexto de multi-raise preflop (3-bet/squeeze): conta raises de villains ANTES do
@@ -347,6 +351,7 @@ def extract_decision_points(hand: ParsedHand) -> List[HandState]:
                 'facing_limp': facing_limp,
                 'caller_position': caller_position,
                 'villain_name': villain_name,   # HUD: nome do vilão do spot (lookup do perfil)
+                'facing_allin': facing_allin,   # hero enfrenta um all-in (call = a agressão)
                 'facing_to_bb': facing_to_bb,  # #23: tamanho do open enfrentado (bb)
                 'pot_type': pot_type,           # Fase 2: srp|3bet|4bet|limped (ranges do solver)
                 'preflop_opener': preflop_opener,     # posição do 1º raiser
