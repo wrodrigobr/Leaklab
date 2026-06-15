@@ -87,31 +87,13 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 | — | bugfixes | i18n sparring (arenaLabel/arenaDesc) + test suite verde (sys.executable, coach flow) | ✅ v0.81.1 |
 | Sprint AW | — | Ghost Table Pressure Mode (30s timer + SVG ring + streak) + Sparring hand rotation | ✅ v0.82.0 |
 | — | bugfixes | Perfil demográfico visível + i18n completo do perfil + telefone no perfil | ✅ v0.82.1–v0.82.2 |
+| Sprint AX | FEAT-17 | Onboarding para novos usuários — modal 4 passos (welcome/upload/train/ready), flag `onboarding_completed`, skip, i18n PT/EN/ES | ✅ v0.83.0 |
 
 ---
 
 ## Próximas Sprints — Em Aberto
 
-### [FEAT-17] — Onboarding para novos usuários *(Sprint AX)*
-
-**Valor:** Não há fluxo guiado de boas-vindas após o registro. O usuário cai direto no dashboard sem saber o que fazer primeiro — aumenta abandono precoce e reduz a chance de o usuário fazer o primeiro upload.
-
-**O que construir:**
-- Modal de boas-vindas exibido uma única vez após o primeiro login (flag `onboarding_completed` no perfil do usuário)
-- 3–4 passos: apresentar o produto, explicar o upload de hand history, mostrar onde ficam Ghost Table e Sparring, e convidar a importar o primeiro torneio
-- CTA final: botão direto para a tela de análise (`/analyze`)
-- Opção de pular (skip) em qualquer passo; ao pular ou concluir, flag gravada no backend
-
-**Backend:**
-- `backend/database/repositories.py` — campo `onboarding_completed` na tabela `users` (ou profile); `set_onboarding_completed(user_id)`
-- `backend/api/app.py` — `POST /player/onboarding/complete`
-
-**Frontend:**
-- `frontend/src/components/OnboardingModal.tsx` — modal multi-step com stepper, ilustrações e copy contextualizado
-- `frontend/src/pages/Index.tsx` — checa `user.onboarding_completed`; exibe modal se falso
-- `frontend/src/i18n/locales/{pt-BR,en,es}/onboarding.json` — namespace `onboarding` com todos os textos (PT/EN/ES)
-
-**Esforço estimado:** ~4h backend + ~12h frontend
+> _(FEAT-17 concluído em v0.83.0 — entrada movida para o roadmap acima. Verificado 2026-06-15: `OnboardingModal.tsx` 4 passos, gate via `ProtectedRoute` (só com user carregado), finish→`/dashboard`→CTA de upload do `EmptyDashboard`, i18n nas 3 locales, endpoint+coluna+repo presentes.)_
 
 ---
 
