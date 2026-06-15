@@ -118,6 +118,8 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 **Recomendação:** (1) como base + (2) como reforço. Backend: nova tabela + endpoints de gerar/listar/revogar convite e resgate; frontend: `InviteKeyWidget` vira "gerar convite" (lista de convites e status). Pré-requisito de integridade antes de ligar a comp por referral.
 
+**Spec detalhado:** [`specs/sec-01-coach-invites.md`](specs/sec-01-coach-invites.md) — modelo de dados (`coach_invites`), endpoints, fluxo de resgate transacional, migração/compat da chave legada, faseamento (single-use → aprovação) e 4 decisões de produto pendentes.
+
 ---
 
 ### [FEAT-18] — Mobile audit + responsividade *(Sprint AY)*
