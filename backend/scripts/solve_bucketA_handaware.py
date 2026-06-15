@@ -31,8 +31,12 @@ from leaklab.gto_solver import lookup_gto
 # `action` é OBRIGATÓRIO no match: uma street pode ter +1 decisão do hero (ex.: check
 # first-in E shove vs-bet no mesmo turn) — sem isso casa o nó errado.
 TARGETS = [
-    {'decision_id': 33286, 'tid': 149, 'hand_id': '260605886991', 'street': 'river', 'pos': 'CO', 'vs': 'UTG', 'action': 'bet'},
-    {'decision_id': 35868, 'tid': 388, 'hand_id': '100000022',    'street': 'turn',  'pos': 'BB', 'vs': 'HJ', 'action': 'shove'},
+    {'decision_id': 33286, 'tid': 149, 'hand_id': '260605886991', 'street': 'river', 'pos': 'CO',  'vs': 'UTG', 'action': 'bet'},
+    {'decision_id': 35868, 'tid': 388, 'hand_id': '100000022',    'street': 'turn',  'pos': 'BB',  'vs': 'HJ',  'action': 'shove'},
+    # vs do banco era 'unknown' (stale) — o parser ATUAL resolve o villain (todos BB).
+    {'decision_id': 33118, 'tid': 148, 'hand_id': '258867235685', 'street': 'flop',  'pos': 'BTN', 'vs': 'BB',  'action': 'bet'},
+    {'decision_id': 33153, 'tid': 148, 'hand_id': '258867373219', 'street': 'flop',  'pos': 'HJ',  'vs': 'BB',  'action': 'bet'},
+    {'decision_id': 33087, 'tid': 147, 'hand_id': '258867150524', 'street': 'flop',  'pos': 'SB',  'vs': 'BB',  'action': 'bet'},
 ]
 
 DB = os.path.join(os.path.dirname(__file__), '..', 'data', 'leaklab.db')

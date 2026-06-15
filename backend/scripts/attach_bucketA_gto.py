@@ -27,8 +27,11 @@ from leaklab.decision_engine_v11 import evaluate_decision
 # decisão-alvo: id + chaves de matching (mesmas do solve). `action` é OBRIGATÓRIO —
 # uma street pode ter +1 decisão do hero (ver solve_bucketA_handaware).
 TARGETS = [
-    {'decision_id': 33286, 'tid': 149, 'hand_id': '260605886991', 'street': 'river', 'pos': 'CO', 'vs': 'UTG', 'action': 'bet'},
-    {'decision_id': 35868, 'tid': 388, 'hand_id': '100000022',    'street': 'turn',  'pos': 'BB', 'vs': 'HJ', 'action': 'shove'},
+    {'decision_id': 33286, 'tid': 149, 'hand_id': '260605886991', 'street': 'river', 'pos': 'CO',  'vs': 'UTG', 'action': 'bet'},
+    {'decision_id': 35868, 'tid': 388, 'hand_id': '100000022',    'street': 'turn',  'pos': 'BB',  'vs': 'HJ',  'action': 'shove'},
+    {'decision_id': 33118, 'tid': 148, 'hand_id': '258867235685', 'street': 'flop',  'pos': 'BTN', 'vs': 'BB',  'action': 'bet'},
+    {'decision_id': 33153, 'tid': 148, 'hand_id': '258867373219', 'street': 'flop',  'pos': 'HJ',  'vs': 'BB',  'action': 'bet'},
+    {'decision_id': 33087, 'tid': 147, 'hand_id': '258867150524', 'street': 'flop',  'pos': 'SB',  'vs': 'BB',  'action': 'bet'},
 ]
 
 

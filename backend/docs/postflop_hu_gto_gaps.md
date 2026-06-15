@@ -1,77 +1,54 @@
-# Mapa — spots POSTFLOP HU sem status GTO
+# Mapa — spots POSTFLOP HU sem status GTO (autoritativo pelo engine)
 
-Total: **18** decisões postflop heads-up sem `gto_label` (DB dev local).
-Gerado por `scripts/map_postflop_hu_gto_gaps.py` (read-only).
+Total: **18** decisões postflop heads-up sem `gto_label` (DB dev local). Cobertura HU postflop ≈ 94,6%.
+Gerado por `scripts/map_postflop_hu_gto_gaps.py` — reconstrói o spot pelo parser ATUAL e pergunta ao `_enrich_gto` o motivo real. Read-only.
 
-**Prioridade:** 7 são "acionáveis" (jogou ≠ best — o engine já sinaliza um possível erro que falta o GTO confirmar); os outros 11 são linhas default (check/check etc.) sem erro pendente — cobertura por completude, baixa prioridade.
+**Parser:** villain NÃO resolvido pelo parser atual em **0** dos 18 spots — ou seja, NÃO é problema de parser. Em **3** spots a coluna `vs_position` do banco está STALE (`unknown`) embora o parser resolva o villain (issue de dado, não de cobertura).
 
-## Resumo por causa-raiz
+**Prioridade:** 7 acionáveis (jogou ≠ best); 11 são linhas default sem erro pendente.
+
+## Resumo por causa-raiz (motivo do engine)
 
 | Bucket | Qtde | Remediação |
 |---|---|---|
-| A1) Nó solva, mas a AÇÃO do hero é ungradeable (não modelada no nó) | 2 | NÃO fechável por re-solve (confirmado 2026-06-15): o nó hand-aware existe, mas a ação real do hero não está nas ações do nó (ex.: bet num nó check/jam; shove num nó call/fold) → ungradeable_action. Exigiria nó com ramo de raise/sizing do hero (melhoria do solver). |
-| A2) Villain não identificado no parse (insolvável — sem range do oponente) | 3 | NÃO fechável: o parser não resolveu a posição do oponente pré-flop → sem range → nó indefinível. Frente: melhorar a identificação de posição no parser/pipeline. |
-| B) Solver FALHOU (no-solution genuíno ou erro) | 1 | Investigar log do solver: confirmar no-solution do GW vs erro de servidor. |
-| C) NUNCA enfileirado (órfão — sem nó, fora da fila) | 12 | Enfileirar (requeue_orphaned_postflop --apply) + solve hand-aware; >60bb usa Opção B (≈ Aproximação). |
+| UNGRADEABLE — nó não oferece a ação do hero (bet/raise/shove) | 6 | Lado SOLVER: emitir nó com o ramo de bet/raise/sizing do hero. Re-solve sozinho NÃO fecha. |
+| NO_NODE — sem nó usável (nunca solvado / solve falhou) | 12 | Enfileirar + solve (villain é conhecido pelo parser). Stacks >60bb estouram a RAM do solver → Opção B (≈ Aproximação). |
 
-## Distribuições (todos os spots)
+## Distribuições
 
 - **Street/Facing:** flop/first-in=14, flop/vs-bet=2, river/first-in=1, turn/vs-bet=1
 - **Profundidade:** 46-60bb=7, >60bb=6, 13-24bb=2, 36-45bb=2, 25-35bb=1
-- **Posição:** BB=8, SB=6, BTN=2, HJ=1, CO=1
-- **Tipo de pote:** SRP=18
+- **Posição (hero v villain LIVE):** SBvBB=6, BBvHJ=3, BTNvBB=2, BBvBTN=2, BBvSB=2, HJvBB=1, COvUTG=1, BBvCO=1
 
-## A1) Nó solva, mas a AÇÃO do hero é ungradeable (não modelada no nó)  — 2 spot(s)
+## UNGRADEABLE — nó não oferece a ação do hero (bet/raise/shove)  — 6 spot(s)  (6 acionável(is))
 
-**Remediação:** NÃO fechável por re-solve (confirmado 2026-06-15): o nó hand-aware existe, mas a ação real do hero não está nas ações do nó (ex.: bet num nó check/jam; shove num nó call/fold) → ungradeable_action. Exigiria nó com ramo de raise/sizing do hero (melhoria do solver).
+**Remediação:** Lado SOLVER: emitir nó com o ramo de bet/raise/sizing do hero. Re-solve sozinho NÃO fecha.
 
-_2 acionável(is) (jogou ≠ best) de 2._
+| id | torneio | mão | street | pos | villain (live) | vs_col(stale) | facing | depth | jogou | best | acionável |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 33087 | 147 | 258867150524 | flop | SB | BB | unknown | first-in | 25-35bb | bet | check | SIM |
+| 33118 | 148 | 258867235685 | flop | BTN | BB | unknown | first-in | >60bb | bet | check | SIM |
+| 33153 | 148 | 258867373219 | flop | HJ | BB | unknown | first-in | >60bb | bet | check | SIM |
+| 33286 | 149 | 260605886991 | river | CO | UTG | UTG | first-in | 46-60bb | bet | check | SIM |
+| 33960 | 196 | 260875800112 | flop | SB | BB | BB | vs-bet | 13-24bb | raise | fold | SIM |
+| 35868 | 388 | 100000022 | turn | BB | HJ | HJ | vs-bet | 46-60bb | shove | call | SIM |
 
-| id | torneio | mão | street | pos | vs | facing | depth | jogou | best | acionável | fonte_nó | fila |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 33286 | 149 | 260605886991 | river | CO | UTG | first-in | 46-60bb | bet | check | SIM | gto_wizard | done |
-| 35868 | 388 | 100000022 | turn | BB | HJ | vs-bet | 46-60bb | shove | call | SIM | solver_cli | done |
+## NO_NODE — sem nó usável (nunca solvado / solve falhou)  — 12 spot(s)  (1 acionável(is))
 
-## A2) Villain não identificado no parse (insolvável — sem range do oponente)  — 3 spot(s)
+**Remediação:** Enfileirar + solve (villain é conhecido pelo parser). Stacks >60bb estouram a RAM do solver → Opção B (≈ Aproximação).
 
-**Remediação:** NÃO fechável: o parser não resolveu a posição do oponente pré-flop → sem range → nó indefinível. Frente: melhorar a identificação de posição no parser/pipeline.
-
-_3 acionável(is) (jogou ≠ best) de 3._
-
-| id | torneio | mão | street | pos | vs | facing | depth | jogou | best | acionável | fonte_nó | fila |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 33087 | 147 | 258867150524 | flop | SB | unknown | first-in | 25-35bb | bet | check | SIM | - | failed |
-| 33153 | 148 | 258867373219 | flop | HJ | unknown | first-in | >60bb | bet | check | SIM | gto_wizard | - |
-| 33118 | 148 | 258867235685 | flop | BTN | unknown | first-in | >60bb | bet | check | SIM | gto_wizard | - |
-
-## B) Solver FALHOU (no-solution genuíno ou erro)  — 1 spot(s)
-
-**Remediação:** Investigar log do solver: confirmar no-solution do GW vs erro de servidor.
-
-_0 acionável(is) (jogou ≠ best) de 1._
-
-| id | torneio | mão | street | pos | vs | facing | depth | jogou | best | acionável | fonte_nó | fila |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 36044 | 388 | 100000090 | flop | BB | CO | first-in | 46-60bb | check | check | - | - | failed |
-
-## C) NUNCA enfileirado (órfão — sem nó, fora da fila)  — 12 spot(s)
-
-**Remediação:** Enfileirar (requeue_orphaned_postflop --apply) + solve hand-aware; >60bb usa Opção B (≈ Aproximação).
-
-_2 acionável(is) (jogou ≠ best) de 12._
-
-| id | torneio | mão | street | pos | vs | facing | depth | jogou | best | acionável | fonte_nó | fila |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 36034 | 388 | 100000086 | flop | BB | SB | first-in | 13-24bb | check | check | - | - | - |
-| 33960 | 196 | 260875800112 | flop | SB | BB | vs-bet | 13-24bb | raise | fold | SIM | - | - |
-| 35855 | 388 | 100000020 | flop | BB | BTN | first-in | 36-45bb | check | check | - | - | - |
-| 36014 | 388 | 100000080 | flop | SB | BB | first-in | 36-45bb | check | check | - | - | - |
-| 35910 | 388 | 100000035 | flop | BB | HJ | vs-bet | 46-60bb | call | call | - | - | - |
-| 36052 | 388 | 100000094 | flop | SB | BB | first-in | 46-60bb | check | check | - | - | - |
-| 36076 | 388 | 100000103 | flop | BTN | BB | first-in | 46-60bb | check | check | - | - | - |
-| 36083 | 388 | 100000105 | flop | SB | BB | first-in | 46-60bb | check | check | - | - | - |
-| 35921 | 388 | 100000038 | flop | BB | HJ | first-in | >60bb | check | check | - | - | - |
-| 36130 | 388 | 100000121 | flop | SB | BB | first-in | >60bb | check | check | - | - | - |
-| 36092 | 388 | 100000110 | flop | BB | BTN | first-in | >60bb | check | check | - | - | - |
-| 36138 | 388 | 100000123 | flop | BB | SB | first-in | >60bb | bet | check | SIM | - | - |
+| id | torneio | mão | street | pos | villain (live) | vs_col(stale) | facing | depth | jogou | best | acionável |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 35855 | 388 | 100000020 | flop | BB | BTN | BTN | first-in | 36-45bb | check | check | - |
+| 35910 | 388 | 100000035 | flop | BB | HJ | HJ | vs-bet | 46-60bb | call | call | - |
+| 35921 | 388 | 100000038 | flop | BB | HJ | HJ | first-in | >60bb | check | check | - |
+| 36014 | 388 | 100000080 | flop | SB | BB | BB | first-in | 36-45bb | check | check | - |
+| 36034 | 388 | 100000086 | flop | BB | SB | SB | first-in | 13-24bb | check | check | - |
+| 36044 | 388 | 100000090 | flop | BB | CO | CO | first-in | 46-60bb | check | check | - |
+| 36052 | 388 | 100000094 | flop | SB | BB | BB | first-in | 46-60bb | check | check | - |
+| 36076 | 388 | 100000103 | flop | BTN | BB | BB | first-in | 46-60bb | check | check | - |
+| 36083 | 388 | 100000105 | flop | SB | BB | BB | first-in | 46-60bb | check | check | - |
+| 36092 | 388 | 100000110 | flop | BB | BTN | BTN | first-in | >60bb | check | check | - |
+| 36130 | 388 | 100000121 | flop | SB | BB | BB | first-in | >60bb | check | check | - |
+| 36138 | 388 | 100000123 | flop | BB | SB | SB | first-in | >60bb | bet | check | SIM |
 
