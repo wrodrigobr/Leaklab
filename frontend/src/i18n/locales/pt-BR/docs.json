@@ -107,21 +107,22 @@
       "col_label": "Label",
       "col_score": "Score",
       "col_meaning": "Significado",
-      "standard_score": "0.00 – 0.08",
-      "standard_meaning": "Linha sólida. Desvio mínimo do ótimo.",
-      "marginal_score": "0.09 – 0.18",
-      "marginal_meaning": "Ação defensável, mas existe alternativa levemente melhor.",
-      "small_score": "0.19 – 0.36",
-      "small_meaning": "Pequena perda estratégica, relevante no longo prazo.",
-      "clear_score": "> 0.36",
-      "clear_meaning": "Erro claro com impacto relevante em EV."
+      "correct_label": "Correto",
+      "correct_score": "0.00 – 0.08",
+      "correct_meaning": "Linha sólida. Desvio mínimo do ótimo.",
+      "acceptable_label": "Aceitável",
+      "acceptable_score": "0.09 – 0.18",
+      "acceptable_meaning": "Ação defensável, mas existe alternativa levemente melhor.",
+      "error_label": "Erro",
+      "error_score": "> 0.18",
+      "error_meaning": "Perda estratégica relevante — de pequena a custosa. Spot a corrigir."
     },
-    "p2": "O sistema considera o contexto MTT ao reclassificar decisões: em situações de alta pressão ICM (M ≤ 6 ou final table), margens de erro são menores — uma decisão <em>marginal</em> pode ser reclassificada para <em>pequeno erro</em> se o contexto amplifica o custo estratégico.",
+    "p2": "O sistema considera o contexto MTT ao reclassificar decisões: em situações de alta pressão ICM (M ≤ 6 ou final table), as margens de erro são menores — uma decisão <em>Aceitável</em> pode virar <em>Erro</em> quando o contexto amplifica o custo estratégico.",
     "p3": "O <strong>Standard%</strong> de um torneio é a porcentagem de decisões com label <em>standard</em> sobre o total analisado. É o principal indicador de qualidade técnica de uma sessão.",
     "example_standard": "Fold correto de mão fraca OOP com pot odds insuficientes — desvio mínimo do ideal",
     "example_marginal": "Call no flop com equity limítrofe — ação defensável, mas existia alternativa levemente melhor",
-    "example_small": "Aposta de value com sizing inadequado para o board — perda estratégica relevante no longo prazo",
-    "example_clear": "Call no river com 20% de equity contra uma aposta de 80% do pot — erro claro e custoso"
+    "p4": "Você vê <strong>três vereditos</strong> — Correto, Aceitável e Erro. Internamente o sistema ainda mede a <em>magnitude</em> de cada erro (o custo em EV): ela não muda o veredito que aparece, mas alimenta o ranking dos seus leaks, o plano de estudo e o seu rating. Indicadores como <strong>Standard%</strong> e <strong>Clear Mistakes%</strong> medem essa magnitude agregada.",
+    "example_error": "Aposta de value com sizing inadequado, ou call no river com 20% de equity contra uma aposta de 80% do pote — perda estratégica relevante a corrigir."
   },
   "indicators": {
     "title": "Indicadores",
@@ -166,24 +167,21 @@
     "col_quality": "Classificação",
     "col_quality_meaning": "O que significa",
     "col_label_impact": "Como afeta o seu veredicto",
-    "correct_label": "Correta",
+    "correct_label": "Correto",
     "correct_meaning": "Ação alinhada ao GTO: mão dentro da faixa e ação recomendada",
     "correct_impact": "Mantém o melhor veredicto possível para a mão",
     "acceptable_label": "Aceitável",
     "acceptable_meaning": "Ação defensável: mão na faixa, mas em uma ação secundária",
     "acceptable_impact": "Veredicto neutro — jogada defensável, mas não ideal",
-    "leak_label": "Leak",
-    "leak_meaning": "Desvio do GTO: ex. pagar com uma mão fora da faixa de defesa",
-    "leak_impact": "Veredicto passa a apontar um erro a corrigir",
-    "major_leak_label": "Leak grave",
-    "major_leak_meaning": "Erro grave: ex. dar raise/call com mão muito fraca contra uma faixa forte",
-    "major_leak_impact": "Veredicto aponta um erro claro e custoso",
     "buckets_title": "Profundidades de stack analisadas",
     "col_bucket": "Stack de referência",
     "col_bb_range": "Stack efetivo abrangido",
-    "p2": "O sistema <strong>não exibe análise GTO pré-flop</strong> quando não consegue identificar a posição do oponente no histórico da mão, ou quando o pote é um 3-bet sem identificar quem abriu. Nesses casos, a revisão da mão mostra apenas a análise pós-flop (equity + pot odds). <strong>Limitação conhecida no SB</strong>: em algumas profundidades de stack (10bb, 40bb, 75bb) o modelo cobre apenas fold/raise para o SB. Nesses spots, completar (limp) com uma mão fora da faixa de abertura é tratado como <em>aceitável</em> — não como erro — porque a estratégia GTO completa cerca de 53% das mãos do SB, comportamento que o modelo simplificado não representa. <strong>Tamanho do open</strong>: quando o oponente abre maior que o tamanho GTO padrão, a faixa de defesa mostrada é a vs um open mínimo; contra um open maior a defesa correta é mais tight, então foldar uma mão marginal é tratado como <em>defensável</em> — não como desvio crítico — e o card sinaliza o open acima do padrão.",
+    "p2": "O sistema <strong>não exibe análise GTO pré-flop</strong> quando não consegue identificar a posição do oponente no histórico da mão, ou quando o pote é um 3-bet sem identificar quem abriu. Nesses casos, a revisão da mão mostra apenas a análise pós-flop (equity + pot odds). <strong>Limitação conhecida no SB</strong>: em algumas profundidades de stack (10bb, 40bb, 75bb) o modelo cobre apenas fold/raise para o SB. Nesses spots, completar (limp) com uma mão fora da faixa de abertura é tratado como <em>aceitável</em> — não como erro — porque a estratégia GTO completa cerca de 53% das mãos do SB, comportamento que o modelo simplificado não representa. <strong>Tamanho do open</strong>: quando o oponente abre maior que o tamanho GTO padrão, a faixa de defesa mostrada é a vs um open mínimo; contra um open maior a defesa correta é mais tight, então foldar uma mão marginal é tratado como <em>defensável</em> — não como Erro — e o card sinaliza o open acima do padrão.",
     "p3": "Garantia do sistema: <strong>nunca exibimos recomendações contraditórias</strong>. O veredicto mostrado no painel principal e na revisão de mãos é sempre o mesmo — as duas telas são mantidas em sincronia automaticamente.",
-    "coverage": "<strong>Cobertura</strong>: cerca de <strong>95% das decisões pré-flop padrão</strong> recebem um veredicto GTO. O que fica de fora são situações sem solução de referência — potes limpados (quando ninguém aumenta) e linhas fora do padrão — que aparecem <strong>sem classificação GTO</strong>, e não contam como acerto nem como erro."
+    "coverage": "<strong>Cobertura</strong>: cerca de <strong>95% das decisões pré-flop padrão</strong> recebem um veredicto GTO. O que fica de fora são situações sem solução de referência — potes limpados (quando ninguém aumenta) e linhas fora do padrão — que aparecem <strong>sem classificação GTO</strong>, e não contam como acerto nem como erro.",
+    "error_label": "Erro",
+    "error_meaning": "Desvio do GTO — de pagar com uma mão fora da faixa de defesa a dar raise/call com mão muito fraca contra uma faixa forte.",
+    "error_impact": "O veredito passa a apontar um erro a corrigir (a magnitude do desvio entra no ranking de leaks)."
   },
   "replayer": {
     "title": "Revisão de Mão (Replayer)",
@@ -423,17 +421,17 @@
   },
   "form": {
     "title": "Forma Recente",
-    "p1": "O card de <strong>Forma Recente</strong> exibe a qualidade média das decisões nos últimos torneios, torneio a torneio. Cada barra representa uma sessão: verde indica sessão standard, amarelo é marginal, laranja indica pequenos erros e vermelho sinaliza sessão com erros claros.",
+    "p1": "O card de <strong>Forma Recente</strong> exibe a qualidade média das decisões nos últimos torneios, torneio a torneio. Cada bolinha representa uma sessão: <strong>verde</strong> indica uma sessão Correta, <strong>azul</strong> uma sessão Aceitável e <strong>vermelho</strong> uma sessão com Erros.",
     "p2": "A forma recente é importante porque captura <em>variações de curto prazo</em> que a média geral não mostra. Um jogador com boa média geral pode estar em queda nos últimos 5 torneios — sinal precoce de tilt, fadiga ou mudança de stakes.",
     "p3": "Se você ver uma sequência de barras vermelhas ou laranjas, verifique o card de <strong>Padrões Cognitivos</strong> — pode haver um padrão emocional ativo explicando a piora.",
     "example": "Últimos 7 torneios: dois sólidos no início, queda nas sessões 3 a 5 (possível tilt ou fadiga) com retomada nas sessões 6 e 7 — padrão típico de ciclo de over-commitment e recuperação."
   },
   "decisions": {
     "title": "Qualidade das Decisões",
-    "p1": "O card de <strong>Qualidade das Decisões</strong> mostra a distribuição percentual de todas as suas decisões pelos quatro níveis de qualidade: Standard, Marginal, Pequeno Erro e Erro Claro.",
+    "p1": "O card de <strong>Qualidade das Decisões</strong> mostra a distribuição percentual de todas as suas decisões pelos três níveis de qualidade: Correto, Aceitável e Erro.",
     "p2": "Esta visão agregada revela o <em>perfil geral</em> do seu jogo. Um jogador com 80%+ Standard e menos de 5% de Erros Claros tem um perfil sólido. Concentração alta em Erros Claros indica que você tem spots onde perde EV de forma relevante e consistente.",
-    "p3": "A conexão com leaks: cada Erro Claro rastreado aqui aparecerá no card de Top Leaks se o padrão for recorrente. Reduza o percentual de Erros Claros focando os drills nos spots mais frequentes.",
-    "example": "Perfil típico de um Regular: 74% Standard, 16% Marginal, 7% Pequeno Erro, 3% Erro Claro. Este Standard% de 74% posiciona o jogador entre Grinder e Regular na escala do sistema."
+    "p3": "A conexão com leaks: cada Erro rastreado aqui aparece no card de Top Leaks se o padrão for recorrente. Reduza o percentual de Erros focando os drills nos spots mais frequentes.",
+    "example": "Perfil típico de um Regular: 74% Correto, 16% Aceitável, 10% Erro. Esse Standard% de 74% posiciona o jogador entre Grinder e Regular na escala do sistema."
   },
   "streets": {
     "title": "Performance por Street",

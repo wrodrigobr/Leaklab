@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { HudTooltip } from "./HudTooltip";
+import { verdictLevelFromScore, VERDICT_META, VERDICT_LEVELS } from "@/lib/cardLogic";
 import type { EvolutionPoint } from "@/lib/api";
 
 interface Props {
@@ -9,21 +10,16 @@ interface Props {
 
 export function RecentForm({ evolution }: Props) {
   const { t } = useTranslation("dashboard");
+  const { t: tc } = useTranslation("common");
   const recent = (evolution ?? []).slice(-10).reverse();
 
+  // FEAT-20: cada sessão recebe o mesmo veredito de 3 níveis do card, pelo score médio.
   function scoreDot(score: number) {
-    if (score <= 0.08) return { bg: "bg-primary",     ring: "ring-primary/40",     label: t("form.standard") };
-    if (score <= 0.18) return { bg: "bg-yellow-500",  ring: "ring-yellow-500/40",  label: t("form.marginal") };
-    if (score <= 0.36) return { bg: "bg-orange-500",  ring: "ring-orange-500/40",  label: t("form.smallMistake") };
-    return              { bg: "bg-destructive",   ring: "ring-destructive/40", label: t("form.clearError") };
+    const m = VERDICT_META[verdictLevelFromScore(score)];
+    return { bg: m.dotCls, ring: m.ringCls, label: tc(m.i18nKey) };
   }
 
-  const legend = [
-    { label: t("form.standard"),    bg: "bg-primary" },
-    { label: t("form.marginal"),    bg: "bg-yellow-500" },
-    { label: t("form.error"),       bg: "bg-orange-500" },
-    { label: t("form.clearError"),  bg: "bg-destructive" },
-  ];
+  const legend = VERDICT_LEVELS.map((lvl) => ({ label: tc(VERDICT_META[lvl].i18nKey), bg: VERDICT_META[lvl].dotCls }));
 
   return (
     <div className="rounded-xl border border-border bg-hud-surface p-5">

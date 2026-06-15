@@ -27,10 +27,10 @@ export function verdictLevel(label: string | null | undefined): VerdictLevel | n
  * card: correct=emerald, acceptable=sky, error=red. `i18nKey` = chave no namespace common.
  */
 export const VERDICT_LEVELS: VerdictLevel[] = ["correct", "acceptable", "error"];
-export const VERDICT_META: Record<VerdictLevel, { icon: string; textCls: string; chipCls: string; i18nKey: string }> = {
-  correct:    { icon: "✓", textCls: "text-emerald-400", chipCls: "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/30", i18nKey: "verdict.correct" },
-  acceptable: { icon: "◎", textCls: "text-sky-400",     chipCls: "bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/30",         i18nKey: "verdict.acceptable" },
-  error:      { icon: "✗", textCls: "text-red-400",     chipCls: "bg-red-500/10 text-red-400 ring-1 ring-red-500/30",         i18nKey: "verdict.error" },
+export const VERDICT_META: Record<VerdictLevel, { icon: string; textCls: string; chipCls: string; dotCls: string; ringCls: string; i18nKey: string }> = {
+  correct:    { icon: "✓", textCls: "text-emerald-400", chipCls: "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/30", dotCls: "bg-emerald-400", ringCls: "ring-emerald-400/40", i18nKey: "verdict.correct" },
+  acceptable: { icon: "◎", textCls: "text-sky-400",     chipCls: "bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/30",          dotCls: "bg-sky-400",     ringCls: "ring-sky-400/40",     i18nKey: "verdict.acceptable" },
+  error:      { icon: "✗", textCls: "text-red-400",     chipCls: "bg-red-500/10 text-red-400 ring-1 ring-red-500/30",          dotCls: "bg-red-400",     ringCls: "ring-red-400/40",     i18nKey: "verdict.error" },
 };
 
 /**
@@ -39,6 +39,17 @@ export const VERDICT_META: Record<VerdictLevel, { icon: string; textCls: string;
  */
 export function verdictLevelOrError(label: string | null | undefined): VerdictLevel {
   return verdictLevel(label) ?? "error";
+}
+
+/**
+ * Score bruto 0..1 (0 = ótimo) → nível de display. Bandas espelham os cortes do engine
+ * (standard ≤ 0.08 · marginal ≤ 0.18 · acima = erro). Para superfícies que só têm o score
+ * agregado por sessão (RecentForm) e precisam do mesmo veredito de 3 níveis do card.
+ */
+export function verdictLevelFromScore(score: number | null | undefined): VerdictLevel {
+  if (score == null || score <= 0.08) return "correct";
+  if (score <= 0.18) return "acceptable";
+  return "error";
 }
 
 /** Jogadores ainda no pote = assentos com cartas − foldados (acumulado no step). */

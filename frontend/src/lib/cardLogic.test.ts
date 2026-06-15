@@ -8,6 +8,7 @@ import {
   verdictStrategy,
   verdictLevel,
   verdictLevelOrError,
+  verdictLevelFromScore,
   VERDICT_META,
   VERDICT_LEVELS,
 } from "./cardLogic";
@@ -48,7 +49,18 @@ describe("verdictLevelOrError + VERDICT_META — fonte única das superfícies",
       expect(VERDICT_META[lvl].i18nKey).toBe(`verdict.${lvl}`);
       expect(VERDICT_META[lvl].icon).toBeTruthy();
       expect(VERDICT_META[lvl].chipCls).toContain("ring-1");
+      expect(VERDICT_META[lvl].dotCls).toMatch(/^bg-/);   // RecentForm usa o dot
     }
+  });
+  it("verdictLevelFromScore mapeia o score agregado por sessão (RecentForm) nas mesmas bandas", () => {
+    expect(verdictLevelFromScore(0)).toBe("correct");
+    expect(verdictLevelFromScore(0.08)).toBe("correct");
+    expect(verdictLevelFromScore(0.09)).toBe("acceptable");
+    expect(verdictLevelFromScore(0.18)).toBe("acceptable");
+    expect(verdictLevelFromScore(0.19)).toBe("error");
+    expect(verdictLevelFromScore(0.6)).toBe("error");
+    expect(verdictLevelFromScore(null)).toBe("correct");      // sem dado → neutro
+    expect(verdictLevelFromScore(undefined)).toBe("correct");
   });
 });
 

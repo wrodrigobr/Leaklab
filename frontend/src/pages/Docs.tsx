@@ -208,19 +208,18 @@ export default function Docs() {
               <Table
                 headers={[t("scoring.table.col_label"), t("scoring.table.col_score"), t("scoring.table.col_meaning")]}
                 rows={[
-                  [<Badge color="bg-emerald-500/15 text-emerald-400">Standard</Badge>,    t("scoring.table.standard_score"), t("scoring.table.standard_meaning")],
-                  [<Badge color="bg-yellow-500/15 text-yellow-400">Marginal</Badge>,       t("scoring.table.marginal_score"), t("scoring.table.marginal_meaning")],
-                  [<Badge color="bg-orange-500/15 text-orange-400">Small Mistake</Badge>,  t("scoring.table.small_score"),    t("scoring.table.small_meaning")],
-                  [<Badge color="bg-destructive/15 text-destructive">Clear Mistake</Badge>, t("scoring.table.clear_score"),   t("scoring.table.clear_meaning")],
+                  [<Badge color="bg-emerald-500/15 text-emerald-400">{t("scoring.table.correct_label")}</Badge>,    t("scoring.table.correct_score"),    t("scoring.table.correct_meaning")],
+                  [<Badge color="bg-sky-500/15 text-sky-400">{t("scoring.table.acceptable_label")}</Badge>,         t("scoring.table.acceptable_score"), t("scoring.table.acceptable_meaning")],
+                  [<Badge color="bg-red-500/15 text-red-400">{t("scoring.table.error_label")}</Badge>,              t("scoring.table.error_score"),      t("scoring.table.error_meaning")],
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("scoring.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("scoring.p3") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("scoring.p4") }} />
               <ExampleBox label={t("exampleLabel")}>
                 <MiniScoreLine quality="standard" score="0.04" decision={t("scoring.example_standard")} />
                 <MiniScoreLine quality="marginal" score="0.14" decision={t("scoring.example_marginal")} />
-                <MiniScoreLine quality="small"    score="0.28" decision={t("scoring.example_small")} />
-                <MiniScoreLine quality="clear"    score="0.51" decision={t("scoring.example_clear")} />
+                <MiniScoreLine quality="clear"    score="0.41" decision={t("scoring.example_error")} />
               </ExampleBox>
             </Section>
 
@@ -260,8 +259,7 @@ export default function Docs() {
                 rows={[
                   [<Badge color="bg-emerald-500/15 text-emerald-400">{t("gto_method.correct_label")}</Badge>,    t("gto_method.correct_meaning"),    t("gto_method.correct_impact")],
                   [<Badge color="bg-sky-500/15 text-sky-400">{t("gto_method.acceptable_label")}</Badge>,         t("gto_method.acceptable_meaning"), t("gto_method.acceptable_impact")],
-                  [<Badge color="bg-amber-500/15 text-amber-400">{t("gto_method.leak_label")}</Badge>,           t("gto_method.leak_meaning"),       t("gto_method.leak_impact")],
-                  [<Badge color="bg-destructive/15 text-destructive">{t("gto_method.major_leak_label")}</Badge>, t("gto_method.major_leak_meaning"), t("gto_method.major_leak_impact")],
+                  [<Badge color="bg-red-500/15 text-red-400">{t("gto_method.error_label")}</Badge>,              t("gto_method.error_meaning"),      t("gto_method.error_impact")],
                 ]}
               />
               <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-foreground/70">{t("gto_method.buckets_title")}</p>

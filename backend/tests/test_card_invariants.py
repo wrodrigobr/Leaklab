@@ -101,6 +101,29 @@ def test_shove_matches_allin_strategy_not_critical():
     print("OK  test_shove_matches_allin_strategy_not_critical")
 
 
+# ── FEAT-20: veredito de display em 3 níveis (fonte única back↔front) ──────────
+def test_verdict3_collapses_4_severities_to_3():
+    """`leaklab.verdict` é a fonte única do veredito de display: colapsa as 4
+    severidades internas em 3 níveis, EXATAMENTE como o `cardLogic.verdictLevel`
+    do front. Se um lado divergir do outro, card≠badge volta a aparecer."""
+    from leaklab.verdict import verdict3, is_error, CORRECT, ACCEPTABLE, ERROR
+    assert verdict3('standard')      == CORRECT
+    assert verdict3('marginal')      == ACCEPTABLE
+    assert verdict3('small_mistake') == ERROR
+    assert verdict3('clear_mistake') == ERROR
+    # desconhecido / vazio / frequência (não é severidade) → sem veredito
+    assert verdict3(None) is None
+    assert verdict3('') is None
+    assert verdict3('gto_critical') is None
+    # normaliza caixa/espaço (espelha o .trim().toLowerCase() do front)
+    assert verdict3(' Small_Mistake ') == ERROR
+    # is_error = atalho "é Erro?" — mesma régua do badge de aderência
+    assert is_error('small_mistake') and is_error('clear_mistake')
+    assert not is_error('standard') and not is_error('marginal')
+    assert not is_error(None)
+    print("OK  test_verdict3_collapses_4_severities_to_3")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

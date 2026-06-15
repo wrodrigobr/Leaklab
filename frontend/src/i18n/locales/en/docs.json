@@ -107,21 +107,22 @@
       "col_label": "Label",
       "col_score": "Score",
       "col_meaning": "Meaning",
-      "standard_score": "0.00 – 0.08",
-      "standard_meaning": "Solid line. Minimal deviation from optimal.",
-      "marginal_score": "0.09 – 0.18",
-      "marginal_meaning": "Defensible action, but a slightly better alternative exists.",
-      "small_score": "0.19 – 0.36",
-      "small_meaning": "Minor strategic loss, relevant in the long run.",
-      "clear_score": "> 0.36",
-      "clear_meaning": "Clear mistake with significant EV impact."
+      "correct_label": "Correct",
+      "correct_score": "0.00 – 0.08",
+      "correct_meaning": "Solid line. Minimal deviation from optimal.",
+      "acceptable_label": "Acceptable",
+      "acceptable_score": "0.09 – 0.18",
+      "acceptable_meaning": "Defensible action, but a slightly better alternative exists.",
+      "error_label": "Error",
+      "error_score": "> 0.18",
+      "error_meaning": "Relevant strategic loss — from small to costly. A spot to fix."
     },
-    "p2": "The system considers MTT context when reclassifying decisions: under high ICM pressure (M ≤ 6 or final table), error margins are tighter — a <em>marginal</em> decision may be reclassified as a <em>small mistake</em> if the context amplifies the strategic cost.",
+    "p2": "The system factors in MTT context when reclassifying decisions: under high ICM pressure (M ≤ 6 or final table) error margins are tighter — an <em>Acceptable</em> decision can become an <em>Error</em> when the context amplifies the strategic cost.",
     "p3": "The <strong>Standard%</strong> of a tournament is the percentage of decisions labeled <em>standard</em> out of the total analyzed. It is the primary indicator of technical quality in a session.",
     "example_standard": "Correct fold of a weak hand OOP with insufficient pot odds — minimal deviation from optimal",
     "example_marginal": "Flop call with borderline equity — defensible action, but a slightly better alternative existed",
-    "example_small": "Value bet with incorrect sizing for the board — minor strategic loss that compounds long-term",
-    "example_clear": "River call with 20% equity against an 80% pot-sized bet — clear and costly mistake"
+    "p4": "You see <strong>three verdicts</strong> — Correct, Acceptable and Error. Internally the system still measures the <em>magnitude</em> of each error (its EV cost): it does not change the verdict you see, but it feeds your leak ranking, study plan and rating. Indicators like <strong>Standard%</strong> and <strong>Clear Mistakes%</strong> measure that aggregate magnitude.",
+    "example_error": "Value bet with poor sizing, or a river call with 20% equity against an 80%-pot bet — a relevant strategic loss to fix."
   },
   "indicators": {
     "title": "Indicators",
@@ -172,18 +173,15 @@
     "acceptable_label": "Acceptable",
     "acceptable_meaning": "Defensible action: hand in range but a secondary action",
     "acceptable_impact": "Neutral verdict — defensible, but not optimal",
-    "leak_label": "Leak",
-    "leak_meaning": "GTO deviation: e.g. calling with a hand outside the defense range",
-    "leak_impact": "Verdict now flags a mistake to correct",
-    "major_leak_label": "Major leak",
-    "major_leak_meaning": "Major mistake: e.g. calling/raising with a very weak hand vs a strong range",
-    "major_leak_impact": "Verdict flags a clear, costly mistake",
     "buckets_title": "Stack depths analyzed",
     "col_bucket": "Reference stack",
     "col_bb_range": "Effective stack covered",
-    "p2": "The system <strong>does not display preflop GTO analysis</strong> when it can't identify the opponent's position in the hand history, or when the pot is a 3-bet without an identified opener. In these cases the hand review shows only the postflop analysis (equity + pot odds). <strong>Known SB limitation</strong>: for some stack depths (10bb, 40bb, 75bb) the model only covers fold/raise for the SB. In those spots, completing (limping) with a hand outside the opening range is treated as <em>acceptable</em> — not a mistake — because GTO strategy completes about 53% of SB hands, behavior the simplified model doesn't represent. <strong>Open size</strong>: when the opponent opens larger than the standard GTO size, the defense range shown is the one vs a minimum open; against a larger open the correct defense is tighter, so folding a marginal hand is treated as <em>defensible</em> — not a critical deviation — and the card notes the oversized open.",
+    "p2": "The system <strong>does not display preflop GTO analysis</strong> when it can't identify the opponent's position in the hand history, or when the pot is a 3-bet without an identified opener. In these cases the hand review shows only the postflop analysis (equity + pot odds). <strong>Known SB limitation</strong>: for some stack depths (10bb, 40bb, 75bb) the model only covers fold/raise for the SB. In those spots, completing (limping) with a hand outside the opening range is treated as <em>acceptable</em> — not a mistake — because GTO strategy completes about 53% of SB hands, behavior the simplified model doesn't represent. <strong>Open size</strong>: when the opponent opens larger than the standard GTO size, the defense range shown is the one vs a minimum open; against a larger open the correct defense is tighter, so folding a marginal hand is treated as <em>defensible</em> — not a Error — and the card notes the oversized open.",
     "p3": "System guarantee: <strong>we never display contradictory recommendations</strong>. The verdict shown on the main dashboard and in the hand review is always the same — both views are kept in sync automatically.",
-    "coverage": "<strong>Coverage</strong>: about <strong>95% of standard preflop decisions</strong> receive a GTO verdict. What's left out are situations with no reference solution — limped pots (when nobody raises) and non-standard lines — which appear <strong>without a GTO classification</strong>, and count neither as correct nor as a mistake."
+    "coverage": "<strong>Coverage</strong>: about <strong>95% of standard preflop decisions</strong> receive a GTO verdict. What's left out are situations with no reference solution — limped pots (when nobody raises) and non-standard lines — which appear <strong>without a GTO classification</strong>, and count neither as correct nor as a mistake.",
+    "error_label": "Error",
+    "error_meaning": "Deviation from GTO — from calling with a hand outside the defense range to raising/calling a very weak hand against a strong range.",
+    "error_impact": "The verdict now flags an error to fix (the deviation magnitude feeds the leak ranking)."
   },
   "replayer": {
     "title": "Hand Review (Replayer)",
@@ -423,17 +421,17 @@
   },
   "form": {
     "title": "Recent Form",
-    "p1": "The <strong>Recent Form</strong> card shows average decision quality in recent tournaments, tournament by tournament. Each bar represents a session: green means a standard session, yellow is marginal, orange indicates small mistakes, and red signals a session with clear mistakes.",
+    "p1": "The <strong>Recent Form</strong> card shows average decision quality across recent tournaments, tournament by tournament. Each dot is a session: <strong>green</strong> marks a Correct session, <strong>blue</strong> an Acceptable one and <strong>red</strong> a session with Errors.",
     "p2": "Recent form matters because it captures <em>short-term variation</em> that the overall average hides. A player with a good overall average may be declining over the last 5 tournaments — an early warning sign of tilt, fatigue, or a stake change.",
     "p3": "If you see a sequence of red or orange bars, check the <strong>Cognitive Patterns</strong> card — there may be an active emotional pattern explaining the decline.",
     "example": "Last 7 tournaments: two solid sessions, followed by decline in sessions 3–5 (possible tilt or fatigue), then recovery in sessions 6–7 — a typical over-commitment cycle."
   },
   "decisions": {
     "title": "Decision Quality",
-    "p1": "The <strong>Decision Quality</strong> card shows the percentage breakdown of all your decisions across the four quality levels: Standard, Marginal, Small Mistake, and Clear Mistake.",
+    "p1": "The <strong>Decision Quality</strong> card shows the percentage breakdown of all your decisions across the three quality levels: Correct, Acceptable and Error.",
     "p2": "This aggregate view reveals the <em>overall profile</em> of your game. A player with 80%+ Standard and under 5% Clear Mistakes has a solid profile. A high concentration of Clear Mistakes indicates spots where you are losing EV significantly and consistently.",
-    "p3": "The connection to leaks: every Clear Mistake tracked here will appear in the Top Leaks card if the pattern is recurring. Reduce your Clear Mistake percentage by focusing drills on the most frequent spots.",
-    "example": "Typical profile of a Regular player: 74% Standard, 16% Marginal, 7% Small Mistake, 3% Clear Mistake. This 74% Standard% positions the player between Grinder and Regular on the system scale."
+    "p3": "The link to leaks: every Error tracked here shows up in the Top Leaks card when the pattern recurs. Lower your Error rate by drilling the most frequent spots.",
+    "example": "Typical Regular profile: 74% Correct, 16% Acceptable, 10% Error. This Standard% of 74% places the player between Grinder and Regular on the system scale."
   },
   "streets": {
     "title": "Performance by Street",

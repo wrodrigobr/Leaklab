@@ -161,7 +161,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ---
 
-### [FEAT-20] — Colapsar veredito para 3 níveis (Correto / Aceitável / Erro) *(EM ANDAMENTO — Fase 4)*
+### [FEAT-20] — Colapsar veredito para 3 níveis (Correto / Aceitável / Erro) *(✅ CONCLUÍDO 2026-06-15)*
 
 **Valor:** Hoje duas escalas sobrepostas dirigem o display — `gto_label` (frequência: correct/mixed/minor/**critical**) e `label` (severidade EV: standard/marginal/small/clear). A dualidade é a raiz dos bugs card≠badge e do over-flag ("crítico num +0,01bb"). Colapsar **o display** para 3 níveis dirigidos por **severidade (EV)** encerra a dualidade e faz **card = badge por construção**.
 
@@ -173,7 +173,9 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 - **Fase 1 ✅:** fonte única do mapeamento — `leaklab/verdict.py:verdict3(label)` (back) + `cardLogic.verdictLevel(label)` (front, puro+testado). *(commit 73235f4)*
 - **Fase 2 ✅:** card do replayer — ~8 ramificações de veredito → 3, dirigido por `error_label` (severidade); snap do `/replay` torna `error_label` autoritativo (multiway-clear via advisor); `isActionOk` alinhado; barras de frequência viram contexto. i18n PT/EN/ES já presente. Validado no t27 (standard→Correto, marginal→Aceitável, small/clear→Erro, multiway advisor-driven). vitest 25/25, engine 362/362, api 76/76. *(commit aea7701)*
 - **Fase 3 ✅:** demais superfícies via fonte única (`verdictLevelOrError` + `VERDICT_META` + `<VerdictTag>`, i18n `common:verdict.*`): `TournamentDetail` (veredito por mão dirigido só pela severidade; frequência GTO vira marcador de FONTE; filtro/stats/leakTag/meta recalculados), `StudentDetail` + `CoachDashboard` (badges + override do coach colapsados em 3; filtro clear/small removido), `DecisionQualityCard` (4→3 fatias), seletor de override do Replayer (3 opções). Ranking de leaks por bb perdidos já existia (`LeakFinderCard`). vitest 28/28, build ok. *(commit pendente)*
-- **Fase 4:** `/docs` (metodologia 4→3 níveis, conceitual) + ajuste de testes (`test_card_invariants`, `cardLogic.test`, adherence).
+- **Fase 4 ✅:** `/docs` reescrita em 3 níveis (scoring + gto_method 4→3, parágrafo "magnitude interna preservada", Forma Recente/Qualidade das Decisões, vocabulário antigo e chaves órfãs removidos, PT/EN/ES); **RecentForm** colapsado 4→3 (miss da fase 3, `verdictLevelFromScore`); paridade de testes back↔front (`verdict.py` em `test_card_invariants`; `verdictLevelFromScore`/`VERDICT_META` em `cardLogic.test`). Linha de escopo: veredito por decisão/sessão = 3 níveis; KPIs de magnitude (Standard%/Clear Mistakes%/Avg Score/EV-loss) preservados.
+
+**Resultado:** card = badge por construção em TODA superfície; frequência (gto_label) virou contexto; magnitude (label EV) preservada internamente p/ ELO/ranking/study. Suites verdes: cardLogic 29, card_invariants 6, card_verdict 11, adherence 6, database 60, api 76, engine 362.
 
 **NÃO muda:** `label`/`gto_label` armazenados, engine, ELO, ranking — magnitude interna intacta.
 
