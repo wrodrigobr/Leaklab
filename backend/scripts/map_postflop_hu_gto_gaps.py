@@ -3,11 +3,14 @@
 Classifica cada decisão postflop heads-up sem gto_label nas causas-raiz e gera um
 relatório markdown em docs/postflop_hu_gto_gaps.md. Não muta nada.
 
-Buckets:
-  A) NÓ AGREGADO sem tabela hand-aware  → existe nó solved mas require_hand_aware
-     o rejeita (sem gto_tree_strategies). Remediação: re-solve hand-aware.
-  B) SOLVER FALHOU (queue=failed)        → no-solution genuíno ou erro a investigar.
-  C) NUNCA ENFILEIRADO (órfão)           → sem nó e fora da fila. Enfileirar + solve.
+Buckets (refinados após a investigação de 2026-06-15 — ver CHANGELOG):
+  A1) UNGRADEABLE          → re-solve GERA o nó hand-aware, mas a ação real do hero não
+                             está nas ações do nó (bet num nó check/jam; shove num nó
+                             call/fold) → ungradeable_action. NÃO fechável por re-solve.
+  A2) VILLAIN DESCONHECIDO → parser não resolveu a posição do oponente → sem range → nó
+                             indefinível. NÃO fechável por re-solve.
+  B)  SOLVER FALHOU (queue=failed) → no-solution genuíno ou erro a investigar.
+  C)  NUNCA ENFILEIRADO (órfão)    → sem nó e fora da fila. Enfileirar + solve.
 """
 import sqlite3, json, re, os
 from collections import Counter
@@ -55,8 +58,15 @@ def classify():
         tree = 0
         if q and q['tree_hash']:
             tree = c.execute('SELECT COUNT(*) FROM gto_tree_strategies WHERE tree_hash=?', (q['tree_hash'],)).fetchone()[0]
-        if node and tree == 0:
-            bucket = 'A_aggregate_no_handaware'
+        vs_unknown = (r['vs_position'] or '').lower() in ('', 'unknown')
+        if vs_unknown:
+            # villain não identificado no parse → sem range do oponente → nó indefinível.
+            bucket = 'A2_villain_unknown'
+        elif node and tree == 0:
+            # invest. 2026-06-15: re-solve hand-aware GERA o nó, mas a ação real do hero
+            # (bet/shove de sizing/linha que o nó não modela) cai em ungradeable_action →
+            # o engine corretamente NÃO grada. Re-solve NÃO fecha estes.
+            bucket = 'A1_ungradeable'
         elif q and q['status'] == 'failed':
             bucket = 'B_solver_failed'
         elif not node:
@@ -79,17 +89,23 @@ def classify():
 
 def render(rows):
     BKT = {
-        'A_aggregate_no_handaware': 'A) Nó agregado SEM tabela hand-aware (require_hand_aware rejeita)',
-        'B_solver_failed':          'B) Solver FALHOU (no-solution genuíno ou erro)',
-        'C_never_queued':           'C) NUNCA enfileirado (órfão — sem nó, fora da fila)',
-        'D_other':                  'D) Outro',
+        'A1_ungradeable':    'A1) Nó solva, mas a AÇÃO do hero é ungradeable (não modelada no nó)',
+        'A2_villain_unknown': 'A2) Villain não identificado no parse (insolvável — sem range do oponente)',
+        'B_solver_failed':   'B) Solver FALHOU (no-solution genuíno ou erro)',
+        'C_never_queued':    'C) NUNCA enfileirado (órfão — sem nó, fora da fila)',
+        'D_other':           'D) Outro',
     }
     REM = {
-        'A_aggregate_no_handaware': 'Re-solve hand-aware (gerar gto_tree_strategies) — mesma campanha de 2026-06-12.',
-        'B_solver_failed':          'Investigar log do solver: confirmar no-solution do GW vs erro de servidor.',
-        'C_never_queued':           'Enfileirar (requeue_orphaned_postflop --apply) + solve hand-aware; >60bb usa Opção B (≈ Aproximação).',
-        'D_other':                  '—',
+        'A1_ungradeable':    'NÃO fechável por re-solve (confirmado 2026-06-15): o nó hand-aware existe, mas a '
+                             'ação real do hero não está nas ações do nó (ex.: bet num nó check/jam; shove num nó call/fold) '
+                             '→ ungradeable_action. Exigiria nó com ramo de raise/sizing do hero (melhoria do solver).',
+        'A2_villain_unknown': 'NÃO fechável: o parser não resolveu a posição do oponente pré-flop → sem range → nó indefinível. '
+                             'Frente: melhorar a identificação de posição no parser/pipeline.',
+        'B_solver_failed':   'Investigar log do solver: confirmar no-solution do GW vs erro de servidor.',
+        'C_never_queued':    'Enfileirar (requeue_orphaned_postflop --apply) + solve hand-aware; >60bb usa Opção B (≈ Aproximação).',
+        'D_other':           '—',
     }
+    ORDER = ['A1_ungradeable', 'A2_villain_unknown', 'B_solver_failed', 'C_never_queued', 'D_other']
     by = Counter(r['bucket'] for r in rows)
 
     def _actionable(r):
@@ -111,7 +127,7 @@ def render(rows):
     L.append('')
     L.append('| Bucket | Qtde | Remediação |')
     L.append('|---|---|---|')
-    for k in ('A_aggregate_no_handaware', 'B_solver_failed', 'C_never_queued', 'D_other'):
+    for k in ORDER:
         if by.get(k):
             L.append(f'| {BKT[k]} | {by[k]} | {REM[k]} |')
     L.append('')
@@ -126,7 +142,7 @@ def render(rows):
         L.append(f"- **{dim}:** " + ', '.join(f'{k}={v}' for k, v in dist.most_common()))
     L.append('')
     # detalhe por bucket
-    for k in ('A_aggregate_no_handaware', 'B_solver_failed', 'C_never_queued', 'D_other'):
+    for k in ORDER:
         sub = [r for r in rows if r['bucket'] == k]
         if not sub:
             continue

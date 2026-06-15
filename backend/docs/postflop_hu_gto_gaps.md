@@ -9,8 +9,9 @@ Gerado por `scripts/map_postflop_hu_gto_gaps.py` (read-only).
 
 | Bucket | Qtde | Remediação |
 |---|---|---|
-| A) Nó agregado SEM tabela hand-aware (require_hand_aware rejeita) | 4 | Re-solve hand-aware (gerar gto_tree_strategies) — mesma campanha de 2026-06-12. |
-| B) Solver FALHOU (no-solution genuíno ou erro) | 2 | Investigar log do solver: confirmar no-solution do GW vs erro de servidor. |
+| A1) Nó solva, mas a AÇÃO do hero é ungradeable (não modelada no nó) | 2 | NÃO fechável por re-solve (confirmado 2026-06-15): o nó hand-aware existe, mas a ação real do hero não está nas ações do nó (ex.: bet num nó check/jam; shove num nó call/fold) → ungradeable_action. Exigiria nó com ramo de raise/sizing do hero (melhoria do solver). |
+| A2) Villain não identificado no parse (insolvável — sem range do oponente) | 3 | NÃO fechável: o parser não resolveu a posição do oponente pré-flop → sem range → nó indefinível. Frente: melhorar a identificação de posição no parser/pipeline. |
+| B) Solver FALHOU (no-solution genuíno ou erro) | 1 | Investigar log do solver: confirmar no-solution do GW vs erro de servidor. |
 | C) NUNCA enfileirado (órfão — sem nó, fora da fila) | 12 | Enfileirar (requeue_orphaned_postflop --apply) + solve hand-aware; >60bb usa Opção B (≈ Aproximação). |
 
 ## Distribuições (todos os spots)
@@ -20,28 +21,37 @@ Gerado por `scripts/map_postflop_hu_gto_gaps.py` (read-only).
 - **Posição:** BB=8, SB=6, BTN=2, HJ=1, CO=1
 - **Tipo de pote:** SRP=18
 
-## A) Nó agregado SEM tabela hand-aware (require_hand_aware rejeita)  — 4 spot(s)
+## A1) Nó solva, mas a AÇÃO do hero é ungradeable (não modelada no nó)  — 2 spot(s)
 
-**Remediação:** Re-solve hand-aware (gerar gto_tree_strategies) — mesma campanha de 2026-06-12.
+**Remediação:** NÃO fechável por re-solve (confirmado 2026-06-15): o nó hand-aware existe, mas a ação real do hero não está nas ações do nó (ex.: bet num nó check/jam; shove num nó call/fold) → ungradeable_action. Exigiria nó com ramo de raise/sizing do hero (melhoria do solver).
 
-_4 acionável(is) (jogou ≠ best) de 4._
+_2 acionável(is) (jogou ≠ best) de 2._
 
 | id | torneio | mão | street | pos | vs | facing | depth | jogou | best | acionável | fonte_nó | fila |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 33153 | 148 | 258867373219 | flop | HJ | unknown | first-in | >60bb | bet | check | SIM | gto_wizard | - |
-| 33118 | 148 | 258867235685 | flop | BTN | unknown | first-in | >60bb | bet | check | SIM | gto_wizard | - |
 | 33286 | 149 | 260605886991 | river | CO | UTG | first-in | 46-60bb | bet | check | SIM | gto_wizard | done |
 | 35868 | 388 | 100000022 | turn | BB | HJ | vs-bet | 46-60bb | shove | call | SIM | solver_cli | done |
 
-## B) Solver FALHOU (no-solution genuíno ou erro)  — 2 spot(s)
+## A2) Villain não identificado no parse (insolvável — sem range do oponente)  — 3 spot(s)
 
-**Remediação:** Investigar log do solver: confirmar no-solution do GW vs erro de servidor.
+**Remediação:** NÃO fechável: o parser não resolveu a posição do oponente pré-flop → sem range → nó indefinível. Frente: melhorar a identificação de posição no parser/pipeline.
 
-_1 acionável(is) (jogou ≠ best) de 2._
+_3 acionável(is) (jogou ≠ best) de 3._
 
 | id | torneio | mão | street | pos | vs | facing | depth | jogou | best | acionável | fonte_nó | fila |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 33087 | 147 | 258867150524 | flop | SB | unknown | first-in | 25-35bb | bet | check | SIM | - | failed |
+| 33153 | 148 | 258867373219 | flop | HJ | unknown | first-in | >60bb | bet | check | SIM | gto_wizard | - |
+| 33118 | 148 | 258867235685 | flop | BTN | unknown | first-in | >60bb | bet | check | SIM | gto_wizard | - |
+
+## B) Solver FALHOU (no-solution genuíno ou erro)  — 1 spot(s)
+
+**Remediação:** Investigar log do solver: confirmar no-solution do GW vs erro de servidor.
+
+_0 acionável(is) (jogou ≠ best) de 1._
+
+| id | torneio | mão | street | pos | vs | facing | depth | jogou | best | acionável | fonte_nó | fila |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 36044 | 388 | 100000090 | flop | BB | CO | first-in | 46-60bb | check | check | - | - | failed |
 
 ## C) NUNCA enfileirado (órfão — sem nó, fora da fila)  — 12 spot(s)
