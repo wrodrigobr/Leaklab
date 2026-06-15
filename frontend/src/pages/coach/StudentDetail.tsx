@@ -1588,6 +1588,11 @@ export default function StudentDetail() {
   const tournaments = history?.tournaments ?? [];
   const lastScore = tournaments[0]?.avg_score;
   const prevScore = tournaments[1]?.avg_score;
+  // V2-4: série de score (cronológica, até 12) p/ sparkline do hero
+  const scoreSeries = [...tournaments].reverse()
+    .map((t) => t.avg_score)
+    .filter((v): v is number => v != null)
+    .slice(-12);
   const trend =
     lastScore != null && prevScore != null
       ? lastScore < prevScore ? "improving" : lastScore > prevScore ? "worsening" : "stable"
@@ -1616,31 +1621,41 @@ export default function StudentDetail() {
         </div>
 
         {history && (
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                {studentName}
-              </h1>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="font-mono text-xs text-muted-foreground">
-                  {tournaments.length} torneios analisados
-                </span>
-                {trend && (
-                  <span className={`flex items-center gap-1 font-mono text-xs font-bold ${trendColor}`}>
-                    <TrendIcon className="size-3.5" />
-                    {trend === "improving" ? "Melhorando" : trend === "worsening" ? "Piorando" : "Estável"}
-                  </span>
+          <div className="rounded-xl border border-border bg-hud-surface p-5">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-full bg-gradient-to-br from-primary to-blue-500 text-lg font-bold text-background uppercase">
+                  {studentName[0]}
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">{studentName}</h1>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    <span className="font-mono text-xs text-muted-foreground">{tournaments.length} torneios</span>
+                    {trend && (
+                      <span className={`flex items-center gap-1 font-mono text-xs font-bold ${trendColor}`}>
+                        <TrendIcon className="size-3.5" />
+                        {trend === "improving" ? "Melhorando" : trend === "worsening" ? "Piorando" : "Estável"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-5">
+                {scoreSeries.length >= 2 && (() => {
+                  const w = 120, h = 34, pad = 3;
+                  const mn = Math.min(...scoreSeries), mx = Math.max(...scoreSeries), rg = mx - mn || 1;
+                  const pts = scoreSeries.map((v, i) => `${(pad + (i / (scoreSeries.length - 1)) * (w - 2 * pad)).toFixed(1)},${(pad + ((v - mn) / rg) * (h - 2 * pad)).toFixed(1)}`).join(" ");
+                  const stroke = trend === "improving" ? "#2DD4BF" : trend === "worsening" ? "#F87171" : "#8B96A8";
+                  return <svg width={w} height={h} className="hidden sm:block"><polyline points={pts} fill="none" stroke={stroke} strokeWidth="2" /></svg>;
+                })()}
+                {lastScore != null && (
+                  <div className="text-right">
+                    <p className={cn("text-3xl font-bold", tScoreCls(lastScore))}>{lastScore.toFixed(3)}</p>
+                    <p className="font-mono text-[10px] text-muted-foreground">último score</p>
+                  </div>
                 )}
               </div>
             </div>
-            {lastScore != null && (
-              <div className="text-right">
-                <p className={`text-3xl font-bold ${SCORE_COLOR(lastScore)}`}>
-                  {lastScore.toFixed(1)}
-                </p>
-                <p className="font-mono text-[10px] text-muted-foreground">último score</p>
-              </div>
-            )}
           </div>
         )}
 

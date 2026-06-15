@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(coach): Command Center V2-3 + V2-4 — sparklines no roster + hero do aluno
+
+> Fecha o V2 do dashboard do coach. **V2-3 (Roster):** cada aluno ganha um **sparkline de tendência** de score na coluna Tendência (payload `/coach/students` ganhou `score_history` = últimos scores cronológicos, reusando os torneios já buscados) + **realce de linha** para quem "precisa de atenção". **V2-4 (Aluno detalhe):** o header virou um **hero** — avatar + nome + tendência + **sparkline da evolução** + último score destacado; e corrigiu o mesmo bug de escala (score 0-1 pintado com `SCORE_COLOR` 0-100 → sempre vermelho) no cabeçalho. tsc/build ok, score_history validado. *(Cockpit V2: V2-1..V2-4 concluídos.)*
+
+
 ### feat(coach): Command Center V2-2 — gráficos da turma (qualidade, receita, heatmap de leaks)
 
 > Segue o V2: a aba **Comando** ganha 3 gráficos da turma (SVG/CSS leve, paleta do veredito de 3 níveis). **Qualidade da turma** — distribuição Correto/Aceitável/Erro de todas as decisões (barra + %); **Receita no tempo** — linha dos repasses por período (`coach_payments`); **Heatmap de leaks** — grid street × ação com o nº de alunos com leak em cada célula (vermelho proporcional). **Backend:** `GET /coach/cohort-analytics` → `get_coach_cohort_analytics` (3 queries agregadas read-only: distribuição 3-níveis, `coach_payments` últimos 6, leaks small/clear por street×ação com `COUNT(DISTINCT user_id)`). tsc/build ok. Validado (1179/159/129 decisões, heatmap 20 células).

@@ -52,6 +52,16 @@ const isActivePaid = (s: StudentSummary): boolean => s.is_active_paid === true;
 function scoreCls(score: number | null | undefined): string {
   return score == null ? "text-muted-foreground" : VERDICT_META[verdictLevelFromScore(score)].textCls;
 }
+// V2-3: sparkline da tendência de score (0-1, menor=melhor → invertido: bom = pra cima).
+function Sparkline({ data, trend }: { data?: number[]; trend?: string | null }) {
+  if (!data || data.length < 2) return <span className="font-mono text-[10px] text-muted-foreground/50">—</span>;
+  const w = 54, h = 18, pad = 2;
+  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+  const pts = data.map((v, i) => `${(pad + (i / (data.length - 1)) * (w - 2 * pad)).toFixed(1)},${(pad + ((v - min) / range) * (h - 2 * pad)).toFixed(1)}`).join(" ");
+  const stroke = trend === "improving" ? "#34D399" : trend === "worsening" ? "#F87171" : "#8B96A8";
+  return <svg width={w} height={h} className="overflow-visible"><polyline points={pts} fill="none" stroke={stroke} strokeWidth="1.6" /></svg>;
+}
+
 // P1b: "precisa de atenção" = crítica pendente OU mensagem não lida OU última sessão = Erro.
 const needsAttention = (s: StudentSummary): boolean =>
   (s.critical_pending ?? 0) > 0 ||
@@ -307,7 +317,8 @@ function AlunosTab() {
                   <tr
                     key={s.id}
                     onClick={() => navigate(`/coach-dashboard/student/${s.id}`)}
-                    className="hover:bg-primary/5 cursor-pointer transition-colors"
+                    className={cn("cursor-pointer transition-colors hover:bg-primary/5",
+                      needsAttention(s) && "bg-amber-400/[0.04]")}
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
@@ -340,9 +351,9 @@ function AlunosTab() {
                       {s.recent_tournament?.avg_score != null ? s.recent_tournament.avg_score.toFixed(3) : "—"}
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
-                      <div className="flex items-center justify-center gap-1.5">
+                      <div className="flex items-center justify-center gap-2" title={s.trend ? TREND_LABEL[s.trend] : ""}>
+                        <Sparkline data={s.score_history} trend={s.trend} />
                         <TrendIcon trend={s.trend} />
-                        {s.trend && <span className="font-mono text-[10px] text-muted-foreground">{TREND_LABEL[s.trend]}</span>}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">

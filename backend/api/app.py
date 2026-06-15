@@ -2829,6 +2829,8 @@ def coach_students_v2():
             'is_referred': bool(s.get('invited_by_key')),
             'critical_pending': (_attn.get(s['id']) or {}).get('critical_pending', 0),
             'unread': (_attn.get(s['id']) or {}).get('unread', 0),
+            # V2-3: últimos scores (cronológico) p/ sparkline de tendência no roster
+            'score_history': [t['avg_score'] for t in reversed(tournaments) if t.get('avg_score') is not None],
         })
     # Ordenar: alunos com piores scores primeiro (mais precisam de atenção)
     enriched.sort(

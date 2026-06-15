@@ -99,8 +99,8 @@ bg `#0A0E1A` · teal `#2DD4BF` (acento/CTA) · Chakra Petch (títulos/números g
 
 - **V2-1 ✅ — Comando (home):** nova aba **Comando** (default) = vitais (ativos·R$/a receber+próxima faixa/indicados/total/precisam atenção) + **Fila de Ação** priorizada (críticas → churn → não-lidas → conversão, cada com CTA deep-link) + atividade recente. **Sem endpoint novo:** a fila é agregada no front a partir do payload já enriquecido de `/coach/students` (critical_pending/unread/trend/is_active_paid/plan) — mais barato que a spec original sugeria e sem N+1. Churn = `trend==='worsening' && is_active_paid`. *(tsc/build ok.)*
 - **V2-2 ✅ — Gráficos da turma:** distribuição de qualidade (3 níveis) + receita no tempo (`coach_payments`) + heatmap de leaks (street×ação, nº de alunos) na aba Comando. Endpoint `GET /coach/cohort-analytics`. SVG/CSS leve.
-- **V2-3 — Roster V2:** matriz com sparklines + selos + ordenação "precisa de atenção". (front sobre payload já pronto)
-- **V2-4 — Aluno detalhe V2:** hero + abas elevadas. (estilo; reusa dados)
+- **V2-3 ✅ — Roster V2:** sparkline de tendência por aluno (payload ganhou `score_history`) na coluna Tendência + realce de linha p/ "precisa de atenção". (selos/sinais já vieram no P1a/P1b)
+- **V2-4 ✅ — Aluno detalhe V2:** header virou **hero** (avatar + nome + tendência + sparkline da evolução + último score) — e corrigiu o mesmo bug de cor de score (0-1 com `SCORE_COLOR` 0-100) no cabeçalho.
 - **Sinal de churn** entra no V2-1 (fila) e V2-3 (roster).
 
 ---

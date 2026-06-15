@@ -1453,6 +1453,7 @@ export interface StudentSummary {
   is_referred?: boolean;         // indicado (aprox. por invited_by_key até SEC-01)
   critical_pending?: number;     // P1b: decisões small/clear sem anotação do coach
   unread?: number;               // P1b: mensagens do aluno não lidas
+  score_history?: number[];      // V2-3: últimos scores (cronológico) p/ sparkline
 }
 
 export interface CoachImpactStudent {
