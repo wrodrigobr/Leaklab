@@ -95,6 +95,29 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 > _(FEAT-17 concluído em v0.83.0 — entrada movida para o roadmap acima. Verificado 2026-06-15: `OnboardingModal.tsx` 4 passos, gate via `ProtectedRoute` (só com user carregado), finish→`/dashboard`→CTA de upload do `EmptyDashboard`, i18n nas 3 locales, endpoint+coluna+repo presentes.)_
 
+### [PAY-01] — Revalidação do Stripe (pré-produção) *(criado 2026-06-15)*
+
+**Valor:** O meio de pagamento precisa estar comprovadamente funcional e correto antes do launch — qualquer falha aqui é receita perdida ou cobrança errada.
+
+**O que revalidar** (`backend/leaklab/stripe_gateway.py`, `api/app.py` `/subscription/checkout` ~4972, `/subscription/webhook` ~5031):
+- **Checkout:** `/subscription/checkout` cria a assinatura e devolve `client_secret`; `PLAN_AMOUNTS` batem com os preços reais; planos free/pro corretos.
+- **Webhook:** `validate_webhook` rejeita sem `STRIPE_WEBHOOK_SECRET` (já guarda em 5038) e com assinatura inválida; cada `event_type` (invoice.paid, subscription.updated/deleted, payment_failed) atualiza `plan`/`payments` corretamente; **idempotência** (mesmo evento 2x não duplica).
+- **Ciclo de vida:** upgrade, downgrade, cancelamento e falha de pagamento refletem no plano e na quota (`get_quota_status`).
+- **Modo test × live:** confirmar chaves/ambiente; nada hardcoded de test em prod.
+- **Conciliação coach:** `coach_payments` (repasse) bate com os pagamentos reais dos alunos pro.
+- Entregar com testes (estender `tests/test_subscription.py`) + checklist de smoke manual no Stripe Dashboard.
+
+### [SEC-01] — Convite do coach single-use por aluno (integridade da indicação) *(criado 2026-06-15)*
+
+**Problema:** hoje `assign_invite_key` gera **uma chave permanente e reutilizável por coach**; qualquer aluno com a chave se auto-vincula (`link_student_to_coach`) sem aprovação nem expiração — só limita por `max_students`. A chave **é passável de aluno para aluno**. Com a compensação por **indicados e ativos**, cada indicação precisa ser um ato deliberado e único, senão a atribuição de referral é burlável.
+
+**Opções (decisão de produto):**
+1. **Convites single-use (recomendado):** tabela `coach_invites` (code, coach_id, used_by, used_at, expires_at); coach clica "convidar aluno" → gera link/código único → consumido no resgate → não reutilizável. `users.invite_key` vira legado/backward-compat.
+2. **Aprovação do coach (2ª camada):** mantém código compartilhável, mas o vínculo entra como **pendente** e o coach aprova; comp conta só aprovados (robusto mesmo se o código vazar).
+3. **Stopgap barato:** `max_uses` + `expires_at` na chave atual.
+
+**Recomendação:** (1) como base + (2) como reforço. Backend: nova tabela + endpoints de gerar/listar/revogar convite e resgate; frontend: `InviteKeyWidget` vira "gerar convite" (lista de convites e status). Pré-requisito de integridade antes de ligar a comp por referral.
+
 ---
 
 ### [FEAT-18] — Mobile audit + responsividade *(Sprint AY)*
