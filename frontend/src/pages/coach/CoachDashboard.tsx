@@ -14,7 +14,7 @@ import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
 import { StudentRow } from "@/components/coach/StudentRow";
 import { VerdictTag } from "@/components/VerdictTag";
 import { verdictLevelFromScore, VERDICT_META } from "@/lib/cardLogic";
-import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak, InboxThread, StudentSummary } from "@/lib/api";
+import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak, InboxThread, StudentSummary, CoachCohortAnalytics } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
 // ── shared ────────────────────────────────────────────────────────────────────
@@ -682,11 +682,108 @@ const QUEUE_META: Record<QueueKind, { ic: string; icCls: string; pri: string; pr
   convert:  { ic: "$", icCls: "bg-amber-400/10 text-amber-400",  pri: "receita", priCls: "bg-amber-400/10 text-amber-400",                  cta: "Converter" },
 };
 
+// V2-2 — gráficos da turma (SVG/CSS leve, paleta do veredito de 3 níveis).
+const HEAT_STREETS = ["preflop", "flop", "turn", "river"];
+const HEAT_ACTIONS = ["fold", "call", "raise", "bet", "shove"];
+
+function CohortCharts({ data }: { data?: CoachCohortAnalytics }) {
+  if (!data) return null;
+  const q = data.quality;
+  const total = q.total || 1;
+  const qbars = [
+    { k: "Correto",   n: q.correct,    cls: "bg-emerald-400", txt: "text-emerald-400" },
+    { k: "Aceitável", n: q.acceptable, cls: "bg-sky-400",     txt: "text-sky-400" },
+    { k: "Erro",      n: q.error,      cls: "bg-red-400",     txt: "text-red-400" },
+  ];
+  const rev = data.revenue;
+  const maxRev = Math.max(1, ...rev.map((r) => r.amount_cents));
+  const revPts = rev.map((r, i) => `${(rev.length > 1 ? (i / (rev.length - 1)) * 296 + 2 : 150).toFixed(0)},${(82 - (r.amount_cents / maxRev) * 66).toFixed(0)}`).join(" ");
+  const hmap = new Map(data.leak_heatmap.map((h) => [`${h.street}/${h.action}`, h.n_students]));
+  const hmax = Math.max(1, ...data.leak_heatmap.map((h) => h.n_students));
+
+  return (
+    <div className="grid md:grid-cols-3 gap-4">
+      {/* Distribuição de qualidade */}
+      <div className="rounded-xl border border-border bg-hud-surface p-4">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-3">Qualidade da turma</p>
+        <div className="flex h-2.5 w-full overflow-hidden rounded-full gap-px mb-3">
+          {qbars.map((b) => b.n > 0 && <div key={b.k} className={b.cls} style={{ width: `${(b.n / total) * 100}%` }} title={`${b.k}: ${b.n}`} />)}
+        </div>
+        <div className="space-y-1.5">
+          {qbars.map((b) => (
+            <div key={b.k} className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">{b.k}</span>
+              <span className={cn("font-mono font-bold tabular-nums", b.txt)}>{total > 0 ? ((b.n / total) * 100).toFixed(1) : "0"}%</span>
+            </div>
+          ))}
+        </div>
+        <p className="font-mono text-[9px] text-muted-foreground/60 mt-2">{q.total.toLocaleString()} decisões</p>
+      </div>
+
+      {/* Receita no tempo */}
+      <div className="rounded-xl border border-border bg-hud-surface p-4">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-3">Receita no tempo</p>
+        {rev.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-6">Sem histórico de repasse ainda.</p>
+        ) : (
+          <>
+            <svg width="100%" height="92" viewBox="0 0 300 92" preserveAspectRatio="none" className="block">
+              <polyline points={revPts} fill="none" stroke="#2DD4BF" strokeWidth="2" />
+              {rev.map((r, i) => {
+                const x = rev.length > 1 ? (i / (rev.length - 1)) * 296 + 2 : 150;
+                const y = 82 - (r.amount_cents / maxRev) * 66;
+                return <circle key={i} cx={x} cy={y} r="2.6" fill="#2DD4BF" />;
+              })}
+            </svg>
+            <div className="flex items-center justify-between font-mono text-[9px] text-muted-foreground/70 mt-1">
+              <span>{rev[0]?.period}</span><span>{rev[rev.length - 1]?.period}</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Heatmap de leaks */}
+      <div className="rounded-xl border border-border bg-hud-surface p-4">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-3">Heatmap de leaks</p>
+        <div className="grid gap-[3px]" style={{ gridTemplateColumns: "auto repeat(5, 1fr)" }}>
+          <div />
+          {HEAT_ACTIONS.map((a) => <div key={a} className="text-center font-mono text-[8px] text-muted-foreground uppercase">{a}</div>)}
+          {HEAT_STREETS.map((st) => (
+            <FragmentRow key={st} street={st} hmap={hmap} hmax={hmax} />
+          ))}
+        </div>
+        <p className="font-mono text-[9px] text-muted-foreground/60 mt-2">célula = nº de alunos com leak ali</p>
+      </div>
+    </div>
+  );
+}
+
+function FragmentRow({ street, hmap, hmax }: { street: string; hmap: Map<string, number>; hmax: number }) {
+  return (
+    <>
+      <div className="flex items-center font-mono text-[8px] text-muted-foreground uppercase">{street === "preflop" ? "PF" : street}</div>
+      {HEAT_ACTIONS.map((a) => {
+        const n = hmap.get(`${street}/${a}`) ?? 0;
+        const t = hmax > 0 ? n / hmax : 0;
+        const bg = n === 0 ? "rgba(28,40,66,0.6)" : `rgba(248,113,113,${(0.18 + 0.72 * t).toFixed(2)})`;
+        return (
+          <div key={a} className="h-6 rounded-[3px] flex items-center justify-center font-mono text-[9px]"
+            style={{ background: bg, color: n === 0 ? "#8B96A8" : "#0a0e1a", fontWeight: 600 }}
+            title={`${street} / ${a}: ${n} aluno(s)`}>
+            {n > 0 ? n : "·"}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 function ComandoTab() {
   const navigate = useNavigate();
   const { data: studentsData } = useQuery({ queryKey: ["coach-students"], queryFn: coachDashboard.students });
   const { data: finance }      = useQuery({ queryKey: ["coach-finance-summary"], queryFn: coachFinance.summary });
   const { data: activity }     = useQuery({ queryKey: ["coach-recent-activity"], queryFn: () => coachDashboard.recentActivity(20) });
+  const { data: cohort }       = useQuery({ queryKey: ["coach-cohort-analytics"], queryFn: coachDashboard.cohortAnalytics });
   const students = studentsData?.students ?? [];
 
   const queue = useMemo(() => {
@@ -772,6 +869,9 @@ function ComandoTab() {
           )}
         </div>
       </div>
+
+      {/* Gráficos da turma (V2-2) */}
+      <CohortCharts data={cohort} />
     </div>
   );
 }

@@ -2847,6 +2847,14 @@ def coach_recent_activity():
     return jsonify({'activity': get_coach_recent_activity(g.user_id, limit)})
 
 
+@app.route('/coach/cohort-analytics', methods=['GET'])
+@require_coach
+def coach_cohort_analytics():
+    """V2-2 — gráficos da turma: distribuição de qualidade, receita no tempo, heatmap de leaks."""
+    from database.repositories import get_coach_cohort_analytics
+    return jsonify(get_coach_cohort_analytics(g.user_id))
+
+
 # ── Student endpoints ─────────────────────────────────────────────────────────
 
 @app.route('/student/link-coach', methods=['POST'])

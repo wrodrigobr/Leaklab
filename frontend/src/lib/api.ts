@@ -1581,6 +1581,12 @@ export interface CoachActivityItem {
   n_critical: number;
 }
 
+export interface CoachCohortAnalytics {
+  quality: { correct: number; acceptable: number; error: number; total: number };
+  revenue: { period: string; amount_cents: number; active_students: number }[];
+  leak_heatmap: { street: string; action: string; n_students: number }[];
+}
+
 export const coachDashboard = {
   inviteKey: () =>
     request<{ invite_key: string }>("/coach/invite-key"),
@@ -1599,6 +1605,9 @@ export const coachDashboard = {
 
   recentActivity: (limit = 20) =>
     request<{ activity: CoachActivityItem[] }>(`/coach/recent-activity?limit=${limit}`),
+
+  cohortAnalytics: () =>
+    request<CoachCohortAnalytics>("/coach/cohort-analytics"),
 
   studentsLeaderboard: (period = 90) =>
     request<LeaderboardResponse>(`/coach/students/leaderboard?period=${period}`),

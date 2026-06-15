@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(coach): Command Center V2-2 — gráficos da turma (qualidade, receita, heatmap de leaks)
+
+> Segue o V2: a aba **Comando** ganha 3 gráficos da turma (SVG/CSS leve, paleta do veredito de 3 níveis). **Qualidade da turma** — distribuição Correto/Aceitável/Erro de todas as decisões (barra + %); **Receita no tempo** — linha dos repasses por período (`coach_payments`); **Heatmap de leaks** — grid street × ação com o nº de alunos com leak em cada célula (vermelho proporcional). **Backend:** `GET /coach/cohort-analytics` → `get_coach_cohort_analytics` (3 queries agregadas read-only: distribuição 3-níveis, `coach_payments` últimos 6, leaks small/clear por street×ação com `COUNT(DISTINCT user_id)`). tsc/build ok. Validado (1179/159/129 decisões, heatmap 20 células).
+
+
 ### feat(coach): Coach Command Center V2-1 — aba "Comando" com Fila de Ação
 
 > Primeira fase do dashboard do coach V2 ([`specs/coach-dashboard-v2.md`](specs/coach-dashboard-v2.md) + mockup `.html`): nova aba **Comando** (agora a home/default do coach) que transforma o painel de *relatório* em *worklist*. **Vitais** no topo (Ativos·R$ · A receber + próxima faixa · Indicados · Total · **Precisam de atenção**). **Fila de Ação** priorizada — o diferencial: para cada aluno gera itens **⚠ críticas pendentes** (alto) → **📉 risco de churn** (`trend='worsening'` + ativo) → **✉ não-lidas** (médio) → **$ conversão** (recente mas free), cada um com CTA deep-link (`?tab=worst`/`?tab=mensagens`/detalhe). **Atividade recente** ao lado (feed cross-aluno do P2). **Sem endpoint novo:** a fila é agregada no front a partir do payload já enriquecido de `/coach/students` (P1a/P1b) — mais barato que a spec sugeria e sem N+1. As 6 abas anteriores seguem; Comando é aditivo. tsc/build ok.

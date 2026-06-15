@@ -260,6 +260,48 @@ def get_coach_recent_activity(coach_id: int, limit: int = 20) -> list:
         conn.close()
 
 
+def get_coach_cohort_analytics(coach_id: int) -> dict:
+    """V2-2 — gráficos da turma: distribuição de qualidade (3 níveis), receita no tempo
+    (coach_payments) e heatmap de leaks (street × ação, nº de alunos). Read-only."""
+    conn = get_conn()
+    try:
+        scope = "t.user_id IN (SELECT id FROM users WHERE coach_id = ?)"
+        # 1) distribuição de qualidade (colapso para 3 níveis — FEAT-20)
+        qrow = conn.execute(_adapt(f"""
+            SELECT
+              SUM(CASE WHEN d.label='standard' THEN 1 ELSE 0 END)                     AS correct,
+              SUM(CASE WHEN d.label='marginal' THEN 1 ELSE 0 END)                     AS acceptable,
+              SUM(CASE WHEN d.label IN ('small_mistake','clear_mistake') THEN 1 ELSE 0 END) AS error
+            FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {scope}
+        """), (coach_id,)).fetchone()
+        q = dict(qrow) if qrow else {}
+        quality = {k: int(q.get(k) or 0) for k in ('correct', 'acceptable', 'error')}
+        quality['total'] = sum(quality.values())
+
+        # 2) receita no tempo (até 6 períodos cronológicos)
+        rev = conn.execute(_adapt("""
+            SELECT period, amount_cents, active_students FROM coach_payments
+            WHERE coach_id = ? ORDER BY period DESC LIMIT 6
+        """), (coach_id,)).fetchall()
+        revenue = [dict(r) for r in reversed(rev)]
+
+        # 3) heatmap de leaks: street × melhor-ação, nº de alunos distintos com leak ali
+        heat = conn.execute(_adapt(f"""
+            SELECT lower(d.street) AS street, lower(d.best_action) AS action,
+                   COUNT(DISTINCT t.user_id) AS n_students
+            FROM decisions d JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {scope} AND d.label IN ('small_mistake','clear_mistake')
+              AND lower(d.street) IN ('preflop','flop','turn','river')
+            GROUP BY lower(d.street), lower(d.best_action)
+        """), (coach_id,)).fetchall()
+        leak_heatmap = [dict(r) for r in heat]
+
+        return {'quality': quality, 'revenue': revenue, 'leak_heatmap': leak_heatmap}
+    finally:
+        conn.close()
+
+
 # ── Tournaments ───────────────────────────────────────────────────────────────
 
 def save_tournament(user_id: int, tournament_id: str, hero: str,
