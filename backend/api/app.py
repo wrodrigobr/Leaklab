@@ -2058,21 +2058,10 @@ def coach_context():
 
 # ── Coach endpoints ───────────────────────────────────────────────────────────
 
-@app.route('/coach/students', methods=['GET'])
-@require_coach
-def coach_students():
-    students = get_students(g.user_id)
-    # Adicionar últimas métricas de cada aluno
-    enriched = []
-    for s in students:
-        tournaments = get_tournaments(s['id'], limit=5)
-        recent = tournaments[0] if tournaments else None
-        enriched.append({
-            **s,
-            'recent_tournament': recent,
-            'total_tournaments': len(tournaments),
-        })
-    return jsonify({'students': enriched})
+# NOTA: a rota /coach/students é servida por coach_students_v2 (abaixo) — que inclui
+# trend + sinais de cockpit (is_active_paid, is_referred). A versão duplicada antiga
+# (sem esses campos) foi removida: o Werkzeug casava a 1ª regra registrada e sombreava
+# a v2, deixando o `trend` sempre vazio no front.
 
 
 @app.route('/coach/students/leaderboard', methods=['GET'])
@@ -2809,7 +2798,12 @@ def coach_impact():
 @app.route('/coach/students', methods=['GET'])
 @require_coach
 def coach_students_v2():
-    """Lista alunos com métricas recentes."""
+    """Lista alunos com métricas recentes + sinais de cockpit (P1a):
+    `is_active_paid` (= ativo que conta na comp: pro + import nos últimos 30d, a MESMA
+    régua do payout), `is_referred` (indicado — aproximação por invited_by_key até o SEC-01),
+    `plan`. O score da última sessão já vem em recent_tournament.avg_score."""
+    import datetime as _dt
+    _cutoff = (_dt.datetime.utcnow() - _dt.timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
     students = get_students(g.user_id)
     enriched = []
     for s in students:
@@ -2820,11 +2814,17 @@ def coach_students_v2():
         if len(tournaments) >= 2:
             diff = (tournaments[0]['avg_score'] or 0) - (tournaments[1]['avg_score'] or 0)
             trend = 'improving' if diff < -0.005 else 'worsening' if diff > 0.005 else 'stable'
+        # ativo que conta na comp: pro + importou nos últimos 30d (imported_at em formato
+        # ISO → comparação lexicográfica de string com o cutoff é válida).
+        _imp = (recent or {}).get('imported_at') or ''
+        is_active_paid = (s.get('plan') == 'pro' and bool(_imp) and _imp >= _cutoff)
         enriched.append({
             **s,
             'recent_tournament': recent,
             'total_tournaments': len(tournaments),
             'trend': trend,
+            'is_active_paid': is_active_paid,
+            'is_referred': bool(s.get('invited_by_key')),
         })
     # Ordenar: alunos com piores scores primeiro (mais precisam de atenção)
     enriched.sort(

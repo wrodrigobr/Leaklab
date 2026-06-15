@@ -1448,6 +1448,9 @@ export interface StudentSummary {
   total_tournaments: number;
   recent_tournament: Tournament | null;
   trend: "improving" | "worsening" | "stable" | null;
+  plan?: string;                 // P1a cockpit
+  is_active_paid?: boolean;      // ativo que conta na comp (pro + import 30d)
+  is_referred?: boolean;         // indicado (aprox. por invited_by_key até SEC-01)
 }
 
 export interface CoachImpactStudent {
@@ -1909,7 +1912,9 @@ export interface CoachFinanceSummary {
   period: string;
   total_students: number;
   active_students: number;
+  referred_count?: number;
   amount_cents: number;
+  next_tier?: { threshold: number; rate_cents: number; needed: number } | null;
   status: string;
   paid_at: string | null;
   monthly_fee_waived: boolean;

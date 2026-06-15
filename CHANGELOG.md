@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(coach): cockpit da aba Alunos — triagem + receita por indicados/ativos (P1a)
+
+> Primeira fase do redesign do dashboard do coach ([`specs/coach-cockpit.md`](specs/coach-cockpit.md)): a aba **Alunos** vira cockpit de triagem com a dimensão de **receita** no topo. **Faixa de topo (4 KPIs):** Indicados · **Ativos · conta R$** · A receber (período) · **Próxima faixa** ("faltam X ativos → R$Y/aluno" — motivador direto). **Tabela enriquecida:** nova coluna **Score** da última sessão (colorida pelo veredito de 3 níveis, `verdictLevelFromScore`), selo **Indicado** no nome, e **Status em 3 estados** — `Ativo · R$` (pro+import 30d, conta no repasse) · `Recente · free` (importou mas não-pro → oportunidade de conversão) · `Inativo`. **Definição de "ativo" unificada:** o filtro e o selo passam a usar a régua do payout (`is_active_paid` = pro + 30d), acabando com a divergência em que a lista marcava "Ativo" quem não contava no repasse. **Backend:** `GET /coach/students` enriquecido (`plan`, `is_active_paid`, `is_referred`); `GET /coach/finance/summary` ganhou `referred_count` + `next_tier`; `get_students` passou a trazer `plan`/`invited_by_key`. **Bug latente corrigido no caminho:** havia uma rota `/coach/students` **duplicada** (a antiga sombreava a v2 no Werkzeug) → o `trend` do aluno nunca chegava ao front; removida. "Indicado" é aproximado por `invited_by_key` até o SEC-01 dar atribuição confiável. tsc ok, build ok, coach_system 20/20, api 43/43. *(Coach dashboard segue PT-only — i18n das views do coach é débito à parte; P1b/P2/P3 no spec.)*
+
 ### chore(revalidação): higiene pré-produção — resync do drift postflop + auditoria completa (squeeze: falso alarme, revertido)
 
 > Antes do launch, rodei a revalidação pré-produção (subsistema `leaklab/revalidation/` + `scripts/revalidate.py`, read-only) sobre toda a base local (11 torneios, 1467 decisões):

@@ -12,6 +12,7 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
 import { StudentRow } from "@/components/coach/StudentRow";
 import { VerdictTag } from "@/components/VerdictTag";
+import { verdictLevelFromScore, VERDICT_META } from "@/lib/cardLogic";
 import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak, InboxThread, StudentSummary } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
@@ -39,9 +40,16 @@ const PAGE_SIZE = 25;
 type SortKey = "username" | "total_tournaments" | "last_import" | "trend";
 type SortDir = "asc" | "desc";
 
+// "recente" = importou em 30d (qualquer plano) — sinal de atividade bruto.
 function isActive(s: StudentSummary): boolean {
   if (!s.recent_tournament?.imported_at) return false;
   return Date.now() - new Date(s.recent_tournament.imported_at).getTime() < 30 * 86_400_000;
+}
+// P1a: "ativo que conta na comp" = pro + import 30d (a régua do payout, vinda do backend).
+const isActivePaid = (s: StudentSummary): boolean => s.is_active_paid === true;
+// score da última sessão (0-1, menor = melhor) → cor do veredito de 3 níveis (FEAT-20).
+function scoreCls(score: number | null | undefined): string {
+  return score == null ? "text-muted-foreground" : VERDICT_META[verdictLevelFromScore(score)].textCls;
 }
 
 function fmtImport(s: StudentSummary): string {
@@ -137,6 +145,11 @@ function AlunosTab() {
     queryKey: ["coach-impact"],
     queryFn: () => coachDashboard.impact(30),
   });
+  // P1a cockpit: receita do período (indicados / ativos que contam / valor + próxima faixa)
+  const { data: finance } = useQuery({
+    queryKey: ["coach-finance-summary"],
+    queryFn: coachFinance.summary,
+  });
 
   const [search,  setSearch]  = useState("");
   const [status,  setStatus]  = useState<"all" | "active" | "inactive">("all");
@@ -149,8 +162,8 @@ function AlunosTab() {
   const filtered = allStudents
     .filter((s) => {
       if (search && !s.username.toLowerCase().includes(search.toLowerCase())) return false;
-      if (status === "active"   && !isActive(s)) return false;
-      if (status === "inactive" &&  isActive(s)) return false;
+      if (status === "active"   && !isActivePaid(s)) return false;
+      if (status === "inactive" &&  isActivePaid(s)) return false;
       return true;
     })
     .sort((a, b) => {
@@ -188,6 +201,39 @@ function AlunosTab() {
   );
 
   return (
+    <div className="space-y-4">
+      {/* Cockpit — faixa de receita & saúde (P1a) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-xl border border-border bg-border">
+        <div className="bg-hud-surface p-4">
+          <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Indicados</div>
+          <div className="mt-1 font-mono text-2xl font-light tabular-nums text-foreground">{finance?.referred_count ?? allStudents.length}</div>
+          <div className="font-mono text-[10px] text-muted-foreground/70">{allStudents.length} vinculados</div>
+        </div>
+        <div className="bg-hud-surface p-4">
+          <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Ativos · conta R$</div>
+          <div className="mt-1 font-mono text-2xl font-light tabular-nums text-primary">{finance?.active_students ?? allStudents.filter(isActivePaid).length}</div>
+          <div className="font-mono text-[10px] text-muted-foreground/70">pro + import 30d</div>
+        </div>
+        <div className="bg-hud-surface p-4">
+          <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">A receber</div>
+          <div className="mt-1 font-mono text-2xl font-light tabular-nums text-foreground">{finance ? fmtCents(finance.amount_cents) : "—"}</div>
+          <div className="font-mono text-[10px] text-muted-foreground/70">{finance?.period ?? ""}</div>
+        </div>
+        <div className="bg-hud-surface p-4">
+          <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Próxima faixa</div>
+          {finance?.next_tier ? (
+            <>
+              <div className="mt-1 font-mono text-sm font-bold text-amber-400">
+                faltam {finance.next_tier.needed} ativo{finance.next_tier.needed > 1 ? "s" : ""}
+              </div>
+              <div className="font-mono text-[10px] text-muted-foreground/70">→ {fmtCents(finance.next_tier.rate_cents)}/aluno</div>
+            </>
+          ) : (
+            <div className="mt-1 font-mono text-sm font-bold text-primary">faixa máxima ✓</div>
+          )}
+        </div>
+      </div>
+
     <div className="grid md:grid-cols-3 gap-6">
       <div className="md:col-span-2 space-y-4">
         {/* Toolbar */}
@@ -233,6 +279,7 @@ function AlunosTab() {
                   <th className="px-4 py-2.5 text-left"><SortHeader col="username"          label="Aluno" /></th>
                   <th className="px-4 py-2.5 text-right hidden sm:table-cell"><SortHeader col="total_tournaments" label="Torneios" /></th>
                   <th className="px-4 py-2.5 text-right hidden md:table-cell"><SortHeader col="last_import"        label="Último import" /></th>
+                  <th className="px-4 py-2.5 text-right hidden sm:table-cell font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Score</th>
                   <th className="px-4 py-2.5 text-center hidden lg:table-cell"><SortHeader col="trend"             label="Tendência" /></th>
                   <th className="px-4 py-2.5 text-center font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Status</th>
                 </tr>
@@ -250,6 +297,9 @@ function AlunosTab() {
                           {s.username[0]}
                         </div>
                         <span className="font-medium text-foreground">{s.username}</span>
+                        {s.is_referred && (
+                          <span className="hidden sm:inline-flex items-center rounded-sm bg-violet-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-violet-400 ring-1 ring-violet-400/30" title="Indicado pelo seu convite">Indicado</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs tabular-nums text-muted-foreground text-right hidden sm:table-cell">
@@ -258,6 +308,9 @@ function AlunosTab() {
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground text-right hidden md:table-cell">
                       {fmtImport(s)}
                     </td>
+                    <td className={cn("px-4 py-3 font-mono text-xs tabular-nums text-right hidden sm:table-cell", scoreCls(s.recent_tournament?.avg_score))}>
+                      {s.recent_tournament?.avg_score != null ? s.recent_tournament.avg_score.toFixed(3) : "—"}
+                    </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
                       <div className="flex items-center justify-center gap-1.5">
                         <TrendIcon trend={s.trend} />
@@ -265,8 +318,10 @@ function AlunosTab() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {isActive(s)
-                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20"><CheckCircle2 className="size-3" /> Ativo</span>
+                      {isActivePaid(s)
+                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20" title="Pro + import nos últimos 30d — conta no seu repasse"><CheckCircle2 className="size-3" /> Ativo · R$</span>
+                        : isActive(s)
+                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-400/30" title="Importou recentemente mas não é Pro — não conta no repasse (oportunidade de conversão)">Recente · free</span>
                         : <span className="inline-flex items-center gap-1 rounded-sm bg-border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border"><Clock className="size-3" /> Inativo</span>}
                     </td>
                   </tr>
@@ -318,6 +373,7 @@ function AlunosTab() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

@@ -192,7 +192,7 @@ def get_students(coach_id: int) -> List[dict]:
     conn = get_conn()
     try:
         rows = conn.execute(
-            "SELECT id, username, email, created_at, last_login "
+            "SELECT id, username, email, created_at, last_login, plan, invited_by_key "
             "FROM users WHERE coach_id = ?", (coach_id,)
         ).fetchall()
         return [dict(r) for r in rows]
@@ -3424,6 +3424,16 @@ def calculate_coach_payout(active_students: int) -> int:
     return 0
 
 
+def coach_next_tier(active_students: int) -> Optional[dict]:
+    """Próxima faixa de payout p/ o motivador do cockpit ("faltam X ativos → R$Y/aluno").
+    None quando já está na faixa máxima (10+)."""
+    if active_students < 4:
+        return {'threshold': 4, 'rate_cents': 1500, 'needed': 4 - active_students}
+    if active_students < 10:
+        return {'threshold': 10, 'rate_cents': 2000, 'needed': 10 - active_students}
+    return None
+
+
 def get_admin_dashboard_stats() -> dict:
     """Stats executivos para o painel admin."""
     conn = get_conn()
@@ -3635,6 +3645,10 @@ def get_coach_finance_summary(coach_id: int) -> dict:
               AND t.imported_at >= {interval_sql(30)}
         """, (coach_id,))['n']
         amount_cents = calculate_coach_payout(active_students)
+        # indicados (aproximação por invited_by_key até o SEC-01 dar atribuição confiável)
+        referred_count = _fetchone(conn,
+            "SELECT COUNT(*) AS n FROM users WHERE coach_id = ? "
+            "AND invited_by_key IS NOT NULL AND invited_by_key != ''", (coach_id,))['n']
         pay = _fetchone(conn, """
             SELECT id, status, paid_at FROM coach_payments
             WHERE coach_id = ? AND period = ?
@@ -3644,7 +3658,9 @@ def get_coach_finance_summary(coach_id: int) -> dict:
             'period':             period,
             'total_students':     total_students,
             'active_students':    active_students,
+            'referred_count':     referred_count,
             'amount_cents':       amount_cents,
+            'next_tier':          coach_next_tier(active_students),
             'status':             pay['status'] if pay else 'pending',
             'paid_at':            pay['paid_at'] if pay else None,
             'monthly_fee_waived': monthly_fee_waived,
