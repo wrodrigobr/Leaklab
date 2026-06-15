@@ -161,7 +161,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ---
 
-### [FEAT-20] — Colapsar veredito para 3 níveis (Correto / Aceitável / Erro) *(EM ANDAMENTO — Fase 1)*
+### [FEAT-20] — Colapsar veredito para 3 níveis (Correto / Aceitável / Erro) *(EM ANDAMENTO — Fase 3)*
 
 **Valor:** Hoje duas escalas sobrepostas dirigem o display — `gto_label` (frequência: correct/mixed/minor/**critical**) e `label` (severidade EV: standard/marginal/small/clear). A dualidade é a raiz dos bugs card≠badge e do over-flag ("crítico num +0,01bb"). Colapsar **o display** para 3 níveis dirigidos por **severidade (EV)** encerra a dualidade e faz **card = badge por construção**.
 
@@ -170,8 +170,8 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 **Mapa:** standard→**Correto** · marginal→**Aceitável** · small_mistake/clear_mistake→**Erro**.
 
 **Fases:**
-- **Fase 1 ✅ (em andamento):** fonte única do mapeamento — `leaklab/verdict.py:verdict3(label)` (back) + `cardLogic.verdictLevel(label)` (front, puro+testado).
-- **Fase 2:** card do replayer — trocar as ~8 ramificações de veredito por 3, dirigido por `error_label` (severidade); barras de frequência viram contexto. `DecisionCard` + i18n (PT/EN/ES).
+- **Fase 1 ✅:** fonte única do mapeamento — `leaklab/verdict.py:verdict3(label)` (back) + `cardLogic.verdictLevel(label)` (front, puro+testado). *(commit 73235f4)*
+- **Fase 2 ✅:** card do replayer — ~8 ramificações de veredito → 3, dirigido por `error_label` (severidade); snap do `/replay` torna `error_label` autoritativo (multiway-clear via advisor); `isActionOk` alinhado; barras de frequência viram contexto. i18n PT/EN/ES já presente. Validado no t27 (standard→Correto, marginal→Aceitável, small/clear→Erro, multiway advisor-driven). vitest 25/25, engine 362/362, api 76/76. *(commit aea7701)*
 - **Fase 3:** demais superfícies — `TournamentDetail` (badges), `StudentDetail`/`CoachDashboard`, `DecisionQualityCard` (4→3 fatias), relatório do coach. Ranking de leaks ordena por **bb perdidos**.
 - **Fase 4:** `/docs` (metodologia 4→3 níveis, conceitual) + ajuste de testes (`test_card_invariants`, `cardLogic.test`, adherence).
 
