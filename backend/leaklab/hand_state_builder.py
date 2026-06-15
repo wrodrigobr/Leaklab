@@ -57,7 +57,11 @@ def _position_names(n: int) -> dict:
     """
     names: dict = {0: 'SB', 1: 'BB'}
     if n == 2:
-        return names
+        # HEADS-UP: o botão É o small blind. Como `ordered` põe o botão por ÚLTIMO
+        # (ordered[n-1]=botão), o índice 1 (botão) tem de ser SB e o índice 0 (não-botão)
+        # o BB. Sem isto o SB/botão era rotulado BB (best=check impossível pro SB pré-flop,
+        # falso small_mistake ao foldar, e spot sem cobertura GTO).
+        return {0: 'BB', 1: 'SB'}
     names[n - 1] = 'BTN'
     if n >= 4:
         names[n - 2] = 'CO'

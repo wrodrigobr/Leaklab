@@ -7,6 +7,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### fix(engine): posição em HEADS-UP — o botão é o SMALL BLIND (não o BB)
+
+> Bug encontrado via mão real (t4002072836 #260875840596): em HU, `_position_names(2)` rotulava o jogador do **botão como BB**, quando no HU o botão **posta o small blind** (o HH do PokerStars confirma: "Seat #1 is the button" + "posts small blind"). A ordenação põe o botão por último (`ordered[n-1]`), então o índice do botão tinha de mapear para **SB**, não BB. O bug cascateava: `best='check'` (impossível pro SB pré-flop), **small_mistake FALSO** ao foldar (foldar 52o do SB a 20bb é standard), e **spot sem cobertura GTO** (BB-uncontested + villain desconhecido). Fix de 1 linha (`{0:'BB', 1:'SB'}` no n==2). Validado na mão: pos BB→**SB**, best check→**fold**, label small_mistake→**standard**, GTO indisponível→**gto_correct/fold**. Afeta só HU (n≥3 intacto); engine 362/362, +`test_hu_position.py` (3). **Esclarecimento:** as tabelas preflop (MTT 9-max) JÁ cobrem HU — o spot SB-vs-BB é o mesmo que "foldou pro SB" no 9-max; não era falta de tabela HU, era a posição errada. *(60 decisões HU no banco precisam de re-análise p/ os cards atualizarem.)*
+
+
 ### refactor(coach): navegação em sidebar rail + Insights/Receita — V2 de verdade (não só gráficos)
 
 > Correção de rota após feedback: o V2 anterior tinha ficado incremental (só gráficos no Comando, com as outras funções no formato antigo). Agora o dashboard do coach virou um **command center** de fato:
