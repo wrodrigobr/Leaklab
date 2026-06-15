@@ -278,7 +278,8 @@ def _preflop_gto_label_adjust(label: str, quality: str, ev_loss_bb: float | None
     cur = _LABEL_SEV.get(label, 1)
     if quality == 'correct':
         return 'standard'
-    if quality == 'acceptable':
+    # Desvio mínimo (ação mista válida, ex.: vs_3bet/4bet rebaixado) — cap em 'marginal'.
+    if quality in ('acceptable', 'gto_minor_deviation', 'minor_mistake'):
         return _SEV_LABEL[min(cur, _LABEL_SEV['marginal'])]
     if quality in ('leak', 'major_leak'):
         if ev_loss_bb is not None and ev_loss_bb < _PREFLOP_EV_MINOR_BB:
@@ -844,7 +845,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         # Consistência score/label: recalcular final_score para bater com novo label
         if quality == 'correct':
             final_score = min(final_score, 0.08)    # cap em 'standard'
-        elif quality == 'acceptable' or _low_cost_leak:
+        elif quality in ('acceptable', 'gto_minor_deviation', 'minor_mistake') or _low_cost_leak:
             final_score = min(final_score, 0.18)    # cap em 'marginal'
         # Persistir gto_label/gto_action preflop no DB (save_decisions lê result['gto'])
         if quality and quality != 'unknown':

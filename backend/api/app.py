@@ -4609,6 +4609,10 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                 is_error        = False
                                 reconciled_best = _norm(action.action)
                                 gto_label       = 'gto_correct' if _pf_quality == 'correct' else 'gto_mixed'
+                            elif _pf_quality in ('gto_minor_deviation', 'minor_mistake'):
+                                is_error        = True
+                                reconciled_best = preflop_override_action
+                                gto_label       = 'gto_minor_deviation'
                             elif _pf_quality in ('leak', 'major_leak'):
                                 is_error        = True
                                 reconciled_best = preflop_override_action

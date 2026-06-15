@@ -371,15 +371,35 @@ def _normalize_facing_allin(base: dict, action_taken: str) -> None:
         base['ev_loss_bb'] = 0.0
 
 
+_NEVER_FOLD_VS_3BET = {'AA', 'KK'}
+
+
+def _soften_mixed_3bet_quality(base: dict, action_taken: str) -> None:
+    """vs_3bet/vs_4bet/squeeze/faces_squeeze são spots MISTOS — call/raise/fold são todos
+    parte do range GTO. O modelo dá UMA ação recomendada → qualquer alternativa razoável
+    virava `major_leak` → gto_critical ("Desvio Crítico" indevido em decisão mista, ex.:
+    foldar TJs a um 4-bet, flatar AK vs 3-bet). Rebaixa major_leak → `gto_minor_deviation`
+    nesses cenários (mão no range). Mantém crítico só p/ foldar AA/KK a um 3-bet (nunca-fold)."""
+    if base.get('action_quality') != 'major_leak' or not base.get('in_range'):
+        return
+    if base.get('scenario') not in ('vs_3bet', 'vs_4bet', 'squeeze', 'faces_squeeze'):
+        return
+    if ((action_taken or '').lower() == 'fold' and base.get('scenario') == 'vs_3bet'
+            and base.get('hand_type') in _NEVER_FOLD_VS_3BET):
+        return  # foldar AA/KK a um 3-bet segue crítico
+    base['action_quality'] = 'gto_minor_deviation'
+
+
 def analyze_preflop(*args, **kwargs) -> dict:
     """Análise GTO preflop + ev_loss_bb (#24). Wrapper fino sobre o _impl pra
     anexar o EV em todos os returns (RFI/push-fold/vs_rfi/3bet/etc)."""
     facing_allin = bool(kwargs.pop('facing_allin', False))
     base = _analyze_preflop_impl(*args, **kwargs)
     _attach_ev_loss(base)
+    _act = kwargs.get('action_taken') or (args[3] if len(args) > 3 else '')
     if facing_allin:
-        _act = kwargs.get('action_taken') or (args[3] if len(args) > 3 else '')
         _normalize_facing_allin(base, _act)
+    _soften_mixed_3bet_quality(base, _act)
     return base
 
 
