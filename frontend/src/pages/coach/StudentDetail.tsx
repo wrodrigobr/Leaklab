@@ -18,15 +18,9 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar
 } from "recharts";
+import { VerdictTag } from "@/components/VerdictTag";
 
 // ── shared ────────────────────────────────────────────────────────────────────
-
-const LABEL_COLOR: Record<string, string> = {
-  clear_mistake: "text-destructive",
-  small_mistake: "text-amber-400",
-  marginal:      "text-yellow-500",
-  standard:      "text-primary",
-};
 
 const SCORE_COLOR = (s: number) =>
   s >= 80 ? "text-primary" : s >= 60 ? "text-amber-400" : "text-destructive";
@@ -326,7 +320,7 @@ function TournamentsTab({ studentId }: { studentId: number }) {
                   <td className="px-4 py-2 text-xs">{formatAction(d.action_taken)}</td>
                   <td className="px-4 py-2 text-xs">{formatAction(d.best_action)}</td>
                   <td className={`px-4 py-2 font-mono text-xs font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</td>
-                  <td className={`px-4 py-2 font-mono text-[10px] capitalize ${LABEL_COLOR[d.label] ?? ""}`}>{d.label}</td>
+                  <td className="px-4 py-2"><VerdictTag label={d.label} /></td>
                   <td className="px-4 py-2">
                     <button
                       onClick={() => navigate(`/replayer?t=${t.tournament_id}&h=${d.hand_id}&student=${studentId}`)}
@@ -406,12 +400,13 @@ const POKER_ACTIONS = [
   "", "fold", "check", "call", "bet", "raise", "re-raise", "all-in",
 ];
 
+// FEAT-20: veredito do coach em 3 níveis (Erro grava como clear_mistake internamente —
+// a IA ainda produz small_mistake, ambos exibem "Erro"). Sem 4ª opção.
 const OVERRIDE_LABELS: { value: CoachOverrideLabel; label: string; color: string }[] = [
-  { value: null,           label: "— Sem veredito",  color: "text-muted-foreground" },
-  { value: "standard",    label: "✓ Jogada Correta", color: "text-primary" },
-  { value: "marginal",    label: "~ Marginal",        color: "text-yellow-500" },
-  { value: "small_mistake", label: "⚠ Erro Pequeno", color: "text-amber-400" },
-  { value: "clear_mistake", label: "✕ Erro Claro",   color: "text-destructive" },
+  { value: null,            label: "— Sem veredito", color: "text-muted-foreground" },
+  { value: "standard",      label: "✓ Correto",      color: "text-emerald-400" },
+  { value: "marginal",      label: "◎ Aceitável",    color: "text-sky-400" },
+  { value: "clear_mistake", label: "✗ Erro",         color: "text-red-400" },
 ];
 
 function AnnotationForm({
@@ -569,13 +564,7 @@ function WorstTab({ studentId }: { studentId: number }) {
             {/* Label + street + score */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className={`font-mono text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                  d.label === "clear_mistake"
-                    ? "bg-destructive/10 text-destructive ring-1 ring-destructive/30"
-                    : "bg-amber-400/10 text-amber-400 ring-1 ring-amber-400/30"
-                }`}>
-                  {d.label === "clear_mistake" ? "Erro claro" : "Erro pequeno"}
-                </span>
+                <VerdictTag label={d.label} />
                 <span className="font-mono text-xs capitalize text-muted-foreground">{d.street}</span>
                 {d.position && <span className="font-mono text-[10px] text-muted-foreground">{d.position}</span>}
                 {annotation && (
@@ -647,20 +636,7 @@ function WorstTab({ studentId }: { studentId: number }) {
                     {annotation.mode === "replace" ? "Coach (substitui IA)" : "Coach (complementa)"}
                   </p>
                   {annotation.coach_override_label && (
-                    <span className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded ring-1 ${
-                      annotation.coach_override_label === "standard"
-                        ? "text-primary ring-primary/30 bg-primary/10"
-                        : annotation.coach_override_label === "marginal"
-                        ? "text-yellow-500 ring-yellow-500/30 bg-yellow-500/10"
-                        : annotation.coach_override_label === "small_mistake"
-                        ? "text-amber-400 ring-amber-400/30 bg-amber-400/10"
-                        : "text-destructive ring-destructive/30 bg-destructive/10"
-                    }`}>
-                      {annotation.coach_override_label === "standard" ? "✓ Correta"
-                        : annotation.coach_override_label === "marginal" ? "~ Marginal"
-                        : annotation.coach_override_label === "small_mistake" ? "⚠ Erro Pequeno"
-                        : "✕ Erro Claro"}
-                    </span>
+                    <VerdictTag label={annotation.coach_override_label} />
                   )}
                 </div>
                 <p className="text-foreground leading-relaxed">{annotation.comment}</p>
@@ -1169,7 +1145,7 @@ function ActivityTimeline({ events }: { events: ActivityEvent[] }) {
                   score {ev.avg_score?.toFixed(1)}
                 </span>
                 <span className="font-mono text-xs text-muted-foreground">
-                  {(ev.standard_pct ?? 0).toFixed(0)}% std
+                  {(ev.standard_pct ?? 0).toFixed(0)}% correto
                 </span>
                 <span className="font-mono text-xs text-muted-foreground">{ev.hands_count}m</span>
               </div>

@@ -1139,11 +1139,11 @@ function SidePanels({
                 <div className="space-y-1">
                   <label className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">{t("annotation.classification")}</label>
                   <select value={annOverride ?? ""} onChange={(e) => setAnnOverride((e.target.value || null) as CoachOverrideLabel)} className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40">
+                    {/* FEAT-20: veredito do coach em 3 níveis (Erro → clear_mistake interno). */}
                     <option value="">{t("annotation.noVerdict")}</option>
-                    <option value="standard">{t("annotation.overrideStandard")}</option>
-                    <option value="marginal">{t("annotation.overrideMarginal")}</option>
-                    <option value="small_mistake">{t("annotation.overrideSmall")}</option>
-                    <option value="clear_mistake">{t("annotation.overrideClear")}</option>
+                    <option value="standard">{t("card.vCorrect")}</option>
+                    <option value="marginal">{t("card.vAcceptable")}</option>
+                    <option value="clear_mistake">{t("card.vError")}</option>
                   </select>
                 </div>
               </div>

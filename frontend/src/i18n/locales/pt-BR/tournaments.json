@@ -111,6 +111,11 @@
       "openReplayer": "Abrir no replayer",
       "requestAnalysis": "Pedir análise da IA",
       "analyzing": "Analisando…"
+    },
+    "source": {
+      "solver": "Solver",
+      "engine": "Engine",
+      "engineTip": "GTO ainda não calculado — análise pelo engine (equity, M-Ratio, ICM)"
     }
   }
 }

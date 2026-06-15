@@ -7,6 +7,9 @@ import {
   idealActionSource,
   verdictStrategy,
   verdictLevel,
+  verdictLevelOrError,
+  VERDICT_META,
+  VERDICT_LEVELS,
 } from "./cardLogic";
 
 // ── FEAT-20: veredito de display em 3 níveis (Correto/Aceitável/Erro) ──────────
@@ -23,6 +26,29 @@ describe("verdictLevel — colapso 4 severidades → 3 níveis", () => {
   });
   it("normaliza caixa/espaço", () => {
     expect(verdictLevel(" Small_Mistake ")).toBe("error");
+  });
+});
+
+// ── FEAT-20 fase 3: helper compartilhado (TournamentDetail + painel do coach) ────
+describe("verdictLevelOrError + VERDICT_META — fonte única das superfícies", () => {
+  it("verdictLevelOrError mapeia as 4 severidades para 3 níveis", () => {
+    expect(verdictLevelOrError("standard")).toBe("correct");
+    expect(verdictLevelOrError("marginal")).toBe("acceptable");
+    expect(verdictLevelOrError("small_mistake")).toBe("error");
+    expect(verdictLevelOrError("clear_mistake")).toBe("error");
+  });
+  it("verdictLevelOrError clampa o desconhecido/nulo para 'error' (nunca esconde um leak)", () => {
+    expect(verdictLevelOrError(null)).toBe("error");
+    expect(verdictLevelOrError(undefined)).toBe("error");
+    expect(verdictLevelOrError("gto_critical")).toBe("error"); // frequência não é severidade
+  });
+  it("VERDICT_META cobre exatamente os 3 níveis, com chave i18n no namespace common", () => {
+    expect(VERDICT_LEVELS).toEqual(["correct", "acceptable", "error"]);
+    for (const lvl of VERDICT_LEVELS) {
+      expect(VERDICT_META[lvl].i18nKey).toBe(`verdict.${lvl}`);
+      expect(VERDICT_META[lvl].icon).toBeTruthy();
+      expect(VERDICT_META[lvl].chipCls).toContain("ring-1");
+    }
   });
 });
 

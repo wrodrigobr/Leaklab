@@ -11,6 +11,7 @@ import {
 import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
 import { StudentRow } from "@/components/coach/StudentRow";
+import { VerdictTag } from "@/components/VerdictTag";
 import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak, InboxThread, StudentSummary } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
@@ -324,10 +325,8 @@ function AlunosTab() {
 // ── Tab: Atenção Urgente (BACK-003) ───────────────────────────────────────────
 
 const STREETS = ["preflop", "flop", "turn", "river"];
-const LABELS: { value: string; label: string }[] = [
-  { value: "clear_mistake", label: "Erro claro" },
-  { value: "small_mistake", label: "Erro pequeno" },
-];
+// FEAT-20: clear/small colapsam em "Erro" no display, então o filtro por severidade
+// some — a magnitude vira o Score (ordenado). Erros = small_mistake + clear_mistake.
 
 function UrgentTab() {
   const navigate = useNavigate();
@@ -338,15 +337,13 @@ function UrgentTab() {
 
   const [studentFilter, setStudentFilter] = useState<number | undefined>();
   const [streetFilter, setStreetFilter]   = useState<string | undefined>();
-  const [labelFilter, setLabelFilter]     = useState<string | undefined>();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["coach-all-worst", studentFilter, streetFilter, labelFilter],
+    queryKey: ["coach-all-worst", studentFilter, streetFilter],
     queryFn: () => coachDashboard.allWorstDecisions({
       n: 30,
       student_id: studentFilter,
       street: streetFilter,
-      label: labelFilter,
     }),
   });
 
@@ -391,16 +388,6 @@ function UrgentTab() {
             {st}
           </FilterBtn>
         ))}
-
-        <span className="text-border mx-1">|</span>
-
-        {/* Label filter */}
-        <FilterBtn active={!labelFilter} onClick={() => setLabelFilter(undefined)}>Todos erros</FilterBtn>
-        {LABELS.map((l) => (
-          <FilterBtn key={l.value} active={labelFilter === l.value} onClick={() => setLabelFilter(l.value)}>
-            {l.label}
-          </FilterBtn>
-        ))}
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground animate-pulse py-6">Carregando decisões…</p>}
@@ -416,7 +403,7 @@ function UrgentTab() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-background/50">
-                {["Aluno", "Street", "Jogou", "Correto", "Score", "Label", ""].map((h, i) => (
+                {["Aluno", "Street", "Jogou", "Correto", "Score", "Veredito", ""].map((h, i) => (
                   <th key={i} className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
                     {h}
                   </th>
@@ -432,14 +419,7 @@ function UrgentTab() {
                   <td className="px-4 py-2.5 text-xs text-primary font-medium">{formatAction(d.best_action)}</td>
                   <td className={`px-4 py-2.5 font-mono text-xs font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</td>
                   <td className="px-4 py-2.5">
-                    <span className={cn(
-                      "font-mono text-[10px] font-bold px-2 py-0.5 rounded",
-                      d.label === "clear_mistake"
-                        ? "bg-destructive/10 text-destructive ring-1 ring-destructive/30"
-                        : "bg-amber-400/10 text-amber-400 ring-1 ring-amber-400/30"
-                    )}>
-                      {d.label === "clear_mistake" ? "Claro" : "Pequeno"}
-                    </span>
+                    <VerdictTag label={d.label} />
                   </td>
                   <td className="px-4 py-2.5">
                     <button

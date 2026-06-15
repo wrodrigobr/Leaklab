@@ -20,6 +20,27 @@ export function verdictLevel(label: string | null | undefined): VerdictLevel | n
   }
 }
 
+/**
+ * Meta de DISPLAY dos 3 níveis — FONTE ÚNICA de ícone/cor para TODAS as superfícies
+ * (card do replayer, TournamentDetail, views do coach, breakdowns). O texto vem do
+ * i18n `common:verdict.<level>` (Correto/Aceitável/Erro). Mantém a paleta idêntica ao
+ * card: correct=emerald, acceptable=sky, error=red. `i18nKey` = chave no namespace common.
+ */
+export const VERDICT_LEVELS: VerdictLevel[] = ["correct", "acceptable", "error"];
+export const VERDICT_META: Record<VerdictLevel, { icon: string; textCls: string; chipCls: string; i18nKey: string }> = {
+  correct:    { icon: "✓", textCls: "text-emerald-400", chipCls: "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/30", i18nKey: "verdict.correct" },
+  acceptable: { icon: "◎", textCls: "text-sky-400",     chipCls: "bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/30",         i18nKey: "verdict.acceptable" },
+  error:      { icon: "✗", textCls: "text-red-400",     chipCls: "bg-red-500/10 text-red-400 ring-1 ring-red-500/30",         i18nKey: "verdict.error" },
+};
+
+/**
+ * Severidade interna (`label`) → nível de display **clampando** para "error" quando não
+ * classificável mas marcado como erro. Conveniência p/ superfícies que só têm o `label`.
+ */
+export function verdictLevelOrError(label: string | null | undefined): VerdictLevel {
+  return verdictLevel(label) ?? "error";
+}
+
 /** Jogadores ainda no pote = assentos com cartas − foldados (acumulado no step). */
 export function livePlayers(
   seats: Record<string, unknown> | undefined | null,

@@ -5,22 +5,29 @@ interface Props {
   byLabel?: Record<string, number>;
 }
 
+// FEAT-20: breakdown em 3 níveis (Correto/Aceitável/Erro). Erro = small + clear (severidade).
+// Paleta idêntica ao card: correct=emerald, acceptable=sky, error=red.
 const LABEL_COLORS = [
-  { key: "standard",      color: "bg-primary",     text: "text-primary" },
-  { key: "marginal",      color: "bg-yellow-500",   text: "text-yellow-500" },
-  { key: "small_mistake", color: "bg-orange-500",   text: "text-orange-500" },
-  { key: "clear_mistake", color: "bg-destructive",  text: "text-destructive" },
+  { key: "correct",    color: "bg-emerald-400", text: "text-emerald-400" },
+  { key: "acceptable", color: "bg-sky-400",     text: "text-sky-400" },
+  { key: "error",      color: "bg-red-400",     text: "text-red-400" },
 ] as const;
 
 export function DecisionQualityCard({ byLabel }: Props) {
   const { t } = useTranslation("dashboard");
-  const total = Object.values(byLabel ?? {}).reduce((s, n) => s + n, 0);
+  const { t: tc } = useTranslation("common");
+  // colapsa as 4 severidades internas em 3 contagens de display.
+  const by3 = {
+    correct:    byLabel?.standard ?? 0,
+    acceptable: byLabel?.marginal ?? 0,
+    error:      (byLabel?.small_mistake ?? 0) + (byLabel?.clear_mistake ?? 0),
+  };
+  const total = by3.correct + by3.acceptable + by3.error;
 
   const LABELS = [
-    { key: "standard",      label: t("decisions.standard"),      color: "bg-primary",     text: "text-primary" },
-    { key: "marginal",      label: t("decisions.marginal"),       color: "bg-yellow-500",  text: "text-yellow-500" },
-    { key: "small_mistake", label: t("decisions.smallMistake"),   color: "bg-orange-500",  text: "text-orange-500" },
-    { key: "clear_mistake", label: t("decisions.clearMistake"),   color: "bg-destructive", text: "text-destructive" },
+    { key: "correct",    label: tc("verdict.correct"),    color: "bg-emerald-400", text: "text-emerald-400" },
+    { key: "acceptable", label: tc("verdict.acceptable"), color: "bg-sky-400",     text: "text-sky-400" },
+    { key: "error",      label: tc("verdict.error"),      color: "bg-red-400",     text: "text-red-400" },
   ];
 
   return (
@@ -41,7 +48,7 @@ export function DecisionQualityCard({ byLabel }: Props) {
         <>
           <div className="flex h-3 w-full overflow-hidden rounded-full gap-px mb-4">
             {LABEL_COLORS.map(({ key, color }) => {
-              const n = byLabel?.[key] ?? 0;
+              const n = by3[key] ?? 0;
               const pct = total > 0 ? (n / total) * 100 : 0;
               if (pct === 0) return null;
               return (
@@ -57,7 +64,7 @@ export function DecisionQualityCard({ byLabel }: Props) {
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
             {LABELS.map(({ key, label, text }) => {
-              const n = byLabel?.[key] ?? 0;
+              const n = by3[key as keyof typeof by3] ?? 0;
               const pct = total > 0 ? (n / total) * 100 : 0;
               return (
                 <div key={key} className="flex items-center justify-between gap-2">

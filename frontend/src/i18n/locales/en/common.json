@@ -122,5 +122,10 @@
   "messages": {
     "button": "Messages",
     "support": "Support"
+  },
+  "verdict": {
+    "correct": "Correct",
+    "acceptable": "Acceptable",
+    "error": "Error"
   }
 }

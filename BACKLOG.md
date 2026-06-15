@@ -161,7 +161,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 ---
 
-### [FEAT-20] — Colapsar veredito para 3 níveis (Correto / Aceitável / Erro) *(EM ANDAMENTO — Fase 3)*
+### [FEAT-20] — Colapsar veredito para 3 níveis (Correto / Aceitável / Erro) *(EM ANDAMENTO — Fase 4)*
 
 **Valor:** Hoje duas escalas sobrepostas dirigem o display — `gto_label` (frequência: correct/mixed/minor/**critical**) e `label` (severidade EV: standard/marginal/small/clear). A dualidade é a raiz dos bugs card≠badge e do over-flag ("crítico num +0,01bb"). Colapsar **o display** para 3 níveis dirigidos por **severidade (EV)** encerra a dualidade e faz **card = badge por construção**.
 
@@ -172,7 +172,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 **Fases:**
 - **Fase 1 ✅:** fonte única do mapeamento — `leaklab/verdict.py:verdict3(label)` (back) + `cardLogic.verdictLevel(label)` (front, puro+testado). *(commit 73235f4)*
 - **Fase 2 ✅:** card do replayer — ~8 ramificações de veredito → 3, dirigido por `error_label` (severidade); snap do `/replay` torna `error_label` autoritativo (multiway-clear via advisor); `isActionOk` alinhado; barras de frequência viram contexto. i18n PT/EN/ES já presente. Validado no t27 (standard→Correto, marginal→Aceitável, small/clear→Erro, multiway advisor-driven). vitest 25/25, engine 362/362, api 76/76. *(commit aea7701)*
-- **Fase 3:** demais superfícies — `TournamentDetail` (badges), `StudentDetail`/`CoachDashboard`, `DecisionQualityCard` (4→3 fatias), relatório do coach. Ranking de leaks ordena por **bb perdidos**.
+- **Fase 3 ✅:** demais superfícies via fonte única (`verdictLevelOrError` + `VERDICT_META` + `<VerdictTag>`, i18n `common:verdict.*`): `TournamentDetail` (veredito por mão dirigido só pela severidade; frequência GTO vira marcador de FONTE; filtro/stats/leakTag/meta recalculados), `StudentDetail` + `CoachDashboard` (badges + override do coach colapsados em 3; filtro clear/small removido), `DecisionQualityCard` (4→3 fatias), seletor de override do Replayer (3 opções). Ranking de leaks por bb perdidos já existia (`LeakFinderCard`). vitest 28/28, build ok. *(commit pendente)*
 - **Fase 4:** `/docs` (metodologia 4→3 níveis, conceitual) + ajuste de testes (`test_card_invariants`, `cardLogic.test`, adherence).
 
 **NÃO muda:** `label`/`gto_label` armazenados, engine, ELO, ranking — magnitude interna intacta.

@@ -12,7 +12,6 @@ import {
   TrendingDown,
   TrendingUp,
   Filter,
-  Flame,
   Loader2,
   Brain,
   RefreshCw,
@@ -31,8 +30,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { AiText } from "@/components/ui/AiText";
 import { cn, formatAction } from "@/lib/utils";
 import { tournaments, metrics, coachDashboard, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse } from "@/lib/api";
+import { verdictLevelOrError, type VerdictLevel } from "@/lib/cardLogic";
 
-type Severity = "critical" | "major" | "minor" | "ok";
+// FEAT-20: o veredito visível colapsa em 3 níveis dirigidos pela SEVERIDADE (label),
+// a MESMA régua do card do replayer e do badge de aderência. A frequência (gto_label)
+// deixa de ser veredito e vira só um marcador de FONTE (Solver vs Engine).
+type Severity = VerdictLevel;   // "correct" | "acceptable" | "error"
 type Street = "Pré-flop" | "Flop" | "Turn" | "River" | "Outros";
 
 interface Hand {
@@ -99,12 +102,8 @@ function parseBoard(json: string): CardData[] {
   }
 }
 
-function labelToSeverity(label: TournamentDecision["label"]): Severity {
-  if (label === "clear_mistake") return "critical";
-  if (label === "small_mistake") return "major";
-  if (label === "marginal") return "minor";
-  return "ok";
-}
+// standard→correct · marginal→acceptable · small/clear_mistake→error (severidade EV).
+const labelToSeverity = (label: TournamentDecision["label"]): Severity => verdictLevelOrError(label);
 
 function streetDisplay(street: string): Street {
   if (street === "preflop") return "Pré-flop";
@@ -135,11 +134,11 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
     const category = labelToSeverity(worst.label);
     const street = streetDisplay(worst.street);
 
+    // só o draw_profile como tag textual — o veredito (Aceitável/Erro) vem do chip de
+    // severidade, sem vazar o vocabulário de 4 níveis ("small mistake") no texto.
     const leakTag =
-      category !== "ok"
-        ? worst.draw_profile && worst.draw_profile !== "none"
-          ? `${worst.draw_profile.replace(/_/g, " ")} • ${worst.label.replace(/_/g, " ")}`
-          : worst.label.replace(/_/g, " ")
+      category !== "correct" && worst.draw_profile && worst.draw_profile !== "none"
+        ? worst.draw_profile.replace(/_/g, " ")
         : undefined;
 
     const played = formatAction(worst.action_taken);
@@ -159,7 +158,7 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
       action: actionLine,
       category,
       leakTag,
-      evDelta: category !== "ok" ? -Number(worst.score.toFixed(3)) : undefined,
+      evDelta: category !== "correct" ? -Number(worst.score.toFixed(3)) : undefined,
       note: worst.note || undefined,
       stackBb: worst.stack_bb,
       mRatio: worst.m_ratio,
@@ -215,11 +214,12 @@ const TournamentDetail = () => {
   const { t } = useTranslation("tournaments");
   const { t: tc } = useTranslation("common");
 
+  // 3 níveis (FEAT-20). Paleta idêntica ao card do replayer: error=red, acceptable=sky,
+  // correct=emerald. Texto vem do namespace common (`verdict.*`).
   const SEVERITY_META: Record<Severity, { label: string; cls: string; chipCls: string; icon: typeof AlertOctagon }> = {
-    critical: { label: t("detail.severity.critical"), cls: "text-destructive", chipCls: "bg-destructive/10 text-destructive ring-1 ring-destructive/30", icon: AlertOctagon },
-    major:    { label: t("detail.severity.major"),    cls: "text-warning",     chipCls: "bg-warning/10 text-warning ring-1 ring-warning/30",         icon: AlertTriangle },
-    minor:    { label: t("detail.severity.minor"),    cls: "text-muted-foreground", chipCls: "bg-muted/40 text-muted-foreground ring-1 ring-border", icon: Flame },
-    ok:       { label: t("detail.severity.ok"),       cls: "text-primary",     chipCls: "bg-primary/10 text-primary ring-1 ring-primary/30",         icon: CheckCircle2 },
+    error:      { label: tc("verdict.error"),      cls: "text-red-400",     chipCls: "bg-red-500/10 text-red-400 ring-1 ring-red-500/30",            icon: AlertOctagon },
+    acceptable: { label: tc("verdict.acceptable"), cls: "text-sky-400",     chipCls: "bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/30",            icon: AlertTriangle },
+    correct:    { label: tc("verdict.correct"),    cls: "text-emerald-400", chipCls: "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/30", icon: CheckCircle2 },
   };
 
 
@@ -294,14 +294,12 @@ const TournamentDetail = () => {
         if (onlyDiverg && !h.divergent) return false;   // coach mode: só não-aderentes
         if (street !== "all" && h.street !== street) return false;
         if (resultFilter !== "all") {
-          // Usa GTO quando disponível, engine como fallback
-          const isCorrect  = h.gtoLabel ? h.gtoLabel === "gto_correct"
-                           : h.category === "ok";
-          const isAttention = h.gtoLabel ? (h.gtoLabel === "gto_mixed" || h.gtoLabel === "gto_minor_deviation")
-                            : (h.category === "minor");
-          const isError    = h.gtoLabel ? h.gtoLabel === "gto_critical"
-                           : (h.category === "critical" || h.category === "major");
-          const isPending  = h.hasPostflop && !h.gtoLabel;
+          // FEAT-20: filtro dirigido pela SEVERIDADE (mesmo veredito do card), não pela
+          // frequência GTO. "Pendente" segue sendo um estado de FONTE (postflop sem solver).
+          const isCorrect   = h.category === "correct";
+          const isAttention = h.category === "acceptable";
+          const isError     = h.category === "error";
+          const isPending   = h.hasPostflop && !h.gtoLabel;
           if (resultFilter === "correct"   && !isCorrect)   return false;
           if (resultFilter === "attention" && !isAttention) return false;
           if (resultFilter === "error"     && !isError)     return false;
@@ -323,14 +321,8 @@ const TournamentDetail = () => {
 
   const stats = useMemo(() => ({
     total:    hands.length,
-    critical: hands.filter((h) =>
-      h.gtoLabel ? h.gtoLabel === "gto_critical"
-                 : h.category === "critical"
-    ).length,
-    major: hands.filter((h) =>
-      h.gtoLabel ? (h.gtoLabel === "gto_mixed" || h.gtoLabel === "gto_minor_deviation")
-                 : h.category === "major"
-    ).length,
+    critical: hands.filter((h) => h.category === "error").length,       // erros (severidade)
+    major:    hands.filter((h) => h.category === "acceptable").length,  // aceitáveis (atenção)
     evLost:   hands.reduce((s, h) => s + Math.min(0, h.evDelta ?? 0), 0),
   }), [hands]);
 
@@ -459,7 +451,7 @@ const TournamentDetail = () => {
                 {sessionReview.goal.target_standard_pct != null && (
                   <div className="flex items-center gap-1.5 rounded-md bg-background/60 px-2.5 py-1 ring-1 ring-border">
                     <span className="text-muted-foreground">Meta:</span>
-                    <span className="font-medium text-foreground">{sessionReview.goal.target_standard_pct}% standard</span>
+                    <span className="font-medium text-foreground">{sessionReview.goal.target_standard_pct}% {tc("verdict.correct")}</span>
                     {tournament?.standard_pct != null && (
                       <span className={cn(
                         "font-mono text-[10px] font-bold",
@@ -746,8 +738,8 @@ const TournamentDetail = () => {
 
                     <div className="flex flex-col gap-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        {/* Engine badge: só exibe quando não há GTO e há algo a sinalizar */}
-                        {!h.gtoLabel && h.category !== "ok" && (
+                        {/* Veredito (severidade, 3 níveis) — só quando não é Correto */}
+                        {h.category !== "correct" && (
                           <span className={cn("inline-flex items-center gap-1 rounded-sm px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider", meta.chipCls)}>
                             <Icon className="size-3" aria-hidden />
                             {meta.label}
@@ -771,29 +763,22 @@ const TournamentDetail = () => {
                             {tc("status.coach")}
                           </span>
                         )}
+                        {/* Marcador de FONTE (contexto, não veredito): Solver vs Engine. */}
                         {h.gtoLabel ? (
-                          <span className={cn(
-                            "inline-flex items-center gap-1 rounded-sm px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider",
-                            h.gtoLabel === "gto_correct"         && "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-400/30",
-                            h.gtoLabel === "gto_mixed"           && "bg-sky-500/10 text-sky-400 ring-1 ring-sky-400/30",
-                            h.gtoLabel === "gto_minor_deviation" && "bg-amber-500/10 text-amber-400 ring-1 ring-amber-400/30",
-                            h.gtoLabel === "gto_critical"        && "bg-red-500/10 text-red-400 ring-1 ring-red-400/30",
-                          )}
-                          title={h.gtoAction ? `GTO: ${formatAction(h.gtoAction)}` : undefined}
+                          <span
+                            className="inline-flex items-center gap-1 rounded-sm bg-muted/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 ring-1 ring-border/40"
+                            title={h.gtoAction ? `GTO Solver — ${formatAction(h.gtoAction)}` : t("detail.source.solver")}
                           >
                             <Sigma className="size-3" aria-hidden />
-                            {h.gtoLabel === "gto_correct"         && "GTO ✓"}
-                            {h.gtoLabel === "gto_mixed"           && "GTO misto"}
-                            {h.gtoLabel === "gto_minor_deviation" && "GTO ~ok"}
-                            {h.gtoLabel === "gto_critical"        && "GTO erro"}
+                            {t("detail.source.solver")}
                           </span>
                         ) : h.hasPostflop ? (
                           <span
                             className="inline-flex items-center gap-1 rounded-sm bg-muted/30 px-2 py-0.5 font-mono text-[10px] text-muted-foreground/50 ring-1 ring-border/30"
-                            title="GTO ainda não calculado — análise baseada no engine (equity, M-Ratio, ICM)"
+                            title={t("detail.source.engineTip")}
                           >
                             <Clock className="size-3" aria-hidden />
-                            Engine
+                            {t("detail.source.engine")}
                           </span>
                         ) : null}
                         {h.position && h.position !== "—" && (
