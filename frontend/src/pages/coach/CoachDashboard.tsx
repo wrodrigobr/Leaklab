@@ -794,7 +794,6 @@ function ComandoTab() {
   const { data: studentsData } = useQuery({ queryKey: ["coach-students"], queryFn: coachDashboard.students });
   const { data: finance }      = useQuery({ queryKey: ["coach-finance-summary"], queryFn: coachFinance.summary });
   const { data: activity }     = useQuery({ queryKey: ["coach-recent-activity"], queryFn: () => coachDashboard.recentActivity(20) });
-  const { data: cohort }       = useQuery({ queryKey: ["coach-cohort-analytics"], queryFn: coachDashboard.cohortAnalytics });
   const students = studentsData?.students ?? [];
 
   const queue = useMemo(() => {
@@ -880,23 +879,40 @@ function ComandoTab() {
           )}
         </div>
       </div>
-
-      {/* Gráficos da turma (V2-2) */}
-      <CohortCharts data={cohort} />
     </div>
   );
 }
 
-type Tab = "comando" | "alunos" | "urgente" | "leaks" | "financeiro" | "efetividade" | "mensagens";
+// ── Insights — analytics da turma (consolida cohort charts + Efetividade + Leaks) ──
+function InsightsTab() {
+  const { data: cohort } = useQuery({ queryKey: ["coach-cohort-analytics"], queryFn: coachDashboard.cohortAnalytics });
+  return (
+    <div className="space-y-8">
+      <section>
+        <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-3">Analytics da turma</h3>
+        <CohortCharts data={cohort} />
+      </section>
+      <section>
+        <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-1">Efetividade do coaching</h3>
+        <EfetividadeTab />
+      </section>
+      <section>
+        <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-3">Leaks da turma</h3>
+        <LeaksTab />
+      </section>
+    </div>
+  );
+}
 
-const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "comando",      label: "Comando",          icon: Gauge },
-  { id: "alunos",       label: "Alunos",           icon: Users },
-  { id: "urgente",      label: "Atenção Urgente",  icon: AlertTriangle },
-  { id: "leaks",        label: "Leaks Sistêmicos", icon: LayoutDashboard },
-  { id: "efetividade",  label: "Efetividade",      icon: TrendingUp },
-  { id: "financeiro",   label: "Financeiro",       icon: BarChart2 },
-  { id: "mensagens",    label: "Mensagens",         icon: MessageSquare },
+type Tab = "comando" | "alunos" | "insights" | "urgente" | "receita" | "mensagens";
+
+const TABS: { id: Tab; label: string; icon: React.ElementType; hint: string }[] = [
+  { id: "comando",   label: "Comando",   icon: Gauge,          hint: "Fila de ação + vitais" },
+  { id: "alunos",    label: "Alunos",    icon: Users,          hint: "Roster da turma" },
+  { id: "insights",  label: "Insights",  icon: LayoutDashboard, hint: "Analytics + leaks + efetividade" },
+  { id: "urgente",   label: "Atenção",   icon: AlertTriangle,  hint: "Decisões críticas" },
+  { id: "receita",   label: "Receita",   icon: BarChart2,      hint: "Repasse + ativos" },
+  { id: "mensagens", label: "Mensagens", icon: MessageSquare,  hint: "Inbox dos alunos" },
 ];
 
 // ── Mensagens Tab ─────────────────────────────────────────────────────────────
@@ -1058,6 +1074,33 @@ function EfetividadeTab() {
         </div>
       )}
 
+      {/* Δ Standard% por aluno — gráfico de barras divergente */}
+      {students.length > 0 && (() => {
+        const maxAbs = Math.max(1, ...students.map((x) => Math.abs(x.delta)));
+        return (
+          <div className="rounded-xl border border-border bg-hud-surface p-4">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-3">Δ Standard% por aluno</p>
+            <div className="space-y-1.5">
+              {[...students].sort((a, b) => b.delta - a.delta).map((s) => {
+                const pos = s.delta >= 0;
+                const w = Math.min(100, (Math.abs(s.delta) / maxAbs) * 100);
+                return (
+                  <div key={s.student_id} className="flex items-center gap-2">
+                    <span className="w-20 truncate text-xs text-muted-foreground">{s.username}</span>
+                    <div className="flex-1 flex items-center">
+                      <div className="flex-1 flex justify-end">{!pos && <div className="h-2.5 rounded-l bg-red-400" style={{ width: `${w}%` }} />}</div>
+                      <div className="w-px h-3 bg-border/60" />
+                      <div className="flex-1">{pos && <div className="h-2.5 rounded-r bg-emerald-400" style={{ width: `${w}%` }} />}</div>
+                    </div>
+                    <span className={cn("w-14 text-right font-mono text-[11px] font-bold", pos ? "text-emerald-400" : "text-red-400")}>{pos ? "+" : ""}{s.delta.toFixed(1)}pp</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Per-student table */}
       <div className="rounded-xl border border-border overflow-hidden">
         <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-0 border-b border-border bg-muted/30 px-4 py-2">
@@ -1136,6 +1179,25 @@ function FinanceiroTab() {
           </div>
         ))}
       </div>
+
+      {/* Receita no tempo */}
+      {payments.length >= 1 && (() => {
+        const rev = [...payments].sort((a, b) => (a.period || "").localeCompare(b.period || ""));
+        const maxRev = Math.max(1, ...rev.map((r) => r.amount_cents));
+        const pts = rev.map((r, i) => `${(rev.length > 1 ? (i / (rev.length - 1)) * 296 + 2 : 150).toFixed(0)},${(82 - (r.amount_cents / maxRev) * 66).toFixed(0)}`).join(" ");
+        return (
+          <div className="rounded-xl border border-border bg-hud-surface p-4">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground mb-3">Repasse no tempo</p>
+            <svg width="100%" height="92" viewBox="0 0 300 92" preserveAspectRatio="none" className="block">
+              <polyline points={pts} fill="none" stroke="#2DD4BF" strokeWidth="2" />
+              {rev.map((r, i) => <circle key={i} cx={rev.length > 1 ? (i / (rev.length - 1)) * 296 + 2 : 150} cy={82 - (r.amount_cents / maxRev) * 66} r="2.6" fill="#2DD4BF" />)}
+            </svg>
+            <div className="flex items-center justify-between font-mono text-[9px] text-muted-foreground/70 mt-1">
+              <span>{rev[0]?.period}</span><span>{rev[rev.length - 1]?.period}</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Lista de alunos com status */}
       <div className="rounded-xl border border-border bg-hud-surface overflow-hidden">
@@ -1226,76 +1288,77 @@ function FinanceiroTab() {
 export default function CoachDashboard() {
   const [tab, setTab] = useState<Tab>("comando");
 
-  const { data: impact, isLoading: loadingImpact } = useQuery({
-    queryKey: ["coach-impact"],
-    queryFn: () => coachDashboard.impact(30),
-  });
-
   const { data: inboxData } = useQuery({
     queryKey: ["coach-inbox"],
     queryFn: coachDashboard.inbox,
     refetchInterval: 60_000,
   });
+  const { data: studentsData } = useQuery({ queryKey: ["coach-students"], queryFn: coachDashboard.students });
 
   const inboxUnread = (inboxData?.threads ?? []).reduce((s, t) => s + (t.unread_count ?? 0), 0);
-  const summary = impact?.summary;
+  const attentionCount = (studentsData?.students ?? []).filter(needsAttention).length;
+
+  const active = TABS.find((t) => t.id === tab);
 
   return (
     <div className="min-h-dvh bg-background">
       <HudHeader />
-      <main className="mx-auto max-w-[1440px] px-4 py-8 space-y-8 md:px-8">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard do Coach</h1>
-          <p className="text-sm text-muted-foreground mt-1">Acompanhe a evolução dos seus alunos</p>
-        </div>
+      <div className="mx-auto max-w-[1480px] px-4 md:px-6 py-6 md:flex md:gap-6">
+        {/* Sidebar rail (desktop) — navegação de command center */}
+        <aside className="hidden md:flex flex-col w-52 shrink-0 sticky top-6 self-start gap-1">
+          <div className="px-3 pb-3 mb-1 border-b border-border">
+            <p className="font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">Coach</p>
+            <p className="text-sm font-bold text-foreground">Command Center</p>
+          </div>
+          {TABS.map((t) => {
+            const badge = t.id === "mensagens" ? inboxUnread : t.id === "alunos" ? attentionCount : 0;
+            const badgeCls = t.id === "mensagens" ? "bg-destructive text-destructive-foreground" : "bg-amber-400 text-background";
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={cn("group flex items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors",
+                  tab === t.id ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground")}
+              >
+                <t.icon className="size-4 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold leading-tight">{t.label}</p>
+                  <p className="font-mono text-[9px] text-muted-foreground/60 truncate">{t.hint}</p>
+                </div>
+                {badge > 0 && <span className={cn("flex items-center justify-center min-w-[16px] h-4 rounded-full px-1 font-mono text-[9px] font-bold shrink-0", badgeCls)}>{badge > 9 ? "9+" : badge}</span>}
+              </button>
+            );
+          })}
+        </aside>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Alunos"        value={loadingImpact ? "…" : (summary?.total_students ?? 0)}  icon={Users} />
-          <StatCard label="Ativos (30d)"  value={loadingImpact ? "…" : (summary?.active_students ?? 0)} icon={Activity} />
-          <StatCard
-            label="Melhoria Média"
-            value={loadingImpact ? "…" : summary?.avg_improvement_pct != null ? `${summary.avg_improvement_pct.toFixed(1)}%` : "—"}
-            icon={TrendingUp}
-          />
-          <StatCard
-            label="Melhor Aluno"
-            value={loadingImpact ? "…" : (summary?.best_student ?? "—")}
-            icon={Award}
-          />
-        </div>
+        {/* Conteúdo */}
+        <main className="flex-1 min-w-0 space-y-4">
+          {/* Mobile nav (scroll horizontal) */}
+          <div className="md:hidden flex overflow-x-auto border-b border-border scrollbar-none -mx-4 px-4">
+            {TABS.map((t) => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={cn("flex items-center gap-1.5 px-3 py-2.5 font-mono text-[11px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors",
+                  tab === t.id ? "text-primary border-b-2 border-primary -mb-px" : "text-muted-foreground")}>
+                <t.icon className="size-3.5" />{t.label}
+              </button>
+            ))}
+          </div>
+          {/* Cabeçalho da seção (desktop) */}
+          {active && (
+            <div className="hidden md:flex items-baseline gap-3">
+              <h1 className="text-xl font-bold text-foreground">{active.label}</h1>
+              <span className="font-mono text-[11px] text-muted-foreground">{active.hint}</span>
+            </div>
+          )}
 
-        {/* Tabs */}
-        <div className="flex overflow-x-auto overflow-y-hidden border-b border-border gap-0 scrollbar-none">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest-2 transition-colors",
-                tab === t.id
-                  ? "text-primary border-b-2 border-primary -mb-px"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <t.icon className="size-3.5" />
-              {t.label}
-              {t.id === "mensagens" && inboxUnread > 0 && (
-                <span className="flex items-center justify-center min-w-[16px] h-4 rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground px-1">
-                  {inboxUnread > 9 ? "9+" : inboxUnread}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {tab === "comando"      && <ComandoTab />}
-        {tab === "alunos"       && <AlunosTab />}
-        {tab === "urgente"      && <UrgentTab />}
-        {tab === "leaks"        && <LeaksTab />}
-        {tab === "efetividade"  && <EfetividadeTab />}
-        {tab === "financeiro"   && <FinanceiroTab />}
-        {tab === "mensagens"    && <MensagensTab />}
-      </main>
+          {tab === "comando"  && <ComandoTab />}
+          {tab === "alunos"   && <AlunosTab />}
+          {tab === "insights" && <InsightsTab />}
+          {tab === "urgente"  && <UrgentTab />}
+          {tab === "receita"  && <FinanceiroTab />}
+          {tab === "mensagens" && <MensagensTab />}
+        </main>
+      </div>
     </div>
   );
 }

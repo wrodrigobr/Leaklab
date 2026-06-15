@@ -28,12 +28,17 @@ O coach abre e, **em um olhar**, sabe: a **saúde da turma**, **o que fazer agor
 
 ---
 
-## 2. Arquitetura de informação (6 planas → 5 contextuais)
+## 2. Arquitetura de informação — **sidebar rail** (não tabs)
 
-- **Comando** (home) — worklist + vitais + atividade + gráficos-chave.
+> **Navegação implementada como sidebar rail** (desktop: ícone+label+hint+badge por seção; mobile: nav horizontal). Mais moderna/escalável que as tabs do topo.
+
+6 seções:
+
+- **Comando** (home) — worklist (fila de ação) + vitais + atividade. (gráficos foram pro Insights)
 - **Alunos** (roster) — matriz de triagem da turma inteira.
-- **Insights** — Leaks Sistêmicos + Efetividade + analytics da turma (gráficos).
-- **Receita** — Financeiro detalhado (payout, histórico, conversão).
+- **Insights** ✅ — analytics da turma (distribuição/receita/heatmap) + Efetividade (com gráfico Δ divergente) + Leaks sistêmicos, num hub só.
+- **Atenção** — decisões críticas cross-aluno (drill).
+- **Receita** ✅ — Financeiro + gráfico de repasse no tempo.
 - **Mensagens** — inbox.
 
 ---

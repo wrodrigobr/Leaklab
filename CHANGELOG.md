@@ -7,6 +7,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### refactor(coach): navegação em sidebar rail + Insights/Receita — V2 de verdade (não só gráficos)
+
+> Correção de rota após feedback: o V2 anterior tinha ficado incremental (só gráficos no Comando, com as outras funções no formato antigo). Agora o dashboard do coach virou um **command center** de fato:
+> - **Navegação: tabs no topo → sidebar rail** (desktop) — ícone + label + hint por seção, com **badges** (atenção em *Alunos*, não-lidas em *Mensagens*); mobile mantém nav horizontal com scroll. Mais moderno e escalável que as tabs.
+> - **IA consolidada (7 → 6 seções):** **Comando** (worklist focada — gráficos saíram daqui) · **Alunos** (roster) · **Insights** (NOVO — junta *analytics da turma* [distribuição/receita/heatmap] + *Efetividade* + *Leaks sistêmicos*, tudo num hub visual) · **Atenção** · **Receita** (ex-Financeiro, + gráfico de **repasse no tempo**) · **Mensagens**. *Leaks* e *Efetividade* deixaram de ser abas soltas (entraram no Insights).
+> - **Efetividade** ganhou um **gráfico de barras divergente** de Δ Standard% por aluno (verde melhora / vermelho piora) — antes era só tabela.
+> Frontend-only (reusa os endpoints do P1/V2). tsc/build ok.
+
+
 ### feat(coach): Command Center V2-3 + V2-4 — sparklines no roster + hero do aluno
 
 > Fecha o V2 do dashboard do coach. **V2-3 (Roster):** cada aluno ganha um **sparkline de tendência** de score na coluna Tendência (payload `/coach/students` ganhou `score_history` = últimos scores cronológicos, reusando os torneios já buscados) + **realce de linha** para quem "precisa de atenção". **V2-4 (Aluno detalhe):** o header virou um **hero** — avatar + nome + tendência + **sparkline da evolução** + último score destacado; e corrigiu o mesmo bug de escala (score 0-1 pintado com `SCORE_COLOR` 0-100 → sempre vermelho) no cabeçalho. tsc/build ok, score_history validado. *(Cockpit V2: V2-1..V2-4 concluídos.)*
