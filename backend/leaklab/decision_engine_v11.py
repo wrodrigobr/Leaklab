@@ -88,13 +88,17 @@ def _match_strategy_entries(player_action: str, strategy: list) -> list:
     played = _action_family(player_action)
     fams = [(s, _action_family(s.get('action', ''))) for s in strategy]
     exact = [s for s, f in fams if f == played]
-    if exact or played != 'allin':
+    if played != 'allin':
         return exact
-    for fallback in ('raise', 'bet'):
-        hits = [s for s, f in fams if f == fallback]
-        if hits:
-            return hits
-    return []
+    # Um shove É a versão max-size de uma agressão. O "acerto da AÇÃO" é a frequência de
+    # AGREDIR (raise facing bet / bet leading); o tamanho (allin vs sized) é questão de
+    # SIZING, não de ação errada. Então casa com allin explícito + a família raise/bet —
+    # mesmo quando há entrada allin com freq ~0 (antes só casava a allin@0% → gto_critical
+    # indevido; mão 118: trinca dando lead/jam por valor era marcada Desvio Crítico).
+    agg = list(exact)
+    for fam in ('raise', 'bet'):
+        agg += [s for s, f in fams if f == fam]
+    return agg
 
 
 def _gto_action_matches(player_action: str, gto_action: str) -> bool:
