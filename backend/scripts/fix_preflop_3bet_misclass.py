@@ -1,4 +1,10 @@
 """
+⚠️ OBSOLETO (2026-06-15) — NÃO RODE COM --apply. O engine ganhou o cenário `faces_squeeze`
+(ranges GW reais) e agora COBRE corretamente os spots de squeeze/3-bet-cold. Este script
+ainda assume que eles não têm cobertura e os NULLa — o que REMOVE veredito legítimo (38/42
+spots locais). Aplicá-lo já causou regressão uma vez (revertida por
+scripts/revert_squeeze_overnull.py). Mantido só como referência histórica.
+
 Corrige a classificação errada de spots PREFLOP em potes 3-bet/SQUEEZE.
 
 Bug: quando o hero (cold caller / blind) enfrentava um squeeze (open + call + 3-bet),

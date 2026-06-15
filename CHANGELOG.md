@@ -7,15 +7,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
-### chore(revalidação): higiene pré-produção — resync do drift postflop + fix da misclassificação squeeze + auditoria completa
+### chore(revalidação): higiene pré-produção — resync do drift postflop + auditoria completa (squeeze: falso alarme, revertido)
 
-> Antes do launch, rodei a revalidação pré-produção (subsistema `leaklab/revalidation/` + `scripts/revalidate.py`, read-only) sobre toda a base local (11 torneios, 1467 decisões) e fechei o que era seguro fechar:
+> Antes do launch, rodei a revalidação pré-produção (subsistema `leaklab/revalidation/` + `scripts/revalidate.py`, read-only) sobre toda a base local (11 torneios, 1467 decisões):
 > - **resync postflop (`resync_postflop_gto.py --apply`): 21 → 0 drifts.** Reconciliou label/best/gto com a avaliação autoritativa. Destaque: t198 mão 260875771281 flop/bet saiu de **clear_mistake/gto_critical → standard/gto_correct** (um falso "erro grave" que o hero nunca cometeu).
-> - **fix da misclassificação squeeze/3-bet (`fix_preflop_3bet_misclass.py --apply`): 38 decisões.** Spots de 3-bet/squeeze enfrentados "a frio" eram tratados como vs_RFI e serviam um veredito GTO de range errada → agora `gto_label`/`gto_action` = NULL (sem cobertura honesta). Padrão `faces_3bet_leftover` caiu **42 → 4**.
 > - **Auditoria limpa nas classes perigosas:** impossible_raise, duplicate_decisions, label_gto_conflict, postflop_raise_no_bet, missing_hero_cards, vs_position_null_facing = **0**. Distribuição: aligned 80,8%, acceptable_alt 9,1%, minor 1,8%, **major_mismatch 1,0% (15)**.
-> - **15 major_mismatch adjudicados pelo LLM judge (Haiku 4.5):** veredito ~50/50, raciocínio genérico — o judge decide só por street/posição, SEM as cartas → não consegue cravar. Confirma que são **spots marginais ambíguos** (fold GTO estrito marcado `gto_critical` vs call justificado por pot odds), não bugs claros. Coerente com a motivação do FEAT-20 (gto_critical às vezes severo demais em marginais).
-> - **⚠️ GAP de durabilidade:** o fix squeeze é um patch de DADO — o **engine ainda recomputa o gto errado** para squeeze-cold (drift do relatório subiu 4 → 43 = os 38 NULLed com stored≠fresh). Produção serve o STORED (agora honesto), então o produto está correto; mas **NÃO rodar `reanalyze_all_labels` até existir o guard no engine** (`analyze_preflop`: faces 3-bet/squeeze a frio sem range vs_3bet → no-coverage), senão re-introduz o veredito errado. Registrado no backlog.
-> Relatório completo: `backend/reports/preprod_audit/revalidation_run_unsaved.md`. Resíduos não-bug: 4 stale gto→NULL preflop (t388 BB, GAP sem ferramenta genérica), gto_critical_fold 43 (folds de spots +EV — leaks legítimos), pko_classic_ranges 78 (aproximação documentada).
+> - **15 major_mismatch adjudicados pelo LLM judge (Haiku 4.5):** veredito ~50/50, raciocínio genérico — o judge decide só por street/posição, SEM as cartas → não crava. São **spots marginais ambíguos** (fold GTO estrito marcado `gto_critical` vs call justificado por pot odds), não bugs. Coerente com a motivação do FEAT-20.
+>
+> **⚠️ Correção de rota (squeeze/3-bet): foi falso alarme.** O padrão `faces_3bet_leftover` (42) e o script `fix_preflop_3bet_misclass.py` são **OBSOLETOS** — o engine ganhou o cenário `faces_squeeze` (ranges GW reais) e **já cobre corretamente 38 dos 42** spots de squeeze/3-bet-cold (36 `correct` + 2 `gto_minor_deviation`); só 4 não têm cobertura (NULL honesto). Eu cheguei a aplicar o `fix_...` (NULLou os 38) — **regressão**: removeu veredito legítimo e o drift subiu 4→43 (stored NULL × engine correto). **Revertido** via `scripts/revert_squeeze_overnull.py --apply` (re-sincroniza os 42 com o `evaluate_decision` autoritativo: 38 gto restaurado, 4 NULL). Engine NÃO precisa de guard — já está certo. O padrão foi rebaixado a `caveat` e o script obsoleto marcado "NÃO RODAR".
+> Resíduos não-bug: 4 stale gto→NULL preflop (t388 BB, GAP sem ferramenta), gto_critical_fold 43 (folds de spots +EV — leaks legítimos), pko_classic_ranges 78 (aproximação documentada). Relatório local: `reports/preprod_audit/` (gitignored).
 
 ### chore(gto): tentativa de SOLVAR os 18 gaps postflop HU (cap 60bb) — inviável com a infra atual
 

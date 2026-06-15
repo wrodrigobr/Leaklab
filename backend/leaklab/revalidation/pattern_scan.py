@@ -39,8 +39,11 @@ class PatternFinding:
 # Cada check: (key, title, severity, remediation, WHERE-extra sobre `d`).
 # A condição assume FROM decisions d JOIN tournaments t ON t.id=d.tournament_id.
 _CHECKS = [
-    ("faces_3bet_leftover", "Squeeze/3-bet enfrentado a frio ainda com gto_label",
-     "high", "fix_preflop_3bet_misclass.py --apply",
+    # FALSO POSITIVO desde que o engine ganhou o cenário `faces_squeeze` (ranges GW reais):
+    # squeeze/3-bet-cold com gto_label é ESPERADO (coberto), não bug. O `fix_preflop_3bet_misclass.py`
+    # está OBSOLETO — NÃO aplicar (over-NULLa cobertura legítima; ver CHANGELOG 2026-06-15).
+    ("faces_3bet_leftover", "Squeeze/3-bet a frio com gto_label — ESPERADO (coberto por faces_squeeze)",
+     "caveat", "nenhuma — coberto por faces_squeeze; fix_preflop_3bet_misclass OBSOLETO (não aplicar)",
      "d.street='preflop' AND COALESCE(d.preflop_raises_faced,0) >= 2 "
      "AND COALESCE(d.is_3bet,0) = 0 AND d.gto_label IS NOT NULL AND d.gto_label != ''"),
 
