@@ -104,8 +104,9 @@ adicionar `referred_count` e `next_tier` (faixa seguinte + quantos faltam — de
 - **P1b ✅:** `critical_pending` (small/clear sem anotação do coach) + `unread` no payload (`get_students_attention_signals`,
   2 queries agregadas) + badges ⚠/✉ na linha + filtro **⚠ Atenção (N)** (crítica pendente OU não-lida OU última sessão = Erro).
 - **P2 ✅:** feed cross-aluno de torneios — `GET /coach/recent-activity` (`get_coach_recent_activity`, 1 query: torneios de todos os alunos ordenados por import, com score + n_critical) + card "Atividade recente" na sidebar da aba Alunos (clica → torneio do aluno).
-- **P3 — paridade da aba Torneios do aluno:** dar à aba Torneios do `StudentDetail` a riqueza da
-  `Tournaments.tsx` do jogador (busca/filtro por sala/sort/stats/badges).
+- **P3 ✅:** aba Torneios do `StudentDetail` com paridade — stats strip (eventos/investido/lucro/ROI),
+  busca + filtro por sala + ordenação (data/score/lucro), badges (Revisado/Pendente). Corrigiu bug latente:
+  o score de torneio (0-1) era pintado com `SCORE_COLOR` (0-100) → tudo vermelho; agora usa `verdictLevelFromScore`.
 
 **Esforço:** P1a ~6h · P1b ~6h · P2 ~6h · P3 ~8h.
 

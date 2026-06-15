@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Trophy, AlertTriangle, BookOpen, LayoutDashboard,
   ChevronRight, Play, TrendingUp, TrendingDown, Minus,
   CheckCircle2, MessageSquare, PenLine, Trash2, X, Check, Loader2,
-  Activity, Flag, Star, BarChart2, Save, Send, FileText
+  Activity, Flag, Star, BarChart2, Save, Send, FileText, Search, Clock
 } from "lucide-react";
+import { verdictLevelFromScore, VERDICT_META } from "@/lib/cardLogic";
 import { HudHeader } from "@/components/hud/HudHeader";
-import { formatAction } from "@/lib/utils";
+import { formatAction, cn } from "@/lib/utils";
 import { PlayingCard } from "@/components/hud/PlayingCard";
 import { LevelCard } from "@/components/hud/LevelCard";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
@@ -24,6 +25,11 @@ import { VerdictTag } from "@/components/VerdictTag";
 
 const SCORE_COLOR = (s: number) =>
   s >= 80 ? "text-primary" : s >= 60 ? "text-amber-400" : "text-destructive";
+
+// score de TORNEIO (avg_score 0-1, menor = melhor) → cor do veredito de 3 níveis (FEAT-20).
+// NÃO usar SCORE_COLOR aqui (espera 0-100, pintava tudo de vermelho).
+const tScoreCls = (s: number | null | undefined): string =>
+  s == null ? "text-muted-foreground" : VERDICT_META[verdictLevelFromScore(s)].textCls;
 
 
 // ── tabs ──────────────────────────────────────────────────────────────────────
@@ -270,9 +276,42 @@ function TournamentsTab({ studentId }: { studentId: number }) {
 
   const navigate = useNavigate();
 
-  if (isLoading) return <p className="text-sm text-muted-foreground animate-pulse py-8">Carregando…</p>;
+  // P3 — paridade com a lista de torneios do jogador: busca, filtro de sala, ordenação, stats.
+  const [q, setQ]             = useState("");
+  const [network, setNetwork] = useState("all");
+  const [sort, setSort]       = useState<"date" | "score" | "profit">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const tournaments = history?.tournaments ?? [];
+  const networks = useMemo(
+    () => Array.from(new Set(tournaments.map((t) => t.site))).sort(),
+    [tournaments],
+  );
+  const filtered = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return tournaments
+      .filter((t) => {
+        if (network !== "all" && t.site !== network) return false;
+        if (q) {
+          const s = q.toLowerCase();
+          return (t.tournament_name ?? "").toLowerCase().includes(s) || String(t.tournament_id).toLowerCase().includes(s);
+        }
+        return true;
+      })
+      .slice()
+      .sort((a, b) => {
+        if (sort === "date") return ((a.imported_at || a.played_at || "").localeCompare(b.imported_at || b.played_at || "")) * dir;
+        if (sort === "score") return ((a.avg_score ?? 0) - (b.avg_score ?? 0)) * dir;
+        return ((a.profit ?? 0) - (b.profit ?? 0)) * dir;
+      });
+  }, [tournaments, q, network, sort, sortDir]);
+  const totals = useMemo(() => {
+    const pnl = tournaments.reduce((s, t) => s + (t.profit ?? 0), 0);
+    const inv = tournaments.reduce((s, t) => s + (t.buy_in ?? 0), 0);
+    return { count: tournaments.length, inv, pnl, roi: inv > 0 ? (pnl / inv) * 100 : 0 };
+  }, [tournaments]);
+
+  if (isLoading) return <p className="text-sm text-muted-foreground animate-pulse py-8">Carregando…</p>;
 
   if (selectedTid && detail) {
     const t = detail.tournament;
@@ -293,10 +332,10 @@ function TournamentsTab({ studentId }: { studentId: number }) {
               <p className="text-lg font-bold text-foreground">{t.tournament_name ?? t.site}</p>
             </div>
             <div className="text-right">
-              <p className={`text-2xl font-bold ${SCORE_COLOR(t.avg_score ?? 0)}`}>
-                {t.avg_score?.toFixed(1) ?? "—"} pts
+              <p className={cn("text-2xl font-bold", tScoreCls(t.avg_score))}>
+                {t.avg_score != null ? t.avg_score.toFixed(3) : "—"}
               </p>
-              <p className="font-mono text-[10px] text-muted-foreground">{t.hands_count} mãos</p>
+              <p className="font-mono text-[10px] text-muted-foreground">score · {t.hands_count} mãos</p>
             </div>
           </div>
         </div>
@@ -339,11 +378,50 @@ function TournamentsTab({ studentId }: { studentId: number }) {
   }
 
   return (
-    <div className="space-y-2">
-      {tournaments.length === 0 && (
+    <div className="space-y-3">
+      {/* Stats strip (paridade com a lista do jogador) */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-4">
+        {[
+          { label: "Eventos", value: String(totals.count) },
+          { label: "Investido", value: `$${totals.inv.toLocaleString()}` },
+          { label: "Lucro", value: `${totals.pnl >= 0 ? "+" : ""}$${totals.pnl.toLocaleString()}`, accent: totals.pnl >= 0 ? "text-primary" : "text-destructive" },
+          { label: "ROI", value: `${totals.roi >= 0 ? "+" : ""}${totals.roi.toFixed(1)}%`, accent: totals.roi >= 0 ? "text-primary" : "text-destructive" },
+        ].map((s, i) => (
+          <div key={i} className="bg-hud-surface p-4">
+            <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground mb-1.5">{s.label}</div>
+            <div className={cn("font-mono text-xl font-light tabular-nums", s.accent ?? "text-foreground")}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Toolbar: busca + sala + ordenação */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 flex-1 min-w-[160px]">
+          <Search className="size-3.5 text-muted-foreground shrink-0" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar torneio…"
+            className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none" />
+        </div>
+        {["all", ...networks].map((n) => (
+          <button key={n} onClick={() => setNetwork(n)}
+            className={cn("rounded-md px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
+              network === n ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "border border-border text-muted-foreground hover:text-foreground")}>
+            {n === "all" ? "Todas" : n}
+          </button>
+        ))}
+        <span className="mx-1 text-border">|</span>
+        {(["date", "score", "profit"] as const).map((k) => (
+          <button key={k} onClick={() => { if (sort === k) setSortDir((d) => d === "asc" ? "desc" : "asc"); else { setSort(k); setSortDir("desc"); } }}
+            className={cn("rounded-md px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
+              sort === k ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "border border-border text-muted-foreground hover:text-foreground")}>
+            {k === "date" ? "Data" : k === "score" ? "Score" : "Lucro"}{sort === k ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
         <p className="text-sm text-muted-foreground py-8 text-center">Nenhum torneio encontrado.</p>
       )}
-      {tournaments.map((t) => (
+      {filtered.map((t) => (
         <button
           key={t.id}
           onClick={() => navigate(`/tournaments/${t.tournament_id}?student=${studentId}`)}
@@ -352,19 +430,25 @@ function TournamentsTab({ studentId }: { studentId: number }) {
           <div className="flex items-center gap-3 min-w-0">
             <SiteLogo site={t.site} size={20} />
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <p className="text-sm font-medium text-foreground truncate">{t.tournament_name ?? t.site}</p>
                 <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">{tourBadge(t.tournament_name ?? "")}</span>
+                {t.coach_reviewed && (
+                  <span className="inline-flex items-center gap-0.5 rounded-sm bg-violet-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-violet-400 ring-1 ring-violet-400/30"><CheckCircle2 className="size-2.5" />Revisado</span>
+                )}
+                {t.avg_score == null && (
+                  <span className="inline-flex items-center gap-0.5 rounded-sm bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-400/30"><Clock className="size-2.5" />Pendente</span>
+                )}
               </div>
               <p className="font-mono text-[10px] text-muted-foreground">{t.site} • {t.tournament_id} · {t.hands_count} mãos · {t.decisions_count} decisões</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className={`font-mono text-lg font-bold ${SCORE_COLOR(t.avg_score ?? 0)}`}>
-                {t.avg_score?.toFixed(1) ?? "—"}
+              <p className={cn("font-mono text-lg font-bold", tScoreCls(t.avg_score))}>
+                {t.avg_score != null ? t.avg_score.toFixed(3) : "—"}
               </p>
-              <p className="font-mono text-[9px] text-muted-foreground">pts</p>
+              <p className="font-mono text-[9px] text-muted-foreground">score</p>
             </div>
             {t.profit != null && (
               <div className="text-right">

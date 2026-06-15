@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(coach): cockpit P3 — aba Torneios do aluno com paridade ao do jogador
+
+> Fecha o cockpit. A aba **Torneios** do `StudentDetail` ganhou a riqueza que só a `Tournaments.tsx` do jogador tinha: **stats strip** (Eventos · Investido · Lucro · ROI), **busca** por nome/id, **filtro por sala** e **ordenação** (data/score/lucro), além de **badges** (Revisado pelo coach · Pendente quando sem score). **Bug latente corrigido:** o score do torneio (`avg_score`, escala 0-1 menor=melhor) era pintado com `SCORE_COLOR` (que espera 0-100) → aparecia **sempre vermelho**; agora usa `verdictLevelFromScore` (verde/sky/vermelho correto) tanto na lista quanto no cabeçalho do detalhe. Frontend-only. tsc/build ok. *(Cockpit do coach: P1a/P1b/P2/P3 concluídos.)*
+
 ### feat(coach): cockpit P2 — feed cross-aluno de torneios recentes
 
 > Fecha o "o que meus alunos jogaram esta semana?" sem entrar aluno por aluno. Novo card **Atividade recente** na sidebar da aba Alunos: lista os torneios mais recentes de **todos** os alunos do coach (aluno · torneio · data · **score** colorido · **⚠ N críticas**), cada item clicável → abre o torneio do aluno (`/tournaments/{id}?student=`). **Backend:** `GET /coach/recent-activity?limit=` → `get_coach_recent_activity(coach_id, limit)` — **1 query** (torneios dos alunos JOIN users, ordenados por `imported_at DESC`, com subquery de `n_critical`). tsc/build ok, coach_system 20/20. Validado (feed dos alunos aluno/phpro ordenado por import).
