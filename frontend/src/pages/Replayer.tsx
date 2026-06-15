@@ -13,7 +13,7 @@ import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
-import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy } from "@/lib/cardLogic";
+import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel } from "@/lib/cardLogic";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
@@ -180,74 +180,36 @@ function SidePanels({
                borderCls: "border-border", hdrCls: "bg-hud-surface",
                source: "Preflop", sourceTooltip: t("card.tipNoCoverage") };
     }
-    // Fallback MULTIWAY: o solver é HU; em pote 3-way+ o veredito vem de uma estimativa
-    // independente (equity vs range de continuação + pot odds). Tem prioridade sobre o
-    // nó HU (que o backend já zerou quando há multiway_advice).
-    if (step.multiway_advice) {
-      const tip = t("card.tipMultiwayEstimate");
-      const _pl = (step.action ?? '').toLowerCase().replace(/s$/, '');
-      const _adv = step.multiway_advice.action;
-      const ok = _pl === _adv || _pl.startsWith(_adv) || _adv.startsWith(_pl);
-      return ok
-        ? { icon: "✓", label: t("card.vCorrect"), cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: t("card.srcMultiway"), sourceTooltip: tip }
-        : { icon: "⚠", label: t("card.vLeak"),    cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: t("card.srcMultiway"), sourceTooltip: tip };
-    }
-    // Multiway onde o advisor DEFERIU (decisão próxima): sem solver HU confiável, o veredito
-    // vem da SEVERIDADE do engine (EV-capada) — não do gto_label de frequência HU (que diria
-    // 'crítico' num spot que o coach aprova). Mantém card = badge de aderência.
-    if (isMultiwayStep && !step.multiway_advice) {
-      const tip = t("card.srcEngineTip");
-      const sev = step.error_label;
-      if (sev === "clear_mistake") return { icon: "✗", label: t("card.vError"),   cls: "text-destructive", borderCls: "border-destructive/40", hdrCls: "bg-destructive/5", source: "Engine", sourceTooltip: tip };
-      if (sev === "small_mistake") return { icon: "⚠", label: t("card.vLeak"),    cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Engine", sourceTooltip: tip };
-      return { icon: "✓", label: t("card.vCorrect"), cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Engine", sourceTooltip: tip };
-    }
-    // Call-vs-shove heurístico: veredito por pot odds (equity × necessária),
-    // não pelo range de abertura nem por um gto_label armazenado stale.
-    if (isShoveFb && _fbActionOk != null) {
-      const tip = t("card.srcHeuristicTip");
-      return _fbActionOk
-        ? { icon: "✓", label: t("card.vCorrect"),  cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: t("card.srcHeuristic"), sourceTooltip: tip }
-        : { icon: "⚠", label: t("card.vLeak"),     cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: t("card.srcHeuristic"), sourceTooltip: tip };
-    }
-    if (effectiveGtoLabel) {
-      const gtoTooltip = t("card.tipGtoSolver");
-      const m: Record<string, VInfo> = {
-        gto_correct:         { icon: "✓", label: t("card.vCorrect"),     cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Solver", sourceTooltip: gtoTooltip },
-        gto_mixed:           { icon: "◎", label: t("card.vMixed"),       cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "Solver", sourceTooltip: gtoTooltip },
-        gto_minor_deviation: { icon: "⚠", label: t("card.vMinorDev"),    cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Solver", sourceTooltip: gtoTooltip },
-        gto_critical:        { icon: "✗", label: t("card.vCriticalDev"), cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "Solver", sourceTooltip: gtoTooltip },
-      };
-      if (m[effectiveGtoLabel]) return m[effectiveGtoLabel];
-    }
-    if (!isPostflop && pg?.available) {
-      const rangeTooltip = t("card.tipRange");
-      const m: Record<string, VInfo> = {
-        correct:    { icon: "✓", label: t("card.vCorrect"),    cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: "Preflop", sourceTooltip: rangeTooltip },
-        acceptable: { icon: "◎", label: t("card.vAcceptable"), cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: "Preflop", sourceTooltip: rangeTooltip },
-        leak:       { icon: "⚠", label: t("card.vLeak"),       cls: "text-amber-400",   borderCls: "border-amber-500/30",   hdrCls: "bg-amber-500/8",   source: "Preflop", sourceTooltip: rangeTooltip },
-        major_leak: { icon: "✗", label: t("card.vMajorLeak"),  cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: "Preflop", sourceTooltip: rangeTooltip },
-        unknown:    { icon: "·", label: t("card.vNoData"),     cls: "text-muted-foreground", borderCls: "border-border",   hdrCls: "bg-hud-surface",   source: "Preflop", sourceTooltip: rangeTooltip },
-      };
-      return m[pg.action_quality] ?? m.unknown;
-    }
-    const engineTooltip = t("card.tipEngine");
-    if (isError) return { icon: "✗", label: t("card.vError"), cls: "text-destructive", borderCls: "border-destructive/40", hdrCls: "bg-destructive/5", source: "Engine", sourceTooltip: engineTooltip };
-    if (isCorrect || step.hand_equity != null || step.pot_odds_equity != null)
-      return { icon: "✓", label: t("card.vCorrect"), cls: "text-primary", borderCls: "border-primary/30", hdrCls: "bg-primary/5", source: "Engine", sourceTooltip: engineTooltip };
-    return null;
+    // ── FEAT-20: VEREDITO DE 3 NÍVEIS (Correto / Aceitável / Erro) ──────────────
+    // Dirigido pela SEVERIDADE (error_label, EV-capada) — a MESMA régua do badge de
+    // aderência → card = badge por construção. A frequência (gto_label) deixou de ser
+    // veredito; vive só nas barras de estratégia (contexto). Fonte = só p/ o tooltip.
+    const _src: { name: string; tip: string } =
+        step.multiway_advice          ? { name: t("card.srcMultiway"),  tip: t("card.tipMultiwayEstimate") }
+      : isMultiwayStep                 ? { name: "Engine",               tip: t("card.srcEngineTip") }
+      : isShoveFb                      ? { name: t("card.srcHeuristic"), tip: t("card.srcHeuristicTip") }
+      : effectiveGtoLabel              ? { name: "Solver",               tip: t("card.tipGtoSolver") }
+      : (!isPostflop && pg?.available) ? { name: "Preflop",              tip: t("card.tipRange") }
+      :                                  { name: "Engine",               tip: t("card.tipEngine") };
+    const _hasBasis = isError || !!step.error_label || hasGto || !!pg?.available
+      || step.multiway_advice != null || step.hand_equity != null || step.pot_odds_equity != null;
+    if (!_hasBasis) return null;
+    const _lvl: "correct" | "acceptable" | "error" =
+        verdictLevel(step.error_label) ?? (isError ? "error" : "correct");
+    const _M: Record<"correct" | "acceptable" | "error", VInfo> = {
+      correct:    { icon: "✓", label: t("card.vCorrect"),    cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: _src.name, sourceTooltip: _src.tip },
+      acceptable: { icon: "◎", label: t("card.vAcceptable"), cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: _src.name, sourceTooltip: _src.tip },
+      error:      { icon: "✗", label: t("card.vError"),      cls: "text-red-400",     borderCls: "border-red-500/30",     hdrCls: "bg-red-500/8",     source: _src.name, sourceTooltip: _src.tip },
+    };
+    return _M[_lvl];
   })();
   const showDecision = !!verdict && (studentId !== null || coachAnnotation?.mode !== "replace");
 
-  // Action comparison (playedAction already computed above)
-  // gto_minor_deviation (10-30%) = ação válida na estratégia mista do solver — não é erro
-  const isActionOk = isShoveFb
-    ? (_fbActionOk ?? false)
-    : effectiveGtoLabel
-    ? (effectiveGtoLabel === "gto_correct" || effectiveGtoLabel === "gto_mixed" || effectiveGtoLabel === "gto_minor_deviation")
-    : (!isPostflop && pg?.available
-        ? (pg.action_quality === "correct" || pg.action_quality === "acceptable")
-        : isCorrect);
+  // Action comparison (playedAction already computed above) — FEAT-20: "ação ok" =
+  // veredito NÃO-Erro (mesma severidade que dirige o card). Consistente com o badge.
+  const isActionOk = verdictLevel(step.error_label) != null
+    ? verdictLevel(step.error_label) !== "error"
+    : (isShoveFb ? (_fbActionOk ?? false) : !isError);
   // idealAction: use live top action when available (overrides stored gto_action which may be stale)
   const liveTopAction = verdictStrat.length > 0 ? verdictStrat[0].action : null;
   // Fonte da "ação recomendada" por prioridade (idealActionSource, testável). Preflop

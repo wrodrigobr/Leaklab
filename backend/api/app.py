@@ -4794,7 +4794,12 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             'is_hero':            action.player == hero,
             'gto_coverage':       gto_coverage,   # covered|multiway|deep|ip_facing_bet|no_villain|pending
             'is_error':           is_error,
-            'error_label':        decision.get('label')                             if decision else None,
+            # FEAT-20: severidade que dirige o veredito de 3 níveis do card. Em multiway-clear
+            # o advisor é AUTORITATIVO (sobrepõe o label HU do engine, válido ou não): leak →
+            # small_mistake (Erro), senão standard (Correto). Fora dele, a label do engine.
+            # Mantém card = badge de aderência em todo spot.
+            'error_label':        (('small_mistake' if is_error else 'standard') if multiway_advice
+                                   else (decision.get('label') if decision else None)),
             'error_score':        round(float(decision.get('score', 0)), 3)         if decision else None,
             'best_action':        reconciled_best                                    if decision else None,
             'engine_best':        engine_best if (gto_engine_conflict or gto_spot_mismatch) else None,
