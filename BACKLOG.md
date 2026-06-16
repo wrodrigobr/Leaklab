@@ -109,7 +109,7 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 - **Conciliação coach:** `coach_payments` (repasse) bate com os pagamentos reais dos alunos pro.
 - Entregar com testes (estender `tests/test_subscription.py`) + checklist de smoke manual no Stripe Dashboard.
 
-### [COACH-02] — Coach como aluno + Pro de cortesia (3 meses) + meta de 15 pagantes *(criado 2026-06-16 · P1+P2 ✅ 2026-06-16)*
+### [COACH-02] — Coach como aluno + Pro de cortesia (3 meses) + meta de 15 pagantes ✅ COMPLETO 2026-06-16 (P1+P2+P3)
 
 **Plano completo:** [`specs/coach-onboarding-trial.md`](specs/coach-onboarding-trial.md). **P1 (backend) ENTREGUE:** colunas `plan_source`+`coach_trial_ends_at`, trial na aprovação, `maybe_promote_coach_earned` (engatado em approve_link_request + Stripe), job `expire_coach_trials`, `GET /coach/trial-status`, MRR exclui perk, `test_coach_trial` 9/9. **P2 (frontend) ENTREGUE:** routing aberto p/ coach (dual-role), switch de workspace Coach⇄Minha conta no header, upload liberado, banner de trial no cockpit. **Falta P3** (aviso de fim de trial in-app/e-mail, docs, i18n, backfill de coaches legados).
 

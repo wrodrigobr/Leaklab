@@ -293,7 +293,10 @@
     "override_meaning": "The coach replaced the AI-generated study plan with a custom one",
     "effectiveness_meaning": "Median Standard% improvement for students in the first 60 days of coaching",
     "p2": "<strong>Coach effectiveness</strong> measures the improvement in students' Standard% since the coaching began. Coaches with 3 or more students under coaching receive a verified public badge in the directory.",
-    "term_override": "Plan Override"
+    "term_override": "Plan Override",
+    "plan_title": "Your plan as a coach",
+    "plan_p1": "When you are approved, you get a <strong>3-month complimentary Pro plan</strong> and, on top of your coach panel, full student features (hand upload, training, analysis). Use the <strong>Coach ⇄ My account</strong> switch at the top to move between the two views.",
+    "plan_p2": "To <strong>keep Pro</strong> after the complimentary period, you must reach <strong>15 referred, paying students</strong>. Hit the goal and Pro becomes permanent. Otherwise, your plan reverts to Free at the end of the 3 months — and you keep earning your <strong>per-paying-student commission</strong> as usual."
   },
   "gamification": {
     "title": "Gamification",

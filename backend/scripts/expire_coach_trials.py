@@ -21,7 +21,7 @@ import argparse
 sys.path.insert(0, ".")
 
 from database.schema import init_db, get_conn
-from database.repositories import expire_coach_trials, _adapt, _now_str
+from database.repositories import expire_coach_trials, notify_expiring_coach_trials, _adapt, _now_str
 
 
 def _preview():
@@ -60,6 +60,10 @@ def main():
         print("DRY-RUN (nada alterado)")
         return
 
+    # P3: avisa antes (trial acabando em ≤7d) e depois consolida os vencidos.
+    notif = notify_expiring_coach_trials(days_window=7)
+    if notif['notified']:
+        print(f"Avisos de trial acabando: {len(notif['notified'])} → {notif['notified']}")
     res = expire_coach_trials()
     print(f"Verificados: {res['checked']} | promovidos (earned): {len(res['promoted'])} "
           f"| downgrade: {len(res['downgraded'])}")

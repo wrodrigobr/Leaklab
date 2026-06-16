@@ -293,7 +293,10 @@
     "override_meaning": "El coach reemplazó el plan de estudios generado por IA por uno personalizado",
     "effectiveness_meaning": "Mejora mediana de Standard% de los alumnos en los primeros 60 días de coaching",
     "p2": "La <strong>efectividad del coach</strong> mide la mejora en el Standard% de los alumnos desde el inicio del acompañamiento. Los coaches con 3 o más alumnos acompañados reciben un sello público verificado en el directorio.",
-    "term_override": "Override de Plan"
+    "term_override": "Override de Plan",
+    "plan_title": "Tu plan como coach",
+    "plan_p1": "Al ser aprobado, recibes <strong>3 meses de plan Pro de cortesía</strong> y, además de tu panel de coach, todas las funciones de alumno (subida de manos, entrenamiento, análisis). Usa el selector <strong>Coach ⇄ Mi cuenta</strong> en la parte superior para alternar entre ambas vistas.",
+    "plan_p2": "Para <strong>mantener el Pro</strong> tras el período de cortesía, debes alcanzar <strong>15 alumnos referidos y de pago</strong>. Si logras la meta, el Pro pasa a ser permanente. De lo contrario, tu plan vuelve a Free al terminar los 3 meses — y sigues recibiendo tu <strong>comisión por alumno de pago</strong> con normalidad."
   },
   "gamification": {
     "title": "Gamificación",

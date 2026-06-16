@@ -186,6 +186,58 @@ def test_mrr_excludes_coach_perk():
     print("OK  test_mrr_excludes_coach_perk")
 
 
+def _set_trial_end_days(coach_id, days):
+    import datetime
+    when = (datetime.datetime.utcnow() + datetime.timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    _set_trial_end(coach_id, when)
+
+
+def test_notify_expiring_trial():
+    _clean()
+    cid = _approve_new_coach()
+    _make_paying_referred(cid, 3)           # < 15 → será avisado
+    _set_trial_end_days(cid, 5)             # acaba em 5 dias (dentro da janela de 7)
+    res = repo.notify_expiring_coach_trials(days_window=7)
+    assert cid in res['notified']
+    notifs = repo.get_notifications(cid)
+    assert any(n['type'] == 'coach_trial_ending' for n in notifs)
+    # idempotente: 2ª passada não cria de novo
+    res2 = repo.notify_expiring_coach_trials(days_window=7)
+    assert cid not in res2['notified']
+    print("OK  test_notify_expiring_trial")
+
+
+def test_notify_skips_far_and_met_target():
+    _clean()
+    far = _approve_new_coach('far'); _set_trial_end_days(far, 20)      # fora da janela
+    met = _approve_new_coach('met'); _make_paying_referred(met, 15); _set_trial_end_days(met, 3)  # já bateu a meta
+    res = repo.notify_expiring_coach_trials(days_window=7)
+    assert far not in res['notified'] and met not in res['notified']
+    print("OK  test_notify_skips_far_and_met_target")
+
+
+def test_backfill_legacy_coaches():
+    _clean()
+    # coach legado: role=coach, plan_source NULL (simula aprovação pré-feature)
+    legacy = repo.create_user('legacycoach', 'lc@t.com', 'pass', role='coach')
+    conn = sch.get_conn(); conn.execute("UPDATE users SET plan='free', plan_source=NULL WHERE id=?", (legacy,)); conn.commit(); conn.close()
+    # legado que já tem 15 pagantes
+    legacy2 = repo.create_user('legacycoach2', 'lc2@t.com', 'pass', role='coach')
+    conn = sch.get_conn(); conn.execute("UPDATE users SET plan='free', plan_source=NULL WHERE id=?", (legacy2,)); conn.commit(); conn.close()
+    _make_paying_referred(legacy2, 15)
+    res = repo.backfill_coach_trials()
+    assert legacy in res['trial'] and legacy2 in res['earned']
+    conn = sch.get_conn()
+    a = conn.execute("SELECT plan, plan_source, coach_trial_ends_at FROM users WHERE id=?", (legacy,)).fetchone()
+    b = conn.execute("SELECT plan, plan_source FROM users WHERE id=?", (legacy2,)).fetchone()
+    conn.close()
+    assert a['plan'] == 'pro' and a['plan_source'] == 'coach_trial' and a['coach_trial_ends_at']
+    assert b['plan'] == 'pro' and b['plan_source'] == 'coach_earned'
+    # idempotente: 2ª passada não mexe (não há mais plan_source NULL)
+    assert repo.backfill_coach_trials()['total'] == 0
+    print("OK  test_backfill_legacy_coaches")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

@@ -3878,6 +3878,87 @@ def expire_coach_trials() -> dict:
         conn.close()
 
 
+def notify_expiring_coach_trials(days_window: int = 7) -> dict:
+    """COACH-02 P3: avisa (notificação in-app) os coaches cujo trial de Pro acaba dentro de
+    `days_window` dias e que ainda NÃO bateram a meta. Idempotente: 1 aviso por coach
+    (não cria se já existe uma notificação 'coach_trial_ending' p/ aquele usuário)."""
+    import datetime as _dt
+    conn = get_conn()
+    try:
+        now = _dt.datetime.utcnow()
+        limit = (now + _dt.timedelta(days=days_window)).strftime('%Y-%m-%d %H:%M:%S')
+        now_s = now.strftime('%Y-%m-%d %H:%M:%S')
+        rows = conn.execute(_adapt(
+            "SELECT id, coach_trial_ends_at FROM users WHERE role='coach' AND plan_source='coach_trial' "
+            "AND coach_trial_ends_at IS NOT NULL AND coach_trial_ends_at > ? AND coach_trial_ends_at <= ?"),
+            (now_s, limit)).fetchall()
+        notified = []
+        for r in rows:
+            cid = r['id'] if isinstance(r, dict) or hasattr(r, 'keys') else r[0]
+            already = conn.execute(_adapt(
+                "SELECT 1 FROM notifications WHERE user_id=? AND type='coach_trial_ending' LIMIT 1"),
+                (cid,)).fetchone()
+            if already:
+                continue
+            paying = conn.execute(_adapt(
+                "SELECT COUNT(*) AS n FROM users WHERE coach_id=? "
+                "AND invited_via_invite_id IS NOT NULL AND link_status='approved' AND plan='pro'"),
+                (cid,)).fetchone()
+            paying = paying['n'] if isinstance(paying, dict) or hasattr(paying, 'keys') else paying[0]
+            if paying >= COACH_PRO_TARGET:
+                continue  # já garantiu — não precisa avisar
+            ends = r['coach_trial_ends_at'] if isinstance(r, dict) or hasattr(r, 'keys') else r[1]
+            try:
+                days_left = max(0, (_dt.datetime.strptime(ends, '%Y-%m-%d %H:%M:%S') - now).days)
+            except (ValueError, TypeError):
+                days_left = days_window
+            conn.execute(_adapt(
+                "INSERT INTO notifications (user_id, type, payload, link) VALUES (?,?,?,?)"),
+                (cid, 'coach_trial_ending',
+                 json.dumps({'days_left': days_left, 'paying': paying, 'target': COACH_PRO_TARGET}),
+                 '/coach-dashboard'))
+            notified.append(cid)
+        conn.commit()
+        return {'notified': notified, 'checked': len(rows)}
+    finally:
+        conn.close()
+
+
+def backfill_coach_trials() -> dict:
+    """COACH-02 P3: concede o trial de 3 meses aos coaches LEGADOS (aprovados antes da
+    feature: role='coach' sem plan_source). Quem já tem ≥15 pagantes vira 'coach_earned'
+    direto; os demais entram em trial de 90d a partir de agora. Idempotente."""
+    import datetime as _dt
+    conn = get_conn()
+    try:
+        now = _dt.datetime.utcnow()
+        trial_end = (now + _dt.timedelta(days=COACH_TRIAL_DAYS)).strftime('%Y-%m-%d %H:%M:%S')
+        rows = conn.execute(_adapt(
+            "SELECT id FROM users WHERE role='coach' AND plan_source IS NULL")).fetchall()
+        granted_trial, granted_earned = [], []
+        for r in rows:
+            cid = r['id'] if isinstance(r, dict) or hasattr(r, 'keys') else r[0]
+            paying = conn.execute(_adapt(
+                "SELECT COUNT(*) AS n FROM users WHERE coach_id=? "
+                "AND invited_via_invite_id IS NOT NULL AND link_status='approved' AND plan='pro'"),
+                (cid,)).fetchone()
+            paying = paying['n'] if isinstance(paying, dict) or hasattr(paying, 'keys') else paying[0]
+            if paying >= COACH_PRO_TARGET:
+                conn.execute(_adapt(
+                    "UPDATE users SET plan='pro', plan_source='coach_earned', coach_trial_ends_at=NULL WHERE id=?"),
+                    (cid,))
+                granted_earned.append(cid)
+            else:
+                conn.execute(_adapt(
+                    "UPDATE users SET plan='pro', plan_source='coach_trial', coach_trial_ends_at=? WHERE id=?"),
+                    (trial_end, cid))
+                granted_trial.append(cid)
+        conn.commit()
+        return {'trial': granted_trial, 'earned': granted_earned, 'total': len(rows)}
+    finally:
+        conn.close()
+
+
 def expire_subscriptions() -> dict:
     """PAY-02 (job diário): persiste o downgrade de assinaturas Pro com vigência vencida
     (`plan_expires_at < agora`), exceto o Pro de cortesia do coach (governado à parte).
