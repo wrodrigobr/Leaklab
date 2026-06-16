@@ -8,10 +8,16 @@ import { cn } from "@/lib/utils";
 
 const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string;
 
+// Espelha leaklab.stripe_gateway: mensal R$99 / anual R$990 (2 meses grátis).
+const BILLING = {
+  monthly: { label: "Mensal", price: "R$ 99/mês",  badge: "" },
+  annual:  { label: "Anual",  price: "R$ 990/ano", badge: "2 meses grátis · R$ 82,50/mês" },
+} as const;
+type BillingCycle = keyof typeof BILLING;
+
 const PLAN_INFO = {
   pro: {
     label: "Pro",
-    price: "R$ 99/mês",
     colorClass: "text-primary border-primary/30 bg-primary/5",
     features: [
       "Torneios ilimitados",
@@ -34,6 +40,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
   const { refreshUser } = useAuth();
   const info = PLAN_INFO[plan];
 
+  const [billing,        setBilling]        = useState<BillingCycle>("annual");
   const [clientSecret,   setClientSecret]   = useState<string | null>(null);
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [stripeInstance, setStripeInstance] = useState<Stripe | null>(null);
@@ -44,13 +51,18 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
 
   const elementsRef = useRef<StripeElements | null>(null);
 
-  // Phase 1: load Stripe.js + create subscription intent in parallel
+  // Phase 1: load Stripe.js + create subscription intent in parallel.
+  // Re-runs quando o ciclo (mensal/anual) muda → novo PaymentIntent com o valor certo.
   useEffect(() => {
     let active = true;
+    setClientSecret(null);
+    setSubscriptionId(null);
+    setFormMounted(false);
+    setError(null);
     (async () => {
       try {
         const [intentResult, stripe] = await Promise.all([
-          subscription.checkout(plan),
+          subscription.checkout(plan, billing),
           loadStripe(STRIPE_KEY),
         ]);
         if (!active) return;
@@ -64,7 +76,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
       }
     })();
     return () => { active = false; };
-  }, [plan]);
+  }, [plan, billing]);
 
   // Phase 2: mount PaymentElement once stripe + clientSecret are ready
   useEffect(() => {
@@ -116,7 +128,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
         throw new Error(stripeError.message || "Pagamento recusado.");
       }
       if (paymentIntent?.status === "succeeded") {
-        await subscription.activate(plan, paymentIntent.id, subscriptionId);
+        await subscription.activate(plan, paymentIntent.id, subscriptionId, billing);
         setSuccess(true);
         await refreshUser();
         setTimeout(() => { onSuccess?.(plan); onClose(); }, 2500);
@@ -149,14 +161,44 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
           </button>
         </div>
 
+        {/* Toggle de ciclo (mensal / anual) — só faz sentido antes do sucesso */}
+        {!success && (
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border">
+            {(Object.keys(BILLING) as BillingCycle[]).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setBilling(c)}
+                className={cn(
+                  "relative flex flex-col items-center gap-0.5 px-3 py-2.5 transition-colors",
+                  billing === c ? "bg-primary/10" : "bg-hud-surface hover:bg-primary/5"
+                )}
+              >
+                <span className={cn("font-mono text-[11px] font-bold uppercase tracking-wider",
+                  billing === c ? "text-primary" : "text-muted-foreground")}>{BILLING[c].label}</span>
+                <span className={cn("font-mono text-xs font-bold",
+                  billing === c ? "text-foreground" : "text-muted-foreground")}>{BILLING[c].price}</span>
+                {BILLING[c].badge && (
+                  <span className="font-mono text-[9px] text-primary">{BILLING[c].badge}</span>
+                )}
+                {c === "annual" && (
+                  <span className="absolute -top-px right-1 rounded-b bg-primary px-1 py-0.5 font-mono text-[8px] font-bold uppercase text-primary-foreground">
+                    -17%
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Plan badge */}
         <div className={cn("rounded-lg border px-4 py-3 space-y-1.5", info.colorClass)}>
           <div className="flex items-center justify-between">
             <span className="font-mono text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
               {plan === "pro" && <Zap className="size-3.5" />}
-              {info.label}
+              {info.label} · {BILLING[billing].label}
             </span>
-            <span className="font-mono text-sm font-bold">{info.price}</span>
+            <span className="font-mono text-sm font-bold">{BILLING[billing].price}</span>
           </div>
           <ul className="space-y-0.5">
             {info.features.map((f) => (
@@ -215,7 +257,7 @@ export function CheckoutModal({ plan, onClose, onSuccess }: Props) {
                   className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50"
                 >
                   {submitting && <Loader2 className="size-4 animate-spin" />}
-                  {submitting ? "Processando…" : `Assinar ${info.label} · ${info.price}`}
+                  {submitting ? "Processando…" : `Assinar ${info.label} · ${BILLING[billing].price}`}
                 </button>
                 <p className="text-center font-mono text-[9px] text-muted-foreground">
                   Pagamento seguro via Stripe · Cancele quando quiser

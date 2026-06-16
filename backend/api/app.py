@@ -148,8 +148,19 @@ from database.auth import generate_token, require_auth, require_coach, require_a
 from leaklab.content_moderation import sanitize_llm_input, moderate_text
 from leaklab.stripe_gateway import (
     create_subscription, cancel_subscription, get_subscription, get_payment,
-    validate_webhook, PLAN_AMOUNTS, STRIPE_WEBHOOK_SECRET,
+    validate_webhook, PLAN_AMOUNTS, PLAN_AMOUNTS_ANNUAL, BILLING_DAYS, plan_amount,
+    STRIPE_WEBHOOK_SECRET,
 )
+
+
+def _plan_period(billing_cycle: str):
+    """PAY-02: (period_start, period_end) ISO p/ o ciclo escolhido a partir de agora."""
+    import datetime as _dt
+    days = BILLING_DAYS.get(billing_cycle, 30)
+    now  = _dt.datetime.utcnow()
+    end  = now + _dt.timedelta(days=days)
+    fmt  = '%Y-%m-%d %H:%M:%S'
+    return now.strftime(fmt), end.strftime(fmt)
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
@@ -5040,10 +5051,22 @@ def subscription_plans():
             {
                 'id':          'pro',
                 'name':        'Pro',
-                'price':       9900,   # R$99,00
+                'price':       9900,   # R$99,00 (mensal)
                 'currency':    'BRL',
                 'tournaments': PLAN_LIMITS['pro']['tournaments'],
                 'ai_calls':    PLAN_LIMITS['pro']['ai_calls'],
+                # PAY-02: opções de ciclo. annual = 2 meses grátis (R$990 vs R$1.188 cheio).
+                'billing': {
+                    'monthly': {'price': int(PLAN_AMOUNTS['pro'] * 100), 'period_days': BILLING_DAYS['monthly']},
+                    'annual':  {
+                        'price':            int(PLAN_AMOUNTS_ANNUAL['pro'] * 100),
+                        'period_days':      BILLING_DAYS['annual'],
+                        'monthly_equiv':    int(PLAN_AMOUNTS_ANNUAL['pro'] * 100 / 12),
+                        'full_price':       int(PLAN_AMOUNTS['pro'] * 100 * 12),
+                        'discount_pct':     round((1 - (PLAN_AMOUNTS_ANNUAL['pro'] / (PLAN_AMOUNTS['pro'] * 12))) * 100),
+                        'months_free':      round(12 - PLAN_AMOUNTS_ANNUAL['pro'] / PLAN_AMOUNTS['pro']),
+                    },
+                },
                 'features':    [
                     'Torneios ilimitados',
                     'Análises LeakLabs ilimitadas',
@@ -5085,14 +5108,18 @@ def subscription_checkout():
     """Cria assinatura Stripe incompleta e retorna client_secret para o frontend."""
     data = request.get_json(silent=True) or {}
     plan = data.get('plan')
+    billing = data.get('billing', 'monthly')
     if plan != 'pro':
         return jsonify({'error': 'Plano inválido. Use pro.'}), 400
+    if billing not in ('monthly', 'annual'):
+        return jsonify({'error': 'Ciclo inválido. Use monthly ou annual.'}), 400
 
     try:
         result = create_subscription(
             plan_name=plan,
             payer_email=g.user.get('email', ''),
             user_id=g.user_id,
+            billing_cycle=billing,
         )
     except Exception as e:
         log.exception("Stripe checkout error for user %s plan %s", g.user_id, plan)
@@ -5103,6 +5130,7 @@ def subscription_checkout():
     return jsonify({
         'client_secret':   result['client_secret'],
         'subscription_id': result['subscription_id'],
+        'billing':         result.get('billing_cycle', billing),
     })
 
 
@@ -5114,9 +5142,12 @@ def subscription_activate():
     plan              = data.get('plan')
     payment_intent_id = data.get('payment_intent_id')
     subscription_id   = data.get('subscription_id')
+    billing           = data.get('billing', 'monthly')
 
     if plan != 'pro':
         return jsonify({'error': 'Plano inválido. Use pro.'}), 400
+    if billing not in ('monthly', 'annual'):
+        return jsonify({'error': 'Ciclo inválido. Use monthly ou annual.'}), 400
     if not payment_intent_id or not subscription_id:
         return jsonify({'error': 'payment_intent_id e subscription_id obrigatórios'}), 400
 
@@ -5125,15 +5156,18 @@ def subscription_activate():
         status = pi.get('status') if pi else 'not_found'
         return jsonify({'error': f'Pagamento não confirmado (status: {status})'}), 400
 
-    update_user_plan(g.user_id, plan, subscription_id)
+    period_start, period_end = _plan_period(billing)   # PAY-02: vigência mensal/anual
+    update_user_plan(g.user_id, plan, subscription_id, plan_expires_at=period_end)
     save_payment(
         user_id=g.user_id,
         plan=plan,
-        amount_cents=int(PLAN_AMOUNTS[plan] * 100),
+        amount_cents=int(plan_amount(plan, billing) * 100),
         status='approved',
         gateway_id=payment_intent_id,
         gateway_sub_id=subscription_id,
         gateway='stripe',
+        period_start=period_start,
+        period_end=period_end,
     )
     # COACH-02: aluno indicado virou pagante → pode fechar a meta de 15 do coach.
     _coach_id = g.user.get('coach_id')
@@ -5143,7 +5177,8 @@ def subscription_activate():
             maybe_promote_coach_earned(_coach_id)
         except Exception:
             log.exception("maybe_promote_coach_earned falhou (activate) coach=%s", _coach_id)
-    return jsonify({'ok': True, 'plan': plan, 'subscription_id': subscription_id})
+    return jsonify({'ok': True, 'plan': plan, 'subscription_id': subscription_id,
+                    'billing': billing, 'expires_at': period_end})
 
 
 @app.route('/subscription/webhook', methods=['POST'])
@@ -5176,10 +5211,14 @@ def subscription_webhook():
         meta      = obj.get('metadata', {}) if isinstance(obj, dict) else obj.metadata
         user_id   = int(meta.get('user_id', 0))
         plan_name = meta.get('plan_name', '')
+        billing   = meta.get('billing_cycle', 'monthly') if isinstance(meta, dict) else 'monthly'
+        if billing not in ('monthly', 'annual'):
+            billing = 'monthly'
         pi_id     = obj.get('id', '') if isinstance(obj, dict) else obj.id
         amount    = obj.get('amount', 0) if isinstance(obj, dict) else obj.amount
         if user_id and plan_name:
-            update_user_plan(user_id, plan_name, str(pi_id))
+            period_start, period_end = _plan_period(billing)   # PAY-02: vigência
+            update_user_plan(user_id, plan_name, str(pi_id), plan_expires_at=period_end)
             save_payment(
                 user_id=user_id, plan=plan_name,
                 amount_cents=int(amount),
@@ -5187,6 +5226,8 @@ def subscription_webhook():
                 gateway_id=str(pi_id),
                 gateway_sub_id=str(pi_id),
                 gateway='stripe',
+                period_start=period_start,
+                period_end=period_end,
             )
             # COACH-02: aluno indicado virou pagante → pode fechar a meta do coach.
             try:

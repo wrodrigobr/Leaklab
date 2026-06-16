@@ -31,7 +31,11 @@ Trilha de auditoria nova: webhook agora trata `payment_intent.payment_failed` �
 
 ## Decisão de arquitetura em aberto (precisa do produto)
 
-### D-1 — Não há cobrança recorrente nem expiração automática
+### D-1 — Não há cobrança recorrente nem expiração automática  ✅ RESOLVIDO (opção B) em PAY-02 (2026-06-16)
+
+> **Decisão tomada:** implementada a **opção B** junto com o plano anual (PAY-02): `users.plan_expires_at` (mensal +30d / anual +365d), `get_quota_status` trata Pro vencido como Free, job `expire_subscriptions` consolida o downgrade. **Sem auto-renovação** (opção A / Subscriptions reais) — segue como escolha futura caso queiram cobrança recorrente automática. Pros legados (`plan_expires_at` NULL) permanecem permanentes.
+
+
 
 O modelo cobra **um PaymentIntent de 30 dias** e seta `plan='pro'` — mas:
 - **Não renova** automaticamente (não é Subscription); não há `invoice.paid` recorrente.

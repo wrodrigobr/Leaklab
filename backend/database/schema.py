@@ -494,6 +494,9 @@ def _run_migrations(conn):
             # 'coach_trial' (3 meses no onboarding), 'coach_earned' (meta de 15 batida).
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_source              TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS coach_trial_ends_at      TEXT",
+            # PAY-02: vigência da assinatura (mensal=+30d, anual=+365d). NULL=sem
+            # expiração (pagantes legados grandfathered). Pro expira quando passa a data.
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_expires_at          TEXT",
             # GTO-005: integração solver → decisions
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_label  TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_action TEXT",
@@ -1039,6 +1042,7 @@ def _run_migrations(conn):
             ("link_status",             "ALTER TABLE users ADD COLUMN link_status             TEXT NOT NULL DEFAULT 'approved'"),
             ("plan_source",             "ALTER TABLE users ADD COLUMN plan_source             TEXT"),
             ("coach_trial_ends_at",     "ALTER TABLE users ADD COLUMN coach_trial_ends_at     TEXT"),
+            ("plan_expires_at",         "ALTER TABLE users ADD COLUMN plan_expires_at         TEXT"),
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),

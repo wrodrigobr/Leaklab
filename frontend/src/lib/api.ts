@@ -1912,7 +1912,13 @@ export const subscription = {
   status: () => request<QuotaStatus>("/subscription/status"),
 
   plans: () =>
-    request<{ plans: Array<{ id: string; name: string; price: number; features: string[] }> }>(
+    request<{ plans: Array<{ id: string; name: string; price: number; features: string[];
+      billing?: {
+        monthly: { price: number; period_days: number };
+        annual: { price: number; period_days: number; monthly_equiv: number;
+                  full_price: number; discount_pct: number; months_free: number };
+      };
+    }> }>(
       "/subscription/plans"
     ),
 
@@ -1922,16 +1928,18 @@ export const subscription = {
       body: JSON.stringify({ plan }),
     }),
 
-  checkout: (plan: string) =>
-    request<{ client_secret: string; subscription_id: string }>("/subscription/checkout", {
+  checkout: (plan: string, billing: "monthly" | "annual" = "monthly") =>
+    request<{ client_secret: string; subscription_id: string; billing: string }>("/subscription/checkout", {
       method: "POST",
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({ plan, billing }),
     }),
 
-  activate: (plan: string, payment_intent_id: string, subscription_id: string) =>
-    request<{ ok: boolean; plan: string; subscription_id: string }>("/subscription/activate", {
+  activate: (plan: string, payment_intent_id: string, subscription_id: string,
+             billing: "monthly" | "annual" = "monthly") =>
+    request<{ ok: boolean; plan: string; subscription_id: string; billing: string; expires_at: string }>(
+      "/subscription/activate", {
       method: "POST",
-      body: JSON.stringify({ plan, payment_intent_id, subscription_id }),
+      body: JSON.stringify({ plan, payment_intent_id, subscription_id, billing }),
     }),
 
   invoices: () => request<{ invoices: Invoice[] }>("/subscription/invoices"),

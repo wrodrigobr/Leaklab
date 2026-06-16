@@ -3334,7 +3334,8 @@ def get_quota_status(user_id: int) -> dict:
     try:
         row = _fetchone(
             conn,
-            """SELECT plan, tournaments_this_month, ai_calls_this_month,
+            """SELECT plan, plan_source, plan_expires_at,
+                      tournaments_this_month, ai_calls_this_month,
                       solves_this_month, quota_reset_at
                FROM users WHERE id = ?""",
             (user_id,),
@@ -3346,7 +3347,14 @@ def get_quota_status(user_id: int) -> dict:
         return {'plan': 'free', 'tournaments_used': 0, 'ai_calls_used': 0,
                 'solves_used': 0, 'limits': PLAN_LIMITS['free']}
 
-    plan   = row.get('plan') or 'free'
+    plan = row.get('plan') or 'free'
+    # PAY-02: Pro com vigência vencida é tratado como free (sem renovação automática).
+    # Pro de cortesia do coach é governado por coach_trial_ends_at, não por aqui.
+    expired = False
+    if (plan == 'pro' and row.get('plan_source') not in COACH_PERK_SOURCES
+            and row.get('plan_expires_at') and row['plan_expires_at'] < _now_str()):
+        plan = 'free'
+        expired = True
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS['free'])
     return {
         'plan':             plan,
@@ -3354,6 +3362,8 @@ def get_quota_status(user_id: int) -> dict:
         'ai_calls_used':    row.get('ai_calls_this_month')    or 0,
         'solves_used':      row.get('solves_this_month')      or 0,
         'limits':           limits,
+        'plan_expires_at':  row.get('plan_expires_at'),
+        'expired':          expired,
     }
 
 
@@ -3577,12 +3587,15 @@ def get_payments(user_id: int, limit: int = 20) -> List[dict]:
         conn.close()
 
 
-def update_user_plan(user_id: int, plan: str, subscription_id: str | None = None) -> None:
+def update_user_plan(user_id: int, plan: str, subscription_id: str | None = None,
+                     plan_expires_at: str | None = None) -> None:
+    """PAY-02: `plan_expires_at` define a vigência (mensal +30d / anual +365d).
+    NULL = sem expiração (downgrade p/ free, ou pagantes legados grandfathered)."""
     conn = get_conn()
     try:
         conn.execute(
-            _adapt("UPDATE users SET plan = ?, mp_subscription_id = ? WHERE id = ?"),
-            (plan, subscription_id, user_id),
+            _adapt("UPDATE users SET plan = ?, mp_subscription_id = ?, plan_expires_at = ? WHERE id = ?"),
+            (plan, subscription_id, plan_expires_at, user_id),
         )
         conn.commit()
     finally:
@@ -3766,6 +3779,33 @@ def expire_coach_trials() -> dict:
         conn.commit()
         return {'promoted': promoted, 'downgraded': downgraded,
                 'checked': len(rows), 'at': now}
+    finally:
+        conn.close()
+
+
+def expire_subscriptions() -> dict:
+    """PAY-02 (job diário): persiste o downgrade de assinaturas Pro com vigência vencida
+    (`plan_expires_at < agora`), exceto o Pro de cortesia do coach (governado à parte).
+    O get_quota_status já trata como free na leitura; este job consolida no banco
+    (p/ contadores/MRR corretos). Retorna ids downgradados."""
+    conn = get_conn()
+    try:
+        try:
+            conn.execute('PRAGMA busy_timeout=8000')
+        except Exception:
+            pass
+        now = _now_str()
+        rows = conn.execute(_adapt(
+            "SELECT id FROM users WHERE plan = 'pro' AND plan_expires_at IS NOT NULL "
+            "AND plan_expires_at < ? AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial','coach_earned'))"),
+            (now,)).fetchall()
+        ids = [r['id'] if isinstance(r, dict) or hasattr(r, 'keys') else r[0] for r in rows]
+        for uid in ids:
+            conn.execute(_adapt(
+                "UPDATE users SET plan = 'free', plan_expires_at = NULL, mp_subscription_id = NULL WHERE id = ?"),
+                (uid,))
+        conn.commit()
+        return {'downgraded': ids, 'checked': len(ids), 'at': now}
     finally:
         conn.close()
 

@@ -20,6 +20,24 @@ PLAN_AMOUNTS: dict[str, float] = {
     "pro": 99.00,
 }
 
+# PAY-02: ciclo anual com desconto (2 meses grátis → paga 10, leva 12).
+PLAN_AMOUNTS_ANNUAL: dict[str, float] = {
+    "pro": 990.00,   # 99 × 10 (≈ 17% off vs 1.188 cheio)
+}
+
+# Dias de vigência por ciclo (define plan_expires_at).
+BILLING_DAYS: dict[str, int] = {
+    "monthly": 30,
+    "annual":  365,
+}
+
+
+def plan_amount(plan_name: str, billing_cycle: str = "monthly") -> float:
+    """Valor (R$) do plano no ciclo. Fonte única de preço p/ checkout/ativação."""
+    if billing_cycle == "annual":
+        return PLAN_AMOUNTS_ANNUAL[plan_name]
+    return PLAN_AMOUNTS[plan_name]
+
 
 def _get_or_create_customer(user_id: int, email: str) -> str:
     result = _stripe.Customer.search(query=f"metadata['user_id']:'{user_id}'")
@@ -32,15 +50,18 @@ def _get_or_create_customer(user_id: int, email: str) -> str:
     return customer.id
 
 
-def create_subscription(plan_name: str, payer_email: str, user_id: int) -> dict:
+def create_subscription(plan_name: str, payer_email: str, user_id: int,
+                        billing_cycle: str = "monthly") -> dict:
     """
     Cria PaymentIntent Stripe e retorna client_secret para confirmação no frontend.
     Usa PaymentIntent direto (sem Subscription) para evitar complexidade da
     Invoice.payments API que mudou em 2025-03-31.
+    `billing_cycle`: 'monthly' (R$99/30d) ou 'annual' (R$990/365d).
     Retorna dict com subscription_id (= pi_id), client_secret e status.
     """
-    amount_cents = int(PLAN_AMOUNTS[plan_name] * 100)
+    amount_cents = int(plan_amount(plan_name, billing_cycle) * 100)
     customer_id  = _get_or_create_customer(user_id, payer_email)
+    label = "anual" if billing_cycle == "annual" else "mensal"
 
     pi = _stripe.PaymentIntent.create(
         amount=amount_cents,
@@ -48,16 +69,17 @@ def create_subscription(plan_name: str, payer_email: str, user_id: int) -> dict:
         customer=customer_id,
         # allow_redirects=never: só métodos não-redirect (cartão), permite confirmar sem return_url
         automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
-        metadata={"user_id": str(user_id), "plan_name": plan_name},
+        metadata={"user_id": str(user_id), "plan_name": plan_name, "billing_cycle": billing_cycle},
         # description aparece no recibo/fatura do cliente → usa a marca visível (GrindLab).
-        description=f"GrindLab {plan_name.title()} — 30 dias",
+        description=f"GrindLab {plan_name.title()} — {label}",
     )
 
-    log.info("Stripe PaymentIntent created: pi=%s amount=%s", pi.id, amount_cents)
+    log.info("Stripe PaymentIntent created: pi=%s amount=%s cycle=%s", pi.id, amount_cents, billing_cycle)
     return {
         "subscription_id": pi.id,   # usamos o pi_id como referência de cobrança
         "client_secret":   pi.client_secret,
         "status":          pi.status,
+        "billing_cycle":   billing_cycle,
     }
 
 

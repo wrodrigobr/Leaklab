@@ -471,6 +471,115 @@ def test_admin_mrr_matches_pro_price():
     print("OK  test_admin_mrr_matches_pro_price")
 
 
+# ── PAY-02: plano anual + vigência (plan_expires_at) ──────────────────────────
+
+def _mock_checkout_cycle(billing):
+    return {'subscription_id': 'pi_cyc', 'client_secret': 'cs_cyc', 'status': 'incomplete',
+            'billing_cycle': billing}
+
+
+def test_plans_exposes_annual_billing():
+    c = _make_client()
+    r = c.get('/subscription/plans')
+    pro = [p for p in r.get_json()['plans'] if p['id'] == 'pro'][0]
+    b = pro['billing']
+    assert b['monthly']['price'] == 9900
+    assert b['annual']['price'] == 99000          # R$990
+    assert b['annual']['months_free'] == 2
+    assert b['annual']['discount_pct'] == 17      # round(1 - 990/1188)
+    print("OK  test_plans_exposes_annual_billing")
+
+
+def test_checkout_rejects_invalid_billing():
+    c = _make_client()
+    token = _register_and_login(c, 'bilx')
+    with patch('api.app.create_subscription', return_value=_mock_checkout_cycle('weekly')):
+        r = c.post('/subscription/checkout', json={'plan': 'pro', 'billing': 'weekly'}, headers=_auth(token))
+    assert r.status_code == 400
+    print("OK  test_checkout_rejects_invalid_billing")
+
+
+def test_activate_annual_sets_year_expiry():
+    """PAY-02: ativação anual cobra R$990 e define vigência de ~365 dias."""
+    import datetime
+    c = _make_client()
+    token = _register_and_login(c, 'ann1')
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_ann', 'succeeded')):
+        r = c.post('/subscription/activate',
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_ann', 'subscription_id': 'pi_ann',
+                         'billing': 'annual'},
+                   headers=_auth(token))
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['billing'] == 'annual' and data['expires_at']
+    exp = datetime.datetime.strptime(data['expires_at'], '%Y-%m-%d %H:%M:%S')
+    days = (exp - datetime.datetime.utcnow()).days
+    assert 363 <= days <= 365, days
+    # valor gravado = R$990
+    inv = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'}).get_json()
+    assert inv['invoices'][0]['amount_cents'] == 99000
+    print("OK  test_activate_annual_sets_year_expiry")
+
+
+def test_activate_monthly_sets_30d_expiry():
+    import datetime
+    c = _make_client()
+    token = _register_and_login(c, 'mon1')
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_mon', 'succeeded')):
+        r = c.post('/subscription/activate',
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_mon', 'subscription_id': 'pi_mon'},
+                   headers=_auth(token))
+    data = r.get_json()
+    exp = datetime.datetime.strptime(data['expires_at'], '%Y-%m-%d %H:%M:%S')
+    days = (exp - datetime.datetime.utcnow()).days
+    assert 29 <= days <= 30, days
+    inv = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'}).get_json()
+    assert inv['invoices'][0]['amount_cents'] == 9900
+    print("OK  test_activate_monthly_sets_30d_expiry")
+
+
+def test_expired_pro_reads_as_free():
+    """PAY-02: Pro com plan_expires_at no passado é tratado como free no get_quota_status."""
+    c = _make_client()
+    token = _register_and_login(c, 'exp1')
+    from database import repositories as repo
+    uid = _uid(c, token)
+    repo.update_user_plan(uid, 'pro', 'pi_old', plan_expires_at='2000-01-01 00:00:00')
+    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert me.get_json()['plan'] == 'free', "pro vencido deve ler como free"
+    st = repo.get_quota_status(uid)
+    assert st['plan'] == 'free' and st['expired'] is True
+    print("OK  test_expired_pro_reads_as_free")
+
+
+def test_grandfathered_pro_never_expires():
+    """PAY-02: Pro sem plan_expires_at (NULL = legado) permanece pro."""
+    c = _make_client()
+    token = _register_and_login(c, 'gf1')
+    from database import repositories as repo
+    uid = _uid(c, token)
+    repo.update_user_plan(uid, 'pro')   # expiry NULL
+    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert me.get_json()['plan'] == 'pro'
+    print("OK  test_grandfathered_pro_never_expires")
+
+
+def test_expire_subscriptions_persists_downgrade():
+    """PAY-02: o job consolida o downgrade no banco (plan='free')."""
+    c = _make_client()
+    token = _register_and_login(c, 'job1')
+    from database import repositories as repo
+    uid = _uid(c, token)
+    repo.update_user_plan(uid, 'pro', 'pi_j', plan_expires_at='2000-01-01 00:00:00')
+    res = repo.expire_subscriptions()
+    assert uid in res['downgraded']
+    conn = repo.get_conn()
+    row = conn.execute("SELECT plan, plan_expires_at FROM users WHERE id=?", (uid,)).fetchone()
+    conn.close()
+    assert row['plan'] == 'free' and row['plan_expires_at'] is None
+    print("OK  test_expire_subscriptions_persists_downgrade")
+
+
 # ── runner ───────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
