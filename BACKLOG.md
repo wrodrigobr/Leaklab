@@ -109,6 +109,18 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 - **Conciliação coach:** `coach_payments` (repasse) bate com os pagamentos reais dos alunos pro.
 - Entregar com testes (estender `tests/test_subscription.py`) + checklist de smoke manual no Stripe Dashboard.
 
+### [COACH-02] — Coach como aluno + Pro de cortesia (3 meses) + meta de 15 pagantes *(criado 2026-06-16)*
+
+**Plano completo:** [`specs/coach-onboarding-trial.md`](specs/coach-onboarding-trial.md).
+
+**Modelo:** ao ser aprovado, o coach ganha **3 meses de Pro de cortesia** + acesso pleno de **aluno** (upload/treino/insights) além da visão de coach. Meta: **15 indicados pagantes** (`invited_via_invite_id` + `link_status='approved'` + `plan='pro'` — barreira anti-gaming é o pagamento real). Bateu a meta a qualquer momento → `plan_source='coach_earned'` (Pro permanente). Não bateu até o fim do trial → **downgrade p/ Free**, restando só a **comissão %** por aluno pagante (comp 4/10 inalterada).
+
+**Mudanças-chave:** `users.plan_source` + `users.coach_trial_ends_at`; `approve_coach_application` concede o trial; job diário `expire_coach_trials` (mesmo padrão do snapshot de leaderboard); `maybe_promote_coach_earned` engatado em `approve_link_request`/ativação Stripe; MRR admin exclui Pro de cortesia; frontend libera rotas de aluno p/ coach + **switch de workspace** (Modo Coach ⇄ Minha conta) + banner de trial no cockpit. Fases P1 (backend) / P2 (frontend) / P3 (polish+backfill).
+
+**Conexões:** é a 1ª instância concreta de **expiração de plano** (PAY-01/D-1); reusa SEC-01 fase 2 (`link_status`); não conta como MRR (estende o fix B-4 do PAY-01).
+
+**Decisões em aberto:** backfill de coaches legados (recomendado: novo trial de 90d); nav unificada vs switch (adotado switch); aviso de fim de trial in-app vs e-mail.
+
 ### [SEC-01] — Convite do coach single-use por aluno (integridade da indicação) *(criado 2026-06-15)*
 
 **Problema:** hoje `assign_invite_key` gera **uma chave permanente e reutilizável por coach**; qualquer aluno com a chave se auto-vincula (`link_student_to_coach`) sem aprovação nem expiração — só limita por `max_students`. A chave **é passável de aluno para aluno**. Com a compensação por **indicados e ativos**, cada indicação precisa ser um ato deliberado e único, senão a atribuição de referral é burlável.
