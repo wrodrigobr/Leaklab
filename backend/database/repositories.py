@@ -192,7 +192,7 @@ def get_students(coach_id: int) -> List[dict]:
     conn = get_conn()
     try:
         rows = conn.execute(
-            "SELECT id, username, email, created_at, last_login, plan, invited_by_key "
+            "SELECT id, username, email, created_at, last_login, plan, invited_by_key, invited_via_invite_id "
             "FROM users WHERE coach_id = ?", (coach_id,)
         ).fetchall()
         return [dict(r) for r in rows]
@@ -3785,12 +3785,14 @@ def get_coaches_with_payout_status(period: str) -> list:
             ORDER BY u.username
         """)
         for coach in coaches:
-            # alunos ativos: importaram torneio nos últimos 30 dias + plano pro
+            # SEC-01: comp por INDICADOS+ATIVOS — só conta aluno indicado via convite
+            # single-use (invited_via_invite_id) + pro + importou nos últimos 30d.
             active = _fetchone(conn, f"""
                 SELECT COUNT(DISTINCT s.id) AS n
                 FROM users s
                 INNER JOIN tournaments t ON t.user_id = s.id
                 WHERE s.coach_id = ? AND s.plan = 'pro'
+                  AND s.invited_via_invite_id IS NOT NULL
                   AND t.imported_at >= {interval_sql(30)}
             """, (coach['id'],))['n']
             coach['active_students'] = active
@@ -3853,18 +3855,20 @@ def get_coach_finance_summary(coach_id: int) -> dict:
     try:
         total_students = _fetchone(conn,
             "SELECT COUNT(*) AS n FROM users WHERE coach_id = ?", (coach_id,))['n']
+        # indicados = vinculados via convite single-use (SEC-01, atribuição confiável)
+        referred_count = _fetchone(conn,
+            "SELECT COUNT(*) AS n FROM users WHERE coach_id = ? AND invited_via_invite_id IS NOT NULL",
+            (coach_id,))['n']
+        # comp = INDICADOS + ATIVOS: indicado via convite + pro + importou nos últimos 30d
         active_students = _fetchone(conn, f"""
             SELECT COUNT(DISTINCT s.id) AS n
             FROM users s
             INNER JOIN tournaments t ON t.user_id = s.id
             WHERE s.coach_id = ? AND s.plan = 'pro'
+              AND s.invited_via_invite_id IS NOT NULL
               AND t.imported_at >= {interval_sql(30)}
         """, (coach_id,))['n']
         amount_cents = calculate_coach_payout(active_students)
-        # indicados (aproximação por invited_by_key até o SEC-01 dar atribuição confiável)
-        referred_count = _fetchone(conn,
-            "SELECT COUNT(*) AS n FROM users WHERE coach_id = ? "
-            "AND invited_by_key IS NOT NULL AND invited_by_key != ''", (coach_id,))['n']
         pay = _fetchone(conn, """
             SELECT id, status, paid_at FROM coach_payments
             WHERE coach_id = ? AND period = ?

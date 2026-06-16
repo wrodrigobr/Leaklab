@@ -32,7 +32,7 @@ def _student(s='1'):
 
 def _clean():
     conn = sch.get_conn()
-    for t in ('coach_invites', 'coach_profiles', 'users'):
+    for t in ('decisions', 'tournaments', 'coach_invites', 'coach_profiles', 'users'):
         conn.execute(f'DELETE FROM {t}')
     conn.commit(); conn.close()
 
@@ -116,6 +116,33 @@ def test_max_students_guard():
     # convite NÃO foi consumido (segue active)
     assert [i for i in repo.list_coach_invites(coach) if i['id'] == inv2['id']][0]['status'] == 'active'
     print("OK  test_max_students_guard")
+
+
+def _make_pro_active(student_id):
+    import datetime
+    conn = sch.get_conn()
+    conn.execute("UPDATE users SET plan='pro' WHERE id=?", (student_id,))
+    now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    conn.execute("INSERT INTO tournaments (user_id, tournament_id, site, hero, imported_at) VALUES (?,?,?,?,?)",
+                 (student_id, f'T{student_id}', 'PokerStars', 'hero', now))
+    conn.commit(); conn.close()
+
+
+def test_comp_counts_only_referred_active():
+    """A comp conta só INDICADO via convite (invited_via_invite_id) + pro + import 30d.
+    Aluno legado (coach_id setado sem convite) NÃO conta, mesmo pro+ativo."""
+    _clean()
+    coach = _coach(); s_ref = _student('ref'); s_leg = _student('leg')
+    # legado: vinculado direto (sem convite)
+    conn = sch.get_conn(); conn.execute("UPDATE users SET coach_id=? WHERE id=?", (coach, s_leg)); conn.commit(); conn.close()
+    # indicado: resgata convite
+    assert repo.redeem_coach_invite(s_ref, repo.create_coach_invite(coach)['code'])['ok']
+    _make_pro_active(s_ref); _make_pro_active(s_leg)
+    summ = repo.get_coach_finance_summary(coach)
+    assert summ['total_students'] == 2
+    assert summ['referred_count'] == 1, summ          # só o resgatado é indicado
+    assert summ['active_students'] == 1, summ         # só o indicado+ativo conta na comp
+    print("OK  test_comp_counts_only_referred_active")
 
 
 if __name__ == '__main__':

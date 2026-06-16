@@ -2865,14 +2865,17 @@ def coach_students_v2():
         # ativo que conta na comp: pro + importou nos últimos 30d (imported_at em formato
         # ISO → comparação lexicográfica de string com o cutoff é válida).
         _imp = (recent or {}).get('imported_at') or ''
-        is_active_paid = (s.get('plan') == 'pro' and bool(_imp) and _imp >= _cutoff)
+        # SEC-01: indicado = vinculado via convite single-use (atribuição confiável).
+        is_referred = s.get('invited_via_invite_id') is not None
+        # "Ativo · conta R$" = indicado + pro + importou nos últimos 30d (a régua do payout).
+        is_active_paid = (is_referred and s.get('plan') == 'pro' and bool(_imp) and _imp >= _cutoff)
         enriched.append({
             **s,
             'recent_tournament': recent,
             'total_tournaments': len(tournaments),
             'trend': trend,
             'is_active_paid': is_active_paid,
-            'is_referred': bool(s.get('invited_by_key')),
+            'is_referred': is_referred,
             'critical_pending': (_attn.get(s['id']) or {}).get('critical_pending', 0),
             'unread': (_attn.get(s['id']) or {}).get('unread', 0),
             # V2-3: últimos scores (cronológico) p/ sparkline de tendência no roster

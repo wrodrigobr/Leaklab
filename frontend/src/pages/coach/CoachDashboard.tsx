@@ -358,7 +358,9 @@ function AlunosTab() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {isActivePaid(s)
-                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20" title="Pro + import nos últimos 30d — conta no seu repasse"><CheckCircle2 className="size-3" /> Ativo · R$</span>
+                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20" title="Indicado por convite + pro + import 30d — conta no seu repasse"><CheckCircle2 className="size-3" /> Ativo · R$</span>
+                        : (s.plan === "pro" && isActive(s))
+                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-400/30" title="Pro e ativo, mas não foi indicado por convite single-use — NÃO conta no repasse">Ativo · não-indicado</span>
                         : isActive(s)
                         ? <span className="inline-flex items-center gap-1 rounded-sm bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-400/30" title="Importou recentemente mas não é Pro — não conta no repasse (oportunidade de conversão)">Recente · free</span>
                         : <span className="inline-flex items-center gap-1 rounded-sm bg-border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border"><Clock className="size-3" /> Inativo</span>}
