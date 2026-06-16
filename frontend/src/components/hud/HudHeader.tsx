@@ -79,25 +79,13 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [chatOpen, setChatOpen]       = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
-  // Menu unificado de mensagens (coach chat + suporte num único ícone)
-  const [msgMenuOpen, setMsgMenuOpen] = useState(false);
-  const msgMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!chatOpen && !supportOpen && !msgMenuOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setChatOpen(false); setSupportOpen(false); setMsgMenuOpen(false); } };
+    if (!chatOpen && !supportOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setChatOpen(false); setSupportOpen(false); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [chatOpen, supportOpen, msgMenuOpen]);
-
-  useEffect(() => {
-    if (!msgMenuOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (msgMenuRef.current && !msgMenuRef.current.contains(e.target as Node)) setMsgMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [msgMenuOpen]);
+  }, [chatOpen, supportOpen]);
 
   const playerNavItems: NavItem[] = [
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",   icon: LayoutDashboard },
@@ -222,59 +210,44 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
               </button>
             )}
 
-            {/* Mensagens unificadas: 1 ícone para coach chat + suporte. Com coach →
-                mini-menu (cada item com seu badge); sem coach → abre o suporte direto. */}
-            {user && user.role !== "admin" && (() => {
+            {/* Inbox unificado: notificações + atalhos de conversa (chat coach + suporte)
+                num único sino. Antes eram dois ícones (Mensagens + Notificações). */}
+            {user && (() => {
+              const isAdmin = user.role === "admin";
               const hasCoachChat = user.role === "player" && !!user.coach_id;
-              const msgTotal = (hasCoachChat ? unreadCount : 0) + supportReplies;
-              return (
-                <div ref={msgMenuRef} className="relative">
+              const convUnread = isAdmin ? 0 : ((hasCoachChat ? unreadCount : 0) + supportReplies);
+              const renderActions = isAdmin ? undefined : (close: () => void) => (
+                <>
+                  {hasCoachChat && (
+                    <button
+                      onClick={() => { close(); setChatOpen(true); }}
+                      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs text-foreground hover:bg-primary/10 transition-colors"
+                    >
+                      <MessageSquare className="size-3.5 text-primary shrink-0" />
+                      <span className="flex-1">{t("coachMessages")}</span>
+                      {unreadCount > 0 && (
+                        <span className="flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  )}
                   <button
-                    onClick={() => hasCoachChat ? setMsgMenuOpen((o) => !o) : setSupportOpen((o) => !o)}
-                    title={t("messages.button")}
-                    className="relative flex items-center justify-center size-8 rounded-full bg-card ring-1 ring-border hover:ring-primary/40 transition-all"
+                    onClick={() => { close(); setSupportOpen(true); }}
+                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs text-foreground hover:bg-primary/10 transition-colors"
                   >
-                    <MessageSquare className="size-3.5 text-muted-foreground" />
-                    {msgTotal > 0 && (
-                      <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
-                        {msgTotal > 9 ? "9+" : msgTotal}
+                    <LifeBuoy className="size-3.5 text-primary shrink-0" />
+                    <span className="flex-1">{t("messages.support")}</span>
+                    {supportReplies > 0 && (
+                      <span className="flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
+                        {supportReplies > 9 ? "9+" : supportReplies}
                       </span>
                     )}
                   </button>
-
-                  {msgMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-52 rounded-lg ring-1 ring-border bg-card shadow-xl p-1.5 z-50">
-                      <button
-                        onClick={() => { setMsgMenuOpen(false); setChatOpen(true); }}
-                        className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs text-foreground hover:bg-primary/10 transition-colors"
-                      >
-                        <MessageSquare className="size-3.5 text-primary shrink-0" />
-                        <span className="flex-1">{t("coachMessages")}</span>
-                        {unreadCount > 0 && (
-                          <span className="flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
-                            {unreadCount > 9 ? "9+" : unreadCount}
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => { setMsgMenuOpen(false); setSupportOpen(true); }}
-                        className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs text-foreground hover:bg-primary/10 transition-colors"
-                      >
-                        <LifeBuoy className="size-3.5 text-primary shrink-0" />
-                        <span className="flex-1">{t("messages.support")}</span>
-                        {supportReplies > 0 && (
-                          <span className="flex size-4 items-center justify-center rounded-full bg-destructive font-mono text-[9px] font-bold text-destructive-foreground">
-                            {supportReplies > 9 ? "9+" : supportReplies}
-                          </span>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                </>
               );
+              return <NotificationBell renderActions={renderActions} extraUnread={convUnread} />;
             })()}
-
-            {user && <NotificationBell />}
 
             <LanguageSwitcher />
 

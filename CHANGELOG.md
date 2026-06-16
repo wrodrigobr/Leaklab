@@ -24,6 +24,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 > Fecha o COACH-02. **Aviso de fim de trial (in-app):** `notify_expiring_coach_trials(7)` cria UMA notificação `coach_trial_ending` por coach quando o trial entra na janela de ≤7 dias e a meta ainda não foi batida (idempotente; pula quem já garantiu o Pro); engatado no job diário `scripts/expire_coach_trials.py` (avisa → expira). **Backfill de coaches legados:** `backfill_coach_trials()` + `scripts/backfill_coach_trials.py` — coaches aprovados antes da feature (`plan_source` NULL) ganham trial de 90d retroativo; quem já tem ≥15 pagantes vira `coach_earned` direto (idempotente, `--dry-run`). **Docs:** nova subseção "Seu plano como coach" em `/docs` (conceitos: 3 meses de cortesia, 15 pagantes p/ manter, senão Free mantendo a comissão), **i18n PT/EN/ES**. Testes: `test_coach_trial` 9→12 (+aviso na janela, +pula distante/meta-batida, +backfill trial/earned/idempotente); database 83/83. **COACH-02 completo (P1+P2+P3).**
 
 
+### fix(hud): unifica "Mensagens" e "Notificações" num único sino
+
+> Eram dois ícones no header com função sobreposta (uma nova mensagem do coach gerava badge nos dois). Agora há **um único sino**: o dropdown mostra no topo os **atalhos de conversa** (Chat com o coach / Suporte, cada um com seu badge) e, abaixo, a **lista de notificações** do sistema. O badge do sino soma tudo (notificações não-lidas + mensagens do coach + respostas de suporte). `NotificationBell` ganhou props `renderActions(close)` + `extraUnread`; o botão "Mensagens" (balão) e seu mini-menu saíram do `HudHeader`. Menos um ícone, zero redundância.
+
+
 ### fix(coach): switch de workspace movido p/ o dropdown do perfil
 
 > O seletor "Coach ⇄ Minha conta" ocupava muito espaço no header e empurrava/ocultava links do nav. Movido para dentro do **dropdown do perfil** (junto de "Ver perfil"/"Sair"), como um bloco "Workspace" com os dois botões (ícones Coach/Minha conta). Header volta a ter espaço para o nav completo. Estado segue no HudHeader (controla o nav), passado ao `AccountMenu` via props.

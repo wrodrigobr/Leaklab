@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
@@ -14,7 +14,15 @@ const TYPE_ICON: Record<string, string> = {
   coach_annotation: "✍️",
 };
 
-export function NotificationBell() {
+interface NotificationBellProps {
+  /** Atalhos de conversa (chat coach / suporte) renderizados no topo do dropdown.
+      Recebe `close` p/ fechar o painel ao abrir um modal/drawer. */
+  renderActions?: (close: () => void) => ReactNode;
+  /** Não-lidas externas (mensagens do coach + respostas de suporte) somadas ao badge. */
+  extraUnread?: number;
+}
+
+export function NotificationBell({ renderActions, extraUnread = 0 }: NotificationBellProps = {}) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -54,6 +62,8 @@ export function NotificationBell() {
     }
   };
 
+  const totalUnread = unread + (extraUnread || 0);
+
   const renderText = (n: NotificationItem): string => {
     const p = n.payload as { band?: string; delta?: number; title?: string };
     switch (n.type) {
@@ -75,15 +85,21 @@ export function NotificationBell() {
         className="relative inline-flex items-center justify-center size-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
       >
         <Bell className="size-4" />
-        {unread > 0 && (
+        {totalUnread > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground flex items-center justify-center">
-            {unread > 9 ? "9+" : unread}
+            {totalUnread > 9 ? "9+" : totalUnread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto rounded-xl border border-border bg-hud-surface shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-72 max-h-[28rem] overflow-y-auto rounded-xl border border-border bg-hud-surface shadow-lg z-50">
+          {/* Atalhos de conversa (chat coach / suporte) */}
+          {renderActions && (
+            <div className="p-1.5 border-b border-border">
+              {renderActions(() => setOpen(false))}
+            </div>
+          )}
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
             <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {t("notifications.title")}
