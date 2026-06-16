@@ -5759,6 +5759,30 @@ def mark_all_notifications_read(user_id: int) -> None:
         conn.close()
 
 
+def dismiss_notification(user_id: int, notif_id: int) -> bool:
+    """Remove (dispensa) uma notificação ao ser clicada — não fica acumulando na lista."""
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "DELETE FROM notifications WHERE id = ? AND user_id = ?"
+        ), (notif_id, user_id))
+        conn.commit()
+        return (cur.rowcount or 0) > 0
+    finally:
+        conn.close()
+
+
+def dismiss_all_notifications(user_id: int) -> int:
+    """Limpa todas as notificações do usuário. Retorna quantas foram removidas."""
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt("DELETE FROM notifications WHERE user_id = ?"), (user_id,))
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()
+
+
 def get_leaderboard_metrics(period_days: int = 90,
                             user_ids: Optional[list[int]] = None) -> list[dict]:
     """Agrega, por usuário, as métricas que alimentam o ranking (#15, fundação):

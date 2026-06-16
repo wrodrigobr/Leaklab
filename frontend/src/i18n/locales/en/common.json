@@ -31,7 +31,8 @@
     "coachMessage": "New message from your coach",
     "studentMessage": "New message from a student",
     "achievement": "Achievement unlocked: {{title}}",
-    "coachAnnotation": "Your coach annotated one of your hands"
+    "coachAnnotation": "Your coach annotated one of your hands",
+    "clearAll": "Clear all"
   },
   "actions": {
     "import": "Import",

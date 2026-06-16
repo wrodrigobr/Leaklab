@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notifications as notifApi, NotificationItem } from "@/lib/api";
 
@@ -64,6 +64,21 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
 
   const totalUnread = unread + (extraUnread || 0);
 
+  // Clicar numa notificação: navega (se tiver link), dispensa (remove) e tira da lista —
+  // assim a lista não cresce indefinidamente.
+  const onItemClick = (n: NotificationItem) => {
+    setItems((prev) => prev.filter((x) => x.id !== n.id));
+    notifApi.dismiss(n.id).catch(() => {});
+    if (n.link) navigate(n.link);
+    setOpen(false);
+  };
+
+  const clearAll = () => {
+    setItems([]);
+    setUnread(0);
+    notifApi.dismissAll().catch(() => {});
+  };
+
   const renderText = (n: NotificationItem): string => {
     const p = n.payload as { band?: string; delta?: number; title?: string };
     switch (n.type) {
@@ -104,6 +119,14 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
             <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {t("notifications.title")}
             </span>
+            {items.length > 0 && (
+              <button
+                onClick={clearAll}
+                className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <Trash2 className="size-3" /> {t("notifications.clearAll")}
+              </button>
+            )}
           </div>
           {items.length === 0 ? (
             <p className="px-3 py-6 text-center text-xs text-muted-foreground">{t("notifications.empty")}</p>
@@ -112,7 +135,7 @@ export function NotificationBell({ renderActions, extraUnread = 0 }: Notificatio
               {items.map((n) => (
                 <li key={n.id}>
                   <button
-                    onClick={() => { if (n.link) navigate(n.link); setOpen(false); }}
+                    onClick={() => onItemClick(n)}
                     className={cn(
                       "w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-primary/5 transition-colors",
                       !n.read && "bg-primary/[0.04]"

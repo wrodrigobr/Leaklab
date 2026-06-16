@@ -1013,6 +1013,10 @@ export const notifications = {
     request<{ ok: boolean }>(`/player/notifications/${id}/read`, { method: "POST" }),
   markAllRead: () =>
     request<{ ok: boolean }>(`/player/notifications/read-all`, { method: "POST" }),
+  dismiss: (id: number) =>
+    request<{ ok: boolean }>(`/player/notifications/${id}`, { method: "DELETE" }),
+  dismissAll: () =>
+    request<{ ok: boolean; removed: number }>(`/player/notifications`, { method: "DELETE" }),
 };
 
 export const leaderboardPrefs = {

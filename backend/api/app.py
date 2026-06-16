@@ -1687,6 +1687,24 @@ def notifications_mark_all_read():
     return jsonify({'ok': True})
 
 
+@app.route('/player/notifications/<int:notif_id>', methods=['DELETE'])
+@require_auth
+def notifications_dismiss(notif_id):
+    """Dispensa (remove) uma notificação — ao clicar, sai da lista."""
+    from database.repositories import dismiss_notification
+    ok = dismiss_notification(g.user_id, notif_id)
+    return jsonify({'ok': ok})
+
+
+@app.route('/player/notifications', methods=['DELETE'])
+@require_auth
+def notifications_dismiss_all():
+    """Limpa todas as notificações do usuário."""
+    from database.repositories import dismiss_all_notifications
+    n = dismiss_all_notifications(g.user_id)
+    return jsonify({'ok': True, 'removed': n})
+
+
 @app.route('/player/sparring/hand', methods=['GET'])
 @require_auth
 def player_sparring_hand():

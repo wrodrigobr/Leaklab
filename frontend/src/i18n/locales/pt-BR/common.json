@@ -31,7 +31,8 @@
     "coachMessage": "Nova mensagem do seu coach",
     "studentMessage": "Nova mensagem de um aluno",
     "achievement": "Conquista desbloqueada: {{title}}",
-    "coachAnnotation": "Seu coach anotou uma mão sua"
+    "coachAnnotation": "Seu coach anotou uma mão sua",
+    "clearAll": "Limpar todas"
   },
   "actions": {
     "import": "Importar",

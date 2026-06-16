@@ -104,6 +104,36 @@ def test_coach_message_produces_notification():
     print("OK  test_coach_message_produces_notification")
 
 
+def test_dismiss_one():
+    uid = _new_user("notif_dis1")
+    n1 = repo.create_notification(uid, "t", payload={})
+    n2 = repo.create_notification(uid, "t", payload={})
+    assert repo.dismiss_notification(uid, n1) is True
+    ids = [n["id"] for n in repo.get_notifications(uid)]
+    assert n1 not in ids and n2 in ids
+    # dispensar de novo (já removida) → False
+    assert repo.dismiss_notification(uid, n1) is False
+    print("OK  test_dismiss_one")
+
+
+def test_dismiss_only_own():
+    a = _new_user("notif_da"); b = _new_user("notif_db")
+    nid = repo.create_notification(a, "t", payload={})
+    assert repo.dismiss_notification(b, nid) is False   # b não remove a de a
+    assert len(repo.get_notifications(a)) == 1
+    print("OK  test_dismiss_only_own")
+
+
+def test_dismiss_all():
+    uid = _new_user("notif_dall")
+    for _ in range(3):
+        repo.create_notification(uid, "t", payload={})
+    assert repo.dismiss_all_notifications(uid) == 3
+    assert repo.get_notifications(uid) == []
+    assert repo.get_unread_notification_count(uid) == 0
+    print("OK  test_dismiss_all")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0
