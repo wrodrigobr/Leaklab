@@ -490,6 +490,10 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_via_invite_id    INTEGER",
             # SEC-01 fase 2: aprovação do coach (legados/existentes = approved)
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS link_status              TEXT NOT NULL DEFAULT 'approved'",
+            # COACH-02: Pro de cortesia do coach. plan_source: NULL=pago/legado,
+            # 'coach_trial' (3 meses no onboarding), 'coach_earned' (meta de 15 batida).
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_source              TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS coach_trial_ends_at      TEXT",
             # GTO-005: integração solver → decisions
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_label  TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_action TEXT",
@@ -1033,6 +1037,8 @@ def _run_migrations(conn):
             ("quota_day_reset_at",      "ALTER TABLE users ADD COLUMN quota_day_reset_at       TEXT"),
             ("invited_via_invite_id",   "ALTER TABLE users ADD COLUMN invited_via_invite_id   INTEGER"),
             ("link_status",             "ALTER TABLE users ADD COLUMN link_status             TEXT NOT NULL DEFAULT 'approved'"),
+            ("plan_source",             "ALTER TABLE users ADD COLUMN plan_source             TEXT"),
+            ("coach_trial_ends_at",     "ALTER TABLE users ADD COLUMN coach_trial_ends_at     TEXT"),
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),

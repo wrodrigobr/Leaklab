@@ -2671,6 +2671,14 @@ def coach_link_request_reject(student_id):
     return jsonify({'ok': ok}), (200 if ok else 404)
 
 
+@app.route('/coach/trial-status', methods=['GET'])
+@require_coach
+def coach_trial_status():
+    """COACH-02: estado do Pro de cortesia (dias restantes, indicados pagantes, meta)."""
+    from database.repositories import get_coach_trial_status
+    return jsonify(get_coach_trial_status(g.user_id))
+
+
 @app.route('/coach/profile', methods=['GET', 'POST'])
 @require_auth
 def coach_profile():
@@ -5127,6 +5135,14 @@ def subscription_activate():
         gateway_sub_id=subscription_id,
         gateway='stripe',
     )
+    # COACH-02: aluno indicado virou pagante → pode fechar a meta de 15 do coach.
+    _coach_id = g.user.get('coach_id')
+    if _coach_id:
+        try:
+            from database.repositories import maybe_promote_coach_earned
+            maybe_promote_coach_earned(_coach_id)
+        except Exception:
+            log.exception("maybe_promote_coach_earned falhou (activate) coach=%s", _coach_id)
     return jsonify({'ok': True, 'plan': plan, 'subscription_id': subscription_id})
 
 
@@ -5172,6 +5188,14 @@ def subscription_webhook():
                 gateway_sub_id=str(pi_id),
                 gateway='stripe',
             )
+            # COACH-02: aluno indicado virou pagante → pode fechar a meta do coach.
+            try:
+                _u = get_user_by_id(user_id)
+                if _u and _u.get('coach_id'):
+                    from database.repositories import maybe_promote_coach_earned
+                    maybe_promote_coach_earned(_u['coach_id'])
+            except Exception:
+                log.exception("maybe_promote_coach_earned falhou (webhook) user=%s", user_id)
 
     elif event_type == 'payment_intent.payment_failed':
         # PAY-01: registra a falha p/ trilha de auditoria/suporte (não altera o plano).

@@ -2356,9 +2356,13 @@ def approve_link_request(coach_id: int, student_id: int) -> bool:
             "UPDATE users SET link_status='approved' WHERE id=? AND coach_id=? AND link_status='pending'"),
             (student_id, coach_id))
         conn.commit()
-        return (cur.rowcount or 0) > 0
+        ok = (cur.rowcount or 0) > 0
     finally:
         conn.close()
+    # COACH-02: aprovar um indicado pode fechar a meta de 15 pagantes → trava o Pro.
+    if ok:
+        maybe_promote_coach_earned(coach_id)
+    return ok
 
 
 def reject_link_request(coach_id: int, student_id: int) -> bool:
@@ -3689,6 +3693,118 @@ def get_texture_analysis(tournament_db_id: int) -> list:
 
 # ── Admin & Coach Finance — BACK-014 + BACK-017 ───────────────────────────────
 
+# COACH-02: Pro de cortesia do coach
+COACH_TRIAL_DAYS  = 90    # 3 meses de Pro ao ser aprovado
+COACH_PRO_TARGET  = 15    # indicados pagantes p/ manter o Pro após o trial
+# Origens de plano que são "perk" do coach (NÃO contam como receita/MRR):
+COACH_PERK_SOURCES = ('coach_trial', 'coach_earned')
+
+
+def get_coach_paying_referred_count(coach_id: int) -> int:
+    """COACH-02: nº de indicados PAGANTES do coach — a métrica da meta dos 15.
+    Indicado (invited_via_invite_id) + aprovado (link_status) + assinante (plan='pro').
+    NÃO exige import em 30d (isso é a régua da comissão em dinheiro, não da meta)."""
+    conn = get_conn()
+    try:
+        return _fetchone(conn, _adapt(
+            "SELECT COUNT(*) AS n FROM users WHERE coach_id = ? "
+            "AND invited_via_invite_id IS NOT NULL AND link_status = 'approved' AND plan = 'pro'"),
+            (coach_id,))['n']
+    finally:
+        conn.close()
+
+
+def maybe_promote_coach_earned(coach_id: int) -> bool:
+    """COACH-02: se o coach está em trial/earned e atingiu a meta de indicados pagantes,
+    trava o Pro como 'coach_earned' (permanente). Idempotente. Retorna True se promoveu."""
+    if get_coach_paying_referred_count(coach_id) < COACH_PRO_TARGET:
+        return False
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "UPDATE users SET plan = 'pro', plan_source = 'coach_earned' "
+            "WHERE id = ? AND role = 'coach' AND plan_source IN ('coach_trial', 'coach_earned') "
+            "AND plan_source != 'coach_earned'"),
+            (coach_id,))
+        conn.commit()
+        return (cur.rowcount or 0) > 0
+    finally:
+        conn.close()
+
+
+def expire_coach_trials() -> dict:
+    """COACH-02 (job diário): para cada coach com trial VENCIDO, decide pelo destino.
+    ≥15 indicados pagantes → 'coach_earned' (mantém Pro); senão → downgrade p/ Free.
+    A comissão (% por aluno pagante) é independente e não é afetada."""
+    conn = get_conn()
+    try:
+        try:
+            conn.execute('PRAGMA busy_timeout=8000')
+        except Exception:
+            pass
+        now = _now_str()
+        rows = conn.execute(_adapt(
+            "SELECT id FROM users WHERE role = 'coach' AND plan_source = 'coach_trial' "
+            "AND coach_trial_ends_at IS NOT NULL AND coach_trial_ends_at < ?"),
+            (now,)).fetchall()
+        promoted, downgraded = [], []
+        for r in rows:
+            cid = r['id'] if isinstance(r, dict) or hasattr(r, 'keys') else r[0]
+            paying = conn.execute(_adapt(
+                "SELECT COUNT(*) AS n FROM users WHERE coach_id = ? "
+                "AND invited_via_invite_id IS NOT NULL AND link_status = 'approved' AND plan = 'pro'"),
+                (cid,)).fetchone()
+            paying = paying['n'] if isinstance(paying, dict) or hasattr(paying, 'keys') else paying[0]
+            if paying >= COACH_PRO_TARGET:
+                conn.execute(_adapt("UPDATE users SET plan_source = 'coach_earned' WHERE id = ?"), (cid,))
+                promoted.append(cid)
+            else:
+                conn.execute(_adapt(
+                    "UPDATE users SET plan = 'free', plan_source = NULL, coach_trial_ends_at = NULL WHERE id = ?"),
+                    (cid,))
+                downgraded.append(cid)
+        conn.commit()
+        return {'promoted': promoted, 'downgraded': downgraded,
+                'checked': len(rows), 'at': now}
+    finally:
+        conn.close()
+
+
+def get_coach_trial_status(coach_id: int) -> dict:
+    """COACH-02: estado do Pro de cortesia p/ o banner do cockpit."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT plan, plan_source, coach_trial_ends_at FROM users WHERE id = ?"),
+            (coach_id,))
+    finally:
+        conn.close()
+    if not row:
+        return {}
+    paying = get_coach_paying_referred_count(coach_id)
+    source = row.get('plan_source')
+    ends   = row.get('coach_trial_ends_at')
+    days_left = None
+    if source == 'coach_trial' and ends:
+        import datetime as _dt
+        try:
+            delta = _dt.datetime.strptime(ends, '%Y-%m-%d %H:%M:%S') - _dt.datetime.utcnow()
+            days_left = max(0, delta.days)
+        except (ValueError, TypeError):
+            days_left = None
+    return {
+        'plan':             row.get('plan') or 'free',
+        'plan_source':      source,
+        'trial_ends_at':    ends,
+        'days_left':        days_left,
+        'paying_referred':  paying,
+        'target':           COACH_PRO_TARGET,
+        'is_pro':           (row.get('plan') == 'pro'),
+        'earned':           (source == 'coach_earned'),
+        'on_trial':         (source == 'coach_trial'),
+    }
+
+
 def calculate_coach_payout(active_students: int) -> int:
     """Revenue share em centavos (BRL). 1-3: mensalidade zerada; 4-9: R$15/aluno; 10+: R$20/aluno."""
     if active_students >= 10: return active_students * 2000
@@ -3728,8 +3844,12 @@ def get_admin_dashboard_stats() -> dict:
         # MRR estimado: pro users pagam R$99/mês (9900 centavos) — DEVE bater com
         # leaklab.stripe_gateway.PLAN_AMOUNTS['pro'] (99.00) e /subscription/plans (9900).
         # Antes era 4900 (R$49), subestimando o MRR pela metade. (PAY-01)
-        pro_users = plans.get('pro', 0)
-        mrr_cents = pro_users * 9900
+        # COACH-02: exclui o Pro de CORTESIA do coach (coach_trial/coach_earned) — não é receita.
+        paying_pro = _fetchone(conn, """
+            SELECT COUNT(*) AS n FROM users
+            WHERE plan = 'pro' AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial', 'coach_earned'))
+        """)['n']
+        mrr_cents = paying_pro * 9900
         return {
             'total_users':          total_users,
             'total_coaches':        total_coaches,
@@ -4795,13 +4915,21 @@ def approve_coach_application(app_id: int, admin_note: str = '') -> Optional[dic
             "reviewed_at = ? WHERE id = ?",
             (admin_note, _now(), app_id)
         )
-        conn.execute("UPDATE users SET role = 'coach' WHERE id = ?", (user_id,))
+        # COACH-02: ao aprovar, o coach ganha 3 meses de Pro de cortesia (trial) +
+        # acesso pleno de aluno. Tem o trial para alcançar 15 indicados pagantes;
+        # senão sofre downgrade (ver expire_coach_trials).
+        import datetime as _dt
+        trial_ends = (_dt.datetime.utcnow() + _dt.timedelta(days=COACH_TRIAL_DAYS)).strftime('%Y-%m-%d %H:%M:%S')
+        conn.execute(_adapt(
+            "UPDATE users SET role = 'coach', plan = 'pro', plan_source = 'coach_trial', "
+            "coach_trial_ends_at = ? WHERE id = ?"), (trial_ends, user_id))
         # Create coach_profile if not exists
         conn.execute(
             "INSERT OR IGNORE INTO coach_profiles (user_id, display_name) VALUES (?, ?)",
             (user_id, app['username'])
         )
         conn.commit()
+        app['trial_ends_at'] = trial_ends
         return app
     finally:
         conn.close()
