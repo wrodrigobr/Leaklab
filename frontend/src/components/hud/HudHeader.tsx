@@ -87,6 +87,16 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [chatOpen, supportOpen]);
 
+  // Deep-link da notificação de mensagem do coach (?chat=1) → abre o drawer e limpa o param.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("chat") === "1" && user?.role === "player" && user?.coach_id) {
+      setChatOpen(true);
+      params.delete("chat");
+      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+    }
+  }, [location.search, location.pathname, user?.role, user?.coach_id, navigate]);
+
   const playerNavItems: NavItem[] = [
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",   icon: LayoutDashboard },
     { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments", icon: Trophy },

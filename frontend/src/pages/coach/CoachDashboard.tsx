@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Users, TrendingUp, Award, Activity, AlertTriangle,
@@ -1392,7 +1392,15 @@ function FinanceiroTab() {
 }
 
 export default function CoachDashboard() {
-  const [tab, setTab] = useState<Tab>("comando");
+  const [sp] = useSearchParams();
+  // Abre a aba indicada pela URL (?tab=mensagens), ex.: notificação de mensagem do aluno.
+  const initialTab = (TABS.some((t) => t.id === sp.get("tab")) ? sp.get("tab") : "comando") as Tab;
+  const [tab, setTab] = useState<Tab>(initialTab);
+  // Sincroniza se o ?tab mudar com o componente já montado (navegação interna).
+  const spTab = sp.get("tab");
+  useEffect(() => {
+    if (spTab && TABS.some((t) => t.id === spTab)) setTab(spTab as Tab);
+  }, [spTab]);
 
   const { data: inboxData } = useQuery({
     queryKey: ["coach-inbox"],

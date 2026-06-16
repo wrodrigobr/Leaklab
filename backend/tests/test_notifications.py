@@ -104,6 +104,38 @@ def test_coach_message_produces_notification():
     print("OK  test_coach_message_produces_notification")
 
 
+def test_message_links_open_chat():
+    coach = _new_user("notif_lc"); student = _new_user("notif_ls")
+    repo.send_coach_message(coach, student, "oi", sender_role="coach")
+    n = [i for i in repo.get_notifications(student) if i["type"] == "coach_message"][0]
+    assert n["link"] == "/dashboard?chat=1", n["link"]
+    repo.send_coach_message(coach, student, "oi de volta", sender_role="student")
+    m = [i for i in repo.get_notifications(coach) if i["type"] == "student_message"][0]
+    assert m["link"] == "/coach-dashboard?tab=mensagens", m["link"]
+    print("OK  test_message_links_open_chat")
+
+
+def test_annotation_link_opens_replayer():
+    coach = _new_user("notif_ac"); student = _new_user("notif_as")
+    conn = repo.get_conn()
+    try:
+        conn.execute("INSERT INTO tournaments (user_id, tournament_id, site, hero) VALUES (?,?,?,?)",
+                     (student, "T999PUB", "PokerStars", "hero"))
+        tdb = conn.execute("SELECT id FROM tournaments WHERE tournament_id='T999PUB'").fetchone()["id"]
+        conn.execute("INSERT INTO decisions (tournament_id, hand_id, street, action_taken, best_action, label, score) "
+                     "VALUES (?,?,?,?,?,?,?)",
+                     (tdb, "HAND777", "flop", "bet", "bet", "standard", 0.0))
+        did = conn.execute("SELECT id FROM decisions WHERE hand_id='HAND777'").fetchone()["id"]
+        conn.commit()
+    finally:
+        conn.close()
+    repo.upsert_annotation(coach, student, did, "boa linha", mode="complement")
+    n = [i for i in repo.get_notifications(student) if i["type"] == "coach_annotation"][0]
+    assert n["link"] == "/replayer?t=T999PUB&h=HAND777", n["link"]
+    assert n["payload"]["decision_id"] == did
+    print("OK  test_annotation_link_opens_replayer")
+
+
 def test_dismiss_one():
     uid = _new_user("notif_dis1")
     n1 = repo.create_notification(uid, "t", payload={})

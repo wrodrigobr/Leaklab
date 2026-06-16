@@ -3004,11 +3004,22 @@ def upsert_annotation(coach_id: int, student_id: int, decision_id: int,
             (coach_id, student_id, decision_id, comment, mode,
              coach_action, coach_override_label),
         )
-        # Notifica o aluno (mesma conexão).
+        # Notifica o aluno (mesma conexão). O link abre o REPLAYER direto na mão anotada
+        # (/replayer?t=<tournament_id público>&h=<hand_id>), resolvido a partir do decision_id.
         try:
+            link = '/dashboard'
+            ref = conn.execute(_adapt(
+                "SELECT t.tournament_id AS pub, d.hand_id AS hand "
+                "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id WHERE d.id = ?"),
+                (decision_id,)).fetchone()
+            if ref:
+                pub = ref['pub'] if isinstance(ref, dict) or hasattr(ref, 'keys') else ref[0]
+                hand = ref['hand'] if isinstance(ref, dict) or hasattr(ref, 'keys') else ref[1]
+                if pub and hand:
+                    link = f'/replayer?t={pub}&h={hand}'
             conn.execute(
                 "INSERT INTO notifications (user_id, type, payload, link) VALUES (?,?,?,?)",
-                (student_id, 'coach_annotation', '{}', '/dashboard'))
+                (student_id, 'coach_annotation', json.dumps({'decision_id': decision_id}), link))
         except Exception:
             pass
         conn.commit()
@@ -4856,12 +4867,13 @@ def send_coach_message(coach_id: int, student_id: int, body: str,
     msg_id = cur.lastrowid
     conn.commit()
     conn.close()
-    # Notifica o destinatário (produtor de notificação).
+    # Notifica o destinatário (produtor de notificação). O link abre direto a conversa:
+    # aluno → drawer de chat (?chat=1); coach → aba Mensagens do cockpit.
     try:
         if sender_role == 'coach':
-            create_notification(student_id, 'coach_message', link='/dashboard')
+            create_notification(student_id, 'coach_message', link='/dashboard?chat=1')
         elif sender_role == 'student':
-            create_notification(coach_id, 'student_message', link='/coach-dashboard')
+            create_notification(coach_id, 'student_message', link='/coach-dashboard?tab=mensagens')
     except Exception:
         pass
     return {"id": msg_id, "body": body, "sender_role": sender_role,
