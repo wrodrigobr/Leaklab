@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -56,16 +56,13 @@ function PublicRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function ProtectedRoute({ children, allowCoachWithStudent = false }: { children: ReactNode; allowCoachWithStudent?: boolean }) {
+// COACH-02 P2: o coach é dual-role (aluno + coach). Passou a ter acesso pleno às
+// rotas de aluno (upload/treino/dashboard) — não é mais redirecionado p/ o cockpit.
+// `allowCoachWithStudent` virou no-op (mantido p/ compat das chamadas existentes).
+function ProtectedRoute({ children }: { children: ReactNode; allowCoachWithStudent?: boolean }) {
   const { user, isLoading } = useAuth();
-  const [sp] = useSearchParams();
   if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === "coach") {
-    // exceção: coach revisando um aluno (ex.: /tournaments/:id?student=13) entra; senão → dash
-    if (allowCoachWithStudent && sp.get("student")) return <>{children}</>;
-    return <Navigate to="/coach-dashboard" replace />;
-  }
   return <>{children}</>;
 }
 

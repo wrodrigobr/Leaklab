@@ -14,7 +14,7 @@ import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
 import { StudentRow } from "@/components/coach/StudentRow";
 import { VerdictTag } from "@/components/VerdictTag";
 import { verdictLevelFromScore, VERDICT_META } from "@/lib/cardLogic";
-import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak, InboxThread, StudentSummary, CoachCohortAnalytics } from "@/lib/api";
+import { coachDashboard, coachFinance, coachEffectiveness, MultiStudentDecision, CommonLeak, InboxThread, StudentSummary, CoachCohortAnalytics, CoachTrialStatus } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
 // ── shared ────────────────────────────────────────────────────────────────────
@@ -793,6 +793,65 @@ function FragmentRow({ street, hmap, hmax }: { street: string; hmap: Map<string,
   );
 }
 
+function TrialBanner({ trial }: { trial: CoachTrialStatus }) {
+  const pct = Math.min(100, Math.round((trial.paying_referred / Math.max(1, trial.target)) * 100));
+
+  // Pro garantido (meta batida)
+  if (trial.earned) {
+    return (
+      <div className="rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 flex items-center gap-3">
+        <CheckCircle2 className="size-5 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">Pro garantido <span className="text-primary">✓</span></p>
+          <p className="font-mono text-[10px] text-muted-foreground">Você atingiu {trial.target} alunos pagantes — seu plano Pro é permanente.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Em trial de cortesia
+  if (trial.on_trial) {
+    const low = (trial.days_left ?? 99) <= 14;
+    return (
+      <div className={cn("rounded-xl border px-4 py-3.5 space-y-2.5",
+        low ? "border-amber-400/40 bg-amber-400/5" : "border-primary/30 bg-primary/5")}>
+        <div className="flex items-center gap-2">
+          <Clock className={cn("size-4 shrink-0", low ? "text-amber-400" : "text-primary")} />
+          <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">Pro de cortesia</span>
+          <span className={cn("ml-auto font-mono text-[11px] font-bold", low ? "text-amber-400" : "text-primary")}>
+            {trial.days_left != null ? `${trial.days_left} dia(s) restantes` : "trial ativo"}
+          </span>
+        </div>
+        <p className="text-sm text-foreground">
+          <b>{trial.paying_referred}/{trial.target}</b> alunos pagantes para <b>manter o Pro</b> após o período de cortesia.
+        </p>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+          <div className={cn("h-full rounded-full transition-all", low ? "bg-amber-400" : "bg-primary")} style={{ width: `${pct}%` }} />
+        </div>
+        <p className="font-mono text-[10px] text-muted-foreground/70">
+          Não atingindo a meta, o plano vira Free no fim do trial — você segue recebendo a comissão por aluno pagante.
+        </p>
+      </div>
+    );
+  }
+
+  // Pós-downgrade (free) — só mostra se já teve cortesia (sem trial e sem earned, mas é coach free)
+  if (!trial.is_pro) {
+    return (
+      <div className="rounded-xl border border-border bg-hud-surface px-4 py-3 flex items-center gap-3">
+        <AlertTriangle className="size-5 shrink-0 text-amber-400" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">Plano Free</p>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            Alcance {trial.target} alunos pagantes ({trial.paying_referred}/{trial.target}) para reativar o Pro — a comissão por aluno pagante continua.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
 function ComandoTab() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -800,6 +859,7 @@ function ComandoTab() {
   const { data: finance }      = useQuery({ queryKey: ["coach-finance-summary"], queryFn: coachFinance.summary });
   const { data: activity }     = useQuery({ queryKey: ["coach-recent-activity"], queryFn: () => coachDashboard.recentActivity(20) });
   const { data: linkReqData }  = useQuery({ queryKey: ["coach-link-requests"], queryFn: coachDashboard.listLinkRequests });
+  const { data: trial }        = useQuery({ queryKey: ["coach-trial-status"], queryFn: coachDashboard.trialStatus });
   const students = studentsData?.students ?? [];
   const linkRequests = linkReqData?.requests ?? [];
 
@@ -832,6 +892,9 @@ function ComandoTab() {
 
   return (
     <div className="space-y-4">
+      {/* COACH-02: banner do Pro de cortesia (trial 3 meses / meta 15 pagantes) */}
+      {trial && <TrialBanner trial={trial} />}
+
       {/* SEC-01 fase 2: solicitações de vínculo aguardando aprovação */}
       {linkRequests.length > 0 && (
         <div className="rounded-xl border border-primary/40 bg-primary/5 p-4">

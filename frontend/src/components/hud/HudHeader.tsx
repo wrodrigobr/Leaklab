@@ -11,6 +11,7 @@ import { CoachMessagesPanel } from "@/components/hud/CoachMessagesPanel";
 import { SupportModal } from "@/components/hud/SupportModal";
 import { NotificationBell } from "@/components/hud/NotificationBell";
 import { playerMessages, support } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 interface HudHeaderProps {
   onUpload?: () => void;
@@ -123,9 +124,23 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     { label: t("nav.admin"), mobileLabel: t("nav.admin"), to: "/admin", icon: Shield, end: true },
   ];
 
+  // COACH-02 P2: o coach é dual-role. Switch de workspace (persistido) alterna entre
+  // o command center ("Modo Coach") e a conta de aluno ("Minha conta").
+  const isCoach = user?.role === "coach";
+  const [workspace, setWorkspace] = useState<"coach" | "player">(() =>
+    (typeof window !== "undefined" && localStorage.getItem("coachWorkspace") === "player") ? "player" : "coach"
+  );
+  const switchWorkspace = (w: "coach" | "player") => {
+    setWorkspace(w);
+    try { localStorage.setItem("coachWorkspace", w); } catch { /* ignore */ }
+    navigate(w === "coach" ? "/coach-dashboard" : "/dashboard");
+  };
+  const inPlayerWorkspace = isCoach && workspace === "player";
+  const canUpload = user?.role === "player" || inPlayerWorkspace;
+
   const navItems = (
     user?.role === "admin" ? adminNavItems :
-    user?.role === "coach" ? coachNavItems :
+    isCoach ? (workspace === "coach" ? coachNavItems : playerNavItems) :
     playerNavItems
   );
 
@@ -196,7 +211,23 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
               className="hidden"
               onChange={(e) => { if (e.target.files?.length) enqueue(e.target.files); e.target.value = ""; }}
             />
-            {user?.role !== "coach" && (
+            {/* COACH-02 P2: switch de workspace (só coaches) */}
+            {isCoach && (
+              <div className="hidden sm:flex items-center rounded-md border border-border overflow-hidden" role="group" aria-label="Workspace">
+                <button
+                  onClick={() => switchWorkspace("coach")}
+                  className={cn("px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
+                    workspace === "coach" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground")}
+                >Coach</button>
+                <button
+                  onClick={() => switchWorkspace("player")}
+                  className={cn("px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
+                    workspace === "player" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground")}
+                >Minha conta</button>
+              </div>
+            )}
+
+            {canUpload && (
               <button
                 onClick={() => inputRef.current?.click()}
                 title={t("actions.import")}
@@ -311,7 +342,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
       )}
 
       {/* ── Mobile FAB — import ───────────────────────────────────────────────── */}
-      {user && user.role !== "coach" && (
+      {user && canUpload && (
         <button
           onClick={() => inputRef.current?.click()}
           className="fixed bottom-[72px] right-4 z-50 md:hidden size-12 rounded-full bg-primary text-primary-foreground shadow-glow flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"

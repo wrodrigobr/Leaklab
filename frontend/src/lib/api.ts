@@ -1457,6 +1457,18 @@ export interface StudentSummary {
   link_status?: "approved" | "pending" | "rejected";  // SEC-01 fase 2
 }
 
+export interface CoachTrialStatus {
+  plan: string;
+  plan_source: "coach_trial" | "coach_earned" | null;
+  trial_ends_at: string | null;
+  days_left: number | null;
+  paying_referred: number;
+  target: number;
+  is_pro: boolean;
+  earned: boolean;
+  on_trial: boolean;
+}
+
 export interface CoachLinkRequest {
   student_id: number;
   username: string;
@@ -1621,6 +1633,10 @@ export const coachDashboard = {
     request<{ invite: CoachInvite }>("/coach/invites", { method: "POST", body: JSON.stringify({ label, expires_days }) }),
   revokeInvite: (id: number) =>
     request<{ ok: boolean }>(`/coach/invites/${id}`, { method: "DELETE" }),
+
+  // COACH-02: estado do Pro de cortesia (trial 3 meses + meta 15 pagantes)
+  trialStatus: () =>
+    request<CoachTrialStatus>("/coach/trial-status"),
 
   // SEC-01 fase 2: aprovação de vínculo
   listLinkRequests: () =>

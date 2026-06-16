@@ -1,6 +1,6 @@
 # COACH-ONBOARDING — Coach como aluno + Pro de cortesia (3 meses) + meta de 15 pagantes
 
-**Status:** P1 (backend) ✅ implementada 2026-06-16 · P2 (frontend) e P3 (polish) pendentes · criado 2026-06-16
+**Status:** P1 (backend) ✅ + P2 (frontend) ✅ implementadas 2026-06-16 · P3 (polish/backfill) pendente · criado 2026-06-16
 **Origem:** "Não posso simplesmente dar Pro pro coach. Ao entrar ele também precisa das funcionalidades de aluno (Free). Ao alcançar 15 alunos indicados **e pagantes** ele mantém Pro. Mas ao ser aprovado ele tem **3 meses de Pro** para conseguir os 15; depois disso, **downgrade** se não bater a meta — restando só o **% por aluno pagante**."
 
 ---

@@ -109,9 +109,9 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 - **Conciliação coach:** `coach_payments` (repasse) bate com os pagamentos reais dos alunos pro.
 - Entregar com testes (estender `tests/test_subscription.py`) + checklist de smoke manual no Stripe Dashboard.
 
-### [COACH-02] — Coach como aluno + Pro de cortesia (3 meses) + meta de 15 pagantes *(criado 2026-06-16 · P1 ✅ 2026-06-16)*
+### [COACH-02] — Coach como aluno + Pro de cortesia (3 meses) + meta de 15 pagantes *(criado 2026-06-16 · P1+P2 ✅ 2026-06-16)*
 
-**Plano completo:** [`specs/coach-onboarding-trial.md`](specs/coach-onboarding-trial.md). **P1 (backend) ENTREGUE:** colunas `plan_source`+`coach_trial_ends_at`, trial na aprovação, `maybe_promote_coach_earned` (engatado em approve_link_request + Stripe), job `expire_coach_trials`, `GET /coach/trial-status`, MRR exclui perk, `test_coach_trial` 9/9. **Falta P2 (frontend)** + P3 (polish/backfill).
+**Plano completo:** [`specs/coach-onboarding-trial.md`](specs/coach-onboarding-trial.md). **P1 (backend) ENTREGUE:** colunas `plan_source`+`coach_trial_ends_at`, trial na aprovação, `maybe_promote_coach_earned` (engatado em approve_link_request + Stripe), job `expire_coach_trials`, `GET /coach/trial-status`, MRR exclui perk, `test_coach_trial` 9/9. **P2 (frontend) ENTREGUE:** routing aberto p/ coach (dual-role), switch de workspace Coach⇄Minha conta no header, upload liberado, banner de trial no cockpit. **Falta P3** (aviso de fim de trial in-app/e-mail, docs, i18n, backfill de coaches legados).
 
 **Modelo:** ao ser aprovado, o coach ganha **3 meses de Pro de cortesia** + acesso pleno de **aluno** (upload/treino/insights) além da visão de coach. Meta: **15 indicados pagantes** (`invited_via_invite_id` + `link_status='approved'` + `plan='pro'` — barreira anti-gaming é o pagamento real). Bateu a meta a qualquer momento → `plan_source='coach_earned'` (Pro permanente). Não bateu até o fim do trial → **downgrade p/ Free**, restando só a **comissão %** por aluno pagante (comp 4/10 inalterada).
 
