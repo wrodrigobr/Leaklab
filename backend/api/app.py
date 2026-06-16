@@ -5125,6 +5125,7 @@ def subscription_activate():
         status='approved',
         gateway_id=payment_intent_id,
         gateway_sub_id=subscription_id,
+        gateway='stripe',
     )
     return jsonify({'ok': True, 'plan': plan, 'subscription_id': subscription_id})
 
@@ -5169,6 +5170,24 @@ def subscription_webhook():
                 status='approved',
                 gateway_id=str(pi_id),
                 gateway_sub_id=str(pi_id),
+                gateway='stripe',
+            )
+
+    elif event_type == 'payment_intent.payment_failed':
+        # PAY-01: registra a falha p/ trilha de auditoria/suporte (não altera o plano).
+        meta      = obj.get('metadata', {}) if isinstance(obj, dict) else obj.metadata
+        user_id   = int(meta.get('user_id', 0) or 0)
+        plan_name = meta.get('plan_name', '') if isinstance(meta, dict) else ''
+        pi_id     = obj.get('id', '') if isinstance(obj, dict) else obj.id
+        amount    = obj.get('amount', 0) if isinstance(obj, dict) else obj.amount
+        if user_id:
+            save_payment(
+                user_id=user_id, plan=plan_name or 'pro',
+                amount_cents=int(amount or 0),
+                status='failed',
+                gateway_id=str(pi_id),
+                gateway_sub_id=str(pi_id),
+                gateway='stripe',
             )
 
     return jsonify({'ok': True})

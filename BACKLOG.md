@@ -95,7 +95,9 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 > _(FEAT-17 concluído em v0.83.0 — entrada movida para o roadmap acima. Verificado 2026-06-15: `OnboardingModal.tsx` 4 passos, gate via `ProtectedRoute` (só com user carregado), finish→`/dashboard`→CTA de upload do `EmptyDashboard`, i18n nas 3 locales, endpoint+coluna+repo presentes.)_
 
-### [PAY-01] — Revalidação do Stripe (pré-produção) *(criado 2026-06-15)*
+### [PAY-01] — Revalidação do Stripe (pré-produção) ✅ AUDITORIA CONCLUÍDA 2026-06-16
+
+> Auditoria em [`specs/pay-01-stripe-audit.md`](specs/pay-01-stripe-audit.md). **5 bugs corrigidos:** B-1 pagamento gravado em dobro (activate+webhook+retries → `save_payment` idempotente por `gateway_id,status`); B-2 Stripe rotulado `mercadopago` → `gateway='stripe'`; B-3 `/subscription/cancel` quebrado (cancelava PI como Subscription → 502) → guard `sub_`/downgrade local; B-4 MRR admin R$49→R$99; B-5 marca "LeakLabs"→"GrindLab" no recibo. + webhook trata `payment_intent.payment_failed` (trilha de auditoria). Testes 26→32. **Decisão de produto EM ABERTO (D-1):** o modelo é PaymentIntent único de 30d sem recorrência **nem expiração** → Pro vira vitalício. Opções A (Subscriptions reais) / B (`plan_expires_at`+cron) / C (aceitar). Não implementado — é mudança de modelo de cobrança, fora da revalidação.
 
 **Valor:** O meio de pagamento precisa estar comprovadamente funcional e correto antes do launch — qualquer falha aqui é receita perdida ou cobrança errada.
 

@@ -361,6 +361,116 @@ def test_webhook_invalid_signature_rejected():
         os.environ.pop('STRIPE_WEBHOOK_SECRET', None)
 
 
+# ── PAY-01: revalidação (idempotência, rótulo de gateway, cancel, falha, MRR) ──
+
+def _uid(c, token):
+    return c.get('/auth/me', headers={'Authorization': f'Bearer {token}'}).get_json().get('user_id')
+
+
+def test_activate_then_webhook_no_double_payment():
+    """PAY-01: /activate + webhook payment_intent.succeeded p/ o MESMO pi → 1 linha só
+    (antes gravava 2 — receita/invoices dobrados)."""
+    c = _make_client()
+    token = _register_and_login(c, 'idem1')
+    uid = _uid(c, token)
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_idem', 'succeeded')):
+        c.post('/subscription/activate',
+               json={'plan': 'pro', 'payment_intent_id': 'pi_idem', 'subscription_id': 'pi_idem'},
+               headers=_auth(token))
+    payload = json.dumps({'type': 'payment_intent.succeeded',
+                          'data': {'object': {'id': 'pi_idem', 'amount': 9900,
+                                              'metadata': {'user_id': str(uid), 'plan_name': 'pro'}}}}).encode()
+    with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
+        r = c.post('/subscription/webhook', data=payload, content_type='application/json')
+    assert r.status_code == 200
+    inv = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'}).get_json()
+    approved = [p for p in inv['invoices'] if p['status'] == 'approved' and p['gateway_id'] == 'pi_idem']
+    assert len(approved) == 1, f"esperava 1 pagamento, achou {len(approved)}"
+    assert approved[0]['gateway'] == 'stripe'
+    print("OK  test_activate_then_webhook_no_double_payment")
+
+
+def test_webhook_retry_idempotent():
+    """PAY-01: retentativa do MESMO webhook não duplica o pagamento."""
+    c = _make_client()
+    token = _register_and_login(c, 'idem2')
+    uid = _uid(c, token)
+    payload = json.dumps({'type': 'payment_intent.succeeded',
+                          'data': {'object': {'id': 'pi_retry', 'amount': 9900,
+                                              'metadata': {'user_id': str(uid), 'plan_name': 'pro'}}}}).encode()
+    with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
+        c.post('/subscription/webhook', data=payload, content_type='application/json')
+        c.post('/subscription/webhook', data=payload, content_type='application/json')
+    inv = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'}).get_json()
+    rows = [p for p in inv['invoices'] if p['gateway_id'] == 'pi_retry']
+    assert len(rows) == 1, f"esperava 1, achou {len(rows)}"
+    print("OK  test_webhook_retry_idempotent")
+
+
+def test_stripe_payment_labeled_stripe():
+    """PAY-01: pagamento Stripe gravado com gateway='stripe' (não o default 'mercadopago')."""
+    c = _make_client()
+    token = _register_and_login(c, 'glabel')
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_lbl', 'succeeded')):
+        c.post('/subscription/activate',
+               json={'plan': 'pro', 'payment_intent_id': 'pi_lbl', 'subscription_id': 'pi_lbl'},
+               headers=_auth(token))
+    inv = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'}).get_json()
+    assert inv['invoices'][0]['gateway'] == 'stripe'
+    print("OK  test_stripe_payment_labeled_stripe")
+
+
+def test_cancel_pi_model_downgrades_without_stripe():
+    """PAY-01: cancelar com id de PaymentIntent (pi_...) NÃO chama o Stripe e faz downgrade local
+    (antes Subscription.cancel(pi_...) lançava → 502 em produção)."""
+    c = _make_client()
+    token = _register_and_login(c, 'cancpi')
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_cx', 'succeeded')):
+        c.post('/subscription/activate',
+               json={'plan': 'pro', 'payment_intent_id': 'pi_cx', 'subscription_id': 'pi_cx'},
+               headers=_auth(token))
+    # SEM mockar cancel_subscription → exercita o guard real (pi_ → True sem chamar Stripe)
+    with patch('leaklab.stripe_gateway._stripe.Subscription.cancel') as mock_cancel:
+        r = c.post('/subscription/cancel', headers=_auth(token))
+        assert mock_cancel.call_count == 0, "não deve chamar Stripe p/ id pi_"
+    assert r.status_code == 200 and r.get_json()['plan'] == 'free'
+    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert me.get_json()['plan'] == 'free'
+    print("OK  test_cancel_pi_model_downgrades_without_stripe")
+
+
+def test_webhook_payment_failed_recorded():
+    """PAY-01: payment_intent.payment_failed grava linha 'failed' p/ auditoria; plano intacto."""
+    c = _make_client()
+    token = _register_and_login(c, 'pfail')
+    uid = _uid(c, token)
+    payload = json.dumps({'type': 'payment_intent.payment_failed',
+                          'data': {'object': {'id': 'pi_fail', 'amount': 9900,
+                                              'metadata': {'user_id': str(uid), 'plan_name': 'pro'}}}}).encode()
+    with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
+        r = c.post('/subscription/webhook', data=payload, content_type='application/json')
+    assert r.status_code == 200
+    inv = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'}).get_json()
+    failed = [p for p in inv['invoices'] if p['status'] == 'failed']
+    assert len(failed) == 1 and failed[0]['gateway'] == 'stripe'
+    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert me.get_json()['plan'] == 'free', "falha de pagamento não pode dar pro"
+    print("OK  test_webhook_payment_failed_recorded")
+
+
+def test_admin_mrr_matches_pro_price():
+    """PAY-01: MRR do admin = pro_users * 9900 (preço real), não 4900 (subestimava metade)."""
+    c = _make_client()  # configura o DB de teste (patcha get_conn)
+    from database import repositories as repo
+    for i in range(2):
+        uid = repo.create_user(f'mrr{i}', f'mrr{i}@t.com', 'pass', role='player')
+        repo.update_user_plan(uid, 'pro')
+    stats = repo.get_admin_dashboard_stats()
+    pro = stats['plans'].get('pro', 0)
+    assert pro >= 2 and stats['mrr_cents'] == pro * 9900, stats
+    print("OK  test_admin_mrr_matches_pro_price")
+
+
 # ── runner ───────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':

@@ -49,7 +49,8 @@ def create_subscription(plan_name: str, payer_email: str, user_id: int) -> dict:
         # allow_redirects=never: só métodos não-redirect (cartão), permite confirmar sem return_url
         automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
         metadata={"user_id": str(user_id), "plan_name": plan_name},
-        description=f"LeakLabs {plan_name.title()} — 30 dias",
+        # description aparece no recibo/fatura do cliente → usa a marca visível (GrindLab).
+        description=f"GrindLab {plan_name.title()} — 30 dias",
     )
 
     log.info("Stripe PaymentIntent created: pi=%s amount=%s", pi.id, amount_cents)
@@ -61,6 +62,16 @@ def create_subscription(plan_name: str, payer_email: str, user_id: int) -> dict:
 
 
 def cancel_subscription(subscription_id: str) -> bool:
+    """Cancela a assinatura no Stripe.
+
+    PAY-01: o modelo atual cobra um PaymentIntent único de 30 dias (`pi_...`), NÃO uma
+    Subscription recorrente — não há nada a cancelar no Stripe nesses casos (chamar
+    Subscription.cancel(pi_...) lança erro). Só chamamos o Stripe para ids de assinatura
+    de verdade (`sub_...`); para `pi_...` o cancelamento é apenas local (downgrade).
+    """
+    if not subscription_id or not subscription_id.startswith("sub_"):
+        log.info("cancel_subscription: non-subscription id %r — downgrade local apenas", subscription_id)
+        return True
     try:
         _stripe.Subscription.cancel(subscription_id)
         log.info("Stripe subscription cancelled: %s", subscription_id)

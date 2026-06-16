@@ -3536,6 +3536,18 @@ def save_payment(
 ) -> int:
     conn = get_conn()
     try:
+        # PAY-01: idempotência. Um pagamento aprovado é gravado por DOIS caminhos para o
+        # mesmo PaymentIntent — /subscription/activate (frontend) E o webhook
+        # payment_intent.succeeded — além das retentativas de webhook do Stripe. Sem dedupe,
+        # cada pagamento vira 2+ linhas (receita/invoices inflados). Dedupe por
+        # (gateway_id, status): se já existe, devolve a linha existente em vez de inserir.
+        if gateway_id:
+            existing = conn.execute(
+                _adapt("SELECT id FROM payments WHERE gateway_id = ? AND status = ?"),
+                (gateway_id, status),
+            ).fetchone()
+            if existing:
+                return existing['id'] if isinstance(existing, dict) or hasattr(existing, 'keys') else existing[0]
         cur = conn.execute(
             "INSERT INTO payments (user_id, plan, amount_cents, currency, status, "
             "gateway, gateway_id, gateway_sub_id, period_start, period_end) "
@@ -3713,9 +3725,11 @@ def get_admin_dashboard_stats() -> dict:
             SELECT COALESCE(SUM(amount_cents), 0) AS total FROM coach_payments
             WHERE status = 'pending'
         """)['total']
-        # MRR estimado: pro users pagam ~R$49/mês (4900 centavos)
+        # MRR estimado: pro users pagam R$99/mês (9900 centavos) — DEVE bater com
+        # leaklab.stripe_gateway.PLAN_AMOUNTS['pro'] (99.00) e /subscription/plans (9900).
+        # Antes era 4900 (R$49), subestimando o MRR pela metade. (PAY-01)
         pro_users = plans.get('pro', 0)
-        mrr_cents = pro_users * 4900
+        mrr_cents = pro_users * 9900
         return {
             'total_users':          total_users,
             'total_coaches':        total_coaches,
