@@ -192,7 +192,7 @@ def get_students(coach_id: int) -> List[dict]:
     conn = get_conn()
     try:
         rows = conn.execute(
-            "SELECT id, username, email, created_at, last_login, plan, invited_by_key, invited_via_invite_id "
+            "SELECT id, username, email, created_at, last_login, plan, invited_by_key, invited_via_invite_id, link_status "
             "FROM users WHERE coach_id = ?", (coach_id,)
         ).fetchall()
         return [dict(r) for r in rows]
@@ -2320,13 +2320,57 @@ def redeem_coach_invite(student_id: int, code: str) -> dict:
             (student_id, _now_str(), inv['id']))
         if (upd.rowcount or 0) == 0:
             return {'ok': False, 'error': 'Convite já utilizado'}
+        # fase 2: o vínculo entra PENDENTE — o coach precisa aprovar (comp só conta approved).
         conn.execute(_adapt(
-            "UPDATE users SET coach_id=?, invited_by_key=?, invited_via_invite_id=? WHERE id=?"),
+            "UPDATE users SET coach_id=?, invited_by_key=?, invited_via_invite_id=?, link_status='pending' WHERE id=?"),
             (inv['coach_id'], code, inv['id'], student_id))
         conn.commit()
         coach = conn.execute(_adapt("SELECT id, username, email, role FROM users WHERE id=?"),
                              (inv['coach_id'],)).fetchone()
-        return {'ok': True, 'coach': dict(coach)}
+        return {'ok': True, 'coach': dict(coach), 'pending': True}
+    finally:
+        conn.close()
+
+
+def list_pending_link_requests(coach_id: int) -> list:
+    """Alunos que resgataram um convite do coach e aguardam aprovação (fase 2)."""
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt("""
+            SELECT u.id AS student_id, u.username, u.email, ci.code, ci.used_at, ci.label
+            FROM users u
+            LEFT JOIN coach_invites ci ON ci.id = u.invited_via_invite_id
+            WHERE u.coach_id = ? AND u.link_status = 'pending'
+            ORDER BY ci.used_at DESC
+        """), (coach_id,)).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def approve_link_request(coach_id: int, student_id: int) -> bool:
+    """Aprova o vínculo pendente do aluno (só do próprio coach)."""
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "UPDATE users SET link_status='approved' WHERE id=? AND coach_id=? AND link_status='pending'"),
+            (student_id, coach_id))
+        conn.commit()
+        return (cur.rowcount or 0) > 0
+    finally:
+        conn.close()
+
+
+def reject_link_request(coach_id: int, student_id: int) -> bool:
+    """Rejeita o vínculo pendente: desvincula o aluno (coach_id/invite NULL, status rejected)."""
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "UPDATE users SET coach_id=NULL, invited_via_invite_id=NULL, link_status='rejected' "
+            "WHERE id=? AND coach_id=? AND link_status='pending'"),
+            (student_id, coach_id))
+        conn.commit()
+        return (cur.rowcount or 0) > 0
     finally:
         conn.close()
 
@@ -3793,6 +3837,7 @@ def get_coaches_with_payout_status(period: str) -> list:
                 INNER JOIN tournaments t ON t.user_id = s.id
                 WHERE s.coach_id = ? AND s.plan = 'pro'
                   AND s.invited_via_invite_id IS NOT NULL
+                  AND s.link_status = 'approved'
                   AND t.imported_at >= {interval_sql(30)}
             """, (coach['id'],))['n']
             coach['active_students'] = active
@@ -3866,6 +3911,7 @@ def get_coach_finance_summary(coach_id: int) -> dict:
             INNER JOIN tournaments t ON t.user_id = s.id
             WHERE s.coach_id = ? AND s.plan = 'pro'
               AND s.invited_via_invite_id IS NOT NULL
+              AND s.link_status = 'approved'
               AND t.imported_at >= {interval_sql(30)}
         """, (coach_id,))['n']
         amount_cents = calculate_coach_payout(active_students)

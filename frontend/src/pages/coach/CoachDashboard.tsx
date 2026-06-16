@@ -7,7 +7,7 @@ import {
   Play, Filter, ChevronDown, ChevronUp, LayoutDashboard,
   BarChart2, CheckCircle2, Clock, MessageSquare,
   Search, ChevronLeft, ChevronRight as ChevronRightIcon, TrendingDown, Minus,
-  Gauge, Zap,
+  Gauge, Zap, UserPlus,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
@@ -357,7 +357,9 @@ function AlunosTab() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {isActivePaid(s)
+                      {s.link_status === "pending"
+                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-violet-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-violet-300 ring-1 ring-violet-400/30" title="Resgatou seu convite e aguarda sua aprovação — só conta no repasse após aprovar"><Clock className="size-3" /> Aguardando você</span>
+                        : isActivePaid(s)
                         ? <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20" title="Indicado por convite + pro + import 30d — conta no seu repasse"><CheckCircle2 className="size-3" /> Ativo · R$</span>
                         : (s.plan === "pro" && isActive(s))
                         ? <span className="inline-flex items-center gap-1 rounded-sm bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-400/30" title="Pro e ativo, mas não foi indicado por convite single-use — NÃO conta no repasse">Ativo · não-indicado</span>
@@ -793,10 +795,23 @@ function FragmentRow({ street, hmap, hmax }: { street: string; hmap: Map<string,
 
 function ComandoTab() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { data: studentsData } = useQuery({ queryKey: ["coach-students"], queryFn: coachDashboard.students });
   const { data: finance }      = useQuery({ queryKey: ["coach-finance-summary"], queryFn: coachFinance.summary });
   const { data: activity }     = useQuery({ queryKey: ["coach-recent-activity"], queryFn: () => coachDashboard.recentActivity(20) });
+  const { data: linkReqData }  = useQuery({ queryKey: ["coach-link-requests"], queryFn: coachDashboard.listLinkRequests });
   const students = studentsData?.students ?? [];
+  const linkRequests = linkReqData?.requests ?? [];
+
+  const decideLink = useMutation({
+    mutationFn: ({ studentId, approve }: { studentId: number; approve: boolean }) =>
+      approve ? coachDashboard.approveLinkRequest(studentId) : coachDashboard.rejectLinkRequest(studentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["coach-link-requests"] });
+      qc.invalidateQueries({ queryKey: ["coach-students"] });
+      qc.invalidateQueries({ queryKey: ["coach-finance-summary"] });
+    },
+  });
 
   const queue = useMemo(() => {
     const items: { kind: QueueKind; sid: number; name: string; title: string; sub: string }[] = [];
@@ -817,6 +832,32 @@ function ComandoTab() {
 
   return (
     <div className="space-y-4">
+      {/* SEC-01 fase 2: solicitações de vínculo aguardando aprovação */}
+      {linkRequests.length > 0 && (
+        <div className="rounded-xl border border-primary/40 bg-primary/5 p-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <UserPlus className="size-3.5 text-primary" />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary">Solicitações de vínculo</span>
+            <span className="ml-auto font-mono text-[10px] text-muted-foreground/70">{linkRequests.length} aguardando · só aprovados contam no repasse</span>
+          </div>
+          <div className="space-y-1.5">
+            {linkRequests.map((r) => (
+              <div key={r.student_id} className="flex items-center gap-3 rounded-lg border border-border bg-background/40 px-3 py-2.5">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 font-bold text-primary">{r.username.slice(0, 1).toUpperCase()}</div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate"><b>{r.username}</b>{r.label ? ` · ${r.label}` : ""}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground truncate">{r.email} · convite {r.code ?? "—"}{r.used_at ? ` · ${new Date(r.used_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}` : ""}</p>
+                </div>
+                <button disabled={decideLink.isPending} onClick={() => decideLink.mutate({ studentId: r.student_id, approve: true })}
+                  className="shrink-0 rounded-lg bg-primary px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-background hover:bg-primary/90 disabled:opacity-50 transition-colors">Aprovar</button>
+                <button disabled={decideLink.isPending} onClick={() => decideLink.mutate({ studentId: r.student_id, approve: false })}
+                  className="shrink-0 rounded-lg border border-border px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:border-red-400/40 hover:text-red-400 disabled:opacity-50 transition-colors">Recusar</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Vitais */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-px overflow-hidden rounded-xl border border-border bg-border">
         <div className="bg-hud-surface p-4"><div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Ativos · conta R$</div><div className="mt-1 font-mono text-2xl font-light tabular-nums text-primary">{finance?.active_students ?? students.filter(isActivePaid).length}</div><div className="font-mono text-[10px] text-muted-foreground/70">de {finance?.referred_count ?? students.length} indicados</div></div>

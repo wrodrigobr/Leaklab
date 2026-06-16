@@ -2642,7 +2642,33 @@ def student_redeem_invite():
     res = redeem_coach_invite(g.user_id, code)
     if not res['ok']:
         return jsonify({'error': res['error']}), 400
-    return jsonify({'message': f'Vinculado ao coach {res["coach"]["username"]}', 'coach': res['coach']})
+    msg = (f'Solicitação enviada ao coach {res["coach"]["username"]} — aguardando aprovação'
+           if res.get('pending') else f'Vinculado ao coach {res["coach"]["username"]}')
+    return jsonify({'message': msg, 'coach': res['coach'], 'pending': bool(res.get('pending'))})
+
+
+@app.route('/coach/link-requests', methods=['GET'])
+@require_coach
+def coach_link_requests_list():
+    """SEC-01 fase 2: vínculos pendentes de aprovação do coach."""
+    from database.repositories import list_pending_link_requests
+    return jsonify({'requests': list_pending_link_requests(g.user_id)})
+
+
+@app.route('/coach/link-requests/<int:student_id>/approve', methods=['POST'])
+@require_coach
+def coach_link_request_approve(student_id):
+    from database.repositories import approve_link_request
+    ok = approve_link_request(g.user_id, student_id)
+    return jsonify({'ok': ok}), (200 if ok else 404)
+
+
+@app.route('/coach/link-requests/<int:student_id>/reject', methods=['POST'])
+@require_coach
+def coach_link_request_reject(student_id):
+    from database.repositories import reject_link_request
+    ok = reject_link_request(g.user_id, student_id)
+    return jsonify({'ok': ok}), (200 if ok else 404)
 
 
 @app.route('/coach/profile', methods=['GET', 'POST'])
@@ -2867,8 +2893,10 @@ def coach_students_v2():
         _imp = (recent or {}).get('imported_at') or ''
         # SEC-01: indicado = vinculado via convite single-use (atribuição confiável).
         is_referred = s.get('invited_via_invite_id') is not None
-        # "Ativo · conta R$" = indicado + pro + importou nos últimos 30d (a régua do payout).
-        is_active_paid = (is_referred and s.get('plan') == 'pro' and bool(_imp) and _imp >= _cutoff)
+        # SEC-01 fase 2: só vínculos aprovados pelo coach contam na comp. Legados = 'approved'.
+        _approved = (s.get('link_status') or 'approved') == 'approved'
+        # "Ativo · conta R$" = indicado + aprovado + pro + importou nos últimos 30d (régua do payout).
+        is_active_paid = (is_referred and _approved and s.get('plan') == 'pro' and bool(_imp) and _imp >= _cutoff)
         enriched.append({
             **s,
             'recent_tournament': recent,
@@ -2876,6 +2904,7 @@ def coach_students_v2():
             'trend': trend,
             'is_active_paid': is_active_paid,
             'is_referred': is_referred,
+            'link_status': s.get('link_status') or 'approved',
             'critical_pending': (_attn.get(s['id']) or {}).get('critical_pending', 0),
             'unread': (_attn.get(s['id']) or {}).get('unread', 0),
             # V2-3: últimos scores (cronológico) p/ sparkline de tendência no roster

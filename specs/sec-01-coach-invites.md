@@ -1,6 +1,6 @@
 # SEC-01 — Convite single-use do coach (integridade da indicação)
 
-**Status:** Fase 1 ✅ implementada (2026-06-15) · Fase 2 (aprovação) pendente
+**Status:** Fase 1 ✅ implementada (2026-06-15) · Fase 2 (aprovação) ✅ implementada (2026-06-16)
 **Motivação:** a compensação do coach será por **alunos indicados e ativos**. Hoje a
 indicação é burlável (chave permanente compartilhável). Esta spec fecha a integridade
 da atribuição de referral **antes** de ligar a comp.

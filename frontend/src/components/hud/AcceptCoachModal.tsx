@@ -20,9 +20,12 @@ export function AcceptCoachModal({ onClose }: Props) {
       return code.toUpperCase().startsWith("INV-") ? student.redeemInvite(code) : student.linkCoach(code);
     },
     onSuccess: async (data) => {
-      setSuccess(`Vinculado ao coach ${data.coach.username}!`);
+      const pending = (data as { pending?: boolean }).pending === true;
+      setSuccess(pending
+        ? `Solicitação enviada ao coach ${data.coach.username} — aguarde a aprovação dele.`
+        : `Vinculado ao coach ${data.coach.username}!`);
       await refreshUser();
-      setTimeout(onClose, 2000);
+      setTimeout(onClose, pending ? 3200 : 2000);
     },
   });
 

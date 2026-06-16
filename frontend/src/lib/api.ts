@@ -1454,6 +1454,16 @@ export interface StudentSummary {
   critical_pending?: number;     // P1b: decisões small/clear sem anotação do coach
   unread?: number;               // P1b: mensagens do aluno não lidas
   score_history?: number[];      // V2-3: últimos scores (cronológico) p/ sparkline
+  link_status?: "approved" | "pending" | "rejected";  // SEC-01 fase 2
+}
+
+export interface CoachLinkRequest {
+  student_id: number;
+  username: string;
+  email: string;
+  code: string | null;
+  used_at: string | null;
+  label: string | null;
 }
 
 export interface CoachImpactStudent {
@@ -1611,6 +1621,14 @@ export const coachDashboard = {
     request<{ invite: CoachInvite }>("/coach/invites", { method: "POST", body: JSON.stringify({ label, expires_days }) }),
   revokeInvite: (id: number) =>
     request<{ ok: boolean }>(`/coach/invites/${id}`, { method: "DELETE" }),
+
+  // SEC-01 fase 2: aprovação de vínculo
+  listLinkRequests: () =>
+    request<{ requests: CoachLinkRequest[] }>("/coach/link-requests"),
+  approveLinkRequest: (studentId: number) =>
+    request<{ ok: boolean }>(`/coach/link-requests/${studentId}/approve`, { method: "POST" }),
+  rejectLinkRequest: (studentId: number) =>
+    request<{ ok: boolean }>(`/coach/link-requests/${studentId}/reject`, { method: "POST" }),
 
   getProfile: () =>
     request<CoachProfile>("/coach/profile"),
@@ -1851,7 +1869,7 @@ export const coaches = {
 export const student = {
   // SEC-01: resgate de convite single-use (substitui o link por chave permanente)
   redeemInvite: (code: string) =>
-    request<{ message: string; coach: { id: number; username: string } }>(
+    request<{ message: string; coach: { id: number; username: string }; pending: boolean }>(
       "/student/redeem-invite",
       { method: "POST", body: JSON.stringify({ code }) }
     ),

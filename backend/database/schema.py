@@ -488,6 +488,8 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed     BOOLEAN NOT NULL DEFAULT FALSE",
             # SEC-01: atribuição confiável de indicação (convite single-use resgatado)
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_via_invite_id    INTEGER",
+            # SEC-01 fase 2: aprovação do coach (legados/existentes = approved)
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS link_status              TEXT NOT NULL DEFAULT 'approved'",
             # GTO-005: integração solver → decisions
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_label  TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_action TEXT",
@@ -1030,6 +1032,7 @@ def _run_migrations(conn):
             ("solves_today",            "ALTER TABLE users ADD COLUMN solves_today            INTEGER NOT NULL DEFAULT 0"),
             ("quota_day_reset_at",      "ALTER TABLE users ADD COLUMN quota_day_reset_at       TEXT"),
             ("invited_via_invite_id",   "ALTER TABLE users ADD COLUMN invited_via_invite_id   INTEGER"),
+            ("link_status",             "ALTER TABLE users ADD COLUMN link_status             TEXT NOT NULL DEFAULT 'approved'"),
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),

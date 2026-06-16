@@ -135,14 +135,74 @@ def test_comp_counts_only_referred_active():
     coach = _coach(); s_ref = _student('ref'); s_leg = _student('leg')
     # legado: vinculado direto (sem convite)
     conn = sch.get_conn(); conn.execute("UPDATE users SET coach_id=? WHERE id=?", (coach, s_leg)); conn.commit(); conn.close()
-    # indicado: resgata convite
+    # indicado: resgata convite (entra pendente na fase 2) e o coach aprova
     assert repo.redeem_coach_invite(s_ref, repo.create_coach_invite(coach)['code'])['ok']
+    assert repo.approve_link_request(coach, s_ref) is True
     _make_pro_active(s_ref); _make_pro_active(s_leg)
     summ = repo.get_coach_finance_summary(coach)
     assert summ['total_students'] == 2
     assert summ['referred_count'] == 1, summ          # só o resgatado é indicado
-    assert summ['active_students'] == 1, summ         # só o indicado+ativo conta na comp
+    assert summ['active_students'] == 1, summ         # só o indicado+aprovado+ativo conta na comp
     print("OK  test_comp_counts_only_referred_active")
+
+
+def test_redeem_enters_pending_and_blocks_comp():
+    """SEC-01 fase 2: o resgate entra PENDENTE — não conta na comp até o coach aprovar."""
+    _clean()
+    coach = _coach(); stud = _student()
+    res = repo.redeem_coach_invite(stud, repo.create_coach_invite(coach)['code'])
+    assert res['ok'] and res.get('pending') is True
+    conn = sch.get_conn()
+    ls = conn.execute("SELECT link_status FROM users WHERE id=?", (stud,)).fetchone()['link_status']
+    conn.close()
+    assert ls == 'pending', ls
+    # aparece na fila de aprovação do coach
+    reqs = repo.list_pending_link_requests(coach)
+    assert len(reqs) == 1 and reqs[0]['student_id'] == stud
+    # pendente + pro + ativo ainda NÃO conta na comp
+    _make_pro_active(stud)
+    assert repo.get_coach_finance_summary(coach)['active_students'] == 0
+    print("OK  test_redeem_enters_pending_and_blocks_comp")
+
+
+def test_approve_link_request():
+    _clean()
+    coach = _coach(); stud = _student()
+    repo.redeem_coach_invite(stud, repo.create_coach_invite(coach)['code'])
+    assert repo.approve_link_request(coach, stud) is True
+    conn = sch.get_conn()
+    u = conn.execute("SELECT coach_id, link_status FROM users WHERE id=?", (stud,)).fetchone()
+    conn.close()
+    assert u['link_status'] == 'approved' and u['coach_id'] == coach
+    assert repo.list_pending_link_requests(coach) == []
+    # idempotente: aprovar de novo (já approved) → False
+    assert repo.approve_link_request(coach, stud) is False
+    print("OK  test_approve_link_request")
+
+
+def test_reject_link_request_unlinks():
+    _clean()
+    coach = _coach(); stud = _student()
+    repo.redeem_coach_invite(stud, repo.create_coach_invite(coach)['code'])
+    assert repo.reject_link_request(coach, stud) is True
+    conn = sch.get_conn()
+    u = conn.execute("SELECT coach_id, invited_via_invite_id, link_status FROM users WHERE id=?", (stud,)).fetchone()
+    conn.close()
+    assert u['coach_id'] is None and u['invited_via_invite_id'] is None and u['link_status'] == 'rejected'
+    assert repo.list_pending_link_requests(coach) == []
+    print("OK  test_reject_link_request_unlinks")
+
+
+def test_approve_reject_scoped_to_coach():
+    """Um coach não aprova/rejeita vínculo pendente de outro coach."""
+    _clean()
+    c1 = _coach('1'); c2 = _coach('2'); stud = _student()
+    repo.redeem_coach_invite(stud, repo.create_coach_invite(c1)['code'])
+    assert repo.approve_link_request(c2, stud) is False
+    assert repo.reject_link_request(c2, stud) is False
+    # segue pendente sob c1
+    assert len(repo.list_pending_link_requests(c1)) == 1
+    print("OK  test_approve_reject_scoped_to_coach")
 
 
 if __name__ == '__main__':
