@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut, UserCircle, Zap } from "lucide-react";
+import { ChevronDown, LogOut, UserCircle, Zap, Users, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { CheckoutModal } from "./CheckoutModal";
@@ -47,7 +47,13 @@ function UsageBar({ used, limit, label }: { used: number; limit: number | null; 
   );
 }
 
-export function AccountMenu() {
+interface AccountMenuProps {
+  /** COACH-02: workspace ativo (só coaches) + handler de troca, vindos do HudHeader. */
+  workspace?: "coach" | "player";
+  onSwitchWorkspace?: (w: "coach" | "player") => void;
+}
+
+export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps = {}) {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -127,6 +133,29 @@ export function AccountMenu() {
                   <Zap className="size-3" /> Upgrade para Pro R$99
                 </button>
               )}
+            </div>
+          )}
+
+          {/* COACH-02: troca de workspace (só coaches) */}
+          {user.role === "coach" && workspace && onSwitchWorkspace && (
+            <div className="px-4 py-3 border-b border-border space-y-1.5">
+              <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Workspace</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => { setOpen(false); onSwitchWorkspace("coach"); }}
+                  className={cn("flex items-center justify-center gap-1.5 rounded-md py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
+                    workspace === "coach" ? "bg-primary/15 text-primary ring-1 ring-primary/30" : "bg-muted/30 text-muted-foreground hover:text-foreground")}
+                >
+                  <Users className="size-3" /> Coach
+                </button>
+                <button
+                  onClick={() => { setOpen(false); onSwitchWorkspace("player"); }}
+                  className={cn("flex items-center justify-center gap-1.5 rounded-md py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
+                    workspace === "player" ? "bg-primary/15 text-primary ring-1 ring-primary/30" : "bg-muted/30 text-muted-foreground hover:text-foreground")}
+                >
+                  <LayoutDashboard className="size-3" /> Minha conta
+                </button>
+              </div>
             </div>
           )}
 

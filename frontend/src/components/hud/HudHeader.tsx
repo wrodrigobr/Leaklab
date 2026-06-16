@@ -11,7 +11,6 @@ import { CoachMessagesPanel } from "@/components/hud/CoachMessagesPanel";
 import { SupportModal } from "@/components/hud/SupportModal";
 import { NotificationBell } from "@/components/hud/NotificationBell";
 import { playerMessages, support } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 interface HudHeaderProps {
   onUpload?: () => void;
@@ -211,22 +210,6 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
               className="hidden"
               onChange={(e) => { if (e.target.files?.length) enqueue(e.target.files); e.target.value = ""; }}
             />
-            {/* COACH-02 P2: switch de workspace (só coaches) */}
-            {isCoach && (
-              <div className="hidden sm:flex items-center rounded-md border border-border overflow-hidden" role="group" aria-label="Workspace">
-                <button
-                  onClick={() => switchWorkspace("coach")}
-                  className={cn("px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
-                    workspace === "coach" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground")}
-                >Coach</button>
-                <button
-                  onClick={() => switchWorkspace("player")}
-                  className={cn("px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
-                    workspace === "player" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground")}
-                >Minha conta</button>
-              </div>
-            )}
-
             {canUpload && (
               <button
                 onClick={() => inputRef.current?.click()}
@@ -295,7 +278,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
 
             <LanguageSwitcher />
 
-            {user && <AccountMenu />}
+            {user && <AccountMenu workspace={isCoach ? workspace : undefined} onSwitchWorkspace={isCoach ? switchWorkspace : undefined} />}
             {!user && (
               <button
                 onClick={() => navigate("/login")}
