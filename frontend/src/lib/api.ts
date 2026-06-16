@@ -1987,6 +1987,22 @@ export interface CoachPayout {
   paid_at: string | null;
 }
 
+export interface AdminPayment {
+  id: number;
+  user_id: number;
+  username: string;
+  email: string;
+  plan: string;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  gateway: string;
+  gateway_id: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  created_at: string;
+}
+
 export interface CoachFinanceSummary {
   period: string;
   total_students: number;
@@ -2069,6 +2085,29 @@ export const adminDashboard = {
 
   markPaid: (paymentId: number) =>
     request<{ ok: boolean }>(`/admin/finance/coaches/${paymentId}/pay`, { method: "PATCH" }),
+
+  // PAY-03: visão financeira consolidada + lista de pagamentos
+  financeOverview: () =>
+    request<{
+      revenue: {
+        gross_cents: number; approved_count: number; failed_count: number;
+        by_gateway: Array<{ gateway: string; amount_cents: number; n: number }>;
+        paying_pro: number; coach_perk_pro: number; mrr_cents: number; arr_cents: number;
+      };
+      payouts: { pending_cents: number; pending_count: number; paid_cents: number; paid_count: number };
+      duplicates: Array<{ gateway_id: string; n: number; total_cents: number }>;
+    }>("/admin/finance/overview"),
+
+  payments: (opts?: { status?: string; gateway?: string; search?: string; limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    if (opts?.status) q.set("status", opts.status);
+    if (opts?.gateway) q.set("gateway", opts.gateway);
+    if (opts?.search) q.set("search", opts.search);
+    if (opts?.limit != null) q.set("limit", String(opts.limit));
+    if (opts?.offset != null) q.set("offset", String(opts.offset));
+    const qs = q.toString();
+    return request<{ payments: AdminPayment[]; total: number }>(`/admin/payments${qs ? `?${qs}` : ""}`);
+  },
 
   logs: (limit = 50) => request<{ logs: Array<{ id: number; username: string; plan: string; tournament_id: string; site: string; hands_count: number; imported_at: string }> }>(`/admin/logs?limit=${limit}`),
 

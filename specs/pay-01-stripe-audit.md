@@ -53,6 +53,19 @@ Ou seja: hoje o cliente paga **uma vez** e tem Pro **vitalício**. Isso é recei
 
 ---
 
+## PAY-03 — Anti-fraude do activate + visão financeira admin (2026-06-16)
+
+Auditoria pesada do fluxo de pagamento do aluno revelou e **corrigiu** 3 vetores de fraude no `/subscription/activate` (que confiava no body do cliente) + 1 self-grant grátis:
+
+| # | Vetor | Correção |
+|---|---|---|
+| **AF-1** | **Ativar PI de outra conta** — `/activate` só checava status, não ownership. | Verifica `pi.metadata.user_id == g.user_id` → **403** se diverge. |
+| **AF-2** | **Pagar mensal e reivindicar anual** — `billing` vinha do body. | Ciclo derivado de `pi.metadata.billing_cycle`; body ignorado. |
+| **AF-3** | **Amount tampering** — valor gravado vinha do `billing` do cliente. | Grava `pi.amount` real, conferido contra `plan_amount()` (mismatch → 400). |
+| **AF-4** | **Self-grant grátis** — `/subscription/upgrade` era `@require_auth`. | Agora `@require_admin` (aceita `user_id` alvo). |
+
+Cobertura: `test_stripe_hardening.py` (20 testes). Visão financeira admin nova: `/admin/finance/overview` (receita/MRR/ARR/gateways/duplicados/repasses) + `/admin/payments` (todos os pagamentos, filtros) + UI no AdminDashboard.
+
 ## Checklist de smoke manual (Stripe Dashboard, antes do launch)
 
 - [ ] `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` em **modo live** (nada de `sk_test`/`whsec_test` em prod).

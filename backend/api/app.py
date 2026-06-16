@@ -5088,15 +5088,19 @@ def subscription_status():
 
 
 @app.route('/subscription/upgrade', methods=['POST'])
-@require_auth
+@require_admin
 def subscription_upgrade():
-    """Upgrade manual (admin/debug). Produção usa /subscription/checkout."""
+    """Upgrade MANUAL (admin) — concessão sem pagamento. Produção usa /subscription/checkout.
+
+    PAY-03 (anti-fraude): era @require_auth → QUALQUER usuário se auto-concedia Pro de graça.
+    Agora é @require_admin; aceita `user_id` opcional (default = o próprio admin)."""
     data = request.get_json(silent=True) or {}
     new_plan = data.get('plan', 'pro')
+    target_id = data.get('user_id', g.user_id)
     if new_plan not in PLAN_LIMITS:
         return jsonify({'error': 'Plano inválido'}), 400
-    update_user_plan(g.user_id, new_plan)
-    return jsonify({'ok': True, 'plan': new_plan})
+    update_user_plan(int(target_id), new_plan)
+    return jsonify({'ok': True, 'plan': new_plan, 'user_id': target_id})
 
 
 # ── BACK-015: Stripe Billing ──────────────────────────────────────────────────
@@ -5142,12 +5146,9 @@ def subscription_activate():
     plan              = data.get('plan')
     payment_intent_id = data.get('payment_intent_id')
     subscription_id   = data.get('subscription_id')
-    billing           = data.get('billing', 'monthly')
 
     if plan != 'pro':
         return jsonify({'error': 'Plano inválido. Use pro.'}), 400
-    if billing not in ('monthly', 'annual'):
-        return jsonify({'error': 'Ciclo inválido. Use monthly ou annual.'}), 400
     if not payment_intent_id or not subscription_id:
         return jsonify({'error': 'payment_intent_id e subscription_id obrigatórios'}), 400
 
@@ -5156,12 +5157,35 @@ def subscription_activate():
         status = pi.get('status') if pi else 'not_found'
         return jsonify({'error': f'Pagamento não confirmado (status: {status})'}), 400
 
+    # PAY-03 (anti-fraude): NÃO confiar em nada que o cliente mande além do pi_id.
+    # Tudo é derivado do PaymentIntent real do Stripe (metadata + amount):
+    #  (A) o PI tem de PERTENCER ao usuário autenticado (metadata.user_id);
+    #  (B) o ciclo vem do metadata (não do body) → não dá pra pagar mensal e reivindicar anual;
+    #  (C) o valor gravado é o REALMENTE cobrado (pi.amount), conferido contra a tabela de preços.
+    meta = pi.get('metadata') or {}
+    pi_user = str(meta.get('user_id', ''))
+    if pi_user and pi_user != str(g.user_id):
+        log.warning("activate: PI %s pertence a user %s, não a %s", payment_intent_id, pi_user, g.user_id)
+        return jsonify({'error': 'Este pagamento não pertence à sua conta.'}), 403
+    billing = meta.get('billing_cycle', 'monthly')
+    if billing not in ('monthly', 'annual'):
+        billing = 'monthly'
+    pi_plan = meta.get('plan_name') or plan
+    if pi_plan != 'pro':
+        return jsonify({'error': 'Plano do pagamento inválido.'}), 400
+    expected_cents = int(plan_amount('pro', billing) * 100)
+    charged_cents  = int(pi.get('amount') or expected_cents)
+    if charged_cents != expected_cents:
+        log.warning("activate: valor cobrado %s != esperado %s (pi=%s cycle=%s)",
+                    charged_cents, expected_cents, payment_intent_id, billing)
+        return jsonify({'error': 'Valor do pagamento não confere com o plano.'}), 400
+
     period_start, period_end = _plan_period(billing)   # PAY-02: vigência mensal/anual
-    update_user_plan(g.user_id, plan, subscription_id, plan_expires_at=period_end)
+    update_user_plan(g.user_id, 'pro', subscription_id, plan_expires_at=period_end)
     save_payment(
         user_id=g.user_id,
-        plan=plan,
-        amount_cents=int(plan_amount(plan, billing) * 100),
+        plan='pro',
+        amount_cents=charged_cents,   # valor REAL do PI, não o reivindicado pelo cliente
         status='approved',
         gateway_id=payment_intent_id,
         gateway_sub_id=subscription_id,
@@ -5443,6 +5467,38 @@ def admin_finance_export():
     resp = Response(buf.getvalue(), mimetype='text/csv')
     resp.headers['Content-Disposition'] = f'attachment; filename=repasses-{period}.csv'
     return resp
+
+
+@app.route('/admin/finance/overview', methods=['GET'])
+@require_admin
+def admin_finance_overview():
+    """PAY-03: visão financeira consolidada — receita, gateways, MRR/ARR, repasses
+    (pendentes/pagos) e detecção de pagamentos duplicados (saúde anti-fraude)."""
+    from database.repositories import (
+        admin_revenue_summary, admin_payout_totals, admin_detect_duplicate_payments,
+    )
+    return jsonify({
+        'revenue':    admin_revenue_summary(),
+        'payouts':    admin_payout_totals(),
+        'duplicates': admin_detect_duplicate_payments(),
+    })
+
+
+@app.route('/admin/payments', methods=['GET'])
+@require_admin
+def admin_payments():
+    """PAY-03: lista TODOS os pagamentos (com pagante), filtros status/gateway/busca."""
+    from database.repositories import admin_list_payments
+    status  = request.args.get('status') or None
+    gateway = request.args.get('gateway') or None
+    search  = request.args.get('search') or None
+    try:
+        limit  = max(1, min(int(request.args.get('limit', 100)), 500))
+        offset = max(0, int(request.args.get('offset', 0)))
+    except (TypeError, ValueError):
+        limit, offset = 100, 0
+    return jsonify(admin_list_payments(status=status, gateway=gateway, search=search,
+                                       limit=limit, offset=offset))
 
 
 @app.route('/admin/logs', methods=['GET'])

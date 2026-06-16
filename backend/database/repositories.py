@@ -3587,6 +3587,101 @@ def get_payments(user_id: int, limit: int = 20) -> List[dict]:
         conn.close()
 
 
+# ── PAY-03: visão financeira administrativa (todos os pagamentos) ─────────────
+
+def admin_list_payments(status: str = None, gateway: str = None, search: str = None,
+                        limit: int = 100, offset: int = 0) -> dict:
+    """Lista TODOS os pagamentos (admin), com filtros e o username/email do pagante.
+    Retorna {payments, total}."""
+    conn = get_conn()
+    try:
+        where, params = [], []
+        if status:
+            where.append("p.status = ?"); params.append(status)
+        if gateway:
+            where.append("p.gateway = ?"); params.append(gateway)
+        if search:
+            where.append("(u.username LIKE ? OR u.email LIKE ? OR p.gateway_id LIKE ?)")
+            params += [f"%{search}%", f"%{search}%", f"%{search}%"]
+        wsql = ("WHERE " + " AND ".join(where)) if where else ""
+        total = _fetchone(conn, _adapt(
+            f"SELECT COUNT(*) AS n FROM payments p JOIN users u ON u.id = p.user_id {wsql}"),
+            tuple(params))['n']
+        rows = conn.execute(_adapt(
+            f"""SELECT p.*, u.username, u.email
+                FROM payments p JOIN users u ON u.id = p.user_id
+                {wsql} ORDER BY p.created_at DESC LIMIT ? OFFSET ?"""),
+            tuple(params) + (limit, offset)).fetchall()
+        return {'payments': [dict(r) for r in rows], 'total': total}
+    finally:
+        conn.close()
+
+
+def admin_revenue_summary() -> dict:
+    """Receita consolidada p/ o admin: bruto aprovado, por gateway, MRR, ARR estimado,
+    assinantes pagantes (exclui Pro de cortesia do coach), e contagem de falhas."""
+    conn = get_conn()
+    try:
+        gross = _fetchone(conn, "SELECT COALESCE(SUM(amount_cents),0) AS c, COUNT(*) AS n "
+                                "FROM payments WHERE status='approved'")
+        failed = _fetchone(conn, "SELECT COUNT(*) AS n FROM payments WHERE status='failed'")['n']
+        by_gateway = [dict(r) for r in conn.execute(
+            "SELECT gateway, COALESCE(SUM(amount_cents),0) AS amount_cents, COUNT(*) AS n "
+            "FROM payments WHERE status='approved' GROUP BY gateway ORDER BY amount_cents DESC").fetchall()]
+        # MRR: assinantes pagantes ativos (exclui cortesia do coach), R$99/mês equiv.
+        paying_pro = _fetchone(conn, """
+            SELECT COUNT(*) AS n FROM users
+            WHERE plan='pro' AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial','coach_earned'))
+        """)['n']
+        coach_perk = _fetchone(conn, """
+            SELECT COUNT(*) AS n FROM users
+            WHERE plan='pro' AND plan_source IN ('coach_trial','coach_earned')
+        """)['n']
+        mrr = paying_pro * 9900
+        return {
+            'gross_cents':       int(gross['c']),
+            'approved_count':    int(gross['n']),
+            'failed_count':      int(failed),
+            'by_gateway':        by_gateway,
+            'paying_pro':        paying_pro,
+            'coach_perk_pro':    coach_perk,
+            'mrr_cents':         mrr,
+            'arr_cents':         mrr * 12,
+        }
+    finally:
+        conn.close()
+
+
+def admin_detect_duplicate_payments() -> list:
+    """Anti-fraude/saúde: pagamentos aprovados com o MESMO gateway_id em >1 linha
+    (não deveria ocorrer após o fix de idempotência — sinaliza dado legado/anômalo)."""
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT gateway_id, COUNT(*) AS n, SUM(amount_cents) AS total_cents "
+            "FROM payments WHERE status='approved' AND gateway_id IS NOT NULL "
+            "GROUP BY gateway_id HAVING COUNT(*) > 1 ORDER BY n DESC").fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def admin_payout_totals() -> dict:
+    """Repasses de coach: total pendente e total já pago (todos os períodos)."""
+    conn = get_conn()
+    try:
+        pend = _fetchone(conn, "SELECT COALESCE(SUM(amount_cents),0) AS c, COUNT(*) AS n "
+                               "FROM coach_payments WHERE status='pending'")
+        paid = _fetchone(conn, "SELECT COALESCE(SUM(amount_cents),0) AS c, COUNT(*) AS n "
+                               "FROM coach_payments WHERE status='paid'")
+        return {
+            'pending_cents':  int(pend['c']), 'pending_count':  int(pend['n']),
+            'paid_cents':     int(paid['c']), 'paid_count':     int(paid['n']),
+        }
+    finally:
+        conn.close()
+
+
 def update_user_plan(user_id: int, plan: str, subscription_id: str | None = None,
                      plan_expires_at: str | None = None) -> None:
     """PAY-02: `plan_expires_at` define a vigência (mensal +30d / anual +365d).

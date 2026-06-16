@@ -375,6 +375,7 @@ function UsersTab() {
 function FinanceTab() {
   const qc = useQueryClient();
   const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+  const [payFilter, setPayFilter] = useState<{ gateway?: string; status?: string; search?: string }>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-finance", period],
@@ -382,18 +383,67 @@ function FinanceTab() {
     staleTime: 30_000,
   });
 
+  const { data: overview } = useQuery({
+    queryKey: ["admin-finance-overview"],
+    queryFn: () => adminDashboard.financeOverview(),
+    staleTime: 30_000,
+  });
+
+  const { data: paymentsData } = useQuery({
+    queryKey: ["admin-payments", payFilter],
+    queryFn: () => adminDashboard.payments({ ...payFilter, limit: 50 }),
+    staleTime: 15_000,
+  });
+
   const payMut = useMutation({
     mutationFn: (paymentId: number) => adminDashboard.markPaid(paymentId),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-finance"] }); toast.success("Marcado como pago"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-finance"] });
+      qc.invalidateQueries({ queryKey: ["admin-finance-overview"] });
+      toast.success("Marcado como pago");
+    },
   });
 
   const payouts: CoachPayout[] = data?.payouts ?? [];
   const totalPending = data?.total_pending_cents ?? 0;
+  const rev = overview?.revenue;
+  const pot = overview?.payouts;
+  const dups = overview?.duplicates ?? [];
+  const payments = paymentsData?.payments ?? [];
 
   const exportUrl = `/admin/finance/export.csv?period=${period}`;
 
   return (
     <div className="space-y-4">
+      {/* PAY-03: visão financeira consolidada */}
+      {rev && (
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-px overflow-hidden rounded-xl border border-border bg-border">
+          <FinTile label="Receita bruta" value={fmt(rev.gross_cents)} sub={`${rev.approved_count} pagamento(s)`} accent="primary" />
+          <FinTile label="MRR" value={fmt(rev.mrr_cents)} sub={`${rev.paying_pro} pagantes`} accent="primary" />
+          <FinTile label="ARR (est.)" value={fmt(rev.arr_cents)} sub="MRR × 12" />
+          <FinTile label="Repasses pendentes" value={pot ? fmt(pot.pending_cents) : "—"} sub={pot ? `${pot.pending_count} coach(es)` : ""} accent="warning" />
+          <FinTile label="Repasses pagos" value={pot ? fmt(pot.paid_cents) : "—"} sub={pot ? `${pot.paid_count} repasse(s)` : ""} />
+          <FinTile label="Pro de cortesia" value={String(rev.coach_perk_pro)} sub={`coaches · ${rev.failed_count} falha(s)`} />
+        </div>
+      )}
+
+      {/* breakdown por gateway + alerta de duplicados */}
+      {rev && rev.by_gateway.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Por gateway:</span>
+          {rev.by_gateway.map(g => (
+            <span key={g.gateway} className="rounded-md border border-border bg-hud-surface px-2.5 py-1 font-mono text-[10px] text-foreground">
+              {g.gateway} · <span className="text-primary font-bold">{fmt(g.amount_cents)}</span> · {g.n}
+            </span>
+          ))}
+          {dups.length > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1 font-mono text-[10px] font-bold text-destructive">
+              <AlertTriangle className="size-3" /> {dups.length} gateway_id duplicado(s)
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">Período</label>
@@ -473,6 +523,86 @@ function FinanceTab() {
           </table>
         </div>
       </div>
+
+      {/* PAY-03: todos os pagamentos de alunos (auditoria) */}
+      <div className="overflow-hidden rounded-xl border border-border bg-hud-surface">
+        <div className="px-4 py-3 border-b border-border bg-hud-elevated/40 flex flex-wrap items-center gap-2 justify-between">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pagamentos de alunos {paymentsData ? `(${paymentsData.total})` : ""}</span>
+          <div className="flex items-center gap-2">
+            <input
+              placeholder="buscar aluno / pi_…"
+              defaultValue={payFilter.search ?? ""}
+              onKeyDown={(e) => { if (e.key === "Enter") setPayFilter(f => ({ ...f, search: (e.target as HTMLInputElement).value || undefined })); }}
+              className="rounded-md border border-border bg-background px-2.5 py-1 font-mono text-[10px] text-foreground focus:outline-none focus:border-primary w-40"
+            />
+            <select
+              value={payFilter.status ?? ""}
+              onChange={(e) => setPayFilter(f => ({ ...f, status: e.target.value || undefined }))}
+              className="rounded-md border border-border bg-background px-2 py-1 font-mono text-[10px] text-foreground focus:outline-none focus:border-primary"
+            >
+              <option value="">todos status</option>
+              <option value="approved">aprovado</option>
+              <option value="failed">falhou</option>
+            </select>
+            <select
+              value={payFilter.gateway ?? ""}
+              onChange={(e) => setPayFilter(f => ({ ...f, gateway: e.target.value || undefined }))}
+              className="rounded-md border border-border bg-background px-2 py-1 font-mono text-[10px] text-foreground focus:outline-none focus:border-primary"
+            >
+              <option value="">todos gateways</option>
+              <option value="stripe">stripe</option>
+              <option value="mercadopago">mercadopago</option>
+            </select>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="border-b border-border">
+              <tr>
+                {["Aluno", "Plano", "Valor", "Status", "Gateway", "ID", "Data"].map(h => (
+                  <th key={h} className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {payments.length === 0 ? (
+                <tr><td colSpan={7} className="py-10 text-center text-muted-foreground">Nenhum pagamento.</td></tr>
+              ) : payments.map(p => (
+                <tr key={p.id} className="hover:bg-primary/5 transition-colors">
+                  <td className="px-4 py-2.5">
+                    <p className="font-medium text-foreground">{p.username}</p>
+                    <p className="font-mono text-[10px] text-muted-foreground">{p.email}</p>
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-muted-foreground">{p.plan}</td>
+                  <td className="px-4 py-2.5 font-mono tabular-nums font-bold text-foreground">{fmt(p.amount_cents)}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={cn("font-mono text-[10px] font-bold uppercase",
+                      p.status === "approved" ? "text-primary" : p.status === "failed" ? "text-destructive" : "text-muted-foreground")}>
+                      {p.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">{p.gateway}</td>
+                  <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground truncate max-w-[140px]">{p.gateway_id || "—"}</td>
+                  <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground whitespace-nowrap">
+                    {p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FinTile({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: "primary" | "warning" }) {
+  return (
+    <div className="bg-hud-surface p-4">
+      <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">{label}</div>
+      <div className={cn("mt-1 font-mono text-2xl font-light tabular-nums",
+        accent === "primary" ? "text-primary" : accent === "warning" ? "text-warning" : "text-foreground")}>{value}</div>
+      {sub && <div className="font-mono text-[10px] text-muted-foreground/70">{sub}</div>}
     </div>
   );
 }

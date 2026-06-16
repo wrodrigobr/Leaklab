@@ -70,8 +70,13 @@ def _auth(token):
 def _mock_checkout(sub_id='sub_TEST001', cs='pi_secret_test'):
     return {'subscription_id': sub_id, 'client_secret': cs, 'status': 'incomplete'}
 
-def _mock_pi(pi_id='pi_TEST001', status='succeeded'):
-    return {'id': pi_id, 'status': status}
+def _mock_pi(pi_id='pi_TEST001', status='succeeded', user_id=None, billing='monthly', amount=None):
+    """Espelha o PaymentIntent real do Stripe: inclui metadata (user_id/plan/cycle) + amount.
+    Por padrão usa user_id=1 (o 1º registrado no DB de teste) e valor coerente com o ciclo."""
+    cents = amount if amount is not None else (99000 if billing == 'annual' else 9900)
+    return {'id': pi_id, 'status': status, 'amount': cents, 'currency': 'brl',
+            'metadata': {'user_id': str(user_id if user_id is not None else 1),
+                         'plan_name': 'pro', 'billing_cycle': billing}}
 
 
 # ── /subscription/checkout ───────────────────────────────────────────────────
@@ -504,10 +509,10 @@ def test_activate_annual_sets_year_expiry():
     import datetime
     c = _make_client()
     token = _register_and_login(c, 'ann1')
-    with patch('api.app.get_payment', return_value=_mock_pi('pi_ann', 'succeeded')):
+    # PAY-03: o ciclo/valor vêm do PI (não do body) → mock anual.
+    with patch('api.app.get_payment', return_value=_mock_pi('pi_ann', 'succeeded', billing='annual')):
         r = c.post('/subscription/activate',
-                   json={'plan': 'pro', 'payment_intent_id': 'pi_ann', 'subscription_id': 'pi_ann',
-                         'billing': 'annual'},
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_ann', 'subscription_id': 'pi_ann'},
                    headers=_auth(token))
     assert r.status_code == 200
     data = r.get_json()
