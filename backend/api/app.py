@@ -2594,9 +2594,55 @@ def _extract_date(raw: str) -> str | None:
 @app.route('/coach/invite-key', methods=['GET'])
 @require_coach
 def coach_invite_key():
-    """Retorna (ou gera) a chave de convite do coach."""
+    """Retorna (ou gera) a chave de convite do coach (LEGADO — ver convites single-use)."""
     key = assign_invite_key(g.user_id)
     return jsonify({'invite_key': key})
+
+
+# ── SEC-01: convites single-use do coach ──────────────────────────────────────
+
+@app.route('/coach/invites', methods=['GET'])
+@require_coach
+def coach_invites_list():
+    from database.repositories import list_coach_invites
+    return jsonify({'invites': list_coach_invites(g.user_id)})
+
+
+@app.route('/coach/invites', methods=['POST'])
+@require_coach
+def coach_invites_create():
+    from database.repositories import create_coach_invite
+    data = request.get_json(silent=True) or {}
+    label = (data.get('label') or '').strip()[:120] or None
+    try:
+        days = int(data.get('expires_days', 30))
+    except (TypeError, ValueError):
+        days = 30
+    inv = create_coach_invite(g.user_id, expires_days=max(0, min(days, 365)), label=label)
+    return jsonify({'invite': inv}), 201
+
+
+@app.route('/coach/invites/<int:invite_id>', methods=['DELETE'])
+@require_coach
+def coach_invites_revoke(invite_id):
+    from database.repositories import revoke_coach_invite
+    ok = revoke_coach_invite(g.user_id, invite_id)
+    return jsonify({'ok': ok}), (200 if ok else 404)
+
+
+@app.route('/student/redeem-invite', methods=['POST'])
+@require_auth
+def student_redeem_invite():
+    """Resgata um convite single-use → vincula o aluno ao coach (substitui o link por chave)."""
+    from database.repositories import redeem_coach_invite
+    data = request.get_json(silent=True) or {}
+    code = (data.get('code') or '').strip()
+    if not code:
+        return jsonify({'error': 'code obrigatório'}), 400
+    res = redeem_coach_invite(g.user_id, code)
+    if not res['ok']:
+        return jsonify({'error': res['error']}), 400
+    return jsonify({'message': f'Vinculado ao coach {res["coach"]["username"]}', 'coach': res['coach']})
 
 
 @app.route('/coach/profile', methods=['GET', 'POST'])

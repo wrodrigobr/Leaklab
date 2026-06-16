@@ -2217,6 +2217,120 @@ def assign_invite_key(user_id: int) -> str:
         conn.close()
 
 
+# ── SEC-01: convites single-use do coach ──────────────────────────────────────
+
+def generate_single_use_invite_code() -> str:
+    """Código de convite de USO ÚNICO (distinto da chave permanente COACH-XXXXXX).
+    Alta entropia (resgate exige acerto exato; protege contra brute-force)."""
+    import re as _re
+    raw = _re.sub(r'[^A-Z0-9]', '', secrets.token_urlsafe(9).upper())[:12]
+    return f"INV-{raw}"
+
+
+def _now_str() -> str:
+    import datetime
+    return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+
+def create_coach_invite(coach_id: int, expires_days: int = 30, label: Optional[str] = None) -> dict:
+    """Gera um convite single-use ativo p/ o coach. Validade padrão 30d (0 = sem expirar)."""
+    import datetime
+    conn = get_conn()
+    try:
+        while True:
+            code = generate_single_use_invite_code()
+            if not conn.execute(_adapt("SELECT 1 FROM coach_invites WHERE code=?"), (code,)).fetchone():
+                break
+        exp = None
+        if expires_days and expires_days > 0:
+            exp = (datetime.datetime.utcnow() + datetime.timedelta(days=expires_days)).strftime('%Y-%m-%d %H:%M:%S')
+        conn.execute(_adapt(
+            "INSERT INTO coach_invites (coach_id, code, status, expires_at, label) VALUES (?,?,?,?,?)"),
+            (coach_id, code, 'active', exp, label))
+        conn.commit()
+        return dict(conn.execute(_adapt("SELECT * FROM coach_invites WHERE code=?"), (code,)).fetchone())
+    finally:
+        conn.close()
+
+
+def list_coach_invites(coach_id: int) -> list:
+    """Convites do coach. Deriva 'expired' on-read (active com expires_at no passado)."""
+    now = _now_str()
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt("""
+            SELECT ci.*, u.username AS used_by_username
+            FROM coach_invites ci LEFT JOIN users u ON u.id = ci.used_by
+            WHERE ci.coach_id = ? ORDER BY ci.created_at DESC
+        """), (coach_id,)).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            if d['status'] == 'active' and d.get('expires_at') and str(d['expires_at']) < now:
+                d['status'] = 'expired'
+            out.append(d)
+        return out
+    finally:
+        conn.close()
+
+
+def revoke_coach_invite(coach_id: int, invite_id: int) -> bool:
+    """Revoga um convite ATIVO do próprio coach. Retorna True se algo mudou."""
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "UPDATE coach_invites SET status='revoked' WHERE id=? AND coach_id=? AND status='active'"),
+            (invite_id, coach_id))
+        conn.commit()
+        return (cur.rowcount or 0) > 0
+    finally:
+        conn.close()
+
+
+def redeem_coach_invite(student_id: int, code: str) -> dict:
+    """Resgata um convite single-use → vincula o aluno ao coach. Transacional (uso único
+    garantido pelo UPDATE ... WHERE status='active'). Reusa o guard de max_students."""
+    code = (code or '').strip().upper()
+    conn = get_conn()
+    try:
+        inv = conn.execute(_adapt(
+            "SELECT id, coach_id, status, expires_at FROM coach_invites WHERE code=?"), (code,)).fetchone()
+        if not inv:
+            return {'ok': False, 'error': 'Convite inválido'}
+        inv = dict(inv)
+        if inv['status'] == 'redeemed':
+            return {'ok': False, 'error': 'Convite já utilizado'}
+        if inv['status'] == 'revoked':
+            return {'ok': False, 'error': 'Convite revogado'}
+        if inv.get('expires_at') and str(inv['expires_at']) < _now_str():
+            return {'ok': False, 'error': 'Convite expirado'}
+        if inv['coach_id'] == student_id:
+            return {'ok': False, 'error': 'Você não pode usar seu próprio convite'}
+        # guard de limite de alunos (mesma regra do link por chave)
+        prof = conn.execute(_adapt("SELECT max_students FROM coach_profiles WHERE user_id=?"),
+                            (inv['coach_id'],)).fetchone()
+        max_s = (prof['max_students'] if prof else 5) or 5
+        cur = conn.execute(_adapt("SELECT COUNT(*) AS n FROM users WHERE coach_id=?"),
+                           (inv['coach_id'],)).fetchone()['n']
+        if cur >= max_s:
+            return {'ok': False, 'error': f'Coach atingiu o limite de {max_s} alunos'}
+        # resgate atômico: só vence quem mudar active → redeemed
+        upd = conn.execute(_adapt(
+            "UPDATE coach_invites SET status='redeemed', used_by=?, used_at=? WHERE id=? AND status='active'"),
+            (student_id, _now_str(), inv['id']))
+        if (upd.rowcount or 0) == 0:
+            return {'ok': False, 'error': 'Convite já utilizado'}
+        conn.execute(_adapt(
+            "UPDATE users SET coach_id=?, invited_by_key=?, invited_via_invite_id=? WHERE id=?"),
+            (inv['coach_id'], code, inv['id'], student_id))
+        conn.commit()
+        coach = conn.execute(_adapt("SELECT id, username, email, role FROM users WHERE id=?"),
+                             (inv['coach_id'],)).fetchone()
+        return {'ok': True, 'coach': dict(coach)}
+    finally:
+        conn.close()
+
+
 def get_coach_by_invite_key(key: str) -> Optional[dict]:
     """Busca coach pela chave de convite."""
     conn = get_conn()

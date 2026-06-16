@@ -486,6 +486,8 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS dashboard_layout         TEXT",
             # Sprint AX — FEAT-17: onboarding para novos usuários
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed     BOOLEAN NOT NULL DEFAULT FALSE",
+            # SEC-01: atribuição confiável de indicação (convite single-use resgatado)
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_via_invite_id    INTEGER",
             # GTO-005: integração solver → decisions
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_label  TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_action TEXT",
@@ -513,6 +515,24 @@ def _run_migrations(conn):
         ]:
             try: conn.execute(sql)
             except Exception: pass
+        # SEC-01: convites single-use do coach (Postgres)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS coach_invites (
+                    id          SERIAL PRIMARY KEY,
+                    coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    code        TEXT    NOT NULL UNIQUE,
+                    status      TEXT    NOT NULL DEFAULT 'active',
+                    used_by     INTEGER REFERENCES users(id),
+                    used_at     TIMESTAMP,
+                    expires_at  TIMESTAMP,
+                    label       TEXT,
+                    created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_invites_coach ON coach_invites(coach_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_invites_code  ON coach_invites(code)")
+        except Exception: pass
         # coach_reviews table (Postgres)
         try:
             conn.execute("""
@@ -1009,6 +1029,7 @@ def _run_migrations(conn):
             ("ai_chat_today",           "ALTER TABLE users ADD COLUMN ai_chat_today           INTEGER NOT NULL DEFAULT 0"),
             ("solves_today",            "ALTER TABLE users ADD COLUMN solves_today            INTEGER NOT NULL DEFAULT 0"),
             ("quota_day_reset_at",      "ALTER TABLE users ADD COLUMN quota_day_reset_at       TEXT"),
+            ("invited_via_invite_id",   "ALTER TABLE users ADD COLUMN invited_via_invite_id   INTEGER"),
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),
@@ -1074,6 +1095,22 @@ def _run_migrations(conn):
             if col not in prof_existing:
                 try: conn.execute(sql)
                 except Exception: pass
+        # SEC-01: convites single-use do coach (SQLite)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coach_invites (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                code        TEXT    NOT NULL UNIQUE,
+                status      TEXT    NOT NULL DEFAULT 'active',
+                used_by     INTEGER REFERENCES users(id),
+                used_at     TEXT,
+                expires_at  TEXT,
+                label       TEXT,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_invites_coach ON coach_invites(coach_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_invites_code  ON coach_invites(code)")
         # coach_reviews (SQLite)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS coach_reviews (

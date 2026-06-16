@@ -14,7 +14,11 @@ export function AcceptCoachModal({ onClose }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () => student.linkCoach(key.trim()),
+    // SEC-01: convite single-use (INV-…) usa o resgate; chave legada (COACH-…) usa o link.
+    mutationFn: () => {
+      const code = key.trim();
+      return code.toUpperCase().startsWith("INV-") ? student.redeemInvite(code) : student.linkCoach(code);
+    },
     onSuccess: async (data) => {
       setSuccess(`Vinculado ao coach ${data.coach.username}!`);
       await refreshUser();
@@ -47,12 +51,12 @@ export function AcceptCoachModal({ onClose }: Props) {
           <>
             <div className="space-y-1.5">
               <label className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-                Chave de convite
+                Código do convite
               </label>
               <input
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                placeholder="INV-XXXXXXXX"
                 className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-mono text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
             </div>

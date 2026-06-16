@@ -1588,9 +1588,29 @@ export interface CoachCohortAnalytics {
   leak_heatmap: { street: string; action: string; n_students: number }[];
 }
 
+export interface CoachInvite {
+  id: number;
+  code: string;
+  status: "active" | "redeemed" | "revoked" | "expired";
+  used_by: number | null;
+  used_by_username?: string | null;
+  used_at: string | null;
+  expires_at: string | null;
+  label: string | null;
+  created_at: string;
+}
+
 export const coachDashboard = {
   inviteKey: () =>
     request<{ invite_key: string }>("/coach/invite-key"),
+
+  // SEC-01: convites single-use
+  listInvites: () =>
+    request<{ invites: CoachInvite[] }>("/coach/invites"),
+  createInvite: (label?: string, expires_days = 30) =>
+    request<{ invite: CoachInvite }>("/coach/invites", { method: "POST", body: JSON.stringify({ label, expires_days }) }),
+  revokeInvite: (id: number) =>
+    request<{ ok: boolean }>(`/coach/invites/${id}`, { method: "DELETE" }),
 
   getProfile: () =>
     request<CoachProfile>("/coach/profile"),
@@ -1829,6 +1849,12 @@ export const coaches = {
 // ── Student side ─────────────────────────────────────────────────────────────
 
 export const student = {
+  // SEC-01: resgate de convite single-use (substitui o link por chave permanente)
+  redeemInvite: (code: string) =>
+    request<{ message: string; coach: { id: number; username: string } }>(
+      "/student/redeem-invite",
+      { method: "POST", body: JSON.stringify({ code }) }
+    ),
   linkCoach: (invite_key: string) =>
     request<{ message: string; coach: { id: number; username: string } }>(
       "/student/link-coach",
