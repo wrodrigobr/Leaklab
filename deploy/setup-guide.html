@@ -3,50 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GrindLab — Guia de Deploy (Cloudflare + Neon + Hetzner)</title>
+<title>GrindLab — Guia de Deploy detalhado (Cloudflare + Neon + Hetzner)</title>
 <style>
-  :root{
-    --teal:#2DD4BF; --bg:#0A0E1A; --panel:#111726; --panel2:#0d1320;
-    --light:#E3E8EC; --muted:#8b97a7; --border:#1e2940; --warn:#f59e0b; --bad:#ef4444; --ok:#22c55e;
-  }
+  :root{--teal:#2DD4BF;--bg:#0A0E1A;--panel:#111726;--panel2:#0d1320;--light:#E3E8EC;--muted:#8b97a7;--border:#1e2940;--warn:#f59e0b;--bad:#ef4444;--ok:#22c55e;--violet:#a78bfa;--blue:#60a5fa}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--light);font:15px/1.65 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-  a{color:var(--teal);text-decoration:none} a:hover{text-decoration:underline}
+  a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}
   code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
   .wrap{display:flex;max-width:1180px;margin:0 auto;gap:28px;padding:0 20px}
-  nav.toc{position:sticky;top:0;align-self:flex-start;height:100vh;overflow:auto;width:255px;padding:24px 0;flex:0 0 255px;border-right:1px solid var(--border)}
+  nav.toc{position:sticky;top:0;align-self:flex-start;height:100vh;overflow:auto;width:262px;padding:24px 0;flex:0 0 262px;border-right:1px solid var(--border)}
   nav.toc h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
   nav.toc a{display:block;color:var(--light);padding:5px 10px;border-radius:7px;font-size:13.5px}
   nav.toc a:hover{background:var(--panel);text-decoration:none}
   main{flex:1;min-width:0;padding:34px 0 90px}
-  h1{font-size:30px;margin:0 0 6px;letter-spacing:.5px}
-  h1 .g{color:var(--teal)}
+  h1{font-size:29px;margin:0 0 6px;letter-spacing:.5px}h1 .g{color:var(--teal)}
   .sub{color:var(--muted);margin:0 0 26px}
   section{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin:0 0 22px;scroll-margin-top:14px}
   section h2{margin:0 0 4px;font-size:21px}
   section h2 .num{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:var(--teal);color:#04221d;font-weight:800;font-size:15px;margin-right:10px;vertical-align:middle}
   section .lead{color:var(--muted);margin:2px 0 16px}
-  h3{font-size:16px;margin:22px 0 8px;color:var(--teal)}
-  ol,ul{padding-left:22px} li{margin:5px 0}
+  h3{font-size:16px;margin:24px 0 8px;color:var(--teal);border-top:1px dashed var(--border);padding-top:16px}
+  h3:first-of-type{border-top:none;padding-top:0}
+  ol,ul{padding-left:22px}li{margin:6px 0}
+  ol.steps{counter-reset:s;list-style:none;padding-left:0}
+  ol.steps>li{counter-increment:s;position:relative;padding:2px 0 2px 38px;margin:10px 0}
+  ol.steps>li:before{content:counter(s);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:var(--panel2);border:1px solid var(--teal);color:var(--teal);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
   pre{background:#06090f;border:1px solid var(--border);border-radius:10px;padding:14px 16px;overflow:auto;font-size:13px;line-height:1.55;margin:10px 0}
-  pre .c{color:#5d6b80} /* comentário */
+  pre .c{color:#5d6b80}
   code.inl{background:#06090f;border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:13px;color:var(--teal)}
-  .callout{border-radius:10px;padding:12px 15px;margin:14px 0;border:1px solid;font-size:14px}
-  .warn{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.4)}
-  .warn b{color:var(--warn)}
-  .tip{background:rgba(45,212,191,.07);border-color:rgba(45,212,191,.35)}
-  .tip b{color:var(--teal)}
-  .bad{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.4)}
-  .bad b{color:var(--bad)}
+  .ph{background:rgba(167,139,250,.13);border:1px solid rgba(167,139,250,.4);border-radius:4px;padding:0 5px;color:var(--violet);font-family:ui-monospace,monospace;font-size:12.5px}
+  .callout{border-radius:10px;padding:11px 15px;margin:13px 0;border:1px solid;font-size:14px}
+  .warn{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.4)}.warn b{color:var(--warn)}
+  .tip{background:rgba(45,212,191,.07);border-color:rgba(45,212,191,.35)}.tip b{color:var(--teal)}
+  .bad{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.4)}.bad b{color:var(--bad)}
+  .test{background:rgba(96,165,250,.09);border-color:rgba(96,165,250,.45)}.test b{color:var(--blue)}
+  .test .ok{color:var(--ok)}
   table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
   th,td{border:1px solid var(--border);padding:8px 11px;text-align:left;vertical-align:top}
   th{background:var(--panel2);color:var(--muted);font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.06em}
   .pill{display:inline-block;background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:11px;color:var(--muted);margin-left:8px}
   .arch{background:#06090f;border:1px solid var(--border);border-radius:10px;padding:16px;font-size:12.5px;color:var(--muted);white-space:pre;overflow:auto;line-height:1.5}
-  .check li{list-style:none;position:relative;padding-left:6px}
-  .check li:before{content:"☐";position:absolute;left:-18px;color:var(--teal)}
-  hr{border:none;border-top:1px solid var(--border);margin:22px 0}
-  .kbd{background:var(--panel2);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-size:12px}
+  .check li{list-style:none;position:relative}.check li:before{content:"☐";position:absolute;left:-20px;color:var(--teal)}
   footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0}
   @media(max-width:880px){nav.toc{display:none}}
 </style>
@@ -55,183 +52,250 @@
 <div class="wrap">
 
 <nav class="toc">
-  <h2>Guia de Deploy</h2>
+  <h2>Guia detalhado</h2>
   <a href="#visao">Visão geral</a>
-  <a href="#f0">0 · Contas</a>
+  <a href="#legenda">Como ler</a>
+  <a href="#f0">0 · Contas &amp; PC</a>
   <a href="#f1">1 · Cloudflare (domínios)</a>
   <a href="#f2">2 · Neon (banco)</a>
-  <a href="#f3">3 · Servidor (GCP)</a>
+  <a href="#f3">3 · Hetzner (servidor)</a>
   <a href="#f4">4 · Backend (deploy)</a>
   <a href="#f5">5 · Cloudflare ↔ API</a>
   <a href="#f6">6 · Frontend (Pages)</a>
   <a href="#f7">7 · Stripe</a>
-  <a href="#f8">8 · Crons & manutenção</a>
+  <a href="#f8">8 · Crons &amp; manutenção</a>
   <a href="#check">✓ Checklist final</a>
+  <a href="#trouble">⚠ Troubleshooting</a>
 </nav>
 
 <main>
-  <h1>Guia de Deploy — <span class="g">GrindLab</span></h1>
-  <p class="sub">Cloudflare (frontend + proxy) · Neon (Postgres gerenciado) · <b>GCP</b> (backend, usando créditos — Hetzner depois). Domínios <code class="inl">grindlabpoker.com.br</code> (canônico) e <code class="inl">grindlabpoker.com</code> (→ 301).</p>
+  <h1>Guia de Deploy detalhado — <span class="g">GrindLab</span></h1>
+  <p class="sub">Passo a passo, com um <b>teste em cada etapa</b>. Cloudflare (frontend + proxy) · Neon (Postgres) · <b>Hetzner</b> (backend). Domínios <code class="inl">grindlabpoker.com.br</code> (canônico) e <code class="inl">grindlabpoker.com</code> (→ 301).</p>
 
-  <!-- VISÃO -->
   <section id="visao">
     <h2>Visão geral</h2>
-    <p class="lead">3 serviços, cada um com seu papel. O banco no Neon já resolve o backup automático.</p>
-    <div class="arch">  Usuário
-     │
-     ▼
- ┌─────────────── Cloudflare ───────────────┐
- │  Pages (frontend estático)  +  Proxy/CDN │
- └───────┬───────────────────────┬──────────┘
-         │ grindlabpoker.com.br   │ api.grindlabpoker.com.br
-         ▼                        ▼
-   [ SPA React ]          ┌──────────────────┐        ┌───────────────┐
-   (na borda CF)          │ GCP VM (créditos)│  SSL   │  Neon         │
-                          │ Nginx → Gunicorn │──────▶ │  PostgreSQL   │
-                          │ (Flask, Docker)  │        │ (gerenciado,  │
-                          └────────┬─────────┘        │  backup auto) │
-                                   │ IP interno (VPC) └───────────────┘
-                                   ▼
-   Solver (AGPL) = VM à parte no MESMO projeto GCP (rede privada, nunca público).</div>
-    <div class="tip"><b>Por que assim:</b> o frontend é estático → vai pro Pages (grátis, CDN global, TLS, zero-ops). O backend precisa de servidor → Hetzner. O banco no <b>Neon</b> tem <b>backup automático</b>, eliminando o maior risco operacional.</div>
-    <div class="warn"><b>Ordem importa:</b> faça na sequência das seções (1→8). A propagação de DNS é o gargalo — comece por ela.</div>
+    <div class="arch">  Usuário (navegador)
+       │
+       ▼
+   ┌──────────────── Cloudflare ────────────────┐
+   │  Pages (hospeda o frontend)  +  Proxy/CDN  │
+   └──────┬───────────────────────────┬─────────┘
+          │ grindlabpoker.com.br       │ api.grindlabpoker.com.br
+          ▼                            ▼
+     [ App React ]              ┌──────────────────┐  TLS   ┌──────────────┐
+     (borda CF)                 │ Hetzner — VPS    │ ─────▶ │ Neon         │
+                                │ Nginx → Gunicorn │        │ PostgreSQL   │
+                                │ (Flask, Docker)  │        │ (backup auto)│
+                                └──────────────────┘        └──────────────┘
+   (Solver GTO = máquina à parte; ligado depois via GTO_SOLVER_URL.)</div>
+    <div class="tip"><b>4 painéis + 1 terminal.</b> Você vai usar Cloudflare, Neon, Hetzner e Stripe no navegador, e um terminal SSH na VPS. <b>Faça na ordem 0→8</b> e só avance quando o "🧪 Teste" da etapa passar.</div>
   </section>
 
-  <!-- FASE 0 -->
+  <section id="legenda">
+    <h2>Como ler este guia</h2>
+    <ul>
+      <li><span class="ph">ASSIM</span> = valor que <b>VOCÊ substitui</b> (IP, senha, chave). Nunca cole literal.</li>
+      <li>Blocos pretos = comandos pra <b>colar no terminal</b> (linhas <span class="c">cinza</span> são comentários).</li>
+      <li><span class="test" style="padding:1px 7px;border-radius:5px"><b>🧪 Teste</b></span> = como verificar que a etapa funcionou <b>antes</b> de seguir.</li>
+      <li><span style="color:var(--bad)">⛔</span> = passo onde dá pra se trancar fora / quebrar — leia 2×.</li>
+    </ul>
+  </section>
+
+  <!-- ───── FASE 0 ───── -->
   <section id="f0">
-    <h2><span class="num">0</span>Contas que você vai precisar</h2>
-    <ul>
-      <li><b>Cloudflare</b> — <a href="https://dash.cloudflare.com">dash.cloudflare.com</a> (plano Free).</li>
-      <li><b>Neon</b> — <a href="https://neon.tech">neon.tech</a> (Postgres gerenciado, free tier).</li>
-      <li><b>Google Cloud (GCP)</b> — <a href="https://console.cloud.google.com">console.cloud.google.com</a> — <b>usaremos os créditos que você já tem</b> para o backend agora (o solver já vive lá). <i>Hetzner fica como migração futura.</i></li>
-      <li><b>Stripe</b> — <a href="https://dashboard.stripe.com">dashboard.stripe.com</a> (modo test primeiro).</li>
-      <li><b>GitHub</b> — o repositório do projeto (o Pages faz deploy a partir dele).</li>
-      <li><b>Anthropic</b> — a <code class="inl">ANTHROPIC_API_KEY</code> (Claude Haiku, usado no app).</li>
-    </ul>
-    <div class="tip"><b>Economia agora:</b> rodamos o backend numa <b>VM do GCP</b> com seus créditos (custo ~zero no começo). Quando os créditos acabarem, migrar pro Hetzner é só refazer a <b>Fase 3</b> noutra máquina — o resto (Cloudflare, Neon, Pages, Stripe) não muda.</div>
-    <div class="tip"><b>Chave SSH:</b> se ainda não tem, gere uma: <code class="inl">ssh-keygen -t ed25519 -C "deploy"</code> (gera <code class="inl">~/.ssh/id_ed25519.pub</code>).</div>
+    <h2><span class="num">0</span>Contas &amp; preparar o PC <span class="pill">~20 min</span></h2>
+
+    <h3>0.1 Criar as contas</h3>
+    <table>
+      <tr><th>Serviço</th><th>Onde</th><th>Para quê</th></tr>
+      <tr><td>Cloudflare</td><td><a href="https://dash.cloudflare.com/sign-up">dash.cloudflare.com/sign-up</a></td><td>frontend + DNS + proxy</td></tr>
+      <tr><td>Neon</td><td><a href="https://console.neon.tech">console.neon.tech</a></td><td>banco PostgreSQL</td></tr>
+      <tr><td><b>Hetzner Cloud</b></td><td><a href="https://console.hetzner.cloud">console.hetzner.cloud</a></td><td>o servidor (VPS) do backend</td></tr>
+      <tr><td>Stripe</td><td><a href="https://dashboard.stripe.com/register">dashboard.stripe.com/register</a></td><td>pagamentos</td></tr>
+      <tr><td>Anthropic</td><td><a href="https://console.anthropic.com">console.anthropic.com</a> → API Keys</td><td>chave do Claude (IA)</td></tr>
+      <tr><td>GitHub</td><td>repositório do projeto</td><td>o Pages faz deploy a partir dele</td></tr>
+    </table>
+    <ol class="steps">
+      <li>Crie cada conta. No <b>Hetzner</b>, crie também um <b>Project</b> (ex.: <code class="inl">grindlab</code>) — é onde os servidores ficam.</li>
+      <li>No <b>Anthropic</b> → <b>Settings → API Keys → Create Key</b> → copie <code class="inl">sk-ant-...</code> (só aparece uma vez).</li>
+    </ol>
+    <div class="warn"><b>Hetzner pode pedir verificação</b> (documento/cartão) em contas novas — faça isso já, senão você não consegue criar o servidor na Fase 3.</div>
+
+    <h3>0.2 Preparar o PC (Windows) — chave SSH</h3>
+    <ol class="steps">
+      <li>Abra o <b>PowerShell</b> (Iniciar → "PowerShell").</li>
+      <li>Gere a chave:
+        <pre>ssh-keygen -t ed25519 -C "grindlab-deploy"
+<span class="c"># ENTER em todas as perguntas</span></pre>
+      </li>
+      <li>Mostre a chave <b>pública</b> (vai colá-la no Hetzner):
+        <pre>type $env:USERPROFILE\.ssh\id_ed25519.pub</pre>
+      </li>
+    </ol>
+    <div class="test"><b>🧪 Teste:</b> o comando imprime <span class="ok">uma linha começando com <code class="inl">ssh-ed25519 AAAA…</code></span> terminando em <code class="inl">grindlab-deploy</code>. Se imprimiu, sua chave está pronta.</div>
   </section>
 
-  <!-- FASE 1 -->
+  <!-- ───── FASE 1 ───── -->
   <section id="f1">
-    <h2><span class="num">1</span>Cloudflare — domínios <span class="pill">~10 min + propagação</span></h2>
-    <p class="lead">Adicione as 2 zonas e aponte os nameservers. O <code class="inl">.com</code> já propagou ✔ — falta o <code class="inl">.com.br</code>.</p>
-    <h3>1.1 Adicionar as zonas</h3>
-    <ol>
-      <li>Cloudflare → <b>Add a site</b> → <code class="inl">grindlabpoker.com.br</code> → plano <b>Free</b>.</li>
-      <li>Repita para <code class="inl">grindlabpoker.com</code> (cada domínio é uma zona separada).</li>
-      <li>Cada zona te dá <b>2 nameservers</b> (ex.: <code class="inl">xxx.ns.cloudflare.com</code>).</li>
+    <h2><span class="num">1</span>Cloudflare — domínios <span class="pill">~15 min + propagação</span></h2>
+    <p class="lead">Colocar os 2 domínios na Cloudflare. O <code class="inl">.com</code> já está pronto ✔; falta o <code class="inl">.com.br</code>.</p>
+
+    <h3>1.1 Adicionar a zona .com.br</h3>
+    <ol class="steps">
+      <li><a href="https://dash.cloudflare.com">dash.cloudflare.com</a> → <b>+ Add a domain</b> → <code class="inl">grindlabpoker.com.br</code> → <b>Continue</b>.</li>
+      <li>Plano <b>Free</b> → <b>Continue</b> → (revisa DNS) → <b>Continue</b>.</li>
+      <li>Anote os <b>2 nameservers</b> que aparecem (ex.: <code class="inl">aria.ns.cloudflare.com</code>).</li>
     </ol>
-    <h3>1.2 Trocar os nameservers (no registrador)</h3>
-    <ul>
-      <li><b>.com.br</b> → <a href="https://registro.br">registro.br</a> → painel do domínio → <b>Alterar servidores DNS</b> → cole os 2 da Cloudflare.</li>
-      <li><b>.com</b> → já está <b>Active</b> ✔ (feito).</li>
-    </ul>
-    <h3>1.3 Definir o canônico + redirect</h3>
-    <p>O canônico é o <code class="inl">.com.br</code> (público BR). Na zona do <code class="inl">.com</code>: <b>Rules → Redirect Rules → Create</b>:</p>
-    <pre><span class="c"># Quando: Hostname é grindlabpoker.com OU www.grindlabpoker.com</span>
-When incoming requests match:  Hostname  equals  grindlabpoker.com
-Then:  Redirect → Type 301 → Dynamic
-       Expression:  concat("https://grindlabpoker.com.br", http.request.uri.path)
-       Preserve query string: ON</pre>
-    <div class="callout warn"><b>Enquanto o .com.br não propaga:</b> você pode adiantar tudo testando pelo <code class="inl">.com</code> (que já está ativo) e só ligar o redirect/canônico quando o <code class="inl">.com.br</code> virar Active.</div>
+
+    <h3>1.2 Trocar os nameservers no registro.br</h3>
+    <ol class="steps">
+      <li><a href="https://registro.br">registro.br</a> → login → domínio <code class="inl">grindlabpoker.com.br</code> → <b>DNS → Alterar servidores DNS</b>.</li>
+      <li>Cole os 2 nameservers da Cloudflare → salve. Volte à Cloudflare → <b>Check nameservers</b>.</li>
+    </ol>
+    <div class="test"><b>🧪 Teste (no PowerShell):</b>
+      <pre>nslookup -type=NS grindlabpoker.com.br</pre>
+      <span class="ok">Quando aparecer os nameservers <code class="inl">*.ns.cloudflare.com</code></span>, propagou. (Também dá pra conferir em <a href="https://dnschecker.org">dnschecker.org</a> → tipo NS.) Pode levar de minutos a horas — siga as outras fases enquanto isso.</div>
+
+    <h3>1.3 Adicionar a zona .com + redirect 301</h3>
+    <ol class="steps">
+      <li>Repita 1.1 para <code class="inl">grindlabpoker.com</code> (deve ficar Active rápido, já que você já trocou os NS dele).</li>
+      <li>Selecione a zona <code class="inl">grindlabpoker.com</code> → <b>Rules → Redirect Rules → Create rule</b>.</li>
+      <li><b>When:</b> Hostname <b>contains</b> <code class="inl">grindlabpoker.com</code>. <b>Then:</b> Type <b>Dynamic</b>, Expression:
+        <pre>concat("https://grindlabpoker.com.br", http.request.uri.path)</pre>
+      </li>
+      <li>Status <b>301</b>, <b>Preserve query string</b> ON → <b>Deploy</b>.</li>
+    </ol>
+    <div class="test"><b>🧪 Teste (depois de ambas Active):</b>
+      <pre>curl.exe -I https://grindlabpoker.com</pre>
+      <span class="ok">Deve responder <code class="inl">HTTP/.. 301</code> com <code class="inl">location: https://grindlabpoker.com.br/</code>.</span></div>
   </section>
 
-  <!-- FASE 2 -->
+  <!-- ───── FASE 2 ───── -->
   <section id="f2">
-    <h2><span class="num">2</span>Neon — Postgres gerenciado <span class="pill">~5 min</span></h2>
-    <p class="lead">Cria o banco e te dá uma <code class="inl">DATABASE_URL</code>. Backup automático incluso.</p>
-    <ol>
-      <li>Em <a href="https://neon.tech">neon.tech</a> → <b>Create project</b>.</li>
-      <li><b>Region:</b> a mesma do backend e dos usuários — como a VM do GCP fica em <b>São Paulo</b>, escolha <b>AWS São Paulo (sa-east-1)</b> no Neon (menor latência banco↔backend).</li>
-      <li>Anote a <b>Connection string</b> (use a <b>Pooled connection</b>). Formato:</li>
+    <h2><span class="num">2</span>Neon — banco PostgreSQL <span class="pill">~8 min</span></h2>
+    <p class="lead">O banco. Backup automático incluso.</p>
+
+    <h3>2.1 Criar o projeto</h3>
+    <ol class="steps">
+      <li><a href="https://console.neon.tech">console.neon.tech</a> → <b>Create project</b>.</li>
+      <li><b>Name:</b> <code class="inl">grindlab</code>. <b>Postgres:</b> última versão.</li>
+      <li><b>Region:</b> a mais perto da Hetzner que você vai escolher na Fase 3 — se for Hetzner <b>Ashburn (US-East)</b>, use Neon <b>AWS us-east-1</b>; se for Hetzner <b>Alemanha</b>, use Neon <b>AWS eu-central-1</b>. (Banco e backend devem ficar na mesma região.)</li>
+      <li><b>Database name:</b> <code class="inl">grindlab</code> → <b>Create</b>.</li>
     </ol>
-    <pre>postgresql://USUARIO:SENHA@ep-xxxx-pooler.sa-east-1.aws.neon.tech/grindlab?sslmode=require</pre>
-    <div class="tip"><b>É só isso.</b> O app detecta <code class="inl">DATABASE_URL</code> e usa Postgres automaticamente; as <b>migrações rodam sozinhas</b> no startup (cria todas as tabelas). Sem <code class="inl">DATABASE_URL</code> ele cairia em SQLite — então não esqueça de setar.</div>
-    <div class="callout warn"><b>Backup (a sua preocupação):</b> o Neon mantém histórico/branching e restauração point-in-time (no free tier o retentivo é curto; nos pagos, vários dias). Guarde também a <code class="inl">DATABASE_URL</code> e o <code class="inl">.env</code> num cofre (não no git).</div>
+
+    <h3>2.2 Copiar a connection string</h3>
+    <ol class="steps">
+      <li>No projeto → <b>Connect</b> → opção <b>Pooled connection</b>.</li>
+      <li>Copie a string (formato):
+        <pre>postgresql://<span class="ph">usuario</span>:<span class="ph">senha</span>@ep-xxxx-pooler.<span class="ph">regiao</span>.aws.neon.tech/grindlab?sslmode=require</pre>
+      </li>
+    </ol>
+    <div class="test"><b>🧪 Teste:</b> no Neon, abra o <b>SQL Editor</b> e rode <code class="inl">SELECT now();</code> → <span class="ok">retorna a data/hora atual</span>. (A conexão real do app é testada na Fase 4.)</div>
   </section>
 
-  <!-- FASE 3 -->
+  <!-- ───── FASE 3 ───── -->
   <section id="f3">
-    <h2><span class="num">3</span>GCP — VM do backend (créditos) <span class="pill">~20 min</span></h2>
-    <p class="lead">Usamos uma VM do Compute Engine com seus créditos. O solver já está no GCP → backend e solver podem conversar por <b>IP interno (VPC)</b>, sem expor o solver.</p>
-    <div class="tip"><b>Migrar pro Hetzner depois</b> é só refazer esta fase numa VM Hetzner (Ubuntu + Docker são idênticos); 3.2–3.4 valem igual. As diferenças são só a <b>provisão (3.1)</b> e o <b>firewall do GCP (3.5)</b>.</div>
-    <h3>3.1 Criar a VM (Compute Engine)</h3>
-    <ol>
-      <li><a href="https://console.cloud.google.com/compute/instances">Compute Engine → Create Instance</a> (no mesmo projeto do solver).</li>
-      <li><b>Region:</b> <code class="inl">southamerica-east1</code> (São Paulo) — perto dos usuários e do Neon SP. <b>Machine:</b> <code class="inl">e2-medium</code> (2 vCPU / 4 GB) ou <code class="inl">e2-small</code> (o banco fica no Neon, então RAM é folgada).</li>
-      <li><b>Boot disk:</b> Ubuntu 24.04 LTS, 20–30 GB.</li>
-      <li><b>Firewall:</b> NÃO marque "Allow HTTP/HTTPS" genérico (vamos restringir só à Cloudflare em 3.5). Permita só o necessário.</li>
-      <li><b>SSH:</b> em <i>Security → Manage SSH keys</i> cole sua chave pública (ou use <code class="inl">gcloud compute ssh</code>).</li>
+    <h2><span class="num">3</span>Hetzner — o servidor (VPS) <span class="pill">~25 min</span></h2>
+
+    <h3>3.1 Criar o servidor</h3>
+    <ol class="steps">
+      <li><a href="https://console.hetzner.cloud">console.hetzner.cloud</a> → seu projeto → <b>Add Server</b>.</li>
+      <li><b>Location:</b> <b>Ashburn, VA (US-East)</b> — menor latência pro Brasil. (Alternativa: Alemanha/Finlândia.)</li>
+      <li><b>Image:</b> <b>Ubuntu 24.04</b>.</li>
+      <li><b>Type:</b> aba <b>Shared vCPU</b> → <b>CX22</b> (2 vCPU / 4 GB) — começa folgado, banco está no Neon.</li>
+      <li><b>SSH key:</b> <b>Add SSH key</b> → cole a chave pública (Fase 0.2) → dê um nome.</li>
+      <li><b>Name:</b> <code class="inl">grindlab-api</code> → <b>Create &amp; Buy now</b>.</li>
+      <li>Anote o <b>IP público</b> (ex.: <span class="ph">5.6.7.8</span>).</li>
     </ol>
-    <h3>3.2 IP externo estático</h3>
-    <p>Reserve um <b>IP estático</b> (senão muda ao parar/iniciar a VM e quebra o DNS):</p>
-    <pre><span class="c"># VPC network → IP addresses → Reserve external static IP → anexe à VM</span>
-<span class="c"># anote esse IP — é a "origem" no Cloudflare (Fase 5)</span></pre>
-    <h3>3.3 Endurecer o servidor</h3>
-    <pre><span class="c"># conecta (gcloud ou ssh direto)</span>
-gcloud compute ssh SUA_VM --zone southamerica-east1-a    <span class="c"># ou: ssh USUARIO@IP</span>
+    <div class="test"><b>🧪 Teste (PowerShell):</b>
+      <pre>ssh root@<span class="ph">5.6.7.8</span></pre>
+      <span class="ok">Você entra sem pedir senha</span> (usou a chave) e vê <code class="inl">root@grindlab-api:~#</code>. Se pedir senha ou recusar, a chave não foi associada — recrie o servidor com a chave certa.</div>
 
-<span class="c"># usuário sudo dedicado (se entrou como outro) + patches + ferramentas</span>
-sudo apt update && sudo apt -y upgrade
-sudo apt -y install ufw fail2ban unattended-upgrades
-sudo dpkg-reconfigure -plow unattended-upgrades   <span class="c"># confirme "Yes"</span>
+    <h3>3.2 Firewall do Hetzner (1ª camada — só Cloudflare + seu SSH)</h3>
+    <p>No painel Hetzner, <b>Firewalls → Create Firewall</b>:</p>
+    <ol class="steps">
+      <li><b>Inbound rule 1 — SSH:</b> TCP, porta <code class="inl">22</code>, Source = <span class="ph">SEU_IP</span> (veja em <a href="https://ifconfig.me">ifconfig.me</a>) com <code class="inl">/32</code>.</li>
+      <li><b>Inbound rule 2 — HTTPS:</b> TCP, porta <code class="inl">443</code>, Source = <b>os ranges da Cloudflare</b> (cole a lista de <a href="https://www.cloudflare.com/ips-v4">cloudflare.com/ips-v4</a> e <a href="https://www.cloudflare.com/ips-v6">/ips-v6</a>).</li>
+      <li><b>Inbound rule 3 — HTTP:</b> TCP, porta <code class="inl">80</code>, mesmos ranges Cloudflare.</li>
+      <li><b>Apply to:</b> o servidor <code class="inl">grindlab-api</code> → <b>Create Firewall</b>.</li>
+    </ol>
+    <div class="tip">Colar ~15 ranges na mão é chato — se preferir, pule para um firewall só de SSH aqui e deixe o <b>ufw</b> (3.3) restringir 80/443 à Cloudflare via script. Uma das duas camadas já basta; ter as duas é o ideal.</div>
 
-<span class="c"># firewall do SO (2ª camada; a 1ª é o firewall do GCP em 3.5)</span>
-sudo ufw default deny incoming && sudo ufw default allow outgoing
-sudo ufw allow 22/tcp
-sudo ufw allow 443/tcp && sudo ufw allow 80/tcp   <span class="c"># restringidos à CF na Fase 5.3</span>
-sudo ufw --force enable</pre>
-    <h3>3.4 SSH só por chave + Docker</h3>
-    <pre><span class="c"># /etc/ssh/sshd_config: PasswordAuthentication no  →  sudo systemctl restart ssh</span>
-<span class="c"># (teste o login num novo terminal ANTES de fechar a sessão atual)</span>
+    <h3>3.3 Endurecer o sistema (como root)</h3>
+    <ol class="steps">
+      <li>Usuário dedicado + cópia da sua chave:
+        <pre>adduser deploy &amp;&amp; usermod -aG sudo deploy
+rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy</pre>
+      </li>
+      <li>Patches + ferramentas:
+        <pre>apt update &amp;&amp; apt -y upgrade
+apt -y install ufw fail2ban unattended-upgrades
+dpkg-reconfigure -plow unattended-upgrades   <span class="c"># escolha &lt;Yes&gt;</span></pre>
+      </li>
+      <li>Firewall do SO (2ª camada):
+        <pre>ufw default deny incoming &amp;&amp; ufw default allow outgoing
+ufw allow 22/tcp
+<span class="c"># 80/443 só dos ranges da Cloudflare:</span>
+for ip in $(curl -s https://www.cloudflare.com/ips-v4) $(curl -s https://www.cloudflare.com/ips-v6); do
+  ufw allow from $ip to any port 80 proto tcp
+  ufw allow from $ip to any port 443 proto tcp
+done
+ufw --force enable</pre>
+      </li>
+    </ol>
+    <div class="test"><b>🧪 Teste:</b> <code class="inl">ufw status</code> → <span class="ok">"Status: active"</span> e regras de 80/443 com origens da Cloudflare. <code class="inl">fail2ban-client status</code> → serviço ativo.</div>
 
-<span class="c"># Docker</span>
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER   <span class="c"># saia e entre de novo</span></pre>
-    <h3>3.5 Firewall do GCP (1ª camada) — só Cloudflare</h3>
-    <p>No GCP o firewall é na VPC (antes do SO). Crie a regra de ingresso permitindo 80/443 <b>só dos ranges da Cloudflare</b> e 22 só do seu IP:</p>
-    <pre><span class="c"># ranges da Cloudflare numa variável</span>
-CF=$(curl -s https://www.cloudflare.com/ips-v4 | paste -sd, -),$(curl -s https://www.cloudflare.com/ips-v6 | paste -sd, -)
+    <h3>3.4 SSH só por chave (⛔ cuidado pra não se trancar)</h3>
+    <ol class="steps">
+      <li>Edite <code class="inl">/etc/ssh/sshd_config</code> e garanta:
+        <pre>PermitRootLogin no
+PasswordAuthentication no</pre>
+      </li>
+      <li><b>Antes de reiniciar:</b> abra <b>outro</b> PowerShell e teste <code class="inl">ssh deploy@<span class="ph">5.6.7.8</span></code>.</li>
+      <li>Só se entrou como <code class="inl">deploy</code>: <code class="inl">systemctl restart ssh</code>.</li>
+    </ol>
+    <div class="test"><b>🧪 Teste:</b> num terminal novo, <code class="inl">ssh deploy@IP</code> <span class="ok">entra</span>; <code class="inl">ssh root@IP</code> <span class="ok">é recusado</span> (root desligado).</div>
 
-gcloud compute firewall-rules create allow-cloudflare-web \
-  --direction=INGRESS --action=ALLOW --rules=tcp:80,tcp:443 \
-  --source-ranges="$CF" --target-tags=grindlab-web
-
-gcloud compute firewall-rules create allow-ssh-me \
-  --direction=INGRESS --action=ALLOW --rules=tcp:22 \
-  --source-ranges="SEU_IP/32" --target-tags=grindlab-web
-
-<span class="c"># marque a VM com a tag de rede 'grindlab-web' (Console → VM → Network tags)</span>
-<span class="c"># e garanta que NÃO há regra default liberando 0.0.0.0/0 em 80/443</span></pre>
-    <div class="tip"><b>Solver no mesmo projeto:</b> não exponha o solver publicamente. No <code class="inl">.env</code> (Fase 4) aponte <code class="inl">GTO_SOLVER_URL</code> para o <b>IP interno</b> da VM do solver (ex.: <code class="inl">http://10.x.x.x:8000</code>) — tráfego só dentro da VPC.</div>
+    <h3>3.5 Instalar Docker</h3>
+    <pre><span class="c"># como deploy</span>
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker deploy
+exit   <span class="c"># saia e entre de novo p/ valer o grupo</span></pre>
+    <div class="test"><b>🧪 Teste:</b> após reconectar como deploy → <code class="inl">docker run hello-world</code> → <span class="ok">imprime "Hello from Docker!"</span>.</div>
   </section>
 
-  <!-- FASE 4 -->
+  <!-- ───── FASE 4 ───── -->
   <section id="f4">
-    <h2><span class="num">4</span>Backend — subir no VPS <span class="pill">~30 min</span></h2>
+    <h2><span class="num">4</span>Backend — subir na VPS <span class="pill">~30 min</span></h2>
+
     <h3>4.1 Clonar o repositório</h3>
-    <pre>cd /home/deploy
+    <pre>cd ~
 git clone https://github.com/wrodrigobr/Leaklab.git app
 cd app</pre>
-    <h3>4.2 Criar o <code class="inl">.env</code> (segredos — fora do git!)</h3>
-    <pre>cat > .env &lt;&lt;'EOF'
-ENVIRONMENT=production
-LEAKLAB_SECRET=&lt;gere 40+ chars aleatórios&gt;
-DATABASE_URL=postgresql://...neon...?sslmode=require
-ANTHROPIC_API_KEY=sk-ant-...
+    <div class="test"><b>🧪 Teste:</b> <code class="inl">ls backend/Dockerfile docker-compose.yml 2&gt;/dev/null; ls backend</code> → <span class="ok">o diretório <code class="inl">backend</code> existe</span>.</div>
+
+    <h3>4.2 Criar o .env (segredos)</h3>
+    <pre>nano .env</pre>
+    <p>Cole, trocando os <span class="ph">destacados</span>:</p>
+    <pre>ENVIRONMENT=production
+LEAKLAB_SECRET=<span class="ph">segredo_longo</span>
+DATABASE_URL=<span class="ph">string_do_neon_com_sslmode=require</span>
+ANTHROPIC_API_KEY=<span class="ph">sk-ant-...</span>
 ALLOWED_ORIGINS=https://grindlabpoker.com.br,https://www.grindlabpoker.com.br,https://grindlabpoker.com
-STRIPE_SECRET_KEY=sk_live_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PRICE_PRO_MONTHLY=price_...
-STRIPE_PRICE_PRO_ANNUAL=price_...
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PRICE_PRO_MONTHLY=
+STRIPE_PRICE_PRO_ANNUAL=
 GTO_SOLVER_URL=
-PORT=5000
-EOF
-chmod 600 .env</pre>
-    <div class="tip"><b>Gerar o LEAKLAB_SECRET:</b> <code class="inl">openssl rand -base64 48</code>. (As vars do Stripe você preenche na Fase 7; pode deixar vazias por ora — o app sobe mesmo assim.)</div>
-    <h3>4.3 docker-compose (backend + nginx)</h3>
-    <p>Crie <code class="inl">/home/deploy/app/docker-compose.yml</code>:</p>
+PORT=5000</pre>
+    <p>Salvar no nano: <code class="inl">Ctrl+O</code> → Enter → <code class="inl">Ctrl+X</code>. Depois:</p>
+    <pre>chmod 600 .env
+<span class="c"># gere o LEAKLAB_SECRET e copie o resultado pro .env:</span>
+openssl rand -base64 48</pre>
+    <div class="tip">As 4 vars do Stripe ficam <b>vazias</b> agora (Fase 7). O app sobe assim mesmo.</div>
+
+    <h3>4.3 docker-compose.yml</h3>
+    <pre>nano docker-compose.yml</pre>
     <pre>services:
   web:
     build: { context: ./backend }
@@ -244,11 +308,15 @@ chmod 600 .env</pre>
     ports: ["80:80", "443:443"]
     volumes:
       - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/cloudflare-ips.conf:/etc/nginx/conf.d/cloudflare-ips.conf:ro
       - /etc/ssl/cloudflare:/etc/ssl/cloudflare:ro
     depends_on: [web]
     restart: unless-stopped</pre>
-    <h3>4.4 Nginx (reverse-proxy do api)</h3>
-    <p>Crie <code class="inl">/home/deploy/app/deploy/nginx.conf</code> (o certificado vem na Fase 5):</p>
+
+    <h3>4.4 Nginx + placeholder de IPs</h3>
+    <pre>mkdir -p deploy
+echo "# preenchido na Fase 5.3" > deploy/cloudflare-ips.conf
+nano deploy/nginx.conf</pre>
     <pre>server {
   listen 80;
   server_name api.grindlabpoker.com.br;
@@ -263,11 +331,9 @@ server {
   ssl_certificate_key /etc/ssl/cloudflare/origin.key;
   ssl_protocols TLSv1.2 TLSv1.3;
 
-  <span class="c"># IP real do cliente (Cloudflare) — ranges em cloudflare-ips.conf (Fase 5)</span>
   include /etc/nginx/conf.d/cloudflare-ips.conf;
   real_ip_header CF-Connecting-IP;
-
-  client_max_body_size 6m;   <span class="c"># uploads de hand history</span>
+  client_max_body_size 6m;
 
   location / {
     proxy_pass http://web:5000;
@@ -275,123 +341,157 @@ server {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_read_timeout 180s;   <span class="c"># análises/relatórios podem demorar</span>
+    proxy_read_timeout 180s;
   }
 }</pre>
-    <h3>4.5 Subir</h3>
-    <pre>docker compose up -d --build
-docker compose logs -f web   <span class="c"># confira: migrações aplicadas, "Listening"</span></pre>
-    <div class="tip">As <b>migrações do banco rodam sozinhas</b> no startup (cria as tabelas no Neon). Teste rápido de dentro do VPS: <code class="inl">curl -k https://localhost/health</code> deve responder OK.</div>
+
+    <h3>4.5 Subir só o backend (web) e testar</h3>
+    <pre>docker compose up -d --build web
+docker compose logs --tail=40 web</pre>
+    <div class="test"><b>🧪 Teste 1 (logs):</b> aparece <span class="ok">"Listening at http://0.0.0.0:5000"</span> e nenhuma stacktrace.<br>
+      <b>🧪 Teste 2 (saúde):</b> <code class="inl">curl http://localhost:5000/health</code> → <span class="ok">responde</span>.<br>
+      <b>🧪 Teste 3 (banco):</b> <code class="inl">curl -s -X POST http://localhost:5000/auth/register -H "Content-Type: application/json" -d '{"username":"teste","email":"teste@x.com","password":"senha12345"}'</code> → <span class="ok">retorna um token</span> (o app gravou no Neon). Confirme no SQL Editor do Neon: <code class="inl">SELECT email FROM users;</code> mostra <code class="inl">teste@x.com</code>.</div>
+    <div class="bad">⛔ Erro de banco nos logs? Revise <code class="inl">DATABASE_URL</code> (com <code class="inl">?sslmode=require</code>) e se o Neon está ativo.</div>
   </section>
 
-  <!-- FASE 5 -->
+  <!-- ───── FASE 5 ───── -->
   <section id="f5">
-    <h2><span class="num">5</span>Cloudflare na frente do <code class="inl">api</code> <span class="pill">~15 min</span></h2>
-    <p class="lead">TLS correto + esconder a origem + IP real. Tudo na zona <code class="inl">grindlabpoker.com.br</code>.</p>
-    <h3>5.1 DNS</h3>
-    <p>DNS → Records → <b>Add record</b>: <code class="inl">A</code> · nome <code class="inl">api</code> · conteúdo <b>IP do VPS</b> · <b>Proxied 🟠</b>.</p>
-    <h3>5.2 SSL: Full (Strict) + Origin Certificate</h3>
-    <ol>
-      <li><b>SSL/TLS → Overview → Full (Strict)</b>. <span style="color:var(--bad)">Nunca "Flexible".</span></li>
-      <li><b>SSL/TLS → Origin Server → Create Certificate</b> → gera 2 textos (cert + key). No VPS:</li>
-    </ol>
-    <pre>sudo mkdir -p /etc/ssl/cloudflare
-sudo nano /etc/ssl/cloudflare/origin.pem   <span class="c"># cole o certificado</span>
-sudo nano /etc/ssl/cloudflare/origin.key   <span class="c"># cole a chave privada</span>
-sudo chmod 600 /etc/ssl/cloudflare/origin.key</pre>
-    <p><b>SSL/TLS → Edge Certificates:</b> ligue <b>Always Use HTTPS</b>, <b>Min TLS 1.2</b>, e <b>HSTS</b> (depois de confirmar tudo em HTTPS).</p>
-    <h3>5.3 IP real (Nginx) — a origem só-CF você já fez no GCP (3.5)</h3>
-    <p>Gere o arquivo de ranges da Cloudflare p/ o Nginx restaurar o IP real do cliente:</p>
-    <pre><span class="c"># ranges oficiais → include do nginx (set_real_ip_from)</span>
-( for ip in $(curl -s https://www.cloudflare.com/ips-v4) $(curl -s https://www.cloudflare.com/ips-v6); do
-    echo "set_real_ip_from $ip;"; done ) | sudo tee /home/deploy/app/deploy/cloudflare-ips.conf
+    <h2><span class="num">5</span>Cloudflare na frente do <code class="inl">api</code> <span class="pill">~20 min</span></h2>
+    <p class="lead">Na zona <code class="inl">grindlabpoker.com.br</code>.</p>
 
-<span class="c"># monte esse arquivo no nginx (adicione o volume no compose):</span>
-<span class="c">#   - ./deploy/cloudflare-ips.conf:/etc/nginx/conf.d/cloudflare-ips.conf:ro</span>
-docker compose restart nginx</pre>
-    <div class="callout warn"><b>Bloqueio só-Cloudflare:</b> no GCP isso é a <b>regra de firewall da VPC</b> (Fase 3.5, <code class="inl">allow-cloudflare-web</code>) — é a 1ª camada. O <code class="inl">ufw</code> da Fase 3.3 é a 2ª camada (defesa em profundidade). No Hetzner, seria só o <code class="inl">ufw</code> restrito aos ranges CF.</div>
-    <div class="tip"><b>IP real já tratado no app:</b> o backend tem <code class="inl">ProxyFix</code> e o nginx restaura <code class="inl">CF-Connecting-IP</code> → o rate-limiter anti-abuso enxerga o IP do usuário (não o da Cloudflare).</div>
-    <h3>5.4 Cache</h3>
-    <p><b>Rules → Cache Rules:</b> para <code class="inl">api.grindlabpoker.com.br/*</code> → <b>Bypass cache</b> (API é dinâmica; nunca cachear, principalmente <code class="inl">/subscription/webhook</code>).</p>
+    <h3>5.1 DNS do api</h3>
+    <p><b>DNS → Add record:</b> Type <b>A</b> · Name <code class="inl">api</code> · IPv4 = <span class="ph">IP da VPS</span> · <b>Proxied 🟠</b> · Save.</p>
+
+    <h3>5.2 SSL Full (Strict) + Origin Certificate</h3>
+    <ol class="steps">
+      <li><b>SSL/TLS → Overview → Full (strict)</b>.</li>
+      <li><b>SSL/TLS → Origin Server → Create Certificate → Create</b>. Copie as 2 caixas (cert e key).</li>
+      <li>Na VPS:
+        <pre>sudo mkdir -p /etc/ssl/cloudflare
+sudo nano /etc/ssl/cloudflare/origin.pem   <span class="c"># cole o "Origin Certificate"</span>
+sudo nano /etc/ssl/cloudflare/origin.key   <span class="c"># cole o "Private Key"</span>
+sudo chmod 600 /etc/ssl/cloudflare/origin.key</pre>
+      </li>
+      <li><b>SSL/TLS → Edge Certificates:</b> ligue <b>Always Use HTTPS</b> e <b>Min TLS 1.2</b>.</li>
+    </ol>
+
+    <h3>5.3 IP real + subir o Nginx</h3>
+    <pre>cd ~/app
+( for ip in $(curl -s https://www.cloudflare.com/ips-v4) $(curl -s https://www.cloudflare.com/ips-v6); do
+    echo "set_real_ip_from $ip;"; done ) > deploy/cloudflare-ips.conf
+docker compose up -d
+docker compose ps</pre>
+    <div class="test"><b>🧪 Teste:</b> <code class="inl">docker compose ps</code> → <span class="ok">web e nginx "running"</span>.</div>
+
+    <h3>5.4 Não cachear a API</h3>
+    <p><b>Rules → Cache Rules → Create:</b> Hostname <b>equals</b> <code class="inl">api.grindlabpoker.com.br</code> → <b>Bypass cache</b> → Deploy.</p>
+
+    <div class="test"><b>🧪 Teste final da fase (do seu PC):</b>
+      <pre>curl.exe -I https://api.grindlabpoker.com.br/health</pre>
+      <span class="ok"><code class="inl">HTTP/2 200</code></span>, com cadeado/HTTPS válido.<br>
+      <b>🧪 Teste anti-bypass:</b> abra no navegador <code class="inl">https://<span class="ph">IP_da_VPS</span></code> → <span class="ok">deve dar timeout/recusado</span> (só a Cloudflare entra).</div>
   </section>
 
-  <!-- FASE 6 -->
+  <!-- ───── FASE 6 ───── -->
   <section id="f6">
     <h2><span class="num">6</span>Frontend — Cloudflare Pages <span class="pill">~15 min</span></h2>
-    <ol>
-      <li>Cloudflare → <b>Workers & Pages → Create → Pages → Connect to Git</b> → repositório do projeto.</li>
-      <li><b>Build:</b> Framework <b>Vite</b> · Build command <code class="inl">cd frontend &amp;&amp; npm install &amp;&amp; npm run build</code> · Output <code class="inl">frontend/dist</code>.</li>
-      <li><b>Environment variables (Production):</b>
+    <ol class="steps">
+      <li>Cloudflare → <b>Workers &amp; Pages → Create → Pages → Connect to Git</b> → autorize o GitHub → escolha o repositório.</li>
+      <li><b>Production branch:</b> <code class="inl">main</code>. <b>Framework:</b> Vite. <b>Build command:</b> <code class="inl">cd frontend &amp;&amp; npm install &amp;&amp; npm run build</code>. <b>Output:</b> <code class="inl">frontend/dist</code>.</li>
+      <li><b>Environment variables:</b>
         <pre>VITE_API_URL=https://api.grindlabpoker.com.br
-VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...</pre>
+VITE_STRIPE_PUBLISHABLE_KEY=<span class="ph">pk_test_... (depois troca p/ live)</span></pre>
       </li>
-      <li><b>Custom domains:</b> adicione <code class="inl">grindlabpoker.com.br</code> e <code class="inl">www</code> ao projeto Pages (cria os registros sozinho).</li>
-      <li>Cada <code class="inl">git push</code> → build + deploy automático na borda.</li>
+      <li><b>Save and Deploy</b> → aguarde o build.</li>
+      <li><b>Custom domains:</b> adicione <code class="inl">grindlabpoker.com.br</code> e <code class="inl">www.grindlabpoker.com.br</code>.</li>
     </ol>
-    <div class="tip">Frontend e API em subdomínios diferentes → o <b>CORS</b> já está coberto pela <code class="inl">ALLOWED_ORIGINS</code> que você pôs no <code class="inl">.env</code> (Fase 4.2).</div>
+    <div class="test"><b>🧪 Teste:</b> abra <code class="inl">https://grindlabpoker.com.br</code> → <span class="ok">o app carrega</span>. Faça um <b>cadastro real pela tela</b> → no Neon, <code class="inl">SELECT email FROM users ORDER BY id DESC LIMIT 3;</code> mostra o novo usuário. (Login funcionando = CORS ok.)</div>
+    <div class="bad">⛔ Erro de CORS no login? Ajuste <code class="inl">ALLOWED_ORIGINS</code> no <code class="inl">.env</code> e <code class="inl">docker compose up -d</code>.</div>
   </section>
 
-  <!-- FASE 7 -->
+  <!-- ───── FASE 7 ───── -->
   <section id="f7">
-    <h2><span class="num">7</span>Stripe — recorrência <span class="pill">~15 min</span></h2>
-    <p class="lead">Um script já cria Product, Prices recorrentes, webhook e Billing Portal.</p>
-    <pre><span class="c"># no VPS, dentro do container web (ou local com a venv):</span>
-docker compose exec web sh -lc '
-  export STRIPE_SECRET_KEY=sk_live_xxx
+    <h2><span class="num">7</span>Stripe — pagamentos <span class="pill">~20 min</span></h2>
+    <p class="lead">Em <b>TEST</b> primeiro; LIVE só quando passar.</p>
+
+    <h3>7.1 Chaves de teste</h3>
+    <p>Stripe (Test mode ON) → <b>Developers → API keys</b>: copie <code class="inl">sk_test_...</code> e <code class="inl">pk_test_...</code>.</p>
+
+    <h3>7.2 Rodar o setup (na VPS)</h3>
+    <pre>docker compose exec web sh -lc '
+  export STRIPE_SECRET_KEY=<span class="ph">sk_test_xxx</span>
   python scripts/stripe_setup.py \
-    --webhook-url https://api.grindlabpoker.com.br/subscription/webhook --apply '</pre>
-    <p>Ele imprime os IDs. Cole no <code class="inl">.env</code> e reinicie:</p>
-    <pre>STRIPE_PRICE_PRO_MONTHLY=price_...
-STRIPE_PRICE_PRO_ANNUAL=price_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-<span class="c"># depois</span>
+    --webhook-url https://api.grindlabpoker.com.br/subscription/webhook --apply
+'</pre>
+    <div class="test"><b>🧪 Teste:</b> o script imprime <span class="ok"><code class="inl">STRIPE_PRICE_PRO_MONTHLY=price_…</code>, <code class="inl">…_ANNUAL=price_…</code> e <code class="inl">STRIPE_WEBHOOK_SECRET=whsec_…</code></span>.</div>
+
+    <h3>7.3 Colar no .env e reiniciar</h3>
+    <pre>nano .env   <span class="c"># preencha STRIPE_SECRET_KEY + as 3 que o script imprimiu</span>
 docker compose up -d</pre>
-    <ul>
-      <li>No Stripe Dashboard → <b>Customer portal</b>: confirme que está ativado (o script já cria a config).</li>
-      <li>Cloudflare: garanta o <b>Bypass cache</b> em <code class="inl">/subscription/webhook</code> e, se tiver Bot/WAF agressivo, uma exceção (Skip) pra essa rota (senão o Stripe é desafiado e os eventos falham).</li>
-    </ul>
-    <div class="warn"><b>Teste em <code class="inl">sk_test_</code> primeiro.</b> Rode o setup com a chave de teste, valide o fluxo de assinatura, e só então repita com <code class="inl">sk_live_</code>.</div>
+
+    <h3>7.4 Testar o fluxo</h3>
+    <ol class="steps">
+      <li>No app, assine o Pro com o cartão de teste <code class="inl">4242 4242 4242 4242</code> (validade futura, CVC qualquer).</li>
+      <li>Stripe (test) → <b>Subscriptions</b>: a assinatura aparece <b>active</b>.</li>
+      <li>Stripe → <b>Developers → Webhooks → seu endpoint → Send test event</b> → <code class="inl">invoice.paid</code>.</li>
+    </ol>
+    <div class="test"><b>🧪 Teste:</b> após o checkout, no app o usuário vira <b>Pro</b>. No Neon: <code class="inl">SELECT plan, plan_source FROM users WHERE email='...';</code> → <span class="ok"><code class="inl">pro / stripe_sub</code></span>. Reenviar o <code class="inl">invoice.paid</code> <b>não</b> cria pagamento duplicado (idempotência).</div>
+
+    <h3>7.5 Ir pra LIVE</h3>
+    <p>Repita 7.1–7.3 com <code class="inl">sk_live_</code>; troque a <code class="inl">VITE_STRIPE_PUBLISHABLE_KEY</code> do Pages pra <code class="inl">pk_live_</code>; em <b>Settings → Billing → Customer portal</b>, confirme ativado.</p>
   </section>
 
-  <!-- FASE 8 -->
+  <!-- ───── FASE 8 ───── -->
   <section id="f8">
-    <h2><span class="num">8</span>Crons & manutenção <span class="pill">~15 min</span></h2>
-    <h3>8.1 Jobs diários (billing + coach)</h3>
-    <p>No VPS, <code class="inl">crontab -e</code> do usuário <code class="inl">deploy</code>:</p>
-    <pre><span class="c"># 04:10 — expira assinaturas/cortesias vencidas</span>
-10 4 * * * cd /home/deploy/app && docker compose exec -T web python scripts/expire_subscriptions.py
-15 4 * * * cd /home/deploy/app && docker compose exec -T web python scripts/expire_coach_trials.py</pre>
-    <h3>8.2 Atualizações (CF IPs + sistema)</h3>
-    <pre><span class="c"># 1x/mês — atualiza os ranges da Cloudflare (mudam raramente)</span>
-0 5 1 * * cd /home/deploy/app && bash deploy/refresh_cloudflare_ips.sh</pre>
-    <h3>8.3 Backup</h3>
+    <h2><span class="num">8</span>Crons, backup e atualizações <span class="pill">~15 min</span></h2>
+    <h3>8.1 Tarefas diárias</h3>
+    <p><code class="inl">crontab -e</code> (como <code class="inl">deploy</code>) e cole:</p>
+    <pre>10 4 * * * cd /home/deploy/app &amp;&amp; docker compose exec -T web python scripts/expire_subscriptions.py
+15 4 * * * cd /home/deploy/app &amp;&amp; docker compose exec -T web python scripts/expire_coach_trials.py</pre>
+    <div class="test"><b>🧪 Teste:</b> rode uma vez na mão e veja a saída sem erro:
+      <pre>docker compose exec -T web python scripts/expire_subscriptions.py</pre></div>
+    <h3>8.2 Backup</h3>
     <ul>
-      <li><b>Banco:</b> o <b>Neon</b> faz backup/PITR automático — sua maior preocupação está coberta.</li>
-      <li><b>VPS:</b> o código está no git; só o <code class="inl">.env</code> e os certs precisam de cópia segura (guarde num cofre de senhas).</li>
-      <li><b>Extra (opcional):</b> snapshot semanal do disco da VM no GCP (Compute Engine → Snapshots; agende um <i>snapshot schedule</i>) para restaurar a máquina inteira rápido. No Hetzner, seria o Snapshot do painel.</li>
+      <li><b>Banco:</b> Neon faz automático (o essencial).</li>
+      <li><b>Servidor:</b> código no GitHub; guarde <code class="inl">.env</code> e <code class="inl">/etc/ssl/cloudflare/*</code> num cofre de senhas.</li>
+      <li><b>Opcional:</b> Snapshot semanal da VPS no painel Hetzner.</li>
     </ul>
-    <h3>8.4 Deploy de novas versões</h3>
-    <pre>cd /home/deploy/app && git pull && docker compose up -d --build</pre>
+    <h3>8.3 Publicar nova versão</h3>
+    <pre>cd ~/app &amp;&amp; git pull &amp;&amp; docker compose up -d --build</pre>
   </section>
 
-  <!-- CHECKLIST -->
+  <!-- ───── CHECKLIST ───── -->
   <section id="check">
     <h2>✓ Checklist final</h2>
     <ul class="check">
-      <li>Ambas as zonas <b>Active</b> na Cloudflare; <code class="inl">.com</code> redireciona 301 p/ <code class="inl">.com.br</code>.</li>
-      <li><code class="inl">https://grindlabpoker.com.br</code> abre o app (Pages) com cadeado.</li>
-      <li><code class="inl">https://api.grindlabpoker.com.br/health</code> responde OK, modo SSL <b>Full (Strict)</b>.</li>
-      <li>Acessar o <b>IP do VPS direto</b> no navegador → recusado (firewall só-Cloudflare).</li>
-      <li>Logs do backend mostram <b>IPs reais</b> dos usuários (não ranges Cloudflare).</li>
-      <li>Cadastro/login funcionam; upload de hand history analisa e salva no <b>Neon</b>.</li>
-      <li>Checkout em <b>test mode</b> → assinatura criada; reenviar <code class="inl">invoice.paid</code> não duplica.</li>
-      <li>Webhook do Stripe chega (não é cacheado nem desafiado).</li>
-      <li>Crons agendados; <code class="inl">.env</code> e certs guardados em cofre.</li>
+      <li>Zonas <code class="inl">.com.br</code> e <code class="inl">.com</code> Active; <code class="inl">curl -I https://grindlabpoker.com</code> → 301.</li>
+      <li>Neon na mesma região da Hetzner; <code class="inl">SELECT now()</code> no SQL Editor responde.</li>
+      <li>VPS com firewall só-Cloudflare; <code class="inl">ssh root</code> recusado, <code class="inl">ssh deploy</code> ok.</li>
+      <li><code class="inl">docker compose ps</code> → web e nginx running.</li>
+      <li><code class="inl">https://api.grindlabpoker.com.br/health</code> → 200; IP direto da VPS → recusado.</li>
+      <li><code class="inl">https://grindlabpoker.com.br</code> abre; cadastro pela tela grava no Neon.</li>
+      <li>Checkout test → usuário vira <code class="inl">pro/stripe_sub</code>; reenviar webhook não duplica.</li>
+      <li>Crons no crontab; <code class="inl">.env</code> e certs no cofre.</li>
     </ul>
-    <div class="tip"><b>Pronto.</b> Frontend na borda da Cloudflare, backend na VM do GCP (créditos) atrás do proxy, banco gerenciado com backup no Neon, pagamentos recorrentes no Stripe. Migrar pro Hetzner depois = só refazer a Fase 3. Solver já no GCP, acessível por IP interno (<code class="inl">GTO_SOLVER_URL</code>).</div>
   </section>
 
-  <footer>GrindLab · guia de deploy gerado em 2026-06-17 · complementa <code>specs/deploy-cloudflare.md</code> e <code>specs/deploy-vps.md</code></footer>
+  <!-- ───── TROUBLE ───── -->
+  <section id="trouble">
+    <h2>⚠ Troubleshooting</h2>
+    <table>
+      <tr><th>Sintoma</th><th>Causa / solução</th></tr>
+      <tr><td>Domínio não abre</td><td>Nameservers propagando (até 24h) ou zona não Active. Confira <code class="inl">nslookup -type=NS …</code>.</td></tr>
+      <tr><td>Cloudflare <code class="inl">521/522</code></td><td>Origem não respondeu: nginx parado (<code class="inl">docker compose ps</code>), firewall não libera a CF, ou cert ausente.</td></tr>
+      <tr><td><code class="inl">525</code> SSL handshake</td><td>Falta Origin Cert no Nginx ou SSL não está <b>Full (strict)</b>.</td></tr>
+      <tr><td>CORS no login</td><td><code class="inl">ALLOWED_ORIGINS</code> errado → corrija + <code class="inl">docker compose up -d</code>.</td></tr>
+      <tr><td>Backend não sobe (DB)</td><td><code class="inl">DATABASE_URL</code> sem <code class="inl">?sslmode=require</code> ou Neon pausado.</td></tr>
+      <tr><td>Webhook Stripe falha</td><td>URL errada no setup, ou WAF/Bot desafiando → exceção (Skip) p/ <code class="inl">/subscription/webhook</code>.</td></tr>
+      <tr><td>Trancado fora do SSH</td><td>Use o <b>Console</b> do servidor no painel Hetzner (VNC) e conserte <code class="inl">sshd_config</code>/ufw.</td></tr>
+    </table>
+    <div class="tip"><b>Logs:</b> <code class="inl">docker compose logs -f web</code> e <code class="inl">docker compose logs -f nginx</code> revelam quase tudo.</div>
+  </section>
+
+  <footer>GrindLab · guia detalhado · 2026-06-17 · backend no Hetzner · banco no Neon · frontend no Cloudflare Pages</footer>
 </main>
 </div>
 </body>
