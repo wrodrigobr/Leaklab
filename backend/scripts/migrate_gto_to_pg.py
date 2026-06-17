@@ -83,6 +83,17 @@ def main():
         if args.dry_run:
             print(f"{table:24s} {len(rows):>6} linhas na origem · {before} no destino → migraria")
             continue
+        # SQLite guarda booleanos como 0/1 (int); Postgres exige boolean. Converte as
+        # colunas que no destino são boolean (ex.: is_aggregate) p/ True/False.
+        cur.execute(
+            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name=%s",
+            (table,))
+        types = {r[0]: r[1] for r in cur.fetchall()}
+        bcols = [i for i, c in enumerate(use) if types.get(c) == "boolean"]
+        if bcols:
+            rows = [tuple((bool(v) if (j in bcols and v is not None) else v)
+                          for j, v in enumerate(r)) for r in rows]
+
         collist = ",".join(use)
         conflict_sql = f"ON CONFLICT ({conflict}) DO NOTHING" if conflict else "ON CONFLICT DO NOTHING"
         execute_values(cur, f"INSERT INTO {table} ({collist}) VALUES %s {conflict_sql}", rows, page_size=500)
