@@ -1,9 +1,13 @@
 # Cloudflare — configuração completa (GrindLab)
 
 **Status:** runbook · criado 2026-06-17 · complementa [`deploy-vps.md`](deploy-vps.md)
-**Domínio:** `pokergrindlab.com`. Assume o modelo **VPS único** (frontend estático + API no Nginx do VPS). Variante "frontend na Vercel" anotada no passo 2.
+**Domínio:** `pokergrindlab.com`. Modelo **recomendado:** frontend no **Cloudflare Pages** + backend/Postgres no **Hetzner** (atrás do proxy Cloudflare).
 
-> 3 partes **tocam o servidor** (não são só clique): **§3** (SSL/Origin Cert), **§4** (firewall só-Cloudflare), **§5** (IP real do cliente). As demais são no painel.
+> **"Cloudflare" faz 2 papéis distintos:**
+> 1. **Cloudflare Pages** (§1.5) — *hospeda* o frontend estático na borda (grátis, CDN, TLS, deploy por git). É onde o **frontend** roda.
+> 2. **Proxy/CDN** (§3–§8) — fica *na frente* do **backend** no Hetzner (`api.pokergrindlab.com`). O runbook de SSL/firewall/IP-real abaixo é para **o backend** — o Pages já traz TLS/CDN/DDoS prontos.
+
+> 3 partes **tocam o servidor** (backend, não frontend): **§3** (SSL/Origin Cert), **§4** (firewall só-Cloudflare), **§5** (IP real do cliente). As demais são no painel.
 
 ---
 
@@ -22,23 +26,31 @@
 
 ---
 
+## 1.5. Cloudflare Pages (frontend) — onde o frontend roda
+1. **Workers & Pages → Create → Pages → Connect to Git** → repositório do projeto.
+2. Build: **Framework: Vite**, **Build command:** `cd frontend && npm install && npm run build`, **Output dir:** `frontend/dist`.
+3. **Environment variables (build):**
+   - `VITE_API_URL=https://api.pokergrindlab.com` (o frontend resolve a API por essa var — `src/lib/api.ts`).
+   - `VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...`
+4. **Custom domain:** ligue `pokergrindlab.com` (+ `www`) no projeto Pages → a Cloudflare cria os registros automaticamente.
+5. Cada `git push` no branch de produção → build + deploy automático na borda. **TLS, CDN e DDoS já vêm embutidos** (frontend não precisa de Origin Cert nem firewall).
+
+> SPA fallback (rotas do React em refresh/deep-link) é tratado pelo Pages automaticamente.
+
 ## 2. DNS records
 No painel **DNS → Records**. Regra de ouro: **só o que é web fica proxied (nuvem laranja 🟠); SSH e solver NÃO**.
 
-**Modelo VPS único (recomendado):**
+**Modelo recomendado (frontend no Pages + backend no Hetzner):**
 | Tipo | Nome | Conteúdo | Proxy |
 |---|---|---|---|
-| A | `pokergrindlab.com` | `<IP do VPS>` | 🟠 Proxied |
-| A | `www` | `<IP do VPS>` | 🟠 Proxied |
+| (auto) | `pokergrindlab.com` + `www` | **Cloudflare Pages** (criado no §1.5) | 🟠 Proxied |
+| A | `api` | `<IP do VPS Hetzner>` | 🟠 Proxied |
 | A | `ssh` *(opcional)* | `<IP do VPS>` | ⚪ DNS only |
 
-**Variante frontend na Vercel + API no VPS:**
-| Tipo | Nome | Conteúdo | Proxy |
-|---|---|---|---|
-| CNAME | `pokergrindlab.com` | `cname.vercel-dns.com` | 🟠 Proxied |
-| A | `api` | `<IP do VPS>` | 🟠 Proxied |
+> **CORS:** frontend (`pokergrindlab.com`) e API (`api.pokergrindlab.com`) são origens distintas → no backend `ALLOWED_ORIGINS=https://pokergrindlab.com,https://www.pokergrindlab.com` (§9).
+> ⚠️ O **VPS-SOLVER nunca entra no DNS** e nunca é proxied — só acessível pela rede privada do VPS-backend.
 
-> ⚠️ O **VPS-SOLVER nunca entra no DNS** e nunca é proxied — ele só é acessível pela rede privada do VPS-APP.
+**Alternativa (VPS único serve tudo):** `pokergrindlab.com`/`www` → A para o IP do VPS (🟠); o Nginx serve o `dist/` estático + reverte pro Flask. Uma máquina só, mais ops, sem CORS. Ver [`deploy-vps.md`](deploy-vps.md).
 
 ---
 

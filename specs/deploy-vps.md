@@ -1,7 +1,9 @@
 # Deploy em VPS único — seguro e performático (GrindLab)
 
 **Status:** plano/runbook · criado 2026-06-17
-**Objetivo:** hospedar **frontend + backend + Postgres** num único VPS Linux, barato, **seguro** e **performático**, com **backup offsite automatizado e testado**. O **solver fica numa máquina à parte** (CPU/RAM-intensivo + isolamento AGPL).
+**Objetivo:** hospedar o **backend + Postgres** num VPS Linux, barato, **seguro** e **performático**, com **backup offsite automatizado e testado**. O **solver fica numa máquina à parte** (CPU/RAM-intensivo + isolamento AGPL).
+
+> **Modelo recomendado:** **frontend no Cloudflare Pages** (grátis, CDN, zero-ops — ver [`deploy-cloudflare.md`](deploy-cloudflare.md) §1.5) + **backend/Postgres neste VPS** (`api.pokergrindlab.com`). O VPS **não serve o frontend** nesse modelo (Nginx vira só reverse-proxy do Flask). A opção "VPS único serve tudo (incl. estático)" abaixo é a **alternativa mais barata** (uma máquina, mais ops, sem CORS).
 
 ---
 
