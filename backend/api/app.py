@@ -176,6 +176,13 @@ def _plan_period(billing_cycle: str):
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
+# Atrás de proxy (Cloudflare/Nginx, Render): confia no X-Forwarded-For do proxy imediato
+# para que get_remote_address (rate-limiter anti-abuso) veja o IP REAL do usuário, não o do
+# proxy. Sem isso, /analyze/guest e /subscription/checkout limitariam por IP de proxy.
+# x_for=1 = confia em 1 hop (o Nginx/Render que adiciona o IP real ao XFF).
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 # ── Request instrumentation ───────────────────────────────────────────────────
 
 @app.before_request
