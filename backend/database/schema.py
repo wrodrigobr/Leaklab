@@ -69,6 +69,11 @@ def init_db():
     conn = get_conn()
     try:
         if USE_POSTGRES:
+            # Evita corrida de migração quando vários workers do gunicorn sobem juntos:
+            # advisory lock transacional serializa — o 2º processo espera o 1º commitar
+            # (e aí o schema já existe, virando no-op). Sem isso, DDLs concorrentes podem
+            # dar deadlock no boot de um banco novo.
+            conn.execute("SELECT pg_advisory_xact_lock(81234567)")
             _init_postgres(conn)
         else:
             _init_sqlite(conn)
