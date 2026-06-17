@@ -556,6 +556,64 @@ def test_preflop_ranges_hj_has_rfi():
     _teardown_db()
 
 
+# ── Blindagem AGPL do /gto/strategy ───────────────────────────────────────────
+
+def test_gto_strategy_user_never_live_solves():
+    """Usuário comum NUNCA chega ao solver AGPL ao vivo (_call_remote_solver)."""
+    from unittest.mock import patch, MagicMock
+    c = _make_client()
+    token = _register_and_login(c, 'agpl1', 'agpl1@t.com')
+    spot = {'street': 'flop', 'position': 'BTN', 'board': ['Ah', 'Kd', '2c'],
+            'hero_hand': ['Qs', 'Qh'], 'hero_stack_bb': 40, 'facing_size_bb': 3.0,
+            'action_seq': 'rfi', 'num_players': 2}
+    with patch('leaklab.gto_solver._call_remote_solver', MagicMock()) as m:
+        r = c.post('/gto/strategy', json=spot, headers=_auth_headers(token))
+    _ok('gto_strategy_user_no_live_solve',
+        m.call_count == 0 and r.status_code in (200, 202),
+        f'status={r.status_code} call_count={m.call_count}')
+    _teardown_db()
+
+
+def test_gto_strategy_user_cannot_force_live_solve():
+    """Mesmo pedindo live_solve=true, usuário comum segue read-only (sem solver AGPL)."""
+    from unittest.mock import patch, MagicMock
+    c = _make_client()
+    token = _register_and_login(c, 'agpl2', 'agpl2@t.com')
+    spot = {'street': 'flop', 'position': 'BTN', 'board': ['Ah', 'Kd', '2c'],
+            'hero_hand': ['Qs', 'Qh'], 'hero_stack_bb': 40, 'facing_size_bb': 3.0,
+            'live_solve': True}
+    with patch('leaklab.gto_solver._call_remote_solver', MagicMock()) as m:
+        c.post('/gto/strategy', json=spot, headers=_auth_headers(token))
+    _ok('gto_strategy_user_force_blocked', m.call_count == 0, f'call_count={m.call_count}')
+    _teardown_db()
+
+
+def test_gto_strategy_flags_propagate():
+    """Flags chegam ao lookup_gto: comum=False/False; admin+live_solve=True/True."""
+    from unittest.mock import patch
+    c = _make_client()
+    captured = {}
+    def fake_lookup(**kw):
+        captured.clear(); captured.update(kw); return {'found': False}
+    spot = {'street': 'flop', 'position': 'BTN', 'hero_hand': ['Qs', 'Qh'],
+            'hero_stack_bb': 40, 'live_solve': True}
+    # usuário comum (mesmo com live_solve=true) → read-only
+    token = _register_and_login(c, 'agpl3', 'agpl3@t.com')
+    with patch('leaklab.gto_solver.lookup_gto', fake_lookup):
+        c.post('/gto/strategy', json=spot, headers=_auth_headers(token))
+    _ok('gto_strategy_flags_user_readonly',
+        captured.get('block_remote') is False and captured.get('allow_remote_solve') is False,
+        f'{captured.get("block_remote")},{captured.get("allow_remote_solve")}')
+    # admin + live_solve=true → solve ao vivo permitido
+    atok = _admin_token()
+    with patch('leaklab.gto_solver.lookup_gto', fake_lookup):
+        c.post('/gto/strategy', json=spot, headers=_auth_headers(atok))
+    _ok('gto_strategy_flags_admin_live',
+        captured.get('block_remote') is True and captured.get('allow_remote_solve') is True,
+        f'{captured.get("block_remote")},{captured.get("allow_remote_solve")}')
+    _teardown_db()
+
+
 # ── Runner ────────────────────────────────────────────────────────────────────
 
 def run_all():

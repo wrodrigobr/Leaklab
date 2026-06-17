@@ -6331,14 +6331,21 @@ def preflop_ranges():
 @require_auth
 def gto_strategy():
     """
-    Lookup GTO verificado para um spot específico.
-    Só retorna dados com exploitability_pct confirmada pelo solver.
+    Lookup GTO verificado para um spot específico — **read-only por padrão**.
+
+    BLINDAGEM AGPL: o solver postflop (postflop-solver, AGPL-3.0) só roda OFFLINE
+    (workers/scripts). Este endpoint, por padrão, serve APENAS dados já no banco
+    (`block_remote=False`/`allow_remote_solve=False`) e NUNCA dispara um solve ao vivo
+    pela rede — evitando o gatilho da AGPL §13 (interação de usuário com o programa
+    remotamente). O solve ao vivo só é permitido para ADMIN que peça explicitamente
+    (`live_solve: true`), p/ ferramentas internas.
 
     Body: street, position, board[], hero_hand[], hero_stack_bb,
-          action_seq (default 'rfi'), vs_position (default '')
+          action_seq (default 'rfi'), vs_position (default ''),
+          live_solve (default false — só efetivo p/ admin)
 
-    200 → found=True, dados verificados com exploitability_pct
-    202 → found=False, spot enfileirado para solve
+    200 → found=True, dados verificados (do banco)
+    202 → found=False, sem cobertura no banco (não enfileira nem solva)
     """
     from leaklab.gto_solver import lookup_gto
     d               = request.get_json(force=True) or {}
@@ -6355,12 +6362,17 @@ def gto_strategy():
     if not position or not hero_hand:
         return jsonify({'error': 'position e hero_hand são obrigatórios'}), 400
 
+    # Solve ao vivo (AGPL via rede) SÓ para admin com opt-in explícito. Demais → read-only.
+    live_solve = bool(d.get('live_solve')) and (g.user.get('role') == 'admin')
+
     result = lookup_gto(
         street=street, position=position, board=board,
         hero_hand=hero_hand, hero_stack_bb=hero_stack_bb,
         action_seq=action_seq, vs_position=vs_position,
         facing_size_bb=facing_size_bb,
         num_players=num_players,
+        block_remote=live_solve,
+        allow_remote_solve=live_solve,
     )
     return jsonify(result), 200 if result.get('found') else 202
 
