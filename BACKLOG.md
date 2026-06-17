@@ -95,9 +95,14 @@ Ao concluir uma sprint, mover os itens para o CHANGELOG com o número da versão
 
 > _(FEAT-17 concluído em v0.83.0 — entrada movida para o roadmap acima. Verificado 2026-06-15: `OnboardingModal.tsx` 4 passos, gate via `ProtectedRoute` (só com user carregado), finish→`/dashboard`→CTA de upload do `EmptyDashboard`, i18n nas 3 locales, endpoint+coluna+repo presentes.)_
 
-### [PAY-01] — Revalidação do Stripe (pré-produção) ✅ AUDITORIA CONCLUÍDA 2026-06-16
+### [PAY] — Frente de pagamentos ✅ ENCERRADA 2026-06-17 (PAY-01 → PAY-04)
 
-> Auditoria em [`specs/pay-01-stripe-audit.md`](specs/pay-01-stripe-audit.md). **5 bugs corrigidos:** B-1 pagamento gravado em dobro (activate+webhook+retries → `save_payment` idempotente por `gateway_id,status`); B-2 Stripe rotulado `mercadopago` → `gateway='stripe'`; B-3 `/subscription/cancel` quebrado (cancelava PI como Subscription → 502) → guard `sub_`/downgrade local; B-4 MRR admin R$49→R$99; B-5 marca "LeakLabs"→"GrindLab" no recibo. + webhook trata `payment_intent.payment_failed` (trilha de auditoria). Testes 26→32. **Decisão de produto EM ABERTO (D-1):** o modelo é PaymentIntent único de 30d sem recorrência **nem expiração** → Pro vira vitalício. Opções A (Subscriptions reais) / B (`plan_expires_at`+cron) / C (aceitar). Não implementado — é mudança de modelo de cobrança, fora da revalidação.
+> **Linha completa.** [`specs/pay-01-stripe-audit.md`](specs/pay-01-stripe-audit.md).
+> - **PAY-01** (revalidação): 5 bugs (dupla-gravação→idempotência; rótulo gateway; cancel quebrado; MRR R$49→R$99; marca no recibo) + `payment_intent.payment_failed`. D-1 (recorrência/expiração) ficou em aberto → resolvido em PAY-02/04.
+> - **PAY-02** (plano anual + vigência): anual R$990 (2 meses grátis) + `plan_expires_at` (opção B); `get_quota_status` expira Pro vencido; cron `expire_subscriptions.py`.
+> - **PAY-03** (anti-fraude + admin): `/activate` deriva tudo do PI real (ownership/ciclo/valor); `/subscription/upgrade` → admin-only; visão financeira admin (receita/MRR/ARR/gateways/duplicados/pagamentos). `test_stripe_hardening` (20).
+> - **PAY-04** (recorrência automática): Stripe Subscriptions de verdade (cobra sozinho + dunning); webhooks `invoice.paid`/`payment_failed`/`customer.subscription.*`; Billing Portal; `plan_source='stripe_sub'` governado só por webhooks; `scripts/stripe_setup.py`. Retrocompat (PI legado segue válido).
+> **Pendência = só operação:** criar Product+Prices recorrentes no Stripe (rodar `stripe_setup.py --apply`), setar env (`STRIPE_*`, `VITE_STRIPE_PUBLISHABLE_KEY`), registrar webhook, agendar crons (`expire_subscriptions.py`, `expire_coach_trials.py`) no host. Testes finais: api 116/116, database 88/88.
 
 **Valor:** O meio de pagamento precisa estar comprovadamente funcional e correto antes do launch — qualquer falha aqui é receita perdida ou cobrança errada.
 
