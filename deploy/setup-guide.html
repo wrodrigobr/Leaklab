@@ -200,9 +200,9 @@
     <h3>3.1 Criar o servidor</h3>
     <ol class="steps">
       <li><a href="https://console.hetzner.cloud">console.hetzner.cloud</a> → seu projeto → <b>Add Server</b>.</li>
-      <li><b>Location:</b> <b>Ashburn, VA (US-East)</b> — menor latência pro Brasil. (Alternativa: Alemanha/Finlândia.)</li>
+      <li><b>Location:</b> a mais perto do Brasil que tiver a opção desejada — <b>Ashburn (US-East)</b> tem boa latência; Alemanha/Finlândia também servem (o frontend já está na borda da Cloudflare, então o impacto é pequeno).</li>
       <li><b>Image:</b> <b>Ubuntu 24.04</b>.</li>
-      <li><b>Type:</b> aba <b>Shared vCPU</b> → <b>CX22</b> (2 vCPU / 4 GB) — começa folgado, banco está no Neon.</li>
+      <li><b>Type:</b> aba <b>Shared vCPU</b> → <b>linha CX (Intel)</b> → <b>CX22/CX23</b> (2 vCPU / 4 GB / 40 GB, ~US$6,49/mês). <b>Intel é mais barato que AMD (CPX) e sobra</b> para o backend — quem é CPU-pesado é o solver, que fica noutra máquina. (Não precisa do CX33; dá pra subir depois com 1 clique se precisar.)</li>
       <li><b>SSH key:</b> <b>Add SSH key</b> → cole a chave pública (Fase 0.2) → dê um nome.</li>
       <li><b>Name:</b> <code class="inl">grindlab-api</code> → <b>Create &amp; Buy now</b>.</li>
       <li>Anote o <b>IP público</b> (ex.: <span class="ph">5.6.7.8</span>).</li>
