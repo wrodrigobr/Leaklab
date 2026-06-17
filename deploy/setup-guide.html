@@ -60,7 +60,7 @@
   <a href="#f0">0 · Contas</a>
   <a href="#f1">1 · Cloudflare (domínios)</a>
   <a href="#f2">2 · Neon (banco)</a>
-  <a href="#f3">3 · Hetzner (VPS)</a>
+  <a href="#f3">3 · Servidor (GCP)</a>
   <a href="#f4">4 · Backend (deploy)</a>
   <a href="#f5">5 · Cloudflare ↔ API</a>
   <a href="#f6">6 · Frontend (Pages)</a>
@@ -71,7 +71,7 @@
 
 <main>
   <h1>Guia de Deploy — <span class="g">GrindLab</span></h1>
-  <p class="sub">Cloudflare (frontend + proxy) · Neon (Postgres gerenciado) · Hetzner (backend). Domínios <code class="inl">grindlabpoker.com.br</code> (canônico) e <code class="inl">grindlabpoker.com</code> (→ 301).</p>
+  <p class="sub">Cloudflare (frontend + proxy) · Neon (Postgres gerenciado) · <b>GCP</b> (backend, usando créditos — Hetzner depois). Domínios <code class="inl">grindlabpoker.com.br</code> (canônico) e <code class="inl">grindlabpoker.com</code> (→ 301).</p>
 
   <!-- VISÃO -->
   <section id="visao">
@@ -86,12 +86,13 @@
          │ grindlabpoker.com.br   │ api.grindlabpoker.com.br
          ▼                        ▼
    [ SPA React ]          ┌──────────────────┐        ┌───────────────┐
-   (na borda CF)          │ Hetzner VPS      │  SSL   │  Neon         │
+   (na borda CF)          │ GCP VM (créditos)│  SSL   │  Neon         │
                           │ Nginx → Gunicorn │──────▶ │  PostgreSQL   │
                           │ (Flask, Docker)  │        │ (gerenciado,  │
-                          └──────────────────┘        │  backup auto) │
-                                                       └───────────────┘
-   Solver (AGPL) = máquina à parte, rede privada, nunca público.</div>
+                          └────────┬─────────┘        │  backup auto) │
+                                   │ IP interno (VPC) └───────────────┘
+                                   ▼
+   Solver (AGPL) = VM à parte no MESMO projeto GCP (rede privada, nunca público).</div>
     <div class="tip"><b>Por que assim:</b> o frontend é estático → vai pro Pages (grátis, CDN global, TLS, zero-ops). O backend precisa de servidor → Hetzner. O banco no <b>Neon</b> tem <b>backup automático</b>, eliminando o maior risco operacional.</div>
     <div class="warn"><b>Ordem importa:</b> faça na sequência das seções (1→8). A propagação de DNS é o gargalo — comece por ela.</div>
   </section>
@@ -102,12 +103,13 @@
     <ul>
       <li><b>Cloudflare</b> — <a href="https://dash.cloudflare.com">dash.cloudflare.com</a> (plano Free).</li>
       <li><b>Neon</b> — <a href="https://neon.tech">neon.tech</a> (Postgres gerenciado, free tier).</li>
-      <li><b>Hetzner Cloud</b> — <a href="https://console.hetzner.cloud">console.hetzner.cloud</a>.</li>
+      <li><b>Google Cloud (GCP)</b> — <a href="https://console.cloud.google.com">console.cloud.google.com</a> — <b>usaremos os créditos que você já tem</b> para o backend agora (o solver já vive lá). <i>Hetzner fica como migração futura.</i></li>
       <li><b>Stripe</b> — <a href="https://dashboard.stripe.com">dashboard.stripe.com</a> (modo test primeiro).</li>
       <li><b>GitHub</b> — o repositório do projeto (o Pages faz deploy a partir dele).</li>
       <li><b>Anthropic</b> — a <code class="inl">ANTHROPIC_API_KEY</code> (Claude Haiku, usado no app).</li>
     </ul>
-    <div class="tip"><b>Chave SSH:</b> se ainda não tem, gere uma agora — você vai usá-la no Hetzner. No seu PC: <code class="inl">ssh-keygen -t ed25519 -C "deploy"</code> (gera <code class="inl">~/.ssh/id_ed25519.pub</code>).</div>
+    <div class="tip"><b>Economia agora:</b> rodamos o backend numa <b>VM do GCP</b> com seus créditos (custo ~zero no começo). Quando os créditos acabarem, migrar pro Hetzner é só refazer a <b>Fase 3</b> noutra máquina — o resto (Cloudflare, Neon, Pages, Stripe) não muda.</div>
+    <div class="tip"><b>Chave SSH:</b> se ainda não tem, gere uma: <code class="inl">ssh-keygen -t ed25519 -C "deploy"</code> (gera <code class="inl">~/.ssh/id_ed25519.pub</code>).</div>
   </section>
 
   <!-- FASE 1 -->
@@ -141,7 +143,7 @@ Then:  Redirect → Type 301 → Dynamic
     <p class="lead">Cria o banco e te dá uma <code class="inl">DATABASE_URL</code>. Backup automático incluso.</p>
     <ol>
       <li>Em <a href="https://neon.tech">neon.tech</a> → <b>Create project</b>.</li>
-      <li><b>Region:</b> escolha a mais próxima do Hetzner e dos usuários — para BR, <b>AWS São Paulo (sa-east-1)</b> se disponível; senão a europeia mais próxima.</li>
+      <li><b>Region:</b> a mesma do backend e dos usuários — como a VM do GCP fica em <b>São Paulo</b>, escolha <b>AWS São Paulo (sa-east-1)</b> no Neon (menor latência banco↔backend).</li>
       <li>Anote a <b>Connection string</b> (use a <b>Pooled connection</b>). Formato:</li>
     </ol>
     <pre>postgresql://USUARIO:SENHA@ep-xxxx-pooler.sa-east-1.aws.neon.tech/grindlab?sslmode=require</pre>
@@ -151,45 +153,58 @@ Then:  Redirect → Type 301 → Dynamic
 
   <!-- FASE 3 -->
   <section id="f3">
-    <h2><span class="num">3</span>Hetzner — provisão + segurança <span class="pill">~20 min</span></h2>
-    <h3>3.1 Criar o servidor</h3>
+    <h2><span class="num">3</span>GCP — VM do backend (créditos) <span class="pill">~20 min</span></h2>
+    <p class="lead">Usamos uma VM do Compute Engine com seus créditos. O solver já está no GCP → backend e solver podem conversar por <b>IP interno (VPC)</b>, sem expor o solver.</p>
+    <div class="tip"><b>Migrar pro Hetzner depois</b> é só refazer esta fase numa VM Hetzner (Ubuntu + Docker são idênticos); 3.2–3.4 valem igual. As diferenças são só a <b>provisão (3.1)</b> e o <b>firewall do GCP (3.5)</b>.</div>
+    <h3>3.1 Criar a VM (Compute Engine)</h3>
     <ol>
-      <li><a href="https://console.hetzner.cloud">console.hetzner.cloud</a> → <b>New Server</b>.</li>
-      <li><b>Location:</b> Alemanha/Finlândia (ou o mais próximo). <b>Image:</b> Ubuntu 24.04.</li>
-      <li><b>Type:</b> <b>CX22</b> (2 vCPU / 4 GB) para começar. <b>SSH key:</b> cole sua chave pública.</li>
-      <li>Crie e anote o <b>IP público</b> (a "origem").</li>
+      <li><a href="https://console.cloud.google.com/compute/instances">Compute Engine → Create Instance</a> (no mesmo projeto do solver).</li>
+      <li><b>Region:</b> <code class="inl">southamerica-east1</code> (São Paulo) — perto dos usuários e do Neon SP. <b>Machine:</b> <code class="inl">e2-medium</code> (2 vCPU / 4 GB) ou <code class="inl">e2-small</code> (o banco fica no Neon, então RAM é folgada).</li>
+      <li><b>Boot disk:</b> Ubuntu 24.04 LTS, 20–30 GB.</li>
+      <li><b>Firewall:</b> NÃO marque "Allow HTTP/HTTPS" genérico (vamos restringir só à Cloudflare em 3.5). Permita só o necessário.</li>
+      <li><b>SSH:</b> em <i>Security → Manage SSH keys</i> cole sua chave pública (ou use <code class="inl">gcloud compute ssh</code>).</li>
     </ol>
-    <h3>3.2 Endurecer o servidor (rode como root no 1º acesso)</h3>
-    <pre><span class="c"># conecta</span>
-ssh root@SEU_IP
+    <h3>3.2 IP externo estático</h3>
+    <p>Reserve um <b>IP estático</b> (senão muda ao parar/iniciar a VM e quebra o DNS):</p>
+    <pre><span class="c"># VPC network → IP addresses → Reserve external static IP → anexe à VM</span>
+<span class="c"># anote esse IP — é a "origem" no Cloudflare (Fase 5)</span></pre>
+    <h3>3.3 Endurecer o servidor</h3>
+    <pre><span class="c"># conecta (gcloud ou ssh direto)</span>
+gcloud compute ssh SUA_VM --zone southamerica-east1-a    <span class="c"># ou: ssh USUARIO@IP</span>
 
-<span class="c"># usuário sudo dedicado + chave</span>
-adduser deploy && usermod -aG sudo deploy
-rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
+<span class="c"># usuário sudo dedicado (se entrou como outro) + patches + ferramentas</span>
+sudo apt update && sudo apt -y upgrade
+sudo apt -y install ufw fail2ban unattended-upgrades
+sudo dpkg-reconfigure -plow unattended-upgrades   <span class="c"># confirme "Yes"</span>
 
-<span class="c"># patches + ferramentas de segurança</span>
-apt update && apt -y upgrade
-apt -y install ufw fail2ban unattended-upgrades
-dpkg-reconfigure -plow unattended-upgrades   <span class="c"># confirme "Yes"</span>
+<span class="c"># firewall do SO (2ª camada; a 1ª é o firewall do GCP em 3.5)</span>
+sudo ufw default deny incoming && sudo ufw default allow outgoing
+sudo ufw allow 22/tcp
+sudo ufw allow 443/tcp && sudo ufw allow 80/tcp   <span class="c"># restringidos à CF na Fase 5.3</span>
+sudo ufw --force enable</pre>
+    <h3>3.4 SSH só por chave + Docker</h3>
+    <pre><span class="c"># /etc/ssh/sshd_config: PasswordAuthentication no  →  sudo systemctl restart ssh</span>
+<span class="c"># (teste o login num novo terminal ANTES de fechar a sessão atual)</span>
 
-<span class="c"># firewall: nega tudo, libera SSH e (por ora) HTTPS p/ testar</span>
-ufw default deny incoming && ufw default allow outgoing
-ufw allow 22/tcp
-ufw allow 443/tcp
-ufw allow 80/tcp
-ufw --force enable</pre>
-    <h3>3.3 SSH só por chave (desliga senha e root)</h3>
-    <pre><span class="c"># edite /etc/ssh/sshd_config e garanta:</span>
-PermitRootLogin no
-PasswordAuthentication no
-<span class="c"># depois</span>
-systemctl restart ssh</pre>
-    <div class="bad"><b>Antes de reiniciar o SSH:</b> abra um <b>novo terminal</b> e teste <code class="inl">ssh deploy@SEU_IP</code>. Só feche a sessão root quando confirmar que entra como <code class="inl">deploy</code> — senão você se tranca pra fora.</div>
-    <h3>3.4 Instalar Docker</h3>
-    <pre><span class="c"># como deploy</span>
+<span class="c"># Docker</span>
 curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker deploy
-<span class="c"># saia e entre de novo p/ valer o grupo docker</span></pre>
+sudo usermod -aG docker $USER   <span class="c"># saia e entre de novo</span></pre>
+    <h3>3.5 Firewall do GCP (1ª camada) — só Cloudflare</h3>
+    <p>No GCP o firewall é na VPC (antes do SO). Crie a regra de ingresso permitindo 80/443 <b>só dos ranges da Cloudflare</b> e 22 só do seu IP:</p>
+    <pre><span class="c"># ranges da Cloudflare numa variável</span>
+CF=$(curl -s https://www.cloudflare.com/ips-v4 | paste -sd, -),$(curl -s https://www.cloudflare.com/ips-v6 | paste -sd, -)
+
+gcloud compute firewall-rules create allow-cloudflare-web \
+  --direction=INGRESS --action=ALLOW --rules=tcp:80,tcp:443 \
+  --source-ranges="$CF" --target-tags=grindlab-web
+
+gcloud compute firewall-rules create allow-ssh-me \
+  --direction=INGRESS --action=ALLOW --rules=tcp:22 \
+  --source-ranges="SEU_IP/32" --target-tags=grindlab-web
+
+<span class="c"># marque a VM com a tag de rede 'grindlab-web' (Console → VM → Network tags)</span>
+<span class="c"># e garanta que NÃO há regra default liberando 0.0.0.0/0 em 80/443</span></pre>
+    <div class="tip"><b>Solver no mesmo projeto:</b> não exponha o solver publicamente. No <code class="inl">.env</code> (Fase 4) aponte <code class="inl">GTO_SOLVER_URL</code> para o <b>IP interno</b> da VM do solver (ex.: <code class="inl">http://10.x.x.x:8000</code>) — tráfego só dentro da VPC.</div>
   </section>
 
   <!-- FASE 4 -->
@@ -285,22 +300,16 @@ sudo nano /etc/ssl/cloudflare/origin.pem   <span class="c"># cole o certificado<
 sudo nano /etc/ssl/cloudflare/origin.key   <span class="c"># cole a chave privada</span>
 sudo chmod 600 /etc/ssl/cloudflare/origin.key</pre>
     <p><b>SSL/TLS → Edge Certificates:</b> ligue <b>Always Use HTTPS</b>, <b>Min TLS 1.2</b>, e <b>HSTS</b> (depois de confirmar tudo em HTTPS).</p>
-    <h3>5.3 IP real + firewall só-Cloudflare</h3>
-    <p>Gere o arquivo de ranges da Cloudflare (rode no VPS):</p>
+    <h3>5.3 IP real (Nginx) — a origem só-CF você já fez no GCP (3.5)</h3>
+    <p>Gere o arquivo de ranges da Cloudflare p/ o Nginx restaurar o IP real do cliente:</p>
     <pre><span class="c"># ranges oficiais → include do nginx (set_real_ip_from)</span>
 ( for ip in $(curl -s https://www.cloudflare.com/ips-v4) $(curl -s https://www.cloudflare.com/ips-v6); do
     echo "set_real_ip_from $ip;"; done ) | sudo tee /home/deploy/app/deploy/cloudflare-ips.conf
 
 <span class="c"># monte esse arquivo no nginx (adicione o volume no compose):</span>
 <span class="c">#   - ./deploy/cloudflare-ips.conf:/etc/nginx/conf.d/cloudflare-ips.conf:ro</span>
-
-<span class="c"># firewall: 443/80 só dos ranges Cloudflare</span>
-sudo ufw delete allow 443/tcp ; sudo ufw delete allow 80/tcp
-for ip in $(curl -s https://www.cloudflare.com/ips-v4) $(curl -s https://www.cloudflare.com/ips-v6); do
-  sudo ufw allow from $ip to any port 443 proto tcp
-  sudo ufw allow from $ip to any port 80  proto tcp
-done
 docker compose restart nginx</pre>
+    <div class="callout warn"><b>Bloqueio só-Cloudflare:</b> no GCP isso é a <b>regra de firewall da VPC</b> (Fase 3.5, <code class="inl">allow-cloudflare-web</code>) — é a 1ª camada. O <code class="inl">ufw</code> da Fase 3.3 é a 2ª camada (defesa em profundidade). No Hetzner, seria só o <code class="inl">ufw</code> restrito aos ranges CF.</div>
     <div class="tip"><b>IP real já tratado no app:</b> o backend tem <code class="inl">ProxyFix</code> e o nginx restaura <code class="inl">CF-Connecting-IP</code> → o rate-limiter anti-abuso enxerga o IP do usuário (não o da Cloudflare).</div>
     <h3>5.4 Cache</h3>
     <p><b>Rules → Cache Rules:</b> para <code class="inl">api.grindlabpoker.com.br/*</code> → <b>Bypass cache</b> (API é dinâmica; nunca cachear, principalmente <code class="inl">/subscription/webhook</code>).</p>
@@ -359,7 +368,7 @@ docker compose up -d</pre>
     <ul>
       <li><b>Banco:</b> o <b>Neon</b> faz backup/PITR automático — sua maior preocupação está coberta.</li>
       <li><b>VPS:</b> o código está no git; só o <code class="inl">.env</code> e os certs precisam de cópia segura (guarde num cofre de senhas).</li>
-      <li><b>Extra (opcional):</b> snapshot semanal da VPS no painel Hetzner (centavos) para restaurar a máquina inteira rápido.</li>
+      <li><b>Extra (opcional):</b> snapshot semanal do disco da VM no GCP (Compute Engine → Snapshots; agende um <i>snapshot schedule</i>) para restaurar a máquina inteira rápido. No Hetzner, seria o Snapshot do painel.</li>
     </ul>
     <h3>8.4 Deploy de novas versões</h3>
     <pre>cd /home/deploy/app && git pull && docker compose up -d --build</pre>
@@ -379,7 +388,7 @@ docker compose up -d</pre>
       <li>Webhook do Stripe chega (não é cacheado nem desafiado).</li>
       <li>Crons agendados; <code class="inl">.env</code> e certs guardados em cofre.</li>
     </ul>
-    <div class="tip"><b>Pronto.</b> Frontend na borda da Cloudflare, backend isolado no Hetzner atrás do proxy, banco gerenciado com backup no Neon, pagamentos recorrentes no Stripe. Solver fica numa máquina à parte quando você for ligar o GTO em produção (<code class="inl">GTO_SOLVER_URL</code>).</div>
+    <div class="tip"><b>Pronto.</b> Frontend na borda da Cloudflare, backend na VM do GCP (créditos) atrás do proxy, banco gerenciado com backup no Neon, pagamentos recorrentes no Stripe. Migrar pro Hetzner depois = só refazer a Fase 3. Solver já no GCP, acessível por IP interno (<code class="inl">GTO_SOLVER_URL</code>).</div>
   </section>
 
   <footer>GrindLab · guia de deploy gerado em 2026-06-17 · complementa <code>specs/deploy-cloudflare.md</code> e <code>specs/deploy-vps.md</code></footer>
