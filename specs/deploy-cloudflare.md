@@ -1,11 +1,11 @@
 # Cloudflare — configuração completa (GrindLab)
 
 **Status:** runbook · criado 2026-06-17 · complementa [`deploy-vps.md`](deploy-vps.md)
-**Domínio:** `pokergrindlab.com`. Modelo **recomendado:** frontend no **Cloudflare Pages** + backend/Postgres no **Hetzner** (atrás do proxy Cloudflare).
+**Domínio:** `grindlabpoker.com`. Modelo **recomendado:** frontend no **Cloudflare Pages** + backend/Postgres no **Hetzner** (atrás do proxy Cloudflare).
 
 > **"Cloudflare" faz 2 papéis distintos:**
 > 1. **Cloudflare Pages** (§1.5) — *hospeda* o frontend estático na borda (grátis, CDN, TLS, deploy por git). É onde o **frontend** roda.
-> 2. **Proxy/CDN** (§3–§8) — fica *na frente* do **backend** no Hetzner (`api.pokergrindlab.com`). O runbook de SSL/firewall/IP-real abaixo é para **o backend** — o Pages já traz TLS/CDN/DDoS prontos.
+> 2. **Proxy/CDN** (§3–§8) — fica *na frente* do **backend** no Hetzner (`api.grindlabpoker.com`). O runbook de SSL/firewall/IP-real abaixo é para **o backend** — o Pages já traz TLS/CDN/DDoS prontos.
 
 > 3 partes **tocam o servidor** (backend, não frontend): **§3** (SSL/Origin Cert), **§4** (firewall só-Cloudflare), **§5** (IP real do cliente). As demais são no painel.
 
@@ -18,11 +18,15 @@
 
 ---
 
-## 1. Adicionar o site
-1. Cloudflare → **Add a site** → `pokergrindlab.com` → plano **Free**.
-2. A Cloudflare faz o scan do DNS atual. Confira os registros importados.
-3. Ela te dá **2 nameservers** (ex.: `xxx.ns.cloudflare.com`). **No registrador**, troque os nameservers para esses dois. (Propaga em minutos a algumas horas.)
-4. Status do site fica **Active** quando propagar.
+## 1. Adicionar os sites (dois domínios)
+São **dois registros**: `grindlabpoker.com` (internacional) e `grindlabpoker.com.br` (Brasil). Decisão: **um é o canônico** (onde o site roda) e o outro **redireciona 301** para ele (SEO/marca: evita conteúdo duplicado). Recomendado: **`grindlabpoker.com.br` canônico** (público BR) e `.com` → 301 para `.com.br` — ou o inverso, é sua escolha; troca-se com 1 regra.
+
+1. Cloudflare → **Add a site** → `grindlabpoker.com.br` → plano **Free**. Repita para `grindlabpoker.com` (cada domínio é uma "zona" separada).
+2. Cada zona dá **2 nameservers**. **No registrador troque os nameservers:**
+   - `.com.br` → no **registro.br** (painel → Alterar servidores DNS).
+   - `.com` → no registrador onde você comprou.
+   (Propaga de minutos a horas.) Status vira **Active** quando propagar.
+3. **Redirect do secundário** (na zona do `.com`): **Rules → Redirect Rules** → "se hostname = `grindlabpoker.com` (ou `www`)" → **301** para `https://grindlabpoker.com.br/$1` (preserva o path). Assim só o canônico serve conteúdo.
 
 ---
 
@@ -30,9 +34,9 @@
 1. **Workers & Pages → Create → Pages → Connect to Git** → repositório do projeto.
 2. Build: **Framework: Vite**, **Build command:** `cd frontend && npm install && npm run build`, **Output dir:** `frontend/dist`.
 3. **Environment variables (build):**
-   - `VITE_API_URL=https://api.pokergrindlab.com` (o frontend resolve a API por essa var — `src/lib/api.ts`).
+   - `VITE_API_URL=https://api.grindlabpoker.com` (o frontend resolve a API por essa var — `src/lib/api.ts`).
    - `VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...`
-4. **Custom domain:** ligue `pokergrindlab.com` (+ `www`) no projeto Pages → a Cloudflare cria os registros automaticamente.
+4. **Custom domain:** ligue `grindlabpoker.com` (+ `www`) no projeto Pages → a Cloudflare cria os registros automaticamente.
 5. Cada `git push` no branch de produção → build + deploy automático na borda. **TLS, CDN e DDoS já vêm embutidos** (frontend não precisa de Origin Cert nem firewall).
 
 > SPA fallback (rotas do React em refresh/deep-link) é tratado pelo Pages automaticamente.
@@ -43,14 +47,14 @@ No painel **DNS → Records**. Regra de ouro: **só o que é web fica proxied (n
 **Modelo recomendado (frontend no Pages + backend no Hetzner):**
 | Tipo | Nome | Conteúdo | Proxy |
 |---|---|---|---|
-| (auto) | `pokergrindlab.com` + `www` | **Cloudflare Pages** (criado no §1.5) | 🟠 Proxied |
+| (auto) | `grindlabpoker.com` + `www` | **Cloudflare Pages** (criado no §1.5) | 🟠 Proxied |
 | A | `api` | `<IP do VPS Hetzner>` | 🟠 Proxied |
 | A | `ssh` *(opcional)* | `<IP do VPS>` | ⚪ DNS only |
 
-> **CORS:** frontend (`pokergrindlab.com`) e API (`api.pokergrindlab.com`) são origens distintas → no backend `ALLOWED_ORIGINS=https://pokergrindlab.com,https://www.pokergrindlab.com` (§9).
+> **CORS:** frontend (`grindlabpoker.com`) e API (`api.grindlabpoker.com`) são origens distintas → no backend `ALLOWED_ORIGINS=https://grindlabpoker.com,https://www.grindlabpoker.com` (§9).
 > ⚠️ O **VPS-SOLVER nunca entra no DNS** e nunca é proxied — só acessível pela rede privada do VPS-backend.
 
-**Alternativa (VPS único serve tudo):** `pokergrindlab.com`/`www` → A para o IP do VPS (🟠); o Nginx serve o `dist/` estático + reverte pro Flask. Uma máquina só, mais ops, sem CORS. Ver [`deploy-vps.md`](deploy-vps.md).
+**Alternativa (VPS único serve tudo):** `grindlabpoker.com`/`www` → A para o IP do VPS (🟠); o Nginx serve o `dist/` estático + reverte pro Flask. Uma máquina só, mais ops, sem CORS. Ver [`deploy-vps.md`](deploy-vps.md).
 
 ---
 
@@ -129,14 +133,14 @@ O Stripe chama `…/subscription/webhook` a partir dos **servidores dele** (não
 ---
 
 ## 9. Config da aplicação (env)
-- `ALLOWED_ORIGINS=https://pokergrindlab.com,https://www.pokergrindlab.com` (não `*`).
+- `ALLOWED_ORIGINS=https://grindlabpoker.com,https://www.grindlabpoker.com` (não `*`).
 - Frontend chama a API pelo **mesmo domínio** (proxy `/api` no Nginx) → evita CORS e mixed-content.
 - `VITE_STRIPE_PUBLISHABLE_KEY` no build do frontend.
 
 ---
 
 ## 10. Checklist de verificação (depois de configurar)
-- [ ] `https://pokergrindlab.com` abre com **cadeado** e modo **Full (Strict)** (sem aviso de cert).
+- [ ] `https://grindlabpoker.com` abre com **cadeado** e modo **Full (Strict)** (sem aviso de cert).
 - [ ] `http://` redireciona pra `https://` (Always Use HTTPS).
 - [ ] Acessar o **IP do VPS direto** no navegador (porta 80/443) → **recusado/timeout** (firewall só-CF funcionando).
 - [ ] Logs do backend mostram **IPs reais** dos usuários (não ranges da Cloudflare) → ProxyFix/real_ip ok.
