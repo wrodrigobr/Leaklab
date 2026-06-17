@@ -158,7 +158,7 @@ def test_checkout_no_plan_update_before_activate():
 def test_activate_requires_auth():
     c = _make_client()
     r = c.post('/subscription/activate',
-               json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'})
+               json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'pi_x'})
     assert r.status_code == 401
     print("OK  test_activate_requires_auth")
 
@@ -167,7 +167,7 @@ def test_activate_invalid_plan():
     c = _make_client()
     token = _register_and_login(c, 'act1')
     r = c.post('/subscription/activate',
-               json={'plan': 'ultra', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'},
+               json={'plan': 'ultra', 'payment_intent_id': 'pi_x', 'subscription_id': 'pi_x'},
                headers=_auth(token))
     assert r.status_code == 400
     print("OK  test_activate_invalid_plan")
@@ -187,7 +187,7 @@ def test_activate_payment_not_succeeded():
     token = _register_and_login(c, 'act3')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_x', 'requires_payment_method')):
         r = c.post('/subscription/activate',
-                   json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'},
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'pi_x'},
                    headers=_auth(token))
     assert r.status_code == 400
     print("OK  test_activate_payment_not_succeeded")
@@ -198,7 +198,7 @@ def test_activate_payment_not_found():
     token = _register_and_login(c, 'act4')
     with patch('api.app.get_payment', return_value=None):
         r = c.post('/subscription/activate',
-                   json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_x'},
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'pi_x'},
                    headers=_auth(token))
     assert r.status_code == 400
     print("OK  test_activate_payment_not_found")
@@ -210,7 +210,7 @@ def test_activate_rejects_starter_plan():
     token = _register_and_login(c, 'act5')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_ok', 'succeeded')):
         r = c.post('/subscription/activate',
-                   json={'plan': 'starter', 'payment_intent_id': 'pi_ok', 'subscription_id': 'sub_ok'},
+                   json={'plan': 'starter', 'payment_intent_id': 'pi_ok', 'subscription_id': 'pi_ok'},
                    headers=_auth(token))
     assert r.status_code == 400, f"Expected 400, got {r.status_code}"
     print("OK  test_activate_rejects_starter_plan")
@@ -221,7 +221,7 @@ def test_activate_pro_success():
     token = _register_and_login(c, 'act6')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_pro', 'succeeded')):
         r = c.post('/subscription/activate',
-                   json={'plan': 'pro', 'payment_intent_id': 'pi_pro', 'subscription_id': 'sub_pro'},
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_pro', 'subscription_id': 'pi_pro'},
                    headers=_auth(token))
     assert r.status_code == 200
     assert r.get_json().get('plan') == 'pro'
@@ -234,7 +234,7 @@ def test_activate_updates_user_plan():
     token = _register_and_login(c, 'planupd')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_u', 'succeeded')):
         c.post('/subscription/activate',
-               json={'plan': 'pro', 'payment_intent_id': 'pi_u', 'subscription_id': 'sub_u'},
+               json={'plan': 'pro', 'payment_intent_id': 'pi_u', 'subscription_id': 'pi_u'},
                headers=_auth(token))
     me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
     assert me.get_json().get('plan') == 'pro'
@@ -247,7 +247,7 @@ def test_activate_processing_status_accepted():
     token = _register_and_login(c, 'proc')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_proc', 'processing')):
         r = c.post('/subscription/activate',
-                   json={'plan': 'pro', 'payment_intent_id': 'pi_proc', 'subscription_id': 'sub_proc'},
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_proc', 'subscription_id': 'pi_proc'},
                    headers=_auth(token))
     assert r.status_code == 200
     print("OK  test_activate_processing_status_accepted")
@@ -277,7 +277,7 @@ def test_invoices_after_activation():
     token = _register_and_login(c, 'invpay')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_inv', 'succeeded')):
         c.post('/subscription/activate',
-               json={'plan': 'pro', 'payment_intent_id': 'pi_inv', 'subscription_id': 'sub_inv'},
+               json={'plan': 'pro', 'payment_intent_id': 'pi_inv', 'subscription_id': 'pi_inv'},
                headers=_auth(token))
     r = c.get('/subscription/invoices', headers={'Authorization': f'Bearer {token}'})
     data = r.get_json()
@@ -308,7 +308,7 @@ def test_cancel_active_subscription():
     token = _register_and_login(c, 'cancact')
     with patch('api.app.get_payment', return_value=_mock_pi('pi_c', 'succeeded')):
         c.post('/subscription/activate',
-               json={'plan': 'pro', 'payment_intent_id': 'pi_c', 'subscription_id': 'sub_CANCEL'},
+               json={'plan': 'pro', 'payment_intent_id': 'pi_c', 'subscription_id': 'pi_CANCEL'},
                headers=_auth(token))
     with patch('api.app.cancel_subscription', return_value=True):
         r = c.post('/subscription/cancel', headers=_auth(token))
@@ -583,6 +583,139 @@ def test_expire_subscriptions_persists_downgrade():
     conn.close()
     assert row['plan'] == 'free' and row['plan_expires_at'] is None
     print("OK  test_expire_subscriptions_persists_downgrade")
+
+
+# ── PAY-04: Subscriptions recorrentes ─────────────────────────────────────────
+
+def _mock_sub(sub_id='sub_R1', status='active', user_id=1, billing='monthly',
+              period_end=None, latest_invoice='in_R1'):
+    import time
+    days = 365 if billing == 'annual' else 30
+    pe = period_end if period_end is not None else int(time.time()) + days * 86400
+    return {'id': sub_id, 'status': status, 'current_period_end': pe,
+            'metadata': {'user_id': str(user_id), 'plan_name': 'pro', 'billing_cycle': billing},
+            'latest_invoice': latest_invoice}
+
+
+def test_activate_subscription_active_sets_pro():
+    """PAY-04: ativar uma Subscription ativa → pro recorrente (plan_source=stripe_sub)."""
+    c = _make_client()
+    token = _register_and_login(c, 'subact')
+    uid = _uid(c, token)
+    with patch('api.app.get_subscription', return_value=_mock_sub('sub_A', 'active', user_id=uid, billing='annual')):
+        r = c.post('/subscription/activate',
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_ignored', 'subscription_id': 'sub_A'},
+                   headers=_auth(token))
+    assert r.status_code == 200 and r.get_json().get('recurring') is True, r.get_json()
+    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert me.get_json()['plan'] == 'pro'
+    from database import repositories as repo
+    conn = repo.get_conn(); row = conn.execute("SELECT plan_source FROM users WHERE id=?", (uid,)).fetchone(); conn.close()
+    assert row['plan_source'] == 'stripe_sub'
+    # 1ª fatura registrada com o invoice id
+    inv = _invoices(c, token) if False else c.get('/subscription/invoices', headers=_auth(token)).get_json()['invoices']
+    assert any(p['gateway_id'] == 'in_R1' and p['amount_cents'] == 99000 for p in inv), inv
+    print("OK  test_activate_subscription_active_sets_pro")
+
+
+def test_activate_subscription_incomplete_pending():
+    """Subscription ainda não paga (incomplete) → não concede; aguarda webhook."""
+    c = _make_client()
+    token = _register_and_login(c, 'subinc')
+    uid = _uid(c, token)
+    with patch('api.app.get_subscription', return_value=_mock_sub('sub_I', 'incomplete', user_id=uid)):
+        r = c.post('/subscription/activate',
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_I'},
+                   headers=_auth(token))
+    assert r.status_code == 200 and r.get_json().get('pending') is True
+    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert me.get_json()['plan'] == 'free'
+    print("OK  test_activate_subscription_incomplete_pending")
+
+
+def test_activate_subscription_ownership():
+    """A Subscription tem de pertencer ao usuário (metadata.user_id)."""
+    c = _make_client()
+    token = _register_and_login(c, 'subown')
+    _uid(c, token)
+    with patch('api.app.get_subscription', return_value=_mock_sub('sub_O', 'active', user_id=99999)):
+        r = c.post('/subscription/activate',
+                   json={'plan': 'pro', 'payment_intent_id': 'pi_x', 'subscription_id': 'sub_O'},
+                   headers=_auth(token))
+    assert r.status_code == 403
+    print("OK  test_activate_subscription_ownership")
+
+
+def test_webhook_invoice_paid_renews():
+    """invoice.paid → mantém/estende o Pro (recorrência) e registra o pagamento."""
+    import time
+    c = _make_client()
+    token = _register_and_login(c, 'subren')
+    uid = _uid(c, token)
+    from database import repositories as repo
+    repo.link_subscription_id(uid, 'sub_REN')
+    pe = int(time.time()) + 30 * 86400
+    payload = json.dumps({'type': 'invoice.paid', 'data': {'object': {
+        'id': 'in_REN', 'subscription': 'sub_REN', 'amount_paid': 9900,
+        'lines': {'data': [{'period': {'end': pe}}]}}}}).encode()
+    with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
+        r = c.post('/subscription/webhook', data=payload, content_type='application/json')
+    assert r.status_code == 200
+    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert me.get_json()['plan'] == 'pro'
+    inv = c.get('/subscription/invoices', headers=_auth(token)).get_json()['invoices']
+    assert any(p['gateway_id'] == 'in_REN' for p in inv)
+    print("OK  test_webhook_invoice_paid_renews")
+
+
+def test_webhook_subscription_deleted_downgrades_real():
+    """customer.subscription.deleted → downgrade real p/ free."""
+    c = _make_client()
+    token = _register_and_login(c, 'subdel')
+    uid = _uid(c, token)
+    from database import repositories as repo
+    repo.apply_stripe_subscription(uid, 'active', '2099-01-01 00:00:00', 'sub_DEL')
+    payload = json.dumps({'type': 'customer.subscription.deleted', 'data': {'object': {
+        'id': 'sub_DEL', 'status': 'canceled', 'metadata': {'user_id': str(uid)}}}}).encode()
+    with patch('api.app.STRIPE_WEBHOOK_SECRET', ''):
+        c.post('/subscription/webhook', data=payload, content_type='application/json')
+    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert me.get_json()['plan'] == 'free'
+    print("OK  test_webhook_subscription_deleted_downgrades_real")
+
+
+def test_subscription_user_immune_to_expiry():
+    """PAY-04: assinante (plan_source=stripe_sub) NÃO expira por data — só webhook governa."""
+    c = _make_client()
+    token = _register_and_login(c, 'subimm')
+    uid = _uid(c, token)
+    from database import repositories as repo
+    # vigência no passado, mas é assinatura recorrente
+    repo.apply_stripe_subscription(uid, 'active', '2000-01-01 00:00:00', 'sub_IMM')
+    # get_quota_status mantém pro
+    assert repo.get_quota_status(uid)['plan'] == 'pro'
+    # o cron de expiração de PI legado NÃO toca nele
+    res = repo.expire_subscriptions()
+    assert uid not in res['downgraded']
+    assert repo.get_quota_status(uid)['plan'] == 'pro'
+    print("OK  test_subscription_user_immune_to_expiry")
+
+
+def test_cancel_recurring_at_period_end():
+    """Cancelar assinatura recorrente (sub_) → agenda fim de período, mantém Pro."""
+    c = _make_client()
+    token = _register_and_login(c, 'subcanc')
+    uid = _uid(c, token)
+    from database import repositories as repo
+    repo.apply_stripe_subscription(uid, 'active', '2099-01-01 00:00:00', 'sub_CANC')
+    with patch('api.app.cancel_subscription', return_value=True) as m:
+        r = c.post('/subscription/cancel', headers=_auth(token))
+    assert r.status_code == 200 and r.get_json().get('cancel_at_period_end') is True
+    # chamou com at_period_end=True
+    assert m.call_args.kwargs.get('at_period_end') is True or (len(m.call_args.args) > 1 and m.call_args.args[1] is True)
+    me = c.get('/auth/me', headers={'Authorization': f'Bearer {token}'})
+    assert me.get_json()['plan'] == 'pro'   # mantém até o fim do período
+    print("OK  test_cancel_recurring_at_period_end")
 
 
 # ── runner ───────────────────────────────────────────────────────────────────

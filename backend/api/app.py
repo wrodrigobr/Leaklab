@@ -149,8 +149,19 @@ from leaklab.content_moderation import sanitize_llm_input, moderate_text
 from leaklab.stripe_gateway import (
     create_subscription, cancel_subscription, get_subscription, get_payment,
     validate_webhook, PLAN_AMOUNTS, PLAN_AMOUNTS_ANNUAL, BILLING_DAYS, plan_amount,
-    STRIPE_WEBHOOK_SECRET,
+    create_billing_portal_session, STRIPE_WEBHOOK_SECRET,
 )
+
+
+def _ts_to_str(ts):
+    """PAY-04: unix timestamp do Stripe (current_period_end) → string ISO p/ plan_expires_at."""
+    if not ts:
+        return None
+    import datetime as _dt
+    try:
+        return _dt.datetime.utcfromtimestamp(int(ts)).strftime('%Y-%m-%d %H:%M:%S')
+    except (ValueError, TypeError, OSError):
+        return None
 
 
 def _plan_period(billing_cycle: str):
@@ -5149,10 +5160,17 @@ def subscription_checkout():
             return jsonify({'error': f'[DEBUG] Stripe: {e}'}), 502
         return jsonify({'error': 'Erro ao iniciar pagamento. Tente novamente.'}), 502
 
+    # PAY-04: assinatura recorrente → vincula o sub_id ao usuário (sem mudar o plano)
+    # para que os webhooks de ciclo de vida resolvam o usuário por mp_subscription_id.
+    if result.get('recurring') and str(result['subscription_id']).startswith('sub_'):
+        from database.repositories import link_subscription_id
+        link_subscription_id(g.user_id, result['subscription_id'])
+
     return jsonify({
         'client_secret':   result['client_secret'],
         'subscription_id': result['subscription_id'],
         'billing':         result.get('billing_cycle', billing),
+        'recurring':       bool(result.get('recurring')),
     })
 
 
@@ -5169,6 +5187,44 @@ def subscription_activate():
         return jsonify({'error': 'Plano inválido. Use pro.'}), 400
     if not payment_intent_id or not subscription_id:
         return jsonify({'error': 'payment_intent_id e subscription_id obrigatórios'}), 400
+
+    # ── PAY-04: ASSINATURA RECORRENTE (sub_...) ──────────────────────────────────
+    # Estado derivado da Subscription real (status + current_period_end); ownership por
+    # metadata.user_id. O webhook invoice.paid é a fonte da verdade da recorrência; este
+    # activate é a confirmação imediata (idempotente com o webhook via invoice id).
+    if str(subscription_id).startswith('sub_'):
+        sub = get_subscription(subscription_id)
+        if not sub:
+            return jsonify({'error': 'Assinatura não encontrada.'}), 400
+        smeta = sub.get('metadata') or {}
+        if str(smeta.get('user_id', '')) and str(smeta.get('user_id')) != str(g.user_id):
+            log.warning("activate: sub %s pertence a %s, não a %s", subscription_id, smeta.get('user_id'), g.user_id)
+            return jsonify({'error': 'Esta assinatura não pertence à sua conta.'}), 403
+        status  = sub.get('status')
+        expires = _ts_to_str(sub.get('current_period_end'))
+        cycle   = smeta.get('billing_cycle', 'monthly')
+        cycle   = cycle if cycle in ('monthly', 'annual') else 'monthly'
+        if status in ('active', 'trialing'):
+            from database.repositories import apply_stripe_subscription, maybe_promote_coach_earned
+            apply_stripe_subscription(g.user_id, status, expires, subscription_id)
+            inv    = sub.get('latest_invoice')
+            inv_id = inv if isinstance(inv, str) else (inv or {}).get('id')
+            save_payment(user_id=g.user_id, plan='pro',
+                         amount_cents=int(plan_amount('pro', cycle) * 100),
+                         status='approved', gateway_id=str(inv_id or subscription_id),
+                         gateway_sub_id=subscription_id, gateway='stripe', period_end=expires)
+            _coach = g.user.get('coach_id')
+            if _coach:
+                try:
+                    maybe_promote_coach_earned(_coach)
+                except Exception:
+                    log.exception("maybe_promote_coach_earned falhou (activate sub) coach=%s", _coach)
+            return jsonify({'ok': True, 'plan': 'pro', 'subscription_id': subscription_id,
+                            'recurring': True, 'status': status, 'expires_at': expires})
+        # incomplete / past_due → ainda não pagou; o webhook invoice.paid confirmará.
+        return jsonify({'ok': True, 'plan': g.user.get('plan', 'free'),
+                        'subscription_id': subscription_id, 'recurring': True,
+                        'status': status, 'pending': True})
 
     pi = get_payment(payment_intent_id)
     if not pi or pi.get('status') not in ('succeeded', 'processing'):
@@ -5297,6 +5353,55 @@ def subscription_webhook():
                 gateway='stripe',
             )
 
+    # ── PAY-04: ciclo de vida da ASSINATURA RECORRENTE ──────────────────────────
+    elif event_type == 'invoice.paid':
+        # Renovação (ou 1ª cobrança) paga → mantém/estende o Pro. Fonte da verdade da
+        # recorrência. Idempotente: save_payment dedupe por invoice id (gateway_id).
+        from database.repositories import get_user_by_subscription, apply_stripe_subscription
+        sub_id  = obj.get('subscription')
+        inv_id  = obj.get('id')
+        amount  = obj.get('amount_paid', 0) or 0
+        _lines  = (obj.get('lines') or {}).get('data') or [{}]
+        per_end = _ts_to_str((_lines[0].get('period') or {}).get('end'))
+        u = get_user_by_subscription(sub_id) if sub_id else None
+        if u:
+            apply_stripe_subscription(u['id'], 'active', per_end, sub_id)
+            save_payment(user_id=u['id'], plan='pro', amount_cents=int(amount),
+                         status='approved', gateway_id=str(inv_id or sub_id),
+                         gateway_sub_id=str(sub_id), gateway='stripe', period_end=per_end)
+            try:
+                if u.get('coach_id'):
+                    from database.repositories import maybe_promote_coach_earned
+                    maybe_promote_coach_earned(u['coach_id'])
+            except Exception:
+                log.exception("promote coach (invoice.paid) user=%s", u['id'])
+
+    elif event_type == 'invoice.payment_failed':
+        # Falha de renovação → registra; NÃO faz downgrade (Stripe entra em retry/dunning).
+        from database.repositories import get_user_by_subscription
+        sub_id = obj.get('subscription')
+        inv_id = obj.get('id')
+        amount = obj.get('amount_due', 0) or 0
+        u = get_user_by_subscription(sub_id) if sub_id else None
+        if u:
+            save_payment(user_id=u['id'], plan='pro', amount_cents=int(amount),
+                         status='failed', gateway_id=str(inv_id or sub_id),
+                         gateway_sub_id=str(sub_id), gateway='stripe')
+
+    elif event_type in ('customer.subscription.updated', 'customer.subscription.deleted'):
+        # Mudança de status (active/past_due/canceled). deleted → downgrade p/ free.
+        from database.repositories import get_user_by_subscription, apply_stripe_subscription
+        sub_id  = obj.get('id')
+        status  = 'canceled' if event_type.endswith('deleted') else obj.get('status')
+        per_end = _ts_to_str(obj.get('current_period_end'))
+        smeta   = obj.get('metadata') or {}
+        uid     = int(smeta.get('user_id', 0) or 0)
+        if not uid and sub_id:
+            u = get_user_by_subscription(sub_id)
+            uid = u['id'] if u else 0
+        if uid:
+            apply_stripe_subscription(uid, status, per_end, sub_id)
+
     return jsonify({'ok': True})
 
 
@@ -5311,14 +5416,42 @@ def subscription_invoices():
 @app.route('/subscription/cancel', methods=['POST'])
 @require_auth
 def subscription_cancel_endpoint():
-    """Cancela a assinatura ativa do usuário."""
+    """Cancela a assinatura do usuário.
+
+    PAY-04: assinatura recorrente (`sub_`) → agenda cancelamento p/ o **fim do período**
+    (mantém Pro até lá); o webhook `customer.subscription.deleted` fará o downgrade depois.
+    PI legado (`pi_`) → downgrade imediato (não há recorrência a interromper)."""
     sub_id = g.user.get('mp_subscription_id')
     if not sub_id:
         return jsonify({'error': 'Nenhuma assinatura ativa encontrada'}), 400
-    if cancel_subscription(sub_id):
-        update_user_plan(g.user_id, 'free', None)
-        return jsonify({'ok': True, 'plan': 'free'})
-    return jsonify({'error': 'Erro ao cancelar assinatura no gateway'}), 502
+    is_recurring = str(sub_id).startswith('sub_')
+    try:
+        cancel_subscription(sub_id, at_period_end=is_recurring)
+    except Exception:
+        log.exception("cancel falhou sub=%s", sub_id)
+        return jsonify({'error': 'Erro ao cancelar assinatura no gateway'}), 502
+    if is_recurring:
+        return jsonify({'ok': True, 'plan': g.user.get('plan', 'pro'),
+                        'cancel_at_period_end': True})
+    update_user_plan(g.user_id, 'free', None)
+    return jsonify({'ok': True, 'plan': 'free'})
+
+
+@app.route('/subscription/portal', methods=['POST'])
+@require_auth
+def subscription_portal():
+    """PAY-04: cria uma sessão do Billing Portal hospedado do Stripe — o cliente gerencia
+    cartão, faturas e cancelamento self-service. Retorna {url} para redirecionar."""
+    data    = request.get_json(silent=True) or {}
+    ret_url = data.get('return_url') or (request.headers.get('Origin', '') + '/dashboard')
+    try:
+        sess = create_billing_portal_session(g.user_id, ret_url)
+    except Exception:
+        log.exception("billing portal falhou user=%s", g.user_id)
+        return jsonify({'error': 'Erro ao abrir o portal de pagamento.'}), 502
+    if not sess:
+        return jsonify({'error': 'Nenhum cadastro de pagamento encontrado.'}), 404
+    return jsonify(sess)
 
 
 # ── Admin Panel — BACK-017 ────────────────────────────────────────────────────

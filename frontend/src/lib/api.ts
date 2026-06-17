@@ -1965,7 +1965,14 @@ export const subscription = {
   invoices: () => request<{ invoices: Invoice[] }>("/subscription/invoices"),
 
   cancel: () =>
-    request<{ ok: boolean; plan: string }>("/subscription/cancel", { method: "POST" }),
+    request<{ ok: boolean; plan: string; cancel_at_period_end?: boolean }>("/subscription/cancel", { method: "POST" }),
+
+  // PAY-04: Billing Portal hospedado do Stripe (gerenciar cartão/faturas/cancelamento)
+  portal: (return_url?: string) =>
+    request<{ url: string }>("/subscription/portal", {
+      method: "POST",
+      body: JSON.stringify({ return_url: return_url ?? `${window.location.origin}/dashboard` }),
+    }),
 };
 
 // ── Admin & Coach Finance — BACK-014 + BACK-017 ───────────────────────────────

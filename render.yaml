@@ -17,6 +17,19 @@ services:
         sync: false
       - key: ENVIRONMENT
         value: production
+      # Stripe (PAY-01..04). Definir no dashboard (live). ANTHROPIC_API_KEY idem.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      # PAY-04: Prices RECORRENTES (Stripe Billing). Com eles, o checkout cria uma
+      # Subscription (cobrança automática). Sem eles → fallback PaymentIntent único.
+      - key: STRIPE_PRICE_PRO_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_PRO_ANNUAL
+        sync: false
 
 databases:
   - name: leaklab-db

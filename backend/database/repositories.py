@@ -3359,10 +3359,12 @@ def get_quota_status(user_id: int) -> dict:
                 'solves_used': 0, 'limits': PLAN_LIMITS['free']}
 
     plan = row.get('plan') or 'free'
-    # PAY-02: Pro com vigência vencida é tratado como free (sem renovação automática).
-    # Pro de cortesia do coach é governado por coach_trial_ends_at, não por aqui.
+    # PAY-02/04: só o LEGADO-PI (plan_source NULL) expira por data. Assinantes Stripe
+    # ('stripe_sub') são governados pelos webhooks (renovação automática); Pro de cortesia
+    # do coach (coach_trial/earned) é governado por coach_trial_ends_at. Nesses casos,
+    # plan_expires_at não derruba o plano aqui.
     expired = False
-    if (plan == 'pro' and row.get('plan_source') not in COACH_PERK_SOURCES
+    if (plan == 'pro' and row.get('plan_source') is None
             and row.get('plan_expires_at') and row['plan_expires_at'] < _now_str()):
         plan = 'free'
         expired = True
@@ -3708,6 +3710,46 @@ def update_user_plan(user_id: int, plan: str, subscription_id: str | None = None
         conn.close()
 
 
+def link_subscription_id(user_id: int, sub_id: str) -> None:
+    """PAY-04: vincula a Subscription ao usuário no checkout (sem mudar o plano) —
+    permite que os webhooks resolvam o usuário por mp_subscription_id."""
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("UPDATE users SET mp_subscription_id = ? WHERE id = ?"), (sub_id, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def apply_stripe_subscription(user_id: int, status: str, plan_expires_at: Optional[str],
+                              sub_id: Optional[str]) -> str:
+    """PAY-04: aplica o estado de uma Subscription do Stripe ao plano do usuário.
+    Fonte da verdade da recorrência = status da assinatura (não plan_expires_at manual).
+      active/trialing → pro (plan_source='stripe_sub', vigência = current_period_end)
+      canceled/unpaid/incomplete_expired → free
+      past_due → mantém (Stripe está em retry/dunning) — não mexe
+    Retorna a ação tomada ('activated' | 'downgraded' | 'kept')."""
+    conn = get_conn()
+    try:
+        if status in ('active', 'trialing'):
+            conn.execute(_adapt(
+                "UPDATE users SET plan='pro', plan_source='stripe_sub', "
+                "mp_subscription_id=?, plan_expires_at=? WHERE id=?"),
+                (sub_id, plan_expires_at, user_id))
+            conn.commit()
+            return 'activated'
+        if status in ('canceled', 'unpaid', 'incomplete_expired'):
+            conn.execute(_adapt(
+                "UPDATE users SET plan='free', plan_source=NULL, mp_subscription_id=NULL, "
+                "plan_expires_at=NULL WHERE id=?"),
+                (user_id,))
+            conn.commit()
+            return 'downgraded'
+        return 'kept'   # past_due / incomplete → Stripe ainda resolvendo
+    finally:
+        conn.close()
+
+
 def get_user_by_subscription(sub_id: str) -> Optional[dict]:
     conn = get_conn()
     try:
@@ -3982,9 +4024,11 @@ def expire_subscriptions() -> dict:
         except Exception:
             pass
         now = _now_str()
+        # PAY-04: só o LEGADO-PI (plan_source NULL) expira por data. Assinantes Stripe
+        # (stripe_sub) e perks de coach são governados pelos seus próprios mecanismos.
         rows = conn.execute(_adapt(
             "SELECT id FROM users WHERE plan = 'pro' AND plan_expires_at IS NOT NULL "
-            "AND plan_expires_at < ? AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial','coach_earned'))"),
+            "AND plan_expires_at < ? AND plan_source IS NULL"),
             (now,)).fetchall()
         ids = [r['id'] if isinstance(r, dict) or hasattr(r, 'keys') else r[0] for r in rows]
         for uid in ids:

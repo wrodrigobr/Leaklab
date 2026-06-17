@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut, UserCircle, Zap, Users, LayoutDashboard } from "lucide-react";
+import { ChevronDown, LogOut, UserCircle, Zap, Users, LayoutDashboard, CreditCard } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { subscription } from "@/lib/api";
+import { toast } from "sonner";
 import { CheckoutModal } from "./CheckoutModal";
 
 const PLAN_LABEL: Record<string, string> = {
@@ -58,7 +60,19 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<"pro" | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const openPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const { url } = await subscription.portal();
+      window.location.href = url;   // Billing Portal hospedado do Stripe
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível abrir o portal.");
+      setPortalLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -131,6 +145,15 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
                   className="flex items-center justify-center gap-1 w-full rounded-md bg-primary py-1 font-mono text-[10px] font-bold uppercase tracking-widest-2 text-primary-foreground hover:opacity-90 transition-opacity"
                 >
                   <Zap className="size-3" /> Upgrade para Pro R$99
+                </button>
+              )}
+              {plan === "pro" && (
+                <button
+                  onClick={openPortal}
+                  disabled={portalLoading}
+                  className="flex items-center justify-center gap-1.5 w-full rounded-md border border-border py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors disabled:opacity-50"
+                >
+                  <CreditCard className="size-3" /> {portalLoading ? "Abrindo…" : "Gerenciar assinatura"}
                 </button>
               )}
             </div>
