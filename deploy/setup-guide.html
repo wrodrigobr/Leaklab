@@ -202,7 +202,13 @@
       <li><a href="https://console.hetzner.cloud">console.hetzner.cloud</a> → seu projeto → <b>Add Server</b>.</li>
       <li><b>Location:</b> a mais perto do Brasil que tiver a opção desejada — <b>Ashburn (US-East)</b> tem boa latência; Alemanha/Finlândia também servem (o frontend já está na borda da Cloudflare, então o impacto é pequeno).</li>
       <li><b>Image:</b> <b>Ubuntu 24.04</b>.</li>
-      <li><b>Type:</b> aba <b>Shared vCPU</b> → <b>linha CX (Intel)</b> → <b>CX22/CX23</b> (2 vCPU / 4 GB / 40 GB, ~US$6,49/mês). <b>Intel é mais barato que AMD (CPX) e sobra</b> para o backend — quem é CPU-pesado é o solver, que fica noutra máquina. (Não precisa do CX33; dá pra subir depois com 1 clique se precisar.)</li>
+      <li><b>Type:</b> aba <b>Shared vCPU</b> → <b>linha CX (Intel)</b> (mais barata que AMD/CPX). Como <b>esta máquina vai rodar o backend + o solver GTO</b>, precisa de mais RAM (cada solve usa até ~8 GB):
+        <ul>
+          <li><b>CX43</b> ⭐ (8 vCPU / 16 GB / 160 GB, ~US$16/mês) — <b>recomendado</b>: backend + 1 solve por vez com folga.</li>
+          <li><b>CX52</b> (16 vCPU / 32 GB) — se quiser 2–3 solves simultâneos.</li>
+          <li>(Só backend, sem solver: CX33 4/8 GB bastaria — mas não é o seu caso.)</li>
+        </ul>
+      </li>
       <li><b>SSH key:</b> <b>Add SSH key</b> → cole a chave pública (Fase 0.2) → dê um nome.</li>
       <li><b>Name:</b> <code class="inl">grindlab-api</code> → <b>Create &amp; Buy now</b>.</li>
       <li>Anote o <b>IP público</b> (ex.: <span class="ph">5.6.7.8</span>).</li>
@@ -210,6 +216,7 @@
     <div class="test"><b>🧪 Teste (PowerShell):</b>
       <pre>ssh root@<span class="ph">5.6.7.8</span></pre>
       <span class="ok">Você entra sem pedir senha</span> (usou a chave) e vê <code class="inl">root@grindlab-api:~#</code>. Se pedir senha ou recusar, a chave não foi associada — recrie o servidor com a chave certa.</div>
+    <div class="warn"><b>Solver na mesma máquina (seu caso):</b> um solve do CFR usa 100% de CPU por minutos e até ~8 GB de RAM, e <b>compete com o site</b>. Pra co-hospedar bem: rode o solver como worker com <b>concorrência 1</b> e prioridade baixa (<code class="inl">nice</code>), e aponte <code class="inl">GTO_SOLVER_URL</code> pro próprio host. Para uma <b>campanha de precompute pesada</b> (dias a 100%), não engorde a caixa sempre-ligada — alugue uma máquina temporária maior só pra isso e desligue depois. <i>(A configuração do serviço do solver é um add-on à parte deste guia.)</i></div>
 
     <h3>3.2 Firewall do Hetzner (1ª camada — só Cloudflare + seu SSH)</h3>
     <p>No painel Hetzner, <b>Firewalls → Create Firewall</b>:</p>
