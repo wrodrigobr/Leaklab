@@ -64,6 +64,7 @@
   <a href="#f6">6 · Frontend (Pages)</a>
   <a href="#f7">7 · Stripe</a>
   <a href="#f8">8 · Crons &amp; manutenção</a>
+  <a href="#f9">9 · Solver (2ª máquina)</a>
   <a href="#check">✓ Checklist final</a>
   <a href="#trouble">⚠ Troubleshooting</a>
 </nav>
@@ -83,11 +84,16 @@
           │ grindlabpoker.com.br       │ api.grindlabpoker.com.br
           ▼                            ▼
      [ App React ]              ┌──────────────────┐  TLS   ┌──────────────┐
-     (borda CF)                 │ Hetzner — VPS    │ ─────▶ │ Neon         │
+     (borda CF)                 │ Hetzner #1 CX23  │ ─────▶ │ Neon         │
                                 │ Nginx → Gunicorn │        │ PostgreSQL   │
                                 │ (Flask, Docker)  │        │ (backup auto)│
-                                └──────────────────┘        └──────────────┘
-   (Solver GTO = máquina à parte; ligado depois via GTO_SOLVER_URL.)</div>
+                                └────────┬─────────┘        └──────────────┘
+                                         │ rede privada Hetzner (10.0.0.x)
+                                         ▼
+                                ┌──────────────────┐
+                                │ Hetzner #2 CX43+ │  solver GTO (AGPL),
+                                │ (solver, privado)│  nunca público
+                                └──────────────────┘</div>
     <div class="tip"><b>4 painéis + 1 terminal.</b> Você vai usar Cloudflare, Neon, Hetzner e Stripe no navegador, e um terminal SSH na VPS. <b>Faça na ordem 0→8</b> e só avance quando o "🧪 Teste" da etapa passar.</div>
   </section>
 
@@ -202,13 +208,7 @@
       <li><a href="https://console.hetzner.cloud">console.hetzner.cloud</a> → seu projeto → <b>Add Server</b>.</li>
       <li><b>Location:</b> a mais perto do Brasil que tiver a opção desejada — <b>Ashburn (US-East)</b> tem boa latência; Alemanha/Finlândia também servem (o frontend já está na borda da Cloudflare, então o impacto é pequeno).</li>
       <li><b>Image:</b> <b>Ubuntu 24.04</b>.</li>
-      <li><b>Type:</b> aba <b>Shared vCPU</b> → <b>linha CX (Intel)</b> (mais barata que AMD/CPX). Como <b>esta máquina vai rodar o backend + o solver GTO</b>, precisa de mais RAM (cada solve usa até ~8 GB):
-        <ul>
-          <li><b>CX43</b> ⭐ (8 vCPU / 16 GB / 160 GB, ~US$16/mês) — <b>recomendado</b>: backend + 1 solve por vez com folga.</li>
-          <li><b>CX52</b> (16 vCPU / 32 GB) — se quiser 2–3 solves simultâneos.</li>
-          <li>(Só backend, sem solver: CX33 4/8 GB bastaria — mas não é o seu caso.)</li>
-        </ul>
-      </li>
+      <li><b>Type:</b> aba <b>Shared vCPU</b> → <b>linha CX (Intel)</b> (mais barata que AMD/CPX). Esta é a <b>máquina só do backend</b> (o solver fica na 2ª máquina, Fase 9), então pode ser enxuta: <b>CX23</b> ⭐ (2 vCPU / 4 GB / 40 GB, ~US$6,49/mês). <i>Obs.: a análise de hand history usa CPU; se muitos uploads simultâneos ficarem lentos, suba pra CX33 (4/8 GB) com 1 clique.</i></li>
       <li><b>SSH key:</b> <b>Add SSH key</b> → cole a chave pública (Fase 0.2) → dê um nome.</li>
       <li><b>Name:</b> <code class="inl">grindlab-api</code> → <b>Create &amp; Buy now</b>.</li>
       <li>Anote o <b>IP público</b> (ex.: <span class="ph">5.6.7.8</span>).</li>
@@ -216,7 +216,7 @@
     <div class="test"><b>🧪 Teste (PowerShell):</b>
       <pre>ssh root@<span class="ph">5.6.7.8</span></pre>
       <span class="ok">Você entra sem pedir senha</span> (usou a chave) e vê <code class="inl">root@grindlab-api:~#</code>. Se pedir senha ou recusar, a chave não foi associada — recrie o servidor com a chave certa.</div>
-    <div class="warn"><b>Solver na mesma máquina (seu caso):</b> um solve do CFR usa 100% de CPU por minutos e até ~8 GB de RAM, e <b>compete com o site</b>. Pra co-hospedar bem: rode o solver como worker com <b>concorrência 1</b> e prioridade baixa (<code class="inl">nice</code>), e aponte <code class="inl">GTO_SOLVER_URL</code> pro próprio host. Para uma <b>campanha de precompute pesada</b> (dias a 100%), não engorde a caixa sempre-ligada — alugue uma máquina temporária maior só pra isso e desligue depois. <i>(A configuração do serviço do solver é um add-on à parte deste guia.)</i></div>
+    <div class="tip"><b>Arquitetura de 2 máquinas (sua escolha):</b> esta caixa (CX33) roda <b>só o backend</b>. O <b>solver</b> fica numa 2ª máquina maior (RAM p/ os solves) — assim um solve nunca deixa o site lento. Veja a <b>Fase 9</b> abaixo para a 2ª máquina. As duas ficam na <b>mesma rede privada do Hetzner</b> e conversam por IP interno; o solver <b>nunca</b> fica público.</div>
 
     <h3>3.2 Firewall do Hetzner (1ª camada — só Cloudflare + seu SSH)</h3>
     <p>No painel Hetzner, <b>Firewalls → Create Firewall</b>:</p>
@@ -465,6 +465,54 @@ docker compose up -d</pre>
     </ul>
     <h3>8.3 Publicar nova versão</h3>
     <pre>cd ~/app &amp;&amp; git pull &amp;&amp; docker compose up -d --build</pre>
+  </section>
+
+  <!-- ───── FASE 9 ───── -->
+  <section id="f9">
+    <h2><span class="num">9</span>Solver GTO — a 2ª máquina <span class="pill">~30 min · quando for ligar o GTO</span></h2>
+    <p class="lead">Máquina separada, só pra solves. Nunca fica pública: o backend a acessa por <b>rede privada do Hetzner</b>. <i>(Pode deixar pra depois — o app funciona sem GTO; <code class="inl">GTO_SOLVER_URL</code> vazio.)</i></p>
+
+    <h3>9.1 Rede privada (liga as duas máquinas)</h3>
+    <ol class="steps">
+      <li>Hetzner → <b>Networks → Create Network</b>: nome <code class="inl">grindlab-net</code>, range <code class="inl">10.0.0.0/16</code>.</li>
+      <li>Anexe os <b>dois</b> servidores a essa rede (o backend <code class="inl">grindlab-api</code> e o solver, abaixo). Cada um ganha um <b>IP interno</b> <code class="inl">10.0.0.x</code>.</li>
+    </ol>
+
+    <h3>9.2 Criar a máquina do solver</h3>
+    <ol class="steps">
+      <li>Hetzner → <b>Add Server</b>, <b>mesma Location</b> do backend (a rede privada exige mesma região).</li>
+      <li><b>Type:</b> <b>CX43</b> (8 vCPU / 16 GB) p/ 1 solve por vez; <b>CX52</b> (16 vCPU / 32 GB) p/ 2–3 simultâneos.</li>
+      <li><b>Image:</b> Ubuntu 24.04 · <b>SSH key:</b> a sua · <b>Network:</b> marque <code class="inl">grindlab-net</code> · <b>Name:</b> <code class="inl">grindlab-solver</code>.</li>
+      <li>Anote o <b>IP interno</b> (ex.: <span class="ph">10.0.0.3</span>).</li>
+    </ol>
+
+    <h3>9.3 Travar o solver (nunca público)</h3>
+    <ol class="steps">
+      <li>Endureça igual à Fase 3.3/3.4 (ufw, fail2ban, SSH só-chave, Docker).</li>
+      <li><b>Firewall:</b> bloqueie TODO ingresso público. Libere só: SSH (22) do <span class="ph">seu IP</span>; e a porta do solver (ex.: <code class="inl">8000</code>) <b>só do IP interno do backend</b>:
+        <pre>sudo ufw default deny incoming &amp;&amp; sudo ufw default allow outgoing
+sudo ufw allow from <span class="ph">SEU_IP</span> to any port 22 proto tcp
+sudo ufw allow from <span class="ph">10.0.0.2</span> to any port 8000 proto tcp   <span class="c"># 10.0.0.2 = IP interno do backend</span>
+sudo ufw --force enable</pre>
+      </li>
+    </ol>
+    <div class="warn"><b>AGPL:</b> o solver (postflop-solver) é AGPL — roda <b>server-side only</b>, nunca é distribuído nem exposto. Esta máquina fechada cumpre isso. (No backend, o <code class="inl">/gto/strategy</code> já é read-only por padrão — solve ao vivo só admin.)</div>
+
+    <h3>9.4 Compilar e subir o solver</h3>
+    <p>O solver é um binário Rust (compila na própria máquina). Resumo (o detalhamento fino fica como add-on):</p>
+    <pre>cd ~ &amp;&amp; git clone https://github.com/wrodrigobr/Leaklab.git app &amp;&amp; cd app
+<span class="c"># instalar Rust + compilar o solver_cli (postflop-solver)</span>
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source $HOME/.cargo/env
+cd backend/gto_bot/solver_cli &amp;&amp; cargo build --release
+<span class="c"># subir o serviço HTTP do solver (solver_api) — escuta em 0.0.0.0:8000 (já travado pelo firewall)</span></pre>
+    <div class="tip"><b>Concorrência:</b> rode o worker do solver com <b>1 solve por vez</b> e <code class="inl">nice</code> (prioridade baixa) — protege CPU/RAM. Para uma <b>campanha de precompute</b> (dias a 100%), use uma máquina <b>temporária</b> maior e desligue depois.</div>
+
+    <h3>9.5 Ligar no backend</h3>
+    <p>Na <b>máquina do backend</b>, edite o <code class="inl">.env</code>:</p>
+    <pre>GTO_SOLVER_URL=http://<span class="ph">10.0.0.3</span>:8000    <span class="c"># IP interno do solver</span></pre>
+    <pre>docker compose up -d   <span class="c"># aplica</span></pre>
+    <div class="test"><b>🧪 Teste:</b> no <b>backend</b>, <code class="inl">curl http://<span class="ph">10.0.0.3</span>:8000/</code> responde (rede privada ok). De fora da VPC, o mesmo IP <span class="ok">não responde</span> (travado). No app, um spot postflop sem cobertura passa a ser resolvido em background.</div>
   </section>
 
   <!-- ───── CHECKLIST ───── -->
