@@ -1,4 +1,6 @@
-FROM python:3.11-slim
+# Pin Debian bookworm: o `slim` mudou para trixie, onde libgdk-pixbuf2.0-0 deixou
+# de existir (renomeado) e quebra o apt-get. bookworm é o que o Dockerfile espera.
+FROM python:3.11-slim-bookworm
 
 # WeasyPrint system dependencies (Pango, Cairo, GDK-PixBuf)
 RUN apt-get update && apt-get install -y --no-install-recommends \
