@@ -72,16 +72,17 @@ def _solver_params_for_stack(stack_bb: float) -> dict:
         tier = 'production' if os.environ.get('GTO_SOLVER_URL') else 'test'
 
     if tier == 'production':
-        # Google VM 4 vCPU / 16GB — árvore real, alta qualidade
-        capped = min(float(stack_bb), 60.0)   # cap 60bb: acima disso a árvore > 8GB
+        # Hetzner 8 vCPU / 16GB — todos os cores num solve (MAX_CONCURRENT=1, RAYON=8).
+        # Iterações elevadas p/ fechar mais spots ≤10%; timeouts ≤ 290 (< client 300s).
+        capped = min(float(stack_bb), 60.0)   # cap 60bb: acima disso a árvore > 8GB (RAM-bound)
         if stack_bb < 20:
-            return {'max_iterations': 500,  'target_exploitability_pct': 2.0,  'timeout': 120, 'effective_stack_bb': capped}
+            return {'max_iterations': 1200, 'target_exploitability_pct': 2.0,  'timeout': 200, 'effective_stack_bb': capped}
         elif stack_bb < 40:
-            return {'max_iterations': 800,  'target_exploitability_pct': 2.0,  'timeout': 180, 'effective_stack_bb': capped}
+            return {'max_iterations': 2000, 'target_exploitability_pct': 2.0,  'timeout': 280, 'effective_stack_bb': capped}
         elif stack_bb < 60:
-            return {'max_iterations': 600,  'target_exploitability_pct': 3.0,  'timeout': 240, 'effective_stack_bb': capped}
+            return {'max_iterations': 1500, 'target_exploitability_pct': 3.0,  'timeout': 280, 'effective_stack_bb': capped}
         else:  # deep stack — capped em 60bb
-            return {'max_iterations': 400,  'target_exploitability_pct': 3.0,  'timeout': 240, 'effective_stack_bb': capped}
+            return {'max_iterations': 1200, 'target_exploitability_pct': 3.0,  'timeout': 280, 'effective_stack_bb': capped}
     else:
         # Oracle test server 1 core / 1GB — cap agressivo para não travar
         capped = min(float(stack_bb), 20.0)
