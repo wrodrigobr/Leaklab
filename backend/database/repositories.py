@@ -754,7 +754,7 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
     try:
         rows = conn.execute(_adapt(f"""
             SELECT
-                COALESCE(d.position,'?')      AS position,
+                d.position                    AS position,
                 d.street                      AS street,
                 d.best_action                 AS ideal_action,
                 COUNT(*)                      AS n,
@@ -775,7 +775,7 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
             WHERE {tf} AND d.ev_loss_bb IS NOT NULL AND d.ev_loss_bb > 0.05
         """), tp).fetchone()
         return {
-            'leaks': [dict(r) for r in rows],
+            'leaks': [{**dict(r), 'position': (r['position'] or '?')} for r in rows],
             'total_ev_loss_bb': (tot['tot'] or 0.0) if tot else 0.0,
             'n_leaks':          (tot['n'] or 0) if tot else 0,
         }
