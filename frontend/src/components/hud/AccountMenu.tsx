@@ -65,11 +65,21 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
 
   const openPortal = async () => {
     setPortalLoading(true);
+    // Abre a aba já no gesto do clique (senão o browser bloqueia como popup);
+    // o destino é preenchido quando a URL do portal volta da API.
+    const tab = window.open("", "_blank");
     try {
       const { url } = await subscription.portal();
-      window.location.href = url;   // Billing Portal hospedado do Stripe
+      if (tab) {
+        tab.opener = null;          // segurança (equiv. noopener), mantendo a referência
+        tab.location.href = url;    // Billing Portal hospedado do Stripe (nova aba)
+      } else {
+        window.open(url, "_blank", "noopener,noreferrer");  // fallback se a aba foi bloqueada
+      }
     } catch (e) {
+      tab?.close();
       toast.error(e instanceof Error ? e.message : "Não foi possível abrir o portal.");
+    } finally {
       setPortalLoading(false);
     }
   };
