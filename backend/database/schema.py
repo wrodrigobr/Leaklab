@@ -1612,9 +1612,26 @@ class _AdaptedConn:
         )
         return sql
 
+    # Tabelas sem coluna `id` (chave natural): não acrescentar RETURNING id nelas.
+    _NO_ID_TABLES = {'revalidation_llm_cache', 'gto_preflop_capture', 'gto_tree_strategies'}
+
+    def _pg_insert_returning(self, sql: str) -> str:
+        """Postgres não popula lastrowid. Para INSERTs em tabelas com `id`, acrescenta
+        RETURNING id pra o _PgResult.lastrowid recuperar o id gerado (no SQLite o
+        lastrowid nativo já funciona, então este caminho é só Postgres)."""
+        import re
+        s = sql.lstrip()
+        if s[:6].upper() != 'INSERT' or 'RETURNING' in sql.upper():
+            return sql
+        m = re.match(r'INSERT\s+INTO\s+"?(\w+)"?', s, re.IGNORECASE)
+        if m and m.group(1).lower() in self._NO_ID_TABLES:
+            return sql
+        return sql.rstrip().rstrip(';') + ' RETURNING id'
+
     def execute(self, sql: str, params=None):
         sql = self._adapt(sql)
         if self._pg:
+            sql = self._pg_insert_returning(sql)
             cur = self._conn.cursor()
             # Pass None (not empty tuple) when no params so psycopg2 uses PQexec
             # which supports multi-statement SQL (used in _init_postgres).
