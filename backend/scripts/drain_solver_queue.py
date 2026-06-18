@@ -10,7 +10,10 @@ Reseta spots presos em 'running' (> 10 min, de restart/crash) antes de drenar.
 
 Uso: python scripts/drain_solver_queue.py [max_jobs=20]
 """
+import os
 import sys
+# Garante /app (raiz do backend) no path — `python scripts/x.py` só põe scripts/ no path.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import datetime, timedelta
 from leaklab.gto_solver import run_solver_worker
 from database.schema import get_conn
