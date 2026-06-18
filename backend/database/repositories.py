@@ -5424,7 +5424,7 @@ def get_gto_node(spot_hash: str) -> Optional[dict]:
         return _fetchone(conn, _adapt("""
             SELECT spot_hash, tree_hash, street, position, board, hero_hand, stack_bucket,
                    gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
-                   strategy_json, COALESCE(is_aggregate, 0) AS is_aggregate
+                   strategy_json, is_aggregate
             FROM gto_nodes
             WHERE spot_hash = ?
               AND (
@@ -5448,7 +5448,7 @@ def get_gto_node_by_tree_hash(tree_hash: str) -> Optional[dict]:
         return _fetchone(conn, _adapt("""
             SELECT spot_hash, tree_hash, street, position, board, hero_hand, stack_bucket,
                    gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
-                   strategy_json, COALESCE(is_aggregate, 0) AS is_aggregate
+                   strategy_json, is_aggregate
             FROM gto_nodes
             WHERE tree_hash = ?
               AND strategy_json IS NOT NULL
@@ -5632,7 +5632,7 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
                 int(n['iterations']) if n.get('iterations') else None,
                 source,
                 strategy_json,
-                1 if is_aggregate else 0,
+                bool(is_aggregate),   # boolean nativo: SQLite aceita; Postgres exige (não int)
                 n.get('tree_hash'),
             ))
             count += 1
