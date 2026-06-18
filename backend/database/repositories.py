@@ -5613,11 +5613,18 @@ def insert_gto_nodes(nodes: list[dict]) -> int:
             )
 
             conn.execute(_adapt("""
-                INSERT OR REPLACE INTO gto_nodes
+                INSERT INTO gto_nodes
                     (spot_hash, street, position, board, hero_hand, stack_bucket,
                      gto_action, gto_freq, ev_diff, exploitability_pct, iterations, source,
                      strategy_json, is_aggregate, tree_hash)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (spot_hash) DO UPDATE SET
+                     street=EXCLUDED.street, position=EXCLUDED.position, board=EXCLUDED.board,
+                     hero_hand=EXCLUDED.hero_hand, stack_bucket=EXCLUDED.stack_bucket,
+                     gto_action=EXCLUDED.gto_action, gto_freq=EXCLUDED.gto_freq, ev_diff=EXCLUDED.ev_diff,
+                     exploitability_pct=EXCLUDED.exploitability_pct, iterations=EXCLUDED.iterations,
+                     source=EXCLUDED.source, strategy_json=EXCLUDED.strategy_json,
+                     is_aggregate=EXCLUDED.is_aggregate, tree_hash=EXCLUDED.tree_hash
             """), (
                 spot_hash,
                 street,
@@ -6882,8 +6889,10 @@ def upsert_tree_strategy(tree_hash: str, board: list, actions: list, hand_table:
     conn = get_conn()
     try:
         conn.execute(_adapt("""
-            INSERT OR REPLACE INTO gto_tree_strategies (tree_hash, board, actions, hand_table)
+            INSERT INTO gto_tree_strategies (tree_hash, board, actions, hand_table)
             VALUES (?, ?, ?, ?)
+            ON CONFLICT (tree_hash) DO UPDATE SET
+                board=EXCLUDED.board, actions=EXCLUDED.actions, hand_table=EXCLUDED.hand_table
         """), (tree_hash, json.dumps(list(board or [])),
                json.dumps(list(actions)), json.dumps(hand_table)))
         conn.commit()
