@@ -8,7 +8,7 @@ PokerLeakLab — an AI-powered poker coaching platform. Users upload PokerStars 
 
 ## Marca
 
-**Produto: GrindLab** (ex-LeakLabs). Domínios: `grindlabpoker.com.br` (canônico/BR) e `grindlabpoker.com` (→ 301 p/ o canônico).
+**Produto: GrindLab** (ex-LeakLabs). Domínios: `grindlabpoker.com` (canônico/global) e `grindlabpoker.com.br` (→ 301 p/ o `.com`). API em `api.grindlabpoker.com`.
 - **Assets:** `src/assets/brand/` — nunca recriar logos manualmente, sempre usar os SVGs de lá.
 - **Cores:** teal `#2DD4BF`, light `#E3E8EC`, bg `#0A0E1A`.
 - **Headings:** Chakra Petch Bold.

@@ -71,7 +71,7 @@
 
 <main>
   <h1>Guia de Deploy detalhado — <span class="g">GrindLab</span></h1>
-  <p class="sub">Passo a passo, com um <b>teste em cada etapa</b>. Cloudflare (frontend + proxy) · Neon (Postgres) · <b>Hetzner</b> (backend). Domínios <code class="inl">grindlabpoker.com.br</code> (canônico) e <code class="inl">grindlabpoker.com</code> (→ 301).</p>
+  <p class="sub">Passo a passo, com um <b>teste em cada etapa</b>. Cloudflare (frontend + proxy) · Neon (Postgres) · <b>Hetzner</b> (backend). Domínios <code class="inl">grindlabpoker.com</code> (canônico/global) e <code class="inl">grindlabpoker.com.br</code> (→ 301).</p>
 
   <section id="visao">
     <h2>Visão geral</h2>
@@ -81,7 +81,7 @@
    ┌──────────────── Cloudflare ────────────────┐
    │  Pages (hospeda o frontend)  +  Proxy/CDN  │
    └──────┬───────────────────────────┬─────────┘
-          │ grindlabpoker.com.br       │ api.grindlabpoker.com.br
+          │ grindlabpoker.com          │ api.grindlabpoker.com
           ▼                            ▼
      [ App React ]              ┌──────────────────┐  TLS   ┌──────────────┐
      (borda CF)                 │ Hetzner #1 CX23  │ ─────▶ │ Neon         │
@@ -162,12 +162,12 @@
       <pre>nslookup -type=NS grindlabpoker.com.br</pre>
       <span class="ok">Quando aparecer os nameservers <code class="inl">*.ns.cloudflare.com</code></span>, propagou. (Também dá pra conferir em <a href="https://dnschecker.org">dnschecker.org</a> → tipo NS.) Pode levar de minutos a horas — siga as outras fases enquanto isso.</div>
 
-    <h3>1.3 Adicionar a zona .com + redirect 301</h3>
+    <h3>1.3 Canônico = <code class="inl">.com</code>; redirect do <code class="inl">.com.br → .com</code> (301)</h3>
     <ol class="steps">
       <li>Repita 1.1 para <code class="inl">grindlabpoker.com</code> (deve ficar Active rápido, já que você já trocou os NS dele).</li>
-      <li>Selecione a zona <code class="inl">grindlabpoker.com</code> → <b>Rules → Redirect Rules → Create rule</b>.</li>
-      <li><b>When:</b> Hostname <b>contains</b> <code class="inl">grindlabpoker.com</code>. <b>Then:</b> Type <b>Dynamic</b>, Expression:
-        <pre>concat("https://grindlabpoker.com.br", http.request.uri.path)</pre>
+      <li>Selecione a zona <b><code class="inl">grindlabpoker.com.br</code></b> (a secundária) → <b>Rules → Redirect Rules → Create rule</b>.</li>
+      <li><b>When:</b> Hostname <b>contains</b> <code class="inl">grindlabpoker.com.br</code>. <b>Then:</b> Type <b>Dynamic</b>, Expression:
+        <pre>concat("https://grindlabpoker.com", http.request.uri.path)</pre>
       </li>
       <li>Status <b>301</b>, <b>Preserve query string</b> ON → <b>Deploy</b>.</li>
     </ol>
@@ -288,7 +288,7 @@ cd app</pre>
 LEAKLAB_SECRET=<span class="ph">segredo_longo</span>
 DATABASE_URL=<span class="ph">string_do_neon_com_sslmode=require</span>
 ANTHROPIC_API_KEY=<span class="ph">sk-ant-...</span>
-ALLOWED_ORIGINS=https://grindlabpoker.com.br,https://www.grindlabpoker.com.br,https://grindlabpoker.com
+ALLOWED_ORIGINS=https://grindlabpoker.com,https://www.grindlabpoker.com
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_PRICE_PRO_MONTHLY=
@@ -326,13 +326,13 @@ echo "# preenchido na Fase 5.3" > deploy/cloudflare-ips.conf
 nano deploy/nginx.conf</pre>
     <pre>server {
   listen 80;
-  server_name api.grindlabpoker.com.br;
+  server_name api.grindlabpoker.com;
   return 301 https://$host$request_uri;
 }
 server {
   listen 443 ssl;
   http2 on;
-  server_name api.grindlabpoker.com.br;
+  server_name api.grindlabpoker.com;
 
   ssl_certificate     /etc/ssl/cloudflare/origin.pem;
   ssl_certificate_key /etc/ssl/cloudflare/origin.key;
@@ -364,7 +364,7 @@ docker compose logs --tail=40 web</pre>
   <!-- ───── FASE 5 ───── -->
   <section id="f5">
     <h2><span class="num">5</span>Cloudflare na frente do <code class="inl">api</code> <span class="pill">~20 min</span></h2>
-    <p class="lead">Na zona <code class="inl">grindlabpoker.com.br</code>.</p>
+    <p class="lead">Na zona <code class="inl">grindlabpoker.com</code> (canônica — onde fica o <code class="inl">api</code>).</p>
 
     <h3>5.1 DNS do api</h3>
     <p><b>DNS → Add record:</b> Type <b>A</b> · Name <code class="inl">api</code> · IPv4 = <span class="ph">IP da VPS</span> · <b>Proxied 🟠</b> · Save.</p>
@@ -391,10 +391,10 @@ docker compose ps</pre>
     <div class="test"><b>🧪 Teste:</b> <code class="inl">docker compose ps</code> → <span class="ok">web e nginx "running"</span>.</div>
 
     <h3>5.4 Não cachear a API</h3>
-    <p><b>Rules → Cache Rules → Create:</b> Hostname <b>equals</b> <code class="inl">api.grindlabpoker.com.br</code> → <b>Bypass cache</b> → Deploy.</p>
+    <p><b>Rules → Cache Rules → Create:</b> Hostname <b>equals</b> <code class="inl">api.grindlabpoker.com</code> → <b>Bypass cache</b> → Deploy.</p>
 
     <div class="test"><b>🧪 Teste final da fase (do seu PC):</b>
-      <pre>curl.exe -I https://api.grindlabpoker.com.br/health</pre>
+      <pre>curl.exe -I https://api.grindlabpoker.com/health</pre>
       <span class="ok"><code class="inl">HTTP/2 200</code></span>, com cadeado/HTTPS válido.<br>
       <b>🧪 Teste anti-bypass:</b> abra no navegador <code class="inl">https://<span class="ph">IP_da_VPS</span></code> → <span class="ok">deve dar timeout/recusado</span> (só a Cloudflare entra).</div>
   </section>
@@ -406,13 +406,13 @@ docker compose ps</pre>
       <li>Cloudflare → <b>Workers &amp; Pages → Create → Pages → Connect to Git</b> → autorize o GitHub → escolha o repositório.</li>
       <li><b>Production branch:</b> <code class="inl">main</code>. <b>Framework:</b> Vite. <b>Build command:</b> <code class="inl">cd frontend &amp;&amp; npm install &amp;&amp; npm run build</code>. <b>Output:</b> <code class="inl">frontend/dist</code>.</li>
       <li><b>Environment variables:</b>
-        <pre>VITE_API_URL=https://api.grindlabpoker.com.br
+        <pre>VITE_API_URL=https://api.grindlabpoker.com
 VITE_STRIPE_PUBLISHABLE_KEY=<span class="ph">pk_test_... (depois troca p/ live)</span></pre>
       </li>
       <li><b>Save and Deploy</b> → aguarde o build.</li>
-      <li><b>Custom domains:</b> adicione <code class="inl">grindlabpoker.com.br</code> e <code class="inl">www.grindlabpoker.com.br</code>.</li>
+      <li><b>Custom domains:</b> adicione <code class="inl">grindlabpoker.com</code> e <code class="inl">www.grindlabpoker.com</code> (o canônico).</li>
     </ol>
-    <div class="test"><b>🧪 Teste:</b> abra <code class="inl">https://grindlabpoker.com.br</code> → <span class="ok">o app carrega</span>. Faça um <b>cadastro real pela tela</b> → no Neon, <code class="inl">SELECT email FROM users ORDER BY id DESC LIMIT 3;</code> mostra o novo usuário. (Login funcionando = CORS ok.)</div>
+    <div class="test"><b>🧪 Teste:</b> abra <code class="inl">https://grindlabpoker.com</code> → <span class="ok">o app carrega</span>. Faça um <b>cadastro real pela tela</b> → no Neon, <code class="inl">SELECT email FROM users ORDER BY id DESC LIMIT 3;</code> mostra o novo usuário. (Login funcionando = CORS ok.)</div>
     <div class="bad">⛔ Erro de CORS no login? Ajuste <code class="inl">ALLOWED_ORIGINS</code> no <code class="inl">.env</code> e <code class="inl">docker compose up -d</code>.</div>
   </section>
 
@@ -428,7 +428,7 @@ VITE_STRIPE_PUBLISHABLE_KEY=<span class="ph">pk_test_... (depois troca p/ live)<
     <pre>docker compose exec web sh -lc '
   export STRIPE_SECRET_KEY=<span class="ph">sk_test_xxx</span>
   python scripts/stripe_setup.py \
-    --webhook-url https://api.grindlabpoker.com.br/subscription/webhook --apply
+    --webhook-url https://api.grindlabpoker.com/subscription/webhook --apply
 '</pre>
     <div class="test"><b>🧪 Teste:</b> o script imprime <span class="ok"><code class="inl">STRIPE_PRICE_PRO_MONTHLY=price_…</code>, <code class="inl">…_ANNUAL=price_…</code> e <code class="inl">STRIPE_WEBHOOK_SECRET=whsec_…</code></span>.</div>
 
@@ -523,8 +523,8 @@ cd backend/gto_bot/solver_cli &amp;&amp; cargo build --release
       <li>Neon na mesma região da Hetzner; <code class="inl">SELECT now()</code> no SQL Editor responde.</li>
       <li>VPS com firewall só-Cloudflare; <code class="inl">ssh root</code> recusado, <code class="inl">ssh deploy</code> ok.</li>
       <li><code class="inl">docker compose ps</code> → web e nginx running.</li>
-      <li><code class="inl">https://api.grindlabpoker.com.br/health</code> → 200; IP direto da VPS → recusado.</li>
-      <li><code class="inl">https://grindlabpoker.com.br</code> abre; cadastro pela tela grava no Neon.</li>
+      <li><code class="inl">https://api.grindlabpoker.com/health</code> → 200; IP direto da VPS → recusado.</li>
+      <li><code class="inl">https://grindlabpoker.com</code> abre; cadastro pela tela grava no Neon.</li>
       <li>Checkout test → usuário vira <code class="inl">pro/stripe_sub</code>; reenviar webhook não duplica.</li>
       <li>Crons no crontab; <code class="inl">.env</code> e certs no cofre.</li>
     </ul>
