@@ -138,7 +138,8 @@ def ensure_portal(apply: bool):
 
 def main():
     ap = argparse.ArgumentParser(description="Setup do Stripe Billing (PAY-04).")
-    ap.add_argument("--webhook-url", default="", help="URL pública do /subscription/webhook")
+    ap.add_argument("--webhook-url", default=os.environ.get("STRIPE_WEBHOOK_URL", ""),
+                    help="URL pública do /subscription/webhook (ou via env STRIPE_WEBHOOK_URL)")
     ap.add_argument("--apply", action="store_true", help="aplica de verdade (sem isso = dry-run)")
     args = ap.parse_args()
 
