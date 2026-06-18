@@ -75,19 +75,29 @@ def create_subscription(plan_name: str, payer_email: str, user_id: int,
     meta = {"user_id": str(user_id), "plan_name": plan_name, "billing_cycle": billing_cycle}
 
     if pid:
+        # A API atual do Stripe expõe o client_secret da 1ª fatura em
+        # latest_invoice.confirmation_secret (o antigo latest_invoice.payment_intent
+        # foi removido). Mantemos um fallback p/ contas em API mais antiga.
         sub = _stripe.Subscription.create(
             customer=customer_id,
             items=[{"price": pid}],
             payment_behavior="default_incomplete",
             payment_settings={"save_default_payment_method": "on_subscription"},
-            expand=["latest_invoice.payment_intent"],
+            expand=["latest_invoice.confirmation_secret"],
             metadata=meta,
         )
-        pi = sub.latest_invoice.payment_intent
+        inv = sub.latest_invoice
+        cs  = getattr(inv, "confirmation_secret", None)
+        client_secret = getattr(cs, "client_secret", None) if cs else None
+        if not client_secret:                      # fallback (API antiga)
+            pi = getattr(inv, "payment_intent", None)
+            client_secret = getattr(pi, "client_secret", None) if pi else None
+        if not client_secret:
+            raise RuntimeError("Stripe: não obtive o client_secret da assinatura")
         log.info("Stripe Subscription created: sub=%s status=%s cycle=%s", sub.id, sub.status, billing_cycle)
         return {
             "subscription_id": sub.id,
-            "client_secret":   pi.client_secret,
+            "client_secret":   client_secret,
             "status":          sub.status,
             "billing_cycle":   billing_cycle,
             "recurring":       True,
