@@ -140,6 +140,7 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
         bb = float(m2.group(2))
 
     players: List[str] = []
+    seats: List[dict] = []
     actions: List[ParsedAction] = []
     bounties: dict = {}
     street = "preflop"
@@ -164,6 +165,13 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
         if line.startswith("Seat ") and ":" in line and "(" in line and "in chips" in line:
             name = line.split(":", 1)[1].split("(", 1)[0].strip()
             players.append(name)
+            # seat# + stack inicial — base da mesa fiel (Ghost Table visual)
+            try:
+                _seat_num  = int(line.split(":", 1)[0].split()[1])
+                _stack_str = line.split("(", 1)[1].split("in chips", 1)[0].strip().replace(",", "")
+                seats.append({'seat': _seat_num, 'name': name, 'stack': float(_stack_str)})
+            except Exception:
+                pass
             mb = SEAT_BOUNTY_PS_RE.match(line) or SEAT_BOUNTY_GG_RE.match(line)
             if mb:
                 bounties[mb.group(1).strip()] = float(mb.group(2))
@@ -208,6 +216,7 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
         hero_cards=hero_cards,
         board=board,
         players=players,
+        seats=seats,
         actions=actions,
         raw_text=raw_text,
         bounties=bounties,

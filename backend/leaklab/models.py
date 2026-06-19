@@ -23,6 +23,10 @@ class ParsedHand:
     hero_cards: Optional[str] = None
     board: List[str] = field(default_factory=list)
     players: List[str] = field(default_factory=list)
+    # Estado INICIAL por assento (da linha "Seat N: nome (X in chips)") — base para
+    # reconstruir a mesa fiel num ponto de decisão (Ghost Table visual). Cada item:
+    # {'seat': int, 'name': str, 'stack': float}.
+    seats: List[dict] = field(default_factory=list)
     actions: List[ParsedAction] = field(default_factory=list)
     raw_text: str = ""
     bounties: Dict[str, float] = field(default_factory=dict)   # player -> bounty value
