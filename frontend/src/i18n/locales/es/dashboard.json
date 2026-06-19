@@ -220,7 +220,10 @@
   "gtoNotice": {
     "needMoreData": "Importe más torneos para activar este análisis. Se requieren al menos 10 decisiones con cobertura GTO.",
     "processing": "{{n}} spot siendo procesado por el solver GTO — esta tarjeta se actualizará cuando el análisis concluya.",
-    "processing_plural": "{{n}} spots siendo procesados por el solver GTO — esta tarjeta se actualizará cuando los análisis concluyan."
+    "processing_plural": "{{n}} spots siendo procesados por el solver GTO — esta tarjeta se actualizará cuando los análisis concluyan.",
+    "bannerTitle": "Análisis GTO en curso",
+    "bannerDesc": "{{n}} spot aún está siendo validado por el solver. Tus estadísticas se recalcularán automáticamente al concluir.",
+    "bannerDesc_plural": "{{n}} spots aún están siendo validados por el solver. Tus estadísticas se recalcularán automáticamente a medida que concluyan."
   },
   "volumeFilter": {
     "label": "Analizando",

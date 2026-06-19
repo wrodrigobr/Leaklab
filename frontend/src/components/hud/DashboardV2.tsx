@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { TrendingDown, Target, Zap, Brain } from "lucide-react";
+import { TrendingDown, Target, Zap, Brain, Loader2 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { EmptyDashboard } from "@/components/hud/EmptyDashboard";
 import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
@@ -104,6 +104,19 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
                 ✕
               </button>
             )}
+          </div>
+        )}
+
+        {/* ── #29: validação GTO em andamento — stats recomputando ── */}
+        {pendingGto > 0 && (
+          <div className="flex items-start gap-3 rounded-xl ring-1 ring-primary/30 bg-primary/5 px-4 py-3">
+            <Loader2 className="size-4 text-primary shrink-0 mt-0.5 animate-spin" aria-hidden />
+            <div>
+              <p className="text-sm font-medium text-foreground">{t("gtoNotice.bannerTitle")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t(pendingGto === 1 ? "gtoNotice.bannerDesc" : "gtoNotice.bannerDesc_plural", { n: pendingGto })}
+              </p>
+            </div>
           </div>
         )}
 
