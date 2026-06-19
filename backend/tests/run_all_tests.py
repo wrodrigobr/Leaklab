@@ -18,7 +18,7 @@ SUITES = {
                   'test_elo_engine.py', 'test_leaderboard.py', 'test_invariants.py',
                   'test_equity_range_aware.py', 'test_preflop_open_size.py',
                   'test_bet_intent.py', 'test_opponent_stats.py', 'test_sizing_advisor.py',
-                  'test_hu_position.py', 'test_leak_trainer.py'],
+                  'test_hu_position.py'],
     'database':  ['test_database.py', 'test_coach_system.py', 'test_notifications.py',
                   'test_solve_quota.py', 'test_coach_adherence_multiway.py', 'test_coach_invites.py',
                   'test_coach_trial.py'],

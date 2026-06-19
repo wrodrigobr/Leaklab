@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, ".")
 
 from database.schema import get_conn, init_db, USE_POSTGRES
-from database.repositories import create_user
+from database.repositories import _hash_password
 
 # username, torneios, mãos totais, nº decisões, aderência início→recente, drills
 PROFILES = [
@@ -75,6 +75,8 @@ def seed():
     init_db()
     conn = get_conn()
     try:
+        try: conn.execute("PRAGMA busy_timeout=10000")
+        except Exception: pass
         removed = _clean(conn)
         if removed:
             print(f"Removidos {removed} usuários fake antigos.")
@@ -82,7 +84,13 @@ def seed():
         now = datetime.utcnow()
         summary = []
         for prof in PROFILES:
-            uid = create_user(prof["username"], f"{prof['username']}@test.local", "fakepass123")
+            # insert do usuário na MESMA conexão (evita lock entre conexões no SQLite)
+            cur_u = conn.execute(
+                "INSERT INTO users (username, email, password_hash, role) VALUES (?,?,?,?)",
+                (prof["username"], f"{prof['username']}@test.local",
+                 _hash_password("fakepass123"), "player"),
+            )
+            uid = cur_u.lastrowid
             labels = _gen_labels(prof["decisions"], prof["early"], prof["recent"], seed=uid)
             li = 0
             per_t = prof["decisions"] // prof["tourneys"]

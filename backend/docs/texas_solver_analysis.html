@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Texas Solver (postflop-solver) — análise profunda + roadmap de melhorias</title>
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--panel2:#1c2230;--bd:#2a3240;--tx:#e6edf3;--mut:#9aa7b4;
+    --grn:#3fb950;--red:#f85149;--amb:#d29922;--blu:#58a6ff;--pur:#bc8cff;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:26px;margin:0 0 4px}
+  h2{font-size:20px;margin:40px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--bd)}
+  h3{font-size:15.5px;margin:22px 0 8px;color:var(--blu)}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:24px}
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:16px 0}
+  .tldr{background:linear-gradient(180deg,#15233a,#161b22);border:1px solid #29405f}
+  .crit{background:linear-gradient(180deg,#2a1417,#161b22);border:1px solid #5f2929}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.3px}
+  .b-grn{background:rgba(63,185,80,.16);color:var(--grn);border:1px solid rgba(63,185,80,.4)}
+  .b-red{background:rgba(248,81,73,.14);color:var(--red);border:1px solid rgba(248,81,73,.4)}
+  .b-amb{background:rgba(210,153,34,.14);color:var(--amb);border:1px solid rgba(210,153,34,.4)}
+  .b-blu{background:rgba(88,166,255,.14);color:var(--blu);border:1px solid rgba(88,166,255,.4)}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13px}
+  th,td{border:1px solid var(--bd);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);font-weight:700}
+  td.c,th.c{text-align:center}
+  .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px}
+  code{background:#0b0f14;border:1px solid var(--bd);border-radius:4px;padding:1px 5px;font-size:12.5px}
+  ul{margin:8px 0 8px 0;padding-left:20px} li{margin:5px 0}
+  .note{font-size:12.5px;color:var(--mut);border-left:3px solid var(--bd);padding:4px 0 4px 12px;margin:10px 0}
+  .ok{color:var(--grn)}.bad{color:var(--red)}.warn{color:var(--amb)}.info{color:var(--blu)}
+  .eff-S{color:var(--grn);font-weight:700}.eff-M{color:var(--amb);font-weight:700}.eff-L{color:var(--red);font-weight:700}
+  .pill{font-size:11px;padding:1px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--panel2)}
+  footer{margin-top:40px;color:var(--mut);font-size:12px;text-align:center}
+  .kpi{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}
+  .kpi .box{flex:1 1 170px;background:var(--panel2);border:1px solid var(--bd);border-radius:10px;padding:12px 14px}
+  .kpi .n{font-size:20px;font-weight:800}.kpi .l{font-size:12px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Texas Solver — análise profunda do <span class="mono">postflop-solver</span> + roadmap</h1>
+  <div class="sub">b-inary/postflop-solver (Rust, AGPL-3.0, arquivado out/2023) + o wrapper <span class="mono">solver_cli</span>/<span class="mono">gto_solver.py</span> · documento interno · 2026-06-08</div>
+
+  <!-- TL;DR -->
+  <div class="card tldr">
+    <h2 style="margin-top:0;border:0">Veredito</h2>
+    <p><strong>A lib é sólida e rápida; o gargalo de qualidade está no NOSSO wrapper.</strong> A prioridade não é "deixar o solver mais rápido" — é <strong>corrigir 3 bugs de integração</strong> que hoje fazem o Texas postflop servir dados errados em parte dos spots. Performance vem depois.</p>
+    <ul>
+      <li><span class="badge b-red">P0 · CORREÇÃO</span> A integração devolve a estratégia do <strong>jogador errado</strong> quando o hero está IP (c-bet), trata <strong>facing em chips como bb</strong>, e usa <strong>ranges genéricas</strong> em vez das reais do GW. Isso precisa ser corrigido <em>antes</em> de confiar no Texas postflop e antes do batch de NULLs.</li>
+      <li><span class="badge b-amb">P1 · QUALIDADE</span> 2 bet sizes/street, efeito <em>bunching</em> (MTT com folds preflop), cache/precompute de spots comuns.</li>
+      <li><span class="badge b-blu">P2 · PERFORMANCE</span> SIMD explícito (AVX2), variante de CFR mais moderna (Predictive/PDCFR+), MCCFR (sampling), depth-limited — todas exigem <strong>fork</strong> da lib (arquivada).</li>
+      <li><span class="badge b-grn">P3 · INFRA</span> forkar o repo AGPL (preservar + patchear), ligar <span class="mono">zstd</span> pros trees em cache.</li>
+    </ul>
+  </div>
+
+  <div class="kpi">
+    <div class="box"><div class="n info">~12,5k</div><div class="l">LOC da lib (Rust, 24 arquivos)</div></div>
+    <div class="box"><div class="n">DCFR</div><div class="l">Discounted CFR (β=0.5, γ cúbico, resets em potências de 4)</div></div>
+    <div class="box"><div class="n bad">3 bugs</div><div class="l">de correção no wrapper postflop (P0)</div></div>
+    <div class="box"><div class="n warn">AGPL</div><div class="l">arquivada out/2023 — sem upstream</div></div>
+  </div>
+
+  <!-- 1. Arquitetura da lib -->
+  <h2>1. Arquitetura da lib (o que já é bom)</h2>
+  <table>
+    <tr><th style="width:150px">Componente</th><th>Como é</th></tr>
+    <tr><td><strong>Algoritmo</strong></td><td><strong>Discounted CFR</strong> (<span class="mono">solver.rs</span>): α por schedule <span class="mono">√t·t</span>, <strong>β=0.5</strong> (downweight de regret negativo), <strong>γ</strong> decaimento cúbico com reset em potências de 4. Regret-matching com clipping. Exploitability = média dos EVs da melhor resposta (MES), recalc a cada 10 iters.</td></tr>
+    <tr><td><strong>Paralelismo</strong></td><td>Rayon, fork-join por ação (cada subárvore de ação vira task). <span class="mono">MutexLike</span> = <span class="mono">UnsafeCell</span> (sem lock real; sincronização manual por particionar escrita em <em>rows</em> distintas) → baixo overhead, mas exige a invariante da árvore.</td></tr>
+    <tr><td><strong>SIMD</strong></td><td>SIMD explícito em <span class="mono">sliceop.rs</span>/<span class="mono">utility.rs</span> (unroll 8-wide, FMA) + path WASM SIMD128. Hot loops escalares contam com autovetorização. <span class="warn">Sem intrínsecos AVX2/AVX-512 explícitos no x86.</span></td></tr>
+    <tr><td><strong>Memória</strong></td><td>Compressão opcional <strong>16-bit</strong> (i16 regrets / u16 strategy) — metade da RAM; alocador stack custom (buffers de 1MB, LIFO). Cap prático no wrapper: 6GB (≈60bb).</td></tr>
+    <tr><td><strong>Eval</strong></td><td>Força de mão algorítmica (rankset/flush/straight por bitops) + binary-search numa tabela esparsa de 4824 entradas; precomputa a força por board. <span class="info">Suit-agnostic.</span></td></tr>
+    <tr><td><strong>Bunching</strong></td><td>Correção de cartas mortas dos foldados preflop (até 4 em 6-max). <strong>Existe e é testado contra o GW, mas NÃO é usado pelo wrapper.</strong> Custo alto (3-fold já pesa; 4-fold pede GBs).</td></tr>
+    <tr><td><strong>Features</strong></td><td><span class="mono">rayon</span> ✓, <span class="mono">bincode</span> ✓, <span class="mono">zstd</span> ✗ (off), <span class="mono">custom-alloc</span> ✗ (nightly). Vocês usam só <span class="mono">rayon</span>.</td></tr>
+  </table>
+
+  <!-- 2. CORREÇÃO -->
+  <h2>2. <span class="bad">P0 — Bugs de correção no wrapper</span> (prioridade máxima)</h2>
+  <div class="card crit">
+    <h3 style="margin-top:0">2.1 Estratégia do jogador ERRADO quando o hero é IP</h3>
+    <p>O <span class="mono">solver_cli/main.rs</span> (linha 201-207) <strong>sempre lê o player 0 = OOP</strong>: <code>game.strategy()</code>, <code>private_cards(0)</code>, <code>expected_values(0)</code>. E o <span class="mono">gto_solver.py</span> monta <code>oop_range = vs_position</code>, <code>ip_range = position(hero)</code>. Resultado: quando o hero está <strong>IP</strong> (ex.: BTN dando c-bet vs BB), o nó armazenado é a estratégia do <strong>vilão (OOP)</strong> — não do hero. No teste de validação, o "check 81% do BTN" era, na verdade, a linha do BB.</p>
+    <p class="note">Confirmado independentemente na lib: a estratégia do IP <strong>não é lida direto no root</strong> — precisa navegar (jogar a carta/ação) até o nó do IP, ou derivar via <span class="mono">cfvalues_ip</span>. Por isso o wrapper "facilmente" só pega o OOP.</p>
+    <p><strong>Fix:</strong> no <span class="mono">gto_solver.py</span>, determinar quem é OOP/IP de fato pela posição postflop (SB/BB são OOP vs late; o último a agir é IP), atribuir as ranges corretas, e <strong>retornar a estratégia do HERO</strong>. No <span class="mono">main.rs</span>, aceitar um flag <code>hero_is_ip</code> (ou <code>hero_player ∈ {0,1}</code>) e, se IP, navegar pro nó do IP (após o check do OOP) e ler <code>strategy()</code>/<code>private_cards(1)</code> lá. <span class="pill">esforço <span class="eff-M">M</span></span> <span class="pill">risco médio</span> <span class="pill">crítico</span></p>
+  </div>
+  <div class="card crit">
+    <h3 style="margin-top:0">2.2 <span class="mono">facingSize</span> em CHIPS tratado como bb</h3>
+    <p>O pipeline entrega <code>facingSize</code> em <strong>fichas</strong> (ex.: 240 com bb=120 → 2.0bb), mas o solver navega o facing em <strong>bb</strong> (<span class="mono">main.rs</span>: <code>facing_chips = facing_size_bb*100</code>). Passar fichas como bb leva ao nó errado (ou a nenhum). Hoje só <code>facing=0</code> é seguro. <em>(O mesmo valor cru também degenera o <span class="mono">bet_bucket</span> do hash — mas como store e read usam o mesmo valor, o match não quebra; só a navegação do solve quebra.)</em></p>
+    <p><strong>Fix:</strong> converter <code>facing_size_bb = facingSize / bb</code> ao chamar o <span class="mono">lookup_gto</span>, e padronizar o hash pra usar facing em bb (cuidado: invalida nós GW antigos com facing cru — migrar). <span class="pill">esforço <span class="eff-S">S</span></span> <span class="pill">risco baixo</span></p>
+  </div>
+  <div class="card crit">
+    <h3 style="margin-top:0">2.3 Ranges genéricas em vez das reais do GW</h3>
+    <p>O solve usa <span class="mono">_DEFAULT_RANGES</span> (ranges largas fixas por posição) pro OOP/IP. Mas nós <strong>temos as ranges reais</strong> capturadas do GW (<span class="mono">leaklab_gto_ranges.json</span>) — e provamos no comparativo GW×Texas que, com elas, o Texas dá defesa GTO-coerente (fold 47-55% / call / raise por textura). Com ranges genéricas a precisão cai.</p>
+    <p><strong>Fix:</strong> derivar oop_range/ip_range das ranges preflop capturadas (RFI do agressor + range de defesa/3bet do caller, pelo bucket de stack), como já fiz no script de comparação. <span class="pill">esforço <span class="eff-S">S</span>–<span class="eff-M">M</span></span> <span class="pill">risco baixo</span> <span class="pill">grande ganho de qualidade</span></p>
+  </div>
+  <p class="note bad"><strong>Implicação imediata:</strong> a reativação do Texas postflop (commit e5dc299) funciona mecanicamente e as travas (depth/SPR) evitam recs absurdas, mas até 2.1–2.3 serem corrigidos ela pode rotular contra a estratégia do jogador errado / range errada em parte dos spots. <strong>Não rodar o batch de NULLs nem confiar nos labels postflop do Texas antes desses fixes.</strong></p>
+
+  <!-- 3. QUALIDADE -->
+  <h2>3. <span class="warn">P1 — Qualidade</span> (depois da correção)</h2>
+  <table>
+    <tr><th>Melhoria</th><th class="c">Onde</th><th class="c">Esforço</th><th class="c">Risco</th><th>Ganho</th></tr>
+    <tr><td><strong>2 bet sizes por street</strong> (ex. 33%+75% no flop)</td><td class="c">main.rs</td><td class="c eff-S">S–M</td><td class="c">médio (RAM)</td><td>Classificação de sizing muito mais fina (hoje 1 size colapsa tudo em "bet"); a árvore cresce, mitigável com merge/compressão 16-bit.</td></tr>
+    <tr><td><strong>Efeito bunching</strong> (folds preflop)</td><td class="c">main.rs + feature</td><td class="c eff-M">M</td><td class="c">médio (memória)</td><td>+5–15% de acurácia de EV em spots MTT com 2-3 foldados (a feature já existe e é validada vs GW). Limitar a ≤3 folds por causa do custo.</td></tr>
+    <tr><td><strong>Cache / warm-start de spots comuns</strong></td><td class="c">wrapper</td><td class="c eff-M">M</td><td class="c">baixo</td><td>Reaproveitar solves de boards/depths recorrentes (e inicializar regrets de um solve próximo) → 2–5× menos tempo nos spots quentes.</td></tr>
+    <tr><td><strong>Precompute de força por board</strong> em paralelo</td><td class="c">lib (fork)</td><td class="c eff-M">M</td><td class="c">médio</td><td>Paralelizar/precomputar a força de mão (river) — 30–50% no eval, que é parte relevante do loop.</td></tr>
+  </table>
+
+  <!-- 4. PERFORMANCE -->
+  <h2>4. <span class="info">P2 — Performance</span> (ambicioso; exige fork da lib)</h2>
+  <table>
+    <tr><th>Técnica</th><th class="c">Esforço</th><th class="c">Risco</th><th>Ganho esperado</th><th>Onde</th></tr>
+    <tr><td><strong>SIMD explícito AVX2</strong> no regret-matching + update de strategy</td><td class="c eff-S">S–M</td><td class="c">baixo</td><td>1.5–2× nas etapas vetorizáveis (hoje escalar/autovec)</td><td class="mono">solver.rs (regret_matching)</td></tr>
+    <tr><td><strong>Predictive CFR+ / PDCFR+</strong> (variante mais moderna que DCFR)</td><td class="c eff-M">M</td><td class="c">médio</td><td>1.5–2× menos iterações pra mesma exploitability</td><td class="mono">solver.rs (update de regret)</td></tr>
+    <tr><td><strong>MCCFR / sampling</strong> (amostrar ações por nó)</td><td class="c eff-M">M–L</td><td class="c">médio</td><td>3–5× wall-clock pra precisão de coaching (introduz variância)</td><td class="mono">solver.rs (for_each_child)</td></tr>
+    <tr><td><strong>Depth-limited / iterative deepening</strong> (flop→turn→river)</td><td class="c eff-M">M–L</td><td class="c">médio</td><td>3–5× pra primeira solução; refina depois</td><td class="mono">solver.rs (terminal check)</td></tr>
+    <tr><td><strong>GPU offload</strong> dos updates de regret/CFV</td><td class="c eff-L">L</td><td class="c">alto</td><td>3–5× em spots grandes (&gt;1M mãos); empata em spots pequenos (overhead PCIe)</td><td class="mono">solver.rs + kernel</td></tr>
+    <tr><td><strong>Action abstraction / translation</strong> (N sizes sobre árvore de 1)</td><td class="c eff-M">M</td><td class="c">médio</td><td>2–3 sizes "virtuais" sem dobrar a árvore</td><td class="mono">novo módulo + game/base.rs</td></tr>
+  </table>
+  <p class="note">As estimativas de ganho acima vêm da leitura do código + literatura de CFR; tratar como direcionais. O caminho de melhor relação ganho×risco em performance é <strong>AVX2 explícito</strong> (baixo risco, localizado) seguido de <strong>Predictive CFR+</strong>. GPU é o de maior ganho potencial e maior risco/custo.</p>
+
+  <!-- 5. Roadmap -->
+  <h2>5. Roadmap priorizado</h2>
+  <table>
+    <tr><th class="c">#</th><th>Item</th><th class="c">Camada</th><th class="c">Prioridade</th><th class="c">Esforço</th><th class="c">Risco</th></tr>
+    <tr><td class="c">1</td><td>Estratégia do hero correto (OOP/IP)</td><td class="c">wrapper</td><td class="c"><span class="badge b-red">P0</span></td><td class="c eff-M">M</td><td class="c">médio</td></tr>
+    <tr><td class="c">2</td><td>facing chips→bb + hash consistente</td><td class="c">wrapper</td><td class="c"><span class="badge b-red">P0</span></td><td class="c eff-S">S</td><td class="c">baixo</td></tr>
+    <tr><td class="c">3</td><td>Ranges reais do GW no solve</td><td class="c">wrapper</td><td class="c"><span class="badge b-red">P0</span></td><td class="c eff-S">S–M</td><td class="c">baixo</td></tr>
+    <tr><td class="c">4</td><td>2 bet sizes por street</td><td class="c">main.rs</td><td class="c"><span class="badge b-amb">P1</span></td><td class="c eff-S">S–M</td><td class="c">médio</td></tr>
+    <tr><td class="c">5</td><td>Bunching (≤3 folds)</td><td class="c">main.rs</td><td class="c"><span class="badge b-amb">P1</span></td><td class="c eff-M">M</td><td class="c">médio</td></tr>
+    <tr><td class="c">6</td><td>Cache/warm-start de spots</td><td class="c">wrapper</td><td class="c"><span class="badge b-amb">P1</span></td><td class="c eff-M">M</td><td class="c">baixo</td></tr>
+    <tr><td class="c">7</td><td>AVX2 explícito</td><td class="c">lib(fork)</td><td class="c"><span class="badge b-blu">P2</span></td><td class="c eff-S">S–M</td><td class="c">baixo</td></tr>
+    <tr><td class="c">8</td><td>Predictive CFR+ / PDCFR+</td><td class="c">lib(fork)</td><td class="c"><span class="badge b-blu">P2</span></td><td class="c eff-M">M</td><td class="c">médio</td></tr>
+    <tr><td class="c">9</td><td>MCCFR / depth-limited</td><td class="c">lib(fork)</td><td class="c"><span class="badge b-blu">P2</span></td><td class="c eff-L">M–L</td><td class="c">médio</td></tr>
+    <tr><td class="c">10</td><td>Fork AGPL + zstd em cache</td><td class="c">infra</td><td class="c"><span class="badge b-grn">P3</span></td><td class="c eff-S">S</td><td class="c">baixo</td></tr>
+  </table>
+
+  <!-- 6. Licença -->
+  <h2>6. Licença e manutenção</h2>
+  <ul>
+    <li><strong>AGPL-3.0 + arquivada (out/2023):</strong> sem upstream, sem patches. Vocês pinam o commit <span class="mono">9d1509f</span> (estável).</li>
+    <li><strong>Copyleft de rede:</strong> como produto hosted, a AGPL obriga oferecer o código-fonte (incl. modificações) a quem usa via rede — ponto jurídico a resolver com o jurídico antes de investir pesado/depender mais.</li>
+    <li><strong>Recomendação:</strong> <strong>forkar pra org de vocês</strong> (protege contra remoção do repo + permite os patches P1/P2), documentar a AGPL, e só então atacar as melhorias da lib. As correções P0 são todas no <em>nosso</em> wrapper (não exigem fork).</li>
+  </ul>
+
+  <h2>Próximo passo sugerido</h2>
+  <p>Atacar os <strong>3 fixes P0</strong> (correto antes de rápido): eles destravam o batch dos 178 postflop NULLs com dados confiáveis. Os 3 são no nosso código (sem fork, sem mexer na lib). Depois, P1 (2 sizes + bunching + cache) eleva a qualidade; P2 (AVX2 → Predictive CFR+) é o ganho de performance com melhor risco.</p>
+
+  <footer>PokerLeakLab · análise interna do motor Texas (postflop-solver + wrapper) · leitura de ~12,5k LOC da lib + solver_cli/gto_solver.py</footer>
+</div>
+</body>
+</html>

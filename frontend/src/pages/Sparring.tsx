@@ -17,8 +17,8 @@ import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { GtoMixedBadge } from "@/components/replayer/GtoMixedBadge";
 import { AiText } from "@/components/ui/AiText";
-import { drill, leaktrainer } from "@/lib/api";
-import type { SparringHand, SparringStep, DrillSubmitResult, ReplayStep, GtoDecisionResult, LeakTrainerSpot, LeakSessionCat } from "@/lib/api";
+import { sparring, drill, tournaments, gto } from "@/lib/api";
+import type { SparringHand, SparringStep, DrillSubmitResult, ReplayStep, GtoDecisionResult } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
 type Phase = "idle" | "loading" | "playing" | "feedback" | "summary";
@@ -434,9 +434,10 @@ function CoachCard({ result, gtoData, gtoLoading, step, t }: CoachCardProps) {
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 function Summary({
-  history, onNewHand, t,
+  history, hand, onNewHand, t,
 }: {
   history: StepResult[];
+  hand: SparringHand;
   onNewHand: () => void;
   t: (k: string, opts?: Record<string, unknown>) => string;
 }) {
@@ -454,6 +455,9 @@ function Summary({
         <Swords className={cn("mx-auto size-10", allCorrect ? "text-emerald-400" : "text-amber-400")} aria-hidden />
         <h2 className="text-xl font-bold text-foreground">{t("summary.title")}</h2>
         <p className="text-sm text-muted-foreground">{t("summary.subtitle")}</p>
+        {hand.tournament_name && (
+          <p className="font-mono text-[10px] text-muted-foreground">{hand.tournament_name}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -513,75 +517,75 @@ function Summary({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-// Estado da sessão do Leak Trainer (por categoria: hits/misses/seen/streak) — persiste
-// no client; o grading é server-side, então adulterar isto não falsifica acerto.
-const LEAKTRAINER_SESSION_KEY = "leaktrainer_session_state";
+const SPARRING_SEEN_KEY = "sparring_seen_hand_ids";
 
-function loadSessionState(): Record<string, LeakSessionCat> {
-  try { return JSON.parse(localStorage.getItem(LEAKTRAINER_SESSION_KEY) ?? "{}"); }
-  catch { return {}; }
+function getSeenHandIds(): string[] {
+  try { return JSON.parse(localStorage.getItem(SPARRING_SEEN_KEY) ?? "[]"); }
+  catch { return []; }
 }
-function saveSessionState(s: Record<string, LeakSessionCat>) {
-  try { localStorage.setItem(LEAKTRAINER_SESSION_KEY, JSON.stringify(s)); } catch { /* ignore */ }
+function saveSeenHandId(handId: string) {
+  const seen = getSeenHandIds();
+  if (!seen.includes(handId)) localStorage.setItem(SPARRING_SEEN_KEY, JSON.stringify([...seen, handId]));
+}
+function resetSeenHandIds(firstHandId: string) {
+  localStorage.setItem(SPARRING_SEEN_KEY, JSON.stringify([firstHandId]));
 }
 
 export default function Sparring() {
   const { t } = useTranslation("sparring");
 
-  const SESSION_LEN = 15;   // spots por sessão antes do resumo
-
   const [phase, setPhase]                   = useState<Phase>("idle");
-  const [spot, setSpot]                     = useState<LeakTrainerSpot | null>(null);
+  const [hand, setHand]                     = useState<SparringHand | null>(null);
+  const [stepIndex, setStepIndex]           = useState(0);
   const [history, setHistory]               = useState<StepResult[]>([]);
   const [currentResult, setCurrentResult]   = useState<DrillSubmitResult | null>(null);
   const [submitting, setSubmitting]         = useState(false);
   const [analysis, setAnalysis]             = useState<string | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [error, setError]                   = useState("");
-  const [sessionState, setSessionState]     = useState<Record<string, LeakSessionCat>>(loadSessionState);
-  const [sessionCount, setSessionCount]     = useState(0);
+  const [replayHeroSteps, setReplayHeroSteps] = useState<ReplayStep[]>([]);
 
-  // O grade do Leak Trainer já devolve a estratégia → sem fetch separado de GTO.
-  const [gtoData, setGtoData] = useState<GtoDecisionResult | null>(null);
-  const gtoLoading = false;
+  // GTO data — fetched in parallel immediately after each submit
+  const [gtoData, setGtoData]       = useState<GtoDecisionResult | null>(null);
+  const [gtoLoading, setGtoLoading] = useState(false);
 
-  // Mapeia o spot canônico (LeakTrainerSpot) para o shape SparringStep que o render usa.
-  const current: SparringStep | null = spot ? ({
-    decision_id:  -1,
-    street:       spot.street,
-    hero_cards:   spot.hero_cards,
-    board:        spot.board,
-    action_taken: "",
-    best_action:  "",          // resposta NÃO vem no /next (anti-spoiler); vem só no /grade
-    position:     spot.position,
-    num_players:  spot.num_players,
-    stack_bb:     spot.stack_bb,
-    pot_size:     spot.pot_size,
-    facing_bet:   spot.facing_bet,
-    is_3bet:      spot.is_3bet,
-    m_ratio:      spot.m_ratio,
-    icm_pressure: spot.icm_pressure,
-    gto_label:    null,
-    gto_action:   null,
-    label:        "standard",
-    score:        0,
-  } as unknown as SparringStep) : null;
-  const steps = current ? [current] : [];
-  const isLastStep = sessionCount + 1 >= SESSION_LEN;
+  const steps   = hand?.steps ?? [];
+  const current = steps[stepIndex] ?? null;
+  const isLastStep = stepIndex >= steps.length - 1;
 
-  // Busca o próximo spot GTO canônico (mirando os leaks + adaptando à sessão).
-  const loadSpot = async (resetSession = false) => {
+  const loadHand = async () => {
     setPhase("loading");
     setError("");
+    setHistory([]);
+    setStepIndex(0);
     setCurrentResult(null);
     setAnalysis(null);
+    setReplayHeroSteps([]);
     setGtoData(null);
-    if (resetSession) { setHistory([]); setSessionCount(0); }
+    setGtoLoading(false);
     try {
-      const data = await leaktrainer.next(sessionState);
+      const seen = getSeenHandIds();
+      const data = await sparring.hand(undefined, undefined, seen);
       if (data.insufficient_data) { setError(t("noData")); setPhase("idle"); return; }
-      setSpot(data);
+      if (data.hand_id) {
+        if (seen.includes(data.hand_id)) {
+          resetSeenHandIds(data.hand_id);
+        } else {
+          saveSeenHandId(data.hand_id);
+        }
+      }
+      setHand(data);
       setPhase("playing");
+
+      if (data.tournament_id && data.hand_id) {
+        tournaments.replay(String(data.tournament_id), data.hand_id)
+          .then((replay) => {
+            setReplayHeroSteps(
+              replay.timeline.filter((s) => s.type === "action" && s.is_hero === true)
+            );
+          })
+          .catch(() => {});
+      }
     } catch {
       setError(t("noData"));
       setPhase("idle");
@@ -589,41 +593,21 @@ export default function Sparring() {
   };
 
   const submitAction = async (action: string) => {
-    if (!spot || !current || submitting) return;
+    if (!current || submitting) return;
     setSubmitting(true);
     try {
-      const result = await leaktrainer.grade(spot.spot, action);
+      const result = await drill.submit(current.decision_id, action);
       setCurrentResult(result);
       setHistory((h) => [...h, { step: current, result }]);
-      // gtoData sintético a partir do grade → o CoachCard mostra veredito 3-níveis +
-      // barras de estratégia sem fetch separado.
-      setGtoData({
-        found:              true,
-        gto_action:         result.best_action,
-        player_action:      result.new_action,
-        player_action_freq: result.gto_freq,
-        strategy:           result.gto_strategy ?? [],
-        ev_diff:            null,
-      } as unknown as GtoDecisionResult);
-      // atualiza o estado da sessão da categoria do spot (dirige a adaptação do /next)
-      const cat = String((spot.spot as Record<string, unknown>).category ?? "");
-      if (cat) {
-        setSessionState((prev) => {
-          const c = prev[cat] ?? { hits: 0, misses: 0, seen: 0, hit_streak: 0 };
-          const ok = !!result.is_correct;
-          const upd: LeakSessionCat = {
-            seen:       c.seen + 1,
-            hits:       c.hits + (ok ? 1 : 0),
-            misses:     c.misses + (ok ? 0 : 1),
-            hit_streak: ok ? (c.hit_streak ?? 0) + 1 : 0,
-          };
-          const ns = { ...prev, [cat]: upd };
-          saveSessionState(ns);
-          return ns;
-        });
-      }
-      setSessionCount((n) => n + 1);
       setPhase("feedback");
+
+      // Fetch GTO in parallel — non-blocking, enriches CoachCard when ready
+      setGtoData(null);
+      setGtoLoading(true);
+      gto.decisionLookup(current.decision_id)
+        .then((d) => setGtoData(d))
+        .catch(() => setGtoData(null))
+        .finally(() => setGtoLoading(false));
     } catch {
       // keep playing
     } finally {
@@ -634,8 +618,13 @@ export default function Sparring() {
   const nextStep = () => {
     setAnalysis(null);
     setGtoData(null);
-    if (sessionCount >= SESSION_LEN) { setPhase("summary"); }
-    else { setCurrentResult(null); loadSpot(); }
+    setGtoLoading(false);
+    // Foldou = está fora da mão; não há mais decisão sua → vai pro resumo. Evita
+    // "apareceu um raise depois que foldei" (era a continuação da mão REAL do herói).
+    const foldedOut = (currentResult?.new_action ?? "").toLowerCase() === "fold";
+    const next = stepIndex + 1;
+    if (foldedOut || next >= steps.length) { setPhase("summary"); }
+    else { setStepIndex(next); setCurrentResult(null); setPhase("playing"); }
   };
 
   const requestAnalysis = async () => {
@@ -654,8 +643,7 @@ export default function Sparring() {
     // responder. Durante a decisão (phase "playing") usa a mesa sintética sem a ação do
     // herói — senão spoila a jogada antes do clique (e a mesa "muda sozinha" quando o
     // fetch async do replay chega).
-    // Leak Trainer não tem mão real → mesa sempre sintética (sem replay/spoiler).
-    const replayStep: ReplayStep | null = null;
+    const replayStep = phase === "feedback" ? (replayHeroSteps[stepIndex] ?? null) : null;
     const { tableStep, hero: tableHero, heroCards: tableHeroCards, bb: tableBb } = buildSparringStep(current, replayStep);
     const actionKeys = getActionKeys(current);
     const cols = actionKeys.length === 4 ? "grid-cols-2" : "grid-cols-3";
@@ -678,17 +666,15 @@ export default function Sparring() {
             <Swords className="size-3 text-amber-400" aria-hidden />
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">Sparring</span>
           </div>
-          {spot?.category_label && (
-            <span className="hidden sm:flex items-center gap-1.5 font-mono text-[9px] text-amber-400/70 truncate max-w-[280px]" title="Categoria de leak treinada">
-              <Flame className="size-3 shrink-0" aria-hidden />
-              <span className="truncate">{spot.category_label}</span>
+          {hand && (hand.tournament_name || hand.hand_id) && (
+            <span className="hidden sm:flex items-center gap-2 font-mono text-[9px] text-muted-foreground/60 select-text truncate max-w-[300px]" title="Torneio / mão (debug)">
+              {hand.tournament_name && <span className="truncate max-w-[140px]">{hand.tournament_name}</span>}
+              {hand.tournament_number && <span className="shrink-0">T#{hand.tournament_number}</span>}
+              {hand.hand_id && <span className="shrink-0">#{hand.hand_id}</span>}
             </span>
           )}
-          <span className="ml-auto font-mono text-[9px] text-muted-foreground/50">
-            {sessionCount}/{SESSION_LEN}
-          </span>
-          <div>
-            <StreetTimeline steps={steps} history={history} currentIndex={phase === "playing" ? 0 : -1} t={t} />
+          <div className="ml-auto">
+            <StreetTimeline steps={steps} history={history} currentIndex={phase === "playing" ? stepIndex : -1} t={t} />
           </div>
         </div>
 
@@ -739,8 +725,8 @@ export default function Sparring() {
                     <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
                       {t(`street.${current.street}`)}
                     </p>
-                    {spot?.category_label && (
-                      <span className="ml-auto font-mono text-[9px] text-amber-400/70 truncate">{spot.category_label}</span>
+                    {hand?.tournament_name && (
+                      <span className="ml-auto font-mono text-[9px] text-muted-foreground truncate">{hand.tournament_name}</span>
                     )}
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-amber-500/20 pt-2">
@@ -815,8 +801,8 @@ export default function Sparring() {
                   )}
                 </div>
 
-                {/* ── AI analysis — só spots com decision_id real (Leak Trainer é sintético) ── */}
-                {(current?.decision_id ?? -1) >= 0 && (analysis ? (
+                {/* ── AI analysis ── */}
+                {analysis ? (
                   <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2 shrink-0">
                     <p className="font-mono text-[9px] uppercase tracking-widest text-amber-400">{t("result.engineNote")}</p>
                     <AiText>{analysis}</AiText>
@@ -828,7 +814,7 @@ export default function Sparring() {
                       ? <><Loader2 className="size-4 animate-spin" aria-hidden /> {t("result.analysisLoading")}</>
                       : <><BookOpen className="size-4" aria-hidden /> {t("result.requestAnalysis")}</>}
                   </button>
-                ))}
+                )}
 
                 {/* ── Next button ── */}
                 <button onClick={nextStep}
@@ -875,7 +861,7 @@ export default function Sparring() {
           )}
 
           <button
-            onClick={() => loadSpot(true)}
+            onClick={loadHand}
             disabled={phase === "loading"}
             className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-black hover:bg-amber-400 disabled:opacity-60 transition-colors"
           >
@@ -887,8 +873,8 @@ export default function Sparring() {
         </div>
       )}
 
-      {phase === "summary" && (
-        <Summary history={history} onNewHand={() => loadSpot(true)} t={t} />
+      {phase === "summary" && hand && (
+        <Summary history={history} hand={hand} onNewHand={loadHand} t={t} />
       )}
 
     </HudLayout>

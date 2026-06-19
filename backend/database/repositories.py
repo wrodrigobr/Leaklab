@@ -934,46 +934,6 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
         conn.close()
 
 
-def get_leak_categories(user_id: int, days: int = 90) -> list:
-    """Leak ranking PREFLOP por cenário canônico — base do Leak Trainer.
-
-    Mesma fonte/peso de get_gto_leak_ranking (severidade de gto_label), mas agrupado
-    fino o suficiente (position × vs_position × is_3bet × preflop_raises_faced ×
-    best_action) pra resolver rfi/vs_rfi/vs_3bet/vs_4bet e o par de posições. Read-only.
-    Postgres-safe: CASE em vez de COALESCE sobre boolean; GROUP BY colunas cruas.
-    """
-    tf, tp = _build_tournament_filter(user_id, days, None)
-    conn = get_conn()
-    try:
-        rows = conn.execute(_adapt(f"""
-            SELECT
-                d.position                          AS position,
-                COALESCE(d.vs_position, '')         AS vs_position,
-                CASE WHEN d.is_3bet THEN 1 ELSE 0 END AS is_3bet,
-                COALESCE(d.preflop_raises_faced, 0) AS raises_faced,
-                d.best_action                       AS best_action,
-                COUNT(*)                            AS n,
-                AVG(COALESCE(d.stack_bb, 30))       AS avg_stack_bb,
-                COUNT(*) * AVG(CASE
-                    WHEN d.gto_label = 'gto_critical'        THEN 0.45
-                    WHEN d.gto_label = 'gto_minor_deviation' THEN 0.15
-                    ELSE 0.0 END)                   AS priority_score
-            FROM decisions d
-            JOIN tournaments t ON t.id = d.tournament_id
-            WHERE {tf}
-              AND d.street = 'preflop'
-              AND d.gto_label IN ('gto_critical', 'gto_minor_deviation')
-              AND d.position IS NOT NULL AND d.position != ''
-            GROUP BY d.position, d.vs_position, d.is_3bet, d.preflop_raises_faced, d.best_action
-            HAVING COUNT(*) >= 2
-            ORDER BY priority_score DESC
-            LIMIT 30
-        """), tp).fetchall()
-        return [dict(r) for r in rows]
-    finally:
-        conn.close()
-
-
 def get_pressure_profile(user_id: int, days: int = 90) -> dict:
     """PERF-004 — Detecta colapso técnico sob pressão ICM."""
     from datetime import datetime, timedelta
