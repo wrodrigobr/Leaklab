@@ -1280,6 +1280,22 @@ def get_decision_for_drill(user_id: int, decision_id: int) -> dict | None:
         conn.close()
 
 
+def get_decision_hand_context(user_id: int, decision_id: int) -> dict | None:
+    """Ghost Table visual: hand_id + street + level_bb + raw_text do torneio da decisão
+    (do usuário), pra reconstruir a mesa fiel via parse lazy."""
+    conn = get_conn()
+    try:
+        row = conn.execute(_adapt("""
+            SELECT d.hand_id, d.street, d.level_bb, t.raw_text
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE d.id = ? AND t.user_id = ?
+        """), (decision_id, user_id)).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
 def get_icm_performance(user_id: int, days: int = 90) -> dict:
     """Performance separada por nível de ICM pressure."""
     from datetime import datetime, timedelta

@@ -1974,6 +1974,43 @@ def _gen_session_review(goal: dict, tournament: dict) -> str | None:
         return None
 
 
+@app.route('/player/spots/drill/<int:decision_id>/table', methods=['GET'])
+@require_auth
+def player_drill_table(decision_id: int):
+    """Ghost Table visual: estado FIEL da mesa no ponto da decisão (parse lazy do HH).
+    Devolve seats[] (stack/bet em BB, folded, hero), button, pot, board, hero_cards."""
+    from database.repositories import get_decision_hand_context
+    from leaklab.parser import parse_hand_history
+    from leaklab.hand_state_builder import build_table_state_at_decision
+    ctx = get_decision_hand_context(g.user_id, decision_id)
+    if not ctx or not ctx.get('raw_text'):
+        return jsonify({'error': 'Contexto da mão indisponível'}), 404
+    hand_id = ctx.get('hand_id')
+    street  = ctx.get('street') or 'preflop'
+    try:
+        hand = next((h for h in parse_hand_history(ctx['raw_text']) if h.hand_id == hand_id), None)
+    except Exception as e:
+        log.warning("drill table parse error dec=%s: %s", decision_id, e)
+        hand = None
+    if not hand:
+        return jsonify({'error': 'Mão não encontrada no histórico'}), 404
+    state = build_table_state_at_decision(hand, street)
+    bb = float(state.get('bb') or ctx.get('level_bb') or 0) or 1.0
+    seats = [{**s, 'stack': round(s['stack'] / bb, 1), 'bet': round(s['bet'] / bb, 1)}
+             for s in state['seats']]
+    pot_bb = round(sum(s['bet'] for s in state['seats']) / bb, 1)
+    _sc = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
+    board = (hand.board or [])[:_sc.get(street, 5)]
+    return jsonify({
+        'seats':      seats,
+        'button':     state.get('button'),
+        'pot':        pot_bb,
+        'street':     street,
+        'board':      board,
+        'hero_cards': hand.hero_cards,
+    })
+
+
 @app.route('/player/spots/drill/<int:decision_id>/analysis', methods=['GET'])
 @require_auth
 def player_drill_analysis(decision_id: int):
