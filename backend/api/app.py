@@ -1827,6 +1827,46 @@ def academy_gto_preflop_submit():
     return jsonify(result)
 
 
+@app.route('/player/leaktrainer/next', methods=['POST'])
+@require_auth
+def player_leaktrainer_next():
+    """Leak Trainer — próximo spot GTO canônico, adaptado aos leaks do jogador + à
+    performance da sessão (session_state vem do cliente). Não revela a resposta."""
+    from leaklab.leak_trainer import build_curriculum, next_spot
+    body = request.get_json(silent=True) or {}
+    session_state = body.get('session_state') or {}
+    spot = next_spot(build_curriculum(g.user_id), session_state)
+    if not spot:
+        return jsonify({'insufficient_data': True})
+    spot['session_state'] = session_state
+    return jsonify(spot)
+
+
+@app.route('/player/leaktrainer/grade', methods=['POST'])
+@require_auth
+def player_leaktrainer_grade():
+    """Avaliação SERVER-SIDE do Leak Trainer: cliente manda o spot (echo do /next) +
+    ação; veredito GTO calculado aqui (range nunca vai pro cliente). Formato
+    DrillSubmitResult — o CoachCard consome direto."""
+    from leaklab.leak_trainer import grade_canonical_spot
+    body   = request.get_json(force=True) or {}
+    spot   = body.get('spot') or {}
+    action = (body.get('action') or '').lower()
+    result = grade_canonical_spot(spot, action)
+    gained, total, new_ach = 0, None, []
+    if result.get('is_correct'):
+        try:
+            xp = add_xp(g.user_id, 'leaktrainer_correct', 25)
+            gained  = xp.get('xp_gained', 0)
+            total   = xp.get('xp_total')
+            new_ach = xp.get('new_achievements', [])
+        except Exception:
+            gained = 25
+    result['xp'] = {'events': (['leaktrainer_correct'] if gained else []),
+                    'gained': gained, 'total': total, 'new_achievements': new_ach}
+    return jsonify(result)
+
+
 @app.route('/player/strategic-twin', methods=['GET'])
 @require_auth
 def player_strategic_twin():
