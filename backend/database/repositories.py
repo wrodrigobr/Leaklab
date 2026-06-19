@@ -1286,7 +1286,7 @@ def get_decision_hand_context(user_id: int, decision_id: int) -> dict | None:
     conn = get_conn()
     try:
         row = conn.execute(_adapt("""
-            SELECT d.hand_id, d.street, d.level_bb, t.raw_text
+            SELECT d.hand_id, d.street, d.level_bb, d.facing_bet, t.raw_text
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE d.id = ? AND t.user_id = ?

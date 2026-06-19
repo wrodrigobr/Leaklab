@@ -403,12 +403,17 @@ def build_hand_state(hand: ParsedHand) -> HandState:
     )
 
 
-def build_table_state_at_decision(hand, target_street: str, hero_name=None) -> dict:
-    """Reconstrói o estado por assento ANTES da 1ª ação do hero em `target_street`
+def build_table_state_at_decision(hand, target_street: str, hero_name=None,
+                                  target_facing=None) -> dict:
+    """Reconstrói o estado por assento ANTES da ação do hero em `target_street`
     (Ghost Table visual — mesa fiel). Caminha hand.actions acumulando por assento:
     folded, stack atual e bet em frente na street. **Folds e botão são fiéis**;
     bets/stacks em potes multi-raise são best-effort (o parser dá o incremento do
-    raise, não o to-total). Devolve {seats:[...], button, sb, bb}."""
+    raise, não o to-total). Devolve {seats:[...], button, sb, bb}.
+
+    `target_facing` (BB): quando o hero age 2+× na street (ex.: aposta → leva raise →
+    folda), para na ação cujo facing-to-call bate o da decisão — senão a mesa mostraria
+    o momento errado (antes do raise do vilão). None = para na 1ª ação do hero."""
     hero_name = hero_name or hand.hero
     by_name: dict = {}
     for s in (hand.seats or []):
@@ -445,9 +450,18 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None) -> d
             cur_street = act.street
             for st in by_name.values():
                 st['bet'] = 0.0   # nova street: zera os bets em frente
-        # para ANTES da 1ª ação do hero na street alvo (o ponto da decisão do drill)
+        # para ANTES da ação do hero na street alvo (o ponto da decisão do drill).
+        # Com 2+ ações do hero na street, para na que bate o facing-to-call da decisão.
         if act.player == hero_name and act.street == target_street:
-            break
+            if target_facing is None:
+                break
+            hero_bet = by_name.get(hero_name, {}).get('bet', 0.0)
+            opp_max  = max((st0['bet'] for st0 in by_name.values()
+                            if not st0['hero'] and not st0['folded']), default=0.0)
+            facing_bb = (max(0.0, opp_max - hero_bet) / bb_amt) if bb_amt else 0.0
+            if abs(facing_bb - float(target_facing)) <= 0.6:   # tolerância p/ resíduo/rounding
+                break
+            # senão é uma ação ANTERIOR do hero nesta street → processa e segue
         st = by_name.get(act.player)
         if not st:
             continue

@@ -1998,7 +1998,9 @@ def player_drill_table(decision_id: int):
         hand = None
     if not hand:
         return jsonify({'error': 'Mão não encontrada no histórico'}), 404
-    state = build_table_state_at_decision(hand, street)
+    # target_facing desambigua quando o hero age 2+× na street (para no momento certo).
+    _tf = ctx.get('facing_bet')
+    state = build_table_state_at_decision(hand, street, target_facing=_tf)
     bb = float(state.get('bb') or ctx.get('level_bb') or 0) or 1.0
     # seats em CHIPS (stack/bet crus) — o PokerTableV3 normaliza p/ BB via betUnit + bb.
     pot_chips = round(sum(s['bet'] for s in state['seats']), 1)
