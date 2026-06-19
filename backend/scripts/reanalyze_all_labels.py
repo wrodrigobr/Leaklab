@@ -44,11 +44,11 @@ for row in tournaments:
     raw_text = conn.execute(
         "SELECT raw_text FROM tournaments WHERE id = ?", (tid,)
     ).fetchone()
-    if not raw_text or not raw_text[0]:
+    if not raw_text or not raw_text['raw_text']:
         continue
 
     try:
-        hands = parse_hand_history(raw_text[0])
+        hands = parse_hand_history(raw_text['raw_text'])
     except Exception as e:
         print(f"  [SKIP] Erro parse tid={tid}: {e}")
         continue
@@ -159,7 +159,7 @@ if affected_tournament_ids and not DRY:
         if std_row:
             conn.execute(
                 "UPDATE tournaments SET standard_pct = ?, avg_score = ? WHERE id = ?",
-                (round(std_row[0], 2), round(std_row[1] or 0, 4), tid)
+                (round(std_row['std_pct'], 2), round(std_row['avg_score'] or 0, 4), tid)
             )
     conn.commit()
     print("  standard_pct recalculado.")
