@@ -798,7 +798,7 @@ export default function GhostTable() {
             <div className="grid grid-cols-3 gap-3">
               <StatTile value={String(stats.total)} label={t("stats.title").replace(/\s*\(.*\)/, "")} />
               <StatTile
-                value={stats.accuracy !== null ? `${Math.round(stats.accuracy * 100)}%` : "—"}
+                value={stats.accuracy !== null ? `${Math.round(stats.accuracy)}%` : "—"}
                 label="Accuracy"
               />
               <StatTile
