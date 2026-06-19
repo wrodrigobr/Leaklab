@@ -227,12 +227,21 @@ interface CoachCardProps {
 function CoachCard({ result, gtoData, gtoLoading, step, t }: CoachCardProps) {
   const hasGto = !gtoLoading && (gtoData?.found ?? false);
 
+  // Frequência GTO da AÇÃO QUE O USUÁRIO JOGOU (result.new_action) — NÃO usar
+  // gtoData.player_action_freq, que é da ação ARMAZENADA (a jogada real do herói).
+  // No Sparring o usuário re-decide; o veredito tem que refletir a escolha DELE.
+  // Bug: folding com GTO fold 100% aparecia como "desvio crítico" (era o raise original).
+  const _playedKey = (result.new_action ?? "").toLowerCase();
+  const playedFreq = result.gto_freq != null
+    ? result.gto_freq
+    : ((gtoData?.strategy ?? []).find(s => (s.action ?? "").toLowerCase() === _playedKey)?.frequency ?? 0);
+
   // ── Unified verdict: GTO > Engine ────────────────────────────────────────
   type Verdict = { icon: string; label: string; cls: string; borderCls: string; hdrCls: string; source: string };
   let verdict: Verdict;
 
   if (hasGto && gtoData) {
-    const freq = gtoData.player_action_freq ?? 0;
+    const freq = playedFreq;
     if (freq >= 0.40)
       verdict = { icon: "✓", label: t("gto.verdict.correct"),  cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8",  source: "GTO Solver" };
     else if (freq >= 0.15)
@@ -258,7 +267,7 @@ function CoachCard({ result, gtoData, gtoLoading, step, t }: CoachCardProps) {
     ? (gtoData.gto_action ?? result.best_action)
     : result.best_action;
   const isActionOk   = hasGto && gtoData
-    ? (gtoData.player_action_freq ?? 0) >= 0.40
+    ? playedFreq >= 0.40
     : result.is_correct;
   const showTwoCols  = idealAction.toLowerCase() !== playedAction.toLowerCase();
 
@@ -610,8 +619,11 @@ export default function Sparring() {
     setAnalysis(null);
     setGtoData(null);
     setGtoLoading(false);
+    // Foldou = está fora da mão; não há mais decisão sua → vai pro resumo. Evita
+    // "apareceu um raise depois que foldei" (era a continuação da mão REAL do herói).
+    const foldedOut = (currentResult?.new_action ?? "").toLowerCase() === "fold";
     const next = stepIndex + 1;
-    if (next >= steps.length) { setPhase("summary"); }
+    if (foldedOut || next >= steps.length) { setPhase("summary"); }
     else { setStepIndex(next); setCurrentResult(null); setPhase("playing"); }
   };
 
