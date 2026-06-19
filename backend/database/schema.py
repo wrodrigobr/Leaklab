@@ -1691,6 +1691,13 @@ class _PgResult:
             pass
         return None
 
+    @property
+    def rowcount(self):
+        # psycopg2 expõe rowcount (linhas afetadas pelo último execute) — sqlite também.
+        # Sem isto, DELETE/UPDATE que leem cur.rowcount estouravam AttributeError no PG
+        # (ex.: reset_drill_sessions → "nada acontece" no botão de reiniciar).
+        return self._cur.rowcount
+
     def fetchone(self):
         row = self._cur.fetchone()
         return dict(row) if row else None

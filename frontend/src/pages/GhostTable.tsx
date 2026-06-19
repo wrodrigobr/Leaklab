@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
@@ -871,6 +872,8 @@ export default function GhostTable() {
                       await drill.resetSessions();
                       setStats(null); setResetConfirm(false);
                       window.location.reload();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Não foi possível reiniciar o histórico.");
                     } finally { setResetting(false); }
                   }}
                   disabled={resetting}
