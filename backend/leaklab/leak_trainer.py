@@ -186,9 +186,11 @@ def _build_spot(category, scenario, position, vs_pos, stack, hand, inp, res) -> 
     facing = inp['facing_size']
     # pote em bb pra display (blinds + facing): aproximação leve, só visual.
     pot_bb = round(1.5 + (facing if facing else (1.0 if scenario == 'rfi' else 0.0)), 1)
+    # hero_cards como STRING (ex.: "AsKs") — o buildSparringStep do front faz parseCardsRaw.
+    hero_cards_str = ''.join(c['rank'] + c['suit'] for c in _hand_to_cards(hand))
     return {
         'street':       'preflop',
-        'hero_cards':   _hand_to_cards(hand),
+        'hero_cards':   hero_cards_str,
         'board':        None,
         'position':     position,
         'vs_position':  vs_pos or None,

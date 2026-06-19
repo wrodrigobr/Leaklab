@@ -962,6 +962,40 @@ export const sparring = {
   },
 };
 
+// Leak Trainer — spots GTO canônicos adaptativos (substitui o sourcing do Sparring).
+export interface LeakSessionCat { hits: number; misses: number; seen: number; hit_streak?: number; }
+export interface LeakTrainerSpot {
+  insufficient_data?: boolean;
+  street: string;
+  hero_cards: string;                 // "AsKs" — buildSparringStep faz parseCardsRaw
+  board: string | null;
+  position: string;
+  vs_position: string | null;
+  num_players: number;
+  stack_bb: number;
+  pot_size: number;
+  facing_bet: number;
+  is_3bet: boolean;
+  m_ratio: number | null;
+  icm_pressure: string | null;
+  best_action: string;
+  category_label?: string;
+  spot: Record<string, unknown>;      // echo stateless devolvido no /grade
+  session_state: Record<string, LeakSessionCat>;
+}
+export const leaktrainer = {
+  next: (session_state: Record<string, LeakSessionCat>) =>
+    request<LeakTrainerSpot>("/player/leaktrainer/next", {
+      method: "POST",
+      body: JSON.stringify({ session_state }),
+    }),
+  grade: (spot: Record<string, unknown>, action: string) =>
+    request<DrillSubmitResult>("/player/leaktrainer/grade", {
+      method: "POST",
+      body: JSON.stringify({ spot, action }),
+    }),
+};
+
 // ── Leaderboard (#15) ─────────────────────────────────────────────────────────
 export interface LeaderboardDimensions {
   gto: number; evolution: number; engagement: number; volume: number;
