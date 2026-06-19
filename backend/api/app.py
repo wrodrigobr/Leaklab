@@ -1359,7 +1359,9 @@ def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
         if raw.startswith('bet'):
             return 'bet'
         if raw.startswith('raise'):
-            return 'bet' if facing_bb == 0 else 'raise'
+            # Preflop, abrir o pote é RAISE (raisa por cima das blinds), nunca "bet".
+            # Só postflop (sem blinds em frente) agredir sem aposta anterior = "bet".
+            return 'bet' if (facing_bb == 0 and (street or '').lower() != 'preflop') else 'raise'
         return raw
 
     a = _norm_action(top_action)
@@ -1424,8 +1426,10 @@ def player_drill_submit():
         best_action, gto_freqs, validation_source = _resolve_best_action_from_node(row, return_strategy=True)
     else:
         best_action = _norm_drill(best_action)
-        # Guard: raise sem aposta anterior é semanticamente "bet"
-        if float(row.get('facing_bet') or 0) == 0 and best_action == 'raise':
+        # Guard: raise sem aposta anterior é "bet" — mas SÓ postflop. Preflop, abrir
+        # é raise (por cima das blinds), nunca bet.
+        if (float(row.get('facing_bet') or 0) == 0 and best_action == 'raise'
+                and (row.get('street') or '').lower() != 'preflop'):
             best_action = 'bet'
 
     # Guard: BB pode check grátis — fold sem aposta é impossível.
