@@ -13,6 +13,13 @@ from leaklab.parser import parse_hand_history
 from leaklab.pipeline import build_decision_inputs_for_hand
 from leaklab.decision_engine_v11 import evaluate_decision
 
+import argparse
+_ap = argparse.ArgumentParser(description="Re-analisa labels de todas as decisões.")
+_ap.add_argument("--dry-run", action="store_true", help="só conta o que mudaria, NÃO grava")
+DRY = _ap.parse_args().dry_run
+if DRY:
+    print("== DRY-RUN — nada será gravado ==")
+
 conn = get_conn()
 # DB dev tem o app.py vivo (WAL) — espera o lock em vez de falhar na hora.
 try:
@@ -27,6 +34,7 @@ tournaments = conn.execute(
 print(f"Processando {len(tournaments)} torneios com raw_text...")
 total_checked = 0
 total_updated = 0
+gto_gained = 0   # heurística (gto_label vazio) → GTO (label real) — responde "quantos viram GTO"
 affected_tournament_ids = set()
 
 for row in tournaments:
@@ -117,11 +125,15 @@ for row in tournaments:
                        new_gtolbl != old_gtolbl or new_gtoact != old_gtoact or
                        new_evloss != old_evloss)
             if changed:
-                conn.execute(
-                    "UPDATE decisions SET label = ?, best_action = ?, gto_label = ?, "
-                    "gto_action = ?, ev_loss_bb = ?, ev_loss_source = ? WHERE id = ?",
-                    (new_label, new_best, new_gtolbl, new_gtoact, new_evloss, new_evsrc, did)
-                )
+                if (old_gtolbl in (None, '', 'wizard_pending')
+                        and new_gtolbl not in (None, '', 'wizard_pending')):
+                    gto_gained += 1
+                if not DRY:
+                    conn.execute(
+                        "UPDATE decisions SET label = ?, best_action = ?, gto_label = ?, "
+                        "gto_action = ?, ev_loss_bb = ?, ev_loss_source = ? WHERE id = ?",
+                        (new_label, new_best, new_gtolbl, new_gtoact, new_evloss, new_evsrc, did)
+                    )
                 hand_updated += 1
                 total_updated += 1
                 affected_tournament_ids.add(tid)
@@ -129,11 +141,11 @@ for row in tournaments:
                     print(f"  tid={tid} hand={hand_id} {street}/{act}: "
                           f"{old_label}->{new_label} | gto {old_gtolbl}->{new_gtolbl}")
 
-    if hand_updated:
+    if hand_updated and not DRY:
         conn.commit()
 
 # Recalcular standard_pct nos torneios afetados
-if affected_tournament_ids:
+if affected_tournament_ids and not DRY:
     print(f"\nRecalculando standard_pct de {len(affected_tournament_ids)} torneios...")
     for tid in sorted(affected_tournament_ids):
         std_row = conn.execute(
@@ -152,4 +164,8 @@ if affected_tournament_ids:
     print("  standard_pct recalculado.")
 
 conn.close()
-print(f"\nConcluido. Verificadas: {total_checked} | Atualizadas: {total_updated}")
+print(f"\nConcluido. Verificadas: {total_checked} | "
+      f"{'Mudariam' if DRY else 'Atualizadas'}: {total_updated} | "
+      f"heuristica->GTO: {gto_gained}")
+if DRY:
+    print("== DRY-RUN — nada foi gravado ==")
