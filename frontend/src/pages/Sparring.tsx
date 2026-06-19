@@ -552,7 +552,7 @@ export default function Sparring() {
     hero_cards:   spot.hero_cards,
     board:        spot.board,
     action_taken: "",
-    best_action:  spot.best_action,
+    best_action:  "",          // resposta NÃO vem no /next (anti-spoiler); vem só no /grade
     position:     spot.position,
     num_players:  spot.num_players,
     stack_bb:     spot.stack_bb,

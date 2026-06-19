@@ -78,5 +78,5 @@ check(lt._adapt_factor({'misses': 0, 'hits': 100}) >= 0.1,
 ns = lt.next_spot(lt._fundamentals(), {}, rng=random.Random(3))
 check(ns is not None and ns['street'] == 'preflop', "next_spot devolve spot dos fundamentos")
 
-print(f"\nTotal: {passed + failed} Passed: {passed} Failed: {failed}")
+print(f"\nTotal: {passed + failed} | Passed: {passed} | Failed: {failed}")
 sys.exit(1 if failed else 0)

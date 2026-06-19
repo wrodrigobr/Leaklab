@@ -34,5 +34,5 @@ check(app._resolve_best_action_from_node(
 check(app._resolve_best_action_from_node(dict(_base, street='preflop', facing_bet=3)) == 'raise',
       "preflop vs RFI (facing>0) deve ser RAISE")
 
-print(f"\nTotal: {passed + failed} Passed: {passed} Failed: {failed}")
+print(f"\nTotal: {passed + failed} | Passed: {passed} | Failed: {failed}")
 sys.exit(1 if failed else 0)

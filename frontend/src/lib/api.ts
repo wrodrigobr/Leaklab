@@ -978,7 +978,6 @@ export interface LeakTrainerSpot {
   is_3bet: boolean;
   m_ratio: number | null;
   icm_pressure: string | null;
-  best_action: string;
   category_label?: string;
   spot: Record<string, unknown>;      // echo stateless devolvido no /grade
   session_state: Record<string, LeakSessionCat>;

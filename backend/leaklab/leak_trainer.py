@@ -201,7 +201,7 @@ def _build_spot(category, scenario, position, vs_pos, stack, hand, inp, res) -> 
         'is_3bet':      bool(inp['is_3bet_pot']),
         'm_ratio':      None,
         'icm_pressure': None,
-        'best_action':  _norm_action((res.get('recommended_actions') or ['fold'])[0]),
+        # NÃO enviar best_action/resposta — só volta no /grade (range fica no servidor).
         'category_label': category.get('label'),
         # echo stateless p/ o /grade (sem decision_id; range fica no servidor)
         'spot': {

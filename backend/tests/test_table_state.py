@@ -76,5 +76,5 @@ check(s2[2]["folded"] is True, "seat2 (BB) foldou antes da decisão")
 check(s2[3]["folded"] is False and s2[3]["bet"] == 60.0, "seat3 (UTG raiser) ativo bet 60")
 check(s2[4]["hero"] is True and s2[4]["folded"] is False, "hero ativo")
 
-print(f"\nTotal: {passed + failed} Passed: {passed} Failed: {failed}")
+print(f"\nTotal: {passed + failed} | Passed: {passed} | Failed: {failed}")
 sys.exit(1 if failed else 0)
