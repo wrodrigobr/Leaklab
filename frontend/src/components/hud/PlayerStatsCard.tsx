@@ -16,6 +16,14 @@ interface PlayerStats {
   bb_defense: number | null;
   steal_pct: number | null;
   open_limp_pct: number | null;
+  flags?: Record<string, StatFlag>;
+}
+
+// Flag direcional vindo do backend (fonte única STAT_REFERENCES, gateado por amostra).
+interface StatFlag {
+  band: "below" | "healthy" | "above" | "low_sample";
+  flag: string | null;            // tendência curta (nit/loose/station…) — só above/below
+  healthy?: [number, number];     // faixa saudável corrigida
 }
 
 interface Props {
@@ -153,9 +161,13 @@ const BAR_COLORS: Record<Status, string> = {
   na:     "bg-transparent",
 };
 
-function StatCell({ def, value, compact }: { def: StatDef; value: number | null; compact?: boolean }) {
+function StatCell({ def, value, flag, compact }: { def: StatDef; value: number | null; flag?: StatFlag; compact?: boolean }) {
   const { t } = useTranslation("dashboard");
-  const status = getStatus(value, def.range, def.soon);
+  // Flag do backend (refs MTT corrigidas + gate de amostra) tem prioridade sobre o range
+  // inline. above/below = tendência (warn, direcional — não "danger"); healthy = ok.
+  const status: Status = flag
+    ? (flag.band === "healthy" ? "ok" : flag.band === "low_sample" ? "na" : "warn")
+    : getStatus(value, def.range, def.soon);
   const { min, max } = def.range;
   const margin = (max - min) * 0.35;
   const lo = min - margin;
@@ -194,6 +206,11 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
         )}>
           {displayValue}
         </span>
+        {flag && flag.flag && (flag.band === "above" || flag.band === "below") && (
+          <span className="font-mono text-[9px] font-bold uppercase tracking-wide text-yellow-400" title="Tendência direcional vs referência MTT">
+            {flag.band === "above" ? "↑" : "↓"} {flag.flag}
+          </span>
+        )}
         {def.soon && (
           <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
             {t("playerStats.soon")}
@@ -218,7 +235,7 @@ function StatCell({ def, value, compact }: { def: StatDef; value: number | null;
         "font-mono text-[9px] uppercase tracking-widest",
         def.soon ? "text-muted-foreground/50" : "text-muted-foreground/60"
       )}>
-        {t("playerStats.refMtt", { range: def.range.label })}
+        {t("playerStats.refMtt", { range: flag?.healthy ? `${flag.healthy[0]}–${flag.healthy[1]}${def.unit === "x" ? "x" : "%"}` : def.range.label })}
       </span>
     </div>
   );
@@ -294,21 +311,21 @@ export function PlayerStatsCard({ stats, v2 = false }: Props) {
           {/* Row 1 — 4 computed stats */}
           <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-4">
             {ROW1.map((def) => (
-              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} />
+              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} flag={stats.flags?.[def.key as string]} />
             ))}
           </div>
 
           {/* Row 2 — fold to 3bet, wtsd, 3bet, w$sd */}
           <div className="grid grid-cols-2 divide-x divide-border/60 border-t border-border/60 md:grid-cols-4">
             {ROW2.map((def) => (
-              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} compact />
+              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} flag={stats.flags?.[def.key as string]} compact />
             ))}
           </div>
 
           {/* Row 3 — defense & positional stats */}
           <div className="grid grid-cols-2 divide-x divide-border/40 border-t border-border/40 md:grid-cols-4">
             {ROW3.map((def) => (
-              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} compact />
+              <StatCell key={String(def.key)} def={def} value={stats[def.key] as number | null} flag={stats.flags?.[def.key as string]} compact />
             ))}
           </div>
         </>

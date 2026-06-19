@@ -953,7 +953,11 @@ def history_breakdown():
 def player_stats():
     days   = int(request.args.get('days', 90))
     last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
-    return jsonify(get_player_stats(g.user_id, days, last_n=last_n))
+    stats = get_player_stats(g.user_id, days, last_n=last_n)
+    # Flags direcionais (banda saudável/abaixo/acima vs referências MTT, gateados por amostra).
+    from leaklab.opponent_stats import player_stat_flags
+    stats['flags'] = player_stat_flags(stats)
+    return jsonify(stats)
 
 
 @app.route('/metrics/level', methods=['GET'])
