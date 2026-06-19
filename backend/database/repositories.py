@@ -4230,6 +4230,7 @@ def delete_user_admin(user_id: int) -> None:
     try:
         # remove all decisions + tournaments + related data before removing the user
         tournament_ids = [r['id'] for r in _fetchall(conn, "SELECT id FROM tournaments WHERE user_id = ?", (user_id,))]
+        conn.execute("DELETE FROM drill_sessions WHERE user_id = ?", (user_id,))   # SRS — sem ON DELETE CASCADE
         for tid in tournament_ids:
             conn.execute("DELETE FROM decisions WHERE tournament_id = ?", (tid,))
         if tournament_ids:

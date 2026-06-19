@@ -3904,6 +3904,11 @@ def delete_tournament(tournament_id):
         if not row:
             return jsonify({'error': 'Torneio não encontrado'}), 404
         db_id = row['id']
+        # Limpa o histórico SRS das decisões deste torneio ANTES de deletá-las — senão
+        # as drill_sessions ficam órfãs e ainda contam no "histórico de drill" (get_drill_stats
+        # conta FROM drill_sessions sem JOIN). Não há ON DELETE CASCADE em drill_sessions.
+        conn.execute("DELETE FROM drill_sessions WHERE decision_id IN "
+                     "(SELECT id FROM decisions WHERE tournament_id=?)", (db_id,))
         conn.execute("DELETE FROM decisions WHERE tournament_id=?", (db_id,))
         conn.execute("DELETE FROM tournaments WHERE id=?", (db_id,))
         conn.commit()
@@ -3952,6 +3957,8 @@ def reset_my_data():
         conn.execute("""
             DELETE FROM llm_cache WHERE user_id = ?
         """, (g.user_id,))
+        # SRS de todas as decisões do usuário (todas serão deletadas) — evita órfãs nas stats.
+        conn.execute("DELETE FROM drill_sessions WHERE user_id = ?", (g.user_id,))
         conn.execute("""
             DELETE FROM decisions WHERE tournament_id IN (
                 SELECT id FROM tournaments WHERE user_id = ?
