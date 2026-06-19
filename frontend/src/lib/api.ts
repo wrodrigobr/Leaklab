@@ -771,6 +771,26 @@ export interface DrillStats {
   avg_delta: number | null;
 }
 
+// Ghost Table visual: estado fiel da mesa no ponto da decisão (stack/bet em CHIPS).
+export interface DrillTableSeat {
+  seat: number;
+  name: string;
+  stack: number;   // chips
+  bet: number;     // chips na street
+  folded: boolean;
+  active: boolean;
+  hero: boolean;
+}
+export interface DrillTableState {
+  seats: DrillTableSeat[];
+  button: number | null;
+  pot: number;        // chips
+  bb_chips: number;
+  street: string;
+  board: string[];
+  hero_cards: string | null;
+}
+
 export interface DrillSubmitResult {
   is_correct: boolean;
   best_action: string;
@@ -828,6 +848,10 @@ export const drill = {
 
   analysis: (decision_id: number) =>
     request<DrillAnalysisResult>(`/player/spots/drill/${decision_id}/analysis`),
+
+  // Ghost Table visual: estado FIEL da mesa no ponto da decisão (parse lazy).
+  table: (decision_id: number) =>
+    request<DrillTableState>(`/player/spots/drill/${decision_id}/table`),
 
   resetSessions: () =>
     request<{ ok: boolean; deleted: number }>("/player/drill-sessions/reset", { method: "DELETE" }),

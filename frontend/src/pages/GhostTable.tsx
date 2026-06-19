@@ -24,7 +24,7 @@ import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
 import { GtoMixedBadge } from "@/components/replayer/GtoMixedBadge";
 import { drill, gto } from "@/lib/api";
-import type { DrillSpot, DrillStats, DrillSubmitResult, ReplayStep, GtoStrategyAction } from "@/lib/api";
+import type { DrillSpot, DrillStats, DrillSubmitResult, ReplayStep, GtoStrategyAction, DrillTableState } from "@/lib/api";
 import { cn, formatAction } from "@/lib/utils";
 
 type Phase = "intro" | "loading" | "active" | "result" | "done";
@@ -149,9 +149,43 @@ function StatTile({ value, label }: { value: string; label: string }) {
 
 // ── Drill → ReplayStep adapter ────────────────────────────────────────────────
 
-function buildDrillStep(spot: DrillSpot): { step: ReplayStep; hero: string; heroCards: string[]; bb: number } {
+const _parseCards = (c: string | null | undefined): string[] =>
+  c ? (c.trim().startsWith('[')
+        ? (() => { try { return JSON.parse(c) as string[]; } catch { return []; } })()
+        : (c.match(/[2-9TJQKAakqjt][shdcSHDC]/g) ?? []))
+    : [];
+
+function buildDrillStep(spot: DrillSpot, tableState?: DrillTableState | null): { step: ReplayStep; hero: string; heroCards: string[]; bb: number } {
   const HERO = 'Hero';
   const bb   = spot.level_bb ?? 100;
+
+  // ── Caminho REAL: mesa fiel reconstruída do endpoint /table (folds/botão/stacks reais) ──
+  if (tableState && tableState.seats && tableState.seats.length) {
+    const realBb = tableState.bb_chips || bb;
+    const seats: Record<string, { player: string; stack: number; pos: string }> = {};
+    const bets:  Record<string, number> = {};
+    const folded: string[] = [];
+    let heroSeatNum = 1;
+    for (const s of tableState.seats) {
+      const sn = String(s.seat);
+      const name = s.hero ? HERO : s.name;
+      seats[sn] = { player: name, stack: Math.round(s.stack), pos: '' };
+      if (s.bet > 0) bets[sn] = Math.round(s.bet);
+      if (s.folded) folded.push(name);
+      if (s.hero) heroSeatNum = s.seat;
+    }
+    const heroCards = _parseCards(tableState.hero_cards ?? spot.hero_cards);
+    const step = {
+      type: 'action', street: tableState.street ?? spot.street ?? 'preflop',
+      seats, bets, folded,
+      pot: Math.round(tableState.pot), pot_bb: Math.round((tableState.pot / realBb) * 10) / 10,
+      bb: realBb, button: tableState.button ?? 1, board: tableState.board ?? [],
+      player: HERO, seat: heroSeatNum, is_hero: true,
+    } as unknown as ReplayStep;
+    return { step, hero: HERO, heroCards, bb: realBb };
+  }
+
+  // ── Fallback: aproximação (quando o /table ainda não carregou ou falhou) ──
   const heroStack = Math.round((spot.stack_bb ?? 20) * bb);
   const isPreflop = (spot.street ?? 'preflop') === 'preflop';
   const numP = Math.max(2, Math.min(9, spot.num_players ?? 6));
@@ -238,6 +272,7 @@ export default function GhostTable() {
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisOpen, setAnalysisOpen]     = useState(false);
   const [gtoStrategy, setGtoStrategy]       = useState<GtoStrategyAction[] | null>(null);
+  const [tableState, setTableState]         = useState<DrillTableState | null>(null);
   const [resetting, setResetting]           = useState(false);
   const [resetConfirm, setResetConfirm]     = useState(false);
 
@@ -250,6 +285,16 @@ export default function GhostTable() {
   const submitRef = useRef<((action: string) => Promise<void>) | null>(null);
 
   const current = spots[index] ?? null;
+
+  // Ghost Table visual: busca o estado FIEL da mesa (folds/botão/stacks reais) quando o spot muda.
+  useEffect(() => {
+    setTableState(null);
+    const id = current?.id;
+    if (!id) return;
+    let alive = true;
+    drill.table(id).then(t => { if (alive) setTableState(t); }).catch(() => {});
+    return () => { alive = false; };
+  }, [current?.id]);
 
   const submitAction = useCallback(async (action: string) => {
     if (!current || submitting) return;
@@ -369,7 +414,7 @@ export default function GhostTable() {
     const sit    = getSituation(current);
     const style  = SIT_STYLES[sit.variant];
     const SitIcon = style.icon;
-    const { step: drillStep, hero: drillHero, heroCards: drillCards, bb: drillBb } = buildDrillStep(current);
+    const { step: drillStep, hero: drillHero, heroCards: drillCards, bb: drillBb } = buildDrillStep(current, tableState);
     if (phase === "result") (drillStep as unknown as Record<string, unknown>).seat = undefined;
 
     // Quando facing_bet >= stack_bb, call e jam são equivalentes (all-in de qualquer forma).
@@ -860,7 +905,7 @@ export default function GhostTable() {
         const sit = getSituation(current);
         const style = SIT_STYLES[sit.variant];
         const SitIcon = style.icon;
-        const { step: drillStep, hero: drillHero, heroCards: drillCards, bb: drillBb } = buildDrillStep(current);
+        const { step: drillStep, hero: drillHero, heroCards: drillCards, bb: drillBb } = buildDrillStep(current, tableState);
 
         return (
           <div className="mx-auto max-w-3xl space-y-3">

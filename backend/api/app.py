@@ -1996,15 +1996,15 @@ def player_drill_table(decision_id: int):
         return jsonify({'error': 'Mão não encontrada no histórico'}), 404
     state = build_table_state_at_decision(hand, street)
     bb = float(state.get('bb') or ctx.get('level_bb') or 0) or 1.0
-    seats = [{**s, 'stack': round(s['stack'] / bb, 1), 'bet': round(s['bet'] / bb, 1)}
-             for s in state['seats']]
-    pot_bb = round(sum(s['bet'] for s in state['seats']) / bb, 1)
+    # seats em CHIPS (stack/bet crus) — o PokerTableV3 normaliza p/ BB via betUnit + bb.
+    pot_chips = round(sum(s['bet'] for s in state['seats']), 1)
     _sc = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
     board = (hand.board or [])[:_sc.get(street, 5)]
     return jsonify({
-        'seats':      seats,
+        'seats':      state['seats'],
         'button':     state.get('button'),
-        'pot':        pot_bb,
+        'pot':        pot_chips,
+        'bb_chips':   bb,
         'street':     street,
         'board':      board,
         'hero_cards': hand.hero_cards,
