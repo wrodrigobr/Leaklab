@@ -263,13 +263,15 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
             ref={gridRef}
             className="grid grid-cols-1 gap-x-6 gap-y-6 md:grid-cols-2 lg:grid-cols-12 lg:grid-flow-dense lg:auto-rows-[8px] lg:gap-y-0 items-start"
           >
-            <div className="lg:col-span-8"><V2EvTrendCard evSummary={s} /></div>
-            <div className="lg:col-span-4"><V2CoverageCard evSummary={s} /></div>
-            <div className="lg:col-span-7"><V2AiInsightsCard insights={aiInsights} locked={aiLocked} /></div>
-            <div className="lg:col-span-5"><V2StreetEvCard evSummary={s} /></div>
+            {/* Masonry de 2 colunas uniformes: TODO card col-span-6 (ver SECTION_SPAN) —
+                larguras mistas reabrem vãos. Hero cards normalizados (eram 8/4/7/5/4/8). */}
+            <div className="lg:col-span-6"><V2EvTrendCard evSummary={s} /></div>
+            <div className="lg:col-span-6"><V2CoverageCard evSummary={s} /></div>
+            <div className="lg:col-span-6"><V2AiInsightsCard insights={aiInsights} locked={aiLocked} /></div>
+            <div className="lg:col-span-6"><V2StreetEvCard evSummary={s} /></div>
             {/* UX-2 onda 3 — medição GTO (anel + barras) e resultado financeiro */}
-            <div className="lg:col-span-4"><V2QualityCard data={gtoQuality} pendingGto={pendingGto} /></div>
-            <div className="lg:col-span-8"><V2PositionCard data={gtoPosition} /></div>
+            <div className="lg:col-span-6"><V2QualityCard data={gtoQuality} pendingGto={pendingGto} /></div>
+            <div className="lg:col-span-6"><V2PositionCard data={gtoPosition} /></div>
             <div className="lg:col-span-6"><V2BankrollCard /></div>
             {CARD_ORDER.map((id) => {
               const card = renderCard(id, { v2: true });
