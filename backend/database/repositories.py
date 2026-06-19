@@ -378,7 +378,13 @@ def save_decisions(tournament_db_id: int, results: List[dict]):
             raw_pot  = spot_ctx.get('potSize') or 0
             raw_face = spot_ctx.get('facingSize') or 0
             pot_size_bb   = round(raw_pot  / level_bb_val, 1) if raw_pot  else None
-            facing_bet_bb = round(raw_face / level_bb_val, 1) if raw_face else None
+            # facing_bet em BB: prefere facingToBb (computação correta do pipeline,
+            # facing_to_total/bb) — o cálculo facingSize/level_bb dava valores errados
+            # (ex.: 0.2bb) que ainda contaminavam o hash do nó GTO no drill. Ver
+            # project_replay_facing_bet_node. Fallback ao cálculo antigo se ausente.
+            _facing_to_bb = spot_ctx.get('facingToBb')
+            facing_bet_bb = (round(float(_facing_to_bb), 1) if _facing_to_bb is not None
+                             else (round(raw_face / level_bb_val, 1) if raw_face else None))
             gto = r.get('gto', {})
             rows.append((
                 tournament_db_id,
