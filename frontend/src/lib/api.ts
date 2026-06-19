@@ -1289,6 +1289,7 @@ export interface SparringHand {
   insufficient_data: boolean;
   hand_id?: string;
   tournament_id?: number;
+  tournament_number?: string | null;   // número EXTERNO do torneio (ex.: 3954736118)
   tournament_name?: string | null;
   primary_decision_id?: number;
   steps?: SparringStep[];

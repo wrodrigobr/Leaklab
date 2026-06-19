@@ -2106,7 +2106,8 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
                    d.m_ratio, d.icm_pressure, d.stack_bb, d.position,
                    d.num_players, d.pot_size, d.facing_bet, d.is_3bet,
                    d.gto_label, d.gto_action,
-                   t.tournament_name, t.id AS tournament_id
+                   t.tournament_name, t.id AS tournament_id,
+                   t.tournament_id AS tournament_number
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ? AND d.hand_id = ? AND d.tournament_id = ?
@@ -2162,6 +2163,7 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
         "hand_id":               rows[0]["hand_id"],
         "tournament_id":         rows[0]["tournament_id"],
         "tournament_name":       rows[0]["tournament_name"],
+        "tournament_number":     rows[0].get("tournament_number"),
         "primary_decision_id":   primary_id,
         "steps":                 steps,
         "total_steps":           len(steps),

@@ -627,7 +627,11 @@ export default function Sparring() {
 
   // ── PLAYING / FEEDBACK — full-screen layout ──────────────────────────────
   if ((phase === "playing" || phase === "feedback") && current) {
-    const replayStep = replayHeroSteps[stepIndex] ?? null;
+    // SÓ revela o replay (que mostra a ação REAL do herói, ex.: "Hero raises") DEPOIS de
+    // responder. Durante a decisão (phase "playing") usa a mesa sintética sem a ação do
+    // herói — senão spoila a jogada antes do clique (e a mesa "muda sozinha" quando o
+    // fetch async do replay chega).
+    const replayStep = phase === "feedback" ? (replayHeroSteps[stepIndex] ?? null) : null;
     const { tableStep, hero: tableHero, heroCards: tableHeroCards, bb: tableBb } = buildSparringStep(current, replayStep);
     const actionKeys = getActionKeys(current);
     const cols = actionKeys.length === 4 ? "grid-cols-2" : "grid-cols-3";
@@ -650,6 +654,13 @@ export default function Sparring() {
             <Swords className="size-3 text-amber-400" aria-hidden />
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">Sparring</span>
           </div>
+          {hand && (hand.tournament_name || hand.hand_id) && (
+            <span className="hidden sm:flex items-center gap-2 font-mono text-[9px] text-muted-foreground/60 select-text truncate max-w-[300px]" title="Torneio / mão (debug)">
+              {hand.tournament_name && <span className="truncate max-w-[140px]">{hand.tournament_name}</span>}
+              {hand.tournament_number && <span className="shrink-0">T#{hand.tournament_number}</span>}
+              {hand.hand_id && <span className="shrink-0">#{hand.hand_id}</span>}
+            </span>
+          )}
           <div className="ml-auto">
             <StreetTimeline steps={steps} history={history} currentIndex={phase === "playing" ? stepIndex : -1} t={t} />
           </div>
