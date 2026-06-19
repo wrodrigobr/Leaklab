@@ -50,6 +50,10 @@ struct Input {
     max_iterations:            u32,
     #[serde(default = "default_target")]
     target_exploitability_pct: f64,
+    /// Budget de tempo (s): para o CFR ao atingir, devolvendo o melhor até então.
+    /// Garante throughput consistente — árvores grandes não estouram o timeout.
+    #[serde(default = "default_time_budget")]
+    time_budget_s:             u64,
     /// Quando > 0: resolve o game tree completo mas retorna a estratégia de OOP
     /// no nó onde IP apostou closest_to(facing_size_bb) após OOP checar.
     #[serde(default)]
@@ -62,6 +66,7 @@ struct Input {
 
 fn default_iters()  -> u32 { 1500 }
 fn default_target() -> f64 { 1.0  }
+fn default_time_budget() -> u64 { 150 }
 
 #[derive(Serialize, Clone)]
 struct ActionDetail {
@@ -207,8 +212,15 @@ fn run(inp: &Input) -> Result<Output, String> {
     // iterações — mesma cadência do solve() upstream.
     let mut final_exploit  = compute_exploitability(&game);
     let mut iterations_run = 0u32;
+    let solve_start = std::time::Instant::now();
     for t in 0..inp.max_iterations {
         if final_exploit <= target_chips {
+            break;
+        }
+        // Budget de tempo: para árvores grandes não estourarem o timeout do cliente —
+        // devolve o melhor alcançado dentro do orçamento (throughput consistente).
+        if solve_start.elapsed().as_secs() >= inp.time_budget_s {
+            final_exploit = compute_exploitability(&game);
             break;
         }
         solve_step(&game, t);

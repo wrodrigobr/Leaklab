@@ -75,17 +75,13 @@ def _solver_params_for_stack(stack_bb: float) -> dict:
         # Hetzner 8 vCPU / 16GB — todos os cores num solve (MAX_CONCURRENT=1, RAYON=8).
         # Com 1 árvore por vez dá ~13GB de RAM → cap 100bb (compressão liga p/ árvores
         # grandes). Iterações altas p/ fechar mais spots; timeouts ≤ 290 (< client 300s).
-        # Agora que o worker aplica params frescos (não os congelados=10), iterações
-        # de verdade. 5000 p/ ver a convergência real; ajustar após o 1º teste honesto.
+        # Solve por TEMPO: o budget (s) é o limite real — árvores grandes não estouram
+        # o timeout. max_iterations é só um teto alto; o CFR para no budget ou no alvo.
+        # timeout (client HTTP) = budget + margem.
         capped = min(float(stack_bb), 100.0)
-        if stack_bb < 20:
-            return {'max_iterations': 5000, 'target_exploitability_pct': 2.0, 'timeout': 500, 'effective_stack_bb': capped}
-        elif stack_bb < 40:
-            return {'max_iterations': 5000, 'target_exploitability_pct': 2.0, 'timeout': 500, 'effective_stack_bb': capped}
-        elif stack_bb < 60:
-            return {'max_iterations': 4000, 'target_exploitability_pct': 3.0, 'timeout': 500, 'effective_stack_bb': capped}
-        else:
-            return {'max_iterations': 3000, 'target_exploitability_pct': 3.0, 'timeout': 500, 'effective_stack_bb': capped}
+        target = 2.0 if stack_bb < 40 else 3.0
+        return {'max_iterations': 30000, 'target_exploitability_pct': target,
+                'time_budget_s': 150, 'timeout': 220, 'effective_stack_bb': capped}
     else:
         # Oracle test server 1 core / 1GB — cap agressivo para não travar
         capped = min(float(stack_bb), 20.0)
@@ -829,6 +825,7 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
             spot['max_iterations']            = params['max_iterations']
             spot['target_exploitability_pct'] = params['target_exploitability_pct']
             spot['effective_stack_bb']        = params['effective_stack_bb']
+            spot['time_budget_s']             = params.get('time_budget_s', 150)
 
             # Prefere solver remoto; cai para local se remoto indisponível
             if use_remote:
