@@ -454,7 +454,7 @@ export default function GhostTable() {
           </span>
         )}
         {current.hand_id && (
-          <span className="text-muted-foreground/40 shrink-0">#{current.hand_id}</span>
+          <span className="text-muted-foreground shrink-0 select-text font-mono" title="ID da mão (copie p/ avaliar o spot)">#{current.hand_id}</span>
         )}
         {current.played_at && (
           <span className="shrink-0">
