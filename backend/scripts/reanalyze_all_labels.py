@@ -22,10 +22,11 @@ if DRY:
 
 conn = get_conn()
 # DB dev tem o app.py vivo (WAL) — espera o lock em vez de falhar na hora.
-try:
-    conn.execute('PRAGMA busy_timeout=30000')
-except Exception:
-    pass
+if not getattr(conn, '_pg', False):   # PRAGMA é só SQLite; no Postgres aborta a transação
+    try:
+        conn.execute('PRAGMA busy_timeout=30000')
+    except Exception:
+        pass
 
 tournaments = conn.execute(
     "SELECT id, tournament_id FROM tournaments WHERE raw_text IS NOT NULL ORDER BY id"
