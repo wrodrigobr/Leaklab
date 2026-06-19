@@ -745,6 +745,7 @@ export interface DrillSpot {
   is_3bet: boolean;
   level_bb: number | null;
   tournament_name: string | null;
+  tournament_id: string | null;
   played_at: string | null;
   buy_in: number | null;
   note: string | null;

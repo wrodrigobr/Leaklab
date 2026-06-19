@@ -453,6 +453,9 @@ export default function GhostTable() {
             {current.tournament_name}
           </span>
         )}
+        {current.tournament_id && (
+          <span className="text-muted-foreground shrink-0 select-text font-mono" title="ID do torneio">T#{current.tournament_id}</span>
+        )}
         {current.hand_id && (
           <span className="text-muted-foreground shrink-0 select-text font-mono" title="ID da mão (copie p/ avaliar o spot)">#{current.hand_id}</span>
         )}
