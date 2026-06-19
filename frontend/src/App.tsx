@@ -25,7 +25,6 @@ import CoachesDirectory from "./pages/CoachesDirectory.tsx";
 import PublicCoachProfile from "./pages/PublicCoachProfile.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GhostTable from "./pages/GhostTable.tsx";
-import Sparring from "./pages/Sparring.tsx";
 import Training from "./pages/Training.tsx";
 import Academy from "./pages/Academy.tsx";
 import AcademyMath from "./pages/AcademyMath.tsx";
@@ -252,14 +251,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/sparring"
-              element={
-                <ProtectedRoute>
-                  <Sparring />
-                </ProtectedRoute>
-              }
-            />
+            {/* Sparring removido do produto até termos o arco sintético funcional (opção 2). */}
             <Route
               path="/training"
               element={

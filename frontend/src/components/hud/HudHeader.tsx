@@ -106,7 +106,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
       label: t("nav.training"), mobileLabel: t("nav.training"),
       to: "/training",
       icon: Dumbbell,
-      activePaths: ["/training", "/ghost", "/sparring"],
+      activePaths: ["/training", "/ghost"],
     },
     { label: t("nav.coach"),   mobileLabel: t("nav.coach"),   to: "/coach",   icon: Bot },
     { label: t("nav.coaches"), mobileLabel: t("nav.coaches"), to: "/coaches", icon: Users },

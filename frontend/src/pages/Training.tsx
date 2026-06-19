@@ -50,45 +50,7 @@ export default function Training() {
           </div>
         </div>
 
-        {/* ── Sparring Mode card ────────────────────────────────────────────── */}
-        <div className="flex flex-col rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
-          <div className="flex-1 p-6 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex size-11 items-center justify-center rounded-lg bg-amber-500/10 ring-1 ring-amber-500/30">
-                <Swords className="size-5 text-amber-400" aria-hidden />
-              </div>
-              <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 rounded-full px-2.5 py-1 ring-1 ring-amber-500/20">
-                {t("sparring.badge")}
-              </span>
-            </div>
-
-            <div>
-              <h2 className="text-lg font-bold text-foreground">{t("sparring.title")}</h2>
-              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
-                {t("sparring.desc")}
-              </p>
-            </div>
-
-            <ul className="space-y-2">
-              {(["f1", "f2", "f3"] as const).map((k) => (
-                <li key={k} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <CheckCircle2 className="size-3.5 text-amber-400 shrink-0 mt-0.5" aria-hidden />
-                  {t(`sparring.${k}`)}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="border-t border-amber-500/20 p-4">
-            <Link
-              to="/sparring"
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-widest text-black hover:bg-amber-400 transition-colors"
-            >
-              <Swords className="size-4" aria-hidden />
-              {t("sparring.cta")}
-            </Link>
-          </div>
-        </div>
+        {/* Sparring removido do hub até termos o arco sintético funcional (opção 2). */}
 
         {/* ── Academia card ─────────────────────────────────────────────────── */}
         <div className="flex flex-col rounded-xl border border-violet-500/30 bg-violet-500/5 overflow-hidden">
