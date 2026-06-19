@@ -98,8 +98,8 @@
   },
   "backToTraining": "Treino",
   "valSource": {
-    "gto_hand": "Solver · sua mão",
-    "gto_range": "Solver · range",
+    "gto_hand": "Solver",
+    "gto_range": "Solver",
     "gto_stored": "Solver",
     "heuristic": "Heurística — sem solver"
   }

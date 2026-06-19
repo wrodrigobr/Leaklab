@@ -636,7 +636,7 @@ export default function GhostTable() {
                 <div className={cn("flex items-center gap-3 rounded-xl border p-4 shrink-0", lastResult.is_correct ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5")}>
                   {lastResult.is_correct ? <CheckCircle2 className="size-8 shrink-0 text-success" aria-hidden /> : <XCircle className="size-8 shrink-0 text-destructive" aria-hidden />}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className={cn("font-bold", lastResult.is_correct ? "text-success" : "text-destructive")}>
                         {lastResult.is_correct ? t("result.correct") : t("result.wrong")}
                       </p>
@@ -1038,7 +1038,7 @@ export default function GhostTable() {
               : <XCircle     className="size-9 shrink-0 text-destructive" aria-hidden />
             }
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <p className={cn("text-lg font-bold", lastResult.is_correct ? "text-success" : "text-destructive")}>
                   {lastResult.is_correct ? t("result.correct") : t("result.wrong")}
                 </p>
