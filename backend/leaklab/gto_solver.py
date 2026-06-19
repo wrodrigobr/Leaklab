@@ -75,15 +75,18 @@ def _solver_params_for_stack(stack_bb: float) -> dict:
         # Hetzner 8 vCPU / 16GB — todos os cores num solve (MAX_CONCURRENT=1, RAYON=8).
         # Com 1 árvore por vez dá ~13GB de RAM → cap 100bb (compressão liga p/ árvores
         # grandes). Iterações altas p/ fechar mais spots; timeouts ≤ 290 (< client 300s).
-        capped = min(float(stack_bb), 100.0)   # cap 100bb (era 60): testar spots fundos com mais RAM
+        # TESTE DECISIVO: 20000 iterações p/ ver se a árvore de 2 sizes converge <10%
+        # com compute suficiente (RAM não é gargalo — 14GB livres; é tempo/iterações).
+        # timeout 1700s < client 1800s. Reverter depois do teste (era 1200/2000/1500).
+        capped = min(float(stack_bb), 100.0)
         if stack_bb < 20:
-            return {'max_iterations': 1200, 'target_exploitability_pct': 2.0,  'timeout': 200, 'effective_stack_bb': capped}
+            return {'max_iterations': 20000, 'target_exploitability_pct': 2.0, 'timeout': 1700, 'effective_stack_bb': capped}
         elif stack_bb < 40:
-            return {'max_iterations': 2000, 'target_exploitability_pct': 2.0,  'timeout': 280, 'effective_stack_bb': capped}
+            return {'max_iterations': 20000, 'target_exploitability_pct': 2.0, 'timeout': 1700, 'effective_stack_bb': capped}
         elif stack_bb < 60:
-            return {'max_iterations': 1500, 'target_exploitability_pct': 3.0,  'timeout': 280, 'effective_stack_bb': capped}
-        else:  # deep stack — agora resolve a profundidade real até 100bb (mais RAM)
-            return {'max_iterations': 1500, 'target_exploitability_pct': 3.0,  'timeout': 280, 'effective_stack_bb': capped}
+            return {'max_iterations': 20000, 'target_exploitability_pct': 3.0, 'timeout': 1700, 'effective_stack_bb': capped}
+        else:
+            return {'max_iterations': 20000, 'target_exploitability_pct': 3.0, 'timeout': 1700, 'effective_stack_bb': capped}
     else:
         # Oracle test server 1 core / 1GB — cap agressivo para não travar
         capped = min(float(stack_bb), 20.0)
@@ -720,8 +723,9 @@ def is_simple_spot(street: str, board: list[str], stack_bb: float, facing_size_b
     return is_rainbow and bet_is_small
 
 
-def _call_remote_solver(spot: dict, timeout: int = 300) -> Optional[dict]:
-    """Chama o solver remoto (Oracle Cloud). Retorna resultado ou None em caso de falha."""
+def _call_remote_solver(spot: dict, timeout: int = 1800) -> Optional[dict]:
+    """Chama o solver remoto. Retorna resultado ou None em caso de falha.
+    timeout alto (1800s) p/ acomodar solves longos de árvore rica (alta convergência)."""
     url = _remote_url()
     key = _remote_key()
     if not url or not key:
