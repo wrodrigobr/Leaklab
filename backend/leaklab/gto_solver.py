@@ -77,8 +77,8 @@ def _solver_params_for_stack(stack_bb: float) -> dict:
         # grandes). Iterações altas p/ fechar mais spots; timeouts ≤ 290 (< client 300s).
         # Solve por TEMPO: o budget (s) é o limite real — árvores grandes não estouram
         # o timeout. max_iterations é só um teto alto; o CFR para no budget ou no alvo.
-        # timeout (client HTTP) = budget + margem.
-        capped = min(float(stack_bb), 100.0)
+        # Cap 60bb (revertido de 100): com 1 size, 60bb cabe no limite de RAM do solver.
+        capped = min(float(stack_bb), 60.0)
         target = 2.0 if stack_bb < 40 else 3.0
         return {'max_iterations': 30000, 'target_exploitability_pct': target,
                 'time_budget_s': 150, 'timeout': 220, 'effective_stack_bb': capped}

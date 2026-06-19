@@ -142,14 +142,14 @@ fn run(inp: &Input) -> Result<Output, String> {
     // Parse board
     let board = parse_board(&inp.board, &inp.street)?;
 
-    // 2 bet sizes por street (era 1) — Hetzner 16GB aguenta a árvore maior, e mais
-    // tamanhos baixam a exploitability (a estratégia escolhe size por força da mão).
-    // Mantido em 2 (não 4) p/ não estourar RAM nem virar árvore que não converge no timeout.
-    let flop_bets  = BetSizeOptions::try_from(("33%, 75%", "2.5x"))
+    // 1 bet size por street — árvore compacta que cabe no limite de RAM do solver.
+    // (testamos 2 sizes, mas o gargalo real era iterações=10 congeladas, não a árvore;
+    //  2 sizes só estourava RAM/timeout sem ganho — revertido.)
+    let flop_bets  = BetSizeOptions::try_from(("50%", "2.5x"))
         .map_err(|e| format!("bet sizes inválidas: {e}"))?;
-    let turn_bets  = BetSizeOptions::try_from(("50%, 125%", "2.5x"))
+    let turn_bets  = BetSizeOptions::try_from(("75%", "2.5x"))
         .map_err(|e| format!("bet sizes inválidas: {e}"))?;
-    let river_bets = BetSizeOptions::try_from(("50%, 125%", "2x"))
+    let river_bets = BetSizeOptions::try_from(("75%", "2x"))
         .map_err(|e| format!("bet sizes inválidas: {e}"))?;
 
     let initial_state = match inp.street.to_lowercase().as_str() {
