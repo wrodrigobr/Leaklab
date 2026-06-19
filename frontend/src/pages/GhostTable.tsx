@@ -295,6 +295,7 @@ export default function GhostTable() {
   const [analysisOpen, setAnalysisOpen]     = useState(false);
   const [gtoStrategy, setGtoStrategy]       = useState<GtoStrategyAction[] | null>(null);
   const [tableState, setTableState]         = useState<DrillTableState | null>(null);
+  const [tableLoading, setTableLoading]     = useState(false);
   const [resetting, setResetting]           = useState(false);
   const [resetConfirm, setResetConfirm]     = useState(false);
 
@@ -313,9 +314,13 @@ export default function GhostTable() {
   useEffect(() => {
     setTableState(null);
     const id = current?.id;
-    if (!id) return;
+    if (!id) { setTableLoading(false); return; }
     let alive = true;
-    drill.table(id).then(t => { if (alive) setTableState(t); }).catch(() => {});
+    setTableLoading(true);
+    drill.table(id)
+      .then(t => { if (alive) setTableState(t); })
+      .catch(() => {})
+      .finally(() => { if (alive) setTableLoading(false); });
     return () => { alive = false; };
   }, [current?.id]);
 
@@ -557,7 +562,9 @@ export default function GhostTable() {
             {/* Table — pt-10 gives room for top-player cards that overflow above SVG viewBox */}
             <div className="flex-1 min-h-0 overflow-visible pt-10">
               <div className="mx-auto aspect-[16/10] max-w-[90%]" style={{ maxHeight: 'calc(100% - 2.5rem)' }}>
-                <PokerTableV3 step={drillStep} hero={drillHero} heroCards={drillCards} bb={drillBb} betUnit="bb" />
+                {tableLoading
+                  ? <div className="flex h-full w-full items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground/40" aria-hidden /></div>
+                  : <PokerTableV3 step={drillStep} hero={drillHero} heroCards={drillCards} bb={drillBb} betUnit="bb" />}
               </div>
             </div>
             {/* Mobile: actions/next below table */}
@@ -584,7 +591,7 @@ export default function GhostTable() {
                   <div className="grid grid-cols-3 gap-2">
                     {ACTION_KEYS.map(action => (
                       <button key={action} onClick={() => submitAction(action)}
-                        disabled={submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
+                        disabled={tableLoading || submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
                         title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
                         className="min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                         {t(`actions.${action}`)}
@@ -641,7 +648,7 @@ export default function GhostTable() {
                 <div className="grid grid-cols-2 gap-2 shrink-0">
                   {ACTION_KEYS.map(action => (
                     <button key={action} onClick={() => submitAction(action)}
-                      disabled={submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
+                      disabled={tableLoading || submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
                       title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
                       className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                       {t(`actions.${action}`)}
@@ -1010,13 +1017,19 @@ export default function GhostTable() {
 
             {/* Visual poker table */}
             <div className="rounded-xl overflow-hidden ring-1 ring-border/60">
-              <PokerTableV3
-                step={drillStep}
-                hero={drillHero}
-                heroCards={drillCards}
-                bb={drillBb}
-                betUnit="bb"
-              />
+              {tableLoading ? (
+                <div className="flex aspect-[16/10] items-center justify-center bg-hud-surface">
+                  <Loader2 className="size-6 animate-spin text-muted-foreground/40" aria-hidden />
+                </div>
+              ) : (
+                <PokerTableV3
+                  step={drillStep}
+                  hero={drillHero}
+                  heroCards={drillCards}
+                  bb={drillBb}
+                  betUnit="bb"
+                />
+              )}
             </div>
 
             {/* Timeout banner */}
@@ -1035,7 +1048,7 @@ export default function GhostTable() {
                 <button
                   key={action}
                   onClick={() => submitAction(action)}
-                  disabled={submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
+                  disabled={tableLoading || submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
                   title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
                   className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
                 >
