@@ -2081,7 +2081,9 @@ def get_sparring_hand(user_id: int, hand_id: str = None, tournament_id: int = No
                         JOIN tournaments t ON t.id = d.tournament_id
                         WHERE t.user_id = ? {clause}
                         GROUP BY d.hand_id, d.tournament_id
-                        HAVING total = covered AND total >= {int(min_decisions)}
+                        HAVING COUNT(*) = SUM(CASE WHEN d.gto_action IS NOT NULL AND d.gto_action != ''
+                                                   THEN 1 ELSE 0 END)
+                           AND COUNT(*) >= {int(min_decisions)}
                     ) sub
                     ORDER BY CASE WHEN sub.mistakes > 0 THEN 0 ELSE 1 END ASC, RANDOM()
                     LIMIT 1
