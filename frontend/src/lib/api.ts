@@ -781,6 +781,7 @@ export interface DrillTableSeat {
   folded: boolean;
   active: boolean;
   hero: boolean;
+  pos?: string;    // BTN/SB/BB/UTG…CO (badge de posição)
 }
 export interface DrillTableState {
   seats: DrillTableSeat[];

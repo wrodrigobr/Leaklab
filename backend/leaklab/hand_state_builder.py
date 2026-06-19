@@ -473,6 +473,7 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None,
             st['bet']   += amt
             st['stack']  = max(0.0, st['stack'] - amt)
 
+    pos_by_seat = _seat_positions(seat_nums, btn)
     return {
         'seats': [
             {'seat':   st['seat'],
@@ -481,10 +482,36 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None,
              'bet':    round(st['bet'], 1),
              'folded': st['folded'],
              'active': not st['folded'],
-             'hero':   st['hero']}
+             'hero':   st['hero'],
+             'pos':    pos_by_seat.get(st['seat'], '')}
             for st in sorted(by_name.values(), key=lambda x: x['seat'])
         ],
         'button': btn,
         'sb':     sb_amt,
         'bb':     bb_amt,
     }
+
+
+def _seat_positions(seat_nums, button) -> dict:
+    """Posição por assento (BTN/SB/BB/UTG…CO), clockwise a partir do botão. Assim a
+    mesa fiel mostra os badges de posição (sem isto, vinham vazios → 'blinds somem')."""
+    if not seat_nums or button not in seat_nums:
+        return {}
+    n = len(seat_nums)
+    bi = seat_nums.index(button)
+    order = [seat_nums[(bi + k) % n] for k in range(n)]   # botão primeiro, clockwise
+    if n == 2:
+        names = ['BTN', 'BB']            # heads-up: botão = SB, mas rotula BTN
+    else:
+        names = ['BTN', 'SB', 'BB']
+        rest = n - 3                     # posições não-blind/não-botão: UTG…CO
+        for k in range(rest):
+            if k == rest - 1:
+                names.append('CO')
+            elif k == rest - 2 and rest >= 3:
+                names.append('HJ')
+            elif k == 0:
+                names.append('UTG')
+            else:
+                names.append(f'UTG+{k}')
+    return {order[i]: names[i] for i in range(n)}

@@ -191,7 +191,7 @@ function buildDrillStep(spot: DrillSpot, tableState?: DrillTableState | null): {
     for (const s of tableState.seats) {
       const sn = String(s.seat);
       const name = s.hero ? HERO : `V${++villainN}`;
-      seats[sn] = { player: name, stack: Math.round(s.stack), pos: '' };
+      seats[sn] = { player: name, stack: Math.round(s.stack), pos: s.pos ?? '' };
       if (s.bet > 0) bets[sn] = Math.round(s.bet);
       if (s.folded) folded.push(name);
       if (s.hero) heroSeatNum = s.seat;
