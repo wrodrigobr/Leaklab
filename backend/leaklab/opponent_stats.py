@@ -22,11 +22,14 @@ from collections import defaultdict
 from typing import Optional
 
 # ── Gates de amostra (denominador mínimo p/ a taxa ser exibível) ─────────────────
+# Calibrados pelas referências de MTT 9-max: stats preflop (VPIP/PFR) estabilizam em
+# ~100; agressão/3-bet precisam de centenas; showdown (WTSD/W$SD) de milhares. Mostrar
+# uma taxa abaixo disso é ruído, não read. (Bandas/arquétipos = frente seguinte.)
 GATES = {
-    'vpip': 15, 'pfr': 15, 'threebet': 12, 'fold3bet': 10,
-    'cbet': 8, 'foldcbet': 8, 'af': 8, 'wtsd': 8,
+    'vpip': 100, 'pfr': 100, 'threebet': 750, 'fold3bet': 750,
+    'cbet': 500, 'foldcbet': 500, 'af': 500, 'wtsd': 1000,
 }
-MIN_HANDS_FOR_TYPE = 20          # mínimo de mãos vistas p/ arriscar um arquétipo
+MIN_HANDS_FOR_TYPE = 100         # mínimo de mãos vistas p/ arriscar um arquétipo (≈ VPIP estável)
 
 # Rótulos de POSIÇÃO usados como "nome" em dados anonimizados (GG anônimo, demos). Um
 # perfil keyed por posição agrega jogadores diferentes no mesmo assento → sem significado.

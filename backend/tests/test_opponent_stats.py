@@ -125,9 +125,11 @@ def test_finalize_gates_low_sample():
 
 
 def test_finalize_calling_station():
-    # 30 mãos de um vilão que paga muito, agride pouco, vai a showdown → calling_station
+    # vilão que paga muito, agride pouco, vai a showdown → calling_station. Amostra
+    # grande de propósito: com os gates calibrados (WTSD precisa 1000+), um station só
+    # é read confiável com volume — abaixo disso é ruído.
     hands = []
-    for i in range(30):
+    for i in range(1000):
         hands.append(_h(['STN', 'X'], [
             ('STN', 'preflop', 'calls', 3),     # VPIP alto, PFR 0
             ('X', 'preflop', 'raises', 3),
