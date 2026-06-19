@@ -75,18 +75,17 @@ def _solver_params_for_stack(stack_bb: float) -> dict:
         # Hetzner 8 vCPU / 16GB — todos os cores num solve (MAX_CONCURRENT=1, RAYON=8).
         # Com 1 árvore por vez dá ~13GB de RAM → cap 100bb (compressão liga p/ árvores
         # grandes). Iterações altas p/ fechar mais spots; timeouts ≤ 290 (< client 300s).
-        # TESTE DECISIVO: 20000 iterações p/ ver se a árvore de 2 sizes converge <10%
-        # com compute suficiente (RAM não é gargalo — 14GB livres; é tempo/iterações).
-        # timeout 1700s < client 1800s. Reverter depois do teste (era 1200/2000/1500).
+        # Agora que o worker aplica params frescos (não os congelados=10), iterações
+        # de verdade. 5000 p/ ver a convergência real; ajustar após o 1º teste honesto.
         capped = min(float(stack_bb), 100.0)
         if stack_bb < 20:
-            return {'max_iterations': 20000, 'target_exploitability_pct': 2.0, 'timeout': 1700, 'effective_stack_bb': capped}
+            return {'max_iterations': 5000, 'target_exploitability_pct': 2.0, 'timeout': 500, 'effective_stack_bb': capped}
         elif stack_bb < 40:
-            return {'max_iterations': 20000, 'target_exploitability_pct': 2.0, 'timeout': 1700, 'effective_stack_bb': capped}
+            return {'max_iterations': 5000, 'target_exploitability_pct': 2.0, 'timeout': 500, 'effective_stack_bb': capped}
         elif stack_bb < 60:
-            return {'max_iterations': 20000, 'target_exploitability_pct': 3.0, 'timeout': 1700, 'effective_stack_bb': capped}
+            return {'max_iterations': 4000, 'target_exploitability_pct': 3.0, 'timeout': 500, 'effective_stack_bb': capped}
         else:
-            return {'max_iterations': 20000, 'target_exploitability_pct': 3.0, 'timeout': 1700, 'effective_stack_bb': capped}
+            return {'max_iterations': 3000, 'target_exploitability_pct': 3.0, 'timeout': 500, 'effective_stack_bb': capped}
     else:
         # Oracle test server 1 core / 1GB — cap agressivo para não travar
         capped = min(float(stack_bb), 20.0)
@@ -822,7 +821,14 @@ def run_solver_worker(max_jobs: int = 10) -> dict:
 
         try:
             stack   = spot.get('effective_stack_bb', 30.0)
-            timeout = _solver_params_for_stack(stack)['timeout']
+            params  = _solver_params_for_stack(stack)
+            timeout = params['timeout']
+            # Sobrescreve params CONGELADOS no spot_json (foram gravados no enqueue, muitas
+            # vezes no tier 'test' → max_iterations=10). Sempre usa os params frescos do
+            # tier atual — senão mudar iterações/alvo aqui não tem efeito nenhum.
+            spot['max_iterations']            = params['max_iterations']
+            spot['target_exploitability_pct'] = params['target_exploitability_pct']
+            spot['effective_stack_bb']        = params['effective_stack_bb']
 
             # Prefere solver remoto; cai para local se remoto indisponível
             if use_remote:
