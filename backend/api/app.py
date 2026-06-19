@@ -1449,6 +1449,14 @@ def player_drill_submit():
         if norm_new in ('call', 'jam') and best_action in ('call', 'jam'):
             call_jam_equiv = True
 
+    # Guard: stack curtíssimo (≤2.5bb) — abrir/raisar já compromete o stack, então
+    # raise ≡ jam (shove). Ex.: a ~1bb, "qualquer raise é shove".
+    raise_jam_equiv = False
+    if (not top_match and stack_bb > 0 and stack_bb <= 2.5
+            and norm_new in ('raise', 'jam') and best_action in ('raise', 'jam')):
+        raise_jam_equiv = True
+    call_jam_equiv = call_jam_equiv or raise_jam_equiv
+
     # ── Avaliação pela distribuição GTO (princípio da indiferença) ───────────
     # O solver só mistura ações de EV ~equivalente: qualquer ação que ele jogue
     # não é erro de EV — a de maior frequência é a escolha prática (simplificação).
