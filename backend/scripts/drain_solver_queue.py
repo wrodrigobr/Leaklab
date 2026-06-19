@@ -35,11 +35,24 @@ def _reset_stale_running():
         conn.close()
 
 
+def _regrade_heuristic():
+    """#29: colhe a cobertura nova — re-grada SÓ as decisões heurísticas (heurística→GTO)
+    pra as estatísticas (ELO/Leak Finder/alignment) atualizarem sozinhas após o solve.
+    Subprocess isola: falha aqui não derruba o drain."""
+    import subprocess
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reanalyze_all_labels.py')
+    print("drain_solver_queue: novos nós → re-gradando heurísticas (#29)...")
+    subprocess.run([sys.executable, script, '--only-heuristic'], check=False)
+
+
 def main():
     max_jobs = int(sys.argv[1]) if len(sys.argv) > 1 else 20
     _reset_stale_running()
     result = run_solver_worker(max_jobs=max_jobs)
     print(f"drain_solver_queue: max_jobs={max_jobs} -> {result}")
+    # Só re-grada se fechou/copiou nós novos (senão é desperdício; steady-state = no-op).
+    if (result.get('solved', 0) + result.get('copied', 0)) > 0:
+        _regrade_heuristic()
 
 
 if __name__ == "__main__":

@@ -16,9 +16,15 @@ from leaklab.decision_engine_v11 import evaluate_decision
 import argparse
 _ap = argparse.ArgumentParser(description="Re-analisa labels de todas as decisões.")
 _ap.add_argument("--dry-run", action="store_true", help="só conta o que mudaria, NÃO grava")
-DRY = _ap.parse_args().dry_run
+_ap.add_argument("--only-heuristic", action="store_true",
+                 help="re-grada SÓ decisões hoje heurísticas (gto_label vazio) — barato, p/ colher cobertura nova")
+_args = _ap.parse_args()
+DRY = _args.dry_run
+ONLY_HEUR = _args.only_heuristic
 if DRY:
     print("== DRY-RUN — nada será gravado ==")
+if ONLY_HEUR:
+    print("== ONLY-HEURISTIC — re-grada só decisões sem GTO ==")
 
 conn = get_conn()
 # DB dev tem o app.py vivo (WAL) — espera o lock em vez de falhar na hora.
@@ -91,6 +97,11 @@ for row in tournaments:
             old_best  = db_row['best_action']
             old_gtolbl = db_row['gto_label']
             old_gtoact = db_row['gto_action']
+
+            # --only-heuristic: pula decisões que já têm GTO (só colhe heurística→GTO,
+            # evita jitter nas já-gradadas e é muito mais barato — usado pelo drain #29).
+            if ONLY_HEUR and old_gtolbl not in (None, '', 'wizard_pending'):
+                continue
 
             try:
                 result    = evaluate_decision(di)
