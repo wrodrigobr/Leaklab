@@ -166,9 +166,10 @@ function buildDrillStep(spot: DrillSpot, tableState?: DrillTableState | null): {
     const bets:  Record<string, number> = {};
     const folded: string[] = [];
     let heroSeatNum = 1;
+    let villainN = 0;   // anonimiza: V1, V2, V3... (no drill o nome real não importa)
     for (const s of tableState.seats) {
       const sn = String(s.seat);
-      const name = s.hero ? HERO : s.name;
+      const name = s.hero ? HERO : `V${++villainN}`;
       seats[sn] = { player: name, stack: Math.round(s.stack), pos: '' };
       if (s.bet > 0) bets[sn] = Math.round(s.bet);
       if (s.folded) folded.push(name);
