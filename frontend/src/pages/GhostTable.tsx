@@ -266,10 +266,14 @@ export default function GhostTable() {
       setSessionTotal((n) => n + 1);
       setLastResult(result);
       setPhase("result");
-      // Mostra o mix direto do resultado (sempre que houver) — garante os % no veredito.
-      setGtoStrategy(result.gto_strategy && result.gto_strategy.length ? result.gto_strategy : null);
-      // Enriquece com o lookup completo quando disponível.
-      if (current.street !== 'preflop') {
+      // Mostra o mix do RESULTADO (a MESMA estratégia hand-aware que gradeou) — garante
+      // que o display bate com o veredito. NÃO sobrescrever com o lookup AGREGADO do nó:
+      // a agregada (ex.: Fold 50%/Call 50%) contradiz o veredito hand-aware da SUA mão
+      // (onde fold pode ser raro → Erro). Só usa o lookup como FALLBACK quando o submit
+      // não trouxe estratégia. (feedback_card_display_untested: display ↔ veredito coerentes.)
+      const submitStrat = result.gto_strategy && result.gto_strategy.length ? result.gto_strategy : null;
+      setGtoStrategy(submitStrat);
+      if (current.street !== 'preflop' && !submitStrat) {
         gto.decisionLookup(current.id).then(r => {
           if (r.strategy && r.strategy.length > 0) setGtoStrategy(r.strategy);
         }).catch(() => {});
