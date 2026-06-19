@@ -401,3 +401,76 @@ def build_hand_state(hand: ParsedHand) -> HandState:
         metadata={'bb': bb, 'raw_hand': hand.raw_text,
                   'decision_index': 0, 'total_decisions': 0},
     )
+
+
+def build_table_state_at_decision(hand, target_street: str, hero_name=None) -> dict:
+    """Reconstrói o estado por assento ANTES da 1ª ação do hero em `target_street`
+    (Ghost Table visual — mesa fiel). Caminha hand.actions acumulando por assento:
+    folded, stack atual e bet em frente na street. **Folds e botão são fiéis**;
+    bets/stacks em potes multi-raise são best-effort (o parser dá o incremento do
+    raise, não o to-total). Devolve {seats:[...], button, sb, bb}."""
+    hero_name = hero_name or hand.hero
+    by_name: dict = {}
+    for s in (hand.seats or []):
+        by_name[s['name']] = {
+            'seat': int(s['seat']), 'name': s['name'], 'stack': float(s['stack']),
+            'bet': 0.0, 'folded': False, 'hero': s['name'] == hero_name,
+        }
+    btn = hand.button_seat
+    sb_amt, bb_amt = float(hand.sb or 0), float(hand.bb or 0)
+    if not by_name:
+        return {'seats': [], 'button': btn, 'sb': sb_amt, 'bb': bb_amt}
+
+    seat_nums = sorted(st['seat'] for st in by_name.values())
+    n = len(seat_nums)
+
+    # Postar blinds preflop (não vêm como ações no parser). SB/BB = assentos após o botão.
+    if btn in seat_nums and (sb_amt or bb_amt):
+        bi = seat_nums.index(btn)
+        if n == 2:   # heads-up: o botão é o SB
+            sb_seat, bb_seat = seat_nums[bi], seat_nums[(bi + 1) % n]
+        else:
+            sb_seat, bb_seat = seat_nums[(bi + 1) % n], seat_nums[(bi + 2) % n]
+        for st in by_name.values():
+            if st['seat'] == sb_seat:
+                st['bet'] = sb_amt
+                st['stack'] = max(0.0, st['stack'] - sb_amt)
+            elif st['seat'] == bb_seat:
+                st['bet'] = bb_amt
+                st['stack'] = max(0.0, st['stack'] - bb_amt)
+
+    cur_street = 'preflop'
+    for act in (hand.actions or []):
+        if act.street != cur_street:
+            cur_street = act.street
+            for st in by_name.values():
+                st['bet'] = 0.0   # nova street: zera os bets em frente
+        # para ANTES da 1ª ação do hero na street alvo (o ponto da decisão do drill)
+        if act.player == hero_name and act.street == target_street:
+            break
+        st = by_name.get(act.player)
+        if not st:
+            continue
+        a = (act.action or '').lower()
+        amt = float(act.amount or 0)
+        if 'fold' in a or 'muck' in a:
+            st['folded'] = True
+        elif amt > 0 and a in ('bets', 'calls', 'raises', 'all-in'):
+            st['bet']   += amt
+            st['stack']  = max(0.0, st['stack'] - amt)
+
+    return {
+        'seats': [
+            {'seat':   st['seat'],
+             'name':   'Hero' if st['hero'] else st['name'],
+             'stack':  round(st['stack'], 1),
+             'bet':    round(st['bet'], 1),
+             'folded': st['folded'],
+             'active': not st['folded'],
+             'hero':   st['hero']}
+            for st in sorted(by_name.values(), key=lambda x: x['seat'])
+        ],
+        'button': btn,
+        'sb':     sb_amt,
+        'bb':     bb_amt,
+    }
