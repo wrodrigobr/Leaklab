@@ -33,6 +33,26 @@ type Phase = "intro" | "loading" | "active" | "result" | "done";
 const ACTION_KEYS = ["fold", "check", "call", "bet", "raise", "jam"] as const;
 const PRESSURE_TIME = 30;
 
+// Ações mecanicamente possíveis no spot — o resto fica desabilitado (ex.: não existe
+// "bet" preflop: abrir é raise; não existe "check"/"fold" pra quem está livre etc.).
+function legalActions(spot: DrillSpot): Set<string> {
+  const isPreflop = (spot.street ?? "preflop") === "preflop";
+  const facing    = Number(spot.facing_bet ?? 0) > 0;
+  const pos       = (spot.position ?? "").toUpperCase();
+  if (isPreflop) {
+    // vs raise (3-bet pot): fold / call / raise(3bet) / shove. Sem check, sem bet.
+    if (facing) return new Set(["fold", "call", "raise", "jam"]);
+    // BB sem raise na frente: free play — check / raise / shove (não há o que foldar/pagar).
+    if (pos === "BB") return new Set(["check", "raise", "jam"]);
+    // Abrindo o pote (só blinds): fold / call(limp) / raise / shove. Sem check, sem bet.
+    return new Set(["fold", "call", "raise", "jam"]);
+  }
+  // Postflop enfrentando aposta: fold / call / raise / shove.
+  if (facing) return new Set(["fold", "call", "raise", "jam"]);
+  // Postflop primeiro a agir: check / bet / shove. Sem fold/call/raise.
+  return new Set(["check", "bet", "jam"]);
+}
+
 // ── Card parser ───────────────────────────────────────────────────────────────
 
 function parseCards(raw: string | null): CardData[] {
@@ -287,6 +307,7 @@ export default function GhostTable() {
   const submitRef = useRef<((action: string) => Promise<void>) | null>(null);
 
   const current = spots[index] ?? null;
+  const legalSet = current ? legalActions(current) : new Set<string>(ACTION_KEYS);
 
   // Ghost Table visual: busca o estado FIEL da mesa (folds/botão/stacks reais) quando o spot muda.
   useEffect(() => {
@@ -563,7 +584,7 @@ export default function GhostTable() {
                   <div className="grid grid-cols-3 gap-2">
                     {ACTION_KEYS.map(action => (
                       <button key={action} onClick={() => submitAction(action)}
-                        disabled={submitting || timedOut || (action === 'jam' && isCallEqualToJam)}
+                        disabled={submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
                         title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
                         className="min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                         {t(`actions.${action}`)}
@@ -620,7 +641,7 @@ export default function GhostTable() {
                 <div className="grid grid-cols-2 gap-2 shrink-0">
                   {ACTION_KEYS.map(action => (
                     <button key={action} onClick={() => submitAction(action)}
-                      disabled={submitting || timedOut || (action === 'jam' && isCallEqualToJam)}
+                      disabled={submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
                       title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
                       className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                       {t(`actions.${action}`)}
@@ -1014,7 +1035,7 @@ export default function GhostTable() {
                 <button
                   key={action}
                   onClick={() => submitAction(action)}
-                  disabled={submitting || timedOut || (action === 'jam' && isCallEqualToJam)}
+                  disabled={submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
                   title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
                   className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
                 >
