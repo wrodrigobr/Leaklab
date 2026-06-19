@@ -232,7 +232,7 @@ function sampleConfidence(n: number): { level: "low" | "medium" | "high"; label:
   if (n < 200) return {
     level: "low",
     label: "Amostra baixa",
-    tooltip: `${n} mãos — intervalo de confiança alto (>±10pp em VPIP/PFR). Os números aqui são DIRETIONAIS, não definitivos. Atingir 200+ mãos pra leitura confiável; 1000+ pra benchmarking.`,
+    tooltip: `${n} mãos — intervalo de confiança alto (>±10pp em VPIP/PFR). Com pouca amostra os números são DIRECIONAIS: indicam a tendência (mais tight/loose/passivo), não valores exatos — ±alguns pontos não mudam o read. Mire 200+ mãos pra leitura confiável; 1000+ pra benchmarking.`,
   };
   if (n < 1000) return {
     level: "medium",

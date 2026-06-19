@@ -31,6 +31,58 @@ GATES = {
 }
 MIN_HANDS_FOR_TYPE = 100         # mínimo de mãos vistas p/ arriscar um arquétipo (≈ VPIP estável)
 
+# ── Referências MTT 9-max (fonte ÚNICA das bandas/flags) ─────────────────────────
+# Cada stat: faixa SAUDÁVEL (lo, hi) + corte ABAIXO (cutoff, flag) + corte ACIMA + min
+# amostra. Os flags são DIRECIONAIS (tendência de exploit, não veredito): perto da faixa
+# = equilibrado; quanto mais fora, mais forte a tendência. Unidade '%' (taxa) ou 'x' (AF).
+# Valores em % (taxa) / ratio (af). 'below'/'above' = (cutoff, flag_curto).
+STAT_REFERENCES = {
+    'vpip':         {'healthy': (18, 24), 'below': (15, 'nit'),         'above': (28, 'loose'),       'min': 100,  'unit': '%'},
+    'pfr':          {'healthy': (15, 21), 'below': (15, 'passivo'),      'above': (25, 'maniac'),      'min': 100,  'unit': '%'},
+    'af':           {'healthy': (2, 3),   'below': (1, 'passivo'),       'above': (4, 'bluff-happy'),  'min': 500,  'unit': 'x'},
+    'wtsd':         {'healthy': (25, 30), 'below': (23, 'folda demais'), 'above': (34, 'station'),     'min': 1000, 'unit': '%'},
+    'w_at_sd':      {'healthy': (49, 54), 'below': (47, 'paga demais'),  'above': (57, 'nitty'),       'min': 2000, 'unit': '%'},
+    'cbet_pct':     {'healthy': (55, 75), 'below': (50, 'só value'),     'above': (80, 'auto-cbet'),   'min': 500,  'unit': '%'},
+    'three_bet':    {'healthy': (5, 10),  'below': (4, 'tight'),         'above': (13, 'largo'),       'min': 750,  'unit': '%'},
+    'fold_to_3bet': {'healthy': (50, 60), 'below': (40, 'teimoso'),      'above': (65, 'over-fold'),   'min': 750,  'unit': '%'},
+    'steal_pct':    {'healthy': (30, 40), 'below': (30, 'passivo'),      'above': (45, 'loose'),       'min': 500,  'unit': '%'},
+}
+
+
+def classify_stat(key: str, value, sample=None) -> Optional[dict]:
+    """Classifica o valor de um stat na banda vs a referência MTT. Devolve
+    {band, flag, healthy} — band ∈ {below, healthy, above, low_sample}; flag direcional
+    (None quando saudável/sem amostra). value na unidade do stat (vpip 0-100, af ratio)."""
+    ref = STAT_REFERENCES.get(key)
+    if ref is None or value is None:
+        return None
+    if sample is not None and sample < ref['min']:
+        return {'band': 'low_sample', 'flag': None, 'healthy': ref['healthy']}
+    if value > ref['above'][0]:
+        return {'band': 'above', 'flag': ref['above'][1], 'healthy': ref['healthy']}
+    if value < ref['below'][0]:
+        return {'band': 'below', 'flag': ref['below'][1], 'healthy': ref['healthy']}
+    return {'band': 'healthy', 'flag': None, 'healthy': ref['healthy']}
+
+
+def player_stat_flags(stats: dict) -> dict:
+    """Flags direcionais p/ os stats do PRÓPRIO jogador (get_player_stats) — alimenta o
+    HUD do dashboard. Gate por total_hands vs o min de cada stat (proxy de amostra)."""
+    sample = stats.get('total_hands') or 0
+    out: dict = {}
+    for key in STAT_REFERENCES:
+        c = classify_stat(key, stats.get(key), sample)
+        if c is not None:
+            out[key] = c
+    # Gap VPIP–PFR (red flag de passividade > ~9 pts)
+    vpip, pfr = stats.get('vpip'), stats.get('pfr')
+    if vpip is not None and pfr is not None and sample >= 100:
+        gap = round(vpip - pfr, 1)
+        band = 'above' if gap > 9 else 'healthy'
+        out['gap'] = {'band': band, 'flag': ('passivo' if gap > 9 else None),
+                      'value': gap, 'healthy': (3, 5)}
+    return out
+
 # Rótulos de POSIÇÃO usados como "nome" em dados anonimizados (GG anônimo, demos). Um
 # perfil keyed por posição agrega jogadores diferentes no mesmo assento → sem significado.
 _POSITION_LABELS = {'SB', 'BB', 'UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'MP', 'MP1', 'MP2'}
