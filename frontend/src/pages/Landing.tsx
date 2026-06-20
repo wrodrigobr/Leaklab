@@ -37,7 +37,7 @@ function Navbar() {
           </Link>
           <Link
             to="/login"
-            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="hidden sm:flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             {t("nav.startFree")} <ChevronRight className="size-3" />
           </Link>
