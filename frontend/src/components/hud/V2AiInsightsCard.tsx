@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Sparkles, Lock } from "lucide-react";
 
@@ -28,8 +28,27 @@ export function V2AiInsightsCard({ insights, locked }: Props) {
   const go = (d: number) =>
     setIdx((i) => (i + d + insights.length) % insights.length);
 
+  // Swipe lateral em telas touch: arrastar p/ a esquerda = próximo, direita = anterior.
+  // Só dispara em gesto horizontal (|dx|>|dy|) → não atrapalha o scroll vertical.
+  const touch = useRef<{ x: number; y: number } | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touch.current;
+    touch.current = null;
+    if (!start || locked || insights.length < 2) return;
+    const dx = e.changedTouches[0].clientX - start.x;
+    const dy = e.changedTouches[0].clientY - start.y;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+  };
+
   return (
-    <div className="rounded-xl ring-1 ring-blue-400/25 bg-gradient-to-br from-blue-500/10 to-card/60 p-4 flex flex-col">
+    <div
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      style={!locked && insights.length > 1 ? { touchAction: "pan-y" } : undefined}
+      className="rounded-xl ring-1 ring-blue-400/25 bg-gradient-to-br from-blue-500/10 to-card/60 p-4 flex flex-col">
       <div className="flex items-center justify-between mb-2">
         <span className="inline-flex items-center gap-1.5 rounded-full ring-1 ring-blue-400/40 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-blue-300">
           <Sparkles className="size-3" /> {t("v2.aiTitle")}
