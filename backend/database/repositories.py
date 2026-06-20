@@ -4577,7 +4577,8 @@ def get_leak_graph_data(user_id: int, days: int = 90, lang: str = 'pt-BR') -> di
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE t.user_id = ?
-              AND d.label IN ('small_mistake','clear_mistake')
+              AND (d.label IN ('small_mistake','clear_mistake')
+                   OR d.gto_label IN ('gto_critical','gto_minor_deviation'))
               AND t.imported_at >= ?
         """), (user_id, cutoff)).fetchall()
     finally:
