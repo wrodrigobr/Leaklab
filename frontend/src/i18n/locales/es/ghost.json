@@ -97,6 +97,7 @@
     "streakLabel": "Racha final"
   },
   "backToTraining": "Entrenamiento",
+  "rotatePrompt": "Gira el teléfono al modo horizontal",
   "valSource": {
     "gto_hand": "Solver",
     "gto_range": "Solver",

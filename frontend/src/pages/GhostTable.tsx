@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
+  ArrowLeft,
   ArrowRight,
   BookOpen,
   CheckCircle2,
@@ -10,6 +11,7 @@ import {
   Clock,
   Flame,
   Loader2,
+  RotateCw,
   ShieldAlert,
   Swords,
   Target,
@@ -18,10 +20,13 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { AiText } from "@/components/ui/AiText";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
+import { useTableOrientation } from "@/hooks/use-table-orientation";
+import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
 import { GtoMixedBadge } from "@/components/replayer/GtoMixedBadge";
 import { drill, gto } from "@/lib/api";
@@ -279,6 +284,11 @@ function buildDrillStep(spot: DrillSpot, tableState?: DrillTableState | null): {
 
 export default function GhostTable() {
   const { t } = useTranslation("ghost");
+  const navigate = useNavigate();
+  const tableOrientation = useTableOrientation();
+  const landscapeMobile = useIsLandscapeMobile();
+  // Celular: mesa em paisagem (tela cheia) OU em pé (pede pra girar). Desktop (≥1024) = false.
+  const mobileGhost = landscapeMobile || tableOrientation === "portrait";
 
   const [phase, setPhase]                   = useState<Phase>("intro");
   const [spots, setSpots]                   = useState<DrillSpot[]>([]);
@@ -436,6 +446,169 @@ export default function GhostTable() {
   };
 
   const accuracy = sessionTotal > 0 ? Math.round((sessionCorrect / sessionTotal) * 100) : 0;
+
+  // ── Mobile fullscreen-landscape drill (mirror do Replayer): mesa preenche a tela,
+  //    ações/feedback flutuam. Celular em pé pede pra girar. Desktop (≥1024) cai fora. ──
+  if (mobileGhost && current && (phase === "active" || (phase === "result" && lastResult))) {
+    // Celular em PÉ: a mesa só roda em landscape → pede pra girar o aparelho.
+    if (tableOrientation === "portrait") {
+      return (
+        <div className="h-dvh flex flex-col items-center justify-center gap-5 bg-background hud-scanline px-10 text-center"
+          style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
+          <RotateCw className="size-14 text-primary" />
+          <p className="font-mono text-[13px] uppercase tracking-widest text-muted-foreground leading-relaxed">{t("rotatePrompt")}</p>
+          <button onClick={() => navigate("/training")}
+            className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground/70 transition-colors hover:text-primary">{t("backToTraining")}</button>
+        </div>
+      );
+    }
+
+    const { step: drillStep, hero: drillHero, heroCards: drillCards, bb: drillBb } = buildDrillStep(current, tableState);
+    if (phase === "result") (drillStep as unknown as Record<string, unknown>).seat = undefined;
+
+    // Quando facing_bet >= stack_bb, call e jam são equivalentes (all-in de qualquer forma).
+    const isCallEqualToJam =
+      (current.facing_bet ?? 0) > 0 &&
+      (current.stack_bb ?? 0) > 0 &&
+      (current.facing_bet ?? 0) >= (current.stack_bb ?? 9999) * 0.95;
+
+    return (
+      <div className="h-dvh relative overflow-hidden hud-scanline"
+        style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
+        {/* Mesa tela cheia (fundo transparente) */}
+        <div className="absolute inset-0 flex items-center justify-center p-0.5">
+          <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "1160 / 710" }}>
+            {tableLoading
+              ? <div className="flex h-full w-full items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground/40" aria-hidden /></div>
+              : <PokerTableV3 step={drillStep} hero={drillHero} heroCards={drillCards} bb={drillBb} betUnit="bb" orientation="landscape" fill />}
+          </div>
+        </div>
+
+        {/* Voltar — topo-esquerda */}
+        <button onClick={() => navigate("/training")}
+          className="absolute top-2 left-2 z-30 inline-flex items-center gap-1.5 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground ring-1 ring-border transition-colors hover:text-primary">
+          <ArrowLeft className="size-3.5" /> {t("backToTraining")}
+        </button>
+
+        {/* Progresso + streak + timer — topo-direita */}
+        <div className="absolute top-2 right-2 z-30 flex items-center gap-2.5 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 ring-1 ring-border">
+          <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{index + 1}/{spots.length}</span>
+          <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{sessionCorrect}/{sessionTotal}</span>
+          {pressureMode && streak > 0 && (
+            <span className="flex items-center gap-0.5 font-mono text-[10px] font-bold text-amber-400">
+              <Flame className="size-3" aria-hidden />{streak}
+            </span>
+          )}
+          {pressureMode && <TimerRing timeLeft={timeLeft} />}
+        </div>
+
+        {/* ── Ações (active) — barra flutuante inferior ── */}
+        {phase === "active" && (
+          <>
+            {timedOut && (
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full bg-destructive/15 backdrop-blur px-3 py-1.5 ring-1 ring-destructive/40">
+                <Timer className="size-3.5 text-destructive shrink-0" aria-hidden /><span className="font-mono text-[11px] font-semibold text-destructive">{t("pressure.timedOut")}</span>
+              </div>
+            )}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex gap-2 rounded-full bg-background/80 backdrop-blur px-2 py-1.5 ring-1 ring-border shadow-lg">
+              {ACTION_KEYS.filter(a => legalSet.has(a)).map(action => (
+                <button key={action} onClick={() => submitAction(action)}
+                  disabled={tableLoading || submitting || timedOut || (action === 'jam' && isCallEqualToJam)}
+                  title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
+                  className="min-w-[52px] rounded-full border border-border bg-hud-surface px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-foreground hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
+                  {t(`actions.${action}`)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ── Feedback (result) — card flutuante inferior ── */}
+        {phase === "result" && lastResult && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 w-[min(92vw,460px)] rounded-2xl bg-background/90 backdrop-blur p-3 ring-1 ring-border shadow-2xl space-y-2.5">
+            <div className="flex items-center gap-2.5">
+              {lastResult.is_correct
+                ? <CheckCircle2 className="size-6 shrink-0 text-success" aria-hidden />
+                : <XCircle className="size-6 shrink-0 text-destructive" aria-hidden />}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <p className={cn("font-bold text-sm", lastResult.is_correct ? "text-success" : "text-destructive")}>
+                    {lastResult.is_correct ? t("result.correct") : t("result.wrong")}
+                  </p>
+                  {lastResult.mixed && <GtoMixedBadge label="gto_mixed" size="xs" />}
+                  {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
+                  {(lastResult.xp?.gained ?? 0) > 0 && (
+                    <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-300 ring-1 ring-amber-400/30">
+                      +{lastResult.xp!.gained} XP
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground truncate">{t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}</p>
+              </div>
+              {pressureMode && streak > 0 && (
+                <div className="flex items-center gap-1 font-mono text-sm font-bold text-amber-400 shrink-0">
+                  <Flame className="size-4" aria-hidden />{streak}
+                </div>
+              )}
+            </div>
+
+            {gtoStrategy && gtoStrategy.length > 0 && (
+              <div className="rounded-lg border border-border/40 bg-muted/5 px-2.5 py-1.5">
+                <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-1">GTO</p>
+                <GtoStrategyPanel strategy={gtoStrategy} playedAction={lastResult.new_action} compact />
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={analysis ? () => setAnalysisOpen(true) : requestAnalysis}
+                disabled={analysisLoading}
+                className={cn(
+                  "inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 font-mono text-[11px] font-semibold transition-colors disabled:opacity-60",
+                  analysis
+                    ? "border-primary/50 bg-primary/10 text-primary hover:bg-primary/20"
+                    : "border-border bg-hud-surface text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"
+                )}>
+                {analysisLoading
+                  ? <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                  : <BookOpen className="size-3.5" aria-hidden />}
+                <span>{analysis ? t("result.viewAnalysis") : t("result.requestAnalysis")}</span>
+              </button>
+              <button onClick={nextSpot}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors">
+                {t("next")} <ArrowRight className="size-4" aria-hidden />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── AI Analysis sheet ── */}
+        {analysisOpen && (
+          <div className="fixed inset-0 z-[200] flex flex-col justify-end" onClick={() => setAnalysisOpen(false)}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-background p-4 shadow-2xl space-y-3"
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <p className="font-mono text-xs uppercase tracking-widest text-primary">{t("result.engineNote")}</p>
+                <button onClick={() => setAnalysisOpen(false)} className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors">✕</button>
+              </div>
+              {analysis && <AiText>{analysis}</AiText>}
+              <div className="flex gap-3 pt-2 border-t border-border/40">
+                <button onClick={() => { setAnalysisOpen(false); nextSpot(); }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors">
+                  {t("next")} <ArrowRight className="size-4" aria-hidden />
+                </button>
+                <button onClick={() => setAnalysisOpen(false)}
+                  className="rounded-lg border border-border px-4 py-2.5 font-mono text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  {t("result.closeModal")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // ── Full-screen layout: active + result ─────────────────────────────────────
   if (current && (phase === "active" || (phase === "result" && lastResult))) {

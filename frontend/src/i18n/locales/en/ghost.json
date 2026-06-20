@@ -97,6 +97,7 @@
     "streakLabel": "Final streak"
   },
   "backToTraining": "Training",
+  "rotatePrompt": "Rotate your phone to landscape",
   "valSource": {
     "gto_hand": "Solver",
     "gto_range": "Solver",
