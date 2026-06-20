@@ -22,14 +22,19 @@ type Geo = {
   RXF: number; RYF: number; FELT_MX: number; FELT_MY: number;
   boardW: number; boardH: number; boardGap: number;
   seatDX: number;  // nudge horizontal dos assentos (px) — ajuste fino de centragem
+  podW: number; podH: number;   // tamanho-base do pod (antes do scale S)
+  cardW: number; cardH: number; // tamanho-base de cada carta (antes do scale S)
+  compactPod: boolean;          // true = pod 1 linha (nome + stack inline); false = 2 linhas
 };
 const GEO_LANDSCAPE: Geo = {
   CX: 560, CY: 340, RX_SEAT: 452, RY_SEAT: 272, VBW: 1120, VBH: 630, aspect: "16 / 10", S: 1,
   RXF: 414, RYF: 218, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8, seatDX: 0,
+  podW: 168, podH: 64, cardW: 64, cardH: 96, compactPod: false,
 };
 const GEO_PORTRAIT: Geo = {
-  CX: 372, CY: 472, RX_SEAT: 311, RY_SEAT: 404, VBW: 744, VBH: 980, aspect: "744 / 980", S: 0.66,
-  RXF: 268, RYF: 395, FELT_MX: 20, FELT_MY: 20, boardW: 50, boardH: 82, boardGap: 6, seatDX: 0,
+  CX: 362, CY: 464, RX_SEAT: 300, RY_SEAT: 393, VBW: 728, VBH: 932, aspect: "728 / 932", S: 0.66,
+  RXF: 262, RYF: 392, FELT_MX: 20, FELT_MY: 20, boardW: 50, boardH: 82, boardGap: 6, seatDX: 0,
+  podW: 150, podH: 40, cardW: 80, cardH: 116, compactPod: true,
 };
 // Geometria CORRENTE — mutável por render. Seguro: o build do SVG é síncrono (useEffect)
 // e o Replayer tem 1 mesa; setado no topo do effect antes de qualquer função de render.
@@ -238,9 +243,9 @@ function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
 //    do centro falhava porque a mesa é oval); pula as cartas dos bottom seats.
 //  • Dealer: lateral, colado no pod — 4 candidatos (dir/esq/baixo/cima), escolhe o
 //    válido (sem overlap, dentro do felt), preferindo o lado outboard.
-// Tamanhos BASE (landscape); em portrait tudo é escalado por G.S — mesma proporção,
-// validado em chip_geometry_portrait_check.mjs (0 sobreposições).
-const _HW = 84, _HH = 32, _CARD_HW = 64 + 6 / 2, _CH = 96;
+// Tamanhos BASE de fichas/dealer (landscape), escalados por G.S. Pod/cartas vêm da geometria
+// corrente (G.podW/H, G.cardW/H) — portrait tem pod 1-linha menor + cartas maiores.
+// Validado em chip_geometry_portrait_check.mjs (0 sobreposições).
 const _CLU_UP = 30, _GAP = 14, _DRX = 20, _DRY = 12;
 function _boardBox() {
   return { x1: G.CX - (5 * G.boardW + 4 * G.boardGap) / 2, y1: G.CY - G.boardH / 2 - 6,
@@ -261,7 +266,8 @@ function _ovl(a: {x1:number;y1:number;x2:number;y2:number}, b: {x1:number;y1:num
 }
 function placeBetAndDealer(px: number, py: number) {
   const S = G.S;
-  const HW = _HW * S, HH = _HH * S, CARD_HW = _CARD_HW * S, CH = _CH * S;
+  // Tamanhos do pod/cartas vêm da geometria corrente (portrait tem pod menor + cartas maiores).
+  const HW = (G.podW / 2) * S, HH = (G.podH / 2) * S, CARD_HW = ((2 * G.cardW + 6) / 2) * S, CH = G.cardH * S;
   const CLU = _CLU_UP * S, GAP = _GAP * S, DRX = _DRX * S, DRY = _DRY * S;
   const dvx = G.CX - px, dvy = G.CY - py, len = Math.hypot(dvx, dvy) || 1;
   const ux = dvx / len, uy = dvy / len;            // inboard (pod→centro)
@@ -347,7 +353,7 @@ function renderSeatsAndChips(
   const seatNums = Object.keys(ev.seats).map(Number).sort((a, b) => a - b);
   const heroSeatNum = seatNums.find((sn) => ev.seats[sn]?.player === hero);
   const layout = buildLayout(seatNums, heroSeatNum);
-  const bw = 168, bh = 64, brad = 32;
+  const bw = G.podW, bh = G.podH, brad = G.compactPod ? G.podH / 2 : 32;
   let seatsHtml = "", chipsHtml = "";
 
   seatNums.forEach((sn) => {
@@ -376,7 +382,7 @@ function renderSeatsAndChips(
     let html = `<g opacity="${opacity}">`;
 
     // Cards — always above the pod; bottom 33% hidden behind pod (pod drawn after cards)
-    const cw = 64, ch = 96, cg = 6;
+    const cw = G.cardW, ch = G.cardH, cg = 6;
     if (isHero && heroCards.length === 2) {
       const cardY = by - Math.round(ch * 0.67);
       html += cardSVG(heroCards[0], pos.x - cw - cg / 2, cardY, cw, ch);
@@ -407,25 +413,38 @@ function renderSeatsAndChips(
       html += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${brad}" fill="rgba(201,168,64,0.07)"/>`;
     }
 
-    // Name — substituído pela ação quando o jogador está atuando
+    // Stack (valor) + nome — nome vira ação quando o jogador está atuando
+    const sv = (ev as unknown as Record<string, Record<string, number>>)["stacks"]?.[sn] ?? d.stack;
     const displayName = (aliases[d.player] ?? d.player);
     const rawAction = isActive ? (ev.action ?? null) : null;
     const actText = rawAction ? (ACTION_LABEL[rawAction] ?? rawAction).toUpperCase() : null;
     const ac = rawAction ? (AC_COLORS[rawAction] ?? "#888") : null;
-    if (actText) {
-      // Linha 1: ação com cor
-      html += `<text x="${pos.x}" y="${by + 26}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="${isHero ? 15 : 13.5}" font-weight="700" letter-spacing=".05">${actText}</text>`;
-    } else {
-      // Fonte do nome reduzida (estava grande demais no pod); o limite de chars
-      // sobe um pouco já que a fonte menor cabe mais.
-      const maxChars = isHero ? 16 : 15;
-      const name = displayName.length > maxChars ? displayName.slice(0, maxChars) + "…" : displayName;
-      html += `<text x="${pos.x}" y="${by + 26}" text-anchor="middle" fill="${isHero ? "#ffffff" : "#ddd8d0"}" font-family="Inter,sans-serif" font-size="${isHero ? 14 : 12.5}" font-weight="${isHero ? 600 : 500}" letter-spacing=".05">${name}</text>`;
-    }
+    const nameFill = isHero ? "#ffffff" : "#ddd8d0";
+    const stackFill = isHero ? "#c9e8ff" : "#c0bab0";
 
-    // Stack
-    const sv = (ev as unknown as Record<string, Record<string, number>>)["stacks"]?.[sn] ?? d.stack;
-    html += `<text x="${pos.x}" y="${by + 48}" text-anchor="middle" fill="${isHero ? "#c9e8ff" : "#c0bab0"}" font-family="Share Tech Mono,monospace" font-size="15" font-weight="600" letter-spacing=".05">${fmtAmt(sv, bb, unit)}</text>`;
+    if (G.compactPod) {
+      // Pod 1 LINHA (mobile): ação (ativo) OU nome + stack inline — libera espaço p/ cartas maiores
+      const ty = by + bh / 2 + 6;
+      if (actText) {
+        html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="20" font-weight="700" letter-spacing=".03">${actText}</text>`;
+      } else {
+        const maxChars = isHero ? 9 : 8;
+        const name = displayName.length > maxChars ? displayName.slice(0, maxChars) + "…" : displayName;
+        html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" font-family="Inter,sans-serif" font-size="18.5" font-weight="${isHero ? 600 : 500}" letter-spacing=".02">`
+          + `<tspan fill="${nameFill}">${name}</tspan>`
+          + `<tspan dx="7" fill="${stackFill}" font-family="Share Tech Mono,monospace" font-weight="600">${fmtAmt(sv, bb, unit)}</tspan></text>`;
+      }
+    } else {
+      // Pod 2 LINHAS (desktop landscape): nome/ação em cima, stack embaixo
+      if (actText) {
+        html += `<text x="${pos.x}" y="${by + 26}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="${isHero ? 15 : 13.5}" font-weight="700" letter-spacing=".05">${actText}</text>`;
+      } else {
+        const maxChars = isHero ? 16 : 15;
+        const name = displayName.length > maxChars ? displayName.slice(0, maxChars) + "…" : displayName;
+        html += `<text x="${pos.x}" y="${by + 26}" text-anchor="middle" fill="${nameFill}" font-family="Inter,sans-serif" font-size="${isHero ? 14 : 12.5}" font-weight="${isHero ? 600 : 500}" letter-spacing=".05">${name}</text>`;
+      }
+      html += `<text x="${pos.x}" y="${by + 48}" text-anchor="middle" fill="${stackFill}" font-family="Share Tech Mono,monospace" font-size="15" font-weight="600" letter-spacing=".05">${fmtAmt(sv, bb, unit)}</text>`;
+    }
 
     // Bounty badge (PKO tournaments) — sobe quando há tab de posição (não colidir)
     if (d.bounty && d.bounty > 0) {
