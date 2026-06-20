@@ -158,6 +158,11 @@ const Index = () => {
   const totalInvested = ratedTourns.reduce((s, t) => s + (t.buy_in ?? 0), 0);
   const totalProfit   = ratedTourns.reduce((s, t) => s + (t.profit ?? 0), 0);
   const roi           = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : null;
+  // ROI% só é representativo com volume; abaixo do mínimo um único cash distorce (ex.: n=2 → +958%).
+  // Nesse caso mostramos o LUCRO ABSOLUTO (sempre honesto) em vez do percentual.
+  const ROI_MIN_SAMPLE = 30;
+  const roiLowSample  = ratedTourns.length > 0 && ratedTourns.length < ROI_MIN_SAMPLE;
+  const netProfit     = totalProfit;
   const itmCount      = visibleTourns.filter((t) => (t.profit ?? 0) > 0).length;
   const itmPct        = visibleTourns.length > 0 ? (itmCount / visibleTourns.length) * 100 : null;
   const totalEvents   = visibleTourns.length;
@@ -254,7 +259,7 @@ const Index = () => {
         gtoPosition={gtoPositionData}
         pendingGto={pendingGto}
         showEmpty={tournsLoaded && !hasData}
-        kpis={{ roi, itmPct, totalEvents, totalHands }}
+        kpis={{ roi, itmPct, totalEvents, totalHands, roiLowSample, netProfit }}
         playerStats={playerStats}
         drift={driftData?.drift_detected && !driftDismissed
           ? { detected: true, sessions: driftData.affected_sessions }
@@ -392,9 +397,17 @@ const Index = () => {
             >
               <KpiCard
                 index="01"
-                label={t("kpis.roi")}
-                value={roi != null ? (roi >= 0 ? `+${roi.toFixed(2)}` : roi.toFixed(2)) : tc("labels.noData")}
-                delta={roi != null ? { value: t("kpis.roiDelta", { value: `${roi >= 0 ? "+" : ""}${roi.toFixed(1)}` }), trend: roi >= 0 ? "up" : "down" } : undefined}
+                label={roiLowSample ? t("kpis.netProfit") : t("kpis.roi")}
+                value={
+                  roi == null ? tc("labels.noData")
+                  : roiLowSample ? `${netProfit >= 0 ? "+" : "−"}$${Math.abs(netProfit).toFixed(2)}`
+                  : `${roi >= 0 ? "+" : ""}${roi.toFixed(2)}%`
+                }
+                delta={
+                  roi == null ? undefined
+                  : roiLowSample ? { value: t("kpis.lowSample"), trend: "flat" }
+                  : { value: t("kpis.roiDelta", { value: `${roi >= 0 ? "+" : ""}${roi.toFixed(1)}` }), trend: roi >= 0 ? "up" : "down" }
+                }
                 icon={Percent}
                 highlight
                 tooltip={t("kpis.roiTooltip")}

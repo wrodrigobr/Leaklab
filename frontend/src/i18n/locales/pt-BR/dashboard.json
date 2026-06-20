@@ -100,6 +100,8 @@
     "roi": "Net ROI",
     "roiTooltip": "Retorno sobre investimento acumulado. ROI positivo significa que você está lucrando acima do buy-in médio. Referência: jogadores regulares consistentes ficam entre +20% e +80% em MTTs.",
     "roiDelta": "{{value}}% total",
+    "netProfit": "Lucro líquido",
+    "lowSample": "amostra baixa",
     "itm": "ITM Frequency",
     "itmHint": "Field avg ~18.5%",
     "itmTooltip": "Percentual de torneios em que você terminou no dinheiro (in-the-money). A média do field é ~18%. Acima de 22% sugere jogo sólido ou conservador; abaixo pode indicar bust-out precoce.",

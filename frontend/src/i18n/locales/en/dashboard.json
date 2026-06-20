@@ -100,6 +100,8 @@
     "roi": "Net ROI",
     "roiTooltip": "Cumulative return on investment. Positive ROI means you're profiting above the average buy-in. Reference: consistent regular players sit between +20% and +80% in MTTs.",
     "roiDelta": "{{value}}% total",
+    "netProfit": "Net profit",
+    "lowSample": "low sample",
     "itm": "ITM Frequency",
     "itmHint": "Field avg ~18.5%",
     "itmTooltip": "Percentage of tournaments where you finished in the money. Field average is ~18%. Above 22% suggests solid or conservative play; below may indicate early bust-outs.",

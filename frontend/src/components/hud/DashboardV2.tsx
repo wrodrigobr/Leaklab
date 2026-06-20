@@ -38,7 +38,7 @@ interface Props {
   aiLocked?: boolean;
   /** onboarding sem dados (tournsLoaded && !hasData) — mesmo EmptyDashboard do clássico */
   showEmpty?: boolean;
-  kpis?: { roi: number | null; itmPct: number | null; totalEvents: number; totalHands: number };
+  kpis?: { roi: number | null; itmPct: number | null; totalEvents: number; totalHands: number; roiLowSample?: boolean; netProfit?: number };
   playerStats?: React.ComponentProps<typeof PlayerStatsCard>["stats"];
   drift?: { detected: boolean; sessions: number } | null;
   onDismissDrift?: () => void;
@@ -196,11 +196,14 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
         {kpis && hasData && (
           <section className="grid grid-cols-3 gap-3">
             <div className="rounded-xl ring-1 ring-border bg-card/60 px-4 py-2.5">
-              <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("kpis.roi")}</div>
+              <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{kpis.roiLowSample ? t("kpis.netProfit") : t("kpis.roi")}</div>
               <div className={`font-mono text-lg font-bold tabular-nums ${
-                kpis.roi == null ? "text-muted-foreground" : kpis.roi >= 0 ? "text-teal-300" : "text-red-400"
+                kpis.roi == null ? "text-muted-foreground"
+                  : (kpis.roiLowSample ? (kpis.netProfit ?? 0) : kpis.roi) >= 0 ? "text-teal-300" : "text-red-400"
               }`}>
-                {kpis.roi != null ? `${kpis.roi >= 0 ? "+" : ""}${kpis.roi.toFixed(1)}%` : "—"}
+                {kpis.roi == null ? "—"
+                  : kpis.roiLowSample ? `${(kpis.netProfit ?? 0) >= 0 ? "+" : "−"}$${Math.abs(kpis.netProfit ?? 0).toFixed(2)}`
+                  : `${kpis.roi >= 0 ? "+" : ""}${kpis.roi.toFixed(1)}%`}
               </div>
             </div>
             <div className="rounded-xl ring-1 ring-border bg-card/60 px-4 py-2.5">
