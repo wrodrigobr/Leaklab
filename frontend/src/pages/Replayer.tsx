@@ -1782,16 +1782,14 @@ const Replayer = () => {
   if (landscapeMobile) {
     return (
       <div ref={rootRef} className="h-dvh relative overflow-hidden bg-background hud-scanline">
-        {/* Mesa ocupa toda a tela (height-bound, centralizada) */}
-        <div className="absolute inset-0 flex items-center justify-center p-0.5">
-          <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "16 / 10" }}>
-            <PokerTableV3
-              step={step} hero={replayData.hero} heroCards={replayData.hero_cards}
-              bb={replayData.bb} betUnit={betUnit} playerAliases={playerAliases}
-              revealedCards={revealedCards} profiles={replayData.opponent_profiles}
-              showHud={showHud} hudTips={hudTips} orientation="landscape"
-            />
-          </div>
+        {/* Mesa fullscreen: o gradiente preenche a tela toda (sem borda); feltro centralizado */}
+        <div className="absolute inset-0">
+          <PokerTableV3
+            step={step} hero={replayData.hero} heroCards={replayData.hero_cards}
+            bb={replayData.bb} betUnit={betUnit} playerAliases={playerAliases}
+            revealedCards={revealedCards} profiles={replayData.opponent_profiles}
+            showHud={showHud} hudTips={hudTips} orientation="landscape" fill
+          />
         </div>
 
         {/* Voltar — topo-esquerda */}

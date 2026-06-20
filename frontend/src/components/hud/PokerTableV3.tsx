@@ -544,9 +544,12 @@ interface Props {
   hudTips?: Record<string, string>;
   /** "portrait" = mesa vertical (mobile portrait); "landscape" = atual (default, desktop). */
   orientation?: TableOrientation;
+  /** fill = ocupa todo o container (sem aspect-ratio nem cantos); o gradiente preenche a
+   *  tela e o feltro (SVG meet) centraliza. Usado no fullscreen do celular deitado. */
+  fill?: boolean;
 }
 
-export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false, hudTips = {}, orientation = "landscape" }: Props) {
+export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false, hudTips = {}, orientation = "landscape", fill = false }: Props) {
   const geo = orientation === "portrait" ? GEO_PORTRAIT : GEO_LANDSCAPE;
   const boardRef = useRef<SVGGElement>(null);
   const potRef   = useRef<SVGGElement>(null);
@@ -567,15 +570,15 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
 
   return (
     <div
-      className="relative w-full rounded-2xl"
+      className={fill ? "relative w-full h-full" : "relative w-full rounded-2xl"}
       style={{
         background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)",
-        aspectRatio: geo.aspect,
+        ...(fill ? {} : { aspectRatio: geo.aspect }),
       }}
     >
       {/* Layer 1 — tilted background (felt + rail) — clipped to rounded corners */}
       <div
-        className="absolute inset-0 overflow-hidden rounded-2xl"
+        className={fill ? "absolute inset-0 overflow-hidden" : "absolute inset-0 overflow-hidden rounded-2xl"}
         style={orientation === "portrait" ? undefined : { perspective: "1100px", perspectiveOrigin: "50% 0%" }}
       >
         <svg
