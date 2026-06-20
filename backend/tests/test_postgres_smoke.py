@@ -85,13 +85,15 @@ cols = ("tournament_id, hand_id, street, hero_cards, board, action_taken, best_a
         "score, position, vs_position, num_players, stack_bb, facing_bet, is_3bet, m_ratio, "
         "icm_pressure, preflop_raises_faced, gto_label, ev_loss_bb")
 ph = "(" + ",".join("?" * 20) + ")"
-for i, (street, pos, vspos, best, taken, label, score, stack, facing,
-        is3, prf, gto, evloss) in enumerate(_seed):
-    conn.execute(_adapt(f"INSERT INTO decisions ({cols}) VALUES {ph}"), (
-        t_id, f"H{i}", street, "AhKs", "" if street == "preflop" else "2c7d9h",
-        taken, best, label, score, pos, vspos, 6, stack, facing, is3,
-        12.0, "medium", prf, gto, evloss,
-    ))
+# 3× o seed (48 decisões) → passa do mínimo de 30 do cognitivo (detecção completa roda).
+for rep in range(3):
+    for i, (street, pos, vspos, best, taken, label, score, stack, facing,
+            is3, prf, gto, evloss) in enumerate(_seed):
+        conn.execute(_adapt(f"INSERT INTO decisions ({cols}) VALUES {ph}"), (
+            t_id, f"H{rep}_{i}", street, "AhKs", "" if street == "preflop" else "2c7d9h",
+            taken, best, label, score, pos, vspos, 6, stack, facing, is3,
+            12.0, "medium", prf, gto, evloss,
+        ))
 conn.commit()
 conn.close()
 
@@ -118,6 +120,8 @@ check("get_leak_ranking_gto_first", lambda: repo.get_leak_ranking_gto_first(uid,
 check("get_leak_roi_impact",       lambda: repo.get_leak_roi_impact(uid, 90))
 check("get_evolution_metrics",     lambda: repo.get_evolution_metrics(uid, 90))
 check("get_icm_performance",       lambda: repo.get_icm_performance(uid, 90))
+check("get_leak_graph_data",       lambda: repo.get_leak_graph_data(uid, 90, "pt-BR"))
+check("get_cognitive_failure_report", lambda: repo.get_cognitive_failure_report(uid, 90))
 
 print(f"\nTotal: {passed + failed}  Passed: {passed}  Failed: {failed}")
 sys.exit(1 if failed else 0)
