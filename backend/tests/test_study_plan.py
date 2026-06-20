@@ -124,12 +124,16 @@ def test_study_plan_uses_ev_leaks():
     """#24/#25: o plano deve injetar os vazamentos por EV (bb perdidos) no prompt
     e priorizar por eles. Guard de fonte (sem chamar a LLM)."""
     import inspect
+    import leaklab.llm_explainer as _llm
     src = inspect.getsource(generate_study_plan)
     assert 'ev_leaks' in src
-    assert 'Vazamentos por EV PERDIDO' in src
-    assert 'total_ev_loss_bb' in src
+    assert 'EV PONDERADO' in src                       # prioriza por EV ponderado
+    assert '_format_ev_leaks_weighted' in src          # injeta os vazamentos por EV no prompt
     # o ev_leaks entra no cache key (regenera quando o EV muda)
     assert "'ev': ev_leaks" in src
+    # o helper usa o bb perdido + ranqueia por confiança de amostra
+    hsrc = inspect.getsource(_llm._weighted_ev_leaks)
+    assert 'total_ev_loss_bb' in hsrc and 'confianca_amostra' in hsrc
     print("OK  test_study_plan_uses_ev_leaks")
 
 

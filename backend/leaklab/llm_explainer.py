@@ -1358,6 +1358,8 @@ _STUDY_PLAN_CARD_SCHEMA = {
         'exercicio': {'type': 'string', 'description': 'Rotina prática concreta e mensurável para hoje.'},
         'metrica':   {'type': 'string', 'description': 'Como medir o progresso neste leak.'},
         'spot':      {'type': 'string', 'description': 'street/action do leak principal.'},
+        'ev_ponderado':      {'type': 'string', 'description': '−X bb (copie do EV PONDERADO do diagnóstico), ou vazio.'},
+        'confianca_amostra': {'type': 'string', 'enum': ['alta', 'média', 'baixa'], 'description': 'Confiança da amostra do leak.'},
     },
     'required': ['prioridade', 'titulo', 'diagnostico', 'conceitos', 'exercicio', 'metrica', 'spot'],
 }
@@ -1397,14 +1399,23 @@ _STUDY_TOOLS = [
         'name': 'submit_study_plan',
         'description': (
             'Entrega o plano de estudos final. Chame UMA vez, no fim, depois de investigar os '
-            'leaks top. Exatamente 6 cards, ordenados por prioridade de EV.'
+            'leaks top. Entre 1 e 6 cards ACIONÁVEIS (NÃO force 6), ordenados por EV ponderado.'
         ),
         'input_schema': {
             'type': 'object',
             'properties': {
                 'nivel':  {'type': 'string', 'enum': ['iniciante', 'intermediario', 'avancado']},
                 'resumo': {'type': 'string', 'description': '2-3 frases sobre o perfil de erros e o caminho de evolução.'},
-                'cards':  {'type': 'array', 'items': _STUDY_PLAN_CARD_SCHEMA},
+                'cards':  {'type': 'array', 'items': _STUDY_PLAN_CARD_SCHEMA,
+                           'description': '1 a 6 cards ACIONÁVEIS, na ordem do EV ponderado.'},
+                'observar_mais_dados': {'type': 'array', 'description': 'HUD stats abaixo da amostra confiável — não acionar ainda.',
+                    'items': {'type': 'object', 'properties': {
+                        'indicador': {'type': 'string'}, 'valor_atual': {'type': 'string'},
+                        'sample_atual': {'type': 'integer'}, 'sample_necessario': {'type': 'integer'},
+                        'por_que_esperar': {'type': 'string'}}}},
+                'nao_focar_agora': {'type': 'array', 'description': 'Leaks/stats de baixa prioridade (variância, EV baixo).',
+                    'items': {'type': 'object', 'properties': {
+                        'item': {'type': 'string'}, 'motivo': {'type': 'string'}}}},
             },
             'required': ['nivel', 'resumo', 'cards'],
         },
@@ -1482,25 +1493,39 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
                 pass
         return plan
 
+    level_label = None
+    if user_id is not None:
+        try:
+            from database.repositories import get_player_level
+            _lv = get_player_level(user_id) or {}
+            level_label = _lv.get('label') or _lv.get('level')
+        except Exception:
+            level_label = None
+
     diagnosis = _build_study_diagnosis_block(
-        leaks, evolution, icm, hero, player_stats, leak_source, ev_leaks)
+        leaks, evolution, icm, hero, player_stats, leak_source, ev_leaks, level_label=level_label)
 
     system = (
         "Você é um coach profissional de poker MTT com 15+ anos de experiência, "
         "especialista em identificar e corrigir leaks em torneios.\n\n"
         "Você tem ferramentas para INVESTIGAR a fundo cada leak do aluno antes de montar "
         "o plano: get_leak_hands (mãos reais por trás de um leak) e get_gto_alignment "
-        "(onde o desvio se concentra). Investigue os 2-3 leaks que mais custam EV — cite "
-        "mãos e números reais no diagnóstico — e SÓ ENTÃO chame submit_study_plan com "
-        "exatamente 6 cards ordenados por prioridade de EV. Não invente mãos: se uma "
-        "ferramenta voltar vazia, baseie-se nos dados de resumo.\n\n"
+        "(onde o desvio se concentra). Investigue os 2-3 leaks de MAIOR EV PONDERADO — cite "
+        "mãos e números reais no diagnóstico — e SÓ ENTÃO chame submit_study_plan.\n\n"
+        "REGRAS: ordene pela ordem do EV PONDERADO (já calculado em código); NÃO force 6 cards "
+        "— entregue só os 1-6 leaks ACIONÁVEIS e confiáveis; NÃO gere card de HUD stat marcado "
+        "'AMOSTRA INSUFICIENTE' (liste em observar_mais_dados); leaks 'confiança baixa' (amostra "
+        "pequena) vão em nao_focar_agora ou com a incerteza sinalizada; NÃO invente títulos de "
+        "livros/vídeos/URLs (descreva o tipo + conceito); use o 'Nível estimado (ELO)' como "
+        "'nivel'. Não invente mãos: ferramenta vazia → use os dados de resumo.\n\n"
         f"Português do Brasil. {_POKER_TERMS_EN}"
     )
     user_msg = (
         diagnosis +
-        "\n\n## Tarefa\nInvestigue os leaks que mais sangram EV e gere um plano de estudos "
-        "com 6 módulos, cada um ancorado em mãos/números reais do jogador quando possível. "
-        "Cruze os HUD Stats com os leaks para personalizar. Termine chamando submit_study_plan."
+        "\n\n## Tarefa\nInvestigue os leaks de maior EV ponderado e gere o plano (1-6 módulos "
+        "ACIONÁVEIS, não force 6), cada um ancorado em mãos/números reais quando possível. "
+        "Cruze os HUD Stats (respeitando o gate de amostra) com os leaks. Termine chamando "
+        "submit_study_plan."
     )
 
     messages: list[dict] = [{'role': 'user', 'content': user_msg}]
