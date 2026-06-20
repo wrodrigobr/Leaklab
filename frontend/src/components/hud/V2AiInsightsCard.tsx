@@ -22,6 +22,9 @@ interface Props {
 export function V2AiInsightsCard({ insights, locked }: Props) {
   const { t } = useTranslation("dashboard");
   const [idx, setIdx] = useState(0);
+  // Hooks ANTES de qualquer early return (regras de hooks — nunca condicional). Era o
+  // bug do React #310: useRef ficava abaixo do `return null` e a contagem de hooks variava.
+  const touch = useRef<{ x: number; y: number } | null>(null);
   if (!locked && insights.length === 0) return null;
 
   const cur = insights[Math.min(idx, insights.length - 1)];
@@ -30,7 +33,6 @@ export function V2AiInsightsCard({ insights, locked }: Props) {
 
   // Swipe lateral em telas touch: arrastar p/ a esquerda = próximo, direita = anterior.
   // Só dispara em gesto horizontal (|dx|>|dy|) → não atrapalha o scroll vertical.
-  const touch = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };

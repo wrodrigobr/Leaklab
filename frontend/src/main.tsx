@@ -1,6 +1,5 @@
 import { createRoot } from "react-dom/client";
 import * as Sentry from "@sentry/react";
-import { Analytics } from "@vercel/analytics/react";
 import App from "./App.tsx";
 import "./index.css";
 import "./i18n";
@@ -39,6 +38,5 @@ createRoot(document.getElementById("root")!).render(
     }
   >
     <App />
-    {import.meta.env.PROD && <Analytics />}
   </Sentry.ErrorBoundary>
 );
