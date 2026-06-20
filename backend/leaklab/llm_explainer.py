@@ -1039,7 +1039,7 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
     } if player_stats else {}
     mem_key = 'study_plan_v6:' + hashlib.md5(
         json.dumps({'leaks': leaks, 'evo_len': len(evolution), 'stats': stats_fingerprint,
-                    'source': leak_source, 'ev': ev_leaks or []}, sort_keys=True).encode()
+                    'source': leak_source, 'ev': ev_leaks or []}, sort_keys=True, default=str).encode()
     ).hexdigest()
     # Chave DB estável — plano canônico único por aluno
     db_key = 'study_plan_current'
@@ -1463,7 +1463,7 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
     } if player_stats else {}
     mem_key = 'study_plan_agentic_v1:' + hashlib.md5(
         json.dumps({'leaks': leaks, 'evo_len': len(evolution), 'stats': stats_fingerprint,
-                    'source': leak_source, 'ev': ev_leaks or []}, sort_keys=True).encode()
+                    'source': leak_source, 'ev': ev_leaks or []}, sort_keys=True, default=str).encode()
     ).hexdigest()
     db_key = 'study_plan_current'   # mesmo do legado — plano canônico único por aluno
 

@@ -7,7 +7,15 @@ from __future__ import annotations
 import json
 import hashlib
 import logging
+from decimal import Decimal as _Decimal
 from typing import Optional, List, Dict
+
+
+def _floatify(d: dict) -> dict:
+    """Decimal→float em todos os valores de uma row-dict. Postgres NUMERIC (AVG/SUM/
+    COUNT*AVG) vem como decimal.Decimal no psycopg2 — e json.dumps/jsonify NÃO serializam
+    Decimal, e float*Decimal estoura. SQLite já devolve float (no-op)."""
+    return {k: (float(v) if isinstance(v, _Decimal) else v) for k, v in d.items()}
 
 try:
     import bcrypt as _bcrypt
@@ -719,7 +727,7 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
 
         result = []
         for rank, row in enumerate(rows, 1):
-            r = dict(row)
+            r = _floatify(dict(row))
             n_monthly = r['n'] * (30.0 / days)
             r['ev_loss_monthly'] = round(n_monthly * float(r['avg_score'] or 0) * float(r['avg_buy_in'] or 0) * 0.10, 2)
             r['priority_rank'] = rank
@@ -914,7 +922,7 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
 
         result = []
         for rank, row in enumerate(rows, 1):
-            r = dict(row)
+            r = _floatify(dict(row))
             n_monthly = r['n'] * (30.0 / days)
             r['ev_loss_monthly'] = round(n_monthly * float(r['avg_score'] or 0) * float(r['avg_buy_in'] or 0) * 0.10, 2)
             r['priority_rank']   = rank
