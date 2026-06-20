@@ -26,6 +26,10 @@
   },
   "card": {
     "youPlayed": "You played",
+    "stackBb": "Stack",
+    "mRatio": "M",
+    "icm": "ICM",
+    "position": "Position",
     "recommended": "Recommended",
     "gtoRecommends": "GTO recommends",
     "toggleShow": "Show details",

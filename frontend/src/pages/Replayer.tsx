@@ -88,6 +88,8 @@ interface SidePanelsProps {
   onRequestGto: () => void;
   tournamentId: string;
   handId: string;
+  /** Layout enxuto p/ bottom-sheet mobile (sem scroll; 2 colunas em landscape). Default false = desktop intocado. */
+  compact?: boolean;
 }
 
 function SidePanels({
@@ -97,6 +99,7 @@ function SidePanels({
   setAnnotating, setAnnComment, setAnnMode, setAnnAction, setAnnOverride,
   openAnnotationForm, t,
   gtoRequestStatus, onRequestGto,
+  compact = false,
 }: SidePanelsProps) {
   const [showDetails, setShowDetails] = useState<boolean>(
     () => localStorage.getItem('replayer_show_details') === 'true'
@@ -946,6 +949,80 @@ function SidePanels({
           ? `${why ? why + " " : ""}${t("card.openOversizeCaveat", { facing: osm.facing_bb, canonical: osm.canonical_bb })}`
           : why;
 
+        // ── COMPACT (bottom-sheet mobile): só o essencial, sem scroll, 2 cols em landscape ──
+        // Reusa TODO o cálculo de veredito/why/evidence acima. NÃO renderiza pro_notes,
+        // toggle de detalhes, fluxo de solve GTO nem o formulário do coach (escondidos
+        // fora do card). Esquerda = veredito + ação jogada/recomendada + why; direita =
+        // evidence (barras GTO/math) + grid de indicadores (stack/M/ICM/posição).
+        if (compact) {
+          const showRec = !isActionOk && !!idealAction &&
+            idealAction.toLowerCase() !== playedAction.toLowerCase();
+          const ind: { label: string; value: string; tip: string }[] = [];
+          if (step.hero_stack_bb != null) ind.push({ label: t("card.stackBb"), value: `${step.hero_stack_bb.toFixed(1)}bb`, tip: t("card.stackTip") });
+          if (step.m_ratio != null)       ind.push({ label: t("card.mRatio"), value: step.m_ratio.toFixed(1), tip: t("card.mTip") });
+          if (step.icm_pressure != null)  ind.push({ label: t("card.icm"), value: (step.icm_pressure === "low" ? t("card.icmLow") : step.icm_pressure === "medium" ? t("card.icmMedium") : step.icm_pressure === "high" ? t("card.icmHigh") : step.icm_pressure), tip: t("card.icmTip") });
+          if (step.position)              ind.push({ label: t("card.position"), value: step.position, tip: "" });
+          return (
+            <section className={cn("rounded-xl border overflow-hidden", verdict.borderCls)}>
+              <div className="grid grid-cols-1 landscape:grid-cols-2 gap-3 p-3">
+                {/* COLUNA ESQUERDA: veredito + ações + why */}
+                <div className="space-y-2 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls)}>
+                      {verdict.icon} {verdict.label}
+                    </span>
+                    {step.ev_loss_bb != null && step.ev_loss_bb > 0.05 && (
+                      <span className={cn(
+                        "inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide ring-1",
+                        step.ev_loss_bb >= 2 ? "text-red-300 bg-red-500/10 ring-red-500/30"
+                          : step.ev_loss_bb >= 0.5 ? "text-orange-300 bg-orange-500/10 ring-orange-500/30"
+                          : "text-amber-300 bg-amber-500/10 ring-amber-500/30",
+                      )}>
+                        −{step.ev_loss_bb.toFixed(step.ev_loss_bb >= 10 ? 0 : 1)} bb
+                      </span>
+                    )}
+                  </div>
+                  <div className={cn("grid gap-2", showRec ? "grid-cols-2" : "grid-cols-1")}>
+                    <div className="rounded-lg px-2.5 py-1.5 ring-1 bg-background/60 ring-border/50">
+                      <div className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">{t("card.youPlayed")}</div>
+                      <div className={cn("font-mono text-sm font-bold uppercase", isActionOk ? verdict.cls : "text-foreground")}>{fmtAction(playedAction)}</div>
+                    </div>
+                    {showRec && (
+                      <div className="rounded-lg px-2.5 py-1.5 ring-1 bg-background/60 ring-border/50">
+                        <div className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">{hasGto ? t("card.gtoRecommends") : t("card.recommended")}</div>
+                        <div className={cn("font-mono text-sm font-bold uppercase", verdict.cls)}>{fmtAction(idealAction!)}</div>
+                      </div>
+                    )}
+                  </div>
+                  {whyFull && (
+                    <p className="text-[12px] text-muted-foreground leading-snug">{whyFull}</p>
+                  )}
+                  {/* Nota do coach (só leitura — nunca o formulário no modo compacto) */}
+                  {coachAnnotation?.comment && (
+                    <p className="text-[11px] text-primary/90 leading-snug border-t border-border/30 pt-1.5">
+                      <GraduationCap className="inline size-3 mr-1 -mt-0.5" />{coachAnnotation.comment}
+                    </p>
+                  )}
+                </div>
+                {/* COLUNA DIREITA: evidence (barras GTO/math) + indicadores */}
+                <div className="space-y-2 min-w-0">
+                  {evidence && <div>{evidence}</div>}
+                  {ind.length > 0 && (
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {ind.map((i) => (
+                        <div key={i.label} className="rounded-md ring-1 ring-border/40 bg-background/40 px-2 py-1" title={i.tip}>
+                          <div className="font-mono text-[8px] uppercase tracking-wide text-muted-foreground/70">{i.label}</div>
+                          <div className="font-mono text-[12px] font-bold tabular-nums text-foreground/85">{i.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          );
+        }
+
         const CardImpl = DecisionCard;   // layout clássico fixo (sem toggle de v2)
         return (
           <>
@@ -998,7 +1075,7 @@ function SidePanels({
           enfrentando aposta, sem vilão) mostram uma nota HONESTA estática, não
           "Processando" (que sugere que vai resolver) nem auto-solve inútil.
           Só 'pending' (solvável, nó ainda não existe) mostra o fluxo de solve. */}
-      {step.is_hero && step.type === "action" && isPostflop && !hasGto && !isMultiwayStep
+      {!compact && step.is_hero && step.type === "action" && isPostflop && !hasGto && !isMultiwayStep
         && step.action !== "shows" && step.action !== "mucks"
         && (() => {
           const cov = (step as { gto_coverage?: string }).gto_coverage;
@@ -1090,7 +1167,7 @@ function SidePanels({
 
 
       {/* ── Coach annotation (coach editing student hand) ── */}
-      {studentId && step?.is_hero && currentDecisionId && (
+      {!compact && studentId && step?.is_hero && currentDecisionId && (
         <section className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -1171,7 +1248,7 @@ function SidePanels({
       )}
 
       {/* ── Coach annotation (student reading coach comment) ── */}
-      {!studentId && coachAnnotation && (
+      {!compact && !studentId && coachAnnotation && (
         <section className={cn("rounded-xl border p-3 space-y-2", coachAnnotation.mode === "replace" ? "border-primary/50 bg-primary/8" : "border-primary/20 bg-primary/5")}>
           <div className="flex items-center gap-2 flex-wrap">
             <GraduationCap className="size-4 text-primary" />
@@ -1858,6 +1935,7 @@ const Replayer = () => {
                 t={t}
                 gtoRequestStatus={gtoRequestStatus} onRequestGto={handleRequestGto}
                 tournamentId={tournamentId} handId={handId}
+                compact
               />
             </div>
           </div>
@@ -2097,6 +2175,7 @@ const Replayer = () => {
                     t={t}
                     gtoRequestStatus={gtoRequestStatus} onRequestGto={handleRequestGto}
                     tournamentId={tournamentId} handId={handId}
+                    compact
                   />
                 </div>
               </div>

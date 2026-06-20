@@ -26,6 +26,10 @@
   },
   "card": {
     "youPlayed": "Jugaste",
+    "stackBb": "Stack",
+    "mRatio": "M",
+    "icm": "ICM",
+    "position": "Posición",
     "recommended": "Recomendado",
     "gtoRecommends": "GTO recomienda",
     "toggleShow": "Mostrar detalles",
