@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
  * ícone, cor e chip vêm de lá, nunca recriados inline. Veja project_verdict_3levels.
  */
 const LABEL_KEY: Record<VerdictLevel, string> = {
-  correct: "vCorrect",
-  acceptable: "vAcceptable",
-  error: "vError",
+  correct: "card.vCorrect",
+  acceptable: "card.vAcceptable",
+  error: "card.vError",
 };
 
 export function VerdictPill({
