@@ -168,10 +168,10 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
               <img src={logoHorizontal} alt="GrindLab" className="h-12 w-auto" />
             </a>
 
-            {/* min-w-0 + overflow-x-auto: entre md (768) e ~1280 o nav completo não cabe —
-                rola horizontalmente DENTRO do header em vez de estourar a página inteira. */}
+            {/* Nav no topo só a partir de lg (1024): abaixo disso (incl. celular deitado, 768–1024)
+                o nav fica FIXO embaixo (md→lg evita o scroll lateral cramped do header). */}
             <nav
-              className="hidden md:flex items-center gap-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="hidden lg:flex items-center gap-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               aria-label="Primary"
             >
               {navItems.map((item) => {
@@ -278,7 +278,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
       {/* ── Mobile bottom nav ─────────────────────────────────────────────────── */}
       {user && (
         <nav
-          className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-border bg-background/95 backdrop-blur-md"
+          className="fixed bottom-0 left-0 right-0 z-50 lg:hidden border-t border-border bg-background/95 backdrop-blur-md"
           aria-label="Mobile navigation"
         >
           <div className="flex justify-around px-1 py-1">
@@ -311,7 +311,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
       {user && canUpload && (
         <button
           onClick={() => inputRef.current?.click()}
-          className="fixed bottom-[72px] right-4 z-50 md:hidden size-12 rounded-full bg-primary text-primary-foreground shadow-glow flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
+          className="fixed bottom-[72px] right-4 z-50 lg:hidden size-12 rounded-full bg-primary text-primary-foreground shadow-glow flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
           aria-label={t("actions.import")}
         >
           <UploadCloud className="size-5" aria-hidden />
