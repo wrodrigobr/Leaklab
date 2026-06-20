@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  Search, Star, Users, DollarSign, Globe, Filter,
-  Loader2, GraduationCap, CheckCircle2, ChevronDown, ChevronUp,
+  Search, Star, Users, DollarSign, Globe, SlidersHorizontal,
+  Loader2, GraduationCap, CheckCircle2, ChevronDown, ArrowUpRight, X,
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { coaches, PublicCoach, CoachDirectoryFilters } from "@/lib/api";
@@ -12,9 +12,10 @@ import { cn } from "@/lib/utils";
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 
+// Foco MTT: só especialidades de torneio (sem SNG/Cash Game).
 const SPECIALTIES = [
-  "Preflop", "Postflop", "MTT", "ICM", "Spin & Go",
-  "Cash Game", "Heads Up", "Short Stack", "3bet Pots", "GTO",
+  "Preflop", "Postflop", "ICM", "Final Table", "Bubble",
+  "PKO", "Short Stack", "3bet Pots", "Heads Up", "GTO",
 ];
 
 const LANGUAGES = [
@@ -38,199 +39,213 @@ function StarRow({ rating, count }: { rating: number | null; count: number }) {
         ))}
       </div>
       <span className="font-mono text-[10px] text-muted-foreground">
-        {r > 0 ? r.toFixed(1) : "—"} ({count})
+        {r > 0 ? r.toFixed(1) : "0.0"} ({count})
       </span>
     </div>
   );
 }
 
+// ── Coach card ────────────────────────────────────────────────────────────────
+
 function CoachCard({ coach }: { coach: PublicCoach }) {
   const navigate = useNavigate();
   const { t } = useTranslation("coaches");
   return (
-    <div
+    <button
+      type="button"
       onClick={() => navigate(`/coaches/${coach.user_id}`)}
-      className="rounded-xl border border-border bg-hud-surface p-5 flex flex-col gap-3 cursor-pointer hover:border-primary/50 transition-colors"
+      className={cn(
+        "group relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-border",
+        "bg-gradient-to-b from-hud-surface to-hud-surface/40 p-5 text-left",
+        "transition-all duration-200 hover:-translate-y-1 hover:border-primary/60",
+        "hover:shadow-[0_0_0_1px_rgba(45,212,191,0.35),0_18px_40px_-20px_rgba(45,212,191,0.45)]",
+        "focus:outline-none focus-visible:border-primary/60"
+      )}
     >
+      {/* glow accent */}
+      <div className="pointer-events-none absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+
       {/* Header */}
-      <div className="flex gap-3 items-start">
+      <div className="flex items-start gap-3">
         {coach.photo_url ? (
-          <img src={coach.photo_url} alt={coach.display_name}
-            className="size-12 rounded-full object-cover border border-border shrink-0" />
+          <img
+            src={coach.photo_url}
+            alt={coach.display_name}
+            className="size-14 shrink-0 rounded-2xl border border-border object-cover"
+          />
         ) : (
-          <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <GraduationCap className="size-5 text-primary" />
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+            <GraduationCap className="size-6 text-primary" />
           </div>
         )}
-        <div className="min-w-0">
-          <p className="font-bold text-foreground truncate">
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-heading text-base font-bold text-foreground">
             {coach.display_name || coach.username}
           </p>
           {coach.stakes && (
-            <p className="font-mono text-[10px] text-muted-foreground">{coach.stakes}</p>
+            <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+              {coach.stakes}
+            </p>
           )}
-          <StarRow rating={coach.avg_rating} count={coach.review_count} />
+          <div className="mt-1">
+            <StarRow rating={coach.avg_rating} count={coach.review_count} />
+          </div>
         </div>
+        <ArrowUpRight className="size-4 shrink-0 text-muted-foreground transition-all group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
       </div>
 
       {/* Bio */}
       {coach.bio && (
-        <p className="text-xs text-muted-foreground line-clamp-2">{coach.bio}</p>
+        <p className="line-clamp-2 min-h-[2lh] text-xs leading-relaxed text-muted-foreground">
+          {coach.bio}
+        </p>
       )}
 
       {/* Specialties */}
       {coach.specialties.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {coach.specialties.slice(0, 4).map((s) => (
-            <span key={s} className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary">
+        <div className="flex flex-wrap gap-1.5">
+          {coach.specialties.slice(0, 3).map((s) => (
+            <span
+              key={s}
+              className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary"
+            >
               {s}
             </span>
           ))}
-          {coach.specialties.length > 4 && (
-            <span className="font-mono text-[10px] text-muted-foreground">+{coach.specialties.length - 4}</span>
+          {coach.specialties.length > 3 && (
+            <span className="rounded-full border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+              +{coach.specialties.length - 3}
+            </span>
           )}
         </div>
       )}
 
       {/* Footer stats */}
-      <div className="flex items-center justify-between pt-1 border-t border-border">
-        <div className="flex items-center gap-3">
+      <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
+        <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+          <Users className="size-3 text-primary/70" />
+          {t("card.studentsCount", { count: coach.student_count })}
+        </span>
+        {coach.price_per_session != null && (
           <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-            <Users className="size-3" /> {t("card.studentsCount", { count: coach.student_count })}
+            <DollarSign className="size-3 text-primary/70" />
+            R$ {coach.price_per_session}{t("card.ratePerHour")}
           </span>
-          {coach.price_per_session != null && (
-            <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-              <DollarSign className="size-3" /> R$ {coach.price_per_session}{t("card.ratePerHour")}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {coach.trial_available && (
-            <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary">
-              <CheckCircle2 className="size-2.5" /> Trial
-            </span>
-          )}
-          {coach.languages.length > 0 && (
-            <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-              <Globe className="size-3" /> {coach.languages.join("·").toUpperCase()}
-            </span>
-          )}
-        </div>
+        )}
+        {coach.languages.length > 0 && (
+          <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+            <Globe className="size-3 text-primary/70" />
+            {coach.languages.join(" · ").toUpperCase()}
+          </span>
+        )}
+        {coach.trial_available && (
+          <span className="ml-auto flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-medium text-primary">
+            <CheckCircle2 className="size-2.5" /> {t("filters.trial")}
+          </span>
+        )}
       </div>
+    </button>
+  );
+}
+
+// ── Secondary filters popover (price + trial) ──────────────────────────────────
+
+function MoreFiltersPopover({
+  filters, set,
+}: {
+  filters: CoachDirectoryFilters;
+  set: (key: keyof CoachDirectoryFilters, val: unknown) => void;
+}) {
+  const { t } = useTranslation("coaches");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const count = (filters.max_price != null ? 1 : 0) + (filters.trial ? 1 : 0);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors",
+          count > 0 || open
+            ? "border-primary/50 bg-primary/10 text-foreground"
+            : "border-border bg-hud-surface text-muted-foreground hover:border-primary/40"
+        )}
+      >
+        <SlidersHorizontal className="size-4" />
+        <span className="hidden sm:inline">{t("filters.more")}</span>
+        {count > 0 && (
+          <span className="flex size-4 items-center justify-center rounded-full bg-primary font-mono text-[10px] text-primary-foreground">
+            {count}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-20 mt-2 w-64 space-y-4 rounded-2xl border border-border bg-hud-surface p-4 shadow-xl">
+          <div className="space-y-1.5">
+            <label className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+              {t("filters.maxPrice")}
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={10}
+              value={filters.max_price ?? ""}
+              onChange={(e) => set("max_price", e.target.value ? Number(e.target.value) : undefined)}
+              placeholder={t("filters.noLimit")}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <label className="flex cursor-pointer items-center justify-between gap-2">
+            <span className="text-sm text-foreground">{t("filters.trialOnly")}</span>
+            <input
+              type="checkbox"
+              checked={!!filters.trial}
+              onChange={(e) => set("trial", e.target.checked ? true : undefined)}
+              className="size-4 accent-primary"
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Filters sidebar ───────────────────────────────────────────────────────────
+// ── Sort dropdown ──────────────────────────────────────────────────────────────
 
-function FilterPanel({
-  filters, onChange,
+function SortSelect({
+  value, onChange,
 }: {
-  filters: CoachDirectoryFilters;
-  onChange: (f: CoachDirectoryFilters) => void;
+  value: CoachDirectoryFilters["sort"];
+  onChange: (v: CoachDirectoryFilters["sort"]) => void;
 }) {
   const { t } = useTranslation("coaches");
-  const set = (key: keyof CoachDirectoryFilters, val: unknown) =>
-    onChange({ ...filters, [key]: val || undefined });
-
-  const SORT_OPTIONS = SORT_KEYS.map((k) => ({ value: k, label: t(`sort.${k}`) }));
-
   return (
-    <aside className="space-y-5 w-full lg:w-52 lg:shrink-0">
-      <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground flex items-center gap-1.5">
-        <Filter className="size-3" /> {t("filters.sort")}
-      </p>
-
-      {/* Sort */}
-      <div className="space-y-1.5">
-        <p className="font-mono text-[10px] text-muted-foreground">{t("filters.sort")}</p>
-        <div className="relative">
-          <select
-            value={filters.sort ?? "rating"}
-            onChange={(e) => set("sort", e.target.value)}
-            className="w-full appearance-none rounded border border-border bg-background px-2 py-1.5 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary pr-7"
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
-        </div>
-      </div>
-
-      {/* Specialty */}
-      <div className="space-y-1.5">
-        <p className="font-mono text-[10px] text-muted-foreground">{t("filters.specialty")}</p>
-        <div className="flex flex-wrap gap-1">
-          {SPECIALTIES.map((s) => (
-            <button
-              key={s}
-              onClick={() => set("specialty", filters.specialty === s ? undefined : s)}
-              className={cn(
-                "rounded-full px-2 py-0.5 font-mono text-[10px] transition-colors border",
-                filters.specialty === s
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-border text-muted-foreground hover:border-primary/50"
-              )}
-            >{s}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* Language */}
-      <div className="space-y-1.5">
-        <p className="font-mono text-[10px] text-muted-foreground">{t("filters.language")}</p>
-        <div className="flex flex-col gap-1">
-          {LANGUAGES.map((l) => (
-            <label key={l.code} className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="language"
-                checked={filters.language === l.code}
-                onChange={() => set("language", filters.language === l.code ? undefined : l.code)}
-                className="accent-primary"
-              />
-              <span className="text-xs">{l.label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Price */}
-      <div className="space-y-1.5">
-        <p className="font-mono text-[10px] text-muted-foreground">Preço máx/sessão (R$)</p>
-        <input
-          type="number"
-          min={0}
-          step={10}
-          value={filters.max_price ?? ""}
-          onChange={(e) => set("max_price", e.target.value ? Number(e.target.value) : undefined)}
-          placeholder="Sem limite"
-          className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
-
-      {/* Trial */}
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={!!filters.trial}
-          onChange={(e) => set("trial", e.target.checked ? true : undefined)}
-          className="accent-primary"
-        />
-        <span className="text-xs">Trial</span>
-      </label>
-
-      {/* Reset */}
-      {Object.keys(filters).some((k) => k !== "sort" && filters[k as keyof CoachDirectoryFilters]) && (
-        <button
-          onClick={() => onChange({ sort: filters.sort })}
-          className="font-mono text-[10px] text-muted-foreground hover:text-foreground underline"
-        >
-          {t("filters.all")}
-        </button>
-      )}
-    </aside>
+    <div className="relative shrink-0">
+      <select
+        value={value ?? "rating"}
+        onChange={(e) => onChange(e.target.value as CoachDirectoryFilters["sort"])}
+        className="h-full w-full appearance-none rounded-xl border border-border bg-hud-surface py-2.5 pl-3 pr-9 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
+      >
+        {SORT_KEYS.map((k) => (
+          <option key={k} value={k}>{t(`sort.${k}`)}</option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+    </div>
   );
 }
 
@@ -240,11 +255,13 @@ export default function CoachesDirectory() {
   const { t } = useTranslation("coaches");
   const [filters, setFilters] = useState<CoachDirectoryFilters>({ sort: "rating" });
   const [search, setSearch] = useState("");
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  const set = (key: keyof CoachDirectoryFilters, val: unknown) =>
+    setFilters((f) => ({ ...f, [key]: (val ?? undefined) as never }));
 
   const activeFilterCount = Object.keys(filters).filter(
     (k) => k !== "sort" && filters[k as keyof CoachDirectoryFilters] != null
-  ).length;
+  ).length + (search ? 1 : 0);
 
   const { data, isLoading } = useQuery({
     queryKey: ["coaches-directory", filters, search],
@@ -254,86 +271,137 @@ export default function CoachesDirectory() {
 
   const list = data?.coaches ?? [];
 
+  const clearAll = () => {
+    setFilters({ sort: "rating" });
+    setSearch("");
+  };
+
   return (
     <div className="min-h-dvh bg-background">
       <HudHeader />
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        {/* Header */}
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        {/* Title */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">{t("directory.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
+            {t("directory.eyebrow")}
+          </p>
+          <h1 className="mt-1 font-heading text-3xl font-bold text-foreground sm:text-4xl">
+            {t("directory.title")}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             {t("directory.description")}
           </p>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("filters.search")}
-            className="w-full rounded-lg border border-border bg-hud-surface pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
+        {/* Sticky toolbar */}
+        <div className="sticky top-2 z-10 mb-6 rounded-2xl border border-border bg-hud-surface/80 p-3 backdrop-blur supports-[backdrop-filter]:bg-hud-surface/60">
+          {/* Row 1: search + sort + more */}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("filters.search")}
+                className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="flex gap-2">
+              <SortSelect value={filters.sort} onChange={(v) => set("sort", v)} />
+              <MoreFiltersPopover filters={filters} set={set} />
+            </div>
+          </div>
+
+          {/* Row 2: specialty chips (scrollable) */}
+          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {SPECIALTIES.map((s) => {
+              const active = filters.specialty === s;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => set("specialty", active ? undefined : s)}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1 font-mono text-[11px] transition-colors",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                  )}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Row 3: language toggles */}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+              {t("filters.language")}:
+            </span>
+            {LANGUAGES.map((l) => {
+              const active = filters.language === l.code;
+              return (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => set("language", active ? undefined : l.code)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-0.5 text-[11px] transition-colors",
+                    active
+                      ? "border-primary/60 bg-primary/15 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  )}
+                >
+                  {l.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Mobile filter toggle */}
-        <div className="lg:hidden mb-4">
-          <button
-            onClick={() => setShowMobileFilters((v) => !v)}
-            className="flex items-center gap-2 rounded-lg border border-border bg-hud-surface px-3 py-2 text-sm text-foreground"
-          >
-            <Filter className="size-4 text-muted-foreground" />
-            <span>{t("filters.sort")}</span>
-            {activeFilterCount > 0 && (
-              <span className="ml-1 flex size-4 items-center justify-center rounded-full bg-primary font-mono text-[10px] text-primary-foreground">
-                {activeFilterCount}
-              </span>
-            )}
-            {showMobileFilters ? (
-              <ChevronUp className="size-4 ml-auto text-muted-foreground" />
-            ) : (
-              <ChevronDown className="size-4 ml-auto text-muted-foreground" />
-            )}
-          </button>
-          {showMobileFilters && (
-            <div className="mt-3 rounded-lg border border-border bg-hud-surface p-4">
-              <FilterPanel filters={filters} onChange={setFilters} />
-            </div>
+        {/* Results bar */}
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="font-mono text-xs text-muted-foreground">
+            {isLoading ? "…" : t("directory.resultsCount", { count: list.length })}
+          </p>
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 font-mono text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            >
+              <X className="size-3" /> {t("filters.clearAll")}
+            </button>
           )}
         </div>
 
-        <div className="flex gap-8">
-          {/* Desktop sidebar */}
-          <div className="hidden lg:block">
-            <FilterPanel filters={filters} onChange={setFilters} />
+        {/* Grid / states */}
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-24 text-muted-foreground">
+            <Loader2 className="size-5 animate-spin" /> {t("directory.loading")}
           </div>
-
-          {/* Grid */}
-          <div className="flex-1 min-w-0">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
-                <Loader2 className="size-5 animate-spin" /> {t("filters.sort")}…
-              </div>
-            ) : list.length === 0 ? (
-              <div className="text-center py-20 text-muted-foreground">
-                <GraduationCap className="size-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">{t("empty.description")}</p>
-                <button
-                  onClick={() => { setFilters({ sort: "rating" }); setSearch(""); }}
-                  className="mt-3 font-mono text-xs text-primary hover:underline"
-                >
-                  {t("filters.all")}
-                </button>
-              </div>
-            ) : (
-              <div className="grid sm:grid-cols-2 gap-4">
-                {list.map((c) => <CoachCard key={c.user_id} coach={c} />)}
-              </div>
+        ) : list.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-hud-surface/40 py-24 text-center text-muted-foreground">
+            <GraduationCap className="mx-auto mb-3 size-10 opacity-30" />
+            <p className="font-heading text-base font-bold text-foreground">{t("empty.title")}</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm">{t("empty.description")}</p>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={clearAll}
+                className="mt-4 font-mono text-xs text-primary hover:underline"
+              >
+                {t("filters.clearAll")}
+              </button>
             )}
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {list.map((c) => <CoachCard key={c.user_id} coach={c} />)}
+          </div>
+        )}
       </main>
     </div>
   );

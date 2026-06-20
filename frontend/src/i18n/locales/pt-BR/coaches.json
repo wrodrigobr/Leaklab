@@ -2,7 +2,10 @@
   "directory": {
     "eyebrow": "Marketplace de Coaches",
     "title": "Encontre seu coach",
-    "description": "Coaches verificados especializados em MTT, SNG, Cash Game e mais. Filtre por especialidade, idioma e avaliação."
+    "description": "Coaches verificados especializados em torneios. Filtre por especialidade, idioma e avaliação.",
+    "resultsCount": "{{count}} coach",
+    "resultsCount_plural": "{{count}} coaches",
+    "loading": "Carregando coaches…"
   },
   "filters": {
     "search": "Buscar coaches…",
@@ -10,7 +13,13 @@
     "language": "Idioma",
     "sort": "Ordenar",
     "all": "Todos",
-    "verified": "Verificados"
+    "verified": "Verificados",
+    "more": "Filtros",
+    "maxPrice": "Preço máx/sessão (R$)",
+    "noLimit": "Sem limite",
+    "trial": "Trial",
+    "trialOnly": "Somente com trial",
+    "clearAll": "Limpar filtros"
   },
   "sort": {
     "rating": "Melhor avaliado",

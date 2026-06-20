@@ -2,7 +2,10 @@
   "directory": {
     "eyebrow": "Coach Marketplace",
     "title": "Find your coach",
-    "description": "Verified coaches specializing in MTT, SNG, Cash Game, and more. Filter by specialty, language, and rating."
+    "description": "Verified coaches specializing in tournaments. Filter by specialty, language and rating.",
+    "resultsCount": "{{count}} coach",
+    "resultsCount_plural": "{{count}} coaches",
+    "loading": "Loading coaches…"
   },
   "filters": {
     "search": "Search coaches…",
@@ -10,7 +13,13 @@
     "language": "Language",
     "sort": "Sort",
     "all": "All",
-    "verified": "Verified"
+    "verified": "Verified",
+    "more": "Filters",
+    "maxPrice": "Max price/session (R$)",
+    "noLimit": "No limit",
+    "trial": "Trial",
+    "trialOnly": "Trial only",
+    "clearAll": "Clear filters"
   },
   "sort": {
     "rating": "Top rated",
