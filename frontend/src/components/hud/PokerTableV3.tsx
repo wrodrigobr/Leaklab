@@ -575,14 +575,14 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
       {/* Layer 1 — tilted background (felt + rail) — clipped to rounded corners */}
       <div
         className="absolute inset-0 overflow-hidden rounded-2xl"
-        style={{ perspective: "1100px", perspectiveOrigin: "50% 0%" }}
+        style={orientation === "portrait" ? undefined : { perspective: "1100px", perspectiveOrigin: "50% 0%" }}
       >
         <svg
           viewBox={`0 0 ${geo.VBW} ${geo.VBH}`}
           xmlns="http://www.w3.org/2000/svg"
           preserveAspectRatio="xMidYMid meet"
           className="w-full h-full block"
-          style={{ transform: "rotateX(9deg)", transformOrigin: "50% 60%" }}
+          style={orientation === "portrait" ? undefined : { transform: "rotateX(9deg)", transformOrigin: "50% 60%" }}
         >
           <defs>
             <radialGradient id="bg-felt" cx="48%" cy="38%" r="60%">
