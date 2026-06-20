@@ -13,7 +13,8 @@ import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
-import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel } from "@/lib/cardLogic";
+import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, type VerdictLevel } from "@/lib/cardLogic";
+import { VerdictPill } from "@/components/replayer/VerdictPill";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
 
@@ -1859,22 +1860,17 @@ const Replayer = () => {
               </div>
             </div>
 
-            {/* Mobile: barra de veredito que abre o card de análise (sheet). Passo 2 = VerdictPill polida. */}
-            <button
+            {/* Mobile: barra de veredito (3 níveis, fonte única VERDICT_META) que abre o sheet de análise */}
+            <VerdictPill
+              level={
+                verdictLevel(step.error_label)
+                ?? (step.is_hero && step.type === "action"
+                      ? (isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null
+                      : null)
+              }
+              evLossBb={step.ev_loss_bb}
               onClick={() => setShowAnalysis(true)}
-              className={cn(
-                "lg:hidden shrink-0 flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider transition-colors",
-                isCorrect ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                : isError ? "border-red-500/30 bg-red-500/10 text-red-300"
-                : "border-border bg-hud-surface text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <span className="flex items-center gap-1.5">
-                {isCorrect ? <Check className="size-3.5" /> : isError ? <X className="size-3.5" /> : <Eye className="size-3.5" />}
-                {isCorrect ? t("vCorrect") : isError ? t("vError") : t("analysis")}
-              </span>
-              <ChevronRight className="size-3.5 opacity-60" />
-            </button>
+            />
 
             {/* Controls */}
             <div className="shrink-0 border border-border rounded-xl bg-hud-surface p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
