@@ -1139,7 +1139,7 @@ Cada card deve ter:
 2. Diagnóstico: 2-3 frases — RAIZ do problema + impacto em EV/bb (cite o custo em bb quando houver)
 3. Conceitos-chave: 2-4 conceitos teóricos a dominar
 4. Recursos: descreva o TIPO de material e o conceito a buscar (ex: "vídeo sobre defesa de BB vs steal em MTT", "teoria de ICM em bolha"). NÃO invente títulos de livros, nomes de vídeos nem URLs específicos.
-5. Exercício prático: rotina CONCRETA e mensurável pra fazer HOJE
+5. Exercício prático: rotina CONCRETA e mensurável, dimensionada pra ~2h/semana de estudo (estimativa)
 6. Métrica de progresso: como saber que melhorou
 
 Responda APENAS com JSON válido, sem texto adicional, no formato:
@@ -1524,8 +1524,8 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
         diagnosis +
         "\n\n## Tarefa\nInvestigue os leaks de maior EV ponderado e gere o plano (1-6 módulos "
         "ACIONÁVEIS, não force 6), cada um ancorado em mãos/números reais quando possível. "
-        "Cruze os HUD Stats (respeitando o gate de amostra) com os leaks. Termine chamando "
-        "submit_study_plan."
+        "Cruze os HUD Stats (respeitando o gate de amostra) com os leaks. Dimensione os "
+        "exercícios pra ~2h/semana de estudo (estimativa). Termine chamando submit_study_plan."
     )
 
     messages: list[dict] = [{'role': 'user', 'content': user_msg}]
