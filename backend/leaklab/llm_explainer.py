@@ -1083,14 +1083,17 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
 
     # Vazamentos por EV PERDIDO (#24/#25) — quantos bb cada spot custa. PRIORIDADE
     # do plano: o leak que mais sangra EV vale mais que vários pequenos.
-    ev_txt = ''
-    if ev_leaks:
-        ev_txt = '\n'.join(
-            f"  - {l.get('position', '?')} {l.get('street', '')} (ideal: {l.get('ideal_action', '')}): "
-            f"−{l.get('total_ev_loss_bb', 0)} bb em {l.get('n', 0)} decisões "
-            f"(−{l.get('avg_ev_loss_bb', 0)} bb/decisão)"
-            for l in ev_leaks[:6]
-        )
+    ev_txt = _format_ev_leaks_weighted(ev_leaks) if ev_leaks else ''
+
+    # Nível (ELO) pré-computado — o LLM usa como referência, não adivinha o 'nivel'.
+    level_label = None
+    if user_id is not None:
+        try:
+            from database.repositories import get_player_level
+            _lv = get_player_level(user_id) or {}
+            level_label = _lv.get('label') or _lv.get('level')
+        except Exception:
+            level_label = None
 
     # --- HUD stats section (se disponível) ---
     hud_txt = _format_hud_stats_for_prompt(player_stats) if player_stats else ''
@@ -1111,54 +1114,66 @@ Analise os dados de performance abaixo e gere um plano de estudos DETALHADO e PE
 - Score médio de erro: {avg_score:.4f} (meta: abaixo de 0.08)
 - Standard% (decisões corretas): {avg_std:.1f}% (meta: acima de 80%)
 - Erros claros: {avg_clear:.1f}% (meta: abaixo de 5%)
-- Pior fase ICM: pressão {icm_weak}
+- Pior fase ICM: pressão {icm_weak}{('''
+- Nível estimado (ELO): ''' + level_label) if level_label else ''}
 {hud_txt}
 **Leaks identificados (por frequência de erro):**{source_note}
 {leaks_txt}
 {('''
-**Vazamentos por EV PERDIDO (bb deixados na mesa — PRIORIZE A ORDEM DO PLANO POR AQUI):**
-Cada spot abaixo mostra quantos big blinds o jogador deixou na mesa vs a melhor jogada GTO. Um leak que custa muito EV (bb) vale mais que um leak frequente porém barato. Ordene o plano do que mais sangra EV pro que menos.
+**Vazamentos por EV PONDERADO (já ranqueado em CÓDIGO — siga ESTA ordem; "confiança baixa" = amostra pequena, possível variância, NÃO priorize):**
 ''' + ev_txt) if ev_txt else ''}
 
 ## Instrução de Coach
 
 Use os HUD Stats comportamentais para enriquecer o diagnóstico: se VPIP alto + PFR baixo, o jogador é loose-passive; se AF abaixo de 2x, o postflop é passivo demais; se Open Limp% acima de 5%, há problema de fold equity pré-flop; se BB Defense baixa, o jogador está sendo exploitado no big blind. Cruze os HUD Stats com os Leaks identificados para gerar módulos muito mais específicos e personalizados.
 
-Gere um plano de estudos com exatamente 6 itens, ordenados pela PRIORIDADE DE EV — comece pelos vazamentos que mais custam bb (lista "Vazamentos por EV PERDIDO" acima, quando disponível); na ausência dela, use a frequência de erro. Quando souber o custo em bb de um leak, cite-o no diagnóstico ("este leak custa ~X bb/decisão").
-Cada item deve ser um módulo de estudo completo com:
+REGRAS DE PRIORIZAÇÃO E AMOSTRA (siga à risca):
+- Ordene os cards pela ordem do "EV PONDERADO" acima (já calculado em código). NÃO recalcule nem reordene por bb bruto.
+- GATE: NÃO gere card de correção para HUD stats marcados "AMOSTRA INSUFICIENTE". Liste-os em "observar_mais_dados" (sample atual vs necessário + por que esperar).
+- NÃO force 6 cards. Se só há N leaks acionáveis e CONFIÁVEIS, entregue N (entre 1 e 6). NÃO invente leaks que os dados não mostram.
+- Leaks marcados "confiança baixa" (amostra pequena): se incluir, sinalize a incerteza no diagnóstico e rebaixe a prioridade. Itens fracos/ruidosos vão em "nao_focar_agora".
+- Use o "Nível estimado (ELO)" como referência para o campo "nivel".
 
+Cada card deve ter:
 1. Título direto e específico ao leak (máx 6 palavras)
-2. Diagnóstico: 2-3 frases explicando a RAIZ do problema e seu impacto real em EV/fichas
-3. Conceitos-chave: lista de 2-4 conceitos teóricos que o jogador PRECISA dominar para corrigir este leak
-4. Recursos de estudo:
-   - 1-2 livros ou capítulos específicos (ex: "The Mental Game of Poker cap. 3", "Applications of No-Limit Hold'em cap. 7")
-   - 1-2 tipos de vídeos/canais (ex: "solver study sessions focados em spots-chave", "hand history reviews de spots de 3bet")
-   - 1 curso ou treinamento específico se relevante
-5. Exercício prático: uma rotina CONCRETA e mensurável que o jogador pode fazer HOJE (ex: "Revisar 20 mãos de fold no BB contra 3bet, marcar as que tinham +EV call e calcular os pot odds")
-6. Métrica de progresso: como saber que melhorou (ex: "Taxa de erro neste spot abaixo de 15% em 50 mãos")
+2. Diagnóstico: 2-3 frases — RAIZ do problema + impacto em EV/bb (cite o custo em bb quando houver)
+3. Conceitos-chave: 2-4 conceitos teóricos a dominar
+4. Recursos: descreva o TIPO de material e o conceito a buscar (ex: "vídeo sobre defesa de BB vs steal em MTT", "teoria de ICM em bolha"). NÃO invente títulos de livros, nomes de vídeos nem URLs específicos.
+5. Exercício prático: rotina CONCRETA e mensurável pra fazer HOJE
+6. Métrica de progresso: como saber que melhorou
 
 Responda APENAS com JSON válido, sem texto adicional, no formato:
 {{
   "nivel": "iniciante|intermediario|avancado",
-  "resumo": "2-3 frases descrevendo o perfil de erros, os padrões principais e o caminho de evolução deste jogador",
+  "resumo": "2-3 frases: perfil de erros, padrões principais e caminho de evolução",
   "cards": [
     {{
       "prioridade": "p1",
       "icone": "♠|♥|♦|♣",
       "titulo": "título do tópico",
-      "diagnostico": "explicação da raiz do problema e impacto em EV",
-      "conceitos": ["conceito 1", "conceito 2", "conceito 3"],
+      "diagnostico": "raiz do problema + impacto em EV/bb",
+      "conceitos": ["conceito 1", "conceito 2"],
       "recursos": {{
-        "livros": ["livro/capítulo específico 1", "livro/capítulo específico 2"],
-        "videos": ["tipo de vídeo/canal 1", "tipo de vídeo/canal 2"],
-        "curso": "nome do curso ou treinamento (null se não aplicável)"
+        "livros": ["TIPO de material + conceito — sem inventar título"],
+        "videos": ["tipo de vídeo/conceito a buscar"],
+        "curso": "tipo de treinamento ou string vazia"
       }},
       "exercicio": "rotina prática concreta e mensurável",
-      "metrica": "como medir o progresso neste leak",
-      "spot": "street/action do leak principal"
+      "metrica": "como medir o progresso",
+      "spot": "street/action do leak",
+      "ev_ponderado": "−X bb (copie do EV PONDERADO acima, ou null)",
+      "confianca_amostra": "alta|média|baixa"
     }}
+  ],
+  "observar_mais_dados": [
+    {{ "indicador": "WTSD", "valor_atual": "40%", "sample_atual": 897, "sample_necessario": 1000, "por_que_esperar": "abaixo da amostra confiável — pode ser ruído" }}
+  ],
+  "nao_focar_agora": [
+    {{ "item": "leak ou stat", "motivo": "amostra pequena / EV baixo / variância" }}
   ]
-}}"""
+}}
+
+(cards: entre 1 e 6, só os acionáveis. observar_mais_dados/nao_focar_agora podem ser [] se não houver.)"""
 
     try:
         resp = requests.post(
@@ -1237,9 +1252,49 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
 # A saída final é estruturada via a ferramenta terminal submit_study_plan (o schema
 # é validado pela API → JSON sempre válido, sem strip de markdown nem recuperação).
 
+# ── Pré-computação (passo 1): tira cálculo/gate de dentro do LLM ─────────────────
+def _ev_confidence(n: int) -> tuple[float, str]:
+    """Fator de encolhimento por nº de decisões — penaliza variância de amostra pequena.
+    Um leak de 3 decisões NÃO pode superar um padrão confiável de 24."""
+    if n >= 10:
+        return 1.0, 'alta'
+    if n >= 5:
+        return 0.6, 'média'
+    return 0.3, 'baixa'
+
+
+def _weighted_ev_leaks(ev_leaks: list | None) -> list:
+    """Ranqueia leaks por EV PONDERADO = bb total × confiança (shrink por nº de decisões).
+    Calculado em CÓDIGO (determinístico) — o LLM não computa, só prioriza pela ordem dada."""
+    out = []
+    for l in (ev_leaks or []):
+        n     = int(l.get('n', 0) or 0)
+        total = float(l.get('total_ev_loss_bb', 0) or 0)
+        factor, conf = _ev_confidence(n)
+        out.append({**l, 'ev_ponderado': round(total * factor, 2), 'confianca_amostra': conf})
+    # tiered: confiança ALTA primeiro (por EV ponderado), depois média, depois baixa —
+    # assim um leak confiável de 24 decisões nunca fica atrás de variância de 3 decisões.
+    _rank = {'alta': 0, 'média': 1, 'baixa': 2}
+    out.sort(key=lambda x: (_rank.get(x.get('confianca_amostra'), 3), -x.get('ev_ponderado', 0)))
+    return out
+
+
+def _format_ev_leaks_weighted(ev_leaks: list | None) -> str:
+    """Texto dos vazamentos por EV PONDERADO (já ranqueado + flag de variância)."""
+    weighted = _weighted_ev_leaks(ev_leaks)
+    return '\n'.join(
+        f"  - {l.get('position', '?')} {l.get('street', '')} (ideal: {l.get('ideal_action', '')}): "
+        f"−{l.get('total_ev_loss_bb', 0)} bb em {l.get('n', 0)} decisões → "
+        f"EV ponderado −{l.get('ev_ponderado', 0)} bb (confiança {l.get('confianca_amostra', '?')}"
+        f"{'; AMOSTRA PEQUENA — possível variância, não priorize' if l.get('confianca_amostra') == 'baixa' else ''})"
+        for l in weighted[:6]
+    )
+
+
 def _build_study_diagnosis_block(leaks: list, evolution: list, icm: dict,
                                  hero: str, player_stats: dict | None,
-                                 leak_source: str, ev_leaks: list | None) -> str:
+                                 leak_source: str, ev_leaks: list | None,
+                                 level_label: str | None = None) -> str:
     """Monta o bloco de diagnóstico (dados do jogador) compartilhado pelo prompt."""
     total_dec  = sum((e.get('decisions_count') or 0) for e in evolution) or 1
     avg_score  = sum((e.get('avg_score') or 0) * (e.get('decisions_count') or 0)
@@ -1258,15 +1313,9 @@ def _build_study_diagnosis_block(leaks: list, evolution: list, icm: dict,
         f"({'crítico' if l['avg_score'] >= .36 else 'moderado' if l['avg_score'] >= .20 else 'leve'})"
         for l in leaks[:8]
     )
-    ev_txt = ''
-    if ev_leaks:
-        ev_txt = '\n'.join(
-            f"  - {l.get('position', '?')} {l.get('street', '')} (ideal: {l.get('ideal_action', '')}): "
-            f"−{l.get('total_ev_loss_bb', 0)} bb em {l.get('n', 0)} decisões "
-            f"(−{l.get('avg_ev_loss_bb', 0)} bb/decisão)"
-            for l in ev_leaks[:6]
-        )
-    hud_txt = _format_hud_stats_for_prompt(player_stats) if player_stats else ''
+    ev_txt   = _format_ev_leaks_weighted(ev_leaks) if ev_leaks else ''
+    hud_txt  = _format_hud_stats_for_prompt(player_stats) if player_stats else ''
+    lvl_line = f"\n- Nível estimado (ELO): {level_label}" if level_label else ''
     source_note = {
         'gto':       '\n(Leaks via análise GTO — comparação direta com solver. Alta confiança.)',
         'heuristic': '\n(Leaks via análise heurística do engine — confiança moderada.)',
@@ -1279,13 +1328,14 @@ def _build_study_diagnosis_block(leaks: list, evolution: list, icm: dict,
 - Score médio de erro: {avg_score:.4f} (meta: abaixo de 0.08)
 - Standard% (decisões corretas): {avg_std:.1f}% (meta: acima de 80%)
 - Erros claros: {avg_clear:.1f}% (meta: abaixo de 5%)
-- Pior fase ICM: pressão {icm_weak}
+- Pior fase ICM: pressão {icm_weak}{lvl_line}
 {hud_txt}
 **Leaks identificados (por frequência de erro):**{source_note}
 {leaks_txt}"""
     if ev_txt:
-        block += ("\n\n**Vazamentos por EV PERDIDO (bb deixados na mesa — PRIORIZE A ORDEM "
-                  "DO PLANO POR AQUI):**\n" + ev_txt)
+        block += ("\n\n**Vazamentos por EV PONDERADO (já ranqueado em CÓDIGO — siga ESTA ordem; "
+                  "leaks 'confiança baixa' podem ser variância de amostra pequena, NÃO priorize):**\n"
+                  + ev_txt)
     return block
 
 
