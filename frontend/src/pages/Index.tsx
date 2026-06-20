@@ -152,8 +152,11 @@ const Index = () => {
 
   // KPIs derived from tourns — slice to last N when volumeLimit is set
   const visibleTourns = volumeLimit ? tourns.slice(-volumeLimit) : tourns;
-  const totalInvested = visibleTourns.reduce((s, t) => s + (t.buy_in ?? 0), 0);
-  const totalProfit   = visibleTourns.reduce((s, t) => s + (t.profit ?? 0), 0);
+  // ROI: numerador e denominador sobre o MESMO conjunto (só torneios com buy-in conhecido),
+  // senão lucro de torneio sem buy_in entra sem o investimento e infla o ROI.
+  const ratedTourns   = visibleTourns.filter((t) => (t.buy_in ?? 0) > 0);
+  const totalInvested = ratedTourns.reduce((s, t) => s + (t.buy_in ?? 0), 0);
+  const totalProfit   = ratedTourns.reduce((s, t) => s + (t.profit ?? 0), 0);
   const roi           = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : null;
   const itmCount      = visibleTourns.filter((t) => (t.profit ?? 0) > 0).length;
   const itmPct        = visibleTourns.length > 0 ? (itmCount / visibleTourns.length) * 100 : null;
