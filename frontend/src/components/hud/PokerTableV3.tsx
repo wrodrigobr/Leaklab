@@ -435,11 +435,12 @@ function renderSeatsAndChips(
       if (actText) {
         html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="20" font-weight="700" letter-spacing=".03">${actText}</text>`;
       } else {
-        const maxChars = isHero ? 9 : 8;
+        const maxChars = 7;
         const name = displayName.length > maxChars ? displayName.slice(0, maxChars) + "…" : displayName;
-        html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" font-family="Inter,sans-serif" font-size="18.5" font-weight="${isHero ? 600 : 500}" letter-spacing=".02">`
-          + `<tspan fill="${nameFill}">${name}</tspan>`
-          + `<tspan dx="7" fill="${stackFill}" font-family="Share Tech Mono,monospace" font-weight="600">${fmtAmt(sv, bb, unit)}</tspan></text>`;
+        // Stack = info principal (maior, brilhante, mono); nome = rótulo curto e discreto (trunca limpo).
+        html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" font-family="Inter,sans-serif" letter-spacing=".02">`
+          + `<tspan fill="${isHero ? "#d8d3c8" : "#8f8a81"}" font-size="14.5" font-weight="500">${name}</tspan>`
+          + `<tspan dx="7" fill="${stackFill}" font-size="18" font-family="Share Tech Mono,monospace" font-weight="700">${fmtAmt(sv, bb, unit)}</tspan></text>`;
       }
     } else {
       // Pod 2 LINHAS (desktop landscape): nome/ação em cima, stack embaixo
