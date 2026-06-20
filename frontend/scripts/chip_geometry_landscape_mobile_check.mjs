@@ -13,7 +13,7 @@ const DRX=20, DRY=12;
 const GAP=14;
 const BADGE_DROP=10;                 // stack badge pendura ~10px abaixo do pod (screen +y)
 const VB={x1:4,y1:4,x2:1156,y2:706}; // viewBox
-const BOARD_W=68, BOARD_GAP=8, BOARD_H=110;
+const BOARD_W=80, BOARD_GAP=8, BOARD_H=116;
 function buildLayout(seatNums, heroSeat){
   const n=seatNums.length, heroIdx=seatNums.indexOf(heroSeat);
   const rot=180-(360/n)*heroIdx, L={};

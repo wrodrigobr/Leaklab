@@ -42,7 +42,7 @@ const GEO_PORTRAIT: Geo = {
 // chip_geometry_landscape_mobile_check.
 const GEO_LANDSCAPE_MOBILE: Geo = {
   CX: 580, CY: 355, RX_SEAT: 472, RY_SEAT: 250, VBW: 1160, VBH: 710, aspect: "1160 / 710", S: 1,
-  RXF: 440, RYF: 232, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8, seatDX: 0,
+  RXF: 440, RYF: 232, FELT_MX: 24, FELT_MY: 22, boardW: 80, boardH: 116, boardGap: 8, seatDX: 0,
   podW: 150, podH: 40, cardW: 80, cardH: 116, compactPod: true, gap: 14,
 };
 // Geometria CORRENTE — mutável por render. Seguro: o build do SVG é síncrono (useEffect)
@@ -228,18 +228,22 @@ function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
   h += `<text x="${valueX}" y="${textY}"
     fill="rgba(255,255,255,0.96)" font-family="Space Grotesk,sans-serif" font-size="16" font-weight="700">${potStr}</text>`;
 
-  const chipBottomY = cardBottom + 38;
-  const potChipX = G.CX - 36;
-  h += chipStackSVG(potChipX, chipBottomY, pot);
+  // Fichas do pot: redundantes com a pílula "POT" (mesmo valor). No mobile (compact) são
+  // omitidas pra limpar o centro; desktop mantém o stack ilustrativo.
+  if (!G.compactPod) {
+    const chipBottomY = cardBottom + 38;
+    const potChipX = G.CX - 36;
+    h += chipStackSVG(potChipX, chipBottomY, pot);
 
-  // chip label pill
-  const cpW = Math.max(72, potStr.length * 9 + 20);
-  const cpX = potChipX - cpW / 2;
-  const cpY = chipBottomY + 8;
-  h += `<rect x="${cpX}" y="${cpY}" width="${cpW}" height="20" rx="10"
-    fill="rgba(6,12,28,0.68)" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>`;
-  h += `<text x="${potChipX}" y="${cpY + 14}" text-anchor="middle"
-    fill="rgba(255,255,255,0.90)" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">${potStr}</text>`;
+    // chip label pill
+    const cpW = Math.max(72, potStr.length * 9 + 20);
+    const cpX = potChipX - cpW / 2;
+    const cpY = chipBottomY + 8;
+    h += `<rect x="${cpX}" y="${cpY}" width="${cpW}" height="20" rx="10"
+      fill="rgba(6,12,28,0.68)" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>`;
+    h += `<text x="${potChipX}" y="${cpY + 14}" text-anchor="middle"
+      fill="rgba(255,255,255,0.90)" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">${potStr}</text>`;
+  }
 
   return h;
 }
