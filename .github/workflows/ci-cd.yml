@@ -12,6 +12,23 @@ jobs:
     name: Testes
     runs-on: ubuntu-latest
 
+    # Postgres real p/ o smoke test — pega a classe de bug que o SQLite esconde
+    # (float*Decimal, ROUND(real,int), Decimal/jsonify, HAVING-alias, lastrowid).
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: leaklab
+          POSTGRES_PASSWORD: leaklab
+          POSTGRES_DB: leaklab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,6 +49,13 @@ jobs:
       - name: Rodar suite completa
         working-directory: backend
         run: python3 tests/run_all_tests.py
+
+      - name: Smoke test em Postgres (classe SQLite↔PG)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://leaklab:leaklab@localhost:5432/leaklab_test
+          LEAKLAB_SECRET: ci_smoke_secret_at_least_32_chars_long_xx
+        run: python3 tests/test_postgres_smoke.py
 
       - name: Node 20
         uses: actions/setup-node@v4
