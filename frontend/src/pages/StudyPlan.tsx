@@ -575,7 +575,7 @@ const StudyPlanPage = () => {
                         {plan.observar!.map((o, i) => (
                           <li key={i} className="text-xs text-muted-foreground">
                             <span className="font-semibold text-foreground">{o.indicador}</span>
-                            {o.valor_atual ? ` (${o.valor_atual})` : ""} — {o.sample_atual ?? "?"}/{o.sample_necessario ?? "?"} {t("observe.hands")}. {o.por_que_esperar ?? ""}
+                            {o.valor_atual ? ` (${o.valor_atual})` : ""}, {o.sample_atual ?? "?"}/{o.sample_necessario ?? "?"} {t("observe.hands")}. {o.por_que_esperar ?? ""}
                           </li>
                         ))}
                       </ul>
@@ -587,7 +587,7 @@ const StudyPlanPage = () => {
                       <ul className="space-y-1.5">
                         {plan.naoFocar!.map((s, i) => (
                           <li key={i} className="text-xs text-muted-foreground">
-                            <span className="font-semibold text-foreground">{s.item}</span> — {s.motivo}
+                            <span className="font-semibold text-foreground">{s.item}</span>, {s.motivo}
                           </li>
                         ))}
                       </ul>

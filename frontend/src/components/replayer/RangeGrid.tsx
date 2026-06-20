@@ -78,7 +78,7 @@ export function RangeGrid({ range, heroHand }: Props) {
             if (f.allin && f.allin > 0.001) tipParts.push(`Allin ${(f.allin*100).toFixed(0)}%`);
             const totalActive = tipParts.length ? ((f.raise ?? 0) + (f.call ?? 0) + (f.allin ?? 0)) : 0;
             if (totalActive < 0.999) tipParts.push(`Fold ${((1-totalActive)*100).toFixed(0)}%`);
-            const tooltip = `${hand} — ${tipParts.join(' · ')}`;
+            const tooltip = `${hand}: ${tipParts.join(' · ')}`;
             return (
               <div
                 key={`${row}-${col}`}

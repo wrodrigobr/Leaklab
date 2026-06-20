@@ -148,7 +148,7 @@ function OverviewTab({ studentId }: { studentId: number }) {
         {evo.length >= 2 && (
           <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-3">
             <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-              Comparativo — primeiros 3 vs últimos 3 torneios
+              Comparativo: primeiros 3 vs últimos 3 torneios
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
@@ -635,7 +635,7 @@ function WorstTab({ studentId }: { studentId: number }) {
   return (
     <div className="space-y-2">
       <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
-        {decisions.length} piores decisões — ordenadas por score (maior erro primeiro)
+        {decisions.length} piores decisões, ordenadas por score (maior erro primeiro)
       </p>
       {decisions.map((d: StudentWorstDecision) => {
         const heroCards  = d.hero_cards ? parseHeroCards(d.hero_cards) : [];
@@ -1004,7 +1004,7 @@ function StudyCardItem({
             <div className="space-y-1">
               <label className="font-mono text-[9px] uppercase text-muted-foreground">🎬 Vídeos <span className="normal-case">(um por linha)</span></label>
               <textarea value={customVideos} onChange={(e) => setCustomVideos(e.target.value)} rows={3}
-                placeholder={"Hand history reviews no solver\nSolver study sessions — spots de 3bet"}
+                placeholder={"Hand history reviews no solver\nSolver study sessions, spots de 3bet"}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none" />
             </div>
             <div className="space-y-1">

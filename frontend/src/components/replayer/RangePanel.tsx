@@ -324,7 +324,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
               </div>
 
               {/* % de ação DA MÃO DO JOGADOR (não do range agregado). O jogador
-                  tem cartas específicas — a análise é sobre a mão dele. Fonte:
+                  tem cartas específicas: a análise é sobre a mão dele. Fonte:
                   gto.hand_freq (None = fold puro 100%). */}
               {(() => {
                 const hf = gto.hand_freq;
@@ -371,7 +371,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
 
       {/* Push/Fold zone banner — só mostra quando NÃO há dados GW v3 disponíveis
           (Nash simplificado faz sentido em 4-6bb fallback). GW v3 cobre 10bb+ com
-          freqs reais incluindo raise sized — banner ficaria contraditório. */}
+          freqs reais incluindo raise sized, banner ficaria contraditório. */}
       {isPushZone && effectiveType === 'shove' && !apiData?.rfi && (
         <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 px-3 py-2 space-y-1">
           <div className="flex items-center gap-1.5">
@@ -380,7 +380,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
             </span>
           </div>
           <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">
-            Sem dados do GTO Solver pra este bucket — usando tabela Nash binária shove/fold.
+            Sem dados do GTO Solver pra este bucket, usando tabela Nash binária shove/fold.
           </p>
           {hand && nashRange && (
             <p className={cn(
@@ -422,7 +422,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
       </div>
 
       {/* Aviso quando a aba ativa não corresponde ao cenário da decisão. Só aponta
-          "está na aba X" quando essa aba REALMENTE existe — senão dizia pra clicar
+          "está na aba X" quando essa aba REALMENTE existe, senão dizia pra clicar
           numa aba inexistente (a grade vs 3-bet ainda não é exposta como aba). */}
       {(() => {
         const targetType = gto?.scenario ? SCENARIO_TO_TYPE[gto.scenario] : undefined;
@@ -436,7 +436,7 @@ export function RangePanel({ step, hero, heroCards, onClose, onHeaderMouseDown }
               {targetTab ? (
                 <>Esta grade mostra referência ({refLabel}). A decisão desta mão ({decLabel}) está na aba <strong className="text-amber-400">{targetTab.label}</strong>.</>
               ) : (
-                <>Esta grade é só referência ({refLabel}). A range específica desta decisão ({decLabel}) está no card de análise (frequências da sua mão) — ainda não disponível como grade 13×13.</>
+                <>Esta grade é só referência ({refLabel}). A range específica desta decisão ({decLabel}) está no card de análise (frequências da sua mão), ainda não disponível como grade 13×13.</>
               )}
             </p>
           </div>

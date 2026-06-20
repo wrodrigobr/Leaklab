@@ -22,13 +22,13 @@ import { cn } from "@/lib/utils";
  */
 
 export type DecisionSourceVariant =
-  | "gto"        // Solver — autoridade máxima (roxo/primary)
-  | "preflop"    // Preflop GTO Solver — autoridade média (foreground)
-  | "engine"     // Heurística do engine — autoridade baixa (muted)
-  | "heuristic"  // Sem cobertura GTO — fallback (cinza)
-  | "pushfold"   // Push/Fold zone — modo binário (amber)
-  | "multiway"   // Estimativa multiway (equity vs range) — solver é HU (teal/amber)
-  | "na";        // Spot incompatível — sem dado válido (orange)
+  | "gto"        // Solver: autoridade máxima (roxo/primary)
+  | "preflop"    // Preflop GTO Solver, autoridade média (foreground)
+  | "engine"     // Heurística do engine, autoridade baixa (muted)
+  | "heuristic"  // Sem cobertura GTO, fallback (cinza)
+  | "pushfold"   // Push/Fold zone, modo binário (amber)
+  | "multiway"   // Estimativa multiway (equity vs range), solver é HU (teal/amber)
+  | "na";        // Spot incompatível: sem dado válido (orange)
 
 export interface DecisionVerdict {
   icon: string;
@@ -65,16 +65,16 @@ interface Props {
   idealAction?: string | null;
   idealLabel?: string;              // "Recomendado" (default) | "GTO recomenda" | etc
   isActionOk: boolean;
-  evidence?: React.ReactNode;        // slot 3 — 1 widget primário (sempre visível)
-  indicators?: React.ReactNode;      // slot 4 — chips/rows numéricos secundários (sempre visíveis)
+  evidence?: React.ReactNode;        // slot 3, 1 widget primário (sempre visível)
+  indicators?: React.ReactNode;      // slot 4, chips/rows numéricos secundários (sempre visíveis)
   footer?: DecisionFooter;
-  icmBadge?: IcmBadge | null;        // badge direcional ICM (mesa final) — substitui o chip "ICM alto"
-  why?: string;                      // texto explicativo — escondido por padrão (toggle)
-  proNotes?: React.ReactNode;        // notas longas profissionais — escondidas por padrão (toggle)
+  icmBadge?: IcmBadge | null;        // badge direcional ICM (mesa final), substitui o chip "ICM alto"
+  why?: string;                      // texto explicativo, escondido por padrão (toggle)
+  proNotes?: React.ReactNode;        // notas longas profissionais, escondidas por padrão (toggle)
   showDetails: boolean;
   onToggleDetails: () => void;
   verdictTooltip?: string;
-  evLossBb?: number | null;          // #24 — bb perdidos vs a melhor ação (preflop)
+  evLossBb?: number | null;          // #24, bb perdidos vs a melhor ação (preflop)
   fmtAction: (a: string) => string;
 }
 
@@ -246,7 +246,7 @@ export function DecisionCard({
               </span>
             )}
             {/* Mesa final: badge direcional do ICM (calculate_icm) substitui o chip
-                heurístico "ICM alto/médio/baixo" — é o sinal mais informativo ali. */}
+                heurístico "ICM alto/médio/baixo", é o sinal mais informativo ali. */}
             {icmBadge ? (
               <span
                 className={cn(

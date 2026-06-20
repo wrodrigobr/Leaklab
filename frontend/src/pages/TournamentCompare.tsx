@@ -156,7 +156,7 @@ export default function TournamentCompare() {
               {[
                 {
                   label: "Standard %",
-                  sub: "Decisões dentro do padrão — quanto maior, melhor",
+                  sub: "Decisões dentro do padrão, quanto maior, melhor",
                   render: (item: TournamentComparison, idx: number) => (
                     <div className="space-y-1">
                       <QualityBar value={item.standard_pct} />
@@ -167,7 +167,7 @@ export default function TournamentCompare() {
                 },
                 {
                   label: "Avg Score",
-                  sub: "Score médio de erro — quanto menor, melhor",
+                  sub: "Score médio de erro, quanto menor, melhor",
                   render: (item: TournamentComparison, idx: number) => (
                     <div className="space-y-1">
                       <span className={cn("font-mono text-sm font-bold tabular-nums", (item.avg_score ?? 0) < 0.12 ? "text-primary" : (item.avg_score ?? 0) < 0.2 ? "text-yellow-400" : "text-destructive")}>
@@ -180,7 +180,7 @@ export default function TournamentCompare() {
                 },
                 {
                   label: "Clear Mistakes %",
-                  sub: "Erros claros — quanto menor, melhor",
+                  sub: "Erros claros, quanto menor, melhor",
                   render: (item: TournamentComparison, idx: number) => (
                     <div className="space-y-1">
                       <span className={cn("font-mono text-sm font-bold tabular-nums", (item.clear_pct ?? 0) < 5 ? "text-primary" : (item.clear_pct ?? 0) < 15 ? "text-yellow-400" : "text-destructive")}>
@@ -222,7 +222,7 @@ export default function TournamentCompare() {
                       <th className="px-4 py-2 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Phase</th>
                       {items.map((item, idx) => (
                         <th key={item.tournament_id} className="px-4 py-2 text-right font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-                          T{idx + 1} — Avg Score
+                          T{idx + 1}: Avg Score
                         </th>
                       ))}
                     </tr>

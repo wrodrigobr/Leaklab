@@ -22,7 +22,7 @@ interface PlayerStats {
 // Flag direcional vindo do backend (fonte única STAT_REFERENCES, gateado por amostra).
 interface StatFlag {
   band: "below" | "healthy" | "above" | "low_sample";
-  flag: string | null;            // tendência curta (nit/loose/station…) — só above/below
+  flag: string | null;            // tendência curta (nit/loose/station…), só above/below
   healthy?: [number, number];     // faixa saudável corrigida
 }
 
@@ -47,28 +47,28 @@ const ROW1: StatDef[] = [
     label: "VPIP",
     unit: "%",
     range: { min: 12, max: 22, label: "12–22%" },
-    tooltip: "Voluntarily Put money In Pot — % de mãos em que o jogador entrou voluntariamente (call/raise pré-flop). MTT ideal: 12–22%. Abaixo de 12% = muito tight; acima de 25% = muito loose.",
+    tooltip: "Voluntarily Put money In Pot, % de mãos em que o jogador entrou voluntariamente (call/raise pré-flop). MTT ideal: 12–22%. Abaixo de 12% = muito tight; acima de 25% = muito loose.",
   },
   {
     key: "pfr",
     label: "PFR",
     unit: "%",
     range: { min: 9, max: 18, label: "9–18%" },
-    tooltip: "PreFlop Raise — % de mãos em que o jogador abriu ou re-raised pré-flop. MTT ideal: 9–18%. PFR próximo ao VPIP indica jogo agressivo; diferença grande indica passividade.",
+    tooltip: "PreFlop Raise, % de mãos em que o jogador abriu ou re-raised pré-flop. MTT ideal: 9–18%. PFR próximo ao VPIP indica jogo agressivo; diferença grande indica passividade.",
   },
   {
     key: "af",
     label: "AF",
     unit: "x",
     range: { min: 2.0, max: 4.0, label: "2.0–4.0x" },
-    tooltip: "Aggression Factor — razão entre ações agressivas (bet/raise) e passivas (call) no pós-flop. MTT ideal: 2.0–4.0x. Abaixo de 1.5 = passivo demais; acima de 6 = overaggressive.",
+    tooltip: "Aggression Factor, razão entre ações agressivas (bet/raise) e passivas (call) no pós-flop. MTT ideal: 2.0–4.0x. Abaixo de 1.5 = passivo demais; acima de 6 = overaggressive.",
   },
   {
     key: "cbet_pct",
     label: "C-Bet",
     unit: "%",
     range: { min: 50, max: 75, label: "50–75%" },
-    tooltip: "Continuation Bet — % de vezes que apostou no flop como agressor pré-flop (opener/raiser). Denominador: mãos em que abriu ou 3-betou pré e viu o flop. MTT ideal: 50–75%.",
+    tooltip: "Continuation Bet, % de vezes que apostou no flop como agressor pré-flop (opener/raiser). Denominador: mãos em que abriu ou 3-betou pré e viu o flop. MTT ideal: 50–75%.",
   },
 ];
 
@@ -79,28 +79,28 @@ const ROW3: StatDef[] = [
     label: "Fold vs Bet",
     unit: "%",
     range: { min: 40, max: 55, label: "40–55%" },
-    tooltip: "Fold to Flop Bet — proxy para Fold to C-Bet. % de vezes que deu fold no flop ao enfrentar uma aposta. MTT ideal: 40–55%. Acima de 65% = passivo demais (desiste muito cedo); abaixo de 35% = too sticky (chama sem equity suficiente).",
+    tooltip: "Fold to Flop Bet, proxy para Fold to C-Bet. % de vezes que deu fold no flop ao enfrentar uma aposta. MTT ideal: 40–55%. Acima de 65% = passivo demais (desiste muito cedo); abaixo de 35% = too sticky (chama sem equity suficiente).",
   },
   {
     key: "bb_defense",
     label: "BB Defense",
     unit: "%",
     range: { min: 35, max: 55, label: "35–55%" },
-    tooltip: "BB Defense Rate — % de vezes que defendeu a Big Blind (call ou 3-bet) ao enfrentar uma abertura pré-flop. MTT ideal: 35–55%. Abaixo de 30% = folda BB em excesso, dando fold equity gratuita aos opponents.",
+    tooltip: "BB Defense Rate, % de vezes que defendeu a Big Blind (call ou 3-bet) ao enfrentar uma abertura pré-flop. MTT ideal: 35–55%. Abaixo de 30% = folda BB em excesso, dando fold equity gratuita aos opponents.",
   },
   {
     key: "steal_pct",
     label: "Steal",
     unit: "%",
     range: { min: 25, max: 45, label: "25–45%" },
-    tooltip: "Steal% — % de vezes que abriu (raise/shove) do BTN, CO ou SB quando a ação chegou sem aposta anterior. MTT ideal: 25–45%. Abaixo de 20% = perde vantagem posicional e deixa equity no pote; acima de 50% = overaggression exploitável.",
+    tooltip: "Steal%, % de vezes que abriu (raise/shove) do BTN, CO ou SB quando a ação chegou sem aposta anterior. MTT ideal: 25–45%. Abaixo de 20% = perde vantagem posicional e deixa equity no pote; acima de 50% = overaggression exploitável.",
   },
   {
     key: "open_limp_pct",
     label: "Open Limp",
     unit: "%",
     range: { min: 0, max: 5, label: "0–5%" },
-    tooltip: "Open Limp% — % de vezes que entrou no pote com call (sem raise em frente) de posição non-BB. MTT ideal: 0–5%. Limp preflop remove fold equity, cria potes multiway fora de posição e é exploitável por qualquer squeeze do BTN/BB. Acima de 8% = leak sério.",
+    tooltip: "Open Limp%, % de vezes que entrou no pote com call (sem raise em frente) de posição non-BB. MTT ideal: 0–5%. Limp preflop remove fold equity, cria potes multiway fora de posição e é exploitável por qualquer squeeze do BTN/BB. Acima de 8% = leak sério.",
   },
 ];
 
@@ -118,21 +118,21 @@ const ROW2: StatDef[] = [
     label: "WTSD",
     unit: "%",
     range: { min: 25, max: 35, label: "25–35%" },
-    tooltip: "Went to Deep Streets — % de mãos que viram flop e chegaram a ter decisão no river. Aproximação de WTSD (showdown data não disponível). MTT ideal: 25–35%.",
+    tooltip: "Went to Deep Streets, % de mãos que viram flop e chegaram a ter decisão no river. Aproximação de WTSD (showdown data não disponível). MTT ideal: 25–35%.",
   },
   {
     key: "three_bet",
     label: "3BET",
     unit: "%",
     range: { min: 4, max: 8, label: "4–8%" },
-    tooltip: "3-Bet% — das vezes em que ENFRENTOU um open pré-flop (oportunidades de 3-bet), % em que o hero re-raised. Denominador = mãos enfrentando um raise, não todas as mãos. MTT ideal: 4–8%. Abaixo de 3% = muito passivo; acima de 10% = overaggressive pré-flop.",
+    tooltip: "3-Bet%, das vezes em que ENFRENTOU um open pré-flop (oportunidades de 3-bet), % em que o hero re-raised. Denominador = mãos enfrentando um raise, não todas as mãos. MTT ideal: 4–8%. Abaixo de 3% = muito passivo; acima de 10% = overaggressive pré-flop.",
   },
   {
     key: "w_at_sd",
     label: "W$SD",
     unit: "%",
     range: { min: 50, max: 60, label: "50–60%" },
-    tooltip: "Won money at ShowDown — % de showdowns vencidos. Meta: > 50% para ser +EV nos confrontos. Calculado a partir das mãos que chegaram ao showdown no hand history.",
+    tooltip: "Won money at ShowDown, % de showdowns vencidos. Meta: > 50% para ser +EV nos confrontos. Calculado a partir das mãos que chegaram ao showdown no hand history.",
   },
 ];
 
@@ -249,17 +249,17 @@ function sampleConfidence(n: number): { level: "low" | "medium" | "high"; label:
   if (n < 200) return {
     level: "low",
     label: "Amostra baixa",
-    tooltip: `${n} mãos — intervalo de confiança alto (>±10pp em VPIP/PFR). Com pouca amostra os números são DIRECIONAIS: indicam a tendência (mais tight/loose/passivo), não valores exatos — ±alguns pontos não mudam o read. Mire 200+ mãos pra leitura confiável; 1000+ pra benchmarking.`,
+    tooltip: `${n} mãos, intervalo de confiança alto (>±10pp em VPIP/PFR). Com pouca amostra os números são DIRECIONAIS: indicam a tendência (mais tight/loose/passivo), não valores exatos, ±alguns pontos não mudam o read. Mire 200+ mãos pra leitura confiável; 1000+ pra benchmarking.`,
   };
   if (n < 1000) return {
     level: "medium",
     label: "Amostra média",
-    tooltip: `${n} mãos — IC típico ±5pp. Tendências confiáveis mas valores absolutos ainda flutuam. Atingir 1000+ mãos pra benchmarking firme.`,
+    tooltip: `${n} mãos, IC típico ±5pp. Tendências confiáveis mas valores absolutos ainda flutuam. Atingir 1000+ mãos pra benchmarking firme.`,
   };
   return {
     level: "high",
     label: "Amostra robusta",
-    tooltip: `${n} mãos — IC < ±3pp. Números estatisticamente confiáveis para comparação com referências.`,
+    tooltip: `${n} mãos, IC < ±3pp. Números estatisticamente confiáveis para comparação com referências.`,
   };
 }
 

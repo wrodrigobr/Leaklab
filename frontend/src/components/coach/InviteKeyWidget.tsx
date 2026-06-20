@@ -47,7 +47,7 @@ export function InviteKeyWidget() {
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Gere um convite por aluno. Cada código é de <b className="text-foreground">uso único</b> e expira em 30 dias — não dá pra repassar.
+        Gere um convite por aluno. Cada código é de <b className="text-foreground">uso único</b> e expira em 30 dias, não dá pra repassar.
       </p>
 
       {isLoading ? (

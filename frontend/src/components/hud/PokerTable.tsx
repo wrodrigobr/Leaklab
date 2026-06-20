@@ -11,7 +11,7 @@ export interface Seat {
   winner?:  boolean;
   bet?:     number;
   cards?:   CardData[];
-  revealed?: boolean; // true on showdown — show villain cards face-up
+  revealed?: boolean; // true on showdown, show villain cards face-up
 }
 
 interface Props {

@@ -15,7 +15,7 @@ const CX = 560, CY = 340;
 const RX_SEAT = 452, RY_SEAT = 272;
 const CARDS_BASE = "/cards/";
 const AC_COLORS: Record<string, string> = {
-  fold: "#9aa0a8", folds: "#9aa0a8",  // cinza neutro — fold é passivo, não erro
+  fold: "#9aa0a8", folds: "#9aa0a8",  // cinza neutro, fold é passivo, não erro
   call: "#3aaa52", calls: "#3aaa52",
   raise: "#c9a840", raises: "#c9a840",
   bet: "#c9a840", bets: "#c9a840",

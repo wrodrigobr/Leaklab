@@ -461,7 +461,7 @@ function FinanceTab() {
 
       <div className="overflow-hidden rounded-xl border border-border bg-hud-surface">
         <div className="px-4 py-3 border-b border-border bg-hud-elevated/40 flex items-center justify-between">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Repasses de Coaches — {period}</span>
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Repasses de Coaches, {period}</span>
           <span className="font-mono text-[10px] text-muted-foreground">1–3 alunos: zerado · 4–9: R$15/aluno · 10+: R$20/aluno</span>
         </div>
         <div className="overflow-x-auto">
@@ -795,7 +795,7 @@ function CandidaturasTab() {
                 {status === "pending" && (
                   <div className="space-y-2 border-t border-border pt-3">
                     <label className="font-mono text-[10px] uppercase text-muted-foreground">
-                      Nota para o candidato (opcional — enviada no email de rejeição)
+                      Nota para o candidato (opcional, enviada no email de rejeição)
                     </label>
                     <input
                       value={noteMap[app.id] ?? ""}
@@ -960,7 +960,7 @@ function SupportTab() {
       <div className="px-4 py-3 border-b border-border bg-hud-elevated/40 flex items-center gap-2">
         <MessageSquarePlus className="size-3.5 text-primary" />
         <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          Mensagens de Suporte — {tickets.length}
+          Mensagens de Suporte: {tickets.length}
         </span>
         <span className="ml-auto font-mono text-[9px] text-destructive">
           {tickets.filter(t => t.status === "open").length} abertos
@@ -1069,7 +1069,7 @@ function GtoWorkerTab() {
       {/* Throughput chart */}
       <div className="rounded-xl border border-border bg-hud-surface p-5 space-y-3">
         <h3 className="font-mono text-[11px] font-bold uppercase tracking-widest-2 text-muted-foreground">
-          Throughput — últimas 24h
+          Throughput: últimas 24h
         </h3>
         {throughput.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhum processamento nas últimas 24h.</p>
@@ -1246,7 +1246,7 @@ function ReanalyzeLabelsPanel() {
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Corrige labels calculados com bugs antigos (vs_rfi / limp fora de range).
-            Idempotente — seguro rodar múltiplas vezes.
+            Idempotente: seguro rodar múltiplas vezes.
           </p>
         </div>
         <button

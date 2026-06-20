@@ -253,7 +253,7 @@ export function DashboardV2({ onUpload, evSummary, hasData, renderCard, gtoQuali
         )}
 
         {/* ── HUD Stats (VPIP/PFR/…) — faixa completa, casca V2. SEM gate por
-            total_hands: o card tem estado vazio próprio — esconder silenciosamente
+            total_hands: o card tem estado vazio próprio, esconder silenciosamente
             quando a query atrasa fazia ele "sumir" do V2. ─────────────────── */}
         {hasData && <PlayerStatsCard stats={playerStats} v2 />}
 

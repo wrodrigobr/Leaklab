@@ -7,7 +7,7 @@ const META = {
     label: "GTO Misto",
     cls: "text-sky-400 ring-sky-500/30 bg-sky-500/8",
     tooltip:
-      "Estratégia mista — o solver distribui frequência entre múltiplas ações neste spot. " +
+      "Estratégia mista: o solver distribui frequência entre múltiplas ações neste spot. " +
       "Sua jogada tem entre 30–60% de frequência no equilíbrio de Nash: é uma linha teoricamente válida. " +
       "Não é um erro; qualquer ação com ≥30% de frequência é considerada equilibrada.",
   },
@@ -16,7 +16,7 @@ const META = {
     label: "Defensável",
     cls: "text-amber-400 ring-amber-500/30 bg-amber-500/8",
     tooltip:
-      "Desvio leve — ação com 10–30% de frequência no equilíbrio do solver. " +
+      "Desvio leve: ação com 10–30% de frequência no equilíbrio do solver. " +
       "Incomum no GTO puro, mas defensável em contextos específicos de range e exploração. " +
       "Prefira a linha de maior frequência para minimizar erros de exploração.",
   },
@@ -25,7 +25,7 @@ const META = {
     label: "Spot Misto",
     cls: "text-sky-400/80 ring-sky-500/25 bg-sky-500/5",
     tooltip:
-      "Spot de estratégia mista — o solver equilibra múltiplas ações neste spot. " +
+      "Spot de estratégia mista, o solver equilibra múltiplas ações neste spot. " +
       "Isso significa que não existe uma única resposta 'correta': o GTO distribui frequência " +
       "entre as linhas para ser imprevisível e não explorável. Qualquer linha com ≥10% é defensável.",
   },

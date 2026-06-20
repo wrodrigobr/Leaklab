@@ -145,7 +145,7 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
     const ideal  = formatAction(worst.best_action);
     const actionLine = played.toLowerCase() === ideal.toLowerCase()
       ? `${street}: ${played}`
-      : `${street}: ${played} — ${ideal}`;
+      : `${street}: ${played}, ${ideal}`;
 
     hands.push({
       id: handId,
@@ -382,7 +382,7 @@ const TournamentDetail = () => {
                 </button>
                 {pdfFallback && (
                   <span className="font-mono text-[9px] text-yellow-400 text-right leading-tight">
-                    WeasyPrint indisponível — baixado como HTML
+                    WeasyPrint indisponível: baixado como HTML
                   </span>
                 )}
               </div>
@@ -519,7 +519,7 @@ const TournamentDetail = () => {
                         <InfoTooltip>
                           % de decisões classificadas como erro (pequeno ou claro) nesta fase.<br /><br />
                           <strong>Abaixo de 20%:</strong> consistente.<br />
-                          <strong>20–40%:</strong> atenção — fase problemática.<br />
+                          <strong>20–40%:</strong> atenção, fase problemática.<br />
                           <strong>Acima de 40%:</strong> leak grave nesta fase.
                         </InfoTooltip>
                       </th>
@@ -527,10 +527,10 @@ const TournamentDetail = () => {
                         {t("detail.phase.avgScore")}
                         <InfoTooltip>
                           Pontuação média de erro das decisões nesta fase.<br /><br />
-                          <strong>Abaixo de 0.08:</strong> ótimo — quase sem erros.<br />
-                          <strong>0.08–0.15:</strong> bom — erros leves e raros.<br />
-                          <strong>0.15–0.25:</strong> moderado — ajustes necessários.<br />
-                          <strong>Acima de 0.25:</strong> alto — leak relevante.<br /><br />
+                          <strong>Abaixo de 0.08:</strong> ótimo, quase sem erros.<br />
+                          <strong>0.08–0.15:</strong> bom, erros leves e raros.<br />
+                          <strong>0.15–0.25:</strong> moderado, ajustes necessários.<br />
+                          <strong>Acima de 0.25:</strong> alto, leak relevante.<br /><br />
                           Quanto menor, melhor.
                         </InfoTooltip>
                       </th>
@@ -593,7 +593,7 @@ const TournamentDetail = () => {
                           <strong>Abaixo de 0.08:</strong> ótimo.<br />
                           <strong>0.08–0.15:</strong> bom.<br />
                           <strong>0.15–0.25:</strong> moderado.<br />
-                          <strong>Acima de 0.25:</strong> alto — priorize este board type no estudo.
+                          <strong>Acima de 0.25:</strong> alto, priorize este board type no estudo.
                         </InfoTooltip>
                       </th>
                     </tr>
@@ -664,7 +664,7 @@ const TournamentDetail = () => {
                   key: "pending" as RKey,
                   label: `⏱ Pendente (${pendingGto})`,
                   cls: "text-muted-foreground/50",
-                  title: "Mãos postflop aguardando solver — análise atual pelo engine",
+                  title: "Mãos postflop aguardando solver, análise atual pelo engine",
                 }] : []),
               ];
               return (
@@ -697,7 +697,7 @@ const TournamentDetail = () => {
             <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-500/5 px-4 py-3">
               <div className="flex items-center gap-2">
                 <GraduationCap className="size-4 text-amber-300" aria-hidden />
-                <span className="text-sm text-foreground">Revisão do coach — <b className="text-amber-300">{divergCount}</b> mão(s) não-aderente(s) (coach × sistema)</span>
+                <span className="text-sm text-foreground">Revisão do coach, <b className="text-amber-300">{divergCount}</b> mão(s) não-aderente(s) (coach × sistema)</span>
               </div>
               <button
                 onClick={() => setOnlyDiverg((v) => !v)}
@@ -767,7 +767,7 @@ const TournamentDetail = () => {
                         {h.gtoLabel ? (
                           <span
                             className="inline-flex items-center gap-1 rounded-sm bg-muted/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 ring-1 ring-border/40"
-                            title={h.gtoAction ? `GTO Solver — ${formatAction(h.gtoAction)}` : t("detail.source.solver")}
+                            title={h.gtoAction ? `GTO Solver: ${formatAction(h.gtoAction)}` : t("detail.source.solver")}
                           >
                             <Sigma className="size-3" aria-hidden />
                             {t("detail.source.solver")}

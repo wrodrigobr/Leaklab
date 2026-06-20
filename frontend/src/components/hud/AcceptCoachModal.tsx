@@ -22,7 +22,7 @@ export function AcceptCoachModal({ onClose }: Props) {
     onSuccess: async (data) => {
       const pending = (data as { pending?: boolean }).pending === true;
       setSuccess(pending
-        ? `Solicitação enviada ao coach ${data.coach.username} — aguarde a aprovação dele.`
+        ? `Solicitação enviada ao coach ${data.coach.username}, aguarde a aprovação dele.`
         : `Vinculado ao coach ${data.coach.username}!`);
       await refreshUser();
       setTimeout(onClose, pending ? 3200 : 2000);

@@ -112,7 +112,7 @@ export function ProfileCompletionCard() {
       {open && (
         <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-3">
           <p className="font-mono text-[10px] text-muted-foreground">
-            Dados usados apenas para benchmarks agregados e anonimizados — nunca compartilhados individualmente.
+            Dados usados apenas para benchmarks agregados e anonimizados, nunca compartilhados individualmente.
           </p>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

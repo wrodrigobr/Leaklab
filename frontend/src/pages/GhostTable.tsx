@@ -709,7 +709,7 @@ export default function GhostTable() {
                   <div className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 shrink-0", lastResult.is_correct ? "border-primary/30 bg-primary/5 text-primary" : "border-warning/30 bg-warning/5 text-warning")}>
                     <Clock className="size-3.5 shrink-0" aria-hidden />
                     <span className="font-mono text-[10px]">
-                      {lastResult.is_correct ? `${t("next")} em ${lastResult.srs_interval_days}d` : `Resetado — em ${lastResult.srs_interval_days}d`}
+                      {lastResult.is_correct ? `${t("next")} em ${lastResult.srs_interval_days}d` : `Resetado, em ${lastResult.srs_interval_days}d`}
                     </span>
                   </div>
                 )}
@@ -1136,7 +1136,7 @@ export default function GhostTable() {
               <span className="font-mono text-[11px]">
                 {lastResult.is_correct
                   ? `Próxima revisão em ${lastResult.srs_interval_days} dias`
-                  : `Resetado — revisão em ${lastResult.srs_interval_days} dias`
+                  : `Resetado, revisão em ${lastResult.srs_interval_days} dias`
                 }
               </span>
             </div>

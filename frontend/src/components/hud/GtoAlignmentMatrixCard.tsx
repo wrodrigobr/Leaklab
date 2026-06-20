@@ -56,7 +56,7 @@ export function GtoAlignmentMatrixCard({ data }: Props) {
           <HudTooltip content="Matriz de aderência GTO por posição e street. Verde = alinhado com solver; vermelho = leak. Células atenuadas têm < 20 decisões (intervalo de confiança alto)." />
         </div>
         {hasAnyLow && (
-          <span className="font-mono text-[9px] text-amber-400/70" title="Células com n < 20 têm IC alto — interpretar com cautela">
+          <span className="font-mono text-[9px] text-amber-400/70" title="Células com n < 20 têm IC alto, interpretar com cautela">
             algumas células com amostra baixa
           </span>
         )}

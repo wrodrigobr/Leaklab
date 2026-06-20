@@ -137,7 +137,7 @@ export function V2CausalMapCard({ nodes, edges }: { nodes: LeakNode[]; edges: Le
       )}
 
       {/* Conclusão determinística: o que esta análise significa, nos SEUS dados.
-          (A narrativa de IA aprofundada vive no carrossel — isto é a síntese.) */}
+          (A narrativa de IA aprofundada vive no carrossel, isto é a síntese.) */}
       {relations.length > 0 && epicenter && (
         <p className="mt-3 pt-2.5 border-t border-border/30 text-[11px] leading-relaxed text-muted-foreground">
           {t("v2.causalConclusion", {

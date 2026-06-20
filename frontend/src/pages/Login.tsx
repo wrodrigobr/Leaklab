@@ -34,7 +34,7 @@ const Login = () => {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("Candidatura em análise")) {
-        setError("Candidatura em análise — você receberá um email quando for aprovado.");
+        setError("Candidatura em análise, você receberá um email quando for aprovado.");
       } else if (err instanceof TypeError) {
         setError(t("errors.invalidCredentials"));
       } else {

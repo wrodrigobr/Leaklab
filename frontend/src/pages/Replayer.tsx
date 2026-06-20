@@ -655,7 +655,7 @@ function SidePanels({
             {/* Racional da jogada recomendada — em spots HEURÍSTICOS (sem barras de
                 estratégia GTO pra explicar), diz POR QUE check/bet/call/fold é o ideal.
                 Com estimativa multiway, NÃO mostra (o reco_rationale vem do engine HU e
-                contradiz o fold — ex.: "mão forte: raise"). A estimativa tem seu racional. */}
+                contradiz o fold: ex.: "mão forte: raise"). A estimativa tem seu racional. */}
             {isPostflop && !hasGto && !step.multiway_advice && (() => {
               const rr = (step as { reco_rationale?: { key: string; params: Record<string, unknown>; action: string } }).reco_rationale;
               if (!rr?.key) return null;
@@ -992,7 +992,7 @@ function SidePanels({
 
       {/* ── Cobertura GTO postflop ──────────────────────────────────────
           Spots que o solver heads-up NÃO cobre (multiway, deep>60bb, hero IP
-          enfrentando aposta, sem vilão) mostram uma nota HONESTA estática — não
+          enfrentando aposta, sem vilão) mostram uma nota HONESTA estática, não
           "Processando" (que sugere que vai resolver) nem auto-solve inútil.
           Só 'pending' (solvável, nó ainda não existe) mostra o fluxo de solve. */}
       {step.is_hero && step.type === "action" && isPostflop && !hasGto && !isMultiwayStep
@@ -1817,7 +1817,7 @@ const Replayer = () => {
             {replayData?.is_pko && (
               <span
                 className="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ring-1 ring-amber-500/30 text-amber-300"
-                title="Progressive Knockout (PKO) — torneio com bounties. Ranges e thresholds GTO específicos podem divergir do MTT clássico."
+                title="Progressive Knockout (PKO), torneio com bounties. Ranges e thresholds GTO específicos podem divergir do MTT clássico."
               >
                 PKO
               </span>

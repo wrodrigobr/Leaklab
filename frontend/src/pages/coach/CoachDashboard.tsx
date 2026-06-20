@@ -358,13 +358,13 @@ function AlunosTab() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {s.link_status === "pending"
-                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-violet-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-violet-300 ring-1 ring-violet-400/30" title="Resgatou seu convite e aguarda sua aprovação — só conta no repasse após aprovar"><Clock className="size-3" /> Aguardando você</span>
+                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-violet-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-violet-300 ring-1 ring-violet-400/30" title="Resgatou seu convite e aguarda sua aprovação, só conta no repasse após aprovar"><Clock className="size-3" /> Aguardando você</span>
                         : isActivePaid(s)
-                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20" title="Indicado por convite + pro + import 30d — conta no seu repasse"><CheckCircle2 className="size-3" /> Ativo · R$</span>
+                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20" title="Indicado por convite + pro + import 30d, conta no seu repasse"><CheckCircle2 className="size-3" /> Ativo · R$</span>
                         : (s.plan === "pro" && isActive(s))
-                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-400/30" title="Pro e ativo, mas não foi indicado por convite single-use — NÃO conta no repasse">Ativo · não-indicado</span>
+                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-400/30" title="Pro e ativo, mas não foi indicado por convite single-use, NÃO conta no repasse">Ativo · não-indicado</span>
                         : isActive(s)
-                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-400/30" title="Importou recentemente mas não é Pro — não conta no repasse (oportunidade de conversão)">Recente · free</span>
+                        ? <span className="inline-flex items-center gap-1 rounded-sm bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 ring-1 ring-amber-400/30" title="Importou recentemente mas não é Pro, não conta no repasse (oportunidade de conversão)">Recente · free</span>
                         : <span className="inline-flex items-center gap-1 rounded-sm bg-border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border"><Clock className="size-3" /> Inativo</span>}
                     </td>
                   </tr>
@@ -663,7 +663,7 @@ function LeaksTab() {
       {systemic.length > 0 && (
         <div className="space-y-2">
           <p className="font-mono text-[10px] font-bold uppercase tracking-widest-2 text-destructive">
-            Leaks sistêmicos — afetam múltiplos alunos
+            Leaks sistêmicos: afetam múltiplos alunos
           </p>
           {systemic.map((l) => <LeakRow key={l.spot} leak={l} />)}
         </div>
@@ -803,7 +803,7 @@ function TrialBanner({ trial }: { trial: CoachTrialStatus }) {
         <CheckCircle2 className="size-5 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">Pro garantido <span className="text-primary">✓</span></p>
-          <p className="font-mono text-[10px] text-muted-foreground">Você atingiu {trial.target} alunos pagantes — seu plano Pro é permanente.</p>
+          <p className="font-mono text-[10px] text-muted-foreground">Você atingiu {trial.target} alunos pagantes, seu plano Pro é permanente.</p>
         </div>
       </div>
     );
@@ -829,7 +829,7 @@ function TrialBanner({ trial }: { trial: CoachTrialStatus }) {
           <div className={cn("h-full rounded-full transition-all", low ? "bg-amber-400" : "bg-primary")} style={{ width: `${pct}%` }} />
         </div>
         <p className="font-mono text-[10px] text-muted-foreground/70">
-          Não atingindo a meta, o plano vira Free no fim do trial — você segue recebendo a comissão por aluno pagante.
+          Não atingindo a meta, o plano vira Free no fim do trial, você segue recebendo a comissão por aluno pagante.
         </p>
       </div>
     );
@@ -843,7 +843,7 @@ function TrialBanner({ trial }: { trial: CoachTrialStatus }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">Plano Free</p>
           <p className="font-mono text-[10px] text-muted-foreground">
-            Alcance {trial.target} alunos pagantes ({trial.paying_referred}/{trial.target}) para reativar o Pro — a comissão por aluno pagante continua.
+            Alcance {trial.target} alunos pagantes ({trial.paying_referred}/{trial.target}) para reativar o Pro, a comissão por aluno pagante continua.
           </p>
         </div>
       </div>
@@ -879,7 +879,7 @@ function ComandoTab() {
       if ((s.critical_pending ?? 0) > 0)
         items.push({ kind: "critical", sid: s.id, name: s.username, title: `${s.critical_pending} mãos críticas sem sua anotação`, sub: "revise e anote as decisões pendentes" });
       if (s.trend === "worsening" && s.is_active_paid)
-        items.push({ kind: "churn", sid: s.id, name: s.username, title: "em queda — risco de churn", sub: "piorando nas últimas sessões · pro ativo" });
+        items.push({ kind: "churn", sid: s.id, name: s.username, title: "em queda, risco de churn", sub: "piorando nas últimas sessões · pro ativo" });
       if ((s.unread ?? 0) > 0)
         items.push({ kind: "unread", sid: s.id, name: s.username, title: `${s.unread} mensagem(ns) não lida(s)`, sub: "o aluno está esperando resposta" });
       if (!s.is_active_paid && isActive(s) && (s.plan ?? "free") !== "pro")
@@ -1308,7 +1308,7 @@ function FinanceiroTab() {
       {/* Lista de alunos com status */}
       <div className="rounded-xl border border-border bg-hud-surface overflow-hidden">
         <div className="px-4 py-3 border-b border-border bg-hud-elevated/40">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alunos — Status de Atividade</span>
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alunos, Status de Atividade</span>
         </div>
         {loadSt ? (
           <div className="py-10 flex justify-center"><Activity className="size-5 animate-spin text-primary" /></div>

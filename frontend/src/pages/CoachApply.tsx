@@ -90,7 +90,7 @@ export default function CoachApply() {
         <div className="rounded-xl border border-border bg-hud-surface p-6 shadow-elevated space-y-5">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <GraduationCap className="size-4 text-primary" />
-            <span>Preencha o formulário — nossa equipe analisará sua candidatura em até 3 dias úteis.</span>
+            <span>Preencha o formulário, nossa equipe analisará sua candidatura em até 3 dias úteis.</span>
           </div>
 
           <form onSubmit={submit} className="space-y-4">
