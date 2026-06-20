@@ -78,9 +78,31 @@ def explain_decisions(decisions: List[dict]) -> Dict[str, str]:
 
 # ── LLM call ─────────────────────────────────────────────────────────────────
 
+_NO_DASH_RULE = (
+    " Regra de estilo OBRIGATÓRIA: NUNCA use travessão (—) nem hífen como pontuação "
+    "separando orações; use vírgula, dois-pontos ou ponto. Hífen apenas em palavra "
+    "composta (ex.: pré-flop). Travessão soa texto de robô."
+)
+
+
+def _with_no_dash(payload: dict) -> dict:
+    """Acrescenta a regra anti-travessão ao system do payload (copy gerada soa humana).
+    Idempotente: não duplica se o system já menciona a regra."""
+    try:
+        sys_txt = payload.get('system')
+        if sys_txt and 'travessão' not in str(sys_txt):
+            p = dict(payload)
+            p['system'] = str(sys_txt) + _NO_DASH_RULE
+            return p
+    except Exception:
+        pass
+    return payload
+
+
 def _call_llm_api(payload: dict) -> str:
     """Chama a API do Claude com um payload já construído. Retorna texto bruto."""
     import requests as _req
+    payload = _with_no_dash(payload)
     resp = _req.post(
         'https://api.anthropic.com/v1/messages',
         json=payload,
@@ -1142,6 +1164,8 @@ Cada card deve ter:
 5. Exercício prático: rotina CONCRETA e mensurável, dimensionada pra ~2h/semana de estudo (estimativa)
 6. Métrica de progresso: como saber que melhorou
 
+ESTILO: nos textos (diagnóstico, conceitos, exercício, resumo) NUNCA use travessão (—) nem hífen como pontuação separando orações; use vírgula, dois-pontos ou ponto. Hífen só em palavra composta.
+
 Responda APENAS com JSON válido, sem texto adicional, no formato:
 {{
   "nivel": "iniciante|intermediario|avancado",
@@ -1715,8 +1739,10 @@ _POKER_TERMS_EN = (
     "hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, "
     "board, position, IP, OOP, shove, reshove, open, limp, squeeze. Para all-in agressivo use SEMPRE 'shove' — nunca 'jam'. "
     "NUNCA use 'rua' ou 'ruas' — sempre 'street' ou 'streets'. "
-    "Para conjugar ações em português, use a forma 'dando raise', 'dando bet', 'dando fold' — "
-    "NUNCA 'raisando', 'bettando', 'foldando' ou qualquer aportuguesamento de termos ingleses."
+    "Para conjugar ações em português, use a forma 'dando raise', 'dando bet', 'dando fold', "
+    "NUNCA 'raisando', 'bettando', 'foldando' ou qualquer aportuguesamento de termos ingleses. "
+    "NUNCA use travessão (—) nem hífen como pontuação separando orações; use vírgula, "
+    "dois-pontos ou ponto. Hífen só em palavra composta (ex.: pré-flop)."
 )
 
 _LANG_INSTRUCTIONS = {
@@ -2493,6 +2519,7 @@ def _call_llm_api_full(payload: dict) -> dict:
     de conteúdo (não só do texto).
     """
     import requests as _req
+    payload = _with_no_dash(payload)
     resp = _req.post(
         'https://api.anthropic.com/v1/messages',
         json=payload,
