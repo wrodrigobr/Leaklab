@@ -8,6 +8,7 @@ import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { useTableOrientation } from "@/hooks/use-table-orientation";
+import { useIsLandscapeMobile } from "@/hooks/use-is-landscape-mobile";
 import { RangePanel } from "@/components/replayer/RangePanel";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
 import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/DecisionCard";
@@ -1341,6 +1342,7 @@ const Replayer = () => {
   const navigate   = useNavigate();
   const { t } = useTranslation("replayer");
   const tableOrientation = useTableOrientation();
+  const landscapeMobile = useIsLandscapeMobile();
   const tournamentId = params.get("t") ?? "";
   const handId       = params.get("h") ?? "";
   const studentId    = params.get("student") ? Number(params.get("student")) : null;
@@ -1775,6 +1777,92 @@ const Replayer = () => {
 
   const isError   = step.is_error ?? false;
   const isCorrect = step.is_hero && !isError && step.type === "action";
+
+  // ── Celular DEITADO: mesa FULLSCREEN edge-to-edge + controles/logo/pill flutuando ──
+  if (landscapeMobile) {
+    return (
+      <div ref={rootRef} className="h-dvh relative overflow-hidden bg-background hud-scanline">
+        {/* Mesa ocupa toda a tela (height-bound, centralizada) */}
+        <div className="absolute inset-0 flex items-center justify-center p-0.5">
+          <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "16 / 10" }}>
+            <PokerTableV3
+              step={step} hero={replayData.hero} heroCards={replayData.hero_cards}
+              bb={replayData.bb} betUnit={betUnit} playerAliases={playerAliases}
+              revealedCards={revealedCards} profiles={replayData.opponent_profiles}
+              showHud={showHud} hudTips={hudTips} orientation="landscape"
+            />
+          </div>
+        </div>
+
+        {/* Voltar — topo-esquerda */}
+        <button onClick={() => navigate(-1)}
+          className="absolute top-2 left-2 z-30 inline-flex items-center gap-1.5 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground ring-1 ring-border transition-colors hover:text-primary">
+          <ArrowLeft className="size-3.5" /> {t("back")}
+        </button>
+
+        {/* Logo GrindLab + contador de mão — topo-direita */}
+        <div className="absolute top-2 right-2 z-30 flex items-center gap-2.5 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 ring-1 ring-border">
+          {handList.length > 1 && handIdx >= 0 && (
+            <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{handIdx + 1}/{handList.length}</span>
+          )}
+          <img src={logoHorizontal} alt="GrindLab" className="h-5 w-auto" />
+        </div>
+
+        {/* Verdict pill — topo-centro flutuante */}
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30">
+          <VerdictPill
+            level={verdictLevel(step.error_label) ?? (step.is_hero && step.type === "action" ? ((isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null) : null)}
+            evLossBb={step.ev_loss_bb}
+            onClick={() => setShowAnalysis(true)}
+          />
+        </div>
+
+        {/* Controles — embaixo-centro flutuante */}
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 rounded-full bg-background/80 backdrop-blur px-2 py-1 ring-1 ring-border shadow-lg">
+          <button onClick={() => { if (stepIdx > 0) setStepIdx(0); else if (prevHand) navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`); }}
+            disabled={stepIdx === 0 && !prevHand}
+            className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><Rewind className="size-4" /></button>
+          <button onClick={() => setStepIdx((i) => Math.max(0, i - 1))} disabled={stepIdx === 0}
+            className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><ChevronLeft className="size-5" /></button>
+          <button onClick={() => setPlaying((p) => !p)}
+            className="inline-flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary-glow">
+            {playing ? <Pause className="size-4" /> : <Play className="size-4" />}</button>
+          <button onClick={() => setStepIdx((i) => Math.min(steps.length - 1, i + 1))} disabled={stepIdx === steps.length - 1}
+            className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><ChevronRight className="size-5" /></button>
+          <button onClick={() => { if (stepIdx < steps.length - 1) setStepIdx(steps.length - 1); else if (nextHand) navigate(`/replayer?t=${tournamentId}&h=${nextHand}${studentId ? `&student=${studentId}` : ""}`); }}
+            disabled={stepIdx === steps.length - 1 && !nextHand}
+            className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><FastForward className="size-4" /></button>
+          <span className="px-1.5 font-mono text-[10px] text-muted-foreground tabular-nums">{stepIdx + 1}/{steps.length}</span>
+        </div>
+
+        {/* Sheet de análise (on-demand, tap na pill) */}
+        {showAnalysis && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAnalysis(false)} />
+            <div className="relative max-h-[90vh] overflow-y-auto rounded-t-2xl bg-background p-3 pb-6 shadow-2xl ring-1 ring-border">
+              <button onClick={() => setShowAnalysis(false)} aria-label={t("close")}
+                className="absolute right-2.5 top-2.5 z-10 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="size-4" /></button>
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" onClick={() => setShowAnalysis(false)} />
+              <SidePanels
+                step={step} isError={isError} isCorrect={isCorrect}
+                coachAnnotation={coachAnnotation} studentId={studentId}
+                currentDecisionId={currentDecisionId} annotating={annotating}
+                annComment={annComment} annMode={annMode} annAction={annAction}
+                annOverride={annOverride} saveAnn={saveAnn} deleteAnn={deleteAnn}
+                replayData={replayData} playerAliases={playerAliases}
+                setAnnotating={setAnnotating} setAnnComment={setAnnComment}
+                setAnnMode={setAnnMode} setAnnAction={setAnnAction}
+                setAnnOverride={setAnnOverride} openAnnotationForm={openAnnotationForm}
+                t={t}
+                gtoRequestStatus={gtoRequestStatus} onRequestGto={handleRequestGto}
+                tournamentId={tournamentId} handId={handId}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div ref={rootRef} className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
