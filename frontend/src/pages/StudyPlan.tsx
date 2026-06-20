@@ -564,6 +564,37 @@ const StudyPlanPage = () => {
                   </section>
                 ))}
               </div>
+
+              {/* Novo modelo: aguardando mais dados + não focar agora */}
+              {((plan.observar?.length ?? 0) > 0 || (plan.naoFocar?.length ?? 0) > 0) && (
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  {(plan.observar?.length ?? 0) > 0 && (
+                    <section className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
+                      <h4 className="mb-2 text-xs font-bold uppercase tracking-widest-2 text-amber-400">{t("observe.title")}</h4>
+                      <ul className="space-y-1.5">
+                        {plan.observar!.map((o, i) => (
+                          <li key={i} className="text-xs text-muted-foreground">
+                            <span className="font-semibold text-foreground">{o.indicador}</span>
+                            {o.valor_atual ? ` (${o.valor_atual})` : ""} — {o.sample_atual ?? "?"}/{o.sample_necessario ?? "?"} {t("observe.hands")}. {o.por_que_esperar ?? ""}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                  {(plan.naoFocar?.length ?? 0) > 0 && (
+                    <section className="rounded-md border border-border bg-hud-surface p-4">
+                      <h4 className="mb-2 text-xs font-bold uppercase tracking-widest-2 text-muted-foreground">{t("skip.title")}</h4>
+                      <ul className="space-y-1.5">
+                        {plan.naoFocar!.map((s, i) => (
+                          <li key={i} className="text-xs text-muted-foreground">
+                            <span className="font-semibold text-foreground">{s.item}</span> — {s.motivo}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                </div>
+              )}
             </article>
           )}
 

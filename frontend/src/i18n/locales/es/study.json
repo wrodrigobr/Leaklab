@@ -2,6 +2,8 @@
   "eyebrow": "Plan de Estudio · Adaptive",
   "title": "Tu hoja de ruta táctica personalizada",
   "subtitle": "Diagnóstico de leaks, hoja de ruta semanal, recursos curados y ejercicios con corrección automática.",
+  "observe": { "title": "Esperando más datos", "hands": "manos" },
+  "skip": { "title": "No enfocar ahora" },
   "toolbar": {
     "planReady": "Plan generado a partir de tus leaks reales",
     "planLoading": "Cargando plan de estudio…",

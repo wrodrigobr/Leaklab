@@ -1368,12 +1368,18 @@ export interface StudyCard {
   exercicio: string;
   metrica: string;
   spot: string;
+  ev_ponderado?: string;                          // −X bb (EV ponderado do leak)
+  confianca_amostra?: "alta" | "média" | "baixa"; // confiança da amostra
 }
+export interface StudyObserve { indicador: string; valor_atual?: string; sample_atual?: number; sample_necessario?: number; por_que_esperar?: string; }
+export interface StudySkip { item: string; motivo: string; }
 
 export interface StudyPlanResponse {
   nivel: string;
   resumo: string;
   cards: StudyCard[];
+  observar_mais_dados?: StudyObserve[];   // stats abaixo da amostra confiável
+  nao_focar_agora?: StudySkip[];          // baixa prioridade (variância/EV baixo)
   source?: 'gto' | 'heuristic' | 'empty';
   error?: string;
   coach_managed?: boolean;

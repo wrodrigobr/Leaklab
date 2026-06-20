@@ -237,7 +237,7 @@ export function buildStudyPlan(backend: StudyPlanResponse): StudyPlan {
     signature: (card.prioridade ?? `P${i + 1}`).toUpperCase(),
     title:     card.titulo,
     severity:  severityFromIndex(i),
-    evLoss:    "—",
+    evLoss:    card.ev_ponderado || "—",
     rationale: card.diagnostico ?? card.conceitos?.join(", ") ?? "",
   }));
 
@@ -259,5 +259,7 @@ export function buildStudyPlan(backend: StudyPlanResponse): StudyPlan {
     weeks: generateWeeks(cards),
     resourcesByLeak,
     exercises,
+    observar: backend.observar_mais_dados ?? [],
+    naoFocar: backend.nao_focar_agora ?? [],
   };
 }

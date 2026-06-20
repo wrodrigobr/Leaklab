@@ -2,6 +2,8 @@
   "eyebrow": "Study Plan · Adaptive",
   "title": "Your personalized tactical roadmap",
   "subtitle": "Leak diagnosis, weekly roadmap, curated resources, and exercises with automatic correction.",
+  "observe": { "title": "Waiting on more data", "hands": "hands" },
+  "skip": { "title": "Not now" },
   "toolbar": {
     "planReady": "Plan generated from your real leaks",
     "planLoading": "Loading study plan…",
