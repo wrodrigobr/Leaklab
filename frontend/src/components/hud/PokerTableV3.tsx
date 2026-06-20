@@ -621,7 +621,7 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
 
       {/* Layer 2 — flat content (seats, board, pot, chips) */}
       <svg
-        viewBox="0 0 1120 630"
+        viewBox={`0 0 ${geo.VBW} ${geo.VBH}`}
         xmlns="http://www.w3.org/2000/svg"
         preserveAspectRatio="xMidYMid meet"
         className="absolute inset-0 w-full h-full block"
