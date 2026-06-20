@@ -27,8 +27,8 @@ const GEO_LANDSCAPE: Geo = {
   RXF: 414, RYF: 218, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8,
 };
 const GEO_PORTRAIT: Geo = {
-  CX: 340, CY: 500, RX_SEAT: 268, RY_SEAT: 432, VBW: 680, VBH: 1008, aspect: "680 / 1008", S: 0.66,
-  RXF: 250, RYF: 400, FELT_MX: 20, FELT_MY: 20, boardW: 48, boardH: 80, boardGap: 6,
+  CX: 380, CY: 440, RX_SEAT: 335, RY_SEAT: 395, VBW: 760, VBH: 880, aspect: "760 / 880", S: 0.66,
+  RXF: 305, RYF: 345, FELT_MX: 20, FELT_MY: 20, boardW: 54, boardH: 84, boardGap: 6,
 };
 // Geometria CORRENTE — mutável por render. Seguro: o build do SVG é síncrono (useEffect)
 // e o Replayer tem 1 mesa; setado no topo do effect antes de qualquer função de render.

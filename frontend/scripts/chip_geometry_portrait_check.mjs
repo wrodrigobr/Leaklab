@@ -6,15 +6,16 @@
 // fichas/dealer). Board e feltro são canvas-level (tamanhos portrait próprios). S é o que
 // vai virar um único transform scale(S) por assento no componente — implementação limpa.
 const S=0.66;                                     // escala uniforme do conteúdo do assento
-const CX=340, CY=500, RX_SEAT=268, RY_SEAT=432;   // oval alto (RX<RY)
+const RXF=305, RYF=345, FELT_MX=20, FELT_MY=20;   // feltro mais LARGO (ocupa a largura do cel)
+const CX=380, CY=440;
+const RX_SEAT=RXF+30, RY_SEAT=RYF+50;             // pods logo na BORDA (fora do feltro), seguindo o oval
 const HW=84*S, HH=32*S;                            // meio-pod = landscape × S
 const CARD_HW=67*S, CH=96*S;                       // cartas = landscape × S
 const CLU_HW=28*S, CLU_UP=30*S, CLU_DN=28*S;
 const DRX=20*S, DRY=12*S;
 const GAP=14*S;
-const VB={x1:4,y1:4,x2:676,y2:1004}; // viewBox portrait ~680×1008 (overflow:visible cobre folga)
-const BOARD_W=48, BOARD_GAP=6, BOARD_H=80;        // board canvas-level (portrait)
-const RXF=250, RYF=400, FELT_MX=20, FELT_MY=20;   // feltro (oval alto)
+const VB={x1:4,y1:4,x2:756,y2:876};  // viewBox ~760×880 (mais largo; overflow:visible cobre folga)
+const BOARD_W=54, BOARD_GAP=6, BOARD_H=84;        // board canvas-level (portrait, um pouco maior)
 
 function buildLayout(seatNums, heroSeat){
   const n=seatNums.length, heroIdx=seatNums.indexOf(heroSeat);

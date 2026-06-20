@@ -1849,7 +1849,7 @@ const Replayer = () => {
             <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center">
               <div
                 className="h-full w-auto max-w-full max-h-full mx-auto"
-                style={{ aspectRatio: tableOrientation === "portrait" ? "680 / 1008" : "16 / 10" }}
+                style={{ aspectRatio: tableOrientation === "portrait" ? "760 / 880" : "16 / 10" }}
               >
                 <PokerTableV3
                   step={step}
