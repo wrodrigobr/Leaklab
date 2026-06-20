@@ -8,9 +8,13 @@
 const S=0.66;                                     // escala uniforme do conteúdo do assento
 const RXF=305, RYF=345, FELT_MX=20, FELT_MY=20;   // feltro mais LARGO (ocupa a largura do cel)
 const CX=380, CY=440;
-const RX_SEAT=RXF+30, RY_SEAT=RYF+50;             // pods logo na BORDA (fora do feltro), seguindo o oval
 const HW=84*S, HH=32*S;                            // meio-pod = landscape × S
 const CARD_HW=67*S, CH=96*S;                       // cartas = landscape × S
+// Assentos na BORDA: o pod sobrepõe a borda do feltro por OVL px IGUAL em x e y (a borda
+// interna do pod cai OVL pra dentro do feltro). Como o pod é mais largo que alto, o raio
+// X fica mais "pra fora" que o Y — é isso que faz os pods seguirem o oval de forma coerente.
+const OVL=12;
+const RX_SEAT=Math.round(RXF+HW-OVL), RY_SEAT=Math.round(RYF+HH-OVL);
 const CLU_HW=28*S, CLU_UP=30*S, CLU_DN=28*S;
 const DRX=20*S, DRY=12*S;
 const GAP=14*S;

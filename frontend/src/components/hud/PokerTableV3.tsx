@@ -27,7 +27,7 @@ const GEO_LANDSCAPE: Geo = {
   RXF: 414, RYF: 218, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8,
 };
 const GEO_PORTRAIT: Geo = {
-  CX: 380, CY: 440, RX_SEAT: 335, RY_SEAT: 395, VBW: 760, VBH: 880, aspect: "760 / 880", S: 0.66,
+  CX: 380, CY: 440, RX_SEAT: 348, RY_SEAT: 354, VBW: 760, VBH: 880, aspect: "760 / 880", S: 0.66,
   RXF: 305, RYF: 345, FELT_MX: 20, FELT_MY: 20, boardW: 54, boardH: 84, boardGap: 6,
 };
 // Geometria CORRENTE — mutável por render. Seguro: o build do SVG é síncrono (useEffect)
