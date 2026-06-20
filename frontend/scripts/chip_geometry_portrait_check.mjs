@@ -2,15 +2,18 @@
 // (chip_geometry_check.mjs), com constantes de oval ALTO. Objetivo: 0 sobreposições
 // em 6/8/9-max, hero embaixo (e um caso hero no topo).
 // Tune os números no topo e rode: node scripts/chip_geometry_portrait_check.mjs
-const CX=340, CY=500, RX_SEAT=270, RY_SEAT=430;   // oval alto (RX<RY)
-const HW=66, HH=22;                 // meio-pod (pod 132×44, menor que landscape)
-const CARD_HW=42, CH=66;            // cartas menores
-const CARD_DUMMY=0;
-const CLU_HW=24, CLU_UP=26, CLU_DN=24;
-const DRX=18, DRY=11;
-const GAP=12;
+// Modelo: posições em oval alto + ESCALA UNIFORME S no conteúdo por assento (pod/cartas/
+// fichas/dealer). Board e feltro são canvas-level (tamanhos portrait próprios). S é o que
+// vai virar um único transform scale(S) por assento no componente — implementação limpa.
+const S=0.66;                                     // escala uniforme do conteúdo do assento
+const CX=340, CY=500, RX_SEAT=268, RY_SEAT=432;   // oval alto (RX<RY)
+const HW=84*S, HH=32*S;                            // meio-pod = landscape × S
+const CARD_HW=67*S, CH=96*S;                       // cartas = landscape × S
+const CLU_HW=28*S, CLU_UP=30*S, CLU_DN=28*S;
+const DRX=20*S, DRY=12*S;
+const GAP=14*S;
 const VB={x1:4,y1:4,x2:676,y2:1004}; // viewBox portrait ~680×1008 (overflow:visible cobre folga)
-const BOARD_W=48, BOARD_GAP=6, BOARD_H=80;
+const BOARD_W=48, BOARD_GAP=6, BOARD_H=80;        // board canvas-level (portrait)
 const RXF=250, RYF=400, FELT_MX=20, FELT_MY=20;   // feltro (oval alto)
 
 function buildLayout(seatNums, heroSeat){
