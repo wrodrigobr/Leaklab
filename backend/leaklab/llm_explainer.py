@@ -924,48 +924,50 @@ def _template_comparison(items: list) -> str:
 
 
 def _format_hud_stats_for_prompt(stats: dict) -> str:
-    """Formata HUD stats como texto interpretado para o prompt do LLM."""
+    """Formata HUD stats para o prompt do LLM, usando a fonte ÚNICA STAT_REFERENCES
+    (mesmas faixas do dashboard) + GATE DE AMOSTRA: stats abaixo do mínimo confiável
+    são marcados como NÃO acionáveis (o LLM não deve gerar correção em cima de ruído)."""
     if not stats or stats.get('total_hands', 0) == 0:
         return ''
+    from leaklab.opponent_stats import STAT_REFERENCES, classify_stat
+    sample = stats.get('total_hands', 0)
 
-    def _line(label: str, value, lo: float, hi: float, unit: str = '%', invert: bool = False) -> str:
-        if value is None:
-            return f'  - {label}: sem dados'
-        margin = (hi - lo) * 0.35
-        if value >= lo and value <= hi:
-            status = '✓'
-            note = 'dentro do range ideal'
-        elif (not invert and value < lo - margin) or (invert and value > hi + margin):
-            status = '⚠'
-            note = f'abaixo do ideal ({lo:.0f}–{hi:.0f}{unit})' if not invert else f'acima do ideal ({lo:.0f}–{hi:.0f}{unit})'
-        elif (not invert and value > hi + margin) or (invert and value < lo - margin):
-            status = '⚠'
-            note = f'acima do ideal ({lo:.0f}–{hi:.0f}{unit})' if not invert else f'abaixo do ideal ({lo:.0f}–{hi:.0f}{unit})'
-        else:
-            status = '~'
-            note = f'próximo do limite (ideal: {lo:.0f}–{hi:.0f}{unit})'
-        fmt = f'{value:.1f}{unit}' if unit != 'x' else f'{value:.1f}x'
-        return f'  - {label}: {fmt} {status} {note}'
-
-    lines = [
-        '\n**Perfil de Jogo — HUD Stats comportamentais:**',
-        _line('VPIP',            stats.get('vpip'),            12,  22),
-        _line('PFR',             stats.get('pfr'),              9,  18),
-        _line('AF (postflop)',   stats.get('af'),             2.0, 4.0, unit='x'),
-        _line('C-Bet%',          stats.get('cbet_pct'),        50,  75),
-        _line('Fold to 3BET',    stats.get('fold_to_3bet'),    55,  72),
-        _line('WTSD',            stats.get('wtsd'),            25,  35),
-        _line('3BET%',           stats.get('three_bet'),        4,   8),
-        _line('W$SD',            stats.get('w_at_sd'),         50,  60),
-        _line('Fold vs Flop Bet',stats.get('fold_to_flop_bet'),40,  55),
-        _line('BB Defense',      stats.get('bb_defense'),      35,  55),
-        _line('Steal%',          stats.get('steal_pct'),       25,  45),
-        _line('Open Limp%',      stats.get('open_limp_pct'),    0,   5),
+    # (label, chave, unidade[, faixa inline p/ stats SEM referência])
+    rows = [
+        ('VPIP', 'vpip', '%'), ('PFR', 'pfr', '%'), ('AF (postflop)', 'af', 'x'),
+        ('C-Bet%', 'cbet_pct', '%'), ('Fold to 3BET', 'fold_to_3bet', '%'),
+        ('WTSD', 'wtsd', '%'), ('3BET%', 'three_bet', '%'), ('W$SD', 'w_at_sd', '%'),
+        ('Steal%', 'steal_pct', '%'),
+        ('Fold vs Flop Bet', 'fold_to_flop_bet', '%', (40, 55)),
+        ('BB Defense', 'bb_defense', '%', (35, 55)),
+        ('Open Limp%', 'open_limp_pct', '%', (0, 5)),
     ]
-    lines.append(
-        f'  (baseado em {stats.get("total_hands", 0)} mãos — stats comportamentais, '
-        'independentes da análise GTO)'
-    )
+    lines = ['\n**Perfil de Jogo — HUD Stats comportamentais (com gate de amostra):**']
+    for row in rows:
+        label, key, unit = row[0], row[1], row[2]
+        val = stats.get(key)
+        if val is None:
+            lines.append(f'  - {label}: sem dados'); continue
+        fmt = f'{val:.1f}x' if unit == 'x' else f'{val:.1f}%'
+        c = classify_stat(key, val, sample)
+        if c is not None:                       # tem referência (STAT_REFERENCES)
+            lo, hi = c['healthy']
+            rng = f'{lo:.0f}–{hi:.0f}{unit}'
+            if c['band'] == 'low_sample':
+                lines.append(f"  - {label}: {fmt} — AMOSTRA INSUFICIENTE "
+                             f"({sample}/{STAT_REFERENCES[key]['min']} mãos): NÃO acionável")
+            elif c['band'] == 'healthy':
+                lines.append(f'  - {label}: {fmt} ✓ saudável ({rng})')
+            else:                               # above / below → tendência direcional
+                arrow = '↑' if c['band'] == 'above' else '↓'
+                lines.append(f'  - {label}: {fmt} ⚠ {arrow} {c["flag"]} (saudável {rng})')
+        else:                                   # sem referência → faixa inline
+            lo, hi = row[3]
+            note = '✓ ok' if lo <= val <= hi else f'fora ({lo:.0f}–{hi:.0f}{unit})'
+            lines.append(f'  - {label}: {fmt} {note}')
+
+    lines.append(f'  (baseado em {sample} mãos. Stats marcados "AMOSTRA INSUFICIENTE" '
+                 'NÃO são read confiável — não gere correção em cima deles.)')
     return '\n'.join(lines) + '\n'
 
 
