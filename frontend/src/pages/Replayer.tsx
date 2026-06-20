@@ -1782,7 +1782,7 @@ const Replayer = () => {
 
       {/* ── Outer wrapper: top-bar + [table | side-panel] + controls ── */}
       <div className={cn(
-        "flex-1 min-h-0 flex flex-col px-3 md:px-5 pt-2 pb-14 md:pb-2 mx-auto w-full",
+        "flex-1 min-h-0 flex flex-col px-3 md:px-5 pt-2 pb-20 md:pb-2 mx-auto w-full",
         focusMode ? "max-w-none" : "max-w-[1600px]",
       )}>
 
