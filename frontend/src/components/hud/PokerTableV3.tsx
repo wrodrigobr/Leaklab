@@ -24,24 +24,26 @@ type Geo = {
   seatDX: number;  // nudge horizontal dos assentos (px) — ajuste fino de centragem
   podW: number; podH: number;   // tamanho-base do pod (antes do scale S)
   cardW: number; cardH: number; // tamanho-base de cada carta (antes do scale S)
-  compactPod: boolean;          // true = pod 1 linha (nome + stack inline); false = 2 linhas
+  compactPod: boolean;          // true = só nome no pod + badge de stack embaixo; false = 2 linhas
+  gap: number;                  // gap base pod↔fichas (compact sobe p/ absorver o stack badge)
 };
 const GEO_LANDSCAPE: Geo = {
   CX: 560, CY: 340, RX_SEAT: 452, RY_SEAT: 272, VBW: 1120, VBH: 630, aspect: "16 / 10", S: 1,
   RXF: 414, RYF: 218, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8, seatDX: 0,
-  podW: 168, podH: 64, cardW: 64, cardH: 96, compactPod: false,
+  podW: 168, podH: 64, cardW: 64, cardH: 96, compactPod: false, gap: 14,
 };
 const GEO_PORTRAIT: Geo = {
   CX: 362, CY: 464, RX_SEAT: 300, RY_SEAT: 393, VBW: 728, VBH: 932, aspect: "728 / 932", S: 0.66,
   RXF: 262, RYF: 392, FELT_MX: 20, FELT_MY: 20, boardW: 50, boardH: 82, boardGap: 6, seatDX: 0,
-  podW: 150, podH: 40, cardW: 80, cardH: 116, compactPod: true,
+  podW: 150, podH: 40, cardW: 80, cardH: 116, compactPod: true, gap: 16,
 };
-// Landscape do CELULAR (fullscreen): mesmo oval landscape porém com pod 1-linha + cartas
-// maiores (igual prioridade do portrait). Validado em chip_geometry_landscape_mobile_check.
+// Landscape do CELULAR (fullscreen): mesmo oval landscape porém com pod só-nome + badge de
+// stack embaixo + cartas maiores (igual prioridade do portrait). Validado em
+// chip_geometry_landscape_mobile_check.
 const GEO_LANDSCAPE_MOBILE: Geo = {
   CX: 580, CY: 355, RX_SEAT: 472, RY_SEAT: 250, VBW: 1160, VBH: 710, aspect: "1160 / 710", S: 1,
   RXF: 440, RYF: 232, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8, seatDX: 0,
-  podW: 150, podH: 40, cardW: 80, cardH: 116, compactPod: true,
+  podW: 150, podH: 40, cardW: 80, cardH: 116, compactPod: true, gap: 14,
 };
 // Geometria CORRENTE — mutável por render. Seguro: o build do SVG é síncrono (useEffect)
 // e o Replayer tem 1 mesa; setado no topo do effect antes de qualquer função de render.
@@ -253,7 +255,7 @@ function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
 // Tamanhos BASE de fichas/dealer (landscape), escalados por G.S. Pod/cartas vêm da geometria
 // corrente (G.podW/H, G.cardW/H) — portrait tem pod 1-linha menor + cartas maiores.
 // Validado em chip_geometry_portrait_check.mjs (0 sobreposições).
-const _CLU_UP = 30, _GAP = 14, _DRX = 20, _DRY = 12;
+const _CLU_UP = 30, _DRX = 20, _DRY = 12;  // gap pod↔fichas agora vem de G.gap (por orientação)
 function _boardBox() {
   return { x1: G.CX - (5 * G.boardW + 4 * G.boardGap) / 2, y1: G.CY - G.boardH / 2 - 6,
            x2: G.CX + (5 * G.boardW + 4 * G.boardGap) / 2, y2: G.CY + G.boardH / 2 - 6 };
@@ -275,7 +277,7 @@ function placeBetAndDealer(px: number, py: number) {
   const S = G.S;
   // Tamanhos do pod/cartas vêm da geometria corrente (portrait tem pod menor + cartas maiores).
   const HW = (G.podW / 2) * S, HH = (G.podH / 2) * S, CARD_HW = ((2 * G.cardW + 6) / 2) * S, CH = G.cardH * S;
-  const CLU = _CLU_UP * S, GAP = _GAP * S, DRX = _DRX * S, DRY = _DRY * S;
+  const CLU = _CLU_UP * S, GAP = G.gap * S, DRX = _DRX * S, DRY = _DRY * S;
   const dvx = G.CX - px, dvy = G.CY - py, len = Math.hypot(dvx, dvy) || 1;
   const ux = dvx / len, uy = dvy / len;            // inboard (pod→centro)
   // Bet chips: borda distante de (pod ∪ cartas) ao longo de u + gap.
@@ -430,18 +432,23 @@ function renderSeatsAndChips(
     const stackFill = isHero ? "#c9e8ff" : "#c0bab0";
 
     if (G.compactPod) {
-      // Pod 1 LINHA (mobile): ação (ativo) OU nome + stack inline — libera espaço p/ cartas maiores
+      // Pod (mobile): só o NOME (ocupa o pod inteiro) ou a AÇÃO; o stack vira badge embaixo.
       const ty = by + bh / 2 + 6;
       if (actText) {
-        html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="20" font-weight="700" letter-spacing=".03">${actText}</text>`;
+        html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" fill="${ac}" font-family="Inter,sans-serif" font-size="19" font-weight="700" letter-spacing=".03">${actText}</text>`;
       } else {
-        const maxChars = 7;
+        const maxChars = 13;
         const name = displayName.length > maxChars ? displayName.slice(0, maxChars) + "…" : displayName;
-        // Stack = info principal (maior, brilhante, mono); nome = rótulo curto e discreto (trunca limpo).
-        html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" font-family="Inter,sans-serif" letter-spacing=".02">`
-          + `<tspan fill="${isHero ? "#d8d3c8" : "#8f8a81"}" font-size="14.5" font-weight="500">${name}</tspan>`
-          + `<tspan dx="7" fill="${stackFill}" font-size="18" font-family="Share Tech Mono,monospace" font-weight="700">${fmtAmt(sv, bb, unit)}</tspan></text>`;
+        html += `<text x="${pos.x}" y="${ty}" text-anchor="middle" fill="${nameFill}" font-family="Inter,sans-serif" font-size="18" font-weight="${isHero ? 600 : 500}" letter-spacing=".02">${name}</text>`;
       }
+      // Badge de STACK na borda inferior do pod (espelha o badge de posição no topo)
+      const stackStr = fmtAmt(sv, bb, unit);
+      const sBW = stackStr.length * 7.4 + 16;
+      const sBY = by + bh - 8;
+      const sFill = isHero ? "rgba(24,48,72,0.96)" : "rgba(18,26,42,0.95)";
+      const sStroke = isHero ? "rgba(120,200,255,0.45)" : "rgba(255,255,255,0.22)";
+      html += `<rect x="${pos.x - sBW / 2}" y="${sBY}" width="${sBW}" height="17" rx="8.5" fill="${sFill}" stroke="${sStroke}" stroke-width="1"/>`;
+      html += `<text x="${pos.x}" y="${sBY + 12.4}" text-anchor="middle" fill="${stackFill}" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700" letter-spacing=".03">${stackStr}</text>`;
     } else {
       // Pod 2 LINHAS (desktop landscape): nome/ação em cima, stack embaixo
       if (actText) {

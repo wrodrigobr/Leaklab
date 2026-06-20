@@ -15,7 +15,8 @@ const OVL=12;
 const RX_SEAT=Math.round(RXF+HW-OVL), RY_SEAT=Math.round(RYF+HH-OVL);
 const CLU_HW=28*S, CLU_UP=30*S, CLU_DN=28*S;
 const DRX=20*S, DRY=12*S;
-const GAP=14*S;
+const GAP=16*S;                       // +2 absorve o stack badge que comeu o gap pod↔fichas
+const BADGE_DROP=10;                  // stack badge pendura ~10px abaixo do pod (screen +y)
 const VB={x1:4,y1:4,x2:724,y2:928};  // viewBox ~728×932 (estreito+alto)
 const BOARD_W=50, BOARD_GAP=6, BOARD_H=82;        // board canvas-level
 
@@ -31,7 +32,7 @@ function buildLayout(seatNums, heroSeat){
 }
 const overlap=(a,b,pad=0)=> a.x1<b.x2-pad&&a.x2>b.x1+pad&&a.y1<b.y2-pad&&a.y2>b.y1+pad;
 const inside=(a)=> a.x1>=VB.x1&&a.x2<=VB.x2&&a.y1>=VB.y1&&a.y2<=VB.y2;
-const podBox =p=>({x1:p.x-HW,y1:p.y-HH,x2:p.x+HW,y2:p.y+HH});
+const podBox =p=>({x1:p.x-HW,y1:p.y-HH,x2:p.x+HW,y2:p.y+HH+BADGE_DROP});
 function cardBox(p){ const by=p.y-HH, cy=by-Math.round(CH*0.67); return {x1:p.x-CARD_HW,y1:cy,x2:p.x+CARD_HW,y2:cy+CH}; }
 const cluBox =(cx,by)=>({x1:cx-CLU_HW,y1:by-CLU_UP,x2:cx+CLU_HW,y2:by+CLU_DN});
 const dlrBox =(dx,dy)=>({x1:dx-DRX,y1:dy-DRY,x2:dx+DRX,y2:dy+DRY+7});
