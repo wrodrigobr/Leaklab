@@ -118,6 +118,24 @@ export function V2CausalMapCard({ nodes, edges }: { nodes: LeakNode[]; edges: Le
         })}
       </div>
 
+      {/* Fallback — leaks isolados (sem co-ocorrência → sem arestas): em vez de um card
+          vazio, mostra os spots como pontos de atenção + explica por que ainda não há mapa. */}
+      {relations.length === 0 && (
+        <div>
+          <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
+            {t("v2.causalNoEdges")}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {[...nodes]
+              .sort((a, b) => sevRank[a.severity] - sevRank[b.severity] || b.n - a.n)
+              .slice(0, 8)
+              .map((n) => (
+                <NodeChip key={n.id} node={n} t={t} />
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* Conclusão determinística: o que esta análise significa, nos SEUS dados.
           (A narrativa de IA aprofundada vive no carrossel — isto é a síntese.) */}
       {relations.length > 0 && epicenter && (

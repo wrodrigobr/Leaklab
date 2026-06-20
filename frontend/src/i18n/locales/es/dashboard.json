@@ -538,6 +538,7 @@
     "causalEpicenterDesc": "conectado a {{n}} otros leaks — corregir este rompe la cadena",
     "causalTogether": "juntos en {{n}} manos",
     "causalSpot": "{{action}} en el {{street}}",
+    "causalNoEdges": "Tus leaks aún aparecen aislados — no se repiten juntos en las mismas manos. El mapa causal surge cuando los mismos errores co-ocurren. Por ahora, tus puntos de atención:",
     "causalConclusion": "Qué significa esto: tus errores no ocurren aislados — \"{{a}}\" y \"{{b}}\" aparecieron en las mismas manos {{n}} veces, señal de que uno desencadena el otro. El punto de mayor palanca es \"{{epi}}\": está ligado a {{deg}} otros leaks, y corregirlo tiende a derribar toda la cadena.",
     "careerDelta": "{{delta}} vs histórico",
     "cogDominant": "Patrón dominante"
