@@ -49,8 +49,8 @@ function place(p){
   const cx=Math.round(p.x+(far+GAP+CLU_UP)*ux);
   const by=Math.round(p.y+(far+GAP+CLU_UP)*uy);
   let best=null;
-  for(const d of [34,46,58,72,88,104,120]){
-    for(const L of [0,42,-42,66,-66,90,-90,116,-116]){
+  for(const d of [40,54,68,84,100,116,132].map(v=>v*S)){
+    for(const L of [0,50,-50,78,-78,106,-106,136,-136].map(v=>v*S)){
       const dx=Math.round(p.x + ux*d + tx*L);
       const dy=Math.round(p.y + uy*d + ty*L);
       if(!inFelt(dx,dy)) continue;

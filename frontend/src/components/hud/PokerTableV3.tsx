@@ -10,9 +10,33 @@ import type { ReplayStep } from "@/lib/api";
 import logoWordmark from "@/assets/brand/grindlab_final_horizontal.svg";
 import logoIcon from "@/assets/brand/grindlab_icon_traced.svg";
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const CX = 560, CY = 340;
-const RX_SEAT = 452, RY_SEAT = 272;
+// ── Geometria por orientação ────────────────────────────────────────────────
+// Landscape = mesa atual (desktop/landscape-phone, intocada). Portrait = mesa vertical
+// (portrait-phone): oval alto + ESCALA UNIFORME S no conteúdo de cada assento (um
+// transform scale(S) por grupo, ancorado no próprio assento). Validado em
+// scripts/chip_geometry_portrait_check.mjs (0 sobreposições em 6/8/9-max).
+export type TableOrientation = "landscape" | "portrait";
+type Geo = {
+  CX: number; CY: number; RX_SEAT: number; RY_SEAT: number;
+  VBW: number; VBH: number; aspect: string; S: number;
+  RXF: number; RYF: number; FELT_MX: number; FELT_MY: number;
+  boardW: number; boardH: number; boardGap: number;
+};
+const GEO_LANDSCAPE: Geo = {
+  CX: 560, CY: 340, RX_SEAT: 452, RY_SEAT: 272, VBW: 1120, VBH: 630, aspect: "16 / 10", S: 1,
+  RXF: 414, RYF: 218, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8,
+};
+const GEO_PORTRAIT: Geo = {
+  CX: 340, CY: 500, RX_SEAT: 268, RY_SEAT: 432, VBW: 680, VBH: 1008, aspect: "680 / 1008", S: 0.66,
+  RXF: 250, RYF: 400, FELT_MX: 20, FELT_MY: 20, boardW: 48, boardH: 80, boardGap: 6,
+};
+// Geometria CORRENTE — mutável por render. Seguro: o build do SVG é síncrono (useEffect)
+// e o Replayer tem 1 mesa; setado no topo do effect antes de qualquer função de render.
+let G: Geo = GEO_LANDSCAPE;
+// Envolve um fragmento num scale(S) ancorado em (cx,cy). S=1 (landscape) → no-op (idêntico).
+function scaleWrap(content: string, cx: number, cy: number): string {
+  return G.S === 1 ? content : `<g transform="translate(${cx},${cy}) scale(${G.S}) translate(${-cx},${-cy})">${content}</g>`;
+}
 const CARDS_BASE = "/cards/";
 const AC_COLORS: Record<string, string> = {
   fold: "#9aa0a8", folds: "#9aa0a8",  // cinza neutro, fold é passivo, não erro
@@ -144,18 +168,18 @@ function buildLayout(seatNums: number[], heroSeat: number | undefined) {
   seatNums.forEach((s, i) => {
     const baseAng = -90 + (360 / n) * i + rotOffset;
     const ang = baseAng * Math.PI / 180;
-    const x = Math.round(CX + RX_SEAT * Math.cos(ang));
-    const y = Math.round(CY + RY_SEAT * Math.sin(ang));
-    layout[s] = { x, y, dir: y < CY ? "top" : "bottom" };
+    const x = Math.round(G.CX + G.RX_SEAT * Math.cos(ang));
+    const y = Math.round(G.CY + G.RY_SEAT * Math.sin(ang));
+    layout[s] = { x, y, dir: y < G.CY ? "top" : "bottom" };
   });
   return layout;
 }
 
 function renderBoard(cards: string[]): string {
-  const W = 68, H = 110, GAP = 8;
+  const W = G.boardW, H = G.boardH, GAP = G.boardGap;
   const totalW = 5 * W + 4 * GAP;
-  const sx = CX - totalW / 2;
-  const y = CY - H / 2 - 6;
+  const sx = G.CX - totalW / 2;
+  const y = G.CY - H / 2 - 6;
   let h = "";
   // Só renderiza as cartas REVELADAS — sem placeholders tracejados nos slots vazios
   // (o feltro mostra a marca GrindLab embaixo até o board sair).
@@ -168,18 +192,18 @@ function renderBoard(cards: string[]): string {
 
 function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
   if (pot <= 0) return "";
-  const cardH = 110, cardY = CY - cardH / 2 - 6;
+  const cardH = G.boardH, cardY = G.CY - cardH / 2 - 6;
   const cardBottom = cardY + cardH;
   const potStr = fmtAmt(pot, bb, unit);
 
   // pill dimensions
   const pillH = 32;
   const pillW = Math.max(110, potStr.length * 12 + 82);
-  const pillX = CX - pillW / 2;
+  const pillX = G.CX - pillW / 2;
   const pillY = cardY - 16 - pillH;
   const textY  = pillY + pillH * 0.66;
-  const labelX = CX - pillW / 2 + 14;
-  const valueX = CX - pillW / 2 + 50;
+  const labelX = G.CX - pillW / 2 + 14;
+  const valueX = G.CX - pillW / 2 + 50;
 
   let h = "";
   h += `<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}"
@@ -190,7 +214,7 @@ function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
     fill="rgba(255,255,255,0.96)" font-family="Space Grotesk,sans-serif" font-size="16" font-weight="700">${potStr}</text>`;
 
   const chipBottomY = cardBottom + 38;
-  const potChipX = CX - 36;
+  const potChipX = G.CX - 36;
   h += chipStackSVG(potChipX, chipBottomY, pot);
 
   // chip label pill
@@ -213,15 +237,18 @@ function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
 //    do centro falhava porque a mesa é oval); pula as cartas dos bottom seats.
 //  • Dealer: lateral, colado no pod — 4 candidatos (dir/esq/baixo/cima), escolhe o
 //    válido (sem overlap, dentro do felt), preferindo o lado outboard.
+// Tamanhos BASE (landscape); em portrait tudo é escalado por G.S — mesma proporção,
+// validado em chip_geometry_portrait_check.mjs (0 sobreposições).
 const _HW = 84, _HH = 32, _CARD_HW = 64 + 6 / 2, _CH = 96;
 const _CLU_UP = 30, _GAP = 14, _DRX = 20, _DRY = 12;
-const _BOARD_B = { x1: CX - (5 * 68 + 4 * 8) / 2, y1: CY - 61, x2: CX + (5 * 68 + 4 * 8) / 2, y2: CY + 49 };
-// feltro verde ≈ elipse rx=414 ry=218 (bg-felt). Os pods ficam na BORDA/rail (fora
-// do feltro), então o dealer precisa vir INBOARD pra dentro do verde. Raios
-// contraídos pela folga do botão (~20×19) p/ o botão caber inteiro.
-const _RXF = 414 - 24, _RYF = 218 - 22;
+function _boardBox() {
+  return { x1: G.CX - (5 * G.boardW + 4 * G.boardGap) / 2, y1: G.CY - G.boardH / 2 - 6,
+           x2: G.CX + (5 * G.boardW + 4 * G.boardGap) / 2, y2: G.CY + G.boardH / 2 - 6 };
+}
+// feltro: pods ficam na BORDA/rail (fora do verde) → dealer vem INBOARD pra dentro.
+// Raios contraídos pela folga do botão p/ ele caber inteiro.
 function _inFelt(x: number, y: number): boolean {
-  return ((x - CX) / _RXF) ** 2 + ((y - CY) / _RYF) ** 2 <= 1;
+  return ((x - G.CX) / (G.RXF - G.FELT_MX)) ** 2 + ((y - G.CY) / (G.RYF - G.FELT_MY)) ** 2 <= 1;
 }
 
 function _farAlong(cBx: number, cBy: number, hwB: number, hhB: number,
@@ -232,38 +259,40 @@ function _ovl(a: {x1:number;y1:number;x2:number;y2:number}, b: {x1:number;y1:num
   return a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
 }
 function placeBetAndDealer(px: number, py: number) {
-  const dvx = CX - px, dvy = CY - py, len = Math.hypot(dvx, dvy) || 1;
+  const S = G.S;
+  const HW = _HW * S, HH = _HH * S, CARD_HW = _CARD_HW * S, CH = _CH * S;
+  const CLU = _CLU_UP * S, GAP = _GAP * S, DRX = _DRX * S, DRY = _DRY * S;
+  const dvx = G.CX - px, dvy = G.CY - py, len = Math.hypot(dvx, dvy) || 1;
   const ux = dvx / len, uy = dvy / len;            // inboard (pod→centro)
   // Bet chips: borda distante de (pod ∪ cartas) ao longo de u + gap.
-  const cardCY = (py - _HH) - Math.round(_CH * 0.67) + _CH / 2;
+  const cardCY = (py - HH) - Math.round(CH * 0.67) + CH / 2;
   const far = Math.max(
-    _farAlong(px, py, _HW, _HH, px, py, ux, uy),
-    _farAlong(px, cardCY, _CARD_HW, _CH / 2, px, py, ux, uy),
+    _farAlong(px, py, HW, HH, px, py, ux, uy),
+    _farAlong(px, cardCY, CARD_HW, CH / 2, px, py, ux, uy),
   );
-  const chipX = Math.round(px + (far + _GAP + _CLU_UP) * ux);
-  const chipY = Math.round(py + (far + _GAP + _CLU_UP) * uy);
-  // Dealer: INBOARD (dentro do feltro) + deslocamento lateral pra livrar cartas e
-  // fichas. Busca (inboard d × lateral L), contida na elipse do feltro, escolhendo
-  // o mais próximo do pod ("colado"). Outboard cairia no rail preto.
+  const chipX = Math.round(px + (far + GAP + CLU) * ux);
+  const chipY = Math.round(py + (far + GAP + CLU) * uy);
+  // Dealer: INBOARD (dentro do feltro) + deslocamento lateral pra livrar cartas/fichas.
   const tx = -uy, ty = ux;  // tangente
-  const podB  = { x1: px - _HW, y1: py - _HH, x2: px + _HW, y2: py + _HH };
-  const cby   = (py - _HH) - Math.round(_CH * 0.67);
-  const cardB = { x1: px - _CARD_HW, y1: cby, x2: px + _CARD_HW, y2: cby + _CH };
-  const cluB  = { x1: chipX - 28, y1: chipY - _CLU_UP, x2: chipX + 28, y2: chipY + 28 };
+  const podB  = { x1: px - HW, y1: py - HH, x2: px + HW, y2: py + HH };
+  const cby   = (py - HH) - Math.round(CH * 0.67);
+  const cardB = { x1: px - CARD_HW, y1: cby, x2: px + CARD_HW, y2: cby + CH };
+  const cluB  = { x1: chipX - 28 * S, y1: chipY - CLU, x2: chipX + 28 * S, y2: chipY + 28 * S };
+  const boardB = _boardBox();
   let best: { dx: number; dy: number; score: number } | null = null;
-  for (const d of [40, 54, 68, 84, 100, 116, 132]) {
-    for (const L of [0, 50, -50, 78, -78, 106, -106, 136, -136]) {
+  for (const d of [40, 54, 68, 84, 100, 116, 132].map(v => v * S)) {
+    for (const L of [0, 50, -50, 78, -78, 106, -106, 136, -136].map(v => v * S)) {
       const dx = Math.round(px + ux * d + tx * L);
       const dy = Math.round(py + uy * d + ty * L);
       if (!_inFelt(dx, dy)) continue;
-      const db = { x1: dx - _DRX, y1: dy - _DRY, x2: dx + _DRX, y2: dy + _DRY + 7 };
-      if (_ovl(db, podB) || _ovl(db, cardB) || _ovl(db, cluB) || _ovl(db, _BOARD_B)) continue;
+      const db = { x1: dx - DRX, y1: dy - DRY, x2: dx + DRX, y2: dy + DRY + 7 * S };
+      if (_ovl(db, podB) || _ovl(db, cardB) || _ovl(db, cluB) || _ovl(db, boardB)) continue;
       const score = -Math.hypot(dx - px, dy - py) - Math.abs(L) * 0.12;
       if (!best || score > best.score) best = { dx, dy, score };
     }
   }
   // fallback: inboard puro (raro — só se nada couber)
-  if (!best) best = { dx: Math.round(px + ux * 70), dy: Math.round(py + uy * 70), score: 0 };
+  if (!best) best = { dx: Math.round(px + ux * 70 * S), dy: Math.round(py + uy * 70 * S), score: 0 };
   return { chipX, chipY, dealerX: best.dx, dealerY: best.dy };
 }
 
@@ -407,14 +436,14 @@ function renderSeatsAndChips(
     }
 
     html += "</g>";  // fecha o grupo do seat (com opacity quando folded)
-    seatsHtml += html;
+    seatsHtml += scaleWrap(html, pos.x, pos.y);
 
     // HUD estilo Holdem Manager — box de stats abaixo do pod, p/ vilões com perfil.
     // Fora do grupo com opacity: permanece visível mesmo quando o jogador folda.
     // Só quando há amostra real (VPIP gateado) — sem "–/–/–" poluindo a mesa.
     // SEMPRE abaixo do pod (preferência do usuário), nunca acima.
     if (showHud && !isHero && profiles[d.player]?.stats?.vpip_pct != null) {
-      seatsHtml += renderHudBox(pos.x, by + bh + 5, profiles[d.player], hudTips[d.player] ?? "");
+      seatsHtml += scaleWrap(renderHudBox(pos.x, by + bh + 5, profiles[d.player], hudTips[d.player] ?? ""), pos.x, pos.y);
     }
 
     // Position tab — posição GTO (UTG/MP/CO/BTN/SB/BB) na borda superior do pod.
@@ -428,8 +457,10 @@ function renderSeatsAndChips(
       const pFill   = isHero ? "rgba(201,168,64,0.96)" : "rgba(18,26,42,0.95)";
       const pStroke = isHero ? "#e3c869" : "rgba(255,255,255,0.26)";
       const pText   = isHero ? "#1a1206" : "#e8eefc";
-      seatsHtml += `<rect x="${pos.x - pW / 2}" y="${pY}" width="${pW}" height="17" rx="8.5" fill="${pFill}" stroke="${pStroke}" stroke-width="1"/>`;
-      seatsHtml += `<text x="${pos.x}" y="${pY + 12.6}" text-anchor="middle" fill="${pText}" font-family="Inter,sans-serif" font-size="10.5" font-weight="800" letter-spacing=".04">${d.pos}</text>`;
+      seatsHtml += scaleWrap(
+        `<rect x="${pos.x - pW / 2}" y="${pY}" width="${pW}" height="17" rx="8.5" fill="${pFill}" stroke="${pStroke}" stroke-width="1"/>` +
+        `<text x="${pos.x}" y="${pY + 12.6}" text-anchor="middle" fill="${pText}" font-family="Inter,sans-serif" font-size="10.5" font-weight="800" letter-spacing=".04">${d.pos}</text>`,
+        pos.x, pos.y);
     }
 
     // Dealer button — RENDERIZADO FORA DO GRUPO COM OPACITY pra permanecer
@@ -452,7 +483,7 @@ function renderSeatsAndChips(
       }
       btnHtml += `<ellipse cx="${dbX}" cy="${dTy}" rx="${(dRX * 0.58).toFixed(1)}" ry="${(dRY * 0.58).toFixed(1)}" fill="rgba(255,255,255,0.90)"/>`;
       btnHtml += `<path d="M0,-6 L1.42,-1.95 L5.71,-1.85 L2.29,0.74 L3.53,4.85 L0,2.4 L-3.53,4.85 L-2.29,0.74 L-5.71,-1.85 L-1.42,-1.95 Z" fill="#222" transform="translate(${dbX},${dTy})"/>`;
-      seatsHtml += btnHtml;
+      seatsHtml += scaleWrap(btnHtml, dbX, dbY);
     }
 
     // Bet chips — na linha jogador→centro, próximas ao pod, sempre dentro do feltro.
@@ -465,10 +496,11 @@ function renderSeatsAndChips(
       // gap fixo na direção do centro. Folga consistente, sem tocar pod/cartas.
       const cx2 = seatPlace.chipX;
       const cy2 = seatPlace.chipY;
-      chipsHtml += chipStackSVG(cx2, cy2, bet);
       const betStr = fmtAmt(bet, bb, unit);
-      chipsHtml += `<rect x="${cx2 - 28}" y="${cy2 + 10}" width="56" height="18" rx="9" fill="rgba(0,0,0,0.80)" stroke="rgba(255,255,255,0.15)" stroke-width=".8"/>
-                    <text x="${cx2}" y="${cy2 + 23}" text-anchor="middle" fill="#fff" font-family="Share Tech Mono,monospace" font-size="13" font-weight="700">${betStr}</text>`;
+      chipsHtml += scaleWrap(chipStackSVG(cx2, cy2, bet) +
+        `<rect x="${cx2 - 28}" y="${cy2 + 10}" width="56" height="18" rx="9" fill="rgba(0,0,0,0.80)" stroke="rgba(255,255,255,0.15)" stroke-width=".8"/>
+                    <text x="${cx2}" y="${cy2 + 23}" text-anchor="middle" fill="#fff" font-family="Share Tech Mono,monospace" font-size="13" font-weight="700">${betStr}</text>`,
+        cx2, cy2);
     }
   });
 
@@ -483,10 +515,11 @@ function renderSeatsAndChips(
       const wPlace = placeBetAndDealer(wpos.x, wpos.y);
       const cx2 = wPlace.chipX;
       const cy2 = wPlace.chipY;
-      chipsHtml += chipStackSVG(cx2, cy2, winner.won);
       const wonStr = fmtAmt(winner.won, bb, unit);
-      chipsHtml += `<rect x="${cx2 - 32}" y="${cy2 + 10}" width="64" height="18" rx="9" fill="rgba(0,0,0,0.80)" stroke="rgba(201,168,64,0.35)" stroke-width=".8"/>
-                    <text x="${cx2}" y="${cy2 + 23}" text-anchor="middle" fill="#c9a840" font-family="Share Tech Mono,monospace" font-size="13" font-weight="700">+${wonStr}</text>`;
+      chipsHtml += scaleWrap(chipStackSVG(cx2, cy2, winner.won) +
+        `<rect x="${cx2 - 32}" y="${cy2 + 10}" width="64" height="18" rx="9" fill="rgba(0,0,0,0.80)" stroke="rgba(201,168,64,0.35)" stroke-width=".8"/>
+                    <text x="${cx2}" y="${cy2 + 23}" text-anchor="middle" fill="#c9a840" font-family="Share Tech Mono,monospace" font-size="13" font-weight="700">+${wonStr}</text>`,
+        cx2, cy2);
     }
   }
 
@@ -508,9 +541,12 @@ interface Props {
   profiles?: Record<string, OppProfile>;
   showHud?: boolean;
   hudTips?: Record<string, string>;
+  /** "portrait" = mesa vertical (mobile portrait); "landscape" = atual (default, desktop). */
+  orientation?: TableOrientation;
 }
 
-export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false, hudTips = {} }: Props) {
+export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false, hudTips = {}, orientation = "landscape" }: Props) {
+  const geo = orientation === "portrait" ? GEO_PORTRAIT : GEO_LANDSCAPE;
   const boardRef = useRef<SVGGElement>(null);
   const potRef   = useRef<SVGGElement>(null);
   const seatsRef = useRef<SVGGElement>(null);
@@ -518,6 +554,7 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
 
   useEffect(() => {
     if (!boardRef.current) return;
+    G = orientation === "portrait" ? GEO_PORTRAIT : GEO_LANDSCAPE;  // geometria corrente p/ as funções de render
     boardRef.current.innerHTML = renderBoard(step.board ?? []);
     // Suppress center pot when chips are being displaced to winners
     const hasWinners = step.type === "showdown" && (step.summary?.winners?.length ?? 0) > 0;
@@ -525,14 +562,14 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
     const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards, revealedCards, profiles, showHud, hudTips);
     seatsRef.current!.innerHTML = seats;
     chipsRef.current!.innerHTML = chips;
-  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards, profiles, showHud, hudTips]);
+  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards, profiles, showHud, hudTips, orientation]);
 
   return (
     <div
       className="relative w-full rounded-2xl"
       style={{
         background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)",
-        aspectRatio: "16 / 10",
+        aspectRatio: geo.aspect,
       }}
     >
       {/* Layer 1 — tilted background (felt + rail) — clipped to rounded corners */}
@@ -541,7 +578,7 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
         style={{ perspective: "1100px", perspectiveOrigin: "50% 0%" }}
       >
         <svg
-          viewBox="0 0 1120 630"
+          viewBox={`0 0 ${geo.VBW} ${geo.VBH}`}
           xmlns="http://www.w3.org/2000/svg"
           preserveAspectRatio="xMidYMid meet"
           className="w-full h-full block"
@@ -565,16 +602,18 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
               <feDropShadow dx="0" dy="16" stdDeviation="28" floodColor="#000" floodOpacity=".95" />
             </filter>
           </defs>
-          <ellipse cx="562" cy="353" rx="445" ry="245" fill="#000" filter="url(#bg-shadow)" />
-          <ellipse cx="560" cy="340" rx="442" ry="240" fill="url(#bg-rail)" />
-          <ellipse cx="560" cy="340" rx="442" ry="240" fill="none" stroke="#2c2c2c" strokeWidth="1.2" />
-          <ellipse cx="560" cy="340" rx="418" ry="222" fill="none" stroke="#1a1a1a" strokeWidth="5" />
-          <ellipse cx="560" cy="340" rx="414" ry="218" fill="url(#bg-felt)" />
-          <ellipse cx="560" cy="340" rx="403" ry="207" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5" />
-          <ellipse cx="560" cy="340" rx="414" ry="218" fill="url(#bg-vig)" />
-          {/* Marca GrindLab no feltro (exposição de marca) — atrás do board; as cartas
+          <ellipse cx={geo.CX + 2} cy={geo.CY + 13} rx={geo.RXF + 31} ry={geo.RYF + 27} fill="#000" filter="url(#bg-shadow)" />
+          <ellipse cx={geo.CX} cy={geo.CY} rx={geo.RXF + 28} ry={geo.RYF + 22} fill="url(#bg-rail)" />
+          <ellipse cx={geo.CX} cy={geo.CY} rx={geo.RXF + 28} ry={geo.RYF + 22} fill="none" stroke="#2c2c2c" strokeWidth="1.2" />
+          <ellipse cx={geo.CX} cy={geo.CY} rx={geo.RXF + 4} ry={geo.RYF + 4} fill="none" stroke="#1a1a1a" strokeWidth="5" />
+          <ellipse cx={geo.CX} cy={geo.CY} rx={geo.RXF} ry={geo.RYF} fill="url(#bg-felt)" />
+          <ellipse cx={geo.CX} cy={geo.CY} rx={geo.RXF - 11} ry={geo.RYF - 11} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5" />
+          <ellipse cx={geo.CX} cy={geo.CY} rx={geo.RXF} ry={geo.RYF} fill="url(#bg-vig)" />
+          {/* Marca GrindLab no feltro (exposição de marca), atrás do board; as cartas
               comunitárias, quando saem, são desenhadas no layer de conteúdo por cima. */}
-          <image href={logoWordmark} x="310" y="286" width="500" height="108"
+          <image href={logoWordmark}
+                 x={Math.round(geo.CX - geo.VBW * 0.2232)} y={Math.round(geo.CY - geo.VBW * 0.2232 * 108 / 500)}
+                 width={Math.round(geo.VBW * 0.4464)} height={Math.round(geo.VBW * 0.4464 * 108 / 500)}
                  preserveAspectRatio="xMidYMid meet" opacity="0.22" />
         </svg>
       </div>

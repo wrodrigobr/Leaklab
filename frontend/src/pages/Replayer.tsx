@@ -7,6 +7,7 @@ import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
+import { useTableOrientation } from "@/hooks/use-table-orientation";
 import { RangePanel } from "@/components/replayer/RangePanel";
 import { GtoStrategyPanel } from "@/components/replayer/GtoStrategyPanel";
 import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/DecisionCard";
@@ -1339,6 +1340,7 @@ const Replayer = () => {
   const [params]   = useSearchParams();
   const navigate   = useNavigate();
   const { t } = useTranslation("replayer");
+  const tableOrientation = useTableOrientation();
   const tournamentId = params.get("t") ?? "";
   const handId       = params.get("h") ?? "";
   const studentId    = params.get("student") ? Number(params.get("student")) : null;
@@ -1842,9 +1844,13 @@ const Replayer = () => {
 
           {/* Table column */}
           <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
-            {/* Mesa — desktop cresce pela altura; mobile centraliza na faixa flex-1 (16/10 provisório) */}
+            {/* Mesa — height-bound: cabe SEMPRE na faixa flex-1 (acima dos controles), nunca
+                rola pra baixo do menu. Aspect troca por orientação (portrait vertical). */}
             <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center">
-              <div className="w-full mx-auto aspect-[16/10] max-w-full max-h-full lg:h-full lg:w-auto">
+              <div
+                className="h-full w-auto max-w-full max-h-full mx-auto"
+                style={{ aspectRatio: tableOrientation === "portrait" ? "680 / 1008" : "16 / 10" }}
+              >
                 <PokerTableV3
                   step={step}
                   hero={replayData.hero}
@@ -1856,6 +1862,7 @@ const Replayer = () => {
                   profiles={replayData.opponent_profiles}
                   showHud={showHud}
                   hudTips={hudTips}
+                  orientation={tableOrientation}
                 />
               </div>
             </div>
