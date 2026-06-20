@@ -764,8 +764,8 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
                 d.street                      AS street,
                 d.best_action                 AS ideal_action,
                 COUNT(*)                      AS n,
-                ROUND(SUM(d.ev_loss_bb), 2)   AS total_ev_loss_bb,
-                ROUND(AVG(d.ev_loss_bb), 3)   AS avg_ev_loss_bb
+                SUM(d.ev_loss_bb)             AS total_ev_loss_bb,
+                AVG(d.ev_loss_bb)             AS avg_ev_loss_bb
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf}
@@ -775,14 +775,17 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
             LIMIT ?
         """), tp + (limit,)).fetchall()
         tot = conn.execute(_adapt(f"""
-            SELECT ROUND(SUM(d.ev_loss_bb), 2) AS tot, COUNT(*) AS n
+            SELECT SUM(d.ev_loss_bb) AS tot, COUNT(*) AS n
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE {tf} AND d.ev_loss_bb IS NOT NULL AND d.ev_loss_bb > 0.05
         """), tp).fetchone()
         return {
-            'leaks': [{**dict(r), 'position': (r['position'] or '?')} for r in rows],
-            'total_ev_loss_bb': (tot['tot'] or 0.0) if tot else 0.0,
+            # arredonda no Python (ROUND(real,n) não existe no Postgres; e mantém float)
+            'leaks': [{**dict(r), 'position': (r['position'] or '?'),
+                       'total_ev_loss_bb': round(float(r['total_ev_loss_bb'] or 0), 2),
+                       'avg_ev_loss_bb':   round(float(r['avg_ev_loss_bb'] or 0), 3)} for r in rows],
+            'total_ev_loss_bb': round(float(tot['tot'] or 0), 2) if tot else 0.0,
             'n_leaks':          (tot['n'] or 0) if tot else 0,
         }
     finally:
