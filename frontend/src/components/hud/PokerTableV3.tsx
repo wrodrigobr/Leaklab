@@ -36,6 +36,13 @@ const GEO_PORTRAIT: Geo = {
   RXF: 262, RYF: 392, FELT_MX: 20, FELT_MY: 20, boardW: 50, boardH: 82, boardGap: 6, seatDX: 0,
   podW: 150, podH: 40, cardW: 80, cardH: 116, compactPod: true,
 };
+// Landscape do CELULAR (fullscreen): mesmo oval landscape porém com pod 1-linha + cartas
+// maiores (igual prioridade do portrait). Validado em chip_geometry_landscape_mobile_check.
+const GEO_LANDSCAPE_MOBILE: Geo = {
+  CX: 580, CY: 355, RX_SEAT: 472, RY_SEAT: 250, VBW: 1160, VBH: 710, aspect: "1160 / 710", S: 1,
+  RXF: 440, RYF: 232, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8, seatDX: 0,
+  podW: 150, podH: 40, cardW: 80, cardH: 116, compactPod: true,
+};
 // Geometria CORRENTE — mutável por render. Seguro: o build do SVG é síncrono (useEffect)
 // e o Replayer tem 1 mesa; setado no topo do effect antes de qualquer função de render.
 let G: Geo = GEO_LANDSCAPE;
@@ -569,7 +576,8 @@ interface Props {
 }
 
 export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false, hudTips = {}, orientation = "landscape", fill = false }: Props) {
-  const geo = orientation === "portrait" ? GEO_PORTRAIT : GEO_LANDSCAPE;
+  // fill (celular deitado fullscreen) usa o landscape compacto (cartas maiores); desktop intocado.
+  const geo = orientation === "portrait" ? GEO_PORTRAIT : (fill ? GEO_LANDSCAPE_MOBILE : GEO_LANDSCAPE);
   const boardRef = useRef<SVGGElement>(null);
   const potRef   = useRef<SVGGElement>(null);
   const seatsRef = useRef<SVGGElement>(null);
@@ -577,7 +585,7 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
 
   useEffect(() => {
     if (!boardRef.current) return;
-    G = orientation === "portrait" ? GEO_PORTRAIT : GEO_LANDSCAPE;  // geometria corrente p/ as funções de render
+    G = orientation === "portrait" ? GEO_PORTRAIT : (fill ? GEO_LANDSCAPE_MOBILE : GEO_LANDSCAPE);  // geometria corrente p/ as funções de render
     boardRef.current.innerHTML = renderBoard(step.board ?? []);
     // Suppress center pot when chips are being displaced to winners
     const hasWinners = step.type === "showdown" && (step.summary?.winners?.length ?? 0) > 0;
@@ -585,7 +593,7 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
     const { seats, chips } = renderSeatsAndChips(step, bb, betUnit, hero, playerAliases, heroCards, revealedCards, profiles, showHud, hudTips);
     seatsRef.current!.innerHTML = seats;
     chipsRef.current!.innerHTML = chips;
-  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards, profiles, showHud, hudTips, orientation]);
+  }, [step, bb, betUnit, hero, heroCards, playerAliases, revealedCards, profiles, showHud, hudTips, orientation, fill]);
 
   return (
     <div

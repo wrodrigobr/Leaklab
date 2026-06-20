@@ -1786,7 +1786,7 @@ const Replayer = () => {
         {/* Mesa (dimensões boas, height-bound, sem cortar pods) com fundo TRANSPARENTE: o
             gradiente acima é único na tela → sem caixa/borda dando impressão de sobreposição. */}
         <div className="absolute inset-0 flex items-center justify-center p-0.5">
-          <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "16 / 10" }}>
+          <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "1160 / 710" }}>
             <PokerTableV3
               step={step} hero={replayData.hero} heroCards={replayData.hero_cards}
               bb={replayData.bb} betUnit={betUnit} playerAliases={playerAliases}
