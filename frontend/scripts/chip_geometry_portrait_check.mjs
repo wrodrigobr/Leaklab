@@ -6,20 +6,18 @@
 // fichas/dealer). Board e feltro são canvas-level (tamanhos portrait próprios). S é o que
 // vai virar um único transform scale(S) por assento no componente — implementação limpa.
 const S=0.66;                                     // escala uniforme do conteúdo do assento
-const RXF=305, RYF=345, FELT_MX=20, FELT_MY=20;   // feltro mais LARGO (ocupa a largura do cel)
-const CX=380, CY=440;
+const RXF=268, RYF=395, FELT_MX=20, FELT_MY=20;   // mais ESTREITO + mais ALTO (cards laterais cabem)
+const CX=372, CY=472;
 const HW=84*S, HH=32*S;                            // meio-pod = landscape × S
 const CARD_HW=67*S, CH=96*S;                       // cartas = landscape × S
-// Assentos na BORDA: o pod sobrepõe a borda do feltro por OVL px IGUAL em x e y (a borda
-// interna do pod cai OVL pra dentro do feltro). Como o pod é mais largo que alto, o raio
-// X fica mais "pra fora" que o Y — é isso que faz os pods seguirem o oval de forma coerente.
+// Assentos na BORDA: o pod sobrepõe a borda do feltro por OVL px IGUAL em x e y.
 const OVL=12;
 const RX_SEAT=Math.round(RXF+HW-OVL), RY_SEAT=Math.round(RYF+HH-OVL);
 const CLU_HW=28*S, CLU_UP=30*S, CLU_DN=28*S;
 const DRX=20*S, DRY=12*S;
 const GAP=14*S;
-const VB={x1:4,y1:4,x2:756,y2:876};  // viewBox ~760×880 (mais largo; overflow:visible cobre folga)
-const BOARD_W=54, BOARD_GAP=6, BOARD_H=84;        // board canvas-level (portrait, um pouco maior)
+const VB={x1:4,y1:4,x2:740,y2:976};  // viewBox ~744×980 (estreito+alto)
+const BOARD_W=50, BOARD_GAP=6, BOARD_H=82;        // board canvas-level
 
 function buildLayout(seatNums, heroSeat){
   const n=seatNums.length, heroIdx=seatNums.indexOf(heroSeat);
@@ -79,6 +77,8 @@ function validate(seats,heroSeat,label){
     if(overlap(cb,cardBox(p),0))iss.push('CHIP×CARDS');
     if(overlap(cb,boardBox,0))iss.push('CHIP×BOARD');
     if(!inside(cb))iss.push('CHIP×OOB');
+    if(!inside(podBox(p)))iss.push('POD×CORTADO');
+    if(!inside(cardBox(p)))iss.push('CARD×CORTADO');
     if(!r.dealer)iss.push('DEALER:nenhum-lado-valido');
     else {
       const db=dlrBox(r.dealer.dx,r.dealer.dy);
