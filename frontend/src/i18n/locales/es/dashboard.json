@@ -164,7 +164,8 @@
     "p1m": "1M",
     "p3m": "3M",
     "p1y": "1A",
-    "pAll": "Todo"
+    "pAll": "Todo",
+    "emptyPeriod": "No hay torneos suficientes en este período — prueba un rango mayor."
   },
   "table": {
     "title": "Torneos recientes",

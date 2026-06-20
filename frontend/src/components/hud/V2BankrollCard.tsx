@@ -22,7 +22,7 @@ type PeriodKey = (typeof PERIODS)[number]["key"];
 
 export function V2BankrollCard() {
   const { t } = useTranslation("dashboard");
-  const [period, setPeriod] = useState<PeriodKey>("3M");
+  const [period, setPeriod] = useState<PeriodKey>("ALL");
   const days = PERIODS.find((p) => p.key === period)!.days;
 
   const { data } = useQuery({
@@ -40,9 +40,12 @@ export function V2BankrollCard() {
     });
   }, [data]);
 
-  if (pts.length < 2) return null;
+  // Só some de vez quando NÃO há histórico nenhum (período "ALL" com <2 torneios).
+  // Em períodos curtos vazios, mantém card + seletor pro jogador voltar a um range maior.
+  if (pts.length < 2 && period === "ALL") return null;
 
-  const last = pts[pts.length - 1].profit;
+  const hasData = pts.length >= 2;
+  const last = hasData ? pts[pts.length - 1].profit : 0;
   const up = last >= 0;
   const stroke = up ? "#2DD4BF" : "#f87171";
 
@@ -53,9 +56,11 @@ export function V2BankrollCard() {
           <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             {t("bankroll.title")}
           </span>
-          <span className={`font-mono text-sm font-bold tabular-nums ${up ? "text-teal-300" : "text-red-400"}`}>
-            {up ? "+" : "−"}${Math.abs(last).toFixed(2)}
-          </span>
+          {hasData && (
+            <span className={`font-mono text-sm font-bold tabular-nums ${up ? "text-teal-300" : "text-red-400"}`}>
+              {up ? "+" : "−"}${Math.abs(last).toFixed(2)}
+            </span>
+          )}
         </div>
         <div className="flex gap-1">
           {PERIODS.map((p) => (
@@ -74,6 +79,13 @@ export function V2BankrollCard() {
         </div>
       </div>
       <div className="h-44">
+        {!hasData ? (
+          <div className="flex h-full items-center justify-center">
+            <p className="max-w-[220px] text-center text-[11px] text-muted-foreground/70">
+              {t("bankroll.emptyPeriod")}
+            </p>
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={pts} margin={{ top: 6, right: 6, bottom: 0, left: -10 }}>
             <defs>
@@ -95,6 +107,7 @@ export function V2BankrollCard() {
                   fill="url(#bankFill)" dot={{ r: 2, fill: stroke }} activeDot={{ r: 4 }} />
           </AreaChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

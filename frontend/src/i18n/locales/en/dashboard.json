@@ -164,7 +164,8 @@
     "p1m": "1M",
     "p3m": "3M",
     "p1y": "1Y",
-    "pAll": "All"
+    "pAll": "All",
+    "emptyPeriod": "Not enough tournaments in this range — try a longer period."
   },
   "table": {
     "title": "Recent tournaments",
