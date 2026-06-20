@@ -1350,6 +1350,7 @@ const Replayer = () => {
   const [speed, setSpeed]           = useState(1);
   const [handList, setHandList]     = useState<string[]>([]);
   const [betUnit, setBetUnit]       = useState<"chips" | "bb">("bb");
+  const [showAnalysis, setShowAnalysis] = useState(false);   // mobile: bottom-sheet do card de análise
   const [showHud, setShowHud]       = useState<boolean>(
     () => localStorage.getItem('replayer_show_hud') !== 'false'   // HUD HM-style: ligado por padrão
   );
@@ -1773,12 +1774,12 @@ const Replayer = () => {
   const isCorrect = step.is_hero && !isError && step.type === "action";
 
   return (
-    <div ref={rootRef} className="min-h-dvh lg:h-dvh flex flex-col overflow-y-auto lg:overflow-hidden bg-background hud-scanline">
+    <div ref={rootRef} className="h-dvh flex flex-col overflow-hidden bg-background hud-scanline">
       {!focusMode && <HudHeader />}
 
       {/* ── Outer wrapper: top-bar + [table | side-panel] + controls ── */}
       <div className={cn(
-        "flex-1 min-h-0 flex flex-col px-3 md:px-5 pt-2 pb-14 md:pb-2 mx-auto w-full",
+        "flex-1 min-h-0 flex flex-col px-3 md:px-5 pt-2 pb-2 mx-auto w-full",
         focusMode ? "max-w-none" : "max-w-[1600px]",
       )}>
 
@@ -1835,14 +1836,14 @@ const Replayer = () => {
         </div>
 
         {/* ── Main row: table (flex-1) + side panel (w-72, desktop only) ── */}
-        {/* Mobile: coluna com scroll natural (root rola); desktop: row de altura fixa */}
-        <div className="lg:flex-1 lg:min-h-0 flex flex-col lg:flex-row gap-3">
+        {/* Mobile: 3 faixas em h-dvh sem scroll (mesa flex-1); desktop: row de altura fixa */}
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3">
 
           {/* Table column */}
-          <div className="lg:flex-1 min-w-0 lg:min-h-0 flex flex-col gap-2">
-            {/* Mesa — desktop cresce pela altura; mobile dimensiona pela largura (16/10) */}
-            <div className="lg:flex-1 lg:min-h-0 lg:overflow-hidden">
-              <div className="w-full mx-auto aspect-[16/10] max-w-full lg:h-full lg:w-auto">
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
+            {/* Mesa — desktop cresce pela altura; mobile centraliza na faixa flex-1 (16/10 provisório) */}
+            <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center">
+              <div className="w-full mx-auto aspect-[16/10] max-w-full max-h-full lg:h-full lg:w-auto">
                 <PokerTableV3
                   step={step}
                   hero={replayData.hero}
@@ -1857,6 +1858,23 @@ const Replayer = () => {
                 />
               </div>
             </div>
+
+            {/* Mobile: barra de veredito que abre o card de análise (sheet). Passo 2 = VerdictPill polida. */}
+            <button
+              onClick={() => setShowAnalysis(true)}
+              className={cn(
+                "lg:hidden shrink-0 flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider transition-colors",
+                isCorrect ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                : isError ? "border-red-500/30 bg-red-500/10 text-red-300"
+                : "border-border bg-hud-surface text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className="flex items-center gap-1.5">
+                {isCorrect ? <Check className="size-3.5" /> : isError ? <X className="size-3.5" /> : <Eye className="size-3.5" />}
+                {isCorrect ? t("vCorrect") : isError ? t("vError") : t("analysis")}
+              </span>
+              <ChevronRight className="size-3.5 opacity-60" />
+            </button>
 
             {/* Controls */}
             <div className="shrink-0 border border-border rounded-xl bg-hud-surface p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1960,23 +1978,36 @@ const Replayer = () => {
               </div>
             </div>
 
-            {/* Mobile-only: contextual panels below controls */}
-            <div className="lg:hidden shrink-0">
-              <SidePanels
-                step={step} isError={isError} isCorrect={isCorrect}
-                coachAnnotation={coachAnnotation} studentId={studentId}
-                currentDecisionId={currentDecisionId} annotating={annotating}
-                annComment={annComment} annMode={annMode} annAction={annAction}
-                annOverride={annOverride} saveAnn={saveAnn} deleteAnn={deleteAnn}
-                replayData={replayData} playerAliases={playerAliases}
-                setAnnotating={setAnnotating} setAnnComment={setAnnComment}
-                setAnnMode={setAnnMode} setAnnAction={setAnnAction}
-                setAnnOverride={setAnnOverride} openAnnotationForm={openAnnotationForm}
-                t={t}
-                gtoRequestStatus={gtoRequestStatus} onRequestGto={handleRequestGto}
-                tournamentId={tournamentId} handId={handId}
-              />
-            </div>
+            {/* Mobile: card de análise como bottom-sheet sobreposto (página não rola) */}
+            {showAnalysis && (
+              <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAnalysis(false)} />
+                <div className="relative max-h-[82vh] overflow-y-auto rounded-t-2xl bg-background p-3 pb-6 shadow-2xl ring-1 ring-border">
+                  <button
+                    onClick={() => setShowAnalysis(false)}
+                    aria-label={t("close")}
+                    className="absolute right-2.5 top-2.5 z-10 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  >
+                    <X className="size-4" />
+                  </button>
+                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" onClick={() => setShowAnalysis(false)} />
+                  <SidePanels
+                    step={step} isError={isError} isCorrect={isCorrect}
+                    coachAnnotation={coachAnnotation} studentId={studentId}
+                    currentDecisionId={currentDecisionId} annotating={annotating}
+                    annComment={annComment} annMode={annMode} annAction={annAction}
+                    annOverride={annOverride} saveAnn={saveAnn} deleteAnn={deleteAnn}
+                    replayData={replayData} playerAliases={playerAliases}
+                    setAnnotating={setAnnotating} setAnnComment={setAnnComment}
+                    setAnnMode={setAnnMode} setAnnAction={setAnnAction}
+                    setAnnOverride={setAnnOverride} openAnnotationForm={openAnnotationForm}
+                    t={t}
+                    gtoRequestStatus={gtoRequestStatus} onRequestGto={handleRequestGto}
+                    tournamentId={tournamentId} handId={handId}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Side panel — desktop only, fixed width */}

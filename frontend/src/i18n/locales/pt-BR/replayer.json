@@ -8,6 +8,7 @@
   "noData": "Sem dados.",
   "error": "Erro ao carregar o replay.",
   "back": "Voltar",
+  "close": "Fechar",
   "focus": {
     "enter": "Tela cheia",
     "exit": "Sair da tela cheia"

@@ -8,6 +8,7 @@
   "noData": "No data.",
   "error": "Error loading replay.",
   "back": "Back",
+  "close": "Close",
   "focus": {
     "enter": "Fullscreen",
     "exit": "Exit fullscreen"

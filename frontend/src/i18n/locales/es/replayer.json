@@ -8,6 +8,7 @@
   "noData": "Sin datos.",
   "error": "Error al cargar el replay.",
   "back": "Volver",
+  "close": "Cerrar",
   "focus": {
     "enter": "Pantalla completa",
     "exit": "Salir de pantalla completa"
