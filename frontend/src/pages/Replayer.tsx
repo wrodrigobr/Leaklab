@@ -1808,8 +1808,8 @@ const Replayer = () => {
           <img src={logoHorizontal} alt="GrindLab" className="h-5 w-auto" />
         </div>
 
-        {/* Verdict pill — topo-centro flutuante */}
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30">
+        {/* Verdict pill / Análise — canto inferior-direito */}
+        <div className="absolute bottom-2 right-2 z-30">
           <VerdictPill
             level={verdictLevel(step.error_label) ?? (step.is_hero && step.type === "action" ? ((isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null) : null)}
             evLossBb={step.ev_loss_bb}
@@ -1817,8 +1817,8 @@ const Replayer = () => {
           />
         </div>
 
-        {/* Controles — embaixo-centro flutuante */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 rounded-full bg-background/80 backdrop-blur px-2 py-1 ring-1 ring-border shadow-lg">
+        {/* Controles — extrema inferior-esquerda */}
+        <div className="absolute bottom-2 left-2 z-30 flex items-center gap-1 rounded-full bg-background/80 backdrop-blur px-2 py-1 ring-1 ring-border shadow-lg">
           <button onClick={() => { if (stepIdx > 0) setStepIdx(0); else if (prevHand) navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`); }}
             disabled={stepIdx === 0 && !prevHand}
             className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><Rewind className="size-4" /></button>
