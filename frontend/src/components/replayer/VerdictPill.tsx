@@ -36,17 +36,18 @@ export function VerdictPill({
       onClick={onClick}
       aria-label={t(LABEL_KEY[level])}
       className={cn(
-        "lg:hidden shrink-0 flex items-center justify-between gap-2 rounded-xl border border-transparent px-3 py-2.5 font-mono text-[12px] font-bold uppercase tracking-wider transition-colors",
-        meta.chipCls,
+        "lg:hidden group inline-flex items-center gap-2 rounded-full bg-hud-surface/90 px-3 py-2 shadow-lg ring-1 backdrop-blur-sm transition-all hover:bg-hud-surface active:scale-[0.97]",
+        meta.ringCls,
       )}
     >
-      <span className="flex items-center gap-1.5">
-        <span className="text-sm leading-none">{meta.icon}</span>
-        {t(LABEL_KEY[level])}
-      </span>
-      <span className="flex items-center gap-2 text-[11px] font-normal">
-        {showEv && <span className="tabular-nums opacity-80">−{evLossBb!.toFixed(1)} bb</span>}
-        <ChevronRight className="size-3.5 opacity-60" />
+      <span className={cn("text-[15px] leading-none", meta.textCls)}>{meta.icon}</span>
+      <span className={cn("font-mono text-[12px] font-bold uppercase tracking-wide", meta.textCls)}>{t(LABEL_KEY[level])}</span>
+      {showEv && (
+        <span className="font-mono text-[10px] tabular-nums text-muted-foreground/80">−{evLossBb!.toFixed(1)}bb</span>
+      )}
+      <span className="ml-0.5 flex items-center gap-0.5 border-l border-white/10 pl-2 font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+        {t("details")}
+        <ChevronRight className="size-3 transition-transform group-hover:translate-x-0.5" />
       </span>
     </button>
   );

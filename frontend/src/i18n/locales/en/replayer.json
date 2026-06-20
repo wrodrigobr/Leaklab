@@ -10,6 +10,7 @@
   "back": "Back",
   "close": "Close",
   "rotatePrompt": "Rotate your phone to landscape",
+  "details": "Details",
   "focus": {
     "enter": "Fullscreen",
     "exit": "Exit fullscreen"
