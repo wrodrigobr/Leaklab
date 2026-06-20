@@ -1,6 +1,6 @@
 {
   "title": "Ghost Table",
-  "subtitle": "Modo Drill — Revisa tus spots de error y entrena la decisión correcta",
+  "subtitle": "Modo Drill: Revisa tus spots de error y entrena la decisión correcta",
   "startBtn": "Iniciar Drill",
   "resetHistory": "Reiniciar historial de entrenamiento",
   "resetConfirm": "Esto borrará todo el historial SRS. Todos los spots se presentarán desde cero. ¿Confirmar?",
@@ -93,7 +93,7 @@
   "pressure": {
     "toggle": "Modo Presión",
     "desc": "30 segundos por decisión. Error o timeout reinicia tu racha.",
-    "timedOut": "Tiempo agotado — fold automático",
+    "timedOut": "Tiempo agotado: fold automático",
     "streakLabel": "Racha final"
   },
   "backToTraining": "Entrenamiento",
@@ -101,6 +101,6 @@
     "gto_hand": "Solver",
     "gto_range": "Solver",
     "gto_stored": "Solver",
-    "heuristic": "Heurística — sin solver"
+    "heuristic": "Heurística: sin solver"
   }
 }

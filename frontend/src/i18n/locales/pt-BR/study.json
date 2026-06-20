@@ -2,8 +2,13 @@
   "eyebrow": "Plano de Estudos · Adaptive",
   "title": "Seu roteiro tático personalizado",
   "subtitle": "Diagnóstico de leaks, roteiro semanal, recursos curados e exercícios com correção automática.",
-  "observe": { "title": "Aguardando mais dados", "hands": "mãos" },
-  "skip": { "title": "Não focar agora" },
+  "observe": {
+    "title": "Aguardando mais dados",
+    "hands": "mãos"
+  },
+  "skip": {
+    "title": "Não focar agora"
+  },
   "toolbar": {
     "planReady": "Plano gerado a partir dos seus leaks reais",
     "planLoading": "Carregando plano de estudos…",
@@ -18,7 +23,7 @@
     "gto": "GTO",
     "gtoTooltip": "Plano baseado em leaks com análise GTO (solver + ranges). Alta precisão.",
     "heuristic": "Heurístico",
-    "heuristicTooltip": "Plano baseado em análise heurística do engine — cobertura GTO insuficiente. Confiança moderada."
+    "heuristicTooltip": "Plano baseado em análise heurística do engine, cobertura GTO insuficiente. Confiança moderada."
   },
   "loading": {
     "analyzing": "Coach IA analisando seus leaks…",
@@ -26,7 +31,7 @@
   },
   "error": {
     "noTournaments": "Importe pelo menos um torneio para gerar um plano personalizado.",
-    "aiUnavailable": "O gerador de IA está temporariamente indisponível. Seus dados estão salvos — tente gerar o plano novamente em instantes.",
+    "aiUnavailable": "O gerador de IA está temporariamente indisponível. Seus dados estão salvos, tente gerar o plano novamente em instantes.",
     "retryHint": "Tente novamente em instantes. Se você ainda não importou nenhum torneio, importe primeiro."
   },
   "kpis": {

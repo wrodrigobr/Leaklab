@@ -388,7 +388,7 @@ export function CareerGraphCard({ data, hideNarrative = false, v2 = false }: Pro
                 const mColor = MILESTONE_COLOR[m.level_slug] ?? "text-muted-foreground";
                 const mName = t(`level.names.${m.level_slug}`, { defaultValue: m.level_name });
                 const status = !m.reachable
-                  ? t("career.notReachable").split(" — ")[0]
+                  ? t("career.notReachable")
                   : m.months_needed === 0
                   ? t("career.already")
                   : t("career.monthsAway", { n: m.months_needed });

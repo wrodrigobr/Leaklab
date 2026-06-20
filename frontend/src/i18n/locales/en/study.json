@@ -2,8 +2,13 @@
   "eyebrow": "Study Plan · Adaptive",
   "title": "Your personalized tactical roadmap",
   "subtitle": "Leak diagnosis, weekly roadmap, curated resources, and exercises with automatic correction.",
-  "observe": { "title": "Waiting on more data", "hands": "hands" },
-  "skip": { "title": "Not now" },
+  "observe": {
+    "title": "Waiting on more data",
+    "hands": "hands"
+  },
+  "skip": {
+    "title": "Not now"
+  },
   "toolbar": {
     "planReady": "Plan generated from your real leaks",
     "planLoading": "Loading study plan…",
@@ -18,7 +23,7 @@
     "gto": "GTO",
     "gtoTooltip": "Plan based on leaks with GTO analysis (solver + ranges). High precision.",
     "heuristic": "Heuristic",
-    "heuristicTooltip": "Plan based on heuristic engine analysis — GTO coverage insufficient. Moderate confidence."
+    "heuristicTooltip": "Plan based on heuristic engine analysis, GTO coverage insufficient. Moderate confidence."
   },
   "loading": {
     "analyzing": "AI Coach analyzing your leaks…",
@@ -26,7 +31,7 @@
   },
   "error": {
     "noTournaments": "Import at least one tournament to generate a personalized plan.",
-    "aiUnavailable": "The AI generator is temporarily unavailable. Your data is saved — try generating the plan again in a moment.",
+    "aiUnavailable": "The AI generator is temporarily unavailable. Your data is saved, try generating the plan again in a moment.",
     "retryHint": "Try again in a moment. If you haven't imported any tournament yet, import one first."
   },
   "kpis": {

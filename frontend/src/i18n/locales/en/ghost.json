@@ -1,6 +1,6 @@
 {
   "title": "Ghost Table",
-  "subtitle": "Drill Mode — Review your mistake spots and train the correct decision",
+  "subtitle": "Drill Mode: Review your mistake spots and train the correct decision",
   "startBtn": "Start Drilling",
   "resetHistory": "Reset training history",
   "resetConfirm": "This will erase all SRS history. All spots will be presented from scratch. Confirm?",
@@ -93,7 +93,7 @@
   "pressure": {
     "toggle": "Pressure Mode",
     "desc": "30 seconds per decision. Wrong answer or timeout resets your streak.",
-    "timedOut": "Time's up — auto-fold",
+    "timedOut": "Time's up: auto-fold",
     "streakLabel": "Final streak"
   },
   "backToTraining": "Training",
@@ -101,6 +101,6 @@
     "gto_hand": "Solver",
     "gto_range": "Solver",
     "gto_stored": "Solver",
-    "heuristic": "Heuristic — no solver"
+    "heuristic": "Heuristic: no solver"
   }
 }

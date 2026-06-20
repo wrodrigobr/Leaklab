@@ -13,7 +13,7 @@
   "greeting": {
     "withData": "Olá{{name}}! Analisei suas últimas {{hands}} mãos em {{tournaments}} torneios.{{leakNote}} Por onde quer começar?",
     "leakNote": " Detectei {{count}} leak(s) prioritários: {{spots}}.",
-    "noData": " Ainda sem dados de leaks — importe torneios para começar.",
+    "noData": " Ainda sem dados de leaks, importe torneios para começar.",
     "noHistory": "Olá! Importe torneios para que eu possa analisar seu jogo e oferecer coaching personalizado."
   },
   "input": {

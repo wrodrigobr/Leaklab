@@ -12,8 +12,8 @@
       "title": "ELO Rating",
       "description": "ELO-based rating adapted for poker. Each decision is a 'match' against the GTO solver.",
       "loading": "Loading…",
-      "recentForm": "Recent rating — current form",
-      "recentFormWindow": "Recent rating — current form (last {{n}} tournaments)",
+      "recentForm": "Recent rating: current form",
+      "recentFormWindow": "Recent rating: current form (last {{n}} tournaments)",
       "decisionsGto": "{{n}} decisions (with GTO solver)",
       "peak": "peak: {{n}}",
       "toNextBand": "{{pts}} points to go to {{icon}} {{band}}",
@@ -48,7 +48,7 @@
   "leaderboard": {
     "eyebrow": "Community",
     "title": "Student Leaderboard",
-    "description": "Ranked by LEARNING — GTO adherence, evolution, engagement and volume. Not by money.",
+    "description": "Ranked by LEARNING: GTO adherence, evolution, engagement and volume. Not by money.",
     "loading": "Loading leaderboard…",
     "empty": "Nobody eligible yet in this period. Keep importing tournaments and training.",
     "colRank": "#",
@@ -85,7 +85,7 @@
     "myRank": "#{{rank}} on the public leaderboard",
     "overallRank": "Overall: #{{rank}}",
     "publicYes": "Visible on the public leaderboard",
-    "publicNo": "Not public — enable above",
+    "publicNo": "Not public: enable above",
     "rankDeltaSince": "Change since last snapshot",
     "notListed": "You're not on the public leaderboard",
     "notListedCta": "Turn on participation above to appear.",
@@ -133,13 +133,13 @@
     "title": "Training Queue",
     "study": "Study",
     "studyLabel": "Study leak {{spot}}",
-    "doing": "{{street}} — should {{action}}",
+    "doing": "{{street}}: should {{action}}",
     "critical": "Critical",
     "evLoss": "{{amount}}/mo",
     "sourceGto": "GTO",
     "sourceGtoTooltip": "Leaks computed from decisions with GTO coverage (solver + ranges). Higher precision.",
     "sourceHeuristic": "Heuristic",
-    "sourceHeuristicTooltip": "Not enough GTO coverage. Leaks computed by the engine's heuristic analysis — may be less precise.",
+    "sourceHeuristicTooltip": "Not enough GTO coverage. Leaks computed by the engine's heuristic analysis, may be less precise.",
     "trendImproving": "Improving",
     "trendRegressing": "Regressing",
     "trendStagnant": "Stagnant",
@@ -147,7 +147,7 @@
     "drillMastering": "Mastering"
   },
   "ghost": {
-    "tooltip": "Summary of your drill activity in the last 30 days. Overdue drills (red) indicate spots that need review — skipping them increases the chance of repeating the same mistake in live play.",
+    "tooltip": "Summary of your drill activity in the last 30 days. Overdue drills (red) indicate spots that need review, skipping them increases the chance of repeating the same mistake in live play.",
     "title": "Ghost Table",
     "spots": "Spots",
     "accuracy": "Accuracy",
@@ -156,7 +156,7 @@
     "startNow": "Start drill"
   },
   "bankroll": {
-    "tooltip": "Cumulative financial result curve tournament by tournament. Shows real variance and long-term trend — not just isolated results. Useful for deciding stake adjustments.",
+    "tooltip": "Cumulative financial result curve tournament by tournament. Shows real variance and long-term trend, not just isolated results. Useful for deciding stake adjustments.",
     "title": "Bankroll evolution",
     "demo": "Demo • import tournaments to see your data",
     "lastN": "Last {{n}} tournaments",
@@ -191,7 +191,7 @@
     "covPre": "pre {{pct}}%",
     "covPost": "post {{pct}}%",
     "gtoAnalyzing": "in progress",
-    "gtoSplitTooltip": "GTO coverage. Preflop uses the GTO Wizard ranges (near-instant). Postflop is solved on demand on the server — coverage grows as you review your hands."
+    "gtoSplitTooltip": "GTO coverage. Preflop uses the GTO Wizard ranges (near-instant). Postflop is solved on demand on the server, coverage grows as you review your hands."
   },
   "decisions": {
     "title": "Decision Quality",
@@ -215,13 +215,13 @@
   },
   "gtoPosition": {
     "title": "GTO Alignment by Position",
-    "tooltip": "GTO alignment breakdown by position — identifies which seat has the most solver divergence over the last 90 days.",
+    "tooltip": "GTO alignment breakdown by position, identifies which seat has the most solver divergence over the last 90 days.",
     "coverage": "{{n}} decisions ({{pct}}% coverage)"
   },
   "gtoNotice": {
     "needMoreData": "Import more tournaments to activate this analysis. At least 10 decisions with GTO coverage are required.",
-    "processing": "{{n}} spot being processed by the GTO solver — this card will update when analysis completes.",
-    "processing_plural": "{{n}} spots being processed by the GTO solver — this card will update when analysis completes.",
+    "processing": "{{n}} spot being processed by the GTO solver, this card will update when analysis completes.",
+    "processing_plural": "{{n}} spots being processed by the GTO solver, this card will update when analysis completes.",
     "bannerTitle": "GTO analysis in progress",
     "bannerDesc": "{{n}} spot is still being validated by the solver. Your stats will be recomputed automatically when it finishes.",
     "bannerDesc_plural": "{{n}} spots are still being validated by the solver. Your stats will be recomputed automatically as they finish."
@@ -264,17 +264,17 @@
     "high": "High ICM",
     "collapseDetected": "Collapse",
     "solid": "Solid",
-    "collapseSummary": "Score +{{delta}}pts worse under high ICM pressure — focus on bubble and FT spots.",
-    "stableSummary": "Stable performance — only {{delta}}pts variation between high pressure and no pressure."
+    "collapseSummary": "Score +{{delta}}pts worse under high ICM pressure, focus on bubble and FT spots.",
+    "stableSummary": "Stable performance: only {{delta}}pts variation between high pressure and no pressure."
   },
   "drift": {
     "alertTitle": "Possible confidence drift detected",
-    "alertDesc": "{{n}} recent sessions with technical quality below your baseline — possible tilt or fatigue.",
+    "alertDesc": "{{n}} recent sessions with technical quality below your baseline, possible tilt or fatigue.",
     "dismiss": "Dismiss"
   },
   "pendingGto": {
-    "notice": "{{n}} GTO spot being analyzed by the solver — Replayer indicators will update when done.",
-    "notice_plural": "{{n}} GTO spots being analyzed by the solver — Replayer indicators will update when done."
+    "notice": "{{n}} GTO spot being analyzed by the solver, Replayer indicators will update when done.",
+    "notice_plural": "{{n}} GTO spots being analyzed by the solver, Replayer indicators will update when done."
   },
   "gtoQuality": {
     "title": "GTO Alignment",
@@ -288,18 +288,18 @@
   },
   "leakFinder": {
     "title": "Leak Finder",
-    "tooltip": "Your leaks prioritized by EV LOST (big blinds left on the table), not by error count. The top is where the most EV escapes — start there.",
+    "tooltip": "Your leaks prioritized by EV LOST (big blinds left on the table), not by error count. The top is where the most EV escapes, start there.",
     "headline_label": "left on the table across {{n}} leaked spots",
     "spots_title": "Biggest leaks by EV",
     "idealPrefix": "ideal:",
-    "coaching": "Attack top-down: fixing leak #1 is worth more than several small ones. Each row is a recurring spot — review it in the Replayer and train it on the Ghost Table.",
+    "coaching": "Attack top-down: fixing leak #1 is worth more than several small ones. Each row is a recurring spot, review it in the Replayer and train it on the Ghost Table.",
     "sev_high": "High EV impact",
     "sev_medium": "Medium EV impact",
     "sev_low": "Low EV impact"
   },
   "resultsVsGto": {
     "title": "Results × GTO",
-    "tooltip": "Decisions that were CLEAR GTO mistakes but the hand was won — the result masks the process error. Winning doesn't validate the play.",
+    "tooltip": "Decisions that were CLEAR GTO mistakes but the hand was won, the result masks the process error. Winning doesn't validate the play.",
     "headline_label": "clear GTO mistakes in hands you won",
     "stat_won_were_critical": "of decisions in won hands were clear mistakes",
     "stat_critical_hidden": "of your clear mistakes were hidden behind wins",
@@ -308,7 +308,7 @@
   },
   "gtoAlignment": {
     "title": "GTO Alignment by Street",
-    "tooltip": "GTO alignment breakdown by preflop, flop, turn, and river — identifies which phase of the game has the most solver divergence.",
+    "tooltip": "GTO alignment breakdown by preflop, flop, turn, and river, identifies which phase of the game has the most solver divergence.",
     "coverage": "{{n}} decisions ({{pct}}% coverage)",
     "alignedLabel": "aligned with GTO (overall)",
     "street_preflop": "Preflop",
@@ -317,7 +317,7 @@
     "street_river": "River"
   },
   "level": {
-    "tooltip": "Your current level based on your average Standard% across recent tournaments. Each level requires a higher threshold of correct decisions — advancing means your mistakes have consistently decreased.",
+    "tooltip": "Your current level based on your average Standard% across recent tournaments. Each level requires a higher threshold of correct decisions, advancing means your mistakes have consistently decreased.",
     "title": "My Level",
     "noData": "Import at least 5 tournaments to calculate your level.",
     "tournament_one": "{{count}} tournament",
@@ -366,11 +366,11 @@
       "Balanced": "Balanced"
     },
     "archetypeDesc": {
-      "TAG": "Selective and aggressive when entering — winning profile in regular MTTs.",
-      "LAG": "Plays many pots and applies pressure — effective, but requires range calibration.",
-      "Nit": "Folds too much — loses passive equity and gets exploited by regulars.",
-      "Calling Station": "Calls too much — makes it easy for opponents to extract EV.",
-      "Balanced": "Well-rounded profile — good range control across multiple positions."
+      "TAG": "Selective and aggressive when entering, winning profile in regular MTTs.",
+      "LAG": "Plays many pots and applies pressure, effective, but requires range calibration.",
+      "Nit": "Folds too much: loses passive equity and gets exploited by regulars.",
+      "Calling Station": "Calls too much: makes it easy for opponents to extract EV.",
+      "Balanced": "Well-rounded profile: good range control across multiple positions."
     }
   },
   "empty": {
@@ -397,7 +397,7 @@
     "m3desc": "Conversational AI analysis with your real data: ranges, ICM, leaks and personalized study plan."
   },
   "leakCausalMap": {
-    "tooltip": "Visualizes which leaks co-occur in the same hands or sessions. Thicker lines indicate stronger correlation — when two leaks appear together, they usually share a common root cause.",
+    "tooltip": "Visualizes which leaks co-occur in the same hands or sessions. Thicker lines indicate stronger correlation, when two leaks appear together, they usually share a common root cause.",
     "title": "Leak Causal Map",
     "aria": "Leak causal graph",
     "coOccurs": "Co-occurs with",
@@ -410,7 +410,7 @@
     }
   },
   "career": {
-    "tooltip": "Projects when you will reach each level based on your real improvement curve. The dotted line is an estimate — not a guarantee. The main value is seeing which leak is blocking your next level.",
+    "tooltip": "Projects when you will reach each level based on your real improvement curve. The dotted line is an estimate, not a guarantee. The main value is seeing which leak is blocking your next level.",
     "title": "Career Trajectory",
     "eyebrow": "Career Projection",
     "noData": "Import at least 5 tournaments to generate your career projection.",
@@ -427,7 +427,7 @@
     "blockingLeaks": "Main blockers",
     "milestones": "Projected milestones",
     "reachable": "Reachable",
-    "notReachable": "Stagnant — no growth trend",
+    "notReachable": "Stagnant",
     "already": "Already reached",
     "perMonth": "{{n}} tournaments/month",
     "analyzedCount": "{{n}} tournaments analyzed",
@@ -439,7 +439,7 @@
     "toNext": "{{n}} to {{band}}"
   },
   "cognitiveFailure": {
-    "tooltip": "Detects emotional patterns that affect sequential decision quality — for example, becoming overly aggressive right after folding several hands in a row. Identifying the trigger is the first step to correcting it.",
+    "tooltip": "Detects emotional patterns that affect sequential decision quality, for example, becoming overly aggressive right after folding several hands in a row. Identifying the trigger is the first step to correcting it.",
     "title": "Cognitive Patterns",
     "noData": "Insufficient data. Import more tournaments to detect cognitive patterns.",
     "noPatterns": "No cognitive patterns detected. Your game is cognitively consistent.",
@@ -504,10 +504,10 @@
     "tryNew": "try the new layout ✦",
     "toggleTip": "Switches between the classic dashboard and the new one (EV in bb as the lead metric). Preference saved in this browser.",
     "evLabel": "EV lost / 100 decisions",
-    "evImproving": "vs previous period — improving",
-    "evWorsening": "vs previous period — getting worse",
+    "evImproving": "vs previous period: improving",
+    "evWorsening": "vs previous period: getting worse",
     "evBasis": "basis: {{n}} analyzed decisions",
-    "evNoData": "No EV data yet — import hands and wait for solver analysis.",
+    "evNoData": "No EV data yet, import hands and wait for solver analysis.",
     "solidLabel": "Solid decisions",
     "solidSub": "within solver/engine standard",
     "ctaLabel": "Your most expensive leak",
@@ -532,14 +532,14 @@
     "aiCausal": "Causal map",
     "aiLocked": "AI insights (Strategic Twin, cognitive patterns, career projection) are a Pro feature. Upgrade to unlock them.",
     "posCritical": "{{pct}}% crit.",
-    "posHint": "aligned% by position — green ≥70, amber ≥50, red below",
+    "posHint": "aligned% by position: green ≥70, amber ≥50, red below",
     "bankSeries": "cumulative profit",
     "causalEpicenter": "Epicenter",
-    "causalEpicenterDesc": "connected to {{n}} other leaks — fixing this one breaks the chain",
+    "causalEpicenterDesc": "connected to {{n}} other leaks, fixing this one breaks the chain",
     "causalTogether": "together in {{n}} hands",
     "causalSpot": "{{action}} on the {{street}}",
     "causalNoEdges": "Your leaks still show up isolated, they don't repeat together in the same hands. The causal map appears once the same mistakes happen together. For now, your attention points:",
-    "causalConclusion": "What this means: your mistakes don't happen in isolation — \"{{a}}\" and \"{{b}}\" showed up in the same hands {{n}} times, a sign one triggers the other. The highest-leverage point is \"{{epi}}\": it's linked to {{deg}} other leaks, and fixing it tends to bring the whole chain down.",
+    "causalConclusion": "What this means: your mistakes don't happen in isolation, \"{{a}}\" and \"{{b}}\" showed up in the same hands {{n}} times, a sign one triggers the other. The highest-leverage point is \"{{epi}}\": it's linked to {{deg}} other leaks, and fixing it tends to bring the whole chain down.",
     "careerDelta": "{{delta}} vs all-time",
     "cogDominant": "Dominant pattern"
   }

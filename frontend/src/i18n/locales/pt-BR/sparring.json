@@ -58,7 +58,7 @@
     "analysisError": "Não foi possível carregar a análise.",
     "engineNote": "Análise do engine",
     "srsCorrect": "Próxima revisão em {{n}} dias",
-    "srsReset": "Resetado — revisão em {{n}} dias"
+    "srsReset": "Resetado: revisão em {{n}} dias"
   },
   "summary": {
     "title": "Resumo da Mão",
@@ -101,6 +101,6 @@
     "gto_hand": "Solver · sua mão",
     "gto_range": "Solver · range",
     "gto_stored": "Solver",
-    "heuristic": "Heurística — sem solver"
+    "heuristic": "Heurística: sem solver"
   }
 }

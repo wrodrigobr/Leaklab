@@ -1,11 +1,13 @@
 {
   "title": "Hand Builder",
-  "subtitle": "Recrie uma mão (de vídeo ou anotações) em poucos cliques — posição, stacks e apostas em bb — e analise.",
-  "common": { "clear": "limpar" },
+  "subtitle": "Recrie uma mão (de vídeo ou anotações) em poucos cliques, posição, stacks e apostas em bb, e analise.",
+  "common": {
+    "clear": "limpar"
+  },
   "import": {
     "load": "Carregar .txt",
     "tip": "Carregue um hand history .txt pra continuar adicionando mãos onde parou",
-    "error": "Arquivo inválido — use um hand history PokerStars (com \"PokerStars Hand #…\")."
+    "error": "Arquivo inválido: use um hand history PokerStars (com \"PokerStars Hand #…\")."
   },
   "setup": {
     "table": "Mesa",
@@ -31,10 +33,12 @@
     "ante": "Ante (fichas)",
     "btnSeat": "Assento do BTN",
     "seat": "Assento",
-    "note": "Metadados só pra gerar o hand history no formato PokerStars — não afetam a análise do spot. 1bb = 100 fichas.",
+    "note": "Metadados só pra gerar o hand history no formato PokerStars, não afetam a análise do spot. 1bb = 100 fichas.",
     "players": "Renomear jogadores"
   },
-  "heroCards": { "label": "Cartas do hero ({{pos}})" },
+  "heroCards": {
+    "label": "Cartas do hero ({{pos}})"
+  },
   "actions": {
     "title": "Ações",
     "undo": "Desfazer",
@@ -51,7 +55,7 @@
     "markWinnerHint": "Marque o vencedor abaixo. Depois inicie a próxima mão (button rotaciona, stacks atualizam).",
     "handDoneHint": "Pote e vencedor detectados automaticamente. Clique Próxima mão (no showdown, confira o vencedor em Resultado).",
     "nextHand": "Iniciar próxima mão",
-    "heroFoldedHint": "O hero foldou — o resto não afeta a análise. Finaliza com os vilões foldando (o último agressor leva o pote).",
+    "heroFoldedHint": "O hero foldou: o resto não afeta a análise. Finaliza com os vilões foldando (o último agressor leva o pote).",
     "autoFinish": "Finalizar mão",
     "noActions": "Nenhuma ação registrada ainda.",
     "handOver": "Mão finalizada (ou só 1 jogador ativo). Avance o board ou registre o vencedor.",
@@ -68,14 +72,36 @@
     "szPotFracTip": "Aposta como fração do pote",
     "szPotTip": "Aposta do tamanho do pote"
   },
-  "street": { "preflop": "preflop", "flop": "flop", "turn": "turn", "river": "river" },
-  "act": { "fold": "Fold", "check": "Check", "call": "Call", "bet": "Bet", "raise": "Raise", "allin": "All-in" },
-  "board": { "title": "Board", "flop": "Flop (3 cartas)", "turn": "Turn (1)", "river": "River (1)" },
+  "street": {
+    "preflop": "preflop",
+    "flop": "flop",
+    "turn": "turn",
+    "river": "river"
+  },
+  "act": {
+    "fold": "Fold",
+    "check": "Check",
+    "call": "Call",
+    "bet": "Bet",
+    "raise": "Raise",
+    "allin": "All-in"
+  },
+  "board": {
+    "title": "Board",
+    "flop": "Flop (3 cartas)",
+    "turn": "Turn (1)",
+    "river": "River (1)"
+  },
   "winner": {
-    "title": "Resultado", "player": "Vencedor", "choose": "— escolher —", "pot": "Pote (bb)",
-    "potShort": "Pote", "detected": "(detectado)", "calculated": "(calculado)",
-    "showdownChoose": "Showdown ({{n}}) — marque o(s) vencedor(es)",
-    "split": "Empate — pote dividido entre {{n}}",
+    "title": "Resultado",
+    "player": "Vencedor",
+    "choose": "— escolher —",
+    "pot": "Pote (bb)",
+    "potShort": "Pote",
+    "detected": "(detectado)",
+    "calculated": "(calculado)",
+    "showdownChoose": "Showdown ({{n}}): marque o(s) vencedor(es)",
+    "split": "Empate: pote dividido entre {{n}}",
     "tieHint": "Marque 2+ para empate (split do pote)"
   },
   "preview": {
@@ -92,7 +118,7 @@
     "analyzeTournament": "Analisar torneio",
     "analyzeNow": "Analisar agora",
     "analyzing": "Analisando…",
-    "analyzeError": "Erro ao analisar — confira a mão e tente de novo.",
+    "analyzeError": "Erro ao analisar: confira a mão e tente de novo.",
     "confirmReset": "Apagar tudo e começar do zero?"
   }
 }

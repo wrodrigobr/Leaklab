@@ -38,7 +38,7 @@
     "cancel": "Cancelar",
     "addReview": "+ Calificar coach",
     "rateMyCoach": "+ Calificar mi coach",
-    "noCoachDesc": "Aún no tienes un coach vinculado. La IA ya es tu coach — pero puedes contratar un coach humano para potenciar aún más tu evolución.",
+    "noCoachDesc": "Aún no tienes un coach vinculado. La IA ya es tu coach, pero puedes contratar un coach humano para potenciar aún más tu evolución.",
     "topCoaches": "Coaches mejor valorados",
     "viewAll": "Ver todos los coaches disponibles →",
     "inviteHint": "Ingresa la clave de invitación recibida del coach:",
@@ -84,7 +84,7 @@
     "gameType": "Modalidad principal",
     "buyinRange": "Rango de buy-in habitual",
     "gameTypes": {
-      "mtt": "MTT — Torneos",
+      "mtt": "MTT: Torneos",
       "cash": "Cash Game",
       "spin": "Spin & Go",
       "mixed": "Mixto"

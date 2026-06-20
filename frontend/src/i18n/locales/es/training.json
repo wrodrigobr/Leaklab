@@ -5,7 +5,7 @@
   "ghost": {
     "title": "Ghost Table",
     "badge": "Repetición Espaciada",
-    "desc": "Drills enfocados en tus spots de mayor error. El sistema SRS programa revisiones automáticas — refuerza los patrones más costosos antes de que vuelvan en el juego real.",
+    "desc": "Drills enfocados en tus spots de mayor error. El sistema SRS programa revisiones automáticas, refuerza los patrones más costosos antes de que vuelvan en el juego real.",
     "f1": "Spots extraídos automáticamente de tu historial",
     "f2": "Intervalos adaptativos: 3 → 7 → 14 → 28 → 60 días",
     "f3": "25 XP por drill completado, 100 XP al masterizar",
@@ -23,7 +23,7 @@
   "academy": {
     "title": "Academia",
     "badge": "Principiante → Avanzado",
-    "desc": "Módulos interactivos que cubren los fundamentos del juego — matemática, fuerza de mano, posición, ranges e ICM. Ejercicios generados de tu propio historial para máxima retención.",
+    "desc": "Módulos interactivos que cubren los fundamentos del juego, matemática, fuerza de mano, posición, ranges e ICM. Ejercicios generados de tu propio historial para máxima retención.",
     "f1": "Matemática intuitiva: pot odds, EV y equity",
     "f2": "Fuerza de mano y textura del board",
     "f3": "Tres niveles: Principiante, Intermedio, Avanzado",

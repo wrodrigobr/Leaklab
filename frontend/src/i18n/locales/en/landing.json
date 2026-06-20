@@ -7,10 +7,10 @@
     "badge": "Powered by Claude AI",
     "title1": "Stop leaking chips",
     "title2": "in the same spots.",
-    "subtitle": "GrindLab analyzes every decision in your tournament history, identifies your most costly error patterns, and delivers a study plan built from your real data — not generic theory everyone already knows.",
+    "subtitle": "GrindLab analyzes every decision in your tournament history, identifies your most costly error patterns, and delivers a study plan built from your real data, not generic theory everyone already knows.",
     "ctaStart": "Start free",
     "ctaPlans": "View plans",
-    "levels": "7 progression levels — from Beginner to Elite"
+    "levels": "7 progression levels: from Beginner to Elite"
   },
   "stats": {
     "leakSpots": "Leak spots mapped",
@@ -23,9 +23,9 @@
     "step1Title": "Import your history",
     "step1Desc": "Upload the .txt file from any tournament (PokerStars or GGPoker). Multiple files supported at once.",
     "step2Title": "GrindLab prioritizes your mistakes",
-    "step2Desc": "Each decision is evaluated by equity, position, and MTT/SNG context. The detection engine crosses frequency with impact — and shows you exactly what's costing you chips.",
+    "step2Desc": "Each decision is evaluated by equity, position, and MTT/SNG context. The detection engine crosses frequency with impact, and shows you exactly what's costing you chips.",
     "step3Title": "Improve with focus on what matters",
-    "step3Desc": "Study plan built on your own error patterns — not generic content. Track progression through the 7-level system."
+    "step3Desc": "Study plan built on your own error patterns, not generic content. Track progression through the 7-level system."
   },
   "features": {
     "eyebrow": "Features",
@@ -35,11 +35,11 @@
     "f2Title": "Prioritized by financial impact",
     "f2Desc": "Leaks are ranked by frequency × severity. You focus on what's actually costing you chips, not what's easiest to study.",
     "f3Title": "Spot-specific study plan",
-    "f3Desc": "Study cards generated for each specific error spot — with diagnosis, exercise, and resources — not generic content.",
+    "f3Desc": "Study cards generated for each specific error spot, with diagnosis, exercise, and resources, not generic content.",
     "f4Title": "Native MTT context",
-    "f4Desc": "M-ratio, ICM pressure, tournament stage, position — the engine evaluates every decision with the right context, not isolated equity.",
+    "f4Desc": "M-ratio, ICM pressure, tournament stage, position, the engine evaluates every decision with the right context, not isolated equity.",
     "f5Title": "Replayer with decision analysis",
-    "f5Desc": "Hand-by-hand review with detailed explanation of each critical action — understand what you got wrong and why.",
+    "f5Desc": "Hand-by-hand review with detailed explanation of each critical action, understand what you got wrong and why.",
     "f6Title": "Measurable progression",
     "f6Desc": "7 progression levels with clear metrics. You know exactly where you stand and what it takes to advance."
   },
@@ -67,7 +67,7 @@
   },
   "cta": {
     "heading": "Your leaks already exist. You just don't know which ones.",
-    "desc": "Import your first tournament now — in minutes you'll know exactly where you're losing chips.",
+    "desc": "Import your first tournament now, in minutes you'll know exactly where you're losing chips.",
     "btn": "Create free account"
   },
   "footer": {

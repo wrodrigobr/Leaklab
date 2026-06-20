@@ -58,7 +58,7 @@
     "analysisError": "Could not load analysis.",
     "engineNote": "Engine analysis",
     "srsCorrect": "Next review in {{n}} days",
-    "srsReset": "Reset — review in {{n}} days"
+    "srsReset": "Reset: review in {{n}} days"
   },
   "summary": {
     "title": "Hand Summary",
@@ -101,6 +101,6 @@
     "gto_hand": "Solver · your hand",
     "gto_range": "Solver · range",
     "gto_stored": "Solver",
-    "heuristic": "Heuristic — no solver"
+    "heuristic": "Heuristic: no solver"
   }
 }

@@ -1,7 +1,7 @@
 {
   "eyebrow": "GrindLab Academy",
   "title": "Academy",
-  "subtitle": "Fundamentals every serious player must master — from beginner to advanced.",
+  "subtitle": "Fundamentals every serious player must master, from beginner to advanced.",
   "comingSoon": "Coming soon",
   "startDrill": "Start drill",
   "loading": "Generating exercise…",
@@ -25,7 +25,7 @@
   "modules": {
     "math": {
       "title": "Intuitive Math",
-      "desc": "Pot odds, outs counting and call/fold — exercises generated from your own error spots."
+      "desc": "Pot odds, outs counting and call/fold, exercises generated from your own error spots."
     },
     "board_strength": {
       "title": "Hand Strength on the Board",
@@ -40,7 +40,7 @@
       "desc": "Calculate equity with outs, use the 2/4 rule, and combine draws with pot odds without a calculator."
     },
     "ranges": {
-      "title": "GTO Ranges — Open (RFI)",
+      "title": "GTO Ranges: Open (RFI)",
       "desc": "Train just the opening decision: fold or raise by position and stack, graded against the solver ranges."
     },
     "bet_sizing": {
@@ -49,10 +49,10 @@
     },
     "tournament": {
       "title": "Tournament Context",
-      "desc": "SPR & commitment, ICM on the bubble and FT, equity in 3-bet pots — spots where chip EV ≠ tournament EV."
+      "desc": "SPR & commitment, ICM on the bubble and FT, equity in 3-bet pots, spots where chip EV ≠ tournament EV."
     },
     "ranges_advanced": {
-      "title": "GTO Ranges — Full",
+      "title": "GTO Ranges: Full",
       "desc": "Every situation: open, defense (call/3-bet) and vs 3-bet (4-bet/call), across stack depths."
     }
   },
@@ -85,30 +85,30 @@
     "gto_vs_3bet": "vs 3-Bet"
   },
   "gtoPreflop": {
-    "eyebrow": "Academy — GTO Ranges",
+    "eyebrow": "Academy: GTO Ranges",
     "title": "GTO Preflop Ranges",
-    "subtitle": "Pick the GTO action in open, defense and 3-bet spots — graded against the solver ranges.",
+    "subtitle": "Pick the GTO action in open, defense and 3-bet spots, graded against the solver ranges.",
     "showRange": "Range table"
   },
   "math": {
-    "eyebrow": "Academy — Beginner",
+    "eyebrow": "Academy: Beginner",
     "title": "Intuitive Math",
     "subtitle": "Pot odds, outs and call/fold in your own error spots."
   },
   "mathInt": {
-    "eyebrow": "Academy — Intermediate",
+    "eyebrow": "Academy: Intermediate",
     "title": "Equity & Rule of 2/4",
     "subtitle": "Calculate equity with outs and compare with pot odds without a calculator."
   },
   "board": {
-    "eyebrow": "Academy — Beginner",
+    "eyebrow": "Academy: Beginner",
     "title": "Hand Strength on the Board",
     "subtitle": "Accurately classify your hand and board texture.",
     "boardLabel": "Board",
     "heroLabel": "Your cards"
   },
   "tournament": {
-    "eyebrow": "Academy — Advanced",
+    "eyebrow": "Academy: Advanced",
     "title": "Tournament Context",
     "subtitle": "SPR, ICM and decisions where chip EV ≠ tournament EV."
   }

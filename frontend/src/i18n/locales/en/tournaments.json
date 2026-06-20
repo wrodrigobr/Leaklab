@@ -115,7 +115,7 @@
     "source": {
       "solver": "Solver",
       "engine": "Engine",
-      "engineTip": "GTO not computed yet — analysis by the engine (equity, M-Ratio, ICM)"
+      "engineTip": "GTO not computed yet, analysis by the engine (equity, M-Ratio, ICM)"
     }
   }
 }

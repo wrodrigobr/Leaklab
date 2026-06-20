@@ -11,12 +11,12 @@
     },
     "upload": {
       "title": "Importe sua hand history",
-      "desc": "Exporte um arquivo .txt do PokerStars ou GGPoker e importe aqui. O sistema analisa automaticamente cada decisão — equity, posição, ICM — e gera um relatório completo da sua sessão.",
+      "desc": "Exporte um arquivo .txt do PokerStars ou GGPoker e importe aqui. O sistema analisa automaticamente cada decisão, equity, posição, ICM, e gera um relatório completo da sua sessão.",
       "hint": "Onde encontrar: PokerStars → Menu → Mãos → Exportar histórico; GGPoker → Histórico de Mãos."
     },
     "train": {
       "title": "Treine com Ghost Table & Sparring",
-      "desc": "O Ghost Table converte seus leaks em drills de revisão com SRS adaptativo — você só revisa o que precisa, quando precisa. O Sparring te coloca para jogar suas próprias mãos históricas, pausando em cada decisão para avaliar sua escolha."
+      "desc": "O Ghost Table converte seus leaks em drills de revisão com SRS adaptativo, você só revisa o que precisa, quando precisa. O Sparring te coloca para jogar suas próprias mãos históricas, pausando em cada decisão para avaliar sua escolha."
     },
     "ready": {
       "title": "Você está pronto!",

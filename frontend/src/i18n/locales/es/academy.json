@@ -1,7 +1,7 @@
 {
   "eyebrow": "Academia GrindLab",
   "title": "Academia",
-  "subtitle": "Fundamentos que todo jugador serio debe dominar — del nivel básico al avanzado.",
+  "subtitle": "Fundamentos que todo jugador serio debe dominar, del nivel básico al avanzado.",
   "comingSoon": "Próximamente",
   "startDrill": "Iniciar entrenamiento",
   "loading": "Generando ejercicio…",
@@ -25,7 +25,7 @@
   "modules": {
     "math": {
       "title": "Matemática Intuitiva",
-      "desc": "Pot odds, conteo de outs y call/fold — ejercicios generados de tus propios spots de error."
+      "desc": "Pot odds, conteo de outs y call/fold, ejercicios generados de tus propios spots de error."
     },
     "board_strength": {
       "title": "Fuerza de Mano en el Board",
@@ -40,7 +40,7 @@
       "desc": "Calcula equity con outs, usa la regla 2/4 y combina draws con pot odds sin calculadora."
     },
     "ranges": {
-      "title": "Ranges GTO — Open (RFI)",
+      "title": "Ranges GTO: Open (RFI)",
       "desc": "Entrena solo la decisión de apertura: fold o raise por posición y stack, corregido contra las ranges del solver."
     },
     "bet_sizing": {
@@ -49,10 +49,10 @@
     },
     "tournament": {
       "title": "Contexto de Torneo",
-      "desc": "SPR y compromiso, ICM en la burbuja y FT, equity en potes de 3-bet — spots donde chip EV ≠ equity de torneo."
+      "desc": "SPR y compromiso, ICM en la burbuja y FT, equity en potes de 3-bet, spots donde chip EV ≠ equity de torneo."
     },
     "ranges_advanced": {
-      "title": "Ranges GTO — Completo",
+      "title": "Ranges GTO: Completo",
       "desc": "Todas las situaciones: open, defensa (call/3-bet) y vs 3-bet (4-bet/call), en distintas profundidades."
     }
   },
@@ -85,30 +85,30 @@
     "gto_vs_3bet": "vs 3-Bet"
   },
   "gtoPreflop": {
-    "eyebrow": "Academia — Ranges GTO",
+    "eyebrow": "Academia: Ranges GTO",
     "title": "Ranges GTO Preflop",
-    "subtitle": "Elige la acción GTO en spots de open, defensa y 3-bet — evaluado contra las ranges del solver.",
+    "subtitle": "Elige la acción GTO en spots de open, defensa y 3-bet, evaluado contra las ranges del solver.",
     "showRange": "Tabla de ranges"
   },
   "math": {
-    "eyebrow": "Academia — Principiante",
+    "eyebrow": "Academia: Principiante",
     "title": "Matemática Intuitiva",
     "subtitle": "Pot odds, outs y call/fold en tus propios spots de error."
   },
   "mathInt": {
-    "eyebrow": "Academia — Intermedio",
+    "eyebrow": "Academia: Intermedio",
     "title": "Equity y Regla 2/4",
     "subtitle": "Calcula equity con outs y compara con pot odds sin calculadora."
   },
   "board": {
-    "eyebrow": "Academia — Principiante",
+    "eyebrow": "Academia: Principiante",
     "title": "Fuerza de Mano en el Board",
     "subtitle": "Clasifica con precisión tu mano y la textura del board.",
     "boardLabel": "Board",
     "heroLabel": "Tus cartas"
   },
   "tournament": {
-    "eyebrow": "Academia — Avanzado",
+    "eyebrow": "Academia: Avanzado",
     "title": "Contexto de Torneo",
     "subtitle": "SPR, ICM y decisiones donde chip EV ≠ equity de torneo."
   }

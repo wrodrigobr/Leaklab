@@ -38,7 +38,7 @@
     "cancel": "Cancel",
     "addReview": "+ Rate coach",
     "rateMyCoach": "+ Rate my coach",
-    "noCoachDesc": "You don't have a linked coach yet. The AI is already your coach — but you can hire a human coach to further accelerate your growth.",
+    "noCoachDesc": "You don't have a linked coach yet. The AI is already your coach, but you can hire a human coach to further accelerate your growth.",
     "topCoaches": "Top-rated coaches",
     "viewAll": "View all available coaches →",
     "inviteHint": "Enter the invite key received from your coach:",
@@ -84,7 +84,7 @@
     "gameType": "Main game type",
     "buyinRange": "Usual buy-in range",
     "gameTypes": {
-      "mtt": "MTT — Tournaments",
+      "mtt": "MTT: Tournaments",
       "cash": "Cash Game",
       "spin": "Spin & Go",
       "mixed": "Mixed"

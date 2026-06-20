@@ -1,11 +1,13 @@
 {
   "title": "Hand Builder",
-  "subtitle": "Recreate a hand (from a video or notes) in a few clicks — position, stacks and bets in bb — then analyze.",
-  "common": { "clear": "clear" },
+  "subtitle": "Recreate a hand (from a video or notes) in a few clicks, position, stacks and bets in bb, then analyze.",
+  "common": {
+    "clear": "clear"
+  },
   "import": {
     "load": "Load .txt",
     "tip": "Load a .txt hand history to keep adding hands where you left off",
-    "error": "Invalid file — use a PokerStars hand history (with \"PokerStars Hand #…\")."
+    "error": "Invalid file: use a PokerStars hand history (with \"PokerStars Hand #…\")."
   },
   "setup": {
     "table": "Table",
@@ -31,10 +33,12 @@
     "ante": "Ante (chips)",
     "btnSeat": "BTN seat",
     "seat": "Seat",
-    "note": "Metadata only to generate the PokerStars-format hand history — it doesn't affect the spot analysis. 1bb = 100 chips.",
+    "note": "Metadata only to generate the PokerStars-format hand history, it doesn't affect the spot analysis. 1bb = 100 chips.",
     "players": "Rename players"
   },
-  "heroCards": { "label": "Hero cards ({{pos}})" },
+  "heroCards": {
+    "label": "Hero cards ({{pos}})"
+  },
   "actions": {
     "title": "Actions",
     "undo": "Undo",
@@ -51,7 +55,7 @@
     "markWinnerHint": "Mark the winner below. Then start the next hand (button rotates, stacks update).",
     "handDoneHint": "Pot and winner detected automatically. Click Next hand (at showdown, confirm the winner under Result).",
     "nextHand": "Start next hand",
-    "heroFoldedHint": "The hero folded — the rest doesn't affect the analysis. Finish with the villains folding (the last aggressor takes the pot).",
+    "heroFoldedHint": "The hero folded: the rest doesn't affect the analysis. Finish with the villains folding (the last aggressor takes the pot).",
     "autoFinish": "Finish hand",
     "noActions": "No actions logged yet.",
     "handOver": "Hand over (or only 1 active player). Advance the board or mark the winner.",
@@ -68,14 +72,36 @@
     "szPotFracTip": "Bet as a fraction of the pot",
     "szPotTip": "Pot-size bet"
   },
-  "street": { "preflop": "preflop", "flop": "flop", "turn": "turn", "river": "river" },
-  "act": { "fold": "Fold", "check": "Check", "call": "Call", "bet": "Bet", "raise": "Raise", "allin": "All-in" },
-  "board": { "title": "Board", "flop": "Flop (3 cards)", "turn": "Turn (1)", "river": "River (1)" },
+  "street": {
+    "preflop": "preflop",
+    "flop": "flop",
+    "turn": "turn",
+    "river": "river"
+  },
+  "act": {
+    "fold": "Fold",
+    "check": "Check",
+    "call": "Call",
+    "bet": "Bet",
+    "raise": "Raise",
+    "allin": "All-in"
+  },
+  "board": {
+    "title": "Board",
+    "flop": "Flop (3 cards)",
+    "turn": "Turn (1)",
+    "river": "River (1)"
+  },
   "winner": {
-    "title": "Result", "player": "Winner", "choose": "— choose —", "pot": "Pot (bb)",
-    "potShort": "Pot", "detected": "(detected)", "calculated": "(calculated)",
-    "showdownChoose": "Showdown ({{n}}) — mark the winner(s)",
-    "split": "Tie — pot split among {{n}}",
+    "title": "Result",
+    "player": "Winner",
+    "choose": "— choose —",
+    "pot": "Pot (bb)",
+    "potShort": "Pot",
+    "detected": "(detected)",
+    "calculated": "(calculated)",
+    "showdownChoose": "Showdown ({{n}}): mark the winner(s)",
+    "split": "Tie: pot split among {{n}}",
     "tieHint": "Mark 2+ for a tie (split pot)"
   },
   "preview": {
@@ -92,7 +118,7 @@
     "analyzeTournament": "Analyze tournament",
     "analyzeNow": "Analyze now",
     "analyzing": "Analyzing…",
-    "analyzeError": "Couldn't analyze — check the hand and try again.",
+    "analyzeError": "Couldn't analyze: check the hand and try again.",
     "confirmReset": "Erase everything and start over?"
   }
 }
