@@ -686,7 +686,7 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
         """), (user_id, recent_since)).fetchall()
-        recent_map = {r['spot']: r['avg_score'] for r in recent_rows}
+        recent_map = {r['spot']: float(r['avg_score'] or 0) for r in recent_rows}
 
         prev_rows = conn.execute(_adapt("""
             SELECT d.street || '/' || d.best_action AS spot, AVG(d.score) AS avg_score
@@ -696,7 +696,7 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
               AND d.label IN ('small_mistake','clear_mistake')
             GROUP BY spot
         """), (user_id, prev_since, recent_since)).fetchall()
-        prev_map = {r['spot']: r['avg_score'] for r in prev_rows}
+        prev_map = {r['spot']: float(r['avg_score'] or 0) for r in prev_rows}
 
         # Drill stats per spot (last 30 days)
         drill_rows = conn.execute(_adapt("""
@@ -721,7 +721,7 @@ def get_leak_roi_impact(user_id: int, days: int = 90, last_n: int | None = None)
         for rank, row in enumerate(rows, 1):
             r = dict(row)
             n_monthly = r['n'] * (30.0 / days)
-            r['ev_loss_monthly'] = round(n_monthly * r['avg_score'] * (r['avg_buy_in'] or 0) * 0.10, 2)
+            r['ev_loss_monthly'] = round(n_monthly * float(r['avg_score'] or 0) * float(r['avg_buy_in'] or 0) * 0.10, 2)
             r['priority_rank'] = rank
             # Trend from tournament decisions
             s_recent = recent_map.get(r['spot'])
@@ -887,7 +887,7 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
                 q += " AND t.imported_at < ?"
                 params.append(until_val)
             q += " GROUP BY spot"
-            return {r['spot']: r['avg_score'] for r in conn.execute(_adapt(q), params).fetchall()}
+            return {r['spot']: float(r['avg_score'] or 0) for r in conn.execute(_adapt(q), params).fetchall()}
 
         recent_map = _proxy_rows(recent_since)
         prev_map   = _proxy_rows(prev_since, recent_since)
@@ -913,7 +913,7 @@ def get_gto_leak_ranking(user_id: int, days: int = 90, last_n: int | None = None
         for rank, row in enumerate(rows, 1):
             r = dict(row)
             n_monthly = r['n'] * (30.0 / days)
-            r['ev_loss_monthly'] = round(n_monthly * r['avg_score'] * (r['avg_buy_in'] or 0) * 0.10, 2)
+            r['ev_loss_monthly'] = round(n_monthly * float(r['avg_score'] or 0) * float(r['avg_buy_in'] or 0) * 0.10, 2)
             r['priority_rank']   = rank
             s_recent = recent_map.get(r['spot'])
             s_prev   = prev_map.get(r['spot'])
@@ -1006,7 +1006,8 @@ def get_confidence_drift(user_id: int, days: int = 30) -> dict:
         if not tourn_rows:
             return {'drift_detected': False, 'affected_sessions': 0, 'severity': None, 'sessions': []}
 
-        scores = [r['avg_score'] for r in tourn_rows if r['avg_score'] is not None]
+        # cast Decimal→float (Postgres AVG vem Decimal; float*Decimal/jsonify quebram)
+        scores = [float(r['avg_score']) for r in tourn_rows if r['avg_score'] is not None]
         if not scores:
             return {'drift_detected': False, 'affected_sessions': 0, 'severity': None, 'sessions': []}
 
@@ -1018,8 +1019,8 @@ def get_confidence_drift(user_id: int, days: int = 30) -> dict:
                 'tournament_id': r['tournament_id'],
                 'name':          r['name'],
                 'played_at':     r['played_at'],
-                'avg_score':     round(r['avg_score'], 4),
-                'delta_pct':     round((r['avg_score'] - baseline) / baseline * 100, 1) if baseline else 0,
+                'avg_score':     round(float(r['avg_score']), 4),
+                'delta_pct':     round((float(r['avg_score']) - baseline) / baseline * 100, 1) if baseline else 0,
             }
             for r in tourn_rows
             if r['avg_score'] is not None and r['avg_score'] > threshold
