@@ -9,6 +9,7 @@
   "error": "Error loading replay.",
   "back": "Back",
   "close": "Close",
+  "rotatePrompt": "Rotate your phone to landscape",
   "focus": {
     "enter": "Fullscreen",
     "exit": "Exit fullscreen"

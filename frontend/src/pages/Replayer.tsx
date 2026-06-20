@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, Lock, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Rewind, FastForward, AlertOctagon, CheckCircle2, Loader2, ArrowLeft, GraduationCap, PenLine, X, Check, Trash2, LayoutGrid, FlaskConical, Clock, Eye, EyeOff, Info, Maximize2, Minimize2, Lock, Users, RotateCw } from "lucide-react";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { useMutation } from "@tanstack/react-query";
 import { HudLayout } from "@/components/hud/HudLayout";
@@ -1420,6 +1420,9 @@ const Replayer = () => {
   const { t } = useTranslation("replayer");
   const tableOrientation = useTableOrientation();
   const landscapeMobile = useIsLandscapeMobile();
+  // Celular (qualquer orientação, <1024) usa SEMPRE o modo landscape fullscreen da mesa;
+  // em pé mostramos um prompt pedindo pra girar (a mesa é mais agradável deitada).
+  const mobileReplayer = landscapeMobile || tableOrientation === "portrait";
   const tournamentId = params.get("t") ?? "";
   const handId       = params.get("h") ?? "";
   const studentId    = params.get("student") ? Number(params.get("student")) : null;
@@ -1856,7 +1859,19 @@ const Replayer = () => {
   const isCorrect = step.is_hero && !isError && step.type === "action";
 
   // ── Celular DEITADO: mesa FULLSCREEN edge-to-edge + controles/logo/pill flutuando ──
-  if (landscapeMobile) {
+  if (mobileReplayer) {
+    // Celular em PÉ: a mesa só roda em landscape → pede pra girar o aparelho.
+    if (tableOrientation === "portrait") {
+      return (
+        <div className="h-dvh flex flex-col items-center justify-center gap-5 bg-background hud-scanline px-10 text-center"
+          style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
+          <RotateCw className="size-14 text-primary" />
+          <p className="font-mono text-[13px] uppercase tracking-widest text-muted-foreground leading-relaxed">{t("rotatePrompt")}</p>
+          <button onClick={() => navigate(-1)}
+            className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground/70 transition-colors hover:text-primary">{t("back")}</button>
+        </div>
+      );
+    }
     return (
       <div ref={rootRef} className="h-dvh relative overflow-hidden hud-scanline"
         style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
@@ -1898,7 +1913,7 @@ const Replayer = () => {
 
         {/* Controles — extrema inferior-esquerda */}
         <div className="absolute bottom-2 left-2 z-30 flex items-center gap-1 rounded-full bg-background/80 backdrop-blur px-2 py-1 ring-1 ring-border shadow-lg">
-          <button onClick={() => { if (stepIdx > 0) setStepIdx(0); else if (prevHand) navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`); }}
+          <button onClick={() => { if (stepIdx > 0) setStepIdx(0); else if (prevHand) navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`, { replace: true }); }}
             disabled={stepIdx === 0 && !prevHand}
             className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><Rewind className="size-4" /></button>
           <button onClick={() => setStepIdx((i) => Math.max(0, i - 1))} disabled={stepIdx === 0}
@@ -1908,7 +1923,7 @@ const Replayer = () => {
             {playing ? <Pause className="size-4" /> : <Play className="size-4" />}</button>
           <button onClick={() => setStepIdx((i) => Math.min(steps.length - 1, i + 1))} disabled={stepIdx === steps.length - 1}
             className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><ChevronRight className="size-5" /></button>
-          <button onClick={() => { if (stepIdx < steps.length - 1) setStepIdx(steps.length - 1); else if (nextHand) navigate(`/replayer?t=${tournamentId}&h=${nextHand}${studentId ? `&student=${studentId}` : ""}`); }}
+          <button onClick={() => { if (stepIdx < steps.length - 1) setStepIdx(steps.length - 1); else if (nextHand) navigate(`/replayer?t=${tournamentId}&h=${nextHand}${studentId ? `&student=${studentId}` : ""}`, { replace: true }); }}
             disabled={stepIdx === steps.length - 1 && !nextHand}
             className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><FastForward className="size-4" /></button>
           <span className="px-1.5 font-mono text-[10px] text-muted-foreground tabular-nums">{stepIdx + 1}/{steps.length}</span>
