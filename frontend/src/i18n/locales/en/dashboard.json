@@ -165,7 +165,7 @@
     "p3m": "3M",
     "p1y": "1Y",
     "pAll": "All",
-    "emptyPeriod": "Not enough tournaments in this range — try a longer period."
+    "emptyPeriod": "Not enough tournaments in this range. Try a longer period."
   },
   "table": {
     "title": "Recent tournaments",
@@ -538,7 +538,7 @@
     "causalEpicenterDesc": "connected to {{n}} other leaks — fixing this one breaks the chain",
     "causalTogether": "together in {{n}} hands",
     "causalSpot": "{{action}} on the {{street}}",
-    "causalNoEdges": "Your leaks still show up isolated — they don't repeat together in the same hands. The causal map emerges once the same mistakes co-occur. For now, your attention points:",
+    "causalNoEdges": "Your leaks still show up isolated, they don't repeat together in the same hands. The causal map appears once the same mistakes happen together. For now, your attention points:",
     "causalConclusion": "What this means: your mistakes don't happen in isolation — \"{{a}}\" and \"{{b}}\" showed up in the same hands {{n}} times, a sign one triggers the other. The highest-leverage point is \"{{epi}}\": it's linked to {{deg}} other leaks, and fixing it tends to bring the whole chain down.",
     "careerDelta": "{{delta}} vs all-time",
     "cogDominant": "Dominant pattern"

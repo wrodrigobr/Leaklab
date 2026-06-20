@@ -165,7 +165,7 @@
     "p3m": "3M",
     "p1y": "1A",
     "pAll": "Tudo",
-    "emptyPeriod": "Sem torneios suficientes neste período — experimente um intervalo maior."
+    "emptyPeriod": "Sem torneios suficientes neste período. Tente um intervalo maior."
   },
   "table": {
     "title": "Torneios recentes",
@@ -538,7 +538,7 @@
     "causalEpicenterDesc": "conectado a {{n}} outros leaks — corrigir este derruba a cadeia",
     "causalTogether": "juntos em {{n}} mãos",
     "causalSpot": "{{action}} no {{street}}",
-    "causalNoEdges": "Seus leaks ainda aparecem isolados — não se repetem juntos nas mesmas mãos. O mapa de causalidade surge quando os mesmos erros co-ocorrem. Por ora, seus pontos de atenção:",
+    "causalNoEdges": "Seus leaks ainda aparecem isolados, não se repetem juntos nas mesmas mãos. O mapa de causalidade surge quando os mesmos erros acontecem juntos. Por ora, seus pontos de atenção:",
     "causalConclusion": "O que isto significa: seus erros não acontecem isolados — \"{{a}}\" e \"{{b}}\" apareceram nas mesmas mãos {{n}} vezes, sinal de que um desencadeia o outro. O ponto de maior alavancagem é \"{{epi}}\": está ligado a {{deg}} outros leaks, e corrigi-lo tende a derrubar a cadeia inteira.",
     "careerDelta": "{{delta}} vs histórico",
     "cogDominant": "Padrão dominante"
