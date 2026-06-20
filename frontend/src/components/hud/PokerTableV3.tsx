@@ -570,10 +570,11 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
 
   return (
     <div
-      className={fill ? "relative w-full h-full" : "relative w-full rounded-2xl"}
+      className={fill ? "relative w-full" : "relative w-full rounded-2xl"}
       style={{
-        background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)",
-        ...(fill ? {} : { aspectRatio: geo.aspect }),
+        // fill = fundo transparente (o gradiente vem da tela, único); senão a caixa tem o seu.
+        background: fill ? "transparent" : "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)",
+        aspectRatio: geo.aspect,
       }}
     >
       {/* Layer 1 — tilted background (felt + rail) — clipped to rounded corners */}

@@ -1781,15 +1781,19 @@ const Replayer = () => {
   // ── Celular DEITADO: mesa FULLSCREEN edge-to-edge + controles/logo/pill flutuando ──
   if (landscapeMobile) {
     return (
-      <div ref={rootRef} className="h-dvh relative overflow-hidden bg-background hud-scanline">
-        {/* Mesa fullscreen: o gradiente preenche a tela toda (sem borda); feltro centralizado */}
-        <div className="absolute inset-0">
-          <PokerTableV3
-            step={step} hero={replayData.hero} heroCards={replayData.hero_cards}
-            bb={replayData.bb} betUnit={betUnit} playerAliases={playerAliases}
-            revealedCards={revealedCards} profiles={replayData.opponent_profiles}
-            showHud={showHud} hudTips={hudTips} orientation="landscape" fill
-          />
+      <div ref={rootRef} className="h-dvh relative overflow-hidden hud-scanline"
+        style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
+        {/* Mesa (dimensões boas, height-bound, sem cortar pods) com fundo TRANSPARENTE: o
+            gradiente acima é único na tela → sem caixa/borda dando impressão de sobreposição. */}
+        <div className="absolute inset-0 flex items-center justify-center p-0.5">
+          <div className="h-full w-auto max-w-full mx-auto" style={{ aspectRatio: "16 / 10" }}>
+            <PokerTableV3
+              step={step} hero={replayData.hero} heroCards={replayData.hero_cards}
+              bb={replayData.bb} betUnit={betUnit} playerAliases={playerAliases}
+              revealedCards={revealedCards} profiles={replayData.opponent_profiles}
+              showHud={showHud} hudTips={hudTips} orientation="landscape" fill
+            />
+          </div>
         </div>
 
         {/* Voltar — topo-esquerda */}
