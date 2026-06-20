@@ -226,7 +226,7 @@ const Index = () => {
       case "leaks":      return <LeaksPanel leaks={leakRoi.length > 0 ? leakRoi : evo?.leaks} source={leakRoi.length > 0 ? leakSource : null} />;
       case "causal_map": return isFree
         ? <ProLockCard feature={tc("proLock.causalMap")} v2={v2} />
-        : (leakGraph && leakGraph.nodes.length >= 3)
+        : (leakGraph && leakGraph.nodes.length >= 1)
           ? v2
             ? <V2CausalMapCard nodes={leakGraph.nodes} edges={leakGraph.edges} />
             : <LeakCausalMap nodes={leakGraph.nodes} edges={leakGraph.edges} narrative={leakGraph.narrative} />
