@@ -21,14 +21,15 @@ type Geo = {
   VBW: number; VBH: number; aspect: string; S: number;
   RXF: number; RYF: number; FELT_MX: number; FELT_MY: number;
   boardW: number; boardH: number; boardGap: number;
+  seatDX: number;  // nudge horizontal dos assentos (px) — ajuste fino de centragem
 };
 const GEO_LANDSCAPE: Geo = {
   CX: 560, CY: 340, RX_SEAT: 452, RY_SEAT: 272, VBW: 1120, VBH: 630, aspect: "16 / 10", S: 1,
-  RXF: 414, RYF: 218, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8,
+  RXF: 414, RYF: 218, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8, seatDX: 0,
 };
 const GEO_PORTRAIT: Geo = {
   CX: 380, CY: 440, RX_SEAT: 348, RY_SEAT: 354, VBW: 760, VBH: 880, aspect: "760 / 880", S: 0.66,
-  RXF: 305, RYF: 345, FELT_MX: 20, FELT_MY: 20, boardW: 54, boardH: 84, boardGap: 6,
+  RXF: 305, RYF: 345, FELT_MX: 20, FELT_MY: 20, boardW: 54, boardH: 84, boardGap: 6, seatDX: 34,
 };
 // Geometria CORRENTE — mutável por render. Seguro: o build do SVG é síncrono (useEffect)
 // e o Replayer tem 1 mesa; setado no topo do effect antes de qualquer função de render.
@@ -168,7 +169,7 @@ function buildLayout(seatNums: number[], heroSeat: number | undefined) {
   seatNums.forEach((s, i) => {
     const baseAng = -90 + (360 / n) * i + rotOffset;
     const ang = baseAng * Math.PI / 180;
-    const x = Math.round(G.CX + G.RX_SEAT * Math.cos(ang));
+    const x = Math.round(G.CX + G.RX_SEAT * Math.cos(ang) + G.seatDX);
     const y = Math.round(G.CY + G.RY_SEAT * Math.sin(ang));
     layout[s] = { x, y, dir: y < G.CY ? "top" : "bottom" };
   });
