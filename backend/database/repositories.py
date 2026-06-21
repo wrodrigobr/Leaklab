@@ -3372,7 +3372,7 @@ PLAN_LIMITS: dict = {
                 'ai_chat_per_day': 0,  'solves_per_day': None, 'max_pending_solves': 3},
     'pro':     {'tournaments': 200, 'ai_calls': 300, 'ai_coach_chat': True,  'solves': None, 'advanced_insights': True,
                 'ai_chat_per_day': 50, 'solves_per_day': 20,   'max_pending_solves': 10},
-    'coach':   {'tournaments': None, 'ai_calls': None, 'ai_coach_chat': True, 'solves': None, 'advanced_insights': True,
+    'coach':   {'tournaments': None, 'ai_calls': 1500, 'ai_coach_chat': True, 'solves': None, 'advanced_insights': True,
                 'ai_chat_per_day': None, 'solves_per_day': None, 'max_pending_solves': None},  # interno
 }
 
