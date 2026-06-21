@@ -1716,6 +1716,24 @@ Seja direto, use linguagem de coach (não acadêmica). Não use markdown, apenas
 
 # ── Leak Causal Map (FEAT-06) ────────────────────────────────────────────────
 
+import re as _re
+
+# Trava de coerência da narrativa causal: a co-ocorrência é POR TORNEIO (mãos diferentes), então o
+# texto NUNCA pode afirmar "mesma mão" nem contar a correlação em "N mãos". Se o LLM violar, o texto
+# é descartado e cai no template determinístico (que é sempre coerente).
+_CAUSAL_INCOHERENT = _re.compile(
+    r"\b\d+\s*(m[ãa]os?|hands?|manos?)\b"          # "3 mãos" / "in 3 hands" / "3 manos"
+    r"|mesm[ao]s?\s+m[ãa]os?"                       # "mesma mão", "mesmas mãos/maos"
+    r"|same\s+hands?"                              # "same hand(s)"
+    r"|mism[ao]s?\s+manos?",                       # "misma mano", "mismas manos"
+    _re.IGNORECASE,
+)
+
+
+def _causal_text_is_coherent(text: str) -> bool:
+    return bool(text) and not _CAUSAL_INCOHERENT.search(text)
+
+
 def explain_leak_causality(edges: list, hero: str = 'você', lang: str = 'pt-BR') -> str:
     """1 parágrafo curto (2-3 frases) explicando a causa raiz dos pares mais correlacionados."""
     if not edges:
@@ -1728,6 +1746,11 @@ def explain_leak_causality(edges: list, hero: str = 'você', lang: str = 'pt-BR'
     try:
         text = _call_llm_causality(edges[:3], hero, lang)
     except Exception:
+        text = _template_causality(edges[:3])
+    # Trava: saída incoerente (afirma "mesma mão" / conta em "mãos") → template determinístico.
+    if not _causal_text_is_coherent(text):
+        import logging
+        logging.getLogger('llm_guard').warning('narrativa causal incoerente descartada: %r', text[:160])
         text = _template_causality(edges[:3])
     _cache[cache_key] = text
     return text
