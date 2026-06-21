@@ -910,7 +910,7 @@ def history_tournament_report_pdf(tournament_id):
             pdf_bytes,
             mimetype='application/pdf',
             headers={
-                'Content-Disposition': f'attachment; filename="leaklab-report-{safe_id}.pdf"',
+                'Content-Disposition': f'attachment; filename="grindlab-report-{safe_id}.pdf"',
                 'Cache-Control': 'no-store',
             }
         )
@@ -920,7 +920,7 @@ def history_tournament_report_pdf(tournament_id):
             html,
             mimetype='text/html',
             headers={
-                'Content-Disposition': f'attachment; filename="leaklab-report-{safe_id}.html"',
+                'Content-Disposition': f'attachment; filename="grindlab-report-{safe_id}.html"',
                 'Cache-Control': 'no-store',
             }
         )
