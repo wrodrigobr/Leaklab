@@ -2513,25 +2513,38 @@ def _run_coach_tool(name: str, user_id: int, tool_input: dict) -> tuple[str, str
 
 
 def _with_prompt_cache(payload: dict) -> dict:
-    """Marca o prefixo ESTÁVEL (system + tools) com cache_control ephemeral → prompt caching
-    da Anthropic. No loop agêntico esse prefixo é reenviado a cada tool round-trip e a cada
-    mensagem; cachear corta o input repetido (~5-10x) sem mudar a resposta. Abaixo do mínimo
-    de tokens cacheáveis o cache_control vira no-op (sem erro). NÃO muta system/tools originais
-    (podem ser constantes compartilhadas, ex.: _STUDY_TOOLS)."""
+    """Marca breakpoints de cache_control (Anthropic prompt caching) no prefixo reutilizado.
+    No loop agêntico o custo está nas MENSAGENS (tool-results reenviados a cada round-trip),
+    não no system/tools (pequenos, < 2048 tokens). Então o breakpoint principal é a ÚLTIMA
+    mensagem: cacheia todo o prefixo (system+tools+conversa) até ali; o round-trip seguinte lê
+    a ~0.1x. Também marca o system (ajuda quando é grande, ex.: study plan). NÃO muta os objetos
+    originais (a lista `messages` é reutilizada no loop — mutar acumularia breakpoints e quebraria)."""
     p = dict(payload)
     _cc = {"type": "ephemeral"}
+    # system (caso seja grande o bastante sozinho)
     sys = p.get('system')
     if isinstance(sys, str) and sys.strip():
         p['system'] = [{"type": "text", "text": sys, "cache_control": _cc}]
     elif isinstance(sys, list) and sys:
-        nb = [dict(b) for b in sys]
-        nb[-1] = {**nb[-1], "cache_control": _cc}
+        nb = [dict(b) if isinstance(b, dict) else b for b in sys]
+        if isinstance(nb[-1], dict):
+            nb[-1] = {**nb[-1], "cache_control": _cc}
         p['system'] = nb
-    tools = p.get('tools')
-    if isinstance(tools, list) and tools:
-        nt = list(tools)
-        nt[-1] = {**nt[-1], "cache_control": _cc}
-        p['tools'] = nt
+    # ÚLTIMA mensagem: cacheia o prefixo todo (inclui tool-results = a parte cara)
+    msgs = p.get('messages')
+    if isinstance(msgs, list) and msgs:
+        nm = list(msgs)
+        last = dict(nm[-1])
+        c = last.get('content')
+        if isinstance(c, str) and c:
+            last['content'] = [{"type": "text", "text": c, "cache_control": _cc}]
+        elif isinstance(c, list) and c:
+            nc = [dict(b) if isinstance(b, dict) else b for b in c]
+            if isinstance(nc[-1], dict):
+                nc[-1] = {**nc[-1], "cache_control": _cc}
+                last['content'] = nc
+        nm[-1] = last
+        p['messages'] = nm
     return p
 
 
@@ -2560,11 +2573,10 @@ def _call_llm_api_full(payload: dict) -> dict:
     try:
         import logging as _lg
         _u = data.get('usage') or {}
-        _cc, _cr = _u.get('cache_creation_input_tokens', 0), _u.get('cache_read_input_tokens', 0)
-        if _cc or _cr:
-            _lg.getLogger('llm_cache').info(
-                'prompt_cache created=%s read=%s input=%s output=%s',
-                _cc, _cr, _u.get('input_tokens'), _u.get('output_tokens'))
+        _lg.getLogger('llm_cache').info(
+            'prompt_cache created=%s read=%s input=%s output=%s',
+            _u.get('cache_creation_input_tokens', 0), _u.get('cache_read_input_tokens', 0),
+            _u.get('input_tokens'), _u.get('output_tokens'))
     except Exception:
         pass
     return data
