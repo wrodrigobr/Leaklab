@@ -899,10 +899,12 @@ def _score_color_rev(v: float, good: float, warn: float) -> str:
 def _fmt_date(iso: str | None) -> str:
     if not iso:
         return '—'
+    if hasattr(iso, 'strftime'):   # datetime.date/datetime (Postgres devolve objeto, SQLite devolve string)
+        return iso.strftime('%d/%m/%Y')
     try:
-        return datetime.fromisoformat(iso[:19]).strftime('%d/%m/%Y')
+        return datetime.fromisoformat(str(iso)[:19]).strftime('%d/%m/%Y')
     except Exception:
-        return iso[:10]
+        return str(iso)[:10]
 
 
 # ── Legacy HTML builder (unchanged) ──────────────────────────────────────────
