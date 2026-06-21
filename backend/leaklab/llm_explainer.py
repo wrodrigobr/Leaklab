@@ -2555,7 +2555,19 @@ def _call_llm_api_full(payload: dict) -> dict:
         timeout=90,
     )
     resp.raise_for_status()
-    return resp.json()
+    data = resp.json()
+    # Verificação do prompt caching: loga tokens criados (1ª chamada) vs lidos do cache (0.1x).
+    try:
+        import logging as _lg
+        _u = data.get('usage') or {}
+        _cc, _cr = _u.get('cache_creation_input_tokens', 0), _u.get('cache_read_input_tokens', 0)
+        if _cc or _cr:
+            _lg.getLogger('llm_cache').info(
+                'prompt_cache created=%s read=%s input=%s output=%s',
+                _cc, _cr, _u.get('input_tokens'), _u.get('output_tokens'))
+    except Exception:
+        pass
+    return data
 
 
 def coach_chat_reply_agentic(message: str, user_id: int, hero: str = 'Jogador',
