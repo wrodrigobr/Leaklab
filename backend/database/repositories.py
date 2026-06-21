@@ -4571,8 +4571,8 @@ def get_leak_graph_data(user_id: int, days: int = 90, lang: str = 'pt-BR') -> di
     try:
         rows = conn.execute(_adapt("""
             SELECT
-                t.id                                   AS tournament_id,
-                d.street || '/' || d.best_action       AS spot,
+                t.id                                                                AS tournament_id,
+                COALESCE(d.position, '?') || '|' || d.street || '/' || d.best_action AS spot,
                 d.score
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id

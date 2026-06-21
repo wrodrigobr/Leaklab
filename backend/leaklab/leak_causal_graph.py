@@ -8,19 +8,46 @@ from itertools import combinations
 from typing import List, Dict, Tuple
 
 _MIN_CORRELATION = 0.35
-_MIN_CO_OCCUR    = 2
+_MIN_CO_OCCUR    = 3      # exige repetição em >=3 torneios (2 dava 100% trivial em amostra mínima)
 _MAX_EDGES       = 12
 _MAX_NODES       = 10
 
 _STREET_ABBR = {'preflop': 'PF', 'flop': 'FL', 'turn': 'TN', 'river': 'RV'}
 
 
+def _format_action(action: str) -> str:
+    # "jam"/"allin" -> "Shove" (regra de display: jam abolido, shove sempre); tira sizing do bet.
+    a = (action or '').lower()
+    if a in ('jam', 'allin'):
+        return 'Shove'
+    return a.split('_')[0].capitalize()
+
+
 def _format_label(spot: str) -> str:
-    parts = spot.split('/')
+    # spot = "POS|street/action" (ex: "BB|flop/call"); posição é opcional ("?|..." quando ausente).
+    pos, rest = '', spot
+    if '|' in spot:
+        pos, rest = spot.split('|', 1)
+    parts = rest.split('/')
     if len(parts) == 2:
         abbr = _STREET_ABBR.get(parts[0], parts[0][:2].upper())
-        return f"{abbr} {parts[1].capitalize()}"
-    return spot[:14]
+        base = f"{abbr} {_format_action(parts[1])}"
+    else:
+        base = rest[:14]
+    return f"{pos} {base}" if pos and pos != '?' else base
+
+
+def human_spot(spot: str) -> str:
+    """Forma legível por extenso ("SB|preflop/call" -> "SB preflop call") p/ prompt LLM e texto."""
+    pos, rest = '', spot
+    if '|' in spot:
+        pos, rest = spot.split('|', 1)
+    parts = rest.split('/')
+    if len(parts) == 2:
+        base = f"{parts[0]} {_format_action(parts[1]).lower()}"
+    else:
+        base = rest.replace('/', ' ').replace('_', ' ')
+    return f"{pos} {base}" if pos and pos != '?' else base
 
 
 def build_leak_graph(rows: List[dict]) -> Dict:

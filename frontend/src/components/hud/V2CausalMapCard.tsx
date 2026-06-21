@@ -16,13 +16,17 @@ const SEVERITY_BADGE: Record<string, string> = {
   minor:    "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/25",
 };
 
-/** Nome legível do spot a partir do node.id ("flop/fold" → "Fold no flop").
- *  O label do backend vem abreviado ("FL Fold") — ilegível pro jogador.
+/** Nome legível do spot a partir do node.id ("BB|flop/fold" → "BB Fold no flop").
+ *  O id é "POS|street/action" (posição opcional, "?" quando ausente).
  *  Streets e ações ficam em inglês (termos de poker); só o conector é i18n. */
 function spotLabel(node: LeakNode, t: (k: string, o?: object) => string): string {
-  const parts = (node.id || "").split("/");
+  let id = node.id || "";
+  let pos = "";
+  if (id.includes("|")) { [pos, id] = id.split("|"); }
+  const parts = id.split("/");
   if (parts.length === 2 && parts[0] && parts[1]) {
-    return t("v2.causalSpot", { action: formatAction(parts[1]), street: parts[0] });
+    const base = t("v2.causalSpot", { action: formatAction(parts[1]), street: parts[0] });
+    return pos && pos !== "?" ? `${pos} ${base}` : base;
   }
   return node.label.replace(/[_-]+/g, " ");
 }

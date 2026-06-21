@@ -1758,8 +1758,9 @@ _LANG_INSTRUCTIONS = {
 def _call_llm_causality(edges: list, hero: str, lang: str = 'pt-BR') -> str:
     import requests as _req
     lang_instr = _LANG_INSTRUCTIONS.get(lang, _LANG_INSTRUCTIONS['pt-BR'])
+    from leaklab.leak_causal_graph import human_spot
     pairs = "\n".join(
-        f"- {e['source']} ↔ {e['target']}: {e['correlation']:.0%} correlation "
+        f"- {human_spot(e['source'])} ↔ {human_spot(e['target'])}: {e['correlation']:.0%} correlation "
         f"({e['co_occurrences']} tournaments together)"
         for e in edges
     )
@@ -1799,13 +1800,14 @@ def _call_llm_causality(edges: list, hero: str, lang: str = 'pt-BR') -> str:
 def _template_causality(edges: list) -> str:
     if not edges:
         return ""
+    from leaklab.leak_causal_graph import human_spot
     top = edges[0]
-    a = top['source'].replace('/', ' ').replace('_', ' ')
-    b = top['target'].replace('/', ' ').replace('_', ' ')
+    a = human_spot(top['source'])
+    b = human_spot(top['target'])
     corr = int(top['correlation'] * 100)
     return (
         f"Os leaks de {a} e {b} co-ocorrem em {corr}% dos torneios analisados, "
-        f"sugerindo uma causa raiz comum — provavelmente relacionada a leitura de range ou "
+        f"sugerindo uma causa raiz comum, provavelmente relacionada a leitura de range ou "
         f"gestão de stack. Corrija o spot com maior frequência primeiro para reduzir "
         f"automaticamente os demais."
     )
