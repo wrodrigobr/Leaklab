@@ -2023,7 +2023,10 @@ def player_drill_table(decision_id: int):
     state = build_table_state_at_decision(hand, street, target_facing=_tf)
     bb = float(state.get('bb') or ctx.get('level_bb') or 0) or 1.0
     # seats em CHIPS (stack/bet crus) — o PokerTableV3 normaliza p/ BB via betUnit + bb.
-    pot_chips = round(sum(s['bet'] for s in state['seats']), 1)
+    # BUG A: o pot vem do builder (carried_pot dos streets anteriores + bets da street
+    # atual). NÃO recomputar via sum(seat.bet) — isso descartava o pote de streets passados
+    # (postflop first-to-act rendia pote 0). state['pot'] já inclui os bets correntes.
+    pot_chips = round(float(state.get('pot') or 0.0), 1)
     _sc = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
     board = (hand.board or [])[:_sc.get(street, 5)]
     return jsonify({

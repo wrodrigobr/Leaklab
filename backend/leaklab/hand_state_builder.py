@@ -411,9 +411,17 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None,
     bets/stacks em potes multi-raise são best-effort (o parser dá o incremento do
     raise, não o to-total). Devolve {seats:[...], button, sb, bb}.
 
-    `target_facing` (BB): quando o hero age 2+× na street (ex.: aposta → leva raise →
+    `target_facing` (BB): quando o hero age 2+x na street (ex.: aposta, leva raise,
     folda), para na ação cujo facing-to-call bate o da decisão — senão a mesa mostraria
-    o momento errado (antes do raise do vilão). None = para na 1ª ação do hero."""
+    o momento errado (antes do raise do vilão). None = para na 1ª ação do hero.
+
+    BUG B fix: para raises o `bet` por assento passa a ser o TO-TOTAL da street ('raises
+    48 to 88' => bet=88), não o incremento acumulado. O parser guarda só o incremento
+    (48) em amount, mas o raw tem 'to 88'; lemos o to-total igual a _facing_to_total_at.
+    Assim o facing_bb do matcher bate o target_facing do DB e o loop para no ponto certo.
+
+    BUG A fix: devolve `pot` = fichas dos streets ANTERIORES (carried_pot) + bets da street
+    atual. Sem isso, postflop first-to-act (facing==0) renderizava pote 0."""
     hero_name = hero_name or hand.hero
     by_name: dict = {}
     for s in (hand.seats or []):
@@ -424,7 +432,7 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None,
     btn = hand.button_seat
     sb_amt, bb_amt = float(hand.sb or 0), float(hand.bb or 0)
     if not by_name:
-        return {'seats': [], 'button': btn, 'sb': sb_amt, 'bb': bb_amt}
+        return {'seats': [], 'button': btn, 'sb': sb_amt, 'bb': bb_amt, 'pot': 0.0}
 
     seat_nums = sorted(st['seat'] for st in by_name.values())
     n = len(seat_nums)
@@ -445,21 +453,35 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None,
                 st['stack'] = max(0.0, st['stack'] - bb_amt)
 
     cur_street = 'preflop'
+    carried_pot = 0.0   # BUG A: fichas comprometidas nos streets ANTERIORES ao alvo
+    last_opp_inc = 0.0  # incremento ('raises 200 to 400' => 200) do último agressor ≠ hero na street
     for act in (hand.actions or []):
         if act.street != cur_street:
             cur_street = act.street
+            # Antes de zerar, recolhe os bets da street que terminou para o pote.
+            carried_pot += sum(st['bet'] for st in by_name.values())
             for st in by_name.values():
                 st['bet'] = 0.0   # nova street: zera os bets em frente
+            last_opp_inc = 0.0
         # para ANTES da ação do hero na street alvo (o ponto da decisão do drill).
         # Com 2+ ações do hero na street, para na que bate o facing-to-call da decisão.
         if act.player == hero_name and act.street == target_street:
             if target_facing is None:
                 break
-            hero_bet = by_name.get(hero_name, {}).get('bet', 0.0)
             opp_max  = max((st0['bet'] for st0 in by_name.values()
                             if not st0['hero'] and not st0['folded']), default=0.0)
-            facing_bb = (max(0.0, opp_max - hero_bet) / bb_amt) if bb_amt else 0.0
-            if abs(facing_bb - float(target_facing)) <= 0.6:   # tolerância p/ resíduo/rounding
+            # CONVENÇÃO DO DB: facing_bet (facingToBb) é o TO-TOTAL do vilão em bb
+            # (_facing_to_total_at/bb), SEM subtrair o que o hero já pôs na street. Logo
+            # o matcher compara opp_max/bb (to-total), não o to-call (opp_max-hero_bet).
+            # Subtrair o hero_bet quebrava spots onde o hero já tinha fichas na street
+            # (blind, ou open antes de levar 3-bet): seen=to_call ≠ db=to_total → overrun.
+            facing_bb = (opp_max / bb_amt) if bb_amt else 0.0
+            # Linhas antigas (pré-facingToBb) guardaram o INCREMENTO/bb (facingSize/bb).
+            # Casa contra QUALQUER das duas representações — sem isso o matcher overruns
+            # nessas linhas legadas e o hero aparece já tendo agido/foldado.
+            inc_bb = (last_opp_inc / bb_amt) if bb_amt else 0.0
+            tgt = float(target_facing)
+            if abs(facing_bb - tgt) <= 0.6 or abs(inc_bb - tgt) <= 0.6:  # tolerância resíduo/rounding
                 break
             # senão é uma ação ANTERIOR do hero nesta street → processa e segue
         st = by_name.get(act.player)
@@ -467,12 +489,29 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None,
             continue
         a = (act.action or '').lower()
         amt = float(act.amount or 0)
+        if act.player != hero_name and a in ('bets', 'raises', 'all-in'):
+            last_opp_inc = amt   # incremento cru do parser (pra casar target_facing legado)
         if 'fold' in a or 'muck' in a:
             st['folded'] = True
-        elif amt > 0 and a in ('bets', 'calls', 'raises', 'all-in'):
+        elif a in ('raises', 'all-in'):
+            # BUG B: raise/all-in => o `bet` da street é o TO-TOTAL ('raises 48 to 88' => 88),
+            # não a soma dos incrementos. O parser dá só o incremento em amount; o to-total
+            # vem do 'to Y' do raw (igual a _facing_to_total_at). Sem 'to Y' (formato GG
+            # 'raises to Y' já total, ou all-in [X]) usa amount como incremento.
+            m = _RAISE_TO_RE.search(act.raw or '')
+            if m:
+                to_total = float(m.group(1))
+                inc = max(0.0, to_total - st['bet'])
+                st['bet']   = to_total
+                st['stack'] = max(0.0, st['stack'] - inc)
+            elif amt > 0:
+                st['bet']   += amt
+                st['stack']  = max(0.0, st['stack'] - amt)
+        elif amt > 0 and a in ('bets', 'calls'):
             st['bet']   += amt
             st['stack']  = max(0.0, st['stack'] - amt)
 
+    pot = round(carried_pot + sum(st['bet'] for st in by_name.values()), 1)
     pos_by_seat = _seat_positions(seat_nums, btn)
     return {
         'seats': [
@@ -489,6 +528,7 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None,
         'button': btn,
         'sb':     sb_amt,
         'bb':     bb_amt,
+        'pot':    pot,   # BUG A: carried (streets anteriores) + bets da street atual
     }
 
 
