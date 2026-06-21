@@ -644,7 +644,7 @@ def _ev_section(ev_worst: list | None, ev_total: float) -> str:
     rows = ''
     for i, d in enumerate(ev_worst, 1):
         ev      = abs(d.get('ev_loss_bb') or 0)
-        street  = d.get('street', '?')
+        street  = d.get('street') or '?'
         cards   = d.get('hero_cards', '?') or '?'
         action  = d.get('action_taken', '?') or '?'
         best    = d.get('best_action', '?') or d.get('gto_action', '?') or '?'
@@ -834,7 +834,7 @@ def _worst_section(worst: list) -> str:
     for i, d in enumerate(worst, 1):
         label   = d.get('label', 'standard')
         score   = d.get('score', 0) or 0
-        street  = d.get('street', '?')
+        street  = d.get('street') or '?'
         cards   = d.get('hero_cards', '?') or '?'
         action  = d.get('action_taken', '?') or '?'
         best    = d.get('best_action', '?') or '?'

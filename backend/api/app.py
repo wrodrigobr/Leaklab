@@ -901,7 +901,12 @@ def history_tournament_report_pdf(tournament_id):
     hero      = t.get('hero', 'Hero')
 
     from flask import Response
-    html = build_html_report(t, decisions, phases, hero)
+    try:
+        html = build_html_report(t, decisions, phases, hero)
+    except Exception:
+        import logging, traceback as _tb
+        logging.getLogger('report').error('build_html_report falhou t=%s\n%s', tournament_id, _tb.format_exc())
+        return jsonify({'error': 'Falha ao gerar o relatório'}), 500
 
     safe_id = tournament_id.replace(' ', '_')[:40]
     try:
