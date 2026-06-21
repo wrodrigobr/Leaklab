@@ -1720,7 +1720,7 @@ def explain_leak_causality(edges: list, hero: str = 'você', lang: str = 'pt-BR'
     """1 parágrafo curto (2-3 frases) explicando a causa raiz dos pares mais correlacionados."""
     if not edges:
         return ""
-    cache_key = "causal_v3_" + lang + "_" + "_".join(
+    cache_key = "causal_v4_" + lang + "_" + "_".join(
         f"{e['source']}:{e['target']}" for e in edges[:3]
     )
     if cache_key in _cache:
@@ -1766,9 +1766,13 @@ def _call_llm_causality(edges: list, hero: str, lang: str = 'pt-BR') -> str:
     )
     system_prompt = (
         f"You are a friendly MTT poker coach talking directly to a student who is still learning. {lang_instr} "
+        "IMPORTANT about the data: each pair of leaks CO-OCCURS ACROSS THE SAME TOURNAMENTS, in DIFFERENT hands. "
+        "They are NOT the same hand and one does NOT trigger the other within a hand. It is a session-level tendency: "
+        "in those tournaments the player commits BOTH types of mistake, hinting at a shared root cause (e.g. a mindset or a miscalibrated range), NOT a chain reaction inside one hand. "
+        "NEVER say or imply the two leaks happen in the same hand, and NEVER say one 'triggers'/'causes'/'leads to' the other. Always frame it as appearing together across tournaments/sessions. "
         "Analyze the leak correlations and write EXACTLY 3 SHORT sentences: "
-        "(1) Describe what both mistakes look like in practice at the table — use plain language about the BEHAVIOR (what the player does), not abstract concepts. "
-        "(2) Name the single habit or misunderstanding causing both errors — if you use a technical term, immediately explain it in simple words in parentheses. "
+        "(1) Describe what both mistakes look like in practice at the table, use plain language about the BEHAVIOR (what the player does), not abstract concepts. "
+        "(2) Name the single habit or misunderstanding that likely produces both errors, if you use a technical term, immediately explain it in simple words in parentheses. "
         "(3) Give one concrete, actionable change the player can make starting in their next session. "
         "Write as if talking face to face, not writing a report. "
         "Avoid dense jargon clusters. Keep each sentence under 40 words. "
