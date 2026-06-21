@@ -4357,6 +4357,28 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                                             'Mão fora do range de abertura — fold vs shove recomendado.'
                                         ),
                                     }
+                            # Fallback FOLD: spot sem cobertura (ex.: vs limp multiway) onde o
+                            # hero FOLDOU. Se a mão nem entra na range de ABERTURA (RFI, capturada
+                            # do GW) da posição, foldar é trivialmente correto em qualquer pote
+                            # não-aberto (multiway só reforça). Reaproveita o dado do GW em vez de
+                            # mostrar "Spot N/A". Só aplica quando o fold é correto/aceitável vs a
+                            # range de abertura; mãos abríveis foldadas vs limp seguem sem cobertura
+                            # (iso-vs-limp é ambíguo e não temos a árvore).
+                            if (not _pf_result.get('available')
+                                    and di.get('player_action', '') == 'fold'):
+                                _rfi_fold = analyze_preflop(
+                                    position=_pf_pos, hero_hand_type=h_type,
+                                    stack_bb=_pf_stack_bb, action_taken='fold',
+                                    facing_size=0.0, vs_position='',
+                                )
+                                if (_rfi_fold.get('available')
+                                        and _rfi_fold.get('action_quality') in ('correct', 'acceptable')):
+                                    _pf_result = {
+                                        **_rfi_fold,
+                                        'action_taken': 'fold',
+                                        'fold_below_open': True,
+                                        'reasoning': 'Mão fora da range de abertura: fold é trivial em qualquer pote não-aberto.',
+                                    }
                             all_decisions[key]['preflop_gto'] = _pf_result
                     except Exception:
                         pass
