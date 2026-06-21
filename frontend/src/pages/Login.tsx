@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Loader2, GraduationCap, User } from "lucide-react";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
 import { useTranslation } from "react-i18next";
@@ -16,10 +16,19 @@ const Login = () => {
   const { login, register, user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation("auth");
+  const [searchParams] = useSearchParams();
+  const ref = searchParams.get("ref");
+  const [linkedCoach, setLinkedCoach] = useState<string | null>(null);
 
   useEffect(() => {
+    // Convite de coach na URL: pré-seleciona o cadastro
+    if (ref) setTab("register");
+  }, [ref]);
+
+  useEffect(() => {
+    if (linkedCoach) return; // não redireciona antes de mostrar a confirmação de vínculo
     if (user) navigate(user.role === "coach" ? "/coach-dashboard" : "/dashboard", { replace: true });
-  }, [user, navigate]);
+  }, [user, navigate, linkedCoach]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +38,13 @@ const Login = () => {
       if (tab === "login") {
         await login(email, password);
       } else {
-        await register(username, email, password, role);
+        const coach = await register(username, email, password, role, ref);
+        if (coach) {
+          setLinkedCoach(coach);
+          setLoading(false);
+          setTimeout(() => navigate(role === "coach" ? "/coach-dashboard" : "/dashboard", { replace: true }), 2500);
+          return;
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
@@ -78,7 +93,18 @@ const Login = () => {
             ))}
           </div>
 
+          {linkedCoach && (
+            <p className="mb-4 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+              {t("referral.linkedTo", { coach: linkedCoach })}
+            </p>
+          )}
+
           <form onSubmit={submit} className="space-y-4">
+            {tab === "register" && ref && !linkedCoach && (
+              <p className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+                {t("referral.detected")}
+              </p>
+            )}
             {tab === "register" && (
               <>
                 <div className="space-y-1.5">

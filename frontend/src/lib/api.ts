@@ -37,6 +37,7 @@ export interface AuthResponse {
   token: string;
   user_id: number;
   role: string;
+  linked_coach?: string | null;
 }
 
 export interface UserProfile {
@@ -77,10 +78,10 @@ export const profile = {
 };
 
 export const auth = {
-  register: (username: string, email: string, password: string, role: "player" | "coach" = "player") =>
+  register: (username: string, email: string, password: string, role: "player" | "coach" = "player", ref?: string | null) =>
     request<AuthResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ username, email, password, role }),
+      body: JSON.stringify({ username, email, password, role, ...(ref ? { ref } : {}) }),
     }),
 
   login: (email: string, password: string) =>
@@ -1492,6 +1493,9 @@ export interface StudentSummary {
   unread?: number;               // P1b: mensagens do aluno não lidas
   score_history?: number[];      // V2-3: últimos scores (cronológico) p/ sparkline
   link_status?: "approved" | "pending" | "rejected";  // SEC-01 fase 2
+  billing_standing?: "paying" | "past_due" | "perk" | "free";  // standing de pagamento do aluno
+  subscription_status?: string | null;
+  referral_coach_id?: number | null;
 }
 
 export interface CoachTrialStatus {
@@ -2030,8 +2034,23 @@ export interface AdminUser {
   last_import: string | null;
   tournament_count: number;
   coach_username: string | null;
+  coach_id?: number | null;
   display_name: string | null;
   suspended: boolean | number;
+  billing_standing?: "paying" | "past_due" | "perk" | "free";
+  plan_source?: "stripe_sub" | "coach_trial" | "coach_earned" | null;
+  subscription_status?: "active" | "past_due" | "canceled" | null;
+  plan_expires_at?: string | null;
+  link_status?: "approved" | "pending" | "rejected" | null;
+}
+
+export interface AdminCoachStudent {
+  id: number;
+  username: string;
+  email: string;
+  plan: string;
+  billing_standing?: "paying" | "past_due" | "perk" | "free";
+  link_status?: "approved" | "pending" | "rejected" | null;
 }
 
 export interface CoachPayout {
@@ -2125,6 +2144,9 @@ export const adminDashboard = {
     if (params?.search)         q.set("search", params.search);
     return request<{ users: AdminUser[]; total: number }>(`/admin/users?${q}`);
   },
+
+  coachStudents: (coachId: number) =>
+    request<{ students: AdminCoachStudent[] }>(`/admin/coach/${coachId}/students`),
 
   updateUser: (id: number, data: { plan?: string; suspended?: boolean }) =>
     request<{ ok: boolean }>(`/admin/users/${id}`, {

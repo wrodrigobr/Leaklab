@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { InviteKeyWidget } from "@/components/coach/InviteKeyWidget";
+import { ReferredStudentsCard, ReferralLinkCard } from "@/components/coach/ReferralPanel";
 import { StudentRow } from "@/components/coach/StudentRow";
 import { VerdictTag } from "@/components/VerdictTag";
 import { verdictLevelFromScore, VERDICT_META } from "@/lib/cardLogic";
@@ -397,9 +398,14 @@ function AlunosTab() {
             )}
           </div>
         )}
+
+        {/* Feature 1 — alunos indicados: plano + standing de pagamento + comissão */}
+        <ReferredStudentsCard />
       </div>
 
       <div className="space-y-4">
+        {/* Feature 2 — link de indicação copiável */}
+        <ReferralLinkCard />
         {/* P2 — feed cross-aluno: o que os alunos jogaram (sem entrar aluno por aluno) */}
         {activity?.activity && activity.activity.length > 0 && (
           <div className="rounded-xl border border-border bg-hud-surface p-4 space-y-2.5">

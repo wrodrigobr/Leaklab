@@ -502,6 +502,10 @@ def _run_migrations(conn):
             # PAY-02: vigência da assinatura (mensal=+30d, anual=+365d). NULL=sem
             # expiração (pagantes legados grandfathered). Pro expira quando passa a data.
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_expires_at          TEXT",
+            # Status real da assinatura Stripe: 'active' | 'past_due' | 'canceled' | NULL.
+            # Antes o past_due era silenciosamente mantido como plan='pro' (dunning), então
+            # coach/admin não distinguiam pagante-em-dia de atrasado. Persistido p/ a visão real.
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status      TEXT",
             # GTO-005: integração solver → decisions
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_label  TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS gto_action TEXT",
@@ -1054,6 +1058,7 @@ def _run_migrations(conn):
             ("plan_source",             "ALTER TABLE users ADD COLUMN plan_source             TEXT"),
             ("coach_trial_ends_at",     "ALTER TABLE users ADD COLUMN coach_trial_ends_at     TEXT"),
             ("plan_expires_at",         "ALTER TABLE users ADD COLUMN plan_expires_at         TEXT"),
+            ("subscription_status",     "ALTER TABLE users ADD COLUMN subscription_status     TEXT"),
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),

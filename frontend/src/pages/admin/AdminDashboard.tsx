@@ -9,7 +9,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { cn } from "@/lib/utils";
-import { adminDashboard, AdminUser, CoachPayout, CoachApplication, support } from "@/lib/api";
+import { adminDashboard, AdminUser, AdminCoachStudent, CoachPayout, CoachApplication, support } from "@/lib/api";
 import { toast } from "sonner";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -230,6 +230,89 @@ function DeleteUserModal({ target, onClose, onDeleted }: {
   );
 }
 
+// ── Billing standing badge ────────────────────────────────────────────────────
+
+const BILLING_BADGE: Record<string, { label: string; cls: string }> = {
+  paying:   { label: "Em dia",    cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-400" },
+  past_due: { label: "Atrasado",  cls: "border-amber-500/40 bg-amber-500/10 text-amber-400" },
+  perk:     { label: "Cortesia",  cls: "border-border bg-hud-elevated/50 text-muted-foreground" },
+  free:     { label: "Free",      cls: "border-border bg-background text-muted-foreground" },
+};
+
+function BillingStandingBadge({ standing }: { standing?: string | null }) {
+  const b = BILLING_BADGE[standing ?? "free"] ?? BILLING_BADGE.free;
+  return (
+    <span className={cn(
+      "inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider border",
+      b.cls
+    )}>
+      {b.label}
+    </span>
+  );
+}
+
+// ── Coach roster modal ────────────────────────────────────────────────────────
+
+function CoachStudentsModal({ coachId, coachName, onClose }: {
+  coachId: number;
+  coachName: string;
+  onClose: () => void;
+}) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-coach-students", coachId],
+    queryFn: () => adminDashboard.coachStudents(coachId),
+    staleTime: 15_000,
+  });
+  const students: AdminCoachStudent[] = data?.students ?? [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in p-4" onClick={onClose}>
+      <div className="w-full max-w-2xl rounded-2xl border border-border bg-hud-surface p-6 shadow-2xl space-y-5" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="size-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Alunos de @{coachName}</h2>
+          </div>
+          <button onClick={onClose} className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-border">
+          <div className="max-h-[60vh] overflow-y-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="sticky top-0 border-b border-border bg-hud-elevated/80 backdrop-blur">
+                <tr>
+                  {["Aluno", "Plano", "Pagamento", "Vínculo"].map(h => (
+                    <th key={h} className="px-4 py-2.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {isLoading ? (
+                  <tr><td colSpan={4} className="py-10 text-center"><Loader2 className="size-5 animate-spin text-primary mx-auto" /></td></tr>
+                ) : students.length === 0 ? (
+                  <tr><td colSpan={4} className="py-10 text-center text-muted-foreground">Nenhum aluno vinculado.</td></tr>
+                ) : students.map(s => (
+                  <tr key={s.id} className="hover:bg-primary/5 transition-colors">
+                    <td className="px-4 py-2.5">
+                      <p className="font-medium text-foreground">@{s.username}</p>
+                      <p className="font-mono text-[10px] text-muted-foreground">{s.email}</p>
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground uppercase">{s.plan}</td>
+                    <td className="px-4 py-2.5"><BillingStandingBadge standing={s.billing_standing} /></td>
+                    <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">{s.link_status ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Users Tab ─────────────────────────────────────────────────────────────────
 
 function UsersTab() {
@@ -239,6 +322,7 @@ function UsersTab() {
   const [role,   setRole]         = useState("");
   const [offset, setOffset]       = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [coachTarget, setCoachTarget] = useState<{ id: number; name: string } | null>(null);
   const PAGE = 25;
 
   const { data, isLoading } = useQuery({
@@ -286,16 +370,16 @@ function UsersTab() {
           <table className="w-full text-xs text-left">
             <thead className="border-b border-border bg-hud-elevated/40">
               <tr>
-                {["Usuário", "Role", "Plano", "Coach", "Torneios", "Último import", "Cadastro", "Ações", ""].map(h => (
+                {["Usuário", "Role", "Plano", "Pagamento", "Coach", "Torneios", "Último import", "Cadastro", "Ações", ""].map(h => (
                   <th key={h} className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
-                <tr><td colSpan={9} className="py-12 text-center"><Loader2 className="size-5 animate-spin text-primary mx-auto" /></td></tr>
+                <tr><td colSpan={10} className="py-12 text-center"><Loader2 className="size-5 animate-spin text-primary mx-auto" /></td></tr>
               ) : users.length === 0 ? (
-                <tr><td colSpan={9} className="py-12 text-center text-muted-foreground">Nenhum usuário encontrado.</td></tr>
+                <tr><td colSpan={10} className="py-12 text-center text-muted-foreground">Nenhum usuário encontrado.</td></tr>
               ) : users.map(u => (
                 <tr key={u.id} className={cn("transition-colors hover:bg-primary/5", u.suspended && "opacity-50")}>
                   <td className="px-4 py-3">
@@ -313,7 +397,28 @@ function UsersTab() {
                       {["free","pro","coach"].map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </td>
-                  <td className="px-4 py-3 font-mono text-[10px] text-muted-foreground">{u.coach_username ?? "—"}</td>
+                  <td className="px-4 py-3"><BillingStandingBadge standing={u.billing_standing} /></td>
+                  <td className="px-4 py-3 font-mono text-[10px] text-muted-foreground">
+                    {u.coach_username
+                      ? (u.coach_id != null
+                          ? <button
+                              onClick={() => setCoachTarget({ id: u.coach_id!, name: u.coach_username! })}
+                              className="inline-flex items-center gap-1 text-primary hover:underline"
+                            >
+                              <GraduationCap className="size-3" /> {u.coach_username}
+                            </button>
+                          : u.coach_username)
+                      : "—"}
+                    {u.role === "coach" && (
+                      <button
+                        onClick={() => setCoachTarget({ id: u.id, name: u.username })}
+                        title="Ver alunos deste coach"
+                        className="ml-1 inline-flex items-center gap-1 text-primary hover:underline"
+                      >
+                        <Users className="size-3" /> alunos
+                      </button>
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-mono tabular-nums text-foreground">{u.tournament_count}</td>
                   <td className="px-4 py-3 font-mono text-muted-foreground whitespace-nowrap">{fmtDate(u.last_import)}</td>
                   <td className="px-4 py-3 font-mono text-muted-foreground whitespace-nowrap">{fmtDate(u.created_at)}</td>
@@ -364,6 +469,14 @@ function UsersTab() {
             toast.success(`Usuário @${deleteTarget.username} excluído permanentemente`);
             setDeleteTarget(null);
           }}
+        />
+      )}
+
+      {coachTarget && (
+        <CoachStudentsModal
+          coachId={coachTarget.id}
+          coachName={coachTarget.name}
+          onClose={() => setCoachTarget(null)}
         />
       )}
     </div>

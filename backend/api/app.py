@@ -329,10 +329,27 @@ def register():
     if get_user_by_username(username):
         return jsonify({'error': 'Nome de usuário já está em uso'}), 409
 
+    # Link referral do coach: ?ref=<invite_key>. Resolve o coach e já vincula o aluno como
+    # PENDENTE (entra na fila de aprovação do coach). Ref inválido/cheio → signup normal.
+    ref = (data.get('ref') or '').strip().upper()
+    coach_id = referral_coach_id = link_status = invited_by_key = None
+    _coach = None
+    if ref:
+        from database.repositories import get_coach_by_invite_key
+        _coach = get_coach_by_invite_key(ref)
+        if _coach and _coach.get('role') == 'coach':
+            coach_id          = _coach['id']
+            referral_coach_id = _coach['id']
+            link_status       = 'pending'
+            invited_by_key    = ref
+
     try:
-        user_id = create_user(username, email, password, role)
+        user_id = create_user(username, email, password, role,
+                              coach_id=coach_id, referral_coach_id=referral_coach_id,
+                              link_status=link_status, invited_by_key=invited_by_key)
         token   = generate_token(user_id, role)
-        return jsonify({'token': token, 'user_id': user_id, 'role': role}), 201
+        return jsonify({'token': token, 'user_id': user_id, 'role': role,
+                        'linked_coach': _coach['username'] if (ref and coach_id) else None}), 201
     except Exception as e:
         log.exception("register error for %s", email)
         return jsonify({'error': 'Erro interno ao criar conta'}), 500
@@ -3031,12 +3048,15 @@ def coach_students_v2():
         # ativo que conta na comp: pro + importou nos últimos 30d (imported_at em formato
         # ISO → comparação lexicográfica de string com o cutoff é válida).
         _imp = (recent or {}).get('imported_at') or ''
-        # SEC-01: indicado = vinculado via convite single-use (atribuição confiável).
-        is_referred = s.get('invited_via_invite_id') is not None
+        # Indicado = vinculado via convite single-use OU link referral (referral_coach_id).
+        is_referred = (s.get('invited_via_invite_id') is not None
+                       or s.get('referral_coach_id') is not None)
         # SEC-01 fase 2: só vínculos aprovados pelo coach contam na comp. Legados = 'approved'.
         _approved = (s.get('link_status') or 'approved') == 'approved'
-        # "Ativo · conta R$" = indicado + aprovado + pro + importou nos últimos 30d (régua do payout).
-        is_active_paid = (is_referred and _approved and s.get('plan') == 'pro' and bool(_imp) and _imp >= _cutoff)
+        # "Ativo · conta R$" = indicado + aprovado + PAGANTE EM DIA (exclui past_due/perk) +
+        # importou nos últimos 30d (régua do payout). billing_standing=='paying' já garante pro.
+        is_active_paid = (is_referred and _approved and s.get('billing_standing') == 'paying'
+                          and bool(_imp) and _imp >= _cutoff)
         enriched.append({
             **s,
             'recent_tournament': recent,
@@ -5663,6 +5683,15 @@ def admin_users():
     users  = get_all_users(limit=limit, offset=offset, plan=plan, role=role, search=search)
     total  = get_all_users_count(plan=plan, role=role, search=search)
     return jsonify({'users': users, 'total': total})
+
+
+@app.route('/admin/coach/<int:coach_id>/students', methods=['GET'])
+@require_admin
+def admin_coach_students(coach_id: int):
+    """Roster de alunos de um coach (admin) — com plano, standing de pagamento e link_status,
+    para auditar as relações coach↔aluno e quem conta pra comissão."""
+    from database.repositories import get_students
+    return jsonify({'students': get_students(coach_id)})
 
 
 @app.route('/admin/users/<int:uid>', methods=['PATCH'])

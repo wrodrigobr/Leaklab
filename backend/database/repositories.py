@@ -123,14 +123,22 @@ def _check_password(password: str, stored_hash: str) -> bool:
 
 
 def create_user(username: str, email: str, password: str,
-                role: str = 'player', coach_id: int | None = None) -> int:
+                role: str = 'player', coach_id: int | None = None,
+                referral_coach_id: int | None = None,
+                link_status: str | None = None,
+                invited_by_key: str | None = None) -> int:
+    """Cria usuário. Para signup via LINK REFERRAL do coach, passe coach_id +
+    referral_coach_id + link_status='pending' + invited_by_key (a key do link), assim o
+    aluno já nasce vinculado ao coach mas pendente da aprovação dele."""
     pw_hash = _hash_password(password)
     conn = get_conn()
     try:
         cur = conn.execute(
-            "INSERT INTO users (username, email, password_hash, role, coach_id) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (username, email, pw_hash, role, coach_id)
+            "INSERT INTO users (username, email, password_hash, role, coach_id, "
+            "referral_coach_id, link_status, invited_by_key) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (username, email, pw_hash, role, coach_id,
+             referral_coach_id, link_status or 'approved', invited_by_key)
         )
         conn.commit()
         return cur.lastrowid
@@ -200,10 +208,18 @@ def get_students(coach_id: int) -> List[dict]:
     conn = get_conn()
     try:
         rows = conn.execute(
-            "SELECT id, username, email, created_at, last_login, plan, invited_by_key, invited_via_invite_id, link_status "
+            "SELECT id, username, email, created_at, last_login, plan, plan_source, "
+            "subscription_status, plan_expires_at, invited_by_key, invited_via_invite_id, "
+            "referral_coach_id, link_status "
             "FROM users WHERE coach_id = ?", (coach_id,)
         ).fetchall()
-        return [dict(r) for r in rows]
+        out = []
+        for r in rows:
+            d = dict(r)
+            d['billing_standing'] = billing_standing(
+                d.get('plan'), d.get('plan_source'), d.get('subscription_status'), d.get('plan_expires_at'))
+            out.append(d)
+        return out
     finally:
         conn.close()
 
@@ -2385,11 +2401,15 @@ def list_pending_link_requests(coach_id: int) -> list:
     conn = get_conn()
     try:
         rows = conn.execute(_adapt("""
-            SELECT u.id AS student_id, u.username, u.email, ci.code, ci.used_at, ci.label
+            SELECT u.id AS student_id, u.username, u.email, u.created_at,
+                   ci.code, ci.used_at, ci.label,
+                   CASE WHEN u.invited_via_invite_id IS NOT NULL THEN 'invite'
+                        WHEN u.referral_coach_id IS NOT NULL THEN 'link'
+                        ELSE 'other' END AS via
             FROM users u
             LEFT JOIN coach_invites ci ON ci.id = u.invited_via_invite_id
             WHERE u.coach_id = ? AND u.link_status = 'pending'
-            ORDER BY ci.used_at DESC
+            ORDER BY COALESCE(ci.used_at, u.created_at) DESC
         """), (coach_id,)).fetchall()
         return [dict(r) for r in rows]
     finally:
@@ -3773,27 +3793,34 @@ def apply_stripe_subscription(user_id: int, status: str, plan_expires_at: Option
                               sub_id: Optional[str]) -> str:
     """PAY-04: aplica o estado de uma Subscription do Stripe ao plano do usuário.
     Fonte da verdade da recorrência = status da assinatura (não plan_expires_at manual).
-      active/trialing → pro (plan_source='stripe_sub', vigência = current_period_end)
-      canceled/unpaid/incomplete_expired → free
-      past_due → mantém (Stripe está em retry/dunning) — não mexe
+      active/trialing → pro (plan_source='stripe_sub', vigência = current_period_end), status='active'
+      canceled/unpaid/incomplete_expired → free, status='canceled'
+      past_due → mantém pro (Stripe em retry/dunning) MAS grava status='past_due' p/ coach/admin
+                 distinguirem pagante-em-dia de atrasado (régua da comissão).
     Retorna a ação tomada ('activated' | 'downgraded' | 'kept')."""
     conn = get_conn()
     try:
         if status in ('active', 'trialing'):
             conn.execute(_adapt(
-                "UPDATE users SET plan='pro', plan_source='stripe_sub', "
+                "UPDATE users SET plan='pro', plan_source='stripe_sub', subscription_status='active', "
                 "mp_subscription_id=?, plan_expires_at=? WHERE id=?"),
                 (sub_id, plan_expires_at, user_id))
             conn.commit()
             return 'activated'
         if status in ('canceled', 'unpaid', 'incomplete_expired'):
             conn.execute(_adapt(
-                "UPDATE users SET plan='free', plan_source=NULL, mp_subscription_id=NULL, "
-                "plan_expires_at=NULL WHERE id=?"),
+                "UPDATE users SET plan='free', plan_source=NULL, subscription_status='canceled', "
+                "mp_subscription_id=NULL, plan_expires_at=NULL WHERE id=?"),
                 (user_id,))
             conn.commit()
             return 'downgraded'
-        return 'kept'   # past_due / incomplete → Stripe ainda resolvendo
+        if status == 'past_due':
+            # mantém pro, mas marca o atraso (antes era no-op e o coach via como 'em dia').
+            conn.execute(_adapt(
+                "UPDATE users SET subscription_status='past_due' WHERE id=?"), (user_id,))
+            conn.commit()
+            return 'kept'
+        return 'kept'   # incomplete → Stripe ainda resolvendo
     finally:
         conn.close()
 
@@ -3909,6 +3936,22 @@ COACH_PRO_TARGET  = 15    # indicados pagantes p/ manter o Pro após o trial
 COACH_PERK_SOURCES = ('coach_trial', 'coach_earned')
 
 
+def billing_standing(plan, plan_source, subscription_status, plan_expires_at=None) -> str:
+    """Standing de pagamento de um aluno (visão do coach/admin + régua de comissão):
+      'paying'   = pro pagante em dia (Stripe ativo ou legado pago) — conta p/ comissão
+      'past_due' = pro com assinatura atrasada (dunning) — NÃO conta p/ comissão
+      'perk'     = pro de cortesia do coach (coach_trial/coach_earned) — não é receita
+      'free'     = freemium
+    """
+    if (plan or 'free') != 'pro':
+        return 'free'
+    if plan_source in COACH_PERK_SOURCES:
+        return 'perk'
+    if subscription_status == 'past_due':
+        return 'past_due'
+    return 'paying'
+
+
 def get_coach_paying_referred_count(coach_id: int) -> int:
     """COACH-02: nº de indicados PAGANTES do coach — a métrica da meta dos 15.
     Indicado (invited_via_invite_id) + aprovado (link_status) + assinante (plan='pro').
@@ -3917,7 +3960,9 @@ def get_coach_paying_referred_count(coach_id: int) -> int:
     try:
         return _fetchone(conn, _adapt(
             "SELECT COUNT(*) AS n FROM users WHERE coach_id = ? "
-            "AND invited_via_invite_id IS NOT NULL AND link_status = 'approved' AND plan = 'pro'"),
+            "AND (invited_via_invite_id IS NOT NULL OR referral_coach_id IS NOT NULL) "
+            "AND link_status = 'approved' AND plan = 'pro' "
+            "AND COALESCE(subscription_status,'active') <> 'past_due'"),  # atrasado não conta
             (coach_id,))['n']
     finally:
         conn.close()
@@ -3961,7 +4006,8 @@ def expire_coach_trials() -> dict:
             cid = r['id'] if isinstance(r, dict) or hasattr(r, 'keys') else r[0]
             paying = conn.execute(_adapt(
                 "SELECT COUNT(*) AS n FROM users WHERE coach_id = ? "
-                "AND invited_via_invite_id IS NOT NULL AND link_status = 'approved' AND plan = 'pro'"),
+                "AND invited_via_invite_id IS NOT NULL AND link_status = 'approved' AND plan = 'pro' "
+                "AND COALESCE(subscription_status,'active') <> 'past_due'"),
                 (cid,)).fetchone()
             paying = paying['n'] if isinstance(paying, dict) or hasattr(paying, 'keys') else paying[0]
             if paying >= COACH_PRO_TARGET:
@@ -4003,7 +4049,9 @@ def notify_expiring_coach_trials(days_window: int = 7) -> dict:
                 continue
             paying = conn.execute(_adapt(
                 "SELECT COUNT(*) AS n FROM users WHERE coach_id=? "
-                "AND invited_via_invite_id IS NOT NULL AND link_status='approved' AND plan='pro'"),
+                "AND (invited_via_invite_id IS NOT NULL OR referral_coach_id IS NOT NULL) "
+                "AND link_status='approved' AND plan='pro' "
+                "AND COALESCE(subscription_status,'active') <> 'past_due'"),
                 (cid,)).fetchone()
             paying = paying['n'] if isinstance(paying, dict) or hasattr(paying, 'keys') else paying[0]
             if paying >= COACH_PRO_TARGET:
@@ -4041,7 +4089,9 @@ def backfill_coach_trials() -> dict:
             cid = r['id'] if isinstance(r, dict) or hasattr(r, 'keys') else r[0]
             paying = conn.execute(_adapt(
                 "SELECT COUNT(*) AS n FROM users WHERE coach_id=? "
-                "AND invited_via_invite_id IS NOT NULL AND link_status='approved' AND plan='pro'"),
+                "AND (invited_via_invite_id IS NOT NULL OR referral_coach_id IS NOT NULL) "
+                "AND link_status='approved' AND plan='pro' "
+                "AND COALESCE(subscription_status,'active') <> 'past_due'"),
                 (cid,)).fetchone()
             paying = paying['n'] if isinstance(paying, dict) or hasattr(paying, 'keys') else paying[0]
             if paying >= COACH_PRO_TARGET:
@@ -4198,8 +4248,9 @@ def get_all_users(limit: int = 50, offset: int = 0, plan: str = None,
             params.extend([term, term, term])
         where = ("WHERE " + " AND ".join(filters)) if filters else ""
         params.extend([limit, offset])
-        return _fetchall(conn, f"""
+        rows = _fetchall(conn, f"""
             SELECT u.id, u.username, u.email, u.role, u.plan,
+                   u.plan_source, u.subscription_status, u.plan_expires_at, u.link_status,
                    u.created_at, u.last_login, u.suspended,
                    c.username AS coach_username,
                    cp.display_name,
@@ -4212,6 +4263,10 @@ def get_all_users(limit: int = 50, offset: int = 0, plan: str = None,
             ORDER BY u.created_at DESC
             LIMIT ? OFFSET ?
         """, params)
+        for d in rows:
+            d['billing_standing'] = billing_standing(
+                d.get('plan'), d.get('plan_source'), d.get('subscription_status'), d.get('plan_expires_at'))
+        return rows
     finally:
         conn.close()
 
@@ -4290,8 +4345,9 @@ def get_coaches_with_payout_status(period: str) -> list:
                 FROM users s
                 INNER JOIN tournaments t ON t.user_id = s.id
                 WHERE s.coach_id = ? AND s.plan = 'pro'
-                  AND s.invited_via_invite_id IS NOT NULL
+                  AND (s.invited_via_invite_id IS NOT NULL OR s.referral_coach_id IS NOT NULL)
                   AND s.link_status = 'approved'
+                  AND COALESCE(s.subscription_status,'active') <> 'past_due'
                   AND t.imported_at >= {interval_sql(30)}
             """, (coach['id'],))['n']
             coach['active_students'] = active
