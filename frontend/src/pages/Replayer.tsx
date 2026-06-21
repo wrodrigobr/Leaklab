@@ -2046,6 +2046,7 @@ const Replayer = () => {
                   showHud={showHud}
                   hudTips={hudTips}
                   orientation={tableOrientation}
+                  transparentBg
                 />
               </div>
             </div>

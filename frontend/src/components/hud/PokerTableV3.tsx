@@ -585,11 +585,15 @@ interface Props {
   /** fill = ocupa todo o container (sem aspect-ratio nem cantos); o gradiente preenche a
    *  tela e o feltro (SVG meet) centraliza. Usado no fullscreen do celular deitado. */
   fill?: boolean;
+  /** transparentBg = só o fundo transparente + sem caixa/cantos, MANTENDO a geometria atual
+   *  (≠ fill, que troca pra geo mobile). Usado no desktop p/ herdar o fundo único do sistema. */
+  transparentBg?: boolean;
 }
 
-export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false, hudTips = {}, orientation = "landscape", fill = false }: Props) {
+export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", playerAliases = {}, revealedCards = {}, profiles = {}, showHud = false, hudTips = {}, orientation = "landscape", fill = false, transparentBg = false }: Props) {
   // fill (celular deitado fullscreen) usa o landscape compacto (cartas maiores); desktop intocado.
   const geo = orientation === "portrait" ? GEO_PORTRAIT : (fill ? GEO_LANDSCAPE_MOBILE : GEO_LANDSCAPE);
+  const transp = fill || transparentBg;  // visual sem caixa (fundo transparente, sem cantos)
   const boardRef = useRef<SVGGElement>(null);
   const potRef   = useRef<SVGGElement>(null);
   const seatsRef = useRef<SVGGElement>(null);
@@ -609,16 +613,16 @@ export function PokerTableV3({ step, hero, heroCards, bb, betUnit = "bb", player
 
   return (
     <div
-      className={fill ? "relative w-full" : "relative w-full rounded-2xl"}
+      className={transp ? "relative w-full" : "relative w-full rounded-2xl"}
       style={{
-        // fill = fundo transparente (o gradiente vem da tela, único); senão a caixa tem o seu.
-        background: fill ? "transparent" : "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)",
+        // transp = fundo transparente (herda o fundo único do sistema/tela); senão caixa própria.
+        background: transp ? "transparent" : "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)",
         aspectRatio: geo.aspect,
       }}
     >
       {/* Layer 1 — tilted background (felt + rail) — clipped to rounded corners */}
       <div
-        className={fill ? "absolute inset-0 overflow-hidden" : "absolute inset-0 overflow-hidden rounded-2xl"}
+        className={transp ? "absolute inset-0 overflow-hidden" : "absolute inset-0 overflow-hidden rounded-2xl"}
         style={orientation === "portrait" ? undefined : { perspective: "1100px", perspectiveOrigin: "50% 0%" }}
       >
         <svg
