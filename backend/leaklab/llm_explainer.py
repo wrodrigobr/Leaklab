@@ -2512,6 +2512,29 @@ def _run_coach_tool(name: str, user_id: int, tool_input: dict) -> tuple[str, str
     return (json.dumps(result, ensure_ascii=False, default=str), leak_source)
 
 
+def _with_prompt_cache(payload: dict) -> dict:
+    """Marca o prefixo ESTÁVEL (system + tools) com cache_control ephemeral → prompt caching
+    da Anthropic. No loop agêntico esse prefixo é reenviado a cada tool round-trip e a cada
+    mensagem; cachear corta o input repetido (~5-10x) sem mudar a resposta. Abaixo do mínimo
+    de tokens cacheáveis o cache_control vira no-op (sem erro). NÃO muta system/tools originais
+    (podem ser constantes compartilhadas, ex.: _STUDY_TOOLS)."""
+    p = dict(payload)
+    _cc = {"type": "ephemeral"}
+    sys = p.get('system')
+    if isinstance(sys, str) and sys.strip():
+        p['system'] = [{"type": "text", "text": sys, "cache_control": _cc}]
+    elif isinstance(sys, list) and sys:
+        nb = [dict(b) for b in sys]
+        nb[-1] = {**nb[-1], "cache_control": _cc}
+        p['system'] = nb
+    tools = p.get('tools')
+    if isinstance(tools, list) and tools:
+        nt = list(tools)
+        nt[-1] = {**nt[-1], "cache_control": _cc}
+        p['tools'] = nt
+    return p
+
+
 def _call_llm_api_full(payload: dict) -> dict:
     """Como _call_llm_api, mas devolve o JSON completo da resposta.
 
@@ -2519,13 +2542,14 @@ def _call_llm_api_full(payload: dict) -> dict:
     de conteúdo (não só do texto).
     """
     import requests as _req
-    payload = _with_no_dash(payload)
+    payload = _with_prompt_cache(_with_no_dash(payload))
     resp = _req.post(
         'https://api.anthropic.com/v1/messages',
         json=payload,
         headers={
             'Content-Type':      'application/json',
             'anthropic-version': '2023-06-01',
+            'anthropic-beta':    'prompt-caching-2024-07-31',
             'x-api-key':         _api_key(),
         },
         timeout=90,
