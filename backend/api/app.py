@@ -920,7 +920,10 @@ def history_tournament_report_pdf(tournament_id):
             }
         )
     except Exception:
-        # WeasyPrint não disponível ou falhou (ex: libs GTK ausentes no Windows dev)
+        # WeasyPrint não disponível ou falhou (ex: libs GTK ausentes no Windows dev).
+        # Loga o erro REAL pra diagnosticar (pydyf incompatível, lib faltando, etc.) antes do fallback.
+        import logging, traceback as _tb
+        logging.getLogger('report').warning('WeasyPrint falhou, fallback HTML t=%s\n%s', tournament_id, _tb.format_exc())
         return Response(
             html,
             mimetype='text/html',
