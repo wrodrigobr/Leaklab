@@ -1289,7 +1289,7 @@ def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
     except Exception:
         board = []
 
-    _street_cards = {'flop': 3, 'turn': 4, 'river': 5}
+    _street_cards = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
     board_for_hash = board[:_street_cards.get(street, len(board))]
 
     hand_raw = row.get('hero_cards') or ''
@@ -6050,7 +6050,7 @@ def get_decision_gto(decision_id):
         hero_hand = []
 
     # Truncate board to street-appropriate length (DB stores full board; hashes use street slice)
-    _street_cards = {'flop': 3, 'turn': 4, 'river': 5}
+    _street_cards = {'preflop': 0, 'flop': 3, 'turn': 4, 'river': 5}
     board_for_hash = board[:_street_cards.get(street, len(board))]
 
     player_action = (dec.get('action_taken') or '').lower()
