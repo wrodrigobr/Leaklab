@@ -510,7 +510,7 @@ export default function GhostTable() {
                 <Timer className="size-3.5 text-destructive shrink-0" aria-hidden /><span className="font-mono text-[11px] font-semibold text-destructive">{t("pressure.timedOut")}</span>
               </div>
             )}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex gap-2 rounded-full bg-background/80 backdrop-blur px-2 py-1.5 ring-1 ring-border shadow-lg">
+            <div className="absolute bottom-3 right-3 z-30 flex gap-2 rounded-full bg-background/80 backdrop-blur px-2 py-1.5 ring-1 ring-border shadow-lg">
               {ACTION_KEYS.filter(a => legalSet.has(a)).map(action => (
                 <button key={action} onClick={() => submitAction(action)}
                   disabled={tableLoading || submitting || timedOut || (action === 'jam' && isCallEqualToJam)}
