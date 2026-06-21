@@ -115,10 +115,24 @@ def _call_llm_api(payload: dict) -> str:
     )
     resp.raise_for_status()
     data = resp.json()
-    return ''.join(
+    text = ''.join(
         block['text'] for block in data.get('content', [])
         if block.get('type') == 'text'
     ).strip()
+    return _sanitize_player_out(text)
+
+
+# Trava determinística de saída player-facing: troca travessão/meia-risca usados como pontuação
+# (cercados por espaço) por vírgula. Não toca em hífen de palavra composta (pré-flop, check-raise)
+# nem em ranges sem espaço (5–10bb), só na pontuação que "soa IA". Independe do prompt.
+import re as _re_out
+_OUT_DASH = _re_out.compile(r' +[—–] +')
+
+
+def _sanitize_player_out(text: str) -> str:
+    if not text:
+        return text
+    return _OUT_DASH.sub(', ', text)
 
 
 def _call_llm_batch(decisions: List[dict]) -> List[str]:
@@ -704,7 +718,7 @@ def _call_llm_summary(ctx: dict, hero: str) -> str:
         "Você é um coach de poker MTT. "
         "Analise as métricas do torneio abaixo e escreva um resumo em português "
         "de 4 parágrafos completos. "
-        "Tom: direto, técnico mas acessível — como um coach falando com o aluno após a sessão. "
+        "Tom: direto, técnico mas acessível, como um coach falando com o aluno após a sessão. "
         "Cubra obrigatoriamente estes 4 tópicos, um por parágrafo: "
         "(1) visão geral da qualidade das decisões, "
         "(2) o principal leak identificado, "
@@ -712,7 +726,7 @@ def _call_llm_summary(ctx: dict, hero: str) -> str:
         "(4) um conselho concreto de foco para a próxima sessão. "
         "É obrigatório terminar o parágrafo 4 com uma frase de encerramento completa. "
         "NÃO use bullet points. Escreva em prosa fluida. "
-        "Termos técnicos de poker SEMPRE em inglês: fold, call, raise, bet, check, shove, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position. "
+        f"{_POKER_TERMS_EN} "
         "Retorne APENAS o texto do resumo, sem título ou formatação extra."
     )
 
@@ -814,6 +828,7 @@ def _call_llm_narrative(ctx: dict) -> str:
         "Seja específico: cite o padrão dominante de erros, a fase de maior deterioração "
         "(se houver) e o impacto de ICM se relevante. "
         "Use linguagem técnica e direta, como um coach falando ao vivo após a sessão. "
+        f"{_POKER_TERMS_EN} "
         "NÃO use títulos, bullets ou formatação Markdown. Apenas as frases, ponto final."
     )
     user_msg = json.dumps(ctx, ensure_ascii=False, indent=2)
@@ -1757,15 +1772,22 @@ def explain_leak_causality(edges: list, hero: str = 'você', lang: str = 'pt-BR'
 
 
 _POKER_TERMS_EN = (
-    "Termos técnicos de poker SEMPRE em inglês: "
-    "fold, call, raise, bet, check, shove, preflop, flop, turn, river, "
-    "hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, "
-    "board, position, IP, OOP, shove, reshove, open, limp, squeeze. Para all-in agressivo use SEMPRE 'shove' — nunca 'jam'. "
-    "NUNCA use 'rua' ou 'ruas' — sempre 'street' ou 'streets'. "
-    "Para conjugar ações em português, use a forma 'dando raise', 'dando bet', 'dando fold', "
-    "NUNCA 'raisando', 'bettando', 'foldando' ou qualquer aportuguesamento de termos ingleses. "
-    "NUNCA use travessão (—) nem hífen como pontuação separando orações; use vírgula, "
-    "dois-pontos ou ponto. Hífen só em palavra composta (ex.: pré-flop)."
+    "Termos técnicos de poker SEMPRE em inglês, NUNCA traduzidos: "
+    "fold, call, raise, bet, check, check-raise, check-call, check-fold, c-bet, donk bet, "
+    "3-bet, 4-bet, 5-bet, shove, reshove, limp, open, squeeze, barrel, float, overbet, "
+    "value bet, bluff, blocker, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, "
+    "stack, pot odds, range, board, position, IP, OOP, GTO. "
+    "JAMAIS traduza termos compostos: é 'check-raise' (NUNCA 'checar aumentar', 'check aumento'), "
+    "'c-bet' (NUNCA 'aposta de continuação'), 'check-call' (NUNCA 'passar e pagar'), "
+    "'3-bet' (NUNCA 'terceira aposta'). Também NUNCA traduza ações isoladas: é 'check' (NUNCA 'checar'/'passar'), "
+    "'raise' (NUNCA 'aumentar'), 'call' (NUNCA 'igualar'), 'bet' (NUNCA 'apostar' como termo técnico), "
+    "'fold' (NUNCA 'desistir'/'correr'). Para all-in agressivo use SEMPRE 'shove', NUNCA 'jam'. "
+    "NUNCA use 'rua' ou 'ruas', sempre 'street' ou 'streets'. "
+    "Para conjugar em português use as formas naturais do jogador brasileiro: 'deu fold', 'deu raise', "
+    "'deu check', 'deu bet', 'deu check-raise', 'deu call', e os verbos consagrados 'foldou', 'apostou', 'pagou', 'shovou'. "
+    "NUNCA invente aportuguesamentos como 'raisando', 'bettando', 'foldando', 'checando', 'callando'. "
+    "NUNCA use travessão nem hífen como pontuação separando orações; use vírgula, "
+    "dois-pontos ou ponto. Hífen só em termo composto (ex.: check-raise, pré-flop)."
 )
 
 _LANG_INSTRUCTIONS = {
@@ -3046,8 +3068,8 @@ REGRAS OBRIGATÓRIAS:
 4. Seja específico com números: "33% de equity vs 54% exigidos = -21pp" não "equity insuficiente"
 5. Português do Brasil, tom técnico e direto
 6. Quando dados do GTO Solver estiverem presentes, use-os como verdade objetiva — não estime o que o solver diria
-7. Nunca mencione "GTO Wizard" — use sempre "GTO Solver"
-8. Termos de poker SEMPRE em inglês: fold, call, raise, bet, check, shove, preflop, flop, turn, river, hand, spot, equity, ICM, M-ratio, stack, pot odds, range, 3-bet, c-bet, board, position, IP, OOP"""
+7. Nunca mencione "GTO Wizard", use sempre "GTO Solver"
+8. """ + _POKER_TERMS_EN
 
     payload = {
         'model':      'claude-haiku-4-5-20251001',
