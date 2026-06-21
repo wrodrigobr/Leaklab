@@ -1,4 +1,17 @@
 {
+  "aiReport": {
+    "button": "AI tournament analysis",
+    "header": "AI Coach Report",
+    "close": "Close",
+    "processing": "AI processing",
+    "analyzing": "Analyzing full tournament",
+    "stage1": "Loading tournament decisions…",
+    "stage2": "Computing leak patterns…",
+    "stage3": "Evaluating ICM context and ranges…",
+    "stage4": "Generating personalized analysis…",
+    "errorGen": "Error generating analysis",
+    "errorHelp": "Check that the API key is configured and try again."
+  },
   "title": "Tournament History",
   "eyebrow": "Performance Analysis",
   "subtitle": "Review your results, filter by network, and analyze decisions hand-by-hand.",

@@ -1,4 +1,17 @@
 {
+  "aiReport": {
+    "button": "Análisis IA del torneo",
+    "header": "Informe del AI Coach",
+    "close": "Cerrar",
+    "processing": "IA procesando",
+    "analyzing": "Analizando torneo completo",
+    "stage1": "Cargando decisiones del torneo…",
+    "stage2": "Calculando patrones de leak…",
+    "stage3": "Evaluando contexto ICM y rangos…",
+    "stage4": "Generando análisis personalizado…",
+    "errorGen": "Error al generar el análisis",
+    "errorHelp": "Verifica que la clave de API esté configurada e inténtalo de nuevo."
+  },
   "title": "Historial de Torneos",
   "eyebrow": "Análisis de Rendimiento",
   "subtitle": "Revisa tus resultados, filtra por red y analiza decisiones mano a mano.",

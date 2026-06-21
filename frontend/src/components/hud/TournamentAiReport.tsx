@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Brain, ChevronDown, Loader2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tournaments } from "@/lib/api";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function TournamentAiReport({ tournamentName, tournamentDbId, existingSummary }: Props) {
+  const { t } = useTranslation("tournaments");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<string | null>(existingSummary ?? null);
@@ -25,7 +27,7 @@ export function TournamentAiReport({ tournamentName, tournamentDbId, existingSum
       const res = await tournaments.summary(tournamentDbId);
       setSummary(res.summary);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao gerar análise");
+      setError(err instanceof Error ? err.message : t("aiReport.errorGen"));
     } finally {
       setLoading(false);
     }
@@ -38,14 +40,14 @@ export function TournamentAiReport({ tournamentName, tournamentDbId, existingSum
         className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 font-mono text-[11px] font-bold uppercase tracking-wider text-primary shadow-[0_0_24px_-6px_hsl(var(--primary)/0.5)] transition-all hover:bg-primary/15 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Sparkles className="size-3.5" aria-hidden />
-        Análise IA do torneio
+        {t("aiReport.button")}
       </button>
 
       {open && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Análise IA do torneio"
+          aria-label={t("aiReport.button")}
           className="fixed inset-0 z-50 flex items-stretch justify-end bg-background/80 backdrop-blur-sm animate-fade-in"
           onClick={() => setOpen(false)}
         >
@@ -60,7 +62,7 @@ export function TournamentAiReport({ tournamentName, tournamentDbId, existingSum
                 </span>
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">
-                    AI Coach Report
+                    {t("aiReport.header")}
                   </div>
                   <div className="text-sm font-semibold text-foreground">{tournamentName}</div>
                 </div>
@@ -68,7 +70,7 @@ export function TournamentAiReport({ tournamentName, tournamentDbId, existingSum
               <button
                 onClick={() => setOpen(false)}
                 className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Fechar"
+                aria-label={t("aiReport.close")}
               >
                 <X className="size-4" aria-hidden />
               </button>
@@ -91,11 +93,12 @@ export function TournamentAiReport({ tournamentName, tournamentDbId, existingSum
 }
 
 function LoadingState() {
+  const { t } = useTranslation("tournaments");
   const stages = [
-    "Carregando decisões do torneio…",
-    "Calculando padrões de leak…",
-    "Avaliando contexto ICM e ranges…",
-    "Gerando análise personalizada…",
+    t("aiReport.stage1"),
+    t("aiReport.stage2"),
+    t("aiReport.stage3"),
+    t("aiReport.stage4"),
   ];
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 px-8 py-16 text-center">
@@ -105,9 +108,9 @@ function LoadingState() {
       </div>
       <div className="space-y-2">
         <div className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
-          IA processando
+          {t("aiReport.processing")}
         </div>
-        <h3 className="text-base font-semibold text-foreground">Analisando torneio completo</h3>
+        <h3 className="text-base font-semibold text-foreground">{t("aiReport.analyzing")}</h3>
       </div>
       <ul className="space-y-1.5 text-left">
         {stages.map((s, i) => (
@@ -125,11 +128,12 @@ function LoadingState() {
 }
 
 function ErrorState({ message }: { message: string }) {
+  const { t } = useTranslation("tournaments");
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 px-8 py-16 text-center">
       <p className="text-sm text-destructive">{message}</p>
       <p className="text-xs text-muted-foreground">
-        Verifique se a chave de API está configurada e tente novamente.
+        {t("aiReport.errorHelp")}
       </p>
     </div>
   );

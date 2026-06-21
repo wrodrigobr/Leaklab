@@ -1,4 +1,17 @@
 {
+  "aiReport": {
+    "button": "Análise IA do torneio",
+    "header": "Relatório do AI Coach",
+    "close": "Fechar",
+    "processing": "IA processando",
+    "analyzing": "Analisando torneio completo",
+    "stage1": "Carregando decisões do torneio…",
+    "stage2": "Calculando padrões de leak…",
+    "stage3": "Avaliando contexto ICM e ranges…",
+    "stage4": "Gerando análise personalizada…",
+    "errorGen": "Erro ao gerar análise",
+    "errorHelp": "Verifique se a chave de API está configurada e tente novamente."
+  },
   "title": "Histórico de torneios",
   "eyebrow": "Análise de performance",
   "subtitle": "Revise seus resultados, filtre por rede e analise decisões hand-by-hand.",
