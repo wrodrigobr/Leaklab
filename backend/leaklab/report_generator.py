@@ -16,18 +16,20 @@ from typing import List, Dict
 from .session_metrics import build_session_metrics
 from .leak_correlator import correlate_leaks
 
-# ── Palette ───────────────────────────────────────────────────────────────────
-_BG     = '#0a0f1e'
-_SURF   = '#111827'
-_SURF2  = '#162032'
-_BORD   = '#1f2937'
-_TEXT   = '#f9fafb'
-_MUTED  = '#9ca3af'
-_GREEN  = '#10b981'
-_YELLOW = '#f59e0b'
-_ORANGE = '#f97316'
-_RED    = '#ef4444'
-_BLUE   = '#60a5fa'
+# ── Palette (light / print-friendly) ──────────────────────────────────────────
+_BG     = '#ffffff'   # page background
+_SURF   = '#ffffff'   # card surface
+_SURF2  = '#f1f5f9'   # subtle fill
+_BORD   = '#e2e8f0'   # gray borders
+_TEXT   = '#0A0E1A'   # dark slate (brand)
+_MUTED  = '#64748b'   # muted gray
+_TEAL   = '#2DD4BF'   # GrindLab brand accent
+_TEAL_D = '#0f766e'   # darker teal (text on white)
+_GREEN  = '#059669'
+_YELLOW = '#d97706'
+_ORANGE = '#ea580c'
+_RED    = '#dc2626'
+_BLUE   = '#2563eb'
 
 _LABEL_COLOR = {
     'standard':      _GREEN,
@@ -75,10 +77,15 @@ def generate_pdf_bytes(html: str) -> bytes:
 
 # ── Context builder ───────────────────────────────────────────────────────────
 
+_MISTAKE_LABELS = ('small_mistake', 'clear_mistake')
+
+
 def _build_ctx(t: dict, decisions: list, phases: list) -> dict:
     if not decisions:
         return {'empty': True, 'total': 0, 'label_counts': {}, 'label_pct': {},
-                'top_leaks': [], 'icm': {}, 'worst': []}
+                'top_leaks': [], 'icm': {}, 'worst': [],
+                'streets': [], 'positions': [], 'gto': None,
+                'ev_total': 0.0, 'ev_worst': [], 'recos': []}
 
     label_counts = Counter(d.get('label', 'standard') for d in decisions)
     total = len(decisions)
@@ -91,7 +98,7 @@ def _build_ctx(t: dict, decisions: list, phases: list) -> dict:
     top_leaks = sorted(
         [(k, sum(v) / len(v), len(v)) for k, v in spot_scores.items() if len(v) >= 2],
         key=lambda x: x[1], reverse=True
-    )[:5]
+    )[:8]
 
     icm_groups: dict = defaultdict(list)
     for d in decisions:
@@ -108,127 +115,271 @@ def _build_ctx(t: dict, decisions: list, phases: list) -> dict:
 
     worst = sorted(decisions, key=lambda x: x.get('score', 0) or 0, reverse=True)[:10]
 
+    # ── Per-street breakdown ──────────────────────────────────────────────────
+    _street_order = ['preflop', 'flop', 'turn', 'river']
+    street_groups: dict = defaultdict(list)
+    for d in decisions:
+        st = (d.get('street') or '?').lower()
+        street_groups[st].append(d)
+    streets = []
+    for st in _street_order:
+        ds = street_groups.get(st)
+        if not ds:
+            continue
+        n = len(ds)
+        mistakes = sum(1 for d in ds if d.get('label') in _MISTAKE_LABELS)
+        std = sum(1 for d in ds if d.get('label') == 'standard')
+        evs = [d.get('ev_loss_bb') for d in ds if d.get('ev_loss_bb') is not None]
+        streets.append({
+            'street': st,
+            'n': n,
+            'avg': sum((d.get('score') or 0) for d in ds) / n,
+            'accuracy': std / n * 100,
+            'mistake_rate': mistakes / n * 100,
+            'ev_loss': sum(abs(e) for e in evs) if evs else None,
+        })
+
+    # ── Position breakdown ────────────────────────────────────────────────────
+    pos_groups: dict = defaultdict(list)
+    for d in decisions:
+        pos = d.get('position')
+        if pos:
+            pos_groups[str(pos)].append(d)
+    positions = []
+    for pos, ds in pos_groups.items():
+        n = len(ds)
+        std = sum(1 for d in ds if d.get('label') == 'standard')
+        mistakes = sum(1 for d in ds if d.get('label') in _MISTAKE_LABELS)
+        positions.append({
+            'position': pos,
+            'n': n,
+            'avg': sum((d.get('score') or 0) for d in ds) / n,
+            'accuracy': std / n * 100,
+            'mistakes': mistakes,
+        })
+    positions.sort(key=lambda p: (-p['avg'], -p['n']))
+
+    # ── GTO deviation split ───────────────────────────────────────────────────
+    gto_buckets = {'correct': 0, 'minor': 0, 'critical': 0}
+    gto_seen = 0
+    for d in decisions:
+        gl = d.get('gto_label')
+        if not gl:
+            continue
+        gto_seen += 1
+        if gl in ('gto_correct', 'gto_mixed'):
+            gto_buckets['correct'] += 1
+        elif gl == 'gto_minor_deviation':
+            gto_buckets['minor'] += 1
+        elif gl == 'gto_critical':
+            gto_buckets['critical'] += 1
+        else:
+            gto_seen -= 1  # unknown label, ignore
+    gto = {'seen': gto_seen, **gto_buckets} if gto_seen else None
+
+    # ── EV-loss aggregation ───────────────────────────────────────────────────
+    ev_vals = [d for d in decisions if d.get('ev_loss_bb') is not None]
+    ev_total = sum(abs(d.get('ev_loss_bb') or 0) for d in ev_vals)
+    ev_worst = sorted(ev_vals, key=lambda d: abs(d.get('ev_loss_bb') or 0),
+                      reverse=True)[:8]
+
+    # ── Study recommendations (derived heuristics) ────────────────────────────
+    recos = _build_recos(streets, positions, top_leaks, label_pct, gto, icm)
+
     return {
         'empty': False, 'total': total,
         'label_counts': dict(label_counts),
         'label_pct': dict(label_pct),
         'top_leaks': top_leaks, 'icm': icm, 'worst': worst,
+        'streets': streets, 'positions': positions, 'gto': gto,
+        'ev_total': ev_total, 'ev_worst': ev_worst, 'recos': recos,
     }
+
+
+def _build_recos(streets, positions, top_leaks, label_pct, gto, icm) -> list:
+    """Heuristic study recommendations derived strictly from computed data."""
+    recos = []
+    clr = label_pct.get('clear_mistake', 0)
+    if clr >= 8:
+        recos.append(
+            f'Taxa de Clear Mistakes em {clr:.1f}% (referência saudável 2–8%). '
+            f'Priorize revisar as decisões mais críticas listadas abaixo.')
+    # worst street
+    bad_streets = [s for s in streets if s['n'] >= 3]
+    if bad_streets:
+        worst_st = max(bad_streets, key=lambda s: s['mistake_rate'])
+        if worst_st['mistake_rate'] >= 20:
+            recos.append(
+                f'Street com maior taxa de erro: {worst_st["street"]} '
+                f'({worst_st["mistake_rate"]:.0f}% mistakes em {worst_st["n"]} decisões). '
+                f'Concentre o estudo nesse momento da mão.')
+    # worst position
+    bad_pos = [p for p in positions if p['n'] >= 3]
+    if bad_pos:
+        wp = min(bad_pos, key=lambda p: p['accuracy'])
+        if wp['accuracy'] < 60:
+            recos.append(
+                f'Posição mais fraca: {wp["position"]} '
+                f'({wp["accuracy"]:.0f}% standard em {wp["n"]} decisões). '
+                f'Reveja os ranges e linhas dessa posição.')
+    # top leak
+    if top_leaks:
+        spot, score, n = top_leaks[0]
+        nice = spot.replace('_', ' ').replace('/', ' / ')
+        recos.append(
+            f'Spot com maior score médio: "{nice}" '
+            f'(score {score:.3f} em {n} ocorrências). É o vazamento mais recorrente.')
+    # GTO critical
+    if gto and gto.get('critical', 0) > 0 and gto.get('seen'):
+        pct = gto['critical'] / gto['seen'] * 100
+        recos.append(
+            f'{gto["critical"]} desvios críticos de GTO ({pct:.0f}% das decisões avaliadas). '
+            f'Estude as soluções do solver nesses spots.')
+    # ICM high pressure
+    hi = icm.get('high')
+    if hi and hi['n'] >= 3 and hi['avg'] > 0.15:
+        recos.append(
+            f'Sob ICM alto o score médio sobe para {hi["avg"]:.3f} '
+            f'({hi["n"]} decisões). Treine spots de bolha e mesa final.')
+    return recos
 
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 
 _CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Chakra+Petch:wght@600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 @page { size: A4; margin: 1.4cm 1.2cm; }
 
 body {
-  background: #0a0f1e;
-  color: #f9fafb;
+  background: #ffffff;
+  color: #0A0E1A;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 10pt;
   line-height: 1.6;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
+.wrap { max-width: 920px; margin: 0 auto; padding: 16px; }
 
 /* Cover */
 .cover {
-  background: linear-gradient(135deg, #0d1b2e 0%, #091525 55%, #0a0f1e 100%);
-  border: 1px solid #1e3a5f;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-top: 4px solid #2DD4BF;
   border-radius: 12px;
-  padding: 36px 36px 32px;
+  padding: 32px 34px 28px;
   margin-bottom: 18px;
 }
-.cover-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-.brand { font-size: 10.5pt; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #f9fafb; }
-.brand .ai { color: #10b981; font-style: italic; font-weight: 300; text-transform: lowercase; letter-spacing: 0; }
-.cover-date { font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #9ca3af; text-align: right; }
-.cover-hero { font-size: 26pt; font-weight: 300; letter-spacing: -0.02em; color: #f9fafb; margin-bottom: 4px; }
-.cover-sub { font-size: 9.5pt; color: #9ca3af; margin-bottom: 26px; }
+.cover-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 26px; }
+.brand { font-family: 'Chakra Petch', sans-serif; font-size: 13pt; font-weight: 700; letter-spacing: 0.02em; color: #0A0E1A; }
+.brand .ai { color: #0f766e; }
+.cover-date { font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #64748b; text-align: right; }
+.cover-hero { font-family: 'Chakra Petch', sans-serif; font-size: 26pt; font-weight: 700; letter-spacing: -0.01em; color: #0A0E1A; margin-bottom: 4px; }
+.cover-sub { font-size: 9.5pt; color: #64748b; margin-bottom: 24px; }
 .meta-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .mp {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 8px 14px;
 }
-.mp-k { font-size: 7pt; text-transform: uppercase; letter-spacing: 0.07em; color: #9ca3af; margin-bottom: 3px; }
-.mp-v { font-family: 'JetBrains Mono', monospace; font-size: 14pt; font-weight: 700; color: #f9fafb; line-height: 1.1; }
+.mp-k { font-size: 7pt; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; margin-bottom: 3px; }
+.mp-v { font-family: 'JetBrains Mono', monospace; font-size: 14pt; font-weight: 700; color: #0A0E1A; line-height: 1.1; }
 
 /* Sections */
 .sect {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 14px;
   break-inside: avoid;
 }
 .sect-title {
-  font-size: 7.5pt;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 10pt;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #9ca3af;
+  letter-spacing: 0.02em;
+  color: #0A0E1A;
   margin-bottom: 14px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 2px solid #2DD4BF;
 }
+.sect-note { font-size: 8.5pt; color: #64748b; margin-bottom: 12px; line-height: 1.5; }
+
+/* Executive summary */
+.summary p { font-size: 9pt; color: #1f2937; margin-bottom: 8px; line-height: 1.6; }
+.summary p:last-child { margin-bottom: 0; }
+.summary b { color: #0A0E1A; }
+
+/* Recommendations */
+.reco { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid #eef2f6; font-size: 8.8pt; color: #1f2937; line-height: 1.5; }
+.reco:last-child { border-bottom: none; }
+.reco-n { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #0f766e; flex-shrink: 0; }
 
 /* KPI row */
 .kpi-row { display: flex; gap: 10px; margin-bottom: 14px; }
 .kc {
   flex: 1;
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 16px 12px;
   text-align: center;
 }
-.kc-l { font-size: 7pt; text-transform: uppercase; letter-spacing: 0.07em; color: #9ca3af; margin-bottom: 8px; }
+.kc-l { font-size: 7pt; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; margin-bottom: 8px; }
 .kc-v { font-family: 'JetBrains Mono', monospace; font-size: 18pt; font-weight: 700; line-height: 1; }
-.kc-s { font-size: 7.5pt; color: #9ca3af; margin-top: 4px; }
+.kc-s { font-size: 7.5pt; color: #64748b; margin-top: 4px; }
 
 /* Bars */
 .bar { margin-bottom: 9px; }
 .bar-h { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 8.5pt; }
-.bar-t { background: rgba(255,255,255,0.06); border-radius: 4px; height: 7px; overflow: hidden; }
+.bar-t { background: #eef2f6; border-radius: 4px; height: 7px; overflow: hidden; }
 .bar-f { height: 100%; border-radius: 4px; }
 
 /* Table */
 .dt { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
 .dt th {
   text-align: left; padding: 6px 9px;
-  font-size: 7.5pt; font-weight: 600;
+  font-size: 7.5pt; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.07em;
-  color: #9ca3af; border-bottom: 1px solid #1f2937;
+  color: #64748b; border-bottom: 2px solid #e2e8f0;
 }
 .dt th.r { text-align: right; }
-.dt td { padding: 8px 9px; border-bottom: 1px solid rgba(31,41,55,0.35); font-size: 8.5pt; }
+.dt td { padding: 8px 9px; border-bottom: 1px solid #eef2f6; font-size: 8.5pt; color: #1f2937; }
 .dt td.m { font-family: 'JetBrains Mono', monospace; }
 .dt td.r { text-align: right; font-family: 'JetBrains Mono', monospace; }
 .dt tr:last-child td { border-bottom: none; }
-.dt tr:hover td { background: rgba(255,255,255,0.02); }
 
 /* Leak list */
-.lr { display: flex; align-items: center; gap: 9px; padding: 8px 0; border-bottom: 1px solid rgba(31,41,55,0.35); }
+.lr { display: flex; align-items: center; gap: 9px; padding: 8px 0; border-bottom: 1px solid #eef2f6; }
 .lr:last-child { border-bottom: none; }
-.lr-rk { font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #9ca3af; width: 18px; flex-shrink: 0; }
-.lr-nm { flex: 1; font-size: 8.5pt; }
-.lr-bt { width: 75px; background: rgba(255,255,255,0.05); border-radius: 3px; height: 5px; flex-shrink: 0; }
+.lr-rk { font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #64748b; width: 18px; flex-shrink: 0; }
+.lr-nm { flex: 1; font-size: 8.5pt; color: #1f2937; }
+.lr-bt { width: 75px; background: #eef2f6; border-radius: 3px; height: 5px; flex-shrink: 0; }
 .lr-bf { height: 100%; border-radius: 3px; }
 .lr-sc { font-family: 'JetBrains Mono', monospace; font-size: 8.5pt; font-weight: 700; width: 42px; text-align: right; flex-shrink: 0; }
-.lr-n { font-size: 7.5pt; color: #9ca3af; width: 26px; text-align: right; flex-shrink: 0; }
+.lr-n { font-size: 7.5pt; color: #64748b; width: 26px; text-align: right; flex-shrink: 0; }
 
 /* Badges */
 .badge { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 7.5pt; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
 
 /* Footer */
-footer { text-align: center; color: #6b7280; font-size: 7.5pt; padding: 16px 0 4px; font-family: 'JetBrains Mono', monospace; }
+footer { text-align: center; color: #94a3b8; font-size: 7.5pt; padding: 16px 0 4px; font-family: 'JetBrains Mono', monospace; }
+
+/* Print */
+@media print {
+  body { background: #ffffff; }
+  .wrap { max-width: none; padding: 0; }
+  .sect, .cover, .kc, .kpi-row { break-inside: avoid; page-break-inside: avoid; }
+  .dt tr { break-inside: avoid; }
+  footer { color: #64748b; }
+}
 """
 
 
@@ -251,27 +402,35 @@ def _render(t: dict, decisions: list, phases: list, ctx: dict, hero: str) -> str
     clr_pct = ctx['label_pct'].get('clear_mistake', 0)
     clr_c   = _score_color_rev(100 - clr_pct, 95, 85)
 
-    body = '\n'.join([
+    body = '\n'.join(filter(None, [
         _cover(hero, name, played, site, buy_in, place, std, std_c, avg, avg_c, hands, profit, now),
+        _summary_section(t, ctx, std, avg, clr_pct, hero),
         _kpi_row(std, std_c, avg, avg_c, clr_pct, clr_c, ctx),
         _quality_section(ctx),
+        _gto_section(ctx.get('gto')),
+        _street_section(ctx.get('streets')),
         _phase_section(phases),
-        _leaks_section(ctx['top_leaks']),
+        _position_section(ctx.get('positions')),
         _icm_section(ctx['icm']),
+        _leaks_section(ctx['top_leaks']),
+        _ev_section(ctx.get('ev_worst'), ctx.get('ev_total', 0)),
         _worst_section(ctx['worst']),
-    ])
+        _recos_section(ctx.get('recos')),
+    ]))
 
     return (
         '<!DOCTYPE html>\n'
         '<html lang="pt-BR">\n'
         '<head>\n'
         '<meta charset="UTF-8">\n'
-        f'<title>LeakLabs.ai — {_h.escape(name)}</title>\n'
+        f'<title>GrindLab — {_h.escape(name)}</title>\n'
         f'<style>{_CSS}</style>\n'
         '</head>\n'
         '<body>\n'
+        '<div class="wrap">\n'
         f'{body}\n'
-        f'<footer>LeakLabs.ai &nbsp;·&nbsp; Análise técnica de decisão MTT &nbsp;·&nbsp; {_h.escape(now)}</footer>\n'
+        f'<footer>GrindLab &nbsp;·&nbsp; grindlabpoker.com &nbsp;·&nbsp; Análise técnica de decisão MTT &nbsp;·&nbsp; {_h.escape(now)}</footer>\n'
+        '</div>\n'
         '</body>\n'
         '</html>'
     )
@@ -304,7 +463,7 @@ def _cover(hero, name, played, site, buy_in, place, std, std_c, avg, avg_c, hand
     return (
         f'<div class="cover">'
         f'<div class="cover-top">'
-        f'<div class="brand">LeakLabs<span class="ai">.ai</span></div>'
+        f'<div class="brand">Grind<span class="ai">Lab</span></div>'
         f'<div class="cover-date">Relatório Técnico<br>{_h.escape(now)}</div>'
         f'</div>'
         f'<div class="cover-hero">{_h.escape(hero)}</div>'
@@ -333,6 +492,206 @@ def _kpi_row(std, std_c, avg, avg_c, clr_pct, clr_c, ctx):
     return f'<div class="kpi-row">{items}</div>'
 
 
+def _summary_section(t: dict, ctx: dict, std, avg, clr_pct, hero) -> str:
+    total = ctx.get('total', 0)
+    if not total:
+        return ''
+    mistakes = (ctx['label_counts'].get('small_mistake', 0)
+                + ctx['label_counts'].get('clear_mistake', 0))
+    marginal = ctx['label_counts'].get('marginal', 0)
+
+    if std >= 75:
+        verdict = 'jogo sólido e consistente'
+    elif std >= 60:
+        verdict = 'jogo competente com pontos de ajuste claros'
+    else:
+        verdict = 'desempenho abaixo do esperado, com vazamentos relevantes'
+
+    parts = [
+        f'<b>{_h.escape(str(hero))}</b> tomou <b>{total}</b> decisões analisadas neste torneio, '
+        f'das quais <b>{ctx["label_counts"].get("standard", 0)}</b> dentro do padrão '
+        f'(<b>{std:.1f}%</b> Standard), <b>{marginal}</b> marginais e <b>{mistakes}</b> com erro '
+        f'(small/clear). O score médio foi <b>{avg:.4f}</b> '
+        f'(quanto menor, melhor), indicando {verdict}.'
+    ]
+
+    gto = ctx.get('gto')
+    if gto and gto.get('seen'):
+        acc = gto['correct'] / gto['seen'] * 100
+        parts.append(
+            f'Entre as <b>{gto["seen"]}</b> decisões avaliadas contra o GTO Solver, '
+            f'<b>{acc:.0f}%</b> seguiram a solução, com <b>{gto["critical"]}</b> desvios críticos.')
+
+    ev_total = ctx.get('ev_total', 0)
+    if ev_total and ev_total > 0:
+        parts.append(
+            f'A perda de EV acumulada nas decisões medidas soma aproximadamente '
+            f'<b>{ev_total:.1f} BB</b>.')
+
+    body = ''.join(f'<p>{p}</p>' for p in parts)
+    return (
+        f'<div class="sect summary">'
+        f'<div class="sect-title">Resumo Executivo</div>'
+        f'{body}'
+        f'</div>'
+    )
+
+
+def _gto_section(gto: dict | None) -> str:
+    if not gto or not gto.get('seen'):
+        return ''
+    seen = gto['seen']
+    rows_def = [
+        ('correct',  'Correto (GTO)',   _GREEN),
+        ('minor',    'Desvio Menor',    _YELLOW),
+        ('critical', 'Desvio Crítico',  _RED),
+    ]
+    bars = ''
+    for key, lbl, color in rows_def:
+        cnt = gto.get(key, 0)
+        pct = cnt / seen * 100 if seen else 0
+        bars += (
+            f'<div class="bar">'
+            f'<div class="bar-h">'
+            f'<span style="color:{color}">{lbl}</span>'
+            f'<span class="mono" style="color:{color}">{pct:.1f}% &nbsp;'
+            f'<span style="color:{_MUTED};font-weight:400">({cnt})</span></span>'
+            f'</div>'
+            f'<div class="bar-t"><div class="bar-f" style="width:{min(pct,100):.1f}%;background:{color}"></div></div>'
+            f'</div>'
+        )
+    return (
+        f'<div class="sect">'
+        f'<div class="sect-title">Aderência ao GTO Solver</div>'
+        f'<div class="sect-note">{seen} decisões avaliadas contra a solução do solver.</div>'
+        f'{bars}'
+        f'</div>'
+    )
+
+
+def _street_section(streets: list | None) -> str:
+    if not streets:
+        return ''
+    _names = {'preflop': 'Preflop', 'flop': 'Flop', 'turn': 'Turn', 'river': 'River'}
+    has_ev = any(s.get('ev_loss') is not None for s in streets)
+    rows = ''
+    for s in streets:
+        acc_c = _score_color_rev(s['accuracy'], 70, 55)
+        avg_c = _score_color_fwd(s['avg'], 0.08, 0.15)
+        ev_cell = ''
+        if has_ev:
+            ev = s.get('ev_loss')
+            ev_cell = (f'<td class="r" style="color:{_MUTED}">{ev:.1f}</td>'
+                       if ev is not None else '<td class="r" style="color:#cbd5e1">—</td>')
+        rows += (
+            f'<tr>'
+            f'<td>{_names.get(s["street"], _h.escape(s["street"]))}</td>'
+            f'<td class="r">{s["n"]}</td>'
+            f'<td class="r" style="color:{acc_c}">{s["accuracy"]:.0f}%</td>'
+            f'<td class="r" style="color:{avg_c}">{s["avg"]:.4f}</td>'
+            f'<td class="r" style="color:{_score_color_rev(100-s["mistake_rate"],90,80)}">{s["mistake_rate"]:.0f}%</td>'
+            f'{ev_cell}'
+            f'</tr>'
+        )
+    ev_th = '<th class="r">EV Loss (BB)</th>' if has_ev else ''
+    return (
+        f'<div class="sect">'
+        f'<div class="sect-title">Desempenho por Street</div>'
+        f'<table class="dt">'
+        f'<thead><tr>'
+        f'<th>Street</th><th class="r">Decisões</th><th class="r">Standard</th>'
+        f'<th class="r">Avg Score</th><th class="r">Mistake %</th>{ev_th}'
+        f'</tr></thead>'
+        f'<tbody>{rows}</tbody>'
+        f'</table>'
+        f'</div>'
+    )
+
+
+def _position_section(positions: list | None) -> str:
+    if not positions:
+        return ''
+    rows = ''
+    for p in positions:
+        acc_c = _score_color_rev(p['accuracy'], 70, 55)
+        avg_c = _score_color_fwd(p['avg'], 0.08, 0.15)
+        rows += (
+            f'<tr>'
+            f'<td class="m">{_h.escape(p["position"])}</td>'
+            f'<td class="r">{p["n"]}</td>'
+            f'<td class="r" style="color:{acc_c}">{p["accuracy"]:.0f}%</td>'
+            f'<td class="r" style="color:{avg_c}">{p["avg"]:.4f}</td>'
+            f'<td class="r" style="color:{_MUTED}">{p["mistakes"]}</td>'
+            f'</tr>'
+        )
+    return (
+        f'<div class="sect">'
+        f'<div class="sect-title">Desempenho por Posição</div>'
+        f'<table class="dt">'
+        f'<thead><tr>'
+        f'<th>Posição</th><th class="r">Decisões</th><th class="r">Standard</th>'
+        f'<th class="r">Avg Score</th><th class="r">Erros</th>'
+        f'</tr></thead>'
+        f'<tbody>{rows}</tbody>'
+        f'</table>'
+        f'</div>'
+    )
+
+
+def _ev_section(ev_worst: list | None, ev_total: float) -> str:
+    if not ev_worst:
+        return ''
+    rows = ''
+    for i, d in enumerate(ev_worst, 1):
+        ev      = abs(d.get('ev_loss_bb') or 0)
+        street  = d.get('street', '?')
+        cards   = d.get('hero_cards', '?') or '?'
+        action  = d.get('action_taken', '?') or '?'
+        best    = d.get('best_action', '?') or d.get('gto_action', '?') or '?'
+        hand_id = str(d.get('hand_id', d.get('id', '?')))[-7:]
+        rows += (
+            f'<tr>'
+            f'<td class="m" style="color:{_MUTED}">{i}</td>'
+            f'<td class="m" style="color:{_MUTED};font-size:7.5pt">#{_h.escape(hand_id)}</td>'
+            f'<td>{_h.escape(street)}</td>'
+            f'<td class="m">{_h.escape(cards)}</td>'
+            f'<td style="color:{_RED};font-weight:600">{_h.escape(action)}</td>'
+            f'<td style="color:{_GREEN}">{_h.escape(best)}</td>'
+            f'<td class="r" style="color:{_RED};font-weight:700">{ev:.2f}</td>'
+            f'</tr>'
+        )
+    note = (f'Perda de EV total medida: <b style="color:{_RED}">{ev_total:.1f} BB</b>.'
+            if ev_total else '')
+    return (
+        f'<div class="sect">'
+        f'<div class="sect-title">Decisões Mais Caras (EV Loss)</div>'
+        f'<div class="sect-note">{note}</div>'
+        f'<table class="dt">'
+        f'<thead><tr>'
+        f'<th>#</th><th>Mão</th><th>Street</th><th>Cartas</th>'
+        f'<th>Tomou</th><th>Esperado</th><th class="r">EV Loss (BB)</th>'
+        f'</tr></thead>'
+        f'<tbody>{rows}</tbody>'
+        f'</table>'
+        f'</div>'
+    )
+
+
+def _recos_section(recos: list | None) -> str:
+    if not recos:
+        return ''
+    items = ''.join(
+        f'<div class="reco"><span class="reco-n">{i:02d}</span><span>{_h.escape(r)}</span></div>'
+        for i, r in enumerate(recos, 1)
+    )
+    return (
+        f'<div class="sect">'
+        f'<div class="sect-title">Recomendações de Estudo</div>'
+        f'{items}'
+        f'</div>'
+    )
+
+
 def _quality_section(ctx: dict) -> str:
     label_order = ['standard', 'marginal', 'small_mistake', 'clear_mistake']
     bars = ''
@@ -352,8 +711,8 @@ def _quality_section(ctx: dict) -> str:
             f'</div>'
             f'</div>'
         )
-    ref = (f'<div style="margin-top:12px;padding:10px 12px;background:rgba(255,255,255,0.03);'
-           f'border-radius:6px;font-size:8pt;color:{_MUTED}">'
+    ref = (f'<div style="margin-top:12px;padding:10px 12px;background:#f1f5f9;'
+           f'border:1px solid #e2e8f0;border-radius:6px;font-size:8pt;color:{_MUTED}">'
            f'<span style="color:{_TEXT};font-weight:600">Referência MTT saudável:&nbsp;</span>'
            f'Standard 60–80% &nbsp;·&nbsp; Marginal 10–20% &nbsp;·&nbsp; '
            f'Small Mistake 5–15% &nbsp;·&nbsp; Clear Mistake 2–8%</div>')
