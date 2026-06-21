@@ -525,7 +525,7 @@ export default function GhostTable() {
 
         {/* ── Feedback (result) — card flutuante inferior ── */}
         {phase === "result" && lastResult && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 w-[min(92vw,460px)] rounded-2xl bg-background/90 backdrop-blur p-3 ring-1 ring-border shadow-2xl space-y-2.5">
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 w-[min(88vw,380px)] rounded-2xl bg-background/90 backdrop-blur p-2.5 ring-1 ring-border shadow-2xl space-y-2">
             <div className="flex items-center gap-2.5">
               {lastResult.is_correct
                 ? <CheckCircle2 className="size-6 shrink-0 text-success" aria-hidden />
@@ -545,11 +545,6 @@ export default function GhostTable() {
                 </div>
                 <p className="text-[11px] text-muted-foreground truncate">{t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}</p>
               </div>
-              {pressureMode && streak > 0 && (
-                <div className="flex items-center gap-1 font-mono text-sm font-bold text-amber-400 shrink-0">
-                  <Flame className="size-4" aria-hidden />{streak}
-                </div>
-              )}
             </div>
 
             {gtoStrategy && gtoStrategy.length > 0 && (
@@ -559,26 +554,11 @@ export default function GhostTable() {
               </div>
             )}
 
-            <div className="flex gap-2">
-              <button
-                onClick={analysis ? () => setAnalysisOpen(true) : requestAnalysis}
-                disabled={analysisLoading}
-                className={cn(
-                  "inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 font-mono text-[11px] font-semibold transition-colors disabled:opacity-60",
-                  analysis
-                    ? "border-primary/50 bg-primary/10 text-primary hover:bg-primary/20"
-                    : "border-border bg-hud-surface text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"
-                )}>
-                {analysisLoading
-                  ? <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                  : <BookOpen className="size-3.5" aria-hidden />}
-                <span>{analysis ? t("result.viewAnalysis") : t("result.requestAnalysis")}</span>
-              </button>
-              <button onClick={nextSpot}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors">
-                {t("next")} <ArrowRight className="size-4" aria-hidden />
-              </button>
-            </div>
+            {/* Mobile: sem "ver análise" (texto longo de IA ruim em tela pequena) — só avançar. */}
+            <button onClick={nextSpot}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary-glow transition-colors">
+              {t("next")} <ArrowRight className="size-4" aria-hidden />
+            </button>
           </div>
         )}
 
