@@ -1384,7 +1384,10 @@ def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
         if raw in ('shove', 'jam', 'allin', 'all-in', 'all_in'):
             return 'jam'
         if raw.startswith('bet'):
-            return 'bet'
+            # Enfrentando aposta (facing>0), a agressão legal é RAISE, não bet (não há botão
+            # 'bet' vs-aposta). O solver rotula o raise-sobre-aposta como 'bet_Xbb'; normaliza
+            # p/ raise. Sem aposta em frente, 'bet' é bet de verdade (postflop first-to-act).
+            return 'raise' if facing_bb > 0 else 'bet'
         if raw.startswith('raise'):
             # Preflop, abrir o pote é RAISE (raisa por cima das blinds), nunca "bet".
             # Só postflop (sem blinds em frente) agredir sem aposta anterior = "bet".
@@ -1526,6 +1529,7 @@ def player_drill_submit():
         new_action=new_action,
         new_score=new_score,
         original_score=original_score,
+        is_correct=is_correct,   # acerto autoritativo (tier GTO), não delta<0
     )
 
     # XP — drill_completed só na 1ª vez do dia por decisão (anti-farm);

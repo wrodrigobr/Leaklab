@@ -624,6 +624,12 @@ def _run_migrations(conn):
         try:
             conn.execute("ALTER TABLE drill_sessions ADD COLUMN srs_interval_days INTEGER NOT NULL DEFAULT 3")
         except Exception: pass
+        # Correção do acerto autoritativo (tier de frequência GTO) — antes o SRS/stats
+        # rederivavam de delta<0, que marcava errado spots GTO-corretos de score já baixo.
+        # INTEGER 0/1 (não BOOLEAN) p/ evitar o gotcha SQLite/Postgres; NULL = linha legada.
+        try:
+            conn.execute("ALTER TABLE drill_sessions ADD COLUMN correct INTEGER")
+        except Exception: pass
         # Sprint Q — FEAT-02+03: XP server-side + Daily Focus
         for _col, _sql in [
             ("xp_total",            "ALTER TABLE users ADD COLUMN xp_total            INTEGER NOT NULL DEFAULT 0"),
@@ -1205,6 +1211,7 @@ def _run_migrations(conn):
         for col, sql in [
             ("next_drill_at",     "ALTER TABLE drill_sessions ADD COLUMN next_drill_at     TEXT"),
             ("srs_interval_days", "ALTER TABLE drill_sessions ADD COLUMN srs_interval_days INTEGER NOT NULL DEFAULT 3"),
+            ("correct",           "ALTER TABLE drill_sessions ADD COLUMN correct           INTEGER"),
         ]:
             if col not in drill_existing:
                 try: conn.execute(sql)

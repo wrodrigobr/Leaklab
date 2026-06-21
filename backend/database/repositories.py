@@ -1178,11 +1178,17 @@ _SRS_INTERVALS = [3, 7, 14, 28, 60]
 
 
 def save_drill_session(user_id: int, decision_id: int, new_action: str,
-                       new_score: float, original_score: float) -> dict:
-    """Sprint R — Salva drill com lógica SRS: acerto dobra intervalo, erro reseta para 3 dias."""
+                       new_score: float, original_score: float,
+                       is_correct: bool | None = None) -> dict:
+    """Sprint R — Salva drill com lógica SRS: acerto dobra intervalo, erro reseta para 3 dias.
+
+    is_correct: acerto AUTORITATIVO (tier de frequência GTO do submit). Quando None, cai no
+    legado delta<0 — que marcava errado spots GTO-corretos cujo score já era baixo (não podia
+    melhorar), sabotando o agendamento SRS e a mastery XP. Persistido na coluna `correct`."""
     from datetime import datetime, timedelta
     delta      = round(new_score - original_score, 4)
-    is_correct = delta < 0  # score melhorou = acerto
+    if is_correct is None:
+        is_correct = delta < 0  # legado: score melhorou = acerto
 
     conn = get_conn()
     try:
@@ -1221,10 +1227,10 @@ def save_drill_session(user_id: int, decision_id: int, new_action: str,
 
         conn.execute(_adapt("""
             INSERT INTO drill_sessions
-                (user_id, decision_id, new_action, new_score, original_score, delta, next_drill_at, srs_interval_days)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (user_id, decision_id, new_action, new_score, original_score, delta, next_drill_at, srs_interval_days, correct)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """), (user_id, decision_id, new_action, new_score, original_score,
-               delta, next_drill_at, new_interval))
+               delta, next_drill_at, new_interval, 1 if is_correct else 0))
         conn.commit()
         return {
             'decision_id':       decision_id,
@@ -1252,8 +1258,12 @@ def get_drill_stats(user_id: int, days: int = 30) -> dict:
             SELECT
                 COUNT(*)                                          AS total,
                 AVG(delta)                                        AS avg_delta,
-                SUM(CASE WHEN delta < 0 THEN 1 ELSE 0 END)       AS correct,
-                SUM(CASE WHEN delta >= 0 THEN 1 ELSE 0 END)      AS incorrect
+                SUM(CASE WHEN correct = 1 THEN 1
+                         WHEN correct IS NULL AND delta < 0 THEN 1
+                         ELSE 0 END)                              AS correct,
+                SUM(CASE WHEN correct = 0 THEN 1
+                         WHEN correct IS NULL AND delta >= 0 THEN 1
+                         ELSE 0 END)                              AS incorrect
             FROM drill_sessions
             WHERE user_id = ? AND drilled_at >= ?
         """), (user_id, cutoff)).fetchone()

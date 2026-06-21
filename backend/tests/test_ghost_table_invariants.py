@@ -155,5 +155,48 @@ check(legal_actions("flop", 0, "BTN") == {"check", "bet", "jam"}, "postflop livr
 check("check" not in legal_actions("flop", 4.0, "BTN"), "enfrentando aposta: NÃO oferece check")
 check("bet" not in legal_actions("preflop", 0, "CO"), "preflop abrindo: NÃO oferece bet (é raise)")
 
+# ── INV: SRS/stats usam o acerto AUTORITATIVO (tier), não delta<0 (BUG B) ─────
+# Spot GTO-correto cujo score original já é baixo: delta>=0, mas is_correct=True deve
+# avançar o SRS e contar como correto (antes resetava p/ 3 dias e contava errado).
+import os as _os
+_os.environ.setdefault('LEAKLAB_DB', ':memory:')
+try:
+    from database.schema import init_db as _init_db
+    _init_db()
+except Exception:
+    pass
+try:
+    from database.repositories import save_drill_session as _save
+    # Para isolar a lógica, validamos a assinatura/no-op do delta vs is_correct sem DB real:
+    import inspect as _insp
+    _sig = _insp.signature(_save)
+    check('is_correct' in _sig.parameters, "save_drill_session aceita is_correct autoritativo")
+    check(_sig.parameters['is_correct'].default is None, "is_correct default None (fallback delta<0 legado)")
+except Exception as _e:
+    check(False, f"import save_drill_session: {_e}")
+
+# ── INV: _norm_action — bet* vira RAISE enfrentando aposta (BUG A2) ───────────
+# (a closure _norm_action vive dentro de _resolve_best_action_from_node; replicamos a regra)
+def _norm_action_rule(raw, facing_bb):
+    raw = (raw or '').lower()
+    if raw in ('shove', 'jam', 'allin', 'all-in', 'all_in'):
+        return 'jam'
+    if raw.startswith('bet'):
+        return 'raise' if facing_bb > 0 else 'bet'
+    if raw.startswith('raise'):
+        return 'raise'
+    return raw
+check(_norm_action_rule('bet_4.8bb', 7.3) == 'raise', "bet_* enfrentando aposta => raise (sem botão bet)")
+check(_norm_action_rule('bet_3bb', 0.0) == 'bet', "bet sem aposta em frente (postflop first-to-act) => bet")
+check(_norm_action_rule('shove', 5.0) == 'jam', "shove => jam")
+# E a regra real do app deve bater com isto (guarda contra divergência futura)
+try:
+    import api.app as _app
+    _src = _insp.getsource(_app._resolve_best_action_from_node)
+    check("return 'raise' if facing_bb > 0 else 'bet'" in _src,
+          "app._norm_action normaliza bet* => raise quando facing>0")
+except Exception as _e:
+    check(False, f"inspeção de _resolve_best_action_from_node: {_e}")
+
 print(f"\nTotal: {passed + failed} | Passed: {passed} | Failed: {failed}")
 sys.exit(1 if failed else 0)
