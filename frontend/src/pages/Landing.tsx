@@ -279,9 +279,6 @@ function PricingSection() {
             </div>
           ))}
         </div>
-        <p className="text-center font-mono text-[10px] text-muted-foreground mt-8">
-          {t("plans.manualActivation")}
-        </p>
       </div>
     </section>
   );

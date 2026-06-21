@@ -107,7 +107,6 @@ const AICoach = () => {
               <div>
                 <h2 className="text-sm font-semibold text-foreground">{t("session.title")}</h2>
                 <p className="font-mono text-[10px] text-muted-foreground">
-                  {t("session.model")} •{" "}
                   {ctxLoading
                     ? t("session.loadingCtx")
                     : ctx
