@@ -208,7 +208,6 @@ function renderBoard(cards: string[]): string {
 function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
   if (pot <= 0) return "";
   const cardH = G.boardH, cardY = G.CY - cardH / 2 - 6;
-  const cardBottom = cardY + cardH;
   const potStr = fmtAmt(pot, bb, unit);
 
   // pill dimensions
@@ -228,22 +227,8 @@ function renderPot(pot: number, bb: number, unit: "chips" | "bb"): string {
   h += `<text x="${valueX}" y="${textY}"
     fill="rgba(255,255,255,0.96)" font-family="Space Grotesk,sans-serif" font-size="16" font-weight="700">${potStr}</text>`;
 
-  // Fichas do pot: redundantes com a pílula "POT" (mesmo valor). No mobile (compact) são
-  // omitidas pra limpar o centro; desktop mantém o stack ilustrativo.
-  if (!G.compactPod) {
-    const chipBottomY = cardBottom + 38;
-    const potChipX = G.CX - 36;
-    h += chipStackSVG(potChipX, chipBottomY, pot);
-
-    // chip label pill
-    const cpW = Math.max(72, potStr.length * 9 + 20);
-    const cpX = potChipX - cpW / 2;
-    const cpY = chipBottomY + 8;
-    h += `<rect x="${cpX}" y="${cpY}" width="${cpW}" height="20" rx="10"
-      fill="rgba(6,12,28,0.68)" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>`;
-    h += `<text x="${potChipX}" y="${cpY + 14}" text-anchor="middle"
-      fill="rgba(255,255,255,0.90)" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">${potStr}</text>`;
-  }
+  // Fichas do pot REMOVIDAS (em qualquer tela): redundantes com a pílula "POT" — a cada fim
+  // de street as fichas já entram no valor exibido. Centro limpo, mantém só a pílula POT.
 
   return h;
 }
