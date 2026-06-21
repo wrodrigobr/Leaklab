@@ -19,10 +19,13 @@ export function VerdictPill({
   level,
   evLossBb,
   onClick,
+  desktop = false,
 }: {
   level: VerdictLevel | null;
   evLossBb?: number | null;
   onClick: () => void;
+  /** Quando true, o pill fica visível no desktop (lg+) em vez de oculto. */
+  desktop?: boolean;
 }) {
   const { t } = useTranslation("replayer");
   // Sem veredito (passo sem ação do hero) → nenhum botão: abriria um card vazio.
@@ -36,7 +39,8 @@ export function VerdictPill({
       onClick={onClick}
       aria-label={t(LABEL_KEY[level])}
       className={cn(
-        "lg:hidden group inline-flex items-center gap-2 rounded-full bg-hud-surface/90 px-3 py-2 shadow-lg ring-1 backdrop-blur-sm transition-all hover:bg-hud-surface active:scale-[0.97]",
+        "group inline-flex items-center gap-2 rounded-full bg-hud-surface/90 px-3 py-2 shadow-lg ring-1 backdrop-blur-sm transition-all hover:bg-hud-surface active:scale-[0.97]",
+        desktop ? "" : "lg:hidden",
         meta.ringCls,
       )}
     >

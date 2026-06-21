@@ -2029,7 +2029,7 @@ const Replayer = () => {
           <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
             {/* Mesa — height-bound: cabe SEMPRE na faixa flex-1 (acima dos controles), nunca
                 rola pra baixo do menu. Aspect troca por orientação (portrait vertical). */}
-            <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center">
+            <div className="relative flex-1 min-h-0 overflow-hidden flex items-center justify-center">
               <div
                 className="h-full w-auto max-w-full max-h-full mx-auto"
                 style={{ aspectRatio: tableOrientation === "portrait" ? "728 / 932" : "16 / 10" }}
@@ -2047,6 +2047,22 @@ const Replayer = () => {
                   hudTips={hudTips}
                   orientation={tableOrientation}
                   transparentBg
+                />
+              </div>
+
+              {/* Desktop: pill de veredito flutuando sobre a mesa (canto inferior-direito)
+                  que abre o modal de análise sob demanda. Some quando não há veredito. */}
+              <div className="hidden lg:block absolute bottom-3 right-3 z-30">
+                <VerdictPill
+                  desktop
+                  level={
+                    verdictLevel(step.error_label)
+                    ?? (step.is_hero && step.type === "action"
+                          ? (isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null
+                          : null)
+                  }
+                  evLossBb={step.ev_loss_bb}
+                  onClick={() => setShowAnalysis(true)}
                 />
               </div>
             </div>
@@ -2197,25 +2213,38 @@ const Replayer = () => {
               </div>
             )}
           </div>
-
-          {/* Side panel — desktop only, fixed width */}
-          <aside className="hidden lg:flex w-[288px] shrink-0 flex-col gap-2 overflow-y-auto">
-            <SidePanels
-              step={step} isError={isError} isCorrect={isCorrect}
-              coachAnnotation={coachAnnotation} studentId={studentId}
-              currentDecisionId={currentDecisionId} annotating={annotating}
-              annComment={annComment} annMode={annMode} annAction={annAction}
-              annOverride={annOverride} saveAnn={saveAnn} deleteAnn={deleteAnn}
-              replayData={replayData} playerAliases={playerAliases}
-              setAnnotating={setAnnotating} setAnnComment={setAnnComment}
-              setAnnMode={setAnnMode} setAnnAction={setAnnAction}
-              setAnnOverride={setAnnOverride} openAnnotationForm={openAnnotationForm}
-              t={t}
-              gtoRequestStatus={gtoRequestStatus} onRequestGto={handleRequestGto}
-              tournamentId={tournamentId} handId={handId}
-            />
-          </aside>
         </div>
+
+        {/* Desktop: análise sob demanda como modal centrado (mesa fica full-width).
+            Só desktop (lg) — no mobile o bottom-sheet acima cuida do showAnalysis. */}
+        {showAnalysis && (
+          <div className="hidden lg:flex fixed inset-0 z-50 items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAnalysis(false)} />
+            <div className="relative max-w-[420px] w-full max-h-[85vh] overflow-y-auto rounded-2xl bg-background ring-1 ring-border shadow-2xl p-4">
+              <button
+                onClick={() => setShowAnalysis(false)}
+                aria-label={t("close")}
+                className="absolute right-2.5 top-2.5 z-10 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+              <SidePanels
+                step={step} isError={isError} isCorrect={isCorrect}
+                coachAnnotation={coachAnnotation} studentId={studentId}
+                currentDecisionId={currentDecisionId} annotating={annotating}
+                annComment={annComment} annMode={annMode} annAction={annAction}
+                annOverride={annOverride} saveAnn={saveAnn} deleteAnn={deleteAnn}
+                replayData={replayData} playerAliases={playerAliases}
+                setAnnotating={setAnnotating} setAnnComment={setAnnComment}
+                setAnnMode={setAnnMode} setAnnAction={setAnnAction}
+                setAnnOverride={setAnnOverride} openAnnotationForm={openAnnotationForm}
+                t={t}
+                gtoRequestStatus={gtoRequestStatus} onRequestGto={handleRequestGto}
+                tournamentId={tournamentId} handId={handId}
+              />
+            </div>
+          </div>
+        )}
 
       </div>
 
