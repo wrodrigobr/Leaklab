@@ -738,13 +738,11 @@ const TournamentDetail = () => {
 
                     <div className="flex flex-col gap-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        {/* Veredito (severidade, 3 níveis) — só quando não é Correto */}
-                        {h.category !== "correct" && (
-                          <span className={cn("inline-flex items-center gap-1 rounded-sm px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider", meta.chipCls)}>
-                            <Icon className="size-3" aria-hidden />
-                            {meta.label}
-                          </span>
-                        )}
+                        {/* Veredito (severidade, 3 níveis) — sempre, inclusive Correto (badge ✓ verde) */}
+                        <span className={cn("inline-flex items-center gap-1 rounded-sm px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider", meta.chipCls)}>
+                          <Icon className="size-3" aria-hidden />
+                          {meta.label}
+                        </span>
                         {coachStudentId && h.adherence && (() => {
                           const A: Record<string, [string, string]> = {
                             diverge_perdido: ["⚠ NÃO ADERENTE · coach aponta", "bg-red-500/10 text-red-400 ring-red-400/40"],
