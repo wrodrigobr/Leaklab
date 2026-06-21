@@ -494,9 +494,17 @@ def _analyze_preflop_impl(
             base['coverage_reason'] = 'limped_pot'
             return base  # available=False — fora de cobertura (limped pot)
 
-    # BB checando em pot não contestado = free play, não é decisão de range
+    # BB checando em pot não contestado = free play. Não há range pra gradear (não dá pra
+    # foldar o BB; check é o default), mas é TRIVIALMENTE correto. Marca como tal em vez de
+    # "sem cobertura" pra não exibir "Spot N/A · Sem veredito".
     if scenario == 'rfi' and pos == 'BB' and action_taken.lower() == 'check':
-        return base  # available=False — sem análise
+        base.update({
+            'available': True, 'action_quality': 'correct', 'in_range': True,
+            'scenario': 'bb_option', 'bb_option': True,
+            'recommended_actions': ['check'],
+            'reasoning': 'Check de opção do BB em pote não-aberto: jogada padrão (trivial).',
+        })
+        return base
 
     # ── PKO overlay (RFI / vs_RFI) ────────────────────────────────────────────
     # Em torneio PKO o bounty muda a estratégia (abre-se/defende-se mais largo).

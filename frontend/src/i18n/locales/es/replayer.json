@@ -69,6 +69,7 @@
     "srcPushfoldTip": "Push/Fold zone: stack ≤12bb, decisión binaria shove o fold",
     "srcNaTip": "Spot incompatible: el solver fue consultado para un spot distinto del real",
     "scenVsShoveFallback": "vs Shove (heurística)",
+    "scenBbOption": "BB opción",
     "indScenario": "Escenario",
     "indHand": "Mano",
     "handInRangeTag": "en rango",

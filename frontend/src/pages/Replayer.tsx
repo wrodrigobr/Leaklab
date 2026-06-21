@@ -269,6 +269,7 @@ function SidePanels({
     squeeze: "Squeeze",
     faces_squeeze: "vs Squeeze",
     vs_4bet: "vs 4-Bet",
+    bb_option: t("card.scenBbOption"),
   };
   // Rótulo do range_pct por cenário: "abertura" só faz sentido no RFI; nos demais
   // é defesa/continuação/squeeze (antes era "Range de abertura" hardcoded p/ todos).
