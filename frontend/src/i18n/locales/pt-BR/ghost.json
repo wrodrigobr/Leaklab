@@ -103,5 +103,21 @@
     "gto_range": "Solver",
     "gto_stored": "Solver",
     "heuristic": "Heurística: sem solver"
+  },
+  "resetError": "Não foi possível reiniciar o histórico.",
+  "statAccuracy": "Precisão",
+  "statAvgDelta": "Δ médio",
+  "potOdds": "Pot Odds",
+  "potOddsNeeded": "necessário para call",
+  "gtoStrategy": "Estratégia GTO",
+  "gtoLabel": "GTO",
+  "nextReviewInDays": "Próxima revisão em {{n}} dias",
+  "resetReviewInDays": "Resetado, revisão em {{n}} dias",
+  "nextInDays": "Próximo em {{n}}d",
+  "resetInDays": "Resetado, em {{n}}d",
+  "tooltips": {
+    "tournamentId": "ID do torneio",
+    "handId": "ID da mão (copie para avaliar o spot)",
+    "callEquiv": "Equivalente a Call (stack coberto)"
   }
 }

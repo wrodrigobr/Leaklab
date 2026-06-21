@@ -514,7 +514,7 @@ export default function GhostTable() {
               {ACTION_KEYS.filter(a => legalSet.has(a)).map(action => (
                 <button key={action} onClick={() => submitAction(action)}
                   disabled={tableLoading || submitting || timedOut || (action === 'jam' && isCallEqualToJam)}
-                  title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
+                  title={action === 'jam' && isCallEqualToJam ? t("tooltips.callEquiv") : undefined}
                   className="min-w-[52px] rounded-full border border-border bg-hud-surface px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-foreground hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                   {t(`actions.${action}`)}
                 </button>
@@ -549,7 +549,7 @@ export default function GhostTable() {
 
             {gtoStrategy && gtoStrategy.length > 0 && (
               <div className="rounded-lg border border-border/40 bg-muted/5 px-2.5 py-1.5">
-                <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-1">GTO</p>
+                <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-1">{t("gtoLabel")}</p>
                 <GtoStrategyPanel strategy={gtoStrategy} playedAction={lastResult.new_action} compact />
               </div>
             )}
@@ -633,10 +633,10 @@ export default function GhostTable() {
           </span>
         )}
         {current.tournament_id && (
-          <span className="text-muted-foreground shrink-0 select-text font-mono" title="ID do torneio">T#{current.tournament_id}</span>
+          <span className="text-muted-foreground shrink-0 select-text font-mono" title={t("tooltips.tournamentId")}>T#{current.tournament_id}</span>
         )}
         {current.hand_id && (
-          <span className="text-muted-foreground shrink-0 select-text font-mono" title="ID da mão (copie p/ avaliar o spot)">#{current.hand_id}</span>
+          <span className="text-muted-foreground shrink-0 select-text font-mono" title={t("tooltips.handId")}>#{current.hand_id}</span>
         )}
         {current.played_at && (
           <span className="shrink-0">
@@ -656,14 +656,14 @@ export default function GhostTable() {
           <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap font-mono text-[10px] text-muted-foreground">
             <span className="font-semibold text-foreground">{t(`street.${current.street}`)}</span>
             {current.position    && <span>{current.position}</span>}
-            {current.stack_bb != null && <span>Stack: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
+            {current.stack_bb != null && <span>{t("context.stack")}: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
             {current.m_ratio   != null && <span>M: <span className="text-foreground">{current.m_ratio.toFixed(1)}</span></span>}
-            {drillStep.pot_bb != null && drillStep.pot_bb > 0 && <span>Pot: <span className="text-foreground">{drillStep.pot_bb.toFixed(1)}bb</span></span>}
+            {drillStep.pot_bb != null && drillStep.pot_bb > 0 && <span>{t("context.pot")}: <span className="text-foreground">{drillStep.pot_bb.toFixed(1)}bb</span></span>}
             {current.facing_desc
               ? <span className={cn("font-semibold", sit.variant === "aggression" ? "text-warning" : "text-foreground")}>{current.facing_desc}</span>
               : current.facing_bet != null && current.facing_bet > 0 && (
                   <span className={sit.variant === "aggression" ? "text-warning font-semibold" : ""}>
-                    Facing: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
+                    {t("context.facing")}: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
                   </span>
                 )
             }
@@ -736,7 +736,7 @@ export default function GhostTable() {
                     const potOdds   = callAmt / (potBefore + 2 * callAmt);
                     return (
                       <div className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-2.5 py-1.5">
-                        <span className="font-mono text-[9px] text-muted-foreground/60 uppercase">Pot Odds</span>
+                        <span className="font-mono text-[9px] text-muted-foreground/60 uppercase">{t("potOdds")}</span>
                         <span className="font-mono text-[11px] font-bold text-foreground">{(potOdds * 100).toFixed(1)}%</span>
                       </div>
                     );
@@ -745,7 +745,7 @@ export default function GhostTable() {
                     {ACTION_KEYS.map(action => (
                       <button key={action} onClick={() => submitAction(action)}
                         disabled={tableLoading || submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
-                        title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
+                        title={action === 'jam' && isCallEqualToJam ? t("tooltips.callEquiv") : undefined}
                         className="min-h-[40px] rounded-lg border border-border bg-hud-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                         {t(`actions.${action}`)}
                       </button>
@@ -758,7 +758,7 @@ export default function GhostTable() {
                   {/* Mobile GTO strategy (compact) */}
                   {gtoStrategy && gtoStrategy.length > 0 && (
                     <div className="rounded-lg border border-border/40 bg-muted/5 px-3 py-2 space-y-2">
-                      <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">GTO</p>
+                      <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">{t("gtoLabel")}</p>
                       <GtoStrategyPanel strategy={gtoStrategy} playedAction={lastResult.new_action} compact />
                     </div>
                   )}
@@ -789,10 +789,10 @@ export default function GhostTable() {
                   const potOdds   = callAmt / (potBefore + 2 * callAmt);
                   return (
                     <div className="rounded-lg border border-border/40 bg-muted/5 px-2.5 py-2 shrink-0 space-y-1">
-                      <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">Pot Odds</p>
+                      <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">{t("potOdds")}</p>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[11px] font-bold text-foreground">{(potOdds * 100).toFixed(1)}%</span>
-                        <span className="font-mono text-[8px] text-muted-foreground/60">necessário para call</span>
+                        <span className="font-mono text-[8px] text-muted-foreground/60">{t("potOddsNeeded")}</span>
                       </div>
                     </div>
                   );
@@ -802,7 +802,7 @@ export default function GhostTable() {
                   {ACTION_KEYS.map(action => (
                     <button key={action} onClick={() => submitAction(action)}
                       disabled={tableLoading || submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
-                      title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
+                      title={action === 'jam' && isCallEqualToJam ? t("tooltips.callEquiv") : undefined}
                       className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
                       {t(`actions.${action}`)}
                     </button>
@@ -862,7 +862,7 @@ export default function GhostTable() {
                   <div className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 shrink-0", lastResult.is_correct ? "border-primary/30 bg-primary/5 text-primary" : "border-warning/30 bg-warning/5 text-warning")}>
                     <Clock className="size-3.5 shrink-0" aria-hidden />
                     <span className="font-mono text-[10px]">
-                      {lastResult.is_correct ? `${t("next")} em ${lastResult.srs_interval_days}d` : `Resetado, em ${lastResult.srs_interval_days}d`}
+                      {lastResult.is_correct ? t("nextInDays", { n: lastResult.srs_interval_days }) : t("resetInDays", { n: lastResult.srs_interval_days })}
                     </span>
                   </div>
                 )}
@@ -870,7 +870,7 @@ export default function GhostTable() {
                 {/* GTO Strategy (postflop spots) */}
                 {gtoStrategy && gtoStrategy.length > 0 && (
                   <div className="rounded-lg border border-border/40 bg-muted/5 px-3 py-2 space-y-2 shrink-0">
-                    <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">Estratégia GTO</p>
+                    <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">{t("gtoStrategy")}</p>
                     <GtoStrategyPanel strategy={gtoStrategy} playedAction={lastResult.new_action} compact />
                   </div>
                 )}
@@ -984,11 +984,11 @@ export default function GhostTable() {
               <StatTile value={String(stats.total)} label={t("stats.title").replace(/\s*\(.*\)/, "")} />
               <StatTile
                 value={stats.accuracy !== null ? `${Math.round(stats.accuracy)}%` : "—"}
-                label="Accuracy"
+                label={t("statAccuracy")}
               />
               <StatTile
                 value={stats.avg_delta !== null ? (stats.avg_delta > 0 ? `+${stats.avg_delta.toFixed(2)}` : stats.avg_delta.toFixed(2)) : "—"}
-                label="Δ avg"
+                label={t("statAvgDelta")}
               />
             </div>
           )}
@@ -1057,7 +1057,7 @@ export default function GhostTable() {
                       setStats(null); setResetConfirm(false);
                       window.location.reload();
                     } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Não foi possível reiniciar o histórico.");
+                      toast.error(e instanceof Error ? e.message : t("resetError"));
                     } finally { setResetting(false); }
                   }}
                   disabled={resetting}
@@ -1141,14 +1141,14 @@ export default function GhostTable() {
               <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap font-mono text-[10px] text-muted-foreground">
                 <span className="font-semibold text-foreground">{t(`street.${current.street}`)}</span>
                 {current.position    && <span>{current.position}</span>}
-                {current.stack_bb != null && <span>Stack: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
+                {current.stack_bb != null && <span>{t("context.stack")}: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
                 {current.m_ratio   != null && <span>M: <span className="text-foreground">{current.m_ratio.toFixed(1)}</span></span>}
-                {drillStep.pot_bb != null && drillStep.pot_bb > 0 && <span>Pot: <span className="text-foreground">{drillStep.pot_bb.toFixed(1)}bb</span></span>}
+                {drillStep.pot_bb != null && drillStep.pot_bb > 0 && <span>{t("context.pot")}: <span className="text-foreground">{drillStep.pot_bb.toFixed(1)}bb</span></span>}
                 {current.facing_desc
                   ? <span className={cn("font-semibold", sit.variant === "aggression" ? "text-warning" : "text-foreground")}>{current.facing_desc}</span>
                   : current.facing_bet != null && current.facing_bet > 0 && (
                       <span className={sit.variant === "aggression" ? "text-warning font-semibold" : ""}>
-                        Facing: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
+                        {t("context.facing")}: <span className="font-semibold">{current.facing_bet.toFixed(1)}bb</span>
                       </span>
                     )
                 }
@@ -1202,7 +1202,7 @@ export default function GhostTable() {
                   key={action}
                   onClick={() => submitAction(action)}
                   disabled={tableLoading || submitting || timedOut || !legalSet.has(action) || (action === 'jam' && isCallEqualToJam)}
-                  title={action === 'jam' && isCallEqualToJam ? 'Equivalente a Call (stack coberto)' : undefined}
+                  title={action === 'jam' && isCallEqualToJam ? t("tooltips.callEquiv") : undefined}
                   className="min-h-[44px] rounded-lg border border-border bg-hud-surface px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground ring-1 ring-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary hover:ring-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
                 >
                   {t(`actions.${action}`)}
@@ -1288,8 +1288,8 @@ export default function GhostTable() {
               <Clock className="size-3.5 shrink-0" aria-hidden />
               <span className="font-mono text-[11px]">
                 {lastResult.is_correct
-                  ? `Próxima revisão em ${lastResult.srs_interval_days} dias`
-                  : `Resetado, revisão em ${lastResult.srs_interval_days} dias`
+                  ? t("nextReviewInDays", { n: lastResult.srs_interval_days })
+                  : t("resetReviewInDays", { n: lastResult.srs_interval_days })
                 }
               </span>
             </div>

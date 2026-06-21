@@ -103,5 +103,21 @@
     "gto_range": "Solver",
     "gto_stored": "Solver",
     "heuristic": "Heuristic: no solver"
+  },
+  "resetError": "Could not reset the history.",
+  "statAccuracy": "Accuracy",
+  "statAvgDelta": "Δ avg",
+  "potOdds": "Pot Odds",
+  "potOddsNeeded": "needed to call",
+  "gtoStrategy": "GTO Strategy",
+  "gtoLabel": "GTO",
+  "nextReviewInDays": "Next review in {{n}} days",
+  "resetReviewInDays": "Reset, review in {{n}} days",
+  "nextInDays": "Next in {{n}}d",
+  "resetInDays": "Reset, in {{n}}d",
+  "tooltips": {
+    "tournamentId": "Tournament ID",
+    "handId": "Hand ID (copy to evaluate the spot)",
+    "callEquiv": "Equivalent to Call (stack covered)"
   }
 }
