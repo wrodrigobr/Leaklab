@@ -730,7 +730,7 @@ export default function GhostTable() {
                     </div>
                   )}
                   {/* Mobile pot odds context */}
-                  {current.facing_bet != null && current.facing_bet > 0 && drillStep.pot_bb > 0 && (() => {
+                  {tableState && current.facing_bet != null && current.facing_bet > 0 && drillStep.pot_bb > current.facing_bet && (() => {
                     const callAmt   = current.facing_bet;
                     const potBefore = drillStep.pot_bb - current.facing_bet;
                     const potOdds   = callAmt / (potBefore + 2 * callAmt);
@@ -783,7 +783,7 @@ export default function GhostTable() {
                   </div>
                 )}
                 {/* Pot odds context (when facing a bet) */}
-                {current.facing_bet != null && current.facing_bet > 0 && drillStep.pot_bb > 0 && (() => {
+                {tableState && current.facing_bet != null && current.facing_bet > 0 && drillStep.pot_bb > current.facing_bet && (() => {
                   const callAmt   = current.facing_bet;
                   const potBefore = drillStep.pot_bb - current.facing_bet;
                   const potOdds   = callAmt / (potBefore + 2 * callAmt);

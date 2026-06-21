@@ -462,8 +462,10 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None,
         for st in by_name.values():
             _a = float(_antes.get(st['name'], 0) or 0)
             if _a > 0:
-                st['stack'] = max(0.0, st['stack'] - _a)
-        carried_pot += sum(float(v or 0) for v in _antes.values())
+                # all-in pelo ante: posta no máximo o stack disponível (não superestima o pote).
+                _paid = min(_a, st['stack'])
+                st['stack'] = max(0.0, st['stack'] - _paid)
+                carried_pot += _paid
     last_opp_inc = 0.0  # incremento ('raises 200 to 400' => 200) do último agressor ≠ hero na street
     for act in (hand.actions or []):
         if act.street != cur_street:

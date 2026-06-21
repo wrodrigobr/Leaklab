@@ -1319,6 +1319,21 @@ def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
                 return None
         except Exception:
             pass
+        # Rejeita nó incompatível com o FACING do spot: se o hero enfrenta aposta (facing>0),
+        # o nó não pode ser um first-to-act (menu com 'check'). Sem isto um nó OOP check/bet
+        # casa num spot vs-bet e o card recomenda "check" sem botão de check (ação inalcançável).
+        if facing_bb > 0:
+            _acts = set()
+            try:
+                _sj = n.get('strategy_json')
+                if _sj:
+                    _acts = {str(k).lower() for k in (_j.loads(_sj) if isinstance(_sj, str) else _sj).keys()}
+            except Exception:
+                _acts = set()
+            if not _acts and n.get('gto_action'):
+                _acts = {str(n['gto_action']).lower()}
+            if 'check' in _acts:
+                return None
         return n
 
     node = None
