@@ -12,6 +12,13 @@
     "ctaPlans": "Ver planos",
     "levels": "7 níveis de evolução, de Iniciante a Elite"
   },
+  "demo": {
+    "eyebrow": "Veja na prática",
+    "verdict": "Erro",
+    "youPlayed": "Você jogou",
+    "gtoSays": "GTO recomenda",
+    "why": "Equity 31% abaixo do necessário (38%). Call sem odds: leak de defesa preflop."
+  },
   "stats": {
     "leakSpots": "Spots de leak mapeados",
     "levels": "Níveis de progressão",
