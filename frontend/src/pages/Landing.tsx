@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  BarChart3, Upload, Brain, TrendingUp, ChevronRight,
-  Check, Zap, Shield, BookOpen, Target, Activity,
+  Upload, Brain, TrendingUp, ChevronRight,
+  Check, Zap, BookOpen, Target, Activity,
 } from "lucide-react";
 import { LEVEL_ICONS } from "@/components/hud/LevelIcons";
 import logoHorizontal from "@/assets/brand/grindlab_final_horizontal.svg";
@@ -87,7 +87,7 @@ function ExampleCard() {
 function HeroSection() {
   const { t } = useTranslation("landing");
   return (
-    <section className="relative flex min-h-dvh flex-col items-center justify-center px-6 pt-20 pb-16 text-center overflow-hidden">
+    <section className="relative flex min-h-dvh flex-col justify-center px-6 pt-24 pb-16 overflow-hidden">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
         style={{
@@ -95,70 +95,40 @@ function HeroSection() {
           backgroundSize: "40px 40px",
         }}
       />
-      <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[500px] rounded-full bg-primary/8 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/3 left-1/4 size-[500px] rounded-full bg-primary/8 blur-3xl" />
 
-      <div className="relative space-y-6 max-w-3xl">
-        <ExampleCard />
-        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">
-          {t("hero.title1")}<br />
-          <span className="text-primary">{t("hero.title2")}</span>
-        </h1>
-
-        <p className="text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
-          {t("hero.subtitle")}
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <Link
-            to="/login"
-            className="flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow"
-          >
-            {t("hero.ctaStart")} <Zap className="size-4" />
-          </Link>
-          <a
-            href="#planos"
-            className="flex items-center gap-2 rounded-md border border-border px-5 py-2.5 font-mono text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
-          >
-            {t("hero.ctaPlans")} <ChevronRight className="size-4" />
-          </a>
+      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-2">
+        {/* LEFT — copy + CTAs */}
+        <div className="space-y-6 text-center lg:text-left">
+          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
+            {t("hero.eyebrow")}
+          </p>
+          <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">
+            {t("hero.title1")}<br />
+            <span className="text-primary">{t("hero.title2")}</span>
+          </h1>
+          <p className="text-base text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
+            {t("hero.subtitle")}
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-2">
+            <Link
+              to="/login"
+              className="flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow"
+            >
+              {t("hero.ctaStart")} <Zap className="size-4" />
+            </Link>
+            <a
+              href="#como-funciona"
+              className="flex items-center gap-2 rounded-md border border-border px-5 py-2.5 font-mono text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+            >
+              {t("hero.ctaHow")} <ChevronRight className="size-4" />
+            </a>
+          </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 pt-4">
-          {LEVELS.map((lvl) => {
-            const Icon = LEVEL_ICONS[lvl];
-            return (
-              <div key={lvl} title={lvl} className="flex flex-col items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
-                {Icon && <Icon size={16} className="text-primary" />}
-                <span className="font-mono text-[8px] text-muted-foreground hidden sm:block">{lvl}</span>
-              </div>
-            );
-          })}
-        </div>
-        <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">
-          {t("hero.levels")}
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function StatsSection() {
-  const { t } = useTranslation("landing");
-  const stats = [
-    { value: "100+", label: t("stats.leakSpots") },
-    { value: "7",    label: t("stats.levels") },
-    { value: "100%", label: t("stats.realData") },
-  ];
-  return (
-    <section className="border-y border-border bg-hud-surface/50 py-10">
-      <div className="mx-auto max-w-4xl px-6">
-        <div className="grid grid-cols-3 gap-6 text-center">
-          {stats.map((s) => (
-            <div key={s.label}>
-              <p className="text-3xl font-bold text-primary">{s.value}</p>
-              <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground mt-1">{s.label}</p>
-            </div>
-          ))}
+        {/* RIGHT — demo card */}
+        <div className="lg:justify-self-end">
+          <ExampleCard />
         </div>
       </div>
     </section>
@@ -168,16 +138,16 @@ function StatsSection() {
 function HowItWorksSection() {
   const { t } = useTranslation("landing");
   const steps = [
-    { step: "01", icon: Upload,     title: t("howItWorks.step1Title"), desc: t("howItWorks.step1Desc") },
-    { step: "02", icon: Brain,      title: t("howItWorks.step2Title"), desc: t("howItWorks.step2Desc") },
-    { step: "03", icon: TrendingUp, title: t("howItWorks.step3Title"), desc: t("howItWorks.step3Desc") },
+    { step: "01", icon: Upload,     title: t("howItWorks.step1Title"), desc: t("howItWorks.step1Desc"), levels: false },
+    { step: "02", icon: Brain,      title: t("howItWorks.step2Title"), desc: t("howItWorks.step2Desc"), levels: false },
+    { step: "03", icon: TrendingUp, title: t("howItWorks.step3Title"), desc: t("howItWorks.step3Desc"), levels: true },
   ];
   return (
-    <section className="py-24 px-6">
+    <section id="como-funciona" className="py-24 px-6 scroll-mt-16">
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-14">
           <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("howItWorks.eyebrow")}</p>
-          <h2 className="text-2xl font-bold text-foreground">{t("howItWorks.heading")}</h2>
+          <h2 className="font-heading text-2xl font-bold text-foreground">{t("howItWorks.heading")}</h2>
         </div>
         <div className="grid sm:grid-cols-3 gap-8">
           {steps.map((item) => (
@@ -190,6 +160,23 @@ function HowItWorksSection() {
               </div>
               <h3 className="font-semibold text-foreground">{item.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+              {item.levels && (
+                <div className="pt-1">
+                  <div className="flex items-center justify-between gap-1">
+                    {LEVELS.map((lvl) => {
+                      const Icon = LEVEL_ICONS[lvl];
+                      return (
+                        <div key={lvl} title={lvl} className="opacity-70">
+                          {Icon && <Icon size={15} className="text-primary" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 font-mono text-[9px] uppercase tracking-widest-2 text-muted-foreground">
+                    {t("howItWorks.levels")}
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -204,25 +191,22 @@ function FeaturesSection() {
     { icon: Target,    title: t("features.f1Title"), desc: t("features.f1Desc") },
     { icon: Activity,  title: t("features.f2Title"), desc: t("features.f2Desc") },
     { icon: BookOpen,  title: t("features.f3Title"), desc: t("features.f3Desc") },
-    { icon: Shield,    title: t("features.f4Title"), desc: t("features.f4Desc") },
-    { icon: Brain,     title: t("features.f5Title"), desc: t("features.f5Desc") },
-    { icon: BarChart3, title: t("features.f6Title"), desc: t("features.f6Desc") },
   ];
   return (
     <section className="py-24 px-6 bg-hud-surface/30">
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-14">
           <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary mb-2">{t("features.eyebrow")}</p>
-          <h2 className="text-2xl font-bold text-foreground">{t("features.heading")}</h2>
+          <h2 className="font-heading text-2xl font-bold text-foreground">{t("features.heading")}</h2>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid gap-5 lg:grid-cols-3">
           {features.map((f) => (
-            <div key={f.title} className="rounded-xl border border-border bg-hud-surface p-5 space-y-3 hover:border-primary/40 transition-colors">
-              <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <f.icon className="size-4.5" />
+            <div key={f.title} className="rounded-xl border border-border bg-hud-surface p-6 space-y-3 hover:border-primary/40 transition-colors">
+              <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <f.icon className="size-5" />
               </div>
-              <h3 className="font-medium text-foreground text-sm">{f.title}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+              <h3 className="font-medium text-foreground">{f.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -367,7 +351,6 @@ export default function Landing() {
     <div className="min-h-dvh bg-background hud-scanline text-foreground">
       <Navbar />
       <HeroSection />
-      <StatsSection />
       <HowItWorksSection />
       <FeaturesSection />
       <PricingSection />

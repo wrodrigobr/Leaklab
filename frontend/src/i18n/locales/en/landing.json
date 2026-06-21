@@ -5,12 +5,12 @@
   },
   "hero": {
     "badge": "Powered by Claude AI",
+    "eyebrow": "Tournament (MTT) specialist",
     "title1": "Stop leaking chips",
     "title2": "in the same spots.",
-    "subtitle": "GrindLab analyzes every decision in your tournament history, identifies your most costly error patterns, and delivers a study plan built from your real data, not generic theory everyone already knows.",
+    "subtitle": "GrindLab analyzes every decision in your tournaments, ranks your most costly leaks, and builds a study plan from your real data.",
     "ctaStart": "Start free",
-    "ctaPlans": "View plans",
-    "levels": "7 progression levels: from Beginner to Elite"
+    "ctaHow": "See how it works"
   },
   "demo": {
     "eyebrow": "See it in action",
@@ -19,14 +19,10 @@
     "gtoSays": "GTO recommends",
     "why": "Equity 31% below the required (38%). Call without odds: a preflop defense leak."
   },
-  "stats": {
-    "leakSpots": "Leak spots mapped",
-    "levels": "Progression levels",
-    "realData": "Based on your real data"
-  },
   "howItWorks": {
     "eyebrow": "How it works",
     "heading": "From HH file to precise diagnosis",
+    "levels": "7 levels, from Beginner to Elite",
     "step1Title": "Import your history",
     "step1Desc": "Upload the .txt file from any tournament (PokerStars or GGPoker). Multiple files supported at once.",
     "step2Title": "GrindLab prioritizes your mistakes",
@@ -37,18 +33,12 @@
   "features": {
     "eyebrow": "Features",
     "heading": "Why GrindLab is different",
-    "f1Title": "Your data, not generic theory",
-    "f1Desc": "The diagnosis is built on your own tournaments. Every identified leak exists in your real history.",
-    "f2Title": "Prioritized by financial impact",
-    "f2Desc": "Leaks are ranked by frequency × severity. You focus on what's actually costing you chips, not what's easiest to study.",
-    "f3Title": "Spot-specific study plan",
-    "f3Desc": "Study cards generated for each specific error spot, with diagnosis, exercise, and resources, not generic content.",
-    "f4Title": "Native MTT context",
-    "f4Desc": "M-ratio, ICM pressure, tournament stage, position, the engine evaluates every decision with the right context, not isolated equity.",
-    "f5Title": "Replayer with decision analysis",
-    "f5Desc": "Hand-by-hand review with detailed explanation of each critical action, understand what you got wrong and why.",
-    "f6Title": "Measurable progression",
-    "f6Desc": "7 progression levels with clear metrics. You know exactly where you stand and what it takes to advance."
+    "f1Title": "Your real data, not generic theory",
+    "f1Desc": "The diagnosis is built on your own tournaments. Every identified leak exists in your real history, not in a textbook range.",
+    "f2Title": "Native MTT context",
+    "f2Desc": "ICM, M-ratio, tournament stage, and bubble. The engine evaluates every decision with the right tournament context, not isolated cash-game equity.",
+    "f3Title": "Personalized study plan + AI Coach",
+    "f3Desc": "Study cards generated from your own error spots, plus an AI Coach that talks through your hands, not generic content."
   },
   "plans": {
     "eyebrow": "Plans",

@@ -5,12 +5,12 @@
   },
   "hero": {
     "badge": "Potenciado por Claude AI",
+    "eyebrow": "Especialista en torneos (MTT)",
     "title1": "Deja de perder fichas",
     "title2": "en los mismos spots.",
-    "subtitle": "GrindLab analiza cada decisión en tu historial de torneos, identifica tus patrones de error más costosos y entrega un plan de estudio basado en tus datos reales, no en teoría genérica que todos ya conocen.",
+    "subtitle": "GrindLab analiza cada decisión de tus torneos, clasifica tus leaks más costosos y arma un plan de estudio sobre tus datos reales.",
     "ctaStart": "Empezar gratis",
-    "ctaPlans": "Ver planes",
-    "levels": "7 niveles de progresión, de Principiante a Elite"
+    "ctaHow": "Ver cómo funciona"
   },
   "demo": {
     "eyebrow": "Míralo en acción",
@@ -19,14 +19,10 @@
     "gtoSays": "GTO recomienda",
     "why": "Equity 31% por debajo de lo necesario (38%). Call sin odds: leak de defensa preflop."
   },
-  "stats": {
-    "leakSpots": "Spots de leak mapeados",
-    "levels": "Niveles de progresión",
-    "realData": "Basado en tus datos reales"
-  },
   "howItWorks": {
     "eyebrow": "Cómo funciona",
     "heading": "Del archivo HH al diagnóstico preciso",
+    "levels": "7 niveles, de Principiante a Elite",
     "step1Title": "Importa tu historial",
     "step1Desc": "Sube el archivo .txt de cualquier torneo (PokerStars o GGPoker). Soporta múltiples archivos a la vez.",
     "step2Title": "GrindLab prioriza tus errores",
@@ -37,18 +33,12 @@
   "features": {
     "eyebrow": "Funcionalidades",
     "heading": "Por qué GrindLab es diferente",
-    "f1Title": "Tus datos, no teoría genérica",
-    "f1Desc": "El diagnóstico está construido sobre tus propios torneos. Cada leak identificado existe en tu historial real.",
-    "f2Title": "Prioridad por impacto financiero",
-    "f2Desc": "Los leaks se clasifican por frecuencia × gravedad. Te enfocas en lo que realmente te está costando fichas, no en lo que es más fácil de estudiar.",
-    "f3Title": "Plan de estudio por spot",
-    "f3Desc": "Tarjetas de estudio generadas para cada spot de error específico, con diagnóstico, ejercicio y recursos.",
-    "f4Title": "Contexto MTT nativo",
-    "f4Desc": "M-ratio, presión ICM, etapa del torneo, posición, el motor evalúa cada decisión con el contexto correcto, no solo equity aislada.",
-    "f5Title": "Replayer con análisis de decisión",
-    "f5Desc": "Revisión mano a mano con explicación detallada de cada acción crítica, entiende qué fallaste y por qué.",
-    "f6Title": "Progresión medible",
-    "f6Desc": "7 niveles de progresión con métricas claras. Sabes exactamente dónde estás y qué te falta para avanzar."
+    "f1Title": "Tus datos reales, no teoría genérica",
+    "f1Desc": "El diagnóstico está construido sobre tus propios torneos. Cada leak identificado existe en tu historial real, no en un range de libro.",
+    "f2Title": "Contexto MTT nativo",
+    "f2Desc": "ICM, M-ratio, etapa del torneo y bubble. El motor evalúa cada decisión con el contexto correcto de torneo, no equity aislada de cash.",
+    "f3Title": "Plan de estudio personalizado + AI Coach",
+    "f3Desc": "Tarjetas de estudio generadas a partir de tus spots de error y un AI Coach que conversa sobre tus manos, no contenido genérico."
   },
   "plans": {
     "eyebrow": "Planes",
