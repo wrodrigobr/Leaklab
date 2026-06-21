@@ -38,56 +38,10 @@ function Navbar() {
   );
 }
 
-function ExampleCard() {
-  const { t } = useTranslation("landing");
-  return (
-    <div className="mx-auto w-full max-w-md">
-      <p className="mb-2 font-mono text-[10px] uppercase tracking-widest-2 text-primary">{t("demo.eyebrow")}</p>
-      <div className="overflow-hidden rounded-2xl border border-red-500/30 bg-hud-surface text-left shadow-elevated">
-        {/* Veredito */}
-        <div className="flex items-center justify-between gap-2 border-b border-red-500/20 bg-red-500/8 px-4 py-2.5">
-          <span className="flex items-center gap-1.5 font-mono text-sm font-bold uppercase tracking-wider text-red-400">
-            <span className="text-base leading-none">✗</span> {t("demo.verdict")}
-            <span className="font-normal text-muted-foreground">· −2.3 bb</span>
-          </span>
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-primary ring-1 ring-primary/20">Solver</span>
-        </div>
-        <div className="space-y-3 p-4">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">BTN · 25bb · vs 3-Bet</p>
-          <div className="flex items-center gap-4">
-            <div>
-              <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("demo.youPlayed")}</p>
-              <p className="font-mono text-base font-bold text-red-400">CALL</p>
-            </div>
-            <ChevronRight className="size-4 text-muted-foreground/40" />
-            <div>
-              <p className="font-mono text-[9px] uppercase text-muted-foreground">{t("demo.gtoSays")}</p>
-              <p className="font-mono text-base font-bold text-emerald-400">FOLD</p>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">{t("demo.why")}</p>
-          <div className="space-y-1.5 pt-1">
-            <div className="flex items-center gap-2">
-              <span className="w-9 font-mono text-[10px] text-emerald-400">FOLD</span>
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-border/50"><div className="h-full rounded-full bg-emerald-500" style={{ width: "78%" }} /></div>
-              <span className="w-8 text-right font-mono text-[10px] text-muted-foreground">78%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-9 font-mono text-[10px] text-red-400">CALL</span>
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-border/50"><div className="h-full rounded-full bg-red-500/60" style={{ width: "22%" }} /></div>
-              <span className="w-8 text-right font-mono text-[10px] text-muted-foreground">22%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function HeroSection() {
   const { t } = useTranslation("landing");
   return (
-    <section className="relative flex min-h-dvh flex-col justify-center px-6 pt-24 pb-16 overflow-hidden">
+    <section className="relative flex min-h-dvh flex-col items-center justify-center px-6 pt-24 pb-16 text-center overflow-hidden">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
         style={{
@@ -95,40 +49,32 @@ function HeroSection() {
           backgroundSize: "40px 40px",
         }}
       />
-      <div className="pointer-events-none absolute top-1/3 left-1/4 size-[500px] rounded-full bg-primary/8 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[520px] rounded-full bg-primary/8 blur-3xl" />
 
-      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-2">
-        {/* LEFT — copy + CTAs */}
-        <div className="space-y-6 text-center lg:text-left">
-          <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
-            {t("hero.eyebrow")}
-          </p>
-          <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">
-            {t("hero.title1")}<br />
-            <span className="text-primary">{t("hero.title2")}</span>
-          </h1>
-          <p className="text-base text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
-            {t("hero.subtitle")}
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-2">
-            <Link
-              to="/login"
-              className="flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow"
-            >
-              {t("hero.ctaStart")} <Zap className="size-4" />
-            </Link>
-            <a
-              href="#como-funciona"
-              className="flex items-center gap-2 rounded-md border border-border px-5 py-2.5 font-mono text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
-            >
-              {t("hero.ctaHow")} <ChevronRight className="size-4" />
-            </a>
-          </div>
-        </div>
-
-        {/* RIGHT — demo card */}
-        <div className="lg:justify-self-end">
-          <ExampleCard />
+      <div className="relative mx-auto max-w-3xl space-y-6">
+        <p className="font-mono text-[10px] uppercase tracking-widest-2 text-primary">
+          {t("hero.eyebrow")}
+        </p>
+        <h1 className="font-heading text-4xl sm:text-6xl font-bold tracking-tight text-foreground leading-[1.05]">
+          {t("hero.title1")}<br />
+          <span className="text-primary">{t("hero.title2")}</span>
+        </h1>
+        <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
+          {t("hero.subtitle")}
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+          <Link
+            to="/login"
+            className="flex items-center gap-2 rounded-md bg-primary px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest-2 text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow"
+          >
+            {t("hero.ctaStart")} <Zap className="size-4" />
+          </Link>
+          <a
+            href="#como-funciona"
+            className="flex items-center gap-2 rounded-md border border-border px-6 py-3 font-mono text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+          >
+            {t("hero.ctaHow")} <ChevronRight className="size-4" />
+          </a>
         </div>
       </div>
     </section>
