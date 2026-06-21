@@ -48,6 +48,13 @@ ACTION_LINE_RE  = re.compile(
     r"(?: .*?(?P<amount>\d+(?:\.\d+)?))?",
     re.IGNORECASE,
 )
+
+# "<player>: posts the ante 40" / "posts ante 40" (PS/GG). Antes não são ações (não entram
+# em ACTION_LINE_RE) e vão direto pro pote como dead money — capturados à parte por assento.
+ANTE_LINE_RE    = re.compile(
+    r"^(?P<player>[^:]+): posts (?:the )?ante (?P<amount>\d+(?:[.,]\d+)?)",
+    re.IGNORECASE,
+)
 # PokerStars PKO: "Seat 3: phpro (1500 in chips) bounty $0.25"
 SEAT_BOUNTY_PS_RE = re.compile(
     r"^Seat \d+: (.+?) \([0-9.]+ in chips\) bounty \$([0-9.]+)", re.IGNORECASE
@@ -143,6 +150,7 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
     seats: List[dict] = []
     actions: List[ParsedAction] = []
     bounties: dict = {}
+    antes: dict = {}
     street = "preflop"
     board  = []
 
@@ -181,6 +189,14 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
             winner = mw.group(1).strip()
             amount = float(mw.group(2))
             bounties[winner] = bounties.get(winner, 0.0) + amount
+        mant = ANTE_LINE_RE.match(line)
+        if mant:
+            _an = mant.group("player").strip()
+            try:
+                antes[_an] = antes.get(_an, 0.0) + float(mant.group("amount").replace(",", ""))
+            except Exception:
+                pass
+            continue   # ante não é ação; não cai no ACTION_LINE_RE
         ma = ACTION_LINE_RE.match(line)
         if ma:
             amount = ma.group("amount")
@@ -220,6 +236,7 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
         actions=actions,
         raw_text=raw_text,
         bounties=bounties,
+        antes=antes,
         is_pko=is_pko,
         showdown_result=_extract_showdown_result(raw_text, hero_name),
     )

@@ -454,6 +454,16 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None,
 
     cur_street = 'preflop'
     carried_pot = 0.0   # BUG A: fichas comprometidas nos streets ANTERIORES ao alvo
+    # BUG ANTES: antes não vêm como ações; são dead money (vão direto pro pote, NÃO como bet
+    # vivo) e reduzem o stack de cada assento que postou. Sem isso o pote ficava ~1bb menor e
+    # os stacks ~1 ante maiores em todo spot de nível com ante (maioria das mãos de MTT).
+    _antes = getattr(hand, 'antes', None) or {}
+    if _antes:
+        for st in by_name.values():
+            _a = float(_antes.get(st['name'], 0) or 0)
+            if _a > 0:
+                st['stack'] = max(0.0, st['stack'] - _a)
+        carried_pot += sum(float(v or 0) for v in _antes.values())
     last_opp_inc = 0.0  # incremento ('raises 200 to 400' => 200) do último agressor ≠ hero na street
     for act in (hand.actions or []):
         if act.street != cur_street:

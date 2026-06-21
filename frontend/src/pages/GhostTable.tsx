@@ -658,7 +658,7 @@ export default function GhostTable() {
             {current.position    && <span>{current.position}</span>}
             {current.stack_bb != null && <span>Stack: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
             {current.m_ratio   != null && <span>M: <span className="text-foreground">{current.m_ratio.toFixed(1)}</span></span>}
-            {current.pot_size  != null && current.pot_size  > 0 && <span>Pot: <span className="text-foreground">{current.pot_size.toFixed(1)}bb</span></span>}
+            {drillStep.pot_bb != null && drillStep.pot_bb > 0 && <span>Pot: <span className="text-foreground">{drillStep.pot_bb.toFixed(1)}bb</span></span>}
             {current.facing_desc
               ? <span className={cn("font-semibold", sit.variant === "aggression" ? "text-warning" : "text-foreground")}>{current.facing_desc}</span>
               : current.facing_bet != null && current.facing_bet > 0 && (
@@ -730,9 +730,9 @@ export default function GhostTable() {
                     </div>
                   )}
                   {/* Mobile pot odds context */}
-                  {current.facing_bet != null && current.facing_bet > 0 && current.pot_size != null && current.pot_size > 0 && (() => {
+                  {current.facing_bet != null && current.facing_bet > 0 && drillStep.pot_bb > 0 && (() => {
                     const callAmt   = current.facing_bet;
-                    const potBefore = current.pot_size - current.facing_bet;
+                    const potBefore = drillStep.pot_bb - current.facing_bet;
                     const potOdds   = callAmt / (potBefore + 2 * callAmt);
                     return (
                       <div className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-2.5 py-1.5">
@@ -783,9 +783,9 @@ export default function GhostTable() {
                   </div>
                 )}
                 {/* Pot odds context (when facing a bet) */}
-                {current.facing_bet != null && current.facing_bet > 0 && current.pot_size != null && current.pot_size > 0 && (() => {
+                {current.facing_bet != null && current.facing_bet > 0 && drillStep.pot_bb > 0 && (() => {
                   const callAmt   = current.facing_bet;
-                  const potBefore = current.pot_size - current.facing_bet;
+                  const potBefore = drillStep.pot_bb - current.facing_bet;
                   const potOdds   = callAmt / (potBefore + 2 * callAmt);
                   return (
                     <div className="rounded-lg border border-border/40 bg-muted/5 px-2.5 py-2 shrink-0 space-y-1">
@@ -1143,7 +1143,7 @@ export default function GhostTable() {
                 {current.position    && <span>{current.position}</span>}
                 {current.stack_bb != null && <span>Stack: <span className="text-foreground font-semibold">{current.stack_bb.toFixed(0)}bb</span></span>}
                 {current.m_ratio   != null && <span>M: <span className="text-foreground">{current.m_ratio.toFixed(1)}</span></span>}
-                {current.pot_size  != null && current.pot_size  > 0 && <span>Pot: <span className="text-foreground">{current.pot_size.toFixed(1)}bb</span></span>}
+                {drillStep.pot_bb != null && drillStep.pot_bb > 0 && <span>Pot: <span className="text-foreground">{drillStep.pot_bb.toFixed(1)}bb</span></span>}
                 {current.facing_desc
                   ? <span className={cn("font-semibold", sit.variant === "aggression" ? "text-warning" : "text-foreground")}>{current.facing_desc}</span>
                   : current.facing_bet != null && current.facing_bet > 0 && (
