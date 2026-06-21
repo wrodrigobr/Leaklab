@@ -418,7 +418,7 @@
   },
   "causal_map": {
     "title": "Leak Causal Map",
-    "p1": "The <strong>Causal Map</strong> visualises which leaks co-occur in the same sessions or hands. Each node is a leak; each line connecting two nodes indicates they appear together more often than expected. The line thickness represents the strength of the correlation.",
+    "p1": "The <strong>Causal Map</strong> visualises which leaks co-occur in the same tournaments, across different hands of the same session. Each node is a leak; each line connecting two nodes indicates they appear together in the same tournament more often than expected. The line thickness represents the strength of the correlation.",
     "p2": "Why it matters: when two leaks co-occur with high correlation, they usually share a <em>root cause</em>, for example, excessive preflop folding and bad flop calls may both stem from the same range-reading problem. Fixing the root cause resolves both at once.",
     "p3": "Click a node to highlight only the leaks connected to it. Red nodes are critical (average score ≥ 0.36); yellow are moderate; green are minor. Always start with the red nodes that have the most connections, they have the greatest cascading impact."
   },

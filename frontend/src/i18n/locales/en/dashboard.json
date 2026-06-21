@@ -399,7 +399,7 @@
     "m3desc": "Conversational AI analysis with your real data: ranges, ICM, leaks and personalized study plan."
   },
   "leakCausalMap": {
-    "tooltip": "Visualizes which leaks co-occur in the same hands or sessions. Thicker lines indicate stronger correlation, when two leaks appear together, they usually share a common root cause.",
+    "tooltip": "Visualizes which leaks co-occur in the same tournaments (across different hands). Thicker lines indicate stronger correlation, when two leaks appear together in the same tournament, they usually share a common root cause.",
     "title": "Leak Causal Map",
     "aria": "Leak causal graph",
     "coOccurs": "Co-occurs with",
@@ -538,9 +538,9 @@
     "bankSeries": "cumulative profit",
     "causalEpicenter": "Epicenter",
     "causalEpicenterDesc": "connected to {{n}} other leaks, fixing this one breaks the chain",
-    "causalTogether": "together in {{n}} hands",
+    "causalTogether": "together in {{n}} tournaments",
     "causalSpot": "{{action}} on the {{street}}",
-    "causalNoEdges": "Your leaks still show up isolated, they don't repeat together in the same hands. The causal map appears once the same mistakes happen together. For now, your attention points:",
+    "causalNoEdges": "Your leaks still show up isolated, they don't repeat together in the same tournaments. The causal map appears once the same mistakes happen in the same tournament. For now, your attention points:",
     "causalConclusion": "What this means: your mistakes don't happen in isolation, \"{{a}}\" and \"{{b}}\" showed up in the same hands {{n}} times, a sign one triggers the other. The highest-leverage point is \"{{epi}}\": it's linked to {{deg}} other leaks, and fixing it tends to bring the whole chain down.",
     "careerDelta": "{{delta}} vs all-time",
     "cogDominant": "Dominant pattern"

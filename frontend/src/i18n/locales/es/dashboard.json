@@ -399,7 +399,7 @@
     "m3desc": "Análisis conversacional de la IA con tus datos reales: rangos, ICM, leaks y plan de estudio personalizado."
   },
   "leakCausalMap": {
-    "tooltip": "Visualiza qué leaks co-ocurren en las mismas manos o sesiones. Las líneas más gruesas indican mayor correlación, cuando dos leaks aparecen juntos, generalmente comparten una causa raíz común.",
+    "tooltip": "Visualiza qué leaks co-ocurren en los mismos torneos (en manos diferentes). Las líneas más gruesas indican mayor correlación, cuando dos leaks aparecen juntos en el mismo torneo, generalmente comparten una causa raíz común.",
     "title": "Mapa Causal de Leaks",
     "aria": "Grafo causal de leaks",
     "coOccurs": "Co-ocurre con",
@@ -538,9 +538,9 @@
     "bankSeries": "ganancia acumulada",
     "causalEpicenter": "Epicentro",
     "causalEpicenterDesc": "conectado a {{n}} otros leaks, corregir este rompe la cadena",
-    "causalTogether": "juntos en {{n}} manos",
+    "causalTogether": "juntos en {{n}} torneos",
     "causalSpot": "{{action}} en el {{street}}",
-    "causalNoEdges": "Tus leaks aún aparecen aislados, no se repiten juntos en las mismas manos. El mapa causal aparece cuando los mismos errores suceden juntos. Por ahora, tus puntos de atención:",
+    "causalNoEdges": "Tus leaks aún aparecen aislados, no se repiten juntos en los mismos torneos. El mapa causal aparece cuando los mismos errores suceden en el mismo torneo. Por ahora, tus puntos de atención:",
     "causalConclusion": "Qué significa esto: tus errores no ocurren aislados, \"{{a}}\" y \"{{b}}\" aparecieron en las mismas manos {{n}} veces, señal de que uno desencadena el otro. El punto de mayor palanca es \"{{epi}}\": está ligado a {{deg}} otros leaks, y corregirlo tiende a derribar toda la cadena.",
     "careerDelta": "{{delta}} vs histórico",
     "cogDominant": "Patrón dominante"

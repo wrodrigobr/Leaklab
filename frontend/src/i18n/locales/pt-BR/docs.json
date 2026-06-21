@@ -418,7 +418,7 @@
   },
   "causal_map": {
     "title": "Mapa Causal de Leaks",
-    "p1": "O <strong>Mapa Causal</strong> visualiza quais leaks co-ocorrem nas mesmas sessões ou mãos. Cada nó é um leak; cada linha conectando dois nós indica que eles aparecem juntos com frequência acima do esperado. A espessura da linha representa a força da correlação.",
+    "p1": "O <strong>Mapa Causal</strong> visualiza quais leaks co-ocorrem nos mesmos torneios, em mãos diferentes da mesma sessão. Cada nó é um leak; cada linha conectando dois nós indica que eles aparecem juntos no mesmo torneio com frequência acima do esperado. A espessura da linha representa a força da correlação.",
     "p2": "Por que isso importa: quando dois leaks co-ocorrem com alta correlação, geralmente compartilham uma <em>causa raiz</em>, por exemplo, folds excessivos preflop e calls ruins no flop podem ambos ter origem no mesmo problema de leitura de range. Corrigir a causa raiz resolve os dois de uma vez.",
     "p3": "Clique em um nó para destacar apenas os leaks conectados a ele. Os nós vermelhos são críticos (score médio ≥ 0.36); amarelos são moderados; verdes são leves. Comece sempre pelos nós vermelhos com mais conexões, eles têm o maior impacto em cascata."
   },

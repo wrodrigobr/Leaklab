@@ -399,7 +399,7 @@
     "m3desc": "Análise conversacional da IA com seus dados reais: ranges, ICM, leaks e plano de estudo personalizado."
   },
   "leakCausalMap": {
-    "tooltip": "Visualiza quais leaks co-ocorrem nas mesmas mãos ou sessões. Linhas mais espessas indicam correlação mais forte, quando dois leaks aparecem juntos, geralmente têm uma causa raiz comum.",
+    "tooltip": "Visualiza quais leaks co-ocorrem nos mesmos torneios (em mãos diferentes). Linhas mais espessas indicam correlação mais forte, quando dois leaks aparecem juntos no mesmo torneio, geralmente têm uma causa raiz comum.",
     "title": "Mapa Causal de Leaks",
     "aria": "Grafo causal de leaks",
     "coOccurs": "Co-ocorre com",
@@ -538,9 +538,9 @@
     "bankSeries": "lucro acumulado",
     "causalEpicenter": "Epicentro",
     "causalEpicenterDesc": "conectado a {{n}} outros leaks, corrigir este derruba a cadeia",
-    "causalTogether": "juntos em {{n}} mãos",
+    "causalTogether": "juntos em {{n}} torneios",
     "causalSpot": "{{action}} no {{street}}",
-    "causalNoEdges": "Seus leaks ainda aparecem isolados, não se repetem juntos nas mesmas mãos. O mapa de causalidade surge quando os mesmos erros acontecem juntos. Por ora, seus pontos de atenção:",
+    "causalNoEdges": "Seus leaks ainda aparecem isolados, não se repetem juntos nos mesmos torneios. O mapa de causalidade surge quando os mesmos erros acontecem no mesmo torneio. Por ora, seus pontos de atenção:",
     "causalConclusion": "O que isto significa: seus erros não acontecem isolados, \"{{a}}\" e \"{{b}}\" apareceram nas mesmas mãos {{n}} vezes, sinal de que um desencadeia o outro. O ponto de maior alavancagem é \"{{epi}}\": está ligado a {{deg}} outros leaks, e corrigi-lo tende a derrubar a cadeia inteira.",
     "careerDelta": "{{delta}} vs histórico",
     "cogDominant": "Padrão dominante"
