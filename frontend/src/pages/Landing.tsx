@@ -14,7 +14,7 @@ const LEVELS = ["Iniciante", "Estudante", "Grinder", "Regular", "Sólido", "Expe
 function Navbar() {
   const { t } = useTranslation("landing");
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link to="/" className="flex items-center">
           <img src={logoHorizontal} alt="GrindLab" className="h-12 w-auto" />
