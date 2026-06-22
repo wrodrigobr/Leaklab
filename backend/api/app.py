@@ -3365,6 +3365,8 @@ def coach_student_replay(student_id, tournament_id, hand_id):
     target = next((h for h in hands if str(h.hand_id) == str(hand_id)), None)
     if not target:
         return jsonify({'error': f'Mão {hand_id} não encontrada'}), 404
+    if (t.get('site') or '').lower() == 'ggpoker':
+        _apply_alias_to_hand(target, _build_gg_alias_map(raw_text, t.get('hero') or target.hero))
     _db_all_c  = get_decisions(t['id'])
     _db_hand_c = [d for d in _db_all_c if str(d.get('hand_id')) == str(hand_id)]
     _gto_idx_c = {
@@ -4125,6 +4127,11 @@ def get_replay(tournament_id, hand_id):
     if not target:
         return jsonify({'error': f'Mão {hand_id} não encontrada no torneio'}), 404
 
+    # GG anonimiza oponentes (hexa estável por torneio) → 'Vilão N' consistente em todas as mãos.
+    if (t.get('site') or '').lower() == 'ggpoker':
+        _alias = _build_gg_alias_map(raw_text, t.get('hero') or target.hero)
+        _apply_alias_to_hand(target, _alias)
+
     # Buscar decisões do banco para enriquecer com gto_label/gto_action
     _db_all      = get_decisions(t['id'])
     _db_hand     = [d for d in _db_all if str(d.get('hand_id')) == str(hand_id)]
@@ -4199,6 +4206,37 @@ def get_replay(tournament_id, hand_id):
     replay['is_pko'] = bool(t.get('is_pko'))
 
     return jsonify(replay)
+
+
+def _build_gg_alias_map(full_raw, hero):
+    """GG anonimiza oponentes com um hexa ESTÁVEL por torneio. Mapeia cada hexa → 'Vilão N'
+    por ordem de 1ª aparição (determinístico) p/ uma identidade consistente em todas as mãos."""
+    import re as _re
+    seen = []
+    for m in _re.finditer(r'^Seat \d+: (.+?) \([0-9.,]+ in chips', full_raw or '', _re.MULTILINE):
+        name = m.group(1).strip()
+        if name and name != hero and name not in seen:
+            seen.append(name)
+    return {name: f'Vilão {i + 1}' for i, name in enumerate(seen)}
+
+
+def _apply_alias_to_hand(hand, alias):
+    """Aplica o de/para (hexa → 'Vilão N') na mão: raw_text, seats, actions, players, bounties.
+    Idempotente o suficiente; só toca nomes que estão no mapa (oponentes anônimos do GG)."""
+    if not alias:
+        return hand
+    rt = hand.raw_text or ''
+    for hexname, al in alias.items():
+        rt = rt.replace(hexname, al)
+    hand.raw_text = rt
+    for s in (hand.seats or []):
+        s['name'] = alias.get(s.get('name'), s.get('name'))
+    for a in (hand.actions or []):
+        a.player = alias.get(a.player, a.player)
+    hand.players = [alias.get(p, p) for p in (hand.players or [])]
+    if getattr(hand, 'bounties', None):
+        hand.bounties = {alias.get(k, k): v for k, v in hand.bounties.items()}
+    return hand
 
 
 def _build_replay_data(hand, decisions_db, hero_override=None):
