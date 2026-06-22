@@ -100,7 +100,7 @@ for rep in range(3):
             is3, prf, gto, evloss) in enumerate(_seed):
         conn.execute(_adapt(f"INSERT INTO decisions ({cols}) VALUES {ph}"), (
             t_id, f"H{rep}_{i}", street, "AhKs", "" if street == "preflop" else "2c7d9h",
-            taken, best, label, score, pos, vspos, 6, stack, facing, is3,
+            taken, best, label, score, pos, vspos, 6, stack, facing, bool(is3),
             12.0, "medium", prf, gto, evloss,
         ))
 conn.commit()
