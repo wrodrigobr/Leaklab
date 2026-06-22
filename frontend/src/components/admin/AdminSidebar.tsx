@@ -11,7 +11,7 @@ export type AdminSection =
   | "candidaturas"
   | "gto-worker"
   | "logs"
-  | "maintenance";
+  ;
 
 export interface NavItem {
   id: AdminSection;
