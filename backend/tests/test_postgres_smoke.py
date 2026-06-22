@@ -56,6 +56,30 @@ print(f"== smoke test contra {BACKEND} ==")
 
 schema.init_db()
 
+
+def _cleanup_smoke():
+    """Remove o resíduo de execuções anteriores (filhos -> pais). Idempotente: sem isso o
+    smoke_<pid> colide (UniqueViolation) e deixa lixo no banco. Escopo SEGURO: só os usuários
+    com email '@test.local' (nenhum usuário real usa esse domínio) e seus dados."""
+    c = schema.get_conn()
+    _where = "(SELECT id FROM users WHERE email LIKE '%@test.local')"
+    for _sql in (
+        f"DELETE FROM decisions WHERE tournament_id IN (SELECT id FROM tournaments WHERE user_id IN {_where})",
+        f"DELETE FROM drill_sessions WHERE user_id IN {_where}",
+        f"DELETE FROM payments WHERE user_id IN {_where}",
+        f"DELETE FROM tournaments WHERE user_id IN {_where}",
+        "DELETE FROM users WHERE email LIKE '%@test.local'",
+    ):
+        try:
+            c.execute(_adapt(_sql)); c.commit()
+        except Exception:
+            try: c.rollback()
+            except Exception: pass
+    c.close()
+
+
+_cleanup_smoke()   # limpa antes de semear (resolve colisão + lixo de runs anteriores)
+
 # ── Seed: 1 user + 1 torneio (com buy_in) + decisions variadas ──────────────────
 uid = repo.create_user(f"smoke_{os.getpid()}", f"smoke_{os.getpid()}@test.local", "x" * 10)
 assert uid, "create_user devolveu id vazio (lastrowid/RETURNING?)"
@@ -211,6 +235,8 @@ for _rule in _flask_app.url_map.iter_rules():
     check(f"GET {_url}", _http(_url))
     _swept += 1
 print(f"(sweep HTTP: {_swept} rotas GET)")
+
+_cleanup_smoke()   # não deixa lixo no banco após o run (importante em Postgres real/prod)
 
 print(f"\nTotal: {passed + failed}  Passed: {passed}  Failed: {failed}")
 sys.exit(1 if failed else 0)
