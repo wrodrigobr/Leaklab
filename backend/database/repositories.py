@@ -41,10 +41,11 @@ def _adapt(sql: str) -> str:
     sql = re.sub(r'(?<!\w)\?(?!\w)', '%s', sql)
     # Substituir datetime('now')
     sql = sql.replace("datetime('now')", 'NOW()')
-    # Substituir datetime('now', '-N days')
+    # Substituir datetime('now', '-N <unidade>') — days/hours/minutes/seconds (SQLite → Postgres).
+    # Antes só convertia 'days'; hours/minutes ficavam crus e quebravam no Postgres.
     sql = re.sub(
-        r"datetime\('now',\s*'(-?\d+)\s*days?'\)",
-        lambda m: f"NOW() + INTERVAL '{m.group(1)} days'",
+        r"datetime\('now',\s*'(-?\d+)\s*(days?|hours?|minutes?|seconds?)'\)",
+        lambda m: f"(NOW() + INTERVAL '{m.group(1)} {m.group(2)}')",
         sql
     )
     # Substituir || (concat) — igual nos dois

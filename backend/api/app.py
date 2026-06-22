@@ -6947,16 +6947,19 @@ def admin_gto_worker_status():
         last_heartbeat = last_done['processed_at'] if last_done else None
 
         # ── Throughput: requests processed per hour (last 24h) ───────────────
-        throughput_rows = _fetchall(conn, _adapt("""
-            SELECT strftime('%Y-%m-%dT%H:00:00', processed_at) AS hour,
-                   COUNT(*) AS n
-            FROM gto_hand_requests
-            WHERE status IN ('done','error')
-              AND processed_at >= datetime('now', '-24 hours')
-            GROUP BY hour
-            ORDER BY hour ASC
-        """))
-        throughput = [{'hour': r['hour'], 'count': r['n']} for r in throughput_rows]
+        # Bucketiza por hora em PYTHON (strftime é SQLite-only; quebra no Postgres).
+        import datetime as _dtt
+        from collections import Counter as _Counter
+        _cut = (_dtt.datetime.utcnow() - _dtt.timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+        _rows = _fetchall(conn, _adapt(
+            "SELECT processed_at FROM gto_hand_requests "
+            "WHERE status IN ('done','error') AND processed_at >= ?"), (_cut,))
+        _buckets = _Counter()
+        for _r in _rows:
+            _pa = _r['processed_at']
+            _s = _pa.isoformat() if hasattr(_pa, 'isoformat') else str(_pa)
+            _buckets[_s[:13].replace(' ', 'T') + ':00:00'] += 1   # 'YYYY-MM-DDTHH:00:00'
+        throughput = [{'hour': h, 'count': _buckets[h]} for h in sorted(_buckets)]
 
         # ── gto_nodes coverage by source ─────────────────────────────────────
         coverage_rows = _fetchall(conn, "SELECT source, COUNT(*) AS n FROM gto_nodes GROUP BY source")
