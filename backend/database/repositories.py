@@ -75,6 +75,24 @@ def _build_tournament_filter(user_id: int, days: int = 90, last_n: int | None = 
     return "t.user_id = ? AND t.imported_at >= ?", (user_id, since)
 
 
+def _jsonable(v):
+    """Converte recursivamente datetime/date -> isoformat e Decimal -> float. O Postgres devolve
+    esses tipos (NUMERIC->Decimal, TIMESTAMP->datetime); o SQLite devolve str/float. Sem isso o
+    json.dumps/jsonify estoura ("Object of type datetime/Decimal is not JSON serializable") e o
+    endpoint dá 500. Normaliza o retorno p/ ISO string (igual ao SQLite) — o front já consome assim."""
+    import datetime as _dt
+    from decimal import Decimal as _Dec
+    if isinstance(v, dict):
+        return {k: _jsonable(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [_jsonable(x) for x in v]
+    if isinstance(v, (_dt.datetime, _dt.date)):
+        return v.isoformat()
+    if isinstance(v, _Dec):
+        return float(v)
+    return v
+
+
 def _fetchall(conn, sql: str, params=None) -> list:
     """Executa query SELECT e retorna lista de dicts."""
     result = conn.execute(sql, params or ())
@@ -647,7 +665,7 @@ def get_evolution_metrics(user_id: int, days: int = 90, last_n: int | None = Non
             WHERE {where}
             ORDER BY imported_at ASC
         """, params).fetchall()
-        return [dict(r) for r in rows]
+        return _jsonable([dict(r) for r in rows])
     finally:
         conn.close()
 
@@ -1353,7 +1371,7 @@ def get_icm_performance(user_id: int, days: int = 90) -> dict:
               AND t.imported_at >= ?
             GROUP BY d.icm_pressure
         """, (user_id, since)).fetchall()
-        return {r['icm_pressure']: dict(r) for r in rows if r['icm_pressure']}
+        return _jsonable({r['icm_pressure']: dict(r) for r in rows if r['icm_pressure']})
     finally:
         conn.close()
 
@@ -3969,12 +3987,12 @@ def admin_dunning() -> dict:
             "SELECT p.user_id, u.username, p.amount_cents, p.gateway, p.created_at "
             "FROM payments p JOIN users u ON u.id=p.user_id WHERE p.status='failed' "
             f"AND p.created_at >= {interval_sql(14)} ORDER BY p.created_at DESC"))
-        return {
+        return _jsonable({
             'past_due': past_due,
             'recent_canceled': canceled,
             'recent_failed': recent_failed,
             'duplicates': admin_detect_duplicate_payments(),
-        }
+        })
     finally:
         conn.close()
 
@@ -4549,7 +4567,7 @@ def get_all_users(limit: int = 50, offset: int = 0, plan: str = None,
         for d in rows:
             d['billing_standing'] = billing_standing(
                 d.get('plan'), d.get('plan_source'), d.get('subscription_status'), d.get('plan_expires_at'))
-        return rows
+        return _jsonable(rows)
     finally:
         conn.close()
 
@@ -4956,7 +4974,12 @@ def get_leak_graph_data(user_id: int, days: int = 90, lang: str = 'pt-BR') -> di
     except Exception:
         pass
 
-    narrative = explain_leak_causality(graph['edges'], hero=hero or 'você', lang=lang)
+    # Narrativa é NÃO-crítica (o grafo já tem nós/arestas). Blinda: qualquer erro na geração
+    # (LLM em prod, template, parsing) degrada p/ vazio em vez de 500 no /player/leak-graph.
+    try:
+        narrative = explain_leak_causality(graph['edges'], hero=hero or 'você', lang=lang)
+    except Exception:
+        narrative = ''
     return {**graph, 'narrative': narrative}
 
 
@@ -5402,7 +5425,7 @@ def get_coach_inbox(coach_id: int) -> list:
         FROM coach_messages m
         JOIN users u ON u.id = m.student_id
         WHERE m.coach_id = ?
-        GROUP BY m.student_id, u.username
+        GROUP BY m.student_id, u.username, m.coach_id
         ORDER BY last_message_at DESC
     """), (coach_id,)).fetchall()
     conn.close()
@@ -5690,10 +5713,12 @@ def get_demographics_aggregate() -> dict:
     """Anonymized aggregates for admin panel."""
     conn = get_conn()
     try:
-        total = (conn.execute("SELECT COUNT(*) FROM users WHERE role = 'player'").fetchone() or [0])[0]
+        # COUNT precisa de alias + acesso por NOME: no Postgres o cursor é RealDictCursor, então
+        # row[0] dá KeyError (a linha é dict). 'n' funciona nos dois backends.
+        total = (conn.execute("SELECT COUNT(*) AS n FROM users WHERE role = 'player'").fetchone() or {'n': 0})['n']
         completed = (conn.execute(
-            "SELECT COUNT(*) FROM users WHERE profile_completed_at IS NOT NULL"
-        ).fetchone() or [0])[0]
+            "SELECT COUNT(*) AS n FROM users WHERE profile_completed_at IS NOT NULL"
+        ).fetchone() or {'n': 0})['n']
         countries = conn.execute(
             "SELECT country, COUNT(*) AS n FROM users WHERE country IS NOT NULL GROUP BY country ORDER BY n DESC LIMIT 10"
         ).fetchall()
