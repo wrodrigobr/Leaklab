@@ -90,9 +90,19 @@ export function DunningPanel({ data, isLoading }: { data: Dunning | undefined; i
                 <div className="space-y-1">
                   <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Cancelamentos recentes</p>
                   {canceled.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between text-xs">
-                      <span className="text-foreground">@{c.username}</span>
-                      <span className="font-mono text-[10px] text-muted-foreground">{c.canceled_at ? new Date(c.canceled_at).toLocaleDateString("pt-BR") : "—"}</span>
+                    <div key={c.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-foreground truncate">@{c.username}</span>
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        <span className={cn(
+                          "rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide ring-1",
+                          c.churn_type === "involuntary"
+                            ? "bg-amber-400/10 text-amber-400 ring-amber-400/30"
+                            : "bg-border text-muted-foreground ring-border"
+                        )} title={c.cancel_reason || ""}>
+                          {c.churn_type === "involuntary" ? "involuntário" : "voluntário"}
+                        </span>
+                        <span className="font-mono text-[10px] text-muted-foreground">{c.canceled_at ? new Date(c.canceled_at).toLocaleDateString("pt-BR") : "—"}</span>
+                      </span>
                     </div>
                   ))}
                 </div>

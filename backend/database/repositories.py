@@ -3947,9 +3947,13 @@ def admin_dunning() -> dict:
             "FROM users u WHERE u.plan='pro' AND u.subscription_status='past_due' "
             "ORDER BY u.past_due_since"))
         canceled = _fetchall(conn, _adapt(
-            "SELECT u.id, u.username, u.email, u.canceled_at FROM users u "
+            "SELECT u.id, u.username, u.email, u.canceled_at, u.cancel_reason FROM users u "
             "WHERE u.subscription_status='canceled' AND u.canceled_at IS NOT NULL "
             f"AND u.canceled_at >= {interval_sql(30)} ORDER BY u.canceled_at DESC"))
+        # voluntário vs involuntário (falha de pagamento) p/ a análise de churn.
+        _involuntary = {'payment_failure', 'unpaid', 'incomplete_expired', 'payment_disputed'}
+        for _c in canceled:
+            _c['churn_type'] = 'involuntary' if (_c.get('cancel_reason') in _involuntary) else 'voluntary'
         recent_failed = _fetchall(conn, _adapt(
             "SELECT p.user_id, u.username, p.amount_cents, p.gateway, p.created_at "
             "FROM payments p JOIN users u ON u.id=p.user_id WHERE p.status='failed' "
@@ -4045,7 +4049,7 @@ def link_subscription_id(user_id: int, sub_id: str) -> None:
 
 
 def apply_stripe_subscription(user_id: int, status: str, plan_expires_at: Optional[str],
-                              sub_id: Optional[str]) -> str:
+                              sub_id: Optional[str], cancel_reason: Optional[str] = None) -> str:
     """PAY-04: aplica o estado de uma Subscription do Stripe ao plano do usuário.
     Fonte da verdade da recorrência = status da assinatura (não plan_expires_at manual).
       active/trialing → pro (plan_source='stripe_sub', vigência = current_period_end), status='active'
@@ -4067,10 +4071,18 @@ def apply_stripe_subscription(user_id: int, status: str, plan_expires_at: Option
             return 'activated'
         if status in ('canceled', 'unpaid', 'incomplete_expired'):
             # churn no tempo: grava canceled_at (1ª vez) p/ bucketizar churn por período.
+            # Motivo: Stripe (cancellation_requested=voluntário, payment_failure=involuntário).
+            # Sem motivo explícito, infere involuntário se já estava em atraso (dunning).
+            _row = _fetchone(conn, _adapt("SELECT past_due_since FROM users WHERE id=?"), (user_id,))
+            _was_pastdue = _row.get('past_due_since') if _row else None
+            _reason = cancel_reason or status  # 'unpaid'/'incomplete_expired' já indicam falha
+            if not cancel_reason and _was_pastdue:
+                _reason = 'payment_failure'
             conn.execute(_adapt(
                 "UPDATE users SET plan='free', plan_source=NULL, subscription_status='canceled', "
-                "canceled_at=COALESCE(canceled_at, ?), mp_subscription_id=NULL, plan_expires_at=NULL WHERE id=?"),
-                (_now, user_id))
+                "canceled_at=COALESCE(canceled_at, ?), cancel_reason=COALESCE(cancel_reason, ?), "
+                "mp_subscription_id=NULL, plan_expires_at=NULL WHERE id=?"),
+                (_now, _reason, user_id))
             conn.commit()
             return 'downgraded'
         if status == 'past_due':

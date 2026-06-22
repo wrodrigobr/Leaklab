@@ -631,6 +631,7 @@ def _run_migrations(conn):
             "ALTER TABLE coach_payments ADD COLUMN IF NOT EXISTS due_at TIMESTAMP",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS canceled_at    TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS past_due_since TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS cancel_reason  TEXT",  # motivo do churn (Stripe cancellation_details)
         ]:
             try: conn.execute(_c)
             except Exception: pass
@@ -1090,6 +1091,7 @@ def _run_migrations(conn):
             ("subscription_status",     "ALTER TABLE users ADD COLUMN subscription_status     TEXT"),
             ("canceled_at",             "ALTER TABLE users ADD COLUMN canceled_at             TEXT"),
             ("past_due_since",          "ALTER TABLE users ADD COLUMN past_due_since           TEXT"),
+            ("cancel_reason",           "ALTER TABLE users ADD COLUMN cancel_reason            TEXT"),
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),

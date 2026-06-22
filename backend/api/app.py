@@ -5546,8 +5546,11 @@ def subscription_webhook():
         if not uid and sub_id:
             u = get_user_by_subscription(sub_id)
             uid = u['id'] if u else 0
+        # Motivo do churn p/ análise no admin: cancellation_details.reason (voluntário/involuntário).
+        _cd = obj.get('cancellation_details') or {}
+        cancel_reason = _cd.get('reason') or _cd.get('feedback') if status == 'canceled' else None
         if uid:
-            apply_stripe_subscription(uid, status, per_end, sub_id)
+            apply_stripe_subscription(uid, status, per_end, sub_id, cancel_reason=cancel_reason)
 
     return jsonify({'ok': True})
 
