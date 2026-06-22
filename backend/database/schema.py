@@ -1674,11 +1674,18 @@ class _AdaptedConn:
         import re
         sql = re.sub(r'(?<![\$%])\?', '%s', sql)
         sql = sql.replace("datetime('now')", 'NOW()')
+        # days/hours/minutes/seconds (antes só days; horas/minutos ficavam crus e quebravam no PG).
         sql = re.sub(
-            r"datetime\('now',\s*'(-?\d+)\s+days?'\)",
-            lambda m: f"NOW() + INTERVAL '{m.group(1)} days'",
+            r"datetime\('now',\s*'(-?\d+)\s+(days?|hours?|minutes?|seconds?)'\)",
+            lambda m: f"(NOW() + INTERVAL '{m.group(1)} {m.group(2)}')",
             sql
         )
+        # INSERT OR IGNORE (SQLite) → ON CONFLICT DO NOTHING (Postgres). Sem alvo de coluna:
+        # o Postgres aplica a qualquer violação de unique/PK. INSERT OR REPLACE NÃO é convertido
+        # aqui (precisa de alvo p/ DO UPDATE) — esses já são branchados por USE_POSTGRES no repo.
+        if re.match(r'\s*INSERT\s+OR\s+IGNORE\s+INTO', sql, re.IGNORECASE):
+            sql = re.sub(r'^(\s*)INSERT\s+OR\s+IGNORE\s+INTO', r'\1INSERT INTO', sql, flags=re.IGNORECASE)
+            sql = sql.rstrip().rstrip(';') + ' ON CONFLICT DO NOTHING'
         return sql
 
     # Tabelas sem coluna `id` (chave natural): não acrescentar RETURNING id nelas.
