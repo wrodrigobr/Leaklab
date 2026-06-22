@@ -1680,6 +1680,12 @@ def _run_migrations(conn):
             "ALTER TABLE drill_sessions ADD COLUMN IF NOT EXISTS correct INTEGER",
             "ALTER TABLE drill_sessions ADD COLUMN IF NOT EXISTS next_drill_at TIMESTAMP",
             "ALTER TABLE drill_sessions ADD COLUMN IF NOT EXISTS srs_interval_days INTEGER NOT NULL DEFAULT 3",
+            # Perfil demográfico (admin_demographics) — o loop que as adiciona não commita por
+            # statement, então um abort anterior pode deixá-las faltando em prod → 500 no /admin/demographics.
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS country              TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS main_game_type       TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS usual_buyin_range    TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_completed_at TIMESTAMP",
         ]
         for _stmt in _safe:
             try:

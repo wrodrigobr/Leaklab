@@ -3946,6 +3946,11 @@ def admin_finance_calendar(month: str = None) -> dict:
 
 def admin_dunning() -> dict:
     """Receita em risco: pro em atraso (com desde-quando), falhas recentes, duplicatas."""
+    from datetime import datetime, timedelta
+    # canceled_at é TEXT (ISO via isoformat), não TIMESTAMP — comparar com interval_sql (NOW(),
+    # timestamptz) dava "operator does not exist: text >= timestamp" e 500 no Postgres. Compara
+    # com um cutoff ISO em TEXT (text >= text, idêntico ao formato gravado) → funciona nos 2 backends.
+    _cutoff30 = (datetime.utcnow() - timedelta(days=30)).isoformat()
     conn = get_conn()
     try:
         past_due = _fetchall(conn, _adapt(
@@ -3955,7 +3960,7 @@ def admin_dunning() -> dict:
         canceled = _fetchall(conn, _adapt(
             "SELECT u.id, u.username, u.email, u.canceled_at, u.cancel_reason FROM users u "
             "WHERE u.subscription_status='canceled' AND u.canceled_at IS NOT NULL "
-            f"AND u.canceled_at >= {interval_sql(30)} ORDER BY u.canceled_at DESC"))
+            "AND u.canceled_at >= ? ORDER BY u.canceled_at DESC"), (_cutoff30,))
         # voluntário vs involuntário (falha de pagamento) p/ a análise de churn.
         _involuntary = {'payment_failure', 'unpaid', 'incomplete_expired', 'payment_disputed'}
         for _c in canceled:
