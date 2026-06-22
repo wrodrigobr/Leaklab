@@ -169,8 +169,8 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
             </div>
           )}
 
-          {/* COACH-02: troca de workspace (só coaches) */}
-          {user.role === "coach" && workspace && onSwitchWorkspace && (
+          {/* Workspace: dual-role (coach e admin têm conta de jogador também) */}
+          {(user.role === "coach" || user.role === "admin") && workspace && onSwitchWorkspace && (
             <div className="px-4 py-3 border-b border-border space-y-1.5">
               <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Workspace</p>
               <div className="grid grid-cols-2 gap-1.5">
@@ -179,7 +179,7 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
                   className={cn("flex items-center justify-center gap-1.5 rounded-md py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
                     workspace === "coach" ? "bg-primary/15 text-primary ring-1 ring-primary/30" : "bg-muted/30 text-muted-foreground hover:text-foreground")}
                 >
-                  <Users className="size-3" /> Coach
+                  <Users className="size-3" /> {user.role === "admin" ? "Admin" : "Coach"}
                 </button>
                 <button
                   onClick={() => { setOpen(false); onSwitchWorkspace("player"); }}

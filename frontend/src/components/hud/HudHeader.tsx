@@ -124,20 +124,25 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
   // COACH-02 P2: o coach é dual-role. Switch de workspace (persistido) alterna entre
   // o command center ("Modo Coach") e a conta de aluno ("Minha conta").
   const isCoach = user?.role === "coach";
+  const isAdmin = user?.role === "admin";
+  const dualRole = isCoach || isAdmin;   // coach e admin têm conta de jogador também
+  const commandRoute = isAdmin ? "/admin" : "/coach-dashboard";
+  // "coach" = lado de comando (coach-dashboard / admin); "player" = conta de aluno.
   const [workspace, setWorkspace] = useState<"coach" | "player">(() =>
     (typeof window !== "undefined" && localStorage.getItem("coachWorkspace") === "player") ? "player" : "coach"
   );
   const switchWorkspace = (w: "coach" | "player") => {
     setWorkspace(w);
     try { localStorage.setItem("coachWorkspace", w); } catch { /* ignore */ }
-    navigate(w === "coach" ? "/coach-dashboard" : "/dashboard");
+    navigate(w === "coach" ? commandRoute : "/dashboard");
   };
-  const inPlayerWorkspace = isCoach && workspace === "player";
+  const inPlayerWorkspace = dualRole && workspace === "player";
   const canUpload = user?.role === "player" || inPlayerWorkspace;
 
   const navItems = (
-    user?.role === "admin" ? adminNavItems :
-    isCoach ? (workspace === "coach" ? coachNavItems : playerNavItems) :
+    inPlayerWorkspace ? playerNavItems :
+    isAdmin ? adminNavItems :
+    isCoach ? coachNavItems :
     playerNavItems
   );
 
@@ -261,7 +266,7 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
 
             <LanguageSwitcher />
 
-            {user && <AccountMenu workspace={isCoach ? workspace : undefined} onSwitchWorkspace={isCoach ? switchWorkspace : undefined} />}
+            {user && <AccountMenu workspace={dualRole ? workspace : undefined} onSwitchWorkspace={dualRole ? switchWorkspace : undefined} />}
             {!user && (
               <button
                 onClick={() => navigate("/login")}
