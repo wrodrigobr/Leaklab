@@ -1652,6 +1652,38 @@ def _run_migrations(conn):
             )
         """)
 
+    # ── À prova de transação abortada (Postgres, autocommit=False) ──────────────
+    # As migrações acima rodam numa transação única; se UMA falha, o Postgres aborta
+    # TODA a transação e os CREATE/ALTER seguintes (em try/except) falham silenciosamente.
+    # Foi assim que a tabela `expenses` (e colunas novas) não foram criadas em prod. Aqui
+    # recriamos os objetos recentes com COMMIT ISOLADO por statement (rollback antes p/ limpar
+    # qualquer estado abortado), garantindo que sobrevivam a uma migração anterior que falhou.
+    if USE_POSTGRES:
+        try: conn.rollback()
+        except Exception: pass
+        _safe = [
+            """CREATE TABLE IF NOT EXISTS expenses (
+                   id SERIAL PRIMARY KEY, category TEXT NOT NULL, vendor TEXT,
+                   amount_cents INTEGER NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'BRL',
+                   recurrence TEXT NOT NULL DEFAULT 'monthly', due_day INTEGER, period TEXT,
+                   status TEXT NOT NULL DEFAULT 'forecast', paid_at TIMESTAMP, note TEXT,
+                   active INTEGER NOT NULL DEFAULT 1, created_at TIMESTAMP NOT NULL DEFAULT NOW())""",
+            "CREATE INDEX IF NOT EXISTS idx_expenses_period ON expenses(period)",
+            "ALTER TABLE coach_payments ADD COLUMN IF NOT EXISTS due_at TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS canceled_at    TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS past_due_since TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS cancel_reason  TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_coach_id INTEGER",
+        ]
+        for _stmt in _safe:
+            try:
+                conn.execute(_stmt)
+                conn.commit()
+            except Exception:
+                try: conn.rollback()
+                except Exception: pass
+
 
 # ── Connection Wrapper ────────────────────────────────────────────────────────
 
@@ -1735,6 +1767,9 @@ class _AdaptedConn:
 
     def commit(self):
         self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
 
     def close(self):
         self._conn.close()
