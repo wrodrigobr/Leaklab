@@ -1675,6 +1675,11 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS past_due_since TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS cancel_reason  TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_coach_id INTEGER",
+            # drill_sessions: SRS + acerto autoritativo. A coluna `correct` não existia em prod
+            # (migração abortada) → get_drill_stats fazia "WHERE correct = 1" e dava 500 no Ghost Table.
+            "ALTER TABLE drill_sessions ADD COLUMN IF NOT EXISTS correct INTEGER",
+            "ALTER TABLE drill_sessions ADD COLUMN IF NOT EXISTS next_drill_at TIMESTAMP",
+            "ALTER TABLE drill_sessions ADD COLUMN IF NOT EXISTS srs_interval_days INTEGER NOT NULL DEFAULT 3",
         ]
         for _stmt in _safe:
             try:
