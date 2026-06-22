@@ -2550,6 +2550,10 @@ export interface GtoDecisionResult {
   engine_action?: string;
   agreement?: boolean | null;
   reason?: string;
+  is_aggregate?: boolean;
+  gto_note?: string | null;
+  gto_off_tree?: boolean;   // postflop sem hand-aware (mão fora da cobertura) → "≈ aproximação"
+  hand_aware?: boolean;
 }
 
 export const gto = {

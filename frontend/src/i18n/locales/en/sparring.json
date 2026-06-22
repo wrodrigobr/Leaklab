@@ -94,7 +94,9 @@
       "stack": "stack",
       "facing": "bet",
       "solved": "exploit"
-    }
+    },
+    "offTree": "≈ approx",
+    "offTreeHint": "The solver does not cover your exact hand in this spot (hand outside the solved range). The distribution is the aggregate range, not your hand. Use as reference, not verdict."
   },
   "backToTraining": "Training",
   "valSource": {

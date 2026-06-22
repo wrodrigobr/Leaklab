@@ -6336,6 +6336,26 @@ def get_decision_gto(decision_id):
             top_action = strategy[0]['action']
         spot_hash_out = node.get('spot_hash', '')
 
+    # Postflop HAND-AWARE: a strategy_json do nó é a RANGE agregada (ex.: trinca exibida como
+    # 'fold' porque a range folda muito). Tenta a estratégia DA MÃO; se a mão está fora da
+    # cobertura (off-tree), mantém a agregada mas marca aproximação (gto_off_tree).
+    hand_aware_used = False
+    if node and street != 'preflop' and hero_hand and node.get('tree_hash'):
+        try:
+            from leaklab.gto_solver import hand_view_for_spot
+            hv = hand_view_for_spot(node['tree_hash'], board_for_hash, hero_hand)
+            if hv and hv.get('actions'):
+                strategy = sorted([
+                    {'action': _a, 'label': _gto_action_label(_a),
+                     'frequency': round(float(_v.get('frequency', 0) or 0), 4), 'combos': None}
+                    for _a, _v in hv['actions'].items()
+                ], key=lambda x: x['frequency'], reverse=True)
+                if strategy:
+                    top_action = strategy[0]['action']
+                hand_aware_used = True
+        except Exception:
+            pass
+
     # Preflop override: GTO nodes store aggregate range strategy (e.g. "HJ opens 28%"),
     # not hand-specific strategy. For KK, the node says "fold 72%" (72% of all HJ hands fold)
     # which is misleading. Use analyze_preflop for the hand-specific recommendation instead.
@@ -6392,6 +6412,10 @@ def get_decision_gto(decision_id):
     player_freq = _player_action_freq(player_action, strategy)
     agreement   = player_freq >= 0.15 if player_action else None
 
+    # OFF-TREE: postflop exibindo distribuição não hand-aware (range agregada ou stored) → a
+    # recomendação não é da mão; o card mostra "≈ aproximação" em vez de veredito autoritativo.
+    gto_off_tree = (street != 'preflop' and bool(strategy) and not hand_aware_used)
+
     return jsonify({
         'found':               True,
         'spot_hash':           spot_hash_out,
@@ -6412,6 +6436,8 @@ def get_decision_gto(decision_id):
         'strategy':            strategy,
         'is_aggregate':        bool(node and node.get('is_aggregate')),
         'gto_note':            'range_distribution' if node and node.get('is_aggregate') else None,
+        'gto_off_tree':        gto_off_tree,   # postflop sem hand-aware → "≈ aproximação"
+        'hand_aware':          hand_aware_used,
     })
 
 

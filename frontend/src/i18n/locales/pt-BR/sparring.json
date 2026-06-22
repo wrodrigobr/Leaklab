@@ -94,7 +94,9 @@
       "stack": "stack",
       "facing": "aposta",
       "solved": "exploit"
-    }
+    },
+    "offTree": "≈ aproximação",
+    "offTreeHint": "O solver não cobre a sua mão exata neste spot (mão fora do range solvado). A distribuição é da range agregada, não da sua mão. Use como referência, não veredito."
   },
   "backToTraining": "Treino",
   "valSource": {
