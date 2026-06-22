@@ -163,6 +163,8 @@ def check(label, fn):
     except Exception as e:
         failed += 1
         print(f"FAIL {label}: {type(e).__name__}: {e}")
+        import traceback as _tb
+        print(_tb.format_exc())   # pilha completa p/ diagnosticar a raiz (arquivo + linha)
 
 
 check("get_player_stats",          lambda: repo.get_player_stats(uid, 90))
