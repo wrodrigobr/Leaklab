@@ -1507,6 +1507,19 @@ def player_drill_submit():
         if norm_new in ('call', 'jam') and best_action in ('call', 'jam'):
             call_jam_equiv = True
 
+    # Guard: PREFLOP curto pot-committed. No preflop o facing_bet costuma vir None (o guard acima
+    # não dispara), mas best_action='call'/'raise' já implica enfrentar um raise. Quando o stack é
+    # curto E o pote já é grande vs stack (o raise comeu boa parte das fichas), calar deixa o hero
+    # pot-committed — então SHOVE é co-ótimo (mesma mão continua + fold equity). Ex.: 11bb, call de
+    # 8bb sobra 3bb → jamar é padrão, não erro. Só p/ best_action que CONTINUA (call/raise), nunca
+    # fold (jamar uma mão de fold é erro real).
+    _pot_pf = float(row.get('pot_size') or 0)
+    if (not top_match and not call_jam_equiv
+            and (row.get('street') or '').lower() == 'preflop'
+            and norm_new == 'jam' and best_action in ('call', 'raise')
+            and 0 < stack_bb <= 14 and _pot_pf >= stack_bb * 0.75):
+        call_jam_equiv = True
+
     # Guard: stack curtíssimo (≤2.5bb) — abrir/raisar já compromete o stack, então
     # raise ≡ jam (shove). Ex.: a ~1bb, "qualquer raise é shove".
     raise_jam_equiv = False
