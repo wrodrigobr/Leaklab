@@ -1920,12 +1920,12 @@ const Replayer = () => {
 
         {/* Voltar — topo-esquerda */}
         <button onClick={() => navigate(-1)}
-          className="absolute top-2 left-2 z-30 inline-flex items-center gap-1.5 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground ring-1 ring-border transition-colors hover:text-primary">
+          className="absolute top-[calc(0.5rem+env(safe-area-inset-top))] left-[calc(0.5rem+env(safe-area-inset-left))] z-30 inline-flex items-center gap-1.5 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground ring-1 ring-border transition-colors hover:text-primary">
           <ArrowLeft className="size-3.5" /> {t("back")}
         </button>
 
         {/* Logo GrindLab + contador de mão — topo-direita */}
-        <div className="absolute top-2 right-2 z-30 flex items-center gap-2.5 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 ring-1 ring-border">
+        <div className="absolute top-[calc(0.5rem+env(safe-area-inset-top))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30 flex items-center gap-2.5 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 ring-1 ring-border">
           {handList.length > 1 && handIdx >= 0 && (
             <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{handIdx + 1}/{handList.length}</span>
           )}
@@ -1933,7 +1933,7 @@ const Replayer = () => {
         </div>
 
         {/* Verdict pill / Análise — canto inferior-direito */}
-        <div className="absolute bottom-2 right-2 z-30">
+        <div className="absolute bottom-[calc(0.5rem+env(safe-area-inset-bottom))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30">
           <VerdictPill
             level={verdictLevel(step.error_label) ?? (step.is_hero && step.type === "action" ? ((isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null) : null)}
             evLossBb={step.ev_loss_bb}
@@ -1942,7 +1942,7 @@ const Replayer = () => {
         </div>
 
         {/* Controles — extrema inferior-esquerda */}
-        <div className="absolute bottom-2 left-2 z-30 flex items-center gap-1 rounded-full bg-background/80 backdrop-blur px-2 py-1 ring-1 ring-border shadow-lg">
+        <div className="absolute bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-[calc(0.5rem+env(safe-area-inset-left))] z-30 flex items-center gap-1 rounded-full bg-background/80 backdrop-blur px-2 py-1 ring-1 ring-border shadow-lg">
           <button onClick={() => { if (stepIdx > 0) setStepIdx(0); else if (prevHand) navigate(`/replayer?t=${tournamentId}&h=${prevHand}${studentId ? `&student=${studentId}` : ""}`, { replace: true }); }}
             disabled={stepIdx === 0 && !prevHand}
             className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-30"><Rewind className="size-4" /></button>
@@ -1963,7 +1963,7 @@ const Replayer = () => {
         {showAnalysis && (
           <div className="fixed inset-0 z-50 flex flex-col justify-end">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAnalysis(false)} />
-            <div className="relative max-h-[90vh] overflow-y-auto rounded-t-2xl bg-background p-3 pb-6 shadow-2xl ring-1 ring-border">
+            <div className="relative max-h-[90vh] overflow-y-auto rounded-t-2xl bg-background p-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl ring-1 ring-border">
               <button onClick={() => setShowAnalysis(false)} aria-label={t("close")}
                 className="absolute right-2.5 top-2.5 z-10 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="size-4" /></button>
               <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" onClick={() => setShowAnalysis(false)} />
