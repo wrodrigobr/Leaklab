@@ -497,11 +497,13 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
         elif strategy:
             gto_label, played_freq = _gto_classify_from_strategy(player_action, strategy)
             # ROOT FIX off-tree: postflop SEM hand_strategy = mão fora da cobertura hand-aware.
-            # A classificação aqui é da RANGE AGREGADA, não da mão — não é veredito confiável
-            # (ex.: trinca como 'fold' porque a range folda muito). Nunca acusa desvio/crítico
-            # (que alimentam o drill e o card de erro); rebaixa p/ gto_mixed = distribuição
-            # informativa como aproximação, sem penalizar. Remove a dependência do filtro de label.
-            if gto_label in ('gto_minor_deviation', 'gto_critical'):
+            # A classificação é da RANGE AGREGADA, não da mão. SÓ rebaixa quando a estratégia é
+            # MISTA (top < 90%): aí o modal da range pode não valer p/ a mão específica (ex.: trinca
+            # como 'fold' porque a range folda muito) → não acusa desvio/crítico. Numa ação ~pura
+            # (top >= 90%, ex.: Call 100%) toda mão faz o mesmo, então um desvio É erro real e o
+            # label crítico/desvio se mantém (não é off-tree).
+            _top = max((float(s.get('frequency') or 0) for s in strategy), default=0.0)
+            if _top < 0.90 and gto_label in ('gto_minor_deviation', 'gto_critical'):
                 gto_label = 'gto_mixed'
         else:
             gto_label  = _gto_classify(player_action, top_action, top_freq, equity)

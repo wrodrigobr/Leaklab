@@ -1474,9 +1474,13 @@ def player_drill_submit():
         # TRAVA OFF-TREE: postflop sem dado HAND-AWARE (mão fora da cobertura do solver) → o
         # nó cai na distribuição AGREGADA da range (source 'gto_range'/'gto_stored'), que NÃO é
         # veredito da mão específica (ex.: trinca exibida como "fold" porque a range folda muito).
-        # Nesses casos não gradeamos como erro: é aproximação fora da cobertura.
+        # SÓ vale quando a estratégia é MISTA: se a range joga uma ação ~pura (top >= 90%), toda
+        # mão faz o mesmo — não há ambiguidade, então NÃO é "fora da cobertura" (evita o absurdo
+        # de marcar off-tree e ainda mostrar "Call 100%").
         _street_lc = (row.get('street') or '').lower()
-        gto_off_tree = (_street_lc != 'preflop' and validation_source in ('gto_range', 'gto_stored'))
+        _top_freq = max(gto_freqs.values()) if gto_freqs else 0.0
+        gto_off_tree = (_street_lc != 'preflop' and validation_source in ('gto_range', 'gto_stored')
+                        and _top_freq < 0.90)
     else:
         gto_off_tree = False
         best_action = _norm_drill(best_action)
@@ -6414,7 +6418,10 @@ def get_decision_gto(decision_id):
 
     # OFF-TREE: postflop exibindo distribuição não hand-aware (range agregada ou stored) → a
     # recomendação não é da mão; o card mostra "≈ aproximação" em vez de veredito autoritativo.
-    gto_off_tree = (street != 'preflop' and bool(strategy) and not hand_aware_used)
+    # SÓ quando a estratégia é MISTA: ação ~pura (top >= 90%) vale p/ toda mão (sem ambiguidade),
+    # então não marca off-tree (evita "fora da cobertura" + "Call 100%" ao mesmo tempo).
+    _top_freq = float(strategy[0].get('frequency') or 0) if strategy else 0.0
+    gto_off_tree = (street != 'preflop' and bool(strategy) and not hand_aware_used and _top_freq < 0.90)
 
     return jsonify({
         'found':               True,
