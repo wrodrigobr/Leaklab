@@ -1,16 +1,20 @@
 import React, { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Activity, BarChart2, CheckCircle2, ChevronRight, Clock,
-  Download, LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
+  Activity, BarChart2, CheckCircle2, Clock,
+  LayoutDashboard, Loader2, RefreshCw, Search, Shield, Users,
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
-  Cpu, CircleDot
+  Cpu, CircleDot, Wrench
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { cn } from "@/lib/utils";
-import { adminDashboard, AdminUser, AdminCoachStudent, CoachPayout, CoachApplication, support } from "@/lib/api";
+import { adminDashboard, AdminUser, AdminCoachStudent, CoachApplication, support } from "@/lib/api";
 import { toast } from "sonner";
+import { AdminSidebar, AdminSection, NavGroup } from "@/components/admin/AdminSidebar";
+import { StatusBadge } from "@/components/admin/StatusBadge";
+import { FinanceCockpit } from "@/components/admin/FinanceCockpit";
+import { CoachesTab } from "@/components/admin/CoachesTab";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -42,19 +46,6 @@ function KpiTile({ label, value, sub, icon: Icon, accent }: {
     </div>
   );
 }
-
-// ── Tabs ─────────────────────────────────────────────────────────────────────
-
-type Tab = "overview" | "users" | "finance" | "logs" | "candidaturas" | "support" | "gto-worker";
-const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "overview",      label: "Visão Geral",   icon: LayoutDashboard },
-  { id: "users",         label: "Usuários",      icon: Users },
-  { id: "finance",       label: "Financeiro",    icon: BarChart2 },
-  { id: "logs",          label: "Logs",          icon: Activity },
-  { id: "candidaturas",  label: "Candidaturas",  icon: GraduationCap },
-  { id: "support",       label: "Suporte",       icon: MessageSquarePlus },
-  { id: "gto-worker",    label: "GTO Worker",    icon: Cpu },
-];
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
 
@@ -230,25 +221,10 @@ function DeleteUserModal({ target, onClose, onDeleted }: {
   );
 }
 
-// ── Billing standing badge ────────────────────────────────────────────────────
-
-const BILLING_BADGE: Record<string, { label: string; cls: string }> = {
-  paying:   { label: "Em dia",    cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-400" },
-  past_due: { label: "Atrasado",  cls: "border-amber-500/40 bg-amber-500/10 text-amber-400" },
-  perk:     { label: "Cortesia",  cls: "border-border bg-hud-elevated/50 text-muted-foreground" },
-  free:     { label: "Free",      cls: "border-border bg-background text-muted-foreground" },
-};
+// ── Billing standing badge (thin wrapper over the shared StatusBadge) ──────────
 
 function BillingStandingBadge({ standing }: { standing?: string | null }) {
-  const b = BILLING_BADGE[standing ?? "free"] ?? BILLING_BADGE.free;
-  return (
-    <span className={cn(
-      "inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider border",
-      b.cls
-    )}>
-      {b.label}
-    </span>
-  );
+  return <StatusBadge kind={standing ?? "free"} />;
 }
 
 // ── Coach roster modal ────────────────────────────────────────────────────────
@@ -320,6 +296,7 @@ function UsersTab() {
   const [search, setSearch]       = useState("");
   const [plan,   setPlan]         = useState("");
   const [role,   setRole]         = useState("");
+  const [billing, setBilling]     = useState("");
   const [offset, setOffset]       = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [coachTarget, setCoachTarget] = useState<{ id: number; name: string } | null>(null);
@@ -337,7 +314,9 @@ function UsersTab() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); toast.success("Usuário atualizado"); },
   });
 
-  const users: AdminUser[] = data?.users ?? [];
+  const allUsers: AdminUser[] = data?.users ?? [];
+  // billing_standing filter is applied client-side (not a backend list param).
+  const users = billing ? allUsers.filter(u => (u.billing_standing ?? "free") === billing) : allUsers;
   const total = data?.total ?? 0;
 
   return (
@@ -361,6 +340,14 @@ function UsersTab() {
           className="rounded-md border border-border bg-background px-3 py-1.5 font-mono text-xs text-foreground focus:outline-none">
           <option value="">Todos os roles</option>
           {["player","coach","admin"].map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+        <select value={billing} onChange={e => { setBilling(e.target.value); setOffset(0); }}
+          className="rounded-md border border-border bg-background px-3 py-1.5 font-mono text-xs text-foreground focus:outline-none">
+          <option value="">Pagamento (todos)</option>
+          <option value="paying">Em dia</option>
+          <option value="past_due">Atrasado</option>
+          <option value="perk">Cortesia</option>
+          <option value="free">Free</option>
         </select>
       </div>
 
@@ -479,243 +466,6 @@ function UsersTab() {
           onClose={() => setCoachTarget(null)}
         />
       )}
-    </div>
-  );
-}
-
-// ── Finance Tab ───────────────────────────────────────────────────────────────
-
-function FinanceTab() {
-  const qc = useQueryClient();
-  const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
-  const [payFilter, setPayFilter] = useState<{ gateway?: string; status?: string; search?: string }>({});
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-finance", period],
-    queryFn: () => adminDashboard.coachPayouts(period),
-    staleTime: 30_000,
-  });
-
-  const { data: overview } = useQuery({
-    queryKey: ["admin-finance-overview"],
-    queryFn: () => adminDashboard.financeOverview(),
-    staleTime: 30_000,
-  });
-
-  const { data: paymentsData } = useQuery({
-    queryKey: ["admin-payments", payFilter],
-    queryFn: () => adminDashboard.payments({ ...payFilter, limit: 50 }),
-    staleTime: 15_000,
-  });
-
-  const payMut = useMutation({
-    mutationFn: (paymentId: number) => adminDashboard.markPaid(paymentId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-finance"] });
-      qc.invalidateQueries({ queryKey: ["admin-finance-overview"] });
-      toast.success("Marcado como pago");
-    },
-  });
-
-  const payouts: CoachPayout[] = data?.payouts ?? [];
-  const totalPending = data?.total_pending_cents ?? 0;
-  const rev = overview?.revenue;
-  const pot = overview?.payouts;
-  const dups = overview?.duplicates ?? [];
-  const payments = paymentsData?.payments ?? [];
-
-  const exportUrl = `/admin/finance/export.csv?period=${period}`;
-
-  return (
-    <div className="space-y-4">
-      {/* PAY-03: visão financeira consolidada */}
-      {rev && (
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-px overflow-hidden rounded-xl border border-border bg-border">
-          <FinTile label="Receita bruta" value={fmt(rev.gross_cents)} sub={`${rev.approved_count} pagamento(s)`} accent="primary" />
-          <FinTile label="MRR" value={fmt(rev.mrr_cents)} sub={`${rev.paying_pro} pagantes`} accent="primary" />
-          <FinTile label="ARR (est.)" value={fmt(rev.arr_cents)} sub="MRR × 12" />
-          <FinTile label="Repasses pendentes" value={pot ? fmt(pot.pending_cents) : "—"} sub={pot ? `${pot.pending_count} coach(es)` : ""} accent="warning" />
-          <FinTile label="Repasses pagos" value={pot ? fmt(pot.paid_cents) : "—"} sub={pot ? `${pot.paid_count} repasse(s)` : ""} />
-          <FinTile label="Pro de cortesia" value={String(rev.coach_perk_pro)} sub={`coaches · ${rev.failed_count} falha(s)`} />
-        </div>
-      )}
-
-      {/* breakdown por gateway + alerta de duplicados */}
-      {rev && rev.by_gateway.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Por gateway:</span>
-          {rev.by_gateway.map(g => (
-            <span key={g.gateway} className="rounded-md border border-border bg-hud-surface px-2.5 py-1 font-mono text-[10px] text-foreground">
-              {g.gateway} · <span className="text-primary font-bold">{fmt(g.amount_cents)}</span> · {g.n}
-            </span>
-          ))}
-          {dups.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1 font-mono text-[10px] font-bold text-destructive">
-              <AlertTriangle className="size-3" /> {dups.length} gateway_id duplicado(s)
-            </span>
-          )}
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest-2">Período</label>
-          <input type="month" value={period} onChange={e => setPeriod(e.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-1.5 font-mono text-xs text-foreground focus:outline-none focus:border-primary" />
-        </div>
-        <a href={exportUrl} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-          <Download className="size-3.5" /> Exportar CSV
-        </a>
-        {totalPending > 0 && (
-          <span className="font-mono text-[10px] text-primary">Total pendente: {fmt(totalPending)}</span>
-        )}
-      </div>
-
-      <div className="overflow-hidden rounded-xl border border-border bg-hud-surface">
-        <div className="px-4 py-3 border-b border-border bg-hud-elevated/40 flex items-center justify-between">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Repasses de Coaches, {period}</span>
-          <span className="font-mono text-[10px] text-muted-foreground">1–3 alunos: zerado · 4–9: R$15/aluno · 10+: R$20/aluno</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="border-b border-border">
-              <tr>
-                {["Coach", "Plano", "Alunos vinculados", "Alunos ativos", "Valor (R$)", "Status", ""].map(h => (
-                  <th key={h} className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                <tr><td colSpan={7} className="py-12 text-center"><Loader2 className="size-5 animate-spin text-primary mx-auto" /></td></tr>
-              ) : payouts.length === 0 ? (
-                <tr><td colSpan={7} className="py-12 text-center text-muted-foreground">Nenhum coach cadastrado.</td></tr>
-              ) : payouts.map(p => (
-                <tr key={p.id} className="hover:bg-primary/5 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-foreground">{p.display_name || p.username}</p>
-                    <p className="font-mono text-[10px] text-muted-foreground">@{p.username}</p>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-muted-foreground">{p.plan}</td>
-                  <td className="px-4 py-3 font-mono tabular-nums text-foreground text-center">{p.total_students}</td>
-                  <td className="px-4 py-3 font-mono tabular-nums text-center">
-                    <span className={cn("font-bold", p.active_students > 0 ? "text-primary" : "text-muted-foreground")}>
-                      {p.active_students}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-mono tabular-nums font-bold text-foreground">
-                    {p.amount_cents > 0 ? fmt(p.amount_cents) : p.active_students > 0 ? "Zerado" : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {p.status === "paid" ? (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
-                        <CheckCircle2 className="size-3" /> Pago
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-warning ring-1 ring-warning/20">
-                        <Clock className="size-3" /> Pendente
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {p.status !== "paid" && p.payment_id && (
-                      <button
-                        onClick={() => payMut.mutate(p.payment_id!)}
-                        disabled={payMut.isPending}
-                        className="inline-flex items-center gap-1 font-mono text-[10px] text-primary hover:underline disabled:opacity-50"
-                      >
-                        {payMut.isPending ? <Loader2 className="size-3 animate-spin" /> : <ChevronRight className="size-3" />}
-                        Marcar pago
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* PAY-03: todos os pagamentos de alunos (auditoria) */}
-      <div className="overflow-hidden rounded-xl border border-border bg-hud-surface">
-        <div className="px-4 py-3 border-b border-border bg-hud-elevated/40 flex flex-wrap items-center gap-2 justify-between">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pagamentos de alunos {paymentsData ? `(${paymentsData.total})` : ""}</span>
-          <div className="flex items-center gap-2">
-            <input
-              placeholder="buscar aluno / pi_…"
-              defaultValue={payFilter.search ?? ""}
-              onKeyDown={(e) => { if (e.key === "Enter") setPayFilter(f => ({ ...f, search: (e.target as HTMLInputElement).value || undefined })); }}
-              className="rounded-md border border-border bg-background px-2.5 py-1 font-mono text-[10px] text-foreground focus:outline-none focus:border-primary w-40"
-            />
-            <select
-              value={payFilter.status ?? ""}
-              onChange={(e) => setPayFilter(f => ({ ...f, status: e.target.value || undefined }))}
-              className="rounded-md border border-border bg-background px-2 py-1 font-mono text-[10px] text-foreground focus:outline-none focus:border-primary"
-            >
-              <option value="">todos status</option>
-              <option value="approved">aprovado</option>
-              <option value="failed">falhou</option>
-            </select>
-            <select
-              value={payFilter.gateway ?? ""}
-              onChange={(e) => setPayFilter(f => ({ ...f, gateway: e.target.value || undefined }))}
-              className="rounded-md border border-border bg-background px-2 py-1 font-mono text-[10px] text-foreground focus:outline-none focus:border-primary"
-            >
-              <option value="">todos gateways</option>
-              <option value="stripe">stripe</option>
-              <option value="mercadopago">mercadopago</option>
-            </select>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="border-b border-border">
-              <tr>
-                {["Aluno", "Plano", "Valor", "Status", "Gateway", "ID", "Data"].map(h => (
-                  <th key={h} className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {payments.length === 0 ? (
-                <tr><td colSpan={7} className="py-10 text-center text-muted-foreground">Nenhum pagamento.</td></tr>
-              ) : payments.map(p => (
-                <tr key={p.id} className="hover:bg-primary/5 transition-colors">
-                  <td className="px-4 py-2.5">
-                    <p className="font-medium text-foreground">{p.username}</p>
-                    <p className="font-mono text-[10px] text-muted-foreground">{p.email}</p>
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-muted-foreground">{p.plan}</td>
-                  <td className="px-4 py-2.5 font-mono tabular-nums font-bold text-foreground">{fmt(p.amount_cents)}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={cn("font-mono text-[10px] font-bold uppercase",
-                      p.status === "approved" ? "text-primary" : p.status === "failed" ? "text-destructive" : "text-muted-foreground")}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">{p.gateway}</td>
-                  <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground truncate max-w-[140px]">{p.gateway_id || "—"}</td>
-                  <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground whitespace-nowrap">
-                    {p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FinTile({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: "primary" | "warning" }) {
-  return (
-    <div className="bg-hud-surface p-4">
-      <div className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">{label}</div>
-      <div className={cn("mt-1 font-mono text-2xl font-light tabular-nums",
-        accent === "primary" ? "text-primary" : accent === "warning" ? "text-warning" : "text-foreground")}>{value}</div>
-      {sub && <div className="font-mono text-[10px] text-muted-foreground/70">{sub}</div>}
     </div>
   );
 }
@@ -1320,7 +1070,21 @@ function GtoWorkerTab() {
         </div>
       )}
 
-      {/* Manutenção de labels */}
+    </div>
+  );
+}
+
+// ── Manutenção Tab (operações pontuais, fora do monitoramento do Worker) ──────
+
+function MaintenanceTab() {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
+        <AlertTriangle className="size-4 text-amber-400 shrink-0 mt-0.5" />
+        <p className="text-sm text-muted-foreground">
+          Operações pontuais e potencialmente destrutivas. Rode com cautela. O monitoramento do worker fica em GTO Worker.
+        </p>
+      </div>
       <ReanalyzeLabelsPanel />
     </div>
   );
@@ -1435,47 +1199,104 @@ function ReanalyzeLabelsPanel() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+const SECTION_TITLE: Record<AdminSection, { title: string; sub: string }> = {
+  overview:     { title: "Visão geral",    sub: "Métricas operacionais e demografia." },
+  finance:      { title: "Financeiro",     sub: "Fluxo de caixa, entradas, saídas e cobrança." },
+  users:        { title: "Usuários",       sub: "Gestão de jogadores, planos e suspensões." },
+  coaches:      { title: "Coaches",        sub: "Roster de coaches, alunos e repasses." },
+  support:      { title: "Tickets",        sub: "Mensagens de suporte dos usuários." },
+  candidaturas: { title: "Candidaturas",   sub: "Pedidos para virar coach." },
+  "gto-worker": { title: "GTO Worker",     sub: "Monitoramento do worker e cobertura GTO." },
+  logs:         { title: "Logs",           sub: "Últimas importações de torneios." },
+  maintenance:  { title: "Manutenção",     sub: "Operações pontuais e destrutivas." },
+};
+
 const AdminDashboard = () => {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [section, setSection] = useState<AdminSection>("finance");
+
+  // ── Nav badges / attention dots ──
+  const { data: supportCount } = useQuery({
+    queryKey: ["admin-support-count"],
+    queryFn: support.unreadCount,
+    staleTime: 30_000,
+  });
+  const { data: pendingApps } = useQuery({
+    queryKey: ["admin-coach-applications", "pending"],
+    queryFn: () => adminDashboard.coachApplications("pending"),
+    staleTime: 30_000,
+  });
+  const { data: dunning } = useQuery({
+    queryKey: ["admin-finance-dunning"],
+    queryFn: adminDashboard.financeDunning,
+    staleTime: 60_000,
+  });
+  const { data: worker } = useQuery({
+    queryKey: ["admin-gto-worker-status"],
+    queryFn: adminDashboard.gtoWorkerStatus,
+    staleTime: 30_000,
+  });
+
+  const openTickets = supportCount?.open ?? 0;
+  const pendingCount = pendingApps?.applications?.length ?? 0;
+  const financeDot = (dunning?.past_due?.length ?? 0) > 0 || (dunning?.recent_failed?.length ?? 0) > 0;
+  const workerDot = worker ? (!worker.worker.active || worker.recent_errors.length > 0) : false;
+
+  const groups: NavGroup[] = [
+    {
+      label: "Negócio",
+      items: [
+        { id: "overview", label: "Visão geral", icon: LayoutDashboard },
+        { id: "finance",  label: "Financeiro",  icon: BarChart2, dot: financeDot },
+        { id: "users",    label: "Usuários",    icon: Users },
+        { id: "coaches",  label: "Coaches",     icon: GraduationCap },
+      ],
+    },
+    {
+      label: "Suporte",
+      items: [
+        { id: "support",      label: "Tickets",      icon: MessageSquarePlus, badge: openTickets },
+        { id: "candidaturas", label: "Candidaturas", icon: Shield, badge: pendingCount },
+      ],
+    },
+    {
+      label: "Operação",
+      items: [
+        { id: "gto-worker",  label: "GTO Worker",  icon: Cpu, dot: workerDot },
+        { id: "logs",        label: "Logs",        icon: Activity },
+        { id: "maintenance", label: "Manutenção",  icon: Wrench },
+      ],
+    },
+  ];
+
+  const meta = SECTION_TITLE[section];
 
   return (
     <div className="min-h-dvh bg-background hud-scanline">
       <HudHeader />
-      <main className="mx-auto max-w-[1440px] space-y-6 px-4 pt-8 pb-28 md:px-8 md:pb-8 animate-fade-in">
-        <header className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">
-            <Shield className="size-3.5" />
-            Admin
+      <main className="mx-auto max-w-[1440px] px-4 pt-8 pb-28 md:px-8 md:pb-8 animate-fade-in">
+        <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+          <AdminSidebar groups={groups} active={section} onSelect={setSection} />
+
+          <div className="min-w-0 flex-1 space-y-6">
+            <header className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest-2 text-primary">
+                <Shield className="size-3.5" /> Admin
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground">{meta.title}</h1>
+              <p className="text-sm text-muted-foreground">{meta.sub}</p>
+            </header>
+
+            {section === "overview"     && <OverviewTab />}
+            {section === "finance"      && <FinanceCockpit />}
+            {section === "users"        && <UsersTab />}
+            {section === "coaches"      && <CoachesTab />}
+            {section === "support"      && <SupportTab />}
+            {section === "candidaturas" && <CandidaturasTab />}
+            {section === "gto-worker"   && <GtoWorkerTab />}
+            {section === "logs"         && <LogsTab />}
+            {section === "maintenance"  && <MaintenanceTab />}
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Painel Administrativo</h1>
-          <p className="text-sm text-muted-foreground">Métricas operacionais, gestão de usuários e repasses de coaches.</p>
-        </header>
-
-        {/* Tabs */}
-        <div className="flex overflow-x-auto overflow-y-hidden border-b border-border gap-0 scrollbar-none">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest-2 transition-colors ${
-                tab === t.id
-                  ? "text-primary border-b-2 border-primary -mb-px"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <t.icon className="size-3.5" />
-              {t.label}
-            </button>
-          ))}
         </div>
-
-        {tab === "overview"     && <OverviewTab />}
-        {tab === "users"        && <UsersTab />}
-        {tab === "finance"      && <FinanceTab />}
-        {tab === "logs"         && <LogsTab />}
-        {tab === "candidaturas" && <CandidaturasTab />}
-        {tab === "support"      && <SupportTab />}
-        {tab === "gto-worker"   && <GtoWorkerTab />}
       </main>
     </div>
   );

@@ -2225,7 +2225,112 @@ export const adminDashboard = {
     affected_tournaments: number;
     changes: Array<{ tid: number; hand_id: string; action: string; old: string; new: string }>;
   }>("/admin/reanalyze-preflop-labels", { method: "POST" }),
+
+  // ── Finance cockpit (redesign) ──────────────────────────────────────────────
+  financeCockpit: (month: string) =>
+    request<FinanceCockpit>(`/admin/finance/cockpit?month=${month}`),
+
+  financeCalendar: (month: string) =>
+    request<FinanceCalendar>(`/admin/finance/calendar?month=${month}`),
+
+  financeDunning: () => request<Dunning>("/admin/finance/dunning"),
+
+  financeTimeseries: (months = 6) =>
+    request<{ series: TimeseriesPoint[] }>(`/admin/finance/timeseries?months=${months}`),
+
+  expenses: () => request<{ expenses: Expense[] }>("/admin/finance/expenses"),
+
+  createExpense: (data: ExpenseInput) =>
+    request<{ id: number }>("/admin/finance/expenses", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateExpense: (id: number, data: Partial<ExpenseInput>) =>
+    request<{ ok: boolean }>(`/admin/finance/expenses/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteExpense: (id: number) =>
+    request<{ ok: boolean }>(`/admin/finance/expenses/${id}`, { method: "DELETE" }),
 };
+
+// ── Finance cockpit types (redesign) ──────────────────────────────────────────
+
+export interface FinanceCockpit {
+  month: string;
+  gross_in_cents: number;
+  by_gateway: Array<{ gateway: string; amount_cents: number; n: number }>;
+  by_plan: Array<{ plan: string; amount_cents: number; n: number }>;
+  approved_count: number;
+  failed_count: number;
+  coach_payout_cents: number;
+  coach_payout_pending_cents: number;
+  expenses_cents: number;
+  cash_out_cents: number;
+  net_cents: number;
+  mrr_cents: number;
+  arr_cents: number;
+  paying_pro: number;
+  coach_perk_pro: number;
+  arpu_cents: number;
+  past_due_count: number;
+  past_due_risk_cents: number;
+  churn_count: number;
+}
+
+export interface FinanceCalendar {
+  month: string;
+  renewals_in: Array<{ id: number; username: string; date: string; plan: string }>;
+  payouts_out: Array<{ id: number; coach_id: number; coach: string; amount_cents: number; status: string; date: string }>;
+  expenses_due: Array<{ id: number; vendor: string; category: string; amount_cents: number; due_day: number; recurrence: string }>;
+}
+
+export interface Dunning {
+  past_due: Array<{ id: number; username: string; email: string; plan: string; past_due_since: string | null; plan_expires_at: string | null }>;
+  recent_canceled: Array<{ id: number; username: string; email: string; canceled_at: string | null }>;
+  recent_failed: Array<{ user_id: number; username: string; amount_cents: number; gateway: string; created_at: string }>;
+  duplicates: Array<{ gateway_id: string; n: number; total_cents: number }>;
+}
+
+export interface TimeseriesPoint {
+  month: string;
+  gross_cents: number;
+  churn_count: number;
+}
+
+export type ExpenseRecurrence = "monthly" | "annual" | "one_off";
+export type ExpenseStatus = "forecast" | "due" | "paid";
+export type ExpenseCategory = "infra" | "llm" | "solver" | "domain" | "gateway_fee" | "ads" | "other";
+
+export interface Expense {
+  id: number;
+  category: string;
+  vendor: string | null;
+  amount_cents: number;
+  currency: string;
+  recurrence: ExpenseRecurrence;
+  due_day: number | null;
+  period: string | null;
+  status: ExpenseStatus;
+  paid_at: string | null;
+  note: string | null;
+  active: boolean | number;
+  created_at: string;
+}
+
+export interface ExpenseInput {
+  category: string;
+  amount_cents: number;
+  vendor?: string;
+  recurrence?: ExpenseRecurrence;
+  due_day?: number;
+  period?: string;
+  status?: ExpenseStatus;
+  note?: string;
+  currency?: string;
+}
 
 export interface GtoHandRequest {
   id: number;
