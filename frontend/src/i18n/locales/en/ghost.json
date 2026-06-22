@@ -61,7 +61,10 @@
     "analysisLoading": "Generating analysis…",
     "analysisError": "Analysis unavailable right now. Try again.",
     "viewAnalysis": "View analysis",
-    "closeModal": "Close"
+    "closeModal": "Close",
+    "uncovered": "≈ Off coverage",
+    "uncoveredBadge": "≈ approx",
+    "uncoveredHint": "The solver does not cover your exact hand in this spot (hand outside the solved range). The shown distribution is only a range approximation, not your hand verdict. It does not count as an error."
   },
   "next": "Next →",
   "stats": {

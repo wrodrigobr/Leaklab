@@ -61,7 +61,10 @@
     "analysisLoading": "Generando análisis…",
     "analysisError": "Análisis no disponible en este momento. Inténtalo de nuevo.",
     "viewAnalysis": "Ver análisis",
-    "closeModal": "Cerrar"
+    "closeModal": "Cerrar",
+    "uncovered": "≈ Fuera de cobertura",
+    "uncoveredBadge": "≈ aprox",
+    "uncoveredHint": "El solver no cubre tu mano exacta en este spot (mano fuera del rango resuelto). La distribución mostrada es solo una aproximación del rango, no el veredicto de tu mano. No cuenta como error."
   },
   "next": "Siguiente →",
   "stats": {

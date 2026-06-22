@@ -1471,7 +1471,14 @@ def player_drill_submit():
     validation_source = 'heuristic'   # sem cobertura GTO: gradeia vs best_action do engine
     if gto_action and gto_label not in ('wizard_pending', ''):
         best_action, gto_freqs, validation_source = _resolve_best_action_from_node(row, return_strategy=True)
+        # TRAVA OFF-TREE: postflop sem dado HAND-AWARE (mão fora da cobertura do solver) → o
+        # nó cai na distribuição AGREGADA da range (source 'gto_range'/'gto_stored'), que NÃO é
+        # veredito da mão específica (ex.: trinca exibida como "fold" porque a range folda muito).
+        # Nesses casos não gradeamos como erro: é aproximação fora da cobertura.
+        _street_lc = (row.get('street') or '').lower()
+        gto_off_tree = (_street_lc != 'preflop' and validation_source in ('gto_range', 'gto_stored'))
     else:
+        gto_off_tree = False
         best_action = _norm_drill(best_action)
         # Guard: raise sem aposta anterior é "bet" — mas SÓ postflop. Preflop, abrir
         # é raise (por cima das blinds), nunca bet.
@@ -1513,7 +1520,11 @@ def player_drill_submit():
     CORRECT_FREQ, MIN_FREQ = 0.30, 0.10
     player_freq = float(gto_freqs.get(norm_new, 0.0)) if gto_freqs else 0.0
 
-    if top_match or call_jam_equiv:
+    if gto_off_tree:
+        # Mão fora da cobertura hand-aware do solver — não dá pra cravar o veredito; a
+        # distribuição mostrada é só aproximação da range. Nunca penaliza.
+        gto_tier = 'uncovered'
+    elif top_match or call_jam_equiv:
         gto_tier = 'correct'
     elif gto_freqs and player_freq >= CORRECT_FREQ:
         gto_tier = 'correct'
@@ -1522,10 +1533,12 @@ def player_drill_submit():
     else:
         gto_tier = 'error'
 
-    is_correct    = gto_tier != 'error'
+    is_correct    = gto_tier != 'error'   # 'uncovered' não é erro (sem penalidade de SRS/XP)
     # "mixed" = acerto numa linha que NÃO é a #1 (ação mista co-ótima) → selo GTO Misto
     is_mixed_line = gto_tier == 'correct' and not (top_match or call_jam_equiv)
-    if top_match or call_jam_equiv:
+    if gto_off_tree:
+        new_score = 0.04   # neutro: não melhora nem pune
+    elif top_match or call_jam_equiv:
         new_score = 0.02
     elif gto_tier == 'correct':
         new_score = 0.04
@@ -1578,6 +1591,7 @@ def player_drill_submit():
         'gto_freq':          round(player_freq, 3),
         'mixed':             is_mixed_line,
         'gto_tier':          gto_tier,
+        'gto_off_tree':      gto_off_tree,   # mão fora da cobertura hand-aware → "≈ aproximação"
         'gto_strategy':      gto_strategy,
         'validation_source': validation_source,   # gto_hand | gto_range | gto_stored | heuristic
         'delta':             result['delta'],
