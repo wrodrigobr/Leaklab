@@ -1,5 +1,6 @@
 """
-test_postgres_smoke.py — smoke test das funções de AGREGAÇÃO contra o banco REAL.
+test_postgres_smoke.py — smoke test das funções de agregação + de TODOS os endpoints GET
+contra o banco REAL.
 
 No CI roda em **Postgres** (DATABASE_URL setado) e pega a classe de bug que o SQLite
 esconde e o usuário sente em produção:
@@ -8,6 +9,14 @@ esconde e o usuário sente em produção:
   - Decimal não-serializável em json.dumps / jsonify
   - HAVING não enxerga aliases de SELECT
   - lastrowid None, INSERT OR REPLACE, etc.
+  - COLUNA FALTANDO por migração abortada (ex.: drill_sessions.correct → 500 no Ghost Table)
+  - text >= timestamp (coluna TEXT comparada a NOW()/interval → 500 no /admin/finance/dunning)
+
+Duas camadas de cobertura:
+  1. Funções de risco (analytics, drill, admin, financeiro) chamadas + json.dumps SEM default.
+  2. Sweep HTTP: cada rota GET preenchível é batida com um admin via test client (app.testing=True,
+     então a exceção real propaga). Auto-cobre endpoints novos sem manutenção da lista.
+A lacuna que deixou 7 bugs SQLite↔PG chegarem em prod era a ausência das camadas drill/admin/HTTP.
 
 Não faz parte das suítes do run_all_tests (que são SQLite). É um script standalone:
   - CI:   DATABASE_URL=postgres://... python tests/test_postgres_smoke.py
@@ -95,6 +104,25 @@ for rep in range(3):
             12.0, "medium", prf, gto, evloss,
         ))
 conn.commit()
+
+# ── Seed extra p/ drill + admin + financeiro (exercita colunas correct/canceled_at/payments
+#    que faltavam em prod) ─────────────────────────────────────────────────────────────────
+_dec = conn.execute(_adapt("SELECT id FROM decisions WHERE tournament_id=? LIMIT 1"), (t_id,)).fetchone()
+dec_id = _dec["id"]
+# drill_session com a coluna `correct` — se a migração não a criou, o INSERT estoura aqui (= o bug do Ghost Table)
+conn.execute(_adapt(
+    "INSERT INTO drill_sessions (user_id, decision_id, new_action, new_score, original_score, delta, "
+    "correct, next_drill_at, srs_interval_days) VALUES (?,?,?,?,?,?,?,?,?)"),
+    (uid, dec_id, "call", 0.10, 0.40, -0.30, 1, "2099-01-01T00:00:00", 3))
+conn.execute(_adapt(
+    "INSERT INTO payments (user_id, plan, amount_cents, currency, status, gateway) VALUES (?,?,?,?,?,?)"),
+    (uid, "pro", 9900, "BRL", "failed", "stripe"))
+# usuário cancelado + perfil demográfico (admin_dunning / demographics)
+conn.execute(_adapt(
+    "UPDATE users SET subscription_status='canceled', canceled_at=?, cancel_reason='payment_failure', "
+    "plan='pro', country='BR', main_game_type='mtt', usual_buyin_range='1-5', profile_completed_at=? WHERE id=?"),
+    ("2099-01-01T00:00:00", "2099-01-01T00:00:00", uid))
+conn.commit()
 conn.close()
 
 # ── Exercita as funções de risco + json.dumps (pega Decimal/ROUND/float*Decimal) ──
@@ -122,6 +150,67 @@ check("get_evolution_metrics",     lambda: repo.get_evolution_metrics(uid, 90))
 check("get_icm_performance",       lambda: repo.get_icm_performance(uid, 90))
 check("get_leak_graph_data",       lambda: repo.get_leak_graph_data(uid, 90, "pt-BR"))
 check("get_cognitive_failure_report", lambda: repo.get_cognitive_failure_report(uid, 90))
+
+# ── Drill + Admin + Financeiro (a lacuna que deixou os 7 bugs de prod passarem) ──────────────
+check("get_drill_stats",           lambda: repo.get_drill_stats(uid, 30))
+check("get_drill_spots",           lambda: repo.get_drill_spots(uid, 10))
+check("admin_revenue_summary",     lambda: repo.admin_revenue_summary())
+check("admin_cockpit_summary",     lambda: repo.admin_cockpit_summary())
+check("admin_finance_calendar",    lambda: repo.admin_finance_calendar())
+check("admin_dunning",             lambda: repo.admin_dunning())
+check("admin_revenue_timeseries",  lambda: repo.admin_revenue_timeseries(6))
+check("admin_detect_duplicate_payments", lambda: repo.admin_detect_duplicate_payments())
+check("get_demographics_aggregate", lambda: repo.get_demographics_aggregate())
+check("get_all_users",             lambda: repo.get_all_users(50, 0))
+check("get_all_users_count",       lambda: repo.get_all_users_count())
+check("get_students",              lambda: repo.get_students(uid))
+check("get_students_attention_signals", lambda: repo.get_students_attention_signals(uid))
+
+# ── Sweep HTTP: cada rota GET preenchível, com admin, via test client. Auto-cobre endpoints
+#    novos (incl. os que quebraram: /player/spots/drill, /admin/finance/dunning, /admin/demographics).
+#    app.testing=True → exceção propaga e o erro real (psycopg2.*) é capturado por endpoint. ──────
+import re as _re  # noqa: E402
+
+_c2 = schema.get_conn()
+_c2.execute(_adapt("UPDATE users SET role='admin' WHERE id=?"), (uid,))
+_c2.commit()
+_c2.close()
+
+from api.app import app as _flask_app          # noqa: E402
+from database.auth import generate_token       # noqa: E402
+
+_flask_app.testing = True                       # propaga exceções (pego o erro real, não um 500 mudo)
+_tok = generate_token(uid, "admin")
+_cli = _flask_app.test_client()
+_hdr = {"Authorization": f"Bearer {_tok}"}
+_fill = {
+    "decision_id": dec_id, "tournament_id": t_id, "tid": t_id, "db_id": t_id,
+    "student_id": uid, "user_id": uid, "coach_id": uid, "hand_id": "H0_0",
+}
+_SKIP = ("/static", "/stripe", "/webhook", "/export", "/download", "/auth/logout", "/health", "/ping")
+
+
+def _http(url):
+    def _do():
+        r = _cli.get(url, headers=_hdr)
+        if r.status_code == 500:
+            raise AssertionError(f"HTTP 500: {r.get_data(as_text=True)[:160]}")
+        return {"status": r.status_code}
+    return _do
+
+
+_swept = 0
+for _rule in _flask_app.url_map.iter_rules():
+    if "GET" not in (_rule.methods or set()):
+        continue
+    if any(s in _rule.rule for s in _SKIP):
+        continue
+    if any(a not in _fill for a in _rule.arguments):   # param que não sei preencher → pula
+        continue
+    _url = _re.sub(r"<[^>]+>", lambda m: str(_fill[m.group(0).strip("<>").split(":")[-1]]), _rule.rule)
+    check(f"GET {_url}", _http(_url))
+    _swept += 1
+print(f"(sweep HTTP: {_swept} rotas GET)")
 
 print(f"\nTotal: {passed + failed}  Passed: {passed}  Failed: {failed}")
 sys.exit(1 if failed else 0)
