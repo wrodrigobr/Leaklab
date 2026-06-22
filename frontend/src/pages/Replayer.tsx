@@ -1494,6 +1494,11 @@ const Replayer = () => {
   // (iPhone) NÃO suporta requestFullscreen — a Apple não deixa ocultar a barra via JS; lá degrada
   // pro prompt manual de girar (o h-dvh já usa o espaço que sobra).
   const canFullscreen = typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
+  // iOS Safari não suporta Fullscreen API, mas em modo standalone (PWA "Adicionar à Tela de Início")
+  // a barra some. Detecta se já está instalado p/ não mostrar o hint à toa.
+  const isStandalone = typeof window !== "undefined" &&
+    (window.matchMedia?.("(display-mode: standalone)").matches === true ||
+     (window.navigator as unknown as { standalone?: boolean }).standalone === true);
   const goImmersive = async () => {
     try {
       await document.documentElement.requestFullscreen?.();
@@ -1885,6 +1890,12 @@ const Replayer = () => {
               className="flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 font-mono text-[12px] font-bold uppercase tracking-widest text-primary-foreground shadow-lg transition-transform active:scale-95">
               <Maximize2 className="size-4" /> {t("fullscreenRotate")}
             </button>
+          )}
+          {/* iPhone: sem Fullscreen API → dica de instalar como PWA p/ tela cheia (sem barra). */}
+          {!canFullscreen && !isStandalone && (
+            <p className="max-w-[280px] rounded-xl bg-primary/10 px-4 py-2.5 font-mono text-[10px] leading-relaxed text-primary/90 ring-1 ring-primary/20">
+              {t("iosInstallHint")}
+            </p>
           )}
           <button onClick={() => navigate(-1)}
             className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground/70 transition-colors hover:text-primary">{t("back")}</button>

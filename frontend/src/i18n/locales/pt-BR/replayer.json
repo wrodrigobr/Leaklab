@@ -368,5 +368,6 @@
   "hudToggleTip": "Mostrar/ocultar o HUD de stats dos jogadores na mesa (VPIP/PFR/3-bet · mãos). Estilo Holdem Manager: só aparece para jogadores com amostra rastreada.",
   "hudLegend": "Indicadores: VPIP: % de mãos jogadas · PFR: % com raise no preflop · 3B: % de 3-bet · cb: c-bet (aposta de continuação) · fcb: fold para o c-bet · AF: fator de agressão pós-flop · wtsd: % que foi ao showdown · Nh: mãos na amostra. Valor vazio = amostra insuficiente para o indicador.",
   "hudHands": "mãos",
-  "fullscreenRotate": "Tela cheia e girar"
+  "fullscreenRotate": "Tela cheia e girar",
+  "iosInstallHint": "Para tela cheia no iPhone: toque em Compartilhar e depois em \"Adicionar à Tela de Início\"."
 }

@@ -2,11 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#0A0E1A" />
+    <!-- PWA: "Adicionar à Tela de Início" abre em standalone (sem barra do navegador).
+         iOS usa as meta apple-*; Android usa o manifest. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="GrindLab" />
     <title>GrindLab — Análise tática de torneios e detecção de leaks</title>
     <meta name="description" content="Analise logs de torneios de poker, identifique leaks com IA e revise mãos no replayer tático do GrindLab." />
     <meta name="author" content="GrindLab" />
