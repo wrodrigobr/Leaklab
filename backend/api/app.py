@@ -2687,17 +2687,16 @@ def _extract_financials(raw: str, hero: str, site: str | None = None) -> dict:
                 result['place'] = int(m.group(1))
 
         if result['prize'] is None:
-            # PokerStars: hero busted without ITM — "hero finished the tournament" sem lugar/prêmio
-            # Não usar o fallback de chips coletados (esses são potes normais do jogo, não prêmio)
+            # PokerStars: hero busted sem ITM — "hero finished the tournament" sem lugar/prêmio.
+            # (NÃO somar "collected X from" — são potes normais em FICHAS, não prêmio em dinheiro.)
             if re.search(re.escape(hero) + r'\s+finished the tournament', raw, re.IGNORECASE):
                 result['prize'] = 0.0
-            else:
-                # GGPoker: soma chips coletados em potes como aproximação do prêmio
-                collected = re.findall(
-                    re.escape(hero) + r' collected (\d+(?:\.\d+)?) from', raw
-                )
-                if collected:
-                    result['prize'] = sum(float(x) for x in collected)
+
+    # Sem prêmio/ITM detectado = eliminado (busted). O prejuízo é o buy-in cheio (inclui rake).
+    # Cobre o GG (que não traz resultado no HH) e qualquer torneio sem cash. Se o jogador
+    # tiver cashado mas o HH não registrar (caso GG), pode ser corrigido manualmente depois.
+    if result['prize'] is None and result['buy_in']:
+        result['prize'] = 0.0
 
     if result['buy_in'] and result['prize'] is not None:
         result['profit'] = round(result['prize'] - result['buy_in'], 2)
