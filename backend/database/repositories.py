@@ -3926,10 +3926,15 @@ def admin_finance_calendar(month: str = None) -> dict:
             "AND u.plan_expires_at >= ? AND u.plan_expires_at < ? "
             "AND (u.plan_source IS NULL OR u.plan_source NOT IN ('coach_trial','coach_earned')) "
             "ORDER BY u.plan_expires_at"), (start, end))
+        # due_at é TIMESTAMP no Postgres; COALESCE(timestamp, texto) quebra lá. Pega cru e
+        # resolve o fallback (fim do mês) em Python, normalizando p/ string ISO.
         payouts = _fetchall(conn, _adapt(
-            "SELECT cp.id, cp.coach_id, c.username AS coach, cp.amount_cents, cp.status, "
-            "COALESCE(cp.due_at, ?) AS date FROM coach_payments cp "
-            "JOIN users c ON c.id = cp.coach_id WHERE cp.period = ? ORDER BY date"), (end, month))
+            "SELECT cp.id, cp.coach_id, c.username AS coach, cp.amount_cents, cp.status, cp.due_at "
+            "FROM coach_payments cp JOIN users c ON c.id = cp.coach_id "
+            "WHERE cp.period = ? ORDER BY cp.due_at"), (month,))
+        for _p in payouts:
+            _d = _p.get('due_at')
+            _p['date'] = (_d.isoformat() if hasattr(_d, 'isoformat') else _d) or end
         expenses = _fetchall(conn, _adapt(
             "SELECT id, vendor, category, amount_cents, due_day, recurrence FROM expenses "
             "WHERE active=1 AND recurrence IN ('monthly','annual') AND due_day IS NOT NULL ORDER BY due_day"))
