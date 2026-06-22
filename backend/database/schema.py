@@ -1715,7 +1715,12 @@ class _AdaptedConn:
         if not self._pg:
             return sql
         import re
-        sql = re.sub(r'(?<![\$%])\?', '%s', sql)
+        # ? → %s só FORA de strings literais ('...'). Um '?' literal (ex.: COALESCE(pos,'?')) não é
+        # placeholder; convertê-lo dava um %s a mais → "tuple index out of range" no psycopg2.
+        _parts = re.split(r"('(?:[^']|'')*')", sql)
+        for _i in range(0, len(_parts), 2):
+            _parts[_i] = re.sub(r'(?<![\$%])\?', '%s', _parts[_i])
+        sql = ''.join(_parts)
         sql = sql.replace("datetime('now')", 'NOW()')
         # days/hours/minutes/seconds (antes só days; horas/minutos ficavam crus e quebravam no PG).
         sql = re.sub(

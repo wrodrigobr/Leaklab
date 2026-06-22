@@ -37,8 +37,13 @@ def _adapt(sql: str) -> str:
     if not USE_POSTGRES:
         return sql
     import re
-    # Substituir placeholders ? por %s
-    sql = re.sub(r'(?<!\w)\?(?!\w)', '%s', sql)
+    # Substituir placeholders ? por %s — MAS só FORA de strings literais ('...'). Um '?' literal
+    # (ex.: COALESCE(pos, '?')) não é placeholder; convertê-lo gerava um %s a mais → o psycopg2
+    # exigia +1 param e dava "tuple index out of range" (SQLite ignora ? dentro de aspas, o PG não).
+    _parts = re.split(r"('(?:[^']|'')*')", sql)   # separa as strings 'literais' (com '' escapado)
+    for _i in range(0, len(_parts), 2):           # índices pares = trechos FORA de strings
+        _parts[_i] = re.sub(r'(?<!\w)\?(?!\w)', '%s', _parts[_i])
+    sql = ''.join(_parts)
     # Substituir datetime('now')
     sql = sql.replace("datetime('now')", 'NOW()')
     # Substituir datetime('now', '-N <unidade>') — days/hours/minutes/seconds (SQLite → Postgres).
