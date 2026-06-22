@@ -605,6 +605,35 @@ def _run_migrations(conn):
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_payments_coach ON coach_payments(coach_id)")
         except Exception: pass
+        # ADMIN-FIN: despesas (saídas) — cockpit financeiro precisa delas p/ net real.
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS expenses (
+                    id            SERIAL PRIMARY KEY,
+                    category      TEXT    NOT NULL,        -- infra|llm|solver|domain|gateway_fee|ads|other
+                    vendor        TEXT,
+                    amount_cents  INTEGER NOT NULL DEFAULT 0,
+                    currency      TEXT    NOT NULL DEFAULT 'BRL',
+                    recurrence    TEXT    NOT NULL DEFAULT 'monthly',  -- monthly|annual|one_off
+                    due_day       INTEGER,               -- dia do mês p/ recorrentes (calendário)
+                    period        TEXT,                  -- 'YYYY-MM' do custo avulso
+                    status        TEXT    NOT NULL DEFAULT 'forecast', -- forecast|due|paid
+                    paid_at       TIMESTAMP,
+                    note          TEXT,
+                    active        INTEGER NOT NULL DEFAULT 1,  -- recorrente ativo (0=encerrado)
+                    created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_period ON expenses(period)")
+        except Exception: pass
+        # ADMIN-FIN: vencimento do repasse (calendário) + churn no tempo + dunning.
+        for _c in [
+            "ALTER TABLE coach_payments ADD COLUMN IF NOT EXISTS due_at TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS canceled_at    TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS past_due_since TEXT",
+        ]:
+            try: conn.execute(_c)
+            except Exception: pass
         # drill_sessions table (Postgres) — Sprint K: Ghost Table Simulator
         try:
             conn.execute("""
@@ -1059,6 +1088,8 @@ def _run_migrations(conn):
             ("coach_trial_ends_at",     "ALTER TABLE users ADD COLUMN coach_trial_ends_at     TEXT"),
             ("plan_expires_at",         "ALTER TABLE users ADD COLUMN plan_expires_at         TEXT"),
             ("subscription_status",     "ALTER TABLE users ADD COLUMN subscription_status     TEXT"),
+            ("canceled_at",             "ALTER TABLE users ADD COLUMN canceled_at             TEXT"),
+            ("past_due_since",          "ALTER TABLE users ADD COLUMN past_due_since           TEXT"),
             ("buy_in",          "ALTER TABLE tournaments ADD COLUMN buy_in REAL"),
             ("prize",           "ALTER TABLE tournaments ADD COLUMN prize  REAL"),
             ("profit",          "ALTER TABLE tournaments ADD COLUMN profit REAL"),
@@ -1197,6 +1228,30 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_payments_coach ON coach_payments(coach_id)")
+        # ADMIN-FIN: despesas (saídas) — net real do cockpit (SQLite)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS expenses (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                category      TEXT    NOT NULL,
+                vendor        TEXT,
+                amount_cents  INTEGER NOT NULL DEFAULT 0,
+                currency      TEXT    NOT NULL DEFAULT 'BRL',
+                recurrence    TEXT    NOT NULL DEFAULT 'monthly',
+                due_day       INTEGER,
+                period        TEXT,
+                status        TEXT    NOT NULL DEFAULT 'forecast',
+                paid_at       TEXT,
+                note          TEXT,
+                active        INTEGER NOT NULL DEFAULT 1,
+                created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_period ON expenses(period)")
+        # ADMIN-FIN: vencimento do repasse (calendário) — SQLite
+        _cp_cols = {r[1] for r in conn.execute('PRAGMA table_info(coach_payments)').fetchall()}
+        if 'due_at' not in _cp_cols:
+            try: conn.execute("ALTER TABLE coach_payments ADD COLUMN due_at TEXT")
+            except Exception: pass
         # drill_sessions table (SQLite) — Sprint K: Ghost Table Simulator
         conn.execute("""
             CREATE TABLE IF NOT EXISTS drill_sessions (

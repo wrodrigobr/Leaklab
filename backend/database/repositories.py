@@ -3733,6 +3733,261 @@ def admin_revenue_summary() -> dict:
         conn.close()
 
 
+# ── ADMIN-FIN: cockpit financeiro (entradas/saídas, net, calendário, dunning) ──────────
+
+def _month_bounds(month: str):
+    """'YYYY-MM' -> (inicio_iso, fim_iso_exclusivo). Comparação por string ISO funciona em
+    SQLite (TEXT) e Postgres (TIMESTAMP casteia a string), sem dialeto de data."""
+    from datetime import datetime
+    y, m = int(month[:4]), int(month[5:7])
+    start = datetime(y, m, 1)
+    end = datetime(y + (1 if m == 12 else 0), 1 if m == 12 else m + 1, 1)
+    return start.isoformat(), end.isoformat()
+
+
+def _current_month() -> str:
+    from datetime import datetime
+    return datetime.utcnow().strftime('%Y-%m')
+
+
+def _real_mrr_cents(conn) -> int:
+    """MRR REAL: soma o último pagamento aprovado de cada pagante-pro ativo, normalizando
+    anual->/12 pelo span do período (não o proxy headcount x 9900)."""
+    rows = _fetchall(conn, """
+        SELECT p.user_id, p.amount_cents, p.period_start, p.period_end, p.created_at
+        FROM payments p
+        JOIN users u ON u.id = p.user_id
+        WHERE p.status='approved' AND u.plan='pro'
+          AND (u.plan_source IS NULL OR u.plan_source NOT IN ('coach_trial','coach_earned'))
+    """)
+    from datetime import datetime
+    latest = {}
+    for r in rows:
+        uid = r['user_id']
+        if uid not in latest or str(r['created_at']) > str(latest[uid]['created_at']):
+            latest[uid] = r
+    total = 0
+    for r in latest.values():
+        amt = int(r['amount_cents'] or 0)
+        span_days = 30
+        try:
+            if r['period_start'] and r['period_end']:
+                ps = datetime.fromisoformat(str(r['period_start'])[:19])
+                pe = datetime.fromisoformat(str(r['period_end'])[:19])
+                span_days = max(1, (pe - ps).days)
+        except Exception:
+            span_days = 30
+        total += round(amt / 12) if span_days > 200 else amt   # anual -> mensal
+    return total
+
+
+# expenses CRUD
+def create_expense(category, vendor, amount_cents, recurrence='monthly', due_day=None,
+                   period=None, status='forecast', note=None, currency='BRL') -> int:
+    conn = get_conn()
+    try:
+        cur = conn.execute(_adapt(
+            "INSERT INTO expenses (category, vendor, amount_cents, currency, recurrence, "
+            "due_day, period, status, note) VALUES (?,?,?,?,?,?,?,?,?)"),
+            (category, vendor, int(amount_cents or 0), currency, recurrence,
+             due_day, period, status, note))
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def list_expenses(active_only=True) -> list:
+    conn = get_conn()
+    try:
+        where = "WHERE active=1" if active_only else ""
+        return _fetchall(conn, f"SELECT * FROM expenses {where} ORDER BY recurrence, category, vendor")
+    finally:
+        conn.close()
+
+
+def update_expense(expense_id, **fields) -> bool:
+    allowed = {'category', 'vendor', 'amount_cents', 'currency', 'recurrence',
+               'due_day', 'period', 'status', 'paid_at', 'note', 'active'}
+    sets = [(k, v) for k, v in fields.items() if k in allowed]
+    if not sets:
+        return False
+    conn = get_conn()
+    try:
+        clause = ", ".join(f"{k}=?" for k, _ in sets)
+        conn.execute(_adapt(f"UPDATE expenses SET {clause} WHERE id=?"),
+                     tuple(v for _, v in sets) + (expense_id,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def delete_expense(expense_id) -> bool:
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("DELETE FROM expenses WHERE id=?"), (expense_id,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def _monthly_expense_cents(conn) -> int:
+    """Custo recorrente mensal equivalente (anual/12) das despesas ativas."""
+    rows = _fetchall(conn, "SELECT amount_cents, recurrence FROM expenses WHERE active=1")
+    total = 0
+    for r in rows:
+        amt = int(r['amount_cents'] or 0)
+        if r['recurrence'] == 'monthly':
+            total += amt
+        elif r['recurrence'] == 'annual':
+            total += round(amt / 12)
+    return total
+
+
+def admin_cockpit_summary(month: str = None) -> dict:
+    """Resumo do cockpit p/ um mês: entradas, saídas, net, MRR real, churn, dunning, ARPU."""
+    month = month or _current_month()
+    start, end = _month_bounds(month)
+    conn = get_conn()
+    try:
+        # ENTRADAS (bruto aprovado no mês, por gateway e por plano)
+        gin = _fetchone(conn, _adapt(
+            "SELECT COALESCE(SUM(amount_cents),0) c, COUNT(*) n FROM payments "
+            "WHERE status='approved' AND created_at >= ? AND created_at < ?"), (start, end))
+        by_gateway = _fetchall(conn, _adapt(
+            "SELECT gateway, COALESCE(SUM(amount_cents),0) amount_cents, COUNT(*) n FROM payments "
+            "WHERE status='approved' AND created_at >= ? AND created_at < ? "
+            "GROUP BY gateway ORDER BY amount_cents DESC"), (start, end))
+        by_plan = _fetchall(conn, _adapt(
+            "SELECT plan, COALESCE(SUM(amount_cents),0) amount_cents, COUNT(*) n FROM payments "
+            "WHERE status='approved' AND created_at >= ? AND created_at < ? "
+            "GROUP BY plan ORDER BY amount_cents DESC"), (start, end))
+        failed = _fetchone(conn, _adapt(
+            "SELECT COUNT(*) n FROM payments WHERE status='failed' AND created_at >= ? AND created_at < ?"),
+            (start, end))['n']
+        # SAÍDAS (repasses de coach do período + despesas do mês)
+        payouts = _fetchone(conn, _adapt(
+            "SELECT COALESCE(SUM(amount_cents),0) c, "
+            "COALESCE(SUM(CASE WHEN status='pending' THEN amount_cents ELSE 0 END),0) pending "
+            "FROM coach_payments WHERE period=?"), (month,))
+        exp_month = _monthly_expense_cents(conn)
+        gross_in = int(gin['c'])
+        cash_out = int(payouts['c']) + exp_month
+        # MRR real + pagantes
+        mrr = _real_mrr_cents(conn)
+        paying = _fetchone(conn, _adapt(
+            "SELECT COUNT(*) n FROM users WHERE plan='pro' "
+            "AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial','coach_earned'))"))['n']
+        perk = _fetchone(conn, _adapt(
+            "SELECT COUNT(*) n FROM users WHERE plan='pro' AND plan_source IN ('coach_trial','coach_earned')"))['n']
+        # DUNNING: pro em atraso (em risco) + churn do mês
+        past_due = _fetchone(conn, _adapt(
+            "SELECT COUNT(*) n FROM users WHERE plan='pro' AND subscription_status='past_due'"))['n']
+        churn = _fetchone(conn, _adapt(
+            "SELECT COUNT(*) n FROM users WHERE canceled_at IS NOT NULL AND canceled_at >= ? AND canceled_at < ?"),
+            (start, end))['n']
+        return {
+            'month':            month,
+            'gross_in_cents':   gross_in,
+            'by_gateway':       by_gateway,
+            'by_plan':          by_plan,
+            'approved_count':   int(gin['n']),
+            'failed_count':     int(failed),
+            'coach_payout_cents':   int(payouts['c']),
+            'coach_payout_pending_cents': int(payouts['pending']),
+            'expenses_cents':   exp_month,
+            'cash_out_cents':   cash_out,
+            'net_cents':        gross_in - cash_out,
+            'mrr_cents':        mrr,
+            'arr_cents':        mrr * 12,
+            'paying_pro':       paying,
+            'coach_perk_pro':   perk,
+            'arpu_cents':       round(gross_in / paying) if paying else 0,
+            'past_due_count':   past_due,
+            'past_due_risk_cents': past_due * 9900,
+            'churn_count':      churn,
+        }
+    finally:
+        conn.close()
+
+
+def admin_finance_calendar(month: str = None) -> dict:
+    """Eventos financeiros do mês: renovações entrando (plan_expires_at), repasses saindo
+    (coach_payments due_at/period), e despesas recorrentes (due_day)."""
+    month = month or _current_month()
+    start, end = _month_bounds(month)
+    conn = get_conn()
+    try:
+        renewals = _fetchall(conn, _adapt(
+            "SELECT u.id, u.username, u.plan_expires_at AS date, u.plan FROM users u "
+            "WHERE u.plan='pro' AND u.plan_expires_at IS NOT NULL "
+            "AND u.plan_expires_at >= ? AND u.plan_expires_at < ? "
+            "AND (u.plan_source IS NULL OR u.plan_source NOT IN ('coach_trial','coach_earned')) "
+            "ORDER BY u.plan_expires_at"), (start, end))
+        payouts = _fetchall(conn, _adapt(
+            "SELECT cp.id, cp.coach_id, c.username AS coach, cp.amount_cents, cp.status, "
+            "COALESCE(cp.due_at, ?) AS date FROM coach_payments cp "
+            "JOIN users c ON c.id = cp.coach_id WHERE cp.period = ? ORDER BY date"), (end, month))
+        expenses = _fetchall(conn, _adapt(
+            "SELECT id, vendor, category, amount_cents, due_day, recurrence FROM expenses "
+            "WHERE active=1 AND recurrence IN ('monthly','annual') AND due_day IS NOT NULL ORDER BY due_day"))
+        return {'month': month, 'renewals_in': renewals, 'payouts_out': payouts, 'expenses_due': expenses}
+    finally:
+        conn.close()
+
+
+def admin_dunning() -> dict:
+    """Receita em risco: pro em atraso (com desde-quando), falhas recentes, duplicatas."""
+    conn = get_conn()
+    try:
+        past_due = _fetchall(conn, _adapt(
+            "SELECT u.id, u.username, u.email, u.plan, u.past_due_since, u.plan_expires_at "
+            "FROM users u WHERE u.plan='pro' AND u.subscription_status='past_due' "
+            "ORDER BY u.past_due_since"))
+        canceled = _fetchall(conn, _adapt(
+            "SELECT u.id, u.username, u.email, u.canceled_at FROM users u "
+            "WHERE u.subscription_status='canceled' AND u.canceled_at IS NOT NULL "
+            f"AND u.canceled_at >= {interval_sql(30)} ORDER BY u.canceled_at DESC"))
+        recent_failed = _fetchall(conn, _adapt(
+            "SELECT p.user_id, u.username, p.amount_cents, p.gateway, p.created_at "
+            "FROM payments p JOIN users u ON u.id=p.user_id WHERE p.status='failed' "
+            f"AND p.created_at >= {interval_sql(14)} ORDER BY p.created_at DESC"))
+        return {
+            'past_due': past_due,
+            'recent_canceled': canceled,
+            'recent_failed': recent_failed,
+            'duplicates': admin_detect_duplicate_payments(),
+        }
+    finally:
+        conn.close()
+
+
+def admin_revenue_timeseries(months: int = 6) -> list:
+    """Série mensal: bruto aprovado, novos pagantes, churn — p/ os gráficos de tendência."""
+    from datetime import datetime
+    now = datetime.utcnow()
+    out = []
+    conn = get_conn()
+    try:
+        for i in range(months - 1, -1, -1):
+            y = now.year + ((now.month - 1 - i) // 12)
+            m = ((now.month - 1 - i) % 12) + 1
+            mon = f"{y:04d}-{m:02d}"
+            s, e = _month_bounds(mon)
+            gross = _fetchone(conn, _adapt(
+                "SELECT COALESCE(SUM(amount_cents),0) c FROM payments "
+                "WHERE status='approved' AND created_at >= ? AND created_at < ?"), (s, e))['c']
+            churn = _fetchone(conn, _adapt(
+                "SELECT COUNT(*) n FROM users WHERE canceled_at IS NOT NULL "
+                "AND canceled_at >= ? AND canceled_at < ?"), (s, e))['n']
+            out.append({'month': mon, 'gross_cents': int(gross), 'churn_count': int(churn)})
+        return out
+    finally:
+        conn.close()
+
+
 def admin_detect_duplicate_payments() -> list:
     """Anti-fraude/saúde: pagamentos aprovados com o MESMO gateway_id em >1 linha
     (não deveria ocorrer após o fix de idempotência — sinaliza dado legado/anômalo)."""
@@ -3798,26 +4053,31 @@ def apply_stripe_subscription(user_id: int, status: str, plan_expires_at: Option
       past_due → mantém pro (Stripe em retry/dunning) MAS grava status='past_due' p/ coach/admin
                  distinguirem pagante-em-dia de atrasado (régua da comissão).
     Retorna a ação tomada ('activated' | 'downgraded' | 'kept')."""
+    from datetime import datetime
     conn = get_conn()
     try:
+        _now = datetime.utcnow().isoformat()
         if status in ('active', 'trialing'):
+            # recuperou: limpa marca de atraso/cancelamento.
             conn.execute(_adapt(
                 "UPDATE users SET plan='pro', plan_source='stripe_sub', subscription_status='active', "
-                "mp_subscription_id=?, plan_expires_at=? WHERE id=?"),
+                "past_due_since=NULL, canceled_at=NULL, mp_subscription_id=?, plan_expires_at=? WHERE id=?"),
                 (sub_id, plan_expires_at, user_id))
             conn.commit()
             return 'activated'
         if status in ('canceled', 'unpaid', 'incomplete_expired'):
+            # churn no tempo: grava canceled_at (1ª vez) p/ bucketizar churn por período.
             conn.execute(_adapt(
                 "UPDATE users SET plan='free', plan_source=NULL, subscription_status='canceled', "
-                "mp_subscription_id=NULL, plan_expires_at=NULL WHERE id=?"),
-                (user_id,))
+                "canceled_at=COALESCE(canceled_at, ?), mp_subscription_id=NULL, plan_expires_at=NULL WHERE id=?"),
+                (_now, user_id))
             conn.commit()
             return 'downgraded'
         if status == 'past_due':
-            # mantém pro, mas marca o atraso (antes era no-op e o coach via como 'em dia').
+            # mantém pro, marca o atraso + desde quando (dunning), antes era no-op.
             conn.execute(_adapt(
-                "UPDATE users SET subscription_status='past_due' WHERE id=?"), (user_id,))
+                "UPDATE users SET subscription_status='past_due', "
+                "past_due_since=COALESCE(past_due_since, ?) WHERE id=?"), (_now, user_id))
             conn.commit()
             return 'kept'
         return 'kept'   # incomplete → Stripe ainda resolvendo

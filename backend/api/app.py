@@ -5791,6 +5791,73 @@ def admin_finance_overview():
     })
 
 
+@app.route('/admin/finance/cockpit', methods=['GET'])
+@require_admin
+def admin_finance_cockpit():
+    """ADMIN-FIN: cockpit — entradas, saídas (coach+despesas), net, MRR real, dunning, ARPU."""
+    from database.repositories import admin_cockpit_summary
+    return jsonify(admin_cockpit_summary(request.args.get('month') or None))
+
+
+@app.route('/admin/finance/calendar', methods=['GET'])
+@require_admin
+def admin_finance_calendar_route():
+    """ADMIN-FIN: calendário — renovações entrando, repasses saindo, despesas com vencimento."""
+    from database.repositories import admin_finance_calendar
+    return jsonify(admin_finance_calendar(request.args.get('month') or None))
+
+
+@app.route('/admin/finance/dunning', methods=['GET'])
+@require_admin
+def admin_finance_dunning():
+    """ADMIN-FIN: receita em risco — atrasados, cancelados recentes, falhas, duplicatas."""
+    from database.repositories import admin_dunning
+    return jsonify(admin_dunning())
+
+
+@app.route('/admin/finance/timeseries', methods=['GET'])
+@require_admin
+def admin_finance_timeseries():
+    """ADMIN-FIN: série mensal (bruto + churn) p/ os gráficos de tendência."""
+    from database.repositories import admin_revenue_timeseries
+    try:
+        months = max(1, min(int(request.args.get('months', 6)), 24))
+    except (TypeError, ValueError):
+        months = 6
+    return jsonify({'series': admin_revenue_timeseries(months)})
+
+
+@app.route('/admin/finance/expenses', methods=['GET', 'POST'])
+@require_admin
+def admin_finance_expenses():
+    """ADMIN-FIN: despesas (saídas). GET lista; POST cria."""
+    from database.repositories import list_expenses, create_expense
+    if request.method == 'GET':
+        return jsonify({'expenses': list_expenses(active_only=False)})
+    d = request.get_json(silent=True) or {}
+    if not d.get('category') or d.get('amount_cents') in (None, ''):
+        return jsonify({'error': 'category e amount_cents são obrigatórios'}), 400
+    eid = create_expense(
+        category=d['category'], vendor=d.get('vendor'),
+        amount_cents=int(d['amount_cents']), recurrence=d.get('recurrence', 'monthly'),
+        due_day=d.get('due_day'), period=d.get('period'),
+        status=d.get('status', 'forecast'), note=d.get('note'),
+        currency=d.get('currency', 'BRL'))
+    return jsonify({'id': eid}), 201
+
+
+@app.route('/admin/finance/expenses/<int:expense_id>', methods=['PATCH', 'DELETE'])
+@require_admin
+def admin_finance_expense_item(expense_id: int):
+    from database.repositories import update_expense, delete_expense
+    if request.method == 'DELETE':
+        delete_expense(expense_id)
+        return jsonify({'ok': True})
+    d = request.get_json(silent=True) or {}
+    update_expense(expense_id, **d)
+    return jsonify({'ok': True})
+
+
 @app.route('/admin/payments', methods=['GET'])
 @require_admin
 def admin_payments():
