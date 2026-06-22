@@ -498,13 +498,13 @@ def _analyze_preflop_impl(
     # foldar o BB; check é o default), mas é TRIVIALMENTE correto. Marca como tal em vez de
     # "sem cobertura" pra não exibir "Spot N/A · Sem veredito".
     if scenario == 'rfi' and pos == 'BB' and action_taken.lower() == 'check':
-        base.update({
-            'available': True, 'action_quality': 'correct', 'in_range': True,
-            'scenario': 'bb_option', 'bb_option': True,
-            'recommended_actions': ['check'],
-            'reasoning': 'Check de opção do BB em pote não-aberto: jogada padrão (trivial).',
-        })
-        return base
+        # BB check em pote não-aberto = free play: NÃO é decisão gradeável (INV-3, null honesty).
+        # Não fabrica veredito 'correct' (isso era veredito inventado p/ um não-spot). available=False
+        # honesto; marca bb_option só p/ o display mostrar "Check de opção do BB" em vez de "Spot N/A"
+        # mudo, sem cravar acerto. scenario fica 'rfi' e NÃO seta coverage_reason (é free play, não gap).
+        base['bb_option'] = True
+        base['reasoning'] = 'Check de opção do BB em pote não-aberto: sem decisão gradeável.'
+        return base   # available=False (default da base) — scenario='rfi'
 
     # ── PKO overlay (RFI / vs_RFI) ────────────────────────────────────────────
     # Em torneio PKO o bounty muda a estratégia (abre-se/defende-se mais largo).
