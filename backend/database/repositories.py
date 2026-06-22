@@ -4965,7 +4965,14 @@ def get_leak_graph_data(user_id: int, days: int = 90, lang: str = 'pt-BR') -> di
     if not rows:
         return {'nodes': [], 'edges': [], 'narrative': ''}
 
-    graph = build_leak_graph([dict(r) for r in rows])
+    # Blinda o build (e loga a raiz): um IndexError só-Postgres aparecia aqui sem o traceback exato.
+    # Degrada p/ grafo vazio em vez de 500 no /player/leak-graph; o log captura a linha p/ corrigir.
+    try:
+        graph = build_leak_graph([dict(r) for r in rows])
+    except Exception:
+        import logging
+        logging.getLogger('app').exception('build_leak_graph falhou (user_id=%s)', user_id)
+        return {'nodes': [], 'edges': [], 'narrative': ''}
 
     hero = ''
     try:
