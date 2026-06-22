@@ -29,21 +29,21 @@ type Geo = {
 };
 const GEO_LANDSCAPE: Geo = {
   CX: 560, CY: 340, RX_SEAT: 452, RY_SEAT: 272, VBW: 1120, VBH: 630, aspect: "16 / 10", S: 1,
-  RXF: 414, RYF: 218, FELT_MX: 24, FELT_MY: 22, boardW: 68, boardH: 110, boardGap: 8, seatDX: 0,
-  podW: 168, podH: 64, cardW: 64, cardH: 96, compactPod: false, gap: 14,
+  RXF: 414, RYF: 218, FELT_MX: 24, FELT_MY: 22, boardW: 76, boardH: 122, boardGap: 8, seatDX: 0,
+  podW: 168, podH: 64, cardW: 72, cardH: 108, compactPod: false, gap: 14,
 };
 const GEO_PORTRAIT: Geo = {
   CX: 362, CY: 464, RX_SEAT: 300, RY_SEAT: 393, VBW: 728, VBH: 932, aspect: "728 / 932", S: 0.66,
-  RXF: 262, RYF: 392, FELT_MX: 20, FELT_MY: 20, boardW: 50, boardH: 82, boardGap: 6, seatDX: 0,
-  podW: 150, podH: 40, cardW: 80, cardH: 116, compactPod: true, gap: 16,
+  RXF: 262, RYF: 392, FELT_MX: 20, FELT_MY: 20, boardW: 56, boardH: 92, boardGap: 6, seatDX: 0,
+  podW: 150, podH: 40, cardW: 90, cardH: 130, compactPod: true, gap: 16,
 };
 // Landscape do CELULAR (fullscreen): mesmo oval landscape porém com pod só-nome + badge de
 // stack embaixo + cartas maiores (igual prioridade do portrait). Validado em
 // chip_geometry_landscape_mobile_check.
 const GEO_LANDSCAPE_MOBILE: Geo = {
   CX: 580, CY: 355, RX_SEAT: 472, RY_SEAT: 250, VBW: 1160, VBH: 710, aspect: "1160 / 710", S: 1,
-  RXF: 440, RYF: 232, FELT_MX: 24, FELT_MY: 22, boardW: 80, boardH: 116, boardGap: 8, seatDX: 0,
-  podW: 150, podH: 40, cardW: 80, cardH: 116, compactPod: true, gap: 14,
+  RXF: 440, RYF: 232, FELT_MX: 24, FELT_MY: 22, boardW: 90, boardH: 130, boardGap: 8, seatDX: 0,
+  podW: 150, podH: 40, cardW: 90, cardH: 130, compactPod: true, gap: 14,
 };
 // Geometria CORRENTE — mutável por render. Seguro: o build do SVG é síncrono (useEffect)
 // e o Replayer tem 1 mesa; setado no topo do effect antes de qualquer função de render.
@@ -134,7 +134,7 @@ function chipStackSVG(cx: number, bottomY: number, amount: number): string {
   return h;
 }
 
-const _CARD_RATIO = 167.0869141 / 242.6669922;  // proporção L/A do baralho (~0.6886)
+const _CARD_RATIO = 250 / 350;  // proporção L/A do baralho NOVO (viewBox 250x350 = 0.7143, padrão 5:7)
 
 function cardSVG(code: string | null, x: number, y: number, w = 58, h = 84, faceDown = false): string {
   // Margem branca UNIFORME: a moldura abraça a imagem na proporção real do baralho.
