@@ -12,8 +12,10 @@ jobs:
     name: Testes
     runs-on: ubuntu-latest
 
-    # Postgres real p/ o smoke test — pega a classe de bug que o SQLite esconde
-    # (float*Decimal, ROUND(real,int), Decimal/jsonify, HAVING-alias, lastrowid).
+    # Postgres real p/ o smoke test — pega a classe de bug que o SQLite esconde e o usuário
+    # sente em prod (float*Decimal, ROUND(real,int), Decimal/jsonify, HAVING-alias, lastrowid,
+    # coluna faltando por migração abortada, text>=timestamp). Cobre funções de analytics/drill/
+    # admin/financeiro + sweep HTTP de todas as rotas GET. Gateia os deploys abaixo.
     services:
       postgres:
         image: postgres:15
@@ -72,52 +74,38 @@ jobs:
         working-directory: frontend
         run: npx vitest run
 
-  # ── Deploy Backend (Render) ───────────────────────────────────────────────
+  # ── Deploy Backend → Hetzner (Docker, gated nos testes + smoke Postgres) ──────
+  # SSH no VPS (projeto em ~/app): git pull + rebuild do serviço `web`. As migrações
+  # abort-proof rodam no startup (criam colunas novas em prod). Só roda se o job `test`
+  # passar — então o smoke Postgres bloqueia deploy de bug SQLite↔PG.
+  # Secrets necessários no repo (Settings → Secrets → Actions):
+  #   HETZNER_HOST     IP/host do VPS (ex.: 167.233.139.122)
+  #   HETZNER_USER     usuário de deploy (= deploy)
+  #   HETZNER_SSH_KEY  chave PRIVADA SSH do usuário deploy (conteúdo do arquivo)
   deploy-backend:
-    name: Deploy Backend → Render
+    name: Deploy Backend → Hetzner
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - name: Trigger deploy no Render
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
-        run: |
-          curl -s -X POST \
-            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
-            -H "Authorization: Bearer ${RENDER_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d '{"clearCache": false}' \
-            | python3 -c "
-          import sys, json
-          data = json.load(sys.stdin)
-          deploy_id = data.get('id', data.get('deploy', {}).get('id', '?'))
-          status = data.get('status', data.get('deploy', {}).get('status', '?'))
-          print(f'Deploy iniciado: id={deploy_id} status={status}')
-          "
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/app
+            git pull origin main
+            docker compose up -d --build web
+            docker image prune -f
 
-  # ── Deploy Frontend (Vercel) ──────────────────────────────────────────────
-  deploy-frontend:
-    name: Deploy Frontend → Vercel
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Instalar Vercel CLI
-        run: npm install -g vercel@latest
-
-      - name: Deploy
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-          vercel build --prod --token=$VERCEL_TOKEN
-          vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+  # ── Deploy Frontend → Cloudflare Pages ────────────────────────────────────────
+  # SEM job aqui de propósito: o Cloudflare Pages está conectado ao repositório e publica
+  # AUTOMATICAMENTE cada push no `main` (build `npm run build`, output `frontend/dist`).
+  # O job `test` (vitest) valida o front antes; o build do Cloudflare também falha sozinho
+  # se algo quebrar. Importante: por ser git-integration, esse deploy NÃO é bloqueado pelos
+  # testes do GitHub Actions. Se quiser gatear o front pelos testes, desligue a integração
+  # git do Cloudflare e troque por um job `wrangler pages deploy frontend/dist`.
