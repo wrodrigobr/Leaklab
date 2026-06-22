@@ -1489,6 +1489,18 @@ const Replayer = () => {
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
+  // Celular: entra em tela cheia + trava em landscape NO TOQUE (a Fullscreen API exige gesto do
+  // usuário; não dá auto). Android Chrome esconde a barra do navegador e auto-rotaciona. iOS Safari
+  // (iPhone) NÃO suporta requestFullscreen — a Apple não deixa ocultar a barra via JS; lá degrada
+  // pro prompt manual de girar (o h-dvh já usa o espaço que sobra).
+  const canFullscreen = typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
+  const goImmersive = async () => {
+    try {
+      await document.documentElement.requestFullscreen?.();
+      await (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })?.lock?.("landscape");
+    } catch { /* negado/sem suporte → segue no prompt manual */ }
+  };
+
   // Floating Range panel drag state
   const [rangePos, setRangePos]         = useState({ x: 24, y: 96 });
   const isDraggingRange                 = useRef(false);
@@ -1868,6 +1880,12 @@ const Replayer = () => {
           style={{ background: "radial-gradient(ellipse at 50% 45%, #14223a 0%, #080f1c 100%)" }}>
           <RotateCw className="size-14 text-primary" />
           <p className="font-mono text-[13px] uppercase tracking-widest text-muted-foreground leading-relaxed">{t("rotatePrompt")}</p>
+          {canFullscreen && (
+            <button onClick={goImmersive}
+              className="flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 font-mono text-[12px] font-bold uppercase tracking-widest text-primary-foreground shadow-lg transition-transform active:scale-95">
+              <Maximize2 className="size-4" /> {t("fullscreenRotate")}
+            </button>
+          )}
           <button onClick={() => navigate(-1)}
             className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground/70 transition-colors hover:text-primary">{t("back")}</button>
         </div>

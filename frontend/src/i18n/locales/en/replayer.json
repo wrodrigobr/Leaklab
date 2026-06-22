@@ -367,5 +367,6 @@
   },
   "hudToggleTip": "Show/hide the player stats HUD on the table (VPIP/PFR/3-bet · hands). Holdem Manager style: only shown for players with a tracked sample.",
   "hudLegend": "Stats: VPIP: % hands played · PFR: % preflop raise · 3B: % 3-bet · cb: c-bet (continuation bet) · fcb: fold to c-bet · AF: postflop aggression factor · wtsd: % went to showdown · Nh: hands in sample. Blank value = insufficient sample for that stat.",
-  "hudHands": "hands"
+  "hudHands": "hands",
+  "fullscreenRotate": "Fullscreen & rotate"
 }
