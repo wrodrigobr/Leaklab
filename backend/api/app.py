@@ -2643,6 +2643,11 @@ def _extract_financials(raw: str, hero: str, site: str | None = None) -> dict:
                 buyin = float(m.group(1))
                 rake  = float(m.group(2)) if m.group(2) else 0.0
                 result['buy_in'] = round(buyin + rake, 2)
+        if result['buy_in'] is None:
+            # GG embute o buy-in no nome do torneio: "Bounty Hunters Big One $1.08 Hold'em No Limit"
+            m = re.search(r"\$(\d+(?:\.\d+)?)\s+Hold'?em", raw, re.IGNORECASE)
+            if m:
+                result['buy_in'] = round(float(m.group(1)), 2)
 
     # ── Resultado hero PokerStars: "phpro finished the tournament in 3rd place and received $23.29"
     #    Vencedor: "phpro wins the tournament and receives $3.83 - congratulations!"

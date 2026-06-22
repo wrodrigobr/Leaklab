@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const FAVICON_URLS: Record<string, string> = {
-  pokerstars: "https://www.pokerstars.com/favicon.ico",
-  ggpoker:    "https://www.ggpoker.com/favicon.ico",
-  "888poker": "https://www.888poker.com/favicon.ico",
-  partypoker: "https://www.partypoker.com/favicon.ico",
-  winamax:    "https://www.winamax.fr/favicon.ico",
-  acr:        "https://www.americascardroom.eu/favicon.ico",
+// Favicon via serviço do Google (CORS-friendly, sempre responde, tamanho consistente).
+// Carregar favicon direto do site é frágil (404/CORS/bloqueio) e o GG não aparecia.
+const SITE_DOMAINS: Record<string, string> = {
+  pokerstars: "pokerstars.com",
+  ggpoker:    "ggpoker.com",
+  "888poker": "888poker.com",
+  partypoker: "partypoker.com",
+  winamax:    "winamax.fr",
+  acr:        "americascardroom.eu",
+};
+const faviconUrl = (key: string): string | undefined => {
+  const d = SITE_DOMAINS[key];
+  return d ? `https://www.google.com/s2/favicons?domain=${d}&sz=64` : undefined;
 };
 
 const DISPLAY_NAMES: Record<string, string> = {
@@ -30,7 +36,7 @@ interface Props {
 
 export function SiteLogo({ site, size = 16 }: Props) {
   const key  = site.toLowerCase().replace(/\s+/g, "");
-  const url  = FAVICON_URLS[key];
+  const url  = faviconUrl(key);
   const name = DISPLAY_NAMES[key] ?? site;
   const [failed, setFailed] = useState(false);
 
