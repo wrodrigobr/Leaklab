@@ -4207,25 +4207,25 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         if start < 0: return {}
         s = raw[start:]
         result = {'winners':[], 'seats':[], 'board':[], 'total_pot':None}
-        m = _re.search(r'Total pot (\d+)', s)
-        if m: result['total_pot'] = int(m.group(1))
+        m = _re.search(r'Total pot ([\d,]+)', s)
+        if m: result['total_pot'] = int(m.group(1).replace(',', ''))
         m = _re.search(r'Board \[([^\]]+)\]', s)
         if m: result['board'] = m.group(1).split()
         for line in s.split('\n'):
-            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?showed \[([^\]]+)\] and won \((\d+)\) with (.+)', line)
+            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?showed \[([^\]]+)\] and won \(([\d,]+)\) with (.+)', line)
             if m:
                 result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
-                    'cards':m.group(3).split(),'won':int(m.group(4)),
+                    'cards':m.group(3).split(),'won':int(m.group(4).replace(',', '')),
                     'hand_desc':m.group(5).strip(),'outcome':'won'}); continue
             m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?mucked \[([^\]]+)\]', line)
             if m:
                 result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
                     'cards':m.group(3).split(),'won':0,
                     'hand_desc':'mucked','outcome':'lost'}); continue
-            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?collected \((\d+)\)', line)
+            m = _re.match(r'Seat (\d+): (.+?) (?:\(.*?\) )?collected \(([\d,]+)\)', line)
             if m:
                 result['seats'].append({'seat':int(m.group(1)),'player':m.group(2).strip(),
-                    'cards':[],'won':int(m.group(3)),
+                    'cards':[],'won':int(m.group(3).replace(',', '')),
                     'hand_desc':'collected','outcome':'won'})
         result['winners'] = [s for s in result['seats'] if s['outcome']=='won']
         return result
@@ -4236,10 +4236,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     seats = {}
     _bounties = getattr(hand, 'bounties', {}) or {}
     for line in hand.raw_text.split('\n'):
-        m = _re.match(r'Seat (\d+): (.+?) \(([0-9.]+) in chips\)', line)
+        m = _re.match(r'Seat (\d+): (.+?) \(([0-9.,]+) in chips', line)
         if m:
             player = m.group(2).strip()
-            seat_d = {'player': player, 'stack': int(float(m.group(3)))}
+            # GG usa separador de milhar (21,280); tira a vírgula antes de converter.
+            seat_d = {'player': player, 'stack': int(float(m.group(3).replace(',', '')))}
             if player in _bounties:
                 seat_d['bounty'] = _bounties[player]
             seats[int(m.group(1))] = seat_d
@@ -4460,12 +4461,13 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
 
     # Pre-scan for "Uncalled bet (X) returned to Player" lines
     # These appear after all actions when an all-in isn't fully called
-    UNCALLED_RE = _re.compile(r'Uncalled bet \((\d+)\) returned to (.+)')
+    # GG usa separador de milhar (5,000); aceita vírgula e remove antes de converter.
+    UNCALLED_RE = _re.compile(r'Uncalled bet \(([\d,]+)\) returned to (.+)')
     uncalled_returns = []
     for line in (hand.raw_text or '').split('\n'):
         _mu = UNCALLED_RE.match(line.strip())
         if _mu:
-            uncalled_returns.append({'amount': int(_mu.group(1)), 'player': _mu.group(2).strip()})
+            uncalled_returns.append({'amount': int(_mu.group(1).replace(',', '')), 'player': _mu.group(2).strip()})
 
     current_revealed = {}  # seat_str -> [cards], accumulates as shows happen
 
@@ -4473,14 +4475,14 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     antes   = []
     blinds  = []
     for line in hand.raw_text.split('\n'):
-        m_ante  = _re.match(r'(.+): posts the ante (\d+)', line)
-        m_blind = _re.match(r'(.+): posts (small|big) blind (\d+)', line)
+        m_ante  = _re.match(r'(.+): posts the ante ([\d,]+)', line)
+        m_blind = _re.match(r'(.+): posts (small|big) blind ([\d,]+)', line)
         if m_ante:
-            antes.append({'player': m_ante.group(1).strip(), 'amount': int(m_ante.group(2))})
+            antes.append({'player': m_ante.group(1).strip(), 'amount': int(m_ante.group(2).replace(',', ''))})
         elif m_blind:
             blinds.append({'player': m_blind.group(1).strip(),
                            'type':   m_blind.group(2),
-                           'amount': int(m_blind.group(3))})
+                           'amount': int(m_blind.group(3).replace(',', ''))})
 
     # Aplicar antes ao pot (sem ficha individual)
     for a in antes:
