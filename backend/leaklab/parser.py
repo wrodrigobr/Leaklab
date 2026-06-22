@@ -42,7 +42,10 @@ TOURN_RE        = re.compile(r"Tournament #(\d+)")
 BUTTON_RE       = re.compile(r"Seat #(\d+) is the button")
 HERO_DEALT_RE   = re.compile(r"Dealt to ([^\[\n]+) \[([^\]]+)\]")
 BOARD_RE        = re.compile(r"\[([^\]]+)\]")
-SB_RE           = re.compile(r"\((\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)\)")
+# Blinds no header: "(10/20)" (PokerStars) e "(400/800(120))" (GGPoker, com ante aninhado antes
+# do ")"). O 3º grupo opcional captura o ante. Sem o ante opcional, o GG não casava → bb=None e o
+# display tratava 400/800 como 4bb/8bb (caía num default bb=100).
+SB_RE           = re.compile(r"\((\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)(?:\((\d+(?:\.\d+)?)\))?\)")
 ACTION_LINE_RE  = re.compile(
     r"^(?P<player>[^:]+): (?P<action>folds|checks|calls|bets|raises|all-in|shows|mucks)"
     r"(?: .*?(?P<amount>\d[\d,]*(?:\.\d+)?))?",   # aceita separador de milhar do GG (1,109)
