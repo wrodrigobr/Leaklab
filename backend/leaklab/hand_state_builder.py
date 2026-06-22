@@ -156,7 +156,7 @@ def _facing_size_at(actions: List[ParsedAction], hero_index: int,
     return facing
 
 
-_RAISE_TO_RE = re.compile(r"\bto\s+([\d.]+)", re.IGNORECASE)
+_RAISE_TO_RE = re.compile(r"\bto\s+([\d,.]+)", re.IGNORECASE)  # aceita separador de milhar do GG
 
 
 def _facing_to_total_at(actions: List[ParsedAction], hero_index: int,
@@ -169,7 +169,7 @@ def _facing_to_total_at(actions: List[ParsedAction], hero_index: int,
     for a in actions[:hero_index]:
         if a.street == street and a.action in {'bets', 'raises', 'all-in'}:
             m = _RAISE_TO_RE.search(a.raw or '')
-            total = float(m.group(1)) if m else (a.amount or 0.0)
+            total = float(m.group(1).replace(",","")) if m else (a.amount or 0.0)
     return total
 
 
@@ -183,7 +183,7 @@ def _effective_stack(hand: ParsedHand, hero: str,
     for line in hand.raw_text.splitlines():
         if f': {hero} (' in line and line.startswith('Seat '):
             try:
-                stack_str = line.split('(')[1].split()[0]
+                stack_str = line.split('(')[1].split()[0].replace(',', '')
                 initial_stack = float(stack_str)
             except (IndexError, ValueError):
                 pass
@@ -512,7 +512,7 @@ def build_table_state_at_decision(hand, target_street: str, hero_name=None,
             # 'raises to Y' já total, ou all-in [X]) usa amount como incremento.
             m = _RAISE_TO_RE.search(act.raw or '')
             if m:
-                to_total = float(m.group(1))
+                to_total = float(m.group(1).replace(",",""))
                 inc = max(0.0, to_total - st['bet'])
                 st['bet']   = to_total
                 st['stack'] = max(0.0, st['stack'] - inc)

@@ -45,7 +45,7 @@ BOARD_RE        = re.compile(r"\[([^\]]+)\]")
 SB_RE           = re.compile(r"\((\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)\)")
 ACTION_LINE_RE  = re.compile(
     r"^(?P<player>[^:]+): (?P<action>folds|checks|calls|bets|raises|all-in|shows|mucks)"
-    r"(?: .*?(?P<amount>\d+(?:\.\d+)?))?",
+    r"(?: .*?(?P<amount>\d[\d,]*(?:\.\d+)?))?",   # aceita separador de milhar do GG (1,109)
     re.IGNORECASE,
 )
 
@@ -57,11 +57,11 @@ ANTE_LINE_RE    = re.compile(
 )
 # PokerStars PKO: "Seat 3: phpro (1500 in chips) bounty $0.25"
 SEAT_BOUNTY_PS_RE = re.compile(
-    r"^Seat \d+: (.+?) \([0-9.]+ in chips\) bounty \$([0-9.]+)", re.IGNORECASE
+    r"^Seat \d+: (.+?) \([0-9.,]+ in chips\) bounty \$([0-9.]+)", re.IGNORECASE
 )
 # GGPoker PKO: "Seat 3: phpro (1500 in chips, bounty $0.25)"
 SEAT_BOUNTY_GG_RE = re.compile(
-    r"^Seat \d+: (.+?) \([0-9.]+ in chips, bounty \$([0-9.]+)\)", re.IGNORECASE
+    r"^Seat \d+: (.+?) \([0-9.,]+ in chips, bounty \$([0-9.]+)\)", re.IGNORECASE
 )
 # PokerStars bounty collection: "phpro wins $0.25 bounty for eliminating villain"
 BOUNTY_WIN_RE = re.compile(
@@ -208,7 +208,7 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
                 player=ma.group("player").strip(),
                 street=street,
                 action=action_str,
-                amount=float(amount) if amount else None,
+                amount=float(amount.replace(',', '')) if amount else None,  # GG: 1,109 -> 1109
                 raw=line,
             ))
 
