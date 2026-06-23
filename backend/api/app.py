@@ -7050,24 +7050,34 @@ def admin_gto_worker_status():
         solver_counts = {r['status']: r['n'] for r in solver_counts_rows}
 
         # ── Worker health: last processed timestamp ───────────────────────────
-        last_done = _fetchone(conn, _adapt("""
-            SELECT processed_at FROM gto_hand_requests
-            WHERE status IN ('done','error')
-            ORDER BY processed_at DESC LIMIT 1
-        """))
-        last_heartbeat = last_done['processed_at'] if last_done else None
+        # "Último proc" = mais recente entre o hand worker (gto_hand_requests.processed_at) E o
+        # solver drenado por cron (gto_solver_queue.solved_at). Antes lia só o hand worker, que em
+        # prod fica parado (ninguém usa GTO de mão sob demanda) → mostrava "—" mesmo com o solver
+        # drenando de 5 em 5 min: pipeline vivo parecia morto.
+        _lh = []
+        for _q, _col in (("gto_hand_requests", "processed_at"), ("gto_solver_queue", "solved_at")):
+            _r = _fetchone(conn, _adapt(
+                f"SELECT {_col} AS ts FROM {_q} WHERE {_col} IS NOT NULL ORDER BY {_col} DESC LIMIT 1"))
+            if _r and _r['ts'] is not None:
+                _v = _r['ts']
+                _lh.append(_v.isoformat() if hasattr(_v, 'isoformat') else str(_v))
+        last_heartbeat = max(_lh) if _lh else None
 
-        # ── Throughput: requests processed per hour (last 24h) ───────────────
-        # Bucketiza por hora em PYTHON (strftime é SQLite-only; quebra no Postgres).
+        # ── Throughput por hora (24h) — AS DUAS filas. Bucketiza em PYTHON (strftime é SQLite-only).
         import datetime as _dtt
         from collections import Counter as _Counter
         _cut = (_dtt.datetime.utcnow() - _dtt.timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
         _rows = _fetchall(conn, _adapt(
-            "SELECT processed_at FROM gto_hand_requests "
+            "SELECT processed_at AS ts FROM gto_hand_requests "
             "WHERE status IN ('done','error') AND processed_at >= ?"), (_cut,))
+        _rows += _fetchall(conn, _adapt(
+            "SELECT solved_at AS ts FROM gto_solver_queue "
+            "WHERE solved_at IS NOT NULL AND solved_at >= ?"), (_cut,))
         _buckets = _Counter()
         for _r in _rows:
-            _pa = _r['processed_at']
+            _pa = _r['ts']
+            if _pa is None:
+                continue
             _s = _pa.isoformat() if hasattr(_pa, 'isoformat') else str(_pa)
             _buckets[_s[:13].replace(' ', 'T') + ':00:00'] += 1   # 'YYYY-MM-DDTHH:00:00'
         throughput = [{'hour': h, 'count': _buckets[h]} for h in sorted(_buckets)]
