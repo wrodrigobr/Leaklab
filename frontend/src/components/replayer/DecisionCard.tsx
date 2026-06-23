@@ -127,7 +127,9 @@ export function DecisionCard({
   return (
     <section className={cn("rounded-xl border overflow-hidden", verdict.borderCls)}>
       {/* ── Slot 1: Verdict bar ──────────────────────────────────────── */}
-      <div className={cn("flex items-center justify-between px-3 py-2.5", verdict.hdrCls)}>
+      {/* pr-10 reserva o canto top-right pro X (fechar) do modal de análise — o card só é
+          renderizado dentro desse modal, então o grupo (source + toggle "olho") não encosta no X. */}
+      <div className={cn("flex items-center justify-between pl-3 pr-10 py-2.5", verdict.hdrCls)}>
         <span
           className={cn("font-mono text-sm font-bold uppercase tracking-wide", verdict.cls)}
           title={verdictTooltip}
