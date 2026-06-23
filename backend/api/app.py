@@ -7064,13 +7064,25 @@ def admin_gto_worker_status():
         # solver drenado por cron (gto_solver_queue.solved_at). Antes lia só o hand worker, que em
         # prod fica parado (ninguém usa GTO de mão sob demanda) → mostrava "—" mesmo com o solver
         # drenando de 5 em 5 min: pipeline vivo parecia morto.
+        # solved_at/processed_at são gravados em UTC (datetime('now')/NOW()). Emite ISO 8601 com 'Z'
+        # (UTC explícito) pro front (new Date().toLocaleString) converter pro fuso local de quem vê —
+        # sem o 'Z' o JS lê a string naive como hora LOCAL e mostra o UTC cru (bug do GMT-3 no Brasil).
+        import datetime as _dt0
+
+        def _utc_iso(v):
+            if hasattr(v, 'isoformat'):
+                if getattr(v, 'tzinfo', None) is None:
+                    v = v.replace(tzinfo=_dt0.timezone.utc)
+                return v.isoformat().replace('+00:00', 'Z')
+            s = str(v).strip().replace(' ', 'T')
+            return s if (s.endswith('Z') or '+' in s[10:]) else s + 'Z'
+
         _lh = []
         for _q, _col in (("gto_hand_requests", "processed_at"), ("gto_solver_queue", "solved_at")):
             _r = _fetchone(conn, _adapt(
                 f"SELECT {_col} AS ts FROM {_q} WHERE {_col} IS NOT NULL ORDER BY {_col} DESC LIMIT 1"))
             if _r and _r['ts'] is not None:
-                _v = _r['ts']
-                _lh.append(_v.isoformat() if hasattr(_v, 'isoformat') else str(_v))
+                _lh.append(_utc_iso(_r['ts']))
         last_heartbeat = max(_lh) if _lh else None
 
         # ── Throughput por hora (24h) — AS DUAS filas. Bucketiza em PYTHON (strftime é SQLite-only).
