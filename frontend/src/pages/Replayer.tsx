@@ -1988,7 +1988,7 @@ const Replayer = () => {
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAnalysis(false)} />
             <div className="relative max-h-[90vh] overflow-y-auto rounded-t-2xl bg-background p-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl ring-1 ring-border">
               <button onClick={() => setShowAnalysis(false)} aria-label={t("close")}
-                className="absolute right-2.5 top-2.5 z-10 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="size-4" /></button>
+                className="absolute right-3 top-3 z-10 rounded-full bg-background/80 backdrop-blur p-1.5 text-muted-foreground ring-1 ring-border transition-colors hover:bg-secondary hover:text-foreground"><X className="size-4" /></button>
               <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" onClick={() => setShowAnalysis(false)} />
               <SidePanels
                 step={step} isError={isError} isCorrect={isCorrect}
@@ -2242,7 +2242,7 @@ const Replayer = () => {
                   <button
                     onClick={() => setShowAnalysis(false)}
                     aria-label={t("close")}
-                    className="absolute right-2.5 top-2.5 z-10 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    className="absolute right-3 top-3 z-10 rounded-full bg-background/80 backdrop-blur p-1.5 text-muted-foreground ring-1 ring-border transition-colors hover:bg-secondary hover:text-foreground"
                   >
                     <X className="size-4" />
                   </button>
@@ -2277,7 +2277,7 @@ const Replayer = () => {
               <button
                 onClick={() => setShowAnalysis(false)}
                 aria-label={t("close")}
-                className="absolute right-2.5 top-2.5 z-10 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                className="absolute right-3 top-3 z-10 rounded-full bg-background/80 backdrop-blur p-1.5 text-muted-foreground ring-1 ring-border transition-colors hover:bg-secondary hover:text-foreground"
               >
                 <X className="size-4" />
               </button>
