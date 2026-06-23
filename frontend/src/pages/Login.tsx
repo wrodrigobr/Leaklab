@@ -159,7 +159,7 @@ const Login = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="coach@pokergrindlab.com"
+                placeholder="usuario@email.com"
                 required
                 autoComplete="email"
                 className={inputClass}
