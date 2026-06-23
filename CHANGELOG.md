@@ -7,6 +7,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): cobertura GTO honesta — "analisando" real, multiway e pote limpado creditados, IA validada e descartada
+
+> **Cobertura por torneio deixa de cravar % falso:** a tabela mostra "solver GTO analisando" só quando há spot postflop pendente/em execução na `gto_solver_queue` (flag `solver_analyzing` por torneio); senão o % real, e some quando a fila zera. Antes mostrava "em análise" sempre que postflop < 95%, independente do solver — torneios off-tree (PKO multiway) diziam "analisando" pra sempre. **Painel admin** "Último proc"/throughput agora refletem a fila do SOLVER (`gto_solver_queue.solved_at`), não só `gto_hand_requests` (parada em prod, mostrava "—" com o pipeline vivo); e o timestamp sai em UTC com 'Z' → o navegador converte pro fuso local (corrige GMT-3 no admin).
+>
+> **#30 postflop MULTIWAY (a)+(b):** o solver é HU-only e não cobre pote multiway. Detecção via `n_active_opponents>=2` (já salvo no import); `player_drill_submit` e `/replay/<id>/gto` retornam `gto_multiway` (grading 'uncovered', nunca pune). A UI **credita o `multiway_advisor`** (motor Monte-Carlo equity-vs-field + realization-tax + pot-odds, já em prod): o card mostra "Análise heurística multiway · N-way · Recomendado: X" com equity vs field/realizada/necessária + rationale. **Camada de IA multiway VALIDADA E DESCARTADA** (experimento com subagente): a heurística local já é multiway-aware e venceu o A/B (22/23; a única divergência foi a local sendo mais correta) — não há gap de análise pra IA preencher; o que falta em multiway é cobertura do SOLVER (exato), não análise.
+>
+> **Pote limpado creditado:** BB vs limp (limped pot, off-tree no GTO — só cobrimos spots iniciados com raise) deixa de mostrar "Sem veredito · Spot N/A"; agora cai no veredito de 3 níveis do engine (`limpedPotHeuristic`, source "Heurística"), reusando a heurística de limped pot já existente (`decision_engine_v11`: passivo OK, iso-raise marginal). i18n PT/EN/ES.
+
+### fix(replayer): showdown e modais de análise — show sem veredito, X isolado, header do card
+
+> **Show/muck não recebe mais veredito:** o `VerdictPill` (mobile) derivava de `isCorrect` sem excluir ações não-decisórias → o "Hero: shows [cartas]" no showdown ganhava badge "Correto" numa ação já realizada. Agora `isCorrect` exclui shows/mucks/posts (mesma lista do guard do card de veredito), fechando os 3 `VerdictPill` + os `SidePanels` de uma vez. **X dos modais de análise isolado** (chip com `bg-background/80` + ring, fora da borda arredondada, no padrão dos controles flutuantes) e o **header do `DecisionCard`** reserva o canto (`pr-10`) pro X — não sobrepõe mais o toggle "Mostrar detalhes".
+
+### chore(scripts+docs): diagnóstico de cobertura GTO + detecção de torneios GG estale
+
+> Novos scripts read-only: **`tournament_gto_coverage.py`** (cobertura GTO por torneio + estado da `gto_solver_queue` — responde "o que falta pra 100%": spots terminais multiway/off-tree vs pendentes) e **`scan_gg_stale.py`** (compara `level_bb` armazenado vs re-parseado → lista GG importados com o parser antigo de blinds/stack errados, pra deletar+re-subir; sem PRAGMA, Postgres-safe). **setup-guide:** porta do solver `8000→8765` (5 lugares) + cron do `drain_solver_queue` documentado no crontab (§8.1, com `flock` + `/usr/bin/docker` absoluto). Backlog #30 (postflop multiway) registrado com escopo (a/b/c/d) e o veredito da validação da IA.
+
 ### feat(billing): PAY-03 — rotina pesada anti-fraude do Stripe + visão financeira admin
 
 > **Anti-fraude (`/subscription/activate`):** auditoria revelou 3 vetores reais, todos corrigidos derivando TUDO do PaymentIntent real do Stripe (nunca do body do cliente): **(A)** ownership — o PI tem de pertencer ao usuário autenticado (`metadata.user_id`), senão **403** (antes dava pra ativar o pagamento de outra conta); **(B)** o **ciclo** vem do `metadata.billing_cycle`, não do body → não dá mais pra pagar mensal e reivindicar anual; **(C)** o valor gravado é o **realmente cobrado** (`pi.amount`), conferido contra a tabela de preços (mismatch → 400). **`/subscription/upgrade`** era `@require_auth` → qualquer usuário se auto-concedia Pro **de graça**; agora é `@require_admin` (aceita `user_id` alvo). **Rotina pesada:** novo `test_stripe_hardening.py` (20 testes) — ownership, ciclo/valor do PI, amount tampering, status, idempotência (activate×2 / activate+webhook), webhook (assinatura inválida, ciclo via metadata), upgrade admin-only, auth nos endpoints sensíveis.
