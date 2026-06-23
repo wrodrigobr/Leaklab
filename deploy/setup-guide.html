@@ -453,10 +453,14 @@ docker compose up -d</pre>
     <h2><span class="num">8</span>Crons, backup e atualizações <span class="pill">~15 min</span></h2>
     <h3>8.1 Tarefas diárias</h3>
     <p><code class="inl">crontab -e</code> (como <code class="inl">deploy</code>) e cole:</p>
-    <pre>10 4 * * * cd /home/deploy/app &amp;&amp; docker compose exec -T web python scripts/expire_subscriptions.py
-15 4 * * * cd /home/deploy/app &amp;&amp; docker compose exec -T web python scripts/expire_coach_trials.py</pre>
+    <pre>10 4 * * * cd /home/deploy/app &amp;&amp; /usr/bin/docker compose exec -T web python scripts/expire_subscriptions.py &gt;&gt; /home/deploy/app/cron.log 2&gt;&amp;1
+15 4 * * * cd /home/deploy/app &amp;&amp; /usr/bin/docker compose exec -T web python scripts/expire_coach_trials.py &gt;&gt; /home/deploy/app/cron.log 2&gt;&amp;1
+<span class="c"># Fase 9 — drena a gto_solver_queue (resolve postflop em background). flock evita sobreposição.</span>
+*/5 * * * * /usr/bin/flock -n /tmp/drain.lock sh -c 'cd /home/deploy/app &amp;&amp; /usr/bin/docker compose exec -T web python scripts/drain_solver_queue.py 10' &gt;&gt; /home/deploy/app/solver.log 2&gt;&amp;1</pre>
+    <div class="warn"><b>Importante:</b> use o caminho <b>absoluto</b> <code class="inl">/usr/bin/docker</code> (o cron tem PATH mínimo; um <code class="inl">PATH=</code> no crontab dava "bad minute"). Sem o cron do drain, os spots postflop ficam <b>pendentes pra sempre</b> e a cobertura GTO trava — o gunicorn NÃO roda os worker-threads.</div>
     <div class="test"><b>🧪 Teste:</b> rode uma vez na mão e veja a saída sem erro:
-      <pre>docker compose exec -T web python scripts/expire_subscriptions.py</pre></div>
+      <pre>docker compose exec -T web python scripts/expire_subscriptions.py
+docker compose exec -T web python scripts/drain_solver_queue.py 5   <span class="c"># drena a fila do solver agora</span></pre></div>
     <h3>8.2 Backup</h3>
     <ul>
       <li><b>Banco:</b> Neon faz automático (o essencial).</li>
@@ -489,10 +493,10 @@ docker compose up -d</pre>
     <h3>9.3 Travar o solver (nunca público)</h3>
     <ol class="steps">
       <li>Endureça igual à Fase 3.3/3.4 (ufw, fail2ban, SSH só-chave, Docker).</li>
-      <li><b>Firewall:</b> bloqueie TODO ingresso público. Libere só: SSH (22) do <span class="ph">seu IP</span>; e a porta do solver (ex.: <code class="inl">8000</code>) <b>só do IP interno do backend</b>:
+      <li><b>Firewall:</b> bloqueie TODO ingresso público. Libere só: SSH (22) do <span class="ph">seu IP</span>; e a porta do solver (ex.: <code class="inl">8765</code>) <b>só do IP interno do backend</b>:
         <pre>sudo ufw default deny incoming &amp;&amp; sudo ufw default allow outgoing
 sudo ufw allow from <span class="ph">SEU_IP</span> to any port 22 proto tcp
-sudo ufw allow from <span class="ph">10.0.0.2</span> to any port 8000 proto tcp   <span class="c"># 10.0.0.2 = IP interno do backend</span>
+sudo ufw allow from <span class="ph">10.0.0.2</span> to any port 8765 proto tcp   <span class="c"># 10.0.0.2 = IP interno do backend</span>
 sudo ufw --force enable</pre>
       </li>
     </ol>
@@ -505,14 +509,14 @@ sudo ufw --force enable</pre>
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source $HOME/.cargo/env
 cd backend/gto_bot/solver_cli &amp;&amp; cargo build --release
-<span class="c"># subir o serviço HTTP do solver (solver_api) — escuta em 0.0.0.0:8000 (já travado pelo firewall)</span></pre>
+<span class="c"># subir o serviço HTTP do solver (solver_api) — escuta em 0.0.0.0:8765 (já travado pelo firewall)</span></pre>
     <div class="tip"><b>Concorrência:</b> rode o worker do solver com <b>1 solve por vez</b> e <code class="inl">nice</code> (prioridade baixa) — protege CPU/RAM. Para uma <b>campanha de precompute</b> (dias a 100%), use uma máquina <b>temporária</b> maior e desligue depois.</div>
 
     <h3>9.5 Ligar no backend</h3>
     <p>Na <b>máquina do backend</b>, edite o <code class="inl">.env</code>:</p>
-    <pre>GTO_SOLVER_URL=http://<span class="ph">10.0.0.3</span>:8000    <span class="c"># IP interno do solver</span></pre>
+    <pre>GTO_SOLVER_URL=http://<span class="ph">10.0.0.3</span>:8765    <span class="c"># IP interno do solver</span></pre>
     <pre>docker compose up -d   <span class="c"># aplica</span></pre>
-    <div class="test"><b>🧪 Teste:</b> no <b>backend</b>, <code class="inl">curl http://<span class="ph">10.0.0.3</span>:8000/</code> responde (rede privada ok). De fora da VPC, o mesmo IP <span class="ok">não responde</span> (travado). No app, um spot postflop sem cobertura passa a ser resolvido em background.</div>
+    <div class="test"><b>🧪 Teste:</b> no <b>backend</b>, <code class="inl">curl http://<span class="ph">10.0.0.3</span>:8765/</code> responde (rede privada ok). De fora da VPC, o mesmo IP <span class="ok">não responde</span> (travado). No app, um spot postflop sem cobertura passa a ser resolvido em background.</div>
   </section>
 
   <!-- ───── CHECKLIST ───── -->
