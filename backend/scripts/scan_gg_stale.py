@@ -25,11 +25,8 @@ def _is_gg(raw: str) -> bool:
 
 conn = get_conn()
 try:
-    try:
-        conn.execute('PRAGMA busy_timeout=30000')
-    except Exception:
-        pass
-
+    # NB: nada de PRAGMA aqui — é SQLite-only e no Postgres aborta a transação (InFailedSqlTransaction)
+    # poisonando todas as queries seguintes. Scan é read-only, não precisa de busy_timeout.
     tourneys = list(conn.execute(
         "SELECT id, tournament_id, raw_text FROM tournaments WHERE raw_text IS NOT NULL ORDER BY id"))
 
