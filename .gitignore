@@ -73,8 +73,9 @@ backend/docs/ranges_gto/3bet/
 # Lixo / scratch geral
 lixo/
 docs/scratch/
-prints/                         # screenshots locais
-frontend/public/cards_old/      # deck de cartas antigo (substituído)
+# screenshots locais + deck de cartas antigo (substituído pelo novo)
+prints/
+frontend/public/cards_old/
 
 # Outputs do varredor de revalidação (gerados localmente)
 backend/reports/
