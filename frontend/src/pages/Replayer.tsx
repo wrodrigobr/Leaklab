@@ -1897,7 +1897,11 @@ const Replayer = () => {
   }
 
   const isError   = step.is_error ?? false;
-  const isCorrect = step.is_hero && !isError && step.type === "action";
+  // 'shows'/'mucks'/'posts' NÃO são decisões — nunca recebem veredito (mesmo guard do card em :186).
+  // Sem isto o show do showdown (ação já realizada) ganhava badge "Correto" via VerdictPill.
+  const _nonDecisionAction = ["shows", "show", "mucks", "muck", "posts", "post"]
+    .includes((step.action ?? "").toLowerCase());
+  const isCorrect = step.is_hero && !isError && step.type === "action" && !_nonDecisionAction;
 
   // ── Celular DEITADO: mesa FULLSCREEN edge-to-edge + controles/logo/pill flutuando ──
   if (mobileReplayer) {
