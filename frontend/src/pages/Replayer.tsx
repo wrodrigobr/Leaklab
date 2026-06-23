@@ -435,10 +435,20 @@ function SidePanels({
           );
           evidence = (
             <div className="space-y-2">
-              <div className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                {t("card.mwTitle")}
+              <div className="flex items-center justify-between">
+                <div className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {t("card.mwTitle")}
+                </div>
+                <span className="font-mono text-[9px] text-muted-foreground/70">
+                  {t("card.mwNway", { n: mw.n_opponents + 1 })}
+                </span>
               </div>
               <div className="rounded-md border border-border/50 bg-hud-surface/40 p-2 space-y-1.5">
+                {/* decisão do engine heurístico multiway (não-GTO) */}
+                <div className="flex items-center justify-between border-b border-border/40 pb-1.5 text-[10px] font-mono">
+                  <span className="text-muted-foreground">{t("card.mwRecommended")}</span>
+                  <span className="font-bold uppercase text-primary">{fmtAction(mw.action)}</span>
+                </div>
                 {row(t("card.mwEquity"), `${Math.round(mw.equity * 100)}%`)}
                 {row(t("card.mwRealized"), `${Math.round(mw.realized_eq * 100)}%`)}
                 {mw.required_eq != null && row(t("card.mwRequired"), `${Math.round(mw.required_eq * 100)}%`)}

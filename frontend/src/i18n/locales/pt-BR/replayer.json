@@ -93,8 +93,8 @@
     "handStrat": "Sua mão",
     "handStratTip": "Frequência e EV desta mão específica no nó do solver, as barras acima são a média da range inteira. O valor em bb ao lado é quanto cada ação rende (âmbar = custo vs a melhor ação da mão).",
     "solverStrategy": "Estratégia do Solver",
-    "mwTitle": "Estimativa multiway",
-    "mwDisclaimer": "O solver é heads-up. Em pote 3-way+ usamos equity vs range de continuação + pot odds, estimativa, não GTO.",
+    "mwTitle": "Análise heurística multiway",
+    "mwDisclaimer": "Análise heurística independente do solver: equity da mão vs range de continuação (Monte Carlo) + pot odds + ajuste de realização multiway. Estimativa, não GTO.",
     "mwRecommends": "Recomendado",
     "mwEquity": "Equity vs range",
     "mwRealized": "Realização",
@@ -285,7 +285,9 @@
       "dry": "Board seco (sem projetos): aposta PEQUENA (~33%), range bet. Não há draw pra cobrar, então aposta barato com o range todo.",
       "wet": "Board molhado (permite draws): aposta MAIOR (~66%), cobra caro os projetos do vilão e nega equity.",
       "very_wet": "Board muito molhado (flush/straight possível): aposta GRANDE (~85%+), polariza e cobra os draws ao máximo."
-    }
+    },
+    "mwRecommended": "Recomendado",
+    "mwNway": "{{n}}-way"
   },
   "controls": {
     "play": "Reproduzir",

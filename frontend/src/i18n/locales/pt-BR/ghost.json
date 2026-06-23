@@ -66,7 +66,7 @@
     "uncoveredBadge": "≈ aproximação",
     "uncoveredHint": "O solver não cobre a sua mão exata neste spot (mão fora da range solvada). A distribuição mostrada é só uma aproximação da range, não o veredito da sua mão. Não conta como erro.",
     "multiwayBadge": "≈ multiway",
-    "multiwayHint": "Pote multiway (3+ jogadores): o solver é heads-up, sem cobertura GTO. Não conta como erro."
+    "multiwayHint": "Pote multiway: o solver é heads-up. O veredito vem da análise heurística multiway. Não conta como erro."
   },
   "next": "Próximo →",
   "stats": {

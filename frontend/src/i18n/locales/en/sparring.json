@@ -98,7 +98,7 @@
     "offTree": "≈ approx",
     "offTreeHint": "The solver does not cover your exact hand in this spot (hand outside the solved range). The distribution is the aggregate range, not your hand. Use as reference, not verdict.",
     "multiway": "≈ multiway",
-    "multiwayHint": "Multiway pot (3+ players): the solver is heads-up, so there is no GTO coverage here. Use as reference, not verdict."
+    "multiwayHint": "Multiway pot: the GTO solver is heads-up and does not cover it. The verdict comes from the multiway heuristic analysis (equity vs range + pot odds), shown on the card. Does not count as an error."
   },
   "backToTraining": "Training",
   "valSource": {
