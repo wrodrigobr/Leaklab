@@ -525,6 +525,15 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             ORDER BY t.imported_at DESC
             LIMIT ?
         """, (user_id, limit)).fetchall()
+        # Solver ocupado? (qualquer spot pendente/em execução na fila global). Usado p/ marcar
+        # "analisando" em torneios com postflop ainda descoberto — em vez de cravar um % baixo que
+        # vai subir quando o solver drenar. Some quando a fila zera (pipeline real, não promessa).
+        try:
+            _busy = conn.execute(_adapt(
+                "SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status IN ('pending','running')")).fetchone()
+            _solver_busy = bool((dict(_busy).get('n') if _busy else 0))
+        except Exception:
+            _solver_busy = False
         result = []
         for r in rows:
             t = dict(r)
@@ -536,6 +545,8 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             post_t = t.pop('post_total', 0) or 0; post_g = t.pop('post_gto', 0) or 0
             t['preflop_coverage_pct']  = round(pre_g * 100.0 / pre_t, 1) if pre_t else None
             t['postflop_coverage_pct'] = round(post_g * 100.0 / post_t, 1) if post_t else None
+            # postflop ainda descoberto E solver trabalhando → "analisando" (não crava o %).
+            t['solver_analyzing'] = bool(_solver_busy and post_t and post_g < post_t)
             result.append(t)
         return result
     finally:

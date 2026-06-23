@@ -192,7 +192,7 @@
     "qualityTooltip": "Session quality: % of decisions on standard (no mistake), by the GTO/heuristic verdict.",
     "covPre": "pre {{pct}}%",
     "covPost": "post {{pct}}%",
-    "gtoAnalyzing": "in progress",
+    "gtoAnalyzing": "solver GTO analyzing",
     "gtoSplitTooltip": "GTO coverage. Preflop uses the GTO Wizard ranges (near-instant). Postflop is solved on demand on the server, coverage grows as you review your hands."
   },
   "decisions": {

@@ -223,10 +223,10 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                               {row.preflop_coverage_pct != null && ` · ${t("table.covPre", { pct: Math.round(row.preflop_coverage_pct) })}`}
                               {row.postflop_coverage_pct != null && (
                                 <>
-                                  {" · "}{t("table.covPost", { pct: Math.round(row.postflop_coverage_pct) })}
-                                  {row.postflop_coverage_pct < 95 && (
-                                    <span className="text-warning/80"> · {t("table.gtoAnalyzing")}</span>
-                                  )}
+                                  {" · "}
+                                  {row.solver_analyzing
+                                    ? <span className="text-warning/80">{t("table.gtoAnalyzing")}</span>
+                                    : t("table.covPost", { pct: Math.round(row.postflop_coverage_pct) })}
                                 </>
                               )}
                             </span>

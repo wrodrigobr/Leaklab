@@ -146,6 +146,7 @@ export interface Tournament {
   gto_coverage_pct?: number;
   preflop_coverage_pct?: number | null;
   postflop_coverage_pct?: number | null;
+  solver_analyzing?: boolean;   // postflop descoberto + solver trabalhando → "analisando" (não crava %)
 }
 
 export interface TournamentsResponse {
