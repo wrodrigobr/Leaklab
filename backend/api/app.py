@@ -1501,6 +1501,11 @@ def player_drill_submit():
     if float(row.get('facing_bet') or 0) == 0 and best_action == 'fold' and row.get('position') == 'BB':
         best_action = 'check'
 
+    # MULTIWAY: postflop com 2+ oponentes vivos no pote → o solver é HU-only, não cobre. Não é
+    # veredito GTO; marca aproximação multiway (como o off-tree) e nunca pune.
+    gto_multiway = ((row.get('street') or '').lower() != 'preflop'
+                    and int(row.get('n_active_opponents') or 0) >= 2)
+
     original_score = row['score']
     norm_new   = _norm_drill(new_action)
     top_match  = norm_new == best_action
@@ -1544,9 +1549,9 @@ def player_drill_submit():
     CORRECT_FREQ, MIN_FREQ = 0.30, 0.10
     player_freq = float(gto_freqs.get(norm_new, 0.0)) if gto_freqs else 0.0
 
-    if gto_off_tree:
-        # Mão fora da cobertura hand-aware do solver — não dá pra cravar o veredito; a
-        # distribuição mostrada é só aproximação da range. Nunca penaliza.
+    if gto_off_tree or gto_multiway:
+        # Fora da cobertura: off-tree (mão fora da range hand-aware) OU multiway (solver é HU-only).
+        # Não dá pra cravar veredito GTO; nunca penaliza.
         gto_tier = 'uncovered'
     elif top_match or call_jam_equiv:
         gto_tier = 'correct'
@@ -1560,7 +1565,7 @@ def player_drill_submit():
     is_correct    = gto_tier != 'error'   # 'uncovered' não é erro (sem penalidade de SRS/XP)
     # "mixed" = acerto numa linha que NÃO é a #1 (ação mista co-ótima) → selo GTO Misto
     is_mixed_line = gto_tier == 'correct' and not (top_match or call_jam_equiv)
-    if gto_off_tree:
+    if gto_off_tree or gto_multiway:
         new_score = 0.04   # neutro: não melhora nem pune
     elif top_match or call_jam_equiv:
         new_score = 0.02
@@ -1616,6 +1621,7 @@ def player_drill_submit():
         'mixed':             is_mixed_line,
         'gto_tier':          gto_tier,
         'gto_off_tree':      gto_off_tree,   # mão fora da cobertura hand-aware → "≈ aproximação"
+        'gto_multiway':      gto_multiway,   # postflop multiway (solver HU-only) → "≈ multiway"
         'gto_strategy':      gto_strategy,
         'validation_source': validation_source,   # gto_hand | gto_range | gto_stored | heuristic
         'delta':             result['delta'],
@@ -6442,6 +6448,9 @@ def get_decision_gto(decision_id):
     # então não marca off-tree (evita "fora da cobertura" + "Call 100%" ao mesmo tempo).
     _top_freq = float(strategy[0].get('frequency') or 0) if strategy else 0.0
     gto_off_tree = (street != 'preflop' and bool(strategy) and not hand_aware_used and _top_freq < 0.90)
+    # MULTIWAY: postflop com 2+ oponentes vivos → o solver é HU-only, não cobre. Marca aproximação
+    # multiway p/ o card não apresentar veredito GTO autoritativo onde não há cobertura.
+    gto_multiway = (street != 'preflop' and int(dec.get('n_active_opponents') or 0) >= 2)
 
     return jsonify({
         'found':               True,
@@ -6464,6 +6473,7 @@ def get_decision_gto(decision_id):
         'is_aggregate':        bool(node and node.get('is_aggregate')),
         'gto_note':            'range_distribution' if node and node.get('is_aggregate') else None,
         'gto_off_tree':        gto_off_tree,   # postflop sem hand-aware → "≈ aproximação"
+        'gto_multiway':        gto_multiway,   # postflop multiway (solver HU-only) → "≈ multiway"
         'hand_aware':          hand_aware_used,
     })
 

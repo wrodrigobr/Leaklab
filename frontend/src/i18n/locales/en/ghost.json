@@ -64,7 +64,9 @@
     "closeModal": "Close",
     "uncovered": "≈ Off coverage",
     "uncoveredBadge": "≈ approx",
-    "uncoveredHint": "The solver does not cover your exact hand in this spot (hand outside the solved range). The shown distribution is only a range approximation, not your hand verdict. It does not count as an error."
+    "uncoveredHint": "The solver does not cover your exact hand in this spot (hand outside the solved range). The shown distribution is only a range approximation, not your hand verdict. It does not count as an error.",
+    "multiwayBadge": "≈ multiway",
+    "multiwayHint": "Multiway pot (3+ players): the solver is heads-up, no GTO coverage. Does not count as an error."
   },
   "next": "Next →",
   "stats": {

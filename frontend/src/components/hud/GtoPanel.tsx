@@ -135,10 +135,16 @@ export function GtoPanel({ decisionId }: GtoPanelProps) {
                     <p className="font-mono text-lg font-bold text-foreground leading-tight">
                       {topAction}
                     </p>
-                    {data.gto_off_tree && (
+                    {data.gto_off_tree && !data.gto_multiway && (
                       <p className="font-mono text-[8px] text-amber-400/90 uppercase tracking-wide leading-tight mt-0.5"
                          title={t("gto.offTreeHint")}>
                         {t("gto.offTree")}
+                      </p>
+                    )}
+                    {data.gto_multiway && (
+                      <p className="font-mono text-[8px] text-amber-400/90 uppercase tracking-wide leading-tight mt-0.5"
+                         title={t("gto.multiwayHint")}>
+                        {t("gto.multiway")}
                       </p>
                     )}
                   </div>

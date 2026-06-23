@@ -1345,7 +1345,7 @@ def get_decision_for_drill(user_id: int, decision_id: int) -> dict | None:
                    d.m_ratio, d.icm_pressure, d.stack_bb, d.draw_profile,
                    d.position, d.num_players, d.level_sb, d.level_bb,
                    d.level_num, d.note, d.is_3bet, d.pot_size, d.facing_bet,
-                   d.gto_action, d.gto_label
+                   d.gto_action, d.gto_label, d.n_active_opponents
             FROM decisions d
             JOIN tournaments t ON t.id = d.tournament_id
             WHERE d.id = ? AND t.user_id = ?
@@ -5855,7 +5855,7 @@ def get_decision_spot(decision_id: int) -> Optional[dict]:
     conn = get_conn()
     try:
         return _fetchone(conn,
-            "SELECT street, position, board, hero_cards, stack_bb, action_taken, facing_bet, gto_action, gto_label FROM decisions WHERE id = ?",
+            "SELECT street, position, board, hero_cards, stack_bb, action_taken, facing_bet, gto_action, gto_label, n_active_opponents FROM decisions WHERE id = ?",
             (decision_id,))
     finally:
         conn.close()

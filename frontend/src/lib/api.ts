@@ -814,6 +814,7 @@ export interface DrillSubmitResult {
   mixed?: boolean;     // acerto numa linha mista co-ótima (não é a #1, freq ≥ 30%)
   gto_tier?: "correct" | "deviation" | "error" | "uncovered";  // correto / desvio / erro / fora da cobertura
   gto_off_tree?: boolean;  // postflop sem dado hand-aware (mão fora da cobertura) → "≈ aproximação"
+  gto_multiway?: boolean;  // postflop multiway (solver HU-only) → "≈ multiway"
   gto_strategy?: GtoStrategyAction[];             // mix completo (% por ação) p/ o veredito
   // origem do gabarito: solver hand-aware > range agregada > gto armazenado > heurística
   validation_source?: "gto_hand" | "gto_range" | "gto_stored" | "heuristic";
@@ -2561,6 +2562,7 @@ export interface GtoDecisionResult {
   is_aggregate?: boolean;
   gto_note?: string | null;
   gto_off_tree?: boolean;   // postflop sem hand-aware (mão fora da cobertura) → "≈ aproximação"
+  gto_multiway?: boolean;   // postflop multiway (solver HU-only) → "≈ multiway"
   hand_aware?: boolean;
 }
 

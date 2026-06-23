@@ -96,7 +96,9 @@
       "solved": "exploit"
     },
     "offTree": "≈ aproximação",
-    "offTreeHint": "O solver não cobre a sua mão exata neste spot (mão fora do range solvado). A distribuição é da range agregada, não da sua mão. Use como referência, não veredito."
+    "offTreeHint": "O solver não cobre a sua mão exata neste spot (mão fora do range solvado). A distribuição é da range agregada, não da sua mão. Use como referência, não veredito.",
+    "multiway": "≈ multiway",
+    "multiwayHint": "Pote multiway (3+ jogadores no pote): o solver é heads-up, então não há cobertura GTO aqui. Use como referência, não veredito."
   },
   "backToTraining": "Treino",
   "valSource": {

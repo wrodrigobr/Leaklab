@@ -96,7 +96,9 @@
       "solved": "exploit"
     },
     "offTree": "≈ approx",
-    "offTreeHint": "The solver does not cover your exact hand in this spot (hand outside the solved range). The distribution is the aggregate range, not your hand. Use as reference, not verdict."
+    "offTreeHint": "The solver does not cover your exact hand in this spot (hand outside the solved range). The distribution is the aggregate range, not your hand. Use as reference, not verdict.",
+    "multiway": "≈ multiway",
+    "multiwayHint": "Multiway pot (3+ players): the solver is heads-up, so there is no GTO coverage here. Use as reference, not verdict."
   },
   "backToTraining": "Training",
   "valSource": {
