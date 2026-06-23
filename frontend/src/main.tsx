@@ -1,8 +1,12 @@
 import { createRoot } from "react-dom/client";
 import * as Sentry from "@sentry/react";
 import App from "./App.tsx";
+import { captureAcquisition } from "./lib/acquisition";
 import "./index.css";
 import "./i18n";
+
+// Captura ?utm_source na 1ª carga (antes do router) → guarda na sessão p/ enviar no cadastro.
+captureAcquisition();
 
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 

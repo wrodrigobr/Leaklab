@@ -1300,6 +1300,7 @@ def _run_migrations(conn):
             ("profile_completed_at",      "ALTER TABLE users ADD COLUMN profile_completed_at      TEXT"),
             ("dashboard_layout",          "ALTER TABLE users ADD COLUMN dashboard_layout          TEXT"),
             ("onboarding_completed",      "ALTER TABLE users ADD COLUMN onboarding_completed      INTEGER NOT NULL DEFAULT 0"),
+            ("acquisition_source",        "ALTER TABLE users ADD COLUMN acquisition_source        TEXT"),
             # #15 leaderboard — opt-in/privacidade
             ("leaderboard_opt_in",        "ALTER TABLE users ADD COLUMN leaderboard_opt_in        INTEGER NOT NULL DEFAULT 0"),
             ("leaderboard_handle",        "ALTER TABLE users ADD COLUMN leaderboard_handle         TEXT"),
@@ -1686,6 +1687,8 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS main_game_type       TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS usual_buyin_range    TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_completed_at TIMESTAMP",
+            # Atribuição de aquisição: utm_source capturado no cadastro (ex.: 'instagram').
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS acquisition_source   TEXT",
         ]
         for _stmt in _safe:
             try:

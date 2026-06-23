@@ -130,6 +130,15 @@ function OverviewTab() {
                 </div>
               ))}
             </div>
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">Origem (UTM)</p>
+              {(demo.acquisition || []).map((a) => (
+                <div key={a.source} className="flex items-center gap-2">
+                  <span className="flex-1 text-xs text-foreground font-mono">{a.source}</span>
+                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{a.n}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -150,7 +150,8 @@ def create_user(username: str, email: str, password: str,
                 role: str = 'player', coach_id: int | None = None,
                 referral_coach_id: int | None = None,
                 link_status: str | None = None,
-                invited_by_key: str | None = None) -> int:
+                invited_by_key: str | None = None,
+                acquisition_source: str | None = None) -> int:
     """Cria usuário. Para signup via LINK REFERRAL do coach, passe coach_id +
     referral_coach_id + link_status='pending' + invited_by_key (a key do link), assim o
     aluno já nasce vinculado ao coach mas pendente da aprovação dele."""
@@ -159,10 +160,11 @@ def create_user(username: str, email: str, password: str,
     try:
         cur = conn.execute(
             "INSERT INTO users (username, email, password_hash, role, coach_id, "
-            "referral_coach_id, link_status, invited_by_key) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "referral_coach_id, link_status, invited_by_key, acquisition_source) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (username, email, pw_hash, role, coach_id,
-             referral_coach_id, link_status or 'approved', invited_by_key)
+             referral_coach_id, link_status or 'approved', invited_by_key,
+             (acquisition_source or None))
         )
         conn.commit()
         return cur.lastrowid
@@ -5740,6 +5742,11 @@ def get_demographics_aggregate() -> dict:
         buyin_ranges = conn.execute(
             "SELECT usual_buyin_range, COUNT(*) AS n FROM users WHERE usual_buyin_range IS NOT NULL GROUP BY usual_buyin_range"
         ).fetchall()
+        # Atribuição de aquisição (utm_source no cadastro). NULL = orgânico/direto.
+        acquisition = conn.execute(
+            "SELECT COALESCE(acquisition_source, 'organico') AS source, COUNT(*) AS n "
+            "FROM users WHERE role = 'player' GROUP BY acquisition_source ORDER BY n DESC"
+        ).fetchall()
         return {
             'total_players': total,
             'profiles_completed': completed,
@@ -5747,6 +5754,7 @@ def get_demographics_aggregate() -> dict:
             'top_countries': [dict(r) for r in countries],
             'game_types': [dict(r) for r in game_types],
             'buyin_ranges': [dict(r) for r in buyin_ranges],
+            'acquisition': [dict(r) for r in acquisition],
         }
     finally:
         conn.close()

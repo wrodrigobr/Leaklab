@@ -1,3 +1,5 @@
+import { getAcquisition } from "./acquisition";
+
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 function token(): string | null {
@@ -81,7 +83,11 @@ export const auth = {
   register: (username: string, email: string, password: string, role: "player" | "coach" = "player", ref?: string | null) =>
     request<AuthResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ username, email, password, role, ...(ref ? { ref } : {}) }),
+      body: JSON.stringify({
+        username, email, password, role,
+        ...(ref ? { ref } : {}),
+        ...(getAcquisition() ? { acquisition_source: getAcquisition() } : {}),
+      }),
     }),
 
   login: (email: string, password: string) =>
@@ -2216,6 +2222,7 @@ export const adminDashboard = {
     top_countries: Array<{ country: string; n: number }>;
     game_types: Array<{ main_game_type: string; n: number }>;
     buyin_ranges: Array<{ usual_buyin_range: string; n: number }>;
+    acquisition: Array<{ source: string; n: number }>;
   }>("/admin/demographics"),
 
   gtoWorkerStatus: () => request<GtoWorkerStatus>("/admin/gto/worker-status"),

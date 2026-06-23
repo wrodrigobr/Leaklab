@@ -343,10 +343,17 @@ def register():
             link_status       = 'pending'
             invited_by_key    = ref
 
+    # Origem de aquisição: utm_source capturado no front (ex.: 'instagram'). Sanitiza p/ não virar
+    # lixo: minúsculo, só [a-z0-9_-], máx 40 chars. Vazio → None (orgânico/direto).
+    import re as _re_acq
+    _acq = (data.get('acquisition_source') or '').strip().lower()[:40]
+    _acq = _re_acq.sub(r'[^a-z0-9_-]', '', _acq) or None
+
     try:
         user_id = create_user(username, email, password, role,
                               coach_id=coach_id, referral_coach_id=referral_coach_id,
-                              link_status=link_status, invited_by_key=invited_by_key)
+                              link_status=link_status, invited_by_key=invited_by_key,
+                              acquisition_source=_acq)
         token   = generate_token(user_id, role)
         return jsonify({'token': token, 'user_id': user_id, 'role': role,
                         'linked_coach': _coach['username'] if (ref and coach_id) else None}), 201
