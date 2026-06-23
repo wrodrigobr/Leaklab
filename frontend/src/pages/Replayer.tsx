@@ -1474,8 +1474,11 @@ const Replayer = () => {
       const af = s.af == null ? "–" : (typeof s.af === "number" ? s.af.toFixed(1) : String(s.af));
       const low = p.confidence === "insufficient" || p.archetype === "unknown";
       const arch = low ? t("card.villainSampleLow") : t(`card.archetype.${p.archetype}`, p.archetype);
+      // significado do arquétipo (o que é + como explorar) — pra quem não sabe o que é "Nit"/"LAG" etc.
+      const hint = low ? "" : t(`card.archetypeHint.${p.archetype}`, { defaultValue: "" });
       out[name] =
         `${name} · ${arch} · ${p.hands} ${t("hudHands")}\n` +
+        (hint ? `${hint}\n` : "") +
         `VPIP ${pp(s.vpip_pct)}   PFR ${pp(s.pfr_pct)}   3-bet ${pp(s.threebet_pct)}\n` +
         `c-bet ${pp(s.cbet_pct)}   fold→c-bet ${pp(s.foldcbet_pct)}\n` +
         `AF ${af}   WTSD ${pp(s.wtsd_pct)}`;

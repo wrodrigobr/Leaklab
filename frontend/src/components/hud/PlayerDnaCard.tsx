@@ -122,7 +122,10 @@ export function PlayerDnaCard({ data, v2 = false }: Props) {
             </p>
             <div className="flex items-center gap-2">
               <span className={`size-1.5 rounded-full ${dotColor}`} />
-              <span className={`rounded-full border px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${badgeColor}`}>
+              <span
+                className={`cursor-help rounded-full border px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${badgeColor}`}
+                title={t(`dna.archetypeDesc.${archetype}`, { defaultValue: "" })}
+              >
                 {t(`dna.archetypes.${archetype}`, { defaultValue: archetype })}
               </span>
             </div>
