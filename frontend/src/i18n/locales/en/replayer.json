@@ -190,8 +190,8 @@
     "costMinus": "deficit",
     "multiwaySolverTip": "Multiway pot ({{n}} players in the pot). The solver strategy is solved heads-up, multiway it's an approximation: frequencies and ranges shift with more opponents. Equity is already adjusted for multiway.",
     "multiwayTip": "Multiway pot ({{n}} players in the pot). Equity is adjusted for the number of opponents; the verdict here is heuristic (pot odds).",
-    "limpedPot": "{{pos}} vs Limp · limped pot, outside GTO coverage",
-    "limpedPotTip": "Limped pot (limp with no raise). This tree is outside GTO coverage, we only cover raise-first spots (RFI/vs-RFI/3bet/squeeze). Not a capture gap.",
+    "limpedPot": "{{pos}} vs Limp · limped pot · heuristic (no GTO range)",
+    "limpedPotTip": "Limped pot (limp with no raise): a tree outside GTO coverage (we only cover raise-first spots: RFI/vs-RFI/3bet/squeeze). The verdict here comes from the engine heuristic (passive OK, isolating marginal), not the solver.",
     "sprTip": "SPR (Stack-to-Pot Ratio): effective stack ÷ pot. < 2 = committed; 2–5 = medium; > 5 = deep",
     "sprCommitted": "committed",
     "sprMid": "medium",
@@ -287,7 +287,8 @@
       "very_wet": "Very wet board (flush/straight possible): bet BIG (~85%+), polarize and charge the draws to the max."
     },
     "mwRecommended": "Recommended",
-    "mwNway": "{{n}}-way"
+    "mwNway": "{{n}}-way",
+    "whyLimped": "Limped pot: the heuristic recommends a passive line. Check is the free option; isolating over the limp is optional."
   },
   "controls": {
     "play": "Play",

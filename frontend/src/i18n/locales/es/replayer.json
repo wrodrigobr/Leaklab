@@ -190,8 +190,8 @@
     "costMinus": "déficit",
     "multiwaySolverTip": "Bote multiway ({{n}} jugadores en el bote). La estrategia del solver se resuelve heads-up, en multiway es una aproximación: las frecuencias y los rangos cambian con más oponentes. La equity ya está ajustada para el multiway.",
     "multiwayTip": "Bote multiway ({{n}} jugadores en el bote). La equity está ajustada para el número de oponentes; el veredicto aquí es heurístico (pot odds).",
-    "limpedPot": "{{pos}} vs Limp · bote con limp, fuera de cobertura GTO",
-    "limpedPotTip": "Bote con limp (limp sin raise). Es un árbol fuera de la cobertura GTO, solo cubrimos spots iniciados con raise (RFI/vs-RFI/3bet/squeeze). No es falta de captura.",
+    "limpedPot": "{{pos}} vs Limp · bote con limp · heurística (sin range GTO)",
+    "limpedPotTip": "Bote con limp (limp sin raise): árbol fuera de la cobertura GTO (solo cubrimos spots iniciados con raise: RFI/vs-RFI/3bet/squeeze). El veredicto aquí viene de la heurística del engine (pasivo OK, aislar marginal), no del solver.",
     "sprTip": "SPR (Stack-to-Pot Ratio): stack efectivo ÷ pot. < 2 = comprometido; 2–5 = medio; > 5 = profundo",
     "sprCommitted": "comprometido",
     "sprMid": "medio",
@@ -287,7 +287,8 @@
       "very_wet": "Board muy mojado (color/escalera posible): apuesta GRANDE (~85%+), polariza y cobra los draws al máximo."
     },
     "mwRecommended": "Recomendado",
-    "mwNway": "{{n}}-way"
+    "mwNway": "{{n}}-way",
+    "whyLimped": "Bote con limp: la heurística recomienda línea pasiva. Check es la opción gratis; aislar sobre el limp es opcional."
   },
   "controls": {
     "play": "Reproducir",

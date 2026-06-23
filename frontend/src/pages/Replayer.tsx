@@ -120,6 +120,12 @@ function SidePanels({
   // AO VIVO manda. Um gto_label ARMAZENADO stale (scoring antigo, pré-feature do limp)
   // NÃO pode forjar um veredito/badge que contradiz "sem cobertura".
   const preflopNoCoverage = !isPostflop && !!pg && !pg.available && !!pg.coverage_reason;
+  // Pote limpado: NÃO é "sem veredito". O engine tem heurística (passivo OK; iso-raise sobre limp
+  // = marginal, não erro grave). Credita-a — veredito de 3 níveis + source "Heurística" — em vez do
+  // frio "Spot N/A". Subconjunto de preflopNoCoverage (o gto_label stale segue suprimido).
+  const limpedPotHeuristic = preflopNoCoverage && pg?.coverage_reason === 'limped_pot';
+  // "strict" = sem-cobertura que DEVE suprimir o veredito (exclui o pote limpado, que é creditado).
+  const preflopNoCoverageStrict = preflopNoCoverage && !limpedPotHeuristic;
   // Call-vs-shove sem dado GTO (heurística): avaliado por POT ODDS (equity vs
   // necessária), NÃO pelo range de abertura. O fallback reusava o chrome do RFI
   // ("Range de abertura", "Fold X% agregado", chip "no range") — referência errada
@@ -181,7 +187,7 @@ function SidePanels({
     // Sem cobertura GTO ao vivo (pote limpado etc.): banner NEUTRO "sem veredito" —
     // não exibe o gto_label armazenado stale (que diria DESVIO CRÍTICO contradizendo
     // o "vs Limp" do corpo). A tag de cobertura abaixo explica o motivo.
-    if (preflopNoCoverage) {
+    if (preflopNoCoverageStrict) {
       return { icon: "·", label: t("card.vNoCoverage"), cls: "text-muted-foreground",
                borderCls: "border-border", hdrCls: "bg-hud-surface",
                source: "Preflop", sourceTooltip: t("card.tipNoCoverage") };
@@ -192,6 +198,7 @@ function SidePanels({
     // veredito; vive só nas barras de estratégia (contexto). Fonte = só p/ o tooltip.
     const _src: { name: string; tip: string } =
         step.multiway_advice          ? { name: t("card.srcMultiway"),  tip: t("card.tipMultiwayEstimate") }
+      : limpedPotHeuristic             ? { name: t("card.srcHeuristic"), tip: t("card.limpedPotTip") }
       : isMultiwayStep                 ? { name: "Engine",               tip: t("card.srcEngineTip") }
       : isShoveFb                      ? { name: t("card.srcHeuristic"), tip: t("card.srcHeuristicTip") }
       : effectiveGtoLabel              ? { name: "Solver",               tip: t("card.tipGtoSolver") }
@@ -222,7 +229,8 @@ function SidePanels({
   // coberto usa o RANGE (ação dominante do hand_freq) ANTES do gto_action do engine —
   // senão AA squeeze @14bb mostrava "GTO recomenda Call" em vez de Raise 93%.
   const _idealSrc = idealActionSource({
-    preflopNoCoverage, isShoveFb, isPostflop, pgAvailable: !!pg?.available, hasGto,
+    // pote limpado é creditado pela heurística → usa best_action do engine (não "none")
+    preflopNoCoverage: preflopNoCoverageStrict, isShoveFb, isPostflop, pgAvailable: !!pg?.available, hasGto,
   });
   const idealAction =
       _idealSrc === "none"    ? null
@@ -299,7 +307,8 @@ function SidePanels({
         const sourceVariant: DecisionSourceVariant =
           step.multiway_advice                    ? "multiway"  :
           (isMultiwayStep && !step.gto_label)     ? "engine"    :  // multiway deferido → severidade do engine
-          preflopNoCoverage                       ? "na"        :
+          limpedPotHeuristic                      ? "heuristic" :  // pote limpado → veredito heurístico do engine
+          preflopNoCoverageStrict                 ? "na"        :
           step.gto_spot_mismatch                  ? "na"        :
           isShoveFb                               ? "heuristic" :
           effectiveGtoLabel                       ? "gto"       :
@@ -364,9 +373,13 @@ function SidePanels({
           // Estimativa multiway: o why HU (ex.: "Call lucrativo 37% ≥ 24%") usa a equity
           // vs aleatória/HU e CONTRADIZ o fold. A frase aqui é a da estimativa multiway.
           why = t("card.whyMultiwayEstimate");
-        } else if (preflopNoCoverage) {
-          // Sem cobertura GTO (pote limpado etc.): a tag de cobertura abaixo já
-          // explica o motivo; não inventar frase de "porquê" baseada em dado stale.
+        } else if (limpedPotHeuristic) {
+          // Pote limpado creditado: a heurística recomenda passivo (opção grátis); a frase
+          // explica o conceito sem fingir GTO.
+          why = t("card.whyLimped");
+        } else if (preflopNoCoverageStrict) {
+          // Sem cobertura GTO (não-limped): a tag de cobertura abaixo já explica o motivo;
+          // não inventar frase de "porquê" baseada em dado stale.
           why = "";
         } else if (step.gto_spot_mismatch) {
           why = step.engine_best === "call"

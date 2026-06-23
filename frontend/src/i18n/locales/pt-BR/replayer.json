@@ -190,8 +190,8 @@
     "costMinus": "déficit",
     "multiwaySolverTip": "Pote multiway ({{n}} jogadores no pote). A estratégia do solver é resolvida heads-up, em multiway é uma aproximação: frequências e ranges mudam com mais oponentes. A equity já está ajustada para o multiway.",
     "multiwayTip": "Pote multiway ({{n}} jogadores no pote). A equity está ajustada para o número de oponentes; o veredito aqui é heurístico (pot odds).",
-    "limpedPot": "{{pos}} vs Limp · pote limpado, fora da cobertura GTO",
-    "limpedPotTip": "Pote limpado (limp sem raise). É uma árvore fora da cobertura GTO, só cobrimos spots iniciados com raise (RFI/vs-RFI/3bet/squeeze). Não é falha de captura.",
+    "limpedPot": "{{pos}} vs Limp · pote limpado · heurística (sem range GTO)",
+    "limpedPotTip": "Pote limpado (limp sem raise): árvore fora da cobertura GTO (só cobrimos spots iniciados com raise: RFI/vs-RFI/3bet/squeeze). O veredito aqui vem da heurística do engine (passivo OK, iso-raise marginal), não do solver.",
     "sprTip": "SPR (Stack-to-Pot Ratio): stack efetivo ÷ pot. < 2 = comprometido; 2–5 = médio; > 5 = fundo",
     "sprCommitted": "comprometido",
     "sprMid": "médio",
@@ -287,7 +287,8 @@
       "very_wet": "Board muito molhado (flush/straight possível): aposta GRANDE (~85%+), polariza e cobra os draws ao máximo."
     },
     "mwRecommended": "Recomendado",
-    "mwNway": "{{n}}-way"
+    "mwNway": "{{n}}-way",
+    "whyLimped": "Pote limpado: a heurística recomenda passivo. Check é a opção grátis; iso-raise sobre o limp é opcional."
   },
   "controls": {
     "play": "Reproduzir",
