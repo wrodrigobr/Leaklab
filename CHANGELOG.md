@@ -7,6 +7,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(ui): paginação na lista de torneios e na lista de mãos
+
+> As duas listas renderizavam tudo de uma vez (scroll longo). Componente `Pager` reutilizável (setas + "página/total", some com 1 página) + paginação client-side: torneios 20/página, mãos 15/página. Os dados já vêm todos do `useQuery`, só fatiamos a renderização; volta pra página 1 ao filtrar e trava dentro do total. Seleção pra comparar e os totais seguem sobre o conjunto inteiro. i18n PT/EN/ES.
+
+### docs(content): auditoria da /docs , corrige erros factuais, alinha nomes e ajusta referências
+
+> Varredura da doc cruzando cada seção contra o produto. **Erros factuais:** dna listava 7 arquétipos (só existem 5); pressure dizia "3 contextos" (são 4); positions enumerava posições de forma incompleta. **Nomes:** "Decision DNA" → "Perfil Estratégico" e "Strategic Twin" → "Tendências Estratégicas" (nome dos cards) no texto/nav/título; títulos de positions/streets alinhados ao card V2 ("Alinhamento GTO por Posição", "EV Perdido por Street"). **Referências:** drills de ICM apontavam pra "Academia" → corrigido pro Ghost Table; typos ES ("pagamiento", "Governa"). Mantidos a tabela de M-ratio (teoria de Harrington) e XP/bandas de ELO (regras de jogo visíveis). Paridade i18n idêntica, zero travessão.
+
+### fix(ranking): CTA de participação apontava "acima" mas o toggle está abaixo
+
+> No Leaderboard, o card "Sua posição" renderiza antes do card com o toggle opt-in, então "ative acima" apontava pro lugar errado. Corrigido para "abaixo" (notListedCta + publicNo) nas 3 locales.
+
 ### docs(content): /docs , remove plano do coach e Sparring + corrige nome do card cognitive
 
 > Três ajustes de conteúdo: (1) removida a subseção "Seu plano como coach" (3 meses de cortesia, meta de 15 alunos pagantes, downgrade) , é negociação com o coach, não documentação pública; o banner operacional no CoachDashboard permanece. (2) Removida a seção **Sparring Mode** (feature removida do produto). (3) O título e o texto da seção cognitiva usavam o nome interno inglês "Cognitive Failure Mapper", inconsistente com o nav e o card; alinhado ao nome de exibição por locale (PT "Padrões Cognitivos", EN "Cognitive Patterns", ES "Patrones Cognitivos"). Paridade i18n mantida nas 3 locales.
