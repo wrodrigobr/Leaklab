@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight, TrendingUp } from "lucide-react";
 
-const SECTION_IDS = ["import", "scoring", "indicators", "gto_method", "replayer", "alignment_matrix", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "form", "decisions", "streets", "positions", "pressure", "icm", "bankroll", "level", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin", "sparring"] as const;
+const SECTION_IDS = ["import", "scoring", "indicators", "gto_method", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "pressure", "bankroll", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin", "sparring"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -102,27 +102,6 @@ function MiniScoreLine({ quality, score, decision }: {
         {score}
       </span>
       <span className="text-xs text-muted-foreground leading-tight">{decision}</span>
-    </div>
-  );
-}
-
-const SESSION_CFG = {
-  standard: { cls: "bg-emerald-500", pct: 100 },
-  marginal: { cls: "bg-yellow-500",  pct: 62  },
-  small:    { cls: "bg-orange-500",  pct: 38  },
-  clear:    { cls: "bg-destructive", pct: 18  },
-} as const;
-
-function MiniSessionBars({ sessions }: { sessions: ReadonlyArray<keyof typeof SESSION_CFG> }) {
-  return (
-    <div className="flex items-end gap-1 h-12">
-      {sessions.map((q, i) => (
-        <div
-          key={i}
-          className={`flex-1 rounded-sm ${SESSION_CFG[q].cls}`}
-          style={{ height: `${SESSION_CFG[q].pct}%` }}
-        />
-      ))}
     </div>
   );
 }
@@ -278,21 +257,6 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("replayer.p7") }} />
             </Section>
 
-            {/* Alignment Matrix (Heatmap posição × street) */}
-            <Section id="alignment_matrix" title={t("alignment_matrix.title")}>
-              <p dangerouslySetInnerHTML={{ __html: t("alignment_matrix.p1") }} />
-              <Table
-                headers={[t("alignment_matrix.col_color"), t("alignment_matrix.col_pct"), t("alignment_matrix.col_meaning")]}
-                rows={[
-                  [<Badge color="bg-emerald-500/20 text-emerald-300">{t("alignment_matrix.bucket_strong")}</Badge>, "≥ 70%",   t("alignment_matrix.meaning_strong")],
-                  [<Badge color="bg-amber-500/20 text-amber-300">{t("alignment_matrix.bucket_ok")}</Badge>,         "55–70%", t("alignment_matrix.meaning_ok")],
-                  [<Badge color="bg-orange-500/20 text-orange-300">{t("alignment_matrix.bucket_weak")}</Badge>,     "40–55%", t("alignment_matrix.meaning_weak")],
-                  [<Badge color="bg-red-500/20 text-red-300">{t("alignment_matrix.bucket_leak")}</Badge>,           "< 40%",  t("alignment_matrix.meaning_leak")],
-                ]}
-              />
-              <p dangerouslySetInnerHTML={{ __html: t("alignment_matrix.p2") }} />
-            </Section>
-
             {/* PKO Tournaments */}
             <Section id="pko_tournaments" title={t("pko_tournaments.title")}>
               <p dangerouslySetInnerHTML={{ __html: t("pko_tournaments.p1") }} />
@@ -380,49 +344,26 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("causal_map.p3") }} />
             </Section>
 
-            {/* Recent Form */}
-            <Section id="form" title={t("form.title")}>
-              <p dangerouslySetInnerHTML={{ __html: t("form.p1") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("form.p2") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("form.p3") }} />
-              <ExampleBox label={t("exampleLabel")}>
-                <MiniSessionBars sessions={["standard", "standard", "marginal", "clear", "small", "marginal", "standard"]} />
-                <div className="flex gap-4 flex-wrap">
-                  {(["standard", "marginal", "small", "clear"] as const).map((q) => (
-                    <div key={q} className="flex items-center gap-1.5">
-                      <div className={`size-2 rounded-sm ${SESSION_CFG[q].cls}`} />
-                      <span className="font-mono text-[9px] text-muted-foreground capitalize">{td(`form.${q === "small" ? "smallMistake" : q === "clear" ? "clearError" : q}`)}</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">{t("form.example")}</p>
-              </ExampleBox>
-            </Section>
-
-            {/* Decision Quality */}
-            <Section id="decisions" title={t("decisions.title")}>
-              <p dangerouslySetInnerHTML={{ __html: t("decisions.p1") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("decisions.p2") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("decisions.p3") }} />
-              <ExampleBox label={t("exampleLabel")}>
-                <MiniBar label="Standard"  pct={74} color="emerald" />
-                <MiniBar label="Marginal"  pct={16} color="amber"   />
-                <MiniBar label="Small Err" pct={7}  color="orange"  />
-                <MiniBar label="Clear Err" pct={3}  color="destructive" />
-                <p className="text-xs text-muted-foreground">{t("decisions.example")}</p>
-              </ExampleBox>
-            </Section>
-
             {/* Performance by Street */}
             <Section id="streets" title={t("streets.title")}>
               <p dangerouslySetInnerHTML={{ __html: t("streets.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("streets.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("streets.p3") }} />
               <ExampleBox label={t("exampleLabel")}>
-                <MiniBar label="Preflop" pct={84} color="emerald" />
-                <MiniBar label="Flop"    pct={76} color="emerald" />
-                <MiniBar label="Turn"    pct={70} color="amber"   />
-                <MiniBar label="River"   pct={63} color="amber"   />
+                {[
+                  { s: "Preflop", bb: 0.8, w: 20 },
+                  { s: "Flop",    bb: 1.4, w: 35 },
+                  { s: "Turn",    bb: 2.6, w: 65 },
+                  { s: "River",   bb: 4.0, w: 100 },
+                ].map(({ s, bb, w }) => (
+                  <div key={s} className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-muted-foreground w-16 shrink-0">{s}</span>
+                    <div className="relative flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                      <div className="h-full rounded-full bg-amber-500" style={{ width: `${w}%` }} />
+                    </div>
+                    <span className="font-mono text-[10px] font-bold tabular-nums w-12 text-right text-amber-400">−{bb.toFixed(1)}bb</span>
+                  </div>
+                ))}
                 <p className="text-xs text-muted-foreground">{t("streets.example")}</p>
               </ExampleBox>
             </Section>
@@ -480,57 +421,12 @@ export default function Docs() {
               </ExampleBox>
             </Section>
 
-            {/* ICM Pressure */}
-            <Section id="icm" title={t("icm.title")}>
-              <p dangerouslySetInnerHTML={{ __html: t("icm.p1") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("icm.p2") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("icm.p3") }} />
-              <ExampleBox label={t("exampleLabel")}>
-                <MiniBar label="No ICM" pct={8}  color="primary"     />
-                <MiniBar label="Low"    pct={15}  color="primary"     />
-                <MiniBar label="Medium" pct={38}  color="amber"       />
-                <MiniBar label="High"   pct={39}  color="destructive" />
-                <p className="text-xs text-muted-foreground">{t("icm.example")}</p>
-              </ExampleBox>
-            </Section>
-
             {/* Bankroll */}
             <Section id="bankroll" title={t("bankroll.title")}>
               <p dangerouslySetInnerHTML={{ __html: t("bankroll.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("bankroll.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("bankroll.p3") }} />
               <p dangerouslySetInnerHTML={{ __html: t("bankroll.p4") }} />
-            </Section>
-
-            {/* My Level */}
-            <Section id="level" title={t("level.title")}>
-              <p dangerouslySetInnerHTML={{ __html: t("level.p1") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("level.p2") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("level.p3") }} />
-              <ExampleBox label={t("exampleLabel")}>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center rounded border border-amber-400/30 bg-amber-400/5 px-2 py-1 font-mono text-[10px] font-bold text-amber-400">
-                        Grinder
-                      </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">1680 ELO</span>
-                    </div>
-                    <span className="font-mono text-[9px] text-muted-foreground">Regular → 1710</span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="h-2 rounded-full bg-border overflow-hidden">
-                      <div className="h-full rounded-full bg-amber-500" style={{ width: "75%" }} />
-                    </div>
-                    <p className="font-mono text-[9px] text-muted-foreground">75% {t("level.example_progress")}</p>
-                  </div>
-                  <div className="rounded-md border border-orange-500/20 bg-orange-500/5 px-3 py-2">
-                    <p className="font-mono text-[9px] uppercase tracking-wide text-orange-400 mb-0.5">{t("level.example_blocker")}</p>
-                    <p className="text-[11px] text-muted-foreground">river overcall OOP · 31 occ.</p>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">{t("level.example")}</p>
-              </ExampleBox>
             </Section>
 
             {/* Ghost Table */}

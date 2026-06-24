@@ -10,20 +10,15 @@
     "indicators": "Indicadores",
     "gto_method": "Metodología GTO",
     "replayer": "Revisión de Mano",
-    "alignment_matrix": "Heatmap Posición × Calle",
     "pko_tournaments": "Torneos PKO (Bounty)",
     "mstacks": "Fases de M-Ratio",
     "dna": "Decision DNA",
     "leaks": "Top Leaks",
     "causal_map": "Mapa Causal",
-    "form": "Forma Reciente",
-    "decisions": "Calidad de Decisiones",
     "streets": "Rendimiento por Calle",
     "positions": "Rendimiento por Posición",
     "pressure": "Colapso bajo Presión",
-    "icm": "Presión ICM",
     "bankroll": "Evolución del Bankroll",
-    "level": "Mi Nivel",
     "ghost": "Ghost Table / Drills",
     "compare": "Comparativo de Torneos",
     "coaching": "Coaching",
@@ -186,22 +181,6 @@
     "p5": "El indicador de <strong>equity</strong> en la tarjeta es range-aware: cuando enfrentas un open conocido, se estima <strong>vs el rango de apertura GTO real del oponente</strong> (marcado «vs rango»), en general menor que vs una mano aleatoria, ya que ese rango es más fuerte que el promedio. En los demás spots cae a <strong>vs una mano aleatoria</strong> (marcado «vs aleatoria»). En cualquier caso es una referencia de fuerza; el <strong>veredicto</strong> siempre viene de la estrategia GTO de tu mano, no de ese número.",
     "p6": "En botes <strong>multiway</strong> (3 o más jugadores en el bote), la tarjeta muestra la marca «Multiway · N-way». La estrategia del solver se resuelve <strong>heads-up</strong>, así que con 3+ jugadores deja de ser fiable, y la tarjeta <strong>no</strong> la muestra. En su lugar, el veredicto viene de una <strong>estimación independiente</strong>: la equity de tu mano <strong>vs el rango de continuación</strong> de los rivales (las manos con las que apuestan o pagan), confrontada con las <strong>pot odds</strong> y ajustada según cuántos rivales disputan el bote. Cuando esa lectura es clara, por ejemplo, pagar una apuesta con equity por debajo de la necesaria, o no apostar por valor una mano fuerte, es el veredicto (marcado «Multiway»); en decisiones ajustadas la tarjeta recurre a la evaluación general del motor. Es una <strong>estimación</strong> honesta, no la solución exacta de un solver multiway.",
     "p7": "Cuando <strong>apuestas o subes</strong> en el flop, turn o river, la tarjeta muestra la <strong>intención</strong> de la apuesta: <strong>Apuesta por valor</strong> (tu mano es fuerte y quieres que las manos peores paguen), <strong>Valor + protección</strong> (tu mano va por delante, pero el board puede dar proyecto al rival, la apuesta le cobra caro continuar), <strong>Semi-bluff</strong> (aún no tienes mano hecha, pero tienes un proyecto que puede completar), <strong>Bluff</strong> (tu mano va por detrás y quieres que una mejor foldee) o <strong>Fuerza media</strong>, una mano buena para ganar a un bluff en el showdown, pero demasiado floja para apostar por valor. Apostar una mano de fuerza media suele ser un error: las manos peores foldean y solo las mejores pagan, así que solo te pagan cuando vas por detrás. En esos casos la tarjeta se pone roja y el GTO prefiere hacer check. Es la forma más simple de ver si tu apuesta tenía un objetivo claro, sacar valor o forzar un fold, o si fue apostar por apostar."
-  },
-  "alignment_matrix": {
-    "title": "Heatmap Posición × Calle",
-    "p1": "Matriz 6×6 en el dashboard que cruza <strong>posición de mesa</strong> (EP, MP, CO, BTN, SB, BB) con <strong>calle</strong> (preflop, flop, turn, river). Cada celda muestra el porcentaje de decisiones alineadas con GTO y el número de manos en la muestra. Permite identificar leaks con precisión quirúrgica, ej.: \"juego BTN preflop bien (87%) pero SB river es agujero (42%)\".",
-    "col_color": "Color de celda",
-    "col_pct": "% aligned",
-    "col_meaning": "Interpretación",
-    "bucket_strong": "Fuerte",
-    "bucket_ok": "OK",
-    "bucket_weak": "Débil",
-    "bucket_leak": "Leak",
-    "meaning_strong": "Alineamiento sólido con solver. Sigue estudiando.",
-    "meaning_ok": "Aceptable, con margen para mejorar. Prioriza si es spot de alto volumen.",
-    "meaning_weak": "Divergencia relevante. Vale revisión puntual.",
-    "meaning_leak": "Leak claro. Prioridad de estudio.",
-    "p2": "Las celdas con menos de 20 manos aparecen atenuadas, muestra demasiado pequeña para una lectura confiable. Con menos de 3 manos, el porcentaje ni se muestra. El heatmap es más útil a partir de algunos cientos de decisiones con cobertura GTO."
   },
   "pko_tournaments": {
     "title": "Torneos PKO (Progressive Knockout / Bounty)",
@@ -419,30 +398,16 @@
     "p2": "Por qué importa: cuando dos leaks co-ocurren con alta correlación, generalmente comparten una <em>causa raíz</em>, por ejemplo, folds excesivos preflop y calls malos en el flop pueden tener origen en el mismo problema de lectura de rango. Corregir la causa raíz resuelve ambos a la vez.",
     "p3": "Haz clic en un nodo para destacar solo los leaks conectados a él. Los nodos rojos son críticos; amarillos, moderados; verdes, leves. Comienza siempre por los nodos rojos con más conexiones, tienen el mayor impacto en cascada."
   },
-  "form": {
-    "title": "Forma Reciente",
-    "p1": "El card de <strong>Forma Reciente</strong> muestra la calidad media de las decisiones en los últimos torneos, torneo a torneo. Cada punto es una sesión: <strong>verde</strong> marca una sesión Correcta, <strong>azul</strong> una Aceptable y <strong>rojo</strong> una sesión con Errores.",
-    "p2": "La forma reciente importa porque captura <em>variaciones de corto plazo</em> que el promedio general no muestra. Un jugador con buen promedio general puede estar en declive en los últimos 5 torneos, señal temprana de tilt, fatiga o cambio de stakes.",
-    "p3": "Si ves una secuencia de barras rojas o naranjas, revisa el card de <strong>Patrones Cognitivos</strong>, puede haber un patrón emocional activo que explique el deterioro.",
-    "example": "Últimos 7 torneos: dos sesiones sólidas al inicio, caída en las sesiones 3–5 (posible tilt o fatiga), seguida de recuperación en las sesiones 6–7, ciclo típico de over-commitment."
-  },
-  "decisions": {
-    "title": "Calidad de Decisiones",
-    "p1": "El card de <strong>Calidad de Decisiones</strong> muestra la distribución porcentual de todas tus decisiones en los tres niveles de calidad: Correcto, Aceptable y Error.",
-    "p2": "Esta vista agregada revela el <em>perfil general</em> de tu juego. Un jugador con 80%+ Estándar y menos del 5% de Errores Claros tiene un perfil sólido. Alta concentración en Errores Claros indica spots donde estás perdiendo EV de forma significativa y consistente.",
-    "p3": "La conexión con los leaks: cada Error registrado aquí aparece en el card de Top Leaks cuando el patrón se repite. Reduce tu porcentaje de Errores entrenando los spots más frecuentes.",
-    "example": "Perfil típico de un Regular: 74% Correcto, 16% Aceptable, 10% Error. Ese Standard% de 74% posiciona al jugador entre Grinder y Regular en la escala del sistema."
-  },
   "streets": {
     "title": "Rendimiento por Calle",
-    "p1": "El gráfico de <strong>Rendimiento por Calle</strong> muestra la tasa de decisiones correctas (alineadas con el ideal), separada por preflop, flop, turn y river.",
+    "p1": "La tarjeta <strong>Rendimiento por Street</strong> muestra cuánto EV (en big blinds) pierdes en cada calle: preflop, flop, turn y river. Cuanto menor la barra, mejor.",
     "p2": "Calles con barra naranja o roja indican dónde se concentran tus leaks. La mayoría de jugadores pierde más en el river, donde el bote es mayor y los errores más caros. Los jugadores que suben de nivel rápidamente generalmente resuelven primero el preflop (mayor volumen de decisiones) y luego el turn.",
     "p3": "Usa este card para priorizar qué calles trabajar en el Ghost Table y en la Academia.",
-    "example": "Patrón común en jugadores intermedios: Preflop 84% Estándar, Flop 76%, Turn 70%, River 63%. El River más débil indica dificultad con decisiones de showdown, fold equity vs. apuestas de thin value."
+    "example": "Patrón común: la pérdida es pequeña en preflop (0.8bb) y crece hasta el river (4.0bb). Que el river sea el más caro indica dificultad con decisiones de showdown, fold equity y thin value."
   },
   "positions": {
     "title": "Rendimiento por Posición",
-    "p1": "El gráfico de <strong>Rendimiento por Posición</strong> muestra la tasa de decisiones estándar por posición en la mesa: UTG, MP, CO, BTN, SB y BB.",
+    "p1": "La tarjeta <strong>Rendimiento por Posición</strong> muestra tu porcentaje de alineación con el GTO en cada posición de la mesa: UTG, MP, CO, BTN, SB y BB.",
     "p2": "Las posiciones late (BTN, CO) naturalmente tienen más ventaja posicional, se espera mejor rendimiento desde esos asientos. Si BTN o CO aparecen en rojo, eso es un problema serio: no estás aprovechando la ventaja que la posición te ofrece.",
     "p3": "BB y SB defensivos son los spots técnicamente más difíciles. Rendimiento bajo en BB es común y no necesariamente señal de crisis, pero si el delta entre BTN y BB es muy grande, el déficit posicional está costando EV real.",
     "example": "BTN (84%) y CO (79%) aprovechan bien la ventaja posicional. BB (63%) y SB (60%) más débiles, delta de 24pp entre BTN y SB es elevado pero esperado. Por encima de 30pp indica un leak posicional crítico."
@@ -468,33 +433,12 @@
     "example_collapse_label": "Colapso: Δ > 8pts",
     "example": "Izquierda: delta de solo 4pp entre sin ICM e ICM alto, rendimiento consistente, señal de solidez. Derecha: delta de 18pp, los errores aumentan drásticamente en la burbuja y la mesa final, donde cada ficha tiene mayor valor monetario."
   },
-  "icm": {
-    "title": "Presión ICM",
-    "p1": "El card de <strong>Presión ICM</strong> muestra la distribución de tus decisiones por nivel de presión ICM: sin ICM, bajo, medio y alto. Cada porción representa el porcentaje de decisiones tomadas bajo ese contexto.",
-    "p2": "<strong>ICM</strong> (Independent Chip Model) es un modelo matemático que calcula el valor monetario real de las fichas en un MTT. 1000 fichas en la burbuja no valen lo mismo que 1000 fichas al inicio del torneo, el ICM captura esa diferencia.",
-    "p3": "Los jugadores que juegan muchos torneos cortos (Sit & Go, Spin & Gold) tendrán alta proporción de ICM alto, lo que amplifica la importancia de acertar los spots de presión. Compara este card con el de Colapso bajo Presión para entender si estás ganando o perdiendo EV en las situaciones más valiosas.",
-    "example": "Distribución típica de un Spin & Go player: 8% sin ICM, 15% ICM bajo, 38% ICM medio, 39% ICM alto. La mayoría de las decisiones ocurren bajo presión, cada error de reshove tiene un costo proporcionalmente mayor que en MTTs largos."
-  },
   "bankroll": {
     "title": "Evolución del Bankroll",
     "p1": "El gráfico de <strong>Evolución del Bankroll</strong> muestra la curva acumulada del resultado financiero torneo a torneo. La línea sube en resultados positivos y baja en pérdidas, la forma general revela tu tendencia de largo plazo.",
     "p2": "Los resultados financieros están fuertemente influenciados por la varianza en MTTs, especialmente con muestras menores a 100 torneos. Una curva descendente no significa necesariamente que estés jugando mal; puede ser varianza. Por eso el sistema usa el <strong>Standard%</strong> como indicador principal de calidad, mide decisiones, no resultados.",
-    "p3": "Usa los filtros de período (1M, 3M, 1A, Todo) para aislar tendencias en ventanas de tiempo específicas. Si el Standard% sube pero la curva financiera cae, estás jugando mejor, los resultados tienden a corregirse con volumen.",
+    "p3": "Usa los filtros de período (7 días, 30 días, 6 meses, 1 año, Todo) para aislar tendencias en ventanas específicas, y el selector <strong>Por tiempo / Por torneo</strong> para ver la evolución por fecha de juego (en el calendario) o por secuencia de torneos. Si tu Standard% sube pero la curva financiera baja, estás jugando mejor; los resultados tienden a ajustarse con volumen.",
     "p4": "Si tanto el Standard% como la curva caen al mismo tiempo, revisa tus leaks más recientes y verifica si cambiaste de stake recientemente, los cambios de buy-in alteran la competitividad del field."
-  },
-  "level": {
-    "title": "Mi Nivel",
-    "p1": "El card de <strong>Mi Nivel</strong> muestra tu nivel actual en el sistema, el porcentaje de progreso hacia el siguiente nivel y los leaks que están bloqueando tu avance.",
-    "p2": "Tu nivel se calcula a partir de tu <strong>rating ELO</strong> (con base en tu forma reciente), derivado de la adherencia al GTO. Cada nivel exige un ELO mayor, no se basa en resultados económicos, sino en consistencia técnica frente al solver. <a href=\"/docs/rating\" class=\"text-primary underline\">Ver cómo funciona el ELO</a>.",
-    "table": {
-      "col_level": "Nivel",
-      "col_req": "ELO necesario",
-      "col_focus": "Enfoque principal"
-    },
-    "p3": "Los <strong>leaks bloqueadores</strong> mostrados en el card son los spots de error de mayor frecuencia que más impactan tu Standard% actual. Corregirlos es el camino más directo para subir de nivel. Usa el botón <em>Ver plan de estudio</em> para ver el plan personalizado de la IA.",
-    "example_progress": "del camino hacia el siguiente nivel",
-    "example_blocker": "Leak bloqueador",
-    "example": "Nivel Grinder con 1680 ELO, camino a Regular (1710). Progreso de ~50% hasta el umbral. El leak bloqueador identificado por la IA es el spot con mayor frecuencia de error que frena el avance."
   },
   "sparring": {
     "title": "Sparring Mode",

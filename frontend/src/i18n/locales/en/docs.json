@@ -10,20 +10,15 @@
     "indicators": "Indicators",
     "gto_method": "GTO Methodology",
     "replayer": "Hand Review",
-    "alignment_matrix": "Position × Street Heatmap",
     "pko_tournaments": "PKO (Bounty) Tournaments",
     "mstacks": "M-Ratio Phases",
     "dna": "Decision DNA",
     "leaks": "Top Leaks",
     "causal_map": "Causal Map",
-    "form": "Recent Form",
-    "decisions": "Decision Quality",
     "streets": "Performance by Street",
     "positions": "Performance by Position",
     "pressure": "Pressure Collapse",
-    "icm": "ICM Pressure",
     "bankroll": "Bankroll Evolution",
-    "level": "My Level",
     "ghost": "Ghost Table / Drills",
     "compare": "Tournament Comparison",
     "coaching": "Coaching",
@@ -186,22 +181,6 @@
     "p5": "The <strong>equity</strong> indicator on the card is range-aware: when you face a known open, it is estimated <strong>vs the opponent's actual GTO opening range</strong> (labeled «vs range»), usually lower than vs a random hand, since that range is stronger than average. In other spots it falls back to <strong>vs a random hand</strong> (labeled «vs random»). Either way it is a strength reference; the <strong>verdict</strong> always comes from your hand's GTO strategy, not from this number.",
     "p6": "In <strong>multiway</strong> pots (3 or more players in the pot), the card shows a «Multiway · N-way» tag. The solver strategy is solved <strong>heads-up</strong>, so with 3+ players it is no longer reliable, and the card does <strong>not</strong> show it. Instead, the verdict comes from an <strong>independent estimate</strong>: your hand's equity <strong>vs the opponents' continuing range</strong> (the hands they bet or call with), weighed against the <strong>pot odds</strong> and adjusted for how many opponents are contesting the pot. When that read is clear, for example, calling a bet with equity below what you need, or failing to value-bet a strong hand, it is the verdict (tagged «Multiway»); on close decisions the card falls back to the engine's overall read. It is an honest <strong>estimate</strong>, not the exact solution of a multiway solver.",
     "p7": "When you <strong>bet or raise</strong> on the flop, turn, or river, the card shows the <strong>intent</strong> of the bet: <strong>Value bet</strong> (your hand is strong and you want worse hands to call), <strong>Value + protection</strong> (your hand is ahead, but the board can give your opponent a draw, the bet charges them to continue), <strong>Semi-bluff</strong> (you don't have a made hand yet, but you have a draw that can complete), <strong>Bluff</strong> (your hand is behind and you want a better one to fold), or <strong>Medium strength</strong>, a hand good enough to beat a bluff at showdown, but too weak to bet for value. Betting a medium-strength hand is usually a mistake: worse hands fold and only better hands call, so you only get called when you're behind. In those cases the card turns red and GTO prefers to check. It's the simplest way to see whether your bet had a clear goal, extracting value or forcing a fold, or whether it was betting just to bet."
-  },
-  "alignment_matrix": {
-    "title": "Position × Street Heatmap",
-    "p1": "A 6×6 matrix on the dashboard crossing <strong>table position</strong> (EP, MP, CO, BTN, SB, BB) with <strong>street</strong> (preflop, flop, turn, river). Each cell shows the percentage of decisions aligned with GTO and the number of hands in the sample. Lets you spot leaks with surgical precision, e.g., \"I play BTN preflop well (87%) but my SB river is a hole (42%)\".",
-    "col_color": "Cell color",
-    "col_pct": "% aligned",
-    "col_meaning": "Meaning",
-    "bucket_strong": "Strong",
-    "bucket_ok": "OK",
-    "bucket_weak": "Weak",
-    "bucket_leak": "Leak",
-    "meaning_strong": "Solid alignment with solver. Keep studying.",
-    "meaning_ok": "Acceptable, with room to improve. Prioritize if high-volume spot.",
-    "meaning_weak": "Relevant divergence. Worth targeted review.",
-    "meaning_leak": "Clear leak. Top study priority.",
-    "p2": "Cells with fewer than 20 hands appear dimmed, too small a sample for a reliable read. With fewer than 3 hands, the percentage isn't shown at all. The heatmap becomes most useful from a few hundred GTO-covered decisions onward."
   },
   "pko_tournaments": {
     "title": "PKO (Progressive Knockout / Bounty) Tournaments",
@@ -419,30 +398,16 @@
     "p2": "Why it matters: when two leaks co-occur with high correlation, they usually share a <em>root cause</em>, for example, excessive preflop folding and bad flop calls may both stem from the same range-reading problem. Fixing the root cause resolves both at once.",
     "p3": "Click a node to highlight only the leaks connected to it. Red nodes are critical; yellow are moderate; green are minor. Always start with the red nodes that have the most connections, they have the greatest cascading impact."
   },
-  "form": {
-    "title": "Recent Form",
-    "p1": "The <strong>Recent Form</strong> card shows average decision quality across recent tournaments, tournament by tournament. Each dot is a session: <strong>green</strong> marks a Correct session, <strong>blue</strong> an Acceptable one and <strong>red</strong> a session with Errors.",
-    "p2": "Recent form matters because it captures <em>short-term variation</em> that the overall average hides. A player with a good overall average may be declining over the last 5 tournaments, an early warning sign of tilt, fatigue, or a stake change.",
-    "p3": "If you see a sequence of red or orange bars, check the <strong>Cognitive Patterns</strong> card, there may be an active emotional pattern explaining the decline.",
-    "example": "Last 7 tournaments: two solid sessions, followed by decline in sessions 3–5 (possible tilt or fatigue), then recovery in sessions 6–7, a typical over-commitment cycle."
-  },
-  "decisions": {
-    "title": "Decision Quality",
-    "p1": "The <strong>Decision Quality</strong> card shows the percentage breakdown of all your decisions across the three quality levels: Correct, Acceptable and Error.",
-    "p2": "This aggregate view reveals the <em>overall profile</em> of your game. A player with 80%+ Standard and under 5% Clear Mistakes has a solid profile. A high concentration of Clear Mistakes indicates spots where you are losing EV significantly and consistently.",
-    "p3": "The link to leaks: every Error tracked here shows up in the Top Leaks card when the pattern recurs. Lower your Error rate by drilling the most frequent spots.",
-    "example": "Typical Regular profile: 74% Correct, 16% Acceptable, 10% Error. This Standard% of 74% places the player between Grinder and Regular on the system scale."
-  },
   "streets": {
     "title": "Performance by Street",
-    "p1": "The <strong>Performance by Street</strong> chart shows the rate of correct decisions (aligned with the ideal), broken down by preflop, flop, turn, and river.",
+    "p1": "The <strong>Performance by Street</strong> card shows how much EV (in big blinds) you lose on each street: preflop, flop, turn and river. The smaller the bar, the better.",
     "p2": "Streets with orange or red bars indicate where your leaks are concentrated. Most players lose the most on the river, where the pot is largest and mistakes are most expensive. Players who level up quickly typically fix preflop first (highest decision volume) and then the turn.",
     "p3": "Use this card to prioritise which streets to focus on in the Ghost Table and Academy.",
-    "example": "Common pattern in intermediate players: Preflop 84% Standard, Flop 76%, Turn 70%, River 63%. The weaker river indicates difficulty with showdown decisions, fold equity vs. thin value bets."
+    "example": "Common pattern: the loss is small on the preflop (0.8bb) and grows toward the river (4.0bb). The river being the most expensive points to trouble with showdown decisions, fold equity and thin value."
   },
   "positions": {
     "title": "Performance by Position",
-    "p1": "The <strong>Performance by Position</strong> chart shows the standard decision rate by table position: UTG, MP, CO, BTN, SB, and BB.",
+    "p1": "The <strong>Performance by Position</strong> card shows your GTO alignment percentage in each table position: UTG, MP, CO, BTN, SB and BB.",
     "p2": "Late positions (BTN, CO) naturally have more positional advantage, better performance is expected from those seats. If BTN or CO appear red, that is a serious issue: you are not taking advantage of the positional edge you have.",
     "p3": "BB and SB defensive spots are technically the hardest. Poor performance in the BB is common and not necessarily a crisis, but if the delta between BTN and BB is very large, the positional deficit is costing real EV.",
     "example": "BTN (84%) and CO (79%) make good use of positional advantage. BB (63%) and SB (60%) weaker, a 24pp delta between BTN and SB is elevated but expected. Above 30pp indicates a critical positional leak."
@@ -468,33 +433,12 @@
     "example_collapse_label": "Collapse: Δ > 8pts",
     "example": "Left: only a 4pp delta between no-ICM and high-ICM, consistent performance, a sign of solidity. Right: an 18pp delta, mistakes spike significantly on the bubble and final table, where each chip has greater monetary value."
   },
-  "icm": {
-    "title": "ICM Pressure",
-    "p1": "The <strong>ICM Pressure</strong> card shows the distribution of your decisions by ICM pressure level: no ICM, low, medium, and high. Each slice represents the percentage of decisions made under that context.",
-    "p2": "<strong>ICM</strong> (Independent Chip Model) is a mathematical model that calculates the real monetary value of chips in an MTT. 1000 chips on the bubble are not worth the same as 1000 chips at the start of the tournament, ICM captures that difference.",
-    "p3": "Players who play many short-format tournaments (Sit & Go, Spin & Gold) will have a high proportion of high ICM, which amplifies the importance of getting pressure spots right. Compare this card with the Pressure Collapse card to understand whether you are gaining or losing EV in the most valuable situations.",
-    "example": "Typical Spin & Go distribution: 8% no ICM, 15% low ICM, 38% medium ICM, 39% high ICM. Most decisions occur under pressure, each reshove mistake carries proportionally greater cost than in long MTTs."
-  },
   "bankroll": {
     "title": "Bankroll Evolution",
     "p1": "The <strong>Bankroll Evolution</strong> chart shows the cumulative financial result curve tournament by tournament. The line rises on profitable results and falls on losses, the overall shape reveals your long-term trend.",
     "p2": "Financial results are heavily influenced by variance in MTTs, especially with samples below 100 tournaments. A downward curve does not necessarily mean you are playing poorly; it may be variance. That is why the system uses <strong>Standard%</strong> as the primary quality indicator, it measures decisions, not results.",
-    "p3": "Use the period filters (1M, 3M, 1Y, All) to isolate trends in specific time windows. If Standard% is rising but the financial curve is falling, you are playing better, results tend to correct themselves with volume.",
+    "p3": "Use the period filters (7 days, 30 days, 6 months, 1 year, All) to isolate trends in specific windows, and the <strong>By time / By tournament</strong> toggle to view the evolution by play date (on the calendar) or by tournament sequence. If your Standard% is rising but the financial curve is falling, you are playing better; results tend to catch up with volume.",
     "p4": "If both Standard% and the curve are falling simultaneously, review your most recent leaks and check whether you have recently changed stakes, buy-in changes alter field competitiveness."
-  },
-  "level": {
-    "title": "My Level",
-    "p1": "The <strong>My Level</strong> card shows your current level in the system, the progress percentage to the next level, and the leaks blocking your advancement.",
-    "p2": "Your level is computed from your <strong>ELO rating</strong> (based on your recent form), derived from GTO adherence. Each level requires a higher ELO, it is not based on financial results, but on technical consistency against the solver. <a href=\"/docs/rating\" class=\"text-primary underline\">See how ELO works</a>.",
-    "table": {
-      "col_level": "Level",
-      "col_req": "Required ELO",
-      "col_focus": "Main focus"
-    },
-    "p3": "The <strong>blocking leaks</strong> shown in the card are the highest-frequency error spots that most impact your current Standard%. Fixing them is the most direct path to levelling up. Use the <em>View study plan</em> button to see the AI-generated personalised plan.",
-    "example_progress": "of the way to the next level",
-    "example_blocker": "Blocking leak",
-    "example": "Grinder level at 1680 ELO, on the way to Regular (1710). About 50% progress to the threshold. The blocking leak identified by the AI is the highest-frequency error spot holding back your climb."
   },
   "sparring": {
     "title": "Sparring Mode",
