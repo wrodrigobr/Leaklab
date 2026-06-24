@@ -950,19 +950,22 @@ function GtoWorkerTab() {
             <BarChart data={throughput} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
               <XAxis
                 dataKey="hour"
-                tickFormatter={v => v ? v.slice(11, 16) : ""}
-                tick={{ fontSize: 10, fontFamily: "monospace" }}
+                tickFormatter={v => v ? new Date(v + "Z").toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}
+                tick={{ fontSize: 10, fontFamily: "monospace", fill: "hsl(var(--muted-foreground))" }}
                 stroke="hsl(var(--border))"
               />
               <YAxis
                 allowDecimals={false}
-                tick={{ fontSize: 10, fontFamily: "monospace" }}
+                tick={{ fontSize: 10, fontFamily: "monospace", fill: "hsl(var(--muted-foreground))" }}
                 stroke="hsl(var(--border))"
               />
               <Tooltip
                 formatter={(v: number) => [v, "requests"]}
-                labelFormatter={l => `${l?.toString().slice(0, 16)}`}
-                contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }}
+                labelFormatter={l => l ? new Date(l + "Z").toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
+                cursor={{ fill: "hsl(var(--primary) / 0.12)" }}
+                contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }}
+                itemStyle={{ color: "hsl(var(--foreground))" }}
+                labelStyle={{ color: "hsl(var(--muted-foreground))", marginBottom: 2 }}
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                 {throughput.map((entry, i) => (
