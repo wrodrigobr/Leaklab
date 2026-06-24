@@ -90,3 +90,6 @@ frontend/dist/
 backend/gto_bot/solver_cli/target/
 backend/gto_bot/solver_cli/Cargo.lock
 backups/
+
+# Documentos estratégicos/negociação (confidenciais — nunca versionar)
+business/
