@@ -2071,6 +2071,7 @@ export interface CoachPayout {
   total_students: number;
   active_students: number;
   amount_cents: number;
+  commission_cents: number | null;   // taxa flat por aluno (Parceiro Fundador); null = escada padrão
   status: "pending" | "paid";
   payment_id: number | null;
   paid_at: string | null;
@@ -2177,6 +2178,13 @@ export const adminDashboard = {
 
   markPaid: (paymentId: number) =>
     request<{ ok: boolean }>(`/admin/finance/coaches/${paymentId}/pay`, { method: "PATCH" }),
+
+  // Define a taxa flat por aluno de um coach (Parceiro Fundador). cents=null → escada padrão.
+  setCoachCommission: (coachId: number, cents: number | null) =>
+    request<{ ok: boolean; commission_cents: number | null }>(
+      `/admin/coach/${coachId}/commission`,
+      { method: "PATCH", body: JSON.stringify({ commission_cents: cents }) }
+    ),
 
   // PAY-03: visão financeira consolidada + lista de pagamentos
   financeOverview: () =>

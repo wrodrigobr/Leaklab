@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { GraduationCap, Loader2, Users } from "lucide-react";
+import { toast } from "sonner";
 import { adminDashboard, AdminUser, AdminCoachStudent, CoachPayout } from "@/lib/api";
 import { fmt } from "./format";
 import { StatusBadge } from "./StatusBadge";
@@ -13,6 +14,27 @@ function CoachDetail({ coach, payout, onClose }: { coach: AdminUser; payout?: Co
     staleTime: 15_000,
   });
   const students: AdminCoachStudent[] = data?.students ?? [];
+
+  const qc = useQueryClient();
+  const [commInput, setCommInput] = useState(
+    payout?.commission_cents != null ? String(payout.commission_cents / 100) : ""
+  );
+  const [savingComm, setSavingComm] = useState(false);
+  const saveCommission = async () => {
+    const v = commInput.trim().replace(",", ".");
+    const cents = v === "" ? null : Math.round(parseFloat(v) * 100);
+    if (cents !== null && (isNaN(cents) || cents < 0)) { toast.error("Valor inválido."); return; }
+    setSavingComm(true);
+    try {
+      await adminDashboard.setCoachCommission(coach.id, cents);
+      qc.invalidateQueries({ queryKey: ["admin-finance-coaches"] });
+      toast.success(cents === null ? "Voltou pra escada padrão." : `Taxa flat: R$ ${(cents / 100).toFixed(2)}/aluno.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao salvar.");
+    } finally {
+      setSavingComm(false);
+    }
+  };
 
   return (
     <DetailDrawer open title={`Coach @${coach.username}`} icon={GraduationCap} onClose={onClose}>
@@ -32,6 +54,33 @@ function CoachDetail({ coach, payout, onClose }: { coach: AdminUser; payout?: Co
         <div className="rounded-lg border border-border bg-background p-3">
           <p className="font-mono text-[9px] uppercase text-muted-foreground">Alunos ativos</p>
           <p className="mt-1 font-mono text-sm text-primary font-bold tabular-nums">{payout?.active_students ?? "—"}</p>
+        </div>
+      </div>
+
+      {/* Taxa de comissão por aluno (Parceiro Fundador). Vazio = escada padrão por volume. */}
+      <div className="rounded-lg border border-border bg-background p-3">
+        <p className="font-mono text-[9px] uppercase text-muted-foreground">Taxa de comissão (R$/aluno)</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {payout?.commission_cents != null
+            ? <>Flat: <span className="font-bold text-foreground">R$ {(payout.commission_cents / 100).toFixed(2)}/aluno</span> (Parceiro Fundador)</>
+            : "Escada padrão: 1-9 R$15 · 10-29 R$20 · 30+ R$25"}
+        </p>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground">R$</span>
+          <input
+            type="text" inputMode="decimal" value={commInput}
+            onChange={(e) => setCommInput(e.target.value)}
+            placeholder="vazio = escada"
+            className="w-32 rounded-md border border-border bg-hud-surface px-2 py-1 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <span className="font-mono text-[10px] text-muted-foreground">/aluno</span>
+          <button
+            onClick={saveCommission}
+            disabled={savingComm}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {savingComm && <Loader2 className="size-3.5 animate-spin" />} Salvar
+          </button>
         </div>
       </div>
 

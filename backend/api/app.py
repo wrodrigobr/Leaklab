@@ -5872,6 +5872,26 @@ def admin_mark_payment_paid(payment_id):
     return jsonify({'ok': True})
 
 
+@app.route('/admin/coach/<int:coach_id>/commission', methods=['PATCH'])
+@require_admin
+def admin_set_coach_commission(coach_id):
+    """Define a taxa FLAT por aluno de um coach (Parceiro Fundador). Vazio/null = escada padrão."""
+    from database.repositories import set_coach_commission
+    data  = request.get_json(silent=True) or {}
+    cents = data.get('commission_cents')
+    if cents in (None, '', 'null'):
+        cents = None
+    else:
+        try:
+            cents = int(cents)
+            if cents < 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            return jsonify({'error': 'commission_cents inválido'}), 400
+    set_coach_commission(coach_id, cents)
+    return jsonify({'ok': True, 'commission_cents': cents})
+
+
 @app.route('/admin/finance/export.csv', methods=['GET'])
 @require_admin
 def admin_finance_export():
