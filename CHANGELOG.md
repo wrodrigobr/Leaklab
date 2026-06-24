@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(dashboard): evolução do bankroll com eixo X temporal + filtros 7d/30d/6m + toggle tempo/torneio
+
+> O gráfico de bankroll (V2BankrollCard, o card que de fato renderiza no dashboard V2) não tinha referência de tempo no eixo X (plotava por índice de torneio "#1, #2…"). Agora: **filtros 7d / 30d / 6M / 1A / Tudo** (era 1M/3M/1Y/Tudo; default 6M); **eixo X temporal** (x = data de jogo / `played_at`, tempo-proporcional) com **ticks de data adaptativos** ao filtro (≈diário em 7d, mês/ano em janelas longas; locale do usuário); e um **toggle "Por tempo / Por torneio"** , tempo mostra a evolução no calendário (com os gaps de dias sem jogar), torneio mostra a sequência com espaçamento uniforme. O tooltip troca conforme o modo (data vs "#i"). i18n PT/EN/ES. *(A mesma lógica foi aplicada ao BankrollChart clássico, que é código latente.)*
+
 ### feat(billing): gerência de assinatura in-app + webhook blindado + estorno tratado
 
 > **Tela `/subscription`** dedicada (substitui o Billing Portal hospedado do Stripe — o cliente não sai mais do app): plano atual + status, **próxima cobrança** (ou "Acesso Pro até" se cancelada), **histórico de pagamentos**, e **cancelamento discreto** (link sutil → confirmação IN-PAGE, sem popup; "Manter assinatura" em destaque) que agenda o fim no período já pago via `/subscription/cancel` (backend → Stripe; recorrente = at_period_end, PI legado = downgrade imediato). O botão "Gerenciar assinatura" do menu navega pra essa tela.
