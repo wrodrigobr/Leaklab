@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(nav): esconde o item "Coaches" (marketplace) quando não há coach cadastrado
+
+> Sem coaches públicos, o item `/coaches` da nav não tem utilidade e só ocupa espaço. O header agora checa `coaches.list({limit:1})` (endpoint público, cache react-query de 5 min, sem re-fetch a cada navegação) e só inclui o item quando há ≥1 coach. **Default oculto** até a query resolver → no estado atual (zero coaches) já nasce escondido e ganha o espaço; reaparece sozinho quando o 1º coach for aprovado (sem deploy). O item **"Coach" (IA, `/coach`)** não é afetado. Vale em desktop e mobile (mesmo `playerNavItems`).
+
 ### feat(gto): aproximação DEEP — spot postflop fundo usa solve capado a 30bb (≈ Aproximação) em vez de heurística
 
 > Spot postflop **fundo / alto SPR** (deep OOP) é a cobertura mais rala: a árvore é grande e o solver rejeita/não fecha no stack real → caía na heurística genérica. Ideia do usuário: em HU, o solve a **~30bb** é tratável e a **AÇÃO** transfere bem (sizing/comprometimento podem diferir). Agora, quando um postflop **>35bb** não tem nó no stack real, o lookup procura o **nó capado a 30bb** (mesmo hash, `pot_type` default) e exibe **"≈ Aproximação (solver a 30bb): ação confiável, sizing pode diferir"**.
