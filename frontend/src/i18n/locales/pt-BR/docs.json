@@ -27,7 +27,6 @@
     "career": "Trajetória de Carreira",
     "cognitive": "Padrões Cognitivos",
     "twin": "Tendências Estratégicas",
-    "sparring": "Sparring Mode",
     "rating": "Rating ELO",
     "today": "Resumo de Hoje",
     "kpis": "ROI · ITM · Volume",
@@ -439,21 +438,6 @@
     "p2": "Resultados financeiros sofrem forte influência de variância em MTTs, especialmente com amostras abaixo de 100 torneios. Uma curva descendente não significa necessariamente que você está jogando mal; pode ser variance. É por isso que o sistema exibe o <strong>Standard%</strong> como principal indicador de qualidade, ele mede suas decisões, não os resultados.",
     "p3": "Use os filtros de período (7 dias, 30 dias, 6 meses, 1 ano, Tudo) para isolar tendências em janelas específicas, e o seletor <strong>Por tempo / Por torneio</strong> para ver a evolução pela data de jogo (no calendário) ou pela sequência de torneios. Se o Standard% está subindo mas a curva financeira está caindo, você está jogando melhor; os resultados tendem a se ajustar com volume.",
     "p4": "Se tanto o Standard% quanto a curva estão caindo ao mesmo tempo, revise os leaks mais recentes e verifique se mudou de stake recentemente, mudanças de buy-in mudam a competitividade do field."
-  },
-  "sparring": {
-    "title": "Sparring Mode",
-    "p1": "O <strong>Sparring Mode</strong> transforma o aprendizado passivo em aprendizado por ação. Em vez de revisar um spot isolado, você joga uma mão histórica completa pausando em cada ponto de decisão real, e o engine avalia cada escolha com o mesmo rigor do Ghost Table.",
-    "col_phase": "Fase",
-    "col_desc": "O que acontece",
-    "phase_playing": "Jogando",
-    "phase_playing_desc": "Cada decisão da mão é apresentada com cartas, board e contexto completo (posição, stack, M-ratio, ICM, pote). O usuário escolhe uma das 6 ações disponíveis.",
-    "phase_feedback": "Feedback",
-    "phase_feedback_desc": "Resultado imediato: correto ou incorreto, ação recomendada, delta de score, agendamento da próxima revisão e análise opcional por IA.",
-    "phase_summary": "Resumo",
-    "phase_summary_desc": "Ao fim de todas as decisões: precisão geral, resumo de cada decisão com outcome, botão para jogar nova mão.",
-    "p2": "A mão auto-selecionada contém um dos seus piores erros dos últimos meses, priorizando mãos com várias decisões para formar um arco narrativo completo (preflop → flop → turn/river). A cada nova sessão, mãos já jogadas são deixadas de lado até você passar pelas demais.",
-    "p3": "Cada resposta ajusta quando você verá o spot de novo (repetição espaçada): acertos avançam o intervalo de revisão e erros o reiniciam no mínimo. O <strong>Sparring integra-se diretamente ao Ghost Table</strong>, os mesmos spots aparecem nos dois modos conforme a revisão é agendada.",
-    "validation": "As mãos do Sparring são as suas mãos reais com cobertura completa do solver, priorizando as que contêm um erro seu. A validação de cada jogada segue o mesmo padrão do Ghost Table, com o selo indicando a fonte (sua mão, range ou heurística)."
   },
   "today": {
     "title": "Resumo de Hoje",

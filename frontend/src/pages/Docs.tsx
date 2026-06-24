@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight, TrendingUp } from "lucide-react";
 
-const SECTION_IDS = ["import", "scoring", "indicators", "today", "kpis", "gto_method", "coverage", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "pressure", "bankroll", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin", "sparring"] as const;
+const SECTION_IDS = ["import", "scoring", "indicators", "today", "kpis", "gto_method", "coverage", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "pressure", "bankroll", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -605,22 +605,6 @@ export default function Docs() {
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("twin.p3") }} />
-            </Section>
-
-            {/* Sparring Mode */}
-            <Section id="sparring" title={t("sparring.title")}>
-              <p dangerouslySetInnerHTML={{ __html: t("sparring.p1") }} />
-              <p>{t("sparring.validation")}</p>
-              <Table
-                headers={[t("sparring.col_phase"), t("sparring.col_desc")]}
-                rows={[
-                  [t("sparring.phase_playing"),  t("sparring.phase_playing_desc")],
-                  [t("sparring.phase_feedback"), t("sparring.phase_feedback_desc")],
-                  [t("sparring.phase_summary"),  t("sparring.phase_summary_desc")],
-                ]}
-              />
-              <p dangerouslySetInnerHTML={{ __html: t("sparring.p2") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("sparring.p3") }} />
             </Section>
 
           </div>
