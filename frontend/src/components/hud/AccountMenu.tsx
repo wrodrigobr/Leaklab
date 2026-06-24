@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut, UserCircle, Zap, Users, LayoutDashboard, CreditCard } from "lucide-react";
+import { ChevronDown, LogOut, UserCircle, Zap, Users, LayoutDashboard, CreditCard, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { CheckoutModal } from "./CheckoutModal";
@@ -174,6 +174,12 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
               className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
             >
               <UserCircle className="size-4" /> Ver perfil
+            </button>
+            <button
+              onClick={() => { setOpen(false); navigate("/docs"); }}
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+            >
+              <BookOpen className="size-4" /> Documentação
             </button>
             <button
               onClick={handleLogout}
