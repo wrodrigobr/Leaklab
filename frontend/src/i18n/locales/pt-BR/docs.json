@@ -229,7 +229,7 @@
     "positional_ref": "Positivo = mais agressivo em posição (correto)",
     "discipline_calc": "% de decisões classificadas como standard (= Standard%)",
     "discipline_ref": "> 70% é sólido; > 86% é elite",
-    "p2": "A combinação dos eixos gera um <strong>arquétipo</strong>: Nit, Passive Calling Station, LAG, TAG, Disciplined TAGfish, Aggressive Reg, ou Balanced Reg. O arquétipo é um ponto de partida diagnóstico, não uma classificação definitiva."
+    "p2": "A combinação dos eixos gera um <strong>arquétipo</strong>: Nit, Calling Station, LAG, TAG ou Balanced. O arquétipo é um ponto de partida diagnóstico, não uma classificação definitiva."
   },
   "ghost": {
     "title": "Ghost Table / Drills",
@@ -406,14 +406,14 @@
   },
   "positions": {
     "title": "Performance por Posição",
-    "p1": "O card de <strong>Performance por Posição</strong> mostra o seu percentual de alinhamento com o GTO em cada posição da mesa: UTG, MP, CO, BTN, SB e BB.",
+    "p1": "O card de <strong>Performance por Posição</strong> mostra o seu percentual de alinhamento com o GTO em cada posição da mesa, das primeiras (UTG) às blinds (SB e BB).",
     "p2": "Posições late (BTN, CO) naturalmente têm mais vantagem posicional, espera-se performance melhor nessas cadeiras. Se BTN ou CO aparecerem em vermelho, isso indica problema sério: você não está aproveitando a vantagem que a posição oferece.",
     "p3": "BB e SB defensivos são os spots mais difíceis tecnicamente. Performance ruim em BB é comum e não necessariamente sinal de crise, mas se o delta entre BTN e BB for muito grande, o déficit posicional está custando EV real.",
     "example": "BTN (84%) e CO (79%) aproveitam bem a vantagem posicional. BB (63%) e SB (60%) mais fracos, delta de 24pp entre BTN e SB é alto, mas esperado. Acima de 30pp indica leak posicional crítico."
   },
   "pressure": {
     "title": "Colapso sob Pressão",
-    "p1": "O card de <strong>Colapso sob Pressão</strong> compara a qualidade das suas decisões em três contextos de pressão ICM: sem pressão (early tournament), pressão média (late / near-bubble) e pressão alta (bubble e final table).",
+    "p1": "O card de <strong>Colapso sob Pressão</strong> compara a qualidade das suas decisões em quatro contextos de pressão ICM: sem pressão, pressão baixa, pressão média e pressão alta. Quanto mais perto da bolha e da mesa final, maior a pressão.",
     "p2": "Um jogador tecnicamente sólido mantém o mesmo score independente da pressão. Um delta acima de 8 pontos entre pressão alta e sem pressão é sinal de <em>colapso</em>, você comete significativamente mais erros quando o dinheiro real está em jogo.",
     "p3": "Colapso sob pressão é um dos leaks mais custosos em MTTs porque é justamente nas situações de maior pressão (bubble, FT) que as decisões têm maior impacto monetário. Se o card mostrar colapso, priorize os drills com contexto ICM alto na Academia.",
     "table": {
