@@ -7,6 +7,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(billing): gerência de assinatura in-app + webhook blindado + estorno tratado
+
+> **Tela `/subscription`** dedicada (substitui o Billing Portal hospedado do Stripe — o cliente não sai mais do app): plano atual + status, **próxima cobrança** (ou "Acesso Pro até" se cancelada), **histórico de pagamentos**, e **cancelamento discreto** (link sutil → confirmação IN-PAGE, sem popup; "Manter assinatura" em destaque) que agenda o fim no período já pago via `/subscription/cancel` (backend → Stripe; recorrente = at_period_end, PI legado = downgrade imediato). O botão "Gerenciar assinatura" do menu navega pra essa tela.
+>
+> **Webhook blindado:** o processamento dos eventos roda em try/except — erro (ex.: evento sem metadata) loga e responde **200** em vez de 500, evitando os retries eternos do Stripe (causa da taxa de erro). Assinatura inválida segue 400; eventos não tratados caem no ack final.
+>
+> **Estorno (`charge.refunded`):** novo branch — marca o pagamento como `refunded` (sai da receita) e, se total e cobria o Pro, rebaixa o usuário pra Free. Antes, estornar no Stripe deixava o pagamento `approved` e o usuário mantinha Pro (furo). Adicionado aos `WEBHOOK_EVENTS` do `stripe_setup.py`. api 116/116.
+
+### fix(finance): admin não conta como receita/MRR
+
+> Pagamentos e plano Pro de usuários **admin** são teste, não receita real — excluídos de TODA a apuração: `admin_revenue_summary` (bruto/by_gateway/MRR proxy/pagantes), `_real_mrr_cents`, cockpit mensal (entradas/by_gateway/by_plan/failed) e `admin_list_payments`. Filtro: payments por `user_id NOT IN admins`, users por `COALESCE(role,'') != 'admin'`. Confirmado em prod: gross/MRR/pagantes = 0 mesmo com o admin "pro" de teste.
+
 ### docs(content): /docs revisada — só conceitos, sem detalhes técnicos do sistema
 
 > Limpeza da documentação do usuário (player/coach) seguindo "explica o conceito, nunca a lógica interna". Removidos: **números/cutoffs internos de score** (escala 0–1, `> 0.36`, `< 0.15`, severidade `≥40%`, janelas de 180d/25 torneios) → reformulados pra conceito; **internos do solver/sistema** (tabela de buckets de stack, "53% das mãos do SB", escadas de SRS `[3,7,14,28,60]`, persistência server-side, e as **regras exatas de detecção do Cognitive Mapper** — gatilhos por contagem/janela → descrições conceituais); **conteúdo de 888poker/PartyPoker** (sites desligados). `Docs.tsx`: badges de exemplo viram a palavra do veredito; removida a tabela de buckets; PKO required-equity vira conceito (sem "−2pp"). Marcas internas (RegLife/GTO Wizard): 0 (já limpo). 438 chaves por locale (paridade PT/EN/ES), sem travessão na prosa, tsc/build OK.
