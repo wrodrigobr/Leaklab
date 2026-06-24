@@ -4588,9 +4588,12 @@ def get_admin_dashboard_stats() -> dict:
         # leaklab.stripe_gateway.PLAN_AMOUNTS['pro'] (99.00) e /subscription/plans (9900).
         # Antes era 4900 (R$49), subestimando o MRR pela metade. (PAY-01)
         # COACH-02: exclui o Pro de CORTESIA do coach (coach_trial/coach_earned) — não é receita.
+        # Exclui também ADMIN (Pro de teste do dono, não é receita) — mesma regra do admin_revenue_summary.
         paying_pro = _fetchone(conn, """
             SELECT COUNT(*) AS n FROM users
-            WHERE plan = 'pro' AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial', 'coach_earned'))
+            WHERE plan = 'pro'
+              AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial', 'coach_earned'))
+              AND COALESCE(role,'') != 'admin'
         """)['n']
         mrr_cents = paying_pro * 9900
         return {
