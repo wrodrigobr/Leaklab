@@ -128,5 +128,9 @@
     "correct": "Correcto",
     "acceptable": "Aceptable",
     "error": "Error"
+  },
+  "pagination": {
+    "prev": "Página anterior",
+    "next": "Página siguiente"
   }
 }

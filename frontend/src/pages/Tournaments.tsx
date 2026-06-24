@@ -6,8 +6,11 @@ import { Search, Filter, ArrowUpDown, CheckCircle2, Clock, Loader2, Trash2, Aler
 import { SiteLogo } from "@/components/hud/SiteLogo";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, Tournament } from "@/lib/api";
+import { Pager } from "@/components/ui/Pager";
 
 type SortKey = "played_at" | "buy_in" | "profit" | "place";
+
+const PER_PAGE = 20;
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -48,6 +51,7 @@ const Tournaments = () => {
   const [clearConfirm, setClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
 
   const toggleSelect = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -103,6 +107,12 @@ const Tournaments = () => {
     });
     return list;
   }, [data, query, network, sort, sortDir]);
+
+  const pageCount = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+  const pagedRows = useMemo(() => rows.slice((page - 1) * PER_PAGE, page * PER_PAGE), [rows, page]);
+  // Volta pra página 1 quando o filtro muda; trava a página dentro do total (ex.: após deletar).
+  useEffect(() => { setPage(1); }, [query, network]);
+  useEffect(() => { setPage((p) => Math.min(p, pageCount)); }, [pageCount]);
 
   const totals = useMemo(() => {
     const pnl = data.reduce((s, t) => s + (t.profit ?? 0), 0);
@@ -280,7 +290,7 @@ const Tournaments = () => {
           <section className="overflow-hidden rounded-xl border border-border bg-hud-surface">
             {/* ── Mobile card list ────────────────────────────────────────────── */}
             <ul className="md:hidden divide-y divide-border">
-              {rows.map((t) => {
+              {pagedRows.map((t) => {
                 const profit = t.profit ?? null;
                 const positive = profit !== null && profit > 0;
                 const isDeleting = deletingId === t.tournament_id;
@@ -389,7 +399,7 @@ const Tournaments = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {rows.map((t) => {
+                  {pagedRows.map((t) => {
                     const profit = t.profit ?? null;
                     const positive = profit !== null && profit > 0;
                     const isDeleting = deletingId === t.tournament_id;
@@ -517,6 +527,7 @@ const Tournaments = () => {
               </table>
             </div>
           </section>
+          <Pager page={page} pageCount={pageCount} onPage={setPage} />
         </>
       )}
     </HudLayout>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Pager } from "@/components/ui/Pager";
 import {
   ArrowLeft,
   Search,
@@ -317,6 +318,16 @@ const TournamentDetail = () => {
       }),
     [hands, query, resultFilter, street, onlyDiverg]
   );
+  const HANDS_PER_PAGE = 15;
+  const [handPage, setHandPage] = useState(1);
+  const handPageCount = Math.max(1, Math.ceil(filtered.length / HANDS_PER_PAGE));
+  const pagedHands = useMemo(
+    () => filtered.slice((handPage - 1) * HANDS_PER_PAGE, handPage * HANDS_PER_PAGE),
+    [filtered, handPage]
+  );
+  // Volta pra página 1 quando o filtro muda; trava dentro do total.
+  useEffect(() => { setHandPage(1); }, [query, street, resultFilter, onlyDiverg]);
+  useEffect(() => { setHandPage((p) => Math.min(p, handPageCount)); }, [handPageCount]);
   const divergCount = useMemo(() => hands.filter((h) => h.divergent).length, [hands]);
 
   const stats = useMemo(() => ({
@@ -709,7 +720,7 @@ const TournamentDetail = () => {
             </div>
           )}
           <section className="grid grid-cols-1 gap-3">
-            {filtered.map((h) => {
+            {pagedHands.map((h) => {
               const meta = SEVERITY_META[h.category];
               const Icon = meta.icon;
               const positive = (h.evDelta ?? 0) > 0;
@@ -900,6 +911,7 @@ const TournamentDetail = () => {
                 </p>
               </div>
             )}
+            <Pager page={handPage} pageCount={handPageCount} onPage={setHandPage} />
           </section>
         </>
       )}
