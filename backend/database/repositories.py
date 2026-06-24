@@ -4633,6 +4633,8 @@ def accrue_coach_commission(student_id: int, payment_ref: str, base_cents: int) 
         if not (s.get('invited_via_invite_id') or s.get('referral_coach_id')):
             return   # não indicado → sem comissão
         coach_id = s['coach_id']
+        if int(coach_id) == int(student_id):
+            return   # anti-gaming: coach não comissiona a própria conta
         rate_bps = _coach_rate_bps(conn, coach_id, _coach_paying_referred_count(conn, coach_id))
         amount   = int(round(int(base_cents) * rate_bps / 10000))
         payable  = (datetime.utcnow() + timedelta(days=_COMMISSION_HOLD_DAYS)).isoformat()
@@ -6048,13 +6050,21 @@ def save_session_goal_review(goal_id: int, review: str) -> None:
 
 # ── GTO Integration ───────────────────────────────────────────────────────────
 
-def get_decision_spot(decision_id: int) -> Optional[dict]:
-    """Retorna campos necessários para computar o spot_hash de uma decisão."""
+def get_decision_spot(decision_id: int, user_id: Optional[int] = None) -> Optional[dict]:
+    """Retorna campos para o spot_hash de uma decisão. Com user_id, EXIGE propriedade (anti-IDOR:
+    a decisão guarda hero_cards/posição/stack privados — sem o filtro, qualquer autenticado leria as
+    cartas de qualquer jogador iterando o id)."""
     conn = get_conn()
     try:
-        return _fetchone(conn,
-            "SELECT street, position, board, hero_cards, stack_bb, action_taken, facing_bet, gto_action, gto_label, n_active_opponents FROM decisions WHERE id = ?",
-            (decision_id,))
+        if user_id is not None:
+            return _fetchone(conn, _adapt(
+                "SELECT d.street, d.position, d.board, d.hero_cards, d.stack_bb, d.action_taken, "
+                "d.facing_bet, d.gto_action, d.gto_label, d.n_active_opponents "
+                "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+                "WHERE d.id = ? AND t.user_id = ?"), (decision_id, user_id))
+        return _fetchone(conn, _adapt(
+            "SELECT street, position, board, hero_cards, stack_bb, action_taken, facing_bet, "
+            "gto_action, gto_label, n_active_opponents FROM decisions WHERE id = ?"), (decision_id,))
     finally:
         conn.close()
 

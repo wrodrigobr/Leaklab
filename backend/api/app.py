@@ -6310,7 +6310,7 @@ def get_decision_gto(decision_id):
     from leaklab.gto_utils import compute_spot_hash
     import json as _json
 
-    dec = get_decision_spot(decision_id)
+    dec = get_decision_spot(decision_id, g.user_id)   # anti-IDOR: só a própria decisão
     if not dec:
         return jsonify({'error': 'Decisão não encontrada'}), 404
 
@@ -7702,7 +7702,10 @@ def support_mark_read():
 
 
 @app.errorhandler(500)
-def internal_error(e): return jsonify({'error': f'Erro interno do servidor: {e}'}), 500
+def internal_error(e):
+    # Não vazar a mensagem da exceção (pode conter SQL/caminhos/colunas). Loga server-side só.
+    log.exception("internal_error 500: %s", e)
+    return jsonify({'error': 'Erro interno do servidor'}), 500
 
 @app.errorhandler(413)
 def too_large(_): return jsonify({'error': 'Arquivo muito grande (limite: 5MB)'}), 413
