@@ -28,8 +28,9 @@ SC = {'flop': 3, 'turn': 4, 'river': 5}
 
 tid = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('-') else None
 apply = '--apply' in sys.argv
+check = '--check' in sys.argv   # diagnóstico: o nó a 30bb existe? qual a ação top? (guard de jam?)
 if not tid:
-    print("uso: enqueue_deep_approx.py <tournament_id> [--apply]")
+    print("uso: enqueue_deep_approx.py <tournament_id> [--apply | --check]")
     sys.exit(1)
 
 conn = get_conn()
@@ -64,7 +65,27 @@ try:
 
         # hash a 30bb (= o que o fallback do lookup procura); facing/pot mantidos → SPR cai (tratável)
         h = compute_spot_hash(street, pos, board, hero, APPROX_STACK, facing)
-        if get_gto_node(h):
+        existing = get_gto_node(h)
+        if check:
+            # diagnóstico: o nó a 30bb existe? qual a ação top? (se 'shove'/'jam', o guard de SPR
+            # descarta no lookup → não vira aproximação; bet/check/fold transfere)
+            if existing:
+                ta = existing.get('gto_action')
+                try:
+                    sj = existing.get('strategy_json')
+                    if sj:
+                        sd = json.loads(sj) if isinstance(sj, str) else sj
+                        if sd:
+                            ta = max(sd, key=lambda k: float((sd[k] or {}).get('frequency', 0)))
+                except Exception:
+                    pass
+                print(f"  OK no30bb  {street:5} {pos:4} facing={facing:<5} top={ta}  hash={h[:12]}")
+                already += 1
+            else:
+                print(f"  FALTA     {street:5} {pos:4} facing={facing:<5} (nao resolvido a 30bb)  hash={h[:12]}")
+                enqueued += 1
+            continue
+        if existing:
             already += 1
             continue
         params = _solver_params_for_stack(APPROX_STACK)
