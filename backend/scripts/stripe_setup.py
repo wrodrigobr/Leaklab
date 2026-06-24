@@ -37,6 +37,7 @@ WEBHOOK_EVENTS = [
     "invoice.payment_failed",
     "customer.subscription.updated",
     "customer.subscription.deleted",
+    "charge.refunded",   # estorno → rebaixa o plano e tira o pagamento da receita
 ]
 
 # (lookup_key, label, unit_amount_cents, interval)

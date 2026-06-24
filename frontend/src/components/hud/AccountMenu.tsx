@@ -3,9 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ChevronDown, LogOut, UserCircle, Zap, Users, LayoutDashboard, CreditCard } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { subscription } from "@/lib/api";
-import { toast } from "sonner";
 import { CheckoutModal } from "./CheckoutModal";
+import { SubscriptionModal } from "./SubscriptionModal";
 
 const PLAN_LABEL: Record<string, string> = {
   free:  "Freemium",
@@ -60,29 +59,8 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<"pro" | null>(null);
-  const [portalLoading, setPortalLoading] = useState(false);
+  const [showSub, setShowSub] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
-  const openPortal = async () => {
-    setPortalLoading(true);
-    // Abre a aba já no gesto do clique (senão o browser bloqueia como popup);
-    // o destino é preenchido quando a URL do portal volta da API.
-    const tab = window.open("", "_blank");
-    try {
-      const { url } = await subscription.portal();
-      if (tab) {
-        tab.opener = null;          // segurança (equiv. noopener), mantendo a referência
-        tab.location.href = url;    // Billing Portal hospedado do Stripe (nova aba)
-      } else {
-        window.open(url, "_blank", "noopener,noreferrer");  // fallback se a aba foi bloqueada
-      }
-    } catch (e) {
-      tab?.close();
-      toast.error(e instanceof Error ? e.message : "Não foi possível abrir o portal.");
-    } finally {
-      setPortalLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (!open) return;
@@ -159,11 +137,10 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
               )}
               {plan === "pro" && (
                 <button
-                  onClick={openPortal}
-                  disabled={portalLoading}
-                  className="flex items-center justify-center gap-1.5 w-full rounded-md border border-border py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors disabled:opacity-50"
+                  onClick={() => { setShowSub(true); setOpen(false); }}
+                  className="flex items-center justify-center gap-1.5 w-full rounded-md border border-border py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
                 >
-                  <CreditCard className="size-3" /> {portalLoading ? "Abrindo…" : "Gerenciar assinatura"}
+                  <CreditCard className="size-3" /> Gerenciar assinatura
                 </button>
               )}
             </div>
@@ -220,6 +197,13 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
           }}
         />
       )}
+
+      <SubscriptionModal
+        open={showSub}
+        onClose={() => setShowSub(false)}
+        planExpiresAt={user.plan_expires_at}
+        onChanged={refreshUser}
+      />
     </div>
   );
 }
