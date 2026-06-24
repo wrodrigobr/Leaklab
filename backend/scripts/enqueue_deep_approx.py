@@ -29,9 +29,10 @@ SC = {'flop': 3, 'turn': 4, 'river': 5}
 tid = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('-') else None
 apply = '--apply' in sys.argv
 check = '--check' in sys.argv   # diagnóstico: o nó a 30bb existe? qual a ação top? (guard de jam?)
+all_mode = '--all' in sys.argv  # processa TODOS os torneios (ignora <tournament_id>)
 hand = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--hand=')), None)  # filtra 1 mão
-if not tid:
-    print("uso: enqueue_deep_approx.py <tournament_id> [--apply | --check] [--hand=<hand_id>]")
+if not tid and not all_mode:
+    print("uso: enqueue_deep_approx.py <tournament_id> | --all  [--apply | --check] [--hand=<hand_id>]")
     sys.exit(1)
 
 conn = get_conn()
@@ -39,12 +40,15 @@ try:
     _sql = ("SELECT d.street, d.position, d.vs_position, d.board, d.hero_cards, d.stack_bb, "
             "       d.facing_bet, d.pot_size, d.gto_label "
             "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
-            "WHERE t.tournament_id = ? AND d.street IN ('flop','turn','river')")
-    _params = [tid]
+            "WHERE d.street IN ('flop','turn','river')")
+    _params = []
+    if not all_mode:
+        _sql += " AND t.tournament_id = ?"
+        _params.append(tid)
     if hand:
         _sql += " AND d.hand_id = ?"
         _params.append(hand)
-    rows = [dict(r) for r in conn.execute(_adapt(_sql), tuple(_params))]
+    rows = [dict(r) for r in conn.execute(_adapt(_sql) if _params else _sql, tuple(_params))]
 
     deep_uncovered = enqueued = already = skipped = 0
     for r in rows:
@@ -111,7 +115,8 @@ try:
         enqueued += 1
 
     mode = 'ENFILEIRADOS' if apply else 'SERIAM enfileirados (dry-run)'
-    print(f"torneio {tid}: deep-uncovered={deep_uncovered} | {mode}={enqueued} | "
+    _scope = 'TODOS os torneios' if all_mode else f'torneio {tid}'
+    print(f"{_scope}: deep-uncovered={deep_uncovered} | {mode}={enqueued} (distintos por hash) | "
           f"ja no solver={already} | nao-deep pulados={skipped}")
     if not apply and enqueued:
         print("Rode com --apply pra enfileirar. Depois o cron resolve e o replay mostra")
