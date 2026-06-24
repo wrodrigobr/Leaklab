@@ -167,7 +167,9 @@
     "p3m": "3M",
     "p1y": "1A",
     "pAll": "Tudo",
-    "emptyPeriod": "Sem torneios suficientes neste período. Tente um intervalo maior."
+    "emptyPeriod": "Sem torneios suficientes neste período. Tente um intervalo maior.",
+    "p1w": "7d",
+    "p6m": "6M"
   },
   "table": {
     "title": "Torneios recentes",

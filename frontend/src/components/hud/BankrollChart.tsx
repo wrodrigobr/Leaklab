@@ -9,13 +9,27 @@ import { HudTooltip } from "./HudTooltip";
 const DEMO_POINTS = [120, 95, 140, 110, 180, 165, 220, 250, 240, 310, 330, 380, 420, 460, 510, 540, 600, 640, 690, 720, 760, 820, 880, 940];
 
 const PERIODS = [
+  { key: "1W" as const, days: 7   },
   { key: "1M" as const, days: 30  },
-  { key: "3M" as const, days: 90  },
+  { key: "6M" as const, days: 180 },
   { key: "1Y" as const, days: 365 },
   { key: "ALL" as const, days: 3650 },
 ] as const;
 
 type PeriodKey = typeof PERIODS[number]["key"];
+
+/** Rótulo de data do eixo X: dia/mês em janelas curtas, mês/ano em janelas longas. */
+function fmtAxisDate(s: string | null, days: number, locale: string): string {
+  if (!s) return "";
+  try {
+    const d = new Date(s);
+    return days <= 31
+      ? d.toLocaleDateString(locale, { day: "2-digit", month: "short" })
+      : d.toLocaleDateString(locale, { month: "short", year: "2-digit" });
+  } catch {
+    return "";
+  }
+}
 
 function buildPath(points: number[]) {
   const w = 100;
@@ -35,8 +49,8 @@ function buildPath(points: number[]) {
 }
 
 export function BankrollChart() {
-  const { t } = useTranslation("dashboard");
-  const [period, setPeriod] = useState<PeriodKey>("3M");
+  const { t, i18n } = useTranslation("dashboard");
+  const [period, setPeriod] = useState<PeriodKey>("6M");
 
   const days = PERIODS.find((p) => p.key === period)!.days;
 
@@ -48,21 +62,41 @@ export function BankrollChart() {
 
   const evolution = data?.evolution;
 
-  const { path, area, max, min, isDemo } = useMemo(() => {
+  const { path, area, max, min, isDemo, ticks } = useMemo(() => {
+    const w = 100, h = 100;
     if (evolution && evolution.length >= 2) {
+      // Linha PROPORCIONAL AO TEMPO (x = data de jogo), não por índice — assim o eixo X reflete
+      // a evolução real ao longo dos dias/meses, com resolução adaptada ao filtro.
       let running = 0;
-      const pts = evolution.map((e) => {
-        running += e.profit ?? 0;
-        return running;
-      });
-      return { ...buildPath(pts), isDemo: false };
+      const raw = evolution
+        .map((e) => ({ t: e.played_at ? new Date(e.played_at).getTime() : NaN, v: (running += e.profit ?? 0) }))
+        .filter((p) => !Number.isNaN(p.t));
+      if (raw.length >= 2) {
+        const t0 = raw[0].t, t1 = raw[raw.length - 1].t, span = (t1 - t0) || 1;
+        const vs = raw.map((p) => p.v);
+        const max = Math.max(...vs), min = Math.min(...vs), range = (max - min) || 1;
+        const pts = raw.map((p) => {
+          const x = ((p.t - t0) / span) * w;
+          const y = h - ((p.v - min) / range) * h * 0.85 - 5;
+          return [x, y] as const;
+        });
+        const path = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`).join(" ");
+        const area = `${path} L ${w} ${h} L 0 ${h} Z`;
+        // Ticks adaptativos: ~1 por dia em 7d; ~6 marcos nos demais (formato dia/mês ou mês/ano).
+        const spanDays = span / 86_400_000;
+        const n = days <= 7 ? Math.max(2, Math.min(7, Math.round(spanDays) + 1)) : 6;
+        const ticks = Array.from({ length: n }, (_, i) =>
+          fmtAxisDate(new Date(t0 + (span * i) / (n - 1)).toISOString(), days, i18n.language));
+        return { path, area, max, min, isDemo: false, ticks };
+      }
     }
-    return { ...buildPath(DEMO_POINTS), isDemo: true };
-  }, [evolution]);
+    return { ...buildPath(DEMO_POINTS), isDemo: true, ticks: [] as string[] };
+  }, [evolution, days, i18n.language]);
 
   const periodLabels: Record<PeriodKey, string> = {
+    "1W": t("bankroll.p1w"),
     "1M": t("bankroll.p1m"),
-    "3M": t("bankroll.p3m"),
+    "6M": t("bankroll.p6m"),
     "1Y": t("bankroll.p1y"),
     "ALL": t("bankroll.pAll"),
   };
@@ -142,6 +176,16 @@ export function BankrollChart() {
             vectorEffect="non-scaling-stroke"
           />
         </svg>
+
+        {/* Eixo X: marcos de data adaptados ao filtro (diário em 7d, mês/ano em janelas longas).
+            Ticks igualmente espaçados no TEMPO = igualmente espaçados no X (linha é tempo-proporcional). */}
+        {!isDemo && ticks.length >= 2 && (
+          <div className="mt-2 flex justify-between px-1 font-mono text-[9px] text-muted-foreground/70">
+            {ticks.map((label, i) => (
+              <span key={i}>{label}</span>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

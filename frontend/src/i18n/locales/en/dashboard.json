@@ -167,7 +167,9 @@
     "p3m": "3M",
     "p1y": "1Y",
     "pAll": "All",
-    "emptyPeriod": "Not enough tournaments in this range. Try a longer period."
+    "emptyPeriod": "Not enough tournaments in this range. Try a longer period.",
+    "p1w": "7d",
+    "p6m": "6M"
   },
   "table": {
     "title": "Recent tournaments",
