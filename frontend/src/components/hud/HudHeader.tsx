@@ -10,7 +10,7 @@ import { AccountMenu } from "@/components/hud/AccountMenu";
 import { CoachMessagesPanel } from "@/components/hud/CoachMessagesPanel";
 import { SupportModal } from "@/components/hud/SupportModal";
 import { NotificationBell } from "@/components/hud/NotificationBell";
-import { playerMessages, support } from "@/lib/api";
+import { playerMessages, support, coaches } from "@/lib/api";
 
 interface HudHeaderProps {
   onUpload?: () => void;
@@ -97,6 +97,15 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     }
   }, [location.search, location.pathname, user?.role, user?.coach_id, navigate]);
 
+  // Marketplace de coaches só aparece se houver coach cadastrado — sem coaches, esconde o item
+  // (ganha espaço na nav). Endpoint público + cache do react-query (sem re-fetch a cada nav).
+  const { data: coachDir } = useQuery({
+    queryKey: ["public-coaches-exist"],
+    queryFn: () => coaches.list({ limit: 1 }),
+    staleTime: 5 * 60 * 1000,
+  });
+  const hasCoaches = (coachDir?.coaches?.length ?? 0) > 0;
+
   const playerNavItems: NavItem[] = [
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",   icon: LayoutDashboard },
     { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments", icon: Trophy },
@@ -109,7 +118,9 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
       activePaths: ["/training", "/ghost"],
     },
     { label: t("nav.coach"),   mobileLabel: t("nav.coach"),   to: "/coach",   icon: Bot },
-    { label: t("nav.coaches"), mobileLabel: t("nav.coaches"), to: "/coaches", icon: Users },
+    ...(hasCoaches
+      ? [{ label: t("nav.coaches"), mobileLabel: t("nav.coaches"), to: "/coaches", icon: Users }]
+      : []),
   ];
 
   const coachNavItems: NavItem[] = [
