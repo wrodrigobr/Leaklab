@@ -29,17 +29,22 @@ SC = {'flop': 3, 'turn': 4, 'river': 5}
 tid = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('-') else None
 apply = '--apply' in sys.argv
 check = '--check' in sys.argv   # diagnóstico: o nó a 30bb existe? qual a ação top? (guard de jam?)
+hand = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--hand=')), None)  # filtra 1 mão
 if not tid:
-    print("uso: enqueue_deep_approx.py <tournament_id> [--apply | --check]")
+    print("uso: enqueue_deep_approx.py <tournament_id> [--apply | --check] [--hand=<hand_id>]")
     sys.exit(1)
 
 conn = get_conn()
 try:
-    rows = [dict(r) for r in conn.execute(_adapt(
-        "SELECT d.street, d.position, d.vs_position, d.board, d.hero_cards, d.stack_bb, "
-        "       d.facing_bet, d.pot_size, d.gto_label "
-        "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
-        "WHERE t.tournament_id = ? AND d.street IN ('flop','turn','river')"), (tid,))]
+    _sql = ("SELECT d.street, d.position, d.vs_position, d.board, d.hero_cards, d.stack_bb, "
+            "       d.facing_bet, d.pot_size, d.gto_label "
+            "FROM decisions d JOIN tournaments t ON t.id = d.tournament_id "
+            "WHERE t.tournament_id = ? AND d.street IN ('flop','turn','river')")
+    _params = [tid]
+    if hand:
+        _sql += " AND d.hand_id = ?"
+        _params.append(hand)
+    rows = [dict(r) for r in conn.execute(_adapt(_sql), tuple(_params))]
 
     deep_uncovered = enqueued = already = skipped = 0
     for r in rows:
