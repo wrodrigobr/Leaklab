@@ -119,7 +119,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                     "font-mono text-sm font-medium tabular-nums",
                     profit === null ? "text-muted-foreground" : positive ? "text-primary" : "text-destructive"
                   )}>
-                    {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
+                    {profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2).replace(/\.00$/, "")}`}
                   </span>
                   {analyzed && row.labels_reconciled_at == null ? (
                     <Loader2 className="size-3.5 text-warning animate-spin" aria-label={t("table.gtoPending")} />
@@ -195,7 +195,7 @@ export function RecentTournamentsTable({ tournaments }: Props) {
                     >
                       {profit === null
                         ? "—"
-                        : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(0)}`}
+                        : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2).replace(/\.00$/, "")}`}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5">
                       {analyzed && row.labels_reconciled_at == null ? (
