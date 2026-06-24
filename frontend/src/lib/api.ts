@@ -2563,6 +2563,7 @@ export interface GtoDecisionResult {
   gto_note?: string | null;
   gto_off_tree?: boolean;   // postflop sem hand-aware (mão fora da cobertura) → "≈ aproximação"
   gto_multiway?: boolean;   // postflop multiway (solver HU-only) → "≈ multiway"
+  gto_approx_stack?: number | null;  // nó capado p/ spot deep (ex.: 30) → "≈ aproximação (solver a Xbb)"
   hand_aware?: boolean;
 }
 

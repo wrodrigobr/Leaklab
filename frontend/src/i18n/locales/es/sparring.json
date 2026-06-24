@@ -98,7 +98,9 @@
     "offTree": "≈ aprox",
     "offTreeHint": "El solver no cubre tu mano exacta en este spot (mano fuera del rango resuelto). La distribución es del rango agregado, no de tu mano. Úsalo como referencia, no veredicto.",
     "multiway": "≈ multiway",
-    "multiwayHint": "Bote multiway: el solver GTO es heads-up y no lo cubre. El veredicto viene del análisis heurístico multiway (equity vs range + pot odds), mostrado en el card. No cuenta como error."
+    "multiwayHint": "Bote multiway: el solver GTO es heads-up y no lo cubre. El veredicto viene del análisis heurístico multiway (equity vs range + pot odds), mostrado en el card. No cuenta como error.",
+    "approxStack": "≈ aproximación · {{n}}bb",
+    "approxStackHint": "Bote profundo: el solver no cerró en tu stack real, así que usamos el solve a {{n}}bb (HU, tratable). La ACCIÓN es confiable; el tamaño de la apuesta y el compromiso pueden diferir en el stack más profundo."
   },
   "backToTraining": "Entrenamiento",
   "valSource": {

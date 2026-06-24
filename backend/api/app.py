@@ -1302,6 +1302,14 @@ def player_drill_spots():
     return jsonify({'spots': spots, 'stats': stats})
 
 
+# MVP aproximação DEEP: spot postflop fundo (alto SPR) que o solver não cobre no stack real
+# (deep OOP = árvore grande, rejeitada/não resolvida). Em HU, o solve a ~30bb é tratável e a AÇÃO
+# transfere bem; sizing/comprometimento podem diferir → exibido como "≈ Aproximação". Só acima do MIN
+# (abaixo, o solve real já cobre). Ver scripts/enqueue_deep_approx.py.
+_DEEP_APPROX_STACK_BB = 30.0
+_DEEP_APPROX_MIN_BB   = 35.0
+
+
 def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
     """Busca ação GTO ao vivo em gto_nodes (mesma lógica do /replay/<id>/gto).
     Fallback para decisions.gto_action → best_action se nenhum nó for encontrado.
@@ -6329,6 +6337,20 @@ def get_decision_gto(decision_id):
         _h = compute_spot_hash(street, position, board_for_hash, [], stack_bb, 0.0)
         node = _valid_node_replayer(get_gto_node(_h))
     # fallback d (get_gto_node_by_spot) removido: hash algorithm divergente → falsos matches
+    # e) APROXIMAÇÃO DEEP: postflop fundo sem nó no stack real → tenta o nó capado a 30bb (HU
+    #    tratável). A AÇÃO transfere bem; sizing/comprometimento podem diferir → marca aproximação.
+    _approx_stack = None
+    if not node and street != 'preflop' and stack_bb > _DEEP_APPROX_MIN_BB:
+        for _hh in ([hero_hand, []] if hero_hand else [[]]):
+            node = _valid_node_replayer(get_gto_node(
+                compute_spot_hash(street, position, board_for_hash, _hh, _DEEP_APPROX_STACK_BB, facing_bb)))
+            if node:
+                break
+        if not node and facing_bb == 0:
+            node = _valid_node_replayer(get_gto_node(
+                compute_spot_hash(street, position, board_for_hash, [], _DEEP_APPROX_STACK_BB, 0.0)))
+        if node:
+            _approx_stack = _DEEP_APPROX_STACK_BB
 
     # ── Build strategy from node (if found) ─────────────────────────────────
     strategy = []
@@ -6424,6 +6446,7 @@ def get_decision_gto(decision_id):
                 # Nó suspeito — ignorar strategy_json e usar stored_gto_action
                 strategy = []
                 node = None
+                _approx_stack = None   # nó approx descartado pelo guard de SPR → não rotula aproximação
 
     # ── Fallback: use stored gto_action from decisions table (no node found) ─
     if not strategy and stored_gto_action:
@@ -6474,6 +6497,7 @@ def get_decision_gto(decision_id):
         'gto_note':            'range_distribution' if node and node.get('is_aggregate') else None,
         'gto_off_tree':        gto_off_tree,   # postflop sem hand-aware → "≈ aproximação"
         'gto_multiway':        gto_multiway,   # postflop multiway (solver HU-only) → "≈ multiway"
+        'gto_approx_stack':    _approx_stack,  # nó capado p/ spot deep → "≈ aproximação (solver a Xbb)"
         'hand_aware':          hand_aware_used,
     })
 

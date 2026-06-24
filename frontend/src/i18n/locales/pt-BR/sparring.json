@@ -98,7 +98,9 @@
     "offTree": "≈ aproximação",
     "offTreeHint": "O solver não cobre a sua mão exata neste spot (mão fora do range solvado). A distribuição é da range agregada, não da sua mão. Use como referência, não veredito.",
     "multiway": "≈ multiway",
-    "multiwayHint": "Pote multiway: o solver GTO é heads-up e não cobre. O veredito vem da análise heurística multiway (equity vs range + pot odds), exibida no card. Não conta como erro."
+    "multiwayHint": "Pote multiway: o solver GTO é heads-up e não cobre. O veredito vem da análise heurística multiway (equity vs range + pot odds), exibida no card. Não conta como erro.",
+    "approxStack": "≈ aproximação · {{n}}bb",
+    "approxStackHint": "Spot fundo: o solver não fechou no seu stack real, então usamos o solve a {{n}}bb (HU, tratável). A AÇÃO é confiável; o tamanho da aposta e o comprometimento podem diferir no stack maior."
   },
   "backToTraining": "Treino",
   "valSource": {
