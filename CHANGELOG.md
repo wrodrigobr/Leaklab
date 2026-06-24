@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs(content): /docs revisada — só conceitos, sem detalhes técnicos do sistema
+
+> Limpeza da documentação do usuário (player/coach) seguindo "explica o conceito, nunca a lógica interna". Removidos: **números/cutoffs internos de score** (escala 0–1, `> 0.36`, `< 0.15`, severidade `≥40%`, janelas de 180d/25 torneios) → reformulados pra conceito; **internos do solver/sistema** (tabela de buckets de stack, "53% das mãos do SB", escadas de SRS `[3,7,14,28,60]`, persistência server-side, e as **regras exatas de detecção do Cognitive Mapper** — gatilhos por contagem/janela → descrições conceituais); **conteúdo de 888poker/PartyPoker** (sites desligados). `Docs.tsx`: badges de exemplo viram a palavra do veredito; removida a tabela de buckets; PKO required-equity vira conceito (sem "−2pp"). Marcas internas (RegLife/GTO Wizard): 0 (já limpo). 438 chaves por locale (paridade PT/EN/ES), sem travessão na prosa, tsc/build OK.
+
+### fix(finance+admin): admin não conta como receita/MRR + dashboard ordenado por data de jogo
+
+> **Financeiro:** pagamentos de usuários **admin** são teste, não receita — excluídos de toda a apuração (bruto, por gateway, MRR proxy e real, pagantes, cockpit mensal e a lista de pagamentos). Resolve a "sujeira" de pagamentos de teste do admin sem precisar deletar registro. **Gráficos do dashboard** (evolução do EV, curva de ELO): o eixo X agora ordena pela **data de jogo** (`played_at`, parseada do HH), não pela de upload — subir torneios fora de ordem cronológica não embaralha mais o gráfico. A janela de seleção segue por upload (mostra seus uploads recentes). **Coluna resultado** deixa de truncar centavos (`-1.08` aparecia como `$1`). **Throughput 24h do admin** em GMT-3 (era UTC cru) + tooltip legível (texto claro sobre fundo escuro). api 116/116, database 120/120.
+
 ### feat(nav): esconde o item "Coaches" (marketplace) quando não há coach cadastrado
 
 > Sem coaches públicos, o item `/coaches` da nav não tem utilidade e só ocupa espaço. O header agora checa `coaches.list({limit:1})` (endpoint público, cache react-query de 5 min, sem re-fetch a cada navegação) e só inclui o item quando há ≥1 coach. **Default oculto** até a query resolver → no estado atual (zero coaches) já nasce escondido e ganha o espaço; reaparece sozinho quando o 1º coach for aprovado (sem deploy). O item **"Coach" (IA, `/coach`)** não é afetado. Vale em desktop e mobile (mesmo `playerNavItems`).
