@@ -33,6 +33,7 @@ function fmtDate(t: number, days: number, locale: string): string {
 export function V2BankrollCard() {
   const { t, i18n } = useTranslation("dashboard");
   const [period, setPeriod] = useState<PeriodKey>("6M");
+  const [mode, setMode] = useState<"time" | "tournament">("time");  // eixo X por tempo ou por torneio
   const days = PERIODS.find((p) => p.key === period)!.days;
 
   const { data } = useQuery({
@@ -44,11 +45,12 @@ export function V2BankrollCard() {
   const { pts, ticks } = useMemo(() => {
     const evolution = data?.evolution ?? [];
     let running = 0;
-    // x = data de JOGO (played_at) → eixo temporal proporcional; pontos sem data ficam de fora do plot
-    // mas seu lucro entra no acumulado.
+    // x = data de JOGO (played_at) no modo tempo, ou índice do torneio no modo torneio. Pontos sem
+    // data ficam de fora do plot, mas seu lucro entra no acumulado.
     const pts = evolution
       .map((e) => ({ t: e.played_at ? new Date(e.played_at).getTime() : NaN, profit: Math.round((running += e.profit ?? 0) * 100) / 100 }))
-      .filter((p) => !Number.isNaN(p.t));
+      .filter((p) => !Number.isNaN(p.t))
+      .map((p, idx) => ({ ...p, i: idx, name: `#${idx + 1}` }));
     let ticks: number[] = [];
     if (pts.length >= 2) {
       const t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = (t1 - t0) || 1;
@@ -96,6 +98,21 @@ export function V2BankrollCard() {
           ))}
         </div>
       </div>
+      {hasData && (
+        <div className="mb-1.5 flex gap-1">
+          {(["time", "tournament"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`rounded px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide transition-colors ${
+                mode === m ? "bg-secondary text-foreground" : "text-muted-foreground/50 hover:text-muted-foreground"
+              }`}
+            >
+              {m === "time" ? t("bankroll.byTime") : t("bankroll.byTournament")}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="h-44">
         {!hasData ? (
           <div className="flex h-full items-center justify-center">
@@ -113,17 +130,25 @@ export function V2BankrollCard() {
               </linearGradient>
             </defs>
             <CartesianGrid stroke="#1E2A45" strokeDasharray="3 6" vertical={false} />
-            <XAxis
-              dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]}
-              ticks={ticks} tickFormatter={(v: number) => fmtDate(v, days, i18n.language)}
-              tick={{ fontSize: 9, fill: "#8B96A8" }} tickLine={false} axisLine={false}
-            />
+            {mode === "time" ? (
+              <XAxis
+                dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]}
+                ticks={ticks} tickFormatter={(v: number) => fmtDate(v, days, i18n.language)}
+                tick={{ fontSize: 9, fill: "#8B96A8" }} tickLine={false} axisLine={false}
+              />
+            ) : (
+              <XAxis
+                dataKey="i" type="number" domain={["dataMin", "dataMax"]}
+                tickFormatter={(v: number) => `#${v + 1}`} interval="preserveStartEnd"
+                tick={{ fontSize: 9, fill: "#8B96A8" }} tickLine={false} axisLine={false}
+              />
+            )}
             <YAxis tick={{ fontSize: 9, fill: "#8B96A8" }} tickLine={false} axisLine={false} width={52}
                    tickFormatter={(v: number) => `$${v}`} />
             <Tooltip
               contentStyle={{ background: "#0F1526", border: "1px solid #1E2A45", borderRadius: 8, fontSize: 11 }}
               labelStyle={{ color: "#E3E8EC" }}
-              labelFormatter={(v: number) => fmtDate(v, days, i18n.language)}
+              labelFormatter={(v: number) => mode === "time" ? fmtDate(v, days, i18n.language) : `#${v + 1}`}
               formatter={(v: number) => [`$${v.toFixed(2)}`, t("v2.bankSeries")]}
             />
             <Area type="monotone" dataKey="profit" stroke={stroke} strokeWidth={2}

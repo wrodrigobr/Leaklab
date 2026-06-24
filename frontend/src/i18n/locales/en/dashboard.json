@@ -169,7 +169,9 @@
     "pAll": "All",
     "emptyPeriod": "Not enough tournaments in this range. Try a longer period.",
     "p1w": "7d",
-    "p6m": "6M"
+    "p6m": "6M",
+    "byTime": "By time",
+    "byTournament": "By tournament"
   },
   "table": {
     "title": "Recent tournaments",

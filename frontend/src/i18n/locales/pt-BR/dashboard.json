@@ -169,7 +169,9 @@
     "pAll": "Tudo",
     "emptyPeriod": "Sem torneios suficientes neste período. Tente um intervalo maior.",
     "p1w": "7d",
-    "p6m": "6M"
+    "p6m": "6M",
+    "byTime": "Por tempo",
+    "byTournament": "Por torneio"
   },
   "table": {
     "title": "Torneios recentes",
