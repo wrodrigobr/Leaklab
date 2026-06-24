@@ -288,7 +288,8 @@
     },
     "mwRecommended": "Recomendado",
     "mwNway": "{{n}}-way",
-    "whyLimped": "Pote limpado: a heurística recomenda passivo. Check é a opção grátis; iso-raise sobre o limp é opcional."
+    "whyLimped": "Pote limpado: a heurística recomenda passivo. Check é a opção grátis; iso-raise sobre o limp é opcional.",
+    "approxDeep": "≈ Aproximação (solver a {{n}}bb): seu stack é mais fundo; a ação é confiável, o sizing pode diferir."
   },
   "controls": {
     "play": "Reproduzir",

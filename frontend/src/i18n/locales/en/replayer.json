@@ -288,7 +288,8 @@
     },
     "mwRecommended": "Recommended",
     "mwNway": "{{n}}-way",
-    "whyLimped": "Limped pot: the heuristic recommends a passive line. Check is the free option; isolating over the limp is optional."
+    "whyLimped": "Limped pot: the heuristic recommends a passive line. Check is the free option; isolating over the limp is optional.",
+    "approxDeep": "≈ Approximation (solver at {{n}}bb): your stack is deeper; the action is reliable, sizing may differ."
   },
   "controls": {
     "play": "Play",

@@ -271,6 +271,7 @@ export interface ReplayStep {
   hero_stack_bb?: number;
   // GTO analysis (postflop hero actions only)
   gto_strategy?: GtoStrategyAction[] | null;
+  gto_approx_stack?: number | null;   // MVP deep: nó capado a Xbb (spot fundo) → "≈ aproximação"
   // Fase 3: estratégia da MÃO específica do hero (freq/EV por ação no nó CFR)
   hand_strategy?: {
     hand: string;

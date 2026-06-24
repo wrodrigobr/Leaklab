@@ -4772,6 +4772,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
         # pra não disparar um solve remoto lento dentro do /replay.
         gto_strategy = None
         live_hand_strategy = None   # Fase 3: estratégia da mão específica (card)
+        _lk_approx_stack = None     # MVP deep: nó capado a Xbb usado (spot fundo) → "≈ aproximação"
         _hero_postflop = (action.player == hero and action.street != 'preflop')
         if decision and not gto_spot_mismatch and (gto_label or _hero_postflop):
             try:
@@ -4802,6 +4803,7 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
                 )
                 if _gto_result.get('found') and _gto_result.get('strategy'):
                     gto_strategy = _gto_result['strategy']
+                    _lk_approx_stack = _gto_result.get('approx_stack')   # nó capado deep (≈ aproximação)
                     # Fase 3 (item 4): visão da MÃO p/ o card ("Sua mão: check 100%")
                     _hv = _gto_result.get('hand_strategy')
                     if _hv and _hv.get('actions'):
@@ -5216,6 +5218,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # substituindo) — o card mostra a estimativa, não "raise 93%" do solver HU.
             'hand_strategy':      (None if _mw_spot else live_hand_strategy),   # Fase 3: freq/EV da MÃO do hero
             'gto_strategy':       (None if _mw_spot else gto_strategy),
+            'gto_approx_stack':   (None if _mw_spot else _lk_approx_stack),   # MVP deep: ≈ aproximação a Xbb
+
             'gto_spot_mismatch':  gto_spot_mismatch if gto_label else None,
             'preflop_gto':        decision.get('preflop_gto') if decision else None,
             'desc':           f"{action.player}: {_normalize_action(action.action)}"

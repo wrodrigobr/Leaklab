@@ -93,6 +93,12 @@ def _solver_params_for_stack(stack_bb: float) -> dict:
         }
 
 
+# MVP aproximação DEEP: spot postflop fundo (alto SPR) que o solver não cobre no stack real.
+# Em HU o solve a ~30bb é tratável; usado como aproximação read-only (≈ Aproximação). Ver
+# scripts/enqueue_deep_approx.py (enfileira a variante capada).
+_DEEP_APPROX_STACK_BB = 30.0
+_DEEP_APPROX_MIN_BB   = 35.0
+
 # Ordem de ação postflop (primeiro→último a agir). Quem age por ÚLTIMO está IN POSITION.
 _POSTFLOP_ORDER = {'SB': 0, 'BB': 1, 'UTG': 2, 'UTG+1': 3, 'UTG+2': 4,
                    'LJ': 5, 'HJ': 6, 'CO': 7, 'BTN': 8}
@@ -355,6 +361,22 @@ def lookup_gto(
     # allow_remote_solve=True) NÃO cai no SRP — segue pro solve do nó 3-bet de verdade.
     if node is None and _eff_pot == '3bet' and not allow_remote_solve:
         node, _ = _pick_node('')
+    # APROXIMAÇÃO DEEP (MVP): postflop FUNDO sem nó no stack real (deep OOP = árvore grande que o
+    # solver rejeita/não fecha). Em HU o solve a 30bb é tratável e a AÇÃO transfere (sizing e
+    # comprometimento podem diferir → marca approx_stack). SÓ read-only. Hash a 30bb com pot_type
+    # default (= o que scripts/enqueue_deep_approx.py enfileira). Não toca spots já cobertos.
+    _approx_stack = None
+    if (not _has_strategy(node)) and street_l != 'preflop' \
+            and hero_stack_bb > _DEEP_APPROX_MIN_BB and not allow_remote_solve:
+        for _hh in (hero_hand, []):
+            _na = get_gto_node(compute_spot_hash(street_l, position_u, board, _hh, _DEEP_APPROX_STACK_BB, facing_size_bb))
+            if _has_strategy(_na):
+                node, _approx_stack = _na, _DEEP_APPROX_STACK_BB
+                break
+        if _approx_stack is None and facing_size_bb == 0:
+            _na = get_gto_node(compute_spot_hash(street_l, position_u, board, [], _DEEP_APPROX_STACK_BB, 0.0))
+            if _has_strategy(_na):
+                node, _approx_stack = _na, _DEEP_APPROX_STACK_BB
     # Nó com estratégia completa (strategy_json) → retorna imediatamente
     # Nó apenas com primary action (sem strategy_json) → salva como fallback e tenta GTO Wizard
     _db_fallback_strategy = None
@@ -400,6 +422,8 @@ def lookup_gto(
                         # Fase 3: visão da MÃO do hero (gto_tree_strategies via tree_hash;
                         # None p/ nós antigos sem tabela — UI cai no agregado)
                         'hand_strategy': _hv,
+                        # MVP deep: nó capado a Xbb p/ spot fundo (None = nó do stack real)
+                        'approx_stack': _approx_stack,
                     }
         # Nó parcial: sem strategy_json — salva como fallback, continua para GTO Wizard
         action = node.get('gto_action')

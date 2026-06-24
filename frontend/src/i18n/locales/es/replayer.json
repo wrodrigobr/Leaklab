@@ -288,7 +288,8 @@
     },
     "mwRecommended": "Recomendado",
     "mwNway": "{{n}}-way",
-    "whyLimped": "Bote con limp: la heurística recomienda línea pasiva. Check es la opción gratis; aislar sobre el limp es opcional."
+    "whyLimped": "Bote con limp: la heurística recomienda línea pasiva. Check es la opción gratis; aislar sobre el limp es opcional.",
+    "approxDeep": "≈ Aproximación (solver a {{n}}bb): tu stack es más profundo; la acción es confiable, el sizing puede diferir."
   },
   "controls": {
     "play": "Reproducir",

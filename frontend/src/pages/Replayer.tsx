@@ -1063,7 +1063,9 @@ function SidePanels({
             isActionOk={isActionOk}
             evidence={evidence}
             indicators={hasIndicators ? indicators : undefined}
-            why={whyFull}
+            why={step.gto_approx_stack
+              ? `${t("card.approxDeep", { n: step.gto_approx_stack })} ${whyFull ?? ""}`.trim()
+              : whyFull}
             proNotes={proNotes}
             footer={{
               stackBb: step.hero_stack_bb,
