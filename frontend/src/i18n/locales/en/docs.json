@@ -334,8 +334,8 @@
     "p3": "The AI narrative in the card summarizes: (1) current trend, (2) estimated time to the next level, (3) the priority leak to fix to accelerate progression."
   },
   "cognitive": {
-    "title": "Cognitive Failure Mapper",
-    "p1": "The <strong>Cognitive Failure Mapper</strong> detects cognitive-emotional patterns in the chronological sequence of decisions within each tournament. Instead of looking at isolated decisions, the system tracks the sequence of your plays to identify when your mental state shifts.",
+    "title": "Cognitive Patterns",
+    "p1": "The <strong>Cognitive Patterns</strong> detects cognitive-emotional patterns in the chronological sequence of decisions within each tournament. Instead of looking at isolated decisions, the system tracks the sequence of your plays to identify when your mental state shifts.",
     "table": {
       "col_pattern": "Pattern",
       "col_trigger": "Trigger",

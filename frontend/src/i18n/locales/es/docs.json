@@ -334,8 +334,8 @@
     "p3": "La narrativa de IA en la tarjeta resume: (1) tendencia actual, (2) tiempo estimado hasta el próximo nivel, (3) el leak prioritario para acelerar la progresión."
   },
   "cognitive": {
-    "title": "Cognitive Failure Mapper",
-    "p1": "El <strong>Cognitive Failure Mapper</strong> detecta patrones cognitivo-emocionales en la secuencia cronológica de decisiones dentro de cada torneo. En lugar de analizar decisiones aisladas, el sistema sigue la secuencia de tus jugadas para identificar cuándo cambia tu estado mental.",
+    "title": "Patrones Cognitivos",
+    "p1": "El <strong>Patrones Cognitivos</strong> detecta patrones cognitivo-emocionales en la secuencia cronológica de decisiones dentro de cada torneo. En lugar de analizar decisiones aisladas, el sistema sigue la secuencia de tus jugadas para identificar cuándo cambia tu estado mental.",
     "table": {
       "col_pattern": "Patrón",
       "col_trigger": "Disparador",
