@@ -3711,6 +3711,23 @@ def get_payments(user_id: int, limit: int = 20) -> List[dict]:
         conn.close()
 
 
+def mark_payment_refunded(gateway_id: str, full: bool = True) -> int | None:
+    """Estorno: marca o pagamento (por gateway_id) como 'refunded' p/ sair da receita. Retorna o
+    user_id se for estorno TOTAL (p/ o caller rebaixar o plano), senão None. Idempotente."""
+    conn = get_conn()
+    try:
+        row = _fetchone(conn, _adapt(
+            "SELECT id, user_id FROM payments WHERE gateway_id = ? AND status != 'refunded' "
+            "ORDER BY created_at DESC"), (gateway_id,))
+        if not row:
+            return None
+        conn.execute(_adapt("UPDATE payments SET status = 'refunded' WHERE id = ?"), (row['id'],))
+        conn.commit()
+        return int(row['user_id']) if full else None
+    finally:
+        conn.close()
+
+
 # ── PAY-03: visão financeira administrativa (todos os pagamentos) ─────────────
 
 def admin_list_payments(status: str = None, gateway: str = None, search: str = None,

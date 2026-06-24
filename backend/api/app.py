@@ -5551,107 +5551,123 @@ def subscription_webhook():
                   if isinstance(event, dict) else event.data.object)
     log.info("Stripe webhook type=%s", event_type)
 
-    if event_type == 'payment_intent.succeeded':
-        # PaymentIntent concluído — ativa plano via metadata
-        meta      = obj.get('metadata', {}) if isinstance(obj, dict) else obj.metadata
-        user_id   = int(meta.get('user_id', 0))
-        plan_name = meta.get('plan_name', '')
-        billing   = meta.get('billing_cycle', 'monthly') if isinstance(meta, dict) else 'monthly'
-        if billing not in ('monthly', 'annual'):
-            billing = 'monthly'
-        pi_id     = obj.get('id', '') if isinstance(obj, dict) else obj.id
-        amount    = obj.get('amount', 0) if isinstance(obj, dict) else obj.amount
-        if user_id and plan_name:
-            period_start, period_end = _plan_period(billing)   # PAY-02: vigência
-            update_user_plan(user_id, plan_name, str(pi_id), plan_expires_at=period_end)
-            save_payment(
-                user_id=user_id, plan=plan_name,
-                amount_cents=int(amount),
-                status='approved',
-                gateway_id=str(pi_id),
-                gateway_sub_id=str(pi_id),
-                gateway='stripe',
-                period_start=period_start,
-                period_end=period_end,
-            )
-            # COACH-02: aluno indicado virou pagante → pode fechar a meta do coach.
-            try:
-                _u = get_user_by_id(user_id)
-                if _u and _u.get('coach_id'):
-                    from database.repositories import maybe_promote_coach_earned
-                    maybe_promote_coach_earned(_u['coach_id'])
-            except Exception:
-                log.exception("maybe_promote_coach_earned falhou (webhook) user=%s", user_id)
+    # Blindagem: erro de PROCESSAMENTO (ex.: evento sem metadata) NÃO retorna 500 — o Stripe
+    # re-tentaria por dias. Assinatura inválida segue 400 acima; aqui o evento foi RECEBIDO (200)
+    # e o erro fica logado p/ auditoria. Eventos não tratados caem no ack final.
+    try:
+        if event_type == 'payment_intent.succeeded':
+            # PaymentIntent concluído — ativa plano via metadata
+            meta      = obj.get('metadata', {}) if isinstance(obj, dict) else obj.metadata
+            user_id   = int(meta.get('user_id', 0))
+            plan_name = meta.get('plan_name', '')
+            billing   = meta.get('billing_cycle', 'monthly') if isinstance(meta, dict) else 'monthly'
+            if billing not in ('monthly', 'annual'):
+                billing = 'monthly'
+            pi_id     = obj.get('id', '') if isinstance(obj, dict) else obj.id
+            amount    = obj.get('amount', 0) if isinstance(obj, dict) else obj.amount
+            if user_id and plan_name:
+                period_start, period_end = _plan_period(billing)   # PAY-02: vigência
+                update_user_plan(user_id, plan_name, str(pi_id), plan_expires_at=period_end)
+                save_payment(
+                    user_id=user_id, plan=plan_name,
+                    amount_cents=int(amount),
+                    status='approved',
+                    gateway_id=str(pi_id),
+                    gateway_sub_id=str(pi_id),
+                    gateway='stripe',
+                    period_start=period_start,
+                    period_end=period_end,
+                )
+                # COACH-02: aluno indicado virou pagante → pode fechar a meta do coach.
+                try:
+                    _u = get_user_by_id(user_id)
+                    if _u and _u.get('coach_id'):
+                        from database.repositories import maybe_promote_coach_earned
+                        maybe_promote_coach_earned(_u['coach_id'])
+                except Exception:
+                    log.exception("maybe_promote_coach_earned falhou (webhook) user=%s", user_id)
 
-    elif event_type == 'payment_intent.payment_failed':
-        # PAY-01: registra a falha p/ trilha de auditoria/suporte (não altera o plano).
-        meta      = obj.get('metadata', {}) if isinstance(obj, dict) else obj.metadata
-        user_id   = int(meta.get('user_id', 0) or 0)
-        plan_name = meta.get('plan_name', '') if isinstance(meta, dict) else ''
-        pi_id     = obj.get('id', '') if isinstance(obj, dict) else obj.id
-        amount    = obj.get('amount', 0) if isinstance(obj, dict) else obj.amount
-        if user_id:
-            save_payment(
-                user_id=user_id, plan=plan_name or 'pro',
-                amount_cents=int(amount or 0),
-                status='failed',
-                gateway_id=str(pi_id),
-                gateway_sub_id=str(pi_id),
-                gateway='stripe',
-            )
+        elif event_type == 'payment_intent.payment_failed':
+            # PAY-01: registra a falha p/ trilha de auditoria/suporte (não altera o plano).
+            meta      = obj.get('metadata', {}) if isinstance(obj, dict) else obj.metadata
+            user_id   = int(meta.get('user_id', 0) or 0)
+            plan_name = meta.get('plan_name', '') if isinstance(meta, dict) else ''
+            pi_id     = obj.get('id', '') if isinstance(obj, dict) else obj.id
+            amount    = obj.get('amount', 0) if isinstance(obj, dict) else obj.amount
+            if user_id:
+                save_payment(
+                    user_id=user_id, plan=plan_name or 'pro',
+                    amount_cents=int(amount or 0),
+                    status='failed',
+                    gateway_id=str(pi_id),
+                    gateway_sub_id=str(pi_id),
+                    gateway='stripe',
+                )
 
-    # ── PAY-04: ciclo de vida da ASSINATURA RECORRENTE ──────────────────────────
-    elif event_type == 'invoice.paid':
-        # Renovação (ou 1ª cobrança) paga → mantém/estende o Pro. Fonte da verdade da
-        # recorrência. Idempotente: save_payment dedupe por invoice id (gateway_id).
-        from database.repositories import get_user_by_subscription, apply_stripe_subscription
-        sub_id  = obj.get('subscription')
-        inv_id  = obj.get('id')
-        amount  = obj.get('amount_paid', 0) or 0
-        _lines  = (obj.get('lines') or {}).get('data') or [{}]
-        per_end = _ts_to_str((_lines[0].get('period') or {}).get('end'))
-        u = get_user_by_subscription(sub_id) if sub_id else None
-        if u:
-            apply_stripe_subscription(u['id'], 'active', per_end, sub_id)
-            save_payment(user_id=u['id'], plan='pro', amount_cents=int(amount),
-                         status='approved', gateway_id=str(inv_id or sub_id),
-                         gateway_sub_id=str(sub_id), gateway='stripe', period_end=per_end)
-            try:
-                if u.get('coach_id'):
-                    from database.repositories import maybe_promote_coach_earned
-                    maybe_promote_coach_earned(u['coach_id'])
-            except Exception:
-                log.exception("promote coach (invoice.paid) user=%s", u['id'])
+        # ── PAY-04: ciclo de vida da ASSINATURA RECORRENTE ──────────────────────────
+        elif event_type == 'invoice.paid':
+            # Renovação (ou 1ª cobrança) paga → mantém/estende o Pro. Fonte da verdade da
+            # recorrência. Idempotente: save_payment dedupe por invoice id (gateway_id).
+            from database.repositories import get_user_by_subscription, apply_stripe_subscription
+            sub_id  = obj.get('subscription')
+            inv_id  = obj.get('id')
+            amount  = obj.get('amount_paid', 0) or 0
+            _lines  = (obj.get('lines') or {}).get('data') or [{}]
+            per_end = _ts_to_str((_lines[0].get('period') or {}).get('end'))
+            u = get_user_by_subscription(sub_id) if sub_id else None
+            if u:
+                apply_stripe_subscription(u['id'], 'active', per_end, sub_id)
+                save_payment(user_id=u['id'], plan='pro', amount_cents=int(amount),
+                             status='approved', gateway_id=str(inv_id or sub_id),
+                             gateway_sub_id=str(sub_id), gateway='stripe', period_end=per_end)
+                try:
+                    if u.get('coach_id'):
+                        from database.repositories import maybe_promote_coach_earned
+                        maybe_promote_coach_earned(u['coach_id'])
+                except Exception:
+                    log.exception("promote coach (invoice.paid) user=%s", u['id'])
 
-    elif event_type == 'invoice.payment_failed':
-        # Falha de renovação → registra; NÃO faz downgrade (Stripe entra em retry/dunning).
-        from database.repositories import get_user_by_subscription
-        sub_id = obj.get('subscription')
-        inv_id = obj.get('id')
-        amount = obj.get('amount_due', 0) or 0
-        u = get_user_by_subscription(sub_id) if sub_id else None
-        if u:
-            save_payment(user_id=u['id'], plan='pro', amount_cents=int(amount),
-                         status='failed', gateway_id=str(inv_id or sub_id),
-                         gateway_sub_id=str(sub_id), gateway='stripe')
+        elif event_type == 'invoice.payment_failed':
+            # Falha de renovação → registra; NÃO faz downgrade (Stripe entra em retry/dunning).
+            from database.repositories import get_user_by_subscription
+            sub_id = obj.get('subscription')
+            inv_id = obj.get('id')
+            amount = obj.get('amount_due', 0) or 0
+            u = get_user_by_subscription(sub_id) if sub_id else None
+            if u:
+                save_payment(user_id=u['id'], plan='pro', amount_cents=int(amount),
+                             status='failed', gateway_id=str(inv_id or sub_id),
+                             gateway_sub_id=str(sub_id), gateway='stripe')
 
-    elif event_type in ('customer.subscription.updated', 'customer.subscription.deleted'):
-        # Mudança de status (active/past_due/canceled). deleted → downgrade p/ free.
-        from database.repositories import get_user_by_subscription, apply_stripe_subscription
-        sub_id  = obj.get('id')
-        status  = 'canceled' if event_type.endswith('deleted') else obj.get('status')
-        per_end = _ts_to_str(obj.get('current_period_end'))
-        smeta   = obj.get('metadata') or {}
-        uid     = int(smeta.get('user_id', 0) or 0)
-        if not uid and sub_id:
-            u = get_user_by_subscription(sub_id)
-            uid = u['id'] if u else 0
-        # Motivo do churn p/ análise no admin: cancellation_details.reason (voluntário/involuntário).
-        _cd = obj.get('cancellation_details') or {}
-        cancel_reason = _cd.get('reason') or _cd.get('feedback') if status == 'canceled' else None
-        if uid:
-            apply_stripe_subscription(uid, status, per_end, sub_id, cancel_reason=cancel_reason)
+        elif event_type in ('customer.subscription.updated', 'customer.subscription.deleted'):
+            # Mudança de status (active/past_due/canceled). deleted → downgrade p/ free.
+            from database.repositories import get_user_by_subscription, apply_stripe_subscription
+            sub_id  = obj.get('id')
+            status  = 'canceled' if event_type.endswith('deleted') else obj.get('status')
+            per_end = _ts_to_str(obj.get('current_period_end'))
+            smeta   = obj.get('metadata') or {}
+            uid     = int(smeta.get('user_id', 0) or 0)
+            if not uid and sub_id:
+                u = get_user_by_subscription(sub_id)
+                uid = u['id'] if u else 0
+            # Motivo do churn p/ análise no admin: cancellation_details.reason (voluntário/involuntário).
+            _cd = obj.get('cancellation_details') or {}
+            cancel_reason = _cd.get('reason') or _cd.get('feedback') if status == 'canceled' else None
+            if uid:
+                apply_stripe_subscription(uid, status, per_end, sub_id, cancel_reason=cancel_reason)
 
+        elif event_type == 'charge.refunded':
+            # Estorno: marca o pagamento como refunded (sai da receita); se TOTAL e cobria o Pro,
+            # rebaixa o usuário p/ free. Requer o evento 'charge.refunded' habilitado no webhook.
+            from database.repositories import mark_payment_refunded
+            _pi   = obj.get('payment_intent') or obj.get('id')
+            _full = bool(obj.get('refunded'))   # True = estorno integral
+            if _pi:
+                _uid = mark_payment_refunded(str(_pi), full=_full)
+                if _uid:
+                    update_user_plan(_uid, 'free', None)
+    except Exception:
+        log.exception("Stripe webhook processing failed type=%s", event_type)
     return jsonify({'ok': True})
 
 
