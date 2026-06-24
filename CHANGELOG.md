@@ -7,6 +7,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(study-plan): refresh-por-drift (regenera com dados novos, sem ficar preso no passado)
+
+> O plano de estudo usava chave de cache estável e nunca se atualizava , um jogador que corrigiu um leak há 30 torneios ainda via o plano antigo. Agora um fingerprint de **drift** (faixa de torneios em buckets de 10 + identidade qualitativa dos top-3 leaks, sem magnitude) decide a regeneração: regenera a cada ~10 torneios novos OU quando os top leaks mudam; flutuação pequena (mesmos leaks, mesma faixa) não regenera (estabilidade). Lazy (no próximo acesso ao dashboard), sem cron, 1 linha por aluno (sobrescreve). Aplicado nos dois geradores (legacy + agentic); formato antigo se auto-regenera. As narrativas do carrossel já se auto-atualizavam (chave por leak) e não foram tocadas.
+
+### fix(billing): cota diária/mensal quebrava no Postgres (DATE não subscriptable) , 500 no AI Coach Chat
+
+> `/coach/chat` (e endpoints com teto mensal) davam 500 em prod: o reset de cota fatiava a coluna `quota_day_reset_at`/`quota_reset_at` como string (`[:10]`/`[:7]`), mas o Postgres devolve `datetime.date` (não subscriptable). Funcionava no SQLite (TEXT), por isso passava nos testes e só quebrava em prod. Corrigido com `str(...)` (normaliza date→ISO, mantém o SQLite). Mesma classe SQLite×Postgres das migrações anteriores.
+
+### docs(content): unifica ELO × % de aderência na tabela de níveis
+
+> ELO e % de aderência GTO já eram a mesma escala de 7 níveis (o motor de ELO deriva uma da outra: 1570=60%, 1647=70%, ... 2053=96%), mas a doc mostrava só ELO na Gamificação e só % no `/docs/rating`, parecendo sistemas distintos. Adicionada a coluna "% Aderência GTO" ao lado da banda de ELO na tabela de níveis + nota explicando que são duas formas de ver o mesmo nível. Sem mudança de sistema.
+
 ### feat(ui): paginação na lista de torneios e na lista de mãos
 
 > As duas listas renderizavam tudo de uma vez (scroll longo). Componente `Pager` reutilizável (setas + "página/total", some com 1 página) + paginação client-side: torneios 20/página, mãos 15/página. Os dados já vêm todos do `useQuery`, só fatiamos a renderização; volta pra página 1 ao filtrar e trava dentro do total. Seleção pra comparar e os totais seguem sobre o conjunto inteiro. i18n PT/EN/ES.
