@@ -1052,6 +1052,26 @@ def _recover_truncated_plan_json(raw: str) -> str | None:
         return None
 
 
+# Refresh-por-drift do plano de estudo: o plano canônico é regenerado quando os dados "driftam"
+# o suficiente — a cada _STUDY_PLAN_DRIFT_TOURNEYS torneios novos OU quando os top-3 leaks mudam.
+# Flutuação pequena (mesma faixa de torneios, mesmos leaks) NÃO regenera → estabilidade do plano.
+_STUDY_PLAN_DRIFT_TOURNEYS = 10
+
+def _study_plan_drift_sig(leaks: list, evolution: list) -> str:
+    import hashlib
+    n_bucket = len(evolution or []) // max(1, _STUDY_PLAN_DRIFT_TOURNEYS)
+    # Identidade QUALITATIVA dos top-3 leaks (sem magnitude — bb/contagem flutuam e não devem regerar).
+    _QUAL = ('street', 'best_action', 'action', 'position', 'leak', 'leak_type', 'key', 'pattern', 'spot', 'category')
+    parts = []
+    for l in (leaks or [])[:3]:
+        if isinstance(l, dict):
+            parts.append('|'.join(f"{k}={l[k]}" for k in _QUAL if l.get(k) is not None))
+        else:
+            parts.append(str(l))
+    sig = hashlib.md5('|'.join(parts).encode()).hexdigest()[:8]
+    return f"t{n_bucket}_{sig}"
+
+
 def generate_study_plan(leaks: list, evolution: list, icm: dict,
                         hero: str = 'Jogador',
                         user_id: int | None = None,
@@ -1078,21 +1098,25 @@ def generate_study_plan(leaks: list, evolution: list, icm: dict,
         json.dumps({'leaks': leaks, 'evo_len': len(evolution), 'stats': stats_fingerprint,
                     'source': leak_source, 'ev': ev_leaks or []}, sort_keys=True, default=str).encode()
     ).hexdigest()
-    # Chave DB estável — plano canônico único por aluno
+    # Chave DB estável (1 linha/aluno); o fingerprint de drift fica no VALOR.
     db_key = 'study_plan_current'
+    drift_sig = _study_plan_drift_sig(leaks, evolution)
 
     if not force_new:
         # Cache em memória
         if mem_key in _cache:
             return json.loads(_cache[mem_key])
-        # Cache persistente no banco
+        # Cache persistente no banco — só serve se os dados NÃO driftaram (refresh-por-drift).
         if user_id is not None:
             try:
                 from database.repositories import get_llm_cache
                 cached = get_llm_cache(user_id, db_key)
                 if cached:
-                    _cache[mem_key] = cached
-                    return json.loads(cached)
+                    _obj = json.loads(cached)
+                    if isinstance(_obj, dict) and 'plan' in _obj and _obj.get('_drift') == drift_sig:
+                        _cache[mem_key] = json.dumps(_obj['plan'], ensure_ascii=False)
+                        return _obj['plan']
+                    # formato antigo (sem _drift) ou driftou → cai pra regenerar
             except Exception:
                 pass
 
@@ -1252,11 +1276,11 @@ Responda APENAS com JSON válido, sem texto adicional, no formato:
         result['source'] = leak_source
         result_str = json.dumps(result, ensure_ascii=False)
         _cache[mem_key] = result_str
-        # Persistir no banco com chave estável (sobrescreve plano anterior)
+        # Persistir no banco (chave estável, sobrescreve) com o fingerprint de drift no valor.
         if user_id is not None:
             try:
                 from database.repositories import set_llm_cache
-                set_llm_cache(user_id, db_key, result_str)
+                set_llm_cache(user_id, db_key, json.dumps({'_drift': drift_sig, 'plan': result}, ensure_ascii=False))
             except Exception:
                 pass
         return result
@@ -1505,6 +1529,7 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
                     'source': leak_source, 'ev': ev_leaks or []}, sort_keys=True, default=str).encode()
     ).hexdigest()
     db_key = 'study_plan_current'   # mesmo do legado — plano canônico único por aluno
+    drift_sig = _study_plan_drift_sig(leaks, evolution)
 
     if not force_new:
         if mem_key in _cache:
@@ -1514,8 +1539,11 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
                 from database.repositories import get_llm_cache
                 cached = get_llm_cache(user_id, db_key)
                 if cached:
-                    _cache[mem_key] = cached
-                    return json.loads(cached)
+                    _obj = json.loads(cached)
+                    if isinstance(_obj, dict) and 'plan' in _obj and _obj.get('_drift') == drift_sig:
+                        _cache[mem_key] = json.dumps(_obj['plan'], ensure_ascii=False)
+                        return _obj['plan']
+                    # formato antigo ou driftou → regenera
             except Exception:
                 pass
 
@@ -1527,7 +1555,7 @@ def generate_study_plan_agentic(leaks: list, evolution: list, icm: dict,
         if user_id is not None:
             try:
                 from database.repositories import set_llm_cache
-                set_llm_cache(user_id, db_key, result_str)
+                set_llm_cache(user_id, db_key, json.dumps({'_drift': drift_sig, 'plan': plan}, ensure_ascii=False))
             except Exception:
                 pass
         return plan
