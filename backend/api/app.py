@@ -8165,6 +8165,30 @@ def _enqueue_postflop_spots(results: list) -> None:
 
             if enqueue_solver_spot(spot_hash, payload, priority=_priority(d['street'])):
                 enqueued += 1
+
+            # AUTOMÁTICO DEEP: spot postflop FUNDO (>35bb) → ALÉM do real, enfileira a variante
+            # capada a 30bb. Deep OOP de alta SPR costuma falhar/não fechar no stack real; o 30bb
+            # cobre como "≈ Aproximação" (a AÇÃO transfere). Mesmo hash que o lookup procura
+            # (pot_type default). O lookup prioriza o nó REAL — o 30bb só entra se o real não cobrir.
+            if stack > _DEEP_APPROX_MIN_BB:
+                _h30 = compute_spot_hash(d['street'], pos, board, hero_h, _DEEP_APPROX_STACK_BB, facing)
+                if not get_gto_node(_h30):
+                    _p30 = _solver_params_for_stack(_DEEP_APPROX_STACK_BB)
+                    _pay30 = _json.dumps({
+                        'street': d['street'], 'board': board, 'position': pos, 'hero_hand': hero_h,
+                        'hero_stack_bb': _DEEP_APPROX_STACK_BB, 'facing_size_bb': facing,
+                        'oop_range': _DEFAULT_RANGES.get(vs_pos, _DEFAULT_RANGE_WIDE),
+                        'ip_range':  _DEFAULT_RANGES.get(pos,    _DEFAULT_RANGE_WIDE),
+                        'pot_bb': pot_bb,
+                        'effective_stack_bb':        _p30['effective_stack_bb'],
+                        'max_iterations':            _p30['max_iterations'],
+                        'target_exploitability_pct': _p30['target_exploitability_pct'],
+                        '_meta': {'position': pos, 'vs_position': vs_pos, 'hero_hand': hero_h,
+                                  'approx_of_stack': stack, 'deep_approx': True,
+                                  'street': d['street'], 'board': board},
+                    }, sort_keys=True)
+                    if enqueue_solver_spot(_h30, _pay30, priority=_priority(d['street'])):
+                        enqueued += 1
         except Exception:
             pass
 
