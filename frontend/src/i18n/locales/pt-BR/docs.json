@@ -302,7 +302,9 @@
     "level_regular": "📈 Regular",
     "level_solid": "🔷 Sólido",
     "level_expert": "♠ Expert",
-    "level_elite": "👑 Elite"
+    "level_elite": "👑 Elite",
+    "col_adherence": "% Aderência GTO",
+    "levels_note": "A <strong>banda de ELO</strong> e o <strong>% de aderência GTO</strong> são duas formas de ver o mesmo nível: o ELO é o número do rating (sobe e desce com o seu jogo); a aderência é o que ele significa na prática (com que frequência você acerta a linha do solver)."
   },
   "ranking": {
     "title": "Ranking de Alunos",

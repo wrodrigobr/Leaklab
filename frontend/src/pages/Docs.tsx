@@ -510,17 +510,18 @@ export default function Docs() {
               />
               <p className="mt-2">{t("gamification.levels_title")}</p>
               <Table
-                headers={[t("gamification.col_level"), t("gamification.col_req")]}
+                headers={[t("gamification.col_level"), t("gamification.col_req"), t("gamification.col_adherence")]}
                 rows={[
-                  [t("gamification.level_beginner"), "< 1570"],
-                  [t("gamification.level_student"),  "1570 – 1646"],
-                  [t("gamification.level_grinder"),  "1647 – 1709"],
-                  [t("gamification.level_regular"),  "1710 – 1815"],
-                  [t("gamification.level_solid"),    "1816 – 1923"],
-                  [t("gamification.level_expert"),   "1924 – 2052"],
-                  [t("gamification.level_elite"),    "≥ 2053"],
+                  [t("gamification.level_beginner"), "< 1570",      "< 60%"],
+                  [t("gamification.level_student"),  "1570 – 1646", "60 – 70%"],
+                  [t("gamification.level_grinder"),  "1647 – 1709", "70 – 77%"],
+                  [t("gamification.level_regular"),  "1710 – 1815", "77 – 86%"],
+                  [t("gamification.level_solid"),    "1816 – 1923", "86 – 92%"],
+                  [t("gamification.level_expert"),   "1924 – 2052", "92 – 96%"],
+                  [t("gamification.level_elite"),    "≥ 2053",      "≥ 96%"],
                 ]}
               />
+              <p dangerouslySetInnerHTML={{ __html: t("gamification.levels_note") }} />
               <p>{t("gamification.streak_desc")}</p>
               <p><strong className="text-foreground">{t("gamification.achievements_title")}</strong></p>
               <ul className="list-disc pl-5 space-y-1">

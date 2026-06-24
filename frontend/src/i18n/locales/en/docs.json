@@ -302,7 +302,9 @@
     "level_regular": "📈 Regular",
     "level_solid": "🔷 Solid",
     "level_expert": "♠ Expert",
-    "level_elite": "👑 Elite"
+    "level_elite": "👑 Elite",
+    "col_adherence": "GTO Adherence %",
+    "levels_note": "The <strong>ELO band</strong> and the <strong>GTO adherence %</strong> are two ways of viewing the same level: ELO is the rating number (it rises and falls with your play); adherence is what it means in practice (how often you match the solver line)."
   },
   "ranking": {
     "title": "Students Leaderboard",
