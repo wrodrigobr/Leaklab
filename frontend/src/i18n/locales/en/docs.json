@@ -12,11 +12,11 @@
     "replayer": "Hand Review",
     "pko_tournaments": "PKO (Bounty) Tournaments",
     "mstacks": "M-Ratio Phases",
-    "dna": "Decision DNA",
+    "dna": "Strategic Profile",
     "leaks": "Top Leaks",
     "causal_map": "Causal Map",
-    "streets": "Performance by Street",
-    "positions": "Performance by Position",
+    "streets": "EV Lost by Street",
+    "positions": "GTO Alignment by Position",
     "pressure": "Pressure Collapse",
     "bankroll": "Bankroll Evolution",
     "ghost": "Ghost Table / Drills",
@@ -214,8 +214,8 @@
     "p3": "Tournament stage (early, middle, late, final table, heads-up) is identified automatically and complements M in defining the context."
   },
   "dna": {
-    "title": "Decision DNA",
-    "p1": "<strong>Decision DNA</strong> is the player's strategic fingerprint, a 5-axis radar calculated from the complete decision history. It reveals structural game patterns independent of financial results.",
+    "title": "Strategic Profile",
+    "p1": "<strong>Strategic Profile</strong> is the player's strategic fingerprint, a 5-axis radar calculated from the complete decision history. It reveals structural game patterns independent of financial results.",
     "col_axis": "Axis",
     "col_calc": "Calculation",
     "col_ref": "Healthy reference",
@@ -366,7 +366,7 @@
   },
   "twin": {
     "title": "Strategic Patterns",
-    "p1": "The <strong>Strategic Twin</strong> turns your spot-level error patterns into predictive language. Instead of listing past mistakes, the system says: <em>\"in shove preflop spots under high ICM, you make errors 63% of the time, well above your personal average of 28%\"</em>.",
+    "p1": "The <strong>Strategic Patterns</strong> turns your spot-level error patterns into predictive language. Instead of listing past mistakes, the system says: <em>\"in shove preflop spots under high ICM, you make errors 63% of the time, well above your personal average of 28%\"</em>.",
     "p2": "Each <strong>spot</strong> is defined by the combination of street (preflop/flop/turn/river), correct action (fold/call/raise/bet/check/shove) and ICM pressure (low/medium/high/critical). The system highlights spots with a sufficient sample where you make errors above your personal average.",
     "table": {
       "col_term": "Concept",
@@ -398,14 +398,14 @@
     "p3": "Click a node to highlight only the leaks connected to it. Red nodes are critical; yellow are moderate; green are minor. Always start with the red nodes that have the most connections, they have the greatest cascading impact."
   },
   "streets": {
-    "title": "Performance by Street",
+    "title": "EV Lost by Street",
     "p1": "The <strong>Performance by Street</strong> card shows how much EV (in big blinds) you lose on each street: preflop, flop, turn and river. The smaller the bar, the better.",
     "p2": "Streets with orange or red bars indicate where your leaks are concentrated. Most players lose the most on the river, where the pot is largest and mistakes are most expensive. Players who level up quickly typically fix preflop first (highest decision volume) and then the turn.",
     "p3": "Use this card to prioritise which streets to focus on in the Ghost Table and Academy.",
     "example": "Common pattern: the loss is small on the preflop (0.8bb) and grows toward the river (4.0bb). The river being the most expensive points to trouble with showdown decisions, fold equity and thin value."
   },
   "positions": {
-    "title": "Performance by Position",
+    "title": "GTO Alignment by Position",
     "p1": "The <strong>Performance by Position</strong> card shows your GTO alignment percentage in each table position, from the early seats (UTG) to the blinds (SB and BB).",
     "p2": "Late positions (BTN, CO) naturally have more positional advantage, better performance is expected from those seats. If BTN or CO appear red, that is a serious issue: you are not taking advantage of the positional edge you have.",
     "p3": "BB and SB defensive spots are technically the hardest. Poor performance in the BB is common and not necessarily a crisis, but if the delta between BTN and BB is very large, the positional deficit is costing real EV.",
@@ -415,7 +415,7 @@
     "title": "Pressure Collapse",
     "p1": "The <strong>Pressure Collapse</strong> card compares the quality of your decisions across four ICM pressure contexts: no pressure, low pressure, medium pressure and high pressure. The closer to the bubble and final table, the higher the pressure.",
     "p2": "A technically solid player maintains the same score regardless of pressure. A delta above 8 points between high pressure and no pressure is a sign of <em>collapse</em>, you make significantly more mistakes when real money is at stake.",
-    "p3": "Pressure collapse is one of the most expensive leaks in MTTs because it is precisely in high-pressure situations (bubble, FT) that decisions have the greatest monetary impact. If the card shows collapse, prioritise drills with high ICM context in the Academy.",
+    "p3": "Pressure collapse is one of the most expensive leaks in MTTs because it is precisely in high-pressure situations (bubble, FT) that decisions have the greatest monetary impact. If the card shows collapse, prioritise drills with high ICM context in the Ghost Table.",
     "table": {
       "col_term": "Term",
       "col_meaning": "Meaning",

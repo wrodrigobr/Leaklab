@@ -12,11 +12,11 @@
     "replayer": "Revisión de Mano",
     "pko_tournaments": "Torneos PKO (Bounty)",
     "mstacks": "Fases de M-Ratio",
-    "dna": "Decision DNA",
+    "dna": "Perfil Estratégico",
     "leaks": "Top Leaks",
     "causal_map": "Mapa Causal",
-    "streets": "Rendimiento por Calle",
-    "positions": "Rendimiento por Posición",
+    "streets": "EV Perdido por Street",
+    "positions": "Alineamiento GTO por Posición",
     "pressure": "Colapso bajo Presión",
     "bankroll": "Evolución del Bankroll",
     "ghost": "Ghost Table / Drills",
@@ -202,7 +202,7 @@
   },
   "mstacks": {
     "title": "Fases de M-Ratio",
-    "p1": "La <strong>M de Harrington</strong> mide cuántas órbitas completas de blinds (SB + BB + antes) aguanta tu stack sin jugar una mano. Governa la estrategia MTT: cuanto menor el M, menor el abanico de acciones viables.",
+    "p1": "La <strong>M de Harrington</strong> mide cuántas órbitas completas de blinds (SB + BB + antes) aguanta tu stack sin jugar una mano. Gobierna la estrategia MTT: cuanto menor el M, menor el abanico de acciones viables.",
     "col_phase": "Fase",
     "col_mratio": "M-Ratio",
     "col_strategy": "Estrategia implícita",
@@ -214,8 +214,8 @@
     "p3": "La etapa del torneo (inicio, medio, fase final, mesa final, heads-up) se identifica automáticamente y complementa el M en la definición del contexto."
   },
   "dna": {
-    "title": "Decision DNA",
-    "p1": "El <strong>Decision DNA</strong> es la firma estratégica del jugador, un radar de 5 ejes calculados sobre el historial completo de decisiones. Revela patrones estructurales de juego independientemente de los resultados financieros.",
+    "title": "Perfil Estratégico",
+    "p1": "El <strong>Perfil Estratégico</strong> es la firma estratégica del jugador, un radar de 5 ejes calculados sobre el historial completo de decisiones. Revela patrones estructurales de juego independientemente de los resultados financieros.",
     "col_axis": "Eje",
     "col_calc": "Cálculo",
     "col_ref": "Referencia saludable",
@@ -366,7 +366,7 @@
   },
   "twin": {
     "title": "Tendencias Estratégicas",
-    "p1": "El <strong>Strategic Twin</strong> transforma tus patrones de error por spot en lenguaje predictivo. En lugar de listar errores pasados, el sistema dice: <em>«en spots de shove preflop bajo ICM alto, cometes errores el 63% de las veces, muy por encima de tu promedio personal del 28%»</em>.",
+    "p1": "El <strong>Tendencias Estratégicas</strong> transforma tus patrones de error por spot en lenguaje predictivo. En lugar de listar errores pasados, el sistema dice: <em>«en spots de shove preflop bajo ICM alto, cometes errores el 63% de las veces, muy por encima de tu promedio personal del 28%»</em>.",
     "p2": "Cada <strong>spot</strong> se define por la combinación de street (preflop/flop/turn/river), acción correcta (fold/call/raise/bet/check/shove) y presión ICM (bajo/medio/alto/crítico). El sistema destaca los spots con muestra suficiente en los que te equivocas por encima de tu media personal.",
     "table": {
       "col_term": "Concepto",
@@ -398,14 +398,14 @@
     "p3": "Haz clic en un nodo para destacar solo los leaks conectados a él. Los nodos rojos son críticos; amarillos, moderados; verdes, leves. Comienza siempre por los nodos rojos con más conexiones, tienen el mayor impacto en cascada."
   },
   "streets": {
-    "title": "Rendimiento por Calle",
+    "title": "EV Perdido por Street",
     "p1": "La tarjeta <strong>Rendimiento por Street</strong> muestra cuánto EV (en big blinds) pierdes en cada calle: preflop, flop, turn y river. Cuanto menor la barra, mejor.",
     "p2": "Calles con barra naranja o roja indican dónde se concentran tus leaks. La mayoría de jugadores pierde más en el river, donde el bote es mayor y los errores más caros. Los jugadores que suben de nivel rápidamente generalmente resuelven primero el preflop (mayor volumen de decisiones) y luego el turn.",
     "p3": "Usa este card para priorizar qué calles trabajar en el Ghost Table y en la Academia.",
     "example": "Patrón común: la pérdida es pequeña en preflop (0.8bb) y crece hasta el river (4.0bb). Que el river sea el más caro indica dificultad con decisiones de showdown, fold equity y thin value."
   },
   "positions": {
-    "title": "Rendimiento por Posición",
+    "title": "Alineamiento GTO por Posición",
     "p1": "La tarjeta <strong>Rendimiento por Posición</strong> muestra tu porcentaje de alineación con el GTO en cada posición de la mesa, desde las primeras (UTG) hasta las ciegas (SB y BB).",
     "p2": "Las posiciones late (BTN, CO) naturalmente tienen más ventaja posicional, se espera mejor rendimiento desde esos asientos. Si BTN o CO aparecen en rojo, eso es un problema serio: no estás aprovechando la ventaja que la posición te ofrece.",
     "p3": "BB y SB defensivos son los spots técnicamente más difíciles. Rendimiento bajo en BB es común y no necesariamente señal de crisis, pero si el delta entre BTN y BB es muy grande, el déficit posicional está costando EV real.",
@@ -415,7 +415,7 @@
     "title": "Colapso bajo Presión",
     "p1": "La tarjeta <strong>Colapso bajo Presión</strong> compara la calidad de tus decisiones en cuatro contextos de presión ICM: sin presión, presión baja, presión media y presión alta. Cuanto más cerca de la burbuja y la mesa final, mayor la presión.",
     "p2": "Un jugador técnicamente sólido mantiene el mismo score independientemente de la presión. Un delta superior a 8 puntos entre presión alta y sin presión es señal de <em>colapso</em>, cometes significativamente más errores cuando hay dinero real en juego.",
-    "p3": "El colapso bajo presión es uno de los leaks más costosos en MTTs porque es precisamente en las situaciones de mayor presión (burbuja, mesa final) donde las decisiones tienen mayor impacto monetario. Si el card muestra colapso, prioriza los drills con contexto ICM alto en la Academia.",
+    "p3": "El colapso bajo presión es uno de los leaks más costosos en MTTs porque es precisamente en las situaciones de mayor presión (burbuja, mesa final) donde las decisiones tienen mayor impacto monetario. Si el card muestra colapso, prioriza los drills con contexto ICM alto en el Ghost Table.",
     "table": {
       "col_term": "Término",
       "col_meaning": "Significado",
@@ -424,7 +424,7 @@
       "low_term": "ICM bajo",
       "low_meaning": "Torneo en curso, fuera de la burbuja, decisiones tienen peso normal",
       "medium_term": "ICM medio",
-      "medium_meaning": "Cerca de la burbuja o con saltos de pagamiento relevantes",
+      "medium_meaning": "Cerca de la burbuja o con saltos de pago relevantes",
       "high_term": "ICM alto",
       "high_meaning": "En la burbuja, mesa final o situación de reshove crítico"
     },
