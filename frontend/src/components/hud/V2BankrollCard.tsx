@@ -7,22 +7,32 @@ import {
 import { metrics } from "@/lib/api";
 
 /**
- * V2BankrollCard — UX-2 onda 3. Versão V2 do BankrollChart: lucro acumulado em
- * AreaChart recharts com gradiente teal — espelho financeiro do V2EvTrendCard
- * (vermelho = EV perdido; teal = resultado). Sem modo demo: sem dados, some
- * (masonry fecha o vão). Clássico segue com o card antigo.
+ * V2BankrollCard — lucro acumulado num AreaChart recharts, com eixo X TEMPORAL (data de jogo) e
+ * resolução adaptada ao filtro: ~diário em 7d, mês/ano em janelas longas. Sem modo demo: sem dados, some.
  */
 const PERIODS = [
-  { key: "1M",  days: 30 },
-  { key: "3M",  days: 90 },
-  { key: "1Y",  days: 365 },
-  { key: "ALL", days: 3650 },
+  { key: "1W"  as const, days: 7,    label: "7d" },
+  { key: "1M"  as const, days: 30,   label: "30d" },
+  { key: "6M"  as const, days: 180,  label: "6M" },
+  { key: "1Y"  as const, days: 365,  label: "1A" },
+  { key: "ALL" as const, days: 3650, label: "Tudo" },
 ] as const;
 type PeriodKey = (typeof PERIODS)[number]["key"];
 
+function fmtDate(t: number, days: number, locale: string): string {
+  try {
+    const d = new Date(t);
+    return days <= 31
+      ? d.toLocaleDateString(locale, { day: "2-digit", month: "short" })
+      : d.toLocaleDateString(locale, { month: "short", year: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
 export function V2BankrollCard() {
-  const { t } = useTranslation("dashboard");
-  const [period, setPeriod] = useState<PeriodKey>("ALL");
+  const { t, i18n } = useTranslation("dashboard");
+  const [period, setPeriod] = useState<PeriodKey>("6M");
   const days = PERIODS.find((p) => p.key === period)!.days;
 
   const { data } = useQuery({
@@ -31,17 +41,25 @@ export function V2BankrollCard() {
     staleTime: 30_000,
   });
 
-  const pts = useMemo(() => {
+  const { pts, ticks } = useMemo(() => {
     const evolution = data?.evolution ?? [];
     let running = 0;
-    return evolution.map((e, i) => {
-      running += e.profit ?? 0;
-      return { i, name: `#${i + 1}`, profit: Math.round(running * 100) / 100 };
-    });
-  }, [data]);
+    // x = data de JOGO (played_at) → eixo temporal proporcional; pontos sem data ficam de fora do plot
+    // mas seu lucro entra no acumulado.
+    const pts = evolution
+      .map((e) => ({ t: e.played_at ? new Date(e.played_at).getTime() : NaN, profit: Math.round((running += e.profit ?? 0) * 100) / 100 }))
+      .filter((p) => !Number.isNaN(p.t));
+    let ticks: number[] = [];
+    if (pts.length >= 2) {
+      const t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = (t1 - t0) || 1;
+      const spanDays = span / 86_400_000;
+      const n = days <= 7 ? Math.max(2, Math.min(7, Math.round(spanDays) + 1)) : 6;
+      ticks = Array.from({ length: n }, (_, i) => Math.round(t0 + (span * i) / (n - 1)));
+    }
+    return { pts, ticks };
+  }, [data, days]);
 
   // Só some de vez quando NÃO há histórico nenhum (período "ALL" com <2 torneios).
-  // Em períodos curtos vazios, mantém card + seletor pro jogador voltar a um range maior.
   if (pts.length < 2 && period === "ALL") return null;
 
   const hasData = pts.length >= 2;
@@ -73,7 +91,7 @@ export function V2BankrollCard() {
                   : "text-muted-foreground/60 hover:text-foreground"
               }`}
             >
-              {p.key === "ALL" ? t("bankroll.pAll") : p.key}
+              {p.label}
             </button>
           ))}
         </div>
@@ -95,12 +113,17 @@ export function V2BankrollCard() {
               </linearGradient>
             </defs>
             <CartesianGrid stroke="#1E2A45" strokeDasharray="3 6" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#8B96A8" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+            <XAxis
+              dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]}
+              ticks={ticks} tickFormatter={(v: number) => fmtDate(v, days, i18n.language)}
+              tick={{ fontSize: 9, fill: "#8B96A8" }} tickLine={false} axisLine={false}
+            />
             <YAxis tick={{ fontSize: 9, fill: "#8B96A8" }} tickLine={false} axisLine={false} width={52}
                    tickFormatter={(v: number) => `$${v}`} />
             <Tooltip
               contentStyle={{ background: "#0F1526", border: "1px solid #1E2A45", borderRadius: 8, fontSize: 11 }}
               labelStyle={{ color: "#E3E8EC" }}
+              labelFormatter={(v: number) => fmtDate(v, days, i18n.language)}
               formatter={(v: number) => [`$${v.toFixed(2)}`, t("v2.bankSeries")]}
             />
             <Area type="monotone" dataKey="profit" stroke={stroke} strokeWidth={2}
