@@ -67,21 +67,21 @@ def _build_tournament_filter(user_id: int, days: int = 90, last_n: int | None = 
     """
     Retorna (where_clause, params) para filtrar torneios por volume ou por data.
 
-    - last_n=N  → últimos N torneios JOGADOS do usuário (por played_at, não pela ordem de upload)
-    - last_n=None → torneios JOGADOS nos últimos `days` dias
+    - last_n=N  → últimos N torneios IMPORTADOS do usuário (independente de data de jogo)
+    - last_n=None → torneios importados nos últimos `days` dias
 
-    Usa played_at (data de jogo parseada do HH), com fallback p/ imported_at quando ausente. Antes
-    usava imported_at → subir torneios fora de ordem cronológica distorcia a seleção e o eixo X.
+    NB: a JANELA/seleção é por imported_at (mostra os uploads recentes, inclusive torneios antigos
+    que você acabou de subir). A ORDEM do eixo X (cronológica de JOGO) é por played_at, aplicada no
+    ORDER BY de cada gráfico (get_evolution_metrics, get_decisions_for_elo_curve).
     """
     if last_n is not None:
         return (
-            "t.id IN (SELECT id FROM tournaments WHERE user_id = ? "
-            "ORDER BY COALESCE(played_at, imported_at) DESC LIMIT ?)",
+            "t.id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY imported_at DESC LIMIT ?)",
             (user_id, last_n),
         )
     from datetime import datetime, timedelta
     since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-    return "t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ?", (user_id, since)
+    return "t.user_id = ? AND t.imported_at >= ?", (user_id, since)
 
 
 def _jsonable(v):
@@ -668,17 +668,15 @@ def get_evolution_metrics(user_id: int, days: int = 90, last_n: int | None = Non
     """Retorna métricas por torneio para o gráfico de evolução."""
     tourn_filter, tourn_params = _build_tournament_filter(user_id, days, last_n)
     # Evolution query filters tournaments directly (no decisions join needed)
-    # Ordena/seleciona por DATA DE JOGO (played_at, parseada do HH), não pela de upload
-    # (imported_at) — senão subir torneios fora de ordem cronológica embaralha o eixo X dos
-    # gráficos. Fallback p/ imported_at quando o HH não tinha data parseável.
+    # Seleção/janela por imported_at (uploads recentes); a ORDEM do eixo X é por played_at no
+    # ORDER BY abaixo (data de JOGO parseada do HH) — conserta torneios fora de ordem no gráfico.
     if last_n is not None:
-        where = ("id IN (SELECT id FROM tournaments WHERE user_id = ? "
-                 "ORDER BY COALESCE(played_at, imported_at) DESC LIMIT ?)")
+        where = "id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY imported_at DESC LIMIT ?)"
         params = (user_id, last_n)
     else:
         from datetime import datetime, timedelta
         since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-        where = "user_id = ? AND COALESCE(played_at, imported_at) >= ?"
+        where = "user_id = ? AND imported_at >= ?"
         params = (user_id, since)
     conn = get_conn()
     try:
@@ -3721,7 +3719,8 @@ def admin_list_payments(status: str = None, gateway: str = None, search: str = N
     Retorna {payments, total}."""
     conn = get_conn()
     try:
-        where, params = [], []
+        # Admin não aparece no financeiro: pagamentos de teste do admin não são receita real.
+        where, params = ["COALESCE(u.role,'') != 'admin'"], []
         if status:
             where.append("p.status = ?"); params.append(status)
         if gateway:
@@ -3748,20 +3747,26 @@ def admin_revenue_summary() -> dict:
     assinantes pagantes (exclui Pro de cortesia do coach), e contagem de falhas."""
     conn = get_conn()
     try:
+        # Exclui usuários ADMIN de TODO o financeiro: pagamentos de teste do admin não são receita
+        # real (não há cobrança a pagar) → não inflam bruto/MRR/ARR.
+        _no_admin_pay = "user_id NOT IN (SELECT id FROM users WHERE role='admin')"
+        _no_admin_usr = "COALESCE(role,'') != 'admin'"
         gross = _fetchone(conn, "SELECT COALESCE(SUM(amount_cents),0) AS c, COUNT(*) AS n "
-                                "FROM payments WHERE status='approved'")
-        failed = _fetchone(conn, "SELECT COUNT(*) AS n FROM payments WHERE status='failed'")['n']
+                                f"FROM payments WHERE status='approved' AND {_no_admin_pay}")
+        failed = _fetchone(conn, f"SELECT COUNT(*) AS n FROM payments WHERE status='failed' AND {_no_admin_pay}")['n']
         by_gateway = [dict(r) for r in conn.execute(
             "SELECT gateway, COALESCE(SUM(amount_cents),0) AS amount_cents, COUNT(*) AS n "
-            "FROM payments WHERE status='approved' GROUP BY gateway ORDER BY amount_cents DESC").fetchall()]
-        # MRR: assinantes pagantes ativos (exclui cortesia do coach), R$99/mês equiv.
-        paying_pro = _fetchone(conn, """
+            f"FROM payments WHERE status='approved' AND {_no_admin_pay} "
+            "GROUP BY gateway ORDER BY amount_cents DESC").fetchall()]
+        # MRR: assinantes pagantes ativos (exclui cortesia do coach E admin), R$99/mês equiv.
+        paying_pro = _fetchone(conn, f"""
             SELECT COUNT(*) AS n FROM users
-            WHERE plan='pro' AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial','coach_earned'))
+            WHERE plan='pro' AND {_no_admin_usr}
+              AND (plan_source IS NULL OR plan_source NOT IN ('coach_trial','coach_earned'))
         """)['n']
-        coach_perk = _fetchone(conn, """
+        coach_perk = _fetchone(conn, f"""
             SELECT COUNT(*) AS n FROM users
-            WHERE plan='pro' AND plan_source IN ('coach_trial','coach_earned')
+            WHERE plan='pro' AND {_no_admin_usr} AND plan_source IN ('coach_trial','coach_earned')
         """)['n']
         mrr = paying_pro * 9900
         return {
@@ -3803,6 +3808,7 @@ def _real_mrr_cents(conn) -> int:
         FROM payments p
         JOIN users u ON u.id = p.user_id
         WHERE p.status='approved' AND u.plan='pro'
+          AND COALESCE(u.role,'') != 'admin'
           AND (u.plan_source IS NULL OR u.plan_source NOT IN ('coach_trial','coach_earned'))
     """)
     from datetime import datetime
@@ -3897,20 +3903,21 @@ def admin_cockpit_summary(month: str = None) -> dict:
     start, end = _month_bounds(month)
     conn = get_conn()
     try:
-        # ENTRADAS (bruto aprovado no mês, por gateway e por plano)
+        # ENTRADAS (bruto aprovado no mês, por gateway e por plano) — exclui admin (teste, não é receita)
+        _na = "AND user_id NOT IN (SELECT id FROM users WHERE role='admin')"
         gin = _fetchone(conn, _adapt(
             "SELECT COALESCE(SUM(amount_cents),0) c, COUNT(*) n FROM payments "
-            "WHERE status='approved' AND created_at >= ? AND created_at < ?"), (start, end))
+            f"WHERE status='approved' {_na} AND created_at >= ? AND created_at < ?"), (start, end))
         by_gateway = _fetchall(conn, _adapt(
             "SELECT gateway, COALESCE(SUM(amount_cents),0) amount_cents, COUNT(*) n FROM payments "
-            "WHERE status='approved' AND created_at >= ? AND created_at < ? "
+            f"WHERE status='approved' {_na} AND created_at >= ? AND created_at < ? "
             "GROUP BY gateway ORDER BY amount_cents DESC"), (start, end))
         by_plan = _fetchall(conn, _adapt(
             "SELECT plan, COALESCE(SUM(amount_cents),0) amount_cents, COUNT(*) n FROM payments "
-            "WHERE status='approved' AND created_at >= ? AND created_at < ? "
+            f"WHERE status='approved' {_na} AND created_at >= ? AND created_at < ? "
             "GROUP BY plan ORDER BY amount_cents DESC"), (start, end))
         failed = _fetchone(conn, _adapt(
-            "SELECT COUNT(*) n FROM payments WHERE status='failed' AND created_at >= ? AND created_at < ?"),
+            f"SELECT COUNT(*) n FROM payments WHERE status='failed' {_na} AND created_at >= ? AND created_at < ?"),
             (start, end))['n']
         # SAÍDAS (repasses de coach do período + despesas do mês)
         payouts = _fetchone(conn, _adapt(
@@ -6659,17 +6666,18 @@ def get_decisions_for_elo(user_id: int, last_n_tournaments: Optional[int] = None
 
 def get_decisions_for_elo_curve(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:
     """
-    Decisões pra curva de ELO torneio-a-torneio: inclui tournament_id, ordenadas
-    por DATA DE JOGO do torneio (played_at, fallback imported_at) + ordem da decisão.
+    Decisões pra curva de ELO torneio-a-torneio: inclui tournament_id. Seleção dos últimos N por
+    imported_at (uploads recentes); ORDEM por DATA DE JOGO (played_at, fallback imported_at) no
+    ORDER BY abaixo + ordem da decisão.
 
-    last_n_tournaments: limita aos últimos N torneios JOGADOS (por played_at).
+    last_n_tournaments: limita aos últimos N torneios importados.
     """
     conn = get_conn()
     try:
         if last_n_tournaments:
             t_rows = _fetchall(conn, _adapt(
                 "SELECT id FROM tournaments WHERE user_id = ? "
-                "ORDER BY COALESCE(played_at, imported_at) DESC, id DESC LIMIT ?"
+                "ORDER BY imported_at DESC, id DESC LIMIT ?"
             ), (user_id, int(last_n_tournaments)))
             tids = [r['id'] for r in t_rows]
             if not tids:
