@@ -4,7 +4,6 @@ import { ChevronDown, LogOut, UserCircle, Zap, Users, LayoutDashboard, CreditCar
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { CheckoutModal } from "./CheckoutModal";
-import { SubscriptionModal } from "./SubscriptionModal";
 
 const PLAN_LABEL: Record<string, string> = {
   free:  "Freemium",
@@ -59,7 +58,6 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<"pro" | null>(null);
-  const [showSub, setShowSub] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -137,7 +135,7 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
               )}
               {plan === "pro" && (
                 <button
-                  onClick={() => { setShowSub(true); setOpen(false); }}
+                  onClick={() => { navigate("/subscription"); setOpen(false); }}
                   className="flex items-center justify-center gap-1.5 w-full rounded-md border border-border py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
                 >
                   <CreditCard className="size-3" /> Gerenciar assinatura
@@ -198,12 +196,6 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
         />
       )}
 
-      <SubscriptionModal
-        open={showSub}
-        onClose={() => setShowSub(false)}
-        planExpiresAt={user.plan_expires_at}
-        onChanged={refreshUser}
-      />
     </div>
   );
 }

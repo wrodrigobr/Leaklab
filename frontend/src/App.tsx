@@ -36,6 +36,7 @@ import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
 import Docs from "./pages/Docs.tsx";
 import HandBuilder from "./pages/HandBuilder.tsx";
+import Subscription from "./pages/Subscription.tsx";
 
 const queryClient = new QueryClient();
 
@@ -176,6 +177,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <HandBuilder />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subscription"
+              element={
+                <ProtectedRoute>
+                  <Subscription />
                 </ProtectedRoute>
               }
             />
