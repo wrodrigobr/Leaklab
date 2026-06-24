@@ -494,10 +494,6 @@ export default function Docs() {
                 ]}
               />
               <p dangerouslySetInnerHTML={{ __html: t("coaching.p2") }} />
-
-              <h3 className="text-base font-semibold text-foreground pt-2">{t("coaching.plan_title")}</h3>
-              <p dangerouslySetInnerHTML={{ __html: t("coaching.plan_p1") }} />
-              <p dangerouslySetInnerHTML={{ __html: t("coaching.plan_p2") }} />
             </Section>
 
             {/* Gamification */}
