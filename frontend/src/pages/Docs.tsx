@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { HudLayout } from "@/components/hud/HudLayout";
 import { BookOpen, ChevronRight, TrendingUp } from "lucide-react";
 
-const SECTION_IDS = ["import", "scoring", "indicators", "gto_method", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "pressure", "bankroll", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin", "sparring"] as const;
+const SECTION_IDS = ["import", "scoring", "indicators", "today", "kpis", "gto_method", "coverage", "replayer", "pko_tournaments", "mstacks", "dna", "leaks", "causal_map", "streets", "positions", "pressure", "bankroll", "ghost", "compare", "coaching", "gamification", "ranking", "career", "cognitive", "twin", "sparring"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
@@ -220,6 +220,19 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("indicators.p1") }} />
             </Section>
 
+            {/* Resumo de Hoje (Hero do dashboard) */}
+            <Section id="today" title={t("today.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("today.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("today.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("today.p3") }} />
+            </Section>
+
+            {/* KPIs ROI / ITM / Volume */}
+            <Section id="kpis" title={t("kpis.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("kpis.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("kpis.p2") }} />
+            </Section>
+
             {/* GTO Classification Methodology */}
             <Section id="gto_method" title={t("gto_method.title")}>
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p1") }} />
@@ -244,6 +257,12 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p3") }} />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.coverage") }} />
+            </Section>
+
+            {/* Cobertura GTO (anéis preflop/postflop) */}
+            <Section id="coverage" title={t("coverage.title")}>
+              <p dangerouslySetInnerHTML={{ __html: t("coverage.p1") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("coverage.p2") }} />
             </Section>
 
             {/* Replayer — revisão de mão */}

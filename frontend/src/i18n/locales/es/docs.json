@@ -28,7 +28,10 @@
     "cognitive": "Patrones Cognitivos",
     "twin": "Tendencias Estratégicas",
     "sparring": "Sparring Mode",
-    "rating": "Rating ELO"
+    "rating": "Rating ELO",
+    "today": "Resumen de Hoy",
+    "kpis": "ROI · ITM · Volumen",
+    "coverage": "Cobertura GTO"
   },
   "import": {
     "title": "Salas Soportadas e Importación",
@@ -454,5 +457,21 @@
     "p2": "La mano autoseleccionada contiene uno de tus peores errores de los últimos meses, priorizando manos con varias decisiones para formar un arco narrativo completo (preflop → flop → turn/river). En cada nueva sesión, las manos ya jugadas se dejan de lado hasta que pases por las demás.",
     "p3": "Cada respuesta ajusta cuándo verás el spot de nuevo (repetición espaciada): los aciertos avanzan el intervalo de revisión y los errores lo reinician en el mínimo. El <strong>Sparring se integra directamente con el Ghost Table</strong>, los mismos spots aparecen en ambos modos según se programe la revisión.",
     "validation": "Las manos del Sparring son tus manos reales con cobertura completa del solver, priorizando las que contienen un error tuyo. Cada jugada se valida con el mismo estándar del Ghost Table, con el sello indicando la fuente (tu mano, range o heurística)."
+  },
+  "today": {
+    "title": "Resumen de Hoy",
+    "p1": "En la parte superior del dashboard, el bloque <strong>Hoy</strong> resume en tres números dónde estás ahora: cuánto EV pierdes, qué tan sólidas son tus decisiones y cuál es tu error más caro.",
+    "p2": "<strong>EV perdido /100</strong> es el número líder: cuánto EV (en big blinds) pierdes, en promedio, cada 100 decisiones. Cuanto menor, mejor. La flecha indica si está mejorando o empeorando respecto al período anterior.",
+    "p3": "<strong>Decisiones sólidas</strong> es la fracción de tus decisiones que siguen una línea sólida (correcta o aceptable). <strong>Entrenar el leak más caro</strong> señala tu error de mayor costo en el momento (la acción que tomaste, la recomendada, la calle y cuánto costó en bb) y te lleva directo al entrenamiento."
+  },
+  "kpis": {
+    "title": "ROI, ITM y Volumen",
+    "p1": "Justo debajo del resumen, tres indicadores de resultado: <strong>ROI</strong> (retorno sobre los buy-ins invertidos), <strong>ITM</strong> (con qué frecuencia terminas en el dinero) y <strong>Volumen</strong> (cuántos torneos y manos cubre la muestra).",
+    "p2": "Con muestra pequeña, el ROI se convierte en <strong>Ganancia neta</strong> (en valor), porque un porcentaje con pocos torneos engaña. El volumen es el contexto: cuanto mayor la muestra, más confiables son los demás números."
+  },
+  "coverage": {
+    "title": "Cobertura GTO",
+    "p1": "La tarjeta <strong>Cobertura GTO</strong> muestra, en dos anillos, qué porcentaje de tus decisiones se comparó contra la referencia del GTO Solver: un anillo para el preflop y otro para el postflop.",
+    "p2": "El preflop suele quedar cubierto casi de inmediato. El postflop crece con el tiempo, a medida que el solver resuelve los spots en segundo plano; por eso, cuando aún está por debajo del total, la tarjeta muestra la nota \"en análisis\". Cuanto mayor la cobertura, más de tu juego pasó por el filtro del GTO."
   }
 }
