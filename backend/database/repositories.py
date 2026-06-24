@@ -67,17 +67,21 @@ def _build_tournament_filter(user_id: int, days: int = 90, last_n: int | None = 
     """
     Retorna (where_clause, params) para filtrar torneios por volume ou por data.
 
-    - last_n=N  → últimos N torneios do usuário (independente de data)
-    - last_n=None → torneios importados nos últimos `days` dias
+    - last_n=N  → últimos N torneios JOGADOS do usuário (por played_at, não pela ordem de upload)
+    - last_n=None → torneios JOGADOS nos últimos `days` dias
+
+    Usa played_at (data de jogo parseada do HH), com fallback p/ imported_at quando ausente. Antes
+    usava imported_at → subir torneios fora de ordem cronológica distorcia a seleção e o eixo X.
     """
     if last_n is not None:
         return (
-            "t.id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY imported_at DESC LIMIT ?)",
+            "t.id IN (SELECT id FROM tournaments WHERE user_id = ? "
+            "ORDER BY COALESCE(played_at, imported_at) DESC LIMIT ?)",
             (user_id, last_n),
         )
     from datetime import datetime, timedelta
     since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-    return "t.user_id = ? AND t.imported_at >= ?", (user_id, since)
+    return "t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ?", (user_id, since)
 
 
 def _jsonable(v):
@@ -664,13 +668,17 @@ def get_evolution_metrics(user_id: int, days: int = 90, last_n: int | None = Non
     """Retorna métricas por torneio para o gráfico de evolução."""
     tourn_filter, tourn_params = _build_tournament_filter(user_id, days, last_n)
     # Evolution query filters tournaments directly (no decisions join needed)
+    # Ordena/seleciona por DATA DE JOGO (played_at, parseada do HH), não pela de upload
+    # (imported_at) — senão subir torneios fora de ordem cronológica embaralha o eixo X dos
+    # gráficos. Fallback p/ imported_at quando o HH não tinha data parseável.
     if last_n is not None:
-        where = "id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY imported_at DESC LIMIT ?)"
+        where = ("id IN (SELECT id FROM tournaments WHERE user_id = ? "
+                 "ORDER BY COALESCE(played_at, imported_at) DESC LIMIT ?)")
         params = (user_id, last_n)
     else:
         from datetime import datetime, timedelta
         since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-        where = "user_id = ? AND imported_at >= ?"
+        where = "user_id = ? AND COALESCE(played_at, imported_at) >= ?"
         params = (user_id, since)
     conn = get_conn()
     try:
@@ -681,7 +689,7 @@ def get_evolution_metrics(user_id: int, days: int = 90, last_n: int | None = Non
                    buy_in, prize, profit, place, result
             FROM tournaments
             WHERE {where}
-            ORDER BY imported_at ASC
+            ORDER BY COALESCE(played_at, imported_at) ASC, imported_at ASC
         """, params).fetchall()
         return _jsonable([dict(r) for r in rows])
     finally:
@@ -6652,16 +6660,16 @@ def get_decisions_for_elo(user_id: int, last_n_tournaments: Optional[int] = None
 def get_decisions_for_elo_curve(user_id: int, last_n_tournaments: Optional[int] = None) -> list[dict]:
     """
     Decisões pra curva de ELO torneio-a-torneio: inclui tournament_id, ordenadas
-    por imported_at do torneio (cronológico) + ordem da decisão.
+    por DATA DE JOGO do torneio (played_at, fallback imported_at) + ordem da decisão.
 
-    last_n_tournaments: limita aos últimos N torneios (por imported_at).
+    last_n_tournaments: limita aos últimos N torneios JOGADOS (por played_at).
     """
     conn = get_conn()
     try:
         if last_n_tournaments:
             t_rows = _fetchall(conn, _adapt(
                 "SELECT id FROM tournaments WHERE user_id = ? "
-                "ORDER BY imported_at DESC, id DESC LIMIT ?"
+                "ORDER BY COALESCE(played_at, imported_at) DESC, id DESC LIMIT ?"
             ), (user_id, int(last_n_tournaments)))
             tids = [r['id'] for r in t_rows]
             if not tids:
@@ -6672,7 +6680,7 @@ def get_decisions_for_elo_curve(user_id: int, last_n_tournaments: Optional[int] 
                 f"FROM decisions d "
                 f"INNER JOIN tournaments t ON t.id = d.tournament_id "
                 f"WHERE d.tournament_id IN ({placeholders}) "
-                f"ORDER BY t.imported_at ASC, t.id ASC, d.id ASC"
+                f"ORDER BY COALESCE(t.played_at, t.imported_at) ASC, t.id ASC, d.id ASC"
             ), tuple(tids))
         else:
             rows = _fetchall(conn, _adapt(
@@ -6680,7 +6688,7 @@ def get_decisions_for_elo_curve(user_id: int, last_n_tournaments: Optional[int] 
                 "FROM decisions d "
                 "INNER JOIN tournaments t ON t.id = d.tournament_id "
                 "WHERE t.user_id = ? "
-                "ORDER BY t.imported_at ASC, t.id ASC, d.id ASC"
+                "ORDER BY COALESCE(t.played_at, t.imported_at) ASC, t.id ASC, d.id ASC"
             ), (user_id,))
         return [dict(r) for r in rows]
     finally:
