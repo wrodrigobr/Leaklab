@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs(content): /docs , remove plano do coach e Sparring + corrige nome do card cognitive
+
+> Três ajustes de conteúdo: (1) removida a subseção "Seu plano como coach" (3 meses de cortesia, meta de 15 alunos pagantes, downgrade) , é negociação com o coach, não documentação pública; o banner operacional no CoachDashboard permanece. (2) Removida a seção **Sparring Mode** (feature removida do produto). (3) O título e o texto da seção cognitiva usavam o nome interno inglês "Cognitive Failure Mapper", inconsistente com o nav e o card; alinhado ao nome de exibição por locale (PT "Padrões Cognitivos", EN "Cognitive Patterns", ES "Patrones Cognitivos"). Paridade i18n mantida nas 3 locales.
+
 ### docs(content): remove 5 seções órfãs da /docs + ajusta 3 que mudaram de métrica
 
 > Cruzamento dashboard V2 × documentação: cards que saíram do dashboard mas a /docs ainda descrevia. **Removidas** as seções de cards que não são mais renderizados (0 ocorrências em DashboardV2/Index): `alignment_matrix` (Heatmap Posição × Street), `form` (Forma Recente), `decisions` (Qualidade das Decisões), `icm` (card de distribuição ICM) e `level` (card "Meu Nível") , Sections + JSX + helpers órfãos + chaves nas 3 locales. **Ajustadas** 3 seções cuja métrica mudou: `streets` (de "% corretas" para "EV perdido em bb por street", com exemplo em bb), `positions` (de "taxa standard" para "% de alinhamento com o GTO"), `bankroll` (filtros "1M/3M/1A/Tudo" → "7d/30d/6M/1A/Tudo" + seletor "Por tempo / Por torneio"). Gamificação (XP/níveis) segue em `gamification`; só o card "Meu Nível" saiu. **Adicionadas** 3 seções de cards do V2 que não tinham doc: `today` (Hero "Hoje" , EV perdido /100, % de decisões sólidas, atalho pro leak mais caro), `kpis` (ROI, ITM, Volume) e `coverage` (Cobertura GTO , anéis preflop/postflop). Paridade i18n idêntica (407 chaves), zero travessão na prosa.
