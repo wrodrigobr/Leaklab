@@ -4527,21 +4527,42 @@ def get_coach_trial_status(coach_id: int) -> dict:
     }
 
 
-def calculate_coach_payout(active_students: int) -> int:
-    """Revenue share em centavos (BRL). 1-3: mensalidade zerada; 4-9: R$15/aluno; 10+: R$20/aluno."""
-    if active_students >= 10: return active_students * 2000
-    if active_students >= 4:  return active_students * 1500
-    return 0
+def calculate_coach_payout(active_students: int, commission_cents: Optional[int] = None) -> int:
+    """Repasse em centavos (BRL) por aluno pagante indicado.
+    `commission_cents` = taxa FLAT por aluno por coach (override, ex.: Parceiro Fundador). Sem override,
+    usa a escada por volume: 1-9 = R$15/aluno; 10-29 = R$20; 30+ = R$25. Paga desde o 1º aluno."""
+    if active_students <= 0:
+        return 0
+    if commission_cents is not None:
+        return active_students * commission_cents
+    if active_students >= 30: rate = 2500
+    elif active_students >= 10: rate = 2000
+    else:                      rate = 1500   # 1-9
+    return active_students * rate
 
 
-def coach_next_tier(active_students: int) -> Optional[dict]:
-    """Próxima faixa de payout p/ o motivador do cockpit ("faltam X ativos → R$Y/aluno").
-    None quando já está na faixa máxima (10+)."""
-    if active_students < 4:
-        return {'threshold': 4, 'rate_cents': 1500, 'needed': 4 - active_students}
+def coach_next_tier(active_students: int, commission_cents: Optional[int] = None) -> Optional[dict]:
+    """Próxima faixa de payout p/ o motivador do cockpit ("faltam X → R$Y/aluno").
+    None quando já está no topo (30+) ou quando o coach tem taxa flat (Parceiro Fundador)."""
+    if commission_cents is not None:
+        return None   # taxa flat, sem escada
     if active_students < 10:
         return {'threshold': 10, 'rate_cents': 2000, 'needed': 10 - active_students}
+    if active_students < 30:
+        return {'threshold': 30, 'rate_cents': 2500, 'needed': 30 - active_students}
     return None
+
+
+def set_coach_commission(coach_id: int, commission_cents: Optional[int]) -> None:
+    """Define a taxa FLAT por aluno de um coach (Parceiro Fundador, ex.: 3000 = R$30).
+    None = volta pra escada padrão por volume. Requer coach_profiles já existente."""
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("UPDATE coach_profiles SET commission_cents = ? WHERE user_id = ?"),
+                     (commission_cents, coach_id))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def get_admin_dashboard_stats() -> dict:
@@ -4694,7 +4715,7 @@ def get_coaches_with_payout_status(period: str) -> list:
     conn = get_conn()
     try:
         coaches = _fetchall(conn, """
-            SELECT u.id, u.username, cp.display_name, u.plan,
+            SELECT u.id, u.username, cp.display_name, u.plan, cp.commission_cents,
                    (SELECT COUNT(*) FROM users WHERE coach_id = u.id) AS total_students
             FROM users u
             LEFT JOIN coach_profiles cp ON cp.user_id = u.id
@@ -4702,20 +4723,18 @@ def get_coaches_with_payout_status(period: str) -> list:
             ORDER BY u.username
         """)
         for coach in coaches:
-            # SEC-01: comp por INDICADOS+ATIVOS — só conta aluno indicado via convite
-            # single-use (invited_via_invite_id) + pro + importou nos últimos 30d.
-            active = _fetchone(conn, f"""
+            # Pay-while-paying: conta o aluno PAGANTE indicado (não exige atividade recente).
+            # SEC-01: só indicado via convite single-use (invited_via_invite_id) + pro + aprovado.
+            active = _fetchone(conn, """
                 SELECT COUNT(DISTINCT s.id) AS n
                 FROM users s
-                INNER JOIN tournaments t ON t.user_id = s.id
                 WHERE s.coach_id = ? AND s.plan = 'pro'
                   AND (s.invited_via_invite_id IS NOT NULL OR s.referral_coach_id IS NOT NULL)
                   AND s.link_status = 'approved'
                   AND COALESCE(s.subscription_status,'active') <> 'past_due'
-                  AND t.imported_at >= {interval_sql(30)}
             """, (coach['id'],))['n']
             coach['active_students'] = active
-            coach['amount_cents']    = calculate_coach_payout(active)
+            coach['amount_cents']    = calculate_coach_payout(active, coach.get('commission_cents'))
             # busca pagamento existente para o período
             pay = _fetchone(conn, """
                 SELECT id, status, paid_at FROM coach_payments
@@ -4778,17 +4797,19 @@ def get_coach_finance_summary(coach_id: int) -> dict:
         referred_count = _fetchone(conn,
             "SELECT COUNT(*) AS n FROM users WHERE coach_id = ? AND invited_via_invite_id IS NOT NULL",
             (coach_id,))['n']
-        # comp = INDICADOS + ATIVOS: indicado via convite + pro + importou nos últimos 30d
-        active_students = _fetchone(conn, f"""
+        # taxa do coach (override flat de Parceiro Fundador; NULL = escada padrão por volume)
+        _cc = _fetchone(conn, "SELECT commission_cents FROM coach_profiles WHERE user_id = ?", (coach_id,))
+        commission_cents = _cc['commission_cents'] if _cc else None
+        # Pay-while-paying: indicado + pagante + aprovado + não past_due (sem gate de atividade).
+        active_students = _fetchone(conn, """
             SELECT COUNT(DISTINCT s.id) AS n
             FROM users s
-            INNER JOIN tournaments t ON t.user_id = s.id
             WHERE s.coach_id = ? AND s.plan = 'pro'
-              AND s.invited_via_invite_id IS NOT NULL
+              AND (s.invited_via_invite_id IS NOT NULL OR s.referral_coach_id IS NOT NULL)
               AND s.link_status = 'approved'
-              AND t.imported_at >= {interval_sql(30)}
+              AND COALESCE(s.subscription_status,'active') <> 'past_due'
         """, (coach_id,))['n']
-        amount_cents = calculate_coach_payout(active_students)
+        amount_cents = calculate_coach_payout(active_students, commission_cents)
         pay = _fetchone(conn, """
             SELECT id, status, paid_at FROM coach_payments
             WHERE coach_id = ? AND period = ?
@@ -4800,7 +4821,7 @@ def get_coach_finance_summary(coach_id: int) -> dict:
             'active_students':    active_students,
             'referred_count':     referred_count,
             'amount_cents':       amount_cents,
-            'next_tier':          coach_next_tier(active_students),
+            'next_tier':          coach_next_tier(active_students, commission_cents),
             'status':             pay['status'] if pay else 'pending',
             'paid_at':            pay['paid_at'] if pay else None,
             'monthly_fee_waived': monthly_fee_waived,

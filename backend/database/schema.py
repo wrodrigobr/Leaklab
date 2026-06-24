@@ -1153,6 +1153,8 @@ def _run_migrations(conn):
             ("social_instagram",  "ALTER TABLE coach_profiles ADD COLUMN social_instagram  TEXT"),
             # Sprint 12 — BACK-011 pt.2: content moderation
             ("moderation_status", "ALTER TABLE coach_profiles ADD COLUMN moderation_status TEXT NOT NULL DEFAULT 'approved'"),
+            # Parceria: taxa fixa por aluno pagante por coach (cents). NULL = escada padrão.
+            ("commission_cents",  "ALTER TABLE coach_profiles ADD COLUMN commission_cents  INTEGER"),
         ]:
             if col not in prof_existing:
                 try: conn.execute(sql)
@@ -1689,6 +1691,9 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_completed_at TIMESTAMP",
             # Atribuição de aquisição: utm_source capturado no cadastro (ex.: 'instagram').
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS acquisition_source   TEXT",
+            # Parceria: taxa FIXA por aluno pagante POR COACH (cents). NULL = usa a escada padrão
+            # (1-9: R$15, 10-29: R$20, 30+: R$25). Parceiro Fundador (Felipe) = 3000 (R$30 flat).
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS commission_cents INTEGER",
         ]
         for _stmt in _safe:
             try:
