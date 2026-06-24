@@ -7,6 +7,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### docs(content): remove 5 seções órfãs da /docs + ajusta 3 que mudaram de métrica
+
+> Cruzamento dashboard V2 × documentação: cards que saíram do dashboard mas a /docs ainda descrevia. **Removidas** as seções de cards que não são mais renderizados (0 ocorrências em DashboardV2/Index): `alignment_matrix` (Heatmap Posição × Street), `form` (Forma Recente), `decisions` (Qualidade das Decisões), `icm` (card de distribuição ICM) e `level` (card "Meu Nível") , Sections + JSX + helpers órfãos + chaves nas 3 locales. **Ajustadas** 3 seções cuja métrica mudou: `streets` (de "% corretas" para "EV perdido em bb por street", com exemplo em bb), `positions` (de "taxa standard" para "% de alinhamento com o GTO"), `bankroll` (filtros "1M/3M/1A/Tudo" → "7d/30d/6M/1A/Tudo" + seletor "Por tempo / Por torneio"). Gamificação (XP/níveis) segue em `gamification`; só o card "Meu Nível" saiu. Paridade i18n idêntica (394 chaves), zero travessão na prosa.
+
 ### feat(dashboard): evolução do bankroll com eixo X temporal + filtros 7d/30d/6m + toggle tempo/torneio
 
 > O gráfico de bankroll (V2BankrollCard, o card que de fato renderiza no dashboard V2) não tinha referência de tempo no eixo X (plotava por índice de torneio "#1, #2…"). Agora: **filtros 7d / 30d / 6M / 1A / Tudo** (era 1M/3M/1Y/Tudo; default 6M); **eixo X temporal** (x = data de jogo / `played_at`, tempo-proporcional) com **ticks de data adaptativos** ao filtro (≈diário em 7d, mês/ano em janelas longas; locale do usuário); e um **toggle "Por tempo / Por torneio"** , tempo mostra a evolução no calendário (com os gaps de dias sem jogar), torneio mostra a sequência com espaçamento uniforme. O tooltip troca conforme o modo (data vs "#i"). i18n PT/EN/ES. *(A mesma lógica foi aplicada ao BankrollChart clássico, que é código latente.)*
