@@ -217,9 +217,9 @@ export default function Docs() {
               <p dangerouslySetInnerHTML={{ __html: t("scoring.p3") }} />
               <p dangerouslySetInnerHTML={{ __html: t("scoring.p4") }} />
               <ExampleBox label={t("exampleLabel")}>
-                <MiniScoreLine quality="standard" score="0.04" decision={t("scoring.example_standard")} />
-                <MiniScoreLine quality="marginal" score="0.14" decision={t("scoring.example_marginal")} />
-                <MiniScoreLine quality="clear"    score="0.41" decision={t("scoring.example_error")} />
+                <MiniScoreLine quality="standard" score={t("scoring.table.correct_label")}    decision={t("scoring.example_standard")} />
+                <MiniScoreLine quality="marginal" score={t("scoring.table.acceptable_label")} decision={t("scoring.example_marginal")} />
+                <MiniScoreLine quality="clear"    score={t("scoring.table.error_label")}      decision={t("scoring.example_error")} />
               </ExampleBox>
             </Section>
 
@@ -262,20 +262,6 @@ export default function Docs() {
                   [<Badge color="bg-red-500/15 text-red-400">{t("gto_method.error_label")}</Badge>,              t("gto_method.error_meaning"),      t("gto_method.error_impact")],
                 ]}
               />
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-foreground/70">{t("gto_method.buckets_title")}</p>
-              <Table
-                headers={[t("gto_method.col_bucket"), t("gto_method.col_bb_range")]}
-                rows={[
-                  ["10bb", "≤ 12bb"],
-                  ["14bb", "13 – 16bb"],
-                  ["20bb", "17 – 24bb"],
-                  ["30bb", "25 – 35bb"],
-                  ["40bb", "36 – 45bb"],
-                  ["50bb", "46 – 62bb"],
-                  ["75bb", "63 – 87bb"],
-                  ["100bb", "> 87bb"],
-                ]}
-              />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p2") }} />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.p3") }} />
               <p dangerouslySetInnerHTML={{ __html: t("gto_method.coverage") }} />
@@ -313,7 +299,7 @@ export default function Docs() {
               <Table
                 headers={[t("pko_tournaments.col_situation"), t("pko_tournaments.col_classic"), t("pko_tournaments.col_pko")]}
                 rows={[
-                  [t("pko_tournaments.row_required"),  "~14%", "~6% (−2pp aplicado)"],
+                  [t("pko_tournaments.row_required"),  t("pko_tournaments.required_classic"), t("pko_tournaments.required_pko")],
                   [t("pko_tournaments.row_pre_ft"),    "high → medium → low", t("pko_tournaments.pre_ft_pko")],
                   [t("pko_tournaments.row_final"),     t("pko_tournaments.final_classic"), t("pko_tournaments.final_pko")],
                 ]}
@@ -372,7 +358,7 @@ export default function Docs() {
                   <div className="grid grid-cols-3 gap-2 pl-3.5">
                     {[
                       { val: "31",  label: t("leaks.example_freq") },
-                      { val: "0.44", label: "avg score" },
+                      { val: td("leaks.critical"), label: t("leaks.example_severity") },
                       { val: "↘ reg.", label: t("leaks.example_trend") },
                     ].map(({ val, label }) => (
                       <div key={label} className="text-center">
