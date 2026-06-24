@@ -3501,7 +3501,8 @@ def _maybe_reset_quota(conn, user_id: int) -> None:
     if not row:
         return
 
-    stored = (row.get('quota_reset_at') or '')[:7]  # 'YYYY-MM'
+    # Postgres devolve DATE; SQLite, str. str(...) normaliza os dois p/ 'YYYY-MM'.
+    stored = str(row.get('quota_reset_at') or '')[:7]
     if stored != current_month:
         conn.execute(
             """UPDATE users
@@ -3594,7 +3595,8 @@ def _maybe_reset_daily_quota(conn, user_id: int) -> None:
     row = _fetchone(conn, "SELECT quota_day_reset_at FROM users WHERE id = ?", (user_id,))
     if not row:
         return
-    stored = (row.get('quota_day_reset_at') or '')[:10]  # 'YYYY-MM-DD'
+    # Postgres devolve DATE (datetime.date); SQLite, str. str(...) normaliza os dois p/ 'YYYY-MM-DD'.
+    stored = str(row.get('quota_day_reset_at') or '')[:10]
     if stored != today:
         conn.execute(
             "UPDATE users SET ai_chat_today = 0, solves_today = 0, quota_day_reset_at = ? WHERE id = ?",
