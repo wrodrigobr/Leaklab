@@ -85,10 +85,10 @@
     "myRank": "#{{rank}} no ranking público",
     "overallRank": "Posição geral: #{{rank}}",
     "publicYes": "Visível no ranking público",
-    "publicNo": "Fora do ranking público, ative acima",
+    "publicNo": "Fora do ranking público, ative abaixo",
     "rankDeltaSince": "Variação desde o último registro",
     "notListed": "Você não está no ranking público",
-    "notListedCta": "Ative a participação acima para aparecer.",
+    "notListedCta": "Ative a participação abaixo para aparecer.",
     "myScoreLine": "Score {{score}} · {{elo}} ELO"
   },
   "eyebrow": "Sessão sincronizada",
