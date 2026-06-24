@@ -3696,9 +3696,17 @@ def save_payment(
              gateway, gateway_id, gateway_sub_id, period_start, period_end),
         )
         conn.commit()
-        return cur.lastrowid
+        pid = cur.lastrowid
     finally:
         conn.close()
+    # Comissão do coach por PAGAMENTO (modelo %): só no insert NOVO de pagamento aprovado.
+    # Idempotente por gateway_id; sem coach/indicação é no-op. Não pode quebrar o save.
+    if status == 'approved' and gateway_id:
+        try:
+            accrue_coach_commission(user_id, str(gateway_id), int(amount_cents or 0))
+        except Exception:
+            pass
+    return pid
 
 
 def get_payments(user_id: int, limit: int = 20) -> List[dict]:
@@ -3725,9 +3733,15 @@ def mark_payment_refunded(gateway_id: str, full: bool = True) -> int | None:
             return None
         conn.execute(_adapt("UPDATE payments SET status = 'refunded' WHERE id = ?"), (row['id'],))
         conn.commit()
-        return int(row['user_id']) if full else None
+        _uid = int(row['user_id'])
     finally:
         conn.close()
+    # Estorno reverte a comissão do coach desse pagamento (se ainda não foi paga).
+    try:
+        reverse_coach_commission(str(gateway_id))
+    except Exception:
+        pass
+    return _uid if full else None
 
 
 # ── PAY-03: visão financeira administrativa (todos os pagamentos) ─────────────
@@ -4561,6 +4575,132 @@ def set_coach_commission(coach_id: int, commission_cents: Optional[int]) -> None
         conn.execute(_adapt("UPDATE coach_profiles SET commission_cents = ? WHERE user_id = ?"),
                      (commission_cents, coach_id))
         conn.commit()
+    finally:
+        conn.close()
+
+
+# ── Comissão por PAGAMENTO (modelo %): accrual com carência ──────────────────
+_COMMISSION_HOLD_DAYS = 14   # a comissão só vira pagável após a janela de estorno
+
+
+def set_coach_commission_rate(coach_id: int, rate_bps: Optional[int]) -> None:
+    """Define a taxa % do coach em basis points (3000 = 30%). None = escada por volume."""
+    conn = get_conn()
+    try:
+        conn.execute(_adapt("UPDATE coach_profiles SET commission_rate_bps = ? WHERE user_id = ?"),
+                     (rate_bps, coach_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _coach_paying_referred_count(conn, coach_id: int) -> int:
+    return _fetchone(conn, _adapt("""
+        SELECT COUNT(DISTINCT s.id) AS n FROM users s
+        WHERE s.coach_id = ? AND s.plan = 'pro'
+          AND (s.invited_via_invite_id IS NOT NULL OR s.referral_coach_id IS NOT NULL)
+          AND s.link_status = 'approved'
+          AND COALESCE(s.subscription_status,'active') <> 'past_due'
+    """), (coach_id,))['n']
+
+
+def _coach_rate_bps(conn, coach_id: int, count: int) -> int:
+    """Taxa em basis points. Override por coach (commission_rate_bps, ex.: Felipe 3000=30%) ou escada
+    por volume: 1-9 → 15%, 10-29 → 20%, 30+ → 25%."""
+    row = _fetchone(conn, _adapt("SELECT commission_rate_bps FROM coach_profiles WHERE user_id = ?"), (coach_id,))
+    if row and row.get('commission_rate_bps') is not None:
+        return int(row['commission_rate_bps'])
+    if count >= 30: return 2500
+    if count >= 10: return 2000
+    return 1500
+
+
+def accrue_coach_commission(student_id: int, payment_ref: str, base_cents: int) -> None:
+    """Acumula a comissão do coach por um PAGAMENTO do aluno (% sobre o bruto). Idempotente por
+    payment_ref (UNIQUE). Vira pagável após a carência. Sem coach/indicação → no-op."""
+    from datetime import datetime, timedelta
+    if not payment_ref or not base_cents or int(base_cents) <= 0:
+        return
+    conn = get_conn()
+    try:
+        s = _fetchone(conn, _adapt(
+            "SELECT coach_id, link_status, invited_via_invite_id, referral_coach_id FROM users WHERE id = ?"),
+            (student_id,))
+        if not s or not s.get('coach_id'):
+            return
+        if s.get('link_status') not in (None, 'approved'):
+            return
+        if not (s.get('invited_via_invite_id') or s.get('referral_coach_id')):
+            return   # não indicado → sem comissão
+        coach_id = s['coach_id']
+        rate_bps = _coach_rate_bps(conn, coach_id, _coach_paying_referred_count(conn, coach_id))
+        amount   = int(round(int(base_cents) * rate_bps / 10000))
+        payable  = (datetime.utcnow() + timedelta(days=_COMMISSION_HOLD_DAYS)).isoformat()
+        try:
+            conn.execute(_adapt("""
+                INSERT INTO coach_commissions
+                  (coach_id, student_id, payment_ref, base_cents, rate_bps, amount_cents, status, payable_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+            """), (coach_id, student_id, str(payment_ref), int(base_cents), rate_bps, amount, payable))
+            conn.commit()
+        except Exception:
+            try: conn.rollback()    # UNIQUE(payment_ref) → já acumulado, idempotente
+            except Exception: pass
+    finally:
+        conn.close()
+
+
+def reverse_coach_commission(payment_ref: str) -> None:
+    """Estorno: reverte a comissão de um pagamento, se ainda NÃO foi paga ao coach."""
+    if not payment_ref:
+        return
+    conn = get_conn()
+    try:
+        conn.execute(_adapt(
+            "UPDATE coach_commissions SET status = 'reversed' WHERE payment_ref = ? AND status != 'paid'"),
+            (str(payment_ref),))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_coaches_commission_status() -> list:
+    """Por coach: comissão PAGÁVEL (carência vencida), EM CARÊNCIA e já PAGA (modelo %)."""
+    from datetime import datetime
+    conn = get_conn()
+    try:
+        now = datetime.utcnow().isoformat()
+        rows = _fetchall(conn, _adapt("""
+            SELECT u.id, u.username, cp.display_name, cp.commission_rate_bps,
+              COALESCE(SUM(CASE WHEN c.status='pending' AND c.payable_at <= ? THEN c.amount_cents ELSE 0 END),0) AS payable_cents,
+              COALESCE(SUM(CASE WHEN c.status='pending' AND c.payable_at >  ? THEN c.amount_cents ELSE 0 END),0) AS held_cents,
+              COALESCE(SUM(CASE WHEN c.status='paid' THEN c.amount_cents ELSE 0 END),0) AS paid_cents
+            FROM users u
+            LEFT JOIN coach_profiles cp ON cp.user_id = u.id
+            LEFT JOIN coach_commissions c ON c.coach_id = u.id
+            WHERE u.role = 'coach'
+            GROUP BY u.id, u.username, cp.display_name, cp.commission_rate_bps
+            ORDER BY u.username
+        """), (now, now))
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def mark_coach_commissions_paid(coach_id: int) -> int:
+    """Marca como PAGAS todas as comissões pagáveis (carência vencida) do coach. Retorna o total em cents."""
+    from datetime import datetime
+    conn = get_conn()
+    try:
+        now = datetime.utcnow().isoformat()
+        total = _fetchone(conn, _adapt(
+            "SELECT COALESCE(SUM(amount_cents),0) AS t FROM coach_commissions "
+            "WHERE coach_id = ? AND status='pending' AND payable_at <= ?"), (coach_id, now))['t']
+        conn.execute(_adapt(
+            "UPDATE coach_commissions SET status='paid', paid_at=? "
+            "WHERE coach_id = ? AND status='pending' AND payable_at <= ?"), (now, coach_id, now))
+        conn.commit()
+        return int(total)
     finally:
         conn.close()
 

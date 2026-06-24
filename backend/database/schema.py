@@ -1153,8 +1153,9 @@ def _run_migrations(conn):
             ("social_instagram",  "ALTER TABLE coach_profiles ADD COLUMN social_instagram  TEXT"),
             # Sprint 12 — BACK-011 pt.2: content moderation
             ("moderation_status", "ALTER TABLE coach_profiles ADD COLUMN moderation_status TEXT NOT NULL DEFAULT 'approved'"),
-            # Parceria: taxa fixa por aluno pagante por coach (cents). NULL = escada padrão.
-            ("commission_cents",  "ALTER TABLE coach_profiles ADD COLUMN commission_cents  INTEGER"),
+            # Parceria: taxa fixa por aluno (legado) + taxa % em basis points (modelo atual).
+            ("commission_cents",    "ALTER TABLE coach_profiles ADD COLUMN commission_cents    INTEGER"),
+            ("commission_rate_bps", "ALTER TABLE coach_profiles ADD COLUMN commission_rate_bps INTEGER"),
         ]:
             if col not in prof_existing:
                 try: conn.execute(sql)
@@ -1232,6 +1233,23 @@ def _run_migrations(conn):
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_payments_coach ON coach_payments(coach_id)")
+        # Comissão por PAGAMENTO (accrual) — modelo %; 1 linha por cobrança comissionável (SQLite)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coach_commissions (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                student_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                payment_ref   TEXT    NOT NULL UNIQUE,
+                base_cents    INTEGER NOT NULL,
+                rate_bps      INTEGER NOT NULL,
+                amount_cents  INTEGER NOT NULL,
+                status        TEXT    NOT NULL DEFAULT 'pending',
+                payable_at    TEXT    NOT NULL,
+                created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                paid_at       TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_coach_commissions_coach ON coach_commissions(coach_id)")
         # ADMIN-FIN: despesas (saídas) — net real do cockpit (SQLite)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS expenses (
@@ -1691,9 +1709,26 @@ def _run_migrations(conn):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_completed_at TIMESTAMP",
             # Atribuição de aquisição: utm_source capturado no cadastro (ex.: 'instagram').
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS acquisition_source   TEXT",
-            # Parceria: taxa FIXA por aluno pagante POR COACH (cents). NULL = usa a escada padrão
-            # (1-9: R$15, 10-29: R$20, 30+: R$25). Parceiro Fundador (Felipe) = 3000 (R$30 flat).
+            # Parceria (legado fixo, mantido p/ retrocompat): taxa fixa por aluno em cents.
             "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS commission_cents INTEGER",
+            # Parceria (modelo %): taxa de comissão POR COACH em basis points (3000 = 30%).
+            # NULL = escada por volume (15%/20%/25%). Parceiro Fundador (Felipe) = 3000.
+            "ALTER TABLE coach_profiles ADD COLUMN IF NOT EXISTS commission_rate_bps INTEGER",
+            # Comissão por PAGAMENTO (accrual): 1 linha por cobrança comissionável.
+            """CREATE TABLE IF NOT EXISTS coach_commissions (
+                id            SERIAL PRIMARY KEY,
+                coach_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                student_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                payment_ref   TEXT    NOT NULL UNIQUE,
+                base_cents    INTEGER NOT NULL,
+                rate_bps      INTEGER NOT NULL,
+                amount_cents  INTEGER NOT NULL,
+                status        TEXT    NOT NULL DEFAULT 'pending',
+                payable_at    TIMESTAMP NOT NULL,
+                created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+                paid_at       TIMESTAMP
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_coach_commissions_coach ON coach_commissions(coach_id)",
         ]
         for _stmt in _safe:
             try:
