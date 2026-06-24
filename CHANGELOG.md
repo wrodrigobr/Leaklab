@@ -7,6 +7,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(gto): aproximação DEEP — spot postflop fundo usa solve capado a 30bb (≈ Aproximação) em vez de heurística
+
+> Spot postflop **fundo / alto SPR** (deep OOP) é a cobertura mais rala: a árvore é grande e o solver rejeita/não fecha no stack real → caía na heurística genérica. Ideia do usuário: em HU, o solve a **~30bb** é tratável e a **AÇÃO** transfere bem (sizing/comprometimento podem diferir). Agora, quando um postflop **>35bb** não tem nó no stack real, o lookup procura o **nó capado a 30bb** (mesmo hash, `pot_type` default) e exibe **"≈ Aproximação (solver a 30bb): ação confiável, sizing pode diferir"**.
+>
+> **3 caminhos de lookup alinhados** (a saga que custou o debug): `lookup_gto` (replay/card — o que flipa o veredito de "Heurística" pra GTO), `decision_engine_v11` (reanalyze/coverage/import — o que faz a **% de cobertura subir**), e `get_decision_gto` (GtoPanel, hoje não-renderizado — inofensivo). O fallback é **read-only, aditivo** (só dispara quando NÃO há nó no stack real → nunca toca cobertura existente) e o **guard de SPR/jam** existente descarta solve a 30bb que sugira jam (não vaza pro stack fundo).
+>
+> **Backfill:** `scripts/enqueue_deep_approx.py <tid> [--apply|--check|--hand=<id>]` — acha os deep-uncovered de um torneio e enfileira a variante a 30bb (`--check` diagnostica nó+ação; `--hand` filtra 1 mão). O cron resolve offline; o `reanalyze_all_labels` preenche o `gto_label`. **Resultado medido:** torneio de teste subiu de **84% → 90%** de cobertura (+5 spots flop/turn deep). i18n PT/EN/ES (`card.approxDeep`). Testes: engine 365/365, regression 31/31, ghost 45/45, llm 44/44. *(Lição: rastrear QUAL caminho dirige o card antes de codar — o MVP inicial foi no endpoint errado.)*
+
 ### feat(gto): cobertura GTO honesta — "analisando" real, multiway e pote limpado creditados, IA validada e descartada
 
 > **Cobertura por torneio deixa de cravar % falso:** a tabela mostra "solver GTO analisando" só quando há spot postflop pendente/em execução na `gto_solver_queue` (flag `solver_analyzing` por torneio); senão o % real, e some quando a fila zera. Antes mostrava "em análise" sempre que postflop < 95%, independente do solver — torneios off-tree (PKO multiway) diziam "analisando" pra sempre. **Painel admin** "Último proc"/throughput agora refletem a fila do SOLVER (`gto_solver_queue.solved_at`), não só `gto_hand_requests` (parada em prod, mostrava "—" com o pipeline vivo); e o timestamp sai em UTC com 'Z' → o navegador converte pro fuso local (corrige GMT-3 no admin).
