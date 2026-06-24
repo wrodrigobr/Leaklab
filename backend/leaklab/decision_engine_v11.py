@@ -390,6 +390,20 @@ def _enrich_gto(input_data: Dict[str, Any]) -> dict:
                     node = n
                     break
 
+        # APROXIMAÇÃO DEEP: postflop FUNDO (>35bb) sem nó no stack real → nó capado a 30bb (mesmo
+        # hash que scripts/enqueue_deep_approx.py: pot_type default). Coerente com o fallback do
+        # lookup_gto (replay); faz a cobertura (gto_label) subir nos spots deep no reanalyze.
+        if not node and street != 'preflop' and float(stack_bb) > 35.0:
+            for _hh in (hero_hand, []):
+                _na = get_gto_node(compute_spot_hash(street, position, board, _hh, 30.0, facing_bb))
+                if _na and _na.get('strategy_json'):
+                    node = _na
+                    break
+            if not node and facing_bb == 0.0:
+                _na = get_gto_node(compute_spot_hash(street, position, board, [], 30.0, 0.0))
+                if _na and _na.get('strategy_json'):
+                    node = _na
+
         if not node:
             return {'available': False}
 
