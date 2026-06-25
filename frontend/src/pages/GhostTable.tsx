@@ -532,8 +532,8 @@ export default function GhostTable() {
                 : <XCircle className="size-6 shrink-0 text-destructive" aria-hidden />}
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <p className={cn("font-bold text-sm", lastResult.is_correct ? "text-success" : "text-destructive")}>
-                    {lastResult.gto_off_tree ? t("result.uncovered") : lastResult.is_correct ? t("result.correct") : t("result.wrong")}
+                  <p className={cn("font-bold text-sm", lastResult.gto_tier === "uncovered" ? "text-muted-foreground" : lastResult.is_correct ? "text-success" : "text-destructive")}>
+                    {lastResult.gto_tier === "uncovered" ? t("result.uncovered") : lastResult.is_correct ? t("result.correct") : t("result.wrong")}
                   </p>
                   {lastResult.mixed && <GtoMixedBadge label="gto_mixed" size="xs" />}
                   {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
@@ -817,11 +817,11 @@ export default function GhostTable() {
             {phase === "result" && lastResult && (
               <div className="flex flex-col gap-3 min-h-0 overflow-y-auto">
                 <div className={cn("flex items-center gap-3 rounded-xl border p-4 shrink-0", lastResult.is_correct ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5")}>
-                  {lastResult.is_correct ? <CheckCircle2 className="size-8 shrink-0 text-success" aria-hidden /> : <XCircle className="size-8 shrink-0 text-destructive" aria-hidden />}
+                  {lastResult.gto_tier === "uncovered" ? <CheckCircle2 className="size-8 shrink-0 text-muted-foreground" aria-hidden /> : lastResult.is_correct ? <CheckCircle2 className="size-8 shrink-0 text-success" aria-hidden /> : <XCircle className="size-8 shrink-0 text-destructive" aria-hidden />}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className={cn("font-bold", lastResult.is_correct ? "text-success" : "text-destructive")}>
-                        {lastResult.gto_off_tree ? t("result.uncovered") : lastResult.is_correct ? t("result.correct") : t("result.wrong")}
+                      <p className={cn("font-bold", lastResult.gto_tier === "uncovered" ? "text-muted-foreground" : lastResult.is_correct ? "text-success" : "text-destructive")}>
+                        {lastResult.gto_tier === "uncovered" ? t("result.uncovered") : lastResult.is_correct ? t("result.correct") : t("result.wrong")}
                       </p>
                       {lastResult.mixed && <GtoMixedBadge label="gto_mixed" size="xs" />}
                       {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
@@ -1230,8 +1230,8 @@ export default function GhostTable() {
             }
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className={cn("text-lg font-bold", lastResult.is_correct ? "text-success" : "text-destructive")}>
-                  {lastResult.gto_off_tree ? t("result.uncovered") : lastResult.is_correct ? t("result.correct") : t("result.wrong")}
+                <p className={cn("text-lg font-bold", lastResult.gto_tier === "uncovered" ? "text-muted-foreground" : lastResult.is_correct ? "text-success" : "text-destructive")}>
+                  {lastResult.gto_tier === "uncovered" ? t("result.uncovered") : lastResult.is_correct ? t("result.correct") : t("result.wrong")}
                 </p>
                 {lastResult.mixed && <GtoMixedBadge label="gto_mixed" size="xs" />}
                 {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
