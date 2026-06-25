@@ -2190,7 +2190,7 @@ def coach_chat():
         }), 429
 
     message = sanitize_llm_input(message, max_len=1000)
-    hero    = g.user.get('username', 'Jogador')
+    hero    = sanitize_llm_input(g.user.get('username', 'Jogador'), max_len=40)   # vai pro prompt do LLM
 
     # Caminho preferido: loop agêntico (o modelo busca só o dado relevante via tools).
     # Flag COACH_CHAT_AGENTIC=0 desliga; qualquer falha cai no single-shot legado.
@@ -2992,6 +2992,8 @@ def coach_messages_inbox():
 @app.route('/coach/student/<int:student_id>/messages', methods=['GET'])
 @require_coach
 def coach_messages_list(student_id: int):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não vinculado'}), 403
     msgs = get_coach_messages(g.user_id, student_id, limit=100)
     mark_messages_read(g.user_id, student_id, reader_role='coach')
     return jsonify({'messages': msgs})
@@ -3000,6 +3002,8 @@ def coach_messages_list(student_id: int):
 @app.route('/coach/student/<int:student_id>/messages', methods=['POST'])
 @require_coach
 def coach_messages_send(student_id: int):
+    if not _verify_student(g.user_id, student_id):
+        return jsonify({'error': 'Aluno não vinculado'}), 403
     d = request.get_json(silent=True) or {}
     body = sanitize_llm_input((d.get('body') or '').strip(), max_len=1000)
     if not body:
@@ -5534,6 +5538,12 @@ def subscription_webhook():
     sig_header = request.headers.get('stripe-signature', '')
 
     if not STRIPE_WEBHOOK_SECRET:
+        # Em produção, RECUSAR webhook não assinado: sem o secret, um atacante POSTa um evento
+        # forjado (payment_intent.succeeded com metadata arbitrária) e se auto-concede Pro.
+        if (os.environ.get('RENDER') or os.environ.get('LEAKLAB_PROD')
+                or os.environ.get('ENVIRONMENT') == 'production' or os.environ.get('DATABASE_URL')):
+            log.error("STRIPE_WEBHOOK_SECRET ausente em produção — webhook recusado")
+            return jsonify({'error': 'Webhook not configured'}), 503
         # Dev sem secret — aceita sem validar
         try:
             event = _json.loads(payload)
