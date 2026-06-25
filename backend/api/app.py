@@ -1557,9 +1557,36 @@ def player_drill_submit():
     CORRECT_FREQ, MIN_FREQ = 0.30, 0.10
     player_freq = float(gto_freqs.get(norm_new, 0.0)) if gto_freqs else 0.0
 
-    if gto_off_tree or gto_multiway:
-        # Fora da cobertura: off-tree (mão fora da range hand-aware) OU multiway (solver é HU-only).
-        # Não dá pra cravar veredito GTO; nunca penaliza.
+    # MULTIWAY: o solver é HU-only, mas o multiway_advisor (heurístico) dá um veredito defensável.
+    # Quando ele é CLARO (is_clear), gradeia a mão (rotulado heurística, não GTO); senão, defere a uncovered.
+    mw_leak = None   # None = sem veredito claro; True = leak/erro; False = ok
+    if gto_multiway:
+        try:
+            from leaklab.multiway_advisor import advise_multiway, is_hero_leak, norm_action as _mw_norm
+            import json as _mwjson
+            _b = row.get('board')
+            _b = _mwjson.loads(_b) if isinstance(_b, str) else (_b or [])
+            _sc = {'flop': 3, 'turn': 4, 'river': 5}.get((row.get('street') or '').lower(), len(_b))
+            _adv = advise_multiway(
+                row.get('hero_cards'), _b[:_sc],
+                float(row.get('pot_size') or 0), float(row.get('facing_bet') or 0),
+                int(row.get('n_active_opponents') or 0),
+                street=(row.get('street') or 'flop').lower(),
+                eff_stack_bb=(float(row.get('stack_bb') or 0) or None))
+            if _adv and _adv.get('is_clear'):
+                mw_leak = is_hero_leak(_adv, norm_new)
+                if mw_leak is not None:
+                    best_action = _norm_drill(_mw_norm(_adv.get('action')))   # exibição
+        except Exception:
+            mw_leak = None
+    mw_graded = bool(gto_multiway and mw_leak is not None)
+
+    if mw_graded:
+        gto_tier = 'error' if mw_leak else 'correct'
+        validation_source = 'multiway_heuristic'
+    elif gto_off_tree or gto_multiway:
+        # Fora da cobertura: off-tree (mão fora da range hand-aware) OU multiway sem veredito claro
+        # do advisor. Não dá pra cravar; nunca penaliza.
         gto_tier = 'uncovered'
     elif top_match or call_jam_equiv:
         gto_tier = 'correct'
@@ -1571,10 +1598,12 @@ def player_drill_submit():
         gto_tier = 'error'
 
     is_correct    = gto_tier != 'error'   # 'uncovered' não é erro (sem penalidade de SRS/XP)
-    # "mixed" = acerto numa linha que NÃO é a #1 (ação mista co-ótima) → selo GTO Misto
-    is_mixed_line = gto_tier == 'correct' and not (top_match or call_jam_equiv)
-    if gto_off_tree or gto_multiway:
-        new_score = 0.04   # neutro: não melhora nem pune
+    # "mixed" = acerto numa linha que NÃO é a #1 (ação mista co-ótima GTO) → selo GTO Misto.
+    # Multiway heurístico NÃO é GTO misto (é estimativa), então não leva o selo.
+    is_mixed_line = (gto_tier == 'correct' and not (top_match or call_jam_equiv)
+                     and validation_source != 'multiway_heuristic')
+    if gto_tier == 'uncovered':
+        new_score = 0.04   # neutro: não melhora nem pune (só quando realmente não há veredito)
     elif top_match or call_jam_equiv:
         new_score = 0.02
     elif gto_tier == 'correct':
