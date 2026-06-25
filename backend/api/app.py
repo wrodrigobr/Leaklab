@@ -5862,44 +5862,41 @@ def admin_delete_user(uid):
 @app.route('/admin/finance/coaches', methods=['GET'])
 @require_admin
 def admin_finance_coaches():
-    import datetime
-    period = request.args.get('period', datetime.date.today().strftime('%Y-%m'))
-    payouts = get_coaches_with_payout_status(period)
-    # upsert payment records for coaches with active students
-    for p in payouts:
-        if p['active_students'] > 0 and not p['payment_id']:
-            pid = upsert_coach_payment(p['id'], period, p['active_students'], p['amount_cents'])
-            p['payment_id'] = pid
-            p['status'] = 'pending'
-    total_pending = sum(p['amount_cents'] for p in payouts if p.get('status') == 'pending')
-    return jsonify({'payouts': payouts, 'period': period, 'total_pending_cents': total_pending})
+    """Modelo %: comissão acumulada por coach (pagável / em carência / paga)."""
+    from database.repositories import get_coaches_commission_status
+    coaches = get_coaches_commission_status()
+    total_payable = sum(int(c.get('payable_cents') or 0) for c in coaches)
+    return jsonify({'coaches': coaches, 'total_payable_cents': total_payable})
 
 
-@app.route('/admin/finance/coaches/<int:payment_id>/pay', methods=['PATCH'])
+@app.route('/admin/coach/<int:coach_id>/commission/pay', methods=['PATCH'])
 @require_admin
-def admin_mark_payment_paid(payment_id):
-    mark_coach_payment_paid(payment_id)
-    return jsonify({'ok': True})
+def admin_pay_coach_commission(coach_id):
+    """Marca como PAGAS as comissões pagáveis (carência vencida) do coach."""
+    from database.repositories import mark_coach_commissions_paid
+    total = mark_coach_commissions_paid(coach_id)
+    return jsonify({'ok': True, 'paid_cents': total})
 
 
 @app.route('/admin/coach/<int:coach_id>/commission', methods=['PATCH'])
 @require_admin
 def admin_set_coach_commission(coach_id):
-    """Define a taxa FLAT por aluno de um coach (Parceiro Fundador). Vazio/null = escada padrão."""
-    from database.repositories import set_coach_commission
-    data  = request.get_json(silent=True) or {}
-    cents = data.get('commission_cents')
-    if cents in (None, '', 'null'):
-        cents = None
+    """Define a taxa de comissão % do coach (Parceiro Fundador) em basis points (3000=30%).
+    Vazio/null = escada padrão por volume (15%/20%/25%)."""
+    from database.repositories import set_coach_commission_rate
+    data = request.get_json(silent=True) or {}
+    bps  = data.get('rate_bps')
+    if bps in (None, '', 'null'):
+        bps = None
     else:
         try:
-            cents = int(cents)
-            if cents < 0:
+            bps = int(bps)
+            if bps < 0 or bps > 10000:
                 raise ValueError
         except (ValueError, TypeError):
-            return jsonify({'error': 'commission_cents inválido'}), 400
-    set_coach_commission(coach_id, cents)
-    return jsonify({'ok': True, 'commission_cents': cents})
+            return jsonify({'error': 'rate_bps inválido (0-10000)'}), 400
+    set_coach_commission_rate(coach_id, bps)
+    return jsonify({'ok': True, 'rate_bps': bps})
 
 
 @app.route('/admin/finance/export.csv', methods=['GET'])
@@ -5907,21 +5904,21 @@ def admin_set_coach_commission(coach_id):
 def admin_finance_export():
     import datetime, io, csv
     from flask import Response
-    period = request.args.get('period', datetime.date.today().strftime('%Y-%m'))
-    payouts = get_coaches_with_payout_status(period)
+    from database.repositories import get_coaches_commission_status
+    coaches = get_coaches_commission_status()
     buf = io.StringIO()
     w   = csv.writer(buf)
-    w.writerow(['Coach', 'Alunos Ativos', 'Valor (R$)', 'Status', 'Pago em'])
-    for p in payouts:
+    w.writerow(['Coach', 'Pagavel (R$)', 'Em carencia (R$)', 'Pago (R$)'])
+    for c in coaches:
         w.writerow([
-            p.get('display_name') or p['username'],
-            p['active_students'],
-            f"{p['amount_cents'] / 100:.2f}",
-            p.get('status', 'pending'),
-            p.get('paid_at', ''),
+            c.get('display_name') or c['username'],
+            f"{int(c.get('payable_cents') or 0) / 100:.2f}",
+            f"{int(c.get('held_cents') or 0) / 100:.2f}",
+            f"{int(c.get('paid_cents') or 0) / 100:.2f}",
         ])
     resp = Response(buf.getvalue(), mimetype='text/csv')
-    resp.headers['Content-Disposition'] = f'attachment; filename=repasses-{period}.csv'
+    today = datetime.date.today().strftime('%Y-%m-%d')
+    resp.headers['Content-Disposition'] = f'attachment; filename=comissoes-{today}.csv'
     return resp
 
 

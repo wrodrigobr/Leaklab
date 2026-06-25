@@ -16,23 +16,36 @@ function CoachDetail({ coach, payout, onClose }: { coach: AdminUser; payout?: Co
   const students: AdminCoachStudent[] = data?.students ?? [];
 
   const qc = useQueryClient();
-  const [commInput, setCommInput] = useState(
-    payout?.commission_cents != null ? String(payout.commission_cents / 100) : ""
+  const [rateInput, setRateInput] = useState(
+    payout?.commission_rate_bps != null ? String(payout.commission_rate_bps / 100) : ""
   );
-  const [savingComm, setSavingComm] = useState(false);
-  const saveCommission = async () => {
-    const v = commInput.trim().replace(",", ".");
-    const cents = v === "" ? null : Math.round(parseFloat(v) * 100);
-    if (cents !== null && (isNaN(cents) || cents < 0)) { toast.error("Valor inválido."); return; }
-    setSavingComm(true);
+  const [savingRate, setSavingRate] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const saveRate = async () => {
+    const v = rateInput.trim().replace(",", ".").replace("%", "");
+    const bps = v === "" ? null : Math.round(parseFloat(v) * 100);
+    if (bps !== null && (isNaN(bps) || bps < 0 || bps > 10000)) { toast.error("Taxa inválida (0 a 100%)."); return; }
+    setSavingRate(true);
     try {
-      await adminDashboard.setCoachCommission(coach.id, cents);
+      await adminDashboard.setCoachCommissionRate(coach.id, bps);
       qc.invalidateQueries({ queryKey: ["admin-finance-coaches"] });
-      toast.success(cents === null ? "Voltou pra escada padrão." : `Taxa flat: R$ ${(cents / 100).toFixed(2)}/aluno.`);
+      toast.success(bps === null ? "Voltou pra escada padrão." : `Taxa: ${(bps / 100).toFixed(0)}%.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao salvar.");
     } finally {
-      setSavingComm(false);
+      setSavingRate(false);
+    }
+  };
+  const payCommission = async () => {
+    setPaying(true);
+    try {
+      const r = await adminDashboard.payCoachCommission(coach.id);
+      qc.invalidateQueries({ queryKey: ["admin-finance-coaches"] });
+      toast.success(`Pago: ${fmt(r.paid_cents)}.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao pagar.");
+    } finally {
+      setPaying(false);
     }
   };
 
@@ -44,42 +57,48 @@ function CoachDetail({ coach, payout, onClose }: { coach: AdminUser; payout?: Co
           <p className="mt-1 font-mono text-sm text-foreground">{coach.plan}</p>
         </div>
         <div className="rounded-lg border border-border bg-background p-3">
-          <p className="font-mono text-[9px] uppercase text-muted-foreground">Repasse atual</p>
-          <p className="mt-1 font-mono text-sm font-bold text-foreground">{payout ? fmt(payout.amount_cents) : "—"}</p>
+          <p className="font-mono text-[9px] uppercase text-muted-foreground">A pagar agora</p>
+          <p className="mt-1 font-mono text-sm font-bold text-emerald-400">{payout ? fmt(payout.payable_cents) : "—"}</p>
         </div>
         <div className="rounded-lg border border-border bg-background p-3">
-          <p className="font-mono text-[9px] uppercase text-muted-foreground">Alunos vinculados</p>
-          <p className="mt-1 font-mono text-sm text-foreground tabular-nums">{payout?.total_students ?? students.length}</p>
+          <p className="font-mono text-[9px] uppercase text-muted-foreground">Em carência (14d)</p>
+          <p className="mt-1 font-mono text-sm text-amber-400 tabular-nums">{payout ? fmt(payout.held_cents) : "—"}</p>
         </div>
         <div className="rounded-lg border border-border bg-background p-3">
-          <p className="font-mono text-[9px] uppercase text-muted-foreground">Alunos ativos</p>
-          <p className="mt-1 font-mono text-sm text-primary font-bold tabular-nums">{payout?.active_students ?? "—"}</p>
+          <p className="font-mono text-[9px] uppercase text-muted-foreground">Já pago</p>
+          <p className="mt-1 font-mono text-sm text-muted-foreground tabular-nums">{payout ? fmt(payout.paid_cents) : "—"}</p>
         </div>
       </div>
 
-      {/* Taxa de comissão por aluno (Parceiro Fundador). Vazio = escada padrão por volume. */}
-      <div className="rounded-lg border border-border bg-background p-3">
-        <p className="font-mono text-[9px] uppercase text-muted-foreground">Taxa de comissão (R$/aluno)</p>
+      {payout && payout.payable_cents > 0 && (
+        <button onClick={payCommission} disabled={paying}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-emerald-500/90 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-white hover:bg-emerald-500 transition-colors disabled:opacity-50">
+          {paying && <Loader2 className="size-3.5 animate-spin" />} Marcar {fmt(payout.payable_cents)} como pago
+        </button>
+      )}
+
+      {/* Taxa de comissão % (Parceiro Fundador). Vazio = escada padrão por volume. */}
+      <div className="mt-3 rounded-lg border border-border bg-background p-3">
+        <p className="font-mono text-[9px] uppercase text-muted-foreground">Taxa de comissão (%)</p>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          {payout?.commission_cents != null
-            ? <>Flat: <span className="font-bold text-foreground">R$ {(payout.commission_cents / 100).toFixed(2)}/aluno</span> (Parceiro Fundador)</>
-            : "Escada padrão: 1-9 R$15 · 10-29 R$20 · 30+ R$25"}
+          {payout?.commission_rate_bps != null
+            ? <>Fixa: <span className="font-bold text-foreground">{(payout.commission_rate_bps / 100).toFixed(0)}%</span> (Parceiro Fundador)</>
+            : "Escada padrão por volume: 1-9 → 15% · 10-29 → 20% · 30+ → 25%"}
         </p>
         <div className="mt-2 flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">R$</span>
           <input
-            type="text" inputMode="decimal" value={commInput}
-            onChange={(e) => setCommInput(e.target.value)}
+            type="text" inputMode="decimal" value={rateInput}
+            onChange={(e) => setRateInput(e.target.value)}
             placeholder="vazio = escada"
             className="w-32 rounded-md border border-border bg-hud-surface px-2 py-1 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          <span className="font-mono text-[10px] text-muted-foreground">/aluno</span>
+          <span className="font-mono text-[10px] text-muted-foreground">% por aluno</span>
           <button
-            onClick={saveCommission}
-            disabled={savingComm}
+            onClick={saveRate}
+            disabled={savingRate}
             className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {savingComm && <Loader2 className="size-3.5 animate-spin" />} Salvar
+            {savingRate && <Loader2 className="size-3.5 animate-spin" />} Salvar
           </button>
         </div>
       </div>
@@ -120,7 +139,6 @@ function CoachDetail({ coach, payout, onClose }: { coach: AdminUser; payout?: Co
 }
 
 export function CoachesTab() {
-  const [period] = useState(() => new Date().toISOString().slice(0, 7));
   const [selected, setSelected] = useState<AdminUser | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -129,14 +147,14 @@ export function CoachesTab() {
     staleTime: 30_000,
   });
   const { data: payoutData } = useQuery({
-    queryKey: ["admin-finance-coaches", period],
-    queryFn: () => adminDashboard.coachPayouts(period),
+    queryKey: ["admin-finance-coaches"],
+    queryFn: () => adminDashboard.coachPayouts(),
     staleTime: 30_000,
   });
 
   const coaches: AdminUser[] = data?.users ?? [];
   const payoutById = new Map<number, CoachPayout>();
-  (payoutData?.payouts ?? []).forEach((p) => payoutById.set(p.id, p));
+  (payoutData?.coaches ?? []).forEach((p) => payoutById.set(p.id, p));
 
   return (
     <div className="space-y-4">
@@ -149,7 +167,7 @@ export function CoachesTab() {
           <table className="w-full text-xs text-left">
             <thead className="border-b border-border">
               <tr>
-                {["Coach", "Plano", "Alunos vinculados", "Alunos ativos", "Repasse atual", "Standing", ""].map((h) => (
+                {["Coach", "Plano", "Taxa", "A pagar", "Em carência", "Standing", ""].map((h) => (
                   <th key={h} className="px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -168,9 +186,9 @@ export function CoachesTab() {
                       <p className="font-mono text-[10px] text-muted-foreground">@{c.username}</p>
                     </td>
                     <td className="px-4 py-3 font-mono text-muted-foreground">{c.plan}</td>
-                    <td className="px-4 py-3 font-mono tabular-nums text-foreground text-center">{po?.total_students ?? "—"}</td>
-                    <td className="px-4 py-3 font-mono tabular-nums text-center text-primary font-bold">{po?.active_students ?? "—"}</td>
-                    <td className="px-4 py-3 font-mono tabular-nums font-bold text-foreground">{po ? (po.amount_cents > 0 ? fmt(po.amount_cents) : "Zerado") : "—"}</td>
+                    <td className="px-4 py-3 font-mono tabular-nums text-center text-foreground">{po?.commission_rate_bps != null ? `${(po.commission_rate_bps / 100).toFixed(0)}%` : "escada"}</td>
+                    <td className="px-4 py-3 font-mono tabular-nums font-bold text-emerald-400">{po && po.payable_cents > 0 ? fmt(po.payable_cents) : "—"}</td>
+                    <td className="px-4 py-3 font-mono tabular-nums text-amber-400">{po && po.held_cents > 0 ? fmt(po.held_cents) : "—"}</td>
                     <td className="px-4 py-3"><StatusBadge kind={c.billing_standing} /></td>
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex items-center gap-1 font-mono text-[10px] text-primary"><Users className="size-3" /> ver</span>

@@ -2067,14 +2067,10 @@ export interface CoachPayout {
   id: number;
   username: string;
   display_name: string | null;
-  plan: string;
-  total_students: number;
-  active_students: number;
-  amount_cents: number;
-  commission_cents: number | null;   // taxa flat por aluno (Parceiro Fundador); null = escada padrão
-  status: "pending" | "paid";
-  payment_id: number | null;
-  paid_at: string | null;
+  commission_rate_bps: number | null;   // taxa % em basis points (Felipe 3000=30%); null = escada padrão
+  payable_cents: number;                 // carência vencida, a pagar
+  held_cents: number;                    // em carência (14 dias)
+  paid_cents: number;                    // já pago
 }
 
 export interface AdminPayment {
@@ -2171,19 +2167,19 @@ export const adminDashboard = {
       body: JSON.stringify({ admin_password: adminPassword }),
     }),
 
-  coachPayouts: (period?: string) =>
-    request<{ payouts: CoachPayout[]; period: string; total_pending_cents: number }>(
-      `/admin/finance/coaches${period ? `?period=${period}` : ""}`
-    ),
+  coachPayouts: () =>
+    request<{ coaches: CoachPayout[]; total_payable_cents: number }>("/admin/finance/coaches"),
 
-  markPaid: (paymentId: number) =>
-    request<{ ok: boolean }>(`/admin/finance/coaches/${paymentId}/pay`, { method: "PATCH" }),
+  // Paga (marca como pagas) as comissões pagáveis do coach (carência vencida).
+  payCoachCommission: (coachId: number) =>
+    request<{ ok: boolean; paid_cents: number }>(
+      `/admin/coach/${coachId}/commission/pay`, { method: "PATCH" }),
 
-  // Define a taxa flat por aluno de um coach (Parceiro Fundador). cents=null → escada padrão.
-  setCoachCommission: (coachId: number, cents: number | null) =>
-    request<{ ok: boolean; commission_cents: number | null }>(
+  // Define a taxa % do coach (Parceiro Fundador) em basis points. null → escada padrão.
+  setCoachCommissionRate: (coachId: number, rateBps: number | null) =>
+    request<{ ok: boolean; rate_bps: number | null }>(
       `/admin/coach/${coachId}/commission`,
-      { method: "PATCH", body: JSON.stringify({ commission_cents: cents }) }
+      { method: "PATCH", body: JSON.stringify({ rate_bps: rateBps }) }
     ),
 
   // PAY-03: visão financeira consolidada + lista de pagamentos

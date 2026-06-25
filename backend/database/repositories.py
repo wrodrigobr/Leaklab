@@ -4722,10 +4722,11 @@ def get_admin_dashboard_stats() -> dict:
             WHERE role IN ('player','coach') GROUP BY plan
         """)
         plans = {r['plan']: r['n'] for r in plan_rows}
-        pending_payouts = _fetchone(conn, """
-            SELECT COALESCE(SUM(amount_cents), 0) AS total FROM coach_payments
-            WHERE status = 'pending'
-        """)['total']
+        # Modelo %: soma a comissão PAGÁVEL (pendente + carência vencida) em coach_commissions.
+        from datetime import datetime as _dt
+        pending_payouts = _fetchone(conn, _adapt(
+            "SELECT COALESCE(SUM(amount_cents), 0) AS total FROM coach_commissions "
+            "WHERE status = 'pending' AND payable_at <= ?"), (_dt.utcnow().isoformat(),))['total']
         # MRR estimado: pro users pagam R$99/mês (9900 centavos) — DEVE bater com
         # leaklab.stripe_gateway.PLAN_AMOUNTS['pro'] (99.00) e /subscription/plans (9900).
         # Antes era 4900 (R$49), subestimando o MRR pela metade. (PAY-01)
