@@ -7,6 +7,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(coach): motor de comissão por % e por pagamento + painel admin
+
+> Sistema de comissão do coach (revenue share). **Escada por volume em %**: 15% (1-9 alunos) · 20% (10-29) · 25% (30+), pagando desde o 1º aluno indicado pagante. **Taxa por coach** (`commission_rate_bps`) pra Parceiro Fundador (Felipe = 30%, fora da escada). **Por pagamento** (tabela `coach_commissions`): cada cobrança aprovada de aluno indicado acumula a comissão (idempotente) , assinante anual paga uma vez e gera a comissão do ano de uma vez; mensal é recorrente. **Carência de 14 dias**: a comissão fica em carência e só vira pagável após a janela de estorno; estorno (`charge.refunded`) reverte a comissão se ainda não foi paga. **Painel admin**: por coach mostra A pagar / Em carência / Já pago, com editor de taxa % e botão de marcar pago. Anti-gaming: só pagamento real confirmado + bloqueio de auto-indicação (coach não comissiona a própria conta). Substitui o modelo fixo/por-período anterior.
+
+### fix(security): auditoria de segurança , corrige IDOR, hardening de webhook e info-leak
+
+> Achados de uma auditoria de AppSec (postura geral boa, 8/10). **IDOR (ALTO):** `/replay/<id>/gto` lia hero_cards/posição/GTO de qualquer jogador iterando o id (sem filtro de dono) → agora exige propriedade. **Webhook Stripe:** em produção, recusa evento não assinado se `STRIPE_WEBHOOK_SECRET` faltar (antes processava JSON cru → forjar pagamento/auto-conceder Pro). **Info-leak:** erro 500 não devolve mais a mensagem da exceção (vazava SQL/caminhos). **Coach messaging:** `_verify_student` nas rotas de mensagem (anti contato a aluno não vinculado). **LLM:** username sanitizado antes do prompt. Pontos fortes confirmados: SQL 100% parametrizado, sem XSS, JWT validado no banco, `/admin/*` todos com `@require_admin`, solver AGPL blindado.
+
+### fix(admin): MRR Estimado da visão geral excluía coach mas não o admin
+
+> O KPI "MRR Estimado" do dashboard contava o Pro de teste do admin (R$99 fantasma). Adicionado `COALESCE(role,'') != 'admin'` ao `paying_pro`, alinhando à exclusão já aplicada no resto do financeiro.
+
 ### feat(study-plan): refresh-por-drift (regenera com dados novos, sem ficar preso no passado)
 
 > O plano de estudo usava chave de cache estável e nunca se atualizava , um jogador que corrigiu um leak há 30 torneios ainda via o plano antigo. Agora um fingerprint de **drift** (faixa de torneios em buckets de 10 + identidade qualitativa dos top-3 leaks, sem magnitude) decide a regeneração: regenera a cada ~10 torneios novos OU quando os top leaks mudam; flutuação pequena (mesmos leaks, mesma faixa) não regenera (estabilidade). Lazy (no próximo acesso ao dashboard), sem cron, 1 linha por aluno (sobrescreve). Aplicado nos dois geradores (legacy + agentic); formato antigo se auto-regenera. As narrativas do carrossel já se auto-atualizavam (chave por leak) e não foram tocadas.
