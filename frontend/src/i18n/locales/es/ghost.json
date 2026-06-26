@@ -66,7 +66,8 @@
     "uncoveredBadge": "≈ aprox",
     "uncoveredHint": "El solver no cubre tu mano exacta en este spot (mano fuera del rango resuelto). La distribución mostrada es solo una aproximación del rango, no el veredicto de tu mano. No cuenta como error.",
     "multiwayBadge": "≈ multiway",
-    "multiwayHint": "Bote multiway: el solver es heads-up. El veredicto viene del análisis heurístico multiway (equity vs rango + pot odds). Una decisión clara cuenta como acierto/error; una cercana queda como aproximación."
+    "multiwayHint": "Bote multiway: el solver es heads-up y no lo cubre. El análisis heurístico multiway da una sugerencia (mostrada abajo), pero no cuenta como acierto ni error.",
+    "multiwaySuggests": "La heurística multiway sugiere: {{action}}"
   },
   "next": "Siguiente →",
   "stats": {

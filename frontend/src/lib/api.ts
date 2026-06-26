@@ -816,6 +816,8 @@ export interface DrillSubmitResult {
   gto_tier?: "correct" | "deviation" | "error" | "uncovered";  // correto / desvio / erro / fora da cobertura
   gto_off_tree?: boolean;  // postflop sem dado hand-aware (mão fora da cobertura) → "≈ aproximação"
   gto_multiway?: boolean;  // postflop multiway (solver HU-only) → "≈ multiway"
+  // Multiway (opção A): sugestão heurística INFORMATIVA (não conta como acerto/erro).
+  multiway_advice?: { action: string; is_clear: boolean; rationale?: string; suggests_leak?: boolean | null } | null;
   gto_strategy?: GtoStrategyAction[];             // mix completo (% por ação) p/ o veredito
   // origem do gabarito: solver hand-aware > range agregada > gto armazenado > heurística
   validation_source?: "gto_hand" | "gto_range" | "gto_stored" | "heuristic";

@@ -1486,16 +1486,14 @@ def player_drill_submit():
     validation_source = 'heuristic'   # sem cobertura GTO: gradeia vs best_action do engine
     if gto_action and gto_label not in ('wizard_pending', ''):
         best_action, gto_freqs, validation_source = _resolve_best_action_from_node(row, return_strategy=True)
-        # TRAVA OFF-TREE: postflop sem dado HAND-AWARE (mão fora da cobertura do solver) → o
-        # nó cai na distribuição AGREGADA da range (source 'gto_range'/'gto_stored'), que NÃO é
-        # veredito da mão específica (ex.: trinca exibida como "fold" porque a range folda muito).
-        # SÓ vale quando a estratégia é MISTA: se a range joga uma ação ~pura (top >= 90%), toda
-        # mão faz o mesmo — não há ambiguidade, então NÃO é "fora da cobertura" (evita o absurdo
-        # de marcar off-tree e ainda mostrar "Call 100%").
+        # TRAVA OFF-TREE: postflop sem dado HAND-AWARE → o nó cai na distribuição AGREGADA da range
+        # (source 'gto_range'/'gto_stored'), que NÃO é veredito da mão específica.
+        # RC-4: removido o exemption de "range ~pura (>=90%) → não off-tree". Mesmo com agregado ~puro,
+        # uma mão específica pode estar na minoria (ex.: range aposta 92%, mas a mão marginal do hero
+        # checaria), e gradear contra o agregado punia/premiava errado. Agregado nunca é hand-aware →
+        # SEMPRE off-tree (mostra "≈ aproximação" + a distribuição agregada como referência).
         _street_lc = (row.get('street') or '').lower()
-        _top_freq = max(gto_freqs.values()) if gto_freqs else 0.0
-        gto_off_tree = (_street_lc != 'preflop' and validation_source in ('gto_range', 'gto_stored')
-                        and _top_freq < 0.90)
+        gto_off_tree = (_street_lc != 'preflop' and validation_source in ('gto_range', 'gto_stored'))
     else:
         gto_off_tree = False
         best_action = _norm_drill(best_action)
@@ -1511,8 +1509,12 @@ def player_drill_submit():
 
     # MULTIWAY: postflop com 2+ oponentes vivos no pote → o solver é HU-only, não cobre. Não é
     # veredito GTO; marca aproximação multiway (como o off-tree) e nunca pune.
-    gto_multiway = ((row.get('street') or '').lower() != 'preflop'
-                    and int(row.get('n_active_opponents') or 0) >= 2)
+    # RC-2: n_active_opponents pode vir NULL (legado). Sem fallback, int(None or 0)=0 DESLIGAVA a
+    # proteção → spot multiway validado pelo solver HU. Fallback: num_players-1 (todos menos o hero).
+    _n_opp = row.get('n_active_opponents')
+    _n_opp = (int(row.get('num_players') or 0) - 1) if _n_opp is None else int(_n_opp or 0)
+    _n_opp = max(0, _n_opp)
+    gto_multiway = ((row.get('street') or '').lower() != 'preflop' and _n_opp >= 2)
 
     original_score = row['score']
     norm_new   = _norm_drill(new_action)
@@ -1557,9 +1559,10 @@ def player_drill_submit():
     CORRECT_FREQ, MIN_FREQ = 0.30, 0.10
     player_freq = float(gto_freqs.get(norm_new, 0.0)) if gto_freqs else 0.0
 
-    # MULTIWAY: o solver é HU-only, mas o multiway_advisor (heurístico) dá um veredito defensável.
-    # Quando ele é CLARO (is_clear), gradeia a mão (rotulado heurística, não GTO); senão, defere a uncovered.
-    mw_leak = None   # None = sem veredito claro; True = leak/erro; False = ok
+    # MULTIWAY (opção A): o solver é HU-only e NÃO é gabarito multiway; a heurística (advisor) também
+    # não é. Então multiway é INFORMATIVO: nunca punição dura (gto_tier='uncovered', neutro pra SRS/XP).
+    # Expomos a SUGESTÃO do advisor (ação + se a jogada diverge) só pra orientar — sem cravar acerto/erro.
+    mw_advice = None
     if gto_multiway:
         try:
             from leaklab.multiway_advisor import advise_multiway, is_hero_leak, norm_action as _mw_norm
@@ -1570,23 +1573,22 @@ def player_drill_submit():
             _adv = advise_multiway(
                 row.get('hero_cards'), _b[:_sc],
                 float(row.get('pot_size') or 0), float(row.get('facing_bet') or 0),
-                int(row.get('n_active_opponents') or 0),
+                _n_opp,
                 street=(row.get('street') or 'flop').lower(),
                 eff_stack_bb=(float(row.get('stack_bb') or 0) or None))
-            if _adv and _adv.get('is_clear'):
-                mw_leak = is_hero_leak(_adv, norm_new)
-                if mw_leak is not None:
-                    best_action = _norm_drill(_mw_norm(_adv.get('action')))   # exibição
+            if _adv:
+                mw_advice = {
+                    'action':       _norm_drill(_mw_norm(_adv.get('action'))),
+                    'is_clear':     bool(_adv.get('is_clear')),
+                    'rationale':    _adv.get('rationale'),
+                    'suggests_leak': is_hero_leak(_adv, norm_new) if _adv.get('is_clear') else None,
+                }
         except Exception:
-            mw_leak = None
-    mw_graded = bool(gto_multiway and mw_leak is not None)
+            mw_advice = None
 
-    if mw_graded:
-        gto_tier = 'error' if mw_leak else 'correct'
-        validation_source = 'multiway_heuristic'
-    elif gto_off_tree or gto_multiway:
-        # Fora da cobertura: off-tree (mão fora da range hand-aware) OU multiway sem veredito claro
-        # do advisor. Não dá pra cravar; nunca penaliza.
+    if gto_off_tree or gto_multiway:
+        # Fora da cobertura: off-tree (mão fora da range hand-aware) OU multiway (sem gabarito).
+        # Não crava veredito; nunca penaliza. A sugestão multiway vai separada (mw_advice).
         gto_tier = 'uncovered'
     elif top_match or call_jam_equiv:
         gto_tier = 'correct'
@@ -1599,9 +1601,7 @@ def player_drill_submit():
 
     is_correct    = gto_tier != 'error'   # 'uncovered' não é erro (sem penalidade de SRS/XP)
     # "mixed" = acerto numa linha que NÃO é a #1 (ação mista co-ótima GTO) → selo GTO Misto.
-    # Multiway heurístico NÃO é GTO misto (é estimativa), então não leva o selo.
-    is_mixed_line = (gto_tier == 'correct' and not (top_match or call_jam_equiv)
-                     and validation_source != 'multiway_heuristic')
+    is_mixed_line = gto_tier == 'correct' and not (top_match or call_jam_equiv)
     if gto_tier == 'uncovered':
         new_score = 0.04   # neutro: não melhora nem pune (só quando realmente não há veredito)
     elif top_match or call_jam_equiv:
@@ -1659,6 +1659,7 @@ def player_drill_submit():
         'gto_tier':          gto_tier,
         'gto_off_tree':      gto_off_tree,   # mão fora da cobertura hand-aware → "≈ aproximação"
         'gto_multiway':      gto_multiway,   # postflop multiway (solver HU-only) → "≈ multiway"
+        'multiway_advice':   mw_advice,      # opção A: sugestão heurística informativa (não pune)
         'gto_strategy':      gto_strategy,
         'validation_source': validation_source,   # gto_hand | gto_range | gto_stored | heuristic
         'delta':             result['delta'],

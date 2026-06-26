@@ -539,6 +539,7 @@ export default function GhostTable() {
                   {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
                   {lastResult.gto_off_tree && !lastResult.gto_multiway && <span className="rounded-full bg-muted/40 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-muted-foreground ring-1 ring-border" title={t("result.uncoveredHint")}>{t("result.uncoveredBadge")}</span>}
                   {lastResult.gto_multiway && <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-amber-300 ring-1 ring-amber-400/30" title={t("result.multiwayHint")}>{t("result.multiwayBadge")}</span>}
+                  {lastResult.multiway_advice?.is_clear && <p className="w-full font-mono text-[10px] text-amber-300/80">{t("result.multiwaySuggests", { action: lastResult.multiway_advice.action.toUpperCase() })}</p>}
                   {(lastResult.xp?.gained ?? 0) > 0 && (
                     <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-300 ring-1 ring-amber-400/30">
                       +{lastResult.xp!.gained} XP
@@ -827,6 +828,7 @@ export default function GhostTable() {
                       {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
                   {lastResult.gto_off_tree && !lastResult.gto_multiway && <span className="rounded-full bg-muted/40 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-muted-foreground ring-1 ring-border" title={t("result.uncoveredHint")}>{t("result.uncoveredBadge")}</span>}
                   {lastResult.gto_multiway && <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-amber-300 ring-1 ring-amber-400/30" title={t("result.multiwayHint")}>{t("result.multiwayBadge")}</span>}
+                  {lastResult.multiway_advice?.is_clear && <p className="w-full font-mono text-[10px] text-amber-300/80">{t("result.multiwaySuggests", { action: lastResult.multiway_advice.action.toUpperCase() })}</p>}
                       {lastResult.validation_source && (
                         <span className={cn(
                           "rounded-full px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider ring-1",
@@ -1237,6 +1239,7 @@ export default function GhostTable() {
                 {lastResult.gto_tier === "deviation" && <GtoMixedBadge label="gto_minor_deviation" size="xs" />}
                   {lastResult.gto_off_tree && !lastResult.gto_multiway && <span className="rounded-full bg-muted/40 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-muted-foreground ring-1 ring-border" title={t("result.uncoveredHint")}>{t("result.uncoveredBadge")}</span>}
                   {lastResult.gto_multiway && <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-amber-300 ring-1 ring-amber-400/30" title={t("result.multiwayHint")}>{t("result.multiwayBadge")}</span>}
+                  {lastResult.multiway_advice?.is_clear && <p className="w-full font-mono text-[10px] text-amber-300/80">{t("result.multiwaySuggests", { action: lastResult.multiway_advice.action.toUpperCase() })}</p>}
                 {lastResult.validation_source && (
                   <span className={cn(
                     "rounded-full px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider ring-1",

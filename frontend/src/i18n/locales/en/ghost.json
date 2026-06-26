@@ -66,7 +66,8 @@
     "uncoveredBadge": "≈ approx",
     "uncoveredHint": "The solver does not cover your exact hand in this spot (hand outside the solved range). The shown distribution is only a range approximation, not your hand verdict. It does not count as an error.",
     "multiwayBadge": "≈ multiway",
-    "multiwayHint": "Multiway pot: the solver is heads-up. The verdict comes from the multiway heuristic (equity vs range + pot odds). A clear decision counts as correct/error; a close one stays as an approximation."
+    "multiwayHint": "Multiway pot: the solver is heads-up and doesn't cover it. The multiway heuristic gives a suggestion (shown below), but it doesn't count as correct or error.",
+    "multiwaySuggests": "Multiway heuristic suggests: {{action}}"
   },
   "next": "Next →",
   "stats": {
