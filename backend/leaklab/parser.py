@@ -66,6 +66,11 @@ SEAT_BOUNTY_PS_RE = re.compile(
 SEAT_BOUNTY_GG_RE = re.compile(
     r"^Seat \d+: (.+?) \([0-9.,]+ in chips, bounty \$([0-9.]+)\)", re.IGNORECASE
 )
+# PokerStars PKO (formato real PS): "Seat 3: phpro (1500 in chips, $0.25 bounty)"
+# quantia ANTES da palavra "bounty", dentro dos parênteses (aceita $1 ou $0.50).
+SEAT_BOUNTY_PS2_RE = re.compile(
+    r"^Seat \d+: (.+?) \([0-9.,]+ in chips, \$([0-9.]+) bounty\)", re.IGNORECASE
+)
 # PokerStars bounty collection: "phpro wins $0.25 bounty for eliminating villain"
 BOUNTY_WIN_RE = re.compile(
     r"^(.+?) wins \$([0-9.]+) bounty for eliminating (.+)", re.IGNORECASE
@@ -183,7 +188,8 @@ def parse_hand(raw_text: str, id_re: re.Pattern | None = None) -> ParsedHand:
                 seats.append({'seat': _seat_num, 'name': name, 'stack': float(_stack_str)})
             except Exception:
                 pass
-            mb = SEAT_BOUNTY_PS_RE.match(line) or SEAT_BOUNTY_GG_RE.match(line)
+            mb = (SEAT_BOUNTY_PS_RE.match(line) or SEAT_BOUNTY_GG_RE.match(line)
+                  or SEAT_BOUNTY_PS2_RE.match(line))
             if mb:
                 bounties[mb.group(1).strip()] = float(mb.group(2))
         mw = BOUNTY_WIN_RE.match(line)
