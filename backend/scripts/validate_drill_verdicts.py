@@ -5,8 +5,19 @@ Para CADA spot elegível a drill, roda CADA uma das 6 ações pela FONTE ÚNICA 
 Não altera dados. Uso: python scripts/validate_drill_verdicts.py [--limit N] [--user U]
 """
 import os, sys
-os.environ.pop('DATABASE_URL', None)   # força SQLite local
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# --prod: usa a DATABASE_URL do ambiente (Postgres de produção, read-only). Sem a flag, força SQLite local.
+if '--prod' in sys.argv:
+    try:
+        from dotenv import load_dotenv; load_dotenv()
+    except ImportError:
+        pass
+    if not os.environ.get('DATABASE_URL'):
+        sys.exit("ERRO: --prod requer DATABASE_URL no ambiente (ou em backend/.env).")
+    print(f"[PROD] validando contra Postgres (read-only): host={os.environ['DATABASE_URL'].split('@')[-1].split('/')[0]}")
+else:
+    os.environ.pop('DATABASE_URL', None)   # força SQLite local
 
 from database.schema import get_conn
 from database.repositories import get_decision_for_drill
