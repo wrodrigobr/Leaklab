@@ -521,7 +521,10 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
                    SUM(CASE WHEN lower(d.street)='preflop' THEN 1 ELSE 0 END) AS pre_total,
                    SUM(CASE WHEN lower(d.street)='preflop' AND d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS pre_gto,
                    SUM(CASE WHEN lower(d.street) IN ('flop','turn','river') THEN 1 ELSE 0 END) AS post_total,
-                   SUM(CASE WHEN lower(d.street) IN ('flop','turn','river') AND d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS post_gto
+                   SUM(CASE WHEN lower(d.street) IN ('flop','turn','river') AND d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS post_gto,
+                   (SELECT COUNT(*) FROM gto_hand_requests ghr
+                      WHERE ghr.tournament_id = t.id
+                        AND ghr.status IN ('pending','solver_queued','running','processing','queued')) AS gto_inflight
             FROM tournaments t
             LEFT JOIN decisions d ON d.tournament_id = t.id
             WHERE t.user_id = ?
@@ -529,15 +532,6 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             ORDER BY t.imported_at DESC
             LIMIT ?
         """, (user_id, limit)).fetchall()
-        # Solver ocupado? (qualquer spot pendente/em execução na fila global). Usado p/ marcar
-        # "analisando" em torneios com postflop ainda descoberto — em vez de cravar um % baixo que
-        # vai subir quando o solver drenar. Some quando a fila zera (pipeline real, não promessa).
-        try:
-            _busy = conn.execute(_adapt(
-                "SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status IN ('pending','running')")).fetchone()
-            _solver_busy = bool((dict(_busy).get('n') if _busy else 0))
-        except Exception:
-            _solver_busy = False
         result = []
         for r in rows:
             t = dict(r)
@@ -549,8 +543,11 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             post_t = t.pop('post_total', 0) or 0; post_g = t.pop('post_gto', 0) or 0
             t['preflop_coverage_pct']  = round(pre_g * 100.0 / pre_t, 1) if pre_t else None
             t['postflop_coverage_pct'] = round(post_g * 100.0 / post_t, 1) if post_t else None
-            # postflop ainda descoberto E solver trabalhando → "analisando" (não crava o %).
-            t['solver_analyzing'] = bool(_solver_busy and post_t and post_g < post_t)
+            # PER-TORNEIO: tem pedido de GTO ainda não-terminal (pending/solver_queued) → "analisando".
+            # Sinal VIVO (auto-resolve quando os pedidos fecham), robusto a restart, e NÃO pisca outros
+            # torneios (a fila do solver é deduplicada por spot_hash; gto_hand_requests liga ao torneio).
+            _inflight = t.pop('gto_inflight', 0) or 0
+            t['solver_analyzing'] = bool(_inflight > 0)
             result.append(t)
         return result
     finally:
