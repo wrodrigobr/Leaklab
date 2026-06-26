@@ -1603,7 +1603,7 @@ def player_drill_submit():
     # "mixed" = acerto numa linha que NÃO é a #1 (ação mista co-ótima GTO) → selo GTO Misto.
     is_mixed_line = gto_tier == 'correct' and not (top_match or call_jam_equiv)
     if gto_tier == 'uncovered':
-        new_score = 0.04   # neutro: não melhora nem pune (só quando realmente não há veredito)
+        new_score = original_score   # neutro REAL: mantém o score (delta=0, sem "Melhora" falsa)
     elif top_match or call_jam_equiv:
         new_score = 0.02
     elif gto_tier == 'correct':
@@ -1631,8 +1631,8 @@ def player_drill_submit():
     # XP — drill_completed só na 1ª vez do dia por decisão (anti-farm);
     # drill_mastered quando o SRS atinge o intervalo máximo pela 1ª vez.
     xp_events = []
-    if is_correct and result.get('first_drill_today'):
-        xp_events.append('drill_completed')
+    if is_correct and gto_tier != 'uncovered' and result.get('first_drill_today'):
+        xp_events.append('drill_completed')   # uncovered (off-tree/multiway) não é acerto cravado → sem XP
     if result.get('mastered_now'):
         xp_events.append('drill_mastered')
     xp_gained, xp_total, new_achievements = 0, None, []

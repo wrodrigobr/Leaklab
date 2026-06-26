@@ -356,9 +356,12 @@ export default function GhostTable() {
       // a agregada (ex.: Fold 50%/Call 50%) contradiz o veredito hand-aware da SUA mão
       // (onde fold pode ser raro → Erro). Só usa o lookup como FALLBACK quando o submit
       // não trouxe estratégia. (feedback_card_display_untested: display ↔ veredito coerentes.)
-      const submitStrat = result.gto_strategy && result.gto_strategy.length ? result.gto_strategy : null;
+      // Uncovered (off-tree/multiway): a "estratégia" é a distribuição AGREGADA da range, não da sua
+      // mão — exibi-la como "Estratégia GTO" engana (ex.: range folda 44%, mas seu TPTK não). Suprime.
+      const isUncov = result.gto_tier === "uncovered";
+      const submitStrat = !isUncov && result.gto_strategy && result.gto_strategy.length ? result.gto_strategy : null;
       setGtoStrategy(submitStrat);
-      if (current.street !== 'preflop' && !submitStrat) {
+      if (current.street !== 'preflop' && !submitStrat && !isUncov) {
         gto.decisionLookup(current.id).then(r => {
           if (r.strategy && r.strategy.length > 0) setGtoStrategy(r.strategy);
         }).catch(() => {});
@@ -550,7 +553,7 @@ export default function GhostTable() {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground truncate">{t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{lastResult.gto_tier !== "uncovered" && t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}</p>
               </div>
             </div>
 
@@ -849,7 +852,7 @@ export default function GhostTable() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">{t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}</p>
+                    <p className="text-xs text-muted-foreground">{lastResult.gto_tier !== "uncovered" && t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}</p>
                   </div>
                   {pressureMode && streak > 0 && (
                     <div className="flex items-center gap-1 font-mono text-sm font-bold text-amber-400 shrink-0">
@@ -1263,7 +1266,7 @@ export default function GhostTable() {
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}
+                {lastResult.gto_tier !== "uncovered" && t("result.bestAction", { action: formatAction(lastResult.best_action).toUpperCase() })}
               </p>
             </div>
             {/* Streak badge in result */}
