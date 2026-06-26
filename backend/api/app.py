@@ -1450,55 +1450,39 @@ def _resolve_best_action_from_node(row: dict, return_strategy: bool = False):
     return a
 
 
-@app.route('/player/spots/drill/submit', methods=['POST'])
-@require_auth
-def player_drill_submit():
-    """Sprint K — Salva redecisão e retorna avaliação."""
-    data = request.get_json() or {}
-    decision_id = data.get('decision_id')
-    new_action  = data.get('new_action', '').strip().lower()
+def _norm_drill(a: str) -> str:
+    """Mapeia ação GTO para os 6 botões do Ghost Table (fold/check/call/bet/raise/jam)."""
+    a = (a or '').strip().lower()
+    if a in ('shove', 'jam', 'allin', 'all-in', 'all_in'):
+        return 'jam'
+    if a.startswith('bet'):
+        return 'bet'
+    if a.startswith('raise'):
+        return 'raise'
+    return a
 
-    if not decision_id or not new_action:
-        return jsonify({'error': 'decision_id e new_action são obrigatórios'}), 400
 
-    row = get_decision_for_drill(g.user_id, decision_id)
-    if not row:
-        return jsonify({'error': 'Decisão não encontrada'}), 404
-
-    def _norm_drill(a: str) -> str:
-        """Mapeia ação GTO para os 6 botões do Ghost Table (fold/check/call/bet/raise/jam)."""
-        a = (a or '').strip().lower()
-        if a in ('shove', 'jam', 'allin', 'all-in', 'all_in'):
-            return 'jam'
-        if a.startswith('bet'):
-            return 'bet'
-        if a.startswith('raise'):
-            return 'raise'
-        return a
-
+def grade_drill_action(row, new_action):
+    """VEREDITO DO DRILL — FONTE ÚNICA. Pura: dado o spot (row) e a ação do jogador, devolve o
+    veredito completo (gto_tier/is_correct/best_action/freqs/flags), SEM efeitos colaterais
+    (sem save/XP/HTTP). O endpoint /submit E a validação exaustiva consomem isto. Nunca recriar
+    o mapeamento em outro lugar (ver feedback_card_display_untested)."""
     best_action = row['best_action']
     gto_action  = row.get('gto_action') or ''
     gto_label   = row.get('gto_label') or ''
 
     # Usa live GTO node lookup quando cobertura GTO disponível (mesmo pipeline do Replayer).
-    # Evita erros por decisions.gto_action desatualizado ou hash match incorreto.
     gto_freqs: dict = {}
     validation_source = 'heuristic'   # sem cobertura GTO: gradeia vs best_action do engine
     if gto_action and gto_label not in ('wizard_pending', ''):
         best_action, gto_freqs, validation_source = _resolve_best_action_from_node(row, return_strategy=True)
-        # TRAVA OFF-TREE: postflop sem dado HAND-AWARE → o nó cai na distribuição AGREGADA da range
-        # (source 'gto_range'/'gto_stored'), que NÃO é veredito da mão específica.
-        # RC-4: removido o exemption de "range ~pura (>=90%) → não off-tree". Mesmo com agregado ~puro,
-        # uma mão específica pode estar na minoria (ex.: range aposta 92%, mas a mão marginal do hero
-        # checaria), e gradear contra o agregado punia/premiava errado. Agregado nunca é hand-aware →
-        # SEMPRE off-tree (mostra "≈ aproximação" + a distribuição agregada como referência).
+        # RC-4: range AGREGADA (gto_range/gto_stored) nunca é hand-aware → SEMPRE off-tree postflop.
         _street_lc = (row.get('street') or '').lower()
         gto_off_tree = (_street_lc != 'preflop' and validation_source in ('gto_range', 'gto_stored'))
     else:
         gto_off_tree = False
         best_action = _norm_drill(best_action)
-        # Guard: raise sem aposta anterior é "bet" — mas SÓ postflop. Preflop, abrir
-        # é raise (por cima das blinds), nunca bet.
+        # Guard: raise sem aposta anterior é "bet" — mas SÓ postflop.
         if (float(row.get('facing_bet') or 0) == 0 and best_action == 'raise'
                 and (row.get('street') or '').lower() != 'preflop'):
             best_action = 'bet'
@@ -1507,10 +1491,8 @@ def player_drill_submit():
     if float(row.get('facing_bet') or 0) == 0 and best_action == 'fold' and row.get('position') == 'BB':
         best_action = 'check'
 
-    # MULTIWAY: postflop com 2+ oponentes vivos no pote → o solver é HU-only, não cobre. Não é
-    # veredito GTO; marca aproximação multiway (como o off-tree) e nunca pune.
-    # RC-2: n_active_opponents pode vir NULL (legado). Sem fallback, int(None or 0)=0 DESLIGAVA a
-    # proteção → spot multiway validado pelo solver HU. Fallback: num_players-1 (todos menos o hero).
+    # MULTIWAY: postflop com 2+ oponentes vivos → solver é HU-only, não cobre.
+    # RC-2: n_active_opponents pode vir NULL (legado) → fallback num_players-1.
     _n_opp = row.get('n_active_opponents')
     _n_opp = (int(row.get('num_players') or 0) - 1) if _n_opp is None else int(_n_opp or 0)
     _n_opp = max(0, _n_opp)
@@ -1520,8 +1502,7 @@ def player_drill_submit():
     norm_new   = _norm_drill(new_action)
     top_match  = norm_new == best_action
 
-    # Guard: quando facing_bet >= stack_bb, call e jam são mecanicamente equivalentes
-    # (chamar o raise já coloca todas as fichas — shove não adiciona chips extras).
+    # Guard: facing_bet >= stack_bb → call e jam são mecanicamente equivalentes.
     facing_bet = float(row.get('facing_bet') or 0)
     stack_bb   = float(row.get('stack_bb') or 9999)
     call_jam_equiv = False
@@ -1529,12 +1510,7 @@ def player_drill_submit():
         if norm_new in ('call', 'jam') and best_action in ('call', 'jam'):
             call_jam_equiv = True
 
-    # Guard: PREFLOP curto pot-committed. No preflop o facing_bet costuma vir None (o guard acima
-    # não dispara), mas best_action='call'/'raise' já implica enfrentar um raise. Quando o stack é
-    # curto E o pote já é grande vs stack (o raise comeu boa parte das fichas), calar deixa o hero
-    # pot-committed — então SHOVE é co-ótimo (mesma mão continua + fold equity). Ex.: 11bb, call de
-    # 8bb sobra 3bb → jamar é padrão, não erro. Só p/ best_action que CONTINUA (call/raise), nunca
-    # fold (jamar uma mão de fold é erro real).
+    # Guard: PREFLOP curto pot-committed — shove co-ótimo p/ best_action que continua (call/raise).
     _pot_pf = float(row.get('pot_size') or 0)
     if (not top_match and not call_jam_equiv
             and (row.get('street') or '').lower() == 'preflop'
@@ -1542,8 +1518,7 @@ def player_drill_submit():
             and 0 < stack_bb <= 14 and _pot_pf >= stack_bb * 0.75):
         call_jam_equiv = True
 
-    # Guard: stack curtíssimo (≤2.5bb) — abrir/raisar já compromete o stack, então
-    # raise ≡ jam (shove). Ex.: a ~1bb, "qualquer raise é shove".
+    # Guard: stack curtíssimo (≤2.5bb) — raise ≡ jam.
     raise_jam_equiv = False
     if (not top_match and stack_bb > 0 and stack_bb <= 2.5
             and norm_new in ('raise', 'jam') and best_action in ('raise', 'jam')):
@@ -1551,17 +1526,10 @@ def player_drill_submit():
     call_jam_equiv = call_jam_equiv or raise_jam_equiv
 
     # ── Avaliação pela distribuição GTO (princípio da indiferença) ───────────
-    # O solver só mistura ações de EV ~equivalente: qualquer ação que ele jogue
-    # não é erro de EV — a de maior frequência é a escolha prática (simplificação).
-    #   correct   = ação mais frequente OU freq >= 30% (linha mista co-ótima)
-    #   deviation = freq 10–30% (o solver joga, defensável — nudge p/ simplificar)
-    #   error     = freq < 10% (solver praticamente não joga) ou sem cobertura
     CORRECT_FREQ, MIN_FREQ = 0.30, 0.10
     player_freq = float(gto_freqs.get(norm_new, 0.0)) if gto_freqs else 0.0
 
-    # MULTIWAY (opção A): o solver é HU-only e NÃO é gabarito multiway; a heurística (advisor) também
-    # não é. Então multiway é INFORMATIVO: nunca punição dura (gto_tier='uncovered', neutro pra SRS/XP).
-    # Expomos a SUGESTÃO do advisor (ação + se a jogada diverge) só pra orientar — sem cravar acerto/erro.
+    # MULTIWAY (opção A): informativo. Nunca punição dura; expõe a sugestão do advisor.
     mw_advice = None
     if gto_multiway:
         try:
@@ -1587,9 +1555,7 @@ def player_drill_submit():
             mw_advice = None
 
     if gto_off_tree or gto_multiway:
-        # Fora da cobertura: off-tree (mão fora da range hand-aware) OU multiway (sem gabarito).
-        # Não crava veredito; nunca penaliza. A sugestão multiway vai separada (mw_advice).
-        gto_tier = 'uncovered'
+        gto_tier = 'uncovered'   # off-tree OU multiway: não crava veredito; nunca penaliza.
     elif top_match or call_jam_equiv:
         gto_tier = 'correct'
     elif gto_freqs and player_freq >= CORRECT_FREQ:
@@ -1599,11 +1565,10 @@ def player_drill_submit():
     else:
         gto_tier = 'error'
 
-    is_correct    = gto_tier != 'error'   # 'uncovered' não é erro (sem penalidade de SRS/XP)
-    # "mixed" = acerto numa linha que NÃO é a #1 (ação mista co-ótima GTO) → selo GTO Misto.
+    is_correct    = gto_tier != 'error'   # 'uncovered' não é erro
     is_mixed_line = gto_tier == 'correct' and not (top_match or call_jam_equiv)
     if gto_tier == 'uncovered':
-        new_score = original_score   # neutro REAL: mantém o score (delta=0, sem "Melhora" falsa)
+        new_score = original_score   # neutro REAL (delta=0)
     elif top_match or call_jam_equiv:
         new_score = 0.02
     elif gto_tier == 'correct':
@@ -1613,11 +1578,49 @@ def player_drill_submit():
     else:
         new_score = original_score
 
-    # Estratégia ordenada — para o veredito sempre exibir o % de cada ação.
     gto_strategy = [
         {'action': _a, 'frequency': round(_f, 4)}
         for _a, _f in sorted(gto_freqs.items(), key=lambda kv: -kv[1]) if _f > 0.005
     ] if gto_freqs else []
+
+    return {
+        'gto_tier': gto_tier, 'is_correct': is_correct, 'best_action': best_action,
+        'gto_freqs': gto_freqs, 'validation_source': validation_source,
+        'gto_off_tree': gto_off_tree, 'gto_multiway': gto_multiway, 'multiway_advice': mw_advice,
+        'new_score': new_score, 'original_score': original_score, 'is_mixed_line': is_mixed_line,
+        'player_freq': player_freq, 'gto_strategy': gto_strategy, 'norm_new': norm_new,
+        'top_match': top_match, 'call_jam_equiv': call_jam_equiv,
+    }
+
+
+@app.route('/player/spots/drill/submit', methods=['POST'])
+@require_auth
+def player_drill_submit():
+    """Sprint K — Salva redecisão e retorna avaliação."""
+    data = request.get_json() or {}
+    decision_id = data.get('decision_id')
+    new_action  = data.get('new_action', '').strip().lower()
+
+    if not decision_id or not new_action:
+        return jsonify({'error': 'decision_id e new_action são obrigatórios'}), 400
+
+    row = get_decision_for_drill(g.user_id, decision_id)
+    if not row:
+        return jsonify({'error': 'Decisão não encontrada'}), 404
+
+    v = grade_drill_action(row, new_action)
+    gto_tier          = v['gto_tier']
+    is_correct        = v['is_correct']
+    best_action       = v['best_action']
+    new_score         = v['new_score']
+    original_score    = v['original_score']
+    player_freq       = v['player_freq']
+    is_mixed_line     = v['is_mixed_line']
+    gto_off_tree      = v['gto_off_tree']
+    gto_multiway      = v['gto_multiway']
+    mw_advice         = v['multiway_advice']
+    gto_strategy      = v['gto_strategy']
+    validation_source = v['validation_source']
 
     result = save_drill_session(
         user_id=g.user_id,
