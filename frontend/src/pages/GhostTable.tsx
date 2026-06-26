@@ -340,7 +340,9 @@ export default function GhostTable() {
     setTimedOut(false);
     try {
       const result = await drill.submit(current.id, action);
-      if (result.is_correct) {
+      if (result.gto_tier === "uncovered") {
+        // Neutro: spot não-gradeável (off-tree/multiway) não conta como acerto nem quebra o streak.
+      } else if (result.is_correct) {
         setSessionCorrect((c) => c + 1);
         setStreak((s) => s + 1);
       } else {
@@ -527,7 +529,9 @@ export default function GhostTable() {
         {phase === "result" && lastResult && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 w-[min(88vw,380px)] rounded-2xl bg-background/90 backdrop-blur p-2.5 ring-1 ring-border shadow-2xl space-y-2">
             <div className="flex items-center gap-2.5">
-              {lastResult.is_correct
+              {lastResult.gto_tier === "uncovered"
+                ? <CheckCircle2 className="size-6 shrink-0 text-muted-foreground" aria-hidden />
+                : lastResult.is_correct
                 ? <CheckCircle2 className="size-6 shrink-0 text-success" aria-hidden />
                 : <XCircle className="size-6 shrink-0 text-destructive" aria-hidden />}
               <div className="flex-1 min-w-0">
@@ -817,7 +821,7 @@ export default function GhostTable() {
             {/* Result: outcome panel */}
             {phase === "result" && lastResult && (
               <div className="flex flex-col gap-3 min-h-0 overflow-y-auto">
-                <div className={cn("flex items-center gap-3 rounded-xl border p-4 shrink-0", lastResult.is_correct ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5")}>
+                <div className={cn("flex items-center gap-3 rounded-xl border p-4 shrink-0", lastResult.gto_tier === "uncovered" ? "border-border bg-muted/10" : lastResult.is_correct ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5")}>
                   {lastResult.gto_tier === "uncovered" ? <CheckCircle2 className="size-8 shrink-0 text-muted-foreground" aria-hidden /> : lastResult.is_correct ? <CheckCircle2 className="size-8 shrink-0 text-success" aria-hidden /> : <XCircle className="size-8 shrink-0 text-destructive" aria-hidden />}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -854,6 +858,7 @@ export default function GhostTable() {
                   )}
                 </div>
 
+                {lastResult.gto_tier !== "uncovered" && (
                 <div className={cn("flex items-center justify-between rounded-lg border p-3 shrink-0", lastResult.delta < 0 ? "border-success/30 bg-success/5" : "border-border bg-hud-surface")}>
                   <div className="flex items-center gap-1.5">
                     <TrendingUp className="size-3.5 text-muted-foreground" aria-hidden />
@@ -863,6 +868,7 @@ export default function GhostTable() {
                     {lastResult.delta > 0 ? "+" : ""}{lastResult.delta.toFixed(3)}
                   </span>
                 </div>
+                )}
 
                 {lastResult.srs_interval_days && (
                   <div className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 shrink-0", lastResult.is_correct ? "border-primary/30 bg-primary/5 text-primary" : "border-warning/30 bg-warning/5 text-warning")}>
