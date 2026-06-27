@@ -675,17 +675,17 @@ def _compute_comparison_leaks(decisions: list) -> list:
 def get_evolution_metrics(user_id: int, days: int = 90, last_n: int | None = None) -> List[dict]:
     """Retorna métricas por torneio para o gráfico de evolução."""
     tourn_filter, tourn_params = _build_tournament_filter(user_id, days, last_n)
-    # Evolution query filters tournaments directly (no decisions join needed)
-    # Seleção/janela por imported_at (uploads recentes); a ORDEM do eixo X é por played_at no
-    # ORDER BY abaixo (data de JOGO parseada do HH) — conserta torneios fora de ordem no gráfico.
+    # Gráfico TEMPORAL: o eixo X é played_at (data de JOGO), então o filtro 7D/30D/6M/1A também tem que
+    # ser por played_at — senão "7D" pega torneios IMPORTADOS nos últimos 7 dias (um torneio velho subido
+    # agora aparecia). played_at é só data ('YYYY-MM-DD'); comparo em data-only p/ incluir o dia limite.
     if last_n is not None:
-        where = "id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY imported_at DESC LIMIT ?)"
+        where = "id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY COALESCE(played_at, imported_at) DESC LIMIT ?)"
         params = (user_id, last_n)
     else:
         from datetime import datetime, timedelta
-        since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-        where = "user_id = ? AND imported_at >= ?"
-        params = (user_id, since)
+        since_date = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d')
+        where = "user_id = ? AND played_at IS NOT NULL AND played_at >= ?"
+        params = (user_id, since_date)
     conn = get_conn()
     try:
         rows = conn.execute(f"""
