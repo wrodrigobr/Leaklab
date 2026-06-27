@@ -7946,6 +7946,27 @@ def is_verdict_error_signal(gto_action: str | None, action_taken: str | None,
     return False
 
 
+# Bandas de score por label — espelham verdictLevelFromScore (cardLogic): <=0.08 correct,
+# <=0.18 acceptable, >0.18 error. O reconcile floora o LABEL por direção sem tocar o score, então
+# alinhamos o score à banda do label reconciliado → verdictLevelFromScore(score)==verdictLevel(label).
+_LABEL_SCORE_BAND = {
+    'standard':      (0.0,  0.08),
+    'marginal':      (0.09, 0.18),
+    'small_mistake': (0.19, 0.35),
+    'clear_mistake': (0.36, 1.0),
+}
+
+
+def _align_score_to_label(label: str, score) -> float:
+    """Clampa o score na banda do label reconciliado (consistência score↔label em TODA superfície)."""
+    lo, hi = _LABEL_SCORE_BAND.get(label, (0.0, 0.08))
+    try:
+        s = float(score) if score is not None else lo
+    except (TypeError, ValueError):
+        s = lo
+    return round(min(max(s, lo), hi), 4)
+
+
 def _is_pf_zone(stack_bb: float | None, street: str | None) -> bool:
     """Push/Fold zone: stack curto (<=12bb) em preflop — decisão deve ser jam/fold."""
     try:
@@ -8001,7 +8022,7 @@ def update_decision_gto(decision_id: int, gto_label: str, gto_action: str,
         else:
             # Reconcilia o label existente com o novo gto_label
             row = _fetchone(conn, _adapt(
-                "SELECT label, stack_bb, street, action_taken FROM decisions WHERE id = ?"
+                "SELECT label, stack_bb, street, action_taken, score FROM decisions WHERE id = ?"
             ), (decision_id,))
             reconciled = _reconcile_label(
                 row['label'] if row else 'standard', gto_label,
@@ -8011,8 +8032,9 @@ def update_decision_gto(decision_id: int, gto_label: str, gto_action: str,
                 gto_action=gto_action,
             )
             conn.execute(_adapt("""
-                UPDATE decisions SET gto_label = ?, gto_action = ?, label = ? WHERE id = ?
-            """), (gto_label, gto_action, reconciled, decision_id))
+                UPDATE decisions SET gto_label = ?, gto_action = ?, label = ?, score = ? WHERE id = ?
+            """), (gto_label, gto_action, reconciled,
+                   _align_score_to_label(reconciled, row['score'] if row else None), decision_id))
         conn.commit()
     finally:
         conn.close()
@@ -8065,7 +8087,7 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
         # Note: no gto_label IS NOT NULL filter — this node may be arriving for the first
         # time for decisions that had no GTO coverage at upload.
         candidates = _fetchall(conn, _adapt("""
-            SELECT id, tournament_id, board, hero_cards, stack_bb, facing_bet, action_taken, label
+            SELECT id, tournament_id, board, hero_cards, stack_bb, facing_bet, action_taken, label, score
             FROM decisions
             WHERE street = ? AND position = ?
         """), (street, position))
@@ -8105,8 +8127,8 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
                     gto_action=(max(strategy, key=strategy.get) if strategy else None),
                 )
                 conn.execute(_adapt(
-                    "UPDATE decisions SET gto_label=?, gto_action=?, label=? WHERE id=?"
-                ), (new_gto_label, top_action, reconciled, d['id']))
+                    "UPDATE decisions SET gto_label=?, gto_action=?, label=?, score=? WHERE id=?"
+                ), (new_gto_label, top_action, reconciled, _align_score_to_label(reconciled, d.get('score')), d['id']))
                 updated += 1
                 if d.get('tournament_id'):
                     affected_tournaments.add(d['tournament_id'])
@@ -8121,12 +8143,18 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
                 try:
                     pct_row = _fetchone(conn, _adapt(
                         "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
+                        "COUNT(CASE WHEN label='marginal' THEN 1 END)*100.0/COUNT(*) AS m, "
+                        "COUNT(CASE WHEN label='small_mistake' THEN 1 END)*100.0/COUNT(*) AS sm, "
+                        "COUNT(CASE WHEN label='clear_mistake' THEN 1 END)*100.0/COUNT(*) AS c, "
                         "AVG(score) AS a FROM decisions WHERE tournament_id=?"
                     ), (tid,))
                     if pct_row:
                         conn.execute(_adapt(
-                            "UPDATE tournaments SET standard_pct=?, avg_score=? WHERE id=?"
-                        ), (round(pct_row['s'] or 0, 2), round(pct_row['a'] or 0, 4), tid))
+                            "UPDATE tournaments SET standard_pct=?, marginal_pct=?, small_pct=?, "
+                            "clear_pct=?, avg_score=? WHERE id=?"
+                        ), (round(pct_row['s'] or 0, 2), round(pct_row['m'] or 0, 2),
+                            round(pct_row['sm'] or 0, 2), round(pct_row['c'] or 0, 2),
+                            round(pct_row['a'] or 0, 4), tid))
                 except Exception:
                     continue
             conn.commit()
@@ -8145,7 +8173,7 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
     conn = get_conn()
     try:
         rows = _fetchall(conn, _adapt("""
-            SELECT id, label, gto_label, stack_bb, street, action_taken, gto_action
+            SELECT id, label, gto_label, stack_bb, street, action_taken, gto_action, score
             FROM decisions
             WHERE tournament_id = ?
               AND gto_label IS NOT NULL AND gto_label != ''
@@ -8159,13 +8187,25 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
                 stack_bb=r['stack_bb'], street=r['street'], action_taken=r['action_taken'],
                 gto_action=r['gto_action'],   # RC-C: sinal de direção (GTO folda ↔ hero agride)
             )
-            if new != r['label']:
-                changes.append((new, r['id']))
+            # Alinha o score à banda do label (Classe C: score-vs-label) — mesmo quando o label não
+            # muda, o score pode estar fora da banda (poluição) e divergir das telas por score.
+            new_score = _align_score_to_label(new, r['score'])
+            if new != r['label'] or abs(new_score - float(r['score'] or 0)) > 1e-6:
+                changes.append((new, new_score, r['id']))
 
-        for new_label, dec_id in changes:
+        for new_label, new_score, dec_id in changes:
             conn.execute(_adapt(
-                "UPDATE decisions SET label=? WHERE id=?"
-            ), (new_label, dec_id))
+                "UPDATE decisions SET label=?, score=? WHERE id=?"
+            ), (new_label, new_score, dec_id))
+
+        # Alinha o score à banda do label para TODAS as decisões do torneio (inclui as SEM gto_label,
+        # heurística pura, fora do loop acima) — score poluído (ex.: standard com 0.89) divergia das
+        # telas por score (RecentForm/coach/avg). Clampa ao limite da banda, preservando in-banda.
+        for _lbl, (_lo, _hi) in _LABEL_SCORE_BAND.items():
+            conn.execute(_adapt(
+                "UPDATE decisions SET score = CASE WHEN score < ? THEN ? WHEN score > ? THEN ? ELSE score END "
+                "WHERE tournament_id = ? AND label = ? AND (score < ? OR score > ?)"
+            ), (_lo, _lo, _hi, _hi, tournament_id, _lbl, _lo, _hi))
 
         # Recalcula TODOS os buckets por label (#13: antes só standard_pct era reescrito; clear/
         # marginal/small ficavam congelados pré-reconcile → lista divergia do veredito por mão).
