@@ -53,6 +53,19 @@ function scaleWrap(content: string, cx: number, cy: number): string {
   return G.S === 1 ? content : `<g transform="translate(${cx},${cy}) scale(${G.S}) translate(${-cx},${-cy})">${content}</g>`;
 }
 const CARDS_BASE = "/cards/";
+
+// Pré-carrega as 52 cartas no cache HTTP do browser assim que este módulo carrega (= ao abrir o
+// replayer). Os <image href="/cards/XX.svg"> renderizam instantâneo, sem lag de fetch por carta na
+// 1ª exibição/navegação entre mãos. Idempotente (o browser cacheia); custo ~52 SVGs pequenos.
+if (typeof window !== "undefined") {
+  for (const _r of ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]) {
+    for (const _s of ["S", "H", "D", "C"]) {
+      const _img = new Image();
+      _img.src = `${CARDS_BASE}${_r}${_s}.svg`;
+    }
+  }
+}
+
 const AC_COLORS: Record<string, string> = {
   fold: "#9aa0a8", folds: "#9aa0a8",  // cinza neutro, fold é passivo, não erro
   call: "#3aaa52", calls: "#3aaa52",
