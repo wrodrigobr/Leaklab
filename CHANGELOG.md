@@ -7,6 +7,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### feat(multiway): motor de equity (eval7) ligado em prod + transparência no card e /docs
+
+> O `multiway_advisor` (estimativa para potes 3-way+, onde o solver heads-up não vai) dependia da lib `eval7`, que **não estava no `requirements.txt`** , em prod `_HAS_EVAL7=False` e o advisor retornava None (multiway sem número de equity). Adicionado `eval7==0.1.10` (wheel cp311 prebuilt, o build do `python:3.11-slim` não compila nada). Provado em prod: spot multiway calcula equity via Monte Carlo. O card de veredito já exibia equity vs range / realização / necessário (pot odds) / ação / rationale / disclaimer; adicionada uma seção no **/docs** ("Cobertura GTO") explicando o método , Monte Carlo vs ranges de continuação + pot odds + penalidade de realização, estimativa honesta, **não GTO/Nash** , nas 3 línguas (PT/EN/ES).
+
+### feat(import): consolida histórico de torneio quebrado em vários arquivos
+
+> O PokerStars quebra torneios longos em arquivos por dia (mesmo nº de torneio). Antes só o 1º importava e os demais eram rejeitados ("torneio já importado"). Agora o 2º+ arquivo do mesmo torneio faz **merge**: une as mãos novas às existentes, re-analisa e re-salva. A união é **ordenada por hand_id** (o nº global do PokerStars é monotônico no tempo) e `get_decisions` exibe por hand_id , a sequência fica cronológica independente da ordem de upload.
+
+### fix(gto): "analisando" reflete a fila de spots de verdade (não o status do request)
+
+> Sinal "analisando" da lista de torneios levado à forma robusta: `analisando = (postflop HU descoberto neste torneio) E (fila do solver ativa OU request não-terminal/recente)`. O status do `gto_hand_request` não bastava , o drain force-finaliza requests >2h pra 'done' mesmo com spots ainda na `gto_solver_queue`, então a verdade é a **fila de spots** (`_solver_busy`). Banner do dash usa a mesma régua → consistentes. Age-bound 6h→24h (import grande solva por horas). Volta a "Analisado" quando a fila esvazia.
+
+### fix(gto): deletar torneio limpa gto_hand_requests (fim do "Torneio sem raw_text no banco")
+
+> Deletar um torneio não removia seus `gto_hand_requests` → ficavam órfãos (apontando p/ torneio inexistente) e erravam "Torneio sem raw_text no banco" ao processar, poluindo o painel de erros. `delete_tournament`/`delete_user_admin` agora fazem cascade; o drain recolhe os órfãos legados a cada ciclo.
+
+### fix(dash): bankroll e curva de ELO respeitam o filtro por data de JOGO
+
+> Os filtros 7D/30D/6M/1A/TUDO do gráfico de bankroll janelavam por `imported_at` (upload), mas o eixo X é `played_at` (jogo) , "7D" mostrava um torneio jogado há 1 ano e subido agora. Agora filtra por `played_at` (data-only, inclui o dia limite). A janela "forma atual" da curva de ELO idem (últimos N JOGADOS, não importados).
+
+### fix(dash): banner de drift de confiança fica fechado até importar novo torneio
+
+> O dismiss persistia em localStorage, mas a chave usava `affected_sessions` (contagem), que cai quando a janela de 30 dias desliza (sessão envelhece) → o banner reaparecia sem novo import. Agora a chave usa um fingerprint estável (maior `tournament_id` das sessões em drift): só muda com torneio mais novo.
+
+### fix(replayer): voltar vai pra lista de mãos + cartas e mãos sem lag
+
+> **Botão voltar** (canto superior esquerdo) caía na mão anterior (`navigate(-1)`) , agora vai pra **lista de mãos** do torneio. **Cartas:** pré-carregadas (52 SVGs no cache do browser ao abrir o replayer) → renderizam instantâneo. **Navegação:** prefetch das próximas 3 mãos (era 1) → avançar não mostra "carregando".
+
 ### fix(verdict): veredito consistente em TODA superfície , invariante "erro nunca vira Correto" + consistência cross-superfície
 
 > Duas auditorias multi-agente (28 + 47 agentes) sobre o veredito do Replayer/Decision Card, lista e agregados. **Invariante** (fonte única `is_verdict_error_signal`): qualquer indício de erro de direção (o GTO folda a mão mas o hero agride, ou freq GTO ~0%) ⇒ a mão NUNCA é "Correta"/"Aceitável", independente de EV baixo. Aplicada em 4 camadas: engine (piso terminal, nunca capeado por EV), reconcile (floor antes do switch por gto_label), display (`clampVerdict` no card + pills + ação-ok), e varredura exaustiva. **Consistência cross-superfície:** o `score` passou a ser alinhado à banda do `label` no reconcile (RecentForm/coach/TournamentDetail divergiam por score≠label); `error_label` preflop deriva do is_error recomputado; **multiway é informativo** ("≈ Aproximação", não grada erro/correto, igual ao Ghost Table); ação recomendada única (`gto_action || best_action`); banner do dash e lista de torneios usam o mesmo sinal de "GTO em andamento" com age-bound (request órfão não fica eterno). Guardas: `scripts/validate_verdict_invariant.py --prod` + `tests/test_verdict_invariant.py` (na suite do CI). Validado: dev 1510 + **prod 797 decisões = ZERO violações** (136 dev + 86 prod realinhadas). LOW de consistência fechados (C9 scoreLabel, E5 cor da equity sobre Erro, E3 EV-loss card↔pill) + guarda de CI do score-align. Sobra só cosmético (E2 paletas dos cards GTO, E6 sizing em tooltip, E1 código morto) e a INFRA: ligar o solver GTO em prod (Hetzner CX43 + cron drain_solver_queue) — até lá o age-bound mantém a UI honesta.
