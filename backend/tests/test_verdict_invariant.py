@@ -61,6 +61,17 @@ def test_reconcile_keeps_existing_higher_severity():
     print("OK  test_reconcile_keeps_existing_higher_severity")
 
 
+def test_score_aligns_to_label_band():
+    # Classe C: o score é clampado na banda do label (verdictLevelFromScore == verdictLevel(label)).
+    from database.repositories import _align_score_to_label
+    assert _align_score_to_label('standard', 0.89) == 0.08        # poluído → teto standard (<=0.08)
+    assert _align_score_to_label('small_mistake', 0.0) == 0.19    # erro com score 0 → piso erro (>0.18)
+    assert _align_score_to_label('marginal', 0.04) == 0.09        # abaixo → piso marginal (>0.08)
+    assert _align_score_to_label('marginal', 0.12) == 0.12        # in-banda → preserva
+    assert _align_score_to_label('clear_mistake', 0.0) == 0.36
+    print("OK  test_score_aligns_to_label_band")
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     passed = failed = 0

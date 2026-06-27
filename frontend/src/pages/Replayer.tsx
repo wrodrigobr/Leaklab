@@ -525,7 +525,7 @@ function SidePanels({
                 <div className="text-muted-foreground/50 font-mono text-[11px]">vs</div>
                 <div>
                   <p className="font-mono text-[10px] text-muted-foreground uppercase">Equity</p>
-                  <p className={cn("font-mono text-[13px] font-bold tabular-nums", mathCallIsEv ? "text-emerald-400" : "text-red-400")}>
+                  <p className={cn("font-mono text-[13px] font-bold tabular-nums", !isActionOk ? "text-muted-foreground/60" : mathCallIsEv ? "text-emerald-400" : "text-red-400")}>
                     {(eq! * 100).toFixed(1)}%
                   </p>
                 </div>
@@ -742,7 +742,9 @@ function SidePanels({
               const intentTone = !bi?.intent ? "" : bi.is_leak ? "text-red-300"
                 : bi.intent.startsWith("value") ? "text-emerald-300"
                 : bi.intent === "semi_bluff" ? "text-sky-300" : "text-amber-300";
-              const eqColor = eq == null ? "" : eq >= 0.65 ? "text-emerald-400" : eq >= 0.50 ? "text-foreground" : eq >= 0.35 ? "text-amber-400" : "text-red-400";
+              // E5: quando o veredito é Erro (!isActionOk), a equity verde contradiz — neutraliza (cinza),
+              // igual o +pp já é mutado. A evidência matemática não pode "verdejar" sobre um erro de GTO.
+              const eqColor = eq == null ? "" : !isActionOk ? "text-muted-foreground/60" : eq >= 0.65 ? "text-emerald-400" : eq >= 0.50 ? "text-foreground" : eq >= 0.35 ? "text-amber-400" : "text-red-400";
               const eqQual = eq == null ? "" : eq >= 0.65 ? t("card.eqStrong") : eq >= 0.50 ? t("card.eqFavorable") : eq >= 0.35 ? t("card.eqMarginal") : t("card.eqWeak");
               const reqShown = (req != null && req > 0) ? req : reqImplicit;
               const pp = (eq != null && reqShown != null) ? (eq - reqShown) * 100 : null;
@@ -912,6 +914,7 @@ function SidePanels({
                 <span className="w-14 shrink-0 text-muted-foreground uppercase text-[10px]">Equity</span>
                 <span className={cn(
                   "font-bold tabular-nums",
+                  !isActionOk ? "text-muted-foreground/60" :   // E5: equity não verdeja sobre Erro
                   eq >= 0.65 ? "text-emerald-400" :
                   eq >= 0.50 ? "text-foreground" :
                   eq >= 0.35 ? "text-amber-400" : "text-red-400"

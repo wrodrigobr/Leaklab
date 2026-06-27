@@ -31,7 +31,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { AiText } from "@/components/ui/AiText";
 import { cn, formatAction } from "@/lib/utils";
 import { tournaments, metrics, coachDashboard, Tournament, TournamentDecision, PhaseData, TextureData, SessionReviewResponse } from "@/lib/api";
-import { verdictLevelOrError, type VerdictLevel } from "@/lib/cardLogic";
+import { verdictLevelOrError, verdictLevelFromScore, VERDICT_META, type VerdictLevel } from "@/lib/cardLogic";
 
 // FEAT-20: o veredito visível colapsa em 3 níveis dirigidos pela SEVERIDADE (label),
 // a MESMA régua do card do replayer e do badge de aderência. A frequência (gto_label)
@@ -224,13 +224,15 @@ const TournamentDetail = () => {
   };
 
 
-  const scoreLabel = (score: number) => score < 0.08
-    ? { label: t("detail.score.great"), cls: "text-primary" }
-    : score < 0.15
-    ? { label: t("detail.score.good"),  cls: "text-primary/70" }
-    : score < 0.25
-    ? { label: t("detail.score.moderate"), cls: "text-warning" }
-    : { label: t("detail.score.high"), cls: "text-destructive" };
+  // C9: usa os MESMOS cutoffs (verdictLevelFromScore: 0.08/0.18) e a MESMA paleta (VERDICT_META) do
+  // card — antes tinha régua própria (0.08/0.15/0.25) que divergia do veredito por mão.
+  const scoreLabel = (score: number) => {
+    const lvl = verdictLevelFromScore(score);
+    const txt = lvl === "correct" ? t("detail.score.great")
+              : lvl === "acceptable" ? t("detail.score.moderate")
+              : t("detail.score.high");
+    return { label: txt, cls: VERDICT_META[lvl].textCls };
+  };
   const [loading, setLoading] = useState(true);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [hands, setHands] = useState<Hand[]>([]);
