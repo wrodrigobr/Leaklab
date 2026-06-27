@@ -453,9 +453,12 @@ function renderSeatsAndChips(
     // Bounty badge (PKO) — canto SUPERIOR DIREITO do pod, ancorado à direita.
     // Fundo ESCURO OPACO: fica legível mesmo com as cartas brancas atrás (transparente sumia).
     if (d.bounty && d.bounty > 0) {
-      const bStr = `🎯$${d.bounty.toFixed(2)}`;
-      const bw3 = bStr.length * 6.0 + 12;
-      const rx = bx + bw - bw3 - 1;     // colado na direita do pod
+      const valStr = `$${d.bounty.toFixed(2)}`;
+      const bStr = `🎯${valStr}`;
+      // largura pelo NÚMERO (~6.4px/char no mono 10.5) + reserva fixa do emoji (~16px) + padding.
+      // o emoji conta 2 em .length mas renderiza mais largo, então não baseamos no bStr.length.
+      const bw3 = 16 + valStr.length * 6.4 + 10;
+      const rx = bx + bw - bw3 - 1;     // ancorado à direita (cresce pra esquerda, sem clipar)
       const ry = by - 7;                 // canto superior (leve saliência acima da borda)
       html += `<rect x="${rx}" y="${ry}" width="${bw3}" height="15" rx="7.5" fill="rgba(12,16,28,0.97)" stroke="rgba(245,158,11,0.7)" stroke-width="1"/>`;
       html += `<text x="${rx + bw3 / 2}" y="${ry + 11.5}" text-anchor="middle" fill="#fbbf24" font-family="Share Tech Mono,monospace" font-size="10.5" font-weight="700">${bStr}</text>`;
