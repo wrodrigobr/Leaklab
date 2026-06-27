@@ -450,13 +450,15 @@ function renderSeatsAndChips(
       html += `<text x="${pos.x}" y="${by + 48}" text-anchor="middle" fill="${stackFill}" font-family="Share Tech Mono,monospace" font-size="15" font-weight="600" letter-spacing=".05">${fmtAmt(sv, bb, unit)}</text>`;
     }
 
-    // Bounty badge (PKO tournaments) — sobe quando há tab de posição (não colidir)
+    // Bounty badge (PKO) — canto SUPERIOR DIREITO do pod, ancorado à direita.
+    // Fundo ESCURO OPACO: fica legível mesmo com as cartas brancas atrás (transparente sumia).
     if (d.bounty && d.bounty > 0) {
-      const bStr = `$${d.bounty.toFixed(2)}`;
-      const bw2 = bStr.length * 6.5 + 14;
-      const byB = d.pos ? by - 32 : by - 22;
-      html += `<rect x="${pos.x - bw2 / 2}" y="${byB}" width="${bw2}" height="16" rx="8" fill="rgba(245,158,11,0.15)" stroke="rgba(245,158,11,0.50)" stroke-width="1"/>`;
-      html += `<text x="${pos.x}" y="${byB + 12}" text-anchor="middle" fill="#fbbf24" font-family="Share Tech Mono,monospace" font-size="11" font-weight="700">🎯${bStr}</text>`;
+      const bStr = `🎯$${d.bounty.toFixed(2)}`;
+      const bw3 = bStr.length * 6.0 + 12;
+      const rx = bx + bw - bw3 - 1;     // colado na direita do pod
+      const ry = by - 7;                 // canto superior (leve saliência acima da borda)
+      html += `<rect x="${rx}" y="${ry}" width="${bw3}" height="15" rx="7.5" fill="rgba(12,16,28,0.97)" stroke="rgba(245,158,11,0.7)" stroke-width="1"/>`;
+      html += `<text x="${rx + bw3 / 2}" y="${ry + 11.5}" text-anchor="middle" fill="#fbbf24" font-family="Share Tech Mono,monospace" font-size="10.5" font-weight="700">${bStr}</text>`;
     }
 
     html += "</g>";  // fecha o grupo do seat (com opacity quando folded)
