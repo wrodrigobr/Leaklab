@@ -31,8 +31,9 @@ export function VerdictPill({
   // Sem veredito (passo sem ação do hero) → nenhum botão: abriria um card vazio.
   if (!level) return null;
   const meta = VERDICT_META[level];
-  // EV-loss só faz sentido quando há perda (aceitável/erro); em "correto" é ~0.
-  const showEv = (level === "error" || level === "acceptable") && evLossBb != null && evLossBb > 0;
+  // E3: mesma régra do card (DecisionCard mostra quando evLossBb > 0.05, em qualquer nível) — antes o
+  // pill escondia em "correct", divergindo do card ("-0.2bb" no card, vazio no pill na mesma mão).
+  const showEv = evLossBb != null && evLossBb > 0.05;
 
   return (
     <button
