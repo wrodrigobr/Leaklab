@@ -40,7 +40,7 @@
     "col_where": "Where to get the history",
     "ps_where": "Menu → Hands → Export hand history",
     "gg_where": "Hand History, in the client",
-    "p2": "You can upload multiple files at once. Each tournament is imported only once, duplicate uploads are detected and skipped."
+    "p2": "You can upload multiple files at once. The same tournament is consolidated: when PokerStars splits a long hand history into per-day files (same T#), the new hands are merged automatically."
   },
   "rating": {
     "eyebrow": "Documentation",

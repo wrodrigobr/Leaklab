@@ -40,7 +40,7 @@
     "col_where": "Dónde obtener el historial",
     "ps_where": "Menú → Manos → Exportar historial de manos",
     "gg_where": "Historial de Manos, en el cliente",
-    "p2": "Puedes subir varios archivos a la vez. Cada torneo se importa una sola vez, las subidas duplicadas se detectan y se ignoran."
+    "p2": "Puedes subir varios archivos a la vez. El mismo torneo se consolida: cuando PokerStars divide un historial largo en archivos por día (mismo T#), las manos nuevas se fusionan automáticamente."
   },
   "rating": {
     "eyebrow": "Documentación",

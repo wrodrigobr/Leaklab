@@ -40,7 +40,7 @@
     "col_where": "Onde obter o histórico",
     "ps_where": "Menu → Mãos → Exportar histórico de mãos",
     "gg_where": "Histórico de Mãos, no cliente",
-    "p2": "Você pode enviar vários arquivos de uma vez. Cada torneio é importado uma única vez, uploads duplicados são detectados e ignorados."
+    "p2": "Você pode enviar vários arquivos de uma vez. O mesmo torneio é consolidado: quando o PokerStars divide uma HH longa em arquivos por dia (mesmo T#), as mãos novas são mescladas automaticamente."
   },
   "rating": {
     "eyebrow": "Documentação",

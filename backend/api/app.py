@@ -551,14 +551,42 @@ def _analyze_impl():
     financials = _extract_financials(raw_full, hero, site)
     t_name     = _extract_tournament_name(raw_full, site, financials.get('buy_in'))
 
-    # Bloquear duplicata
+    # Torneio já importado: o PokerStars QUEBRA a HH de um torneio longo em arquivos por DATA (mesmo
+    # T#, nomes/dias diferentes). Em vez de rejeitar, MESCLAR: re-parseia o raw já salvo + o novo,
+    # dedup por hand_id, e re-analisa a UNIÃO (save_decisions abaixo faz DELETE+insert → substitui o
+    # torneio com a união consolidada). Só rejeita se o arquivo não trouxer NENHUMA mão nova.
     existing = get_tournament(g.user_id, tournament_id)
+    _merged = False
+    _new_hands_n = 0
     if existing:
-        return jsonify({
-            'error': f'Torneio {tournament_id} já foi importado anteriormente.',
-            'duplicate': True,
-            'tournament_id': tournament_id,
-        }), 409
+        _existing_raw = existing.get('raw_text') or ''
+        try:
+            _existing_hands = parse_pokerstars_file_from_text(_existing_raw) if _existing_raw else []
+        except Exception:
+            _existing_hands = []
+        _existing_ids = {str(getattr(h, 'hand_id', '') or '') for h in _existing_hands}
+        _new_hands = [h for h in hands
+                      if (str(getattr(h, 'hand_id', '') or '') and
+                          str(getattr(h, 'hand_id', '') or '') not in _existing_ids)]
+        if not _new_hands:
+            return jsonify({
+                'error': f'Torneio {tournament_id} já foi importado (este arquivo não traz mãos novas).',
+                'duplicate': True,
+                'tournament_id': tournament_id,
+            }), 409
+        # União: mãos existentes + novas (sem duplicar). Re-analisa tudo e recomputa agregados/financeiro.
+        hands = _existing_hands + _new_hands
+        results, hand_results, errors = _analyze_hands(hands)
+        if not results:
+            return jsonify({'error': 'Nenhuma decisão na união das mãos'}), 422
+        metrics    = build_session_metrics(results)
+        leaks      = correlate_leaks(results)
+        raw_full   = '\n'.join(h.raw_text for h in hands if hasattr(h, 'raw_text'))
+        financials = _extract_financials(raw_full, hero, site)
+        t_name     = _extract_tournament_name(raw_full, site, financials.get('buy_in'))
+        _merged, _new_hands_n = True, len(_new_hands)
+        log.info("analyze: MESCLANDO torneio %s (+%d mãos novas, %d no total)",
+                 tournament_id, _new_hands_n, len(hands))
 
     # Persistir
     t_db_id = save_tournament(
@@ -698,6 +726,8 @@ def _analyze_impl():
         'metrics':          metrics,
         'leaks':            leaks,
         'hands':            hand_results,
+        'merged':           _merged,        # torneio já existia → mesclou as mãos novas (HH dividida por dia)
+        'new_hands':        _new_hands_n,
     })
 
 
