@@ -645,6 +645,35 @@ def test_results_vs_gto_endpoint():
     print("OK  test_results_vs_gto_endpoint")
 
 
+def test_leaktrainer_endpoints():
+    """Leak Trainer: /next devolve spot canônico SEM revelar a resposta; /grade corrige no servidor.
+    Usuário sem leaks → currículo de fundamentos (RFI), ainda serve spot."""
+    client = _make_client()
+    token  = _register_and_login(client, 'lt')
+    # /next — sem dados → fundamentos; serve um spot
+    r = client.post('/player/leaktrainer/next', json={'session_state': {}}, headers=_auth_headers(token))
+    assert r.status_code == 200, r.get_json()
+    sp = r.get_json()['spot']
+    assert sp is not None, "fundamentos deveriam servir um spot"
+    # NÃO revela a resposta (range fica no servidor)
+    for leak in ('best_action', 'gto_strategy', 'hand_freq', 'recommended'):
+        assert leak not in sp, f"spot vazou {leak}"
+    assert sp.get('hand') and sp.get('scenario') and sp.get('options'), sp
+    # /grade — fold 72o UTG RFI → correto (GTO folda 100%)
+    spot = {'position': 'UTG', 'hand': '72o', 'stack_bb': 50, 'facing_size': 0,
+            'vs_position': '', 'is_3bet_pot': False, 'xp_value': 20}
+    r2 = client.post('/player/leaktrainer/grade', json={'spot': spot, 'action': 'fold'},
+                     headers=_auth_headers(token))
+    assert r2.status_code == 200, r2.get_json()
+    g = r2.get_json()
+    assert g['is_correct'] is True and g['gto_tier'] == 'correct', g
+    assert g['xp_awarded'] == 20, g
+    assert isinstance(g['gto_strategy'], list), g
+    # auth obrigatório
+    assert client.post('/player/leaktrainer/next', json={}).status_code in (401, 403)
+    print("OK  test_leaktrainer_endpoints")
+
+
 def test_drill_submit_awards_xp():
     """Gamificação: drill correto → drill_completed (25 XP, 1×/dia/decisão);
     SRS no teto pela 1ª vez → drill_mastered (100 XP); first_drill destravado."""

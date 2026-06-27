@@ -697,20 +697,29 @@ def _compute_comparison_leaks(decisions: list) -> list:
 
 # ── Evolution metrics (queries para o dashboard) ──────────────────────────────
 
-def get_evolution_metrics(user_id: int, days: int = 90, last_n: int | None = None) -> List[dict]:
-    """Retorna métricas por torneio para o gráfico de evolução."""
-    tourn_filter, tourn_params = _build_tournament_filter(user_id, days, last_n)
-    # Gráfico TEMPORAL: o eixo X é played_at (data de JOGO), então o filtro 7D/30D/6M/1A também tem que
-    # ser por played_at — senão "7D" pega torneios IMPORTADOS nos últimos 7 dias (um torneio velho subido
-    # agora aparecia). played_at é só data ('YYYY-MM-DD'); comparo em data-only p/ incluir o dia limite.
+def get_evolution_metrics(user_id: int, days: int = 90, last_n: int | None = None,
+                          by_played: bool = False) -> List[dict]:
+    """Retorna métricas por torneio para o gráfico de evolução.
+
+    by_played: o GRÁFICO de bankroll (eixo X = played_at) precisa que o filtro 7D/30D/6M/1A janele por
+    DATA DE JOGO — senão "7D" pega torneios IMPORTADOS nos últimos 7 dias (um torneio velho subido agora
+    aparecia). Só o /history/evolution passa True. Os OUTROS consumidores (study plan, coach, presença de
+    dados) mantêm imported_at (default) — senão um torneio jogado há >90 dias, importado agora, some do
+    check de presença e quebra o plano de estudo."""
     if last_n is not None:
-        where = "id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY COALESCE(played_at, imported_at) DESC LIMIT ?)"
+        _ord = "COALESCE(played_at, imported_at)" if by_played else "imported_at"
+        where = f"id IN (SELECT id FROM tournaments WHERE user_id = ? ORDER BY {_ord} DESC LIMIT ?)"
         params = (user_id, last_n)
-    else:
+    elif by_played:
         from datetime import datetime, timedelta
-        since_date = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d')
+        since_date = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d')  # data-only inclui o dia limite
         where = "user_id = ? AND played_at IS NOT NULL AND played_at >= ?"
         params = (user_id, since_date)
+    else:
+        from datetime import datetime, timedelta
+        since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+        where = "user_id = ? AND imported_at >= ?"
+        params = (user_id, since)
     conn = get_conn()
     try:
         rows = conn.execute(f"""

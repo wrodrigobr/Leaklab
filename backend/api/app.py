@@ -1000,7 +1000,7 @@ def history_evolution():
     last_n = int(request.args.get('last_n')) if request.args.get('last_n') else None
     leak_data = get_leak_ranking_gto_first(g.user_id, days, last_n=last_n)
     return jsonify({
-        'evolution':    get_evolution_metrics(g.user_id, days, last_n=last_n),
+        'evolution':    get_evolution_metrics(g.user_id, days, last_n=last_n, by_played=True),
         'leaks':        leak_data['leaks'],
         'leak_source':  leak_data['source'],
         'icm':          get_icm_performance(g.user_id, days),
@@ -1999,6 +1999,38 @@ def academy_gto_preflop_submit():
     result['xp_awarded'] = xp_value if result.get('is_correct') else 0
     if result['xp_awarded']:
         add_xp(g.user_id, 'academy_gto_preflop_correct', xp_value)
+    return jsonify(result)
+
+
+@app.route('/player/leaktrainer/next', methods=['POST'])
+@require_auth
+def leaktrainer_next():
+    """Leak Trainer (Fase 1) — próximo spot canônico mirado no leak do jogador, SEM revelar a resposta.
+    O currículo vem dos leaks reais (get_leak_categories); o spot é sintético/limpo; o estado da sessão
+    (hits/misses por categoria) é client-side e ecoado. Adulterar o estado não falsifica acerto — o
+    grading é server-side e stateless."""
+    from leaklab.leak_trainer import build_curriculum, next_spot
+    body          = request.get_json(silent=True) or {}
+    session_state = body.get('session_state') or {}
+    days          = int(body.get('days', 90) or 90)
+    curriculum    = build_curriculum(g.user_id, days=days)
+    spot          = next_spot(curriculum, session_state)
+    return jsonify({'spot': spot, 'session_state': session_state})
+
+
+@app.route('/player/leaktrainer/grade', methods=['POST'])
+@require_auth
+def leaktrainer_grade():
+    """Corrige a ação NO SERVIDOR via analyze_preflop — a range nunca sai do servidor. XP por acerto."""
+    from leaklab.leak_trainer import grade_canonical_spot
+    body   = request.get_json(force=True) or {}
+    spot   = body.get('spot') or {}
+    action = (body.get('action') or '').lower()
+    result = grade_canonical_spot(spot, action)
+    xp     = int(spot.get('xp_value', 20) or 20)
+    result['xp_awarded'] = xp if result.get('is_correct') else 0
+    if result['xp_awarded']:
+        add_xp(g.user_id, 'leaktrainer_correct', xp)
     return jsonify(result)
 
 
