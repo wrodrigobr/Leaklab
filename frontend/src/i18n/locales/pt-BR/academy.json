@@ -71,6 +71,14 @@
     "next": "Próximo spot",
     "fullscreen": "Tela cheia",
     "exitFull": "Sair",
+    "finish": "Finalizar sessão",
+    "summary": {
+      "title": "Sessão concluída",
+      "best": "Você mandou bem em",
+      "tough": "Treinar mais",
+      "continue": "Continuar",
+      "newSession": "Nova sessão"
+    },
     "vCorrect": "Correto",
     "vMixed": "Aceitável",
     "vError": "Erro",

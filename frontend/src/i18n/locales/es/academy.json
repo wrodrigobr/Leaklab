@@ -71,6 +71,14 @@
     "next": "Siguiente spot",
     "fullscreen": "Pantalla completa",
     "exitFull": "Salir",
+    "finish": "Finalizar sesión",
+    "summary": {
+      "title": "Sesión completada",
+      "best": "Lo clavaste en",
+      "tough": "Entrenar más",
+      "continue": "Continuar",
+      "newSession": "Nueva sesión"
+    },
     "vCorrect": "Correcto",
     "vMixed": "Aceptable",
     "vError": "Error",

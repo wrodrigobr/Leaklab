@@ -7,7 +7,8 @@ import { leaktrainer } from "@/lib/api";
 import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type Phase = "loading" | "question" | "feedback" | "error" | "empty";
+type Phase = "loading" | "question" | "feedback" | "error" | "empty" | "summary";
+type SessionStat = { label: string; hits: number; misses: number };
 
 const ORDER = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
 const STATE_KEY = "leaklab_leaktrainer_state";
@@ -77,6 +78,8 @@ export default function LeakTrainer() {
   const [streak, setStreak]             = useState(0);
   const [totalDone, setTotalDone]       = useState(0);
   const [totalCorrect, setTotalCorrect] = useState(0);
+  const [xpEarned, setXpEarned]         = useState(0);
+  const [sessionStats, setSessionStats] = useState<Record<string, SessionStat>>({});
   const stateRef = useRef<LeakTrainerState>(loadState());
   const rootRef = useRef<HTMLDivElement>(null);
   const [isFull, setIsFull] = useState(false);
@@ -91,6 +94,18 @@ export default function LeakTrainer() {
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
   const canFull = typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
+
+  // rótulo humano da categoria de leak (cenário + posições)
+  const labelFor = (sp: LeakTrainerSpot) =>
+    sp.scenario === "rfi" ? t("leakTrainer.cat.rfi", { pos: sp.position })
+    : sp.scenario === "vs_rfi" ? t("leakTrainer.cat.vsRfi", { pos: sp.position, vs: sp.vs_position })
+    : t("leakTrainer.cat.vs3bet", { pos: sp.position, vs: sp.vs_position });
+
+  const finishSession = () => setPhase("summary");
+  const newSession = () => {
+    setSessionStats({}); setTotalDone(0); setTotalCorrect(0); setStreak(0); setXpEarned(0);
+    loadNext();
+  };
 
   const loadNext = useCallback(async () => {
     setPhase("loading"); setSelected(null); setGrade(null);
@@ -112,6 +127,13 @@ export default function LeakTrainer() {
       const g = await leaktrainer.grade(spot, action);
       setGrade(g);
       setTotalDone((n) => n + 1);
+      setXpEarned((x) => x + (g.xp_awarded || 0));
+      // stats DESTA sessão por categoria (pro recap), separado da adaptação persistida
+      const lbl = labelFor(spot);
+      setSessionStats((s) => {
+        const c = s[spot.category] || { label: lbl, hits: 0, misses: 0 };
+        return { ...s, [spot.category]: { label: lbl, hits: c.hits + (g.is_correct ? 1 : 0), misses: c.misses + (g.is_correct ? 0 : 1) } };
+      });
       // atualiza o estado da sessão por categoria (adaptação) + persiste
       const st = stateRef.current;
       const cur = st[spot.category] || { hits: 0, misses: 0, seen: 0 };
@@ -131,12 +153,12 @@ export default function LeakTrainer() {
   const accuracy = totalDone > 0 ? Math.round((totalCorrect / totalDone) * 100) : null;
   const table = spot ? buildStep(spot) : null;
 
-  // rótulo humano da categoria de leak (localizado a partir do cenário + posições)
-  const catLabel = spot ? (
-    spot.scenario === "rfi" ? t("leakTrainer.cat.rfi", { pos: spot.position })
-    : spot.scenario === "vs_rfi" ? t("leakTrainer.cat.vsRfi", { pos: spot.position, vs: spot.vs_position })
-    : t("leakTrainer.cat.vs3bet", { pos: spot.position, vs: spot.vs_position })
-  ) : "";
+  const catLabel = spot ? labelFor(spot) : "";
+
+  // recap: melhor categoria (mais acertos) e a mais difícil (mais erros) desta sessão
+  const statList = Object.values(sessionStats);
+  const bestCat = statList.filter((s) => s.hits > 0).sort((a, b) => b.hits - a.hits)[0];
+  const toughCat = statList.filter((s) => s.misses > 0).sort((a, b) => b.misses - a.misses)[0];
 
   // rótulo da ação (raise muda por cenário: 3-Bet vs 4-Bet)
   const actLabel = (a: string) => {
@@ -199,6 +221,49 @@ export default function LeakTrainer() {
           </div>
         )}
 
+        {phase === "summary" && (
+          <div className="mx-auto w-full max-w-md space-y-5 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.08] to-transparent p-7">
+            <div className="flex items-center gap-2">
+              <Target className="size-6 text-amber-400" aria-hidden />
+              <h2 className="font-heading text-xl font-bold text-foreground">{t("leakTrainer.summary.title")}</h2>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p className="font-mono text-2xl font-bold tabular-nums text-foreground">{totalDone}</p>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("stats.done")}</p>
+              </div>
+              <div>
+                <p className={cn("font-mono text-2xl font-bold tabular-nums", (accuracy ?? 0) >= 70 ? "text-emerald-400" : "text-amber-400")}>{accuracy ?? 0}%</p>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t("stats.accuracy")}</p>
+              </div>
+              <div>
+                <p className="font-mono text-2xl font-bold tabular-nums text-emerald-400">+{xpEarned}</p>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">XP</p>
+              </div>
+            </div>
+            {bestCat && (
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                <p className="font-mono text-[9px] uppercase tracking-wider text-emerald-400">{t("leakTrainer.summary.best")}</p>
+                <p className="text-sm font-bold text-foreground">{bestCat.label}</p>
+              </div>
+            )}
+            {toughCat && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+                <p className="font-mono text-[9px] uppercase tracking-wider text-amber-400">{t("leakTrainer.summary.tough")}</p>
+                <p className="text-sm font-bold text-foreground">{toughCat.label}</p>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => loadNext()} className="flex-1 rounded-lg border border-border bg-hud-surface px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-foreground transition-colors hover:bg-amber-500/5">
+                {t("leakTrainer.summary.continue")}
+              </button>
+              <button onClick={newSession} className="flex-1 rounded-lg bg-amber-500 px-4 py-3 font-mono text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
+                {t("leakTrainer.summary.newSession")}
+              </button>
+            </div>
+          </div>
+        )}
+
         {(phase === "question" || phase === "feedback") && spot && table && (
           <div className="flex flex-col lg:flex-row gap-4 items-stretch">
 
@@ -227,6 +292,12 @@ export default function LeakTrainer() {
                     <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">{t("stats.streak")}</p>
                   </div>
                 </div>
+              )}
+
+              {totalDone > 0 && (
+                <button onClick={finishSession} className="self-start font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-amber-400">
+                  {t("leakTrainer.finish")} →
+                </button>
               )}
 
               {/* Categoria de leak treinada agora */}

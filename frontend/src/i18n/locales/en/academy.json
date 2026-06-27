@@ -71,6 +71,14 @@
     "next": "Next spot",
     "fullscreen": "Fullscreen",
     "exitFull": "Exit",
+    "finish": "Finish session",
+    "summary": {
+      "title": "Session complete",
+      "best": "You nailed",
+      "tough": "Train more",
+      "continue": "Continue",
+      "newSession": "New session"
+    },
     "vCorrect": "Correct",
     "vMixed": "Acceptable",
     "vError": "Mistake",
