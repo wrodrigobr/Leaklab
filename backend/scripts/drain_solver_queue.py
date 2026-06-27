@@ -45,6 +45,36 @@ def _regrade_heuristic():
     subprocess.run([sys.executable, script, '--only-heuristic'], check=False)
 
 
+def _finalize_hand_requests(max_reqs: int = 100):
+    """Finaliza gto_hand_requests não-terminais. Em prod o _gto_hand_worker_loop (que faz isto) NÃO
+    roda em gunicorn — só no __main__. Sem este passo, depois que o drain resolve os spots, o request
+    fica 'solver_queued' ETERNO (o "1 spot pendente há tempos"). Aqui re-processa: spots resolvidos →
+    'done'; requests velhos (>2h) ainda 'solver_queued' (spots não-solváveis: multiway/deep/HU-only)
+    são forçados a 'done' pra não travar fila e UI."""
+    from datetime import datetime, timedelta
+    try:
+        from api.app import _process_gto_hand_request
+        from database.repositories import update_gto_hand_request, get_pending_gto_hand_requests
+    except Exception as e:
+        print(f"drain_solver_queue: finalize indisponível ({e})")
+        return
+    stale = (datetime.utcnow() - timedelta(hours=2)).strftime('%Y-%m-%d %H:%M:%S')
+    reqs = get_pending_gto_hand_requests(limit=max_reqs)
+    fin = 0
+    for req in reqs:
+        req = dict(req)
+        try:
+            status, err, n_done, n_queued = _process_gto_hand_request(req)
+            if status == 'solver_queued' and str(req.get('created_at') or '') < stale:
+                status, err = 'done', (err or 'spots não-solváveis (multiway/deep) — finalizado pelo drain')
+            update_gto_hand_request(req['id'], status, decisions_done=n_done, error_msg=err)
+            if status == 'done':
+                fin += 1
+        except Exception as e:
+            print(f"drain_solver_queue: req {req.get('id')} finalize falhou: {e}")
+    print(f"drain_solver_queue: finalize hand_requests -> {fin}/{len(reqs)} done")
+
+
 def main():
     max_jobs = int(sys.argv[1]) if len(sys.argv) > 1 else 20
     _reset_stale_running()
@@ -53,6 +83,9 @@ def main():
     # Só re-grada se fechou/copiou nós novos (senão é desperdício; steady-state = no-op).
     if (result.get('solved', 0) + result.get('copied', 0)) > 0:
         _regrade_heuristic()
+    # Finaliza os hand_requests (resolvidos → done; não-solváveis velhos → done). SEMPRE roda — é o
+    # que tira o "solver_queued eterno" em prod, independente de ter resolvido spot novo neste ciclo.
+    _finalize_hand_requests()
 
 
 if __name__ == "__main__":

@@ -7862,12 +7862,15 @@ def get_gto_hand_request_status(hand_id: str, user_id: int) -> Optional[dict]:
 
 
 def get_pending_gto_hand_requests(limit: int = 5) -> list:
+    # Inclui 'solver_queued': depois que o drain resolve os spots, o request precisa ser RE-CHECADO
+    # pra virar 'done' — senão fica 'solver_queued' eterno (em prod o worker-loop não roda em gunicorn,
+    # só o cron do drain, que agora finaliza via este conjunto). created_at p/ o age-out de não-solváveis.
     conn = get_conn()
     try:
         return _fetchall(conn, _adapt("""
-            SELECT id, tournament_id, hand_id, requested_by
+            SELECT id, tournament_id, hand_id, requested_by, status, created_at
             FROM gto_hand_requests
-            WHERE status = 'pending'
+            WHERE status IN ('pending', 'solver_queued', 'processing')
             ORDER BY created_at ASC
             LIMIT ?
         """), (limit,))
