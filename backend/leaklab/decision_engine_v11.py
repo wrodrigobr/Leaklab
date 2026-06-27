@@ -282,7 +282,10 @@ def _preflop_gto_label_adjust(label: str, quality: str, ev_loss_bb: float | None
     if quality in ('acceptable', 'gto_minor_deviation', 'minor_mistake'):
         return _SEV_LABEL[min(cur, _LABEL_SEV['marginal'])]
     if quality in ('leak', 'major_leak'):
-        if ev_loss_bb is not None and ev_loss_bb < _PREFLOP_EV_MINOR_BB:
+        # RC-A: 'major_leak' = ação FORA do range (freq GTO ~0%). EV baixo aqui NÃO é "defensável"
+        # (custa pouco JUSTAMENTE porque não devia estar no pote) — nunca rebaixa por EV. Só 'leak'
+        # (low-freq dentro de um mix, freq>0) mantém o softening EV-minor.
+        if quality == 'leak' and ev_loss_bb is not None and ev_loss_bb < _PREFLOP_EV_MINOR_BB:
             return _SEV_LABEL[min(cur, _LABEL_SEV['marginal'])]
         return _SEV_LABEL[max(cur, _LABEL_SEV['small_mistake'])]
     return label
@@ -300,15 +303,23 @@ _EV_CEIL_SMALL_BB    = 1.50
 _LABEL_MAX_SCORE = {'standard': 0.08, 'marginal': 0.18, 'small_mistake': 0.35, 'clear_mistake': 1.0}
 
 
-def _ev_severity_ceiling(label: str, ev_loss_bb: float | None) -> str:
+_EV_RELIABLE_SOURCES = ('gw_har', 'solver_hand', 'gto_tree', 'hand_aware')
+
+
+def _ev_severity_ceiling(label: str, ev_loss_bb: float | None, ev_loss_source: str | None = None) -> str:
     if ev_loss_bb is None:
         return label
     cur = _LABEL_SEV.get(label, 1)
     if ev_loss_bb < _EV_CEIL_MARGINAL_BB:
-        return _SEV_LABEL[min(cur, _LABEL_SEV['marginal'])]
-    if ev_loss_bb < _EV_CEIL_SMALL_BB:
-        return _SEV_LABEL[min(cur, _LABEL_SEV['small_mistake'])]
-    return label
+        cur = min(cur, _LABEL_SEV['marginal'])          # custo ínfimo → teto 'marginal'
+    elif ev_loss_bb < _EV_CEIL_SMALL_BB:
+        cur = min(cur, _LABEL_SEV['small_mistake'])     # custo real pequeno → teto 'small_mistake'
+    # RC-B: PISO por EV alto (simétrico ao teto, que só rebaixava). Foldar mão que o GTO paga com
+    # -EV grande é erro real mesmo com gto_mixed/gto_correct. Só com fonte de EV confiável
+    # (hand-aware), nunca em nó agregado/aproximado (evita falso positivo).
+    if (ev_loss_source or '') in _EV_RELIABLE_SOURCES and ev_loss_bb >= _EV_CEIL_SMALL_BB:
+        cur = max(cur, _LABEL_SEV['small_mistake'])
+    return _SEV_LABEL[cur]
 
 
 def _enrich_gto(input_data: Dict[str, Any]) -> dict:
@@ -863,7 +874,9 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
         # gto_label crítico é rebaixado e o score capeado em 'marginal'. Sem isto, um
         # 3-bet light de 0.006bb saía como gto_critical/clear_mistake (igual a um erro
         # de vários bb). 22 a 0.281bb fica acima do limiar e segue small_mistake.
-        _low_cost_leak = (quality in ('leak', 'major_leak') and _pf_evloss is not None
+        # RC-A: só 'leak' (freq>0, dentro de um mix) é low-cost defensável. 'major_leak' (freq~0,
+        # fora do range) é erro de DIREÇÃO — nunca rebaixado por EV (mantém gto_critical, piso de label).
+        _low_cost_leak = (quality == 'leak' and _pf_evloss is not None
                           and _pf_evloss < _PREFLOP_EV_MINOR_BB)
         # Consistência score/label: recalcular final_score para bater com novo label
         if quality == 'correct':
@@ -974,7 +987,7 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # que custa ~0 = spot misto, não erro grave). gto_label fica intacto.
     _eff_ev = gto.get('ev_loss_bb') if gto.get('available') else None
     _label_pre_ceil = label
-    label = _ev_severity_ceiling(label, _eff_ev)
+    label = _ev_severity_ceiling(label, _eff_ev, gto.get('ev_loss_source') if gto.get('available') else None)
     if label != _label_pre_ceil:
         final_score = min(final_score, _LABEL_MAX_SCORE[label])
 

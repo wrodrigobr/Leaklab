@@ -15,7 +15,7 @@ import { DecisionCard, type DecisionSourceVariant } from "@/components/replayer/
 import { PlayingCard, type CardData } from "@/components/hud/PlayingCard";
 import { cn } from "@/lib/utils";
 import { computeEffectiveGtoLabel } from "@/lib/gtoUtils";
-import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, type VerdictLevel } from "@/lib/cardLogic";
+import { livePlayers as computeLivePlayers, isMultiwayPot, isPpMuted, idealActionSource, verdictStrategy, verdictLevel, clampVerdict, type VerdictLevel } from "@/lib/cardLogic";
 import { VerdictPill } from "@/components/replayer/VerdictPill";
 import { ACTION_COLORS } from "@/lib/actionColors";
 import { tournaments as tournamentsApi, coachDashboard, ReplayData, ReplayStep, TournamentDecision, CoachAnnotation, CoachOverrideLabel } from "@/lib/api";
@@ -207,8 +207,11 @@ function SidePanels({
     const _hasBasis = isError || !!step.error_label || hasGto || !!pg?.available
       || step.multiway_advice != null || step.hand_equity != null || step.pot_odds_equity != null;
     if (!_hasBasis) return null;
-    const _lvl: "correct" | "acceptable" | "error" =
-        verdictLevel(step.error_label) ?? (isError ? "error" : "correct");
+    // RC-D: clamp de defesa-em-profundidade — sinal de erro (GTO folda ↔ hero agride) NUNCA vira
+    // correct/acceptable, mesmo se o label vier brando (não-reconciliado/legado).
+    const _lvl: "correct" | "acceptable" | "error" = clampVerdict(
+        verdictLevel(step.error_label) ?? (isError ? "error" : "correct"),
+        step.gto_action, playedAction, effectiveGtoLabel ?? step.gto_label);
     const _M: Record<"correct" | "acceptable" | "error", VInfo> = {
       correct:    { icon: "✓", label: t("card.vCorrect"),    cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: _src.name, sourceTooltip: _src.tip },
       acceptable: { icon: "◎", label: t("card.vAcceptable"), cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: _src.name, sourceTooltip: _src.tip },

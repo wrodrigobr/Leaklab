@@ -7924,6 +7924,27 @@ def get_gto_hand_request_queue(limit: int = 50) -> list:
 
 _LABEL_SEVERITY = {'standard': 0, 'marginal': 1, 'small_mistake': 2, 'clear_mistake': 3}
 
+# Ações AGRESSIVAS (continuam/aumentam o pote). Base do sinal canônico de erro de direção.
+_AGGRESSIVE_ACTIONS = {'raise', 'bet', 'jam', 'shove', 'allin', 'all-in', '3bet', '4bet', 'reraise'}
+
+
+def is_verdict_error_signal(gto_action: str | None, action_taken: str | None,
+                            played_freq: float | None = None, in_range: bool | None = None) -> bool:
+    """Sinal CANÔNICO de erro de DIREÇÃO (invariante do veredito). True ⇒ a mão NUNCA pode ser
+    'correta'/'aceitável', independente de ev_loss baixo. FONTE ÚNICA (reconcile + validação +
+    display). Captura: o GTO folda a mão (fora do range de continuação) mas o hero AGREDIU; ou a
+    ação tomada tem freq GTO ~0 / fora do range."""
+    _ga = (gto_action or '').lower().strip()
+    _at = (action_taken or '').lower().strip()
+    if _at in _AGGRESSIVE_ACTIONS:
+        if _ga == 'fold':                                    # GTO descarta a mão; hero agrediu
+            return True
+        if played_freq is not None and played_freq < 0.05:   # ação com freq ~0 (fora do mix)
+            return True
+        if in_range is False:                                # fora do range (agressão preflop)
+            return True
+    return False
+
 
 def _is_pf_zone(stack_bb: float | None, street: str | None) -> bool:
     """Push/Fold zone: stack curto (<=12bb) em preflop — decisão deve ser jam/fold."""
@@ -7936,7 +7957,8 @@ def _is_pf_zone(stack_bb: float | None, street: str | None) -> bool:
 def _reconcile_label(label: str, gto_label: str,
                      stack_bb: float | None = None,
                      street: str | None = None,
-                     action_taken: str | None = None) -> str:
+                     action_taken: str | None = None,
+                     gto_action: str | None = None) -> str:
     """Reconcilia label heurístico com veredicto GTO. GTO é autoritativo para direção.
 
     Em push/fold zone (stack ≤ 12bb preflop), se hero não jam/fold com gto_mixed:
@@ -7945,6 +7967,12 @@ def _reconcile_label(label: str, gto_label: str,
     is_pf = _is_pf_zone(stack_bb, street)
     act = (action_taken or '').lower().strip()
     pf_non_decisive = is_pf and act not in ('jam', 'shove', 'allin', 'all-in', 'fold')
+
+    # RC-C / INVARIANTE (rede de segurança): erro de DIREÇÃO (GTO folda a mão mas hero AGREDIU)
+    # força piso de erro ANTES do switch por gto_label — que pode vir leniente (bug) ou legado.
+    # Exclui gto_mixed/gto_correct (mix legítimo onde a agressão pode ser co-ótima).
+    if gto_label not in ('gto_mixed', 'gto_correct') and is_verdict_error_signal(gto_action, action_taken):
+        return label if _LABEL_SEVERITY.get(label, 0) >= 2 else 'small_mistake'
 
     if gto_label in ('gto_correct', 'gto_mixed'):
         # PF zone com call/limp/check vs gto_mixed → não é standard
@@ -7980,6 +8008,7 @@ def update_decision_gto(decision_id: int, gto_label: str, gto_action: str,
                 stack_bb=row['stack_bb'] if row else None,
                 street=row['street'] if row else None,
                 action_taken=row['action_taken'] if row else None,
+                gto_action=gto_action,
             )
             conn.execute(_adapt("""
                 UPDATE decisions SET gto_label = ?, gto_action = ?, label = ? WHERE id = ?
@@ -8073,6 +8102,7 @@ def resync_gto_labels_for_node(spot_hash: str) -> int:
                     stack_bb=d.get('stack_bb'),
                     street=street,
                     action_taken=d.get('action_taken'),
+                    gto_action=(max(strategy, key=strategy.get) if strategy else None),
                 )
                 conn.execute(_adapt(
                     "UPDATE decisions SET gto_label=?, gto_action=?, label=? WHERE id=?"
@@ -8115,7 +8145,7 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
     conn = get_conn()
     try:
         rows = _fetchall(conn, _adapt("""
-            SELECT id, label, gto_label, stack_bb, street, action_taken
+            SELECT id, label, gto_label, stack_bb, street, action_taken, gto_action
             FROM decisions
             WHERE tournament_id = ?
               AND gto_label IS NOT NULL AND gto_label != ''
@@ -8127,6 +8157,7 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
             new = _reconcile_label(
                 r['label'], r['gto_label'],
                 stack_bb=r['stack_bb'], street=r['street'], action_taken=r['action_taken'],
+                gto_action=r['gto_action'],   # RC-C: sinal de direção (GTO folda ↔ hero agride)
             )
             if new != r['label']:
                 changes.append((new, r['id']))
@@ -8136,15 +8167,22 @@ def reconcile_tournament_labels(tournament_id: int) -> int:
                 "UPDATE decisions SET label=? WHERE id=?"
             ), (new_label, dec_id))
 
-        # Recalcula standard_pct
+        # Recalcula TODOS os buckets por label (#13: antes só standard_pct era reescrito; clear/
+        # marginal/small ficavam congelados pré-reconcile → lista divergia do veredito por mão).
         pct_row = _fetchone(conn, _adapt(
             "SELECT COUNT(CASE WHEN label='standard' THEN 1 END)*100.0/COUNT(*) AS s, "
+            "COUNT(CASE WHEN label='marginal' THEN 1 END)*100.0/COUNT(*) AS m, "
+            "COUNT(CASE WHEN label='small_mistake' THEN 1 END)*100.0/COUNT(*) AS sm, "
+            "COUNT(CASE WHEN label='clear_mistake' THEN 1 END)*100.0/COUNT(*) AS c, "
             "AVG(score) AS a FROM decisions WHERE tournament_id=?"
         ), (tournament_id,))
         if pct_row:
             conn.execute(_adapt(
-                "UPDATE tournaments SET standard_pct=?, avg_score=? WHERE id=?"
-            ), (round(pct_row['s'] or 0, 2), round(pct_row['a'] or 0, 4), tournament_id))
+                "UPDATE tournaments SET standard_pct=?, marginal_pct=?, small_pct=?, clear_pct=?, "
+                "avg_score=? WHERE id=?"
+            ), (round(pct_row['s'] or 0, 2), round(pct_row['m'] or 0, 2),
+                round(pct_row['sm'] or 0, 2), round(pct_row['c'] or 0, 2),
+                round(pct_row['a'] or 0, 4), tournament_id))
 
         # Stamp the tournament as reconciled — sempre, mesmo sem mudanças,
         # para que o dashboard saiba que a análise GTO ja foi aplicada.
