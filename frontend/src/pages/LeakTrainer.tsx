@@ -361,7 +361,8 @@ export default function LeakTrainer() {
                         )}
                       >
                         <span>{actLabel(a)}</span>
-                        <kbd className="rounded border border-border/60 bg-background/60 px-1.5 py-0.5 font-mono text-[9px] font-normal text-muted-foreground">
+                        {/* hint de tecla só em telas com teclado (escondido em touch/mobile) */}
+                        <kbd className="hidden rounded border border-border/60 bg-background/60 px-1.5 py-0.5 font-mono text-[9px] font-normal text-muted-foreground md:inline-block">
                           {a === "fold" ? "F" : a === "call" ? "C" : "R"}
                         </kbd>
                       </button>
@@ -412,7 +413,7 @@ export default function LeakTrainer() {
 
                   <button onClick={loadNext} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
                     <ArrowRight className="size-4" aria-hidden /> {t("leakTrainer.next")}
-                    <kbd className="rounded border border-black/20 bg-black/10 px-1.5 py-0.5 text-[9px] font-normal">Enter</kbd>
+                    <kbd className="hidden rounded border border-black/20 bg-black/10 px-1.5 py-0.5 text-[9px] font-normal md:inline-block">Enter</kbd>
                   </button>
                 </div>
               )}
