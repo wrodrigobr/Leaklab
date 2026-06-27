@@ -69,6 +69,8 @@
     "weakSpot": "Training your weak spot",
     "prompt": "What's the GTO action?",
     "next": "Next spot",
+    "fullscreen": "Fullscreen",
+    "exitFull": "Exit",
     "vCorrect": "Correct",
     "vMixed": "Acceptable",
     "vError": "Mistake",

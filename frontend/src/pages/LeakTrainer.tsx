@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target } from "lucide-react";
-import { HudLayout } from "@/components/hud/HudLayout";
+import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2 } from "lucide-react";
+import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { leaktrainer } from "@/lib/api";
 import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep } from "@/lib/api";
@@ -78,6 +78,19 @@ export default function LeakTrainer() {
   const [totalDone, setTotalDone]       = useState(0);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const stateRef = useRef<LeakTrainerState>(loadState());
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [isFull, setIsFull] = useState(false);
+
+  const toggleFull = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else rootRef.current?.requestFullscreen?.().catch(() => {});
+  };
+  useEffect(() => {
+    const onFs = () => setIsFull(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+  const canFull = typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
 
   const loadNext = useCallback(async () => {
     setPhase("loading"); setSelected(null); setGrade(null);
@@ -137,8 +150,30 @@ export default function LeakTrainer() {
   const verdictKind = grade ? (grade.gto_tier === "error" ? "error" : grade.mixed ? "mixed" : "correct") : null;
 
   return (
-    <HudLayout eyebrow={t("leakTrainer.eyebrow")} title={t("leakTrainer.title")} description={t("leakTrainer.subtitle")}>
-      <div className="mx-auto w-full max-w-[1500px] space-y-4">
+    <div ref={rootRef} className="min-h-dvh bg-background hud-scanline flex flex-col">
+      {!isFull && <HudHeader />}
+      <main className="flex-1 min-h-0 mx-auto flex w-full max-w-[1500px] flex-col px-4 py-3 md:px-8 animate-fade-in">
+        {/* header compacto + tela cheia (header grande do HudLayout causava scroll) */}
+        <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-amber-400">
+              <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" aria-hidden />
+              {t("leakTrainer.eyebrow")}
+            </div>
+            <h1 className="truncate text-lg font-semibold tracking-tight text-foreground md:text-xl">{t("leakTrainer.title")}</h1>
+          </div>
+          {canFull && (
+            <button
+              onClick={toggleFull}
+              className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-hud-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-amber-500/50 hover:text-amber-400"
+            >
+              {isFull ? <Minimize2 className="size-3.5" aria-hidden /> : <Maximize2 className="size-3.5" aria-hidden />}
+              {isFull ? t("leakTrainer.exitFull") : t("leakTrainer.fullscreen")}
+            </button>
+          )}
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col justify-center">
 
         {phase === "loading" && (
           <div className="flex flex-col items-center gap-4 py-16">
@@ -274,7 +309,8 @@ export default function LeakTrainer() {
             </aside>
           </div>
         )}
-      </div>
-    </HudLayout>
+        </div>
+      </main>
+    </div>
   );
 }

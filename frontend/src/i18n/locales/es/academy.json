@@ -69,6 +69,8 @@
     "weakSpot": "Entrenando tu punto débil",
     "prompt": "¿Cuál es la acción GTO?",
     "next": "Siguiente spot",
+    "fullscreen": "Pantalla completa",
+    "exitFull": "Salir",
     "vCorrect": "Correcto",
     "vMixed": "Aceptable",
     "vError": "Error",

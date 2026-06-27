@@ -69,6 +69,8 @@
     "weakSpot": "Treinando seu ponto fraco",
     "prompt": "Qual a ação GTO?",
     "next": "Próximo spot",
+    "fullscreen": "Tela cheia",
+    "exitFull": "Sair",
     "vCorrect": "Correto",
     "vMixed": "Aceitável",
     "vError": "Erro",
