@@ -528,10 +528,16 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
                    SUM(CASE WHEN lower(d.street)='preflop' AND d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS pre_gto,
                    SUM(CASE WHEN lower(d.street) IN ('flop','turn','river') THEN 1 ELSE 0 END) AS post_total,
                    SUM(CASE WHEN lower(d.street) IN ('flop','turn','river') AND d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS post_gto,
+                   -- spots postflop SOLVÁVEIS (HU; multiway o solver HU-only não cobre) ainda SEM
+                   -- cobertura GTO: é a VERDADE de "ainda falta solvar", independe do status do request
+                   -- (que podia estar 'done' com spots descobertos → "Analisado" cedo demais).
+                   SUM(CASE WHEN lower(d.street) IN ('flop','turn','river')
+                            AND (d.n_active_opponents IS NULL OR d.n_active_opponents < 2)
+                            AND (d.gto_label IS NULL OR d.gto_label = '') THEN 1 ELSE 0 END) AS post_solvable_uncov,
+                   -- atividade recente do solver neste torneio (qualquer status, dentro do age-bound):
+                   -- gate p/ não ficar "analisando" eterno se o solver nunca rodar.
                    (SELECT COUNT(*) FROM gto_hand_requests ghr
-                      WHERE ghr.tournament_id = t.id
-                        AND ghr.status IN ('pending','solver_queued','running','processing','queued')
-                        AND ghr.created_at > ?) AS gto_inflight
+                      WHERE ghr.tournament_id = t.id AND ghr.created_at > ?) AS gto_recent
             FROM tournaments t
             LEFT JOIN decisions d ON d.tournament_id = t.id
             WHERE t.user_id = ?
@@ -550,11 +556,13 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             post_t = t.pop('post_total', 0) or 0; post_g = t.pop('post_gto', 0) or 0
             t['preflop_coverage_pct']  = round(pre_g * 100.0 / pre_t, 1) if pre_t else None
             t['postflop_coverage_pct'] = round(post_g * 100.0 / post_t, 1) if post_t else None
-            # PER-TORNEIO: tem pedido de GTO ainda não-terminal (pending/solver_queued) → "analisando".
-            # Sinal VIVO (auto-resolve quando os pedidos fecham), robusto a restart, e NÃO pisca outros
-            # torneios (a fila do solver é deduplicada por spot_hash; gto_hand_requests liga ao torneio).
-            _inflight = t.pop('gto_inflight', 0) or 0
-            t['solver_analyzing'] = bool(_inflight > 0)
+            # "analisando" = ainda há spot SOLVÁVEL (HU) postflop descoberto E houve atividade recente do
+            # solver. Dirigido pela COBERTURA real (verdade), não pelo status do request (que podia estar
+            # 'done' com spots descobertos → cravava "Analisado" cedo). O gate de recência evita eterno e
+            # exclui multiway (nunca cobre → post_solvable_uncov=0 → "Analisado", coerente com a opção A).
+            _solvable_uncov = t.pop('post_solvable_uncov', 0) or 0
+            _recent = t.pop('gto_recent', 0) or 0
+            t['solver_analyzing'] = bool(_solvable_uncov > 0 and _recent > 0)
             result.append(t)
         return result
     finally:
@@ -3641,17 +3649,24 @@ def can_send_ai_chat(user_id: int) -> tuple:
 
 
 def count_user_pending_solves(user_id: int) -> int:
-    """Jobs de solve ainda ativos do usuário (anti-flood da fila compartilhada).
-    Age-bound: requests presos em 'solver_queued' há mais de _GTO_STALE_HOURS (solver caído/não-ligado)
-    NÃO contam — senão o banner "análise GTO em andamento" fica eterno. Espelha o sinal da lista."""
+    """Spots postflop SOLVÁVEIS (HU) ainda SEM cobertura GTO, em torneios com atividade recente do solver.
+    É a VERDADE de "ainda falta solvar" (cobertura real), NÃO o status do gto_hand_request — que podia
+    estar 'done' com spots descobertos, fazendo o banner do dash divergir da lista. Agora os dois usam a
+    MESMA régua (cobertura solvável + atividade recente, age-bound) → consistentes por construção. Exclui
+    multiway (solver é HU-only, nunca cobre → não conta como "em andamento", coerente com a opção A)."""
     conn = get_conn()
     try:
         from datetime import datetime, timedelta
         _cutoff = (datetime.utcnow() - timedelta(hours=_GTO_STALE_HOURS)).strftime('%Y-%m-%d %H:%M:%S')
         row = _fetchone(conn,
-            "SELECT COUNT(*) AS n FROM gto_hand_requests "
-            "WHERE requested_by = ? AND status IN ('pending','solver_queued','running','processing','queued') "
-            "AND created_at > ?",
+            "SELECT COUNT(*) AS n FROM decisions d "
+            "JOIN tournaments t ON d.tournament_id = t.id "
+            "WHERE t.user_id = ? "
+            "AND lower(d.street) IN ('flop','turn','river') "
+            "AND (d.n_active_opponents IS NULL OR d.n_active_opponents < 2) "
+            "AND (d.gto_label IS NULL OR d.gto_label = '') "
+            "AND EXISTS (SELECT 1 FROM gto_hand_requests ghr "
+            "            WHERE ghr.tournament_id = t.id AND ghr.created_at > ?)",
             (user_id, _cutoff))
         return (row.get('n') if row else 0) or 0
     finally:
@@ -6810,9 +6825,11 @@ def get_decisions_for_elo_by_stake(user_id: int, last_n_tournaments: Optional[in
     conn = get_conn()
     try:
         if last_n_tournaments:
+            # "forma atual" = últimos N torneios JOGADOS (played_at), não importados — senão subir um
+            # torneio velho o joga na janela recente. Mesmo princípio do filtro de bankroll.
             t_rows = _fetchall(conn, _adapt(
                 "SELECT id FROM tournaments WHERE user_id = ? "
-                "ORDER BY imported_at DESC, id DESC LIMIT ?"
+                "ORDER BY COALESCE(played_at, imported_at) DESC, id DESC LIMIT ?"
             ), (user_id, int(last_n_tournaments)))
             tids = [r['id'] for r in t_rows]
             if not tids:
@@ -6883,9 +6900,11 @@ def get_decisions_for_elo_curve(user_id: int, last_n_tournaments: Optional[int] 
     conn = get_conn()
     try:
         if last_n_tournaments:
+            # "forma atual" = últimos N torneios JOGADOS (played_at), não importados — senão subir um
+            # torneio velho o joga na janela recente. Mesmo princípio do filtro de bankroll.
             t_rows = _fetchall(conn, _adapt(
                 "SELECT id FROM tournaments WHERE user_id = ? "
-                "ORDER BY imported_at DESC, id DESC LIMIT ?"
+                "ORDER BY COALESCE(played_at, imported_at) DESC, id DESC LIMIT ?"
             ), (user_id, int(last_n_tournaments)))
             tids = [r['id'] for r in t_rows]
             if not tids:
