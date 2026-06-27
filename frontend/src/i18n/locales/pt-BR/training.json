@@ -11,14 +11,14 @@
     "f3": "25 XP por drill concluído, 100 XP ao masterizar",
     "cta": "Abrir Ghost Table"
   },
-  "sparring": {
-    "title": "Sparring Mode",
-    "badge": "Mãos completas",
-    "desc": "Jogue mãos históricas pausando em cada ponto de decisão real. O engine avalia cada escolha com o mesmo rigor da análise de torneio, e o resultado é registrado no SRS.",
-    "f1": "Mão selecionada automaticamente pelo pior erro recente",
-    "f2": "Mesa visual completa com posições, folds e apostas reais",
-    "f3": "Integra diretamente com o Ghost Table via SRS",
-    "cta": "Iniciar Sparring"
+  "leakTrainer": {
+    "title": "Treinador de Leaks",
+    "badge": "Adaptativo",
+    "desc": "Spots GTO canônicos mirados exatamente onde você perde EV. Sem replay da sua mão: cada spot é um cenário limpo da sua categoria de leak, corrigido na hora, e o próximo se adapta ao seu desempenho.",
+    "f1": "Currículo montado a partir dos seus leaks reais",
+    "f2": "Correção no servidor contra a range GTO, na hora",
+    "f3": "Adapta: erra um tipo de spot, treina mais dele",
+    "cta": "Abrir Leak Trainer"
   },
   "academy": {
     "title": "Academia",

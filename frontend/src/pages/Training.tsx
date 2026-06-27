@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Ghost, GraduationCap } from "lucide-react";
+import { CheckCircle2, Ghost, GraduationCap, Target } from "lucide-react";
 import { HudLayout } from "@/components/hud/HudLayout";
 
 export default function Training() {
@@ -50,7 +50,45 @@ export default function Training() {
           </div>
         </div>
 
-        {/* Sparring removido do hub até termos o arco sintético funcional (opção 2). */}
+        {/* ── Leak Trainer card ─────────────────────────────────────────────── */}
+        <div className="group flex flex-col rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.1] to-transparent overflow-hidden transition-colors hover:border-amber-500/50">
+          <div className="flex-1 p-7 space-y-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex size-14 items-center justify-center rounded-xl bg-amber-500/10 ring-1 ring-amber-500/30">
+                <Target className="size-7 text-amber-400" aria-hidden />
+              </div>
+              <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 rounded-full px-2.5 py-1 ring-1 ring-amber-500/20">
+                {t("leakTrainer.badge")}
+              </span>
+            </div>
+
+            <div>
+              <h2 className="font-heading text-xl font-bold text-foreground">{t("leakTrainer.title")}</h2>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                {t("leakTrainer.desc")}
+              </p>
+            </div>
+
+            <ul className="space-y-2.5">
+              {(["f1", "f2", "f3"] as const).map((k) => (
+                <li key={k} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <CheckCircle2 className="size-3.5 text-amber-400 shrink-0 mt-0.5" aria-hidden />
+                  {t(`leakTrainer.${k}`)}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="p-5 pt-0">
+            <Link
+              to="/leak-trainer"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-5 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black hover:bg-amber-400 transition-colors"
+            >
+              <Target className="size-4" aria-hidden />
+              {t("leakTrainer.cta")}
+            </Link>
+          </div>
+        </div>
 
         {/* ── Academia card ─────────────────────────────────────────────────── */}
         <div className="group flex flex-col rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/[0.1] to-transparent overflow-hidden transition-colors hover:border-violet-500/50">

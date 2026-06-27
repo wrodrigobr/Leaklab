@@ -32,6 +32,7 @@ import AcademyBoardStrength from "./pages/AcademyBoardStrength.tsx";
 import AcademyMathIntermediate from "./pages/AcademyMathIntermediate.tsx";
 import AcademyTournament from "./pages/AcademyTournament.tsx";
 import AcademyGtoPreflop from "./pages/AcademyGtoPreflop.tsx";
+import LeakTrainer from "./pages/LeakTrainer.tsx";
 import TournamentCompare from "./pages/TournamentCompare.tsx";
 import CoachApply from "./pages/CoachApply.tsx";
 import Docs from "./pages/Docs.tsx";
@@ -275,6 +276,7 @@ const App = () => (
             <Route path="/academy/board-strength" element={<ProtectedRoute><AcademyBoardStrength /></ProtectedRoute>} />
             <Route path="/academy/tournament" element={<ProtectedRoute><AcademyTournament /></ProtectedRoute>} />
             <Route path="/academy/gto-preflop" element={<ProtectedRoute><AcademyGtoPreflop /></ProtectedRoute>} />
+            <Route path="/leak-trainer" element={<ProtectedRoute><LeakTrainer /></ProtectedRoute>} />
             <Route path="/docs" element={<AuthRoute><Docs /></AuthRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

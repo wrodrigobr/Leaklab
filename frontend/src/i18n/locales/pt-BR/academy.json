@@ -61,6 +61,31 @@
     "accuracy": "Acerto",
     "streak": "Sequência"
   },
+  "leakTrainer": {
+    "eyebrow": "Treinador de Leaks",
+    "title": "Treine onde você perde EV",
+    "subtitle": "Spots GTO mirados nos seus pontos fracos. Cada spot se adapta ao seu desempenho.",
+    "empty": "Ainda não temos leaks suficientes pra montar seu treino. Importe alguns torneios e volte, o treino mira exatamente onde você perde EV.",
+    "weakSpot": "Treinando seu ponto fraco",
+    "prompt": "Qual a ação GTO?",
+    "next": "Próximo spot",
+    "vCorrect": "Correto",
+    "vMixed": "Aceitável",
+    "vError": "Erro",
+    "gtoPlays": "GTO joga {{hand}} aqui:",
+    "cat": {
+      "rfi": "Abertura de {{pos}}",
+      "vsRfi": "{{pos}} defende vs {{vs}}",
+      "vs3bet": "{{pos}} enfrenta 3-bet de {{vs}}"
+    },
+    "act": {
+      "fold": "Fold",
+      "call": "Call",
+      "raiseOpen": "Raise (abrir)",
+      "raise3": "3-Bet",
+      "raise4": "4-Bet"
+    }
+  },
   "feedback": {
     "correct": "Correto!",
     "wrong": "Quase lá",

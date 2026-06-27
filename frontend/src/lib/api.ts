@@ -965,6 +965,49 @@ export const gtoPreflop = {
     }),
 };
 
+// ── Leak Trainer (drill adaptativo de spots GTO canônicos mirado nos leaks do jogador) ──
+export interface LeakTrainerSpot {
+  scenario: "rfi" | "vs_rfi" | "vs_3bet";
+  category: string;                 // chave da categoria de leak (ex.: "vs_rfi:BB:CO:30")
+  position: string;
+  vs_position: string;
+  stack_bb: number;
+  facing_size: number;
+  is_3bet_pot: boolean;
+  hand: string;
+  hero_cards: { rank: string; suit: string }[];
+  options: string[];                // ações limpas (fold/call/raise)
+  xp_value: number;
+}
+// Estado da sessão (client-side): por categoria, hits/misses/seen. Adulterar não falsifica acerto
+// (o grading é server-side e stateless).
+export type LeakTrainerState = Record<string, { hits: number; misses: number; seen: number }>;
+export interface LeakTrainerGrade {
+  is_correct: boolean;
+  gto_tier: "correct" | "error";
+  mixed: boolean;
+  gto_freq: number;
+  gto_strategy: GtoStrategyAction[];
+  best_action: string;
+  new_action: string;
+  hand_freq: Record<string, number>;
+  xp_awarded: number;
+}
+
+export const leaktrainer = {
+  next: (session_state: LeakTrainerState = {}, days = 90) =>
+    request<{ spot: LeakTrainerSpot | null; session_state: LeakTrainerState }>(
+      "/player/leaktrainer/next",
+      { method: "POST", body: JSON.stringify({ session_state, days }) },
+    ),
+
+  grade: (spot: LeakTrainerSpot, action: string) =>
+    request<LeakTrainerGrade>("/player/leaktrainer/grade", {
+      method: "POST",
+      body: JSON.stringify({ spot, action }),
+    }),
+};
+
 export const sparring = {
   hand: (hand_id?: string, tournament_id?: number, exclude_hand_ids?: string[]) => {
     const q = new URLSearchParams();
