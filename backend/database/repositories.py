@@ -892,6 +892,49 @@ def get_ev_leaks(user_id: int, days: int = 90, last_n: int | None = None, limit:
         conn.close()
 
 
+def get_leak_categories(user_id: int, days: int = 90, last_n: int | None = None,
+                        limit: int = 12) -> list:
+    """Categorias de leak PREFLOP para o Leak Trainer: agrupa por (posição × vs_posição × is_3bet ×
+    nº de raises enfrentados) e ranqueia por EV perdido (bb). Diferente do get_ev_leaks (que agrega só
+    por position/street/action), aqui o vs_position e o contexto de 3-bet ficam separados — é o que
+    permite distinguir rfi / vs_rfi / vs_3bet e o PAR de posições. Só preflop (cobertura GTO completa).
+    Devolve dados crus; o mapeamento cenário/stack fica no leak_trainer (separação dado × lógica)."""
+    tf, tp = _build_tournament_filter(user_id, days, last_n)
+    conn = get_conn()
+    try:
+        rows = conn.execute(_adapt(f"""
+            SELECT
+                d.position                              AS position,
+                COALESCE(d.vs_position, '')             AS vs_position,
+                COALESCE(d.is_3bet, 0)                  AS is_3bet,
+                COALESCE(d.preflop_raises_faced, 0)     AS raises_faced,
+                COUNT(*)                                AS n,
+                SUM(d.ev_loss_bb)                       AS total_ev_loss_bb,
+                AVG(COALESCE(d.level_bb, d.stack_bb, 50)) AS avg_stack_bb
+            FROM decisions d
+            JOIN tournaments t ON t.id = d.tournament_id
+            WHERE {tf}
+              AND d.street = 'preflop'
+              AND d.ev_loss_bb IS NOT NULL AND d.ev_loss_bb > 0.05
+              AND d.position IS NOT NULL AND d.position != ''
+            GROUP BY position, vs_position, is_3bet, raises_faced
+            HAVING COUNT(*) >= 2
+            ORDER BY total_ev_loss_bb DESC
+            LIMIT ?
+        """), tp + (limit,)).fetchall()
+        return [{
+            'position':          r['position'],
+            'vs_position':       r['vs_position'] or '',
+            'is_3bet':           int(r['is_3bet'] or 0),
+            'raises_faced':      int(r['raises_faced'] or 0),
+            'n':                 r['n'],
+            'total_ev_loss_bb':  round(float(r['total_ev_loss_bb'] or 0), 2),
+            'avg_stack_bb':      round(float(r['avg_stack_bb'] or 50), 1),
+        } for r in rows]
+    finally:
+        conn.close()
+
+
 def get_consolidated_leak_report(user_id: int, days: int = 90, last_n: int | None = None,
                                  limit: int = 6) -> dict:
     """#25 — Leak Finder consolidado (carro-chefe "LeakLab").
