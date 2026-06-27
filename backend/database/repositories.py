@@ -505,9 +505,15 @@ def get_all_tournaments_raw() -> List[dict]:
         conn.close()
 
 
+_GTO_STALE_HOURS = 6   # request 'solver_queued' há mais que isto (solver caído/não-ligado) deixa de
+                       # contar como "em andamento" — evita banner/lista presos eternamente.
+
+
 def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
     conn = get_conn()
     try:
+        from datetime import datetime, timedelta
+        _gto_cutoff = (datetime.utcnow() - timedelta(hours=_GTO_STALE_HOURS)).strftime('%Y-%m-%d %H:%M:%S')
         rows = conn.execute("""
             SELECT t.id, t.tournament_id, t.site, t.tournament_name, t.hero, t.played_at, t.imported_at,
                    t.hands_count, t.decisions_count, t.avg_score,
@@ -524,14 +530,15 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
                    SUM(CASE WHEN lower(d.street) IN ('flop','turn','river') AND d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS post_gto,
                    (SELECT COUNT(*) FROM gto_hand_requests ghr
                       WHERE ghr.tournament_id = t.id
-                        AND ghr.status IN ('pending','solver_queued','running','processing','queued')) AS gto_inflight
+                        AND ghr.status IN ('pending','solver_queued','running','processing','queued')
+                        AND ghr.created_at > ?) AS gto_inflight
             FROM tournaments t
             LEFT JOIN decisions d ON d.tournament_id = t.id
             WHERE t.user_id = ?
             GROUP BY t.id
             ORDER BY t.imported_at DESC
             LIMIT ?
-        """, (user_id, limit)).fetchall()
+        """, (_gto_cutoff, user_id, limit)).fetchall()
         result = []
         for r in rows:
             t = dict(r)
@@ -3630,12 +3637,18 @@ def can_send_ai_chat(user_id: int) -> tuple:
 
 
 def count_user_pending_solves(user_id: int) -> int:
-    """Jobs de solve ainda ativos do usuário (anti-flood da fila compartilhada)."""
+    """Jobs de solve ainda ativos do usuário (anti-flood da fila compartilhada).
+    Age-bound: requests presos em 'solver_queued' há mais de _GTO_STALE_HOURS (solver caído/não-ligado)
+    NÃO contam — senão o banner "análise GTO em andamento" fica eterno. Espelha o sinal da lista."""
     conn = get_conn()
     try:
+        from datetime import datetime, timedelta
+        _cutoff = (datetime.utcnow() - timedelta(hours=_GTO_STALE_HOURS)).strftime('%Y-%m-%d %H:%M:%S')
         row = _fetchone(conn,
             "SELECT COUNT(*) AS n FROM gto_hand_requests "
-            "WHERE requested_by = ? AND status IN ('pending', 'solver_queued')", (user_id,))
+            "WHERE requested_by = ? AND status IN ('pending','solver_queued','running','processing','queued') "
+            "AND created_at > ?",
+            (user_id, _cutoff))
         return (row.get('n') if row else 0) or 0
     finally:
         conn.close()
