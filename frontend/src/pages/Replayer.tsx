@@ -211,7 +211,7 @@ function SidePanels({
     // correct/acceptable, mesmo se o label vier brando (não-reconciliado/legado).
     const _lvl: "correct" | "acceptable" | "error" = clampVerdict(
         verdictLevel(step.error_label) ?? (isError ? "error" : "correct"),
-        step.gto_action, playedAction, effectiveGtoLabel ?? step.gto_label);
+        step.gto_action, playedAction, effectiveGtoLabel ?? step.gto_label) ?? "correct";
     const _M: Record<"correct" | "acceptable" | "error", VInfo> = {
       correct:    { icon: "✓", label: t("card.vCorrect"),    cls: "text-emerald-400", borderCls: "border-emerald-500/30", hdrCls: "bg-emerald-500/8", source: _src.name, sourceTooltip: _src.tip },
       acceptable: { icon: "◎", label: t("card.vAcceptable"), cls: "text-sky-400",     borderCls: "border-sky-500/30",     hdrCls: "bg-sky-500/8",     source: _src.name, sourceTooltip: _src.tip },
@@ -223,8 +223,10 @@ function SidePanels({
 
   // Action comparison (playedAction already computed above) — FEAT-20: "ação ok" =
   // veredito NÃO-Erro (mesma severidade que dirige o card). Consistente com o badge.
-  const isActionOk = verdictLevel(step.error_label) != null
-    ? verdictLevel(step.error_label) !== "error"
+  // Usa o veredito CLAMPADO (sinal de erro de direção nunca é "ok").
+  const _clampedActionLvl = clampVerdict(verdictLevel(step.error_label), step.gto_action, playedAction, effectiveGtoLabel ?? step.gto_label);
+  const isActionOk = _clampedActionLvl != null
+    ? _clampedActionLvl !== "error"
     : (isShoveFb ? (_fbActionOk ?? false) : !isError);
   // idealAction: use live top action when available (overrides stored gto_action which may be stale)
   const liveTopAction = verdictStrat.length > 0 ? verdictStrat[0].action : null;
@@ -1970,7 +1972,7 @@ const Replayer = () => {
         {/* Verdict pill / Análise — canto inferior-direito */}
         <div className="absolute bottom-[calc(0.5rem+env(safe-area-inset-bottom))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30">
           <VerdictPill
-            level={verdictLevel(step.error_label) ?? (step.is_hero && step.type === "action" ? ((isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null) : null)}
+            level={clampVerdict(verdictLevel(step.error_label) ?? (step.is_hero && step.type === "action" ? ((isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null) : null), step.gto_action, step.action, step.gto_label)}
             evLossBb={step.ev_loss_bb}
             onClick={() => setShowAnalysis(true)}
           />
@@ -2120,11 +2122,12 @@ const Replayer = () => {
               <div className="hidden lg:block absolute bottom-3 right-3 z-30">
                 <VerdictPill
                   desktop
-                  level={
+                  level={clampVerdict(
                     verdictLevel(step.error_label)
                     ?? (step.is_hero && step.type === "action"
                           ? (isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null
-                          : null)
+                          : null),
+                    step.gto_action, step.action, step.gto_label)
                   }
                   evLossBb={step.ev_loss_bb}
                   onClick={() => setShowAnalysis(true)}
@@ -2134,11 +2137,12 @@ const Replayer = () => {
 
             {/* Mobile: barra de veredito (3 níveis, fonte única VERDICT_META) que abre o sheet de análise */}
             <VerdictPill
-              level={
+              level={clampVerdict(
                 verdictLevel(step.error_label)
                 ?? (step.is_hero && step.type === "action"
                       ? (isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null
-                      : null)
+                      : null),
+                step.gto_action, step.action, step.gto_label)
               }
               evLossBb={step.ev_loss_bb}
               onClick={() => setShowAnalysis(true)}

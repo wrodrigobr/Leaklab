@@ -991,6 +991,16 @@ def evaluate_decision(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if label != _label_pre_ceil:
         final_score = min(final_score, _LABEL_MAX_SCORE[label])
 
+    # INVARIANTE (piso TERMINAL): erro de DIREÇÃO — o GTO folda a mão (fora do range de continuação)
+    # mas o hero AGREDIU — NUNCA é capeado por EV. O _ev_severity_ceiling acima rebaixava de volta a
+    # 'marginal' quando o EV era ~0 (open fora do range custa pouco justamente por isso). Espelha o
+    # is_verdict_error_signal do reconcile/display → consistência card↔lista↔engine.
+    _played_act = _norm_gto_action(input_data.get('player_action', ''))
+    if (_best_action == 'fold' and _played_act in ('raise', 'bet', 'allin', 'jam', 'shove')
+            and _LABEL_SEV.get(label, 1) < _LABEL_SEV['small_mistake']):
+        label = 'small_mistake'
+        final_score = max(final_score, _LABEL_MAX_SCORE['marginal'] + 0.001)
+
     # Teto HEURÍSTICO p/ POTE LIMPADO: sem nó GTO E pote limpado (o hero iso-raisa/aposta/
     # shova sobre limps) a heurística recomenda PASSIVO (check/call/fold) e flaga a agressão
     # padrão como erro. Aí cap em 'marginal' — iso-raisar sobre limp não é erro grave; o card

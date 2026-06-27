@@ -66,13 +66,13 @@ export function isVerdictErrorSignal(
  * agressão pode ser co-ótima. Garante: o card nunca diz "Correto" enquanto o painel diz "Fold 100%".
  */
 export function clampVerdict(
-  level: VerdictLevel,
+  level: VerdictLevel | null,
   gtoAction: string | null | undefined,
   actionTaken: string | null | undefined,
   gtoLabel?: string | null,
   foldPct?: number | null,
-): VerdictLevel {
-  if (level === "error") return level;
+): VerdictLevel | null {
+  if (level == null || level === "error") return level;
   if (gtoLabel === "gto_mixed" || gtoLabel === "gto_correct") return level;
   return isVerdictErrorSignal(gtoAction, actionTaken, foldPct) ? "error" : level;
 }
