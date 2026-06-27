@@ -553,7 +553,7 @@ function UrgentTab() {
                   <td className="px-4 py-2.5 text-xs font-medium text-foreground">{d.username}</td>
                   <td className="px-4 py-2.5 font-mono text-xs capitalize text-muted-foreground">{d.street}</td>
                   <td className="px-4 py-2.5 text-xs text-destructive font-medium">{formatAction(d.action_taken)}</td>
-                  <td className="px-4 py-2.5 text-xs text-primary font-medium">{formatAction(d.best_action)}</td>
+                  <td className="px-4 py-2.5 text-xs text-primary font-medium">{formatAction(d.gto_action || d.best_action)}</td>
                   <td className={`px-4 py-2.5 font-mono text-xs font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</td>
                   <td className="px-4 py-2.5">
                     <VerdictTag label={d.label} />

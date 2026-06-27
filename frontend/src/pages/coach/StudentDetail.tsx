@@ -357,7 +357,7 @@ function TournamentsTab({ studentId }: { studentId: number }) {
                 <tr key={d.id} className="border-b border-border/40 last:border-0 hover:bg-primary/5 transition-colors">
                   <td className="px-4 py-2 font-mono text-xs capitalize">{d.street}</td>
                   <td className="px-4 py-2 text-xs">{formatAction(d.action_taken)}</td>
-                  <td className="px-4 py-2 text-xs">{formatAction(d.best_action)}</td>
+                  <td className="px-4 py-2 text-xs">{formatAction(d.gto_action || d.best_action)}</td>
                   <td className={`px-4 py-2 font-mono text-xs font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</td>
                   <td className="px-4 py-2"><VerdictTag label={d.label} /></td>
                   <td className="px-4 py-2">
@@ -692,7 +692,7 @@ function WorstTab({ studentId }: { studentId: number }) {
               </div>
               <div>
                 <p className="font-mono text-[9px] text-muted-foreground uppercase">Correto</p>
-                <p className="font-medium text-primary">{formatAction(d.best_action)}</p>
+                <p className="font-medium text-primary">{formatAction(d.gto_action || d.best_action)}</p>
               </div>
               {d.m_ratio != null && (
                 <div>

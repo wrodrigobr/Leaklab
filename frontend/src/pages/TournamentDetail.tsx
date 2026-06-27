@@ -143,7 +143,7 @@ function groupByHand(decisions: TournamentDecision[]): Hand[] {
         : undefined;
 
     const played = formatAction(worst.action_taken);
-    const ideal  = formatAction(worst.best_action);
+    const ideal  = formatAction(worst.gto_action || worst.best_action);
     const actionLine = played.toLowerCase() === ideal.toLowerCase()
       ? `${street}: ${played}`
       : `${street}: ${played}, ${ideal}`;
