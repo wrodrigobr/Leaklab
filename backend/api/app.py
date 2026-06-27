@@ -4633,7 +4633,8 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
     def snap(extra=None):
         base = {
             'seats':  {s: {'player': seats[s]['player'], 'stack': stacks[s],
-                           'stack_bb': round(stacks[s] / bb, 1), 'pos': positions[s]}
+                           'stack_bb': round(stacks[s] / bb, 1), 'pos': positions[s],
+                           'bounty': seats[s].get('bounty')}   # PKO: 🎯 no replayer (snap dropava o campo)
                        for s in seats},
             'button':     hand.button_seat,
             'hero':       hero,
