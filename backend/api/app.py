@@ -7997,10 +7997,12 @@ def _process_gto_hand_request(req: dict) -> tuple[str, str | None]:
                     pass
                 queued += 1
 
-        # done>0: resolveu novos spots agora → done
-        # queued>0 e done=0: spots enfileirados, sem resolução imediata → solver_queued
-        # ambos zero: nada para processar (todos já tinham label ou sem match) → done
-        final_status = 'solver_queued' if queued > 0 and done == 0 else 'done'
+        # ENQUANTO HOUVER spot enfileirado (queued>0), o request NÃO está pronto — fica 'solver_queued'
+        # mesmo que tenha resolvido alguns agora (done>0). O 'and done==0' antigo marcava 'done'
+        # prematuramente quando 1 spot resolvia, com outros ainda solvando → a lista mostrava "Analisado"
+        # com spots em andamento. 'done' só quando queued==0 (tudo resolvido). O drain re-checa a cada
+        # ciclo (e força 'done' nos não-solváveis velhos > 2h).
+        final_status = 'solver_queued' if queued > 0 else 'done'
         return final_status, None, done, queued
 
     except Exception as exc:

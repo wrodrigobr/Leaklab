@@ -601,8 +601,12 @@ def update_llm_summary(tournament_db_id: int, summary: str):
 def get_decisions(tournament_db_id: int) -> List[dict]:
     conn = get_conn()
     try:
+        # Ordena por hand_id cronológico (o # global do PokerStars é monotônico no tempo). LENGTH+hand_id
+        # ordena número de QUALQUER tamanho sem CAST (portável SQLite/Postgres, seguro p/ não-numérico);
+        # id como desempate = ordem das streets dentro da mão. Conserta a sequência mesmo em torneios já
+        # mesclados fora de ordem, sem re-importar.
         rows = conn.execute(
-            "SELECT * FROM decisions WHERE tournament_id=? ORDER BY id",
+            "SELECT * FROM decisions WHERE tournament_id=? ORDER BY LENGTH(hand_id), hand_id, id",
             (tournament_db_id,)
         ).fetchall()
         return [dict(r) for r in rows]
