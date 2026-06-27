@@ -1618,15 +1618,19 @@ const Replayer = () => {
       .finally(() => setLoading(false));
   }, [tournamentId, handId, studentId]);
 
-  // Prefetch das mãos adjacentes (próxima + anterior) em background.
-  // Dispara quando handList chega; cada uma só se ainda não está no cache.
+  // Prefetch em background: prioriza ADIANTE (o usuário avança) — as próximas PREFETCH_AHEAD mãos +
+  // a anterior. Conforme avança, o useEffect re-dispara (handId muda) e a janela desliza, mantendo
+  // sempre N mãos à frente no cache → sem "carregando" ao avançar. Cada uma só se não estiver cacheada.
   useEffect(() => {
     if (!tournamentId || handList.length === 0) return;
     const idx = handList.indexOf(handId);
     if (idx < 0) return;
+    const PREFETCH_AHEAD = 3;
     const toPrefetch: string[] = [];
-    if (idx + 1 < handList.length) toPrefetch.push(handList[idx + 1]);
-    if (idx - 1 >= 0)               toPrefetch.push(handList[idx - 1]);
+    for (let k = 1; k <= PREFETCH_AHEAD; k++) {
+      if (idx + k < handList.length) toPrefetch.push(handList[idx + k]);
+    }
+    if (idx - 1 >= 0) toPrefetch.push(handList[idx - 1]);
     toPrefetch.forEach((h) => {
       const k = replayCacheKey(tournamentId, h, studentId);
       if (replayCacheGet(k)) return;
