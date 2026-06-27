@@ -207,6 +207,11 @@ function SidePanels({
     const _hasBasis = isError || !!step.error_label || hasGto || !!pg?.available
       || step.multiway_advice != null || step.hand_equity != null || step.pot_odds_equity != null;
     if (!_hasBasis) return null;
+    // B2: multiway = INFORMATIVO (solver é HU-only; advisor é estimativa). Não grada erro/correto —
+    // mostra "≈ Aproximação" neutro + a sugestão do advisor. Consistente com o Ghost Table (opção A).
+    if (step.multiway_advice) {
+      return { icon: "≈", label: t("card.vApprox"), cls: "text-amber-300", borderCls: "border-amber-400/30", hdrCls: "bg-amber-400/8", source: _src.name, sourceTooltip: _src.tip };
+    }
     // RC-D: clamp de defesa-em-profundidade — sinal de erro (GTO folda ↔ hero agride) NUNCA vira
     // correct/acceptable, mesmo se o label vier brando (não-reconciliado/legado).
     const _lvl: "correct" | "acceptable" | "error" = clampVerdict(
@@ -225,7 +230,9 @@ function SidePanels({
   // veredito NÃO-Erro (mesma severidade que dirige o card). Consistente com o badge.
   // Usa o veredito CLAMPADO (sinal de erro de direção nunca é "ok").
   const _clampedActionLvl = clampVerdict(verdictLevel(step.error_label), step.gto_action, playedAction, effectiveGtoLabel ?? step.gto_label);
-  const isActionOk = _clampedActionLvl != null
+  // B2: multiway é informativo → não marca "ação errada" (a sugestão do advisor aparece à parte).
+  const isActionOk = step.multiway_advice ? true
+    : _clampedActionLvl != null
     ? _clampedActionLvl !== "error"
     : (isShoveFb ? (_fbActionOk ?? false) : !isError);
   // idealAction: use live top action when available (overrides stored gto_action which may be stale)
@@ -1972,7 +1979,7 @@ const Replayer = () => {
         {/* Verdict pill / Análise — canto inferior-direito */}
         <div className="absolute bottom-[calc(0.5rem+env(safe-area-inset-bottom))] right-[calc(0.5rem+env(safe-area-inset-right))] z-30">
           <VerdictPill
-            level={clampVerdict(verdictLevel(step.error_label) ?? (step.is_hero && step.type === "action" ? ((isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null) : null), step.gto_action, step.action, step.gto_label)}
+            level={step.multiway_advice ? null : clampVerdict(verdictLevel(step.error_label) ?? (step.is_hero && step.type === "action" ? ((isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null) : null), step.gto_action, step.action, step.gto_label)}
             evLossBb={step.ev_loss_bb}
             onClick={() => setShowAnalysis(true)}
           />
@@ -2122,7 +2129,7 @@ const Replayer = () => {
               <div className="hidden lg:block absolute bottom-3 right-3 z-30">
                 <VerdictPill
                   desktop
-                  level={clampVerdict(
+                  level={step.multiway_advice ? null : clampVerdict(
                     verdictLevel(step.error_label)
                     ?? (step.is_hero && step.type === "action"
                           ? (isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null
@@ -2137,7 +2144,7 @@ const Replayer = () => {
 
             {/* Mobile: barra de veredito (3 níveis, fonte única VERDICT_META) que abre o sheet de análise */}
             <VerdictPill
-              level={clampVerdict(
+              level={step.multiway_advice ? null : clampVerdict(
                 verdictLevel(step.error_label)
                 ?? (step.is_hero && step.type === "action"
                       ? (isError ? "error" : isCorrect ? "correct" : null) as VerdictLevel | null

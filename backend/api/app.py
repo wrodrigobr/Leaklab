@@ -5230,10 +5230,11 @@ def _build_replay_data(hand, decisions_db, hero_override=None):
             # o advisor é AUTORITATIVO (sobrepõe o label HU do engine, válido ou não): leak →
             # small_mistake (Erro), senão standard (Correto). Fora dele, a label do engine.
             # Mantém card = badge de aderência em todo spot.
-            # B1: fora do multiway, deriva o error_label do is_error RECOMPUTADO live (não do label
-            # antigo do DB) — call/limp out-of-range recompõe is_error=True mas o label podia estar
-            # 'standard'. Preserva clear/small já existentes; floora a small_mistake quando is_error.
-            'error_label':        (('small_mistake' if is_error else 'standard') if multiway_advice
+            # B2 (opção informativa, igual Ghost Table): multiway NÃO é gradeado como erro/correto
+            # (solver é HU-only, advisor é estimativa) — error_label=None → o card mostra "≈ aproximação"
+            # neutro + a sugestão do advisor. B1: fora do multiway, deriva do is_error RECOMPUTADO live
+            # (não do label antigo do DB); preserva clear/small; floora small_mistake quando is_error.
+            'error_label':        (None if multiway_advice
                                    else ((decision.get('label') if decision else None)
                                          if (not is_error or (decision and decision.get('label') in ('small_mistake', 'clear_mistake')))
                                          else 'small_mistake')),
