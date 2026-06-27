@@ -505,7 +505,7 @@ def get_all_tournaments_raw() -> List[dict]:
         conn.close()
 
 
-_GTO_STALE_HOURS = 6   # request 'solver_queued' há mais que isto (solver caído/não-ligado) deixa de
+_GTO_STALE_HOURS = 24  # request 'solver_queued' há mais que isto (solver caído/não-ligado) deixa de
                        # contar como "em andamento" — evita banner/lista presos eternamente.
 
 
@@ -528,14 +528,19 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
                    SUM(CASE WHEN lower(d.street)='preflop' AND d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS pre_gto,
                    SUM(CASE WHEN lower(d.street) IN ('flop','turn','river') THEN 1 ELSE 0 END) AS post_total,
                    SUM(CASE WHEN lower(d.street) IN ('flop','turn','river') AND d.gto_label IS NOT NULL AND d.gto_label != '' THEN 1 ELSE 0 END) AS post_gto,
-                   -- spots postflop SOLVÁVEIS (HU; multiway o solver HU-only não cobre) ainda SEM
-                   -- cobertura GTO: é a VERDADE de "ainda falta solvar", independe do status do request
-                   -- (que podia estar 'done' com spots descobertos → "Analisado" cedo demais).
+                   -- FALLBACK de cobertura: spots postflop SOLVÁVEIS (HU) ainda sem GTO — pega o caso
+                   -- de request que fechou cedo com spots descobertos.
                    SUM(CASE WHEN lower(d.street) IN ('flop','turn','river')
                             AND (d.n_active_opponents IS NULL OR d.n_active_opponents < 2)
                             AND (d.gto_label IS NULL OR d.gto_label = '') THEN 1 ELSE 0 END) AS post_solvable_uncov,
-                   -- atividade recente do solver neste torneio (qualquer status, dentro do age-bound):
-                   -- gate p/ não ficar "analisando" eterno se o solver nunca rodar.
+                   -- SINAL PRIMÁRIO: request GTO do torneio ainda NÃO-TERMINAL (pending/solver_queued/
+                   -- processing), dentro do age-bound. Com o fix de status, o request fica solver_queued
+                   -- enquanto QUALQUER spot estiver na fila do solver → reflete os "spots pendentes".
+                   (SELECT COUNT(*) FROM gto_hand_requests ghr
+                      WHERE ghr.tournament_id = t.id
+                        AND ghr.status IN ('pending','solver_queued','processing','queued','running')
+                        AND ghr.created_at > ?) AS gto_inflight,
+                   -- atividade recente (qualquer status) — gate do fallback de cobertura.
                    (SELECT COUNT(*) FROM gto_hand_requests ghr
                       WHERE ghr.tournament_id = t.id AND ghr.created_at > ?) AS gto_recent
             FROM tournaments t
@@ -544,7 +549,7 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             GROUP BY t.id
             ORDER BY t.imported_at DESC
             LIMIT ?
-        """, (_gto_cutoff, user_id, limit)).fetchall()
+        """, (_gto_cutoff, _gto_cutoff, user_id, limit)).fetchall()
         result = []
         for r in rows:
             t = dict(r)
@@ -556,13 +561,14 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             post_t = t.pop('post_total', 0) or 0; post_g = t.pop('post_gto', 0) or 0
             t['preflop_coverage_pct']  = round(pre_g * 100.0 / pre_t, 1) if pre_t else None
             t['postflop_coverage_pct'] = round(post_g * 100.0 / post_t, 1) if post_t else None
-            # "analisando" = ainda há spot SOLVÁVEL (HU) postflop descoberto E houve atividade recente do
-            # solver. Dirigido pela COBERTURA real (verdade), não pelo status do request (que podia estar
-            # 'done' com spots descobertos → cravava "Analisado" cedo). O gate de recência evita eterno e
-            # exclui multiway (nunca cobre → post_solvable_uncov=0 → "Analisado", coerente com a opção A).
+            # "analisando" = request ainda em andamento (gto_inflight, sinal primário — reflete spots na
+            # fila do solver) OU, como fallback, ainda há spot HU descoberto + atividade recente (caso o
+            # request feche cedo). Inclusivo de propósito: o problema era SUBcontar (mostrar "Analisado"
+            # com spots pendentes). O age-bound (24h) evita eterno se o solver morrer.
+            _inflight = t.pop('gto_inflight', 0) or 0
             _solvable_uncov = t.pop('post_solvable_uncov', 0) or 0
             _recent = t.pop('gto_recent', 0) or 0
-            t['solver_analyzing'] = bool(_solvable_uncov > 0 and _recent > 0)
+            t['solver_analyzing'] = bool(_inflight > 0 or (_solvable_uncov > 0 and _recent > 0))
             result.append(t)
         return result
     finally:
