@@ -172,23 +172,34 @@ def grade_canonical_spot(spot: dict, action: str) -> dict:
         if _norm_action(k) == played:
             played_freq = float(v or 0)
             break
+    # Contrato do DrillSubmitResult (que o CoachCard consome): gto_tier correct/error + mixed bool.
+    # mixed = acerto numa linha co-ótima (freq ≥ MIN mas < CORRECT) — não é a ação #1, mas o GTO mistura.
     if played_freq >= CORRECT_FREQ:
-        tier, is_correct = 'correct', True
+        tier, is_correct, mixed = 'correct', True, False
     elif played_freq >= MIN_FREQ:
-        tier, is_correct = 'mixed', True
+        tier, is_correct, mixed = 'correct', True, True
     else:
-        tier, is_correct = 'error', False
+        tier, is_correct, mixed = 'error', False, False
     rec = res.get('recommended_actions') or ['fold']
     return {
-        'is_correct':   is_correct,
-        'gto_tier':     tier,
-        'gto_freq':     round(played_freq, 4),
-        'gto_strategy': gto_strategy,
-        'best_action':  ('allin' if rec[0] == 'jam' else rec[0]),
-        'recommended':  rec,
-        'hand_freq':    hf,
-        'range_pct':    res.get('range_pct'),
-        'xp_value':     spot.get('xp_value', 20),
+        'is_correct':       is_correct,
+        'gto_tier':         tier,
+        'mixed':            mixed,
+        'gto_freq':         round(played_freq, 4),
+        'gto_strategy':     gto_strategy,
+        'best_action':      ('allin' if rec[0] == 'jam' else rec[0]),
+        'new_action':       played,
+        'recommended':      rec,
+        'hand_freq':        hf,
+        'range_pct':        res.get('range_pct'),
+        'validation_source': 'gto_range',   # preflop = range GTO (não solver hand-aware)
+        'xp_value':         spot.get('xp_value', 20),
+        # campos SRS no-op (spot sintético não está em drill_sessions) — só p/ o contrato do CoachCard
+        'new_score':        0.0,
+        'original_score':   0.0,
+        'delta':            0.0,
+        'next_drill_at':    None,
+        'srs_interval_days': 0,
     }
 
 
