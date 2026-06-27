@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
+import { RangePanel } from "@/components/replayer/RangePanel";
 import { leaktrainer } from "@/lib/api";
 import type { LeakTrainerSpot, LeakTrainerGrade, LeakTrainerState, ReplayStep } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,7 @@ export default function LeakTrainer() {
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [xpEarned, setXpEarned]         = useState(0);
   const [sessionStats, setSessionStats] = useState<Record<string, SessionStat>>({});
+  const [showRange, setShowRange]       = useState(false);
   const stateRef = useRef<LeakTrainerState>(loadState());
   const rootRef = useRef<HTMLDivElement>(null);
   const [isFull, setIsFull] = useState(false);
@@ -108,7 +110,7 @@ export default function LeakTrainer() {
   };
 
   const loadNext = useCallback(async () => {
-    setPhase("loading"); setSelected(null); setGrade(null);
+    setPhase("loading"); setSelected(null); setGrade(null); setShowRange(false);
     try {
       const timeout = new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 12000));
       const r = await Promise.race([leaktrainer.next(stateRef.current), timeout]);
@@ -309,6 +311,15 @@ export default function LeakTrainer() {
                 <p className="font-mono text-[10px] text-muted-foreground">{spot.stack_bb}bb</p>
               </div>
 
+              {/* Consultar a tabela de ranges (abertura/call/raise) do spot */}
+              <button
+                onClick={() => setShowRange(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-hud-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-amber-500/50 hover:text-amber-400"
+              >
+                <LayoutGrid className="size-3.5" aria-hidden />
+                {t("gtoPreflop.showRange")}
+              </button>
+
               {phase === "question" && (
                 <div className="space-y-2">
                   <p className="font-mono text-xs uppercase tracking-wider text-amber-400">{t("leakTrainer.prompt")}</p>
@@ -382,6 +393,15 @@ export default function LeakTrainer() {
         )}
         </div>
       </main>
+
+      {/* Overlay: tabela de ranges (abertura/call/raise) do spot */}
+      {showRange && table && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowRange(false)}>
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <RangePanel step={table.step} hero="Hero" heroCards={table.heroCards} onClose={() => setShowRange(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

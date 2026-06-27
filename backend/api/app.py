@@ -2027,10 +2027,24 @@ def leaktrainer_grade():
     spot   = body.get('spot') or {}
     action = (body.get('action') or '').lower()
     result = grade_canonical_spot(spot, action)
-    xp     = int(spot.get('xp_value', 20) or 20)
-    result['xp_awarded'] = xp if result.get('is_correct') else 0
-    if result['xp_awarded']:
-        add_xp(g.user_id, 'leaktrainer_correct', xp)
+    xp_full = int(spot.get('xp_value', 20) or 20)
+    # XP por RESULTADO (como o Ghost Table): acerto pleno = cheio; aceitável (linha co-ótima que o GTO
+    # mistura) = parcial; erro = 0. add_xp atualiza XP global + streak + conquistas (sino).
+    if result.get('gto_tier') == 'correct' and not result.get('mixed'):
+        award = xp_full
+    elif result.get('is_correct'):
+        award = max(1, round(xp_full * 0.6))
+    else:
+        award = 0
+    xp_gained, xp_total, new_achievements, events = 0, None, [], []
+    if award:
+        xp_res = add_xp(g.user_id, 'leaktrainer_correct', award)
+        xp_gained = xp_res.get('xp_gained', award)
+        xp_total = xp_res.get('xp_total')
+        new_achievements = xp_res.get('new_achievements', [])
+        events = ['leaktrainer_correct']
+    result['xp'] = {'events': events, 'gained': xp_gained, 'total': xp_total, 'new_achievements': new_achievements}
+    result['xp_awarded'] = xp_gained
     return jsonify(result)
 
 

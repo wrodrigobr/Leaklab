@@ -992,6 +992,7 @@ export interface LeakTrainerGrade {
   new_action: string;
   hand_freq: Record<string, number>;
   xp_awarded: number;
+  xp?: { events: string[]; gained: number; total: number | null; new_achievements: string[] };
 }
 
 export const leaktrainer = {
