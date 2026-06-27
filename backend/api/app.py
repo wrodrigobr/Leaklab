@@ -574,8 +574,12 @@ def _analyze_impl():
                 'duplicate': True,
                 'tournament_id': tournament_id,
             }), 409
-        # União: mãos existentes + novas (sem duplicar). Re-analisa tudo e recomputa agregados/financeiro.
-        hands = _existing_hands + _new_hands
+        # União ORDENADA por hand_id (o # global do PokerStars é monotônico no tempo) — senão a sequência
+        # das mãos segue a ordem de IMPORT, não a cronológica (importar o dia 2 antes do dia 1 embaralha).
+        def _hand_sort_key(h):
+            _hid = str(getattr(h, 'hand_id', '') or '')
+            return (0, int(_hid)) if _hid.isdigit() else (1, _hid)
+        hands = sorted(_existing_hands + _new_hands, key=_hand_sort_key)
         results, hand_results, errors = _analyze_hands(hands)
         if not results:
             return jsonify({'error': 'Nenhuma decisão na união das mãos'}), 422
