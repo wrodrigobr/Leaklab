@@ -152,6 +152,25 @@ export default function LeakTrainer() {
     finally { setSubmitting(false); }
   };
 
+  // Atalhos de teclado (drill rápido p/ grinder): F/C/R respondem; 1..3 = opções na ordem; Enter/Espaço
+  // = próximo spot; G abre a tabela de ranges. Não dispara com modificadores.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (phase === "question" && spot && !submitting) {
+        const byLetter: Record<string, string> = { f: "fold", c: "call", r: "raise" };
+        const a = byLetter[k] || (/^[1-9]$/.test(k) ? spot.options[parseInt(k, 10) - 1] : undefined);
+        if (k === "g") { e.preventDefault(); setShowRange((v) => !v); return; }
+        if (a && spot.options.includes(a)) { e.preventDefault(); submit(a); }
+      } else if (phase === "feedback") {
+        if (e.key === "Enter" || e.key === " " || k === "n") { e.preventDefault(); loadNext(); }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase, spot, submitting, loadNext]);
+
   const accuracy = totalDone > 0 ? Math.round((totalCorrect / totalDone) * 100) : null;
   const table = spot ? buildStep(spot) : null;
 
@@ -335,13 +354,16 @@ export default function LeakTrainer() {
                         onClick={() => submit(a)}
                         disabled={submitting}
                         className={cn(
-                          "min-h-[48px] rounded-lg border px-4 py-3 text-left font-mono text-sm font-bold uppercase tracking-wider transition-all active:scale-95",
+                          "flex min-h-[48px] items-center justify-between rounded-lg border px-4 py-3 font-mono text-sm font-bold uppercase tracking-wider transition-all active:scale-95",
                           "border-border bg-hud-surface text-foreground ring-1 ring-border hover:border-amber-500/60 hover:bg-amber-500/5 hover:text-amber-400",
                           "disabled:opacity-40 disabled:cursor-not-allowed",
                           submitting && selected === a && "border-amber-500/60 bg-amber-500/5 text-amber-400",
                         )}
                       >
-                        {actLabel(a)}
+                        <span>{actLabel(a)}</span>
+                        <kbd className="rounded border border-border/60 bg-background/60 px-1.5 py-0.5 font-mono text-[9px] font-normal text-muted-foreground">
+                          {a === "fold" ? "F" : a === "call" ? "C" : "R"}
+                        </kbd>
                       </button>
                     ))}
                   </div>
@@ -390,6 +412,7 @@ export default function LeakTrainer() {
 
                   <button onClick={loadNext} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-mono text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-amber-400">
                     <ArrowRight className="size-4" aria-hidden /> {t("leakTrainer.next")}
+                    <kbd className="rounded border border-black/20 bg-black/10 px-1.5 py-0.5 text-[9px] font-normal">Enter</kbd>
                   </button>
                 </div>
               )}
