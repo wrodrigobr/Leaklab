@@ -550,6 +550,17 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             ORDER BY t.imported_at DESC
             LIMIT ?
         """, (_gto_cutoff, _gto_cutoff, user_id, limit)).fetchall()
+        # Solver ATIVO globalmente? A gto_solver_queue é dedup por spot_hash (não liga ao torneio), então
+        # uso a verdade direta: há spot pendente/running na fila. Combinado com "este torneio tem postflop
+        # HU descoberto", pega o caso em que o gto_hand_request foi finalizado (force-done >2h pelo drain)
+        # mas os spots seguem na fila do solver — o request dizia 'done', a fila não.
+        try:
+            _busy_row = conn.execute(
+                "SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status IN ('pending','running')"
+            ).fetchone()
+            _solver_busy = (dict(_busy_row).get('n', 0) or 0) > 0
+        except Exception:
+            _solver_busy = False
         result = []
         for r in rows:
             t = dict(r)
@@ -561,14 +572,14 @@ def get_tournaments(user_id: int, limit: int = 50) -> List[dict]:
             post_t = t.pop('post_total', 0) or 0; post_g = t.pop('post_gto', 0) or 0
             t['preflop_coverage_pct']  = round(pre_g * 100.0 / pre_t, 1) if pre_t else None
             t['postflop_coverage_pct'] = round(post_g * 100.0 / post_t, 1) if post_t else None
-            # "analisando" = request ainda em andamento (gto_inflight, sinal primário — reflete spots na
-            # fila do solver) OU, como fallback, ainda há spot HU descoberto + atividade recente (caso o
-            # request feche cedo). Inclusivo de propósito: o problema era SUBcontar (mostrar "Analisado"
-            # com spots pendentes). O age-bound (24h) evita eterno se o solver morrer.
+            # "analisando" = ainda há spot HU postflop descoberto NESTE torneio (_solvable_uncov) E o
+            # solver vai cobri-lo: a fila está ATIVA (_solver_busy — verdade direta, pega request
+            # finalizado com spots ainda na fila) OU há request não-terminal (_inflight) OU recente
+            # (_recent). Settle p/ "Analisado" quando a fila esvazia E não há request pendente/recente.
             _inflight = t.pop('gto_inflight', 0) or 0
             _solvable_uncov = t.pop('post_solvable_uncov', 0) or 0
             _recent = t.pop('gto_recent', 0) or 0
-            t['solver_analyzing'] = bool(_inflight > 0 or (_solvable_uncov > 0 and _recent > 0))
+            t['solver_analyzing'] = bool(_solvable_uncov > 0 and (_solver_busy or _inflight > 0 or _recent > 0))
             result.append(t)
         return result
     finally:
@@ -3664,6 +3675,20 @@ def count_user_pending_solves(user_id: int) -> int:
     try:
         from datetime import datetime, timedelta
         _cutoff = (datetime.utcnow() - timedelta(hours=_GTO_STALE_HOURS)).strftime('%Y-%m-%d %H:%M:%S')
+        # Solver ativo globalmente? (verdade direta da fila — MESMA régua da lista). Se a fila está ativa,
+        # conta todos os spots HU descobertos do usuário (o solver vai cobri-los, mesmo que o request já
+        # tenha sido finalizado). Senão, só os de torneios com request recente.
+        try:
+            _br = conn.execute(
+                "SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status IN ('pending','running')"
+            ).fetchone()
+            _busy = (dict(_br).get('n', 0) or 0) > 0
+        except Exception:
+            _busy = False
+        gate = "" if _busy else (
+            "AND EXISTS (SELECT 1 FROM gto_hand_requests ghr "
+            "            WHERE ghr.tournament_id = t.id AND ghr.created_at > ?)")
+        params = (user_id,) if _busy else (user_id, _cutoff)
         row = _fetchone(conn,
             "SELECT COUNT(*) AS n FROM decisions d "
             "JOIN tournaments t ON d.tournament_id = t.id "
@@ -3671,9 +3696,8 @@ def count_user_pending_solves(user_id: int) -> int:
             "AND lower(d.street) IN ('flop','turn','river') "
             "AND (d.n_active_opponents IS NULL OR d.n_active_opponents < 2) "
             "AND (d.gto_label IS NULL OR d.gto_label = '') "
-            "AND EXISTS (SELECT 1 FROM gto_hand_requests ghr "
-            "            WHERE ghr.tournament_id = t.id AND ghr.created_at > ?)",
-            (user_id, _cutoff))
+            + gate,
+            params)
         return (row.get('n') if row else 0) or 0
     finally:
         conn.close()
