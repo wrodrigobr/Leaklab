@@ -67,10 +67,15 @@ const Index = () => {
   const [pressureData, setPressureData]   = useState<PressureProfile | null>(null);
   const [driftData, setDriftData]         = useState<ConfidenceDrift | null>(null);
 
-  // Persist drift dismiss in localStorage keyed by user+data fingerprint so it
-  // auto-resets whenever a new tournament is uploaded and affected_sessions changes.
+  // Persiste o dismiss em localStorage com um fingerprint ESTÁVEL: o maior tournament_id das sessões em
+  // drift. Só muda quando entra um torneio MAIS NOVO (= novo import) — NÃO muda quando a janela de 30
+  // dias desliza e a contagem (affected_sessions) cai. Antes a chave usava affected_sessions, então o
+  // banner voltava sozinho ao envelhecer uma sessão, mesmo sem o usuário importar nada.
+  const driftFingerprint = driftData?.sessions?.length
+    ? Math.max(...driftData.sessions.map((s) => s.tournament_id))
+    : 0;
   const driftKey = user?.id && driftData?.drift_detected
-    ? `leaklab_drift_dismissed_${user.id}_${driftData.affected_sessions}`
+    ? `leaklab_drift_dismissed_${user.id}_${driftFingerprint}`
     : null;
   const [driftDismissed, setDriftDismissed] = useState(
     () => driftKey ? localStorage.getItem(driftKey) === "1" : false
