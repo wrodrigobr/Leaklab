@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2, RefreshCw, XCircle, Target, Maximize2, Minimize2, LayoutGrid, Flag } from "lucide-react";
 import { HudHeader } from "@/components/hud/HudHeader";
 import { PokerTableV3 } from "@/components/hud/PokerTableV3";
 import { RangePanel } from "@/components/replayer/RangePanel";
@@ -186,15 +186,26 @@ export default function LeakTrainer() {
             </div>
             <h1 className="truncate text-lg font-semibold tracking-tight text-foreground md:text-xl">{t("leakTrainer.title")}</h1>
           </div>
-          {canFull && (
-            <button
-              onClick={toggleFull}
-              className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-hud-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-amber-500/50 hover:text-amber-400"
-            >
-              {isFull ? <Minimize2 className="size-3.5" aria-hidden /> : <Maximize2 className="size-3.5" aria-hidden />}
-              {isFull ? t("leakTrainer.exitFull") : t("leakTrainer.fullscreen")}
-            </button>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {totalDone > 0 && phase !== "summary" && (
+              <button
+                onClick={finishSession}
+                className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 transition-colors hover:bg-amber-500/20"
+              >
+                <Flag className="size-3.5" aria-hidden />
+                {t("leakTrainer.finish")}
+              </button>
+            )}
+            {canFull && (
+              <button
+                onClick={toggleFull}
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-hud-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-amber-500/50 hover:text-amber-400"
+              >
+                {isFull ? <Minimize2 className="size-3.5" aria-hidden /> : <Maximize2 className="size-3.5" aria-hidden />}
+                {isFull ? t("leakTrainer.exitFull") : t("leakTrainer.fullscreen")}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col justify-center">
@@ -294,12 +305,6 @@ export default function LeakTrainer() {
                     <p className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">{t("stats.streak")}</p>
                   </div>
                 </div>
-              )}
-
-              {totalDone > 0 && (
-                <button onClick={finishSession} className="self-start font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-amber-400">
-                  {t("leakTrainer.finish")} →
-                </button>
               )}
 
               {/* Categoria de leak treinada agora */}
