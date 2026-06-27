@@ -1645,6 +1645,14 @@ const Replayer = () => {
   const prevHand = handIdx > 0 ? handList[handIdx - 1] : null;
   const nextHand = handIdx >= 0 && handIdx < handList.length - 1 ? handList[handIdx + 1] : null;
 
+  // "Voltar" = LISTA DE MÃOS do torneio (/tournaments/:id), não a mão anterior do histórico do browser
+  // (navegar entre mãos não deveria empilhar; o voltar leva de volta ao torneio). Coach (student) ou
+  // sem torneio → fallback no voltar do browser.
+  const goBack = () => {
+    if (tournamentId && !studentId) navigate(`/tournaments/${tournamentId}`);
+    else navigate(-1);
+  };
+
   // Alias map: todos os jogadores com nomes reais
   const playerAliases = useMemo<Record<string, string>>(() => {
     if (!replayData?.seats) return {};
@@ -1876,7 +1884,7 @@ const Replayer = () => {
       <HudLayout eyebrow={t("eyebrow")} title={t("title")} description={t("description")}>
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
           <p className="text-sm">{t("noParams")}</p>
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:underline">
+          <button onClick={goBack} className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:underline">
             <ArrowLeft className="size-3.5" /> {t("back")}
           </button>
         </div>
@@ -1900,7 +1908,7 @@ const Replayer = () => {
       <HudLayout eyebrow={t("eyebrow")} title={t("error")} description="">
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <p className="text-sm text-destructive">{error}</p>
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:underline">
+          <button onClick={goBack} className="inline-flex items-center gap-2 font-mono text-xs text-primary hover:underline">
             <ArrowLeft className="size-3.5" /> {t("back")}
           </button>
         </div>
@@ -1944,7 +1952,7 @@ const Replayer = () => {
               {t("iosInstallHint")}
             </p>
           )}
-          <button onClick={() => navigate(-1)}
+          <button onClick={goBack}
             className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground/70 transition-colors hover:text-primary">{t("back")}</button>
         </div>
       );
@@ -1966,7 +1974,7 @@ const Replayer = () => {
         </div>
 
         {/* Voltar — topo-esquerda */}
-        <button onClick={() => navigate(-1)}
+        <button onClick={goBack}
           className="absolute top-[calc(0.5rem+env(safe-area-inset-top))] left-[calc(0.5rem+env(safe-area-inset-left))] z-30 inline-flex items-center gap-1.5 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground ring-1 ring-border transition-colors hover:text-primary">
           <ArrowLeft className="size-3.5" /> {t("back")}
         </button>
@@ -2054,7 +2062,7 @@ const Replayer = () => {
               <img src={logoHorizontal} alt="GrindLab" className="h-7 w-auto shrink-0" />
             )}
             <button
-              onClick={() => navigate(-1)}
+              onClick={goBack}
               className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary"
             >
               <ArrowLeft className="size-3.5" /> {t("back")}
