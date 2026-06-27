@@ -4863,6 +4863,10 @@ def delete_user_admin(user_id: int) -> None:
         conn.execute("DELETE FROM drill_sessions WHERE user_id = ?", (user_id,))   # SRS — sem ON DELETE CASCADE
         for tid in tournament_ids:
             conn.execute("DELETE FROM decisions WHERE tournament_id = ?", (tid,))
+            try:
+                conn.execute("DELETE FROM gto_hand_requests WHERE tournament_id = ?", (tid,))
+            except Exception:
+                pass
         if tournament_ids:
             placeholders = ",".join("?" * len(tournament_ids))
             conn.execute(f"DELETE FROM tournaments WHERE id IN ({placeholders})", tournament_ids)

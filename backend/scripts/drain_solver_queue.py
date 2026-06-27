@@ -30,6 +30,12 @@ def _reset_stale_running():
             "WHERE status='running' AND requested_at < ?",
             (cutoff,)
         )
+        # Limpa gto_hand_requests ÓRFÃOS (torneio deletado) — senão erram "Torneio sem raw_text no banco"
+        # ao serem processados, poluindo o painel de erros. O delete de torneio já faz cascade; isto
+        # recolhe os que ficaram de deletes antigos (antes do cascade).
+        conn.execute(
+            "DELETE FROM gto_hand_requests WHERE tournament_id NOT IN (SELECT id FROM tournaments)"
+        )
         conn.commit()
     finally:
         conn.close()

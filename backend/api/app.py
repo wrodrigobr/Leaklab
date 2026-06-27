@@ -4107,6 +4107,12 @@ def delete_tournament(tournament_id):
         conn.execute("DELETE FROM drill_sessions WHERE decision_id IN "
                      "(SELECT id FROM decisions WHERE tournament_id=?)", (db_id,))
         conn.execute("DELETE FROM decisions WHERE tournament_id=?", (db_id,))
+        # Limpa os gto_hand_requests do torneio — senão ficam órfãos (apontando p/ torneio inexistente)
+        # e erram "Torneio sem raw_text no banco" quando o worker tenta processá-los.
+        try:
+            conn.execute("DELETE FROM gto_hand_requests WHERE tournament_id=?", (db_id,))
+        except Exception:
+            pass
         conn.execute("DELETE FROM tournaments WHERE id=?", (db_id,))
         conn.commit()
         return jsonify({'ok': True, 'deleted': tournament_id})
