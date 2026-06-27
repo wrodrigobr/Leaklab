@@ -263,6 +263,7 @@ export default function Docs() {
             <Section id="coverage" title={t("coverage.title")}>
               <p dangerouslySetInnerHTML={{ __html: t("coverage.p1") }} />
               <p dangerouslySetInnerHTML={{ __html: t("coverage.p2") }} />
+              <p dangerouslySetInnerHTML={{ __html: t("coverage.p3") }} />
             </Section>
 
             {/* Replayer — revisão de mão */}

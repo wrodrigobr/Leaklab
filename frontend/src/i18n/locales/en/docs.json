@@ -455,6 +455,7 @@
   "coverage": {
     "title": "GTO Coverage",
     "p1": "The <strong>GTO Coverage</strong> card shows, in two rings, what percentage of your decisions was compared against the GTO Solver reference: one ring for preflop and one for postflop.",
-    "p2": "Preflop is usually covered almost immediately. Postflop grows over time, as the solver works through the spots in the background; that is why, when it is still below the total, the card shows the \"under analysis\" note. The higher the coverage, the more of your game has been checked against GTO."
+    "p2": "Preflop is usually covered almost immediately. Postflop grows over time, as the solver works through the spots in the background; that is why, when it is still below the total, the card shows the \"under analysis\" note. The higher the coverage, the more of your game has been checked against GTO.",
+    "p3": "<strong>Multiway pots (3+ players)</strong>: there is no reference GTO solution for pots with three or more players, solvers only solve heads-up. Instead of inventing a GTO number, your hand's equity in these spots is estimated by simulation (Monte Carlo) against the opponents' likely continuing ranges, adjusted for pot odds and a realization penalty (multiway you realize less of your equity than heads-up). That is why these spots are flagged as <strong>≈ Approximation</strong>: an honest estimate, not a GTO verdict, and it counts neither as correct nor as a mistake."
   }
 }
