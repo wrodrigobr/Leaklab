@@ -15,8 +15,15 @@ from leaklab.gto_solver import lookup_gto, hand_view_for_spot
 from leaklab.gto_utils import compute_spot_hash
 from database.schema import get_conn
 
+
+def _parse(s, n):
+    return [s[i:i + 2] for i in range(0, min(len(s), n * 2), 2)]
+
+
 STREET, POS, VS = 'flop', 'BB', 'BTN'
-BOARD, HERO = ['8c', '5d', '2h'], ['Ah', 'Ks']
+# argv: board (ex.: Ad6c3s) + mão (ex.: 9h9d). Default = pocket pair que deu None.
+BOARD = _parse(sys.argv[1], 3) if len(sys.argv) > 1 else ['Ad', '6c', '3s']
+HERO  = _parse(sys.argv[2], 2) if len(sys.argv) > 2 else ['9h', '9d']
 STACK, CBET, POT = 40.0, 1.65, 5.0
 
 
@@ -66,7 +73,21 @@ def main():
                 print("\n[4] hand_view_for_spot direto (tree_hash, board do spot, mão):")
                 hv = hand_view_for_spot(th, BOARD, HERO)
                 if hv is None:
-                    print("  None → mão fora do range armazenado OU board não-isomorfo (iso_suit_map falhou)")
+                    print("  None → investigando o mapeamento:")
+                    from leaklab.gto_utils import iso_suit_map, map_cards_suits, normalize_cards
+                    from database.repositories import get_tree_strategy
+                    ts = get_tree_strategy(th)
+                    smap = iso_suit_map(BOARD, ts['board']) if ts else None
+                    print(f"    smap (naipes board {BOARD} → {ts['board'] if ts else '?'}): {smap}")
+                    if ts and smap is not None:
+                        mapped = map_cards_suits(normalize_cards(HERO), smap)
+                        print(f"    mão {HERO} → mapeada {mapped} | cartas DISTINTAS: {len(set(mapped))}"
+                              + ("  ← COLISÃO! (pair virou inválido)" if len(set(mapped)) < 2 else ""))
+                        ranks = {c[0] for c in HERO}
+                        combos = [h.get('hand') for h in (ts.get('hand_table') or [])
+                                  if h.get('hand') and len(h['hand']) >= 4
+                                  and h['hand'][0] in ranks and h['hand'][2] in ranks]
+                        print(f"    combos no hand_table c/ ranks {ranks}: {combos[:12] or 'NENHUM (fora do range)'}")
                 else:
                     print("  OK:", {k: hv.get(k) for k in ('best_action', 'best_ev_bb', 'weight')})
                     print("  actions:", hv.get('actions'))
